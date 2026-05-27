@@ -5,6 +5,7 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { openApiHidden, slugSchema } from "@app/server/lib/schemas";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import {
@@ -15,6 +16,7 @@ import {
   CertSubjectAttributeType
 } from "@app/services/certificate-common/certificate-constants";
 import { certificatePolicyResponseSchema } from "@app/services/certificate-policy/certificate-policy-schemas";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const attributeTypeSchema = z.nativeEnum(CertSubjectAttributeType);
 const sanTypeSchema = z.nativeEnum(CertSubjectAlternativeNameType);
@@ -241,6 +243,15 @@ export const registerCertificatePolicyRouter = async (server: FastifyZodProvider
         }
       });
 
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.CertificatePolicyCreated,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          orgId: req.permission.orgId
+        }
+      });
+
       return { certificatePolicy };
     }
   });
@@ -429,6 +440,15 @@ export const registerCertificatePolicyRouter = async (server: FastifyZodProvider
             certificatePolicyId: certificatePolicy.id,
             name: certificatePolicy.name
           }
+        }
+      });
+
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.CertificatePolicyDeleted,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          orgId: req.permission.orgId
         }
       });
 

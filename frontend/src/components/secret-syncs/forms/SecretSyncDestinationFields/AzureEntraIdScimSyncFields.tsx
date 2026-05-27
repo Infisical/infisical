@@ -1,8 +1,19 @@
 import { useMemo, useState } from "react";
 import { Controller, useFormContext, useWatch } from "react-hook-form";
+import { Info } from "lucide-react";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
-import { FilterableSelect, FormControl } from "@app/components/v2";
+import {
+  Field,
+  FieldContent,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+  FilterableSelect,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import {
   TAzureScimServicePrincipal,
   useAzureEntraIdConnectionListScimServicePrincipals
@@ -28,7 +39,6 @@ export const AzureEntraIdScimSyncFields = () => {
       enabled: Boolean(connectionId)
     });
 
-  // Ensure the selected SP is always present in the options list
   const options = useMemo(() => {
     const results = servicePrincipals ?? [];
     if (selectedSp && !results.some((sp) => sp.id === selectedSp.id)) {
@@ -38,7 +48,7 @@ export const AzureEntraIdScimSyncFields = () => {
   }, [servicePrincipals, selectedSp]);
 
   return (
-    <>
+    <FieldGroup>
       <SecretSyncConnectionField
         onChange={() => {
           setValue("destinationConfig.servicePrincipalId", "");
@@ -50,37 +60,47 @@ export const AzureEntraIdScimSyncFields = () => {
         name="destinationConfig.servicePrincipalId"
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl
-            isError={Boolean(error)}
-            errorText={error?.message}
-            label="SCIM Service Principal"
-            tooltipText="Select the Enterprise Application with SCIM provisioning configured. Type to search by name."
-          >
-            <FilterableSelect
-              value={options.find((sp) => sp.id === value) ?? null}
-              onChange={(option) => {
-                const selected = option as TAzureScimServicePrincipal | null;
-                setSelectedSp(selected);
-                onChange(selected?.id ?? "");
-              }}
-              onInputChange={(newValue) => setSearchInput(newValue)}
-              filterOption={null}
-              isLoading={isLoadingServicePrincipals}
-              options={options}
-              placeholder="Search for a SCIM service principal..."
-              getOptionLabel={(option) => option.displayName}
-              getOptionValue={(option) => option.id}
-              isClearable
-              isDisabled={!connectionId}
-              noOptionsMessage={() =>
-                debouncedSearch
-                  ? "No matching service principals found"
-                  : "Type to search for service principals"
-              }
-            />
-          </FormControl>
+          <Field>
+            <FieldLabel>
+              SCIM Service Principal
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info />
+                </TooltipTrigger>
+                <TooltipContent>
+                  Select the Enterprise Application with SCIM provisioning configured. Type to
+                  search by name.
+                </TooltipContent>
+              </Tooltip>
+            </FieldLabel>
+            <FieldContent>
+              <FilterableSelect
+                value={options.find((sp) => sp.id === value) ?? null}
+                onChange={(option) => {
+                  const selected = option as TAzureScimServicePrincipal | null;
+                  setSelectedSp(selected);
+                  onChange(selected?.id ?? "");
+                }}
+                onInputChange={(newValue) => setSearchInput(newValue)}
+                filterOption={null}
+                isLoading={isLoadingServicePrincipals}
+                options={options}
+                placeholder="Search for a SCIM service principal..."
+                getOptionLabel={(option) => option.displayName}
+                getOptionValue={(option) => option.id}
+                isClearable
+                isDisabled={!connectionId}
+                noOptionsMessage={() =>
+                  debouncedSearch
+                    ? "No matching service principals found"
+                    : "Type to search for service principals"
+                }
+              />
+              <FieldError errors={[error]} />
+            </FieldContent>
+          </Field>
         )}
       />
-    </>
+    </FieldGroup>
   );
 };

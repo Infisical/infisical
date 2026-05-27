@@ -1,8 +1,19 @@
 import { Controller, useFormContext, useWatch } from "react-hook-form";
 import { SingleValue } from "react-select";
+import { Info } from "lucide-react";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
-import { FilterableSelect, FormControl } from "@app/components/v2";
+import {
+  Field,
+  FieldContent,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+  FilterableSelect,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import {
   TSnowflakeDatabase,
   TSnowflakeSchema,
@@ -34,7 +45,7 @@ export const SnowflakeSyncFields = () => {
   );
 
   return (
-    <>
+    <FieldGroup>
       <SecretSyncConnectionField
         onChange={() => {
           setValue("destinationConfig.database", "");
@@ -46,27 +57,36 @@ export const SnowflakeSyncFields = () => {
         name="destinationConfig.database"
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl
-            isError={Boolean(error)}
-            errorText={error?.message}
-            label="Database"
-            tooltipClassName="max-w-sm"
-            tooltipText="The Snowflake database that contains the target schema. The database must already exist."
-          >
-            <FilterableSelect
-              isLoading={isDatabasesPending && Boolean(connectionId)}
-              isDisabled={!connectionId}
-              value={databases.find((db) => db.name === value) ?? null}
-              onChange={(option) => {
-                setValue("destinationConfig.schema", "");
-                onChange((option as SingleValue<TSnowflakeDatabase>)?.name ?? "");
-              }}
-              options={databases}
-              placeholder="Select a database..."
-              getOptionLabel={(option) => option.name}
-              getOptionValue={(option) => option.name}
-            />
-          </FormControl>
+          <Field>
+            <FieldLabel>
+              Database
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-sm">
+                  The Snowflake database that contains the target schema. The database must already
+                  exist.
+                </TooltipContent>
+              </Tooltip>
+            </FieldLabel>
+            <FieldContent>
+              <FilterableSelect
+                isLoading={isDatabasesPending && Boolean(connectionId)}
+                isDisabled={!connectionId}
+                value={databases.find((db) => db.name === value) ?? null}
+                onChange={(option) => {
+                  setValue("destinationConfig.schema", "");
+                  onChange((option as SingleValue<TSnowflakeDatabase>)?.name ?? "");
+                }}
+                options={databases}
+                placeholder="Select a database..."
+                getOptionLabel={(option) => option.name}
+                getOptionValue={(option) => option.name}
+              />
+              <FieldError errors={[error]} />
+            </FieldContent>
+          </Field>
         )}
       />
 
@@ -74,26 +94,37 @@ export const SnowflakeSyncFields = () => {
         name="destinationConfig.schema"
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl
-            isError={Boolean(error)}
-            errorText={error?.message}
-            label="Schema"
-            tooltipClassName="max-w-sm"
-            tooltipText="The Snowflake schema (within the selected database) where secrets will be created. The schema must already exist."
-          >
-            <FilterableSelect
-              isLoading={isSchemasPending && Boolean(connectionId) && Boolean(database)}
-              isDisabled={!connectionId || !database}
-              value={schemas.find((schema) => schema.name === value) ?? null}
-              onChange={(option) => onChange((option as SingleValue<TSnowflakeSchema>)?.name ?? "")}
-              options={schemas}
-              placeholder="Select a schema..."
-              getOptionLabel={(option) => option.name}
-              getOptionValue={(option) => option.name}
-            />
-          </FormControl>
+          <Field>
+            <FieldLabel>
+              Schema
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-sm">
+                  The Snowflake schema (within the selected database) where secrets will be created.
+                  The schema must already exist.
+                </TooltipContent>
+              </Tooltip>
+            </FieldLabel>
+            <FieldContent>
+              <FilterableSelect
+                isLoading={isSchemasPending && Boolean(connectionId) && Boolean(database)}
+                isDisabled={!connectionId || !database}
+                value={schemas.find((schema) => schema.name === value) ?? null}
+                onChange={(option) =>
+                  onChange((option as SingleValue<TSnowflakeSchema>)?.name ?? "")
+                }
+                options={schemas}
+                placeholder="Select a schema..."
+                getOptionLabel={(option) => option.name}
+                getOptionValue={(option) => option.name}
+              />
+              <FieldError errors={[error]} />
+            </FieldContent>
+          </Field>
         )}
       />
-    </>
+    </FieldGroup>
   );
 };

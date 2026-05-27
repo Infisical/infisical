@@ -230,6 +230,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         properties: {
           orgId: project.orgId,
           name: project.name,
+          projectType: req.body.type,
           ...req.auditLogInfo
         }
       });

@@ -27,7 +27,8 @@ const PERMISSION_ACTIONS = [
   { action: OrgRelayPermissionActions.ListRelays, label: "List Relays" },
   { action: OrgRelayPermissionActions.CreateRelays, label: "Create Relays" },
   { action: OrgRelayPermissionActions.EditRelays, label: "Edit Relays" },
-  { action: OrgRelayPermissionActions.DeleteRelays, label: "Delete Relays" }
+  { action: OrgRelayPermissionActions.DeleteRelays, label: "Delete Relays" },
+  { action: OrgRelayPermissionActions.RevokeRelayAccess, label: "Revoke Relay Access" }
 ] as const;
 
 export const OrgRelayPermissionRow = ({ isEditable, control, setValue }: Props) => {
@@ -81,7 +82,8 @@ export const OrgRelayPermissionRow = ({ isEditable, control, setValue }: Props) 
             [OrgRelayPermissionActions.ListRelays]: true,
             [OrgRelayPermissionActions.EditRelays]: true,
             [OrgRelayPermissionActions.CreateRelays]: true,
-            [OrgRelayPermissionActions.DeleteRelays]: true
+            [OrgRelayPermissionActions.DeleteRelays]: true,
+            [OrgRelayPermissionActions.RevokeRelayAccess]: true
           },
           { shouldDirty: true }
         );
@@ -93,7 +95,8 @@ export const OrgRelayPermissionRow = ({ isEditable, control, setValue }: Props) 
             [OrgRelayPermissionActions.ListRelays]: true,
             [OrgRelayPermissionActions.EditRelays]: false,
             [OrgRelayPermissionActions.CreateRelays]: false,
-            [OrgRelayPermissionActions.DeleteRelays]: false
+            [OrgRelayPermissionActions.DeleteRelays]: false,
+            [OrgRelayPermissionActions.RevokeRelayAccess]: false
           },
           { shouldDirty: true }
         );
@@ -107,7 +110,8 @@ export const OrgRelayPermissionRow = ({ isEditable, control, setValue }: Props) 
             [OrgRelayPermissionActions.ListRelays]: false,
             [OrgRelayPermissionActions.EditRelays]: false,
             [OrgRelayPermissionActions.CreateRelays]: false,
-            [OrgRelayPermissionActions.DeleteRelays]: false
+            [OrgRelayPermissionActions.DeleteRelays]: false,
+            [OrgRelayPermissionActions.RevokeRelayAccess]: false
           },
           { shouldDirty: true }
         );

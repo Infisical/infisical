@@ -9,10 +9,12 @@ import { AsymmetricKeyAlgorithm, SigningAlgorithm } from "@app/lib/crypto/sign";
 import { OrderByDirection } from "@app/lib/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { CmekOrderBy, TCmekKeyEncryptionAlgorithm } from "@app/services/cmek/cmek-types";
 import { KmsKeyUsage } from "@app/services/kms/kms-types";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const keyNameSchema = slugSchema({ min: 1, max: 32, field: "Name" });
 const keyDescriptionSchema = z.string().trim().max(500).optional();
@@ -128,6 +130,20 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
           }
         }
       });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.CmekCreated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: permission.orgId,
+          properties: {
+            keyId: cmek.id,
+            projectId,
+            encryptionAlgorithm,
+            keyUsage
+          }
+        })
+        .catch(() => {});
 
       return { key: cmek };
     }
@@ -421,6 +437,15 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
           }
         }
       });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.CmekEncrypt,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: permission.orgId,
+          properties: { keyId, projectId }
+        })
+        .catch(() => {});
 
       return { ciphertext };
     }
@@ -869,6 +894,15 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
           }
         }
       });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.CmekDecrypt,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: permission.orgId,
+          properties: { keyId, projectId }
+        })
+        .catch(() => {});
 
       return { plaintext };
     }

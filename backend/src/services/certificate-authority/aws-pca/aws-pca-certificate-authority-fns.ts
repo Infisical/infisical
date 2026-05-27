@@ -38,6 +38,7 @@ import {
   CrlReason,
   mapSanTypeToX509Type
 } from "@app/services/certificate/certificate-types";
+import { CertificateRequestCancelledError } from "@app/services/certificate-common/certificate-request-errors";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -532,7 +533,8 @@ export const AwsPcaCertificateAuthorityFns = ({
     organizationalUnit,
     country,
     state,
-    locality
+    locality,
+    isCancelled
   }: {
     caId: string;
     profileId: string;
@@ -553,6 +555,7 @@ export const AwsPcaCertificateAuthorityFns = ({
     country?: string;
     state?: string;
     locality?: string;
+    isCancelled?: () => Promise<boolean>;
   }) => {
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
     if (!ca.externalCa || ca.externalCa.type !== CaType.AWS_PCA) {
@@ -724,6 +727,10 @@ export const AwsPcaCertificateAuthorityFns = ({
     const { cipherTextBlob: encryptedCertificateChain } = await kmsEncryptor({
       plainText: Buffer.from(certificateChainPem)
     });
+
+    if (isCancelled && (await isCancelled())) {
+      throw new CertificateRequestCancelledError();
+    }
 
     let certificateId: string;
 

@@ -32,6 +32,7 @@ export const ProjectSubmenuView = ({
   const basePath = `/organizations/${currentOrg.id}/projects/${typePath}/${currentProject.id}`;
   const isOnExactPage = pathname.startsWith(`${basePath}/${submenu.pathSuffix}`);
   const currentTab = searchParams?.selectedTab;
+  const anyItemMatchesDetail = submenu.items.some((s) => Boolean(s.activeMatch?.test(pathname)));
 
   return (
     <SidebarGroup>
@@ -51,6 +52,7 @@ export const ProjectSubmenuView = ({
           const isActive =
             matchesDetail ||
             (isOnExactPage &&
+              !anyItemMatchesDetail &&
               (currentTab === sub.tab || (!currentTab && sub.tab === submenu.defaultTab)));
 
           return (
@@ -99,6 +101,7 @@ export const OrgSubmenuView = ({ submenu, onBack }: { submenu: Submenu; onBack: 
 
   const isOnExactPage = pathname.startsWith(`/organizations/${orgId}/${submenu.pathSuffix}`);
   const currentTab = searchParams?.selectedTab;
+  const anyItemMatchesDetail = submenu.items.some((s) => Boolean(s.activeMatch?.test(pathname)));
 
   return (
     <SidebarGroup>
@@ -118,6 +121,7 @@ export const OrgSubmenuView = ({ submenu, onBack }: { submenu: Submenu; onBack: 
           const isActive =
             matchesDetail ||
             (isOnExactPage &&
+              !anyItemMatchesDetail &&
               (currentTab === sub.tab || (!currentTab && sub.tab === submenu.defaultTab)));
 
           return (

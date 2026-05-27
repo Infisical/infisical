@@ -312,9 +312,13 @@ export const MilvusProvider = ({
       const requestConfig = $requestConfig(providerInputs, host, port);
 
       try {
-        const role = await describeRole(providerInputs, host, port, roleName);
-        if (role.code === 0 && role.data.length > 0) {
-          await request.post("/v2/vectordb/roles/drop", { roleName }, requestConfig);
+        try {
+          const role = await describeRole(providerInputs, host, port, roleName);
+          if (role.code === 0 && role.data.length > 0) {
+            await request.post("/v2/vectordb/roles/drop", { roleName }, requestConfig);
+          }
+        } catch (cleanupErr) {
+          logger.error(cleanupErr, `Failed to cleanup Milvus role [roleName=${roleName}]`);
         }
 
         await request.post("/v2/vectordb/users/drop", { userName: username }, requestConfig);

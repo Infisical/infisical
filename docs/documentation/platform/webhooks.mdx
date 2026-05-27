@@ -39,7 +39,8 @@ Supported events:
 	"event": "secrets.modified",
 	"project": {
 		"workspaceId": "the workspace id",
-		"environment": "project environment",
+		"environment": "project environment (slug)",
+		"environmentName": "project environment (name)"
 		"secretPath": "project folder path",
 		"changedBy": "Actor that changed the secret",
 		"changedByActorType": "The actor type that triggered the change. Possible values: `service`, `user`, `identity`."
@@ -56,6 +57,7 @@ Supported events:
 		"projectId": "the project id",
 		"projectName": "the project name",
 		"environment": "project environment",
+		"environmentName": "project environment (name)"
 		"secretPath": "project folder path",
 		"rotationName": "name of the failed rotation",
 		"errorMessage": "error details",

@@ -12,6 +12,8 @@ export type TLDAPConfig = {
   groupSearchBase: string;
   groupSearchFilter: string;
   caCert: string;
+  clientCertificate?: string;
+  clientKeyCertificate?: string;
 };
 
 export type TTestLDAPConfigDTO = Omit<
@@ -31,6 +33,8 @@ export type TCreateLdapCfgDTO = {
   groupSearchBase: string;
   groupSearchFilter: string;
   caCert: string;
+  clientCertificate: string;
+  clientKeyCertificate: string;
 } & TOrgPermission;
 
 export type TUpdateLdapCfgDTO = {
@@ -46,6 +50,8 @@ export type TUpdateLdapCfgDTO = {
   groupSearchBase: string;
   groupSearchFilter: string;
   caCert: string;
+  clientCertificate: string;
+  clientKeyCertificate: string;
 }> &
   TOrgPermission;
 

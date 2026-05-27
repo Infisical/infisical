@@ -1,5 +1,5 @@
 /* eslint-disable no-await-in-loop */
-import { ForbiddenError } from "@casl/ability";
+import { ForbiddenError, subject } from "@casl/ability";
 import { Knex } from "knex";
 
 import {
@@ -212,13 +212,17 @@ export const folderCommitServiceFactory = ({
     actorId,
     projectId,
     actorAuthMethod,
-    actorOrgId
+    actorOrgId,
+    environment,
+    secretPath
   }: {
     actor: ActorType;
     actorId: string;
     projectId: string;
     actorAuthMethod: ActorAuthMethod;
     actorOrgId: string;
+    environment: string;
+    secretPath: string;
   }) => {
     if (!permissionService) {
       throw new Error("Permission service not initialized");
@@ -232,7 +236,10 @@ export const folderCommitServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCommitsActions.Read, ProjectPermissionSub.Commits);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionCommitsActions.Read,
+      subject(ProjectPermissionSub.Commits, { environment, secretPath })
+    );
   };
 
   /**
@@ -1447,14 +1454,27 @@ export const folderCommitServiceFactory = ({
     projectId: string;
     tx?: Knex;
   }) => {
+    const commit = await folderCommitDAL.findById(commitId, tx, projectId);
+    if (!commit) {
+      throw new NotFoundError({ message: `Commit with ID ${commitId} not found` });
+    }
+
+    const [folderWithPath] = await folderDAL.findSecretPathByFolderIds(projectId, [commit.folderId], tx);
+    if (!folderWithPath) {
+      throw new NotFoundError({ message: `Folder for commit ${commitId} not found` });
+    }
+
     await checkProjectCommitReadPermission({
       actor,
       actorId,
       actorAuthMethod,
       actorOrgId,
-      projectId
+      projectId,
+      environment: folderWithPath.environmentSlug,
+      secretPath: folderWithPath.path
     });
-    return folderCommitDAL.findById(commitId, tx, projectId);
+
+    return commit;
   };
 
   /**
@@ -1494,7 +1514,9 @@ export const folderCommitServiceFactory = ({
       actorId,
       actorAuthMethod,
       actorOrgId,
-      projectId
+      projectId,
+      environment,
+      secretPath: path
     });
     const folder = await folderDAL.findBySecretPath(projectId, environment, path);
     if (!folder) {
@@ -1533,7 +1555,9 @@ export const folderCommitServiceFactory = ({
       actorId,
       actorAuthMethod,
       actorOrgId,
-      projectId
+      projectId,
+      environment,
+      secretPath: path
     });
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, path);
@@ -1564,15 +1588,27 @@ export const folderCommitServiceFactory = ({
     projectId: string;
     commitId: string;
   }) => {
+    const commit = await folderCommitDAL.findById(commitId, undefined, projectId);
+    if (!commit) {
+      throw new NotFoundError({ message: `Commit with ID ${commitId} not found` });
+    }
+
+    const [folderWithPath] = await folderDAL.findSecretPathByFolderIds(projectId, [commit.folderId]);
+    if (!folderWithPath) {
+      throw new NotFoundError({ message: `Folder for commit ${commitId} not found` });
+    }
+
     await checkProjectCommitReadPermission({
       actor,
       actorId,
       actorAuthMethod,
       actorOrgId,
-      projectId
+      projectId,
+      environment: folderWithPath.environmentSlug,
+      secretPath: folderWithPath.path
     });
+
     const changes = await folderCommitChangesDAL.findByCommitId(commitId, projectId);
-    const commit = await folderCommitDAL.findById(commitId, undefined, projectId);
     const latestCommit = await folderCommitDAL.findLatestCommit(commit.folderId, projectId);
     return { ...commit, changes, isLatest: commit.id === latestCommit?.id };
   };
@@ -2046,13 +2082,21 @@ export const folderCommitServiceFactory = ({
     actorOrgId: string;
     projectId: string;
   }) => {
+    const [folderWithPath] = await folderDAL.findSecretPathByFolderIds(projectId, [folderId]);
+    if (!folderWithPath) {
+      throw new NotFoundError({ message: `Folder with ID ${folderId} not found` });
+    }
+
     await checkProjectCommitReadPermission({
       actor,
       actorId,
       actorAuthMethod,
       actorOrgId,
-      projectId
+      projectId,
+      environment: folderWithPath.environmentSlug,
+      secretPath: folderWithPath.path
     });
+
     return folderCommitDAL.findLatestCommit(folderId, projectId);
   };
 
@@ -2079,6 +2123,18 @@ export const folderCommitServiceFactory = ({
     if (!permissionService) {
       throw new Error("Permission service not initialized");
     }
+
+    // Get the commit to revert first to get folder info for permission check
+    const commitToRevert = await folderCommitDAL.findById(commitId, undefined, projectId);
+    if (!commitToRevert) {
+      throw new NotFoundError({ message: `Commit with ID ${commitId} not found` });
+    }
+
+    const [folderWithPath] = await folderDAL.findSecretPathByFolderIds(projectId, [commitToRevert.folderId]);
+    if (!folderWithPath) {
+      throw new NotFoundError({ message: `Folder for commit ${commitId} not found` });
+    }
+
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
@@ -2090,22 +2146,22 @@ export const folderCommitServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionCommitsActions.PerformRollback,
-      ProjectPermissionSub.Commits
+      subject(ProjectPermissionSub.Commits, {
+        environment: folderWithPath.environmentSlug,
+        secretPath: folderWithPath.path
+      })
     );
-    // Check permissions first
+
+    // Check read permissions
     await checkProjectCommitReadPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
+      actorOrgId,
+      environment: folderWithPath.environmentSlug,
+      secretPath: folderWithPath.path
     });
-
-    // Get the commit to revert
-    const commitToRevert = await folderCommitDAL.findById(commitId, undefined, projectId);
-    if (!commitToRevert) {
-      throw new NotFoundError({ message: `Commit with ID ${commitId} not found` });
-    }
 
     const previousCommit = await folderCommitDAL.findCommitBefore(commitToRevert.folderId, commitToRevert.commitId);
 

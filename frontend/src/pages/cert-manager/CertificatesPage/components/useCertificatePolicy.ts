@@ -196,14 +196,6 @@ export const useCertificatePolicy = (
         setValue("ttl", convertTemplateTtlToCertificateTtl(policyMaxValidity));
       }
 
-      // Set algorithm defaults
-      if (defaults?.keyAlgorithm) {
-        setValue("keyAlgorithm", defaults.keyAlgorithm);
-      }
-      if (defaults?.signatureAlgorithm) {
-        setValue("signatureAlgorithm", defaults.signatureAlgorithm);
-      }
-
       // Set basic constraints defaults
       if (defaults?.basicConstraints) {
         setValue("basicConstraints.isCA", defaults.basicConstraints.isCA);
@@ -340,6 +332,31 @@ export const useCertificatePolicy = (
       setValue("extendedKeyUsages", initialExtendedKeyUsages);
     }
   }, [templateData, selectedProfile, setValue, watch, isModalOpen]);
+
+  useEffect(() => {
+    if (!isModalOpen || !selectedProfile) return;
+    const defaults = selectedProfile?.defaults;
+    if (!defaults) return;
+
+    if (
+      defaults.signatureAlgorithm &&
+      availableSignatureAlgorithms.some((opt) => opt.value === defaults.signatureAlgorithm)
+    ) {
+      setValue("signatureAlgorithm", defaults.signatureAlgorithm);
+    }
+    if (
+      defaults.keyAlgorithm &&
+      availableKeyAlgorithms.some((opt) => opt.value === defaults.keyAlgorithm)
+    ) {
+      setValue("keyAlgorithm", defaults.keyAlgorithm);
+    }
+  }, [
+    isModalOpen,
+    selectedProfile,
+    availableSignatureAlgorithms,
+    availableKeyAlgorithms,
+    setValue
+  ]);
 
   return {
     constraints,

@@ -2,8 +2,15 @@ import { useEffect } from "react";
 import { Controller, useFormContext, useWatch } from "react-hook-form";
 import { subject } from "@casl/ability";
 
-import { FilterableSelect, FormControl } from "@app/components/v2";
-import { SecretPathInput } from "@app/components/v2/SecretPathInput";
+import {
+  Field,
+  FieldContent,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+  FilterableSelect,
+  SecretPathInput
+} from "@app/components/v3";
 import { useProject, useProjectPermission } from "@app/context";
 import {
   ProjectPermissionSecretSyncActions,
@@ -24,15 +31,18 @@ const DefaultSecretSyncSourceFields = () => {
   const selectedSecretPath = watch("secretPath");
 
   useEffect(() => {
-    const hasAccessToSource =
-      selectedEnvironment &&
-      permission.can(
-        ProjectPermissionSecretSyncActions.Create,
-        subject(ProjectPermissionSub.SecretSyncs, {
-          environment: selectedEnvironment.slug,
-          secretPath: selectedSecretPath
-        })
-      );
+    if (!selectedEnvironment) {
+      clearErrors("secretPath");
+      return;
+    }
+
+    const hasAccessToSource = permission.can(
+      ProjectPermissionSecretSyncActions.Create,
+      subject(ProjectPermissionSub.SecretSyncs, {
+        environment: selectedEnvironment.slug,
+        secretPath: selectedSecretPath
+      })
+    );
 
     if (!hasAccessToSource) {
       setError("secretPath", {
@@ -44,43 +54,49 @@ const DefaultSecretSyncSourceFields = () => {
   }, [selectedEnvironment, selectedSecretPath]);
 
   return (
-    <>
-      <p className="mb-4 text-sm text-bunker-300">
-        Specify the environment and path where you would like to sync secrets from.
-      </p>
-
+    <FieldGroup>
       <Controller
         defaultValue={currentProject.environments[0]}
         control={control}
         name="environment"
         render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl label="Environment" isError={Boolean(error)} errorText={error?.message}>
-            <FilterableSelect
-              value={value}
-              onChange={onChange}
-              options={currentProject.environments}
-              placeholder="Select environment..."
-              getOptionLabel={(option) => option?.name}
-              getOptionValue={(option) => option?.id}
-            />
-          </FormControl>
+          <Field>
+            <FieldLabel>Environment</FieldLabel>
+            <FieldContent>
+              <FilterableSelect
+                value={value}
+                onChange={onChange}
+                options={currentProject.environments}
+                placeholder="Select environment..."
+                getOptionLabel={(option) => option?.name}
+                getOptionValue={(option) => option?.id}
+                isError={Boolean(error)}
+              />
+              <FieldError errors={[error]} />
+            </FieldContent>
+          </Field>
         )}
       />
       <Controller
         defaultValue="/"
-        render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl isError={Boolean(error)} errorText={error?.message} label="Secret Path">
-            <SecretPathInput
-              environment={selectedEnvironment?.slug}
-              value={value}
-              onChange={onChange}
-            />
-          </FormControl>
-        )}
         control={control}
         name="secretPath"
+        render={({ field: { value, onChange }, fieldState: { error } }) => (
+          <Field>
+            <FieldLabel>Secret Path</FieldLabel>
+            <FieldContent>
+              <SecretPathInput
+                environment={selectedEnvironment?.slug}
+                value={value}
+                onChange={onChange}
+                isError={Boolean(error)}
+              />
+              <FieldError errors={[error]} />
+            </FieldContent>
+          </Field>
+        )}
       />
-    </>
+    </FieldGroup>
   );
 };
 

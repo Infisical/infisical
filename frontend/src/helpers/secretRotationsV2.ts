@@ -95,6 +95,11 @@ export const SECRET_ROTATION_MAP: Record<
     image: "Supabase.png",
     size: 50
   },
+  [SecretRotation.SalesforceOauthCredentials]: {
+    name: "Salesforce OAuth Credentials",
+    image: "Salesforce.png",
+    size: 50
+  },
   [SecretRotation.DatadogApplicationKeySecret]: {
     name: "Datadog Application Key",
     image: "DatadogWhite.png",
@@ -121,6 +126,7 @@ export const SECRET_ROTATION_CONNECTION_MAP: Record<SecretRotation, AppConnectio
   [SecretRotation.OpenRouterApiKey]: AppConnection.OpenRouter,
   [SecretRotation.HpIloLocalAccount]: AppConnection.SSH,
   [SecretRotation.SupabaseApiKey]: AppConnection.Supabase,
+  [SecretRotation.SalesforceOauthCredentials]: AppConnection.Salesforce,
   [SecretRotation.DatadogApplicationKeySecret]: AppConnection.Datadog
 };
 
@@ -144,6 +150,7 @@ export const IS_ROTATION_DUAL_CREDENTIALS: Record<SecretRotation, boolean> = {
   [SecretRotation.OpenRouterApiKey]: true,
   [SecretRotation.HpIloLocalAccount]: false,
   [SecretRotation.SupabaseApiKey]: true,
+  [SecretRotation.SalesforceOauthCredentials]: true,
   [SecretRotation.DatadogApplicationKeySecret]: true
 };
 

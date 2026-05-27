@@ -676,14 +676,26 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
             Require approval before certificates are issued for this application.
           </CardDescription>
           <CardAction>
-            <Button
-              variant="outline"
-              onClick={() => handlePopUpOpen("policy")}
-              isDisabled={!canManagePolicies}
-            >
-              <FontAwesomeIcon icon={faPlus} />
-              Create Policy
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- focusable wrapper required so the tooltip surfaces on keyboard focus despite the inner button being disabled */}
+                <span tabIndex={0}>
+                  <Button
+                    variant="outline"
+                    onClick={() => handlePopUpOpen("policy")}
+                    isDisabled={!canManagePolicies}
+                  >
+                    <FontAwesomeIcon icon={faPlus} />
+                    Create Policy
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              {!canManagePolicies && (
+                <TooltipContent side="left">
+                  You don&apos;t have permission to create policies
+                </TooltipContent>
+              )}
+            </Tooltip>
           </CardAction>
         </CardHeader>
         <CardContent>
@@ -705,14 +717,26 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
           </CardTitle>
           <CardDescription>Get notified about certificate events.</CardDescription>
           <CardAction>
-            <Button
-              variant="outline"
-              onClick={() => setAlertModal({ isOpen: true })}
-              isDisabled={!canManageAlerts}
-            >
-              <FontAwesomeIcon icon={faPlus} />
-              Create Alert
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- focusable wrapper required so the tooltip surfaces on keyboard focus despite the inner button being disabled */}
+                <span tabIndex={0}>
+                  <Button
+                    variant="outline"
+                    onClick={() => setAlertModal({ isOpen: true })}
+                    isDisabled={!canManageAlerts}
+                  >
+                    <FontAwesomeIcon icon={faPlus} />
+                    Create Alert
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              {!canManageAlerts && (
+                <TooltipContent side="left">
+                  You don&apos;t have permission to create alerts
+                </TooltipContent>
+              )}
+            </Tooltip>
           </CardAction>
         </CardHeader>
         <CardContent>

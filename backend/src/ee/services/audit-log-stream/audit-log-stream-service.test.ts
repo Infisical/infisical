@@ -4,7 +4,7 @@ import { KeyStorePrefixes } from "@app/keystore/keystore";
 
 import { auditLogStreamServiceFactory } from "./audit-log-stream-service";
 
-const FAILURE_THRESHOLD = 10;
+const FAILURE_THRESHOLD = 20;
 const STREAM_ID = "stream-1";
 const ORG_ID = "org-1";
 const PROVIDER = "datadog";

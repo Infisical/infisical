@@ -226,7 +226,7 @@ export const Navbar = () => {
 
     await queryClient.refetchQueries({ queryKey: authKeys.getAuthToken });
 
-    await navigateUserToOrg({ navigate, organizationId, navigateTo, userId: user?.id });
+    await navigateUserToOrg({ navigate, organizationId, navigateTo });
     queryClient.removeQueries({ queryKey: projectKeys.allProjectQueries() });
 
     if (onSuccess) {
@@ -468,9 +468,46 @@ export const Navbar = () => {
                         </CommandItem>
                       </CommandGroup>
                       {/* Sub-Organizations */}
-                      {subscription.subOrganization && subOrganizations.length > 0 && (
+                      {subscription.subOrganization && (
                         <>
-                          <CommandGroup className="ml-6" heading="Sub-Organizations">
+                          <CommandGroup
+                            className="mb-3 ml-4.5 border-l border-border pt-0 pl-3 [&_[cmdk-group-heading]]:pt-0"
+                            heading={
+                              <div className="flex items-center justify-between">
+                                <span>Sub-Organizations</span>
+                                <OrgPermissionCan
+                                  I={OrgPermissionSubOrgActions.Edit}
+                                  a={OrgPermissionSubjects.SubOrganization}
+                                >
+                                  {(isAllowed) =>
+                                    isAllowed ? (
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <IconButton
+                                            variant="ghost-muted"
+                                            size="xs"
+                                            aria-label="Sub-Organization Settings"
+                                            className="-mr-1 size-5"
+                                            onClick={() => {
+                                              setIsOrgSelectOpen(false);
+                                              navigate({
+                                                to: "/organizations/$orgId/settings",
+                                                params: { orgId: rootOrg.id },
+                                                search: { selectedTab: "tab-sub-organizations" }
+                                              });
+                                            }}
+                                          >
+                                            <Settings className="size-3.5!" />
+                                          </IconButton>
+                                        </TooltipTrigger>
+                                        <TooltipContent>Sub-Organization Settings</TooltipContent>
+                                      </Tooltip>
+                                    ) : null
+                                  }
+                                </OrgPermissionCan>
+                              </div>
+                            }
+                          >
                             {subOrganizations.map((subOrg) => (
                               <CommandItem
                                 key={subOrg.id}
@@ -531,7 +568,7 @@ export const Navbar = () => {
                         </CommandGroup>
                       )}
                     </CommandList>
-                    <div className="border-t border-border p-1">
+                    <div className="p-1">
                       <button
                         type="button"
                         className="flex w-full cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm text-foreground hover:bg-foreground/5"

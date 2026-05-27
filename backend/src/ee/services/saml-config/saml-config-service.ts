@@ -592,6 +592,8 @@ export const samlConfigServiceFactory = ({
             },
             tx
           );
+        } else if (!orgMembership.isActive) {
+          throw new ForbiddenRequestError({ message: "User organization membership is inactive" });
         }
 
         if (metadata && foundUser.id) {

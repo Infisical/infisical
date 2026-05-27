@@ -33,7 +33,7 @@ type TVerifyStsCallerInput = {
   iamRequestBody: string;
   iamRequestHeaders: string;
   defaultStsEndpoint: string;
-  errorContext: { gatewayId: string; orgId: string; gatewayName: string };
+  errorContext: Record<string, unknown>;
 };
 
 /**
@@ -80,7 +80,10 @@ export const verifyStsAndExtractCaller = async ({
       data: body
     });
   } catch (err) {
-    logger.error(err, `Resource AWS Auth Login: STS verification failed [gateway-id=${errorContext.gatewayId}]`);
+    logger.error(
+      err,
+      `Resource AWS Auth Login: STS verification failed [resourceId=${String(errorContext.resourceId)}]`
+    );
     throw new UnauthorizedError({
       message: "STS verification failed",
       detail: { reasonCode: "sts_request_failed", ...errorContext }
@@ -101,7 +104,7 @@ type TValidateAllowlistsInput = {
   Arn: string;
   allowedAccountIds: string;
   allowedPrincipalArns: string;
-  errorContext: { gatewayId: string; orgId: string; gatewayName: string };
+  errorContext: Record<string, unknown>;
 };
 
 export const validateAllowlists = ({
@@ -151,7 +154,7 @@ export const validateAllowlists = ({
 
     if (!isArnAllowed) {
       logger.error(
-        `Resource AWS Auth Login: AWS principal ARN not allowed [principal-arn=${formattedArn}] [raw-arn=${Arn}] [gateway-id=${errorContext.gatewayId}]`
+        `Resource AWS Auth Login: AWS principal ARN not allowed [principal-arn=${formattedArn}] [raw-arn=${Arn}] [resourceId=${String(errorContext.resourceId)}]`
       );
       throw new UnauthorizedError({
         message: `Access denied: AWS principal ARN not allowed. [principal-arn=${formattedArn}]`,

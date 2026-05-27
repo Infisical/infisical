@@ -20,16 +20,20 @@ interface IGatewayRelayServer {
   getRelayError: () => string;
 }
 
+const DEFAULT_RELAY_CONNECTION_TIMEOUT_MS = 100000;
+
 export const createRelayConnection = async ({
   relayHost,
   clientCertificate,
   clientPrivateKey,
-  serverCertificateChain
+  serverCertificateChain,
+  timeoutMs = DEFAULT_RELAY_CONNECTION_TIMEOUT_MS
 }: {
   relayHost: string;
   clientCertificate: string;
   clientPrivateKey: string;
   serverCertificateChain: string;
+  timeoutMs?: number;
 }): Promise<net.Socket> => {
   const [targetHost] = await verifyHostInputValidity({ host: relayHost, isDynamicSecret: false });
   const [, portStr] = relayHost.split(":");
@@ -65,12 +69,12 @@ export const createRelayConnection = async ({
       });
 
       socket.on("timeout", () => {
-        logger.error(`TLS connection timeout after 120 seconds`);
+        logger.error(`TLS connection timeout after ${timeoutMs / 1000}s`);
         socket.destroy();
         reject(new Error("TLS connection timeout"));
       });
 
-      socket.setTimeout(100000);
+      socket.setTimeout(timeoutMs);
     } catch (error: unknown) {
       reject(new Error(`Failed to create TLS connection: ${error instanceof Error ? error.message : String(error)}`));
     }

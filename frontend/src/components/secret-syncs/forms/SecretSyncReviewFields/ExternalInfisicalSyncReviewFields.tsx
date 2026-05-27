@@ -1,7 +1,7 @@
 import { useFormContext } from "react-hook-form";
 
-import { GenericFieldLabel } from "@app/components/secret-syncs";
 import { TSecretSyncForm } from "@app/components/secret-syncs/forms/schemas";
+import { Detail, DetailLabel, DetailValue } from "@app/components/v3";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
 export const ExternalInfisicalSyncReviewFields = () => {
@@ -12,9 +12,18 @@ export const ExternalInfisicalSyncReviewFields = () => {
 
   return (
     <>
-      <GenericFieldLabel label="Project ID">{config.projectId}</GenericFieldLabel>
-      <GenericFieldLabel label="Environment">{config.environment}</GenericFieldLabel>
-      <GenericFieldLabel label="Secret Path">{config.secretPath}</GenericFieldLabel>
+      <Detail>
+        <DetailLabel>Project ID</DetailLabel>
+        <DetailValue>{config.projectId}</DetailValue>
+      </Detail>
+      <Detail>
+        <DetailLabel>Environment</DetailLabel>
+        <DetailValue>{config.environment}</DetailValue>
+      </Detail>
+      <Detail>
+        <DetailLabel>Secret Path</DetailLabel>
+        <DetailValue>{config.secretPath}</DetailValue>
+      </Detail>
     </>
   );
 };

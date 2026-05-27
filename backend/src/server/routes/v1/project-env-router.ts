@@ -199,6 +199,15 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
         }
       });
 
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.EnvironmentUpdated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: { environmentId: environment.id, projectId: environment.projectId }
+        })
+        .catch(() => {});
+
       return {
         message: "Successfully updated environment",
         projectId: req.params.projectId,
@@ -262,6 +271,15 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
           }
         }
       });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.EnvironmentDeleted,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: { environmentId: environment.id, projectId: environment.projectId }
+        })
+        .catch(() => {});
 
       return {
         message: "Successfully deleted environment",

@@ -20,7 +20,9 @@ export const useCreateLDAPConfig = () => {
       searchFilter,
       groupSearchBase,
       groupSearchFilter,
-      caCert
+      caCert,
+      clientCertificate,
+      clientKeyCertificate
     }: {
       organizationId: string;
       isActive: boolean;
@@ -33,6 +35,8 @@ export const useCreateLDAPConfig = () => {
       groupSearchBase: string;
       groupSearchFilter: string;
       caCert?: string;
+      clientCertificate?: string;
+      clientKeyCertificate?: string;
     }) => {
       const { data } = await apiRequest.post("/api/v1/ldap/config", {
         organizationId,
@@ -45,7 +49,9 @@ export const useCreateLDAPConfig = () => {
         searchFilter,
         groupSearchBase,
         groupSearchFilter,
-        caCert
+        caCert,
+        clientCertificate,
+        clientKeyCertificate
       });
 
       return data;
@@ -72,7 +78,9 @@ export const useUpdateLDAPConfig = () => {
       searchFilter,
       groupSearchBase,
       groupSearchFilter,
-      caCert
+      caCert,
+      clientCertificate,
+      clientKeyCertificate
     }: {
       organizationId: string;
       isActive?: boolean;
@@ -85,6 +93,8 @@ export const useUpdateLDAPConfig = () => {
       groupSearchBase?: string;
       groupSearchFilter?: string;
       caCert?: string;
+      clientCertificate?: string;
+      clientKeyCertificate?: string;
     }) => {
       const { data } = await apiRequest.patch("/api/v1/ldap/config", {
         organizationId,
@@ -97,7 +107,9 @@ export const useUpdateLDAPConfig = () => {
         searchFilter,
         groupSearchBase,
         groupSearchFilter,
-        caCert
+        caCert,
+        clientCertificate,
+        clientKeyCertificate
       });
 
       return data;
@@ -161,18 +173,24 @@ export const useTestLDAPConnection = () => {
       url,
       bindDN,
       bindPass,
-      caCert
+      caCert,
+      clientCertificate,
+      clientKeyCertificate
     }: {
       url: string;
       bindDN: string;
       bindPass: string;
       caCert: string;
+      clientCertificate?: string;
+      clientKeyCertificate?: string;
     }) => {
       const { data } = await apiRequest.post<boolean>("/api/v1/ldap/config/test-connection", {
         url,
         bindDN,
         bindPass,
-        caCert
+        caCert,
+        clientCertificate,
+        clientKeyCertificate
       });
       return data;
     }

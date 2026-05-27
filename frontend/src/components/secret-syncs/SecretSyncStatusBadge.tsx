@@ -1,17 +1,22 @@
 import { useMemo } from "react";
-import { faCalendarCheck, faXmark } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format } from "date-fns";
 import {
   AlertTriangleIcon,
+  CalendarCheckIcon,
   CheckIcon,
   HourglassIcon,
   LucideIcon,
-  RefreshCwIcon
+  RefreshCwIcon,
+  XIcon
 } from "lucide-react";
 
-import { Tooltip } from "@app/components/v2";
-import { Badge, TBadgeProps } from "@app/components/v3";
+import {
+  Badge,
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+  TBadgeProps
+} from "@app/components/v3";
 import { SecretSyncStatus } from "@app/hooks/api/secretSyncs";
 
 type Props = {
@@ -78,17 +83,16 @@ export const SecretSyncStatusBadge = ({ status, lastSyncedAt, lastSyncMessage }:
   }
 
   return (
-    <Tooltip
-      position="left"
-      className="max-w-sm"
-      content={
+    <HoverCard openDelay={150} closeDelay={150}>
+      <HoverCardTrigger asChild>{badge}</HoverCardTrigger>
+      <HoverCardContent side="left" className="w-auto max-w-sm">
         <div className="flex flex-col gap-2 py-1 whitespace-normal">
           {lastSyncedAt && (
             <div>
               <div
-                className={`mb-2 flex self-start ${status === SecretSyncStatus.Failed ? "text-yellow" : "text-green"}`}
+                className={`mb-2 flex items-center gap-1.5 self-start ${status === SecretSyncStatus.Failed ? "text-warning" : "text-success"}`}
               >
-                <FontAwesomeIcon icon={faCalendarCheck} className="ml-1 pt-0.5 pr-1.5 text-sm" />
+                <CalendarCheckIcon className="size-3" />
                 <div className="text-xs">Last Synced</div>
               </div>
               <div className="rounded-sm bg-mineshaft-600 p-2 text-xs">
@@ -98,8 +102,8 @@ export const SecretSyncStatusBadge = ({ status, lastSyncedAt, lastSyncMessage }:
           )}
           {failureMessage && (
             <div>
-              <div className="mb-2 flex self-start text-red">
-                <FontAwesomeIcon icon={faXmark} className="ml-1 pt-0.5 pr-1.5 text-sm" />
+              <div className="mb-2 flex items-center gap-1.5 self-start text-danger">
+                <XIcon className="size-3" />
                 <div className="text-xs">Failure Reason</div>
               </div>
               <div className="rounded-sm bg-mineshaft-600 p-2 text-xs break-words">
@@ -108,9 +112,7 @@ export const SecretSyncStatusBadge = ({ status, lastSyncedAt, lastSyncMessage }:
             </div>
           )}
         </div>
-      }
-    >
-      <div>{badge}</div>
-    </Tooltip>
+      </HoverCardContent>
+    </HoverCard>
   );
 };

@@ -1,6 +1,9 @@
 import { Control, Controller } from "react-hook-form";
 
 import { FormControl, Select, SelectItem } from "@app/components/v2";
+import { Badge } from "@app/components/v3";
+import { useSubscription } from "@app/context";
+import { isPqcAlgorithm } from "@app/hooks/api/certificates/constants";
 
 type AlgorithmOption = {
   value: string;
@@ -34,6 +37,7 @@ export const AlgorithmSelectors = ({
   isRequired = true,
   nonePlaceholder
 }: AlgorithmSelectorsProps) => {
+  const { subscription } = useSubscription();
   return (
     <div className="grid grid-cols-2 gap-4">
       <div>
@@ -63,8 +67,17 @@ export const AlgorithmSelectors = ({
               >
                 {nonePlaceholder && <SelectItem value={NONE_VALUE}>{nonePlaceholder}</SelectItem>}
                 {availableSignatureAlgorithms.map((algorithm) => (
-                  <SelectItem key={algorithm.value} value={algorithm.value}>
-                    {algorithm.label}
+                  <SelectItem
+                    key={algorithm.value}
+                    value={algorithm.value}
+                    isDisabled={isPqcAlgorithm(algorithm.value) && !subscription?.pkiPqc}
+                  >
+                    <div className="flex items-center gap-2">
+                      {algorithm.label}
+                      {isPqcAlgorithm(algorithm.value) && !subscription?.pkiPqc && (
+                        <Badge variant="info">Enterprise</Badge>
+                      )}
+                    </div>
                   </SelectItem>
                 ))}
               </Select>
@@ -100,8 +113,17 @@ export const AlgorithmSelectors = ({
               >
                 {nonePlaceholder && <SelectItem value={NONE_VALUE}>{nonePlaceholder}</SelectItem>}
                 {availableKeyAlgorithms.map((algorithm) => (
-                  <SelectItem key={algorithm.value} value={algorithm.value}>
-                    {algorithm.label}
+                  <SelectItem
+                    key={algorithm.value}
+                    value={algorithm.value}
+                    isDisabled={isPqcAlgorithm(algorithm.value) && !subscription?.pkiPqc}
+                  >
+                    <div className="flex items-center gap-2">
+                      {algorithm.label}
+                      {isPqcAlgorithm(algorithm.value) && !subscription?.pkiPqc && (
+                        <Badge variant="info">Enterprise</Badge>
+                      )}
+                    </div>
                   </SelectItem>
                 ))}
               </Select>

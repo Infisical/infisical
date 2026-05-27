@@ -7,10 +7,12 @@ import { KmipClientOrderBy } from "@app/ee/services/kmip/kmip-types";
 import { ms } from "@app/lib/ms";
 import { OrderByDirection } from "@app/lib/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
 import { validateAltNamesField } from "@app/services/certificate-authority/certificate-authority-validators";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const KmipClientResponseSchema = KmipClientsSchema.pick({
   projectId: true,
@@ -62,6 +64,15 @@ export const registerKmipRouter = async (server: FastifyZodProvider) => {
         }
       });
 
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.KmipClientCreated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: { clientId: kmipClient.id, projectId: kmipClient.projectId }
+        })
+        .catch(() => {});
+
       return kmipClient;
     }
   });
@@ -110,6 +121,18 @@ export const registerKmipRouter = async (server: FastifyZodProvider) => {
         }
       });
 
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.KmipClientUpdated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            clientId: kmipClient.id,
+            projectId: kmipClient.projectId
+          }
+        })
+        .catch(() => {});
+
       return kmipClient;
     }
   });
@@ -149,6 +172,18 @@ export const registerKmipRouter = async (server: FastifyZodProvider) => {
           }
         }
       });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.KmipClientDeleted,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            clientId: kmipClient.id,
+            projectId: kmipClient.projectId
+          }
+        })
+        .catch(() => {});
 
       return kmipClient;
     }

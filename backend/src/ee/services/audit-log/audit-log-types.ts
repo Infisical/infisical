@@ -93,7 +93,8 @@ export type TCreateAuditLogDTO = {
     | AcmeAccountActor
     | EstAccountActor
     | ScepAccountActor
-    | GatewayActor;
+    | GatewayActor
+    | RelayActor;
   orgId?: string;
   projectId?: string;
 } & BaseAuthData;
@@ -495,6 +496,7 @@ export enum EventType {
   GET_CERTIFICATE_FROM_REQUEST = "get-certificate-from-request",
   LIST_CERTIFICATE_REQUESTS = "list-certificate-requests",
   TRIGGER_CERTIFICATE_REQUEST_VALIDATION = "trigger-certificate-request-validation",
+  CANCEL_CERTIFICATE_REQUEST = "cancel-certificate-request",
   ATTEMPT_CREATE_SLACK_INTEGRATION = "attempt-create-slack-integration",
   ATTEMPT_REINSTALL_SLACK_INTEGRATION = "attempt-reinstall-slack-integration",
   GET_PROJECT_SLACK_CONFIG = "get-project-slack-config",
@@ -859,6 +861,10 @@ export enum EventType {
   RESOURCE_AUTH_METHOD_LOGIN_FAILED = "resource-auth-method-login-failed",
   RESOURCE_AUTH_METHOD_UPDATE = "resource-auth-method-update",
   RESOURCE_AUTH_METHOD_REVOKE = "resource-auth-method-revoke",
+  RELAY_CREATE = "relay-create",
+  RELAY_UPDATE = "relay-update",
+  RELAY_DELETE = "relay-delete",
+  RELAY_ENROLLMENT_TOKEN_CREATE = "relay-enrollment-token-create",
 
   // Gateway Pools
   GATEWAY_POOL_CREATE = "gateway-pool-create",
@@ -887,7 +893,8 @@ export const ACTOR_TYPE_TO_METADATA_ID_KEY: Partial<Record<ActorType, string>> =
   [ActorType.ACME_ACCOUNT]: "accountId",
   [ActorType.EST_ACCOUNT]: "profileId",
   [ActorType.SCEP_ACCOUNT]: "profileId",
-  [ActorType.GATEWAY]: "gatewayId"
+  [ActorType.GATEWAY]: "gatewayId",
+  [ActorType.RELAY]: "relayId"
 };
 
 export const filterableSecretEvents: EventType[] = [
@@ -955,6 +962,10 @@ interface GatewayActorMetadata {
   gatewayId: string;
 }
 
+interface RelayActorMetadata {
+  relayId: string;
+}
+
 export interface UserActor {
   type: ActorType.USER;
   metadata: UserActorMetadata;
@@ -1014,6 +1025,11 @@ export interface GatewayActor {
   metadata: GatewayActorMetadata;
 }
 
+export interface RelayActor {
+  type: ActorType.RELAY;
+  metadata: RelayActorMetadata;
+}
+
 export type Actor =
   | UserActor
   | ServiceActor
@@ -1025,7 +1041,8 @@ export type Actor =
   | AcmeAccountActor
   | EstAccountActor
   | ScepAccountActor
-  | GatewayActor;
+  | GatewayActor
+  | RelayActor;
 
 interface GetSecretsEvent {
   type: EventType.GET_SECRETS;
@@ -6194,6 +6211,16 @@ interface TriggerCertificateRequestValidationEvent {
   };
 }
 
+interface CancelCertificateRequestEvent {
+  type: EventType.CANCEL_CERTIFICATE_REQUEST;
+  metadata: {
+    certificateRequestId: string;
+    cancelled: boolean;
+    previousStatus: string;
+    previousPendingMessage: string | null;
+  };
+}
+
 interface ListCertificateRequestsEvent {
   type: EventType.LIST_CERTIFICATE_REQUESTS;
   metadata: {
@@ -6406,6 +6433,7 @@ interface CreateAcmeOrderEvent {
     identifiers: Array<{
       type: AcmeIdentifierType;
       value: string;
+      wildcard?: boolean;
     }>;
   };
 }
@@ -6947,11 +6975,12 @@ interface GatewayEnrollEvent {
 }
 
 type ResourceAuthMethodKind = "aws" | "token";
+type ResourceAuthMethodResourceType = "gateway" | "relay";
 
 interface ResourceAuthMethodLoginEvent {
   type: EventType.RESOURCE_AUTH_METHOD_LOGIN;
   metadata: {
-    resourceType: "gateway";
+    resourceType: ResourceAuthMethodResourceType;
     resourceId: string;
     method: ResourceAuthMethodKind;
     methodConfigId: string;
@@ -6964,7 +6993,7 @@ interface ResourceAuthMethodLoginEvent {
 interface ResourceAuthMethodLoginFailedEvent {
   type: EventType.RESOURCE_AUTH_METHOD_LOGIN_FAILED;
   metadata: {
-    resourceType: "gateway";
+    resourceType: ResourceAuthMethodResourceType;
     resourceId: string;
     method: ResourceAuthMethodKind;
     reasonCode: string;
@@ -6977,7 +7006,7 @@ interface ResourceAuthMethodLoginFailedEvent {
 interface ResourceAuthMethodUpdateEvent {
   type: EventType.RESOURCE_AUTH_METHOD_UPDATE;
   metadata: {
-    resourceType: "gateway";
+    resourceType: ResourceAuthMethodResourceType;
     resourceId: string;
     method: ResourceAuthMethodKind;
     methodConfigId: string;
@@ -6990,11 +7019,44 @@ interface ResourceAuthMethodUpdateEvent {
 interface ResourceAuthMethodRevokeEvent {
   type: EventType.RESOURCE_AUTH_METHOD_REVOKE;
   metadata: {
-    resourceType: "gateway";
+    resourceType: ResourceAuthMethodResourceType;
     resourceId: string;
     method: ResourceAuthMethodKind;
-    gatewayName: string;
+    resourceName: string;
     deletedTokenCount: number;
+  };
+}
+
+interface RelayCreateEvent {
+  type: EventType.RELAY_CREATE;
+  metadata: {
+    relayId: string;
+    name: string;
+  };
+}
+
+interface RelayUpdateEvent {
+  type: EventType.RELAY_UPDATE;
+  metadata: {
+    relayId: string;
+    name: string;
+    host: string;
+  };
+}
+
+interface RelayDeleteEvent {
+  type: EventType.RELAY_DELETE;
+  metadata: {
+    relayId: string;
+    name: string;
+  };
+}
+
+interface RelayEnrollmentTokenCreateEvent {
+  type: EventType.RELAY_ENROLLMENT_TOKEN_CREATE;
+  metadata: {
+    tokenId: string;
+    name: string;
   };
 }
 
@@ -7625,6 +7687,7 @@ export type Event =
   | GetCertificateFromRequestEvent
   | ListCertificateRequestsEvent
   | TriggerCertificateRequestValidationEvent
+  | CancelCertificateRequestEvent
   | AutomatedRenewCertificate
   | AutomatedRenewCertificateFailed
   | UserLoginEvent
@@ -7710,6 +7773,10 @@ export type Event =
   | ResourceAuthMethodLoginFailedEvent
   | ResourceAuthMethodUpdateEvent
   | ResourceAuthMethodRevokeEvent
+  | RelayCreateEvent
+  | RelayUpdateEvent
+  | RelayDeleteEvent
+  | RelayEnrollmentTokenCreateEvent
   | GatewayPoolCreateEvent
   | GatewayPoolUpdateEvent
   | GatewayPoolDeleteEvent

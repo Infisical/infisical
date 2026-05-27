@@ -119,7 +119,12 @@ export const INTEGRATIONS_SUBMENU: Submenu = {
   defaultTab: "app-connections",
   items: [
     { label: "App Connections", icon: Cable, tab: "app-connections" },
-    { label: "Secret Syncs", icon: ArrowLeftRight, tab: "secret-syncs" },
+    {
+      label: "Secret Syncs",
+      icon: ArrowLeftRight,
+      tab: "secret-syncs",
+      activeMatch: /\/integrations\/secret-syncs\//
+    },
     { label: "Framework Integrations", icon: Blocks, tab: "framework-integrations" },
     { label: "Infrastructure Integrations", icon: Container, tab: "infrastructure-integrations" },
     { label: "Native Integrations", icon: Plug, tab: "native-integrations" }

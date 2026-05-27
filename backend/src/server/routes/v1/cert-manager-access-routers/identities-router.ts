@@ -11,8 +11,11 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { BadRequestError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { ApplicationMemberKind } from "@app/services/pki-application/pki-application-types";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { MembershipRoleSchema, RolesUpdateBodySchema } from "./schemas";
 
@@ -203,6 +206,15 @@ export const registerCertManagerAccessIdentitiesRouter = async (server: FastifyZ
           }
         }
       });
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.CertManagerIdentityAdded,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          orgId: req.permission.orgId
+        }
+      });
+
       return { identityMembership: { ...membership, identityId: req.params.identityId } };
     }
   });
@@ -254,15 +266,19 @@ export const registerCertManagerAccessIdentitiesRouter = async (server: FastifyZ
     },
     handler: async (req) => {
       const projectId = req.internalCertManagerProjectId;
-      await server.services.pkiApplicationMembership.removeActorFromApplicationMemberships({
+      const { membership } = await server.services.pkiApplicationMembership.deleteMemberAndCleanup({
         projectId,
-        actorKind: "identity",
-        actorId: req.params.identityId
-      });
-      const { membership } = await server.services.membershipIdentity.deleteMembership({
-        permission: req.permission,
-        scopeData: { scope: AccessScope.Project, orgId: req.permission.orgId, projectId },
-        selector: { identityId: req.params.identityId }
+        actorKind: ApplicationMemberKind.Identity,
+        actorId: req.params.identityId,
+        performDelete: (tx) =>
+          server.services.membershipIdentity.deleteMembership(
+            {
+              permission: req.permission,
+              scopeData: { scope: AccessScope.Project, orgId: req.permission.orgId, projectId },
+              selector: { identityId: req.params.identityId }
+            },
+            tx
+          )
       });
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,

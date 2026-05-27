@@ -3,8 +3,10 @@ import { z } from "zod";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { writeLimit } from "@app/server/config/rateLimiter";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 export const registerPkiApplicationAcmeEnrollmentRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -66,6 +68,16 @@ export const registerPkiApplicationAcmeEnrollmentRouter = async (server: Fastify
           }
         }
       });
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.EnrollmentMethodConfigured,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          enrollmentMethod: "acme",
+          orgId: req.permission.orgId
+        }
+      });
+
       return result;
     }
   });
@@ -99,6 +111,15 @@ export const registerPkiApplicationAcmeEnrollmentRouter = async (server: Fastify
         event: {
           type: EventType.CLEAR_PKI_APPLICATION_ACME_ENROLLMENT,
           metadata: { applicationId: req.params.applicationId, profileId: req.params.profileId }
+        }
+      });
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.EnrollmentMethodRemoved,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          enrollmentMethod: "acme",
+          orgId: req.permission.orgId
         }
       });
       return result;

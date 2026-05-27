@@ -40,6 +40,7 @@ export const CertificateRequestsSchema = z.object({
   state: z.string().nullable().optional(),
   locality: z.string().nullable().optional(),
   encryptedPrivateKey: zodBuffer.nullable().optional(),
+  pendingMessage: z.string().nullable().optional(),
   applicationId: z.string().uuid().nullable().optional()
 });
 

@@ -19,4 +19,6 @@ export type TValidateAwsConnectionCredentialsSchema = typeof ValidateAwsConnecti
 
 export type TAwsConnectionConfig = DiscriminativePick<TAwsConnectionInput, "method" | "app" | "credentials"> & {
   orgId: string;
+  projectId?: string | null;
+  version?: number;
 };

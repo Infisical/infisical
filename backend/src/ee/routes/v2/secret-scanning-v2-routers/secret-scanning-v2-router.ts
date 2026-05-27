@@ -20,8 +20,10 @@ import {
   SecretScanningFindings
 } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const SecretScanningDataSourceOptionsSchema = z.discriminatedUnion("type", [
   GitHubDataSourceListItemSchema,
@@ -192,6 +194,17 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
           }
         }
       });
+
+      if (body.status === SecretScanningFindingStatus.Resolved) {
+        void server.services.telemetry
+          .sendPostHogEvents({
+            event: PostHogEventTypes.SecretScanningFindingResolved,
+            distinctId: getTelemetryDistinctId(req),
+            organizationId: permission.orgId,
+            properties: { findingId, projectId }
+          })
+          .catch(() => {});
+      }
 
       return { finding };
     }

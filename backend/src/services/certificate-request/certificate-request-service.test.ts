@@ -23,17 +23,21 @@ import { TCertificateRequestDALFactory } from "./certificate-request-dal";
 import { certificateRequestServiceFactory, TCertificateRequestServiceFactory } from "./certificate-request-service";
 import { CertificateRequestStatus } from "./certificate-request-types";
 
+vi.mock("@app/lib/logger", () => ({
+  logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn() }
+}));
+
 describe("CertificateRequestService", () => {
   let service: TCertificateRequestServiceFactory;
 
   const mockCertificateRequestDAL: Pick<
     TCertificateRequestDALFactory,
-    "create" | "findById" | "findByIdWithCertificate" | "updateStatus" | "attachCertificate"
+    "create" | "findById" | "findByIdWithCertificate" | "transitionFromPending" | "attachCertificate"
   > = {
     create: vi.fn() as any,
     findById: vi.fn() as any,
     findByIdWithCertificate: vi.fn() as any,
-    updateStatus: vi.fn() as any,
+    transitionFromPending: vi.fn() as any,
     attachCertificate: vi.fn() as any
   };
 
@@ -51,14 +55,25 @@ describe("CertificateRequestService", () => {
     getResourcePermission: vi.fn() as any
   };
 
+  const mockQueueService = {
+    stopJobById: vi.fn(),
+    cancelActiveJob: vi.fn().mockReturnValue(true)
+  };
+  const mockUserDAL = { findById: vi.fn() };
+  const mockIdentityDAL = { findById: vi.fn() };
+
   beforeEach(() => {
     vi.clearAllMocks();
+    mockQueueService.cancelActiveJob.mockReturnValue(true);
     service = certificateRequestServiceFactory({
       certificateRequestDAL: mockCertificateRequestDAL as TCertificateRequestDALFactory,
       certificateDAL: mockCertificateDAL,
       certificateService: mockCertificateService,
       permissionService: mockPermissionService,
-      resourceMetadataDAL: { find: vi.fn().mockResolvedValue([]), insertMany: vi.fn() }
+      resourceMetadataDAL: { find: vi.fn().mockResolvedValue([]), insertMany: vi.fn() },
+      queueService: mockQueueService as any,
+      userDAL: mockUserDAL as any,
+      identityDAL: mockIdentityDAL as any
     });
   });
 
@@ -288,6 +303,7 @@ describe("CertificateRequestService", () => {
         privateKey: "-----BEGIN PRIVATE KEY-----\nMOCK_KEY_PEM\n-----END PRIVATE KEY-----",
         serialNumber: "123456",
         errorMessage: null,
+        pendingMessage: null,
         commonName: null,
         organization: null,
         organizationalUnit: null,
@@ -333,6 +349,7 @@ describe("CertificateRequestService", () => {
         privateKey: null,
         serialNumber: null,
         errorMessage: null,
+        pendingMessage: null,
         commonName: null,
         organization: null,
         organizationalUnit: null,
@@ -398,6 +415,7 @@ describe("CertificateRequestService", () => {
         privateKey: null,
         serialNumber: "123456",
         errorMessage: null,
+        pendingMessage: null,
         commonName: null,
         organization: null,
         organizationalUnit: null,
@@ -474,6 +492,7 @@ describe("CertificateRequestService", () => {
         privateKey: null,
         serialNumber: "123456",
         errorMessage: null,
+        pendingMessage: null,
         commonName: null,
         organization: null,
         organizationalUnit: null,
@@ -519,6 +538,7 @@ describe("CertificateRequestService", () => {
         privateKey: null,
         serialNumber: null,
         errorMessage: "Certificate issuance failed",
+        pendingMessage: null,
         commonName: null,
         organization: null,
         organizationalUnit: null,
@@ -562,7 +582,7 @@ describe("CertificateRequestService", () => {
       };
 
       (mockCertificateRequestDAL.findById as any).mockResolvedValue(mockRequest);
-      (mockCertificateRequestDAL.updateStatus as any).mockResolvedValue(mockUpdatedRequest);
+      (mockCertificateRequestDAL.transitionFromPending as any).mockResolvedValue(mockUpdatedRequest);
 
       const result = await service.updateCertificateRequestStatus({
         certificateRequestId: "550e8400-e29b-41d4-a716-446655440011",
@@ -570,7 +590,7 @@ describe("CertificateRequestService", () => {
       });
 
       expect(mockCertificateRequestDAL.findById).toHaveBeenCalledWith("550e8400-e29b-41d4-a716-446655440011");
-      expect(mockCertificateRequestDAL.updateStatus).toHaveBeenCalledWith(
+      expect(mockCertificateRequestDAL.transitionFromPending).toHaveBeenCalledWith(
         "550e8400-e29b-41d4-a716-446655440011",
         CertificateRequestStatus.ISSUED,
         undefined
@@ -589,7 +609,7 @@ describe("CertificateRequestService", () => {
       };
 
       (mockCertificateRequestDAL.findById as any).mockResolvedValue(mockRequest);
-      (mockCertificateRequestDAL.updateStatus as any).mockResolvedValue(mockUpdatedRequest);
+      (mockCertificateRequestDAL.transitionFromPending as any).mockResolvedValue(mockUpdatedRequest);
 
       const result = await service.updateCertificateRequestStatus({
         certificateRequestId: "550e8400-e29b-41d4-a716-446655440012",
@@ -597,7 +617,7 @@ describe("CertificateRequestService", () => {
         errorMessage: "Certificate issuance failed"
       });
 
-      expect(mockCertificateRequestDAL.updateStatus).toHaveBeenCalledWith(
+      expect(mockCertificateRequestDAL.transitionFromPending).toHaveBeenCalledWith(
         "550e8400-e29b-41d4-a716-446655440012",
         CertificateRequestStatus.FAILED,
         "Certificate issuance failed"
@@ -676,6 +696,205 @@ describe("CertificateRequestService", () => {
           certificateId: "550e8400-e29b-41d4-a716-446655440019"
         })
       ).rejects.toThrow(NotFoundError);
+    });
+  });
+
+  describe("cancelCertificateRequest", () => {
+    const requestId = "550e8400-e29b-41d4-a716-446655440100";
+    const projectId = "550e8400-e29b-41d4-a716-446655440003";
+    const applicationId = "550e8400-e29b-41d4-a716-446655440200";
+
+    const cancelInput = {
+      actor: ActorType.USER,
+      actorId: "550e8400-e29b-41d4-a716-446655440001",
+      actorAuthMethod: AuthMethod.EMAIL,
+      actorOrgId: "550e8400-e29b-41d4-a716-446655440002",
+      certificateRequestId: requestId
+    };
+
+    const projectPermissionWithEdit = {
+      permission: createMongoAbility<ProjectPermissionSet>([
+        {
+          action: ProjectPermissionCertificateActions.Edit,
+          subject: ProjectPermissionSub.Certificates
+        }
+      ])
+    };
+
+    const projectPermissionWithoutEdit = {
+      permission: createMongoAbility<ProjectPermissionSet>([
+        {
+          action: ProjectPermissionCertificateActions.Read,
+          subject: ProjectPermissionSub.Certificates
+        }
+      ])
+    };
+
+    it("cancels a PENDING request and emits cancelled:true with snapshot", async () => {
+      const pendingRow = {
+        id: requestId,
+        status: CertificateRequestStatus.PENDING,
+        projectId,
+        applicationId: null,
+        altNames: null,
+        commonName: "test.example.com",
+        pendingMessage: "Performing DNS-01 challenge"
+      };
+      const updatedRow = {
+        ...pendingRow,
+        status: CertificateRequestStatus.FAILED,
+        pendingMessage: null,
+        errorMessage: "Cancelled by user"
+      };
+
+      (mockCertificateRequestDAL.findById as any).mockResolvedValue(pendingRow);
+      (mockPermissionService.getProjectPermission as any).mockResolvedValue(projectPermissionWithEdit);
+      (mockCertificateRequestDAL.transitionFromPending as any).mockResolvedValue(updatedRow);
+      (mockUserDAL.findById as any).mockResolvedValue({
+        firstName: "Carlos",
+        lastName: "M",
+        email: "carlos@infisical.com"
+      });
+
+      const result = await service.cancelCertificateRequest(cancelInput);
+
+      expect(mockCertificateRequestDAL.transitionFromPending).toHaveBeenCalledWith(
+        requestId,
+        CertificateRequestStatus.FAILED,
+        "Cancelled by user Carlos M"
+      );
+      expect(mockQueueService.cancelActiveJob).toHaveBeenCalledWith(
+        expect.anything(),
+        `certificate-issuance-${requestId}`,
+        "Cancelled by user Carlos M"
+      );
+      expect(mockQueueService.stopJobById).toHaveBeenCalledWith(expect.anything(), `certificate-issuance-${requestId}`);
+      expect(result).toEqual({
+        certificateRequest: updatedRow,
+        projectId,
+        cancelled: true,
+        previousStatus: CertificateRequestStatus.PENDING,
+        previousPendingMessage: "Performing DNS-01 challenge"
+      });
+    });
+
+    it("returns cancelled:false when the worker races to a terminal status", async () => {
+      const pendingRow = {
+        id: requestId,
+        status: CertificateRequestStatus.PENDING_VALIDATION,
+        projectId,
+        applicationId: null,
+        altNames: null,
+        commonName: "test.example.com",
+        pendingMessage: "Awaiting CA validation"
+      };
+      const refreshedRow = {
+        ...pendingRow,
+        status: CertificateRequestStatus.ISSUED,
+        pendingMessage: null
+      };
+
+      (mockCertificateRequestDAL.findById as any).mockResolvedValueOnce(pendingRow).mockResolvedValueOnce(refreshedRow);
+      (mockPermissionService.getProjectPermission as any).mockResolvedValue(projectPermissionWithEdit);
+      (mockCertificateRequestDAL.transitionFromPending as any).mockResolvedValue(null);
+      (mockUserDAL.findById as any).mockResolvedValue({ username: "carlos" });
+
+      const result = await service.cancelCertificateRequest(cancelInput);
+
+      expect(mockCertificateRequestDAL.transitionFromPending).toHaveBeenCalledTimes(1);
+      expect(mockQueueService.cancelActiveJob).not.toHaveBeenCalled();
+      expect(mockQueueService.stopJobById).not.toHaveBeenCalled();
+      expect(result).toEqual({
+        certificateRequest: refreshedRow,
+        projectId,
+        cancelled: false,
+        previousStatus: CertificateRequestStatus.PENDING_VALIDATION,
+        previousPendingMessage: "Awaiting CA validation"
+      });
+    });
+
+    it("returns cancelled:false when the request is already in a terminal status", async () => {
+      const terminalRow = {
+        id: requestId,
+        status: CertificateRequestStatus.ISSUED,
+        projectId,
+        applicationId: null,
+        altNames: null,
+        commonName: "test.example.com",
+        pendingMessage: null
+      };
+
+      (mockCertificateRequestDAL.findById as any).mockResolvedValue(terminalRow);
+      (mockPermissionService.getProjectPermission as any).mockResolvedValue(projectPermissionWithEdit);
+
+      const result = await service.cancelCertificateRequest(cancelInput);
+
+      expect(mockCertificateRequestDAL.transitionFromPending).not.toHaveBeenCalled();
+      expect(mockQueueService.cancelActiveJob).not.toHaveBeenCalled();
+      expect(mockQueueService.stopJobById).not.toHaveBeenCalled();
+      expect(result).toEqual({
+        certificateRequest: terminalRow,
+        projectId,
+        cancelled: false,
+        previousStatus: CertificateRequestStatus.ISSUED,
+        previousPendingMessage: null
+      });
+    });
+
+    it("throws NotFoundError when the request does not exist", async () => {
+      (mockCertificateRequestDAL.findById as any).mockResolvedValue(null);
+
+      await expect(service.cancelCertificateRequest(cancelInput)).rejects.toThrow(NotFoundError);
+      expect(mockPermissionService.getProjectPermission).not.toHaveBeenCalled();
+    });
+
+    it("falls back to App-scoped Edit when the project role lacks cert Edit", async () => {
+      const pendingRow = {
+        id: requestId,
+        status: CertificateRequestStatus.PENDING,
+        projectId,
+        applicationId,
+        altNames: null,
+        commonName: "test.example.com",
+        pendingMessage: null
+      };
+      const updatedRow = { ...pendingRow, status: CertificateRequestStatus.FAILED, pendingMessage: null };
+
+      (mockCertificateRequestDAL.findById as any).mockResolvedValue(pendingRow);
+      (mockPermissionService.getProjectPermission as any).mockResolvedValue(projectPermissionWithoutEdit);
+      (mockPermissionService.getResourcePermission as any).mockResolvedValue({
+        permission: { can: vi.fn().mockReturnValue(true) }
+      });
+      (mockCertificateRequestDAL.transitionFromPending as any).mockResolvedValue(updatedRow);
+      (mockUserDAL.findById as any).mockResolvedValue({ username: "carlos" });
+
+      const result = await service.cancelCertificateRequest(cancelInput);
+
+      expect(mockPermissionService.getResourcePermission).toHaveBeenCalledWith(
+        expect.objectContaining({ resourceId: applicationId })
+      );
+      expect(result.cancelled).toBe(true);
+    });
+
+    it("throws ForbiddenError when neither project nor App permission allow Edit", async () => {
+      const pendingRow = {
+        id: requestId,
+        status: CertificateRequestStatus.PENDING,
+        projectId,
+        applicationId,
+        altNames: null,
+        commonName: "test.example.com",
+        pendingMessage: null
+      };
+
+      (mockCertificateRequestDAL.findById as any).mockResolvedValue(pendingRow);
+      (mockPermissionService.getProjectPermission as any).mockResolvedValue(projectPermissionWithoutEdit);
+      (mockPermissionService.getResourcePermission as any).mockResolvedValue({
+        permission: { can: vi.fn().mockReturnValue(false) }
+      });
+
+      await expect(service.cancelCertificateRequest(cancelInput)).rejects.toThrow(ForbiddenError);
+      expect(mockCertificateRequestDAL.transitionFromPending).not.toHaveBeenCalled();
     });
   });
 });

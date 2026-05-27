@@ -65,6 +65,8 @@ import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret
 import { TSecretVersionV2DALFactory } from "@app/services/secret-v2-bridge/secret-version-dal";
 import { TSecretVersionV2TagDALFactory } from "@app/services/secret-v2-bridge/secret-version-tag-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
+import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
 import { TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
@@ -127,6 +129,7 @@ type TSecretSyncQueueFactoryDep = {
   projectSlackConfigDAL: Pick<TProjectSlackConfigDALFactory, "getIntegrationDetailsByProject">;
   projectMicrosoftTeamsConfigDAL: Pick<TProjectMicrosoftTeamsConfigDALFactory, "getIntegrationDetailsByProject">;
   microsoftTeamsService: Pick<TMicrosoftTeamsServiceFactory, "sendNotification">;
+  telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
 };
 
 type SecretSyncActionJob = Job<
@@ -176,7 +179,8 @@ export const secretSyncQueueFactory = ({
   notificationService,
   projectSlackConfigDAL,
   projectMicrosoftTeamsConfigDAL,
-  microsoftTeamsService
+  microsoftTeamsService,
+  telemetryService
 }: TSecretSyncQueueFactoryDep) => {
   const appCfg = getConfig();
 
@@ -643,6 +647,19 @@ export const secretSyncQueueFactory = ({
         });
 
         if (!isSynced) {
+          void telemetryService
+            .sendPostHogEvents({
+              event: PostHogEventTypes.SecretSyncFailed,
+              distinctId: `platform/${secretSync.projectId}`,
+              organizationId: secretSync.connection.orgId,
+              properties: {
+                syncId: secretSync.id,
+                syncDestination: secretSync.destination,
+                projectId: secretSync.projectId
+              }
+            })
+            .catch(() => {});
+
           await $queueSendSecretSyncFailedNotifications({
             secretSync: updatedSecretSync,
             action: SecretSyncAction.SyncSecrets,

@@ -1,7 +1,18 @@
 import { Controller, useFormContext } from "react-hook-form";
+import { Info } from "lucide-react";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
-import { FormControl, Input } from "@app/components/v2";
+import {
+  Field,
+  FieldContent,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+  Input,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
 import { TSecretSyncForm } from "../schemas";
@@ -10,7 +21,7 @@ export const OvhSyncFields = () => {
   const { control, setValue } = useFormContext<TSecretSyncForm & { destination: SecretSync.OVH }>();
 
   return (
-    <>
+    <FieldGroup>
       <SecretSyncConnectionField
         onChange={() => {
           setValue("destinationConfig.path", "");
@@ -20,17 +31,31 @@ export const OvhSyncFields = () => {
         name="destinationConfig.path"
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl
-            tooltipClassName="max-w-sm"
-            tooltipText="The path in OVH OKMS where secrets will be stored as key/value pairs. If the path does not exist, it will be created."
-            isError={Boolean(error)}
-            errorText={error?.message}
-            label="Path"
-          >
-            <Input value={value} onChange={onChange} placeholder="app/production" />
-          </FormControl>
+          <Field>
+            <FieldLabel>
+              Path
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-sm">
+                  The path in OVH OKMS where secrets will be stored as key/value pairs. If the path
+                  does not exist, it will be created.
+                </TooltipContent>
+              </Tooltip>
+            </FieldLabel>
+            <FieldContent>
+              <Input
+                value={value}
+                onChange={onChange}
+                placeholder="app/production"
+                isError={Boolean(error)}
+              />
+              <FieldError errors={[error]} />
+            </FieldContent>
+          </Field>
         )}
       />
-    </>
+    </FieldGroup>
   );
 };

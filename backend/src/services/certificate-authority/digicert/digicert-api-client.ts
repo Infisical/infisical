@@ -56,6 +56,14 @@ type TCheckValidationResponse = {
   }[];
 };
 
+type TOrderStatusChangesResponse = {
+  orders?: {
+    order_id: number;
+    certificate_id: number;
+    status: string;
+  }[];
+};
+
 export type TDigiCertApiClient = ReturnType<typeof createDigiCertApiClient>;
 
 export const createDigiCertApiClient = (apiKey: string, baseURL: string) => {
@@ -115,11 +123,22 @@ export const createDigiCertApiClient = (apiKey: string, baseURL: string) => {
       await request.put(`${baseURL}/order/certificate/${orderId}/revoke`, { comments }, { headers });
     }, `order revocation for ${orderId}`);
 
+  const listOrderStatusChanges = async ({ seconds }: { seconds: number }) =>
+    wrap(async () => {
+      const params = new URLSearchParams({ seconds: String(seconds) });
+      const { data } = await request.get<TOrderStatusChangesResponse>(
+        `${baseURL}/order/certificate/status-changes?${params.toString()}`,
+        { headers }
+      );
+      return data;
+    }, `list order status changes (seconds=${seconds})`);
+
   return {
     placeOrder,
     getOrder,
     checkValidation,
     downloadCertificatePem,
-    revokeOrder
+    revokeOrder,
+    listOrderStatusChanges
   };
 };

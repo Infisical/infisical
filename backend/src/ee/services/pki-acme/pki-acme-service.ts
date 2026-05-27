@@ -378,6 +378,7 @@ export const pkiAcmeServiceFactory = ({
         id: string;
         identifierType: string;
         identifierValue: string;
+        wildcard?: boolean;
         expiresAt: Date;
       }[];
     };
@@ -390,7 +391,7 @@ export const pkiAcmeServiceFactory = ({
       notAfter: order.notAfter?.toISOString(),
       identifiers: order.authorizations.map((auth) => ({
         type: auth.identifierType,
-        value: auth.identifierValue
+        value: auth.wildcard ? `*.${auth.identifierValue}` : auth.identifierValue
       })),
       authorizations: order.authorizations.map((auth) => buildUrl(profileId, `/authorizations/${auth.id}`)),
       finalize: buildUrl(profileId, `/orders/${order.id}/finalize`),
@@ -746,10 +747,13 @@ export const pkiAcmeServiceFactory = ({
     // TODO: ideally, we should return an error with subproblems if we have multiple unsupported identifiers
     for (const identifier of payload.identifiers) {
       if (identifier.type === AcmeIdentifierType.DNS) {
+        if (!validateDnsIdentifier(identifier.value)) {
+          throw new AcmeUnsupportedIdentifierError({ message: "Invalid DNS identifier" });
+        }
+        const strippedValue = identifier.value.startsWith("*.") ? identifier.value.slice(2) : identifier.value;
         if (
-          !validateDnsIdentifier(identifier.value) ||
-          isPrivateIp(identifier.value) ||
-          (!getConfig().isDevelopmentMode && identifier.value.toLowerCase() === "localhost")
+          isPrivateIp(strippedValue) ||
+          (!getConfig().isDevelopmentMode && strippedValue.toLowerCase() === "localhost")
         ) {
           throw new AcmeUnsupportedIdentifierError({ message: "Invalid DNS identifier" });
         }
@@ -767,6 +771,11 @@ export const pkiAcmeServiceFactory = ({
       } else {
         throw new AcmeUnsupportedIdentifierError({ message: "Only DNS and IP identifiers are supported" });
       }
+    }
+
+    const uniqueIdentifiers = new Set(payload.identifiers.map((id) => `${id.type}:${id.value.toLowerCase()}`));
+    if (uniqueIdentifiers.size !== payload.identifiers.length) {
+      throw new AcmeMalformedError({ message: "Duplicate identifiers are not permitted" });
     }
 
     const order = await acmeOrderDAL.transaction(async (tx) => {
@@ -791,18 +800,23 @@ export const pkiAcmeServiceFactory = ({
               });
             }
           } else if (identifier.type === AcmeIdentifierType.DNS) {
-            if (isPrivateIp(identifier.value)) {
+            const stripped = identifier.value.startsWith("*.") ? identifier.value.slice(2) : identifier.value;
+            if (isPrivateIp(stripped)) {
               throw new AcmeUnsupportedIdentifierError({ message: "Private IP addresses are not allowed" });
             }
           } else {
             throw new AcmeUnsupportedIdentifierError({ message: "Only DNS and IP identifiers are supported" });
           }
+          const isWildcard = identifier.type === AcmeIdentifierType.DNS && identifier.value.startsWith("*.");
+          const identifierValue = isWildcard ? identifier.value.slice(2) : identifier.value;
+
           const auth = await acmeAuthDAL.create(
             {
               accountId: account.id,
               status: skipDnsOwnershipVerification ? AcmeAuthStatus.Valid : AcmeAuthStatus.Pending,
               identifierType: identifier.type,
-              identifierValue: identifier.value,
+              identifierValue,
+              wildcard: isWildcard,
               // RFC 8555 suggests a token with at least 128 bits of entropy
               // We are using 256 bits of entropy here, should be enough for now
               // ref: https://datatracker.ietf.org/doc/html/rfc8555#section-11.3
@@ -813,11 +827,14 @@ export const pkiAcmeServiceFactory = ({
             tx
           );
           if (!skipDnsOwnershipVerification) {
-            // IP identifiers only support HTTP-01 challenges (DNS-01 doesn't apply per RFC 8738)
-            const challengeTypes =
-              identifier.type === AcmeIdentifierType.IP
-                ? [AcmeChallengeType.HTTP_01]
-                : [AcmeChallengeType.HTTP_01, AcmeChallengeType.DNS_01];
+            let challengeTypes: AcmeChallengeType[];
+            if (identifier.type === AcmeIdentifierType.IP) {
+              challengeTypes = [AcmeChallengeType.HTTP_01];
+            } else if (isWildcard) {
+              challengeTypes = [AcmeChallengeType.DNS_01];
+            } else {
+              challengeTypes = [AcmeChallengeType.HTTP_01, AcmeChallengeType.DNS_01];
+            }
             for (const challengeType of challengeTypes) {
               // eslint-disable-next-line no-await-in-loop
               await acmeChallengeDAL.create(
@@ -857,7 +874,8 @@ export const pkiAcmeServiceFactory = ({
             orderId: createdOrder.id,
             identifiers: authorizations.map((auth) => ({
               type: auth.identifierType as AcmeIdentifierType,
-              value: auth.identifierValue
+              value: auth.wildcard ? `*.${auth.identifierValue}` : auth.identifierValue,
+              ...(auth.wildcard ? { wildcard: true } : {})
             }))
           }
         }
@@ -1133,11 +1151,15 @@ export const pkiAcmeServiceFactory = ({
             : AcmeIdentifierType.DNS;
           csrIdentifierPairs.add(`${cnType}:${certificateRequest.commonName.toLowerCase()}`);
         }
+        const authIdentifierPairs = new Set(
+          orderWithAuthorizations.authorizations.map((auth) => {
+            const value = auth.wildcard ? `*.${auth.identifierValue}` : auth.identifierValue;
+            return `${auth.identifierType}:${value.toLowerCase()}`;
+          })
+        );
         if (
-          csrIdentifierPairs.size !== orderWithAuthorizations.authorizations.length ||
-          !orderWithAuthorizations.authorizations.every((auth) =>
-            csrIdentifierPairs.has(`${auth.identifierType}:${auth.identifierValue.toLowerCase()}`)
-          )
+          csrIdentifierPairs.size !== authIdentifierPairs.size ||
+          ![...authIdentifierPairs].every((id) => csrIdentifierPairs.has(id))
         ) {
           throw new AcmeBadCSRError({ message: "Invalid CSR: Common name + SANs mismatch with order identifiers" });
         }
@@ -1531,6 +1553,7 @@ export const pkiAcmeServiceFactory = ({
           type: auth.identifierType,
           value: auth.identifierValue
         },
+        ...(auth.wildcard ? { wildcard: true } : {}),
         challenges: auth.challenges.map((challenge) => {
           return {
             type: challenge.type,

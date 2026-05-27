@@ -10,6 +10,7 @@ import {
 import { registerDeprecatedProjectRoleRouter } from "./deprecated-project-role-router";
 import { registerGatewayV2Router } from "./gateway-router";
 import { registerIdentityProjectAdditionalPrivilegeRouter } from "./identity-project-additional-privilege-router";
+import { registerRelayV2Router } from "./relay-router";
 import { registerSecretApprovalPolicyRouter } from "./secret-approval-policy-router";
 import { registerSecretVersionRouter } from "./secret-version-router";
 
@@ -57,4 +58,6 @@ export const registerV2EERoutes = async (server: FastifyZodProvider) => {
   );
 
   await server.register(registerSecretVersionRouter, { prefix: "/secret-versions" });
+
+  await server.register(registerRelayV2Router, { prefix: "/relays" });
 };

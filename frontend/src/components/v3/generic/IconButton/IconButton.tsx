@@ -115,7 +115,7 @@ const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
     return (
       <Comp
         ref={ref}
-        data-slot="button"
+        data-slot="icon-button"
         type={type}
         className={cn(iconButtonVariants({ variant, size, isPending }), className)}
         disabled={isPending || disabled || isDisabled}

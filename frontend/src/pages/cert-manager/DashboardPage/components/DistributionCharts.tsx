@@ -197,7 +197,7 @@ export const DistributionCharts = ({ stats, onNavigate }: Props) => {
           onSegmentClick={(entry) => {
             if (chart.chartKey === "enrollmentMethod") {
               onNavigate({ filterEnrollmentType: entry.label });
-            } else if (chart.chartKey === "algorithm") {
+            } else if (chart.chartKey === "algorithm" && entry.label !== "Unknown") {
               onNavigate({ filterKeyAlgorithm: entry.label });
             } else if (chart.chartKey === "ca" && entry.id) {
               onNavigate({ filterCaId: entry.id });

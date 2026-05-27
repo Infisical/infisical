@@ -1,3 +1,5 @@
+import { Knex } from "knex";
+
 import { AccessScope, ProjectMembershipRole, TemporaryPermissionMode, TMembershipRolesInsert } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -287,7 +289,7 @@ export const membershipIdentityServiceFactory = ({
     return { membership: membershipDoc };
   };
 
-  const deleteMembership = async (dto: TDeleteMembershipIdentityDTO) => {
+  const deleteMembership = async (dto: TDeleteMembershipIdentityDTO, externalTx?: Knex) => {
     const { scopeData } = dto;
     const factory = scopeFactory[scopeData.scope];
 
@@ -310,7 +312,7 @@ export const membershipIdentityServiceFactory = ({
         message: "You can't delete your own membership"
       });
 
-    const membershipDoc = await membershipIdentityDAL.transaction(async (tx) => {
+    const performDelete = async (tx: Knex) => {
       await additionalPrivilegeDAL.delete(
         {
           actorIdentityId: dto.selector.identityId,
@@ -321,7 +323,11 @@ export const membershipIdentityServiceFactory = ({
       await membershipRoleDAL.delete({ membershipId: existingMembership.id }, tx);
       const doc = await membershipIdentityDAL.deleteById(existingMembership.id, tx);
       return doc;
-    });
+    };
+
+    const membershipDoc = externalTx
+      ? await performDelete(externalTx)
+      : await membershipIdentityDAL.transaction(performDelete);
     return { membership: membershipDoc };
   };
 
