@@ -4,18 +4,10 @@ import { subject } from "@casl/ability";
 import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
-import { EllipsisIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { AccessRestrictedBanner, DeleteActionModal, PageHeader } from "@app/components/v2";
-import {
-  Button,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger
-} from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useProject } from "@app/context";
 import {
@@ -29,12 +21,7 @@ import {
 import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { CreateProfileModal } from "../PoliciesPage/components/CertificateProfilesTab/CreateProfileModal";
-import {
-  ProfileDefaultsSection,
-  ProfileDetailsSection,
-  ProfileIssuerSection,
-  ProfilePolicySection
-} from "./components";
+import { ProfileDefaultsSection, ProfileOverviewSection } from "./components";
 
 const Page = () => {
   const { currentProject } = useProject();
@@ -136,54 +123,18 @@ const Page = () => {
                   scope={ProjectType.CertificateManager}
                   description="Manage certificate profile"
                   title={profile.slug}
-                >
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="outline">
-                        Options
-                        <EllipsisIcon />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <ProjectPermissionCan
-                        I={ProjectPermissionCertificateProfileActions.Edit}
-                        a={subject(ProjectPermissionSub.CertificateProfiles, {
-                          slug: profile.slug
-                        })}
-                      >
-                        {(canEdit) => (
-                          <DropdownMenuItem
-                            isDisabled={!canEdit}
-                            onClick={() => setIsEditModalOpen(true)}
-                          >
-                            Edit Profile
-                          </DropdownMenuItem>
-                        )}
-                      </ProjectPermissionCan>
-                      <ProjectPermissionCan
-                        I={ProjectPermissionCertificateProfileActions.Delete}
-                        a={subject(ProjectPermissionSub.CertificateProfiles, {
-                          slug: profile.slug
-                        })}
-                      >
-                        {(canDelete) => (
-                          <DropdownMenuItem
-                            variant="danger"
-                            isDisabled={!canDelete}
-                            onClick={() => setIsDeleteModalOpen(true)}
-                          >
-                            Delete Profile
-                          </DropdownMenuItem>
-                        )}
-                      </ProjectPermissionCan>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </PageHeader>
+                />
                 <div className="flex flex-col gap-5 lg:flex-row">
                   <div className="w-full lg:max-w-[24rem]">
-                    <ProfileDetailsSection profile={profile} />
-                    <ProfileIssuerSection profile={profile} />
-                    <ProfilePolicySection profile={profile} />
+                    <ProfileOverviewSection
+                      profile={profile}
+                      onEdit={() => setIsEditModalOpen(true)}
+                      onDelete={() => setIsDeleteModalOpen(true)}
+                      backContext={{
+                        from: search.from,
+                        applicationName: search.applicationName
+                      }}
+                    />
                   </div>
                   <div className="flex flex-1 flex-col gap-y-5">
                     <ProfileDefaultsSection profile={profile} />

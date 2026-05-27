@@ -1,30 +1,23 @@
 import { useCallback } from "react";
 import { subject } from "@casl/ability";
-import {
-  faCheck,
-  faCircleInfo,
-  faCopy,
-  faEdit,
-  faEllipsis,
-  faTrash
-} from "@fortawesome/free-solid-svg-icons";
+import { faCircleInfo } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link } from "@tanstack/react-router";
+import { CheckIcon, CopyIcon, MoreHorizontalIcon, PencilIcon, Trash2Icon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
+import { Tooltip } from "@app/components/v2";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  Tooltip
-} from "@app/components/v2";
-import {
   Empty,
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
+  IconButton,
   Skeleton,
   Table,
   TableBody,
@@ -123,7 +116,7 @@ export const PolicyList = ({ onEditPolicy, onDeletePolicy }: Props) => {
                     projectId: currentProject.id,
                     policyId: policy.id
                   }}
-                  className="text-mineshaft-200 hover:text-primary-400"
+                  className="text-mineshaft-200 hover:underline"
                 >
                   {policy.name}
                 </Link>
@@ -135,25 +128,23 @@ export const PolicyList = ({ onEditPolicy, onDeletePolicy }: Props) => {
               </div>
             </TableCell>
             <TableCell>
-              <span className="text-sm text-accent">{formatDate(policy.createdAt)}</span>
+              <span className="text-sm text-mineshaft-200">{formatDate(policy.createdAt)}</span>
             </TableCell>
             <TableCell className="text-right">
               <DropdownMenu>
-                <DropdownMenuTrigger asChild className="rounded-lg">
-                  <div className="hover:text-primary-400 data-[state=open]:text-primary-400">
-                    <Tooltip content="More options">
-                      <FontAwesomeIcon size="lg" icon={faEllipsis} />
-                    </Tooltip>
-                  </div>
+                <DropdownMenuTrigger asChild>
+                  <IconButton variant="ghost" size="xs" aria-label="Policy actions">
+                    <MoreHorizontalIcon />
+                  </IconButton>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="p-1">
+                <DropdownMenuContent className="min-w-40" align="end" sideOffset={2}>
                   <DropdownMenuItem
                     onClick={(e) => {
                       e.stopPropagation();
                       handleCopyId(policy.id);
                     }}
-                    icon={<FontAwesomeIcon icon={isIdCopied ? faCheck : faCopy} />}
                   >
+                    {isIdCopied ? <CheckIcon /> : <CopyIcon />}
                     Copy Policy ID
                   </DropdownMenuItem>
                   <ProjectPermissionCan
@@ -169,8 +160,8 @@ export const PolicyList = ({ onEditPolicy, onDeletePolicy }: Props) => {
                             e.stopPropagation();
                             onEditPolicy(policy);
                           }}
-                          icon={<FontAwesomeIcon icon={faEdit} />}
                         >
+                          <PencilIcon />
                           Edit Policy
                         </DropdownMenuItem>
                       )
@@ -185,12 +176,13 @@ export const PolicyList = ({ onEditPolicy, onDeletePolicy }: Props) => {
                     {(isAllowed) =>
                       isAllowed && (
                         <DropdownMenuItem
+                          variant="danger"
                           onClick={(e) => {
                             e.stopPropagation();
                             onDeletePolicy(policy);
                           }}
-                          icon={<FontAwesomeIcon icon={faTrash} />}
                         >
+                          <Trash2Icon />
                           Delete Policy
                         </DropdownMenuItem>
                       )

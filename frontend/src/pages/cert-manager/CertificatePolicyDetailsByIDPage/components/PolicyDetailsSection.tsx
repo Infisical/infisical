@@ -1,8 +1,11 @@
+import { subject } from "@casl/ability";
 import { format } from "date-fns";
-import { CheckIcon, ClipboardListIcon } from "lucide-react";
+import { CheckIcon, ClipboardListIcon, EllipsisIcon } from "lucide-react";
 
+import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Card,
+  CardAction,
   CardContent,
   CardDescription,
   CardHeader,
@@ -11,19 +14,29 @@ import {
   DetailGroup,
   DetailLabel,
   DetailValue,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   IconButton,
   Tooltip,
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
+import {
+  ProjectPermissionCertificatePolicyActions,
+  ProjectPermissionSub
+} from "@app/context/ProjectPermissionContext/types";
 import { useTimedReset } from "@app/hooks";
 import { TCertificatePolicy } from "@app/hooks/api/certificatePolicies";
 
 type Props = {
   policy: TCertificatePolicy;
+  onEdit: () => void;
+  onDelete: () => void;
 };
 
-export const PolicyDetailsSection = ({ policy }: Props) => {
+export const PolicyDetailsSection = ({ policy, onEdit, onDelete }: Props) => {
   const [, isCopyingId, setCopyTextId] = useTimedReset<string>({
     initialState: "Copy ID to clipboard"
   });
@@ -33,6 +46,37 @@ export const PolicyDetailsSection = ({ policy }: Props) => {
       <CardHeader className="border-b">
         <CardTitle>Details</CardTitle>
         <CardDescription>Certificate policy details</CardDescription>
+        <CardAction>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <IconButton variant="outline" size="xs" aria-label="Policy options">
+                <EllipsisIcon />
+              </IconButton>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <ProjectPermissionCan
+                I={ProjectPermissionCertificatePolicyActions.Edit}
+                a={subject(ProjectPermissionSub.CertificatePolicies, { name: policy.name })}
+              >
+                {(canEdit) => (
+                  <DropdownMenuItem isDisabled={!canEdit} onClick={onEdit}>
+                    Edit Policy
+                  </DropdownMenuItem>
+                )}
+              </ProjectPermissionCan>
+              <ProjectPermissionCan
+                I={ProjectPermissionCertificatePolicyActions.Delete}
+                a={subject(ProjectPermissionSub.CertificatePolicies, { name: policy.name })}
+              >
+                {(canDelete) => (
+                  <DropdownMenuItem variant="danger" isDisabled={!canDelete} onClick={onDelete}>
+                    Delete Policy
+                  </DropdownMenuItem>
+                )}
+              </ProjectPermissionCan>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </CardAction>
       </CardHeader>
       <CardContent>
         <DetailGroup>

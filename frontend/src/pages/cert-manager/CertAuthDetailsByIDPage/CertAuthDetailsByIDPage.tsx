@@ -51,7 +51,12 @@ const Page = () => {
   const { caId } = params as { caId: string };
   const search = useSearch({
     from: ROUTE_PATHS.CertManager.CertAuthDetailsByIDPage.id
-  }) as { from?: "settings" | "profile"; profileId?: string };
+  }) as {
+    from?: "settings" | "profile";
+    profileId?: string;
+    profileFrom?: "settings" | "application";
+    profileApplicationName?: string;
+  };
   const { data } = useGetCa({
     caId,
     type: CaType.INTERNAL
@@ -118,6 +123,10 @@ const Page = () => {
                       orgId: currentOrg.id,
                       projectId,
                       profileId: search.profileId
+                    }}
+                    search={{
+                      from: search.profileFrom,
+                      applicationName: search.profileApplicationName
                     }}
                     className="mb-4 flex items-center gap-x-2 text-sm text-mineshaft-400"
                   >

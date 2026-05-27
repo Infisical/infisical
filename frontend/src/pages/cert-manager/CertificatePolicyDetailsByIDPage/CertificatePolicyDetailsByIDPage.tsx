@@ -4,18 +4,10 @@ import { subject } from "@casl/ability";
 import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
-import { EllipsisIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { AccessRestrictedBanner, DeleteActionModal, PageHeader } from "@app/components/v2";
-import {
-  Button,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger
-} from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useProject } from "@app/context";
 import {
@@ -49,7 +41,12 @@ const Page = () => {
   const { policyId } = params as { policyId: string };
   const search = useSearch({
     from: ROUTE_PATHS.CertManager.CertificatePolicyDetailsByIDPage.id
-  }) as { from?: "settings" | "profile"; profileId?: string };
+  }) as {
+    from?: "settings" | "profile";
+    profileId?: string;
+    profileFrom?: "settings" | "application";
+    profileApplicationName?: string;
+  };
 
   const { data: policy } = useGetCertificatePolicyById({ policyId });
   const { mutateAsync: deletePolicy } = useDeleteCertificatePolicy();
@@ -104,6 +101,10 @@ const Page = () => {
                       projectId,
                       profileId: search.profileId
                     }}
+                    search={{
+                      from: search.profileFrom,
+                      applicationName: search.profileApplicationName
+                    }}
                     className="mb-4 flex items-center gap-x-2 text-sm text-mineshaft-400"
                   >
                     <FontAwesomeIcon icon={faChevronLeft} />
@@ -127,52 +128,14 @@ const Page = () => {
                   scope={ProjectType.CertificateManager}
                   description="Manage certificate policy"
                   title={policy.name}
-                >
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="outline">
-                        Options
-                        <EllipsisIcon />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <ProjectPermissionCan
-                        I={ProjectPermissionCertificatePolicyActions.Edit}
-                        a={subject(ProjectPermissionSub.CertificatePolicies, {
-                          name: policy.name
-                        })}
-                      >
-                        {(canEdit) => (
-                          <DropdownMenuItem
-                            isDisabled={!canEdit}
-                            onClick={() => setIsEditModalOpen(true)}
-                          >
-                            Edit Policy
-                          </DropdownMenuItem>
-                        )}
-                      </ProjectPermissionCan>
-                      <ProjectPermissionCan
-                        I={ProjectPermissionCertificatePolicyActions.Delete}
-                        a={subject(ProjectPermissionSub.CertificatePolicies, {
-                          name: policy.name
-                        })}
-                      >
-                        {(canDelete) => (
-                          <DropdownMenuItem
-                            variant="danger"
-                            isDisabled={!canDelete}
-                            onClick={() => setIsDeleteModalOpen(true)}
-                          >
-                            Delete Policy
-                          </DropdownMenuItem>
-                        )}
-                      </ProjectPermissionCan>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </PageHeader>
+                />
                 <div className="flex flex-col gap-5 lg:flex-row">
                   <div className="w-full lg:max-w-[24rem]">
-                    <PolicyDetailsSection policy={policy} />
+                    <PolicyDetailsSection
+                      policy={policy}
+                      onEdit={() => setIsEditModalOpen(true)}
+                      onDelete={() => setIsDeleteModalOpen(true)}
+                    />
                   </div>
                   <div className="flex flex-1 flex-col gap-y-5">
                     <PolicyValiditySection policy={policy} />

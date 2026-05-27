@@ -1,27 +1,23 @@
 /* eslint-disable no-nested-ternary */
 import { useCallback } from "react";
 import { subject } from "@casl/ability";
-import {
-  faCheck,
-  faCircleInfo,
-  faCopy,
-  faEdit,
-  faEllipsis,
-  faTrash
-} from "@fortawesome/free-solid-svg-icons";
+import { faCircleInfo } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link } from "@tanstack/react-router";
+import { CheckIcon, CopyIcon, MoreHorizontalIcon, PencilIcon, Trash2Icon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
+import { Tooltip } from "@app/components/v2";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  Tooltip
-} from "@app/components/v2";
-import { TableCell, TableRow } from "@app/components/v3";
+  IconButton,
+  TableCell,
+  TableRow
+} from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
 import {
   ProjectPermissionCertificateProfileActions,
@@ -73,7 +69,7 @@ export const ProfileRow = ({ profile, onEditProfile, onDeleteProfile }: Props) =
               projectId: currentProject.id,
               profileId: profile.id
             }}
-            className="text-mineshaft-300 hover:text-primary-400"
+            className="text-mineshaft-200 hover:underline"
           >
             {profile.slug}
           </Link>
@@ -85,7 +81,7 @@ export const ProfileRow = ({ profile, onEditProfile, onDeleteProfile }: Props) =
         </div>
       </TableCell>
       <TableCell className="text-start">
-        <span className="text-sm text-mineshaft-300">
+        <span className="text-sm text-mineshaft-200">
           {profile.issuerType === IssuerType.SELF_SIGNED
             ? "Self-signed"
             : profile.certificateAuthority?.isExternal
@@ -103,25 +99,21 @@ export const ProfileRow = ({ profile, onEditProfile, onDeleteProfile }: Props) =
             projectId: currentProject.id,
             policyId: profile.certificatePolicyId
           }}
-          className="text-sm text-mineshaft-300 hover:text-primary-400"
+          className="text-sm text-mineshaft-200 hover:underline"
         >
           {policyData?.name || profile.certificatePolicyId}
         </Link>
       </TableCell>
       <TableCell className="text-right">
         <DropdownMenu>
-          <DropdownMenuTrigger asChild className="rounded-lg">
-            <div className="hover:text-primary-400 data-[state=open]:text-primary-400">
-              <Tooltip content="More options">
-                <FontAwesomeIcon size="lg" icon={faEllipsis} />
-              </Tooltip>
-            </div>
+          <DropdownMenuTrigger asChild>
+            <IconButton variant="ghost" size="xs" aria-label="Profile actions">
+              <MoreHorizontalIcon />
+            </IconButton>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="p-1">
-            <DropdownMenuItem
-              icon={<FontAwesomeIcon icon={isIdCopied ? faCheck : faCopy} className="w-3" />}
-              onClick={() => handleCopyId()}
-            >
+          <DropdownMenuContent className="min-w-40" align="end" sideOffset={2}>
+            <DropdownMenuItem onClick={() => handleCopyId()}>
+              {isIdCopied ? <CheckIcon /> : <CopyIcon />}
               Copy Profile ID
             </DropdownMenuItem>
             <ProjectPermissionCan
@@ -135,8 +127,8 @@ export const ProfileRow = ({ profile, onEditProfile, onDeleteProfile }: Props) =
                       e.stopPropagation();
                       onEditProfile(profile);
                     }}
-                    icon={<FontAwesomeIcon icon={faEdit} className="w-3" />}
                   >
+                    <PencilIcon />
                     Edit Profile
                   </DropdownMenuItem>
                 )
@@ -149,12 +141,13 @@ export const ProfileRow = ({ profile, onEditProfile, onDeleteProfile }: Props) =
               {(isAllowed) =>
                 isAllowed && (
                   <DropdownMenuItem
+                    variant="danger"
                     onClick={(e) => {
                       e.stopPropagation();
                       onDeleteProfile(profile);
                     }}
-                    icon={<FontAwesomeIcon icon={faTrash} className="w-3" />}
                   >
+                    <Trash2Icon />
                     Delete Profile
                   </DropdownMenuItem>
                 )

@@ -1,3 +1,5 @@
+import { KeyRoundIcon, ScrollTextIcon, ShieldCheckIcon, UserIcon } from "lucide-react";
+
 import {
   Badge,
   Card,
@@ -6,7 +8,6 @@ import {
   CardHeader,
   CardTitle,
   Detail,
-  DetailGroup,
   DetailLabel,
   DetailValue
 } from "@app/components/v3";
@@ -22,6 +23,13 @@ type Props = {
   profile: TCertificateProfileWithDetails;
 };
 
+const SectionHeader = ({ icon, title }: { icon: React.ReactNode; title: string }) => (
+  <h3 className="mb-4 flex items-center gap-2 text-base font-medium text-foreground">
+    <span className="text-label [&>svg]:size-4">{icon}</span>
+    {title}
+  </h3>
+);
+
 export const ProfileDefaultsSection = ({ profile }: Props) => {
   const defaults = profile.defaults ?? null;
 
@@ -35,15 +43,20 @@ export const ProfileDefaultsSection = ({ profile }: Props) => {
   );
 
   const hasCryptoDefaults = Boolean(
-    defaults?.keyAlgorithm ||
-      defaults?.signatureAlgorithm ||
-      defaults?.ttlDays ||
-      (defaults?.keyUsages && defaults.keyUsages.length > 0) ||
-      (defaults?.extendedKeyUsages && defaults.extendedKeyUsages.length > 0) ||
-      defaults?.basicConstraints
+    defaults?.keyAlgorithm || defaults?.signatureAlgorithm || defaults?.ttlDays
   );
 
-  if (!defaults || (!hasSubjectDefaults && !hasCryptoDefaults)) {
+  const hasKeyUsages = Boolean(
+    (defaults?.keyUsages && defaults.keyUsages.length > 0) ||
+      (defaults?.extendedKeyUsages && defaults.extendedKeyUsages.length > 0)
+  );
+
+  const hasBasicConstraints = Boolean(defaults?.basicConstraints);
+
+  if (
+    !defaults ||
+    (!hasSubjectDefaults && !hasCryptoDefaults && !hasKeyUsages && !hasBasicConstraints)
+  ) {
     return (
       <Card className="w-full">
         <CardHeader className="border-b">
@@ -57,6 +70,13 @@ export const ProfileDefaultsSection = ({ profile }: Props) => {
     );
   }
 
+  let isFirstSection = true;
+  const sectionClassName = () => {
+    const className = isFirstSection ? "" : "mt-6 border-t border-border pt-6";
+    isFirstSection = false;
+    return className;
+  };
+
   return (
     <Card className="w-full">
       <CardHeader className="border-b">
@@ -64,60 +84,72 @@ export const ProfileDefaultsSection = ({ profile }: Props) => {
         <CardDescription>Values applied when issuing certificates</CardDescription>
       </CardHeader>
       <CardContent>
-        <DetailGroup>
-          {defaults.ttlDays !== undefined && defaults.ttlDays !== null && (
-            <Detail>
-              <DetailLabel>TTL</DetailLabel>
-              <DetailValue>{defaults.ttlDays} days</DetailValue>
-            </Detail>
-          )}
+        {hasCryptoDefaults && (
+          <div className={sectionClassName()}>
+            <SectionHeader icon={<KeyRoundIcon />} title="Cryptography" />
+            <div className="grid grid-cols-2 gap-x-8 gap-y-4">
+              {defaults.ttlDays !== undefined && defaults.ttlDays !== null && (
+                <Detail>
+                  <DetailLabel>TTL</DetailLabel>
+                  <DetailValue>{defaults.ttlDays} days</DetailValue>
+                </Detail>
+              )}
+              {defaults.keyAlgorithm && (
+                <Detail>
+                  <DetailLabel>Key Algorithm</DetailLabel>
+                  <DetailValue>
+                    <Badge variant="neutral">{defaults.keyAlgorithm}</Badge>
+                  </DetailValue>
+                </Detail>
+              )}
+              {defaults.signatureAlgorithm && (
+                <Detail>
+                  <DetailLabel>Signature Algorithm</DetailLabel>
+                  <DetailValue>
+                    <Badge variant="neutral">{defaults.signatureAlgorithm}</Badge>
+                  </DetailValue>
+                </Detail>
+              )}
+            </div>
+          </div>
+        )}
 
-          {defaults.keyAlgorithm && (
-            <Detail>
-              <DetailLabel>Key Algorithm</DetailLabel>
-              <DetailValue>
-                <Badge variant="neutral">{defaults.keyAlgorithm}</Badge>
-              </DetailValue>
-            </Detail>
-          )}
+        {hasKeyUsages && (
+          <div className={sectionClassName()}>
+            <SectionHeader icon={<ShieldCheckIcon />} title="Key Usages" />
+            <div className="grid grid-cols-2 gap-x-8 gap-y-4">
+              {defaults.keyUsages && defaults.keyUsages.length > 0 && (
+                <Detail>
+                  <DetailLabel>Key Usages</DetailLabel>
+                  <DetailValue className="flex flex-wrap gap-1">
+                    {defaults.keyUsages.map((usage) => (
+                      <Badge key={usage} variant="neutral">
+                        {formatKeyUsage(usage as CertKeyUsageType)}
+                      </Badge>
+                    ))}
+                  </DetailValue>
+                </Detail>
+              )}
+              {defaults.extendedKeyUsages && defaults.extendedKeyUsages.length > 0 && (
+                <Detail>
+                  <DetailLabel>Extended Key Usages</DetailLabel>
+                  <DetailValue className="flex flex-wrap gap-1">
+                    {defaults.extendedKeyUsages.map((usage) => (
+                      <Badge key={usage} variant="neutral">
+                        {formatExtendedKeyUsage(usage as CertExtendedKeyUsageType)}
+                      </Badge>
+                    ))}
+                  </DetailValue>
+                </Detail>
+              )}
+            </div>
+          </div>
+        )}
 
-          {defaults.signatureAlgorithm && (
-            <Detail>
-              <DetailLabel>Signature Algorithm</DetailLabel>
-              <DetailValue>
-                <Badge variant="neutral">{defaults.signatureAlgorithm}</Badge>
-              </DetailValue>
-            </Detail>
-          )}
-
-          {defaults.keyUsages && defaults.keyUsages.length > 0 && (
-            <Detail>
-              <DetailLabel>Key Usages</DetailLabel>
-              <DetailValue className="flex flex-wrap gap-1">
-                {defaults.keyUsages.map((usage) => (
-                  <Badge key={usage} variant="neutral">
-                    {formatKeyUsage(usage as CertKeyUsageType)}
-                  </Badge>
-                ))}
-              </DetailValue>
-            </Detail>
-          )}
-
-          {defaults.extendedKeyUsages && defaults.extendedKeyUsages.length > 0 && (
-            <Detail>
-              <DetailLabel>Extended Key Usages</DetailLabel>
-              <DetailValue className="flex flex-wrap gap-1">
-                {defaults.extendedKeyUsages.map((usage) => (
-                  <Badge key={usage} variant="neutral">
-                    {formatExtendedKeyUsage(usage as CertExtendedKeyUsageType)}
-                  </Badge>
-                ))}
-              </DetailValue>
-            </Detail>
-          )}
-
-          {defaults.basicConstraints && (
-            <>
+        {hasBasicConstraints && defaults.basicConstraints && (
+          <div className={sectionClassName()}>
+            <SectionHeader icon={<ScrollTextIcon />} title="Basic Constraints" />
+            <div className="grid grid-cols-2 gap-x-8 gap-y-4">
               <Detail>
                 <DetailLabel>Is CA</DetailLabel>
                 <DetailValue>
@@ -132,55 +164,53 @@ export const ProfileDefaultsSection = ({ profile }: Props) => {
                   <DetailValue>{defaults.basicConstraints.pathLength}</DetailValue>
                 </Detail>
               )}
-            </>
-          )}
+            </div>
+          </div>
+        )}
 
-          {hasSubjectDefaults && (
-            <>
+        {hasSubjectDefaults && (
+          <div className={sectionClassName()}>
+            <SectionHeader icon={<UserIcon />} title="Subject" />
+            <div className="grid grid-cols-2 gap-x-8 gap-y-4">
               {defaults.commonName && (
                 <Detail>
                   <DetailLabel>Common Name (CN)</DetailLabel>
                   <DetailValue>{defaults.commonName}</DetailValue>
                 </Detail>
               )}
-
               {defaults.organization && (
                 <Detail>
                   <DetailLabel>Organization (O)</DetailLabel>
                   <DetailValue>{defaults.organization}</DetailValue>
                 </Detail>
               )}
-
               {defaults.organizationalUnit && (
                 <Detail>
                   <DetailLabel>Organizational Unit (OU)</DetailLabel>
                   <DetailValue>{defaults.organizationalUnit}</DetailValue>
                 </Detail>
               )}
-
               {defaults.country && (
                 <Detail>
                   <DetailLabel>Country (C)</DetailLabel>
                   <DetailValue>{defaults.country}</DetailValue>
                 </Detail>
               )}
-
               {defaults.state && (
                 <Detail>
                   <DetailLabel>State/Province (ST)</DetailLabel>
                   <DetailValue>{defaults.state}</DetailValue>
                 </Detail>
               )}
-
               {defaults.locality && (
                 <Detail>
                   <DetailLabel>Locality (L)</DetailLabel>
                   <DetailValue>{defaults.locality}</DetailValue>
                 </Detail>
               )}
-            </>
-          )}
-        </DetailGroup>
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

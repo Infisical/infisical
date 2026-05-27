@@ -6,7 +6,9 @@ import { CertificatePolicyDetailsByIDPage } from "./CertificatePolicyDetailsByID
 
 const policyDetailsSearchSchema = z.object({
   from: z.enum(["settings", "profile"]).optional(),
-  profileId: z.string().optional()
+  profileId: z.string().optional(),
+  profileFrom: z.enum(["settings", "application"]).optional(),
+  profileApplicationName: z.string().optional()
 });
 
 export const Route = createFileRoute(

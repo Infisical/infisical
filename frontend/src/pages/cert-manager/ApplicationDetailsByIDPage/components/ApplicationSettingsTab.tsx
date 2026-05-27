@@ -599,7 +599,7 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
                             profileId: p.profileId
                           }}
                           search={{ from: "application", applicationName: application.name }}
-                          className="text-mineshaft-200 hover:text-primary-400"
+                          className="text-mineshaft-200 hover:underline"
                         >
                           {p.profileSlug}
                         </Link>
