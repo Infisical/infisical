@@ -21,13 +21,12 @@ kind: InfisicalConnection
 metadata:
   name: my-infisical-connection
 spec:
-  address: https://infisical.domain.com
-  # If you are using cloud instances, this is not necessary
-  tls:
-    caCertificate:
-      name: secret-containing-ca-certificate
-      namespace: default
-      key: ca.crt
+  address: https://app.infisical.com
+  # tls:
+  #  caCertificate:
+  #   name: secret-containing-ca-certificate
+  #   key: ca.crt
+  #   namespace: default
 ```
 
 Apply the resource:
