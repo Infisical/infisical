@@ -25,7 +25,9 @@ export const POSTHOG_AGGREGATED_EVENTS = [
   PostHogEventTypes.IssueCert,
   PostHogEventTypes.SignCert,
   PostHogEventTypes.PkiSyncExecuted,
-  PostHogEventTypes.CertificateRequestCreated
+  PostHogEventTypes.CertificateRequestCreated,
+  PostHogEventTypes.CmekEncrypt,
+  PostHogEventTypes.CmekDecrypt
 ];
 
 // Bucket configuration

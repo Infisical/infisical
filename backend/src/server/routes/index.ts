@@ -1639,7 +1639,8 @@ export const registerRoutes = async (
     notificationService,
     projectSlackConfigDAL,
     projectMicrosoftTeamsConfigDAL,
-    microsoftTeamsService
+    microsoftTeamsService,
+    telemetryService
   });
 
   const secretQueueService = secretQueueFactory({
@@ -2543,7 +2544,8 @@ export const registerRoutes = async (
     appConnectionDAL,
     gatewayService,
     gatewayV2Service,
-    gatewayPoolService
+    gatewayPoolService,
+    telemetryService
   });
 
   const insightsService = insightsServiceFactory({

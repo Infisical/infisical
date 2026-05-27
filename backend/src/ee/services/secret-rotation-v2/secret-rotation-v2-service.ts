@@ -89,6 +89,8 @@ import {
 } from "@app/services/secret-v2-bridge/secret-v2-bridge-fns";
 import { TSecretVersionV2DALFactory } from "@app/services/secret-v2-bridge/secret-version-dal";
 import { TSecretVersionV2TagDALFactory } from "@app/services/secret-v2-bridge/secret-version-tag-dal";
+import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { WebhookEvents } from "@app/services/webhook/webhook-types";
 
 import { TGatewayPoolServiceFactory } from "../gateway-pool/gateway-pool-service";
@@ -161,6 +163,7 @@ export type TSecretRotationV2ServiceFactoryDep = {
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
+  telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
 };
 
 export type TSecretRotationV2ServiceFactory = ReturnType<typeof secretRotationV2ServiceFactory>;
@@ -220,7 +223,8 @@ export const secretRotationV2ServiceFactory = ({
   appConnectionDAL,
   gatewayService,
   gatewayV2Service,
-  gatewayPoolService
+  gatewayPoolService,
+  telemetryService
 }: TSecretRotationV2ServiceFactoryDep) => {
   const $queueSendSecretRotationStatusNotification = async (secretRotation: TSecretRotationV2Raw) => {
     const appCfg = getConfig();
@@ -1398,6 +1402,19 @@ export const secretRotationV2ServiceFactory = ({
           await $queueSendSecretRotationStatusNotification(updatedRotation);
           await triggerFailedWebhook(projectId, environment, error, folder, secretRotation, isManualRotation);
         }
+
+        void telemetryService
+          .sendPostHogEvents({
+            event: PostHogEventTypes.SecretRotationV2Failed,
+            distinctId: `platform/${projectId}`,
+            organizationId: connection.orgId,
+            properties: {
+              rotationId,
+              type: type as SecretRotation,
+              projectId
+            }
+          })
+          .catch(() => {});
       }
 
       await auditLogService.createAuditLog({

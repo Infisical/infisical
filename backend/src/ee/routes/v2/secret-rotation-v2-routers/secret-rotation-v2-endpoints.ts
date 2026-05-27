@@ -530,6 +530,7 @@ export const registerSecretRotationEndpoints = <
     handler: async (req) => {
       const { rotationId } = req.params;
 
+      const rotationStartTime = Date.now();
       const secretRotation = (await server.services.secretRotationV2.rotateSecretRotation(
         {
           rotationId,
@@ -549,7 +550,8 @@ export const registerSecretRotationEndpoints = <
             type,
             projectId: secretRotation.projectId,
             environment: secretRotation.environment.slug,
-            secretPath: secretRotation.folder.path
+            secretPath: secretRotation.folder.path,
+            durationMs: Date.now() - rotationStartTime
           }
         })
         .catch((err) => logger.error(err, "Failed to send SecretRotationV2Executed telemetry event"));
