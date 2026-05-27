@@ -98,9 +98,13 @@ export const GitLabSyncFields = () => {
   const scope = useWatch({ name: "destinationConfig.scope", control });
   const shouldMaskSecrets = useWatch({ name: "destinationConfig.shouldMaskSecrets", control });
 
-  const { data: groups, isLoading: isGroupsLoading } = useGitLabConnectionListGroups(connectionId, {
-    enabled: Boolean(connectionId) && scope === GitLabSyncScope.Group
-  });
+  const { data: groups, isLoading: isGroupsLoading } = useGitLabConnectionListGroups(
+    connectionId,
+    undefined,
+    {
+      enabled: Boolean(connectionId) && scope === GitLabSyncScope.Group
+    }
+  );
 
   return (
     <FieldGroup>

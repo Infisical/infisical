@@ -323,11 +323,13 @@ export const getGitLabConnectionClient = async (
 export const listGitLabProjects = async ({
   appConnection,
   appConnectionDAL,
-  kmsService
+  kmsService,
+  search
 }: {
   appConnection: TGitLabConnection;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  search?: string;
 }): Promise<TGitLabProject[]> => {
   let { accessToken } = appConnection.credentials;
 
@@ -354,6 +356,7 @@ export const listGitLabProjects = async ({
       appConnection.method === GitLabConnectionMethod.OAuth
     );
     const projects = await client.Projects.all({
+      ...(search ? { search } : {}),
       archived: false,
       includePendingDelete: false,
       membership: true,
@@ -385,11 +388,13 @@ export const listGitLabProjects = async ({
 export const listGitLabGroups = async ({
   appConnection,
   appConnectionDAL,
-  kmsService
+  kmsService,
+  search
 }: {
   appConnection: TGitLabConnection;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  search?: string;
 }): Promise<TGitLabGroup[]> => {
   const client = await getNavigationClient({ appConnection, appConnectionDAL, kmsService });
   if (!client) return [];
@@ -398,12 +403,15 @@ export const listGitLabGroups = async ({
     const groups = await client.Groups.all({
       orderBy: "name",
       sort: "asc",
-      minAccessLevel: 50
+      minAccessLevel: 50,
+      ...(search ? { search } : {})
     });
 
     return groups.map((group) => ({
       id: group.id.toString(),
-      fullName: group.fullName
+      name: group.name,
+      fullName: group.fullName,
+      fullPath: group.fullPath
     }));
   } catch (error: unknown) {
     if (error instanceof GitbeakerRequestError) {
@@ -494,59 +502,5 @@ export const listGitLabGroupProjects = async (
     }
     if (error instanceof InternalServerError) throw error;
     throw new InternalServerError({ message: "Unable to fetch GitLab group projects" });
-  }
-};
-
-export const searchGitLabGroups = async (
-  search: string,
-  params: TNavigationParams
-): Promise<TGitLabGroupTreeItem[]> => {
-  const client = await getNavigationClient(params);
-  if (!client) return [];
-
-  try {
-    const groups = await client.Groups.all({
-      search,
-      minAccessLevel: 20
-    });
-
-    return groups.map((g) => ({ id: g.id.toString(), name: g.name, fullPath: g.fullPath }));
-  } catch (error: unknown) {
-    if (error instanceof GitbeakerRequestError) {
-      throw new BadRequestError({
-        message: `Failed to search GitLab groups: ${error.message ?? "Unknown error"}${error.cause?.description && error.message !== "Unauthorized" ? `. Cause: ${error.cause.description}` : ""}`
-      });
-    }
-    if (error instanceof InternalServerError) throw error;
-    throw new InternalServerError({ message: "Unable to search GitLab groups" });
-  }
-};
-
-export const searchGitLabProjects = async (
-  search: string,
-  params: TNavigationParams
-): Promise<TGitLabGroupTreeItem[]> => {
-  const client = await getNavigationClient(params);
-  if (!client) return [];
-
-  try {
-    const projects = await client.Projects.all({
-      search,
-      archived: false,
-      includePendingDelete: false,
-      membership: true,
-      includeHidden: false,
-      imported: false
-    });
-
-    return projects.map((p) => ({ id: p.id.toString(), name: p.name, fullPath: p.pathWithNamespace }));
-  } catch (error: unknown) {
-    if (error instanceof GitbeakerRequestError) {
-      throw new BadRequestError({
-        message: `Failed to search GitLab projects: ${error.message ?? "Unknown error"}${error.cause?.description && error.message !== "Unauthorized" ? `. Cause: ${error.cause.description}` : ""}`
-      });
-    }
-    if (error instanceof InternalServerError) throw error;
-    throw new InternalServerError({ message: "Unable to search GitLab projects" });
   }
 };

@@ -36,6 +36,9 @@ export const registerGitLabConnectionRouter = async (server: FastifyZodProvider)
       params: z.object({
         connectionId: z.string().uuid()
       }),
+      querystring: z.object({
+        search: z.string().trim().max(255).optional()
+      }),
       response: {
         200: z
           .object({
@@ -48,10 +51,12 @@ export const registerGitLabConnectionRouter = async (server: FastifyZodProvider)
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const { connectionId } = req.params;
+      const { search } = req.query;
 
       const projects: TGitLabProject[] = await server.services.appConnection.gitlab.listProjects(
         connectionId,
-        req.permission
+        req.permission,
+        search
       );
 
       return projects;
@@ -69,11 +74,16 @@ export const registerGitLabConnectionRouter = async (server: FastifyZodProvider)
       params: z.object({
         connectionId: z.string().uuid()
       }),
+      querystring: z.object({
+        search: z.string().trim().max(255).optional()
+      }),
       response: {
         200: z
           .object({
             id: z.string(),
-            fullName: z.string()
+            name: z.string(),
+            fullName: z.string(),
+            fullPath: z.string()
           })
           .array()
       }
@@ -81,88 +91,15 @@ export const registerGitLabConnectionRouter = async (server: FastifyZodProvider)
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const { connectionId } = req.params;
+      const { search } = req.query;
 
       const groups: TGitLabGroup[] = await server.services.appConnection.gitlab.listGroups(
         connectionId,
-        req.permission
+        req.permission,
+        search
       );
 
       return groups;
-    }
-  });
-
-  server.route({
-    method: "GET",
-    url: `/:connectionId/search-groups`,
-    config: {
-      rateLimit: readLimit
-    },
-    schema: {
-      operationId: "searchGitLabGroups",
-      params: z.object({
-        connectionId: z.string().uuid()
-      }),
-      querystring: z.object({
-        search: z.string().trim().min(1).max(255)
-      }),
-      response: {
-        200: z
-          .object({
-            id: z.string(),
-            name: z.string(),
-            fullPath: z.string()
-          })
-          .array()
-      }
-    },
-    onRequest: verifyAuth([AuthMode.JWT]),
-    handler: async (req) => {
-      const { connectionId } = req.params;
-      const { search } = req.query;
-      const groups: TGitLabGroupTreeItem[] = await server.services.appConnection.gitlab.searchGroups(
-        connectionId,
-        search,
-        req.permission
-      );
-      return groups;
-    }
-  });
-
-  server.route({
-    method: "GET",
-    url: `/:connectionId/search-projects`,
-    config: {
-      rateLimit: readLimit
-    },
-    schema: {
-      operationId: "searchGitLabProjects",
-      params: z.object({
-        connectionId: z.string().uuid()
-      }),
-      querystring: z.object({
-        search: z.string().trim().min(1).max(255)
-      }),
-      response: {
-        200: z
-          .object({
-            id: z.string(),
-            name: z.string(),
-            fullPath: z.string()
-          })
-          .array()
-      }
-    },
-    onRequest: verifyAuth([AuthMode.JWT]),
-    handler: async (req) => {
-      const { connectionId } = req.params;
-      const { search } = req.query;
-      const projects: TGitLabGroupTreeItem[] = await server.services.appConnection.gitlab.searchProjects(
-        connectionId,
-        search,
-        req.permission
-      );
-
-      return projects;
     }
   });
 

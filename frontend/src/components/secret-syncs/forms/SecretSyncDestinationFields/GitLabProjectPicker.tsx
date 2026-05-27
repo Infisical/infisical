@@ -17,11 +17,10 @@ import {
 import { cn } from "@app/components/v3/utils";
 import {
   useGitLabConnectionListGroupProjects,
+  useGitLabConnectionListGroups,
   useGitLabConnectionListProjects,
   useGitLabConnectionListRootGroups,
-  useGitLabConnectionListSubgroups,
-  useGitLabConnectionSearchGroups,
-  useGitLabConnectionSearchProjects
+  useGitLabConnectionListSubgroups
 } from "@app/hooks/api/appConnections/gitlab";
 import { useDebounce } from "@app/hooks/useDebounce";
 
@@ -215,15 +214,15 @@ export const GitLabProjectPicker = ({
     enabled: hasConnection
   });
 
-  const personalProjectsQuery = useGitLabConnectionListProjects(connectionId, {
+  const personalProjectsQuery = useGitLabConnectionListProjects(connectionId, undefined, {
     enabled: hasConnection
   });
 
-  const projectSearchQuery = useGitLabConnectionSearchProjects(connectionId, debouncedSearch, {
+  const projectSearchQuery = useGitLabConnectionListProjects(connectionId, debouncedSearch, {
     enabled: hasConnection && tab === "groups" && isSearching
   });
 
-  const groupNameSearchQuery = useGitLabConnectionSearchGroups(connectionId, debouncedSearch, {
+  const groupNameSearchQuery = useGitLabConnectionListGroups(connectionId, debouncedSearch, {
     enabled: hasConnection && tab === "groups" && isSearching
   });
 

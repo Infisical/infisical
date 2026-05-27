@@ -38,12 +38,17 @@ export const GitLabDataSourceConfigFields = () => {
 
   const { data: projects, isPending: isProjectsPending } = useGitLabConnectionListProjects(
     connectionId,
+    undefined,
     { enabled: Boolean(connectionId) }
   );
 
-  const { data: groups, isPending: isGroupsPending } = useGitLabConnectionListGroups(connectionId, {
-    enabled: Boolean(connectionId) && scope === GitLabDataSourceScope.Group
-  });
+  const { data: groups, isPending: isGroupsPending } = useGitLabConnectionListGroups(
+    connectionId,
+    undefined,
+    {
+      enabled: Boolean(connectionId) && scope === GitLabDataSourceScope.Group
+    }
+  );
 
   const scanMethod =
     !includeProjects || includeProjects.includes("*")

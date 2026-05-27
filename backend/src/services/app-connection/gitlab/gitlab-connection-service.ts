@@ -9,9 +9,7 @@ import {
   listGitLabGroups,
   listGitLabProjects,
   listGitLabRootGroups,
-  listGitLabSubgroups,
-  searchGitLabGroups,
-  searchGitLabProjects
+  listGitLabSubgroups
 } from "./gitlab-connection-fns";
 import { TGitLabConnection } from "./gitlab-connection-types";
 
@@ -26,10 +24,10 @@ export const gitlabConnectionService = (
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">,
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">
 ) => {
-  const listProjects = async (connectionId: string, actor: OrgServiceActor) => {
+  const listProjects = async (connectionId: string, actor: OrgServiceActor, search?: string) => {
     try {
       const appConnection = await getAppConnection(AppConnection.GitLab, connectionId, actor);
-      const projects = await listGitLabProjects({ appConnection, appConnectionDAL, kmsService });
+      const projects = await listGitLabProjects({ appConnection, appConnectionDAL, kmsService, search });
       return projects;
     } catch (error) {
       logger.error(error, `Failed to establish connection with GitLab for app ${connectionId}`);
@@ -37,10 +35,10 @@ export const gitlabConnectionService = (
     }
   };
 
-  const listGroups = async (connectionId: string, actor: OrgServiceActor) => {
+  const listGroups = async (connectionId: string, actor: OrgServiceActor, search?: string) => {
     try {
       const appConnection = await getAppConnection(AppConnection.GitLab, connectionId, actor);
-      const groups = await listGitLabGroups({ appConnection, appConnectionDAL, kmsService });
+      const groups = await listGitLabGroups({ appConnection, appConnectionDAL, kmsService, search });
       return groups;
     } catch (error) {
       logger.error(error, `Failed to establish connection with GitLab for app ${connectionId}`);
@@ -54,16 +52,6 @@ export const gitlabConnectionService = (
       return await listGitLabRootGroups({ appConnection, appConnectionDAL, kmsService });
     } catch (error) {
       logger.error(error, `Failed to list root groups for GitLab connection ${connectionId}`);
-      return [];
-    }
-  };
-
-  const searchGroups = async (connectionId: string, search: string, actor: OrgServiceActor) => {
-    try {
-      const appConnection = await getAppConnection(AppConnection.GitLab, connectionId, actor);
-      return await searchGitLabGroups(search, { appConnection, appConnectionDAL, kmsService });
-    } catch (error) {
-      logger.error(error, `Failed to search groups for GitLab connection ${connectionId}`);
       return [];
     }
   };
@@ -93,23 +81,11 @@ export const gitlabConnectionService = (
     }
   };
 
-  const searchProjects = async (connectionId: string, search: string, actor: OrgServiceActor) => {
-    try {
-      const appConnection = await getAppConnection(AppConnection.GitLab, connectionId, actor);
-      return await searchGitLabProjects(search, { appConnection, appConnectionDAL, kmsService });
-    } catch (error) {
-      logger.error(error, `Failed to search projects for GitLab connection ${connectionId}`);
-      return [];
-    }
-  };
-
   return {
     listProjects,
     listGroups,
     listRootGroups,
     listSubgroups,
-    listGroupProjects,
-    searchGroups,
-    searchProjects
+    listGroupProjects
   };
 };
