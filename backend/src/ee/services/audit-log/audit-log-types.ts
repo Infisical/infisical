@@ -4470,6 +4470,7 @@ interface CreateSharedSecretEvent {
     expiresAfterViews?: number;
     usingPassword: boolean;
     expiresAt: string;
+    emails?: string[];
   };
 }
 
