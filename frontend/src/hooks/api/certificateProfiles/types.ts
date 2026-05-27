@@ -73,7 +73,7 @@ export type TCertificateProfileWithDetails = TCertificateProfile & {
   estConfig?: {
     id: string;
     disableBootstrapCaValidation: boolean;
-    passphrase: string;
+    passphrase?: string;
     caChain: string;
   };
   apiConfig?: {

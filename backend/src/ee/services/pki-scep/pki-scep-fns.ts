@@ -1,4 +1,5 @@
 import * as x509 from "@peculiar/x509";
+import RE2 from "re2";
 
 import { extractX509CertFromChain } from "@app/lib/certificates/extract-certificate";
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -126,6 +127,62 @@ export const isSignerCertIssuedByCa = async ({
   } catch {
     return false;
   }
+};
+
+export enum ScepRenewalDenyReason {
+  InvalidSigner = "invalid-signer",
+  WrongProfile = "wrong-profile",
+  IdentityMismatch = "identity-mismatch"
+}
+
+export type TScepRenewalAuthResult = { authorized: true } | { authorized: false; reason: ScepRenewalDenyReason };
+
+const DN_WHITESPACE_RE = new RE2("\\s+", "g");
+
+export const normalizeX500Name = (name: x509.Name): string => {
+  const rdns = name.toJSON();
+
+  const canonicalRdns = rdns.map((rdn) => {
+    const pairs: string[] = [];
+    for (const [type, values] of Object.entries(rdn)) {
+      const normalizedType = type.toLowerCase();
+      for (const value of values) {
+        const normalizedValue = value.normalize("NFC").replace(DN_WHITESPACE_RE, " ").trim().toLowerCase();
+        pairs.push(`${normalizedType}=${normalizedValue}`);
+      }
+    }
+    return pairs.sort().join("+");
+  });
+
+  return canonicalRdns.sort().join(",");
+};
+
+export const evaluateScepRenewalAuthorization = ({
+  isValidSigner,
+  storedSignerCert,
+  profileId,
+  csrSubjectName,
+  signerCertSubjectName
+}: {
+  isValidSigner: boolean;
+  storedSignerCert?: { profileId?: string | null } | null;
+  profileId: string;
+  csrSubjectName: x509.Name;
+  signerCertSubjectName: x509.Name;
+}): TScepRenewalAuthResult => {
+  if (!isValidSigner) {
+    return { authorized: false, reason: ScepRenewalDenyReason.InvalidSigner };
+  }
+
+  if (!storedSignerCert || storedSignerCert.profileId !== profileId) {
+    return { authorized: false, reason: ScepRenewalDenyReason.WrongProfile };
+  }
+
+  if (normalizeX500Name(csrSubjectName) !== normalizeX500Name(signerCertSubjectName)) {
+    return { authorized: false, reason: ScepRenewalDenyReason.IdentityMismatch };
+  }
+
+  return { authorized: true };
 };
 
 export const getScepCapabilities = ({ allowCertBasedRenewal }: { allowCertBasedRenewal: boolean }): string => {
