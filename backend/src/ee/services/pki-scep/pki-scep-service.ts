@@ -569,6 +569,7 @@ export const pkiScepServiceFactory = ({
       signerCertObj !== null &&
       (await isSignerCertIssuedByCa({
         signerCertDer: parsed.signerCertDer,
+        signerCert: signerCertObj,
         caId: profile.caId!,
         certificateDAL,
         certificateAuthorityCertDAL,

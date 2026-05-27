@@ -61,6 +61,7 @@ export const generateRaCertificate = async (
 
 export const isSignerCertIssuedByCa = async ({
   signerCertDer,
+  signerCert: providedSignerCert,
   caId,
   certificateDAL,
   certificateAuthorityCertDAL,
@@ -69,6 +70,7 @@ export const isSignerCertIssuedByCa = async ({
   kmsService
 }: {
   signerCertDer: Buffer;
+  signerCert?: x509.X509Certificate;
   caId: string;
   certificateDAL: Pick<TCertificateDALFactory, "findOne" | "transaction">;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "find" | "findById">;
@@ -77,7 +79,7 @@ export const isSignerCertIssuedByCa = async ({
   kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "generateKmsKey">;
 }): Promise<boolean> => {
   try {
-    const signerCert = new x509.X509Certificate(signerCertDer);
+    const signerCert = providedSignerCert ?? new x509.X509Certificate(signerCertDer);
 
     if (new Date() > signerCert.notAfter) {
       return false;
@@ -154,7 +156,7 @@ export const normalizeX500Name = (name: x509.Name): string => {
     return pairs.sort().join("+");
   });
 
-  return canonicalRdns.sort().join(",");
+  return canonicalRdns.join(",");
 };
 
 export const evaluateScepRenewalAuthorization = ({
