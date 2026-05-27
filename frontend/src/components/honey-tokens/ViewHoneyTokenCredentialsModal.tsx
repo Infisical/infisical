@@ -11,7 +11,7 @@ import {
 import { ProjectPermissionSub, useProjectPermission } from "@app/context";
 import { ProjectPermissionHoneyTokenActions } from "@app/context/ProjectPermissionContext/types";
 import { useGetHoneyTokenCredentials } from "@app/hooks/api/honeyTokens";
-import { HoneyTokenType } from "@app/hooks/api/honeyTokens/enums";
+import { HoneyTokenStatus, HoneyTokenType } from "@app/hooks/api/honeyTokens/enums";
 import { TDashboardHoneyToken } from "@app/hooks/api/honeyTokens/types";
 
 import { AwsHoneyTokenCredentials } from "./ViewHoneyTokenCredentials/AwsHoneyTokenCredentials";
@@ -57,7 +57,7 @@ const ModalBody = ({
   const { data: credentials, isPending } = useGetHoneyTokenCredentials({
     honeyTokenId: honeyToken?.id ?? "",
     projectId,
-    enabled: isOpen && Boolean(honeyToken) && canReadCredentials
+    enabled: isOpen && honeyToken?.status !== HoneyTokenStatus.Revoked && canReadCredentials
   });
 
   if (isPending) {

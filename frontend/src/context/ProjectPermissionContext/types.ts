@@ -184,7 +184,8 @@ export enum ProjectPermissionCertificateProfileActions {
   Delete = "delete",
   IssueCert = "issue-cert",
   RevealAcmeEabSecret = "reveal-acme-eab-secret",
-  RotateAcmeEabSecret = "rotate-acme-eab-secret"
+  RotateAcmeEabSecret = "rotate-acme-eab-secret",
+  ManageApplicationAttachments = "manage-application-attachments"
 }
 
 export enum ProjectPermissionSecretRotationActions {
@@ -360,7 +361,8 @@ export type ConditionalProjectPermissionSubject =
   | ProjectPermissionSub.PamResources
   | ProjectPermissionSub.McpEndpoints
   | ProjectPermissionSub.Member
-  | ProjectPermissionSub.Groups;
+  | ProjectPermissionSub.Groups
+  | ProjectPermissionSub.Commits;
 
 export const formatedConditionsOperatorNames: { [K in PermissionConditionOperators]: string } = {
   [PermissionConditionOperators.$EQ]: "equal to",

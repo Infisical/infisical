@@ -1,7 +1,7 @@
 import { useFormContext } from "react-hook-form";
 
-import { GenericFieldLabel } from "@app/components/secret-syncs";
 import { TSecretSyncForm } from "@app/components/secret-syncs/forms/schemas";
+import { Detail, DetailLabel, DetailValue } from "@app/components/v3";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 import { GcpSyncScope } from "@app/hooks/api/secretSyncs/types/gcp-sync";
 
@@ -13,12 +13,19 @@ export const GcpSyncReviewFields = () => {
 
   return (
     <>
-      <GenericFieldLabel label="Project ID">{destinationConfig.projectId}</GenericFieldLabel>
-      <GenericFieldLabel label="Scope" className="capitalize">
-        {destinationConfig.scope}
-      </GenericFieldLabel>
+      <Detail>
+        <DetailLabel>Project ID</DetailLabel>
+        <DetailValue>{destinationConfig.projectId}</DetailValue>
+      </Detail>
+      <Detail>
+        <DetailLabel>Scope</DetailLabel>
+        <DetailValue className="capitalize">{destinationConfig.scope}</DetailValue>
+      </Detail>
       {destinationConfig.scope === GcpSyncScope.Region && (
-        <GenericFieldLabel label="Region">{destinationConfig.locationId}</GenericFieldLabel>
+        <Detail>
+          <DetailLabel>Region</DetailLabel>
+          <DetailValue>{destinationConfig.locationId}</DetailValue>
+        </Detail>
       )}
     </>
   );

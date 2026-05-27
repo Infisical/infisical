@@ -1,8 +1,24 @@
 import { Controller, useFormContext, useWatch } from "react-hook-form";
 import { SingleValue } from "react-select";
+import { Info } from "lucide-react";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
-import { FilterableSelect, FormControl, Select, SelectItem } from "@app/components/v2";
+import {
+  Field,
+  FieldContent,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+  FilterableSelect,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { RENDER_SYNC_SCOPES } from "@app/helpers/secretSyncs";
 import {
   TRenderEnvironmentGroup,
@@ -36,7 +52,7 @@ export const RenderSyncFields = () => {
     });
 
   return (
-    <>
+    <FieldGroup>
       <SecretSyncConnectionField
         onChange={() => {
           setValue("destinationConfig.serviceId", "");
@@ -50,46 +66,49 @@ export const RenderSyncFields = () => {
         control={control}
         defaultValue={RenderSyncScope.Service}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl
-            errorText={error?.message}
-            isError={Boolean(error?.message)}
-            label="Scope"
-            tooltipClassName="max-w-lg py-3"
-            tooltipText={
-              <div className="flex flex-col gap-3">
-                <p>
-                  Specify how Infisical should manage secrets from Render. The following options are
-                  available:
-                </p>
-                <ul className="flex list-disc flex-col gap-3 pl-4">
-                  {Object.values(RENDER_SYNC_SCOPES).map(({ name, description }) => {
-                    return (
-                      <li key={name}>
-                        <p className="text-mineshaft-300">
-                          <span className="font-medium text-bunker-200">{name}</span>: {description}
-                        </p>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            }
-          >
-            <Select
-              value={value}
-              onValueChange={(val) => onChange(val)}
-              className="w-full border border-mineshaft-500 capitalize"
-              position="popper"
-              placeholder="Select a scope..."
-              dropdownContainerClassName="max-w-none"
-            >
-              {Object.values(RenderSyncScope).map((scope) => (
-                <SelectItem className="capitalize" value={scope} key={scope}>
-                  {scope.replace("-", " ")}
-                </SelectItem>
-              ))}
-            </Select>
-          </FormControl>
+          <Field>
+            <FieldLabel>
+              Scope
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-lg">
+                  <div className="flex flex-col gap-3">
+                    <p>
+                      Specify how Infisical should manage secrets from Render. The following options
+                      are available:
+                    </p>
+                    <ul className="flex list-disc flex-col gap-3 pl-4">
+                      {Object.values(RENDER_SYNC_SCOPES).map(({ name, description }) => (
+                        <li key={name}>
+                          <p className="text-mineshaft-300">
+                            <span className="font-medium text-bunker-200">{name}</span>:{" "}
+                            {description}
+                          </p>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            </FieldLabel>
+            <FieldContent>
+              <Select value={value} onValueChange={(val) => onChange(val)}>
+                <SelectTrigger className="w-full capitalize" isError={Boolean(error)}>
+                  <SelectValue placeholder="Select a scope..." />
+                </SelectTrigger>
+                <SelectContent position="popper">
+                  {Object.values(RenderSyncScope).map((scope) => (
+                    <SelectItem className="capitalize" value={scope} key={scope}>
+                      {scope.replace("-", " ")}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FieldError errors={[error]} />
+            </FieldContent>
+          </Field>
         )}
       />
       {selectedScope === RenderSyncScope.Service && (
@@ -97,28 +116,28 @@ export const RenderSyncFields = () => {
           name="destinationConfig.serviceId"
           control={control}
           render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl
-              errorText={error?.message}
-              isError={Boolean(error?.message)}
-              label="Service"
-            >
-              <FilterableSelect
-                isLoading={isServicesPending && Boolean(connectionId)}
-                isDisabled={!connectionId}
-                value={services ? (services.find((service) => service.id === value) ?? []) : []}
-                onChange={(option) => {
-                  onChange((option as SingleValue<TRenderService>)?.id ?? null);
-                  setValue(
-                    "destinationConfig.serviceName",
-                    (option as SingleValue<TRenderService>)?.name ?? ""
-                  );
-                }}
-                options={services}
-                placeholder="Select a service..."
-                getOptionLabel={(option) => option.name}
-                getOptionValue={(option) => option.id.toString()}
-              />
-            </FormControl>
+            <Field>
+              <FieldLabel>Service</FieldLabel>
+              <FieldContent>
+                <FilterableSelect
+                  isLoading={isServicesPending && Boolean(connectionId)}
+                  isDisabled={!connectionId}
+                  value={services ? (services.find((service) => service.id === value) ?? []) : []}
+                  onChange={(option) => {
+                    onChange((option as SingleValue<TRenderService>)?.id ?? null);
+                    setValue(
+                      "destinationConfig.serviceName",
+                      (option as SingleValue<TRenderService>)?.name ?? ""
+                    );
+                  }}
+                  options={services}
+                  placeholder="Select a service..."
+                  getOptionLabel={(option) => option.name}
+                  getOptionValue={(option) => option.id.toString()}
+                />
+                <FieldError errors={[error]} />
+              </FieldContent>
+            </Field>
           )}
         />
       )}
@@ -128,31 +147,31 @@ export const RenderSyncFields = () => {
           name="destinationConfig.environmentGroupId"
           control={control}
           render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl
-              errorText={error?.message}
-              isError={Boolean(error?.message)}
-              label="Environment Group"
-            >
-              <FilterableSelect
-                isLoading={isGroupsPending && Boolean(connectionId)}
-                isDisabled={!connectionId}
-                value={groups ? (groups.find((g) => g.id === value) ?? []) : []}
-                onChange={(option) => {
-                  onChange((option as SingleValue<TRenderEnvironmentGroup>)?.id ?? null);
-                  setValue(
-                    "destinationConfig.environmentGroupName",
-                    (option as SingleValue<TRenderEnvironmentGroup>)?.name ?? ""
-                  );
-                }}
-                options={groups}
-                placeholder="Select an environment group..."
-                getOptionLabel={(option) => option.name}
-                getOptionValue={(option) => option.id.toString()}
-              />
-            </FormControl>
+            <Field>
+              <FieldLabel>Environment Group</FieldLabel>
+              <FieldContent>
+                <FilterableSelect
+                  isLoading={isGroupsPending && Boolean(connectionId)}
+                  isDisabled={!connectionId}
+                  value={groups ? (groups.find((g) => g.id === value) ?? []) : []}
+                  onChange={(option) => {
+                    onChange((option as SingleValue<TRenderEnvironmentGroup>)?.id ?? null);
+                    setValue(
+                      "destinationConfig.environmentGroupName",
+                      (option as SingleValue<TRenderEnvironmentGroup>)?.name ?? ""
+                    );
+                  }}
+                  options={groups}
+                  placeholder="Select an environment group..."
+                  getOptionLabel={(option) => option.name}
+                  getOptionValue={(option) => option.id.toString()}
+                />
+                <FieldError errors={[error]} />
+              </FieldContent>
+            </Field>
           )}
         />
       )}
-    </>
+    </FieldGroup>
   );
 };

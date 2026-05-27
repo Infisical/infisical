@@ -75,10 +75,14 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
   }
 
   const init = () => {
+    const dailyCleanupTimeoutMs = appCfg.isDailyResourceCleanUpDevelopmentMode ? 5 * 60_000 : 45 * 60_000;
+    const frequentCleanupTimeoutMs = appCfg.isDailyResourceCleanUpDevelopmentMode ? 5 * 60_000 : 10 * 60_000;
     cronJob.register({
       name: CronJobName.DailyResourceCleanup,
       pattern: appCfg.isDailyResourceCleanUpDevelopmentMode ? "*/5 * * * *" : "0 0 * * *",
       runHashTtlS: 3 * 24 * 60 * 60,
+      handlerTimeoutMs: dailyCleanupTimeoutMs,
+      leaseDurationMs: dailyCleanupTimeoutMs,
       enabled: !appCfg.isSecondaryInstance,
       handler: async () => {
         logger.info(`cron[${CronJobName.DailyResourceCleanup}]: task started`);
@@ -109,8 +113,10 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
     cronJob.register({
       name: CronJobName.FrequentResourceCleanup,
       pattern: appCfg.isDailyResourceCleanUpDevelopmentMode ? "*/5 * * * *" : "0 * * * *",
-      runHashTtlS: 2 * 24 * 60 * 60,
+      runHashTtlS: 1 * 24 * 60 * 60,
       enabled: !appCfg.isSecondaryInstance,
+      handlerTimeoutMs: frequentCleanupTimeoutMs,
+      leaseDurationMs: frequentCleanupTimeoutMs,
       handler: async () => {
         logger.info(`cron[${CronJobName.FrequentResourceCleanup}]: task started`);
         await identityAccessTokenDAL.removeExpiredTokens();

@@ -13,6 +13,7 @@ interface StepperContextValue {
   activeStep: number;
   orientation: Orientation;
   onStepChange?: (index: number) => void;
+  nonLinear?: boolean;
 }
 
 const StepperContext = React.createContext<StepperContextValue | null>(null);
@@ -29,18 +30,20 @@ interface StepperProps extends React.ComponentProps<"div"> {
   activeStep: number;
   orientation?: Orientation;
   onStepChange?: (index: number) => void;
+  nonLinear?: boolean;
 }
 
 function Stepper({
   activeStep,
   orientation = "vertical",
   onStepChange,
+  nonLinear,
   className,
   ...props
 }: StepperProps) {
   const value = React.useMemo(
-    () => ({ activeStep, orientation, onStepChange }),
-    [activeStep, orientation, onStepChange]
+    () => ({ activeStep, orientation, onStepChange, nonLinear }),
+    [activeStep, orientation, onStepChange, nonLinear]
   );
   return (
     <StepperContext.Provider value={value}>
@@ -135,7 +138,7 @@ function StepperStep({
   className,
   ...props
 }: StepperStepProps) {
-  const { activeStep, orientation, onStepChange } = useStepperContext();
+  const { activeStep, orientation, onStepChange, nonLinear } = useStepperContext();
 
   let computedStatus: StepStatus;
   if (statusOverride === "error") computedStatus = "error";
@@ -146,7 +149,9 @@ function StepperStep({
   const isClickable =
     !disabled &&
     Boolean(onStepChange) &&
-    (computedStatus === "complete" || computedStatus === "error");
+    (nonLinear
+      ? computedStatus !== "current"
+      : computedStatus === "complete" || computedStatus === "error");
 
   let indicatorContent: React.ReactNode = index + 1;
   if (computedStatus === "complete") indicatorContent = <Check strokeWidth={3} />;
@@ -183,6 +188,20 @@ function StepperStep({
         }
       : {};
 
+    const indicatorWrapped = isClickable ? (
+      <button
+        type="button"
+        onClick={handleClick}
+        disabled={disabled}
+        aria-label={typeof title === "string" ? `Go to step: ${title}` : `Go to step ${index + 1}`}
+        className="cursor-pointer rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
+      >
+        {indicator}
+      </button>
+    ) : (
+      indicator
+    );
+
     return (
       <li
         data-slot="stepper-step"
@@ -192,7 +211,7 @@ function StepperStep({
         {...props}
       >
         <div className="flex flex-col items-center">
-          {indicator}
+          {indicatorWrapped}
           {!isLast ? (
             <span
               aria-hidden="true"

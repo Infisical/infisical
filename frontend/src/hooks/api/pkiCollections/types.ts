@@ -8,21 +8,18 @@ export type TPkiCollection = {
 };
 
 export type TCreatePkiCollectionDTO = {
-  projectId: string;
   name: string;
   description: string;
 };
 
 export type TUpdatePkiCollectionTO = {
   collectionId: string;
-  projectId: string;
   name?: string;
   description?: string;
 };
 
 export type TDeletePkiCollectionDTO = {
   collectionId: string;
-  projectId: string;
 };
 
 export type TPkiCollectionItem = {

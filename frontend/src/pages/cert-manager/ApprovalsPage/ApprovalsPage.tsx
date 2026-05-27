@@ -24,7 +24,7 @@ export const ApprovalsPage = () => {
         <PageHeader
           scope={currentProject.type}
           title="Certificate Approvals"
-          description="Manage approval workflows, update policy settings, and monitor request statuses."
+          description="Define who must approve certificate operations and track every request from submission to resolution."
         />
         <div>
           {activeTab === "requests" && <RequestsTab />}

@@ -21,7 +21,8 @@ export const PkiScepEnrollmentConfigsSchema = z.object({
   updatedAt: z.date(),
   challengeType: z.string().default("static"),
   dynamicChallengeExpiryMinutes: z.number().nullable().optional(),
-  dynamicChallengeMaxPending: z.number().nullable().optional()
+  dynamicChallengeMaxPending: z.number().nullable().optional(),
+  applicationProfileId: z.string().uuid().nullable().optional()
 });
 
 export type TPkiScepEnrollmentConfigs = z.infer<typeof PkiScepEnrollmentConfigsSchema>;

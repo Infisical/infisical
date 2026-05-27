@@ -163,6 +163,10 @@ import {
   RenderConnectionListItemSchema,
   SanitizedRenderConnectionSchema
 } from "@app/services/app-connection/render/render-connection-schema";
+import {
+  SalesforceConnectionListItemSchema,
+  SanitizedSalesforceConnectionSchema
+} from "@app/services/app-connection/salesforce";
 import { SanitizedSmbConnectionSchema, SmbConnectionListItemSchema } from "@app/services/app-connection/smb";
 import {
   SanitizedSnowflakeConnectionSchema,
@@ -263,6 +267,7 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedOnaConnectionSchema.options,
   ...SanitizedDigiCertConnectionSchema.options,
   ...SanitizedTravisCIConnectionSchema.options,
+  ...SanitizedSalesforceConnectionSchema.options,
   ...SanitizedSnowflakeConnectionSchema.options,
   ...SanitizedDatadogConnectionSchema.options
 ]);
@@ -331,6 +336,7 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   OnaConnectionListItemSchema,
   DigiCertConnectionListItemSchema,
   TravisCIConnectionListItemSchema,
+  SalesforceConnectionListItemSchema,
   SnowflakeConnectionListItemSchema,
   DatadogConnectionListItemSchema
 ]);

@@ -17,6 +17,8 @@ import {
   TCreateSecretsV3DTO,
   TDeleteSecretBatchDTO,
   TDeleteSecretsV3DTO,
+  TDuplicateSecretDTO,
+  TDuplicateSecretResponse,
   TMoveSecretsDTO,
   TUpdateSecretBatchDTO,
   TUpdateSecretsV3DTO
@@ -478,6 +480,77 @@ export const useMoveSecrets = ({
       queryClient.invalidateQueries({
         queryKey: secretApprovalRequestKeys.listAllForProject({ projectId })
       });
+    },
+    ...options
+  });
+};
+
+export const useDuplicateSecret = ({
+  options
+}: {
+  options?: Omit<
+    MutationOptions<TDuplicateSecretResponse, object, TDuplicateSecretDTO>,
+    "mutationFn"
+  >;
+} = {}) => {
+  const queryClient = useQueryClient();
+
+  return useMutation<TDuplicateSecretResponse, object, TDuplicateSecretDTO>({
+    mutationFn: async (dto) => {
+      const { data } = await apiRequest.post<TDuplicateSecretResponse>(
+        "/api/v4/secrets/duplicate",
+        dto
+      );
+      return data;
+    },
+    onSuccess: (data, { projectId, destinationEnvironment, destinationSecretPath }) => {
+      queryClient.invalidateQueries({
+        queryKey: dashboardKeys.getDashboardSecrets({
+          projectId,
+          secretPath: destinationSecretPath
+        })
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretKeys.getProjectSecret({
+          projectId,
+          environment: destinationEnvironment,
+          secretPath: destinationSecretPath
+        })
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretSnapshotKeys.list({
+          environment: destinationEnvironment,
+          projectId,
+          directory: destinationSecretPath
+        })
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretSnapshotKeys.count({
+          environment: destinationEnvironment,
+          projectId,
+          directory: destinationSecretPath
+        })
+      });
+      queryClient.invalidateQueries({
+        queryKey: commitKeys.count({
+          projectId,
+          environment: destinationEnvironment,
+          directory: destinationSecretPath
+        })
+      });
+      queryClient.invalidateQueries({
+        queryKey: commitKeys.history({
+          projectId,
+          environment: destinationEnvironment,
+          directory: destinationSecretPath
+        })
+      });
+      if (data.results.some((result) => "approval" in result)) {
+        queryClient.invalidateQueries({ queryKey: secretApprovalRequestKeys.count({ projectId }) });
+        queryClient.invalidateQueries({
+          queryKey: secretApprovalRequestKeys.listAllForProject({ projectId })
+        });
+      }
     },
     ...options
   });

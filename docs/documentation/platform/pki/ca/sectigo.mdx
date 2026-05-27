@@ -30,14 +30,28 @@ Sectigo Certificate Manager (SCM) supports the ACME protocol and requires **Exte
     - **Directory URL**: Paste the **Server** URL from Sectigo (e.g., `https://acme.sectigo.com/v2/DV`).
     - **EAB Key Identifier (KID)**: Paste the **Key ID** from Sectigo.
     - **EAB HMAC Key**: Paste the **HMAC Key** from Sectigo.
-
-    ![Create External CA with ACME](/images/platform/pki/sectigo/infisical-create-external-ca-acme.png)
-  </Step>
-  <Step title="Issue certificates">
-    Once the External CA is created, follow the rest of the [ACME-compatible CA integration](/documentation/platform/pki/ca/acme-ca) guide to create a Certificate Profile and start issuing certificates through Sectigo.
   </Step>
 </Steps>
 
 <Note>
   Sectigo ACME accounts are tied to specific domains configured in SCM. Ensure the domains you want to issue certificates for are added to your ACME account in Sectigo before requesting certificates through Infisical.
 </Note>
+
+## What's Next
+
+Now that your Sectigo CA is configured, set up the infrastructure to issue certificates:
+
+<CardGroup cols={2}>
+  <Card title="Certificate Profiles" icon="file-certificate" href="/documentation/platform/pki/settings/profiles">
+    Create a profile that references your Sectigo CA.
+  </Card>
+  <Card title="Applications" icon="grid-2" href="/documentation/platform/pki/applications/overview">
+    Create an Application, attach a profile, and configure enrollment.
+  </Card>
+  <Card title="Enrollment Methods" icon="arrow-right-to-arc" href="/documentation/platform/pki/applications/enrollment-methods/overview">
+    Choose how certificates are requested — API, ACME, EST, or SCEP.
+  </Card>
+  <Card title="Quick Start" icon="rocket" href="/documentation/platform/pki/quick-starts/issue-first-certificate">
+    Issue your first certificate end-to-end.
+  </Card>
+</CardGroup>

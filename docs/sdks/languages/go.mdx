@@ -109,8 +109,8 @@ client := infisical.NewInfisicalClient(context.Background(), infisical.Config{
 
 # Automatic token refreshing
 
-The Infisical Go SDK supports automatic token refreshing. After using one of the auth methods such as Universal Auth, the SDK will automatically renew and re-authenticate when needed.
-This behavior is enabled by default, but you can opt-out by setting `AutoTokenRefresh` to `false` in the client settings.
+The Infisical Go SDK supports automatic token refreshing, **enabled by default**. After using one of the auth methods such as Universal Auth, the SDK will automatically renew and re-authenticate when needed.
+You can opt-out by setting `AutoTokenRefresh` to `false` in the client settings.
 
 ```go
   client := infisical.NewInfisicalClient(context.Background(), infisical.Config{
@@ -118,7 +118,9 @@ This behavior is enabled by default, but you can opt-out by setting `AutoTokenRe
   })
 ```
 
-When using automatic token refreshing it's important to understand how your application uses the Infiiscal client. If you are instantiating new instances of the client often, it's important to cancel the context when the client is no longer needed to avoid the token refreshing process from running indefinitely.
+### Client Lifecycle
+
+When using automatic token refreshing it's important to understand how your application uses the Infisical client. If you are instantiating new instances of the client often, it's important to cancel the context when the client is no longer needed to avoid the token refreshing process from running indefinitely.
 
 ```go
   ctx, cancel := context.WithCancel(context.Background())

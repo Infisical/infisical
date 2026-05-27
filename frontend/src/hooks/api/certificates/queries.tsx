@@ -18,14 +18,10 @@ export const certKeys = {
   getCertBody: (serialNumber: string) => [{ serialNumber }, "certBody"],
   getCertBundle: (serialNumber: string) => [{ serialNumber }, "certBundle"],
   getCertificateById: (certificateId: string) => [{ certificateId }, "certificateById"],
-  getCertificateRequest: (requestId: string, projectSlug: string) => [
-    { requestId, projectSlug },
-    "certificateRequest"
-  ],
+  getCertificateRequest: (requestId: string) => [{ requestId }, "certificateRequest"],
   listCertificateRequests: (params: TListCertificateRequestsParams) => [
     "certificateRequests",
     "list",
-    params.projectSlug,
     params.offset,
     params.limit,
     params.search,
@@ -33,6 +29,7 @@ export const certKeys = {
     params.fromDate,
     params.toDate,
     params.profileIds,
+    params.applicationId,
     params.sortBy,
     params.sortOrder,
     params.metadataFilter
@@ -115,7 +112,6 @@ export const useListCertificateRequests = (params: TListCertificateRequestsParam
       const { data } = await apiRequest.post<TListCertificateRequestsResponse>(
         "/api/v1/cert-manager/certificates/certificate-requests/search",
         {
-          projectSlug: params.projectSlug,
           offset: params.offset,
           limit: params.limit,
           search: params.search,
@@ -123,6 +119,7 @@ export const useListCertificateRequests = (params: TListCertificateRequestsParam
           fromDate: (params.fromDate || new Date(now - daysInMs)).toISOString(),
           toDate: (params.toDate || new Date(now)).toISOString(),
           ...(params.profileIds?.length && { profileIds: params.profileIds }),
+          ...(params.applicationId && { applicationId: params.applicationId }),
           sortBy: params.sortBy,
           sortOrder: params.sortOrder,
           ...(params.metadataFilter?.length && { metadata: params.metadataFilter })
@@ -130,21 +127,20 @@ export const useListCertificateRequests = (params: TListCertificateRequestsParam
       );
       return data;
     },
-    enabled: Boolean(params.projectSlug),
     placeholderData: (previousData) => previousData
   });
 };
 
-export const useGetCertificateRequest = (requestId: string, projectSlug: string) => {
+export const useGetCertificateRequest = (requestId: string) => {
   return useQuery({
-    queryKey: certKeys.getCertificateRequest(requestId, projectSlug),
+    queryKey: certKeys.getCertificateRequest(requestId),
     queryFn: async () => {
       const { data } = await apiRequest.get<TCertificateRequestDetails>(
-        `/api/v1/cert-manager/certificates/certificate-requests/${requestId}?projectSlug=${projectSlug}`
+        `/api/v1/cert-manager/certificates/certificate-requests/${requestId}`
       );
       return data;
     },
-    enabled: Boolean(requestId) && Boolean(projectSlug)
+    enabled: Boolean(requestId)
   });
 };
 

@@ -106,14 +106,14 @@ module "infisical_relay_instance" {
     apt-get update && apt-get install -y infisical
 
     # Install the relay as a systemd service.
-    # This example uses a Machine Identity token for authentication via the INFISICAL_TOKEN environment variable.
+    # Create the relay in the Infisical UI first, then use the enrollment token here.
     #
     # Note: For production environments, you might consider fetching the token from AWS Parameter Store or AWS Secrets Manager.
-    export INFISICAL_TOKEN="your-machine-identity-token"
-    sudo -E infisical relay systemd install \
+    sudo infisical relay systemd install \
       --name "my-relay-example" \
-      --domain "https://app.infisical.com" \
-      --host "${aws_eip.infisical_relay_eip.public_ip}"
+      --enroll-method=token \
+      --token "your-enrollment-token" \
+      --domain "https://app.infisical.com"
 
     # Start and enable the service to run on boot
     sudo systemctl start infisical-relay
@@ -139,7 +139,7 @@ The provided security group rules are open to the internet (`0.0.0.0/0`) for sim
     - `region` in the `provider` block.
     - `vpc_id` in the `aws_security_group` resource.
     - `ami` and `subnet_id` in the `infisical_relay_instance` module.
-    - The `INFISICAL_TOKEN` environment variable in the `user_data` script (e.g., `export INFISICAL_TOKEN="your-machine-identity-token"`).
+    - The `--token` in the `user_data` script with the enrollment token from the relay detail page.
     - The `--domain` in the `user_data` script if you are self-hosting Infisical.
 3.  **Apply the configuration:** Run the following Terraform commands in your terminal:
     ```bash

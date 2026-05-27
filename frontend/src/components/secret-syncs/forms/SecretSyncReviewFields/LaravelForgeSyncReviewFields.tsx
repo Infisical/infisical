@@ -1,7 +1,7 @@
 import { useFormContext } from "react-hook-form";
 
 import { TSecretSyncForm } from "@app/components/secret-syncs/forms/schemas";
-import { GenericFieldLabel } from "@app/components/v2";
+import { Detail, DetailLabel, DetailValue } from "@app/components/v3";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
 export const LaravelForgeSyncReviewFields = () => {
@@ -13,11 +13,31 @@ export const LaravelForgeSyncReviewFields = () => {
   const siteName = watch("destinationConfig.siteName");
   const siteId = watch("destinationConfig.siteId");
 
+  const server = serverName || serverId;
+  const site = siteName || siteId;
+
   return (
     <>
-      <GenericFieldLabel label="Account">{orgName || orgSlug}</GenericFieldLabel>
-      <GenericFieldLabel label="Server">{serverName || serverId || "None"}</GenericFieldLabel>
-      <GenericFieldLabel label="Site">{siteName || siteId || "None"}</GenericFieldLabel>
+      <Detail>
+        <DetailLabel>Account</DetailLabel>
+        <DetailValue>{orgName || orgSlug}</DetailValue>
+      </Detail>
+      <Detail>
+        <DetailLabel>Server</DetailLabel>
+        {server ? (
+          <DetailValue>{server}</DetailValue>
+        ) : (
+          <DetailValue className="text-muted">—</DetailValue>
+        )}
+      </Detail>
+      <Detail>
+        <DetailLabel>Site</DetailLabel>
+        {site ? (
+          <DetailValue>{site}</DetailValue>
+        ) : (
+          <DetailValue className="text-muted">—</DetailValue>
+        )}
+      </Detail>
     </>
   );
 };

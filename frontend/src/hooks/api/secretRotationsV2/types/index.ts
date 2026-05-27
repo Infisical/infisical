@@ -80,6 +80,11 @@ import {
   TRedisCredentialsRotationOption
 } from "./redis-credentials-rotation";
 import {
+  TSalesforceOauthCredentialsRotation,
+  TSalesforceOauthCredentialsRotationGeneratedCredentialsResponse,
+  TSalesforceOauthCredentialsRotationOption
+} from "./salesforce-oauth-credentials-rotation";
+import {
   TSupabaseApiKeyRotation,
   TSupabaseApiKeyRotationGeneratedCredentialsResponse,
   TSupabaseApiKeyRotationOption
@@ -114,6 +119,7 @@ export type TSecretRotationV2 = (
   | TOpenRouterApiKeyRotation
   | THpIloRotation
   | TSupabaseApiKeyRotation
+  | TSalesforceOauthCredentialsRotation
   | TDatadogApplicationKeySecretRotation
 ) & {
   secrets: (SecretV3RawSanitized | null)[];
@@ -135,6 +141,7 @@ export type TSecretRotationV2Option =
   | TOpenRouterApiKeyRotationOption
   | THpIloRotationOption
   | TSupabaseApiKeyRotationOption
+  | TSalesforceOauthCredentialsRotationOption
   | TDatadogApplicationKeySecretRotationOption;
 
 export type TListSecretRotationV2Options = { secretRotationOptions: TSecretRotationV2Option[] };
@@ -160,6 +167,7 @@ export type TViewSecretRotationGeneratedCredentialsResponse =
   | TOpenRouterApiKeyRotationGeneratedCredentialsResponse
   | THpIloRotationGeneratedCredentialsResponse
   | TSupabaseApiKeyRotationGeneratedCredentialsResponse
+  | TSalesforceOauthCredentialsRotationGeneratedCredentialsResponse
   | TDatadogApplicationKeySecretRotationGeneratedCredentialsResponse;
 
 export type TCreateSecretRotationV2DTO = DiscriminativePick<
@@ -233,6 +241,7 @@ export type TSecretRotationOptionMap = {
   [SecretRotation.OpenRouterApiKey]: TOpenRouterApiKeyRotationOption;
   [SecretRotation.HpIloLocalAccount]: THpIloRotationOption;
   [SecretRotation.SupabaseApiKey]: TSupabaseApiKeyRotationOption;
+  [SecretRotation.SalesforceOauthCredentials]: TSalesforceOauthCredentialsRotationOption;
   [SecretRotation.DatadogApplicationKeySecret]: TDatadogApplicationKeySecretRotationOption;
 };
 
@@ -255,6 +264,7 @@ export type TSecretRotationGeneratedCredentialsResponseMap = {
   [SecretRotation.OpenRouterApiKey]: TOpenRouterApiKeyRotationGeneratedCredentialsResponse;
   [SecretRotation.HpIloLocalAccount]: THpIloRotationGeneratedCredentialsResponse;
   [SecretRotation.SupabaseApiKey]: TSupabaseApiKeyRotationGeneratedCredentialsResponse;
+  [SecretRotation.SalesforceOauthCredentials]: TSalesforceOauthCredentialsRotationGeneratedCredentialsResponse;
   [SecretRotation.DatadogApplicationKeySecret]: TDatadogApplicationKeySecretRotationGeneratedCredentialsResponse;
 };
 

@@ -5,10 +5,12 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { SigningAlgorithm } from "@app/lib/crypto/sign/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
-import { slugSchema } from "@app/server/lib/schemas";
+import { openApiHidden, slugSchema } from "@app/server/lib/schemas";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { SignerStatus, SigningOperationStatus } from "@app/services/signer/signer-enums";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 export const registerSignerRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -21,7 +23,7 @@ export const registerSignerRouter = async (server: FastifyZodProvider) => {
       tags: [ApiDocsTags.PkiSigners],
       description: "Create a code signing signer",
       body: z.object({
-        projectId: z.string().trim(),
+        projectId: z.string().trim().optional().describe(openApiHidden()),
         name: slugSchema({ min: 1, max: 64, field: "name" }),
         description: z.string().trim().max(256).optional(),
         certificateId: z.string().uuid(),
@@ -35,6 +37,7 @@ export const registerSignerRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const signer = await server.services.pkiSigner.create({
         ...req.body,
+        projectId: req.body.projectId ?? req.internalCertManagerProjectId,
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
@@ -55,6 +58,15 @@ export const registerSignerRouter = async (server: FastifyZodProvider) => {
         }
       });
 
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.SignerCreated,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          orgId: req.permission.orgId
+        }
+      });
+
       return signer;
     }
   });
@@ -69,7 +81,7 @@ export const registerSignerRouter = async (server: FastifyZodProvider) => {
       tags: [ApiDocsTags.PkiSigners],
       description: "List code signing signers for a project",
       querystring: z.object({
-        projectId: z.string().trim(),
+        projectId: z.string().trim().optional().describe(openApiHidden()),
         offset: z.coerce.number().int().min(0).default(0),
         limit: z.coerce.number().int().min(1).max(100).default(20),
         search: z.string().trim().optional()
@@ -90,8 +102,10 @@ export const registerSignerRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
+      const projectId = req.query.projectId ?? req.internalCertManagerProjectId;
       const { signers, totalCount } = await server.services.pkiSigner.list({
         ...req.query,
+        projectId,
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
@@ -100,7 +114,7 @@ export const registerSignerRouter = async (server: FastifyZodProvider) => {
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId: req.query.projectId,
+        projectId,
         event: {
           type: EventType.GET_PKI_SIGNERS,
           metadata: {
@@ -254,6 +268,15 @@ export const registerSignerRouter = async (server: FastifyZodProvider) => {
         }
       });
 
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.SignerDeleted,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          orgId: req.permission.orgId
+        }
+      });
+
       return signer;
     }
   });
@@ -319,6 +342,16 @@ export const registerSignerRouter = async (server: FastifyZodProvider) => {
             name: result.signerName,
             signingAlgorithm: req.body.signingAlgorithm
           }
+        }
+      });
+
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.CodeSigningOperation,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          orgId: req.permission.orgId,
+          signerId: req.params.signerId
         }
       });
 

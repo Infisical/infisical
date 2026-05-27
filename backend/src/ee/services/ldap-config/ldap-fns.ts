@@ -1,5 +1,8 @@
+import { createPrivateKey, X509Certificate } from "node:crypto";
+
 import ldapjs from "@infisical/ldapjs";
 
+import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 
 import { TLDAPConfig, TTestLDAPConfigDTO } from "./ldap-config-types";
@@ -14,6 +17,60 @@ export const isValidLdapFilter = (filter: string) => {
   }
 };
 
+type TLdapTlsConfigInput = Pick<TLDAPConfig, "url" | "caCert" | "clientCertificate" | "clientKeyCertificate">;
+
+export const buildLdapTlsOptions = (cfg: TLdapTlsConfigInput) => {
+  const tlsOptions: { ca?: string[]; cert?: string; key?: string; servername?: string } = {};
+
+  if (cfg.caCert) {
+    try {
+      // eslint-disable-next-line no-new
+      new X509Certificate(cfg.caCert);
+    } catch {
+      throw new BadRequestError({
+        message: "Invalid CA Certificate. Expected a PEM-encoded X.509 certificate."
+      });
+    }
+    tlsOptions.ca = [cfg.caCert];
+  }
+  if (cfg.clientCertificate) {
+    try {
+      // eslint-disable-next-line no-new
+      new X509Certificate(cfg.clientCertificate);
+    } catch {
+      throw new BadRequestError({
+        message: "Invalid Client Certificate. Expected a PEM-encoded X.509 certificate."
+      });
+    }
+    tlsOptions.cert = cfg.clientCertificate;
+  }
+  if (cfg.clientKeyCertificate) {
+    try {
+      createPrivateKey(cfg.clientKeyCertificate);
+    } catch {
+      throw new BadRequestError({
+        message: "Invalid Client Private Key. Expected a PEM-encoded private key."
+      });
+    }
+    tlsOptions.key = cfg.clientKeyCertificate;
+  }
+
+  if (Object.keys(tlsOptions).length === 0) return undefined;
+
+  // SNI is required for mTLS against multi-tenant directories (e.g. Google Workspace Secure LDAP)
+  // because @infisical/ldapjs does not propagate it from the URL. Scoped to mTLS only to avoid
+  // changing TLS handshake behavior for existing non-mTLS configs.
+  if (cfg.clientCertificate || cfg.clientKeyCertificate) {
+    try {
+      tlsOptions.servername = new URL(cfg.url).hostname;
+    } catch {
+      // Malformed URL — connection itself will surface the error.
+    }
+  }
+
+  return tlsOptions;
+};
+
 /**
  * Test the LDAP configuration by attempting to bind to the LDAP server
  * @param ldapConfig - The LDAP configuration to test
@@ -21,17 +78,12 @@ export const isValidLdapFilter = (filter: string) => {
  */
 export const testLDAPConfig = async (ldapConfig: TTestLDAPConfigDTO): Promise<boolean> => {
   return new Promise((resolve) => {
+    const tlsOptions = buildLdapTlsOptions(ldapConfig);
     const ldapClient = ldapjs.createClient({
       url: ldapConfig.url,
       bindDN: ldapConfig.bindDN,
       bindCredentials: ldapConfig.bindPass,
-      ...(ldapConfig.caCert !== ""
-        ? {
-            tlsOptions: {
-              ca: [ldapConfig.caCert]
-            }
-          }
-        : {})
+      ...(tlsOptions ? { tlsOptions } : {})
     });
 
     ldapClient.on("error", (err) => {
@@ -67,17 +119,12 @@ export const searchGroups = async (
   base: string
 ): Promise<{ dn: string; cn: string }[]> => {
   return new Promise((resolve, reject) => {
+    const tlsOptions = buildLdapTlsOptions(ldapConfig);
     const ldapClient = ldapjs.createClient({
       url: ldapConfig.url,
       bindDN: ldapConfig.bindDN,
       bindCredentials: ldapConfig.bindPass,
-      ...(ldapConfig.caCert !== ""
-        ? {
-            tlsOptions: {
-              ca: [ldapConfig.caCert]
-            }
-          }
-        : {})
+      ...(tlsOptions ? { tlsOptions } : {})
     });
 
     ldapClient.search(

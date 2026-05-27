@@ -825,6 +825,7 @@ export const fnUpdateSecretLinkedReferences = async ({
             projectId,
             orgId,
             environmentSlug: folder.environmentSlug,
+            environmentName: folder.environmentName,
             secretPath: folder.path,
             actor: ActorType.PLATFORM,
             actorId: ""
@@ -1207,6 +1208,7 @@ export const fnUpdateMovedSecretReferences = async ({
             projectId,
             orgId,
             environmentSlug: folder.environmentSlug,
+            environmentName: folder.environmentName,
             secretPath: folder.path,
             actor: ActorType.PLATFORM,
             actorId: ""

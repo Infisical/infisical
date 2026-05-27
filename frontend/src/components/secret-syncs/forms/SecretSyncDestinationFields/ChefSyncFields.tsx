@@ -2,7 +2,14 @@ import { Controller, useFormContext, useWatch } from "react-hook-form";
 import { SingleValue } from "react-select";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
-import { FilterableSelect, FormControl } from "@app/components/v2";
+import {
+  Field,
+  FieldContent,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+  FilterableSelect
+} from "@app/components/v3";
 import {
   TChefDataBag,
   TChefDataBagItem,
@@ -39,30 +46,33 @@ export const ChefSyncFields = () => {
   };
 
   return (
-    <>
+    <FieldGroup>
       <SecretSyncConnectionField onChange={handleChangeConnection} />
 
       <Controller
         name="destinationConfig.dataBagName"
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl isError={Boolean(error)} errorText={error?.message} label="Data Bag">
-            <FilterableSelect
-              menuPlacement="top"
-              isLoading={isDataBagsLoading && Boolean(connectionId)}
-              isDisabled={!connectionId}
-              value={dataBags?.find((dataBag) => dataBag.name === value) ?? null}
-              onChange={(option) => {
-                const selectedDataBag = option as SingleValue<TChefDataBag>;
-                onChange(selectedDataBag?.name ?? "");
-                setValue("destinationConfig.dataBagItemName", "");
-              }}
-              options={dataBags}
-              placeholder="Select a data bag..."
-              getOptionLabel={(option) => option.name}
-              getOptionValue={(option) => option.name}
-            />
-          </FormControl>
+          <Field>
+            <FieldLabel>Data Bag</FieldLabel>
+            <FieldContent>
+              <FilterableSelect
+                isLoading={isDataBagsLoading && Boolean(connectionId)}
+                isDisabled={!connectionId}
+                value={dataBags?.find((dataBag) => dataBag.name === value) ?? null}
+                onChange={(option) => {
+                  const selectedDataBag = option as SingleValue<TChefDataBag>;
+                  onChange(selectedDataBag?.name ?? "");
+                  setValue("destinationConfig.dataBagItemName", "");
+                }}
+                options={dataBags}
+                placeholder="Select a data bag..."
+                getOptionLabel={(option) => option.name}
+                getOptionValue={(option) => option.name}
+              />
+              <FieldError errors={[error]} />
+            </FieldContent>
+          </Field>
         )}
       />
 
@@ -70,24 +80,27 @@ export const ChefSyncFields = () => {
         name="destinationConfig.dataBagItemName"
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl isError={Boolean(error)} errorText={error?.message} label="Data Bag Item">
-            <FilterableSelect
-              menuPlacement="top"
-              isLoading={isDataBagItemsLoading && Boolean(connectionId && dataBagName)}
-              isDisabled={!connectionId || !dataBagName}
-              value={dataBagItems?.find((dataBagItem) => dataBagItem.name === value) ?? null}
-              onChange={(option) => {
-                const selectedDataBagItem = option as SingleValue<TChefDataBagItem>;
-                onChange(selectedDataBagItem?.name ?? "");
-              }}
-              options={dataBagItems}
-              placeholder="Select a data bag item..."
-              getOptionLabel={(option) => option.name}
-              getOptionValue={(option) => option.name}
-            />
-          </FormControl>
+          <Field>
+            <FieldLabel>Data Bag Item</FieldLabel>
+            <FieldContent>
+              <FilterableSelect
+                isLoading={isDataBagItemsLoading && Boolean(connectionId && dataBagName)}
+                isDisabled={!connectionId || !dataBagName}
+                value={dataBagItems?.find((dataBagItem) => dataBagItem.name === value) ?? null}
+                onChange={(option) => {
+                  const selectedDataBagItem = option as SingleValue<TChefDataBagItem>;
+                  onChange(selectedDataBagItem?.name ?? "");
+                }}
+                options={dataBagItems}
+                placeholder="Select a data bag item..."
+                getOptionLabel={(option) => option.name}
+                getOptionValue={(option) => option.name}
+              />
+              <FieldError errors={[error]} />
+            </FieldContent>
+          </Field>
         )}
       />
-    </>
+    </FieldGroup>
   );
 };

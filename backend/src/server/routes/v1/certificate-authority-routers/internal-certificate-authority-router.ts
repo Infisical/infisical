@@ -4,6 +4,7 @@ import { CaSigningConfigsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, CERTIFICATE_AUTHORITIES } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { CaSigningConfigType } from "@app/services/certificate-authority/ca-signing-config/ca-signing-config-enums";
@@ -19,6 +20,7 @@ import {
   InternalCertificateAuthoritySchema,
   UpdateInternalCertificateAuthoritySchema
 } from "@app/services/certificate-authority/internal/internal-certificate-authority-schemas";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { registerCertificateAuthorityEndpoints } from "./certificate-authority-endpoints";
 
@@ -135,6 +137,16 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
             caId: ca.id,
             dn: ca.dn
           }
+        }
+      });
+
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.CaRenewed,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          caType: CaType.INTERNAL,
+          orgId: req.permission.orgId
         }
       });
 
@@ -386,20 +398,33 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
           certificate: z.string().describe(CERTIFICATE_AUTHORITIES.GET_CERT.certificate),
           certificateChain: z.string().describe(CERTIFICATE_AUTHORITIES.GET_CERT.certificateChain),
           serialNumber: z.string().describe(CERTIFICATE_AUTHORITIES.GET_CERT.serialNumber),
-          certId: z.string().describe("Certificate ID")
+          certId: z.string().describe("Certificate ID"),
+          notBefore: z.string().optional(),
+          notAfter: z.string().optional(),
+          maxPathLength: z.number().optional(),
+          parentCaId: z.string().uuid().optional()
         })
       }
     },
     handler: async (req) => {
-      const { certificate, certificateChain, serialNumber, certId, ca } =
-        await server.services.internalCertificateAuthority.getCaCertByIdWithAuth({
-          caId: req.params.caId,
-          certId: req.params.certId,
-          actor: req.permission.type,
-          actorId: req.permission.id,
-          actorAuthMethod: req.permission.authMethod,
-          actorOrgId: req.permission.orgId
-        });
+      const {
+        certificate,
+        certificateChain,
+        serialNumber,
+        certId,
+        ca,
+        notBefore,
+        notAfter,
+        maxPathLength,
+        parentCaId
+      } = await server.services.internalCertificateAuthority.getCaCertByIdWithAuth({
+        caId: req.params.caId,
+        certId: req.params.certId,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -413,11 +438,17 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
         }
       });
 
+      const formatRfc3339 = (d?: Date) => (d ? `${d.toISOString().replace(/\.\d{3}Z$/, "Z")}` : undefined);
+
       return {
         certificate,
         certificateChain,
         serialNumber,
-        certId
+        certId,
+        notBefore: formatRfc3339(notBefore),
+        notAfter: formatRfc3339(notAfter),
+        maxPathLength,
+        parentCaId
       };
     }
   });

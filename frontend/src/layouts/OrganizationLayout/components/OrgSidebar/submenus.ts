@@ -27,7 +27,6 @@ import {
   Shield,
   ShieldCheck,
   ShieldUser,
-  Trash2,
   User,
   Users,
   Video
@@ -83,6 +82,23 @@ export const SECRET_MANAGER_ACCESS_CONTROL_SUBMENU: Submenu = {
   ]
 };
 
+export const CERT_MANAGER_ACCESS_CONTROL_SUBMENU: Submenu = {
+  title: "Access Control",
+  pathSuffix: "access-management",
+  defaultTab: "members",
+  activeMatch: /\/members\/|\/groups\/|\/identities\//,
+  items: [
+    { label: "Users", icon: User, tab: "members", activeMatch: /\/members\// },
+    { label: "Groups", icon: Users, tab: "groups", activeMatch: /\/groups\// },
+    {
+      label: "Machine Identities",
+      icon: HardDrive,
+      tab: "identities",
+      activeMatch: /\/identities\//
+    }
+  ]
+};
+
 export const SM_SETTINGS_SUBMENU: Submenu = {
   title: "Settings",
   pathSuffix: "settings",
@@ -103,7 +119,12 @@ export const INTEGRATIONS_SUBMENU: Submenu = {
   defaultTab: "app-connections",
   items: [
     { label: "App Connections", icon: Cable, tab: "app-connections" },
-    { label: "Secret Syncs", icon: ArrowLeftRight, tab: "secret-syncs" },
+    {
+      label: "Secret Syncs",
+      icon: ArrowLeftRight,
+      tab: "secret-syncs",
+      activeMatch: /\/integrations\/secret-syncs\//
+    },
     { label: "Framework Integrations", icon: Blocks, tab: "framework-integrations" },
     { label: "Infrastructure Integrations", icon: Container, tab: "infrastructure-integrations" },
     { label: "Native Integrations", icon: Plug, tab: "native-integrations" }
@@ -197,16 +218,6 @@ export const CERT_APPROVALS_SUBMENU: Submenu = {
   items: [
     { label: "Requests", icon: FileCheck, tab: "requests" },
     { label: "Policies", icon: Shield, tab: "policies" }
-  ]
-};
-
-export const CERT_SETTINGS_SUBMENU: Submenu = {
-  title: "Settings",
-  pathSuffix: "settings",
-  defaultTab: "general",
-  items: [
-    { label: "General", icon: Cog, tab: "general" },
-    { label: "Certificate Cleanup", icon: Trash2, tab: "certificate-cleanup" }
   ]
 };
 

@@ -1,0 +1,116 @@
+---
+title: "Certificate Profiles"
+sidebarTitle: "Profiles"
+description: "Create reusable certificate templates that teams consume through Applications."
+---
+
+A certificate profile combines a [Certificate Authority](/documentation/platform/pki/ca/overview) with a [Certificate Policy](/documentation/platform/pki/settings/policies) to define how certificates are issued. Profiles are reusable templates that product admins create once and teams consume through [Applications](/documentation/platform/pki/applications/overview).
+
+<Info>
+  Think of a profile as the "shape" of a certificate — it defines the CA that signs it, the rules it must follow, and sensible defaults for common fields.
+</Info>
+
+## Why Profiles?
+
+Profiles solve a common problem: you want consistency across certificates without requiring every team to understand PKI details.
+
+| Without Profiles | With Profiles |
+|------------------|---------------|
+| Teams configure CA, policy, TTL, algorithms manually | Teams pick a profile and request certificates |
+| Risk of misconfiguration | Guardrails enforced automatically |
+| Duplicate setup across services | One profile used by many Applications |
+
+## Create a Certificate Profile
+
+Navigate to **Certificate Manager → Settings → Certificate Profiles** and click **Create Profile**.
+
+### Configuration
+
+| Field | Description |
+|-------|-------------|
+| **Name** | A slug-friendly name like `web-servers` or `internal-mtls` |
+| **Description** | Optional context about this profile's purpose |
+| **Issuer Type** | `Certificate Authority` or `Self-Signed` |
+| **Certificate Authority** | The CA that signs certificates (if Issuer Type is CA) |
+| **Certificate Policy** | The policy that validates certificate requests |
+
+<Note>
+  If **Issuer Type** is `Self-Signed`, the profile only supports API enrollment and issues self-signed certificates.
+</Note>
+
+### Profile Defaults
+
+The **Certificate Details** tab lets you pre-configure sensible defaults for certificate fields. When a requester doesn't specify a value, the profile default is applied automatically. This simplifies certificate requests — teams can issue certificates without making decisions about every field.
+
+Defaults can be configured for:
+- **TTL** (validity period)
+- **Subject attributes** (CN, O, OU, C, ST, L)
+- **Key algorithm** (RSA-2048, ECDSA-P256, etc.)
+- **Signature algorithm**
+- **Key usages** and **Extended key usages**
+- **Basic constraints**
+
+<Accordion title="Combining defaults with policies">
+  For the simplest requester experience, pair defaults with a tightly scoped policy.
+  
+  **Example:** If your policy only allows `RSA-4096` and you set `RSA-4096` as the default, requesters never need to think about key algorithms. The profile handles it automatically.
+  
+  This pattern works for any field — narrow the policy to one option, set that as the default, and requesters have nothing left to decide.
+</Accordion>
+
+<Warning>
+  If the certificate policy is updated after the profile is saved, existing defaults may no longer comply. Certificate requests will fail at validation until you update the profile defaults to match the new policy.
+</Warning>
+
+## How Profiles Are Used
+
+Profiles are consumed through [Applications](/documentation/platform/pki/applications/overview). The workflow separates responsibilities between product and application administrators:
+
+<Steps>
+  <Step title="Product Admin creates a profile">
+    Combines a CA + policy + defaults into a reusable template that defines what certificates will look like.
+  </Step>
+  <Step title="Product Admin creates an Application">
+    Creates an Application, attaches one or more profiles to it, and assigns team members (Application Admins, Operators, Auditors).
+  </Step>
+  <Step title="Application Admin configures enrollment">
+    Within the Application, the Application Admin configures [enrollment methods](/documentation/platform/pki/applications/enrollment-methods/overview) (API, ACME, EST, SCEP) for each attached profile. The enrollment URL is unique to the Application + Profile pair.
+  </Step>
+  <Step title="Certificates are issued">
+    Teams request certificates through the configured enrollment method. Requests are validated against the profile's policy and signed by the profile's CA.
+  </Step>
+</Steps>
+
+This separation means:
+- **Profiles are reusable** — one profile can serve many Applications
+- **Enrollment is scoped** — each Application configures its own enrollment methods
+- **Changes propagate** — updating a profile or policy affects all Applications using it
+
+## FAQ
+
+<AccordionGroup>
+  <Accordion title="What's the difference between a Profile and a Policy?">
+    A **Policy** defines rules — what's allowed, what's required, what's forbidden.
+    
+    A **Profile** combines a policy with a CA and defaults to create a complete, consumable template.
+    
+    You might have one policy (`strict-tls`) used by multiple profiles (`web-servers-digicert`, `web-servers-internal`), each pointing to a different CA.
+  </Accordion>
+  <Accordion title="Can I change the CA on an existing profile?">
+    Yes, but be careful. Existing certificates remain valid (signed by the old CA), but new certificates will be signed by the new CA. Clients trusting only the old CA won't trust new certificates.
+  </Accordion>
+  <Accordion title="What happens if I delete a profile?">
+    Applications using that profile can no longer issue new certificates. Existing certificates remain valid until they expire or are revoked.
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Certificate Policies" icon="shield-check" href="/documentation/platform/pki/settings/policies">
+    Define the rules that profiles enforce.
+  </Card>
+  <Card title="Applications" icon="grid-2" href="/documentation/platform/pki/applications/overview">
+    See how teams consume profiles through Applications.
+  </Card>
+</CardGroup>

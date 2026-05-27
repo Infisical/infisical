@@ -203,11 +203,16 @@ export const pkiSyncDALFactory = (db: TDbClient) => {
   const findByProjectIdWithSubscribers = async (
     projectId: string,
     processedRules?: ProcessedPermissionRules,
-    tx?: Knex
+    tx?: Knex,
+    options?: { applicationId?: string | null }
   ) => {
     try {
+      const filter: PkiSyncFindFilter = { projectId };
+      if (options?.applicationId !== undefined) {
+        (filter as Record<string, unknown>).applicationId = options.applicationId;
+      }
       const pkiSyncs = await basePkiSyncWithSubscriberQuery({
-        filter: { projectId },
+        filter,
         db,
         tx,
         processedRules

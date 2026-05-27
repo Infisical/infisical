@@ -74,6 +74,19 @@ export const injectPermission = fp(async (server) => {
       logger.info(
         `injectPermission: Injecting permissions for [permissionsForGateway=${req.auth.gatewayId}] [type=${ActorType.GATEWAY}]`
       );
+    } else if (req.auth.actor === ActorType.RELAY) {
+      req.permission = {
+        type: ActorType.RELAY,
+        id: req.auth.relayId,
+        orgId: req.auth.orgId,
+        rootOrgId: req.auth.rootOrgId,
+        parentOrgId: req.auth.parentOrgId,
+        authMethod: null
+      };
+
+      logger.info(
+        `injectPermission: Injecting permissions for [permissionsForRelay=${req.auth.relayId}] [type=${ActorType.RELAY}]`
+      );
     }
   });
 });

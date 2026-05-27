@@ -65,6 +65,8 @@ import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret
 import { TSecretVersionV2DALFactory } from "@app/services/secret-v2-bridge/secret-version-dal";
 import { TSecretVersionV2TagDALFactory } from "@app/services/secret-v2-bridge/secret-version-tag-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
+import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
 import { TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
@@ -86,7 +88,7 @@ type TSecretSyncQueueFactoryDep = {
   cronJob: TCronJobFactory;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">;
-  keyStore: Pick<TKeyStoreFactory, "acquireLock" | "setItemWithExpiry" | "getItem">;
+  keyStore: Pick<TKeyStoreFactory, "acquireLock" | "incrementByAndRefreshExpiryIfUnderLimit" | "decrementByOrDelete">;
   folderDAL: TSecretFolderDALFactory;
   secretV2BridgeDAL: Pick<
     TSecretV2BridgeDALFactory,
@@ -127,6 +129,7 @@ type TSecretSyncQueueFactoryDep = {
   projectSlackConfigDAL: Pick<TProjectSlackConfigDALFactory, "getIntegrationDetailsByProject">;
   projectMicrosoftTeamsConfigDAL: Pick<TProjectMicrosoftTeamsConfigDALFactory, "getIntegrationDetailsByProject">;
   microsoftTeamsService: Pick<TMicrosoftTeamsServiceFactory, "sendNotification">;
+  telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
 };
 
 type SecretSyncActionJob = Job<
@@ -135,8 +138,9 @@ type SecretSyncActionJob = Job<
 
 const JITTER_MS = 10 * 1000;
 const REQUEUE_MS = 30 * 1000;
-const REQUEUE_LIMIT = 30;
-const CONNECTION_CONCURRENCY_LIMIT = 3;
+const REQUEUE_LIMIT = 120;
+const CONNECTION_CONCURRENCY_LIMIT = 5;
+const CONNECTION_CONCURRENCY_TTL_SECONDS = (REQUEUE_MS * REQUEUE_LIMIT) / 1000 / 2;
 
 const getRequeueDelay = (failureCount?: number) => {
   const jitter = Math.random() * JITTER_MS;
@@ -175,7 +179,8 @@ export const secretSyncQueueFactory = ({
   notificationService,
   projectSlackConfigDAL,
   projectMicrosoftTeamsConfigDAL,
-  microsoftTeamsService
+  microsoftTeamsService,
+  telemetryService
 }: TSecretSyncQueueFactoryDep) => {
   const appCfg = getConfig();
 
@@ -227,44 +232,25 @@ export const secretSyncQueueFactory = ({
     folderCommitService
   });
 
-  const $isConnectionConcurrencyLimitReached = async (connectionId: string) => {
-    const concurrencyCount = await keyStore.getItem(KeyStorePrefixes.AppConnectionConcurrentJobs(connectionId));
-
-    if (!concurrencyCount) return false;
-
-    const count = Number.parseInt(concurrencyCount, 10);
-
-    if (Number.isNaN(count)) return false;
-
-    return count >= CONNECTION_CONCURRENCY_LIMIT;
+  // INCR + cap check + EXPIRE happen atomically inside a Lua script. TTL is refreshed
+  // only when a slot is actually claimed; failed probes (over-limit) and releases
+  // never touch EXPIRE — so an orphaned counter from a worker that died mid-sync
+  // can't have its expiry indefinitely shoved forward by subsequent admit attempts,
+  // and ages out within CONNECTION_CONCURRENCY_TTL_SECONDS of the last successful
+  // admit.
+  const $tryAdmitConnectionConcurrency = async (connectionId: string) => {
+    const key = KeyStorePrefixes.AppConnectionConcurrentJobs(connectionId);
+    const count = await keyStore.incrementByAndRefreshExpiryIfUnderLimit(
+      key,
+      CONNECTION_CONCURRENCY_LIMIT,
+      CONNECTION_CONCURRENCY_TTL_SECONDS
+    );
+    return count !== -1;
   };
 
-  const $incrementConnectionConcurrencyCount = async (connectionId: string) => {
-    const concurrencyCount = await keyStore.getItem(KeyStorePrefixes.AppConnectionConcurrentJobs(connectionId));
-
-    const currentCount = Number.parseInt(concurrencyCount || "0", 10);
-
-    const incrementedCount = Number.isNaN(currentCount) ? 1 : currentCount + 1;
-
-    await keyStore.setItemWithExpiry(
-      KeyStorePrefixes.AppConnectionConcurrentJobs(connectionId),
-      (REQUEUE_MS * REQUEUE_LIMIT) / 1000, // in seconds
-      incrementedCount
-    );
-  };
-
-  const $decrementConnectionConcurrencyCount = async (connectionId: string) => {
-    const concurrencyCount = await keyStore.getItem(KeyStorePrefixes.AppConnectionConcurrentJobs(connectionId));
-
-    const currentCount = Number.parseInt(concurrencyCount || "0", 10);
-
-    const decrementedCount = Math.max(0, Number.isNaN(currentCount) ? 0 : currentCount - 1);
-
-    await keyStore.setItemWithExpiry(
-      KeyStorePrefixes.AppConnectionConcurrentJobs(connectionId),
-      (REQUEUE_MS * REQUEUE_LIMIT) / 1000, // in seconds
-      decrementedCount
-    );
+  const $releaseConnectionConcurrency = async (connectionId: string) => {
+    const key = KeyStorePrefixes.AppConnectionConcurrentJobs(connectionId);
+    await keyStore.decrementByOrDelete(key);
   };
 
   const $getInfisicalSecrets = async (
@@ -661,6 +647,19 @@ export const secretSyncQueueFactory = ({
         });
 
         if (!isSynced) {
+          void telemetryService
+            .sendPostHogEvents({
+              event: PostHogEventTypes.SecretSyncFailed,
+              distinctId: `platform/${secretSync.projectId}`,
+              organizationId: secretSync.connection.orgId,
+              properties: {
+                syncId: secretSync.id,
+                syncDestination: secretSync.destination,
+                projectId: secretSync.projectId
+              }
+            })
+            .catch(() => {});
+
           await $queueSendSecretSyncFailedNotifications({
             secretSync: updatedSecretSync,
             action: SecretSyncAction.SyncSecrets,
@@ -1170,20 +1169,6 @@ export const secretSyncQueueFactory = ({
 
     const { connectionId } = secretSync;
 
-    if (job.name === QueueJobs.SecretSyncSyncSecrets) {
-      const isConcurrentLimitReached = await $isConnectionConcurrencyLimitReached(connectionId);
-
-      if (isConcurrentLimitReached) {
-        logger.info(
-          `SecretSync Concurrency limit reached [syncId=${syncId}] [job=${job.name}] [connectionId=${connectionId}]`
-        );
-
-        await $handleAcquireLockFailure(job as SecretSyncActionJob);
-
-        return;
-      }
-    }
-
     let lock: Awaited<ReturnType<typeof keyStore.acquireLock>>;
 
     try {
@@ -1201,10 +1186,25 @@ export const secretSyncQueueFactory = ({
       return;
     }
 
+    let admittedConnectionSlot = false;
+
     try {
+      if (job.name === QueueJobs.SecretSyncSyncSecrets) {
+        admittedConnectionSlot = await $tryAdmitConnectionConcurrency(connectionId);
+
+        if (!admittedConnectionSlot) {
+          logger.info(
+            `SecretSync Concurrency limit reached [syncId=${syncId}] [job=${job.name}] [connectionId=${connectionId}]`
+          );
+
+          await $handleAcquireLockFailure(job as SecretSyncActionJob);
+
+          return;
+        }
+      }
+
       switch (job.name) {
         case QueueJobs.SecretSyncSyncSecrets: {
-          await $incrementConnectionConcurrencyCount(connectionId);
           await $handleSyncSecretsJob(job as TSecretSyncSyncSecretsDTO, secretSync);
           break;
         }
@@ -1219,8 +1219,8 @@ export const secretSyncQueueFactory = ({
           throw new Error(`Unhandled Secret Sync Job ${job.name}`);
       }
     } finally {
-      if (job.name === QueueJobs.SecretSyncSyncSecrets) {
-        await $decrementConnectionConcurrencyCount(connectionId);
+      if (admittedConnectionSlot) {
+        await $releaseConnectionConcurrency(connectionId);
       }
 
       await lock.release();

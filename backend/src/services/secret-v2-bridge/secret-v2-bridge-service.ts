@@ -17,7 +17,6 @@ import {
 } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
-  ProjectPermissionActions,
   ProjectPermissionCommitsActions,
   ProjectPermissionSecretActions,
   ProjectPermissionSet,
@@ -448,6 +447,7 @@ export const secretV2BridgeServiceFactory = ({
         actor,
         projectId,
         environmentSlug: folder.environment.slug,
+        environmentName: folder.environment.name,
         events: [
           {
             type: ProjectEvents.SecretCreate,
@@ -756,6 +756,7 @@ export const secretV2BridgeServiceFactory = ({
         projectId,
         orgId: actorOrgId,
         environmentSlug: folder.environment.slug,
+        environmentName: folder.environment.name,
         events: [
           {
             type: ProjectEvents.SecretUpdate,
@@ -885,6 +886,7 @@ export const secretV2BridgeServiceFactory = ({
           projectId,
           orgId: actorOrgId,
           environmentSlug: folder.environment.slug,
+          environmentName: folder.environment.name,
           events: [
             {
               type: ProjectEvents.SecretDelete,
@@ -1916,8 +1918,13 @@ export const secretV2BridgeServiceFactory = ({
     projectId,
     secrets: inputSecrets,
     tx: providedTx,
-    commitChanges
-  }: TCreateManySecretDTO & { tx?: Knex; commitChanges?: TCommitResourceChangeDTO[] }) => {
+    commitChanges,
+    skipPostProcessing = false
+  }: TCreateManySecretDTO & {
+    tx?: Knex;
+    commitChanges?: TCommitResourceChangeDTO[];
+    skipPostProcessing?: boolean;
+  }) => {
     const { permission, hasProjectEnforcement } = await permissionService.getProjectPermission({
       actor,
       actorId,
@@ -2066,24 +2073,27 @@ export const secretV2BridgeServiceFactory = ({
       ? await executeBulkInsert(providedTx)
       : await secretDAL.transaction(executeBulkInsert);
 
-    await snapshotService.performSnapshot(folderId);
-    await secretQueueService.syncSecrets({
-      actor,
-      actorId,
-      secretPath,
-      projectId,
-      orgId: actorOrgId,
-      environmentSlug: folder.environment.slug,
-      events: [
-        {
-          type: ProjectEvents.SecretCreate,
-          secretKeys: newSecrets.map((el) => el.key),
-          secretPath,
-          environment: folder.environment.slug,
-          projectId
-        }
-      ]
-    });
+    if (!skipPostProcessing) {
+      await snapshotService.performSnapshot(folderId);
+      await secretQueueService.syncSecrets({
+        actor,
+        actorId,
+        secretPath,
+        projectId,
+        orgId: actorOrgId,
+        environmentSlug: folder.environment.slug,
+        environmentName: folder.environment.name,
+        events: [
+          {
+            type: ProjectEvents.SecretCreate,
+            secretKeys: newSecrets.map((el) => el.key),
+            secretPath,
+            environment: folder.environment.slug,
+            projectId
+          }
+        ]
+      });
+    }
 
     return newSecrets.map((el) => {
       const secretValueHidden = !hasSecretReadValueOrDescribePermission(
@@ -2123,8 +2133,13 @@ export const secretV2BridgeServiceFactory = ({
     secrets: inputSecrets,
     mode: updateMode,
     tx: providedTx,
-    commitChanges
-  }: TUpdateManySecretDTO & { tx?: Knex; commitChanges?: TCommitResourceChangeDTO[] }) => {
+    commitChanges,
+    skipPostProcessing = false
+  }: TUpdateManySecretDTO & {
+    tx?: Knex;
+    commitChanges?: TCommitResourceChangeDTO[];
+    skipPostProcessing?: boolean;
+  }) => {
     const { permission, hasProjectEnforcement } = await permissionService.getProjectPermission({
       actor,
       actorId,
@@ -2534,30 +2549,33 @@ export const secretV2BridgeServiceFactory = ({
       ? await executeBulkUpdate(providedTx)
       : await secretDAL.transaction(executeBulkUpdate);
 
-    await Promise.allSettled(folders.map((el) => (el?.id ? snapshotService.performSnapshot(el.id) : undefined)));
-    await Promise.allSettled(
-      folders.map((el) =>
-        el
-          ? secretQueueService.syncSecrets({
-              actor,
-              actorId,
-              secretPath: el.path,
-              projectId,
-              orgId: actorOrgId,
-              environmentSlug: environment,
-              events: [
-                {
-                  type: ProjectEvents.SecretUpdate,
-                  secretKeys: updatedSecrets.map((sec) => sec.key),
-                  projectId,
-                  secretPath: el.path,
-                  environment
-                }
-              ]
-            })
-          : undefined
-      )
-    );
+    if (!skipPostProcessing) {
+      await Promise.allSettled(folders.map((el) => (el?.id ? snapshotService.performSnapshot(el.id) : undefined)));
+      await Promise.allSettled(
+        folders.map((el) =>
+          el
+            ? secretQueueService.syncSecrets({
+                actor,
+                actorId,
+                secretPath: el.path,
+                projectId,
+                orgId: actorOrgId,
+                environmentSlug: environment,
+                environmentName: projectEnvironment.name,
+                events: [
+                  {
+                    type: ProjectEvents.SecretUpdate,
+                    secretKeys: updatedSecrets.map((sec) => sec.key),
+                    projectId,
+                    secretPath: el.path,
+                    environment
+                  }
+                ]
+              })
+            : undefined
+        )
+      );
+    }
 
     return updatedSecrets.map((el) => {
       const secretValueHidden = !hasSecretReadValueOrDescribePermission(
@@ -2682,6 +2700,7 @@ export const secretV2BridgeServiceFactory = ({
         projectId,
         orgId: actorOrgId,
         environmentSlug: folder.environment.slug,
+        environmentName: folder.environment.name,
         events: [
           {
             type: ProjectEvents.SecretDelete,
@@ -2771,9 +2790,13 @@ export const secretV2BridgeServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
-    const canRead =
-      permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback) ||
-      permission.can(ProjectPermissionCommitsActions.Read, ProjectPermissionSub.Commits);
+    const canRead = permission.can(
+      ProjectPermissionCommitsActions.Read,
+      subject(ProjectPermissionSub.Commits, {
+        environment: folder.environment.envSlug,
+        secretPath: folderWithPath.path
+      })
+    );
 
     if (!canRead) throw new ForbiddenRequestError({ message: "You do not have permission to read secret versions" });
 
@@ -3356,6 +3379,7 @@ export const secretV2BridgeServiceFactory = ({
         orgId: actorOrgId,
         secretPath: destinationFolder.path,
         environmentSlug: destinationFolder.environment.slug,
+        environmentName: destinationFolder.environment.name,
         actorId,
         actor,
         events: [
@@ -3376,6 +3400,7 @@ export const secretV2BridgeServiceFactory = ({
         orgId: actorOrgId,
         secretPath: sourceFolder.path,
         environmentSlug: sourceFolder.environment.slug,
+        environmentName: sourceFolder.environment.name,
         actorId,
         actor,
         events: [
@@ -3828,9 +3853,13 @@ export const secretV2BridgeServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
-    const canRead =
-      permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback) ||
-      permission.can(ProjectPermissionCommitsActions.Read, ProjectPermissionSub.Commits);
+    const canRead = permission.can(
+      ProjectPermissionCommitsActions.Read,
+      subject(ProjectPermissionSub.Commits, {
+        environment: environment.slug,
+        secretPath
+      })
+    );
 
     if (!canRead) throw new ForbiddenRequestError({ message: "You do not have permission to read secret versions" });
 

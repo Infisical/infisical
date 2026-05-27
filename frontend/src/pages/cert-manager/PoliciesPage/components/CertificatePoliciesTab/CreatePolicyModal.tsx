@@ -23,13 +23,15 @@ import {
   TextArea,
   Tooltip
 } from "@app/components/v2";
-import { useProject } from "@app/context";
+import { Badge } from "@app/components/v3";
+import { useProject, useSubscription } from "@app/context";
 import {
   TCertificatePolicy,
   TCertificatePolicyRule,
   useCreateCertificatePolicy,
   useUpdateCertificatePolicy
 } from "@app/hooks/api/certificatePolicies";
+import { isPqcAlgorithm } from "@app/hooks/api/certificates/constants";
 
 import {
   CertDurationUnit,
@@ -127,6 +129,7 @@ export const CreatePolicyModal = ({
   onComplete
 }: Props) => {
   const { currentProject } = useProject();
+  const { subscription } = useSubscription();
   const createPolicy = useCreateCertificatePolicy();
   const updatePolicy = useUpdateCertificatePolicy();
 
@@ -970,11 +973,13 @@ export const CreatePolicyModal = ({
                           <div className="grid grid-cols-2 gap-2">
                             {SIGNATURE_ALGORITHMS.map((alg) => {
                               const isSelected = field.value?.includes(alg);
+                              const isPqcGated = isPqcAlgorithm(alg) && !subscription?.pkiPqc;
                               return (
                                 <div key={alg} className="flex items-center space-x-3">
                                   <Checkbox
                                     id={`sig-alg-${alg}`}
                                     isChecked={isSelected}
+                                    isDisabled={isPqcGated}
                                     onCheckedChange={(checked) => {
                                       const current = field.value || [];
                                       let newValue;
@@ -992,7 +997,10 @@ export const CreatePolicyModal = ({
                                     htmlFor={`sig-alg-${alg}`}
                                     className="cursor-pointer text-sm font-medium text-mineshaft-200"
                                   >
-                                    {alg}
+                                    <span className="flex items-center gap-2">
+                                      {alg}
+                                      {isPqcGated && <Badge variant="info">Enterprise</Badge>}
+                                    </span>
                                   </label>
                                 </div>
                               );
@@ -1016,11 +1024,13 @@ export const CreatePolicyModal = ({
                           <div className="grid grid-cols-2 gap-2">
                             {KEY_ALGORITHMS.map((alg) => {
                               const isSelected = field.value?.includes(alg);
+                              const isPqcGated = isPqcAlgorithm(alg) && !subscription?.pkiPqc;
                               return (
                                 <div key={alg} className="flex items-center space-x-3">
                                   <Checkbox
                                     id={`key-alg-${alg}`}
                                     isChecked={isSelected}
+                                    isDisabled={isPqcGated}
                                     onCheckedChange={(checked) => {
                                       const current = field.value || [];
                                       let newValue;
@@ -1038,7 +1048,10 @@ export const CreatePolicyModal = ({
                                     htmlFor={`key-alg-${alg}`}
                                     className="cursor-pointer text-sm font-medium text-mineshaft-200"
                                   >
-                                    {alg}
+                                    <span className="flex items-center gap-2">
+                                      {alg}
+                                      {isPqcGated && <Badge variant="info">Enterprise</Badge>}
+                                    </span>
                                   </label>
                                 </div>
                               );

@@ -3,7 +3,7 @@ import { format } from "date-fns";
 import { BanIcon, CheckIcon, ClipboardListIcon, PencilIcon } from "lucide-react";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { Modal, ModalContent, Tooltip } from "@app/components/v2";
+import { Tooltip } from "@app/components/v2";
 import {
   Badge,
   ButtonGroup,
@@ -17,15 +17,21 @@ import {
   DetailGroup,
   DetailLabel,
   DetailValue,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
   IconButton,
   OrgIcon,
   ProjectIcon,
   SubOrgIcon
 } from "@app/components/v3";
-import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/context";
+import { ProjectPermissionIdentityActions, ProjectPermissionSub, useProject } from "@app/context";
 import { usePopUp, useTimedReset } from "@app/hooks";
 import { identityAuthToNameMap, TProjectIdentity } from "@app/hooks/api";
 import { IdentityProjectMembershipV1 } from "@app/hooks/api/identities/types";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectIdentityModal } from "@app/pages/project/AccessControlPage/components/IdentityTab/components/ProjectIdentityModal";
 
 type Props = {
@@ -41,6 +47,9 @@ export const ProjectIdentityDetailsSection = ({
   isSubOrgIdentity,
   membership
 }: Props) => {
+  const { currentProject } = useProject();
+  const isCertManager = currentProject?.type === ProjectType.CertificateManager;
+
   // eslint-disable-next-line @typescript-eslint/naming-convention,@typescript-eslint/no-unused-vars
   const [_, isCopyingId, setCopyTextId] = useTimedReset<string>({
     initialState: "Copy ID to clipboard"
@@ -114,7 +123,7 @@ export const ProjectIdentityDetailsSection = ({
                 ) : (
                   <Badge variant="project">
                     <ProjectIcon />
-                    Project
+                    {isCertManager ? "Certificate Manager" : "Project"}
                   </Badge>
                 )}
               </DetailValue>
@@ -139,7 +148,14 @@ export const ProjectIdentityDetailsSection = ({
               </DetailValue>
             </Detail>
             <Detail>
-              <DetailLabel>{isOrgIdentity ? "Joined project" : "Created"}</DetailLabel>
+              <DetailLabel>
+                {/* eslint-disable-next-line no-nested-ternary */}
+                {isOrgIdentity
+                  ? isCertManager
+                    ? "Joined certificate manager"
+                    : "Joined project"
+                  : "Created"}
+              </DetailLabel>
               <DetailValue>{format(membership.createdAt, "PPpp")}</DetailValue>
             </Detail>
             {!isOrgIdentity && (
@@ -185,17 +201,23 @@ export const ProjectIdentityDetailsSection = ({
           </DetailGroup>
         </CardContent>
       </Card>
-      <Modal
-        isOpen={popUp.editIdentity.isOpen}
+      <Dialog
+        open={popUp.editIdentity.isOpen}
         onOpenChange={(open) => handlePopUpToggle("editIdentity", open)}
       >
-        <ModalContent bodyClassName="overflow-visible" title="Edit Project Identity">
+        <DialogContent className="max-w-xl overflow-visible">
+          <DialogHeader>
+            <DialogTitle>Edit Project Identity</DialogTitle>
+            <DialogDescription>
+              Update the identity&apos;s name, delete protection, and metadata.
+            </DialogDescription>
+          </DialogHeader>
           <ProjectIdentityModal
             identity={identity}
             onClose={() => handlePopUpToggle("editIdentity", false)}
           />
-        </ModalContent>
-      </Modal>
+        </DialogContent>
+      </Dialog>
     </>
   );
 };

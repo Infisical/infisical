@@ -1,5 +1,5 @@
 /* eslint-disable no-await-in-loop */
-import { ForbiddenError } from "@casl/ability";
+import { ForbiddenError, subject } from "@casl/ability";
 
 import { ActionProjectType } from "@app/db/schemas";
 import { Event, EventType } from "@app/ee/services/audit-log/audit-log-types";
@@ -348,6 +348,11 @@ export const pitServiceFactory = ({
     message?: string;
     environment: string;
   }) => {
+    const [folderWithPath] = await folderDAL.findSecretPathByFolderIds(projectId, [folderId]);
+    if (!folderWithPath) {
+      throw new NotFoundError({ message: `Folder with ID ${folderId} not found` });
+    }
+
     const { permission: userPermission } = await permissionService.getProjectPermission({
       actor,
       actorId,
@@ -357,10 +362,32 @@ export const pitServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
-    ForbiddenError.from(userPermission).throwUnlessCan(
-      ProjectPermissionCommitsActions.PerformRollback,
-      ProjectPermissionSub.Commits
-    );
+    if (deepRollback) {
+      ForbiddenError.from(userPermission).throwUnlessCan(
+        ProjectPermissionCommitsActions.PerformRollback,
+        subject(ProjectPermissionSub.Commits, {
+          environment,
+          secretPath: folderWithPath.path
+        })
+      );
+
+      const deeperPath = folderWithPath.path === "/" ? "/**" : `${folderWithPath.path.replace(/\/$/, "")}/**`;
+      ForbiddenError.from(userPermission).throwUnlessCan(
+        ProjectPermissionCommitsActions.PerformRollback,
+        subject(ProjectPermissionSub.Commits, {
+          environment,
+          secretPath: deeperPath
+        })
+      );
+    } else {
+      ForbiddenError.from(userPermission).throwUnlessCan(
+        ProjectPermissionCommitsActions.PerformRollback,
+        subject(ProjectPermissionSub.Commits, {
+          environment,
+          secretPath: folderWithPath.path
+        })
+      );
+    }
 
     const latestCommit = await folderCommitService.getLatestCommit({
       folderId,
@@ -420,6 +447,7 @@ export const pitServiceFactory = ({
               projectId,
               orgId: actorOrgId,
               environmentSlug: fp.environmentSlug,
+              environmentName: fp.environmentName,
               actorId,
               actor
             })
@@ -456,6 +484,7 @@ export const pitServiceFactory = ({
           projectId,
           orgId: actorOrgId,
           environmentSlug: folderPath.environmentSlug,
+          environmentName: folderPath.environmentName,
           actorId,
           actor
         });
@@ -504,6 +533,7 @@ export const pitServiceFactory = ({
           projectId,
           orgId: actorOrgId,
           environmentSlug: folderPath.environmentSlug,
+          environmentName: folderPath.environmentName,
           actorId,
           actor
         });

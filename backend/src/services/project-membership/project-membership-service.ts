@@ -1,5 +1,6 @@
 /* eslint-disable no-await-in-loop */
 import { ForbiddenError } from "@casl/ability";
+import { Knex } from "knex";
 
 import { AccessScope, ActionProjectType, ProjectMembershipRole, ProjectVersion, TableName } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
@@ -292,15 +293,10 @@ export const projectMembershipServiceFactory = ({
     return orgMembers;
   };
 
-  const deleteProjectMemberships = async ({
-    actorId,
-    actor,
-    actorOrgId,
-    actorAuthMethod,
-    projectId,
-    emails,
-    usernames
-  }: TDeleteProjectMembershipsDTO) => {
+  const deleteProjectMemberships = async (
+    { actorId, actor, actorOrgId, actorAuthMethod, projectId, emails, usernames }: TDeleteProjectMembershipsDTO,
+    externalTx?: Knex
+  ) => {
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
@@ -340,7 +336,7 @@ export const projectMembershipServiceFactory = ({
       await userGroupMembershipDAL.findUserGroupMembershipsInProject(usernamesAndEmails, projectId)
     );
 
-    const memberships = await membershipUserDAL.transaction(async (tx) => {
+    const performDelete = async (tx: Knex) => {
       await additionalPrivilegeDAL.delete(
         {
           projectId,
@@ -387,7 +383,11 @@ export const projectMembershipServiceFactory = ({
       );
 
       return deletedMemberships;
-    });
+    };
+
+    const memberships = externalTx
+      ? await performDelete(externalTx)
+      : await membershipUserDAL.transaction(performDelete);
 
     return memberships;
   };

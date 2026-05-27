@@ -88,12 +88,9 @@ export const useCreateCertTemplateV2 = () => {
       }>("/api/v2/pki/certificate-templates", dto);
       return data.certificateTemplate;
     },
-    onSuccess: (_, { projectId }) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({
-        predicate: (query) => {
-          const [firstKey, queryProjectId] = query.queryKey;
-          return firstKey === "list-template" && queryProjectId === projectId;
-        }
+        predicate: (query) => query.queryKey[0] === "list-template"
       });
     }
   });
@@ -110,12 +107,9 @@ export const useUpdateCertTemplateV2 = () => {
 
       return data.certificateTemplate;
     },
-    onSuccess: (_, { projectId }) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({
-        predicate: (query) => {
-          const [firstKey, queryProjectId] = query.queryKey;
-          return firstKey === "list-template" && queryProjectId === projectId;
-        }
+        predicate: (query) => query.queryKey[0] === "list-template"
       });
     }
   });
@@ -126,21 +120,13 @@ export const useDeleteCertTemplateV2 = () => {
   return useMutation<TCertificateTemplate, object, TDeleteCertificateTemplateV2DTO>({
     mutationFn: async (dto) => {
       const { data } = await apiRequest.delete<{ certificateTemplate: TCertificateTemplate }>(
-        `/api/v2/pki/certificate-templates/${dto.templateName}`,
-        {
-          data: {
-            projectId: dto.projectId
-          }
-        }
+        `/api/v2/pki/certificate-templates/${dto.templateName}`
       );
       return data.certificateTemplate;
     },
-    onSuccess: (_, { projectId }) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({
-        predicate: (query) => {
-          const [firstKey, queryProjectId] = query.queryKey;
-          return firstKey === "list-template" && queryProjectId === projectId;
-        }
+        predicate: (query) => query.queryKey[0] === "list-template"
       });
     }
   });

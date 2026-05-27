@@ -1185,6 +1185,10 @@ export const authLoginServiceFactory = ({
 
     const isSubOrganization = Boolean(selectedOrg.rootOrgId && selectedOrg.id !== selectedOrg.rootOrgId);
 
+    if (!orgMembership.isActive) {
+      throw new ForbiddenRequestError({ message: "User organization membership is inactive" });
+    }
+
     let rootOrg = selectedOrg;
 
     if (isSubOrganization) {
@@ -1214,6 +1218,10 @@ export const authLoginServiceFactory = ({
         throw new ForbiddenRequestError({
           message: "User does not have access to the root organization"
         });
+      }
+
+      if (!rootOrgMembership.isActive) {
+        throw new ForbiddenRequestError({ message: "User organization membership is inactive" });
       }
     }
 

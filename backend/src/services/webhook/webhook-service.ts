@@ -4,6 +4,7 @@ import { ActionProjectType, TWebhooksInsert } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
@@ -188,6 +189,7 @@ export const webhookServiceFactory = ({
           projectName: project.name,
           projectId: webhook.projectId,
           environment: webhook.environment.slug,
+          environmentName: webhook.environment.name,
           secretPath: webhook.secretPath,
           type: webhook.type
         }
@@ -201,7 +203,11 @@ export const webhookServiceFactory = ({
         payload
       );
     } catch (err) {
-      webhookError = (err as Error).message;
+      webhookError = err instanceof Error ? err.message : String(err);
+      logger.warn(
+        { webhookId: webhook.id, projectId: webhook.projectId, environment: webhook.environment.slug, err },
+        `Webhook test delivery failed [webhookId=${webhook.id}] [projectId=${webhook.projectId}] [environment=${webhook.environment.slug}] [error=${webhookError}]`
+      );
     }
     const isSuccess = !webhookError;
     const updatedWebhook = await webhookDAL.updateById(webhook.id, {

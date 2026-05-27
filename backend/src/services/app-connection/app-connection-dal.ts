@@ -104,6 +104,7 @@ export const appConnectionDALFactory = (db: TDbClient) => {
       .where(`${TableName.SecretRotationV2}.connectionId`, connectionId)
       .join(TableName.SecretFolder, `${TableName.SecretRotationV2}.folderId`, `${TableName.SecretFolder}.id`)
       .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+      .whereNull(`${TableName.Environment}.deleteAfter`)
       .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
       .select(
         db.ref("name").withSchema(TableName.SecretRotationV2),

@@ -1,0 +1,128 @@
+---
+title: "CRL Distribution Points"
+sidebarTitle: "CRL Distribution"
+description: "Configure Certificate Revocation List (CRL) distribution points for your Certificate Authorities."
+---
+
+Every certificate issued by an internal CA embeds a CRL Distribution Point (CDP) extension that tells validators where to fetch the revocation list. You can register additional mirror URLs at the CA level so validators have fallback locations if the primary endpoint is unreachable.
+
+<Info>
+  This page is for product admins managing PKI infrastructure. CRL configuration is an advanced topic — most users don't need to configure custom mirrors.
+</Info>
+
+## How It Works
+
+- The **Infisical-managed URL** is included as the primary CDP by default. It can be disabled per CA.
+- Up to **4 mirror URLs** can be configured per CA.
+- URLs must use `http://` or `https://`.
+- Changes apply only to certificates issued **after** the update — existing certificates are not affected.
+
+<Warning>
+  Infisical only **advertises** the mirror URLs in issued certificates — it does not publish your CRL to them. You are responsible for fetching the latest CRL from Infisical and serving an up-to-date copy at every mirror URL you register. If a mirror serves a stale CRL, validators that fall back to it will get outdated revocation information and may continue to trust certificates you have already revoked.
+</Warning>
+
+## Configure CRL Mirrors
+
+<Tabs>
+  <Tab title="Infisical UI">
+    Mirror URLs can be configured at CA creation time or any time after via the **CRL Distribution Points** card on the CA detail page.
+
+    <Steps>
+      <Step title="Navigate to CA details">
+        Go to **Certificate Manager → Certificate Authorities → Internal** and select your CA.
+      </Step>
+      <Step title="Edit CRL Distribution Points">
+        Click the pencil icon on the **CRL Distribution Points** card.
+      </Step>
+      <Step title="Add mirror URLs">
+        Add one URL per row, in order of preference (clients try them in the listed order).
+      </Step>
+      <Step title="Disable managed CRL URL (optional)">
+        Toggle **Disable managed CRL URL** to exclude the Infisical-managed CRL endpoint from issued certificates. This is useful when the Infisical instance is not reachable by certificate consumers.
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="API">
+    Pass the `crlDistributionPointUrls` array and optionally `disableManagedCrlDistributionPointUrl` under `configuration` when creating or updating an internal CA.
+
+    ### Create CA with CRL mirrors
+
+    ```bash
+    curl --location --request POST 'https://app.infisical.com/api/v1/cert-manager/ca/internal' \
+      --header 'Authorization: Bearer <access-token>' \
+      --header 'Content-Type: application/json' \
+      --data-raw '{
+          "name": "my-internal-ca",
+          "configuration": {
+              "type": "root",
+              "commonName": "My Root CA",
+              "keyAlgorithm": "RSA_2048",
+              "crlDistributionPointUrls": [
+                  "https://crl.example.com/internal-ca.crl",
+                  "https://backup-crl.example.com/internal-ca.crl"
+              ],
+              "disableManagedCrlDistributionPointUrl": false
+          }
+      }'
+    ```
+
+    ### Update existing CA
+
+    ```bash
+    curl --location --request PATCH 'https://app.infisical.com/api/v1/cert-manager/ca/internal/<ca-id>' \
+      --header 'Authorization: Bearer <access-token>' \
+      --header 'Content-Type: application/json' \
+      --data-raw '{
+          "configuration": {
+              "crlDistributionPointUrls": [
+                  "https://crl.example.com/internal-ca.crl"
+              ],
+              "disableManagedCrlDistributionPointUrl": true
+          }
+      }'
+    ```
+
+    Setting `disableManagedCrlDistributionPointUrl` to `true` removes the Infisical-managed CRL endpoint from the CDP extension of newly issued certificates. The managed CRL endpoint itself remains available — this only controls whether its URL is advertised in certificates.
+  </Tab>
+</Tabs>
+
+## Keeping Mirrors in Sync
+
+Infisical regenerates each CA's CRL automatically — CRLs are rebuilt whenever a certificate is revoked or the existing CRL is approaching its `nextUpdate` time. To keep your mirrors useful, pull the latest CRL on a schedule and republish it at each mirror URL.
+
+### Fetch the current CRL
+
+```bash
+curl --location --request GET 'https://app.infisical.com/api/v1/cert-manager/ca/internal/<ca-id>/crls' \
+  --header 'Authorization: Bearer <access-token>'
+```
+
+The response contains the PEM-encoded CRL. Write it to your mirror destination using your preferred sync method.
+
+<Note>
+  Run this on a cron schedule that's well within the CRL validity window — every few hours is a reasonable default — so mirrors never serve a stale or expired CRL to validators.
+</Note>
+
+### Example: Sync to S3
+
+```bash
+#!/bin/bash
+# Fetch CRL and upload to S3
+
+CRL=$(curl -s -H "Authorization: Bearer $TOKEN" \
+  "https://app.infisical.com/api/v1/cert-manager/ca/internal/$CA_ID/crls")
+
+echo "$CRL" | aws s3 cp - s3://my-bucket/crl/internal-ca.crl \
+  --content-type "application/pkix-crl"
+```
+
+## What's Next?
+
+<CardGroup cols={2}>
+  <Card title="CA Renewal" icon="arrows-rotate" href="/documentation/platform/pki/ca/ca-renewal">
+    Renew your CA certificates before expiry.
+  </Card>
+  <Card title="Certificate Policies" icon="shield-check" href="/documentation/platform/pki/settings/policies">
+    Define rules for certificate issuance.
+  </Card>
+</CardGroup>

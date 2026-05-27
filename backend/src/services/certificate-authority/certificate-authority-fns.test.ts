@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
 
-import { signatureAlgorithmToAlgCfg } from "./certificate-authority-fns";
+import { buildCrlDistributionPointUrls, signatureAlgorithmToAlgCfg } from "./certificate-authority-fns";
 
 // Helper to access properties on the union return type
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -187,5 +187,53 @@ describe("signatureAlgorithmToAlgCfg", () => {
       const result = signatureAlgorithmToAlgCfg("ML-DSA-87", CertKeyAlgorithm.RSA_2048);
       expect(result.name).toBe("ML-DSA-87");
     });
+  });
+});
+
+describe("buildCrlDistributionPointUrls", () => {
+  const managedUrl = "https://infisical.example.com/api/v1/cert-manager/crl/123/der";
+
+  it("should include managed URL by default", () => {
+    const result = buildCrlDistributionPointUrls(managedUrl, null);
+    expect(result).toEqual([managedUrl]);
+  });
+
+  it("should include managed URL and custom URLs", () => {
+    const customUrls = ["https://crl.example.com/ca.crl", "https://crl2.example.com/ca.crl"];
+    const result = buildCrlDistributionPointUrls(managedUrl, customUrls);
+    expect(result).toEqual([managedUrl, ...customUrls]);
+  });
+
+  it("should deduplicate URLs", () => {
+    const customUrls = [managedUrl];
+    const result = buildCrlDistributionPointUrls(managedUrl, customUrls);
+    expect(result).toEqual([managedUrl]);
+  });
+
+  it("should exclude managed URL when disableManagedUrl is true", () => {
+    const customUrls = ["https://crl.example.com/ca.crl"];
+    const result = buildCrlDistributionPointUrls(managedUrl, customUrls, true);
+    expect(result).toEqual(customUrls);
+    expect(result).not.toContain(managedUrl);
+  });
+
+  it("should return empty array when disableManagedUrl is true and no custom URLs", () => {
+    const result = buildCrlDistributionPointUrls(managedUrl, null, true);
+    expect(result).toEqual([]);
+  });
+
+  it("should return empty array when disableManagedUrl is true and custom URLs is undefined", () => {
+    const result = buildCrlDistributionPointUrls(managedUrl, undefined, true);
+    expect(result).toEqual([]);
+  });
+
+  it("should include managed URL when disableManagedUrl is false", () => {
+    const result = buildCrlDistributionPointUrls(managedUrl, null, false);
+    expect(result).toEqual([managedUrl]);
+  });
+
+  it("should include managed URL when disableManagedUrl is undefined", () => {
+    const result = buildCrlDistributionPointUrls(managedUrl, null, undefined);
+    expect(result).toEqual([managedUrl]);
   });
 });

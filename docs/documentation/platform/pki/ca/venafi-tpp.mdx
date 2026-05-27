@@ -15,8 +15,7 @@ Issue and manage certificates using a self-hosted Venafi Trust Protection Platfo
 
 <Steps>
   <Step title="Navigate to External Certificate Authorities">
-    In your Infisical project, go to your **Certificate Project** > **Certificate Authority** to access the external CAs page.
-    ![External CA Page](/images/platform/pki/venafi-tpp/venafi-tpp-external-ca-page.png)
+    In **Certificate Manager**, go to **Settings → Certificate Authorities** and scroll to the **External Certificate Authorities** section.
   </Step>
   <Step title="Create New Venafi TPP CA">
     Click **Create CA** and configure:
@@ -27,8 +26,6 @@ Issue and manage certificates using a self-hosted Venafi Trust Protection Platfo
     - **Venafi TPP Connection**: Select your TPP connection from the dropdown
     - **Policy DN**: The policy folder path in TPP where certificates will be managed (e.g., `\VED\Policy\Certificates\WebServers`)
 
-    ![External CA Form](/images/platform/pki/venafi-tpp/venafi-tpp-external-ca-form.png)
-
     <Note>
       The Policy DN must point to an existing policy folder in your TPP instance. The policy folder
       determines which CA template is used for signing, what subject fields are allowed, and other
@@ -38,32 +35,34 @@ Issue and manage certificates using a self-hosted Venafi Trust Protection Platfo
   </Step>
   <Step title="Certificate Authority Created">
     Your Venafi TPP CA is now ready. You can use it with certificate profiles to issue certificates.
-    ![External CA Created](/images/platform/pki/venafi-tpp/venafi-tpp-external-ca-created.png)
   </Step>
 </Steps>
 
 ## Issuing Certificates
 
-Once your Venafi TPP CA is set up, you issue certificates through **Certificate Profiles**:
+Once your Venafi TPP CA is set up, you can issue certificates by creating a profile, attaching it to an Application, and configuring enrollment:
 
 <Steps>
   <Step title="Create a Certificate Profile">
-    Go to **Policies** > **Certificate Profiles** and create a new profile:
+    Go to **Certificate Manager → Certificate Profiles** and create a new profile:
 
-    - Set the **Issuing CA** to your Venafi TPP CA
-    - Configure the **Enrollment Method** as **API**
-    - Set default certificate attributes (common name, SANs, key algorithm, TTL, etc.)
-
-    ![Create Profile](/images/platform/pki/certificate/cert-profile-modal.png)
+    - Set the **Certificate Authority** to your Venafi TPP CA
+    - Select a **Certificate Policy** 
+    - Configure default certificate attributes (TTL, key algorithm, etc.)
+  </Step>
+  <Step title="Create an Application and configure enrollment">
+    Go to **Certificate Manager → Applications** and create an Application (or use an existing one):
+    
+    - Attach the profile you created
+    - Add an enrollment method (e.g., API) for the profile
+    - Assign team members who need to issue certificates
   </Step>
   <Step title="Issue a Certificate">
-    Go to **Certificates** and click **Issue Certificate**:
+    In your Application, go to the **Certificate Requests** tab and click **Request**:
 
     - Select the profile linked to your Venafi TPP CA
     - Fill in the certificate details (common name, SANs, TTL)
-    - Click **Issue**
-
-    ![Issue Certificate](/images/platform/pki/certificate/cert-issue-modal.png)
+    - Click **Submit**
 
     The certificate request is submitted to TPP asynchronously. Infisical will authenticate with TPP, submit the CSR to the configured policy folder, and retrieve the signed certificate.
 
@@ -74,6 +73,5 @@ Once your Venafi TPP CA is set up, you issue certificates through **Certificate 
   </Step>
   <Step title="Certificate Issued">
     Your certificate has been issued by the TPP server and is ready for use.
-    ![Certificate Created](/images/platform/pki/venafi-tpp/venafi-tpp-certificate-created.png)
   </Step>
 </Steps>

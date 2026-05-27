@@ -1,4 +1,4 @@
-import { ActionProjectType, OrganizationActionScope } from "@app/db/schemas";
+import { ActionProjectType, OrganizationActionScope, ResourceType } from "@app/db/schemas";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 
 /**
@@ -36,6 +36,25 @@ export const requestMemoKeys = {
     actorOrgId?: string;
   }) =>
     `permission:project:${projectId}:${actor}:${actorId}:${actorAuthMethod}:${actionProjectType}:${actorOrgId ?? ""}`,
+
+  resourcePermission: ({
+    projectId,
+    resourceType,
+    resourceId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: {
+    projectId: string;
+    resourceType: ResourceType;
+    resourceId: string;
+    actor: ActorType;
+    actorId: string;
+    actorAuthMethod: ActorAuthMethod;
+    actorOrgId?: string;
+  }) =>
+    `permission:resource:${projectId}:${resourceType}:${resourceId}:${actor}:${actorId}:${actorAuthMethod}:${actorOrgId ?? ""}`,
 
   projectFindById: (projectId: string) => `project:findById:${projectId}`,
 

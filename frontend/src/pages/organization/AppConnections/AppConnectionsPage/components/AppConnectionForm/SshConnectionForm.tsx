@@ -30,8 +30,13 @@ type Props = {
   onSubmit: (formData: FormData) => Promise<void>;
 };
 
+const configurationSchema = z.object({
+  blockedUsers: z.string().trim().optional()
+});
+
 const rootSchema = genericAppConnectionFieldsSchema.extend({
-  app: z.literal(AppConnection.SSH)
+  app: z.literal(AppConnection.SSH),
+  configuration: configurationSchema.optional()
 });
 
 const formSchema = z.discriminatedUnion("method", [
@@ -285,6 +290,21 @@ export const SshConnectionForm = ({ appConnection, onSubmit }: Props) => {
             </>
           )}
         </div>
+        <Controller
+          name="configuration.blockedUsers"
+          control={control}
+          render={({ field, fieldState: { error } }) => (
+            <FormControl
+              errorText={error?.message}
+              isError={Boolean(error?.message)}
+              label="Blocked Users"
+              isOptional
+              tooltipText="A comma-separated list of usernames that are blocked from being used in operations like secret rotation (e.g., root,admin,ubuntu)."
+            >
+              <Input {...field} value={field.value ?? ""} placeholder="root,admin,ubuntu" />
+            </FormControl>
+          )}
+        />
         <div className="mt-8 flex items-center">
           <Button
             className="mr-4"

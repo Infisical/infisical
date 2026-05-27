@@ -10,6 +10,14 @@ export const useCreatePkiAlertV2 = () => {
 
   return useMutation<TPkiAlertV2, unknown, TCreatePkiAlertV2>({
     mutationFn: async (data) => {
+      if (data.applicationId) {
+        const { applicationId, ...rest } = data;
+        const { data: response } = await apiRequest.post<{ alert: TPkiAlertV2 }>(
+          `/api/v1/cert-manager/applications/${applicationId}/alerts`,
+          rest
+        );
+        return response.alert;
+      }
       const { data: response } = await apiRequest.post<{ alert: TPkiAlertV2 }>(
         "/api/v1/cert-manager/alerts",
         data
@@ -18,7 +26,9 @@ export const useCreatePkiAlertV2 = () => {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
-        queryKey: pkiAlertsV2Keys.allPkiAlertsV2({ projectId: variables.projectId })
+        queryKey: pkiAlertsV2Keys.allPkiAlertsV2({
+          applicationId: variables.applicationId
+        })
       });
     }
   });
@@ -27,8 +37,15 @@ export const useCreatePkiAlertV2 = () => {
 export const useUpdatePkiAlertV2 = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<TPkiAlertV2, unknown, TUpdatePkiAlertV2>({
-    mutationFn: async ({ alertId, ...data }) => {
+  return useMutation<TPkiAlertV2, unknown, TUpdatePkiAlertV2 & { applicationId?: string }>({
+    mutationFn: async ({ alertId, applicationId, ...data }) => {
+      if (applicationId) {
+        const { data: response } = await apiRequest.patch<{ alert: TPkiAlertV2 }>(
+          `/api/v1/cert-manager/applications/${applicationId}/alerts/${alertId}`,
+          data
+        );
+        return response.alert;
+      }
       const { data: response } = await apiRequest.patch<{ alert: TPkiAlertV2 }>(
         `/api/v1/cert-manager/alerts/${alertId}`,
         data
@@ -49,8 +66,14 @@ export const useUpdatePkiAlertV2 = () => {
 export const useDeletePkiAlertV2 = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<TPkiAlertV2, unknown, TDeletePkiAlertV2>({
-    mutationFn: async ({ alertId }) => {
+  return useMutation<TPkiAlertV2, unknown, TDeletePkiAlertV2 & { applicationId?: string }>({
+    mutationFn: async ({ alertId, applicationId }) => {
+      if (applicationId) {
+        const { data } = await apiRequest.delete<{ alert: TPkiAlertV2 }>(
+          `/api/v1/cert-manager/applications/${applicationId}/alerts/${alertId}`
+        );
+        return data.alert;
+      }
       const { data } = await apiRequest.delete<{ alert: TPkiAlertV2 }>(
         `/api/v1/cert-manager/alerts/${alertId}`
       );
@@ -68,9 +91,9 @@ export const useDeletePkiAlertV2 = () => {
 };
 
 export interface TTestPkiWebhookConfigV2 {
-  projectId: string;
   url: string;
   signingSecret?: string;
+  applicationId?: string;
 }
 
 export interface TTestPkiWebhookConfigV2Response {
@@ -80,10 +103,10 @@ export interface TTestPkiWebhookConfigV2Response {
 
 export const useTestPkiWebhookConfigV2 = () => {
   return useMutation<TTestPkiWebhookConfigV2Response, unknown, TTestPkiWebhookConfigV2>({
-    mutationFn: async ({ projectId, url, signingSecret }) => {
+    mutationFn: async ({ url, signingSecret, applicationId }) => {
       const { data } = await apiRequest.post<TTestPkiWebhookConfigV2Response>(
         "/api/v2/pki/alerts/test-webhook",
-        { projectId, url, signingSecret }
+        { url, signingSecret, ...(applicationId ? { applicationId } : {}) }
       );
       return data;
     }

@@ -32,7 +32,8 @@ export const DynamicSecretsBrowser = () => {
     {"name": "LDAP", "slug": "ldap", "path": "/documentation/platform/dynamic-secrets/ldap", "description": "Learn how to generate dynamic LDAP credentials on-demand.", "category": "Directory Services"},
     {"name": "GitHub", "slug": "github", "path": "/documentation/platform/dynamic-secrets/github", "description": "Learn how to generate dynamic GitHub credentials on-demand.", "category": "CI/CD"},
     {"name": "Kubernetes", "slug": "kubernetes", "path": "/documentation/platform/dynamic-secrets/kubernetes", "description": "Learn how to generate dynamic Kubernetes credentials on-demand.", "category": "Container Orchestration"},
-    {"name": "TOTP", "slug": "totp", "path": "/documentation/platform/dynamic-secrets/totp", "description": "Learn how to generate dynamic TOTP codes on-demand.", "category": "Authentication"}
+    {"name": "TOTP", "slug": "totp", "path": "/documentation/platform/dynamic-secrets/totp", "description": "Learn how to generate dynamic TOTP codes on-demand.", "category": "Authentication"},
+    {"name": "Milvus", "slug": "milvus", "path": "/documentation/platform/dynamic-secrets/milvus", "description": "Learn how to generate dynamic Milvus database credentials on-demand.", "category": "Databases"},
   ].sort(function(a, b) {
       return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
   });

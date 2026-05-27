@@ -10,7 +10,6 @@ export type TPkiAlert = {
 };
 
 export type TCreatePkiAlertDTO = {
-  projectId: string;
   name: string;
   pkiCollectionId: string;
   alertBeforeDays: number;
@@ -19,7 +18,6 @@ export type TCreatePkiAlertDTO = {
 
 export type TUpdatePkiAlertDTO = {
   alertId: string;
-  projectId: string;
   pkiCollectionId?: string;
   name?: string;
   alertBeforeDays?: number;
@@ -28,5 +26,4 @@ export type TUpdatePkiAlertDTO = {
 
 export type TDeletePkiAlertDTO = {
   alertId: string;
-  projectId: string;
 };

@@ -1,4 +1,4 @@
-import { GenericFieldLabel } from "@app/components/secret-syncs";
+import { Detail, DetailLabel, DetailValue } from "@app/components/v3";
 import { TAzureAppConfigurationSync } from "@app/hooks/api/secretSyncs/types/azure-app-configuration-sync";
 
 type Props = {
@@ -12,8 +12,14 @@ export const AzureAppConfigurationSyncDestinationSection = ({ secretSync }: Prop
 
   return (
     <>
-      <GenericFieldLabel label="Configuration URL">{configurationUrl}</GenericFieldLabel>
-      <GenericFieldLabel label="Label">{label}</GenericFieldLabel>
+      <Detail>
+        <DetailLabel>Configuration URL</DetailLabel>
+        <DetailValue>{configurationUrl}</DetailValue>
+      </Detail>
+      <Detail>
+        <DetailLabel>Label</DetailLabel>
+        <DetailValue>{label}</DetailValue>
+      </Detail>
     </>
   );
 };
