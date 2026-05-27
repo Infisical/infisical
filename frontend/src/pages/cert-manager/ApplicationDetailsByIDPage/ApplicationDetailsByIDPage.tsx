@@ -104,7 +104,10 @@ export const ApplicationDetailsByIDPage = () => {
 
   const requestedTab = search.selectedTab ?? "";
   const defaultTab = isNonMemberAdmin ? "members" : "certificates";
-  const selectedTab = requestedTab || defaultTab;
+  const selectedTab =
+    isNonMemberAdmin && requestedTab !== "members" && requestedTab !== "settings"
+      ? defaultTab
+      : requestedTab || defaultTab;
 
   const handleCopyId = () => {
     if (!application) return;
