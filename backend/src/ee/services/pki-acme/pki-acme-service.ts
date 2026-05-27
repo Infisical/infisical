@@ -773,6 +773,11 @@ export const pkiAcmeServiceFactory = ({
       }
     }
 
+    const uniqueIdentifiers = new Set(payload.identifiers.map((id) => `${id.type}:${id.value.toLowerCase()}`));
+    if (uniqueIdentifiers.size !== payload.identifiers.length) {
+      throw new AcmeMalformedError({ message: "Duplicate identifiers are not permitted" });
+    }
+
     const order = await acmeOrderDAL.transaction(async (tx) => {
       const account = (await acmeAccountDAL.findByProjectIdAndAccountId(profileId, accountId))!;
       const createdOrder = await acmeOrderDAL.create(
@@ -1146,12 +1151,15 @@ export const pkiAcmeServiceFactory = ({
             : AcmeIdentifierType.DNS;
           csrIdentifierPairs.add(`${cnType}:${certificateRequest.commonName.toLowerCase()}`);
         }
-        if (
-          csrIdentifierPairs.size !== orderWithAuthorizations.authorizations.length ||
-          !orderWithAuthorizations.authorizations.every((auth) => {
+        const authIdentifierPairs = new Set(
+          orderWithAuthorizations.authorizations.map((auth) => {
             const value = auth.wildcard ? `*.${auth.identifierValue}` : auth.identifierValue;
-            return csrIdentifierPairs.has(`${auth.identifierType}:${value.toLowerCase()}`);
+            return `${auth.identifierType}:${value.toLowerCase()}`;
           })
+        );
+        if (
+          csrIdentifierPairs.size !== authIdentifierPairs.size ||
+          ![...authIdentifierPairs].every((id) => csrIdentifierPairs.has(id))
         ) {
           throw new AcmeBadCSRError({ message: "Invalid CSR: Common name + SANs mismatch with order identifiers" });
         }
