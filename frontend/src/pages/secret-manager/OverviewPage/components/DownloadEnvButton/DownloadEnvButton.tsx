@@ -4,7 +4,7 @@ import { DownloadIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { IconButton, Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
-import { downloadSecretEnvFile } from "@app/helpers/download";
+import { downloadSecretAppSettingsJsonFile, downloadSecretEnvFile } from "@app/helpers/download";
 import { fetchProjectSecrets } from "@app/hooks/api/secrets/queries";
 import { ApiErrorTypes, ProjectEnv, TApiErrors } from "@app/hooks/api/types";
 
@@ -21,6 +21,7 @@ export const DownloadEnvButton = ({ environments, projectId, secretPath }: Props
     if (environments.length !== 1) return;
 
     const environment = environments[0].slug;
+    const format = typeof window !== "undefined" ? localStorage.getItem(`infisical-secret-download-format-${projectId}`) || "env" : "env";
 
     setIsDownloading(true);
     try {
@@ -32,7 +33,11 @@ export const DownloadEnvButton = ({ environments, projectId, secretPath }: Props
         secretPath
       });
 
-      downloadSecretEnvFile(environment, localSecrets, localImportedSecrets);
+      if (format === "appsettings") {
+        downloadSecretAppSettingsJsonFile(environment, localSecrets, localImportedSecrets);
+      } else {
+        downloadSecretEnvFile(environment, localSecrets, localImportedSecrets);
+      }
     } catch (err) {
       if (err instanceof AxiosError) {
         const error = err?.response?.data as TApiErrors;
@@ -56,9 +61,11 @@ export const DownloadEnvButton = ({ environments, projectId, secretPath }: Props
     }
   };
 
+  const currentFormat = typeof window !== "undefined" ? localStorage.getItem(`infisical-secret-download-format-${projectId}`) || "env" : "env";
+
   return (
     <Tooltip>
-      <TooltipTrigger>
+      <TooltipTrigger asChild>
         <IconButton
           variant="outline"
           size="md"
@@ -72,7 +79,7 @@ export const DownloadEnvButton = ({ environments, projectId, secretPath }: Props
       <TooltipContent>
         {environments.length !== 1
           ? "Select a single environment to download secrets"
-          : "Download secrets"}
+          : `Download secrets (${currentFormat === "appsettings" ? "appsettings.json" : ".env"})`}
       </TooltipContent>
     </Tooltip>
   );
