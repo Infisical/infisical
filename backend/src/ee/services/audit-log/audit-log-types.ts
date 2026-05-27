@@ -310,6 +310,7 @@ export enum EventType {
   CREATE_ENVIRONMENT = "create-environment",
   UPDATE_ENVIRONMENT = "update-environment",
   DELETE_ENVIRONMENT = "delete-environment",
+  RESTORE_ENVIRONMENT = "restore-environment",
   GET_ENVIRONMENT = "get-environment",
   ADD_PROJECT_MEMBER = "add-project-member",
   ADD_BATCH_PROJECT_MEMBER = "add-project-members",
@@ -2347,6 +2348,15 @@ interface UpdateEnvironmentEvent {
 
 interface DeleteEnvironmentEvent {
   type: EventType.DELETE_ENVIRONMENT;
+  metadata: {
+    name: string;
+    slug: string;
+    hardDelete: boolean;
+  };
+}
+
+interface RestoreEnvironmentEvent {
+  type: EventType.RESTORE_ENVIRONMENT;
   metadata: {
     name: string;
     slug: string;
@@ -7272,6 +7282,7 @@ export type Event =
   | GetEnvironmentEvent
   | UpdateEnvironmentEvent
   | DeleteEnvironmentEvent
+  | RestoreEnvironmentEvent
   | AddProjectMemberEvent
   | AddBatchProjectMemberEvent
   | RemoveProjectMemberEvent

@@ -27,7 +27,11 @@ export const secretVersionV2BridgeDALFactory = (db: TDbClient) => {
         .where(buildFindFilter(filter, TableName.SecretVersionV2))
         .leftJoin(TableName.SecretV2, `${TableName.SecretVersionV2}.secretId`, `${TableName.SecretV2}.id`)
         .leftJoin(TableName.SecretFolder, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
-        .leftJoin(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+        .leftJoin(TableName.Environment, function joinActiveEnvForFolder() {
+          this.on(`${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`).andOnNull(
+            `${TableName.Environment}.deleteAfter`
+          );
+        })
         .select(selectAllTableCols(TableName.SecretVersionV2))
         .select(db.ref("projectId").withSchema(TableName.Environment).as("projectId"))
         .first();
@@ -189,6 +193,7 @@ export const secretVersionV2BridgeDALFactory = (db: TDbClient) => {
         .whereRaw(`version_cte.row_num > ${TableName.Project}."pitVersionLimit"`)
         // Projects with version >= 3 will require to have all secret versions for PIT
         .andWhere(`${TableName.Project}.version`, "<", 3)
+        .whereNull(`${TableName.Environment}.deleteAfter`)
         .delete();
     } catch (error) {
       throw new DatabaseError({
@@ -215,7 +220,11 @@ export const secretVersionV2BridgeDALFactory = (db: TDbClient) => {
       const { offset, limit, sort = [["createdAt", "desc"]] } = findOpt;
       const query = (tx || db.replicaNode())(TableName.SecretVersionV2)
         .leftJoin(TableName.SecretFolder, `${TableName.SecretFolder}.id`, `${TableName.SecretVersionV2}.folderId`)
-        .leftJoin(TableName.Environment, `${TableName.Environment}.id`, `${TableName.SecretFolder}.envId`)
+        .leftJoin(TableName.Environment, function joinActiveEnvForFolder() {
+          this.on(`${TableName.Environment}.id`, `${TableName.SecretFolder}.envId`).andOnNull(
+            `${TableName.Environment}.deleteAfter`
+          );
+        })
         .leftJoin<TUsers>(
           `${TableName.Users} as user_actor`,
           "user_actor.id",

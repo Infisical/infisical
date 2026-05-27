@@ -427,6 +427,7 @@ import { projectSshConfigDALFactory } from "@app/services/project/project-ssh-co
 import { projectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
 import { projectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { projectEnvDALFactory } from "@app/services/project-env/project-env-dal";
+import { projectEnvQueueFactory } from "@app/services/project-env/project-env-queue";
 import { projectEnvServiceFactory } from "@app/services/project-env/project-env-service";
 import { projectKeyDALFactory } from "@app/services/project-key/project-key-dal";
 import { projectKeyServiceFactory } from "@app/services/project-key/project-key-service";
@@ -1727,6 +1728,13 @@ export const registerRoutes = async (
     membershipUserDAL,
     roleDAL,
     groupDAL
+  });
+
+  const projectEnvQueue = projectEnvQueueFactory({
+    cronJob,
+    projectEnvDAL,
+    keyStore,
+    auditLogService
   });
 
   const projectEnvService = projectEnvServiceFactory({
@@ -3399,6 +3407,7 @@ export const registerRoutes = async (
   telemetryQueue.startTelemetryCheck();
   telemetryQueue.startAggregatedEventsJob();
   dailyResourceCleanUp.init();
+  projectEnvQueue.init();
   healthAlert.init();
   pkiSyncCleanup.init();
   pkiDiscoveryQueue.startPkiDiscoveryScanQueue();

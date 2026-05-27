@@ -48,6 +48,7 @@ export const secretFolderDALFactory = (db: TDbClient) => {
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
         .where(`${TableName.Environment}.projectId`, projectId)
         .where(`${TableName.Environment}.slug`, environment)
+        .whereNull(`${TableName.Environment}.deleteAfter`)
         .select(
           selectAllTableCols(TableName.SecretFolder),
           db.ref("id").withSchema(TableName.Environment).as("envId"),
@@ -86,6 +87,7 @@ export const secretFolderDALFactory = (db: TDbClient) => {
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
         .where(`${TableName.Environment}.projectId`, projectId)
         .whereIn(`${TableName.Environment}.slug`, environments)
+        .whereNull(`${TableName.Environment}.deleteAfter`)
         .select(
           selectAllTableCols(TableName.SecretFolder),
           db.ref("id").withSchema(TableName.Environment).as("envId"),
@@ -145,6 +147,7 @@ export const secretFolderDALFactory = (db: TDbClient) => {
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
         .where(`${TableName.Environment}.projectId`, projectId)
         .where(`${TableName.Environment}.slug`, environment)
+        .whereNull(`${TableName.Environment}.deleteAfter`)
         .select(
           selectAllTableCols(TableName.SecretFolder),
           db.ref("id").withSchema(TableName.Environment).as("envId"),
@@ -216,6 +219,7 @@ export const secretFolderDALFactory = (db: TDbClient) => {
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
         .whereIn(`${TableName.SecretFolder}.id`, folderIds)
         .where(`${TableName.Environment}.projectId`, projectId)
+        .whereNull(`${TableName.Environment}.deleteAfter`)
         .select(
           selectAllTableCols(TableName.SecretFolder),
           db.ref("slug").withSchema(TableName.Environment).as("environmentSlug"),
@@ -233,6 +237,7 @@ export const secretFolderDALFactory = (db: TDbClient) => {
           .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
           .whereIn(`${TableName.SecretFolder}.id`, folderIds)
           .where(`${TableName.Environment}.projectId`, projectId)
+          .whereNull(`${TableName.Environment}.deleteAfter`)
       );
 
       const idMap = buildFolderIdMap(allEnvFolders);
@@ -278,6 +283,7 @@ export const secretFolderDALFactory = (db: TDbClient) => {
       const folder = await (tx || db.replicaNode())(TableName.SecretFolder)
         .where({ [`${TableName.SecretFolder}.id` as "id"]: id })
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+        .whereNull(`${TableName.Environment}.deleteAfter`)
         .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
         .select(selectAllTableCols(TableName.SecretFolder))
         .select(
@@ -302,6 +308,7 @@ export const secretFolderDALFactory = (db: TDbClient) => {
     try {
       const folders = await (tx || db.replicaNode())(TableName.SecretFolder)
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+        .whereNull(`${TableName.Environment}.deleteAfter`)
         .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
         .select(selectAllTableCols(TableName.SecretFolder))
         .where({ projectId })
@@ -349,7 +356,11 @@ export const secretFolderDALFactory = (db: TDbClient) => {
             void bd.whereILike(`${TableName.SecretFolder}.name`, `%${sanitizeSqlLikeString(search)}%`);
           }
         })
-        .leftJoin(TableName.Environment, `${TableName.Environment}.id`, `${TableName.SecretFolder}.envId`)
+        .leftJoin(TableName.Environment, function joinActiveEnvForFolder() {
+          this.on(`${TableName.Environment}.id`, `${TableName.SecretFolder}.envId`).andOnNull(
+            `${TableName.Environment}.deleteAfter`
+          );
+        })
         .select(
           selectAllTableCols(TableName.SecretFolder),
           db.raw(
@@ -391,6 +402,7 @@ export const secretFolderDALFactory = (db: TDbClient) => {
       const parentFolders = await (tx || db.replicaNode())(TableName.SecretFolder)
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
         .whereIn(`${TableName.SecretFolder}.id`, parentIds)
+        .whereNull(`${TableName.Environment}.deleteAfter`)
         .select(
           selectAllTableCols(TableName.SecretFolder),
           db.ref("slug").withSchema(TableName.Environment).as("environment")
@@ -449,6 +461,7 @@ export const secretFolderDALFactory = (db: TDbClient) => {
       const rootFolder = await (tx || db.replicaNode())(TableName.SecretFolder)
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
         .where(`${TableName.SecretFolder}.id`, rootId)
+        .whereNull(`${TableName.Environment}.deleteAfter`)
         .select(
           selectAllTableCols(TableName.SecretFolder),
           db.ref("slug").withSchema(TableName.Environment).as("environment")

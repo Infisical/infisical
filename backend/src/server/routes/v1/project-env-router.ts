@@ -10,6 +10,8 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
+const booleanParam = () => z.enum(["true", "false"]).transform((value) => value === "true");
+
 export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
@@ -234,6 +236,9 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
         projectId: z.string().trim().describe(ENVIRONMENTS.DELETE.projectId),
         id: z.string().trim().describe(ENVIRONMENTS.DELETE.id)
       }),
+      querystring: z.object({
+        hardDelete: booleanParam().optional().describe(ENVIRONMENTS.DELETE.hardDelete)
+      }),
       response: {
         200: z.object({
           message: z.string(),
@@ -250,7 +255,8 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         projectId: req.params.projectId,
-        id: req.params.id
+        id: req.params.id,
+        hardDelete: req.query.hardDelete
       });
 
       await server.services.auditLog.createAuditLog({
@@ -260,7 +266,8 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
           type: EventType.DELETE_ENVIRONMENT,
           metadata: {
             slug: environment.slug,
-            name: environment.name
+            name: environment.name,
+            hardDelete: req.query.hardDelete ?? false
           }
         }
       });
@@ -276,6 +283,65 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
 
       return {
         message: "Successfully deleted environment",
+        projectId: req.params.projectId,
+        environment
+      };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:projectId/environments/:id/restore",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      hide: false,
+      operationId: "restoreEnvironment",
+      tags: [ApiDocsTags.Environments],
+      description: "Restore a soft-deleted environment",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      params: z.object({
+        projectId: z.string().trim().describe(ENVIRONMENTS.RESTORE.projectId),
+        id: z.string().trim().describe(ENVIRONMENTS.RESTORE.id)
+      }),
+      response: {
+        200: z.object({
+          message: z.string(),
+          projectId: z.string(),
+          environment: ProjectEnvironmentsSchema
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const environment = await server.services.projectEnv.restoreEnvironment({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        projectId: req.params.projectId,
+        id: req.params.id
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: environment.projectId,
+        event: {
+          type: EventType.RESTORE_ENVIRONMENT,
+          metadata: {
+            slug: environment.slug,
+            name: environment.name
+          }
+        }
+      });
+
+      return {
+        message: "Successfully restored environment",
         projectId: req.params.projectId,
         environment
       };

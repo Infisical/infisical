@@ -23,7 +23,7 @@ const createProjectEnvironment = async (name: string, slug: string) => {
 const deleteProjectEnvironment = async (envId: string) => {
   const res = await testServer.inject({
     method: "DELETE",
-    url: `/api/v1/workspace/${seedData1.project.id}/environments/${envId}`,
+    url: `/api/v1/workspace/${seedData1.project.id}/environments/${envId}?hardDelete=true`,
     headers: {
       authorization: `Bearer ${jwtAuthToken}`
     }
@@ -123,7 +123,7 @@ describe("Project Environment Router", async () => {
         id: deletedProjectEnvironment.id,
         name: mockProjectEnv.name,
         slug: mockProjectEnv.slug,
-        position: 5,
+        position: DEFAULT_PROJECT_ENVS.length + 1,
         createdAt: expect.any(String),
         updatedAt: expect.any(String)
       })
