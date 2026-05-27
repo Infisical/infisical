@@ -218,7 +218,7 @@ export const IDENTITIES_V2 = {
     search: {
       desc: "The filters to apply to the search.",
       name: "The name of the identity to filter by.",
-      role: "The role of the identity to filter by."
+      role: "The role to filter by. Matches against the role name or slug for custom roles and the role type for predefined roles."
     },
     offset: "The offset to start from. If you enter 10, it will start from the 10th identity.",
     limit: "The number of identities to return.",
@@ -231,7 +231,7 @@ export const IDENTITIES_V2 = {
     search: {
       desc: "The filters to apply when counting.",
       name: "The name of the identity to filter by.",
-      role: "The role of the identity to filter by."
+      role: "The role to filter by. Matches against the role name or slug for custom roles and the role type for predefined roles."
     }
   }
 } as const;

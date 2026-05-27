@@ -119,6 +119,10 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
                   z
                     .object({
                       [SearchResourceOperators.$eq]: searchResourceZodValidate(z.string().max(255), "Role $eq"),
+                      [SearchResourceOperators.$contains]: searchResourceZodValidate(
+                        z.string().max(255),
+                        "Role $contains"
+                      ),
                       [SearchResourceOperators.$in]: searchResourceZodValidate(z.string().max(255), "Role $in").array()
                     })
                     .partial()
@@ -203,6 +207,10 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
                   z
                     .object({
                       [SearchResourceOperators.$eq]: searchResourceZodValidate(z.string().max(255), "Role $eq"),
+                      [SearchResourceOperators.$contains]: searchResourceZodValidate(
+                        z.string().max(255),
+                        "Role $contains"
+                      ),
                       [SearchResourceOperators.$in]: searchResourceZodValidate(z.string().max(255), "Role $in").array()
                     })
                     .partial()

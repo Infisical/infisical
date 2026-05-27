@@ -1,14 +1,7 @@
-import { useCallback, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { formatDistanceToNow } from "date-fns";
-import {
-  ChevronDownIcon,
-  EditIcon,
-  FilterIcon,
-  MoreHorizontalIcon,
-  SearchIcon,
-  TrashIcon
-} from "lucide-react";
+import { ChevronDownIcon, EditIcon, MoreHorizontalIcon, SearchIcon, TrashIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { LastLoginSection } from "@app/components/organization/LastLoginSection";
@@ -16,10 +9,8 @@ import { OrgPermissionCan } from "@app/components/permissions";
 import {
   Badge,
   DropdownMenu,
-  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuTrigger,
   Empty,
   EmptyDescription,
@@ -59,7 +50,6 @@ import { usePagination, useResetPageHelper } from "@app/hooks";
 import {
   identityAuthToNameMap,
   useCountOrgIdentityMemberships,
-  useGetOrgRoles,
   useSearchOrgIdentityMemberships
 } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
@@ -77,10 +67,6 @@ type Props = {
       isEnterpriseFeature?: boolean;
     }
   ) => void;
-};
-
-type Filter = {
-  roles: string[];
 };
 
 type ScopeTab = "all" | "organization" | "project";
@@ -400,14 +386,15 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
     setUserTablePreference("identityTable", PreferenceKey.PerPage, newPerPage);
   };
 
-  const [filter, setFilter] = useState<Filter>({ roles: [] });
-
   const organizationId = currentOrg?.id || "";
 
-  const searchPayload = {
-    name: debouncedSearch ? { $contains: debouncedSearch } : undefined,
-    role: filter.roles?.length ? { $in: filter.roles } : undefined
-  };
+  // A single search term matches either the identity name or any of its role names/slugs,
+  // so name + role are OR'd rather than AND'd (top-level keys would otherwise combine with AND).
+  const searchPayload = debouncedSearch
+    ? {
+        $or: [{ name: { $contains: debouncedSearch } }, { role: { $contains: debouncedSearch } }]
+      }
+    : {};
 
   const { data, isPending } = useSearchOrgIdentityMemberships({
     orgId: organizationId,
@@ -435,8 +422,6 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
   const { totalCount = 0 } = data ?? {};
   useResetPageHelper({ totalCount, offset, setPage });
 
-  const { data: roles } = useGetOrgRoles(organizationId);
-
   const handleSort = (column: OrgIdentityOrderBy) => {
     if (column === orderBy) {
       setOrderDirection((prev) =>
@@ -452,26 +437,10 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
     );
   };
 
-  const handleRoleToggle = useCallback(
-    (roleSlug: string) =>
-      setFilter((state) => {
-        const currentRoles = state.roles || [];
-        return {
-          ...state,
-          roles: currentRoles.includes(roleSlug)
-            ? currentRoles.filter((role) => role !== roleSlug)
-            : [...currentRoles, roleSlug]
-        };
-      }),
-    []
-  );
-
-  const isTableFiltered = filter.roles.length > 0;
-  const isFiltered = debouncedSearch.trim().length > 0 || isTableFiltered;
+  const isFiltered = debouncedSearch.trim().length > 0;
   const isEmpty = !isPending && !data?.identities?.length;
 
   const orgWord = isSubOrganization ? "sub-organization" : "organization";
-  const orgVariant = isSubOrganization ? "sub-org" : "org";
   const isProjectTab = scopeTab === "project";
   const scopeLabel = isProjectTab ? "project" : orgWord;
 
@@ -480,9 +449,9 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
   if (isFiltered) {
     emptyTitle =
       scopeTab === "all"
-        ? "No machine identities match search filter"
-        : `No ${scopeLabel} machine identities match search filter`;
-    emptyDescription = "Adjust your search or filter criteria.";
+        ? "No machine identities match your search"
+        : `No ${scopeLabel} machine identities match your search`;
+    emptyDescription = "Try adjusting your search.";
   } else if (isProjectTab) {
     emptyTitle = "No project machine identities found";
     emptyDescription = "Machine identities scoped to a project will appear here.";
@@ -515,42 +484,16 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
             <TabsTrigger value="all">All{renderTabCount(allScopeCount)}</TabsTrigger>
           </TabsList>
         </Tabs>
-        <div className="flex w-1/2 justify-end gap-2">
-          <InputGroup className="flex-1">
-            <InputGroupAddon>
-              <SearchIcon />
-            </InputGroupAddon>
-            <InputGroupInput
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder={`Search ${isSubOrganization ? "sub-organization " : ""}machine identities by name...`}
-            />
-          </InputGroup>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <IconButton variant={isTableFiltered ? orgVariant : "outline"}>
-                <FilterIcon />
-              </IconButton>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="max-h-80 overflow-y-auto">
-              <DropdownMenuLabel>
-                Filter by {isSubOrganization ? "Sub-" : ""}Organization Role
-              </DropdownMenuLabel>
-              {roles?.map(({ id, slug, name }) => (
-                <DropdownMenuCheckboxItem
-                  key={id}
-                  checked={filter.roles.includes(slug)}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    handleRoleToggle(slug);
-                  }}
-                >
-                  {name}
-                </DropdownMenuCheckboxItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+        <InputGroup className="w-1/2">
+          <InputGroupAddon>
+            <SearchIcon />
+          </InputGroupAddon>
+          <InputGroupInput
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder={`Search ${isSubOrganization ? "sub-organization " : ""}machine identities by name or role...`}
+          />
+        </InputGroup>
       </div>
       {isEmpty ? (
         <Empty className="border">

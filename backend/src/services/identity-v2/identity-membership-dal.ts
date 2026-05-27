@@ -134,7 +134,7 @@ export const identityMembershipV2DALFactory = (db: TDbClient) => {
         buildKnexFilterForSearchResource(searchedMemberships, searchFilter, (attr) => {
           switch (attr) {
             case "role":
-              return [`${TableName.Role}.slug`, `${TableName.MembershipRole}.role`];
+              return [`${TableName.Role}.name`, `${TableName.Role}.slug`, `${TableName.MembershipRole}.role`];
             case "name":
               return `${TableName.Identity}.name`;
             default:
@@ -440,7 +440,7 @@ export const identityMembershipV2DALFactory = (db: TDbClient) => {
         buildKnexFilterForSearchResource(query, searchFilter, (attr) => {
           switch (attr) {
             case "role":
-              return [`${TableName.Role}.slug`, `${TableName.MembershipRole}.role`];
+              return [`${TableName.Role}.name`, `${TableName.Role}.slug`, `${TableName.MembershipRole}.role`];
             case "name":
               return `${TableName.Identity}.name`;
             default:
@@ -496,7 +496,7 @@ export const identityMembershipV2DALFactory = (db: TDbClient) => {
         buildKnexFilterForSearchResource(query, searchFilter, (attr) => {
           switch (attr) {
             case "role":
-              return [`${TableName.Role}.slug`, `${TableName.MembershipRole}.role`];
+              return [`${TableName.Role}.name`, `${TableName.Role}.slug`, `${TableName.MembershipRole}.role`];
             case "name":
               return `${TableName.Identity}.name`;
             default:

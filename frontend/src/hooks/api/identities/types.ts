@@ -954,6 +954,15 @@ export enum SearchIdentitiesScope {
   ProjectScope = "project"
 }
 
+type IdentitySearchFilter = {
+  name?: { $contains: string };
+  role?: { $contains: string };
+  $or?: Array<{
+    name?: { $contains: string };
+    role?: { $contains: string };
+  }>;
+};
+
 export type TSearchIdentitiesDTO = {
   orgId: string;
   limit?: number;
@@ -961,19 +970,13 @@ export type TSearchIdentitiesDTO = {
   orderBy?: OrgIdentityOrderBy;
   orderDirection?: OrderByDirection;
   scope?: SearchIdentitiesScope[];
-  search: {
-    name?: { $contains: string };
-    role?: { $in: string[] };
-  };
+  search: IdentitySearchFilter;
 };
 
 export type TCountIdentitiesDTO = {
   orgId: string;
   scope: SearchIdentitiesScope[];
-  search: {
-    name?: { $contains: string };
-    role?: { $in: string[] };
-  };
+  search: IdentitySearchFilter;
 };
 
 export type TIdentityMembershipCounts = {
