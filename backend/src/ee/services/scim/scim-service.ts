@@ -1075,7 +1075,7 @@ export const scimServiceFactory = ({
       await membershipRoleDAL.create(
         {
           membershipId: groupMembership.id,
-          role: OrgMembershipRole.NoAccess,
+          role: OrgMembershipRole.Custom,
           customRoleId: noAccessRole.id
         },
         tx

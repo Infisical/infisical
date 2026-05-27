@@ -209,7 +209,7 @@ export const samlConfigServiceFactory = ({
           await membershipRoleDAL.create(
             {
               membershipId: orgMembership.id,
-              role: OrgMembershipRole.NoAccess,
+              role: OrgMembershipRole.Custom,
               customRoleId: noAccessRole.id
             },
             transaction
