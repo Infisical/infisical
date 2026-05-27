@@ -147,10 +147,11 @@ export const identityMembershipV2DALFactory = (db: TDbClient) => {
         void searchedMemberships.orderBy("roleSort", orderDirection, "last");
       } else if (orderBy === OrgIdentitySearchOrderBy.LastLogin) {
         // Never-used identities (lastLoginTime IS NULL) are always pushed to the bottom
-        // regardless of sort direction so the visible page is dominated by real activity.
         void searchedMemberships.orderBy("lastLoginSort", orderDirection, "last");
       } else {
-        void searchedMemberships.orderBy("identityName", orderDirection);
+        // Sort case-insensitively so names aren't grouped by capitalization
+        const direction = orderDirection === OrderByDirection.ASC ? "ASC" : "DESC";
+        void searchedMemberships.orderByRaw(`LOWER(??) ${direction}`, [`${TableName.Identity}.name`]);
       }
       // Secondary sort by membership id keeps pagination deterministic when the primary
       // sort key ties (duplicate names, identical aggregated role).
