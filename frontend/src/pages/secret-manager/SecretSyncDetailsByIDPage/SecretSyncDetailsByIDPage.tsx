@@ -2,10 +2,14 @@ import { Helmet } from "react-helmet";
 import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, useParams } from "@tanstack/react-router";
-import { BanIcon, PencilIcon } from "lucide-react";
+import { BanIcon } from "lucide-react";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { EditSecretSyncModal } from "@app/components/secret-syncs";
+import {
+  EditSecretSyncModal,
+  SecretSyncImportStatusBadge,
+  SecretSyncRemoveStatusBadge
+} from "@app/components/secret-syncs";
 import {
   Card,
   CardAction,
@@ -17,7 +21,6 @@ import {
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
-  IconButton,
   PageLoader
 } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
@@ -26,7 +29,6 @@ import { ProjectPermissionSecretSyncActions } from "@app/context/ProjectPermissi
 import { SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
 import { usePopUp } from "@app/hooks";
 import { SecretSync, useGetSecretSync } from "@app/hooks/api/secretSyncs";
-import { getSecretSyncPermissionSubject } from "@app/lib/fn/permission";
 import { IntegrationsListPageTabs } from "@app/types/integrations";
 
 import {
@@ -103,7 +105,10 @@ const PageContent = () => {
                 {secretSync.description || `${destinationDetails.name} Sync`}
               </p>
             </div>
-            <SecretSyncActionTriggers secretSync={secretSync} onEdit={handleEdit} />
+            <div className="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-2">
+              <SecretSyncImportStatusBadge secretSync={secretSync} />
+              <SecretSyncRemoveStatusBadge secretSync={secretSync} />
+            </div>
           </div>
           <div className="flex justify-center">
             <div className="mr-4 w-96">
@@ -111,22 +116,7 @@ const PageContent = () => {
                 <CardHeader className="border-b">
                   <CardTitle>Details</CardTitle>
                   <CardAction>
-                    <ProjectPermissionCan
-                      I={ProjectPermissionSecretSyncActions.Edit}
-                      a={getSecretSyncPermissionSubject(secretSync)}
-                    >
-                      {(isAllowed) => (
-                        <IconButton
-                          variant="ghost-muted"
-                          size="xs"
-                          isDisabled={!isAllowed}
-                          aria-label="Edit sync details"
-                          onClick={handleEdit}
-                        >
-                          <PencilIcon />
-                        </IconButton>
-                      )}
-                    </ProjectPermissionCan>
+                    <SecretSyncActionTriggers secretSync={secretSync} onEdit={handleEdit} />
                   </CardAction>
                 </CardHeader>
                 <CardContent>

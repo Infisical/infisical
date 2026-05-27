@@ -19,16 +19,14 @@ import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   DeleteSecretSyncModal,
   SecretSyncImportSecretsModal,
-  SecretSyncImportStatusBadge,
-  SecretSyncRemoveSecretsModal,
-  SecretSyncRemoveStatusBadge
+  SecretSyncRemoveSecretsModal
 } from "@app/components/secret-syncs";
 import {
-  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  IconButton,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -120,123 +118,115 @@ export const SecretSyncActionTriggers = ({ secretSync, onEdit }: Props) => {
 
   return (
     <>
-      <div className="mt-4 ml-auto flex shrink-0 flex-wrap items-center justify-end gap-2">
-        <SecretSyncImportStatusBadge secretSync={secretSync} />
-        <SecretSyncRemoveStatusBadge secretSync={secretSync} />
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline">
-              Options
-              <EllipsisIcon />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <ProjectPermissionCan I={ProjectPermissionSecretSyncActions.Edit} a={permissionSubject}>
-              {(isAllowed: boolean) => (
-                <DropdownMenuItem onClick={onEdit} isDisabled={!isAllowed}>
-                  <PencilIcon />
-                  Edit Sync
-                </DropdownMenuItem>
-              )}
-            </ProjectPermissionCan>
-            <ProjectPermissionCan
-              I={ProjectPermissionSecretSyncActions.SyncSecrets}
-              a={permissionSubject}
-            >
-              {(isAllowed: boolean) => (
-                <DropdownMenuItem onClick={handleTriggerSync} isDisabled={!isAllowed}>
-                  <RefreshCwIcon />
-                  Trigger Sync
-                </DropdownMenuItem>
-              )}
-            </ProjectPermissionCan>
-            <DropdownMenuItem
-              onClick={(e) => {
-                e.stopPropagation();
-                handleCopyId();
-              }}
-            >
-              {isIdCopied ? <CheckIcon /> : <CopyIcon />}
-              Copy Sync ID
-            </DropdownMenuItem>
-            {syncOption?.canImportSecrets && (
-              <ProjectPermissionCan
-                I={ProjectPermissionSecretSyncActions.ImportSecrets}
-                a={permissionSubject}
-              >
-                {(isAllowed: boolean) => (
-                  <DropdownMenuItem
-                    onClick={() => handlePopUpOpen("importSecrets")}
-                    isDisabled={!isAllowed}
-                  >
-                    <DownloadIcon />
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <div className="flex h-full w-full items-center justify-between gap-1">
-                          <span>Import Secrets</span>
-                          <InfoIcon className="text-muted" />
-                        </div>
-                      </TooltipTrigger>
-                      <TooltipContent side="left" sideOffset={42}>
-                        Import secrets from this {destinationName} destination into Infisical.
-                      </TooltipContent>
-                    </Tooltip>
-                  </DropdownMenuItem>
-                )}
-              </ProjectPermissionCan>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <IconButton variant="ghost" size="xs" aria-label="Sync options">
+            <EllipsisIcon />
+          </IconButton>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <ProjectPermissionCan I={ProjectPermissionSecretSyncActions.Edit} a={permissionSubject}>
+            {(isAllowed: boolean) => (
+              <DropdownMenuItem onClick={onEdit} isDisabled={!isAllowed}>
+                <PencilIcon />
+                Edit Sync
+              </DropdownMenuItem>
             )}
-            {syncOption?.canRemoveSecretsOnDeletion && (
-              <ProjectPermissionCan
-                I={ProjectPermissionSecretSyncActions.RemoveSecrets}
-                a={permissionSubject}
-              >
-                {(isAllowed: boolean) => (
-                  <DropdownMenuItem
-                    onClick={() => handlePopUpOpen("removeSecrets")}
-                    isDisabled={!isAllowed}
-                  >
-                    <EraserIcon />
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <div className="flex h-full w-full items-center justify-between gap-1">
-                          <span>Remove Secrets</span>
-                          <InfoIcon className="text-muted" />
-                        </div>
-                      </TooltipTrigger>
-                      <TooltipContent side="left" sideOffset={42}>
-                        Remove secrets synced by Infisical from this {destinationName} destination.
-                      </TooltipContent>
-                    </Tooltip>
-                  </DropdownMenuItem>
-                )}
-              </ProjectPermissionCan>
+          </ProjectPermissionCan>
+          <ProjectPermissionCan
+            I={ProjectPermissionSecretSyncActions.SyncSecrets}
+            a={permissionSubject}
+          >
+            {(isAllowed: boolean) => (
+              <DropdownMenuItem onClick={handleTriggerSync} isDisabled={!isAllowed}>
+                <RefreshCwIcon />
+                Trigger Sync
+              </DropdownMenuItem>
             )}
-            <ProjectPermissionCan I={ProjectPermissionSecretSyncActions.Edit} a={permissionSubject}>
-              {(isAllowed: boolean) => (
-                <DropdownMenuItem isDisabled={!isAllowed} onClick={handleToggleEnableSync}>
-                  {secretSync.isAutoSyncEnabled ? <ToggleLeftIcon /> : <ToggleRightIcon />}
-                  {secretSync.isAutoSyncEnabled ? "Disable" : "Enable"} Auto-Sync
-                </DropdownMenuItem>
-              )}
-            </ProjectPermissionCan>
+          </ProjectPermissionCan>
+          <DropdownMenuItem
+            onClick={(e) => {
+              e.stopPropagation();
+              handleCopyId();
+            }}
+          >
+            {isIdCopied ? <CheckIcon /> : <CopyIcon />}
+            Copy Sync ID
+          </DropdownMenuItem>
+          {syncOption?.canImportSecrets && (
             <ProjectPermissionCan
-              I={ProjectPermissionSecretSyncActions.Delete}
+              I={ProjectPermissionSecretSyncActions.ImportSecrets}
               a={permissionSubject}
             >
               {(isAllowed: boolean) => (
                 <DropdownMenuItem
+                  onClick={() => handlePopUpOpen("importSecrets")}
                   isDisabled={!isAllowed}
-                  onClick={() => handlePopUpOpen("deleteSync")}
-                  variant="danger"
                 >
-                  <Trash2Icon />
-                  Delete Sync
+                  <DownloadIcon />
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="flex h-full w-full items-center justify-between gap-1">
+                        <span>Import Secrets</span>
+                        <InfoIcon className="size-3.5 text-muted" />
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" sideOffset={14}>
+                      Import secrets from this {destinationName} destination into Infisical.
+                    </TooltipContent>
+                  </Tooltip>
                 </DropdownMenuItem>
               )}
             </ProjectPermissionCan>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
+          )}
+          {syncOption?.canRemoveSecretsOnDeletion && (
+            <ProjectPermissionCan
+              I={ProjectPermissionSecretSyncActions.RemoveSecrets}
+              a={permissionSubject}
+            >
+              {(isAllowed: boolean) => (
+                <DropdownMenuItem
+                  onClick={() => handlePopUpOpen("removeSecrets")}
+                  isDisabled={!isAllowed}
+                >
+                  <EraserIcon />
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="flex h-full w-full items-center justify-between gap-1">
+                        <span>Remove Secrets</span>
+                        <InfoIcon className="ml-0.5 size-3.5 text-muted" />
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" sideOffset={14}>
+                      Remove secrets synced by Infisical from this {destinationName} destination.
+                    </TooltipContent>
+                  </Tooltip>
+                </DropdownMenuItem>
+              )}
+            </ProjectPermissionCan>
+          )}
+          <ProjectPermissionCan I={ProjectPermissionSecretSyncActions.Edit} a={permissionSubject}>
+            {(isAllowed: boolean) => (
+              <DropdownMenuItem isDisabled={!isAllowed} onClick={handleToggleEnableSync}>
+                {secretSync.isAutoSyncEnabled ? <ToggleLeftIcon /> : <ToggleRightIcon />}
+                {secretSync.isAutoSyncEnabled ? "Disable" : "Enable"} Auto-Sync
+              </DropdownMenuItem>
+            )}
+          </ProjectPermissionCan>
+          <ProjectPermissionCan I={ProjectPermissionSecretSyncActions.Delete} a={permissionSubject}>
+            {(isAllowed: boolean) => (
+              <DropdownMenuItem
+                isDisabled={!isAllowed}
+                onClick={() => handlePopUpOpen("deleteSync")}
+                variant="danger"
+              >
+                <Trash2Icon />
+                Delete Sync
+              </DropdownMenuItem>
+            )}
+          </ProjectPermissionCan>
+        </DropdownMenuContent>
+      </DropdownMenu>
       <SecretSyncImportSecretsModal
         onOpenChange={(isOpen) => handlePopUpToggle("importSecrets", isOpen)}
         isOpen={popUp.importSecrets.isOpen}

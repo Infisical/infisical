@@ -54,6 +54,7 @@ const envSchema = z
       .enum(["true", "false"])
       .default("false")
       .transform((el) => el === "true"),
+    DISABLE_PUBLIC_SECRET_SHARING: zodStrBool.default("false"),
     REDIS_URL: zpStr(z.string().optional()),
     REDIS_USERNAME: zpStr(z.string().optional()),
     REDIS_PASSWORD: zpStr(z.string().optional()),
@@ -920,6 +921,16 @@ export const overwriteSchema: {
       {
         key: "INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_SECRET",
         description: "The Client Secret of your Heroku application."
+      }
+    ]
+  },
+  secretSharing: {
+    name: "Secret Sharing",
+    fields: [
+      {
+        key: "DISABLE_PUBLIC_SECRET_SHARING",
+        description:
+          "Disable creation of unauthenticated public secret shares (the /share-secret page). Set to 'true' to block public sharing."
       }
     ]
   }

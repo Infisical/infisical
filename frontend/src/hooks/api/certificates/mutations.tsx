@@ -6,6 +6,7 @@ import { pkiSubscriberKeys } from "../pkiSubscriber/queries";
 import { projectKeys } from "../projects";
 import { certKeys } from "./queries";
 import {
+  TCancelCertificateRequestResponse,
   TCertificate,
   TDeleteCertDTO,
   TDownloadPkcs12DTO,
@@ -289,6 +290,21 @@ export const useTriggerCertificateRequestValidation = () => {
     mutationFn: async ({ requestId }) => {
       const { data } = await apiRequest.post<TTriggerCertificateRequestValidationResponse>(
         `/api/v1/cert-manager/certificates/certificate-requests/${requestId}/trigger-validation`
+      );
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["certificateRequests", "list"] });
+    }
+  });
+};
+
+export const useCancelCertificateRequest = () => {
+  const queryClient = useQueryClient();
+  return useMutation<TCancelCertificateRequestResponse, object, { requestId: string }>({
+    mutationFn: async ({ requestId }) => {
+      const { data } = await apiRequest.post<TCancelCertificateRequestResponse>(
+        `/api/v1/cert-manager/certificates/certificate-requests/${requestId}/cancel`
       );
       return data;
     },

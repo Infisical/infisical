@@ -361,6 +361,7 @@ export enum EventType {
   GET_CERTIFICATE_FROM_REQUEST = "get-certificate-from-request",
   LIST_CERTIFICATE_REQUESTS = "list-certificate-requests",
   TRIGGER_CERTIFICATE_REQUEST_VALIDATION = "trigger-certificate-request-validation",
+  CANCEL_CERTIFICATE_REQUEST = "cancel-certificate-request",
 
   SCEP_ENROLLMENT = "scep-enrollment",
   SCEP_RENEWAL = "scep-renewal",
@@ -440,5 +441,9 @@ export enum EventType {
   RESOURCE_AUTH_METHOD_LOGIN = "resource-auth-method-login",
   RESOURCE_AUTH_METHOD_LOGIN_FAILED = "resource-auth-method-login-failed",
   RESOURCE_AUTH_METHOD_UPDATE = "resource-auth-method-update",
-  RESOURCE_AUTH_METHOD_REVOKE = "resource-auth-method-revoke"
+  RESOURCE_AUTH_METHOD_REVOKE = "resource-auth-method-revoke",
+  RELAY_CREATE = "relay-create",
+  RELAY_UPDATE = "relay-update",
+  RELAY_DELETE = "relay-delete",
+  RELAY_ENROLLMENT_TOKEN_CREATE = "relay-enrollment-token-create"
 }

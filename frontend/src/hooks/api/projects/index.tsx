@@ -37,6 +37,7 @@ export {
   useListWorkspaceSshCertificateTemplates,
   useListWorkspaceSshHostGroups,
   useListWorkspaceSshHosts,
+  useRestoreEnvironment,
   useSearchProjects,
   useUpdateProject,
   useUpdateUserWorkspaceRole,

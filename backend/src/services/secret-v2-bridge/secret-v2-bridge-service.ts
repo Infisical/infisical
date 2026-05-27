@@ -17,7 +17,6 @@ import {
 } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
-  ProjectPermissionActions,
   ProjectPermissionCommitsActions,
   ProjectPermissionSecretActions,
   ProjectPermissionSet,
@@ -448,6 +447,7 @@ export const secretV2BridgeServiceFactory = ({
         actor,
         projectId,
         environmentSlug: folder.environment.slug,
+        environmentName: folder.environment.name,
         events: [
           {
             type: ProjectEvents.SecretCreate,
@@ -756,6 +756,7 @@ export const secretV2BridgeServiceFactory = ({
         projectId,
         orgId: actorOrgId,
         environmentSlug: folder.environment.slug,
+        environmentName: folder.environment.name,
         events: [
           {
             type: ProjectEvents.SecretUpdate,
@@ -885,6 +886,7 @@ export const secretV2BridgeServiceFactory = ({
           projectId,
           orgId: actorOrgId,
           environmentSlug: folder.environment.slug,
+          environmentName: folder.environment.name,
           events: [
             {
               type: ProjectEvents.SecretDelete,
@@ -2080,6 +2082,7 @@ export const secretV2BridgeServiceFactory = ({
         projectId,
         orgId: actorOrgId,
         environmentSlug: folder.environment.slug,
+        environmentName: folder.environment.name,
         events: [
           {
             type: ProjectEvents.SecretCreate,
@@ -2558,6 +2561,7 @@ export const secretV2BridgeServiceFactory = ({
                 projectId,
                 orgId: actorOrgId,
                 environmentSlug: environment,
+                environmentName: projectEnvironment.name,
                 events: [
                   {
                     type: ProjectEvents.SecretUpdate,
@@ -2696,6 +2700,7 @@ export const secretV2BridgeServiceFactory = ({
         projectId,
         orgId: actorOrgId,
         environmentSlug: folder.environment.slug,
+        environmentName: folder.environment.name,
         events: [
           {
             type: ProjectEvents.SecretDelete,
@@ -2785,9 +2790,13 @@ export const secretV2BridgeServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
-    const canRead =
-      permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback) ||
-      permission.can(ProjectPermissionCommitsActions.Read, ProjectPermissionSub.Commits);
+    const canRead = permission.can(
+      ProjectPermissionCommitsActions.Read,
+      subject(ProjectPermissionSub.Commits, {
+        environment: folder.environment.envSlug,
+        secretPath: folderWithPath.path
+      })
+    );
 
     if (!canRead) throw new ForbiddenRequestError({ message: "You do not have permission to read secret versions" });
 
@@ -3370,6 +3379,7 @@ export const secretV2BridgeServiceFactory = ({
         orgId: actorOrgId,
         secretPath: destinationFolder.path,
         environmentSlug: destinationFolder.environment.slug,
+        environmentName: destinationFolder.environment.name,
         actorId,
         actor,
         events: [
@@ -3390,6 +3400,7 @@ export const secretV2BridgeServiceFactory = ({
         orgId: actorOrgId,
         secretPath: sourceFolder.path,
         environmentSlug: sourceFolder.environment.slug,
+        environmentName: sourceFolder.environment.name,
         actorId,
         actor,
         events: [
@@ -3842,9 +3853,13 @@ export const secretV2BridgeServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
-    const canRead =
-      permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback) ||
-      permission.can(ProjectPermissionCommitsActions.Read, ProjectPermissionSub.Commits);
+    const canRead = permission.can(
+      ProjectPermissionCommitsActions.Read,
+      subject(ProjectPermissionSub.Commits, {
+        environment: environment.slug,
+        secretPath
+      })
+    );
 
     if (!canRead) throw new ForbiddenRequestError({ message: "You do not have permission to read secret versions" });
 

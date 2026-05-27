@@ -64,6 +64,7 @@ export const EditSecretSyncModal = ({ isOpen, secretSync, onOpenChange }: Props)
               secretSync={secretSync}
               onComplete={() => onOpenChange(false)}
               onDirtyChange={setIsDirty}
+              onCancel={() => handleSheetOpenChange(false)}
             />
           </div>
         </SheetContent>

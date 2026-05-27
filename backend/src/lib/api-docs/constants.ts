@@ -1193,7 +1193,13 @@ export const ENVIRONMENTS = {
   },
   DELETE: {
     projectId: "The ID of the project to delete the environment from.",
-    id: "The ID of the environment to delete."
+    id: "The ID of the environment to delete.",
+    hardDelete:
+      "When true, permanently removes the environment. When false or omitted, the environment is soft-deleted (preserved and scheduled for permanent deletion after a grace period) and hidden from subsequent reads."
+  },
+  RESTORE: {
+    projectId: "The ID of the project the environment belongs to.",
+    id: "The ID of the soft-deleted environment to restore."
   },
   GET: {
     projectId: "The ID of the project the environment belongs to.",
@@ -2664,6 +2670,11 @@ export const AppConnections = {
       clientSecret: "Your Auth0 application's Client Secret.",
       audience: "The unique identifier of the target API you want to access."
     },
+    SALESFORCE_CONNECTION: {
+      instanceUrl: "The instance URL of the Salesforce org to connect to.",
+      consumerKey: "The Consumer Key of your Salesforce External App.",
+      consumerSecret: "The Consumer Secret of your Salesforce External App."
+    },
     SQL_CONNECTION: {
       host: "The hostname of the database server.",
       port: "The port number of the database.",
@@ -3343,6 +3354,10 @@ export const SecretRotations = {
       projectRef: "The reference ID of the Supabase project to rotate the API key for.",
       keyType: "The type of the API key to rotate (e.g. publishable, secret)."
     },
+    SALESFORCE_OAUTH_CREDENTIALS: {
+      appId: "The identifier of the Salesforce External Client App to rotate the consumer secret for.",
+      appName: "The developer name of the Salesforce External Client App to rotate the consumer secret for."
+    },
     DATADOG_APPLICATION_KEY_SECRET: {
       serviceAccountId: "The ID of the Datadog service account to rotate the application key for."
     }
@@ -3408,6 +3423,10 @@ export const SecretRotations = {
     },
     SUPABASE_API_KEY: {
       apiKey: "The name of the secret that the rotated Supabase API key will be mapped to."
+    },
+    SALESFORCE_OAUTH_CREDENTIALS: {
+      consumerKey: "The name of the secret that the rotated Salesforce consumer key will be mapped to.",
+      consumerSecret: "The name of the secret that the rotated Salesforce consumer secret will be mapped to."
     },
     DATADOG_APPLICATION_KEY_SECRET: {
       applicationKeyId: "The name of the secret that the rotated Datadog application key ID will be mapped to.",
@@ -3701,5 +3720,25 @@ export const GATEWAYS = {
     iamRequestBody: "The base64-encoded body of the signed STS request.",
     iamRequestHeaders: "The base64-encoded headers of the sts:GetCallerIdentity signed request.",
     token: "The one-time enrollment token previously issued for this gateway (token method only)."
+  }
+} as const;
+
+export const RELAYS = {
+  CREATE: {
+    name: "Name of the relay.",
+    host: "Host address where the relay is reachable.",
+    authMethod:
+      "Auth method to configure on the relay. `aws` carries the AWS allowlists; `token` is configurationless and requires a separate POST /v2/relays/:id/token-auth/generate-enrollment-token call to mint the bootstrap token."
+  },
+  UPDATE: {
+    authMethod:
+      "Replacement auth method. Same shape as in create — `aws` with allowlists or `token` with no config. Existing relays keep working until they restart and re-authenticate via the new method."
+  },
+  LOGIN: {
+    relayId: "The ID of the relay logging in (AWS method only).",
+    iamHttpRequestMethod: "The HTTP request method used in the signed STS request.",
+    iamRequestBody: "The base64-encoded body of the signed STS request.",
+    iamRequestHeaders: "The base64-encoded headers of the sts:GetCallerIdentity signed request.",
+    token: "The one-time enrollment token previously issued for this relay (token method only)."
   }
 } as const;

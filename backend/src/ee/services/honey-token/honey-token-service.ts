@@ -402,6 +402,7 @@ export const honeyTokenServiceFactory = ({
       secretPath,
       projectId,
       environmentSlug: environment,
+      environmentName: folder.environment.name,
       excludeReplication: true
     });
 
@@ -585,6 +586,7 @@ export const honeyTokenServiceFactory = ({
         secretPath: folderInfo.path,
         projectId,
         environmentSlug: folderInfo.environmentSlug,
+        environmentName: folderInfo.environmentName,
         excludeReplication: true
       });
     }
@@ -707,6 +709,7 @@ export const honeyTokenServiceFactory = ({
         secretPath: folderInfo.path,
         projectId,
         environmentSlug: folderInfo.environmentSlug,
+        environmentName: folderInfo.environmentName,
         excludeReplication: true
       });
     }

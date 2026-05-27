@@ -6,7 +6,8 @@ import * as x509 from "@peculiar/x509";
 import { OrganizationActionScope, OrgMembershipRole, OrgMembershipStatus, TRelays } from "@app/db/schemas";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto";
-import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { DatabaseErrorCode } from "@app/lib/error-codes";
+import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { createRelayConnection } from "@app/lib/gateway-v2/gateway-v2";
 import { logger } from "@app/lib/logger";
@@ -26,8 +27,10 @@ import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { verifyHostInputValidity } from "../dynamic-secret/dynamic-secret-fns";
+import { TGatewayV2DALFactory } from "../gateway-v2/gateway-v2-dal";
 import { OrgPermissionRelayActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
+import { TResourceAuthMethodServiceFactory } from "../resource-auth-method/resource-auth-method-service";
 import { createSshCert, createSshKeyPair } from "../ssh/ssh-certificate-authority-fns";
 import { SshCertType } from "../ssh/ssh-certificate-authority-types";
 import { SshCertKeyAlgorithm } from "../ssh-certificate/ssh-certificate-types";
@@ -49,7 +52,9 @@ export const relayServiceFactory = ({
   orgDAL,
   notificationService,
   smtpService,
-  userDAL
+  userDAL,
+  resourceAuthMethodService,
+  gatewayV2DAL
 }: {
   instanceRelayConfigDAL: TInstanceRelayConfigDALFactory;
   orgRelayConfigDAL: TOrgRelayConfigDALFactory;
@@ -60,6 +65,8 @@ export const relayServiceFactory = ({
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
   smtpService: Pick<TSmtpService, "sendMail">;
   userDAL: Pick<TUserDALFactory, "find">;
+  resourceAuthMethodService: Pick<TResourceAuthMethodServiceFactory, "initAtCreate" | "loadView">;
+  gatewayV2DAL: Pick<TGatewayV2DALFactory, "find">;
 }) => {
   const $getInstanceCAs = async () => {
     const instanceConfig = await instanceRelayConfigDAL.transaction(async (tx) => {
@@ -1133,7 +1140,8 @@ export const relayServiceFactory = ({
         relayHost: relayClientCredentials.relayHost,
         clientCertificate: relayClientCredentials.clientCertificate,
         clientPrivateKey: relayClientCredentials.clientPrivateKey,
-        serverCertificateChain: relayClientCredentials.serverCertificateChain
+        serverCertificateChain: relayClientCredentials.serverCertificateChain,
+        timeoutMs: 15000
       });
 
       await relayDAL.updateById(relay.id, { heartbeat: new Date() });
@@ -1289,11 +1297,197 @@ export const relayServiceFactory = ({
     }
   };
 
+  const createRelay = async ({
+    name,
+    host,
+    authMethod,
+    actor
+  }: {
+    name: string;
+    host: string;
+    authMethod:
+      | { method: "aws"; config: { stsEndpoint: string; allowedPrincipalArns: string; allowedAccountIds: string } }
+      | { method: "token" };
+    actor: {
+      type: ActorType;
+      id: string;
+      orgId: string;
+      authMethod: ActorAuthMethod;
+    };
+  }) => {
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
+      actor: actor.type,
+      actorId: actor.id,
+      orgId: actor.orgId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId
+    });
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionRelayActions.CreateRelays, OrgPermissionSubjects.Relay);
+
+    await verifyHostInputValidity({ host, isDynamicSecret: false });
+
+    let relay;
+    try {
+      relay = await relayDAL.transaction(async (tx) => {
+        const created = await relayDAL.create({ name, host, orgId: actor.orgId }, tx);
+        await resourceAuthMethodService.initAtCreate({ resource: { type: "relay", id: created.id }, authMethod }, tx);
+        return created;
+      });
+    } catch (err) {
+      if (err instanceof DatabaseError && (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation) {
+        throw new BadRequestError({ message: `A relay named "${name}" already exists` });
+      }
+      throw err;
+    }
+
+    return relay;
+  };
+
+  const connectRelay = async ({ relayId }: { relayId: string }) => {
+    const relay = await relayDAL.findById(relayId);
+    if (!relay || !relay.orgId) {
+      throw new NotFoundError({ message: `Relay ${relayId} not found` });
+    }
+
+    const orgCAs = await $getOrgCAs(relay.orgId);
+    return $generateRelayServerCredentials({
+      host: relay.host,
+      orgId: relay.orgId,
+      relayPkiServerCaCertificate: orgCAs.relayPkiServerCaCertificate,
+      relayPkiServerCaPrivateKey: orgCAs.relayPkiServerCaPrivateKey,
+      relayPkiClientCaCertificate: orgCAs.relayPkiClientCaCertificate,
+      relayPkiClientCaCertificateChain: orgCAs.relayPkiClientCaCertificateChain,
+      relaySshServerCaPrivateKey: orgCAs.relaySshServerCaPrivateKey,
+      relaySshClientCaPublicKey: orgCAs.relaySshClientCaPublicKey
+    });
+  };
+
+  const heartbeatRelay = async ({ relayId }: { relayId: string }) => {
+    const relay = await relayDAL.findById(relayId);
+    if (!relay || !relay.orgId) {
+      throw new NotFoundError({ message: `Relay ${relayId} not found` });
+    }
+
+    const relayClientCredentials = await getCredentialsForClient({
+      relayId: relay.id,
+      orgId: relay.orgId,
+      orgName: relay.orgId,
+      gatewayId: "00000000-0000-0000-0000-000000000000",
+      gatewayName: "heartbeat",
+      duration: 60 * 1000
+    });
+
+    try {
+      await createRelayConnection({
+        relayHost: relayClientCredentials.relayHost,
+        clientCertificate: relayClientCredentials.clientCertificate,
+        clientPrivateKey: relayClientCredentials.clientPrivateKey,
+        serverCertificateChain: relayClientCredentials.serverCertificateChain,
+        timeoutMs: 15000
+      });
+
+      await relayDAL.updateById(relay.id, { heartbeat: new Date() });
+    } catch (err) {
+      const error = err as Error;
+      throw new BadRequestError({ message: `Relay ${relay.name} is not reachable: ${error.message}` });
+    }
+  };
+
+  const updateRelay = async ({
+    relayId,
+    host,
+    actor
+  }: {
+    relayId: string;
+    host: string;
+    actor: {
+      type: ActorType;
+      id: string;
+      orgId: string;
+      authMethod: ActorAuthMethod;
+    };
+  }) => {
+    const relay = await relayDAL.findOne({ id: relayId, orgId: actor.orgId });
+    if (!relay) {
+      throw new NotFoundError({ message: `Relay ${relayId} not found` });
+    }
+
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
+      actor: actor.type,
+      actorId: actor.id,
+      orgId: actor.orgId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId
+    });
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionRelayActions.EditRelays, OrgPermissionSubjects.Relay);
+
+    await verifyHostInputValidity({ host, isDynamicSecret: false });
+
+    return relayDAL.updateById(relayId, { host });
+  };
+
+  const getOrgRelay = async ({ relayId, orgId }: { relayId: string; orgId: string }) => {
+    const relay = await relayDAL.findOne({ id: relayId, orgId });
+    if (!relay) {
+      throw new NotFoundError({ message: `Relay ${relayId} not found` });
+    }
+    return relay;
+  };
+
+  const getRelayById = async ({ relayId }: { relayId: string }) => {
+    const relay = await relayDAL.findById(relayId);
+    if (!relay) {
+      throw new NotFoundError({ message: `Relay with ID ${relayId} not found` });
+    }
+    return relay;
+  };
+
+  const getConnectedGateways = async ({
+    relayId,
+    orgPermission
+  }: {
+    relayId: string;
+    orgPermission: { type: ActorType; id: string; orgId: string; authMethod: ActorAuthMethod };
+  }) => {
+    const relay = await relayDAL.findOne({ id: relayId, orgId: orgPermission.orgId });
+    if (!relay) {
+      throw new NotFoundError({ message: `Relay ${relayId} not found` });
+    }
+
+    const { permission } = await permissionService.getOrgPermission({
+      actor: orgPermission.type,
+      actorId: orgPermission.id,
+      orgId: relay.orgId!,
+      actorAuthMethod: orgPermission.authMethod,
+      actorOrgId: orgPermission.orgId,
+      scope: OrganizationActionScope.Any
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionRelayActions.ListRelays, OrgPermissionSubjects.Relay);
+
+    const gateways = await gatewayV2DAL.find({ relayId });
+    return gateways.map((g) => ({
+      id: g.id,
+      name: g.name,
+      createdAt: g.createdAt,
+      heartbeat: g.heartbeat
+    }));
+  };
+
   return {
     registerRelay,
     getCredentialsForGateway,
     getCredentialsForClient,
     getRelays,
+    getOrgRelay,
+    getRelayById,
+    getConnectedGateways,
+    createRelay,
+    updateRelay,
+    connectRelay,
+    heartbeatRelay,
     deleteRelay,
     heartbeat,
     healthcheckNotify

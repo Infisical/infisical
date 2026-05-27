@@ -17,7 +17,7 @@ import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal, Modal, ModalContent, Spinner } from "@app/components/v2";
+import { DeleteActionModal, Spinner } from "@app/components/v2";
 import { Blur } from "@app/components/v2/Blur";
 import {
   Badge,
@@ -28,6 +28,11 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
   DocumentationLinkBadge,
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -57,6 +62,9 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  Tabs,
+  TabsList,
+  TabsTrigger,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -92,8 +100,8 @@ import { ProjectLinkIdentityModal } from "./components/ProjectLinkIdentityModal"
 const MAX_ROLES_TO_BE_SHOWN_IN_TABLE = 2;
 
 enum AddIdentityType {
-  CreateNew,
-  AssignExisting
+  CreateNew = "create-new",
+  AssignExisting = "assign-existing"
 }
 
 export const IdentityTab = withProjectPermission(
@@ -623,50 +631,32 @@ export const IdentityTab = withProjectPermission(
             </div>
           </CardContent>
         </Card>
-        <Modal
-          isOpen={popUp.createIdentity.isOpen}
+        <Dialog
+          open={popUp.createIdentity.isOpen}
           onOpenChange={(open) => {
             handlePopUpToggle("createIdentity", open);
+            if (!open) {
+              setAddMachineIdentityType(AddIdentityType.CreateNew);
+            }
           }}
         >
-          <ModalContent
-            bodyClassName="overflow-visible"
-            title={`Add Machine Identity to ${productLabel}`}
-            subTitle="Create a new machine identity or assign an existing one"
-          >
-            <div className="mb-4 flex items-center justify-center gap-x-2">
-              <div className="flex w-3/4 gap-x-0.5 rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setAddMachineIdentityType(AddIdentityType.CreateNew);
-                  }}
-                  size="xs"
-                  className={twMerge(
-                    "min-w-[2.4rem] flex-1 rounded border-none hover:bg-mineshaft-600",
-                    addMachineIdentityType === AddIdentityType.CreateNew
-                      ? "bg-mineshaft-500"
-                      : "bg-transparent"
-                  )}
-                >
-                  Create New
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setAddMachineIdentityType(AddIdentityType.AssignExisting);
-                  }}
-                  size="xs"
-                  className={twMerge(
-                    "min-w-[2.4rem] flex-1 rounded border-none hover:bg-mineshaft-600",
-                    addMachineIdentityType === AddIdentityType.AssignExisting
-                      ? "bg-mineshaft-500"
-                      : "bg-transparent"
-                  )}
-                >
-                  Assign Existing
-                </Button>
-              </div>
+          <DialogContent className="max-w-xl overflow-visible">
+            <DialogHeader>
+              <DialogTitle>{`Add Machine Identity to ${productLabel}`}</DialogTitle>
+              <DialogDescription>
+                Create a new machine identity or assign an existing one
+              </DialogDescription>
+            </DialogHeader>
+            <div className="mx-auto flex items-center gap-2">
+              <Tabs
+                value={addMachineIdentityType}
+                onValueChange={(value) => setAddMachineIdentityType(value as AddIdentityType)}
+              >
+                <TabsList>
+                  <TabsTrigger value={AddIdentityType.CreateNew}>Create New</TabsTrigger>
+                  <TabsTrigger value={AddIdentityType.AssignExisting}>Assign Existing</TabsTrigger>
+                </TabsList>
+              </Tabs>
               <Tooltip>
                 <TooltipTrigger>
                   <InfoIcon size={16} className="text-mineshaft-400" />
@@ -708,8 +698,8 @@ export const IdentityTab = withProjectPermission(
             {addMachineIdentityType === AddIdentityType.AssignExisting && (
               <ProjectLinkIdentityModal handlePopUpToggle={handlePopUpToggle} />
             )}
-          </ModalContent>
-        </Modal>
+          </DialogContent>
+        </Dialog>
         <DeleteActionModal
           isOpen={popUp.deleteIdentity.isOpen}
           title={`Are you sure you want to remove ${

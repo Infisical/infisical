@@ -1,4 +1,5 @@
 import { ForbiddenError } from "@casl/ability";
+import { Knex } from "knex";
 
 import {
   AccessScope,
@@ -632,11 +633,11 @@ export const pkiApplicationMembershipServiceFactory = ({
     actorId
   }: {
     projectId: string;
-    actorKind: "user" | "identity" | "group";
+    actorKind: ApplicationMemberKind;
     actorId: string;
   }): Promise<Array<{ id: string; name: string }>> => {
     const memberships =
-      actorKind === "group"
+      actorKind === ApplicationMemberKind.Group
         ? await membershipDAL.findResourceMembershipsForGroup({
             projectId,
             resourceType: ResourceType.CertificateApplication,
@@ -645,7 +646,7 @@ export const pkiApplicationMembershipServiceFactory = ({
         : await membershipDAL.findResourceMembershipsForActor({
             projectId,
             resourceType: ResourceType.CertificateApplication,
-            actorType: actorKind === "user" ? ActorType.USER : ActorType.IDENTITY,
+            actorType: actorKind === ApplicationMemberKind.User ? ActorType.USER : ActorType.IDENTITY,
             actorId
           });
 
@@ -660,20 +661,23 @@ export const pkiApplicationMembershipServiceFactory = ({
     return applications.map((app) => ({ id: app.id, name: app.name }));
   };
 
-  const removeActorFromApplicationMemberships = async ({
-    projectId,
-    actorKind,
-    actorId
-  }: {
-    projectId: string;
-    actorKind: "user" | "identity" | "group";
-    actorId: string;
-  }): Promise<{
+  const removeActorFromApplicationMemberships = async (
+    {
+      projectId,
+      actorKind,
+      actorId
+    }: {
+      projectId: string;
+      actorKind: ApplicationMemberKind;
+      actorId: string;
+    },
+    externalTx?: Knex
+  ): Promise<{
     applications: Array<{ id: string; name: string }>;
     approvalPolicies: Array<{ id: string; name: string }>;
   }> => {
     const memberships =
-      actorKind === "group"
+      actorKind === ApplicationMemberKind.Group
         ? await membershipDAL.findResourceMembershipsForGroup({
             projectId,
             resourceType: ResourceType.CertificateApplication,
@@ -682,14 +686,16 @@ export const pkiApplicationMembershipServiceFactory = ({
         : await membershipDAL.findResourceMembershipsForActor({
             projectId,
             resourceType: ResourceType.CertificateApplication,
-            actorType: actorKind === "user" ? ActorType.USER : ActorType.IDENTITY,
+            actorType: actorKind === ApplicationMemberKind.User ? ActorType.USER : ActorType.IDENTITY,
             actorId
           });
 
     const directMemberships =
-      actorKind === "group"
+      actorKind === ApplicationMemberKind.Group
         ? memberships
-        : memberships.filter((m) => (actorKind === "user" ? m.actorUserId === actorId : m.actorIdentityId === actorId));
+        : memberships.filter((m) =>
+            actorKind === ApplicationMemberKind.User ? m.actorUserId === actorId : m.actorIdentityId === actorId
+          );
 
     const applicationIds = Array.from(
       new Set(directMemberships.map((m) => m.scopeResourceId).filter((id): id is string => Boolean(id)))
@@ -699,8 +705,8 @@ export const pkiApplicationMembershipServiceFactory = ({
 
     let approvalPoliciesTouched: Array<{ id: string; name: string }> = [];
 
-    await membershipDAL.transaction(async (tx) => {
-      if (actorKind !== "identity" && applicationIds.length > 0) {
+    const performCleanup = async (tx: Knex) => {
+      if (actorKind !== ApplicationMemberKind.Identity && applicationIds.length > 0) {
         for (const applicationId of applicationIds) {
           // eslint-disable-next-line no-await-in-loop
           const affected = await approvalPolicyDAL.deleteStepApproversBySubject(
@@ -708,8 +714,8 @@ export const pkiApplicationMembershipServiceFactory = ({
               projectId,
               scopeType: ApprovalPolicyScope.PkiApplication,
               scopeId: applicationId,
-              userId: actorKind === "user" ? actorId : undefined,
-              groupId: actorKind === "group" ? actorId : undefined
+              userId: actorKind === ApplicationMemberKind.User ? actorId : undefined,
+              groupId: actorKind === ApplicationMemberKind.Group ? actorId : undefined
             },
             tx
           );
@@ -728,33 +734,60 @@ export const pkiApplicationMembershipServiceFactory = ({
         await membershipRoleDAL.delete({ $in: { membershipId: membershipIds } }, tx);
         await membershipDAL.delete({ $in: { id: membershipIds } }, tx);
       }
-    });
+    };
+
+    if (externalTx) {
+      await performCleanup(externalTx);
+    } else {
+      await membershipDAL.transaction(performCleanup);
+    }
 
     return { applications: applicationsTouched, approvalPolicies: approvalPoliciesTouched };
   };
 
-  const removeUsersFromApplicationMemberships = async ({
+  const deleteMemberAndCleanup = async <T>({
+    projectId,
+    actorKind,
+    actorId,
+    performDelete
+  }: {
+    projectId: string;
+    actorKind: ApplicationMemberKind;
+    actorId: string;
+    performDelete: (tx: Knex) => Promise<T>;
+  }): Promise<T> => {
+    return membershipDAL.transaction(async (tx) => {
+      const result = await performDelete(tx);
+      await removeActorFromApplicationMemberships({ projectId, actorKind, actorId }, tx);
+      return result;
+    });
+  };
+
+  const deleteMembersAndCleanup = async <T>({
     projectId,
     emails,
-    usernames
+    usernames,
+    performDelete
   }: {
     projectId: string;
     emails: string[];
     usernames: string[];
-  }): Promise<void> => {
-    if (!emails.length && !usernames.length) return;
-
-    const users = await userDAL.findByEmailsOrUsernames({ emails, usernames });
-    if (!users.length) return;
-
-    for (const user of users) {
-      // eslint-disable-next-line no-await-in-loop
-      await removeActorFromApplicationMemberships({
-        projectId,
-        actorKind: "user",
-        actorId: user.id
-      });
-    }
+    performDelete: (tx: Knex) => Promise<T>;
+  }): Promise<T> => {
+    return membershipDAL.transaction(async (tx) => {
+      const result = await performDelete(tx);
+      if (emails.length || usernames.length) {
+        const users = await userDAL.findByEmailsOrUsernames({ emails, usernames });
+        for (const user of users) {
+          // eslint-disable-next-line no-await-in-loop
+          await removeActorFromApplicationMemberships(
+            { projectId, actorKind: ApplicationMemberKind.User, actorId: user.id },
+            tx
+          );
+        }
+      }
+      return result;
+    });
   };
 
   return {
@@ -764,7 +797,7 @@ export const pkiApplicationMembershipServiceFactory = ({
     updateMemberRole,
     removeMember,
     listApplicationsForActor,
-    removeActorFromApplicationMemberships,
-    removeUsersFromApplicationMemberships
+    deleteMemberAndCleanup,
+    deleteMembersAndCleanup
   };
 };

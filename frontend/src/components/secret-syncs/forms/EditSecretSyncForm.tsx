@@ -36,6 +36,7 @@ type Props = {
   onComplete: (secretSync: TSecretSync) => void;
   secretSync: TSecretSync;
   onDirtyChange?: (isDirty: boolean) => void;
+  onCancel?: () => void;
 };
 
 type FormStep = {
@@ -125,7 +126,7 @@ const normalizeConfig = (config: unknown): unknown => {
   return normalized;
 };
 
-export const EditSecretSyncForm = ({ secretSync, onComplete, onDirtyChange }: Props) => {
+export const EditSecretSyncForm = ({ secretSync, onComplete, onDirtyChange, onCancel }: Props) => {
   const updateSecretSync = useUpdateSecretSync();
   const { name: destinationName } = SECRET_SYNC_MAP[secretSync.destination];
   const { currentOrg } = useOrganization();
@@ -345,7 +346,11 @@ export const EditSecretSyncForm = ({ secretSync, onComplete, onDirtyChange }: Pr
             >
               {isCheckingDuplicate ? "Checking..." : "Save"}
             </Button>
-            <Button variant="outline" type="button" onClick={() => onComplete(secretSync)}>
+            <Button
+              variant="outline"
+              type="button"
+              onClick={onCancel ?? (() => onComplete(secretSync))}
+            >
               Cancel
             </Button>
             <span className="text-xs text-muted">{isDirty ? "Unsaved changes" : ""}</span>

@@ -12,6 +12,7 @@ export const orgProductStatsDALFactory = (db: TDbClient) => {
       const result = (await (tx || db.replicaNode())(TableName.SecretV2)
         .join(TableName.SecretFolder, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+        .whereNull(`${TableName.Environment}.deleteAfter`)
         .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
         .where(`${TableName.Project}.orgId`, orgId)
         .where(`${TableName.Project}.type`, ProjectType.SecretManager)
@@ -105,6 +106,7 @@ export const orgProductStatsDALFactory = (db: TDbClient) => {
         .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
         .where(`${TableName.Project}.orgId`, orgId)
         .where(`${TableName.Project}.type`, ProjectType.SecretManager)
+        .whereNull(`${TableName.Environment}.deleteAfter`)
         .count(`${TableName.Environment}.id as count`)
         .first()) as { count: string } | undefined;
 

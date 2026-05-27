@@ -3,8 +3,10 @@ import { z } from "zod";
 import { LogProvider } from "@app/ee/services/audit-log-stream/audit-log-stream-enums";
 import { TAuditLogStream } from "@app/ee/services/audit-log-stream/audit-log-stream-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 export const registerAuditLogStreamEndpoints = <T extends TAuditLogStream>({
   server,
@@ -75,6 +77,15 @@ export const registerAuditLogStreamEndpoints = <T extends TAuditLogStream>({
         req.permission
       );
 
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.AuditLogStreamCreated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: { streamId: auditLogStream.id, destinationType: provider }
+        })
+        .catch(() => {});
+
       return { auditLogStream };
     }
   });
@@ -110,6 +121,15 @@ export const registerAuditLogStreamEndpoints = <T extends TAuditLogStream>({
         req.permission
       );
 
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.AuditLogStreamUpdated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: { streamId: auditLogStream.id, destinationType: provider }
+        })
+        .catch(() => {});
+
       return { auditLogStream };
     }
   });
@@ -135,6 +155,15 @@ export const registerAuditLogStreamEndpoints = <T extends TAuditLogStream>({
       const { logStreamId } = req.params;
 
       const auditLogStream = await server.services.auditLogStream.deleteById(logStreamId, provider, req.permission);
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.AuditLogStreamDeleted,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: { streamId: auditLogStream.id, destinationType: provider }
+        })
+        .catch(() => {});
 
       return { auditLogStream };
     }

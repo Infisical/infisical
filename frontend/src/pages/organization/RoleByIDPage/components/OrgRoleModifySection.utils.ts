@@ -128,7 +128,8 @@ const orgRelayPermissionSchema = z
     [OrgRelayPermissionActions.ListRelays]: z.boolean().optional(),
     [OrgRelayPermissionActions.EditRelays]: z.boolean().optional(),
     [OrgRelayPermissionActions.DeleteRelays]: z.boolean().optional(),
-    [OrgRelayPermissionActions.CreateRelays]: z.boolean().optional()
+    [OrgRelayPermissionActions.CreateRelays]: z.boolean().optional(),
+    [OrgRelayPermissionActions.RevokeRelayAccess]: z.boolean().optional()
   })
   .optional();
 

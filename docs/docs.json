@@ -159,6 +159,7 @@
                       "integrations/app-connections/railway",
                       "integrations/app-connections/redis",
                       "integrations/app-connections/render",
+                      "integrations/app-connections/salesforce",
                       "integrations/app-connections/snowflake",
                       "integrations/app-connections/supabase",
                       "integrations/app-connections/teamcity",
@@ -491,6 +492,7 @@
                       "documentation/platform/secret-rotation/oracledb-credentials",
                       "documentation/platform/secret-rotation/postgres-credentials",
                       "documentation/platform/secret-rotation/redis-credentials",
+                      "documentation/platform/secret-rotation/salesforce-oauth-credentials",
                       "documentation/platform/secret-rotation/supabase-api-key",
                       "documentation/platform/secret-rotation/unix-linux-local-account",
                       "documentation/platform/secret-rotation/windows-local-account"
@@ -1861,6 +1863,18 @@
                     ]
                   },
                   {
+                    "group": "Salesforce",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/salesforce/list",
+                      "api-reference/endpoints/app-connections/salesforce/available",
+                      "api-reference/endpoints/app-connections/salesforce/get-by-id",
+                      "api-reference/endpoints/app-connections/salesforce/get-by-name",
+                      "api-reference/endpoints/app-connections/salesforce/create",
+                      "api-reference/endpoints/app-connections/salesforce/update",
+                      "api-reference/endpoints/app-connections/salesforce/delete"
+                    ]
+                  },
+                  {
                     "group": "Supabase",
                     "pages": [
                       "api-reference/endpoints/app-connections/supabase/list",
@@ -2123,6 +2137,7 @@
                   "api-reference/endpoints/environments/create",
                   "api-reference/endpoints/environments/update",
                   "api-reference/endpoints/environments/delete",
+                  "api-reference/endpoints/environments/restore",
                   {
                     "group": "Legacy",
                     "pages": [
@@ -2415,6 +2430,19 @@
                       "api-reference/endpoints/secret-rotations/redis-credentials/list",
                       "api-reference/endpoints/secret-rotations/redis-credentials/rotate-secrets",
                       "api-reference/endpoints/secret-rotations/redis-credentials/update"
+                    ]
+                  },
+                  {
+                    "group": "Salesforce OAuth Credentials",
+                    "pages": [
+                      "api-reference/endpoints/secret-rotations/salesforce-oauth-credentials/create",
+                      "api-reference/endpoints/secret-rotations/salesforce-oauth-credentials/delete",
+                      "api-reference/endpoints/secret-rotations/salesforce-oauth-credentials/get-by-id",
+                      "api-reference/endpoints/secret-rotations/salesforce-oauth-credentials/get-by-name",
+                      "api-reference/endpoints/secret-rotations/salesforce-oauth-credentials/get-generated-credentials-by-id",
+                      "api-reference/endpoints/secret-rotations/salesforce-oauth-credentials/list",
+                      "api-reference/endpoints/secret-rotations/salesforce-oauth-credentials/rotate-secrets",
+                      "api-reference/endpoints/secret-rotations/salesforce-oauth-credentials/update"
                     ]
                   },
                   {
@@ -3024,6 +3052,7 @@
                       "api-reference/endpoints/certificates/read",
                       "api-reference/endpoints/certificates/certificate-request",
                       "api-reference/endpoints/certificates/search-certificate-requests",
+                      "api-reference/endpoints/certificates/cancel-certificate-request",
                       "api-reference/endpoints/certificates/create-certificate",
                       "api-reference/endpoints/certificates/renew",
                       "api-reference/endpoints/certificates/update-config",

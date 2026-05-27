@@ -65,6 +65,24 @@ export const certificateDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findActiveDigiCertCertsByOrderIds = async (caId: string, orderIds: number[]) => {
+    if (orderIds.length === 0) return [];
+    try {
+      const stringIds = orderIds.map(String);
+      const placeholders = stringIds.map(() => "?").join(", ");
+      const certs = await db
+        .replicaNode()(TableName.Certificate)
+        .where({ caId, status: CertStatus.ACTIVE })
+        .whereRaw(`"externalMetadata"->>'type' = ?`, ["digicert"])
+        .whereRaw(`("externalMetadata"->>'orderId') IN (${placeholders})`, stringIds)
+        .select("id", "commonName", "serialNumber", "projectId", "applicationId");
+
+      return certs;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find active DigiCert certs by order IDs" });
+    }
+  };
+
   type TInventoryFilterParams = {
     friendlyName?: string;
     commonName?: string;
@@ -807,7 +825,28 @@ export const certificateDALFactory = (db: TDbClient) => {
           `${TableName.PkiCertificateProfile}.id`
         )
         .where(`${TableName.CertificateAuthority}.projectId`, projectId)
-        .select(db.raw(`COALESCE("${TableName.PkiCertificateProfile}"."enrollmentType", 'API') as label`))
+        .select(
+          db.raw(
+            `COALESCE(
+              (SELECT ??.?? FROM ?? WHERE ??.?? = ??.?? ORDER BY ??.?? ASC LIMIT 1),
+              ??.??,
+              'api'
+            ) as label`,
+            [
+              TableName.CertificateRequests,
+              "enrollmentType",
+              TableName.CertificateRequests,
+              TableName.CertificateRequests,
+              "certificateId",
+              TableName.Certificate,
+              "id",
+              TableName.CertificateRequests,
+              "createdAt",
+              TableName.PkiCertificateProfile,
+              "enrollmentType"
+            ]
+          )
+        )
         .count("* as count")
         .groupBy("label");
 
@@ -1092,6 +1131,7 @@ export const certificateDALFactory = (db: TDbClient) => {
     countCertificatesForPkiSubscriber,
     findLatestActiveCertForSubscriber,
     findAllActiveCertsForSubscriber,
+    findActiveDigiCertCertsByOrderIds,
     findExpiredSyncedCertificates,
     findActiveCertificatesByIds,
     findActiveCertificatesForSync,

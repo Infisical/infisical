@@ -4,7 +4,7 @@ export const RotationsBrowser = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
 
-  const categories = ["All", "Databases", "Identity & Auth", "Cloud Providers",  "Networking & DNS", "Data Analytics", "Monitoring"];
+  const categories = ["All", "Databases", "Identity & Auth", "Cloud Providers",  "Networking & DNS", "Data Analytics", "Monitoring", "SaaS"];
 
   const rotations = [
     {
@@ -158,6 +158,15 @@ export const RotationsBrowser = () => {
       description:
         "Learn how to automatically rotate Supabase API keys.",
       category: "Cloud Providers",
+      rotationType: "Dual-Phase",
+    },
+    {
+      name: "Salesforce External Client App",
+      slug: "salesforce-external-client-app",
+      path: "/documentation/platform/secret-rotation/salesforce-oauth-credentials",
+      description:
+        "Learn how to automatically rotate Salesforce OAuth credentials.",
+      category: "SaaS",
       rotationType: "Dual-Phase",
     },
     {

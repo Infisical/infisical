@@ -29,7 +29,7 @@ export const getAwsConnectionConfig = async (appConnection: TAwsConnectionConfig
   let secretAccessKey: string;
   let sessionToken: undefined | string;
 
-  const { method, credentials, orgId } = appConnection;
+  const { method, credentials, orgId, projectId, version } = appConnection;
 
   switch (method) {
     case AwsConnectionMethod.AssumeRole: {
@@ -46,11 +46,14 @@ export const getAwsConnectionConfig = async (appConnection: TAwsConnectionConfig
             : undefined // if hosting on AWS
       });
 
+      // v1 (legacy) always used orgId; v2+ uses projectId when available, orgId otherwise.
+      const externalId = (version ?? 1) >= 2 ? (projectId ?? orgId) : orgId;
+
       const command = new AssumeRoleCommand({
         RoleArn: credentials.roleArn,
         RoleSessionName: `infisical-app-connection-${crypto.nativeCrypto.randomUUID()}`,
         DurationSeconds: 900, // 15 mins
-        ExternalId: orgId
+        ExternalId: externalId
       });
 
       const assumeRes = await client.send(command);

@@ -276,6 +276,7 @@ import { certificateAuthorityServiceFactory } from "@app/services/certificate-au
 import { certificateIssuanceQueueFactory } from "@app/services/certificate-authority/certificate-issuance-queue";
 import { DigiCertCertificateAuthorityFns } from "@app/services/certificate-authority/digicert/digicert-certificate-authority-fns";
 import { digicertCertificateAuthorityQueueServiceFactory } from "@app/services/certificate-authority/digicert/digicert-certificate-authority-queue";
+import { digicertRevocationSyncQueueFactory } from "@app/services/certificate-authority/digicert/digicert-revocation-sync-queue";
 import { externalCertificateAuthorityDALFactory } from "@app/services/certificate-authority/external-certificate-authority-dal";
 import { internalCertificateAuthorityDALFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-dal";
 import { InternalCertificateAuthorityFns } from "@app/services/certificate-authority/internal/internal-certificate-authority-fns";
@@ -426,6 +427,7 @@ import { projectSshConfigDALFactory } from "@app/services/project/project-ssh-co
 import { projectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
 import { projectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { projectEnvDALFactory } from "@app/services/project-env/project-env-dal";
+import { projectEnvQueueFactory } from "@app/services/project-env/project-env-queue";
 import { projectEnvServiceFactory } from "@app/services/project-env/project-env-service";
 import { projectKeyDALFactory } from "@app/services/project-key/project-key-dal";
 import { projectKeyServiceFactory } from "@app/services/project-key/project-key-service";
@@ -1548,6 +1550,16 @@ export const registerRoutes = async (
     keyStore
   });
 
+  const resourceAuthMethodService = resourceAuthMethodServiceFactory({
+    resourceAuthMethodDAL,
+    resourceAwsAuthDAL,
+    resourceTokenAuthDAL,
+    gatewayV2DAL,
+    relayDAL,
+    identityDAL,
+    permissionService
+  });
+
   const relayService = relayServiceFactory({
     instanceRelayConfigDAL,
     orgRelayConfigDAL,
@@ -1557,16 +1569,9 @@ export const registerRoutes = async (
     orgDAL,
     notificationService,
     smtpService,
-    userDAL
-  });
-
-  const resourceAuthMethodService = resourceAuthMethodServiceFactory({
-    resourceAuthMethodDAL,
-    resourceAwsAuthDAL,
-    resourceTokenAuthDAL,
-    gatewayV2DAL,
-    identityDAL,
-    permissionService
+    userDAL,
+    resourceAuthMethodService,
+    gatewayV2DAL
   });
 
   const gatewayV2Service = gatewayV2ServiceFactory({
@@ -1636,7 +1641,8 @@ export const registerRoutes = async (
     notificationService,
     projectSlackConfigDAL,
     projectMicrosoftTeamsConfigDAL,
-    microsoftTeamsService
+    microsoftTeamsService,
+    telemetryService
   });
 
   const secretQueueService = secretQueueFactory({
@@ -1722,6 +1728,13 @@ export const registerRoutes = async (
     membershipUserDAL,
     roleDAL,
     groupDAL
+  });
+
+  const projectEnvQueue = projectEnvQueueFactory({
+    cronJob,
+    projectEnvDAL,
+    keyStore,
+    auditLogService
   });
 
   const projectEnvService = projectEnvServiceFactory({
@@ -2247,7 +2260,8 @@ export const registerRoutes = async (
     certificateCleanupConfigDAL,
     certificateDAL,
     certificateRequestDAL,
-    auditLogService
+    auditLogService,
+    telemetryService
   });
 
   const dynamicSecretProviders = buildDynamicSecretProviders({
@@ -2539,7 +2553,8 @@ export const registerRoutes = async (
     appConnectionDAL,
     gatewayService,
     gatewayV2Service,
-    gatewayPoolService
+    gatewayPoolService,
+    telemetryService
   });
 
   const insightsService = insightsServiceFactory({
@@ -2571,7 +2586,8 @@ export const registerRoutes = async (
     certificateAuthorityCertDAL,
     certificateSyncDAL,
     gatewayV2Service,
-    gatewayPoolService
+    gatewayPoolService,
+    telemetryService
   });
 
   const pkiSyncCleanup = pkiSyncCleanupQueueServiceFactory({
@@ -2704,11 +2720,13 @@ export const registerRoutes = async (
     queueService,
     cronJob,
     pkiSubscriberDAL,
+    projectDAL,
     certificateAuthorityDAL,
     certificateAuthorityQueue,
     certificateDAL,
     auditLogService,
-    internalCaFns
+    internalCaFns,
+    telemetryService
   });
 
   const certificateService = certificateServiceFactory({
@@ -2751,7 +2769,10 @@ export const registerRoutes = async (
     certificateDAL,
     certificateService,
     permissionService,
-    resourceMetadataDAL
+    resourceMetadataDAL,
+    queueService,
+    userDAL,
+    identityDAL
   });
 
   const certificateIssuanceQueue = certificateIssuanceQueueFactory({
@@ -2773,6 +2794,8 @@ export const registerRoutes = async (
     certificateRequestDAL,
     resourceMetadataDAL,
     pkiAlertV2Queue,
+    pkiApplicationProfileDAL,
+    apiEnrollmentConfigDAL,
     gatewayV2Service,
     gatewayPoolService
   });
@@ -2791,7 +2814,9 @@ export const registerRoutes = async (
     projectDAL,
     certificatePolicyService,
     certificateIssuanceQueue,
-    resourceMetadataDAL
+    resourceMetadataDAL,
+    pkiApplicationProfileDAL,
+    apiEnrollmentConfigDAL
   });
 
   const approvalPolicyStepsDAL = approvalPolicyStepsDALFactory(db);
@@ -2847,6 +2872,7 @@ export const registerRoutes = async (
     resourceMetadataDAL,
     pkiAlertV2Queue,
     pkiApplicationProfileDAL,
+    apiEnrollmentConfigDAL,
     licenseService
   });
 
@@ -2866,6 +2892,16 @@ export const registerRoutes = async (
     kmsService,
     resourceMetadataDAL,
     digicertFns: digicertCaFns
+  });
+
+  const digicertRevocationSyncQueue = digicertRevocationSyncQueueFactory({
+    cronJob,
+    certificateAuthorityDAL,
+    certificateDAL,
+    appConnectionDAL,
+    kmsService,
+    auditLogService,
+    pkiAlertV2Queue
   });
 
   const certificateEstV3Service = certificateEstV3ServiceFactory({
@@ -3371,6 +3407,7 @@ export const registerRoutes = async (
   telemetryQueue.startTelemetryCheck();
   telemetryQueue.startAggregatedEventsJob();
   dailyResourceCleanUp.init();
+  projectEnvQueue.init();
   healthAlert.init();
   pkiSyncCleanup.init();
   pkiDiscoveryQueue.startPkiDiscoveryScanQueue();
@@ -3387,6 +3424,7 @@ export const registerRoutes = async (
   certificateCleanupQueue.init();
   certificateV3Queue.init();
   digicertCaQueue.init();
+  digicertRevocationSyncQueue.init();
   caAutoRenewalQueue.startDailyAutoRenewalJob();
   await microsoftTeamsService.start();
   await eventBusService.init();

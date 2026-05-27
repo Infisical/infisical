@@ -512,7 +512,11 @@ const isQueueEnabled = (name: QueueName) => {
 export type TQueueServiceFactory = {
   start: <T extends QueueName>(
     name: T,
-    jobFn: (job: Job<TQueueJobTypes[T]["payload"], void, TQueueJobTypes[T]["name"]>, token?: string) => Promise<void>,
+    jobFn: (
+      job: Job<TQueueJobTypes[T]["payload"], void, TQueueJobTypes[T]["name"]>,
+      token?: string,
+      signal?: AbortSignal
+    ) => Promise<void>,
     queueSettings?: Omit<QueueOptions, "connection"> & Pick<WorkerOptions, "concurrency">
   ) => void;
   listen: <
@@ -543,6 +547,7 @@ export type TQueueServiceFactory = {
   stopRepeatableJobByKey: <T extends QueueName>(name: T, repeatJobKey: string) => Promise<boolean>;
   clearQueue: (name: QueueName) => Promise<void>;
   stopJobById: <T extends QueueName>(name: T, jobId: string) => Promise<void | undefined>;
+  cancelActiveJob: <T extends QueueName>(name: T, jobId: string, reason?: string) => boolean;
   // @deprecated Use getJobSchedulers instead.
   getRepeatableJobs: (
     name: QueueName,
@@ -766,6 +771,12 @@ export const queueServiceFactory = (redisCfg: TRedisConfigKeys): TQueueServiceFa
     return job?.remove().catch(() => undefined);
   };
 
+  const cancelActiveJob: TQueueServiceFactory["cancelActiveJob"] = (name, jobId, reason) => {
+    const w = workerContainer[name];
+    if (!w) return false;
+    return w.cancelJob(jobId, reason);
+  };
+
   const clearQueue: TQueueServiceFactory["clearQueue"] = async (name) => {
     const q = queueContainer[name];
     await q?.drain();
@@ -877,6 +888,7 @@ export const queueServiceFactory = (redisCfg: TRedisConfigKeys): TQueueServiceFa
     stopRepeatableJobByKey,
     clearQueue,
     stopJobById,
+    cancelActiveJob,
     getRepeatableJobs,
     getDelayedJobs,
     upsertJobScheduler,

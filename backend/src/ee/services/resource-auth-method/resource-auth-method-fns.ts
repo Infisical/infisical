@@ -32,18 +32,45 @@ export const mintGatewayJwt = ({
   );
 };
 
-// ResourceRef.type is "gateway" only today; the abstraction is in place so relay can be
-// added additively in a follow-up PR without renaming routes, audit events
-// ("RESOURCE_AUTH_METHOD_*"), or DB tables (resource_auth_methods, resource_aws_auths).
-export type ResourceRef = { type: "gateway"; id: string };
+export const mintRelayJwt = ({
+  relayId,
+  orgId,
+  tokenVersion,
+  accessTokenTTL
+}: {
+  relayId: string;
+  orgId: string;
+  tokenVersion: number;
+  accessTokenTTL: number;
+}) => {
+  const appCfg = getConfig();
+  return crypto.jwt().sign(
+    {
+      relayId,
+      orgId,
+      authTokenType: AuthTokenType.RELAY_ACCESS_TOKEN,
+      tokenVersion
+    },
+    appCfg.AUTH_SECRET,
+    accessTokenTTL === 0 ? undefined : { expiresIn: accessTokenTTL }
+  );
+};
+
+export type ResourceRef = { type: "gateway"; id: string } | { type: "relay"; id: string };
 
 export const RESOURCE_TYPE_GATEWAY = "gateway" as const;
+export const RESOURCE_TYPE_RELAY = "relay" as const;
 
-// Accepts a wider input than ResourceRef so the runtime guard remains a meaningful check
-// (today TS narrows ResourceRef.type to "gateway" at compile time, but this function exists
-// so the runtime layer is ready when more resource types are added).
 export const assertGatewayResource = (resource: { type: string }, methodName: string) => {
   if (resource.type !== RESOURCE_TYPE_GATEWAY) {
+    throw new BadRequestError({
+      message: `Resource type "${resource.type}" not supported for ${methodName} auth`
+    });
+  }
+};
+
+export const assertRelayResource = (resource: { type: string }, methodName: string) => {
+  if (resource.type !== RESOURCE_TYPE_RELAY) {
     throw new BadRequestError({
       message: `Resource type "${resource.type}" not supported for ${methodName} auth`
     });

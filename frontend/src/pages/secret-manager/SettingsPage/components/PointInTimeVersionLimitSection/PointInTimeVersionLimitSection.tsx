@@ -3,7 +3,18 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, FormControl, Input } from "@app/components/v2";
+import {
+  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Field,
+  FieldError,
+  FieldLabel,
+  Input
+} from "@app/components/v3";
 import { useProject, useProjectPermission } from "@app/context";
 import { useUpdateProject } from "@app/hooks/api";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
@@ -47,40 +58,47 @@ export const PointInTimeVersionLimitSection = () => {
 
   const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
   return (
-    <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <div className="flex w-full items-center justify-between">
-        <p className="text-xl font-medium">Version Retention</p>
-      </div>
-      <p className="mt-2 mb-4 max-w-2xl text-sm text-gray-400">
-        This defines the maximum number of recent secret versions to keep per folder. Excess
-        versions will be removed at midnight (UTC) each day.
-      </p>
-      <form onSubmit={handleSubmit(handleVersionLimitSubmit)} autoComplete="off">
-        <div className="max-w-xs">
+    <Card className="mb-6">
+      <CardHeader>
+        <CardTitle>Version Retention</CardTitle>
+        <CardDescription>
+          This defines the maximum number of recent secret versions to keep per folder. Excess
+          versions will be removed at midnight (UTC) each day.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit(handleVersionLimitSubmit)} autoComplete="off">
           <Controller
             control={control}
             defaultValue={0}
             name="pitVersionLimit"
             render={({ field, fieldState: { error } }) => (
-              <FormControl
-                isError={Boolean(error)}
-                errorText={error?.message}
-                label="Recent versions to keep"
-              >
-                <Input {...field} type="number" min={1} step={1} isDisabled={!isAdmin} />
-              </FormControl>
+              <Field className="max-w-xs">
+                <FieldLabel htmlFor="pitVersionLimit">Recent versions to keep</FieldLabel>
+                <Input
+                  id="pitVersionLimit"
+                  type="number"
+                  min={1}
+                  step={1}
+                  isError={Boolean(error)}
+                  disabled={!isAdmin}
+                  {...field}
+                />
+                <FieldError>{error?.message}</FieldError>
+              </Field>
             )}
           />
-        </div>
-        <Button
-          colorSchema="secondary"
-          type="submit"
-          isLoading={isSubmitting}
-          disabled={!isAdmin || !isDirty}
-        >
-          Save
-        </Button>
-      </form>
-    </div>
+          <Button
+            className="mt-4"
+            variant="project"
+            type="submit"
+            isPending={isSubmitting}
+            isDisabled={!isAdmin || !isDirty}
+          >
+            Save
+          </Button>
+        </form>
+      </CardContent>
+    </Card>
   );
 };

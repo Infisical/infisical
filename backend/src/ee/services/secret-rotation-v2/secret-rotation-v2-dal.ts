@@ -36,6 +36,7 @@ const baseSecretRotationV2Query = ({
   const query = (tx || db.replicaNode())(TableName.SecretRotationV2)
     .join(TableName.SecretFolder, `${TableName.SecretRotationV2}.folderId`, `${TableName.SecretFolder}.id`)
     .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+    .whereNull(`${TableName.Environment}.deleteAfter`)
     .join(TableName.AppConnection, `${TableName.SecretRotationV2}.connectionId`, `${TableName.AppConnection}.id`)
     .select(selectAllTableCols(TableName.SecretRotationV2))
     .select(
@@ -191,6 +192,7 @@ export const secretRotationV2DALFactory = (
     const query = (tx || db.replicaNode())(TableName.SecretRotationV2)
       .join(TableName.SecretFolder, `${TableName.SecretRotationV2}.folderId`, `${TableName.SecretFolder}.id`)
       .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+      .whereNull(`${TableName.Environment}.deleteAfter`)
       .join(
         TableName.SecretRotationV2SecretMapping,
         `${TableName.SecretRotationV2SecretMapping}.rotationId`,
@@ -491,6 +493,7 @@ export const secretRotationV2DALFactory = (
       const query = (tx || db.replicaNode())(TableName.SecretRotationV2)
         .join(TableName.SecretFolder, `${TableName.SecretRotationV2}.folderId`, `${TableName.SecretFolder}.id`)
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+        .whereNull(`${TableName.Environment}.deleteAfter`)
         .join(TableName.AppConnection, `${TableName.SecretRotationV2}.connectionId`, `${TableName.AppConnection}.id`)
         .join(
           TableName.SecretRotationV2SecretMapping,
@@ -571,7 +574,11 @@ export const secretRotationV2DALFactory = (
     try {
       const rawRotations = await (tx || db.replicaNode())(TableName.SecretRotationV2)
         .join(TableName.SecretFolder, `${TableName.SecretRotationV2}.folderId`, `${TableName.SecretFolder}.id`)
-        .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+        .join(TableName.Environment, function joinActiveEnvForSecretRotationV2() {
+          this.on(`${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`).andOnNull(
+            `${TableName.Environment}.deleteAfter`
+          );
+        })
         .join(TableName.AppConnection, `${TableName.SecretRotationV2}.connectionId`, `${TableName.AppConnection}.id`)
         .join(
           TableName.SecretRotationV2SecretMapping,
