@@ -351,9 +351,10 @@ export const OrgRoleTable = () => {
                       const { id, name, slug, isBuiltIn } = role;
                       const isNonMutatable = slug === "admin";
                       const isBuiltInRole = slug === "admin" || isBuiltIn;
-                      const isDefaultOrgRole = isCustomOrgRole(slug)
-                        ? id === currentOrg?.defaultMembershipRole
-                        : slug === currentOrg?.defaultMembershipRole;
+                      const isDefaultOrgRole =
+                        slug === "admin"
+                          ? currentOrg?.defaultMembershipRole === "admin"
+                          : id === currentOrg?.defaultMembershipRole;
                       return (
                         <TableRow
                           key={`role-list-${id}`}

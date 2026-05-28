@@ -196,8 +196,11 @@ export const useUpdateOrg = () => {
         secretShareBrandConfig
       });
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: organizationKeys.getUserOrganizations });
+      if (variables.orgId) {
+        queryClient.invalidateQueries({ queryKey: organizationKeys.getOrgById(variables.orgId) });
+      }
     }
   });
 };
