@@ -46,7 +46,8 @@ const MsSQLKerberosCredentialsSchema = z.object({
     .string()
     .trim()
     .max(255)
-    .regex(/^[A-Za-z0-9._:-]+$/, "KDC address must be a hostname or IP with optional port")
+    .regex(/^[A-Za-z0-9._:-]*$/, "KDC address must be a hostname or IP with optional port")
+    .transform((v) => v || undefined)
     .optional(),
   spn: z.string().trim().min(1, "SPN is required for Kerberos").max(500)
 });
