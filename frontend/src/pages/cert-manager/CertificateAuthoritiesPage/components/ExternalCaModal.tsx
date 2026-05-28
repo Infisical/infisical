@@ -57,6 +57,8 @@ import {
 import { UsePopUpState } from "@app/hooks/usePopUp";
 import { slugSchema } from "@app/lib/schemas";
 
+const UNCHANGED_CREDENTIAL_SENTINEL = "__INFISICAL_UNCHANGED__";
+
 const REQUIRED_EAB_DIRECTORIES = [
   "https://acme.digicert.com/v2/acme/directory",
   "https://acme.zerossl.com/v2/DV90",
@@ -456,7 +458,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
             directoryUrl: ca.configuration.directoryUrl,
             accountEmail: ca.configuration.accountEmail,
             eabKid: ca.configuration.eabKid,
-            eabHmacKey: "__INFISICAL_UNCHANGED__",
+            eabHmacKey: UNCHANGED_CREDENTIAL_SENTINEL,
             dnsResolver: ca.configuration.dnsResolver || ""
           }
         });
@@ -930,7 +932,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
                       {...field}
                       placeholder={
                         ca
-                          ? "Leave blank to keep existing"
+                          ? undefined
                           : "dGhpc2lzYW5leGFtcGxlaG1hY2tleWZvcmRpZ2ljZXJ0YWNtZXRlc3RpbmcxMjM0NTY3ODkw"
                       }
                     />
