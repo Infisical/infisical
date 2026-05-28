@@ -1,35 +1,40 @@
 import { useEffect, useMemo, useState } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
-import { faQuestionCircle } from "@fortawesome/free-regular-svg-icons";
-import { faPlus, faXmark } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useParams } from "@tanstack/react-router";
+import { HelpCircleIcon, InfoIcon, PlusIcon, XIcon } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { BashGlobPatternTooltip } from "@app/components/permissions";
 import {
   Button,
-  FormControl,
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
   IconButton,
   Input,
-  Tab,
-  TabList,
-  TabPanel,
   Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
   TextArea,
-  Tooltip
-} from "@app/components/v2";
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { useOrganization, useSubscription } from "@app/context";
 import { SECONDS_PER_DAY } from "@app/helpers/datetime";
 import { accessTokenTtlSchema } from "@app/helpers/identityAuthSchemas";
+import { useScopeVariant } from "@app/hooks";
 import { useAddIdentityOidcAuth, useUpdateIdentityOidcAuth } from "@app/hooks/api";
 import { useGetIdentityOidcAuth } from "@app/hooks/api/identities/queries";
 import { IdentityTrustedIp } from "@app/hooks/api/identities/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
-import { IdentityFormTab } from "./types";
+import { IDENTITY_AUTH_FORM_ID, IdentityFormTab } from "./types";
 
 const buildSchema = (maxAccessTokenTTL: number) =>
   z.object({
@@ -87,6 +92,7 @@ type Props = {
   identityId?: string;
   isUpdate?: boolean;
   maxAccessTokenTTL: number;
+  onSubmittingChange?: (isSubmitting: boolean) => void;
 };
 
 export const IdentityOidcAuthForm = ({
@@ -94,7 +100,8 @@ export const IdentityOidcAuthForm = ({
   handlePopUpToggle,
   identityId,
   isUpdate,
-  maxAccessTokenTTL
+  maxAccessTokenTTL,
+  onSubmittingChange
 }: Props) => {
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
@@ -102,6 +109,7 @@ export const IdentityOidcAuthForm = ({
   const { projectId } = useParams({
     strict: false
   });
+  const scopeVariant = useScopeVariant();
   const { mutateAsync: addMutateAsync } = useAddIdentityOidcAuth();
   const { mutateAsync: updateMutateAsync } = useUpdateIdentityOidcAuth();
   const [tabValue, setTabValue] = useState<IdentityFormTab>(IdentityFormTab.Configuration);
@@ -200,6 +208,10 @@ export const IdentityOidcAuthForm = ({
     }
   }, [data]);
 
+  useEffect(() => {
+    onSubmittingChange?.(isSubmitting);
+  }, [isSubmitting, onSubmittingChange]);
+
   const onFormSubmit = async ({
     accessTokenTrustedIps,
     accessTokenTTL,
@@ -264,8 +276,11 @@ export const IdentityOidcAuthForm = ({
     reset();
   };
 
+  const maxDaysHelper = `Max: ${Math.floor(maxAccessTokenTTL / SECONDS_PER_DAY)} days`;
+
   return (
     <form
+      id={IDENTITY_AUTH_FORM_ID}
       onSubmit={handleSubmit(onFormSubmit, (fields) => {
         setTabValue(
           ["accessTokenTrustedIps", "caCert", "claimMetadataMapping"].includes(
@@ -277,403 +292,450 @@ export const IdentityOidcAuthForm = ({
       })}
     >
       <Tabs value={tabValue} onValueChange={(value) => setTabValue(value as IdentityFormTab)}>
-        <TabList>
-          <Tab value={IdentityFormTab.Configuration}>Configuration</Tab>
-          <Tab value={IdentityFormTab.Advanced}>Advanced</Tab>
-        </TabList>
-        <TabPanel value={IdentityFormTab.Configuration}>
-          <Controller
-            control={control}
-            name="oidcDiscoveryUrl"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                isRequired
-                label="OIDC Discovery URL"
-                isError={Boolean(error)}
-                errorText={error?.message}
-              >
-                <Input
-                  {...field}
-                  placeholder="https://token.actions.githubusercontent.com"
-                  type="text"
-                />
-              </FormControl>
-            )}
-          />
-          <Controller
-            control={control}
-            name="boundIssuer"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                isRequired
-                label="Issuer"
-                isError={Boolean(error)}
-                errorText={error?.message}
-              >
-                <Input
-                  {...field}
-                  type="text"
-                  placeholder="https://token.actions.githubusercontent.com"
-                />
-              </FormControl>
-            )}
-          />
-          <Controller
-            control={control}
-            name="boundSubject"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Subject"
-                isError={Boolean(error)}
-                errorText={error?.message}
-                icon={
-                  <Tooltip content={<BashGlobPatternTooltip />}>
-                    <FontAwesomeIcon icon={faQuestionCircle} size="sm" />
-                  </Tooltip>
-                }
-              >
-                <Input {...field} type="text" />
-              </FormControl>
-            )}
-          />
-          <Controller
-            control={control}
-            name="boundAudiences"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Audiences"
-                isError={Boolean(error)}
-                errorText={error?.message}
-                icon={
-                  <Tooltip content={<BashGlobPatternTooltip />}>
-                    <FontAwesomeIcon icon={faQuestionCircle} size="sm" />
-                  </Tooltip>
-                }
-              >
-                <Input {...field} type="text" placeholder="service1, service2" />
-              </FormControl>
-            )}
-          />
-          {boundClaimsFields.map(({ id }, index) => (
-            <div className="mb-3 flex items-end space-x-2" key={id}>
-              <Controller
-                control={control}
-                name={`boundClaims.${index}.key`}
-                render={({ field, fieldState: { error } }) => {
-                  return (
-                    <FormControl
-                      className="mb-0 grow"
-                      label={index === 0 ? "Claims" : undefined}
-                      icon={
-                        index === 0 ? (
-                          <Tooltip content={<BashGlobPatternTooltip />}>
-                            <FontAwesomeIcon icon={faQuestionCircle} size="sm" />
-                          </Tooltip>
-                        ) : undefined
-                      }
-                      isError={Boolean(error)}
-                      errorText={error?.message}
-                    >
-                      <Input
-                        value={field.value}
-                        onChange={(e) => field.onChange(e)}
-                        placeholder="property"
-                      />
-                    </FormControl>
-                  );
-                }}
-              />
-              <Controller
-                control={control}
-                name={`boundClaims.${index}.value`}
-                render={({ field, fieldState: { error } }) => {
-                  return (
-                    <FormControl
-                      className="mb-0 grow"
-                      isError={Boolean(error)}
-                      errorText={error?.message}
-                    >
-                      <Input
-                        value={field.value}
-                        onChange={(e) => field.onChange(e)}
-                        placeholder="value1, value2"
-                      />
-                    </FormControl>
-                  );
-                }}
-              />
-
-              <IconButton
-                onClick={() => removeBoundClaimField(index)}
-                size="lg"
-                colorSchema="danger"
-                variant="plain"
-                ariaLabel="update"
-                className="p-3"
-              >
-                <FontAwesomeIcon icon={faXmark} />
-              </IconButton>
-            </div>
-          ))}
-          <div className="my-4 ml-1">
-            <Button
-              variant="outline_bg"
-              onClick={() =>
-                appendBoundClaimField({
-                  key: "",
-                  value: ""
-                })
-              }
-              leftIcon={<FontAwesomeIcon icon={faPlus} />}
-              size="xs"
-            >
-              Add Claims
-            </Button>
-          </div>
-
-          <Controller
-            control={control}
-            defaultValue="2592000"
-            name="accessTokenTTL"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Access Token TTL (seconds)"
-                isError={Boolean(error)}
-                errorText={error?.message}
-                helperText={`Max: ${Math.floor(maxAccessTokenTTL / SECONDS_PER_DAY)} days`}
-              >
-                <Input {...field} placeholder="2592000" type="number" min="1" step="1" />
-              </FormControl>
-            )}
-          />
-          <Controller
-            control={control}
-            defaultValue="2592000"
-            name="accessTokenMaxTTL"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Access Token Max TTL (seconds)"
-                isError={Boolean(error)}
-                errorText={error?.message}
-                helperText={`Max: ${Math.floor(maxAccessTokenTTL / SECONDS_PER_DAY)} days`}
-              >
-                <Input {...field} placeholder="2592000" type="number" min="1" step="1" />
-              </FormControl>
-            )}
-          />
-          <Controller
-            control={control}
-            defaultValue="0"
-            name="accessTokenNumUsesLimit"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Access Token Max Number of Uses"
-                isError={Boolean(error)}
-                errorText={error?.message}
-                tooltipText="The maximum number of times that an access token can be used; Leave blank for unlimited uses."
-              >
-                <Input {...field} placeholder="Unlimited uses" type="number" min="0" step="1" />
-              </FormControl>
-            )}
-          />
-        </TabPanel>
-        <TabPanel value={IdentityFormTab.Advanced}>
-          <Controller
-            control={control}
-            name="caCert"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="CA Certificate"
-                errorText={error?.message}
-                isError={Boolean(error)}
-              >
-                <TextArea {...field} placeholder="-----BEGIN CERTIFICATE----- ..." />
-              </FormControl>
-            )}
-          />
-
-          {claimMetadataMappingFields.map(({ id }, index) => (
-            <div className="mb-3 flex items-end space-x-2" key={id}>
-              <Controller
-                control={control}
-                name={`claimMetadataMapping.${index}.key`}
-                render={({ field, fieldState: { error } }) => {
-                  return (
-                    <FormControl
-                      className="mb-0 grow"
-                      label={index === 0 ? "Token Claim Mapping" : undefined}
-                      icon={
-                        index === 0 ? (
-                          <Tooltip
-                            className="text-center"
-                            content={
-                              <div className="w-[180px]">
-                                <p>Map OIDC token claims to metadata fields</p>
-                                <p className="mt-2 text-sm">Example:</p>
-                                <p className="mt-1 text-sm">
-                                  &apos;role&apos; → &apos;token.groups&apos;
-                                </p>
-                                <p className="mt-1 text-xs text-gray-400">
-                                  Becomes: identity.metadata.oidc.claims.role
-                                </p>
-                              </div>
-                            }
+        <TabsList variant={scopeVariant}>
+          <TabsTrigger value={IdentityFormTab.Configuration}>Configuration</TabsTrigger>
+          <TabsTrigger value={IdentityFormTab.Advanced}>Advanced</TabsTrigger>
+        </TabsList>
+        <TabsContent value={IdentityFormTab.Configuration}>
+          <FieldGroup>
+            <Controller
+              control={control}
+              name="oidcDiscoveryUrl"
+              render={({ field, fieldState: { error } }) => (
+                <Field>
+                  <FieldLabel htmlFor="oidcDiscoveryUrl">OIDC Discovery URL</FieldLabel>
+                  <Input
+                    {...field}
+                    id="oidcDiscoveryUrl"
+                    placeholder="https://token.actions.githubusercontent.com"
+                    type="text"
+                    isError={Boolean(error)}
+                  />
+                  <FieldError>{error?.message}</FieldError>
+                </Field>
+              )}
+            />
+            <Controller
+              control={control}
+              name="boundIssuer"
+              render={({ field, fieldState: { error } }) => (
+                <Field>
+                  <FieldLabel htmlFor="boundIssuer">Issuer</FieldLabel>
+                  <Input
+                    {...field}
+                    id="boundIssuer"
+                    type="text"
+                    placeholder="https://token.actions.githubusercontent.com"
+                    isError={Boolean(error)}
+                  />
+                  <FieldError>{error?.message}</FieldError>
+                </Field>
+              )}
+            />
+            <Controller
+              control={control}
+              name="boundSubject"
+              render={({ field, fieldState: { error } }) => (
+                <Field>
+                  <FieldLabel htmlFor="boundSubject" className="inline-flex items-center gap-1.5">
+                    Subject
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <HelpCircleIcon className="size-3.5 text-muted" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <BashGlobPatternTooltip />
+                      </TooltipContent>
+                    </Tooltip>
+                  </FieldLabel>
+                  <Input {...field} id="boundSubject" type="text" isError={Boolean(error)} />
+                  <FieldError>{error?.message}</FieldError>
+                </Field>
+              )}
+            />
+            <Controller
+              control={control}
+              name="boundAudiences"
+              render={({ field, fieldState: { error } }) => (
+                <Field>
+                  <FieldLabel htmlFor="boundAudiences" className="inline-flex items-center gap-1.5">
+                    Audiences
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <HelpCircleIcon className="size-3.5 text-muted" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <BashGlobPatternTooltip />
+                      </TooltipContent>
+                    </Tooltip>
+                  </FieldLabel>
+                  <Input
+                    {...field}
+                    id="boundAudiences"
+                    type="text"
+                    placeholder="service1, service2"
+                    isError={Boolean(error)}
+                  />
+                  <FieldError>{error?.message}</FieldError>
+                </Field>
+              )}
+            />
+            <div className="flex flex-col gap-3">
+              {boundClaimsFields.map(({ id }, index) => (
+                <div className="flex items-start gap-2" key={id}>
+                  <Controller
+                    control={control}
+                    name={`boundClaims.${index}.key`}
+                    render={({ field, fieldState: { error } }) => (
+                      <Field className="flex-1">
+                        {index === 0 && (
+                          <FieldLabel
+                            htmlFor={`boundClaim-key-${index}`}
+                            className="inline-flex items-center gap-1.5"
                           >
-                            <FontAwesomeIcon icon={faQuestionCircle} size="sm" />
-                          </Tooltip>
-                        ) : undefined
-                      }
-                      isError={Boolean(error)}
-                      errorText={error?.message}
-                    >
-                      <Input
-                        value={field.value}
-                        onChange={(e) => field.onChange(e)}
-                        placeholder="Field name"
-                      />
-                    </FormControl>
-                  );
-                }}
-              />
-              <Controller
-                control={control}
-                name={`claimMetadataMapping.${index}.value`}
-                render={({ field, fieldState: { error } }) => {
-                  return (
-                    <FormControl
-                      className="mb-0 grow"
-                      isError={Boolean(error)}
-                      errorText={error?.message}
-                    >
-                      <Input
-                        value={field.value}
-                        onChange={(e) => field.onChange(e)}
-                        placeholder="Token claim"
-                      />
-                    </FormControl>
-                  );
-                }}
-              />
-              <IconButton
-                onClick={() => removeClaimMetadataMappingField(index)}
-                size="lg"
-                colorSchema="danger"
-                variant="plain"
-                ariaLabel="update"
-                className="p-3"
+                            Claims
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <HelpCircleIcon className="size-3.5 text-muted" />
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <BashGlobPatternTooltip />
+                              </TooltipContent>
+                            </Tooltip>
+                          </FieldLabel>
+                        )}
+                        <Input
+                          id={`boundClaim-key-${index}`}
+                          value={field.value}
+                          onChange={(e) => field.onChange(e)}
+                          placeholder="property"
+                          isError={Boolean(error)}
+                        />
+                        <FieldError>{error?.message}</FieldError>
+                      </Field>
+                    )}
+                  />
+                  <Controller
+                    control={control}
+                    name={`boundClaims.${index}.value`}
+                    render={({ field, fieldState: { error } }) => (
+                      <Field className="flex-1">
+                        {index === 0 && (
+                          <FieldLabel htmlFor={`boundClaim-value-${index}`} className="invisible">
+                            Value
+                          </FieldLabel>
+                        )}
+                        <Input
+                          id={`boundClaim-value-${index}`}
+                          value={field.value}
+                          onChange={(e) => field.onChange(e)}
+                          placeholder="value1, value2"
+                          isError={Boolean(error)}
+                        />
+                        <FieldError>{error?.message}</FieldError>
+                      </Field>
+                    )}
+                  />
+                  <IconButton
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    aria-label="Remove claim"
+                    className={index === 0 ? "mt-[1.625rem]" : "mt-0.5"}
+                    onClick={() => removeBoundClaimField(index)}
+                  >
+                    <XIcon />
+                  </IconButton>
+                </div>
+              ))}
+              <Button
+                type="button"
+                variant="outline"
+                size="xs"
+                className="w-fit"
+                onClick={() =>
+                  appendBoundClaimField({
+                    key: "",
+                    value: ""
+                  })
+                }
               >
-                <FontAwesomeIcon icon={faXmark} />
-              </IconButton>
+                <PlusIcon />
+                Add Claims
+              </Button>
             </div>
-          ))}
-          <div className="my-4 ml-1">
-            <Button
-              variant="outline_bg"
-              onClick={() =>
-                appendClaimMetadataMappingField({
-                  key: "",
-                  value: ""
-                })
-              }
-              leftIcon={<FontAwesomeIcon icon={faPlus} />}
-              size="xs"
-            >
-              Add Token Mapping
-            </Button>
-          </div>
 
-          {accessTokenTrustedIpsFields.map(({ id }, index) => (
-            <div className="mb-3 flex items-end space-x-2" key={id}>
-              <Controller
-                control={control}
-                name={`accessTokenTrustedIps.${index}.ipAddress`}
-                defaultValue="0.0.0.0/0"
-                render={({ field, fieldState: { error } }) => {
-                  return (
-                    <FormControl
-                      className="mb-0 grow"
-                      label={index === 0 ? "Access Token Trusted IPs" : undefined}
-                      isError={Boolean(error)}
-                      errorText={error?.message}
-                    >
-                      <Input
-                        value={field.value}
-                        onChange={(e) => {
-                          if (subscription?.ipAllowlisting) {
-                            field.onChange(e);
-                            return;
-                          }
+            <Controller
+              control={control}
+              defaultValue="2592000"
+              name="accessTokenTTL"
+              render={({ field, fieldState: { error } }) => (
+                <Field>
+                  <FieldLabel htmlFor="accessTokenTTL">Access Token TTL (seconds)</FieldLabel>
+                  <Input
+                    {...field}
+                    id="accessTokenTTL"
+                    placeholder="2592000"
+                    type="number"
+                    min="1"
+                    step="1"
+                    isError={Boolean(error)}
+                  />
+                  <FieldDescription>{maxDaysHelper}</FieldDescription>
+                  <FieldError>{error?.message}</FieldError>
+                </Field>
+              )}
+            />
+            <Controller
+              control={control}
+              defaultValue="2592000"
+              name="accessTokenMaxTTL"
+              render={({ field, fieldState: { error } }) => (
+                <Field>
+                  <FieldLabel htmlFor="accessTokenMaxTTL">
+                    Access Token Max TTL (seconds)
+                  </FieldLabel>
+                  <Input
+                    {...field}
+                    id="accessTokenMaxTTL"
+                    placeholder="2592000"
+                    type="number"
+                    min="1"
+                    step="1"
+                    isError={Boolean(error)}
+                  />
+                  <FieldDescription>{maxDaysHelper}</FieldDescription>
+                  <FieldError>{error?.message}</FieldError>
+                </Field>
+              )}
+            />
+            <Controller
+              control={control}
+              defaultValue="0"
+              name="accessTokenNumUsesLimit"
+              render={({ field, fieldState: { error } }) => (
+                <Field>
+                  <FieldLabel
+                    htmlFor="accessTokenNumUsesLimit"
+                    className="inline-flex items-center gap-1.5"
+                  >
+                    Access Token Max Number of Uses
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <InfoIcon className="size-3.5 text-muted" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        The maximum number of times that an access token can be used; leave blank
+                        for unlimited uses.
+                      </TooltipContent>
+                    </Tooltip>
+                  </FieldLabel>
+                  <Input
+                    {...field}
+                    id="accessTokenNumUsesLimit"
+                    placeholder="Unlimited uses"
+                    type="number"
+                    min="0"
+                    step="1"
+                    isError={Boolean(error)}
+                  />
+                  <FieldError>{error?.message}</FieldError>
+                </Field>
+              )}
+            />
+          </FieldGroup>
+        </TabsContent>
+        <TabsContent value={IdentityFormTab.Advanced}>
+          <FieldGroup>
+            <Controller
+              control={control}
+              name="caCert"
+              render={({ field, fieldState: { error } }) => (
+                <Field>
+                  <FieldLabel htmlFor="caCert">CA Certificate</FieldLabel>
+                  <TextArea
+                    {...field}
+                    id="caCert"
+                    placeholder="-----BEGIN CERTIFICATE----- ..."
+                    isError={Boolean(error)}
+                  />
+                  <FieldError>{error?.message}</FieldError>
+                </Field>
+              )}
+            />
 
-                          handlePopUpOpen("upgradePlan", {
-                            featureName: "IP allowlisting"
-                          });
-                        }}
-                        placeholder="123.456.789.0"
-                      />
-                    </FormControl>
-                  );
-                }}
-              />
-              <IconButton
+            <div className="flex flex-col gap-3">
+              {claimMetadataMappingFields.map(({ id }, index) => (
+                <div className="flex items-start gap-2" key={id}>
+                  <Controller
+                    control={control}
+                    name={`claimMetadataMapping.${index}.key`}
+                    render={({ field, fieldState: { error } }) => (
+                      <Field className="flex-1">
+                        {index === 0 && (
+                          <FieldLabel
+                            htmlFor={`claimMetadata-key-${index}`}
+                            className="inline-flex items-center gap-1.5"
+                          >
+                            Token Claim Mapping
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <HelpCircleIcon className="size-3.5 text-muted" />
+                              </TooltipTrigger>
+                              <TooltipContent className="text-center">
+                                <div className="w-[180px]">
+                                  <p>Map OIDC token claims to metadata fields</p>
+                                  <p className="mt-2 text-sm">Example:</p>
+                                  <p className="mt-1 text-sm">
+                                    &apos;role&apos; → &apos;token.groups&apos;
+                                  </p>
+                                  <p className="mt-1 text-xs text-muted">
+                                    Becomes: identity.metadata.oidc.claims.role
+                                  </p>
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                          </FieldLabel>
+                        )}
+                        <Input
+                          id={`claimMetadata-key-${index}`}
+                          value={field.value}
+                          onChange={(e) => field.onChange(e)}
+                          placeholder="Field name"
+                          isError={Boolean(error)}
+                        />
+                        <FieldError>{error?.message}</FieldError>
+                      </Field>
+                    )}
+                  />
+                  <Controller
+                    control={control}
+                    name={`claimMetadataMapping.${index}.value`}
+                    render={({ field, fieldState: { error } }) => (
+                      <Field className="flex-1">
+                        {index === 0 && (
+                          <FieldLabel
+                            htmlFor={`claimMetadata-value-${index}`}
+                            className="invisible"
+                          >
+                            Value
+                          </FieldLabel>
+                        )}
+                        <Input
+                          id={`claimMetadata-value-${index}`}
+                          value={field.value}
+                          onChange={(e) => field.onChange(e)}
+                          placeholder="Token claim"
+                          isError={Boolean(error)}
+                        />
+                        <FieldError>{error?.message}</FieldError>
+                      </Field>
+                    )}
+                  />
+                  <IconButton
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    aria-label="Remove claim mapping"
+                    className={index === 0 ? "mt-[1.625rem]" : "mt-0.5"}
+                    onClick={() => removeClaimMetadataMappingField(index)}
+                  >
+                    <XIcon />
+                  </IconButton>
+                </div>
+              ))}
+              <Button
+                type="button"
+                variant="outline"
+                size="xs"
+                className="w-fit"
+                onClick={() =>
+                  appendClaimMetadataMappingField({
+                    key: "",
+                    value: ""
+                  })
+                }
+              >
+                <PlusIcon />
+                Add Token Mapping
+              </Button>
+            </div>
+
+            <div className="flex flex-col gap-3">
+              {accessTokenTrustedIpsFields.map(({ id }, index) => (
+                <div className="flex items-start gap-2" key={id}>
+                  <Controller
+                    control={control}
+                    name={`accessTokenTrustedIps.${index}.ipAddress`}
+                    defaultValue="0.0.0.0/0"
+                    render={({ field, fieldState: { error } }) => (
+                      <Field className="flex-1">
+                        {index === 0 && (
+                          <FieldLabel htmlFor={`trustedIp-${index}`}>
+                            Access Token Trusted IPs
+                          </FieldLabel>
+                        )}
+                        <Input
+                          id={`trustedIp-${index}`}
+                          value={field.value}
+                          onChange={(e) => {
+                            if (subscription?.ipAllowlisting) {
+                              field.onChange(e);
+                              return;
+                            }
+                            handlePopUpOpen("upgradePlan", {
+                              featureName: "IP allowlisting"
+                            });
+                          }}
+                          placeholder="123.456.789.0"
+                          isError={Boolean(error)}
+                        />
+                        <FieldError>{error?.message}</FieldError>
+                      </Field>
+                    )}
+                  />
+                  <IconButton
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    aria-label="Remove trusted IP"
+                    className={index === 0 ? "mt-[1.625rem]" : "mt-0.5"}
+                    onClick={() => {
+                      if (subscription?.ipAllowlisting) {
+                        removeAccessTokenTrustedIp(index);
+                        return;
+                      }
+                      handlePopUpOpen("upgradePlan", {
+                        featureName: "IP allowlisting"
+                      });
+                    }}
+                  >
+                    <XIcon />
+                  </IconButton>
+                </div>
+              ))}
+              <Button
+                type="button"
+                variant="outline"
+                size="xs"
+                className="w-fit"
                 onClick={() => {
                   if (subscription?.ipAllowlisting) {
-                    removeAccessTokenTrustedIp(index);
+                    appendAccessTokenTrustedIp({ ipAddress: "0.0.0.0/0" });
                     return;
                   }
-
                   handlePopUpOpen("upgradePlan", {
                     featureName: "IP allowlisting"
                   });
                 }}
-                size="lg"
-                colorSchema="danger"
-                variant="plain"
-                ariaLabel="update"
-                className="p-3"
               >
-                <FontAwesomeIcon icon={faXmark} />
-              </IconButton>
+                <PlusIcon />
+                Add IP Address
+              </Button>
             </div>
-          ))}
-          <div className="my-4 ml-1">
-            <Button
-              variant="outline_bg"
-              onClick={() => {
-                if (subscription?.ipAllowlisting) {
-                  appendAccessTokenTrustedIp({
-                    ipAddress: "0.0.0.0/0"
-                  });
-                  return;
-                }
-
-                handlePopUpOpen("upgradePlan", {
-                  featureName: "IP allowlisting"
-                });
-              }}
-              leftIcon={<FontAwesomeIcon icon={faPlus} />}
-              size="xs"
-            >
-              Add IP Address
-            </Button>
-          </div>
-        </TabPanel>
+          </FieldGroup>
+        </TabsContent>
       </Tabs>
-
-      <div className="mt-8 flex justify-between">
-        <div className="flex items-center">
-          <Button
-            onClick={() => handlePopUpToggle("identityAuthMethod", false)}
-            variant="outline_bg"
-            className="mr-4"
-            isDisabled={isSubmitting}
-          >
-            Cancel
-          </Button>
-          <Button type="submit" isLoading={isSubmitting}>
-            {isUpdate ? "Update" : "Add"} Auth Method
-          </Button>
-        </div>
-      </div>
     </form>
   );
 };

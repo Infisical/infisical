@@ -1,26 +1,33 @@
 import { useEffect, useMemo, useState } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
-import { faPlus, faXmark } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useParams } from "@tanstack/react-router";
+import { InfoIcon, PlusIcon, XIcon } from "lucide-react";
 import ms from "ms";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
-  FormControl,
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
   IconButton,
   Input,
-  Tab,
-  TabList,
-  TabPanel,
-  Tabs
-} from "@app/components/v2";
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { useOrganization, useSubscription } from "@app/context";
 import { getObjectFromSeconds, SECONDS_PER_DAY } from "@app/helpers/datetime";
 import { accessTokenTtlSchema } from "@app/helpers/identityAuthSchemas";
+import { useScopeVariant } from "@app/hooks";
 import {
   useAddIdentityUniversalAuth,
   useGetIdentityUniversalAuth,
@@ -31,7 +38,7 @@ import { UsePopUpState } from "@app/hooks/usePopUp";
 
 import { LockoutTab } from "./lockout/LockoutTab";
 import { superRefineLockout } from "./lockout/super-refine";
-import { IdentityFormTab } from "./types";
+import { IDENTITY_AUTH_FORM_ID, IdentityFormTab } from "./types";
 
 const buildSchema = (maxAccessTokenTTL: number) =>
   z
@@ -85,6 +92,7 @@ type Props = {
   identityId?: string;
   isUpdate?: boolean;
   maxAccessTokenTTL: number;
+  onSubmittingChange?: (isSubmitting: boolean) => void;
 };
 
 export const IdentityUniversalAuthForm = ({
@@ -92,7 +100,8 @@ export const IdentityUniversalAuthForm = ({
   handlePopUpToggle,
   identityId,
   isUpdate,
-  maxAccessTokenTTL
+  maxAccessTokenTTL,
+  onSubmittingChange
 }: Props) => {
   const { projectId } = useParams({
     strict: false
@@ -100,6 +109,7 @@ export const IdentityUniversalAuthForm = ({
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
   const { subscription } = useSubscription();
+  const scopeVariant = useScopeVariant();
   const { mutateAsync: addMutateAsync } = useAddIdentityUniversalAuth();
   const { mutateAsync: updateMutateAsync } = useUpdateIdentityUniversalAuth();
   const [tabValue, setTabValue] = useState<IdentityFormTab>(IdentityFormTab.Configuration);
@@ -205,6 +215,10 @@ export const IdentityUniversalAuthForm = ({
     }
   }, [data]);
 
+  useEffect(() => {
+    onSubmittingChange?.(isSubmitting);
+  }, [isSubmitting, onSubmittingChange]);
+
   const onFormSubmit = async ({
     accessTokenTTL,
     accessTokenMaxTTL,
@@ -269,8 +283,11 @@ export const IdentityUniversalAuthForm = ({
     reset();
   };
 
+  const maxDaysHelper = `Max: ${Math.floor(maxAccessTokenTTL / SECONDS_PER_DAY)} days`;
+
   return (
     <form
+      id={IDENTITY_AUTH_FORM_ID}
       onSubmit={handleSubmit(onFormSubmit, (fields) => {
         const firstErrorField = Object.keys(fields)[0];
         let tab = IdentityFormTab.Configuration;
@@ -294,81 +311,125 @@ export const IdentityUniversalAuthForm = ({
       })}
     >
       <Tabs value={tabValue} onValueChange={(value) => setTabValue(value as IdentityFormTab)}>
-        <TabList>
-          <Tab value={IdentityFormTab.Configuration}>Configuration</Tab>
-          <Tab value={IdentityFormTab.Lockout}>Lockout</Tab>
-          <Tab value={IdentityFormTab.Advanced}>Advanced</Tab>
-        </TabList>
-        <TabPanel value={IdentityFormTab.Configuration}>
-          {accessTokenPeriodValue > 0 ? (
-            <div className="mb-4 text-xs text-bunker-400">
-              When Access Token Period is set, TTL and Max TTL are ignored.
-            </div>
-          ) : (
-            <>
-              <Controller
-                control={control}
-                defaultValue="2592000"
-                name="accessTokenTTL"
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    label="Access Token TTL (seconds)"
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                    helperText={`Max: ${Math.floor(maxAccessTokenTTL / SECONDS_PER_DAY)} days`}
-                  >
-                    <Input {...field} placeholder="2592000" type="number" min="1" step="1" />
-                  </FormControl>
-                )}
-              />
-              <Controller
-                control={control}
-                defaultValue="2592000"
-                name="accessTokenMaxTTL"
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    label="Access Token Max TTL (seconds)"
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                    helperText={`Max: ${Math.floor(maxAccessTokenTTL / SECONDS_PER_DAY)} days`}
-                  >
-                    <Input {...field} placeholder="2592000" type="number" min="1" step="1" />
-                  </FormControl>
-                )}
-              />
-            </>
-          )}
-          <Controller
-            control={control}
-            defaultValue="0"
-            name="accessTokenNumUsesLimit"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Access Token Max Number of Uses"
-                isError={Boolean(error)}
-                errorText={error?.message}
-                tooltipText="The maximum number of times that an access token can be used; Leave blank for unlimited uses."
-              >
-                <Input {...field} placeholder="Unlimited uses" type="number" min="0" step="1" />
-              </FormControl>
+        <TabsList variant={scopeVariant}>
+          <TabsTrigger value={IdentityFormTab.Configuration}>Configuration</TabsTrigger>
+          <TabsTrigger value={IdentityFormTab.Lockout}>Lockout</TabsTrigger>
+          <TabsTrigger value={IdentityFormTab.Advanced}>Advanced</TabsTrigger>
+        </TabsList>
+        <TabsContent value={IdentityFormTab.Configuration}>
+          <FieldGroup>
+            {accessTokenPeriodValue > 0 ? (
+              <div className="text-xs text-muted">
+                When Access Token Period is set, TTL and Max TTL are ignored.
+              </div>
+            ) : (
+              <>
+                <Controller
+                  control={control}
+                  defaultValue="2592000"
+                  name="accessTokenTTL"
+                  render={({ field, fieldState: { error } }) => (
+                    <Field>
+                      <FieldLabel htmlFor="accessTokenTTL">Access Token TTL (seconds)</FieldLabel>
+                      <Input
+                        {...field}
+                        id="accessTokenTTL"
+                        placeholder="2592000"
+                        type="number"
+                        min="1"
+                        step="1"
+                        isError={Boolean(error)}
+                      />
+                      <FieldDescription>{maxDaysHelper}</FieldDescription>
+                      <FieldError>{error?.message}</FieldError>
+                    </Field>
+                  )}
+                />
+                <Controller
+                  control={control}
+                  defaultValue="2592000"
+                  name="accessTokenMaxTTL"
+                  render={({ field, fieldState: { error } }) => (
+                    <Field>
+                      <FieldLabel htmlFor="accessTokenMaxTTL">
+                        Access Token Max TTL (seconds)
+                      </FieldLabel>
+                      <Input
+                        {...field}
+                        id="accessTokenMaxTTL"
+                        placeholder="2592000"
+                        type="number"
+                        min="1"
+                        step="1"
+                        isError={Boolean(error)}
+                      />
+                      <FieldDescription>{maxDaysHelper}</FieldDescription>
+                      <FieldError>{error?.message}</FieldError>
+                    </Field>
+                  )}
+                />
+              </>
             )}
-          />
-          <Controller
-            control={control}
-            defaultValue="0"
-            name="accessTokenPeriod"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Access Token Period (seconds)"
-                isError={Boolean(error)}
-                errorText={error?.message}
-                helperText="For periodic tokens: set a period (in seconds) to allow indefinite renewal. Set to 0 to disable periodic tokens and use TTL-based expiration."
-              >
-                <Input {...field} placeholder="0" type="number" min="0" step="1" />
-              </FormControl>
-            )}
-          />
-        </TabPanel>
+            <Controller
+              control={control}
+              defaultValue="0"
+              name="accessTokenNumUsesLimit"
+              render={({ field, fieldState: { error } }) => (
+                <Field>
+                  <FieldLabel
+                    htmlFor="accessTokenNumUsesLimit"
+                    className="inline-flex items-center gap-1.5"
+                  >
+                    Access Token Max Number of Uses
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <InfoIcon className="size-3.5 text-muted" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        The maximum number of times that an access token can be used; leave blank
+                        for unlimited uses.
+                      </TooltipContent>
+                    </Tooltip>
+                  </FieldLabel>
+                  <Input
+                    {...field}
+                    id="accessTokenNumUsesLimit"
+                    placeholder="Unlimited uses"
+                    type="number"
+                    min="0"
+                    step="1"
+                    isError={Boolean(error)}
+                  />
+                  <FieldError>{error?.message}</FieldError>
+                </Field>
+              )}
+            />
+            <Controller
+              control={control}
+              defaultValue="0"
+              name="accessTokenPeriod"
+              render={({ field, fieldState: { error } }) => (
+                <Field>
+                  <FieldLabel htmlFor="accessTokenPeriod">Access Token Period (seconds)</FieldLabel>
+                  <Input
+                    {...field}
+                    id="accessTokenPeriod"
+                    placeholder="0"
+                    type="number"
+                    min="0"
+                    step="1"
+                    isError={Boolean(error)}
+                  />
+                  <FieldDescription>
+                    For periodic tokens: set a period (in seconds) to allow indefinite renewal. Set
+                    to 0 to disable periodic tokens and use TTL-based expiration.
+                  </FieldDescription>
+                  <FieldError>{error?.message}</FieldError>
+                </Field>
+              )}
+            />
+          </FieldGroup>
+        </TabsContent>
         <LockoutTab
           control={control}
           lockoutEnabled={lockoutEnabledWatch}
@@ -378,175 +439,155 @@ export const IdentityUniversalAuthForm = ({
           lockoutCounterResetValue={lockoutCounterResetValueWatch}
           lockoutCounterResetUnit={lockoutCounterResetUnitWatch}
         />
-        <TabPanel value={IdentityFormTab.Advanced}>
-          {clientSecretTrustedIpsFields.map(({ id }, index) => (
-            <div className="mb-3 flex items-end space-x-2" key={id}>
-              <Controller
-                control={control}
-                name={`clientSecretTrustedIps.${index}.ipAddress`}
-                defaultValue="0.0.0.0/0"
-                render={({ field, fieldState: { error } }) => {
-                  return (
-                    <FormControl
-                      className="mb-0 grow"
-                      label={index === 0 ? "Client Secret Trusted IPs" : undefined}
-                      isError={Boolean(error)}
-                      errorText={error?.message}
-                    >
-                      <Input
-                        value={field.value}
-                        onChange={(e) => {
-                          if (subscription?.ipAllowlisting) {
-                            field.onChange(e);
-                            return;
-                          }
-
-                          handlePopUpOpen("upgradePlan", {
-                            featureName: "IP allowlisting"
-                          });
-                        }}
-                        placeholder="123.456.789.0"
-                      />
-                    </FormControl>
-                  );
-                }}
-              />
-              <IconButton
+        <TabsContent value={IdentityFormTab.Advanced}>
+          <FieldGroup>
+            <div className="flex flex-col gap-3">
+              {clientSecretTrustedIpsFields.map(({ id }, index) => (
+                <div className="flex items-start gap-2" key={id}>
+                  <Controller
+                    control={control}
+                    name={`clientSecretTrustedIps.${index}.ipAddress`}
+                    defaultValue="0.0.0.0/0"
+                    render={({ field, fieldState: { error } }) => (
+                      <Field className="flex-1">
+                        {index === 0 && (
+                          <FieldLabel htmlFor={`clientSecretTrustedIp-${index}`}>
+                            Client Secret Trusted IPs
+                          </FieldLabel>
+                        )}
+                        <Input
+                          id={`clientSecretTrustedIp-${index}`}
+                          value={field.value}
+                          onChange={(e) => {
+                            if (subscription?.ipAllowlisting) {
+                              field.onChange(e);
+                              return;
+                            }
+                            handlePopUpOpen("upgradePlan", {
+                              featureName: "IP allowlisting"
+                            });
+                          }}
+                          placeholder="123.456.789.0"
+                          isError={Boolean(error)}
+                        />
+                        <FieldError>{error?.message}</FieldError>
+                      </Field>
+                    )}
+                  />
+                  <IconButton
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    aria-label="Remove trusted IP"
+                    className={index === 0 ? "mt-[1.625rem]" : "mt-0.5"}
+                    onClick={() => {
+                      if (subscription?.ipAllowlisting) {
+                        removeClientSecretTrustedIp(index);
+                        return;
+                      }
+                      handlePopUpOpen("upgradePlan", {
+                        featureName: "IP allowlisting"
+                      });
+                    }}
+                  >
+                    <XIcon />
+                  </IconButton>
+                </div>
+              ))}
+              <Button
+                type="button"
+                variant="outline"
+                size="xs"
+                className="w-fit"
                 onClick={() => {
                   if (subscription?.ipAllowlisting) {
-                    removeClientSecretTrustedIp(index);
+                    appendClientSecretTrustedIp({ ipAddress: "0.0.0.0/0" });
                     return;
                   }
-
                   handlePopUpOpen("upgradePlan", {
                     featureName: "IP allowlisting"
                   });
                 }}
-                size="lg"
-                colorSchema="danger"
-                variant="plain"
-                ariaLabel="update"
-                className="p-3"
               >
-                <FontAwesomeIcon icon={faXmark} />
-              </IconButton>
+                <PlusIcon />
+                Add IP Address
+              </Button>
             </div>
-          ))}
-          <div className="my-4 ml-1">
-            <Button
-              variant="outline_bg"
-              onClick={() => {
-                if (subscription?.ipAllowlisting) {
-                  appendClientSecretTrustedIp({
-                    ipAddress: "0.0.0.0/0"
-                  });
-                  return;
-                }
-
-                handlePopUpOpen("upgradePlan", {
-                  featureName: "IP allowlisting"
-                });
-              }}
-              leftIcon={<FontAwesomeIcon icon={faPlus} />}
-              size="xs"
-            >
-              Add IP Address
-            </Button>
-          </div>
-          {accessTokenTrustedIpsFields.map(({ id }, index) => (
-            <div className="mb-3 flex items-end space-x-2" key={id}>
-              <Controller
-                control={control}
-                name={`accessTokenTrustedIps.${index}.ipAddress`}
-                defaultValue="0.0.0.0/0"
-                render={({ field, fieldState: { error } }) => {
-                  return (
-                    <FormControl
-                      className="mb-0 grow"
-                      label={index === 0 ? "Access Token Trusted IPs" : undefined}
-                      isError={Boolean(error)}
-                      errorText={error?.message}
-                    >
-                      <Input
-                        value={field.value}
-                        onChange={(e) => {
-                          if (subscription?.ipAllowlisting) {
-                            field.onChange(e);
-                            return;
-                          }
-
-                          handlePopUpOpen("upgradePlan", {
-                            featureName: "IP allowlisting"
-                          });
-                        }}
-                        placeholder="123.456.789.0"
-                      />
-                    </FormControl>
-                  );
-                }}
-              />
-              <IconButton
+            <div className="flex flex-col gap-3">
+              {accessTokenTrustedIpsFields.map(({ id }, index) => (
+                <div className="flex items-start gap-2" key={id}>
+                  <Controller
+                    control={control}
+                    name={`accessTokenTrustedIps.${index}.ipAddress`}
+                    defaultValue="0.0.0.0/0"
+                    render={({ field, fieldState: { error } }) => (
+                      <Field className="flex-1">
+                        {index === 0 && (
+                          <FieldLabel htmlFor={`accessTokenTrustedIp-${index}`}>
+                            Access Token Trusted IPs
+                          </FieldLabel>
+                        )}
+                        <Input
+                          id={`accessTokenTrustedIp-${index}`}
+                          value={field.value}
+                          onChange={(e) => {
+                            if (subscription?.ipAllowlisting) {
+                              field.onChange(e);
+                              return;
+                            }
+                            handlePopUpOpen("upgradePlan", {
+                              featureName: "IP allowlisting"
+                            });
+                          }}
+                          placeholder="123.456.789.0"
+                          isError={Boolean(error)}
+                        />
+                        <FieldError>{error?.message}</FieldError>
+                      </Field>
+                    )}
+                  />
+                  <IconButton
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    aria-label="Remove trusted IP"
+                    className={index === 0 ? "mt-[1.625rem]" : "mt-0.5"}
+                    onClick={() => {
+                      if (subscription?.ipAllowlisting) {
+                        removeAccessTokenTrustedIp(index);
+                        return;
+                      }
+                      handlePopUpOpen("upgradePlan", {
+                        featureName: "IP allowlisting"
+                      });
+                    }}
+                  >
+                    <XIcon />
+                  </IconButton>
+                </div>
+              ))}
+              <Button
+                type="button"
+                variant="outline"
+                size="xs"
+                className="w-fit"
                 onClick={() => {
                   if (subscription?.ipAllowlisting) {
-                    removeAccessTokenTrustedIp(index);
+                    appendAccessTokenTrustedIp({ ipAddress: "0.0.0.0/0" });
                     return;
                   }
-
                   handlePopUpOpen("upgradePlan", {
                     featureName: "IP allowlisting"
                   });
                 }}
-                size="lg"
-                colorSchema="danger"
-                variant="plain"
-                ariaLabel="update"
-                className="p-3"
               >
-                <FontAwesomeIcon icon={faXmark} />
-              </IconButton>
+                <PlusIcon />
+                Add IP Address
+              </Button>
             </div>
-          ))}
-          <div className="my-4 ml-1">
-            <Button
-              variant="outline_bg"
-              onClick={() => {
-                if (subscription?.ipAllowlisting) {
-                  appendAccessTokenTrustedIp({
-                    ipAddress: "0.0.0.0/0"
-                  });
-                  return;
-                }
-
-                handlePopUpOpen("upgradePlan", {
-                  featureName: "IP allowlisting"
-                });
-              }}
-              leftIcon={<FontAwesomeIcon icon={faPlus} />}
-              size="xs"
-            >
-              Add IP Address
-            </Button>
-          </div>
-        </TabPanel>
+          </FieldGroup>
+        </TabsContent>
       </Tabs>
-      <div className="flex items-center">
-        <Button
-          className="mr-4"
-          size="sm"
-          type="submit"
-          isLoading={isSubmitting}
-          isDisabled={isSubmitting}
-        >
-          {isUpdate ? "Update" : "Add"}
-        </Button>
-        <Button
-          colorSchema="secondary"
-          variant="plain"
-          onClick={() => handlePopUpToggle("identityAuthMethod", false)}
-        >
-          Cancel
-        </Button>
-      </div>
     </form>
   );
 };

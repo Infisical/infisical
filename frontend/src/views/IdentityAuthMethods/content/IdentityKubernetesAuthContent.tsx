@@ -1,21 +1,24 @@
 import { useMemo } from "react";
-import { faBan } from "@fortawesome/free-solid-svg-icons";
 import { useQuery } from "@tanstack/react-query";
-import { EyeIcon } from "lucide-react";
+import { BanIcon, EyeIcon } from "lucide-react";
 
-import { EmptyState, Spinner, Tooltip } from "@app/components/v2";
-import { Badge } from "@app/components/v3";
+import {
+  Badge,
+  Empty,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+  PageLoader,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { gatewaysQueryKeys, useGetIdentityKubernetesAuth } from "@app/hooks/api";
 
-import { IdentityAuthFieldDisplay } from "./IdentityAuthFieldDisplay";
-import { ViewAuthMethodProps } from "./types";
-import { ViewIdentityContentWrapper } from "./ViewIdentityContentWrapper";
+import { IdentityAuthFieldDisplay } from "../helpers";
+import { ViewAuthMethodProps } from "../types";
 
-export const ViewIdentityKubernetesAuthContent = ({
-  identityId,
-  onEdit,
-  onDelete
-}: ViewAuthMethodProps) => {
+export const IdentityKubernetesAuthContent = ({ identityId }: ViewAuthMethodProps) => {
   const { data: gateways } = useQuery(gatewaysQueryKeys.list());
 
   const { data, isPending } = useGetIdentityKubernetesAuth(identityId);
@@ -25,24 +28,24 @@ export const ViewIdentityKubernetesAuthContent = ({
   }, [gateways, data?.gatewayId]);
 
   if (isPending) {
-    return (
-      <div className="flex w-full items-center justify-center">
-        <Spinner className="text-mineshaft-400" />
-      </div>
-    );
+    return <PageLoader />;
   }
 
   if (!data) {
     return (
-      <EmptyState
-        icon={faBan}
-        title="Could not find Kubernetes Auth associated with this Identity."
-      />
+      <Empty className="border">
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <BanIcon />
+          </EmptyMedia>
+          <EmptyTitle>Could not find Kubernetes Auth associated with this Identity.</EmptyTitle>
+        </EmptyHeader>
+      </Empty>
     );
   }
 
   return (
-    <ViewIdentityContentWrapper onEdit={onEdit} onDelete={onDelete} identityId={identityId}>
+    <div className="grid grid-cols-2 gap-3">
       <IdentityAuthFieldDisplay label="Access Token TTL (seconds)">
         {data.accessTokenTTL}
       </IdentityAuthFieldDisplay>
@@ -64,22 +67,21 @@ export const ViewIdentityKubernetesAuthContent = ({
       <IdentityAuthFieldDisplay label="Gateway">{selectedGateway?.name}</IdentityAuthFieldDisplay>
       <IdentityAuthFieldDisplay className="col-span-2" label="Token Reviewer JWT">
         {data.tokenReviewerJwt ? (
-          <Tooltip
-            side="right"
-            className="max-w-xl p-2"
-            content={
-              <p className="rounded-sm bg-mineshaft-600 p-2 break-words">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Badge variant="neutral">
+                <EyeIcon />
+                Reveal
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="max-w-xl p-2">
+              <p className="rounded-sm bg-container p-2 break-words">
                 {data.tokenReviewerJwt || "Not provided"}
               </p>
-            }
-          >
-            <Badge variant="neutral">
-              <EyeIcon />
-              Reveal
-            </Badge>
+            </TooltipContent>
           </Tooltip>
         ) : (
-          <p className="text-base leading-4 text-bunker-400 italic">Not set</p>
+          <p className="text-base leading-4 text-muted italic">Not set</p>
         )}
       </IdentityAuthFieldDisplay>
       <IdentityAuthFieldDisplay className="col-span-2" label="Allowed Service Account Names">
@@ -99,18 +101,19 @@ export const ViewIdentityKubernetesAuthContent = ({
       </IdentityAuthFieldDisplay>
       <IdentityAuthFieldDisplay className="col-span-2" label="CA Certificate">
         {data.caCert && (
-          <Tooltip
-            side="right"
-            className="max-w-xl p-2"
-            content={<p className="rounded-sm bg-mineshaft-600 p-2 break-words">{data.caCert}</p>}
-          >
-            <Badge variant="neutral">
-              <EyeIcon />
-              Reveal
-            </Badge>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Badge variant="neutral">
+                <EyeIcon />
+                Reveal
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="max-w-xl p-2">
+              <p className="rounded-sm bg-container p-2 break-words">{data.caCert}</p>
+            </TooltipContent>
           </Tooltip>
         )}
       </IdentityAuthFieldDisplay>
-    </ViewIdentityContentWrapper>
+    </div>
   );
 };

@@ -1,37 +1,43 @@
-import { faBan } from "@fortawesome/free-solid-svg-icons";
-import { EyeIcon } from "lucide-react";
+import { BanIcon, EyeIcon } from "lucide-react";
 
-import { EmptyState, Spinner, Tooltip } from "@app/components/v2";
-import { Badge } from "@app/components/v3";
+import {
+  Badge,
+  Empty,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+  PageLoader,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { useGetIdentityOidcAuth } from "@app/hooks/api";
-import { ViewIdentityContentWrapper } from "@app/pages/organization/IdentityDetailsByIDPage/components/ViewIdentityAuth/ViewIdentityContentWrapper";
 
-import { IdentityAuthFieldDisplay } from "./IdentityAuthFieldDisplay";
-import { ViewAuthMethodProps } from "./types";
+import { IdentityAuthFieldDisplay } from "../helpers";
+import { ViewAuthMethodProps } from "../types";
 
-export const ViewIdentityOidcAuthContent = ({
-  identityId,
-  onEdit,
-  onDelete
-}: ViewAuthMethodProps) => {
+export const IdentityOidcAuthContent = ({ identityId }: ViewAuthMethodProps) => {
   const { data, isPending } = useGetIdentityOidcAuth(identityId);
 
   if (isPending) {
-    return (
-      <div className="flex w-full items-center justify-center">
-        <Spinner className="text-mineshaft-400" />
-      </div>
-    );
+    return <PageLoader />;
   }
 
   if (!data) {
     return (
-      <EmptyState icon={faBan} title="Could not find OIDC Auth associated with this Identity." />
+      <Empty className="border">
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <BanIcon />
+          </EmptyMedia>
+          <EmptyTitle>Could not find OIDC Auth associated with this Identity.</EmptyTitle>
+        </EmptyHeader>
+      </Empty>
     );
   }
 
   return (
-    <ViewIdentityContentWrapper onEdit={onEdit} onDelete={onDelete} identityId={identityId}>
+    <div className="grid grid-cols-2 gap-3">
       <IdentityAuthFieldDisplay label="Access Token TTL (seconds)">
         {data.accessTokenTTL}
       </IdentityAuthFieldDisplay>
@@ -52,15 +58,16 @@ export const ViewIdentityOidcAuthContent = ({
       </IdentityAuthFieldDisplay>
       <IdentityAuthFieldDisplay className="col-span-2" label="CA Certificate">
         {data.caCert && (
-          <Tooltip
-            side="right"
-            className="max-w-xl p-2"
-            content={<p className="rounded-sm bg-mineshaft-600 p-2 break-words">{data.caCert}</p>}
-          >
-            <Badge variant="neutral">
-              <EyeIcon />
-              Reveal
-            </Badge>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Badge variant="neutral">
+                <EyeIcon />
+                Reveal
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="max-w-xl p-2">
+              <p className="rounded-sm bg-container p-2 break-words">{data.caCert}</p>
+            </TooltipContent>
           </Tooltip>
         )}
       </IdentityAuthFieldDisplay>
@@ -75,40 +82,38 @@ export const ViewIdentityOidcAuthContent = ({
       </IdentityAuthFieldDisplay>
       <IdentityAuthFieldDisplay className="col-span-2" label="Claims">
         {Object.keys(data.boundClaims).length && (
-          <Tooltip
-            side="right"
-            className="max-w-xl p-2"
-            content={
-              <pre className="rounded-sm bg-mineshaft-600 p-2 whitespace-pre-wrap">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Badge variant="neutral">
+                <EyeIcon />
+                Reveal
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="max-w-xl p-2">
+              <pre className="rounded-sm bg-container p-2 whitespace-pre-wrap">
                 {JSON.stringify(data.boundClaims, null, 2)}
               </pre>
-            }
-          >
-            <Badge variant="neutral">
-              <EyeIcon />
-              Reveal
-            </Badge>
+            </TooltipContent>
           </Tooltip>
         )}
       </IdentityAuthFieldDisplay>
       <IdentityAuthFieldDisplay className="col-span-2" label="Claim Metadata Mapping">
         {data.claimMetadataMapping && Object.keys(data.claimMetadataMapping).length && (
-          <Tooltip
-            side="right"
-            className="max-w-xl p-2"
-            content={
-              <pre className="rounded-sm bg-mineshaft-600 p-2 whitespace-pre-wrap">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Badge variant="neutral">
+                <EyeIcon />
+                Reveal
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="max-w-xl p-2">
+              <pre className="rounded-sm bg-container p-2 whitespace-pre-wrap">
                 {JSON.stringify(data.claimMetadataMapping, null, 2)}
               </pre>
-            }
-          >
-            <Badge variant="neutral">
-              <EyeIcon />
-              Reveal
-            </Badge>
+            </TooltipContent>
           </Tooltip>
         )}
       </IdentityAuthFieldDisplay>
-    </ViewIdentityContentWrapper>
+    </div>
   );
 };

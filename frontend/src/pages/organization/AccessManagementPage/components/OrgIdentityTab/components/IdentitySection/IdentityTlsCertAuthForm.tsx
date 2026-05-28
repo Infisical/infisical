@@ -1,26 +1,33 @@
 import { useEffect, useMemo, useState } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
-import { faPlus, faXmark } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useParams } from "@tanstack/react-router";
+import { InfoIcon, PlusIcon, XIcon } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
-  FormControl,
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
   IconButton,
   Input,
-  Tab,
-  TabList,
-  TabPanel,
   Tabs,
-  TextArea
-} from "@app/components/v2";
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+  TextArea,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { useOrganization, useSubscription } from "@app/context";
 import { SECONDS_PER_DAY } from "@app/helpers/datetime";
 import { accessTokenTtlSchema } from "@app/helpers/identityAuthSchemas";
+import { useScopeVariant } from "@app/hooks";
 import {
   useAddIdentityTlsCertAuth,
   useGetIdentityTlsCertAuth,
@@ -29,7 +36,7 @@ import {
 import { IdentityTrustedIp } from "@app/hooks/api/identities/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
-import { IdentityFormTab } from "./types";
+import { IDENTITY_AUTH_FORM_ID, IdentityFormTab } from "./types";
 
 const buildSchema = (maxAccessTokenTTL: number) =>
   z.object({
@@ -61,6 +68,7 @@ type Props = {
   identityId?: string;
   isUpdate?: boolean;
   maxAccessTokenTTL: number;
+  onSubmittingChange?: (isSubmitting: boolean) => void;
 };
 
 export const IdentityTlsCertAuthForm = ({
@@ -68,7 +76,8 @@ export const IdentityTlsCertAuthForm = ({
   handlePopUpToggle,
   identityId,
   isUpdate,
-  maxAccessTokenTTL
+  maxAccessTokenTTL,
+  onSubmittingChange
 }: Props) => {
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
@@ -76,6 +85,7 @@ export const IdentityTlsCertAuthForm = ({
   const { projectId } = useParams({
     strict: false
   });
+  const scopeVariant = useScopeVariant();
   const { mutateAsync: addMutateAsync } = useAddIdentityTlsCertAuth();
   const { mutateAsync: updateMutateAsync } = useUpdateIdentityTlsCertAuth();
   const [tabValue, setTabValue] = useState<IdentityFormTab>(IdentityFormTab.Configuration);
@@ -137,6 +147,10 @@ export const IdentityTlsCertAuthForm = ({
     }
   }, [data]);
 
+  useEffect(() => {
+    onSubmittingChange?.(isSubmitting);
+  }, [isSubmitting, onSubmittingChange]);
+
   const onFormSubmit = async ({
     caCertificate,
     allowedCommonNames,
@@ -180,190 +194,264 @@ export const IdentityTlsCertAuthForm = ({
     reset();
   };
 
+  const maxDaysHelper = `Max: ${Math.floor(maxAccessTokenTTL / SECONDS_PER_DAY)} days`;
+
   return (
-    <form onSubmit={handleSubmit(onFormSubmit)}>
+    <form id={IDENTITY_AUTH_FORM_ID} onSubmit={handleSubmit(onFormSubmit)}>
       <Tabs value={tabValue} onValueChange={(value) => setTabValue(value as IdentityFormTab)}>
-        <TabList>
-          <Tab value={IdentityFormTab.Configuration}>Configuration</Tab>
-          <Tab value={IdentityFormTab.Advanced}>Advanced</Tab>
-        </TabList>
-        <TabPanel value={IdentityFormTab.Configuration}>
-          <Controller
-            control={control}
-            name="caCertificate"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="CA Certificate"
-                errorText={error?.message}
-                isError={Boolean(error)}
-                tooltipText="A PEM-encoded CA certificate. This will be used to validate client certificate."
-              >
-                <TextArea {...field} placeholder="-----BEGIN CERTIFICATE----- ..." />
-              </FormControl>
-            )}
-          />
+        <TabsList variant={scopeVariant}>
+          <TabsTrigger value={IdentityFormTab.Configuration}>Configuration</TabsTrigger>
+          <TabsTrigger value={IdentityFormTab.Advanced}>Advanced</TabsTrigger>
+        </TabsList>
+        <TabsContent value={IdentityFormTab.Configuration}>
+          <FieldGroup>
+            <Controller
+              control={control}
+              name="caCertificate"
+              render={({ field, fieldState: { error } }) => (
+                <Field>
+                  <FieldLabel htmlFor="caCertificate" className="inline-flex items-center gap-1.5">
+                    CA Certificate
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <InfoIcon className="size-3.5 text-muted" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        A PEM-encoded CA certificate. This will be used to validate client
+                        certificate.
+                      </TooltipContent>
+                    </Tooltip>
+                  </FieldLabel>
+                  <TextArea
+                    {...field}
+                    id="caCertificate"
+                    placeholder="-----BEGIN CERTIFICATE----- ..."
+                    isError={Boolean(error)}
+                  />
+                  <FieldError>{error?.message}</FieldError>
+                </Field>
+              )}
+            />
 
-          <Controller
-            control={control}
-            defaultValue=""
-            name="allowedCommonNames"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Allowed Common Names"
-                isError={Boolean(error)}
-                isOptional
-                errorText={error?.message}
-                tooltipText="Comma separated common names allowed to authenticate against the identity. Leave empty to allow any certificate."
-              >
-                <Input {...field} placeholder="" type="text" />
-              </FormControl>
-            )}
-          />
-          <Controller
-            control={control}
-            defaultValue="2592000"
-            name="accessTokenTTL"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Access Token TTL (seconds)"
-                tooltipText="The lifetime for an access token in seconds. This value will be referenced at renewal time."
-                isError={Boolean(error)}
-                errorText={error?.message}
-                helperText={`Max: ${Math.floor(maxAccessTokenTTL / SECONDS_PER_DAY)} days`}
-              >
-                <Input {...field} placeholder="2592000" type="number" min="1" step="1" />
-              </FormControl>
-            )}
-          />
-          <Controller
-            control={control}
-            defaultValue="2592000"
-            name="accessTokenMaxTTL"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Access Token Max TTL (seconds)"
-                isError={Boolean(error)}
-                errorText={error?.message}
-                tooltipText="The maximum lifetime for an access token in seconds. This value will be referenced at renewal time."
-                helperText={`Max: ${Math.floor(maxAccessTokenTTL / SECONDS_PER_DAY)} days`}
-              >
-                <Input {...field} placeholder="2592000" type="number" min="1" step="1" />
-              </FormControl>
-            )}
-          />
-          <Controller
-            control={control}
-            defaultValue="0"
-            name="accessTokenNumUsesLimit"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Access Token Max Number of Uses"
-                isError={Boolean(error)}
-                errorText={error?.message}
-                tooltipText="The maximum number of times that an access token can be used; Leave blank for unlimited uses."
-              >
-                <Input {...field} placeholder="Unlimited uses" type="number" min="0" step="1" />
-              </FormControl>
-            )}
-          />
-        </TabPanel>
-        <TabPanel value={IdentityFormTab.Advanced}>
-          {accessTokenTrustedIpsFields.map(({ id }, index) => (
-            <div className="mb-3 flex items-end space-x-2" key={id}>
-              <Controller
-                control={control}
-                name={`accessTokenTrustedIps.${index}.ipAddress`}
-                defaultValue="0.0.0.0/0"
-                render={({ field, fieldState: { error } }) => {
-                  return (
-                    <FormControl
-                      className="mb-0 grow"
-                      label={index === 0 ? "Access Token Trusted IPs" : undefined}
-                      isError={Boolean(error)}
-                      errorText={error?.message}
-                      tooltipText="The IPs or CIDR ranges that access tokens can be used from. By default, each token is given the 0.0.0.0/0, allowing usage from any network address."
-                    >
-                      <Input
-                        value={field.value}
-                        onChange={(e) => {
-                          if (subscription?.ipAllowlisting) {
-                            field.onChange(e);
-                            return;
-                          }
-
-                          handlePopUpOpen("upgradePlan", {
-                            featureName: "IP allowlisting"
-                          });
-                        }}
-                        placeholder="123.456.789.0"
-                      />
-                    </FormControl>
-                  );
-                }}
-              />
-              <IconButton
+            <Controller
+              control={control}
+              defaultValue=""
+              name="allowedCommonNames"
+              render={({ field, fieldState: { error } }) => (
+                <Field>
+                  <FieldLabel
+                    htmlFor="allowedCommonNames"
+                    className="inline-flex items-center gap-1.5"
+                  >
+                    Allowed Common Names (optional)
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <InfoIcon className="size-3.5 text-muted" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        Comma separated common names allowed to authenticate against the identity.
+                        Leave empty to allow any certificate.
+                      </TooltipContent>
+                    </Tooltip>
+                  </FieldLabel>
+                  <Input {...field} id="allowedCommonNames" type="text" isError={Boolean(error)} />
+                  <FieldError>{error?.message}</FieldError>
+                </Field>
+              )}
+            />
+            <Controller
+              control={control}
+              defaultValue="2592000"
+              name="accessTokenTTL"
+              render={({ field, fieldState: { error } }) => (
+                <Field>
+                  <FieldLabel htmlFor="accessTokenTTL" className="inline-flex items-center gap-1.5">
+                    Access Token TTL (seconds)
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <InfoIcon className="size-3.5 text-muted" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        The lifetime for an access token in seconds. This value will be referenced
+                        at renewal time.
+                      </TooltipContent>
+                    </Tooltip>
+                  </FieldLabel>
+                  <Input
+                    {...field}
+                    id="accessTokenTTL"
+                    placeholder="2592000"
+                    type="number"
+                    min="1"
+                    step="1"
+                    isError={Boolean(error)}
+                  />
+                  <FieldDescription>{maxDaysHelper}</FieldDescription>
+                  <FieldError>{error?.message}</FieldError>
+                </Field>
+              )}
+            />
+            <Controller
+              control={control}
+              defaultValue="2592000"
+              name="accessTokenMaxTTL"
+              render={({ field, fieldState: { error } }) => (
+                <Field>
+                  <FieldLabel
+                    htmlFor="accessTokenMaxTTL"
+                    className="inline-flex items-center gap-1.5"
+                  >
+                    Access Token Max TTL (seconds)
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <InfoIcon className="size-3.5 text-muted" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        The maximum lifetime for an access token in seconds. This value will be
+                        referenced at renewal time.
+                      </TooltipContent>
+                    </Tooltip>
+                  </FieldLabel>
+                  <Input
+                    {...field}
+                    id="accessTokenMaxTTL"
+                    placeholder="2592000"
+                    type="number"
+                    min="1"
+                    step="1"
+                    isError={Boolean(error)}
+                  />
+                  <FieldDescription>{maxDaysHelper}</FieldDescription>
+                  <FieldError>{error?.message}</FieldError>
+                </Field>
+              )}
+            />
+            <Controller
+              control={control}
+              defaultValue="0"
+              name="accessTokenNumUsesLimit"
+              render={({ field, fieldState: { error } }) => (
+                <Field>
+                  <FieldLabel
+                    htmlFor="accessTokenNumUsesLimit"
+                    className="inline-flex items-center gap-1.5"
+                  >
+                    Access Token Max Number of Uses
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <InfoIcon className="size-3.5 text-muted" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        The maximum number of times that an access token can be used; leave blank
+                        for unlimited uses.
+                      </TooltipContent>
+                    </Tooltip>
+                  </FieldLabel>
+                  <Input
+                    {...field}
+                    id="accessTokenNumUsesLimit"
+                    placeholder="Unlimited uses"
+                    type="number"
+                    min="0"
+                    step="1"
+                    isError={Boolean(error)}
+                  />
+                  <FieldError>{error?.message}</FieldError>
+                </Field>
+              )}
+            />
+          </FieldGroup>
+        </TabsContent>
+        <TabsContent value={IdentityFormTab.Advanced}>
+          <FieldGroup>
+            <div className="flex flex-col gap-3">
+              {accessTokenTrustedIpsFields.map(({ id }, index) => (
+                <div className="flex items-start gap-2" key={id}>
+                  <Controller
+                    control={control}
+                    name={`accessTokenTrustedIps.${index}.ipAddress`}
+                    defaultValue="0.0.0.0/0"
+                    render={({ field, fieldState: { error } }) => (
+                      <Field className="flex-1">
+                        {index === 0 && (
+                          <FieldLabel
+                            htmlFor={`trustedIp-${index}`}
+                            className="inline-flex items-center gap-1.5"
+                          >
+                            Access Token Trusted IPs
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <InfoIcon className="size-3.5 text-muted" />
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                The IPs or CIDR ranges that access tokens can be used from. By
+                                default, each token is given the 0.0.0.0/0, allowing usage from any
+                                network address.
+                              </TooltipContent>
+                            </Tooltip>
+                          </FieldLabel>
+                        )}
+                        <Input
+                          id={`trustedIp-${index}`}
+                          value={field.value}
+                          onChange={(e) => {
+                            if (subscription?.ipAllowlisting) {
+                              field.onChange(e);
+                              return;
+                            }
+                            handlePopUpOpen("upgradePlan", {
+                              featureName: "IP allowlisting"
+                            });
+                          }}
+                          placeholder="123.456.789.0"
+                          isError={Boolean(error)}
+                        />
+                        <FieldError>{error?.message}</FieldError>
+                      </Field>
+                    )}
+                  />
+                  <IconButton
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    aria-label="Remove trusted IP"
+                    className={index === 0 ? "mt-[1.625rem]" : "mt-0.5"}
+                    onClick={() => {
+                      if (subscription?.ipAllowlisting) {
+                        removeAccessTokenTrustedIp(index);
+                        return;
+                      }
+                      handlePopUpOpen("upgradePlan", {
+                        featureName: "IP allowlisting"
+                      });
+                    }}
+                  >
+                    <XIcon />
+                  </IconButton>
+                </div>
+              ))}
+              <Button
+                type="button"
+                variant="outline"
+                size="xs"
+                className="w-fit"
                 onClick={() => {
                   if (subscription?.ipAllowlisting) {
-                    removeAccessTokenTrustedIp(index);
+                    appendAccessTokenTrustedIp({ ipAddress: "0.0.0.0/0" });
                     return;
                   }
-
                   handlePopUpOpen("upgradePlan", {
                     featureName: "IP allowlisting"
                   });
                 }}
-                size="lg"
-                colorSchema="danger"
-                variant="plain"
-                ariaLabel="update"
-                className="p-3"
               >
-                <FontAwesomeIcon icon={faXmark} />
-              </IconButton>
+                <PlusIcon />
+                Add IP Address
+              </Button>
             </div>
-          ))}
-          <div className="my-4 ml-1">
-            <Button
-              variant="outline_bg"
-              onClick={() => {
-                if (subscription?.ipAllowlisting) {
-                  appendAccessTokenTrustedIp({
-                    ipAddress: "0.0.0.0/0"
-                  });
-                  return;
-                }
-
-                handlePopUpOpen("upgradePlan", {
-                  featureName: "IP allowlisting"
-                });
-              }}
-              leftIcon={<FontAwesomeIcon icon={faPlus} />}
-              size="xs"
-            >
-              Add IP Address
-            </Button>
-          </div>
-        </TabPanel>
+          </FieldGroup>
+        </TabsContent>
       </Tabs>
-      <div className="flex items-center">
-        <Button
-          className="mr-4"
-          size="sm"
-          type="submit"
-          isLoading={isSubmitting}
-          isDisabled={isSubmitting}
-        >
-          {isUpdate ? "Update" : "Add"}
-        </Button>
-
-        <Button
-          colorSchema="secondary"
-          variant="plain"
-          onClick={() => handlePopUpToggle("identityAuthMethod", false)}
-        >
-          Cancel
-        </Button>
-      </div>
     </form>
   );
 };

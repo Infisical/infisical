@@ -1,55 +1,62 @@
-import { faBan, faCheck, faCopy } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { BanIcon, CheckIcon, CopyIcon } from "lucide-react";
 
-import { EmptyState, IconButton, Spinner, Tooltip } from "@app/components/v2";
+import {
+  Empty,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+  IconButton,
+  PageLoader,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { useTimedReset } from "@app/hooks";
 import {
-  useClearIdentityUniversalAuthLockouts,
+  IdentityAuthMethod,
   useGetIdentityUniversalAuth,
   useGetIdentityUniversalAuthClientSecrets
 } from "@app/hooks/api";
 
-import { IdentityAuthFieldDisplay } from "./IdentityAuthFieldDisplay";
-import { LockoutFields } from "./IdentityAuthLockoutFields";
-import { IdentityUniversalAuthClientSecretsTable } from "./IdentityUniversalAuthClientSecretsTable";
-import { ViewAuthMethodProps } from "./types";
-import { ViewIdentityContentWrapper } from "./ViewIdentityContentWrapper";
+import {
+  IdentityAuthFieldDisplay,
+  IdentityAuthLockoutFields,
+  IdentityUniversalAuthClientSecretsTable
+} from "../helpers";
+import { ViewAuthMethodProps } from "../types";
 
-export const ViewIdentityUniversalAuthContent = ({
+export const IdentityUniversalAuthContent = ({
   identityId,
-  onDelete,
-  onEdit,
-  lockedOut,
-  onResetAllLockouts
+  isLockedOut,
+  onMutated
 }: ViewAuthMethodProps) => {
   const { data, isPending } = useGetIdentityUniversalAuth(identityId);
   const { data: clientSecrets = [], isPending: clientSecretsPending } =
     useGetIdentityUniversalAuthClientSecrets(identityId);
-  const clearLockoutsResult = useClearIdentityUniversalAuthLockouts();
 
   const [copyTextClientId, isCopyingClientId, setCopyTextClientId] = useTimedReset<string>({
     initialState: "Copy Client ID to clipboard"
   });
 
   if (isPending || clientSecretsPending) {
-    return (
-      <div className="flex w-full items-center justify-center">
-        <Spinner className="text-mineshaft-400" />
-      </div>
-    );
+    return <PageLoader />;
   }
 
   if (!data) {
     return (
-      <EmptyState
-        icon={faBan}
-        title="Could not find Universal Auth associated with this Identity."
-      />
+      <Empty className="border">
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <BanIcon />
+          </EmptyMedia>
+          <EmptyTitle>Could not find Universal Auth associated with this Identity.</EmptyTitle>
+        </EmptyHeader>
+      </Empty>
     );
   }
 
   return (
-    <ViewIdentityContentWrapper onEdit={onEdit} onDelete={onDelete} identityId={identityId}>
+    <div className="grid grid-cols-2 gap-3">
       {Number(data.accessTokenPeriod) > 0 ? (
         <IdentityAuthFieldDisplay label="Access Token Period (seconds)">
           {data.accessTokenPeriod}
@@ -77,31 +84,33 @@ export const ViewIdentityUniversalAuthContent = ({
         {data.lockoutEnabled ? "Enabled" : "Disabled"}
       </IdentityAuthFieldDisplay>
       {data.lockoutEnabled && (
-        <LockoutFields
+        <IdentityAuthLockoutFields
           identityId={identityId}
-          lockedOut={lockedOut}
-          clearLockoutsResult={clearLockoutsResult}
+          authMethod={IdentityAuthMethod.UNIVERSAL_AUTH}
+          isLockedOut={isLockedOut ?? false}
+          onResetSuccess={() => onMutated?.()}
           data={data}
-          onResetAllLockouts={onResetAllLockouts}
         />
       )}
-      <div className="col-span-2 my-3">
-        <div className="mb-3 border-b border-mineshaft-500 pb-2">
-          <span className="text-bunker-300">Client ID</span>
-        </div>
+      <div className="col-span-2 my-3 flex flex-col gap-2">
+        <div className="border-b border-border pb-2 text-foreground">Client ID</div>
         <div className="flex items-center gap-2">
           <span className="text-sm">{data.clientId}</span>
-          <Tooltip content={copyTextClientId}>
-            <IconButton
-              ariaLabel="copy icon"
-              variant="plain"
-              onClick={() => {
-                navigator.clipboard.writeText(data.clientId);
-                setCopyTextClientId("Copied");
-              }}
-            >
-              <FontAwesomeIcon icon={isCopyingClientId ? faCheck : faCopy} />
-            </IconButton>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <IconButton
+                variant="ghost"
+                size="xs"
+                aria-label="Copy Client ID"
+                onClick={() => {
+                  navigator.clipboard.writeText(data.clientId);
+                  setCopyTextClientId("Copied");
+                }}
+              >
+                {isCopyingClientId ? <CheckIcon /> : <CopyIcon />}
+              </IconButton>
+            </TooltipTrigger>
+            <TooltipContent>{copyTextClientId}</TooltipContent>
           </Tooltip>
         </div>
       </div>
@@ -109,6 +118,6 @@ export const ViewIdentityUniversalAuthContent = ({
         clientSecrets={clientSecrets}
         identityId={identityId}
       />
-    </ViewIdentityContentWrapper>
+    </div>
   );
 };

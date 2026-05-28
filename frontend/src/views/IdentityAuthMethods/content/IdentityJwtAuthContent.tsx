@@ -1,38 +1,44 @@
-import { faBan } from "@fortawesome/free-solid-svg-icons";
-import { EyeIcon } from "lucide-react";
+import { BanIcon, EyeIcon } from "lucide-react";
 
-import { EmptyState, Spinner, Tooltip } from "@app/components/v2";
-import { Badge } from "@app/components/v3";
+import {
+  Badge,
+  Empty,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+  PageLoader,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { useGetIdentityJwtAuth } from "@app/hooks/api";
 import { IdentityJwtConfigurationType } from "@app/hooks/api/identities/enums";
-import { ViewIdentityContentWrapper } from "@app/pages/organization/IdentityDetailsByIDPage/components/ViewIdentityAuth/ViewIdentityContentWrapper";
 
-import { IdentityAuthFieldDisplay } from "./IdentityAuthFieldDisplay";
-import { ViewAuthMethodProps } from "./types";
+import { IdentityAuthFieldDisplay } from "../helpers";
+import { ViewAuthMethodProps } from "../types";
 
-export const ViewIdentityJwtAuthContent = ({
-  identityId,
-  onEdit,
-  onDelete
-}: ViewAuthMethodProps) => {
+export const IdentityJwtAuthContent = ({ identityId }: ViewAuthMethodProps) => {
   const { data, isPending } = useGetIdentityJwtAuth(identityId);
 
   if (isPending) {
-    return (
-      <div className="flex w-full items-center justify-center">
-        <Spinner className="text-mineshaft-400" />
-      </div>
-    );
+    return <PageLoader />;
   }
 
   if (!data) {
     return (
-      <EmptyState icon={faBan} title="Could not find JWT Auth associated with this Identity." />
+      <Empty className="border">
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <BanIcon />
+          </EmptyMedia>
+          <EmptyTitle>Could not find JWT Auth associated with this Identity.</EmptyTitle>
+        </EmptyHeader>
+      </Empty>
     );
   }
 
   return (
-    <ViewIdentityContentWrapper onEdit={onEdit} onDelete={onDelete} identityId={identityId}>
+    <div className="grid grid-cols-2 gap-3">
       <IdentityAuthFieldDisplay label="Access Token TTL (seconds)">
         {data.accessTokenTTL}
       </IdentityAuthFieldDisplay>
@@ -55,17 +61,16 @@ export const ViewIdentityJwtAuthContent = ({
           </IdentityAuthFieldDisplay>
           <IdentityAuthFieldDisplay className="col-span-2" label="JWKS CA Certificate">
             {data.jwksCaCert && (
-              <Tooltip
-                side="right"
-                className="max-w-xl p-2"
-                content={
-                  <p className="rounded-sm bg-mineshaft-600 p-2 break-words">{data.jwksCaCert}</p>
-                }
-              >
-                <Badge variant="neutral">
-                  <EyeIcon />
-                  Reveal
-                </Badge>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Badge variant="neutral">
+                    <EyeIcon />
+                    Reveal
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent side="right" className="max-w-xl p-2">
+                  <p className="rounded-sm bg-container p-2 break-words">{data.jwksCaCert}</p>
+                </TooltipContent>
               </Tooltip>
             )}
           </IdentityAuthFieldDisplay>
@@ -75,20 +80,18 @@ export const ViewIdentityJwtAuthContent = ({
           {data.publicKeys.length && (
             <div className="flex flex-wrap gap-1">
               {data.publicKeys.map((key, index) => (
-                <Tooltip
-                  side="right"
-                  className="max-w-xl p-2"
-                  key={key}
-                  content={
-                    <p className="rounded-sm bg-mineshaft-600 p-2 break-words whitespace-normal">
+                <Tooltip key={key}>
+                  <TooltipTrigger asChild>
+                    <Badge variant="neutral">
+                      <EyeIcon />
+                      Key {index + 1}
+                    </Badge>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" className="max-w-xl p-2">
+                    <p className="rounded-sm bg-container p-2 break-words whitespace-normal">
                       {key}
                     </p>
-                  }
-                >
-                  <Badge variant="neutral">
-                    <EyeIcon />
-                    Key {index + 1}
-                  </Badge>
+                  </TooltipContent>
                 </Tooltip>
               ))}
             </div>
@@ -109,22 +112,21 @@ export const ViewIdentityJwtAuthContent = ({
       </IdentityAuthFieldDisplay>
       <IdentityAuthFieldDisplay className="col-span-2" label="Claims">
         {Object.keys(data.boundClaims).length && (
-          <Tooltip
-            side="right"
-            className="max-w-xl p-2"
-            content={
-              <pre className="rounded-sm bg-mineshaft-600 p-2 whitespace-pre-wrap">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Badge variant="neutral">
+                <EyeIcon />
+                Reveal
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="max-w-xl p-2">
+              <pre className="rounded-sm bg-container p-2 whitespace-pre-wrap">
                 {JSON.stringify(data.boundClaims, null, 2)}
               </pre>
-            }
-          >
-            <Badge variant="neutral">
-              <EyeIcon />
-              Reveal
-            </Badge>
+            </TooltipContent>
           </Tooltip>
         )}
       </IdentityAuthFieldDisplay>
-    </ViewIdentityContentWrapper>
+    </div>
   );
 };

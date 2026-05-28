@@ -1,35 +1,45 @@
 import { useEffect, useMemo, useState } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
-import { faPlus, faXmark } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useParams } from "@tanstack/react-router";
+import { InfoIcon, PlusIcon, XIcon } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
-  FormControl,
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
   IconButton,
   Input,
   Select,
+  SelectContent,
   SelectItem,
-  Tab,
-  TabList,
-  TabPanel,
+  SelectTrigger,
+  SelectValue,
   Tabs,
-  TextArea
-} from "@app/components/v2";
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+  TextArea,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { useOrganization, useSubscription } from "@app/context";
 import { SECONDS_PER_DAY } from "@app/helpers/datetime";
 import { accessTokenTtlSchema } from "@app/helpers/identityAuthSchemas";
+import { useScopeVariant } from "@app/hooks";
 import { useAddIdentitySpiffeAuth, useUpdateIdentitySpiffeAuth } from "@app/hooks/api";
 import { SpiffeTrustBundleProfile } from "@app/hooks/api/identities/enums";
 import { useGetIdentitySpiffeAuth } from "@app/hooks/api/identities/queries";
 import { IdentityTrustedIp } from "@app/hooks/api/identities/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
-import { IdentityFormTab } from "./types";
+import { IDENTITY_AUTH_FORM_ID, IdentityFormTab } from "./types";
 
 const trustBundleDistributionSchema = z.discriminatedUnion("profile", [
   z.object({
@@ -77,6 +87,7 @@ type Props = {
   identityId?: string;
   isUpdate?: boolean;
   maxAccessTokenTTL: number;
+  onSubmittingChange?: (isSubmitting: boolean) => void;
 };
 
 export const IdentitySpiffeAuthForm = ({
@@ -84,7 +95,8 @@ export const IdentitySpiffeAuthForm = ({
   handlePopUpToggle,
   identityId,
   isUpdate,
-  maxAccessTokenTTL
+  maxAccessTokenTTL,
+  onSubmittingChange
 }: Props) => {
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
@@ -92,6 +104,7 @@ export const IdentitySpiffeAuthForm = ({
   const { projectId } = useParams({
     strict: false
   });
+  const scopeVariant = useScopeVariant();
   const { mutateAsync: addMutateAsync } = useAddIdentitySpiffeAuth();
   const { mutateAsync: updateMutateAsync } = useUpdateIdentitySpiffeAuth();
   const [tabValue, setTabValue] = useState<IdentityFormTab>(IdentityFormTab.Configuration);
@@ -181,6 +194,10 @@ export const IdentitySpiffeAuthForm = ({
     }
   }, [data]);
 
+  useEffect(() => {
+    onSubmittingChange?.(isSubmitting);
+  }, [isSubmitting, onSubmittingChange]);
+
   const onFormSubmit = async ({
     accessTokenTrustedIps,
     accessTokenTTL,
@@ -252,8 +269,11 @@ export const IdentitySpiffeAuthForm = ({
     reset();
   };
 
+  const maxDaysHelper = `Max: ${Math.floor(maxAccessTokenTTL / SECONDS_PER_DAY)} days`;
+
   return (
     <form
+      id={IDENTITY_AUTH_FORM_ID}
       onSubmit={handleSubmit(onFormSubmit, (fields) => {
         setTabValue(
           ["accessTokenTrustedIps"].includes(Object.keys(fields)[0])
@@ -263,288 +283,322 @@ export const IdentitySpiffeAuthForm = ({
       })}
     >
       <Tabs value={tabValue} onValueChange={(value) => setTabValue(value as IdentityFormTab)}>
-        <TabList>
-          <Tab value={IdentityFormTab.Configuration}>Configuration</Tab>
-          <Tab value={IdentityFormTab.Advanced}>Advanced</Tab>
-        </TabList>
-        <TabPanel value={IdentityFormTab.Configuration}>
-          <Controller
-            control={control}
-            name="trustBundleDistribution.profile"
-            render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-              <FormControl
-                label="Trust Bundle Profile"
-                isError={Boolean(error)}
-                errorText={error?.message}
-              >
-                <Select
-                  defaultValue={field.value}
-                  {...field}
-                  onValueChange={(e) => {
-                    onChange(e);
-                  }}
-                  className="w-full"
-                >
-                  <SelectItem value={SpiffeTrustBundleProfile.STATIC} key="static">
-                    Static
-                  </SelectItem>
-                  <SelectItem
-                    value={SpiffeTrustBundleProfile.HTTPS_WEB_BUNDLE}
-                    key="https_web_bundle"
-                  >
-                    HTTPS Web Bundle
-                  </SelectItem>
-                </Select>
-              </FormControl>
-            )}
-          />
-          <Controller
-            control={control}
-            name="trustDomain"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                isRequired
-                label="Trust Domain"
-                isError={Boolean(error)}
-                errorText={error?.message}
-              >
-                <Input {...field} type="text" placeholder="example.org" />
-              </FormControl>
-            )}
-          />
-          <Controller
-            control={control}
-            name="allowedSpiffeIds"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                isRequired
-                label="Allowed SPIFFE IDs"
-                isError={Boolean(error)}
-                errorText={error?.message}
-              >
-                <TextArea
-                  {...field}
-                  placeholder="Comma-separated list of SPIFFE IDs allowed to authenticate. Glob patterns supported: * matches a single path segment, ** matches across multiple segments (e.g. spiffe://example.org/ns/*/sa/admin, spiffe://example.org/workloads/**)"
-                />
-              </FormControl>
-            )}
-          />
-          <Controller
-            control={control}
-            name="allowedAudiences"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                isRequired
-                label="Allowed Audiences"
-                isError={Boolean(error)}
-                errorText={error?.message}
-              >
-                <Input {...field} type="text" placeholder="Comma-separated (e.g. aud1, aud2)" />
-              </FormControl>
-            )}
-          />
-          {selectedProfile === SpiffeTrustBundleProfile.STATIC && (
+        <TabsList variant={scopeVariant}>
+          <TabsTrigger value={IdentityFormTab.Configuration}>Configuration</TabsTrigger>
+          <TabsTrigger value={IdentityFormTab.Advanced}>Advanced</TabsTrigger>
+        </TabsList>
+        <TabsContent value={IdentityFormTab.Configuration}>
+          <FieldGroup>
             <Controller
               control={control}
-              name="trustBundleDistribution.bundle"
-              render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  isRequired
-                  label="CA Bundle JWKS"
-                  isError={Boolean(error)}
-                  errorText={error?.message}
-                >
-                  <TextArea {...field} placeholder="Paste SPIRE JWKS JSON" />
-                </FormControl>
+              name="trustBundleDistribution.profile"
+              render={({ field: { onChange, value }, fieldState: { error } }) => (
+                <Field>
+                  <FieldLabel htmlFor="trustBundleProfile">Trust Bundle Profile</FieldLabel>
+                  <Select value={value} onValueChange={onChange}>
+                    <SelectTrigger
+                      id="trustBundleProfile"
+                      className="w-full"
+                      isError={Boolean(error)}
+                    >
+                      <SelectValue placeholder="Select trust bundle profile" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={SpiffeTrustBundleProfile.STATIC}>Static</SelectItem>
+                      <SelectItem value={SpiffeTrustBundleProfile.HTTPS_WEB_BUNDLE}>
+                        HTTPS Web Bundle
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FieldError>{error?.message}</FieldError>
+                </Field>
               )}
             />
-          )}
-          {selectedProfile === SpiffeTrustBundleProfile.HTTPS_WEB_BUNDLE && (
-            <>
-              <Controller
-                control={control}
-                name="trustBundleDistribution.endpointUrl"
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    isRequired
-                    label="Bundle Endpoint URL"
+            <Controller
+              control={control}
+              name="trustDomain"
+              render={({ field, fieldState: { error } }) => (
+                <Field>
+                  <FieldLabel htmlFor="trustDomain">Trust Domain</FieldLabel>
+                  <Input
+                    {...field}
+                    id="trustDomain"
+                    type="text"
+                    placeholder="example.org"
                     isError={Boolean(error)}
-                    errorText={error?.message}
-                  >
-                    <Input {...field} type="text" placeholder="https://spire-server:8443" />
-                  </FormControl>
-                )}
-              />
-              <Controller
-                control={control}
-                name="trustBundleDistribution.caCert"
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    label="Root CA Certificate (optional)"
+                  />
+                  <FieldError>{error?.message}</FieldError>
+                </Field>
+              )}
+            />
+            <Controller
+              control={control}
+              name="allowedSpiffeIds"
+              render={({ field, fieldState: { error } }) => (
+                <Field>
+                  <FieldLabel htmlFor="allowedSpiffeIds">Allowed SPIFFE IDs</FieldLabel>
+                  <TextArea
+                    {...field}
+                    id="allowedSpiffeIds"
+                    placeholder="Comma-separated list of SPIFFE IDs allowed to authenticate. Glob patterns supported: * matches a single path segment, ** matches across multiple segments (e.g. spiffe://example.org/ns/*/sa/admin, spiffe://example.org/workloads/**)"
                     isError={Boolean(error)}
-                    errorText={error?.message}
-                  >
-                    <TextArea {...field} placeholder="-----BEGIN CERTIFICATE----- ..." />
-                  </FormControl>
-                )}
-              />
-              <Controller
-                control={control}
-                name="trustBundleDistribution.refreshHintSeconds"
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    label="Bundle Refresh Hint (seconds)"
+                  />
+                  <FieldError>{error?.message}</FieldError>
+                </Field>
+              )}
+            />
+            <Controller
+              control={control}
+              name="allowedAudiences"
+              render={({ field, fieldState: { error } }) => (
+                <Field>
+                  <FieldLabel htmlFor="allowedAudiences">Allowed Audiences</FieldLabel>
+                  <Input
+                    {...field}
+                    id="allowedAudiences"
+                    type="text"
+                    placeholder="Comma-separated (e.g. aud1, aud2)"
                     isError={Boolean(error)}
-                    errorText={error?.message}
-                  >
-                    <Input {...field} placeholder="3600" type="number" min="0" step="1" />
-                  </FormControl>
-                )}
-              />
-            </>
-          )}
-          <Controller
-            control={control}
-            defaultValue="2592000"
-            name="accessTokenTTL"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Access Token TTL (seconds)"
-                isError={Boolean(error)}
-                errorText={error?.message}
-                helperText={`Max: ${Math.floor(maxAccessTokenTTL / SECONDS_PER_DAY)} days`}
-              >
-                <Input {...field} placeholder="2592000" type="number" min="1" step="1" />
-              </FormControl>
-            )}
-          />
-          <Controller
-            control={control}
-            defaultValue="2592000"
-            name="accessTokenMaxTTL"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Access Token Max TTL (seconds)"
-                isError={Boolean(error)}
-                errorText={error?.message}
-                helperText={`Max: ${Math.floor(maxAccessTokenTTL / SECONDS_PER_DAY)} days`}
-              >
-                <Input {...field} placeholder="2592000" type="number" min="1" step="1" />
-              </FormControl>
-            )}
-          />
-          <Controller
-            control={control}
-            defaultValue="0"
-            name="accessTokenNumUsesLimit"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Access Token Max Number of Uses"
-                isError={Boolean(error)}
-                errorText={error?.message}
-                tooltipText="The maximum number of times that an access token can be used; Leave blank for unlimited uses."
-              >
-                <Input {...field} placeholder="Unlimited uses" type="number" min="0" step="1" />
-              </FormControl>
-            )}
-          />
-        </TabPanel>
-        <TabPanel value={IdentityFormTab.Advanced}>
-          {accessTokenTrustedIpsFields.map(({ id }, index) => (
-            <div className="mb-3 flex items-end space-x-2" key={id}>
+                  />
+                  <FieldError>{error?.message}</FieldError>
+                </Field>
+              )}
+            />
+            {selectedProfile === SpiffeTrustBundleProfile.STATIC && (
               <Controller
                 control={control}
-                name={`accessTokenTrustedIps.${index}.ipAddress`}
-                defaultValue="0.0.0.0/0"
-                render={({ field, fieldState: { error } }) => {
-                  return (
-                    <FormControl
-                      className="mb-0 grow"
-                      label={index === 0 ? "Access Token Trusted IPs" : undefined}
+                name="trustBundleDistribution.bundle"
+                render={({ field, fieldState: { error } }) => (
+                  <Field>
+                    <FieldLabel htmlFor="trustBundleBundle">CA Bundle JWKS</FieldLabel>
+                    <TextArea
+                      {...field}
+                      id="trustBundleBundle"
+                      placeholder="Paste SPIRE JWKS JSON"
                       isError={Boolean(error)}
-                      errorText={error?.message}
-                    >
-                      <Input
-                        value={field.value}
-                        onChange={(e) => {
-                          if (subscription?.ipAllowlisting) {
-                            field.onChange(e);
-                            return;
-                          }
-
-                          handlePopUpOpen("upgradePlan", {
-                            featureName: "IP allowlisting"
-                          });
-                        }}
-                        placeholder="123.456.789.0"
-                      />
-                    </FormControl>
-                  );
-                }}
+                    />
+                    <FieldError>{error?.message}</FieldError>
+                  </Field>
+                )}
               />
-              <IconButton
+            )}
+            {selectedProfile === SpiffeTrustBundleProfile.HTTPS_WEB_BUNDLE && (
+              <>
+                <Controller
+                  control={control}
+                  name="trustBundleDistribution.endpointUrl"
+                  render={({ field, fieldState: { error } }) => (
+                    <Field>
+                      <FieldLabel htmlFor="trustBundleEndpointUrl">Bundle Endpoint URL</FieldLabel>
+                      <Input
+                        {...field}
+                        id="trustBundleEndpointUrl"
+                        type="text"
+                        placeholder="https://spire-server:8443"
+                        isError={Boolean(error)}
+                      />
+                      <FieldError>{error?.message}</FieldError>
+                    </Field>
+                  )}
+                />
+                <Controller
+                  control={control}
+                  name="trustBundleDistribution.caCert"
+                  render={({ field, fieldState: { error } }) => (
+                    <Field>
+                      <FieldLabel htmlFor="trustBundleCaCert">
+                        Root CA Certificate (optional)
+                      </FieldLabel>
+                      <TextArea
+                        {...field}
+                        id="trustBundleCaCert"
+                        placeholder="-----BEGIN CERTIFICATE----- ..."
+                        isError={Boolean(error)}
+                      />
+                      <FieldError>{error?.message}</FieldError>
+                    </Field>
+                  )}
+                />
+                <Controller
+                  control={control}
+                  name="trustBundleDistribution.refreshHintSeconds"
+                  render={({ field, fieldState: { error } }) => (
+                    <Field>
+                      <FieldLabel htmlFor="trustBundleRefreshHint">
+                        Bundle Refresh Hint (seconds)
+                      </FieldLabel>
+                      <Input
+                        {...field}
+                        id="trustBundleRefreshHint"
+                        placeholder="3600"
+                        type="number"
+                        min="0"
+                        step="1"
+                        isError={Boolean(error)}
+                      />
+                      <FieldError>{error?.message}</FieldError>
+                    </Field>
+                  )}
+                />
+              </>
+            )}
+            <Controller
+              control={control}
+              defaultValue="2592000"
+              name="accessTokenTTL"
+              render={({ field, fieldState: { error } }) => (
+                <Field>
+                  <FieldLabel htmlFor="accessTokenTTL">Access Token TTL (seconds)</FieldLabel>
+                  <Input
+                    {...field}
+                    id="accessTokenTTL"
+                    placeholder="2592000"
+                    type="number"
+                    min="1"
+                    step="1"
+                    isError={Boolean(error)}
+                  />
+                  <FieldDescription>{maxDaysHelper}</FieldDescription>
+                  <FieldError>{error?.message}</FieldError>
+                </Field>
+              )}
+            />
+            <Controller
+              control={control}
+              defaultValue="2592000"
+              name="accessTokenMaxTTL"
+              render={({ field, fieldState: { error } }) => (
+                <Field>
+                  <FieldLabel htmlFor="accessTokenMaxTTL">
+                    Access Token Max TTL (seconds)
+                  </FieldLabel>
+                  <Input
+                    {...field}
+                    id="accessTokenMaxTTL"
+                    placeholder="2592000"
+                    type="number"
+                    min="1"
+                    step="1"
+                    isError={Boolean(error)}
+                  />
+                  <FieldDescription>{maxDaysHelper}</FieldDescription>
+                  <FieldError>{error?.message}</FieldError>
+                </Field>
+              )}
+            />
+            <Controller
+              control={control}
+              defaultValue="0"
+              name="accessTokenNumUsesLimit"
+              render={({ field, fieldState: { error } }) => (
+                <Field>
+                  <FieldLabel
+                    htmlFor="accessTokenNumUsesLimit"
+                    className="inline-flex items-center gap-1.5"
+                  >
+                    Access Token Max Number of Uses
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <InfoIcon className="size-3.5 text-muted" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        The maximum number of times that an access token can be used; leave blank
+                        for unlimited uses.
+                      </TooltipContent>
+                    </Tooltip>
+                  </FieldLabel>
+                  <Input
+                    {...field}
+                    id="accessTokenNumUsesLimit"
+                    placeholder="Unlimited uses"
+                    type="number"
+                    min="0"
+                    step="1"
+                    isError={Boolean(error)}
+                  />
+                  <FieldError>{error?.message}</FieldError>
+                </Field>
+              )}
+            />
+          </FieldGroup>
+        </TabsContent>
+        <TabsContent value={IdentityFormTab.Advanced}>
+          <FieldGroup>
+            <div className="flex flex-col gap-3">
+              {accessTokenTrustedIpsFields.map(({ id }, index) => (
+                <div className="flex items-start gap-2" key={id}>
+                  <Controller
+                    control={control}
+                    name={`accessTokenTrustedIps.${index}.ipAddress`}
+                    defaultValue="0.0.0.0/0"
+                    render={({ field, fieldState: { error } }) => (
+                      <Field className="flex-1">
+                        {index === 0 && (
+                          <FieldLabel htmlFor={`trustedIp-${index}`}>
+                            Access Token Trusted IPs
+                          </FieldLabel>
+                        )}
+                        <Input
+                          id={`trustedIp-${index}`}
+                          value={field.value}
+                          onChange={(e) => {
+                            if (subscription?.ipAllowlisting) {
+                              field.onChange(e);
+                              return;
+                            }
+                            handlePopUpOpen("upgradePlan", {
+                              featureName: "IP allowlisting"
+                            });
+                          }}
+                          placeholder="123.456.789.0"
+                          isError={Boolean(error)}
+                        />
+                        <FieldError>{error?.message}</FieldError>
+                      </Field>
+                    )}
+                  />
+                  <IconButton
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    aria-label="Remove trusted IP"
+                    className={index === 0 ? "mt-[1.625rem]" : "mt-0.5"}
+                    onClick={() => {
+                      if (subscription?.ipAllowlisting) {
+                        removeAccessTokenTrustedIp(index);
+                        return;
+                      }
+                      handlePopUpOpen("upgradePlan", {
+                        featureName: "IP allowlisting"
+                      });
+                    }}
+                  >
+                    <XIcon />
+                  </IconButton>
+                </div>
+              ))}
+              <Button
+                type="button"
+                variant="outline"
+                size="xs"
+                className="w-fit"
                 onClick={() => {
                   if (subscription?.ipAllowlisting) {
-                    removeAccessTokenTrustedIp(index);
+                    appendAccessTokenTrustedIp({ ipAddress: "0.0.0.0/0" });
                     return;
                   }
-
                   handlePopUpOpen("upgradePlan", {
                     featureName: "IP allowlisting"
                   });
                 }}
-                size="lg"
-                colorSchema="danger"
-                variant="plain"
-                ariaLabel="update"
-                className="p-3"
               >
-                <FontAwesomeIcon icon={faXmark} />
-              </IconButton>
+                <PlusIcon />
+                Add IP Address
+              </Button>
             </div>
-          ))}
-          <div className="my-4 ml-1">
-            <Button
-              variant="outline_bg"
-              onClick={() => {
-                if (subscription?.ipAllowlisting) {
-                  appendAccessTokenTrustedIp({
-                    ipAddress: "0.0.0.0/0"
-                  });
-                  return;
-                }
-
-                handlePopUpOpen("upgradePlan", {
-                  featureName: "IP allowlisting"
-                });
-              }}
-              leftIcon={<FontAwesomeIcon icon={faPlus} />}
-              size="xs"
-            >
-              Add IP Address
-            </Button>
-          </div>
-        </TabPanel>
+          </FieldGroup>
+        </TabsContent>
       </Tabs>
-      <div className="flex items-center">
-        <Button
-          className="mr-4"
-          size="sm"
-          type="submit"
-          isLoading={isSubmitting}
-          isDisabled={isSubmitting}
-        >
-          {isUpdate ? "Update" : "Create"}
-        </Button>
-
-        <Button
-          colorSchema="secondary"
-          variant="plain"
-          onClick={() => handlePopUpToggle("identityAuthMethod", false)}
-        >
-          Cancel
-        </Button>
-      </div>
     </form>
   );
 };

@@ -1,6 +1,27 @@
 import { Control, Controller } from "react-hook-form";
+import { InfoIcon } from "lucide-react";
 
-import { FormControl, Input, Select, SelectItem, Switch, TabPanel } from "@app/components/v2";
+import {
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+  FieldTitle,
+  Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Switch,
+  TabsContent,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
+import { useScopeVariant } from "@app/hooks";
 
 import { IdentityFormTab } from "../types";
 
@@ -21,185 +42,194 @@ export const LockoutTab = ({
   lockoutCounterResetValue: string;
   lockoutCounterResetUnit: "s" | "m" | "h";
 }) => {
+  const scopeVariant = useScopeVariant();
+
   return (
-    <TabPanel value={IdentityFormTab.Lockout}>
-      <div className="mb-3 flex flex-col">
+    <TabsContent value={IdentityFormTab.Lockout}>
+      <FieldGroup>
         <Controller
           control={control}
           name="lockoutEnabled"
           render={({ field: { value, onChange }, fieldState: { error } }) => {
             return (
-              <FormControl
-                helperText={`The lockout feature will prevent login attempts for ${lockoutDurationValue}${lockoutDurationUnit} after ${lockoutThreshold} consecutive login failures. If ${lockoutCounterResetValue}${lockoutCounterResetUnit} pass after the most recent failure, the lockout counter resets.`}
-                isError={Boolean(error)}
-                errorText={error?.message}
-              >
+              <Field orientation="horizontal">
+                <FieldContent>
+                  <FieldTitle>Lockout</FieldTitle>
+                  <FieldDescription>
+                    {`The lockout feature will prevent login attempts for ${lockoutDurationValue}${lockoutDurationUnit} after ${lockoutThreshold} consecutive login failures. If ${lockoutCounterResetValue}${lockoutCounterResetUnit} pass after the most recent failure, the lockout counter resets.`}
+                  </FieldDescription>
+                  <FieldError>{error?.message}</FieldError>
+                </FieldContent>
                 <Switch
-                  className="mr-3 ml-0 bg-mineshaft-400/80 shadow-inner data-[state=checked]:bg-green/80"
-                  containerClassName="flex-row-reverse w-fit"
                   id="lockout-enabled"
-                  thumbClassName="bg-mineshaft-800"
+                  variant={scopeVariant}
+                  checked={value}
                   onCheckedChange={onChange}
-                  isChecked={value}
-                >
-                  Lockout
-                </Switch>
-              </FormControl>
+                />
+              </Field>
             );
           }}
         />
-        <div className="flex flex-col gap-2">
+        <Controller
+          control={control}
+          name="lockoutThreshold"
+          render={({ field, fieldState: { error } }) => {
+            return (
+              <Field className={lockoutEnabled ? "" : "opacity-70"}>
+                <FieldLabel htmlFor="lockoutThreshold" className="inline-flex items-center gap-1.5">
+                  Lockout Threshold
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <InfoIcon className="size-3.5 text-muted" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      The amount of times login must fail before locking the identity auth method
+                    </TooltipContent>
+                  </Tooltip>
+                </FieldLabel>
+                <Input
+                  {...field}
+                  id="lockoutThreshold"
+                  placeholder="Enter lockout threshold..."
+                  disabled={!lockoutEnabled}
+                  isError={Boolean(error)}
+                />
+                <FieldError>{error?.message}</FieldError>
+              </Field>
+            );
+          }}
+        />
+        <div className="flex items-start gap-2">
           <Controller
             control={control}
-            name="lockoutThreshold"
+            name="lockoutDurationValue"
             render={({ field, fieldState: { error } }) => {
               return (
-                <FormControl
-                  className={`mb-0 grow ${lockoutEnabled ? "" : "opacity-70"}`}
-                  label="Lockout Threshold"
-                  isError={Boolean(error)}
-                  errorText={error?.message}
-                  tooltipText="The amount of times login must fail before locking the identity auth method"
-                >
+                <Field className={`flex-1 ${lockoutEnabled ? "" : "opacity-70"}`}>
+                  <FieldLabel
+                    htmlFor="lockoutDurationValue"
+                    className="inline-flex items-center gap-1.5 whitespace-nowrap"
+                  >
+                    Lockout Duration
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <InfoIcon className="size-3.5 text-muted" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        How long an identity auth method lockout lasts
+                      </TooltipContent>
+                    </Tooltip>
+                  </FieldLabel>
                   <Input
                     {...field}
-                    placeholder="Enter lockout threshold..."
-                    isDisabled={!lockoutEnabled}
+                    id="lockoutDurationValue"
+                    placeholder="Enter lockout duration..."
+                    disabled={!lockoutEnabled}
+                    isError={Boolean(error)}
                   />
-                </FormControl>
+                  <FieldError>{error?.message}</FieldError>
+                </Field>
               );
             }}
           />
-          <div className="flex items-end gap-2">
-            <Controller
-              control={control}
-              name="lockoutDurationValue"
-              render={({ field, fieldState: { error } }) => {
-                return (
-                  <FormControl
-                    className={`mb-0 grow ${lockoutEnabled ? "" : "opacity-70"}`}
-                    label="Lockout Duration"
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                    tooltipText="How long an identity auth method lockout lasts"
-                  >
-                    <Input
-                      {...field}
-                      placeholder="Enter lockout duration..."
-                      isDisabled={!lockoutEnabled}
-                    />
-                  </FormControl>
-                );
-              }}
-            />
-            <Controller
-              control={control}
-              name="lockoutDurationUnit"
-              render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  className={`mb-0 ${lockoutEnabled ? "" : "opacity-70"}`}
-                  isError={Boolean(error)}
-                  errorText={error?.message}
+          <Controller
+            control={control}
+            name="lockoutDurationUnit"
+            render={({ field, fieldState: { error } }) => (
+              <Field className={lockoutEnabled ? "" : "opacity-70"}>
+                <FieldLabel htmlFor="lockoutDurationUnit" className="invisible">
+                  Unit
+                </FieldLabel>
+                <Select
+                  disabled={!lockoutEnabled}
+                  value={field.value}
+                  onValueChange={field.onChange}
                 >
-                  <Select
-                    isDisabled={!lockoutEnabled}
-                    value={field.value}
-                    className="min-w-32 pr-2"
-                    onValueChange={field.onChange}
-                    position="popper"
-                  >
-                    <SelectItem
-                      value="s"
-                      className="relative py-2 pr-8 pl-6 text-sm hover:bg-mineshaft-700"
-                    >
-                      <div className="ml-3 font-medium">Seconds</div>
-                    </SelectItem>
-                    <SelectItem
-                      value="m"
-                      className="relative py-2 pr-8 pl-6 text-sm hover:bg-mineshaft-700"
-                    >
-                      <div className="ml-3 font-medium">Minutes</div>
-                    </SelectItem>
-                    <SelectItem
-                      value="h"
-                      className="relative py-2 pr-8 pl-6 text-sm hover:bg-mineshaft-700"
-                    >
-                      <div className="ml-3 font-medium">Hours</div>
-                    </SelectItem>
-                    <SelectItem
-                      value="d"
-                      className="relative py-2 pr-8 pl-6 text-sm hover:bg-mineshaft-700"
-                    >
-                      <div className="ml-3 font-medium">Days</div>
-                    </SelectItem>
-                  </Select>
-                </FormControl>
-              )}
-            />
-          </div>
-          <div className="flex items-end gap-2">
-            <Controller
-              control={control}
-              name="lockoutCounterResetValue"
-              render={({ field, fieldState: { error } }) => {
-                return (
-                  <FormControl
-                    className={`mb-0 grow ${lockoutEnabled ? "" : "opacity-70"}`}
-                    label="Lockout Counter Reset"
+                  <SelectTrigger
+                    id="lockoutDurationUnit"
+                    className="min-w-32"
                     isError={Boolean(error)}
-                    errorText={error?.message}
-                    tooltipText="How long to wait from the most recent failed login until resetting the lockout counter"
                   >
-                    <Input
-                      {...field}
-                      placeholder="Enter lockout counter reset..."
-                      isDisabled={!lockoutEnabled}
-                    />
-                  </FormControl>
-                );
-              }}
-            />
-            <Controller
-              control={control}
-              name="lockoutCounterResetUnit"
-              render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  className={`mb-0 ${lockoutEnabled ? "" : "opacity-70"}`}
-                  isError={Boolean(error)}
-                  errorText={error?.message}
-                >
-                  <Select
-                    isDisabled={!lockoutEnabled}
-                    value={field.value}
-                    className="min-w-32 pr-2"
-                    onValueChange={field.onChange}
-                    position="popper"
-                  >
-                    <SelectItem
-                      value="s"
-                      className="relative py-2 pr-8 pl-6 text-sm hover:bg-mineshaft-700"
-                    >
-                      <div className="ml-3 font-medium">Seconds</div>
-                    </SelectItem>
-                    <SelectItem
-                      value="m"
-                      className="relative py-2 pr-8 pl-6 text-sm hover:bg-mineshaft-700"
-                    >
-                      <div className="ml-3 font-medium">Minutes</div>
-                    </SelectItem>
-                    <SelectItem
-                      value="h"
-                      className="relative py-2 pr-8 pl-6 text-sm hover:bg-mineshaft-700"
-                    >
-                      <div className="ml-3 font-medium">Hours</div>
-                    </SelectItem>
-                  </Select>
-                </FormControl>
-              )}
-            />
-          </div>
+                    <SelectValue placeholder="Select unit" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="s">Seconds</SelectItem>
+                    <SelectItem value="m">Minutes</SelectItem>
+                    <SelectItem value="h">Hours</SelectItem>
+                    <SelectItem value="d">Days</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FieldError>{error?.message}</FieldError>
+              </Field>
+            )}
+          />
         </div>
-      </div>
-    </TabPanel>
+        <div className="flex items-start gap-2">
+          <Controller
+            control={control}
+            name="lockoutCounterResetValue"
+            render={({ field, fieldState: { error } }) => {
+              return (
+                <Field className={`flex-1 ${lockoutEnabled ? "" : "opacity-70"}`}>
+                  <FieldLabel
+                    htmlFor="lockoutCounterResetValue"
+                    className="inline-flex items-center gap-1.5 whitespace-nowrap"
+                  >
+                    Lockout Counter Reset
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <InfoIcon className="size-3.5 text-muted" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        How long to wait from the most recent failed login until resetting the
+                        lockout counter
+                      </TooltipContent>
+                    </Tooltip>
+                  </FieldLabel>
+                  <Input
+                    {...field}
+                    id="lockoutCounterResetValue"
+                    placeholder="Enter lockout counter reset..."
+                    disabled={!lockoutEnabled}
+                    isError={Boolean(error)}
+                  />
+                  <FieldError>{error?.message}</FieldError>
+                </Field>
+              );
+            }}
+          />
+          <Controller
+            control={control}
+            name="lockoutCounterResetUnit"
+            render={({ field, fieldState: { error } }) => (
+              <Field className={lockoutEnabled ? "" : "opacity-70"}>
+                <FieldLabel htmlFor="lockoutCounterResetUnit" className="invisible">
+                  Unit
+                </FieldLabel>
+                <Select
+                  disabled={!lockoutEnabled}
+                  value={field.value}
+                  onValueChange={field.onChange}
+                >
+                  <SelectTrigger
+                    id="lockoutCounterResetUnit"
+                    className="min-w-32"
+                    isError={Boolean(error)}
+                  >
+                    <SelectValue placeholder="Select unit" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="s">Seconds</SelectItem>
+                    <SelectItem value="m">Minutes</SelectItem>
+                    <SelectItem value="h">Hours</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FieldError>{error?.message}</FieldError>
+              </Field>
+            )}
+          />
+        </div>
+      </FieldGroup>
+    </TabsContent>
   );
 };

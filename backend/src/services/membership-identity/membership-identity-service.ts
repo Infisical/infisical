@@ -3,10 +3,12 @@ import { Knex } from "knex";
 import { AccessScope, ProjectMembershipRole, TemporaryPermissionMode, TMembershipRolesInsert } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
 import { SearchResourceOperators } from "@app/lib/search-resource/search";
+import { getIdentityActiveLockoutAuthMethods } from "@app/services/identity-v2/identity-fns";
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
 import { TIdentityDALFactory } from "../identity/identity-dal";
@@ -36,6 +38,7 @@ type TMembershipIdentityServiceFactoryDep = {
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
   identityDAL: Pick<TIdentityDALFactory, "findById">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  keyStore: Pick<TKeyStoreFactory, "getKeysByPattern" | "getItem">;
 };
 
 export type TMembershipIdentityServiceFactory = ReturnType<typeof membershipIdentityServiceFactory>;
@@ -48,7 +51,8 @@ export const membershipIdentityServiceFactory = ({
   orgDAL,
   additionalPrivilegeDAL,
   identityDAL,
-  licenseService
+  licenseService,
+  keyStore
 }: TMembershipIdentityServiceFactoryDep) => {
   const scopeFactory = {
     [AccessScope.Organization]: newOrgMembershipIdentityFactory({
@@ -353,7 +357,17 @@ export const membershipIdentityServiceFactory = ({
           : undefined
       }
     });
-    return { ...memberships, data: memberships.data.filter((el) => listFilter({ identityId: el.identity.id })) };
+    const filtered = memberships.data.filter((el) => listFilter({ identityId: el.identity.id }));
+    const withLockouts = await Promise.all(
+      filtered.map(async (el) => ({
+        ...el,
+        identity: {
+          ...el.identity,
+          activeLockoutAuthMethods: await getIdentityActiveLockoutAuthMethods(el.identity.id, keyStore)
+        }
+      }))
+    );
+    return { ...memberships, data: withLockouts };
   };
 
   const getMembershipByIdentityId = async (dto: TGetMembershipIdentityByIdentityIdDTO) => {

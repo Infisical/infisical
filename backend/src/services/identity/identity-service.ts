@@ -479,7 +479,17 @@ export const identityServiceFactory = ({
       searchFilter
     });
 
-    return { identityMemberships: docs, totalCount };
+    const docsWithLockouts = await Promise.all(
+      docs.map(async (doc) => ({
+        ...doc,
+        identity: {
+          ...doc.identity,
+          activeLockoutAuthMethods: await getIdentityActiveLockoutAuthMethods(doc.identity.id, keyStore)
+        }
+      }))
+    );
+
+    return { identityMemberships: docsWithLockouts, totalCount };
   };
 
   const listProjectIdentitiesByIdentityId = async ({

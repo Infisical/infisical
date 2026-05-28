@@ -1,21 +1,25 @@
 import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { faCheck, faCopy } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { ClipboardCheck, Copy } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
-  FormControl,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Field,
+  FieldError,
+  FieldLabel,
   IconButton,
-  Input,
-  Modal,
-  ModalContent,
-  Tooltip
-} from "@app/components/v2";
-import { useTimedReset } from "@app/hooks";
+  Input
+} from "@app/components/v3";
+import { useScopeVariant, useTimedReset } from "@app/hooks";
 import { useCreateTokenIdentityTokenAuth, useUpdateIdentityTokenAuthToken } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -35,8 +39,9 @@ type Props = {
 export const IdentityTokenModal = ({ popUp, handlePopUpToggle }: Props) => {
   const { mutateAsync: createToken } = useCreateTokenIdentityTokenAuth();
   const { mutateAsync: updateToken } = useUpdateIdentityTokenAuthToken();
+  const scopeVariant = useScopeVariant();
   const [token, setToken] = useState("");
-  const [copyTextToken, isCopyingToken, setCopyTextToken] = useTimedReset<string>({
+  const [, isCopyingToken, setCopyTextToken] = useTimedReset<string>({
     initialState: "Copy to clipboard"
   });
   const hasToken = Boolean(token);
@@ -71,10 +76,16 @@ export const IdentityTokenModal = ({ popUp, handlePopUpToggle }: Props) => {
     }
   }, [popUp?.token?.data]);
 
+  const handleOpenChange = (isOpen: boolean) => {
+    handlePopUpToggle("token", isOpen);
+    if (!isOpen) {
+      reset();
+      setToken("");
+    }
+  };
+
   const onFormSubmit = async ({ name }: FormData) => {
     if (tokenData?.tokenId) {
-      // update
-
       await updateToken({
         identityId: tokenData.identityId,
         tokenId: tokenData.tokenId,
@@ -83,8 +94,6 @@ export const IdentityTokenModal = ({ popUp, handlePopUpToggle }: Props) => {
 
       handlePopUpToggle("token", false);
     } else {
-      // create
-
       const newTokenData = await createToken({
         identityId: tokenData.identityId,
         name
@@ -101,69 +110,77 @@ export const IdentityTokenModal = ({ popUp, handlePopUpToggle }: Props) => {
     reset();
   };
 
+  const isUpdate = Boolean(tokenData?.tokenId);
+
   return (
-    <Modal
-      isOpen={popUp?.token?.isOpen}
-      onOpenChange={(isOpen) => {
-        handlePopUpToggle("token", isOpen);
-        reset();
-        setToken("");
-      }}
-    >
-      <ModalContent
-        title={`${tokenData?.tokenId ? "Update" : "Create"} Access Token`}
-        subTitle={hasToken ? "We will only show this token once" : ""}
-      >
+    <Dialog open={popUp?.token?.isOpen} onOpenChange={handleOpenChange}>
+      <DialogContent className="max-w-xl">
+        <DialogHeader>
+          <DialogTitle>{isUpdate ? "Update Access Token" : "Create Access Token"}</DialogTitle>
+          {hasToken && <DialogDescription>We will only show this token once</DialogDescription>}
+        </DialogHeader>
         {!hasToken ? (
-          <form onSubmit={handleSubmit(onFormSubmit)}>
+          <form onSubmit={handleSubmit(onFormSubmit)} className="flex flex-col gap-4">
             <Controller
               control={control}
               defaultValue=""
               name="name"
               render={({ field, fieldState: { error } }) => (
-                <FormControl label="Name" isError={Boolean(error)} errorText={error?.message}>
-                  <Input {...field} placeholder="My Token" />
-                </FormControl>
+                <Field>
+                  <FieldLabel htmlFor="token-name">Name</FieldLabel>
+                  <Input
+                    {...field}
+                    id="token-name"
+                    placeholder="My Token"
+                    isError={Boolean(error)}
+                  />
+                  <FieldError>{error?.message}</FieldError>
+                </Field>
               )}
             />
-            <div className="flex items-center">
-              <Button
-                className="mr-4"
-                size="sm"
-                type="submit"
-                isLoading={isSubmitting}
-                isDisabled={isSubmitting}
-              >
-                {tokenData?.name ? "Update" : "Create"}
-              </Button>
-              <Button
-                colorSchema="secondary"
-                variant="plain"
-                onClick={() => handlePopUpToggle("token", false)}
-              >
+            <DialogFooter>
+              <Button type="button" variant="ghost" onClick={() => handleOpenChange(false)}>
                 Cancel
               </Button>
-            </div>
+              <Button
+                type="submit"
+                variant={scopeVariant}
+                isPending={isSubmitting}
+                isDisabled={isSubmitting}
+              >
+                {isUpdate ? "Update" : "Create"}
+              </Button>
+            </DialogFooter>
           </form>
         ) : (
-          <div className="mt-2 mr-2 mb-3 flex items-center justify-end rounded-md bg-white/[0.07] p-2 text-base text-gray-400">
-            <p className="mr-4 break-all">{token}</p>
-            <Tooltip content={copyTextToken}>
+          <>
+            <div className="relative flex items-center justify-between rounded-md border border-border bg-container p-2 pr-5 pl-3 text-base text-label">
+              <p className="mr-4 break-all">{token}</p>
               <IconButton
-                ariaLabel="copy icon"
-                colorSchema="secondary"
-                className="group relative"
+                aria-label="copy icon"
+                variant="ghost-muted"
+                size="sm"
+                className="absolute top-1 right-1"
                 onClick={() => {
                   navigator.clipboard.writeText(token);
                   setCopyTextToken("Copied");
                 }}
               >
-                <FontAwesomeIcon icon={isCopyingToken ? faCheck : faCopy} />
+                {isCopyingToken ? (
+                  <ClipboardCheck className="size-4" />
+                ) : (
+                  <Copy className="size-4" />
+                )}
               </IconButton>
-            </Tooltip>
-          </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="ghost" onClick={() => handleOpenChange(false)}>
+                Close
+              </Button>
+            </DialogFooter>
+          </>
         )}
-      </ModalContent>
-    </Modal>
+      </DialogContent>
+    </Dialog>
   );
 };
