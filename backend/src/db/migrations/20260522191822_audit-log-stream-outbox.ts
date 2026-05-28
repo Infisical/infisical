@@ -12,7 +12,7 @@ export async function up(knex: Knex): Promise<void> {
       t.uuid("auditLogId").notNullable();
       t.jsonb("payload").notNullable();
       t.string("status").notNullable().defaultTo("pending");
-      t.check(`"status" IN ('pending', 'processing', 'retry')`);
+      t.check(`"status" IN ('pending', 'processing', 'retry', 'delivered')`);
       t.integer("attempts").notNullable().defaultTo(0);
       t.timestamp("nextRetryAt", { useTz: true }).notNullable().defaultTo(knex.fn.now());
       t.timestamp("lockedAt", { useTz: true });
@@ -39,6 +39,13 @@ export async function up(knex: Knex): Promise<void> {
       ON "${TableName.AuditLogStreamOutbox}" ("lockedAt")
       WHERE status = 'processing'
     `);
+
+    // Cleanup cron: prune delivered rows past the retention window.
+    await knex.schema.raw(`
+      CREATE INDEX IF NOT EXISTS "${TableName.AuditLogStreamOutbox}_delivered_idx"
+      ON "${TableName.AuditLogStreamOutbox}" ("updatedAt")
+      WHERE status = 'delivered'
+    `);
   }
 
   await createOnUpdateTrigger(knex, TableName.AuditLogStreamOutbox);
@@ -59,6 +66,8 @@ export async function up(knex: Knex): Promise<void> {
       t.foreign("orgId").references("id").inTable(TableName.Organization).onDelete("CASCADE");
       t.index(["streamId", "failedAt"]);
       t.index(["orgId", "failedAt"]);
+      // Cleanup cron scans by failedAt only — the per-stream/per-org composites above don't help.
+      t.index(["failedAt"]);
     });
   }
 }

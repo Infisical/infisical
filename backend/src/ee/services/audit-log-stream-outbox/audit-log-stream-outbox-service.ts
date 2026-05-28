@@ -37,6 +37,18 @@ const BACKOFF_MAX_MS = 15 * 60_000;
 // Anything older than this can't be a live worker.
 export const STALE_CLAIM_THRESHOLD_MS = 10 * 60_000;
 
+// Retention for 'delivered' outbox rows. The row is the dedup guard against a
+// re-fanout from the ingest consumer (e.g. after a Redis streamTrim failure),
+// so the retention only needs to outlive how long an ingest-stream entry can
+// stay un-trimmed in practice. 1h is comfortably above that for any realistic
+// Redis/DB blip; the cleanup cron runs hourly so rows live ~1–2h in steady state.
+export const DELIVERED_RETENTION_MS = 60 * 60_000;
+
+// Retention for DLQ entries. Long enough for an operator to notice + triage a
+// wedged provider via dashboard, short enough that the table doesn't grow
+// without bound. Same cron prunes these alongside delivered rows.
+export const DLQ_RETENTION_MS = 24 * 60 * 60_000;
+
 const PROVIDER_QUEUE_MAP: Record<LogProvider, QueueName> = {
   [LogProvider.Azure]: QueueName.AuditLogStreamAzure,
   [LogProvider.Cribl]: QueueName.AuditLogStreamCribl,
@@ -92,6 +104,8 @@ export type TAuditLogStreamOutboxServiceFactory = {
   enqueueForLogs: (auditLogs: TAuditLogs[]) => Promise<void>;
   drainStream: (data: TAuditLogStreamFlushJobData) => Promise<void>;
   sweepStaleClaims: () => Promise<void>;
+  pruneDeliveredRows: () => Promise<void>;
+  pruneDlqEntries: () => Promise<void>;
 };
 
 export const auditLogStreamOutboxServiceFactory = ({
@@ -308,9 +322,27 @@ export const auditLogStreamOutboxServiceFactory = ({
     logger.info(`audit-log-stream-outbox: swept overdue streams [overdue=${overdueStreams.length}] [woken=${woken}]`);
   };
 
+  const pruneDeliveredRows = async () => {
+    const deleted = await auditLogStreamOutboxDAL.deleteDeliveredOlderThan(DELIVERED_RETENTION_MS);
+    if (deleted > 0) {
+      logger.info(
+        `audit-log-stream-outbox: pruned delivered rows [deleted=${deleted}] [retentionMs=${DELIVERED_RETENTION_MS}]`
+      );
+    }
+  };
+
+  const pruneDlqEntries = async () => {
+    const deleted = await auditLogStreamOutboxDAL.deleteDlqOlderThan(DLQ_RETENTION_MS);
+    if (deleted > 0) {
+      logger.info(`audit-log-stream-outbox: pruned dlq entries [deleted=${deleted}] [retentionMs=${DLQ_RETENTION_MS}]`);
+    }
+  };
+
   return {
     enqueueForLogs,
     drainStream,
-    sweepStaleClaims
+    sweepStaleClaims,
+    pruneDeliveredRows,
+    pruneDlqEntries
   };
 };

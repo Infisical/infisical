@@ -5,7 +5,8 @@ import { LogProvider } from "../audit-log-stream/audit-log-stream-enums";
 export enum AuditLogStreamOutboxStatus {
   Pending = "pending",
   Processing = "processing",
-  Retry = "retry"
+  Retry = "retry",
+  Delivered = "delivered"
 }
 
 export type TAuditLogStreamOutboxRow = {
@@ -30,9 +31,6 @@ export type TAuditLogStreamFlushJobData = {
   provider: LogProvider;
 };
 
-// Pairs an outbox row with the error its chunk hit during delivery. Different
-// chunks of one claim can fail with different errors, so the worker collects
-// these and the DAL groups by message when writing back to retry / DLQ.
 export type TFailedStreamRow = {
   row: TAuditLogStreamOutboxRow;
   errorMessage: string;

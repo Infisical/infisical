@@ -69,7 +69,10 @@ const createService = () => {
     batchInsert: vi.fn(async () => undefined),
     claimBatchForStream: vi.fn<(...args: unknown[]) => Promise<TAuditLogStreamOutboxRow[]>>(async () => []),
     commitDeliveryResult: vi.fn<(input: unknown) => Promise<void>>(async () => undefined),
-    recoverStaleClaims: vi.fn(async () => ({ retried: 0, movedToDlq: 0 }))
+    recoverStaleClaims: vi.fn(async () => ({ retried: 0, movedToDlq: 0 })),
+    findStreamsWithOverdueRows: vi.fn(async () => []),
+    deleteDeliveredOlderThan: vi.fn<(retentionMs: number) => Promise<number>>(async () => 0),
+    deleteDlqOlderThan: vi.fn<(retentionMs: number) => Promise<number>>(async () => 0)
   };
 
   const auditLogStreamDAL = {
@@ -216,7 +219,9 @@ describe("audit-log-stream-outbox-service enqueueForLogs batch fanout", () => {
       batchInsert: vi.fn<(rows: unknown[]) => Promise<void>>(async () => undefined),
       claimBatchForStream: vi.fn(async () => []),
       commitDeliveryResult: vi.fn(async () => undefined),
-      recoverStaleClaims: vi.fn(async () => ({ retried: 0, movedToDlq: 0 }))
+      recoverStaleClaims: vi.fn(async () => ({ retried: 0, movedToDlq: 0 })),
+      findStreamsWithOverdueRows: vi.fn(async () => []),
+      deleteDeliveredOlderThan: vi.fn<(retentionMs: number) => Promise<number>>(async () => 0)
     };
 
     const auditLogStreamDAL = {
@@ -293,5 +298,34 @@ describe("audit-log-stream-outbox-service enqueueForLogs batch fanout", () => {
     expect(auditLogStreamDAL.find).toHaveBeenCalledTimes(1);
     expect(auditLogStreamOutboxDAL.batchInsert).not.toHaveBeenCalled();
     expect(keyStore.setItemWithExpiryNX).not.toHaveBeenCalled();
+  });
+});
+
+describe("audit-log-stream-outbox-service pruneDeliveredRows", () => {
+  test("delegates to DAL with the configured retention", async () => {
+    const { service, auditLogStreamOutboxDAL } = createService();
+    auditLogStreamOutboxDAL.deleteDeliveredOlderThan.mockResolvedValueOnce(42);
+
+    await service.pruneDeliveredRows();
+
+    expect(auditLogStreamOutboxDAL.deleteDeliveredOlderThan).toHaveBeenCalledTimes(1);
+    const [retentionMs] = auditLogStreamOutboxDAL.deleteDeliveredOlderThan.mock.calls[0];
+    // Retention must be positive and at least an hour — guards against accidental
+    // tightening that would defeat the dedup-window purpose of keeping delivered rows.
+    expect(retentionMs).toBeGreaterThanOrEqual(60 * 60_000);
+  });
+});
+
+describe("audit-log-stream-outbox-service pruneDlqEntries", () => {
+  test("delegates to DAL with the configured retention", async () => {
+    const { service, auditLogStreamOutboxDAL } = createService();
+    auditLogStreamOutboxDAL.deleteDlqOlderThan.mockResolvedValueOnce(7);
+
+    await service.pruneDlqEntries();
+
+    expect(auditLogStreamOutboxDAL.deleteDlqOlderThan).toHaveBeenCalledTimes(1);
+    const [retentionMs] = auditLogStreamOutboxDAL.deleteDlqOlderThan.mock.calls[0];
+    // DLQ retention should give operators at least a day to triage.
+    expect(retentionMs).toBeGreaterThanOrEqual(24 * 60 * 60_000);
   });
 });

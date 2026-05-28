@@ -10,10 +10,18 @@ import { TAuditLogStreamOutboxServiceFactory } from "./audit-log-stream-outbox-s
 const STALE_CLAIM_SWEEPER_CRON = "*/5 * * * *";
 const STALE_CLAIM_SWEEPER_RUN_HASH_TTL_S = 60 * 60;
 
+// Cleanup cadence. Runs hourly to prune both 'delivered' outbox rows and DLQ
+// entries past their respective retention windows
+const CLEANUP_CRON = "0 * * * *";
+const CLEANUP_RUN_HASH_TTL_S = 24 * 60 * 60;
+
 export type TAuditLogStreamOutboxQueueDep = {
   queueService: TQueueServiceFactory;
   cronJob: TCronJobFactory;
-  auditLogStreamOutboxService: Pick<TAuditLogStreamOutboxServiceFactory, "drainStream" | "sweepStaleClaims">;
+  auditLogStreamOutboxService: Pick<
+    TAuditLogStreamOutboxServiceFactory,
+    "drainStream" | "sweepStaleClaims" | "pruneDeliveredRows" | "pruneDlqEntries"
+  >;
 };
 
 // Boots one BullMQ worker per provider so a slow upstream (e.g. a wedged
@@ -44,8 +52,6 @@ export const auditLogStreamOutboxQueueFactory = ({
   registerWorker(QueueName.AuditLogStreamDatadog, LogProvider.Datadog);
   registerWorker(QueueName.AuditLogStreamSplunk, LogProvider.Splunk);
 
-  // Stale-claim sweeper. Registered separately via init() so it lands in the
-  // cron startup batch alongside the other cron registrations in routes/index.ts.
   const init = () => {
     cronJob.register({
       name: CronJobName.AuditLogStreamOutboxStaleClaimSweeper,
@@ -53,6 +59,23 @@ export const auditLogStreamOutboxQueueFactory = ({
       runHashTtlS: STALE_CLAIM_SWEEPER_RUN_HASH_TTL_S,
       handler: async () => {
         await auditLogStreamOutboxService.sweepStaleClaims();
+      }
+    });
+
+    cronJob.register({
+      name: CronJobName.AuditLogStreamOutboxDeliveredCleanup,
+      pattern: CLEANUP_CRON,
+      runHashTtlS: CLEANUP_RUN_HASH_TTL_S,
+      handler: async () => {
+        const results = await Promise.allSettled([
+          auditLogStreamOutboxService.pruneDeliveredRows(),
+          auditLogStreamOutboxService.pruneDlqEntries()
+        ]);
+        for (const result of results) {
+          if (result.status === "rejected") {
+            logger.error(result.reason as Error, "audit-log-stream-outbox: cleanup prune failed");
+          }
+        }
       }
     });
   };
