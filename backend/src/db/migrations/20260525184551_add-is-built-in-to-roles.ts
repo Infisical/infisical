@@ -196,12 +196,12 @@ export async function up(knex: Knex): Promise<void> {
   await knex.raw(`
     UPDATE "${TableName.MembershipRole}" mr
     SET "customRoleId" = r.id
-    FROM "${TableName.Membership}" m
-    JOIN "${TableName.Role}" r
-      ON  r.slug = mr.role
-      AND r."orgId"     = m."scopeOrgId"
-      AND r."projectId" IS NULL
+    FROM "${TableName.Membership}" m,
+         "${TableName.Role}" r
     WHERE mr."membershipId" = m.id
+      AND r.slug = mr.role
+      AND r."orgId" = m."scopeOrgId"
+      AND r."projectId" IS NULL
       AND m.scope = 'organization'
       AND mr.role <> 'admin'
       AND mr."customRoleId" IS NULL
@@ -211,12 +211,12 @@ export async function up(knex: Knex): Promise<void> {
   await knex.raw(`
     UPDATE "${TableName.MembershipRole}" mr
     SET "customRoleId" = r.id
-    FROM "${TableName.Membership}" m
-    JOIN "${TableName.Role}" r
-      ON  r.slug = mr.role
-      AND r."projectId" = m."scopeProjectId"
-      AND r."orgId"     IS NULL
+    FROM "${TableName.Membership}" m,
+         "${TableName.Role}" r
     WHERE mr."membershipId" = m.id
+      AND r.slug = mr.role
+      AND r."projectId" = m."scopeProjectId"
+      AND r."orgId" IS NULL
       AND m.scope IN ('project', 'resource')
       AND mr.role <> 'admin'
       AND mr."customRoleId" IS NULL
