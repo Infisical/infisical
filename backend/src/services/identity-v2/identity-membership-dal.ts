@@ -289,7 +289,8 @@ export const identityMembershipV2DALFactory = (db: TDbClient) => {
       } else if (orderBy === OrgIdentitySearchOrderBy.LastLogin) {
         void query.orderBy("searchedMemberships.lastLoginSort", orderDirection, "last");
       } else {
-        void query.orderBy("searchedMemberships.identityName", orderDirection);
+        const direction = orderDirection === OrderByDirection.ASC ? "ASC" : "DESC";
+        void query.orderByRaw(`LOWER(??) ${direction}`, ["searchedMemberships.identityName"]);
       }
       void query.orderBy("searchedMemberships.id", "asc");
 
