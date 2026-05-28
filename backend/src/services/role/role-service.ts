@@ -146,6 +146,14 @@ export const roleServiceFactory = ({
       });
     }
 
+    // Platform (built-in) roles have immutable slugs — the slug is the stable semantic
+    // identifier used throughout the codebase (SCIM, SAML, default-role resolution).
+    if (existingRole.isBuiltIn && data.slug && data.slug !== existingRole.slug) {
+      throw new BadRequestError({
+        message: "Platform role slugs cannot be changed."
+      });
+    }
+
     if (data.slug) {
       const existingSlug = await roleDAL.findOne({
         slug: data.slug,

@@ -200,7 +200,7 @@ type TProjectServiceFactoryDep = {
   smtpService: Pick<TSmtpService, "sendMail">;
   orgDAL: Pick<TOrgDALFactory, "findOne" | "findEffectiveOrgMembership">;
   keyStore: Pick<TKeyStoreFactory, "deleteItem" | "acquireLock" | "getItem" | "setItemWithExpiry">;
-  roleDAL: Pick<TRoleDALFactory, "find" | "insertMany" | "delete" | "update">;
+  roleDAL: Pick<TRoleDALFactory, "find" | "findOne" | "insertMany" | "delete" | "update">;
   kmsService: Pick<
     TKmsServiceFactory,
     | "updateProjectSecretManagerKmsKey"
@@ -257,6 +257,49 @@ export const projectServiceFactory = ({
   roleDAL,
   groupDAL
 }: TProjectServiceFactoryDep) => {
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore — packRules type mismatch between CASL overloads
+  const getProjectBuiltInRoles = (projectType: ProjectType) => [
+    {
+      slug: ProjectMembershipRole.Member,
+      name: "Member",
+      description: "Limited read/write role in a project",
+      permissions: JSON.stringify(packRules(projectMemberPermissions))
+    },
+    {
+      slug: ProjectMembershipRole.Viewer,
+      name: "Viewer",
+      description: "Only read role in a project",
+      permissions: JSON.stringify(packRules(projectViewerPermission))
+    },
+    {
+      slug: ProjectMembershipRole.NoAccess,
+      name: "No Access",
+      description: "No access to any resources in the project",
+      permissions: JSON.stringify(packRules(projectNoAccessPermissions))
+    },
+    ...(projectType === ProjectType.SSH
+      ? [
+          {
+            slug: ProjectMembershipRole.SshHostBootstrapper,
+            name: "SSH Host Bootstrapper",
+            description: "Create and issue SSH Hosts in a project",
+            permissions: JSON.stringify(packRules(sshHostBootstrapPermissions))
+          }
+        ]
+      : []),
+    ...(projectType === ProjectType.KMS
+      ? [
+          {
+            slug: ProjectMembershipRole.KmsCryptographicOperator,
+            name: "Cryptographic Operator",
+            description: "Perform cryptographic operations, such as encryption and signing, in a project",
+            permissions: JSON.stringify(packRules(cryptographicOperatorPermissions))
+          }
+        ]
+      : [])
+  ];
+
   /*
    * Create workspace. Make user the admin
    * */
@@ -406,6 +449,17 @@ export const projectServiceFactory = ({
           tx
         );
 
+        const templateRoleSlugs = new Set(projectTemplate.packedRoles.map((r) => r.slug));
+        const builtInRolesForTemplate = getProjectBuiltInRoles(project.type as ProjectType).filter(
+          (r) => !templateRoleSlugs.has(r.slug)
+        );
+        if (builtInRolesForTemplate.length > 0) {
+          await roleDAL.insertMany(
+            builtInRolesForTemplate.map((r) => ({ ...r, projectId: project.id, isBuiltIn: true })),
+            tx
+          );
+        }
+
         // Add template users to the project
         const templateHasAdmin = projectTemplate.users?.some((u) => u.roles.includes(ProjectMembershipRole.Admin));
 
@@ -461,10 +515,10 @@ export const projectServiceFactory = ({
                   const roles = usernameToRoles.get(user.username.toLowerCase()) ?? [];
 
                   for (const roleSlug of roles) {
-                    if (Object.values(ProjectMembershipRole).includes(roleSlug as ProjectMembershipRole)) {
+                    if (roleSlug === ProjectMembershipRole.Admin) {
                       roleAssignments.push({
                         membershipId: membership.id,
-                        role: roleSlug
+                        role: ProjectMembershipRole.Admin
                       });
                     } else {
                       const customRoleId = roleSlugToId.get(roleSlug);
@@ -520,10 +574,10 @@ export const projectServiceFactory = ({
                 const roles = groupSlugToRoles.get(group.slug.toLowerCase()) ?? [];
 
                 for (const roleSlug of roles) {
-                  if (Object.values(ProjectMembershipRole).includes(roleSlug as ProjectMembershipRole)) {
+                  if (roleSlug === ProjectMembershipRole.Admin) {
                     groupRoleAssignments.push({
                       membershipId: membership.id,
-                      role: roleSlug
+                      role: ProjectMembershipRole.Admin
                     });
                   } else {
                     const customRoleId = roleSlugToId.get(roleSlug);
@@ -578,10 +632,10 @@ export const projectServiceFactory = ({
                 const roles = identityIdToRoles.get(identity.id) ?? [];
 
                 for (const roleSlug of roles) {
-                  if (Object.values(ProjectMembershipRole).includes(roleSlug as ProjectMembershipRole)) {
+                  if (roleSlug === ProjectMembershipRole.Admin) {
                     identityRoleAssignments.push({
                       membershipId: membership.id,
-                      role: roleSlug
+                      role: ProjectMembershipRole.Admin
                     });
                   } else {
                     const customRoleId = roleSlugToId.get(roleSlug);
@@ -639,16 +693,21 @@ export const projectServiceFactory = ({
 
             const roleAssignments: { membershipId: string; role: string; customRoleId?: string }[] = [];
 
+            const noAccessOrgRole = await roleDAL.findOne(
+              { orgId: project.orgId, slug: OrgMembershipRole.NoAccess, isBuiltIn: true },
+              tx
+            );
             roleAssignments.push({
               membershipId: orgMembership.id,
-              role: OrgMembershipRole.NoAccess
+              role: OrgMembershipRole.Custom,
+              customRoleId: noAccessOrgRole?.id
             });
 
             for (const roleSlug of templateIdentity.roles) {
-              if (Object.values(ProjectMembershipRole).includes(roleSlug as ProjectMembershipRole)) {
+              if (roleSlug === ProjectMembershipRole.Admin) {
                 roleAssignments.push({
                   membershipId: projectMembership.id,
-                  role: roleSlug
+                  role: ProjectMembershipRole.Admin
                 });
               } else {
                 const customRoleId = roleSlugToId.get(roleSlug);
@@ -678,54 +737,13 @@ export const projectServiceFactory = ({
         );
       }
 
-      const templateSlugs = new Set((projectTemplate?.packedRoles ?? []).map((r) => r.slug));
-
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore — packRules type mismatch between CASL overloads
-      const builtInRolesToSeed = [
-        {
-          slug: ProjectMembershipRole.Member,
-          name: "Member",
-          description: "Limited read/write role in a project",
-          permissions: JSON.stringify(packRules(projectMemberPermissions))
-        },
-        {
-          slug: ProjectMembershipRole.Viewer,
-          name: "Viewer",
-          description: "Only read role in a project",
-          permissions: JSON.stringify(packRules(projectViewerPermission))
-        },
-        {
-          slug: ProjectMembershipRole.NoAccess,
-          name: "No Access",
-          description: "No access to any resources in the project",
-          permissions: JSON.stringify(packRules(projectNoAccessPermissions))
-        },
-        ...(project.type === ProjectType.SSH
-          ? [
-              {
-                slug: ProjectMembershipRole.SshHostBootstrapper,
-                name: "SSH Host Bootstrapper",
-                description: "Create and issue SSH Hosts in a project",
-                permissions: JSON.stringify(packRules(sshHostBootstrapPermissions))
-              }
-            ]
-          : []),
-        ...(project.type === ProjectType.KMS
-          ? [
-              {
-                slug: ProjectMembershipRole.KmsCryptographicOperator,
-                name: "Cryptographic Operator",
-                description: "Perform cryptographic operations, such as encryption and signing, in a project",
-                permissions: JSON.stringify(packRules(cryptographicOperatorPermissions))
-              }
-            ]
-          : [])
-      ].filter((r) => !templateSlugs.has(r.slug));
-
-      if (builtInRolesToSeed.length > 0) {
+      if (!projectTemplate) {
         await roleDAL.insertMany(
-          builtInRolesToSeed.map((r) => ({ ...r, projectId: project.id, isBuiltIn: true })),
+          getProjectBuiltInRoles(project.type as ProjectType).map((r) => ({
+            ...r,
+            projectId: project.id,
+            isBuiltIn: true
+          })),
           tx
         );
       }

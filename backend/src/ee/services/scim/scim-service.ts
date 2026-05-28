@@ -1070,7 +1070,7 @@ export const scimServiceFactory = ({
         tx
       );
 
-      const noAccessRole = await roleDAL.findOne({ slug: OrgMembershipRole.NoAccess, orgId }, tx);
+      const noAccessRole = await roleDAL.findOne({ slug: OrgMembershipRole.NoAccess, isBuiltIn: true, orgId }, tx);
       if (!noAccessRole) throw new NotFoundError({ message: `'no-access' role not found for organization ${orgId}` });
       await membershipRoleDAL.create(
         {

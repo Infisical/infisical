@@ -22,7 +22,6 @@ import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TOrgDALFactory } from "../org/org-dal";
 import { deleteOrgMembershipsFn } from "../org/org-fns";
-import { isCustomOrgRole } from "../org/org-role-fns";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectKeyDALFactory } from "../project-key/project-key-dal";
 import { TRoleDALFactory } from "../role/role-dal";
@@ -46,7 +45,7 @@ type TMembershipUserServiceFactoryDep = {
   membershipUserDAL: TMembershipUserDALFactory;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "insertMany" | "delete">;
   orgDAL: Pick<TOrgDALFactory, "findById" | "transaction" | "find">;
-  roleDAL: Pick<TRoleDALFactory, "find">;
+  roleDAL: Pick<TRoleDALFactory, "find" | "findOne">;
   userDAL: TUserDALFactory;
   permissionService: Pick<
     TPermissionServiceFactory,
@@ -175,20 +174,21 @@ export const membershipUserServiceFactory = ({
     // If roles array is empty and scope is Organization, use org's default role
     let rolesToUse = data.roles;
     if (data.roles.length === 0 && scopeData.scope === AccessScope.Organization) {
-      const defaultMembershipRole = orgDetails.defaultMembershipRole || OrgMembershipRole.NoAccess;
-
       let defaultRole: string;
-      if (isCustomOrgRole(defaultMembershipRole)) {
-        const customRoles = await roleDAL.find({
-          id: defaultMembershipRole,
-          orgId: dto.permission.orgId
+      if (!orgDetails.defaultMembershipRole) {
+        const noAccessRole = await roleDAL.findOne({
+          orgId: dto.permission.orgId,
+          slug: OrgMembershipRole.NoAccess,
+          isBuiltIn: true
         });
-        if (customRoles.length === 0) {
-          throw new NotFoundError({ message: "Default custom role not found" });
-        }
-        defaultRole = customRoles[0].slug;
+        if (!noAccessRole) throw new NotFoundError({ message: "No default org role found" });
+        defaultRole = noAccessRole.slug;
+      } else if (orgDetails.defaultMembershipRole === OrgMembershipRole.Admin) {
+        defaultRole = OrgMembershipRole.Admin;
       } else {
-        defaultRole = defaultMembershipRole;
+        const role = await roleDAL.findOne({ id: orgDetails.defaultMembershipRole, orgId: dto.permission.orgId });
+        if (!role) throw new NotFoundError({ message: "Default org role not found" });
+        defaultRole = role.slug;
       }
 
       rolesToUse = [{ isTemporary: false, role: defaultRole }];
@@ -214,6 +214,9 @@ export const membershipUserServiceFactory = ({
       throw new BadRequestError({
         message: "Temporary role must have access start time and range"
       });
+    }
+    if (new Set(rolesToUse.map(({ role }) => role)).size !== rolesToUse.length) {
+      throw new BadRequestError({ message: "Duplicate roles are not allowed" });
     }
 
     const isEmailInvalid = await isDisposableEmail(data.usernames);
@@ -349,6 +352,9 @@ export const membershipUserServiceFactory = ({
       throw new BadRequestError({
         message: "Temporary role must have access start time and range"
       });
+    }
+    if (new Set(data.roles.map(({ role }) => role)).size !== data.roles.length) {
+      throw new BadRequestError({ message: "Duplicate roles are not allowed" });
     }
 
     const scopeDatabaseFields = factory.getScopeDatabaseFields(dto.scopeData);

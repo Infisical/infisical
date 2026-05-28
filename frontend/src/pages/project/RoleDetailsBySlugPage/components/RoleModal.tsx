@@ -52,6 +52,7 @@ export const RoleModal = ({ popUp, handlePopUpToggle }: Props) => {
   } = usePopUp(["upgradePlan"] as const);
 
   const { data: role } = useGetProjectRoleBySlug(projectId, popupData?.roleSlug ?? "");
+  const isBuiltIn = !!role?.isBuiltIn;
 
   const { mutateAsync: createProjectRole } = useCreateProjectRole();
   const { mutateAsync: updateProjectRole } = useUpdateProjectRole();
@@ -178,9 +179,10 @@ export const RoleModal = ({ popUp, handlePopUpToggle }: Props) => {
                   label="Slug"
                   isError={Boolean(error)}
                   errorText={error?.message}
+                  helperText={isBuiltIn ? "Platform role slugs cannot be changed." : undefined}
                   isRequired
                 >
-                  <Input {...field} placeholder="billing" />
+                  <Input {...field} placeholder="billing" isDisabled={isBuiltIn} />
                 </FormControl>
               )}
             />

@@ -43,6 +43,7 @@ export const RoleModal = ({ popUp, handlePopUpToggle }: Props) => {
   };
 
   const { data: role } = useGetOrgRole(orgId, popupData?.roleId ?? "");
+  const isBuiltIn = !!role?.isBuiltIn;
 
   const { mutateAsync: createOrgRole } = useCreateOrgRole();
   const { mutateAsync: updateOrgRole } = useUpdateOrgRole();
@@ -160,9 +161,10 @@ export const RoleModal = ({ popUp, handlePopUpToggle }: Props) => {
                   label="Slug"
                   isError={Boolean(error)}
                   errorText={error?.message}
+                  helperText={isBuiltIn ? "Platform role slugs cannot be changed." : undefined}
                   isRequired
                 >
-                  <Input {...field} placeholder="billing" />
+                  <Input {...field} placeholder="billing" isDisabled={isBuiltIn} />
                 </FormControl>
               )}
             />

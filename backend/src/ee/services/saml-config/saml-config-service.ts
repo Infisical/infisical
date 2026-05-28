@@ -203,7 +203,10 @@ export const samlConfigServiceFactory = ({
             },
             transaction
           );
-          const noAccessRole = await roleDAL.findOne({ slug: OrgMembershipRole.NoAccess, orgId }, transaction);
+          const noAccessRole = await roleDAL.findOne(
+            { slug: OrgMembershipRole.NoAccess, isBuiltIn: true, orgId },
+            transaction
+          );
           if (!noAccessRole)
             throw new NotFoundError({ message: `'no-access' role not found for organization ${orgId}` });
           await membershipRoleDAL.create(

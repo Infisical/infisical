@@ -96,6 +96,9 @@ export const membershipGroupServiceFactory = ({
         message: "Temporary role must have access start time and range"
       });
     }
+    if (new Set(data.roles.map(({ role }) => role)).size !== data.roles.length) {
+      throw new BadRequestError({ message: "Duplicate roles are not allowed" });
+    }
 
     const scopeDatabaseFields = factory.getScopeDatabaseFields(dto.scopeData);
 
@@ -205,6 +208,9 @@ export const membershipGroupServiceFactory = ({
       throw new BadRequestError({
         message: "Temporary role must have access start time and range"
       });
+    }
+    if (new Set(data.roles.map(({ role }) => role)).size !== data.roles.length) {
+      throw new BadRequestError({ message: "Duplicate roles are not allowed" });
     }
 
     const scopeDatabaseFields = factory.getScopeDatabaseFields(dto.scopeData);
