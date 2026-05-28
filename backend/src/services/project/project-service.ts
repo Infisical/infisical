@@ -208,10 +208,7 @@ type TProjectServiceFactoryDep = {
   >;
   projectTemplateService: TProjectTemplateServiceFactory;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
-  projectAccessRequestDAL: Pick<
-    TProjectAccessRequestDALFactory,
-    "create" | "findOne" | "updateById" | "findPendingForRequesterInOrg"
-  >;
+  projectAccessRequestDAL: Pick<TProjectAccessRequestDALFactory, "upsert" | "findPendingForRequesterInOrg">;
 };
 
 export type TProjectServiceFactory = ReturnType<typeof projectServiceFactory>;
@@ -2482,12 +2479,6 @@ export const projectServiceFactory = ({
       });
     if (projectMember) throw new BadRequestError({ message: "User already has access to the project" });
 
-    const existingRequest = await projectAccessRequestDAL.findOne({
-      projectId,
-      requesterUserId: permission.id,
-      status: "pending"
-    });
-
     const projectMembers = await projectMembershipDAL.findAllProjectMembers(projectId);
 
     let filteredProjectMembers = projectMembers
@@ -2556,16 +2547,20 @@ export const projectServiceFactory = ({
       ? `**${userDetails.firstName} ${userDetails.lastName}** (${userDetails.email}) has requested access to **${productLabel}**.`
       : `**${userDetails.firstName} ${userDetails.lastName}** (${userDetails.email}) has requested access to the project **${project.name}**.`;
 
-    if (existingRequest) {
-      await projectAccessRequestDAL.updateById(existingRequest.id, { comment: comment ?? null });
-    } else {
-      await projectAccessRequestDAL.create({
-        projectId,
-        requesterUserId: permission.id,
-        status: "pending",
-        comment: comment ?? null
-      });
-    }
+    await projectAccessRequestDAL.upsert(
+      [
+        {
+          projectId,
+          requesterUserId: permission.id,
+          status: "pending",
+          comment: comment ?? null,
+          createdAt: new Date()
+        } as Parameters<typeof projectAccessRequestDAL.upsert>[0][number] & { createdAt: Date }
+      ],
+      ["projectId", "requesterUserId"],
+      undefined,
+      ["status", "comment", "createdAt"]
+    );
 
     await notificationService.createUserNotifications(
       projectMembers
