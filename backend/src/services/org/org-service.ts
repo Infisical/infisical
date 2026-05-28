@@ -1,5 +1,4 @@
 import { ForbiddenError } from "@casl/ability";
-import { packRules } from "@casl/ability/extra";
 import slugify from "@sindresorhus/slugify";
 import { Knex } from "knex";
 
@@ -18,8 +17,6 @@ import { TLdapConfigDALFactory } from "@app/ee/services/ldap-config/ldap-config-
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TOidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
 import {
-  orgMemberPermissions,
-  orgNoAccessPermissions,
   OrgPermissionActions,
   OrgPermissionGroupActions,
   OrgPermissionSecretShareAction,
@@ -58,6 +55,7 @@ import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
 import { TProjectKeyDALFactory } from "../project-key/project-key-dal";
 import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
 import { TReminderServiceFactory } from "../reminder/reminder-types";
+import { getOrgBuiltInRoles } from "../role/org/org-role-fns";
 import { TRoleDALFactory } from "../role/role-dal";
 import { TSecretDALFactory } from "../secret/secret-dal";
 import { fnDeleteProjectSecretReminders } from "../secret/secret-fns";
@@ -683,30 +681,12 @@ export const orgServiceFactory = ({
         );
       }
 
-      // Seed built-in org roles as editable DB rows; admin stays hardcoded.
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const packPerms = (rules: unknown) => JSON.stringify((packRules as (r: any) => unknown[])(rules));
-      await roleDAL.insertMany(
-        [
-          {
-            orgId: org.id,
-            name: "Member",
-            slug: OrgMembershipRole.Member,
-            description: "Members can read and create projects inside the organization.",
-            permissions: packPerms(orgMemberPermissions),
-            isBuiltIn: true
-          },
-          {
-            orgId: org.id,
-            name: "No Access",
-            slug: OrgMembershipRole.NoAccess,
-            description: "No access to organization resources.",
-            permissions: packPerms(orgNoAccessPermissions),
-            isBuiltIn: true
-          }
-        ],
-        tx
-      );
+      const seededOrgRoles = await roleDAL.insertMany(getOrgBuiltInRoles(org.id), tx);
+
+      const seededMemberRole = seededOrgRoles.find((r) => r.slug === OrgMembershipRole.Member);
+      if (seededMemberRole) {
+        await orgDAL.updateById(org.id, { defaultMembershipRole: seededMemberRole.id }, tx);
+      }
 
       await bootstrapCertManagerProject(
         {

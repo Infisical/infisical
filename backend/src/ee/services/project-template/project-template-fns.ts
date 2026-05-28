@@ -14,7 +14,7 @@ import {
 
 import { ProjectTemplateDefaultEnvironments } from "./project-template-constants";
 
-const getDefaultTemplateRoles = (type: ProjectType) => {
+export const getDefaultTemplateRoles = (type: ProjectType) => {
   const roles = [
     {
       name: "Admin",

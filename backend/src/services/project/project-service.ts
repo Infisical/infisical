@@ -440,16 +440,21 @@ export const projectServiceFactory = ({
             tx
           );
         }
+
+        const builtInProjectSlugs = new Set(Object.values(ProjectMembershipRole));
+        const templateRolesToInsert = projectTemplate.packedRoles.filter((r) => r.slug !== ProjectMembershipRole.Admin);
+
         await roleDAL.insertMany(
-          projectTemplate.packedRoles.map((role) => ({
+          templateRolesToInsert.map((role) => ({
             ...role,
             permissions: JSON.stringify(role.permissions),
-            projectId: project.id
+            projectId: project.id,
+            isBuiltIn: builtInProjectSlugs.has(role.slug as ProjectMembershipRole)
           })),
           tx
         );
 
-        const templateRoleSlugs = new Set(projectTemplate.packedRoles.map((r) => r.slug));
+        const templateRoleSlugs = new Set(templateRolesToInsert.map((r) => r.slug));
         const builtInRolesForTemplate = getProjectBuiltInRoles(project.type as ProjectType).filter(
           (r) => !templateRoleSlugs.has(r.slug)
         );

@@ -72,9 +72,7 @@ export const ProjectTemplateRolesSection = ({ projectTemplate, isInfisicalTempla
 
     await updateProjectTemplate.mutateAsync({
       templateId: projectTemplate.id,
-      roles: projectTemplate.roles.filter(
-        (role) => role.slug !== slug && isCustomProjectRole(role.slug) // filter out default roles as well
-      )
+      roles: projectTemplate.roles.filter((role) => role.slug !== slug)
     });
 
     createNotification({
@@ -96,8 +94,9 @@ export const ProjectTemplateRolesSection = ({ projectTemplate, isInfisicalTempla
           role={editRole}
           isDisabled={
             permission.cannot(OrgPermissionActions.Edit, OrgPermissionSubjects.ProjectTemplates) ||
-            (editRole && !isCustomProjectRole(editRole.slug))
+            editRole?.slug === "admin"
           }
+          isBuiltInRole={editRole ? !isCustomProjectRole(editRole.slug) : false}
         />
       ) : (
         <div className="w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">

@@ -14,6 +14,7 @@ import {
   TextArea
 } from "@app/components/v2";
 import { useOrganization } from "@app/context";
+import { getProjectTitle } from "@app/helpers/project";
 import { findOrgMembershipRole } from "@app/helpers/roles";
 import {
   useAddUsersToOrg,
@@ -27,29 +28,8 @@ import { useCertManagerInstanceState } from "@app/hooks/api/certManagerInstance"
 import { ProjectType, ProjectVersion } from "@app/hooks/api/projects/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
+import { BUILT_IN_PROJECT_ROLES, CERT_MANAGER_ROLES, DEFAULT_PROJECT_ROLE } from "./constants";
 import { OrgInviteLink } from "./OrgInviteLink";
-
-const DEFAULT_PROJECT_ROLE = { slug: "member", name: "Member" };
-
-const BUILT_IN_PROJECT_ROLES = [
-  { slug: "admin", name: "Admin", description: "Full administrative access over a project" },
-  { slug: "member", name: "Member", description: "Limited read/write role in a project" },
-  { slug: "viewer", name: "Viewer", description: "Only read role in a project" },
-  { slug: "no-access", name: "No Access", description: "No access to any resources in the project" }
-];
-
-const CERT_MANAGER_ROLES = [
-  {
-    slug: "admin",
-    name: "Admin",
-    description: "Full administrative access over Certificate Manager"
-  },
-  {
-    slug: "member",
-    name: "Member",
-    description: "Access scoped to the Applications and Code Signers they've been added to"
-  }
-];
 
 const EmailSchema = z.string().email().min(1).trim().toLowerCase();
 
@@ -252,21 +232,6 @@ export const AddOrgMemberModal = ({
     });
   };
 
-  const getGroupHeaderLabel = (type: ProjectType) => {
-    switch (type) {
-      case ProjectType.SecretManager:
-        return "Secrets";
-      case ProjectType.CertificateManager:
-        return "Certificate Manager";
-      case ProjectType.KMS:
-        return "KMS";
-      case ProjectType.SSH:
-        return "SSH";
-      default:
-        return "Other";
-    }
-  };
-
   return (
     <Modal
       isOpen={popUp?.addMember?.isOpen}
@@ -346,7 +311,7 @@ export const AddOrgMemberModal = ({
                     getOptionValue={(project) => project.id}
                     options={projects}
                     groupBy="type"
-                    getGroupHeaderLabel={getGroupHeaderLabel}
+                    getGroupHeaderLabel={getProjectTitle}
                     placeholder="Select projects..."
                   />
                 </FormControl>

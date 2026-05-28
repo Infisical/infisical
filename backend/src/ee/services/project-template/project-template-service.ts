@@ -6,7 +6,10 @@ import { TLicenseServiceFactory } from "@app/ee/services/license/license-service
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectTemplateDefaultEnvironments } from "@app/ee/services/project-template/project-template-constants";
-import { getDefaultProjectTemplate } from "@app/ee/services/project-template/project-template-fns";
+import {
+  getDefaultProjectTemplate,
+  getDefaultTemplateRoles
+} from "@app/ee/services/project-template/project-template-fns";
 import {
   TProjectTemplateEnvironment,
   TProjectTemplateGroup,
@@ -121,10 +124,13 @@ export const projectTemplateServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.ProjectTemplates);
 
-    const projectTemplates = await projectTemplateDAL.find({
-      orgId: actor.orgId,
-      ...(type ? { type } : {})
-    });
+    const projectTemplates = await projectTemplateDAL.find(
+      {
+        orgId: actor.orgId,
+        ...(type ? { type } : {})
+      },
+      { sort: [["name", "asc"]] }
+    );
 
     const templatesWithMembers = await Promise.all(
       projectTemplates.map(async (template) => {
@@ -258,6 +264,10 @@ export const projectTemplateServiceFactory = ({
       throw new BadRequestError({ message: "Agent Sentinel project templates are not supported" });
     }
 
+    // Seed with default built-in roles when none are explicitly provided
+    const resolvedRoles: TProjectTemplateRole[] =
+      roles.length === 0 ? (getDefaultTemplateRoles(type) as unknown as TProjectTemplateRole[]) : roles;
+
     if (environments && type !== ProjectType.SecretManager) {
       throw new BadRequestError({ message: "Cannot configure environments for non-SecretManager project templates" });
     }
@@ -294,7 +304,10 @@ export const projectTemplateServiceFactory = ({
         });
       }
 
-      const availableRoleSlugs = new Set([...Object.values(ProjectMembershipRole), ...roles.map((r) => r.slug)]);
+      const availableRoleSlugs = new Set([
+        ...Object.values(ProjectMembershipRole),
+        ...resolvedRoles.map((r) => r.slug)
+      ]);
 
       users.forEach((user) => {
         user.roles.forEach((roleSlug) => {
@@ -332,7 +345,10 @@ export const projectTemplateServiceFactory = ({
         }
       }
 
-      const availableRoleSlugs = new Set([...Object.values(ProjectMembershipRole), ...roles.map((r) => r.slug)]);
+      const availableRoleSlugs = new Set([
+        ...Object.values(ProjectMembershipRole),
+        ...resolvedRoles.map((r) => r.slug)
+      ]);
 
       groups.forEach((group) => {
         group.roles.forEach((roleSlug) => {
@@ -371,7 +387,10 @@ export const projectTemplateServiceFactory = ({
         }
       }
 
-      const availableRoleSlugs = new Set([...Object.values(ProjectMembershipRole), ...roles.map((r) => r.slug)]);
+      const availableRoleSlugs = new Set([
+        ...Object.values(ProjectMembershipRole),
+        ...resolvedRoles.map((r) => r.slug)
+      ]);
 
       identities.forEach((identity) => {
         identity.roles.forEach((roleSlug) => {
@@ -408,7 +427,7 @@ export const projectTemplateServiceFactory = ({
       const template = await projectTemplateDAL.create(
         {
           ...params,
-          roles: JSON.stringify(roles.map((role) => ({ ...role, permissions: packRules(role.permissions) }))),
+          roles: JSON.stringify(resolvedRoles.map((role) => ({ ...role, permissions: packRules(role.permissions) }))),
           environments: JSON.stringify(projectTemplateEnvironments),
           projectManagedIdentities: projectManagedIdentities?.length
             ? JSON.stringify(projectManagedIdentities)

@@ -186,7 +186,14 @@ export const membershipUserServiceFactory = ({
       } else if (orgDetails.defaultMembershipRole === OrgMembershipRole.Admin) {
         defaultRole = OrgMembershipRole.Admin;
       } else {
-        const role = await roleDAL.findOne({ id: orgDetails.defaultMembershipRole, orgId: dto.permission.orgId });
+        const isBuiltInSlug = Object.values(OrgMembershipRole).includes(
+          orgDetails.defaultMembershipRole as OrgMembershipRole
+        );
+        const role = await roleDAL.findOne(
+          isBuiltInSlug
+            ? { slug: orgDetails.defaultMembershipRole, orgId: dto.permission.orgId }
+            : { id: orgDetails.defaultMembershipRole, orgId: dto.permission.orgId }
+        );
         if (!role) throw new NotFoundError({ message: "Default org role not found" });
         defaultRole = role.slug;
       }

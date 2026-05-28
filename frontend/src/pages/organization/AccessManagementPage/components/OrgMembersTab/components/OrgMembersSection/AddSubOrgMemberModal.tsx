@@ -5,20 +5,21 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { RoleOption } from "@app/components/roles";
-import { Button, FilterableSelect, FormControl, Select, SelectItem } from "@app/components/v2";
+import { Button, FilterableSelect, FormControl } from "@app/components/v2";
 import { useOrganization } from "@app/context";
+import { getProjectTitle } from "@app/helpers/project";
 import { findOrgMembershipRole } from "@app/helpers/roles";
 import {
   useAddUsersToOrg,
   useAddUserToWsNonE2EE,
   useGetOrgRoles,
+  useGetProjectRoles,
   useGetUserProjects
 } from "@app/hooks/api";
 import { useGetAvailableOrgUsers } from "@app/hooks/api/organization/queries";
 import { ProjectType, ProjectVersion } from "@app/hooks/api/projects/types";
-import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
-const DEFAULT_ORG_AND_PROJECT_MEMBER_ROLE_SLUG = "member";
+import { BUILT_IN_PROJECT_ROLES, CERT_MANAGER_ROLES, DEFAULT_PROJECT_ROLE } from "./constants";
 
 const addMemberFormSchema = z.object({
   users: z
@@ -40,7 +41,12 @@ const addMemberFormSchema = z.object({
       })
     )
     .default([]),
-  projectRoleSlug: z.string().min(1).default(DEFAULT_ORG_AND_PROJECT_MEMBER_ROLE_SLUG),
+  projectRole: z
+    .object({
+      slug: z.string().min(1),
+      name: z.string().min(1)
+    })
+    .default(DEFAULT_PROJECT_ROLE),
   organizationRole: z.object({
     name: z.string(),
     slug: z.string(),
@@ -72,16 +78,42 @@ export const AddSubOrgMemberModal = ({ onClose }: Props) => {
     handleSubmit,
     watch,
     reset,
+    setValue,
     formState: { isSubmitting }
   } = useForm<TAddMemberForm>({
     resolver: zodResolver(addMemberFormSchema)
   });
 
-  // set initial form role based off org default role
+  const selectedProjects = watch("projects", []);
+  const singleSelectedProjectId =
+    selectedProjects.length === 1 ? selectedProjects[0].id : undefined;
+  const hasCertManagerSelection = selectedProjects.some(
+    (p) => p.type === ProjectType.CertificateManager
+  );
+
+  const { data: fetchedProjectRoles, isPending: isProjectRolesLoading } = useGetProjectRoles(
+    singleSelectedProjectId ?? ""
+  );
+
+  // eslint-disable-next-line no-nested-ternary
+  const projectRoles = hasCertManagerSelection
+    ? CERT_MANAGER_ROLES
+    : fetchedProjectRoles?.length
+      ? fetchedProjectRoles
+      : BUILT_IN_PROJECT_ROLES;
+
+  useEffect(() => {
+    setValue("projectRole", DEFAULT_PROJECT_ROLE);
+  }, [singleSelectedProjectId, hasCertManagerSelection, setValue]);
+
   useEffect(() => {
     if (organizationRoles) {
       reset({
-        organizationRole: findOrgMembershipRole(organizationRoles, currentOrg.defaultMembershipRole)
+        organizationRole: findOrgMembershipRole(
+          organizationRoles,
+          currentOrg.defaultMembershipRole
+        ),
+        projectRole: DEFAULT_PROJECT_ROLE
       });
     }
   }, [organizationRoles]);
@@ -89,14 +121,14 @@ export const AddSubOrgMemberModal = ({ onClose }: Props) => {
   const onAddMembers = async ({
     users,
     organizationRole,
-    projects: selectedProjects,
-    projectRoleSlug
+    projects: selectedProjectsToInvite,
+    projectRole
   }: TAddMemberForm) => {
     if (!currentOrg?.id) return;
 
-    if (selectedProjects?.length) {
+    if (selectedProjectsToInvite?.length) {
       // eslint-disable-next-line no-restricted-syntax
-      for (const project of selectedProjects) {
+      for (const project of selectedProjectsToInvite) {
         if (project.version !== ProjectVersion.V3) {
           createNotification({
             type: "error",
@@ -115,32 +147,17 @@ export const AddSubOrgMemberModal = ({ onClose }: Props) => {
     });
 
     await Promise.allSettled(
-      selectedProjects.map((el) =>
+      selectedProjectsToInvite.map((el) =>
         addUserToProject({
           orgId: currentOrg.id,
           projectId: el.id,
           projectType: el.type,
-          roleSlugs: [projectRoleSlug],
+          roleSlugs: [projectRole.slug],
           usernames
         })
       )
     );
     onClose();
-  };
-
-  const getGroupHeaderLabel = (type: ProjectType) => {
-    switch (type) {
-      case ProjectType.SecretManager:
-        return "Secrets";
-      case ProjectType.CertificateManager:
-        return "Certificate Manager";
-      case ProjectType.KMS:
-        return "KMS";
-      case ProjectType.SSH:
-        return "SSH";
-      default:
-        return "Other";
-    }
   };
 
   return (
@@ -192,68 +209,67 @@ export const AddSubOrgMemberModal = ({ onClose }: Props) => {
         )}
       />
 
-      <div className="flex items-start justify-between gap-2">
-        <div className="w-full">
-          <Controller
-            control={control}
-            name="projects"
-            render={({ field: { value, onChange }, fieldState: { error } }) => (
-              <FormControl
-                label="Assign users to projects"
-                isOptional
-                isError={Boolean(error?.message)}
-                errorText={error?.message}
-              >
-                <FilterableSelect
-                  isMulti
-                  value={value}
-                  onChange={onChange}
-                  isLoading={isProjectsLoading}
-                  getOptionLabel={(project) => project.name}
-                  getOptionValue={(project) => project.id}
-                  options={projects}
-                  groupBy="type"
-                  getGroupHeaderLabel={getGroupHeaderLabel}
-                  placeholder="Select projects..."
-                />
-              </FormControl>
-            )}
-          />
-        </div>
-        <div className="mt-[0.15rem] flex min-w-fit justify-end">
-          <Controller
-            control={control}
-            name="projectRoleSlug"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                tooltipText="Select which role to assign to the users in the selected projects."
-                label="Role"
-                isError={Boolean(error)}
-                errorText={error?.message}
-              >
-                <div>
-                  <Select
-                    isDisabled={watch("projects", []).length === 0}
-                    defaultValue={DEFAULT_ORG_AND_PROJECT_MEMBER_ROLE_SLUG}
-                    {...field}
-                    onValueChange={(val) => field.onChange(val)}
-                  >
-                    {Object.entries(ProjectMembershipRole).map(
-                      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                      ([_, slug]) =>
-                        slug !== "custom" && (
-                          <SelectItem key={slug} value={slug}>
-                            <span className="capitalize">{slug.replace("-", " ")}</span>
-                          </SelectItem>
-                        )
-                    )}
-                  </Select>
-                </div>
-              </FormControl>
-            )}
-          />
-        </div>
-      </div>
+      <Controller
+        control={control}
+        name="projects"
+        render={({ field: { value, onChange }, fieldState: { error } }) => (
+          <FormControl
+            label="Assign users to projects"
+            isOptional
+            isError={Boolean(error?.message)}
+            errorText={error?.message}
+          >
+            <FilterableSelect
+              isMulti
+              value={value}
+              onChange={onChange}
+              isLoading={isProjectsLoading}
+              getOptionLabel={(project) => project.name}
+              getOptionValue={(project) => project.id}
+              options={projects}
+              groupBy="type"
+              getGroupHeaderLabel={getProjectTitle}
+              placeholder="Select projects..."
+            />
+          </FormControl>
+        )}
+      />
+
+      <Controller
+        control={control}
+        name="projectRole"
+        render={({ field: { value, onChange }, fieldState: { error } }) => (
+          <FormControl
+            tooltipText={
+              <>
+                Select which role to assign to the users in the selected projects.
+                <br />
+                <br />
+                When multiple projects are selected, only built-in roles are available for
+                selection.
+                <br />
+                <br />
+                You can assign users to additional projects after they&apos;ve been invited.
+              </>
+            }
+            label="Project role"
+            isError={Boolean(error)}
+            errorText={error?.message}
+          >
+            <FilterableSelect
+              isDisabled={selectedProjects.length === 0}
+              isLoading={Boolean(singleSelectedProjectId) && isProjectRolesLoading}
+              value={value}
+              onChange={onChange}
+              options={projectRoles ?? []}
+              getOptionValue={(option) => option.slug}
+              getOptionLabel={(option) => option.name}
+              placeholder="Select role..."
+              components={{ Option: RoleOption }}
+            />
+          </FormControl>
+        )}
+      />
 
       <div className="mt-8 flex items-center">
         <Button

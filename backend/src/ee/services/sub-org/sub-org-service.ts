@@ -9,6 +9,8 @@ import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
+import { getOrgBuiltInRoles } from "@app/services/role/org/org-role-fns";
+import { TRoleDALFactory } from "@app/services/role/role-dal";
 
 import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionSubjects, OrgPermissionSubOrgActions } from "../permission/org-permission";
@@ -25,6 +27,7 @@ type TSubOrgServiceFactoryDep = {
   membershipDAL: Pick<TMembershipDALFactory, "create" | "findOne">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create">;
   projectDAL: Pick<TProjectDALFactory, "create" | "findOne">;
+  roleDAL: Pick<TRoleDALFactory, "insertMany">;
 };
 
 export type TSubOrgServiceFactory = ReturnType<typeof subOrgServiceFactory>;
@@ -35,7 +38,8 @@ export const subOrgServiceFactory = ({
   licenseService,
   membershipDAL,
   membershipRoleDAL,
-  projectDAL
+  projectDAL,
+  roleDAL
 }: TSubOrgServiceFactoryDep) => {
   const createSubOrg = async ({ name, slug, permission }: TCreateSubOrgDTO) => {
     const { permission: orgPermission } = await permissionService.getOrgPermission({
@@ -92,6 +96,8 @@ export const subOrgServiceFactory = ({
         },
         tx
       );
+
+      await roleDAL.insertMany(getOrgBuiltInRoles(org.id, { isSubOrg: true }), tx);
 
       await bootstrapCertManagerProject(
         {

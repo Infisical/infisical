@@ -8,7 +8,6 @@ import { createNotification } from "@app/components/notifications";
 import { FormControl, Input } from "@app/components/v2";
 import { Accordion, Button } from "@app/components/v3";
 import { ProjectPermissionSub } from "@app/context";
-import { isCustomProjectRole } from "@app/helpers/roles";
 import { TProjectTemplate, useUpdateProjectTemplate } from "@app/hooks/api/projectTemplates";
 import { slugSchema } from "@app/lib/schemas";
 import { AddPoliciesButton } from "@app/pages/project/RoleDetailsBySlugPage/components/AddPoliciesButton";
@@ -27,6 +26,7 @@ type Props = {
   role?: TProjectTemplate["roles"][number];
   onGoBack: () => void;
   isDisabled?: boolean;
+  isBuiltInRole?: boolean;
 };
 
 const formSchema = z.object({
@@ -41,7 +41,8 @@ export const ProjectTemplateEditRoleForm = ({
   onGoBack,
   projectTemplate,
   role,
-  isDisabled
+  isDisabled,
+  isBuiltInRole
 }: Props) => {
   const [openPolicies, setOpenPolicies] = useState<string[]>([]);
 
@@ -80,9 +81,7 @@ export const ProjectTemplateEditRoleForm = ({
     await updateProjectTemplate.mutateAsync({
       templateId: projectTemplate.id,
       roles: [
-        ...projectTemplate.roles.filter(
-          (r) => r.slug !== role?.slug && isCustomProjectRole(r.slug) // filter out default roles as well
-        ),
+        ...projectTemplate.roles.filter((r) => r.slug !== role?.slug),
         {
           ...form,
           permissions: formRolePermission2API(form.permissions)
@@ -180,7 +179,7 @@ export const ProjectTemplateEditRoleForm = ({
                     label="Slug"
                     className="mb-0 flex-1"
                   >
-                    <Input {...field} placeholder="Role slug..." />
+                    <Input {...field} placeholder="Role slug..." isDisabled={isBuiltInRole} />
                   </FormControl>
                 )}
               />

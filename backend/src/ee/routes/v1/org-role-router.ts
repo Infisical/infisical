@@ -3,7 +3,11 @@ import { z } from "zod";
 
 import { AccessScope, OrgMembershipRole, OrgRolesSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { OrgPermissionSchema, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
+import {
+  INVALID_SUBORG_PERMISSION_SUBJECTS,
+  OrgPermissionSchema,
+  OrgPermissionSubjects
+} from "@app/ee/services/permission/org-permission";
 import { ApiDocsTags, ORG_ROLE } from "@app/lib/api-docs";
 import { BadRequestError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -14,19 +18,9 @@ import { SanitizedOrgRoleSchema } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
-const INVALID_SUBORG_PERMISSIONS = [
-  OrgPermissionSubjects.Sso,
-  OrgPermissionSubjects.Ldap,
-  OrgPermissionSubjects.Scim,
-  OrgPermissionSubjects.GithubOrgSync,
-  OrgPermissionSubjects.GithubOrgSyncManual,
-  OrgPermissionSubjects.Billing,
-  OrgPermissionSubjects.SubOrganization
-];
-
-const validateSubOrganizationSubjects = (permissions: unknown) => {
-  const invalidPermissionSubjects = (permissions as { subject: OrgPermissionSubjects }[])
-    .filter((el) => INVALID_SUBORG_PERMISSIONS.includes(el.subject))
+const validateSubOrganizationSubjects = (permissions: { subject: OrgPermissionSubjects }[]) => {
+  const invalidPermissionSubjects = permissions
+    .filter((el) => INVALID_SUBORG_PERMISSION_SUBJECTS.includes(el.subject))
     .map((el) => el.subject);
   if (invalidPermissionSubjects.length) {
     const deduplication = Array.from(new Set(invalidPermissionSubjects));

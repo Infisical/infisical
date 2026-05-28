@@ -623,3 +623,13 @@ const buildNoAccessPermission = () => {
 };
 
 export const orgNoAccessPermissions = buildNoAccessPermission();
+
+export const INVALID_SUBORG_PERMISSION_SUBJECTS: OrgPermissionSubjects[] = [
+  OrgPermissionSubjects.Sso,
+  OrgPermissionSubjects.Ldap,
+  OrgPermissionSubjects.Scim,
+  OrgPermissionSubjects.GithubOrgSync,
+  OrgPermissionSubjects.GithubOrgSyncManual,
+  OrgPermissionSubjects.Billing,
+  OrgPermissionSubjects.SubOrganization
+];

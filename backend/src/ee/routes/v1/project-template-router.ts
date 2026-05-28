@@ -2,8 +2,11 @@ import { z } from "zod";
 
 import { ProjectMembershipRole, ProjectTemplatesSchema, ProjectType } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { ProjectPermissionV2Schema } from "@app/ee/services/permission/project-permission";
 import { isInfisicalProjectTemplate } from "@app/ee/services/project-template/project-template-fns";
+import {
+  TCreateProjectTemplateDTO,
+  TUpdateProjectTemplateDTO
+} from "@app/ee/services/project-template/project-template-types";
 import { ApiDocsTags, ProjectTemplates } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
@@ -12,12 +15,6 @@ import { UnpackedPermissionSchema } from "@app/server/routes/sanitizedSchema/per
 import { AuthMode } from "@app/services/auth/auth-type";
 
 const MAX_JSON_SIZE_LIMIT_IN_BYTES = 32_768;
-
-const isReservedRoleSlug = (slug: string) =>
-  Object.values(ProjectMembershipRole).includes(slug as ProjectMembershipRole);
-
-const isReservedRoleName = (name: string) =>
-  ["custom", "admin", "viewer", "member", "no access"].includes(name.toLowerCase());
 
 const SanitizedProjectTemplateSchema = ProjectTemplatesSchema.extend({
   roles: z
@@ -70,7 +67,7 @@ const ProjectTemplateRolesSchema = z
   .object({
     name: z.string().trim().min(1),
     slug: slugSchema(),
-    permissions: ProjectPermissionV2Schema.array()
+    permissions: UnpackedPermissionSchema.array()
   })
   .array()
   .superRefine((roles, ctx) => {
@@ -84,14 +81,6 @@ const ProjectTemplateRolesSchema = z
 
     if (new Set(roles.map((v) => v.name)).size !== roles.length)
       ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Role names must be unique" });
-
-    roles.forEach((role) => {
-      if (isReservedRoleSlug(role.slug))
-        ctx.addIssue({ code: z.ZodIssueCode.custom, message: `Role slug "${role.slug}" is reserved` });
-
-      if (isReservedRoleName(role.name))
-        ctx.addIssue({ code: z.ZodIssueCode.custom, message: `Role name "${role.name}" is reserved` });
-    });
   });
 
 const ProjectTemplateEnvironmentsSchema = z
@@ -328,14 +317,17 @@ export const registerProjectTemplateRouter = async (server: FastifyZodProvider) 
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const projectTemplate = await server.services.projectTemplate.createProjectTemplate(req.body, req.permission);
+      const projectTemplate = await server.services.projectTemplate.createProjectTemplate(
+        req.body as TCreateProjectTemplateDTO,
+        req.permission
+      );
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
         event: {
           type: EventType.CREATE_PROJECT_TEMPLATE,
-          metadata: req.body
+          metadata: req.body as TCreateProjectTemplateDTO
         }
       });
 
@@ -389,7 +381,7 @@ export const registerProjectTemplateRouter = async (server: FastifyZodProvider) 
     handler: async (req) => {
       const projectTemplate = await server.services.projectTemplate.updateProjectTemplateById(
         req.params.templateId,
-        req.body,
+        req.body as TUpdateProjectTemplateDTO,
         req.permission
       );
 
@@ -400,7 +392,7 @@ export const registerProjectTemplateRouter = async (server: FastifyZodProvider) 
           type: EventType.UPDATE_PROJECT_TEMPLATE,
           metadata: {
             templateId: req.params.templateId,
-            ...req.body
+            ...(req.body as TUpdateProjectTemplateDTO)
           }
         }
       });

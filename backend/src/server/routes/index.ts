@@ -1169,7 +1169,8 @@ export const registerRoutes = async (
     membershipRoleDAL,
     orgDAL,
     projectDAL,
-    permissionService
+    permissionService,
+    roleDAL
   });
 
   const signupService = authSignupServiceFactory({
