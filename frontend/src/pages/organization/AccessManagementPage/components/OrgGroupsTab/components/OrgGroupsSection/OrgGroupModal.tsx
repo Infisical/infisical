@@ -24,7 +24,7 @@ import { GroupWizardSteps } from "./groupWizardSteps";
 import { OrgGroupLinkForm } from "./OrgGroupLinkForm";
 
 const GroupFormSchema = z.object({
-  name: z.string().min(1, "Name cannot be empty").max(50, "Name must be 50 characters or fewer"),
+  name: z.string().min(1, "Name cannot be empty").max(255, "Name must be 255 characters or fewer"),
   slug: z
     .string()
     .min(5, "Slug must be at least 5 characters long")
