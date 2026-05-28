@@ -2334,7 +2334,7 @@ export const certificateV3ServiceFactory = ({
 
         if (originalCert.applicationId) {
           await $resolveApplicationIdForProfile(
-            profile!,
+            profile,
             originalCert.applicationId,
             {
               actor,
