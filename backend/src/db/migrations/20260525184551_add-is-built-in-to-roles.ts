@@ -241,7 +241,8 @@ export async function down(knex: Knex): Promise<void> {
   await knex.raw(
     `
     UPDATE "${TableName.MembershipRole}" mr
-    SET "customRoleId" = NULL
+    SET "customRoleId" = NULL,
+        role = r.slug
     FROM "${TableName.Role}" r
     WHERE mr."customRoleId" = r.id
       AND r.slug IN (${orgBuiltInSlugs.map(() => "?").join(", ")})
@@ -255,7 +256,8 @@ export async function down(knex: Knex): Promise<void> {
   await knex.raw(
     `
     UPDATE "${TableName.MembershipRole}" mr
-    SET "customRoleId" = NULL
+    SET "customRoleId" = NULL,
+        role = r.slug
     FROM "${TableName.Role}" r
     WHERE mr."customRoleId" = r.id
       AND r.slug IN (${projectBuiltInSlugs.map(() => "?").join(", ")})

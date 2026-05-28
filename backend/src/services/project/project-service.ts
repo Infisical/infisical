@@ -1,5 +1,5 @@
 import { createMongoAbility, ForbiddenError, MongoAbility, RawRuleOf, subject } from "@casl/ability";
-import { PackRule, packRules, unpackRules } from "@casl/ability/extra";
+import { PackRule, packRules as caslPackRules, unpackRules } from "@casl/ability/extra";
 import slugify from "@sindresorhus/slugify";
 
 import {
@@ -257,26 +257,27 @@ export const projectServiceFactory = ({
   roleDAL,
   groupDAL
 }: TProjectServiceFactoryDep) => {
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-ignore — packRules type mismatch between CASL overloads
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const packRules = (rules: unknown) => JSON.stringify((caslPackRules as (r: any) => unknown[])(rules));
+
   const getProjectBuiltInRoles = (projectType: ProjectType) => [
     {
       slug: ProjectMembershipRole.Member,
       name: "Member",
       description: "Limited read/write role in a project",
-      permissions: JSON.stringify(packRules(projectMemberPermissions))
+      permissions: packRules(projectMemberPermissions)
     },
     {
       slug: ProjectMembershipRole.Viewer,
       name: "Viewer",
       description: "Only read role in a project",
-      permissions: JSON.stringify(packRules(projectViewerPermission))
+      permissions: packRules(projectViewerPermission)
     },
     {
       slug: ProjectMembershipRole.NoAccess,
       name: "No Access",
       description: "No access to any resources in the project",
-      permissions: JSON.stringify(packRules(projectNoAccessPermissions))
+      permissions: packRules(projectNoAccessPermissions)
     },
     ...(projectType === ProjectType.SSH
       ? [
@@ -284,7 +285,7 @@ export const projectServiceFactory = ({
             slug: ProjectMembershipRole.SshHostBootstrapper,
             name: "SSH Host Bootstrapper",
             description: "Create and issue SSH Hosts in a project",
-            permissions: JSON.stringify(packRules(sshHostBootstrapPermissions))
+            permissions: packRules(sshHostBootstrapPermissions)
           }
         ]
       : []),
@@ -294,7 +295,7 @@ export const projectServiceFactory = ({
             slug: ProjectMembershipRole.KmsCryptographicOperator,
             name: "Cryptographic Operator",
             description: "Perform cryptographic operations, such as encryption and signing, in a project",
-            permissions: JSON.stringify(packRules(cryptographicOperatorPermissions))
+            permissions: packRules(cryptographicOperatorPermissions)
           }
         ]
       : [])
