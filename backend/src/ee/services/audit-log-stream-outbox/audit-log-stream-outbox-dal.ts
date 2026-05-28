@@ -3,6 +3,7 @@ import { Knex } from "knex";
 import { TDbClient } from "@app/db";
 import { TableName, TAuditLogs } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
+import { chunkArray } from "@app/lib/fn";
 
 import { AuditLogStreamOutboxStatus, TAuditLogStreamOutboxRow } from "./audit-log-stream-outbox-types";
 
@@ -14,6 +15,8 @@ export type TInsertOutboxRow = {
   payload: TAuditLogs;
 };
 
+const OUTBOX_INSERT_CHUNK_SIZE = 1_000;
+
 export const auditLogStreamOutboxDALFactory = (db: TDbClient) => {
   const batchInsert = async (rows: TInsertOutboxRow[], tx?: Knex) => {
     if (rows.length === 0) return;
@@ -21,11 +24,20 @@ export const auditLogStreamOutboxDALFactory = (db: TDbClient) => {
       const records = rows.map((row) => ({
         streamId: row.streamId,
         orgId: row.orgId,
-        // Store as native JSONB; Knex serializes JS objects when the column type is jsonb.
+        auditLogId: row.payload.id,
         payload: JSON.stringify(row.payload),
         status: AuditLogStreamOutboxStatus.Pending
       }));
-      await (tx || db).batchInsert(TableName.AuditLogStreamOutbox, records);
+
+      const insertChunks = async (trx: Knex) => {
+        for (const chunk of chunkArray(records, OUTBOX_INSERT_CHUNK_SIZE)) {
+          // eslint-disable-next-line no-await-in-loop
+          await trx(TableName.AuditLogStreamOutbox).insert(chunk).onConflict().ignore();
+        }
+      };
+
+      if (tx) await insertChunks(tx);
+      else await db.transaction(insertChunks);
     } catch (error) {
       throw new DatabaseError({ error, name: "AuditLogStreamOutbox: batchInsert" });
     }

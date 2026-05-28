@@ -11,6 +11,7 @@ export const AuditLogStreamOutboxSchema = z.object({
   id: z.coerce.number(),
   streamId: z.string().uuid(),
   orgId: z.string().uuid(),
+  auditLogId: z.string().uuid(),
   payload: z.unknown(),
   status: z.string().default("pending"),
   attempts: z.number().default(0),

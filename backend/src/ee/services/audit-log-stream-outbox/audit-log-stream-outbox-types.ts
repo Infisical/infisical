@@ -12,6 +12,7 @@ export type TAuditLogStreamOutboxRow = {
   id: number;
   streamId: string;
   orgId: string;
+  auditLogId: string;
   payload: TAuditLogs;
   status: AuditLogStreamOutboxStatus;
   attempts: number;

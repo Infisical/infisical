@@ -38,6 +38,7 @@ const buildRow = (overrides: Partial<TAuditLogStreamOutboxRow> = {}): TAuditLogS
   id: 1,
   streamId: STREAM_ID,
   orgId: ORG_ID,
+  auditLogId: "log-1",
   payload: { id: "log-1" } as TAuditLogStreamOutboxRow["payload"],
   status: AuditLogStreamOutboxStatus.Processing,
   attempts: 0,

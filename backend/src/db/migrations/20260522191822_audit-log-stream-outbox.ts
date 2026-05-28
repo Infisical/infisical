@@ -9,6 +9,7 @@ export async function up(knex: Knex): Promise<void> {
       t.bigIncrements("id").primary();
       t.uuid("streamId").notNullable();
       t.uuid("orgId").notNullable();
+      t.uuid("auditLogId").notNullable();
       t.jsonb("payload").notNullable();
       t.string("status").notNullable().defaultTo("pending");
       t.check(`"status" IN ('pending', 'processing', 'retry')`);
@@ -21,6 +22,8 @@ export async function up(knex: Knex): Promise<void> {
 
       t.foreign("streamId").references("id").inTable(TableName.AuditLogStream).onDelete("CASCADE");
       t.foreign("orgId").references("id").inTable(TableName.Organization).onDelete("CASCADE");
+      // Idempotency guard: the fanout insert targets this constraint with ON CONFLICT DO NOTHING.
+      t.unique(["streamId", "auditLogId"]);
     });
 
     // Worker drain query: WHERE streamId = ? AND status IN ('pending','retry') AND nextRetryAt <= NOW() ORDER BY id LIMIT N FOR UPDATE SKIP LOCKED
