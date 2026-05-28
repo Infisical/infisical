@@ -76,12 +76,14 @@ jobs:
                       contentful_space_id=${{ secrets.CONTENTFUL_SPACE_ID }}
                       contentful_delivery_token=${{ secrets.CONTENTFUL_DELIVERY_TOKEN }}
                       contentful_environment=${{ vars.CONTENTFUL_ENVIRONMENT }}
-            # Mirror the pushed image to Amazon ECR Public. These steps are guarded on
-            # ECR_PUBLIC_PUBLISH_ROLE_ARN so a missing/unconfigured credential can never
-            # block the Docker Hub release above. imagetools copies the existing manifest
-            # (no rebuild), preserving the multi-arch digests pushed to Docker Hub.
+            # Mirror the pushed image to Amazon ECR Public. Best-effort: guarded on
+            # ECR_PUBLIC_PUBLISH_ROLE_ARN and marked continue-on-error so a missing
+            # credential or a mirror failure can never block the Docker Hub release above
+            # (already completed) or the downstream jobs. imagetools copies the existing
+            # manifest (no rebuild), preserving the multi-arch digests pushed to Docker Hub.
             - name: Configure AWS credentials for ECR Public
               if: env.ECR_PUBLIC_PUBLISH_ROLE_ARN != ''
+              continue-on-error: true
               uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4
               with:
                   audience: sts.amazonaws.com
@@ -89,9 +91,11 @@ jobs:
                   role-to-assume: ${{ env.ECR_PUBLIC_PUBLISH_ROLE_ARN }}
             - name: 🐋 Login to Amazon ECR Public
               if: env.ECR_PUBLIC_PUBLISH_ROLE_ARN != ''
+              continue-on-error: true
               run: aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin public.ecr.aws
             - name: 🪞 Mirror image to Amazon ECR Public
               if: env.ECR_PUBLIC_PUBLISH_ROLE_ARN != ''
+              continue-on-error: true
               env:
                   # Passed via env (not interpolated into the script) so a crafted
                   # tag name can't inject shell commands.
@@ -102,7 +106,7 @@ jobs:
                     --tag "public.ecr.aws/infisical/infisical:latest" \
                     --tag "public.ecr.aws/infisical/infisical:${IMAGE_SHORT_SHA}" \
                     --tag "public.ecr.aws/infisical/infisical:${IMAGE_VERSION}" \
-                    "infisical/infisical:${IMAGE_VERSION}"
+                    "docker.io/infisical/infisical:${IMAGE_VERSION}"
             - name: Snyk to check Docker image for vulnerabilities
               continue-on-error: true 
               uses: snyk/actions/docker@9cf6ca713d71123d2d229cc3d7f145b96ea3c518 # master @ 2026-05-05
