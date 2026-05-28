@@ -11,7 +11,7 @@ export type FilterFieldDefinition = {
   key: string;
   label: string;
   operators: { value: string; label: string }[];
-  valueType: "text" | "number" | "date" | "select" | "multi-select";
+  valueType: "text" | "number" | "date" | "select" | "multi-select" | "metadata-kv";
   options?: { value: string; label: string }[];
 };
 
@@ -119,6 +119,12 @@ export const FILTER_FIELDS: FilterFieldDefinition[] = [
     operators: [{ value: "in", label: "in" }],
     valueType: "multi-select",
     options: []
+  },
+  {
+    key: "metadata",
+    label: "Metadata",
+    operators: [{ value: "is", label: "is" }],
+    valueType: "metadata-kv"
   }
 ];
 
@@ -185,6 +191,15 @@ export const filtersToSearchParams = (rules: FilterRule[]): TInventoryViewFilter
           params.applicationIds = rule.value;
         }
         break;
+      case "metadata":
+        if (Array.isArray(rule.value) && rule.value.length >= 1 && rule.value[0]) {
+          if (!params.metadata) params.metadata = [];
+          params.metadata.push({
+            key: rule.value[0],
+            ...(rule.value[1] ? { value: rule.value[1] } : {})
+          });
+        }
+        break;
       default:
         break;
     }
@@ -199,6 +214,11 @@ export const getFilterChipLabel = (
 ): string => {
   const baseDef = FILTER_FIELDS.find((f) => f.key === rule.field);
   const fieldLabel = baseDef?.label || rule.field;
+
+  if (rule.field === "metadata" && Array.isArray(rule.value)) {
+    const [key, val] = rule.value;
+    return val ? `${fieldLabel}: ${key} = ${val}` : `${fieldLabel}: ${key}`;
+  }
 
   const options =
     dynamicFieldOptions && dynamicFieldOptions[rule.field]
