@@ -116,7 +116,7 @@ export const RolePermissionsSection = ({ roleId }: Props) => {
     createNotification({ type: "success", text: "Successfully updated role" });
   };
 
-  const isCustomRole = !["admin", "member", "no-access"].includes(role?.slug ?? "");
+  const isCustomRole = role?.slug !== "admin";
 
   return (
     <form

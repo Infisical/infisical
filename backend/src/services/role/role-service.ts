@@ -26,7 +26,6 @@ import {
   TGetRoleBySlugDTO,
   TGetUserPermissionDTO,
   TListRoleDTO,
-  TPredefinedRole,
   TUpdateRoleDTO
 } from "./role-types";
 
@@ -225,8 +224,7 @@ export const roleServiceFactory = ({
       { limit: dto.data.limit, offset: dto.data.offset, sort: [[`${TableName.Role}.slug` as "slug", "asc"]] }
     );
 
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-    const predefinedRoles: TPredefinedRole[] = factory.getPredefinedRoles(scopeData);
+    const predefinedRoles = factory.getPredefinedRoles(scopeData);
 
     return {
       roles: [...predefinedRoles, ...roles.map((el) => ({ ...el, permissions: unpackPermissions(el.permissions) }))]

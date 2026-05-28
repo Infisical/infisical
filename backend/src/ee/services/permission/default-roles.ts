@@ -208,7 +208,6 @@ const buildAdminPermissionRules = () => {
       ProjectPermissionMemberActions.Edit,
       ProjectPermissionMemberActions.Delete,
       ProjectPermissionMemberActions.Read,
-      ProjectPermissionMemberActions.GrantPrivileges,
       ProjectPermissionMemberActions.AssignRole,
       ProjectPermissionMemberActions.AssignAdditionalPrivileges,
       ProjectPermissionMemberActions.AssumePrivileges
@@ -222,7 +221,6 @@ const buildAdminPermissionRules = () => {
       ProjectPermissionGroupActions.Edit,
       ProjectPermissionGroupActions.Delete,
       ProjectPermissionGroupActions.Read,
-      ProjectPermissionGroupActions.GrantPrivileges,
       ProjectPermissionGroupActions.AssignRole
     ],
     ProjectPermissionSub.Groups
@@ -234,7 +232,6 @@ const buildAdminPermissionRules = () => {
       ProjectPermissionIdentityActions.Edit,
       ProjectPermissionIdentityActions.Delete,
       ProjectPermissionIdentityActions.Read,
-      ProjectPermissionIdentityActions.GrantPrivileges,
       ProjectPermissionIdentityActions.AssignRole,
       ProjectPermissionIdentityActions.AssignAdditionalPrivileges,
       ProjectPermissionIdentityActions.AssumePrivileges,
@@ -498,7 +495,6 @@ const buildMemberPermissionRules = () => {
   can(
     [
       ProjectPermissionSecretActions.DescribeSecret,
-      ProjectPermissionSecretActions.DescribeAndReadValue,
       ProjectPermissionSecretActions.ReadValue,
       ProjectPermissionSecretActions.Edit,
       ProjectPermissionSecretActions.Create,

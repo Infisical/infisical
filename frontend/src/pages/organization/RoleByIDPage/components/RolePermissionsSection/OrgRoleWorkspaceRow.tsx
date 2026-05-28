@@ -136,7 +136,7 @@ export const OrgRoleWorkspaceRow = ({ isEditable, control, setValue }: Props) =>
                           if (!isEditable) {
                             createNotification({
                               type: "error",
-                              text: "Failed to update default role"
+                              text: "Admin role permissions cannot be changed"
                             });
                             return;
                           }

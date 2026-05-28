@@ -1,11 +1,16 @@
 import { ForbiddenError } from "@casl/ability";
+import { packRules } from "@casl/ability/extra";
 
 import { AccessScope, ActionProjectType, ProjectMembershipRole } from "@app/db/schemas";
+import { projectAdminPermissions } from "@app/ee/services/permission/default-roles";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError } from "@app/lib/errors";
+import { unpackPermissions } from "@app/server/routes/sanitizedSchema/permission";
 
 import { TPredefinedRole, TRoleScopeFactory } from "../role-types";
+
+const adminProjectRolePermissions = unpackPermissions(packRules(projectAdminPermissions));
 
 type TProjectRoleScopeFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
@@ -107,7 +112,7 @@ export const newProjectRoleFactory = ({ permissionService }: TProjectRoleScopeFa
         name: "Admin",
         description: "Complete administration access over the project",
         isBuiltIn: true,
-        permissions: [],
+        permissions: adminProjectRolePermissions,
         orgId: null,
         projectId: scope.value,
         createdAt: new Date(0),

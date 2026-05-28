@@ -12,7 +12,10 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuTrigger
+  DropdownMenuTrigger,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import {
   ProjectPermissionActions,
@@ -180,21 +183,30 @@ const Page = () => {
                       </DropdownMenuItem>
                     )}
                   </ProjectPermissionCan>
-                  <ProjectPermissionCan
-                    I={ProjectPermissionActions.Delete}
-                    a={ProjectPermissionSub.Role}
-                  >
-                    {(isAllowed) => (
-                      <DropdownMenuItem
-                        variant="danger"
-                        onClick={() => handlePopUpOpen("deleteRole")}
-                        isDisabled={!isAllowed}
-                      >
-                        <TrashIcon />
-                        Delete Role
-                      </DropdownMenuItem>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div>
+                        <ProjectPermissionCan
+                          I={ProjectPermissionActions.Delete}
+                          a={ProjectPermissionSub.Role}
+                        >
+                          {(isAllowed) => (
+                            <DropdownMenuItem
+                              variant="danger"
+                              onClick={() => handlePopUpOpen("deleteRole")}
+                              isDisabled={!isAllowed || !!data?.isBuiltIn}
+                            >
+                              <TrashIcon />
+                              Delete Role
+                            </DropdownMenuItem>
+                          )}
+                        </ProjectPermissionCan>
+                      </div>
+                    </TooltipTrigger>
+                    {data?.isBuiltIn && (
+                      <TooltipContent side="left">Platform roles cannot be deleted.</TooltipContent>
                     )}
-                  </ProjectPermissionCan>
+                  </Tooltip>
                 </DropdownMenuContent>
               </DropdownMenu>
             )}

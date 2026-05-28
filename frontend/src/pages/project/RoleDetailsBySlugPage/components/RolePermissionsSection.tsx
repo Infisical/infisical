@@ -12,7 +12,6 @@ import { ProjectPermissionSet } from "@app/context/ProjectPermissionContext";
 import { evaluatePermissionsAbility } from "@app/helpers/permissions";
 import { useGetProjectRoleBySlug, useUpdateProjectRole } from "@app/hooks/api";
 import { ProjectType } from "@app/hooks/api/projects/types";
-import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
 import { AddPoliciesButton } from "./AddPoliciesButton";
 import { AppConnectionPermissionConditions } from "./AppConnectionPermissionConditions";
@@ -198,9 +197,7 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
     }
   });
 
-  const isCustomRole = !Object.values(ProjectMembershipRole).includes(
-    (role?.slug ?? "") as ProjectMembershipRole
-  );
+  const isCustomRole = role?.slug !== "admin";
 
   const permissions = useWatch({ control: form.control, name: "permissions" });
 

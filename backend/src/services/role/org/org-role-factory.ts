@@ -1,12 +1,20 @@
 import { ForbiddenError } from "@casl/ability";
+import { packRules } from "@casl/ability/extra";
 
-import { AccessScope, OrgMembershipRole, OrganizationActionScope } from "@app/db/schemas";
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
+import { AccessScope, OrganizationActionScope, OrgMembershipRole } from "@app/db/schemas";
+import {
+  orgAdminPermissions,
+  OrgPermissionActions,
+  OrgPermissionSubjects
+} from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError } from "@app/lib/errors";
+import { unpackPermissions } from "@app/server/routes/sanitizedSchema/permission";
 import { TExternalGroupOrgRoleMappingDALFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-dal";
 
 import { TPredefinedRole, TRoleScopeFactory } from "../role-types";
+
+const adminOrgRolePermissions = unpackPermissions(packRules(orgAdminPermissions));
 
 type TOrgRoleScopeFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
@@ -117,7 +125,7 @@ export const newOrgRoleFactory = ({
         name: "Admin",
         description: "Complete administration access over the organization",
         isBuiltIn: true,
-        permissions: [],
+        permissions: adminOrgRolePermissions,
         orgId: scope.value,
         projectId: null,
         createdAt: new Date(0),

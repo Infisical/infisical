@@ -7,7 +7,7 @@ export type TPredefinedRole = {
   name: string;
   description: string;
   isBuiltIn: boolean;
-  permissions: unknown[];
+  permissions: { action: string[]; subject?: string; inverted?: boolean; conditions?: unknown }[];
   orgId?: string | null;
   projectId?: string | null;
   createdAt: Date;

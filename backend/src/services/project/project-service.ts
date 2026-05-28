@@ -697,10 +697,15 @@ export const projectServiceFactory = ({
               { orgId: project.orgId, slug: OrgMembershipRole.NoAccess, isBuiltIn: true },
               tx
             );
+            if (!noAccessOrgRole) {
+              throw new NotFoundError({
+                message: `'no-access' org role not found for organization ${project.orgId}`
+              });
+            }
             roleAssignments.push({
               membershipId: orgMembership.id,
               role: OrgMembershipRole.Custom,
-              customRoleId: noAccessOrgRole?.id
+              customRoleId: noAccessOrgRole.id
             });
 
             for (const roleSlug of templateIdentity.roles) {

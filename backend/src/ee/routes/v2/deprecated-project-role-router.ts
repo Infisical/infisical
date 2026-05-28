@@ -125,7 +125,7 @@ export const registerDeprecatedProjectRoleRouter = async (server: FastifyZodProv
       body: z.object({
         slug: slugSchema({ min: 1, max: 64 })
           .refine(
-            (val) => !Object.values(ProjectMembershipRole).includes(val as ProjectMembershipRole),
+            (val) => val !== ProjectMembershipRole.Admin,
             "Please choose a different slug, the slug you have entered is reserved"
           )
           .optional()

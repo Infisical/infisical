@@ -181,7 +181,7 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
       body: z.object({
         slug: slugSchema({ min: 1, max: 64 })
           .refine(
-            (val) => !Object.values(OrgMembershipRole).includes(val as OrgMembershipRole),
+            (val) => val !== OrgMembershipRole.Admin,
             "Please choose a different slug, the slug you have entered is reserved"
           )
           .optional()

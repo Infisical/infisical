@@ -105,7 +105,7 @@ export const OrgPermissionHoneyTokenRow = ({ isEditable, control, setValue }: Pr
                           if (!isEditable) {
                             createNotification({
                               type: "error",
-                              text: "Failed to update default role"
+                              text: "Admin role permissions cannot be changed"
                             });
                             return;
                           }

@@ -6,13 +6,14 @@ import { z } from "zod";
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Input, Modal, ModalContent, Spinner } from "@app/components/v2";
-import { ProjectPermissionSub, useOrganization, useProject, useSubscription } from "@app/context";
-import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
+import { useOrganization, useProject, useSubscription } from "@app/context";
 import { getProjectBaseURL } from "@app/helpers/project";
 import { useCreateProjectRole, useGetProjectRoleBySlug } from "@app/hooks/api";
 import { TProjectRole } from "@app/hooks/api/roles/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 import { slugSchema } from "@app/lib/schemas";
+
+import { formRolePermission2API, rolePermission2Form } from "./ProjectRoleModifySection.utils";
 
 type Props = {
   isOpen: boolean;
@@ -65,23 +66,10 @@ const Content = ({ role, onClose }: ContentProps) => {
       return;
     }
 
-    const sanitizedPermission = role.permissions.map((permission) => {
-      if (
-        // if contains new secret action the legacy one can be stripped off
-        // mainly done for duplicating predefined roles
-        permission.subject === ProjectPermissionSub.Secrets &&
-        (permission.action.includes(ProjectPermissionSecretActions.DescribeSecret) ||
-          permission.action.includes(ProjectPermissionSecretActions.ReadValue))
-      ) {
-        return {
-          ...permission,
-          action: (permission.action as string[])?.filter(
-            (action) => action !== ProjectPermissionSecretActions.DescribeAndReadValue
-          )
-        };
-      }
-      return permission;
-    });
+    // Round-trip through the form schema to strip any subjects not supported by
+    // ProjectPermissionV2Schema (e.g. certificate-application in non-CertManager projects)
+    // and normalise legacy actions (e.g. DescribeAndReadValue → DescribeSecret + ReadValue).
+    const sanitizedPermission = formRolePermission2API(rolePermission2Form(role.permissions));
 
     const newRole = await createRole.mutateAsync({
       projectId: currentProject.id,

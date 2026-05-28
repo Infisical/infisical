@@ -15,6 +15,7 @@ import {
   DropdownMenuTrigger,
   PageHeader
 } from "@app/components/v2";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { useDeleteOrgRole, useGetOrgRole } from "@app/hooks/api";
@@ -153,18 +154,30 @@ export const Page = () => {
                       </DropdownMenuItem>
                     )}
                   </OrgPermissionCan>
-                  <OrgPermissionCan I={OrgPermissionActions.Delete} a={OrgPermissionSubjects.Role}>
-                    {(isAllowed) => (
-                      <DropdownMenuItem
-                        onClick={() => {
-                          handlePopUpOpen("deleteOrgRole");
-                        }}
-                        isDisabled={!isAllowed}
-                      >
-                        Delete Role
-                      </DropdownMenuItem>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div>
+                        <OrgPermissionCan
+                          I={OrgPermissionActions.Delete}
+                          a={OrgPermissionSubjects.Role}
+                        >
+                          {(isAllowed) => (
+                            <DropdownMenuItem
+                              onClick={() => {
+                                handlePopUpOpen("deleteOrgRole");
+                              }}
+                              isDisabled={!isAllowed || !!data?.isBuiltIn}
+                            >
+                              Delete Role
+                            </DropdownMenuItem>
+                          )}
+                        </OrgPermissionCan>
+                      </div>
+                    </TooltipTrigger>
+                    {data?.isBuiltIn && (
+                      <TooltipContent side="left">Platform roles cannot be deleted.</TooltipContent>
                     )}
-                  </OrgPermissionCan>
+                  </Tooltip>
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
