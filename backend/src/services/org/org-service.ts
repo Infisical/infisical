@@ -46,6 +46,7 @@ import { ActorAuthMethod, ActorType, AuthMethod, AuthModeJwtTokenPayload, AuthTo
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TokenType } from "../auth-token/auth-token-types";
 import { bootstrapCertManagerProject } from "../cert-manager-instance/cert-manager-project-bootstrap";
+import { TCertificatePolicyDALFactory } from "../certificate-policy/certificate-policy-dal";
 import { TIdentityMetadataDALFactory } from "../identity/identity-metadata-dal";
 import { TMembershipDALFactory } from "../membership/membership-dal";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
@@ -121,6 +122,7 @@ type TOrgServiceFactoryDep = {
   reminderService: Pick<TReminderServiceFactory, "deleteReminderBySecretId">;
   userGroupMembershipDAL: TUserGroupMembershipDALFactory;
   additionalPrivilegeDAL: TAdditionalPrivilegeDALFactory;
+  certificatePolicyDAL: Pick<TCertificatePolicyDALFactory, "create">;
 };
 
 export type TOrgServiceFactory = ReturnType<typeof orgServiceFactory>;
@@ -154,7 +156,8 @@ export const orgServiceFactory = ({
   membershipUserDAL,
   membershipDAL,
   userGroupMembershipDAL,
-  additionalPrivilegeDAL
+  additionalPrivilegeDAL,
+  certificatePolicyDAL
 }: TOrgServiceFactoryDep) => {
   /*
    * Get organization details by the organization id
@@ -685,7 +688,7 @@ export const orgServiceFactory = ({
           orgId: org.id,
           adminUserIds: userId ? [userId] : []
         },
-        { projectDAL, membershipDAL, membershipRoleDAL },
+        { projectDAL, membershipDAL, membershipRoleDAL, certificatePolicyDAL },
         tx
       );
 
