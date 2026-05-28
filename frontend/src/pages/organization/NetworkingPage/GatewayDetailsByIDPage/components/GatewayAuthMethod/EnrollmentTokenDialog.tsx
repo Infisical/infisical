@@ -56,7 +56,7 @@ export const EnrollmentTokenDialog = ({
     return `sudo infisical gateway systemd install ${gatewayName} --enroll-method=token --token=${enrollmentToken}${relayPart} --domain=${siteURL}`;
   }, [gatewayName, enrollmentToken, resolvedRelayName, siteURL]);
 
-  const startServiceCommand = "sudo systemctl start infisical-gateway";
+  const startServiceCommand = `sudo systemctl start ${gatewayName}`;
 
   const copy = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
