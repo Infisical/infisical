@@ -216,7 +216,12 @@ export const requestWithHCVaultGateway = async <T>(
         } catch (error) {
           if (error instanceof AxiosError) {
             logger.error(
-              { message: error.message, data: (error.response as undefined | { data: unknown })?.data },
+              {
+                error,
+                message: error.message,
+                data: (error.response as undefined | { data: unknown })?.data,
+                url: url.toString()
+              },
               "Error during HashiCorp Vault gateway request:"
             );
           }
@@ -263,7 +268,12 @@ export const requestWithHCVaultGateway = async <T>(
       } catch (error) {
         if (error instanceof AxiosError) {
           logger.error(
-            { message: error.message, data: (error.response as undefined | { data: unknown })?.data },
+            {
+              error,
+              message: error.message,
+              data: (error.response as undefined | { data: unknown })?.data,
+              url: url.toString()
+            },
             "Error during HashiCorp Vault gateway request:"
           );
         }
