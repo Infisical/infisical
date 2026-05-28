@@ -658,14 +658,11 @@ export const snapshotDALFactory = (db: TDbClient) => {
                   );
               })
               .join(TableName.SecretFolder, `${TableName.SecretFolder}.id`, `${TableName.Snapshot}.folderId`)
-              .join(TableName.Environment, function joinActiveEnvForSnapshot() {
-                this.on(`${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`).andOnNull(
-                  `${TableName.Environment}.deleteAfter`
-                );
-              })
+              .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
               .join(TableName.Project, `${TableName.Project}.id`, `${TableName.Environment}.projectId`)
               .join("snapshot_cte", "snapshot_cte.id", `${TableName.Snapshot}.id`)
               .whereRaw(`snapshot_cte.row_num > ${TableName.Project}."pitVersionLimit"`)
+              .whereNull(`${TableName.Environment}.deleteAfter`)
               .delete();
           } catch (err) {
             logger.error(
@@ -715,14 +712,11 @@ export const snapshotDALFactory = (db: TDbClient) => {
                 `${TableName.SecretFolderVersion}.folderId`,
                 `${TableName.Snapshot}.folderId`
               )
-              .join(TableName.Environment, function joinActiveEnvForSnapshot() {
-                this.on(`${TableName.SecretFolderVersion}.envId`, `${TableName.Environment}.id`).andOnNull(
-                  `${TableName.Environment}.deleteAfter`
-                );
-              })
+              .join(TableName.Environment, `${TableName.SecretFolderVersion}.envId`, `${TableName.Environment}.id`)
               .join(TableName.Project, `${TableName.Project}.id`, `${TableName.Environment}.projectId`)
               .join("snapshot_cte", "snapshot_cte.id", `${TableName.Snapshot}.id`)
               .whereRaw(`snapshot_cte.row_num > ${TableName.Project}."pitVersionLimit"`)
+              .whereNull(`${TableName.Environment}.deleteAfter`)
               .delete();
           } catch (err) {
             logger.error(
