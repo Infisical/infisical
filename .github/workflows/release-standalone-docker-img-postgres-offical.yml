@@ -19,6 +19,10 @@ jobs:
         permissions:
             id-token: write # OIDC, to assume the ECR Public publish role
             contents: read
+        env:
+            # Surfaced so the ECR mirror steps can be skipped when the role is
+            # not configured, decoupling them from the Docker Hub release.
+            ECR_PUBLIC_PUBLISH_ROLE_ARN: ${{ secrets.ECR_PUBLIC_PUBLISH_ROLE_ARN }}
         steps:
             - name: Extract version from tag
               id: extract_version
@@ -48,17 +52,9 @@ jobs:
               with:
                   username: ${{ secrets.DOCKERHUB_USERNAME }}
                   password: ${{ secrets.DOCKERHUB_TOKEN }}
-            - name: Configure AWS credentials for ECR Public
-              uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4
-              with:
-                  audience: sts.amazonaws.com
-                  aws-region: us-east-1 # ECR Public auth is only available in us-east-1
-                  role-to-assume: ${{ secrets.ECR_PUBLIC_PUBLISH_ROLE_ARN }}
-            - name: 🐋 Login to Amazon ECR Public
-              run: aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin public.ecr.aws
             - name: Set up Depot CLI
               uses: depot/setup-action@15c09a5f77a0840ad4bce955686522a257853461 # v1.7.1
-            - name: 📦 Build backend and export to Docker
+            - name: 📦 Build backend and push to Docker Hub
               uses: depot/build-push-action@5f3b3c2e5a00f0093de47f657aeaefcedff27d18 # Main / v1, Mar 10, 2026
               with:
                   project: 64mmf0n610
@@ -69,9 +65,6 @@ jobs:
                       infisical/infisical:latest
                       infisical/infisical:${{ steps.commit.outputs.short }}
                       infisical/infisical:${{ steps.extract_version.outputs.version }}
-                      public.ecr.aws/infisical/infisical:latest
-                      public.ecr.aws/infisical/infisical:${{ steps.commit.outputs.short }}
-                      public.ecr.aws/infisical/infisical:${{ steps.extract_version.outputs.version }}
                   platforms: linux/amd64,linux/arm64
                   file: Dockerfile.standalone-infisical
                   build-args: |
@@ -83,6 +76,28 @@ jobs:
                       contentful_space_id=${{ secrets.CONTENTFUL_SPACE_ID }}
                       contentful_delivery_token=${{ secrets.CONTENTFUL_DELIVERY_TOKEN }}
                       contentful_environment=${{ vars.CONTENTFUL_ENVIRONMENT }}
+            # Mirror the pushed image to Amazon ECR Public. These steps are guarded on
+            # ECR_PUBLIC_PUBLISH_ROLE_ARN so a missing/unconfigured credential can never
+            # block the Docker Hub release above. imagetools copies the existing manifest
+            # (no rebuild), preserving the multi-arch digests pushed to Docker Hub.
+            - name: Configure AWS credentials for ECR Public
+              if: env.ECR_PUBLIC_PUBLISH_ROLE_ARN != ''
+              uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4
+              with:
+                  audience: sts.amazonaws.com
+                  aws-region: us-east-1 # ECR Public auth is only available in us-east-1
+                  role-to-assume: ${{ env.ECR_PUBLIC_PUBLISH_ROLE_ARN }}
+            - name: 🐋 Login to Amazon ECR Public
+              if: env.ECR_PUBLIC_PUBLISH_ROLE_ARN != ''
+              run: aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin public.ecr.aws
+            - name: 🪞 Mirror image to Amazon ECR Public
+              if: env.ECR_PUBLIC_PUBLISH_ROLE_ARN != ''
+              run: |
+                  docker buildx imagetools create \
+                    --tag public.ecr.aws/infisical/infisical:latest \
+                    --tag public.ecr.aws/infisical/infisical:${{ steps.commit.outputs.short }} \
+                    --tag public.ecr.aws/infisical/infisical:${{ steps.extract_version.outputs.version }} \
+                    infisical/infisical:${{ steps.extract_version.outputs.version }}
             - name: Snyk to check Docker image for vulnerabilities
               continue-on-error: true 
               uses: snyk/actions/docker@9cf6ca713d71123d2d229cc3d7f145b96ea3c518 # master @ 2026-05-05
