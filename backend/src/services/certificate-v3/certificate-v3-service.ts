@@ -2333,8 +2333,12 @@ export const certificateV3ServiceFactory = ({
         const projectId = profile?.projectId || originalCert.projectId;
 
         if (originalCert.applicationId) {
+          const originalProfile = await certificateProfileDAL.findByIdWithConfigs(originalCert.profileId!);
+          if (!originalProfile) {
+            throw new NotFoundError({ message: "Original certificate profile not found" });
+          }
           await $resolveApplicationIdForProfile(
-            profile,
+            originalProfile,
             originalCert.applicationId,
             {
               actor,
