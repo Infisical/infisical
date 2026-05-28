@@ -106,8 +106,8 @@ def fetch_prs_between_tags(previous_tag_date:datetime, release_tag_date:datetime
             # Fetch full PR data for each result to get merged_at, head.ref, etc.
             pr_url = f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/pulls/{item['number']}"
             pr_response = requests.get(pr_url, headers=headers)
-            if pr_response.status_code == 200:
-                prs.append(pr_response.json())
+            pr_response.raise_for_status()
+            prs.append(pr_response.json())
 
         if len(items) < 100:
             break
@@ -249,7 +249,6 @@ if __name__ == "__main__":
             print("=" * 60)
             print(changelog)
             print("=" * 60)
-            post_to_slack(f"[DRY RUN] {latest_tag}", changelog)
         else:
             post_to_slack(latest_tag, changelog)
 
