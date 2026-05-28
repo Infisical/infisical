@@ -149,7 +149,6 @@ type Identity struct {
 
 type ctxKey struct{}
 type httpInfoKey struct{}
-type authInfoKey struct{}
 
 // HTTPInfo holds HTTP request information for audit logging.
 type HTTPInfo struct {
@@ -182,17 +181,6 @@ func IdentityFromContext(ctx context.Context) (*Identity, error) {
 		return nil, errutil.Unauthorized("Authentication required")
 	}
 	return id, nil
-}
-
-// WithAuthInfo stores the actor auth info in the context.
-func WithAuthInfo(ctx context.Context, info *AuthInfo) context.Context {
-	return context.WithValue(ctx, authInfoKey{}, info)
-}
-
-// AuthInfoFromContext returns the actor auth info stored in ctx, or nil if absent.
-func AuthInfoFromContext(ctx context.Context) *AuthInfo {
-	info, _ := ctx.Value(authInfoKey{}).(*AuthInfo)
-	return info
 }
 
 // AssumedPrivilegeDetails holds the decoded assume privilege token payload.

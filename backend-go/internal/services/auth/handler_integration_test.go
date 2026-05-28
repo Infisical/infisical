@@ -38,7 +38,7 @@ func TestMain(m *testing.M) {
 		MustStart()
 
 	memKeyStore = keystore.NewMemoryKeyStore()
-	authenticator = apiauth.NewAuthenticator(stack.DB(), infra.AuthSecret, memKeyStore)
+	authenticator = apiauth.NewAuthenticator(stack.DB(), infra.AuthSecret, memKeyStore, nil)
 
 	code := m.Run()
 	stack.Stop()

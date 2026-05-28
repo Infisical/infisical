@@ -404,15 +404,16 @@ func checkProjectEnforcement(projectDetails *projectDetail) func(string) bool {
 	}
 }
 
-// buildIdentityAuthMap extracts identity auth info (OIDC/Kubernetes/AWS claims) from request context
+// buildIdentityAuthMap extracts identity auth info (OIDC/Kubernetes/AWS claims) from Identity
 // for use in permission template variable interpolation.
 // Port of permission-service.ts:528-532.
 func buildIdentityAuthMap(ctx context.Context, actorID uuid.UUID) map[string]any {
-	authInfo := auth.AuthInfoFromContext(ctx)
-	if authInfo == nil {
+	identity, err := auth.IdentityFromContext(ctx)
+	if err != nil || identity.IdentityAuthInfo == nil {
 		return map[string]any{}
 	}
 
+	authInfo := identity.IdentityAuthInfo
 	if authInfo.IdentityID != actorID {
 		return map[string]any{}
 	}

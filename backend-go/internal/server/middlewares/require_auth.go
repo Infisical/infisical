@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/infisical/api/internal/libs/errutil"
+	"github.com/infisical/api/internal/services/assumeprivilege"
 	"github.com/infisical/api/internal/services/auth"
 	"github.com/infisical/api/internal/services/auth/apiauth"
 )
@@ -25,15 +26,54 @@ type Authenticator interface {
 	ValidateJWT(ctx context.Context, token string) (*auth.Identity, error)
 	ValidateIdentityAccessToken(ctx context.Context, token, ipAddress string) (*auth.Identity, error)
 	ValidateServiceToken(ctx context.Context, token string) (*auth.Identity, error)
+	AssumePrivilege() apiauth.AssumePrivilegeVerifier
+}
+
+const assumePrivilegeCookieName = "infisical-project-assume-privileges"
+
+// authConfig holds the configuration for RequireAuth middleware.
+type authConfig struct {
+	allowedModes    map[AuthMode]bool
+	assumePrivilege bool
+}
+
+// AuthOption configures RequireAuth behavior.
+type AuthOption func(*authConfig)
+
+// WithAuthModes sets the allowed authentication modes.
+func WithAuthModes(modes ...AuthMode) AuthOption {
+	return func(c *authConfig) {
+		for _, mode := range modes {
+			c.allowedModes[mode] = true
+		}
+	}
+}
+
+// WithAssumePrivilege enables/disables assume privilege injection (default: true).
+func WithAssumePrivilege(enabled bool) AuthOption {
+	return func(c *authConfig) {
+		c.assumePrivilege = enabled
+	}
 }
 
 // RequireAuth creates a middleware that enforces authentication with fail-closed behavior.
 // No bearer header → 401. Bearer present but mode not in allowedModes → 401.
 // Validator error → 401. Only success path: bearer + allowed mode + valid token → identity in context.
-func RequireAuth(authenticator Authenticator, allowedModes ...AuthMode) func(http.Handler) http.Handler {
-	allowedSet := make(map[AuthMode]bool, len(allowedModes))
-	for _, mode := range allowedModes {
-		allowedSet[mode] = true
+// Also handles assume privilege cookie injection for JWT auth (enabled by default).
+//
+// Usage:
+//
+//	RequireAuth(authenticator,
+//	    WithAuthModes(JWTAuth, IdentityAccessTokenAuth),
+//	    WithAssumePrivilege(false),
+//	)
+func RequireAuth(authenticator Authenticator, opts ...AuthOption) func(http.Handler) http.Handler {
+	cfg := &authConfig{
+		allowedModes:    make(map[AuthMode]bool),
+		assumePrivilege: true,
+	}
+	for _, opt := range opts {
+		opt(cfg)
 	}
 
 	return func(next http.Handler) http.Handler {
@@ -51,7 +91,7 @@ func RequireAuth(authenticator Authenticator, allowedModes ...AuthMode) func(htt
 				return
 			}
 
-			if !allowedSet[authMode] {
+			if !cfg.allowedModes[authMode] {
 				writeUnauthorized(w, "Authentication method not allowed for this endpoint")
 				return
 			}
@@ -90,9 +130,52 @@ func RequireAuth(authenticator Authenticator, allowedModes ...AuthMode) func(htt
 
 			populateHTTPInfo(ctx, identity)
 			ctx = auth.WithIdentity(ctx, identity)
+
+			// Handle assume privilege for JWT auth
+			if cfg.assumePrivilege && identity.AuthMode == auth.AuthModeJWT {
+				if verifier := authenticator.AssumePrivilege(); verifier != nil {
+					ctx = injectAssumePrivilege(ctx, w, r, identity, verifier)
+				}
+			}
+
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
+}
+
+// injectAssumePrivilege checks for assume privilege cookie and injects details into context.
+// Port of inject-assume-privilege.ts.
+func injectAssumePrivilege(ctx context.Context, w http.ResponseWriter, r *http.Request, identity *auth.Identity, verifier apiauth.AssumePrivilegeVerifier) context.Context {
+	cookie, err := r.Cookie(assumePrivilegeCookieName)
+	if err != nil || cookie.Value == "" {
+		return ctx
+	}
+
+	details, err := verifier.VerifyAssumePrivilegeToken(ctx, &assumeprivilege.VerifyTokenOpts{
+		Token:          cookie.Value,
+		TokenVersionID: identity.TokenVersionID,
+		AuthMethod:     identity.AuthMethod,
+		OrgID:          identity.OrgID,
+	})
+	if err != nil {
+		clearAssumePrivilegeCookie(w)
+		return ctx
+	}
+
+	return auth.WithAssumedPrivilege(ctx, details)
+}
+
+// clearAssumePrivilegeCookie clears an invalid assume privilege cookie.
+func clearAssumePrivilegeCookie(w http.ResponseWriter) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     assumePrivilegeCookieName,
+		Value:    "",
+		Path:     "/api",
+		MaxAge:   -1,
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteStrictMode,
+	})
 }
 
 // extractBearerToken extracts the token from the Authorization header.

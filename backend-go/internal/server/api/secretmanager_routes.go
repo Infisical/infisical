@@ -30,9 +30,7 @@ func RegisterSecretManagerRoutes(router chi.Router, logger *slog.Logger, platfor
 	router.Group(func(r chi.Router) {
 		r.Use(middlewares.RequireAuth(
 			platform.Authenticator,
-			middlewares.JWTAuth,
-			middlewares.IdentityAccessTokenAuth,
-			middlewares.ServiceTokenAuth,
+			middlewares.WithAuthModes(middlewares.JWTAuth, middlewares.IdentityAccessTokenAuth, middlewares.ServiceTokenAuth),
 		))
 
 		// V4 endpoints

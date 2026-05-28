@@ -45,8 +45,6 @@ func newPlatformServices(ctx context.Context, infra *Infra) (*PlatformServices, 
 		KeyStore: infra.KeyStore,
 	})
 
-	authenticator := apiauth.NewAuthenticator(infra.DB, infra.Config.AuthSecret, infra.KeyStore)
-
 	permissionSvc := permission.NewService(ctx, infra.Logger, &permission.Deps{DB: infra.DB})
 
 	projectSvc := project.NewService(ctx, infra.Logger, &project.Deps{DB: infra.DB})
@@ -55,6 +53,8 @@ func newPlatformServices(ctx context.Context, infra *Infra) (*PlatformServices, 
 		AuthSecret:        infra.Config.AuthSecret,
 		PermissionService: permissionSvc,
 	})
+
+	authenticator := apiauth.NewAuthenticator(infra.DB, infra.Config.AuthSecret, infra.KeyStore, assumePrivilegeSvc)
 
 	auditLogSvc := auditlog.NewService(ctx, infra.Logger, &auditlog.Deps{
 		Queue:  infra.Queue,

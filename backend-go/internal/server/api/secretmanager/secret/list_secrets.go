@@ -83,10 +83,24 @@ func (h *Handler) listSecrets(ctx context.Context, opts *listSecretsInternalOpts
 		return nil, err
 	}
 
-	// 3. Expand references (on full pool, before filtering)
+	// 3. Expand references (on permission-filtered pool to prevent leaking unauthorized secrets)
 	if opts.ExpandSecretReferences {
+		// Filter the expansion pool to only include secrets the user can read.
+		// This prevents relative reference expansion (e.g., ${RESTRICTED}) from leaking
+		// secret values that the user doesn't have permission to access.
 		allSecrets := result.AllSecrets()
-		expander := secretsvc.NewSecretExpander(allSecrets, secretsvc.ExpandOpts{
+		filteredPool := make([]*secretsvc.ProcessedSecret, 0, len(allSecrets))
+		for _, sec := range allSecrets {
+			tagSlugs := make([]string, len(sec.Secret.Tags))
+			for i, tag := range sec.Secret.Tags {
+				tagSlugs[i] = tag.Slug
+			}
+			if checker.CanReadSecretValue(sec.Environment, sec.SecretPath, sec.Secret.Key, tagSlugs) {
+				filteredPool = append(filteredPool, sec)
+			}
+		}
+
+		expander := secretsvc.NewSecretExpander(filteredPool, secretsvc.ExpandOpts{
 			CanAccessAbsolute: func(ref secretsvc.AbsoluteSecretRef, tags []string) bool {
 				return checker.CanReadSecretValue(ref.Env, ref.Path, ref.Key, tags)
 			},

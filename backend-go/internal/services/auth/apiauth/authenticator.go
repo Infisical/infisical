@@ -17,6 +17,7 @@ import (
 	"github.com/infisical/api/internal/database/pg"
 	"github.com/infisical/api/internal/keystore"
 	"github.com/infisical/api/internal/libs/errutil"
+	"github.com/infisical/api/internal/services/assumeprivilege"
 	"github.com/infisical/api/internal/services/auth"
 )
 
@@ -24,18 +25,31 @@ import (
 // Used for usage counter expiry in Redis.
 const maxMachineIdentityTokenAge = 86400 * 30 // 30 days
 
+// AssumePrivilegeVerifier is the interface for verifying assume privilege tokens.
+// Implemented by assumeprivilege.Service.
+type AssumePrivilegeVerifier interface {
+	VerifyAssumePrivilegeToken(ctx context.Context, opts *assumeprivilege.VerifyTokenOpts) (*auth.AssumedPrivilegeDetails, error)
+}
+
 // Authenticator performs token validation for various auth methods.
 // It's an exact port of the Node.js inject-identity logic.
 type Authenticator struct {
-	db         pg.DB
-	keyStore   keystore.KeyStore
-	authSecret []byte
+	db              pg.DB
+	keyStore        keystore.KeyStore
+	authSecret      []byte
+	assumePrivilege AssumePrivilegeVerifier
 }
 
 // NewAuthenticator creates an Authenticator with real validation backed by pg.DB.
 // keyStore can be nil for tests that don't need Redis-backed features.
-func NewAuthenticator(db pg.DB, authSecret string, keyStore keystore.KeyStore) Authenticator {
-	return Authenticator{db: db, authSecret: []byte(authSecret), keyStore: keyStore}
+// assumePrivilege can be nil if assume privilege feature is not needed.
+func NewAuthenticator(db pg.DB, authSecret string, keyStore keystore.KeyStore, assumePrivilege AssumePrivilegeVerifier) Authenticator {
+	return Authenticator{db: db, authSecret: []byte(authSecret), keyStore: keyStore, assumePrivilege: assumePrivilege}
+}
+
+// AssumePrivilege returns the assume privilege verifier.
+func (a Authenticator) AssumePrivilege() AssumePrivilegeVerifier {
+	return a.assumePrivilege
 }
 
 // TODO(gov0): Missing test

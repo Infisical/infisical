@@ -201,6 +201,12 @@ func verifySignatureWithKey(data []byte, signatureBase64 string, pubKey *rsa.Pub
 	return nil
 }
 
+var (
+	cachedLicensePubKey     *rsa.PublicKey
+	cachedLicensePubKeyOnce sync.Once
+	errCachedLicensePubKey  error
+)
+
 // parseLicensePublicKey parses the embedded license public key.
 func parseLicensePublicKey() (*rsa.PublicKey, error) {
 	block, _ := pem.Decode(licensePublicKeyPEM)
@@ -219,12 +225,14 @@ func parseLicensePublicKey() (*rsa.PublicKey, error) {
 // verifyOfflineLicenseSignature verifies the RSA-SHA256 signature of the license.
 // This matches the Node.js implementation in backend/src/lib/crypto/signing.ts.
 func verifyOfflineLicenseSignature(licenseJSON []byte, signatureBase64 string) error {
-	pubKey, err := parseLicensePublicKey()
-	if err != nil {
-		return err
+	cachedLicensePubKeyOnce.Do(func() {
+		cachedLicensePubKey, errCachedLicensePubKey = parseLicensePublicKey()
+	})
+	if errCachedLicensePubKey != nil {
+		return errCachedLicensePubKey
 	}
 
-	return verifySignatureWithKey(licenseJSON, signatureBase64, pubKey)
+	return verifySignatureWithKey(licenseJSON, signatureBase64, cachedLicensePubKey)
 }
 
 // loadOfflineLicense decodes a base64 offline license, verifies signature, checks expiration, and loads features.

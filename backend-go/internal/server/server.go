@@ -44,7 +44,6 @@ func (s *Server) Listen(ctx context.Context, addr string, wg *sync.WaitGroup, er
 	// Middleware stack (applied in reverse order - last wraps first)
 	handler = requestLogger(handler, s.logger)
 	handler = middlewares.HTTPInfoMiddleware(handler)
-	handler = middlewares.AssumePrivilege(s.services.Platform.AssumePrivilege)(handler)
 	handler = chimw.StripSlashes(handler)
 	handler = requestid.Middleware(handler)
 

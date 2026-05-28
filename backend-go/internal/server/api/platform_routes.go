@@ -31,9 +31,7 @@ func RegisterPlatformRoutes(router chi.Router, logger *slog.Logger, svc *Platfor
 		r.Group(func(r chi.Router) {
 			r.Use(middlewares.RequireAuth(
 				svc.Authenticator,
-				middlewares.JWTAuth,
-				middlewares.IdentityAccessTokenAuth,
-				middlewares.ServiceTokenAuth,
+				middlewares.WithAuthModes(middlewares.JWTAuth, middlewares.IdentityAccessTokenAuth, middlewares.ServiceTokenAuth),
 			))
 			r.Post("/", projectsAdapter.CreateProject)
 		})
