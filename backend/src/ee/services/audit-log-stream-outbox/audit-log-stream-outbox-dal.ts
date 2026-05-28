@@ -146,6 +146,27 @@ export const auditLogStreamOutboxDALFactory = (db: TDbClient) => {
     }
   };
 
+  const applyBatchFailure = async (input: {
+    retriable: { ids: number[]; nextRetryAt: Date } | null;
+    exhausted: TAuditLogStreamOutboxRow[];
+    errorMessage: string;
+  }) => {
+    const retriableIds = input.retriable?.ids ?? [];
+    if (retriableIds.length === 0 && input.exhausted.length === 0) return;
+    try {
+      await db.transaction(async (tx) => {
+        if (input.retriable && retriableIds.length > 0) {
+          await markBatchForRetry(input.retriable.ids, input.retriable.nextRetryAt, input.errorMessage, tx);
+        }
+        if (input.exhausted.length > 0) {
+          await moveToDlq(input.exhausted, input.errorMessage, tx);
+        }
+      });
+    } catch (error) {
+      throw new DatabaseError({ error, name: "AuditLogStreamOutbox: applyBatchFailure" });
+    }
+  };
+
   // Stale-claim recovery: rows whose worker crashed mid-batch never had their
   // 'processing' status flipped back, so they're invisible to the drain query.
   // Treat a stale claim as a consumed attempt — a payload that crashes the worker
@@ -209,8 +230,7 @@ export const auditLogStreamOutboxDALFactory = (db: TDbClient) => {
     batchInsert,
     claimBatchForStream,
     deleteByIds,
-    markBatchForRetry,
-    moveToDlq,
+    applyBatchFailure,
     recoverStaleClaims
   };
 };

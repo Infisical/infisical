@@ -58,8 +58,7 @@ const createService = () => {
     batchInsert: vi.fn(async () => undefined),
     claimBatchForStream: vi.fn<(...args: unknown[]) => Promise<TAuditLogStreamOutboxRow[]>>(async () => []),
     deleteByIds: vi.fn(async () => undefined),
-    markBatchForRetry: vi.fn(async () => undefined),
-    moveToDlq: vi.fn(async () => undefined),
+    applyBatchFailure: vi.fn(async () => undefined),
     recoverStaleClaims: vi.fn(async () => ({ retried: 0, movedToDlq: 0 }))
   };
 
@@ -106,8 +105,11 @@ describe("audit-log-stream-outbox-service drainStream failure wiring", () => {
       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- asymmetric matcher is typed `any`
       errorMessage: expect.stringContaining(FAILURE_MESSAGE)
     });
-    expect(auditLogStreamOutboxDAL.markBatchForRetry).toHaveBeenCalledTimes(1);
-    expect(auditLogStreamOutboxDAL.moveToDlq).not.toHaveBeenCalled();
+    expect(auditLogStreamOutboxDAL.applyBatchFailure).toHaveBeenCalledTimes(1);
+    expect(auditLogStreamOutboxDAL.applyBatchFailure.mock.calls[0][0]).toMatchObject({
+      retriable: { ids: [1] },
+      exhausted: []
+    });
     expect(auditLogStreamOutboxDAL.deleteByIds).not.toHaveBeenCalled();
   });
 
@@ -123,8 +125,13 @@ describe("audit-log-stream-outbox-service drainStream failure wiring", () => {
     await service.drainStream({ streamId: STREAM_ID, orgId: ORG_ID, provider: PROVIDER });
 
     expect(onStreamFailure).toHaveBeenCalledTimes(1);
-    expect(auditLogStreamOutboxDAL.moveToDlq).toHaveBeenCalledTimes(1);
-    expect(auditLogStreamOutboxDAL.markBatchForRetry).not.toHaveBeenCalled();
+    expect(auditLogStreamOutboxDAL.applyBatchFailure).toHaveBeenCalledTimes(1);
+    const call = auditLogStreamOutboxDAL.applyBatchFailure.mock.calls[0][0] as {
+      retriable: unknown;
+      exhausted: TAuditLogStreamOutboxRow[];
+    };
+    expect(call.retriable).toBeNull();
+    expect(call.exhausted).toHaveLength(1);
   });
 
   test("does not invoke onStreamFailure on the success path", async () => {
@@ -137,8 +144,7 @@ describe("audit-log-stream-outbox-service drainStream failure wiring", () => {
 
     expect(onStreamFailure).not.toHaveBeenCalled();
     expect(auditLogStreamOutboxDAL.deleteByIds).toHaveBeenCalledTimes(1);
-    expect(auditLogStreamOutboxDAL.markBatchForRetry).not.toHaveBeenCalled();
-    expect(auditLogStreamOutboxDAL.moveToDlq).not.toHaveBeenCalled();
+    expect(auditLogStreamOutboxDAL.applyBatchFailure).not.toHaveBeenCalled();
   });
 
   test("stops draining after the first failed batch — does not claim another batch", async () => {
@@ -159,8 +165,7 @@ describe("audit-log-stream-outbox-service enqueueForLogs batch fanout", () => {
       batchInsert: vi.fn<(rows: unknown[]) => Promise<void>>(async () => undefined),
       claimBatchForStream: vi.fn(async () => []),
       deleteByIds: vi.fn(async () => undefined),
-      markBatchForRetry: vi.fn(async () => undefined),
-      moveToDlq: vi.fn(async () => undefined),
+      applyBatchFailure: vi.fn(async () => undefined),
       recoverStaleClaims: vi.fn(async () => ({ retried: 0, movedToDlq: 0 }))
     };
 

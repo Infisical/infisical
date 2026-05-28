@@ -451,7 +451,7 @@ export const keyStoreFactory = (
   const listLength = async (key: string) => pickPrimaryOrSecondaryRedis(primaryRedis, redisReadReplicas).llen(key);
 
   // Stream operations
-  const streamAdd = async (key: string, id: string, fieldValue: Record<string, string>, maxLen = 1000000) => {
+  const streamAdd = async (key: string, id: string, fieldValue: Record<string, string>, maxLen = 1_000_000) => {
     const args: string[] = [];
     for (const [field, value] of Object.entries(fieldValue)) {
       args.push(field, value);

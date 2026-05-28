@@ -20,7 +20,7 @@ const FLUSH_DEBOUNCE_MS = 5_000;
 const FLUSH_DEBOUNCE_SECONDS = Math.ceil(FLUSH_DEBOUNCE_MS / 1_000);
 
 // Worker drain settings.
-const BATCH_SIZE = 1_000;
+const BATCH_SIZE = 500;
 const MAX_BATCHES_PER_JOB = 10; // hard cap so one job can't monopolize the worker
 const MAX_ATTEMPTS = 5;
 // Exponential backoff with jitter, capped — keeps a wedged provider from hot-looping.
@@ -219,7 +219,6 @@ export const auditLogStreamOutboxServiceFactory = ({
 
         const exhausted: TAuditLogStreamOutboxRow[] = [];
         const retriable: TAuditLogStreamOutboxRow[] = [];
-        // attempts on the row is pre-increment. The +1 reflects this failure.
         for (const row of claimed) {
           if (row.attempts + 1 >= MAX_ATTEMPTS) {
             exhausted.push(row);
@@ -228,24 +227,18 @@ export const auditLogStreamOutboxServiceFactory = ({
           }
         }
 
-        if (retriable.length > 0) {
-          // Use the same nextRetryAt for the whole retriable batch — they share
-          // a failure cause, so they should re-enter together. Each row's own
-          // attempts count is incremented atomically in DAL.
-          const maxAttemptsInBatch = Math.max(...retriable.map((row) => row.attempts + 1));
-          const nextRetryAt = computeBackoff(maxAttemptsInBatch);
-          // eslint-disable-next-line no-await-in-loop
-          await auditLogStreamOutboxDAL.markBatchForRetry(
-            retriable.map((row) => row.id),
-            nextRetryAt,
-            errorMessage
-          );
-        }
-
-        if (exhausted.length > 0) {
-          // eslint-disable-next-line no-await-in-loop
-          await auditLogStreamOutboxDAL.moveToDlq(exhausted, errorMessage);
-        }
+        const retriableInput = retriable.length
+          ? {
+              ids: retriable.map((row) => row.id),
+              nextRetryAt: computeBackoff(Math.max(...retriable.map((row) => row.attempts + 1)))
+            }
+          : null;
+        // eslint-disable-next-line no-await-in-loop
+        await auditLogStreamOutboxDAL.applyBatchFailure({
+          retriable: retriableInput,
+          exhausted,
+          errorMessage
+        });
 
         if (onStreamFailure) {
           // eslint-disable-next-line no-await-in-loop
