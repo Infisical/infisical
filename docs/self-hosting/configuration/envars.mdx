@@ -651,9 +651,9 @@ To log in to Infisical with OAuth providers such as Google, configure the associ
 
 <ParamField query="JWT_AUTH_LIFETIME" type="string" default="30d" optional>
   Controls how long user login sessions are valid before requiring re-authentication.
-  Applies to both CLI and web UI sessions. Users can also override this per-organization via the admin panel.
+  Applies to both CLI and web UI sessions. For self-hosted deployments, organization admins can also set a per-organization token lifetime in the organization security settings of the admin UI.
   
-  Accepted formats: `"7d"`, `"14d"`, `"30d"`, `"90d"`, `"1y"`, or seconds as a number.
+  Accepted formats: `"7d"`, `"14d"`, `"30d"`, `"90d"`, `"1y"`, or seconds as a number. `m` denotes minutes, not months.
   
   Example: `JWT_AUTH_LIFETIME="90d"` extends sessions to 90 days.
 </ParamField>
