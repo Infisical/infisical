@@ -333,7 +333,9 @@ export const membershipUserDALFactory = (db: TDbClient) => {
         throw new InternalServerError({ message: "scopeProjectId required for project scope admin count" });
       }
 
-      const query = (tx || db.replicaNode())(TableName.Membership)
+      // Always read from primary — this powers a safety guard against zero-admin state, so
+      // replica lag cannot be tolerated.
+      const query = (tx || db)(TableName.Membership)
         .join(TableName.MembershipRole, `${TableName.Membership}.id`, `${TableName.MembershipRole}.membershipId`)
         .whereNotNull(`${TableName.Membership}.actorUserId`)
         .where(`${TableName.Membership}.isActive`, true)

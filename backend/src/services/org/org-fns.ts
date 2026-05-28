@@ -37,14 +37,15 @@ export const deleteOrgMembershipsFn = async ({
   userGroupMembershipDAL,
   additionalPrivilegeDAL
 }: TDeleteOrgMemberships) => {
-  await assertWillRetainAdmin({
-    scope: AccessScope.Organization,
-    scopeOrgId: orgId,
-    excludeMembershipIds: orgMembershipIds,
-    dal: membershipUserDAL
-  });
-
   const deletedMemberships = await orgDAL.transaction(async (tx) => {
+    await assertWillRetainAdmin({
+      scope: AccessScope.Organization,
+      scopeOrgId: orgId,
+      excludeMembershipIds: orgMembershipIds,
+      dal: membershipUserDAL,
+      tx
+    });
+
     const orgMemberships = await membershipUserDAL.delete(
       {
         scopeOrgId: orgId,

@@ -857,16 +857,18 @@ export const orgServiceFactory = ({
 
     const updatesToActiveAdmin = role === OrgMembershipRole.Admin && isActive !== false;
     const noRoleOrActivationChange = role === undefined && (isActive === undefined || isActive === true);
-    if (!updatesToActiveAdmin && !noRoleOrActivationChange) {
-      await assertWillRetainAdmin({
-        scope: AccessScope.Organization,
-        scopeOrgId: orgId,
-        excludeMembershipIds: [membershipId],
-        dal: membershipUserDAL
-      });
-    }
 
     const membership = await orgDAL.transaction(async (tx) => {
+      if (!updatesToActiveAdmin && !noRoleOrActivationChange) {
+        await assertWillRetainAdmin({
+          scope: AccessScope.Organization,
+          scopeOrgId: orgId,
+          excludeMembershipIds: [membershipId],
+          dal: membershipUserDAL,
+          tx
+        });
+      }
+
       // this is because if isActive is undefined then this would fail due to knexjs error
       const [updatedOrgMembership] =
         typeof isActive === "undefined"
