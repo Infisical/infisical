@@ -3,8 +3,6 @@ import { subject } from "@casl/ability";
 import { useNavigate } from "@tanstack/react-router";
 import {
   ChevronDownIcon,
-  ClockAlertIcon,
-  ClockIcon,
   FilterIcon,
   InfoIcon,
   MoreHorizontalIcon,
@@ -45,14 +43,12 @@ import {
   EmptyHeader,
   EmptyTitle,
   IconButton,
+  IdentityRoleBadges,
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
   OrgIcon,
   Pagination,
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
   ProjectIcon,
   Skeleton,
   SubOrgIcon,
@@ -76,7 +72,6 @@ import {
   useProject
 } from "@app/context";
 import { getProjectBaseURL } from "@app/helpers/project";
-import { formatProjectRoleName } from "@app/helpers/roles";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -96,8 +91,6 @@ import { usePopUp } from "@app/hooks/usePopUp";
 import { ProjectIdentityModal } from "@app/pages/project/AccessControlPage/components/IdentityTab/components/ProjectIdentityModal";
 
 import { ProjectLinkIdentityModal } from "./components/ProjectLinkIdentityModal";
-
-const MAX_ROLES_TO_BE_SHOWN_IN_TABLE = 2;
 
 enum AddIdentityType {
   CreateNew = "create-new",
@@ -414,114 +407,7 @@ export const IdentityTab = withProjectPermission(
                             >
                               <TableCell isTruncatable>{name}</TableCell>
                               <TableCell>
-                                <div className="flex items-center gap-1.5">
-                                  {roles
-                                    .slice(0, MAX_ROLES_TO_BE_SHOWN_IN_TABLE)
-                                    .map(
-                                      ({
-                                        role,
-                                        customRoleName,
-                                        id: roleId,
-                                        isTemporary,
-                                        temporaryAccessEndTime
-                                      }) => {
-                                        const isExpired =
-                                          new Date() >
-                                          new Date(temporaryAccessEndTime || ("" as string));
-                                        return (
-                                          <Badge
-                                            key={roleId}
-                                            variant={isExpired ? "danger" : "neutral"}
-                                          >
-                                            <span className="capitalize">
-                                              {formatProjectRoleName(role, customRoleName)}
-                                            </span>
-                                            {isTemporary && (
-                                              <Tooltip>
-                                                <TooltipTrigger>
-                                                  <ClockIcon />
-                                                </TooltipTrigger>
-                                                <TooltipContent>
-                                                  {isExpired
-                                                    ? "Access expired"
-                                                    : "Temporary access"}
-                                                </TooltipContent>
-                                              </Tooltip>
-                                            )}
-                                          </Badge>
-                                        );
-                                      }
-                                    )}
-                                  {roles.length > MAX_ROLES_TO_BE_SHOWN_IN_TABLE && (
-                                    <Popover>
-                                      <Tooltip>
-                                        <TooltipTrigger className="flex h-4 items-center">
-                                          <PopoverTrigger asChild>
-                                            <Badge variant="neutral" asChild>
-                                              <button
-                                                type="button"
-                                                onClick={(e) => e.stopPropagation()}
-                                              >
-                                                +{roles.length - MAX_ROLES_TO_BE_SHOWN_IN_TABLE}
-                                              </button>
-                                            </Badge>
-                                          </PopoverTrigger>
-                                        </TooltipTrigger>
-                                        <TooltipContent>
-                                          Click to view additional roles
-                                        </TooltipContent>
-                                      </Tooltip>
-                                      <PopoverContent
-                                        side="right"
-                                        className="flex w-auto max-w-sm flex-wrap gap-1.5"
-                                        onClick={(e) => e.stopPropagation()}
-                                      >
-                                        {roles
-                                          .slice(MAX_ROLES_TO_BE_SHOWN_IN_TABLE)
-                                          .map(
-                                            ({
-                                              role,
-                                              customRoleName,
-                                              id: roleId,
-                                              isTemporary,
-                                              temporaryAccessEndTime
-                                            }) => {
-                                              const isExpired =
-                                                new Date() >
-                                                new Date(temporaryAccessEndTime || ("" as string));
-                                              return (
-                                                <Badge
-                                                  key={roleId}
-                                                  className="z-10"
-                                                  variant={isExpired ? "danger" : "neutral"}
-                                                >
-                                                  <span className="capitalize">
-                                                    {formatProjectRoleName(role, customRoleName)}
-                                                  </span>
-                                                  {isTemporary && (
-                                                    <Tooltip>
-                                                      <TooltipTrigger tabIndex={-1}>
-                                                        {isExpired ? (
-                                                          <ClockAlertIcon />
-                                                        ) : (
-                                                          <ClockIcon />
-                                                        )}
-                                                      </TooltipTrigger>
-                                                      <TooltipContent>
-                                                        {isExpired
-                                                          ? "Access expired"
-                                                          : "Temporary access"}
-                                                      </TooltipContent>
-                                                    </Tooltip>
-                                                  )}
-                                                </Badge>
-                                              );
-                                            }
-                                          )}
-                                      </PopoverContent>
-                                    </Popover>
-                                  )}
-                                </div>
+                                <IdentityRoleBadges roles={roles} />
                               </TableCell>
                               <TableCell>
                                 <Badge
