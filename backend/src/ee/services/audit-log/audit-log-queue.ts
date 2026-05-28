@@ -238,13 +238,14 @@ export const auditLogQueueServiceFactory = async ({
       }
 
       if (getConfig().AUDIT_LOG_STREAMS_ENABLED) {
-        // Fan out to the outbox and wake provider drainers. A failure here must not block the
-        // trim: the logs are already in the system of record, and the outbox/drain machinery
-        // retries delivery independently. Holding the trim hostage would wedge ingestion.
         try {
           await auditLogStreamOutboxService.enqueueForLogs(enriched);
         } catch (error) {
-          logger.error(error, "audit-log-queue: Failed to enqueue audit logs to stream outbox; continuing to trim");
+          logger.error(
+            error,
+            "audit-log-queue: Failed to enqueue audit logs to stream outbox; skipping trim so the batch is reprocessed"
+          );
+          return;
         }
       }
 

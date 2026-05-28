@@ -267,14 +267,14 @@ describe("audit-log-queue unified consumer", () => {
     expect(outboxOrder).toBeLessThan(trimOrder);
   });
 
-  test("outbox failure after a successful insert still trims", async () => {
+  test("outbox failure after a successful insert skips the trim so the batch is reprocessed", async () => {
     const { consumer, auditLogStreamOutboxService, keyStore } = await createHarness({ streamsEnabled: true });
     auditLogStreamOutboxService.enqueueForLogs.mockRejectedValueOnce(new Error("outbox down"));
     keyStore.streamCollect.mockResolvedValueOnce(collectResult([streamEntry()]));
 
     await consumer();
 
-    expect(keyStore.streamTrim).toHaveBeenCalledTimes(1);
+    expect(keyStore.streamTrim).not.toHaveBeenCalled();
   });
 
   test("does not fan out to the outbox when AUDIT_LOG_STREAMS_ENABLED is false", async () => {
