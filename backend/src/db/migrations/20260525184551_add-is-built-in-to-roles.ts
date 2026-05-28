@@ -40,18 +40,21 @@ export async function up(knex: Knex): Promise<void> {
 
   // ── Seed built-in roles ────
   await knex.transaction(async (trx) => {
+    // Check per-(orgId, slug) pair so a partial crash followed by a re-run seeds
+    // only the missing rows instead of skipping the entire org.
+    const orgBuiltInSlugs = ["member", "no-access"];
     const alreadySeededOrgRows = await trx(TableName.Role)
       .whereNotNull("orgId")
       .whereNull("projectId")
-      .where({ slug: "member" })
-      .select("orgId");
-    const alreadySeededOrgIds = new Set(alreadySeededOrgRows.map((r) => String(r.orgId)));
+      .whereIn("slug", orgBuiltInSlugs)
+      .select("orgId", "slug");
+    const alreadySeededOrgSet = new Set(alreadySeededOrgRows.map((r) => `${String(r.orgId)}:${r.slug}`));
 
     const orgs = await trx(TableName.Organization).select("id");
-    const orgRolesToInsert = orgs
-      .filter((o) => !alreadySeededOrgIds.has(String(o.id)))
-      .flatMap(({ id: orgId }) => [
-        {
+    const orgRolesToInsert = orgs.flatMap(({ id: orgId }) => {
+      const rows = [];
+      if (!alreadySeededOrgSet.has(`${orgId}:member`)) {
+        rows.push({
           id: uuidv4(),
           orgId,
           projectId: null,
@@ -62,8 +65,10 @@ export async function up(knex: Knex): Promise<void> {
           isBuiltIn: true,
           createdAt: now,
           updatedAt: now
-        },
-        {
+        });
+      }
+      if (!alreadySeededOrgSet.has(`${orgId}:no-access`)) {
+        rows.push({
           id: uuidv4(),
           orgId,
           projectId: null,
@@ -74,95 +79,111 @@ export async function up(knex: Knex): Promise<void> {
           isBuiltIn: true,
           createdAt: now,
           updatedAt: now
-        }
-      ]);
+        });
+      }
+      return rows;
+    });
 
     if (orgRolesToInsert.length > 0) {
       await knex.batchInsert(TableName.Role, orgRolesToInsert, BATCH_SIZE).transacting(trx);
     }
 
+    // Check per-(projectId, slug) pair for the same reason.
+    const projectBuiltInSlugsToCheck = [
+      "member",
+      "viewer",
+      "no-access",
+      "ssh-host-bootstrapper",
+      "cryptographic-operator"
+    ];
     const alreadySeededProjectRows = await trx(TableName.Role)
       .whereNull("orgId")
       .whereNotNull("projectId")
-      .where({ slug: "member" })
-      .select("projectId");
-    const alreadySeededProjectIds = new Set(alreadySeededProjectRows.map((r) => String(r.projectId)));
+      .whereIn("slug", projectBuiltInSlugsToCheck)
+      .select("projectId", "slug");
+    const alreadySeededProjectSet = new Set(alreadySeededProjectRows.map((r) => `${String(r.projectId)}:${r.slug}`));
 
     const projects = await trx(TableName.Project).select("id", "type");
-    const projectRolesToInsert = projects
-      .filter((p) => !alreadySeededProjectIds.has(String(p.id)))
-      .flatMap(({ id: projectId, type }) => {
-        const rows = [
-          {
-            id: uuidv4(),
-            orgId: null,
-            projectId,
-            name: "Member",
-            slug: "member",
-            description: "Members can read and modify project resources.",
-            permissions: packedProjectMember,
-            isBuiltIn: true,
-            createdAt: now,
-            updatedAt: now
-          },
-          {
-            id: uuidv4(),
-            orgId: null,
-            projectId,
-            name: "Viewer",
-            slug: "viewer",
-            description: "Viewers can only read project resources.",
-            permissions: packedProjectViewer,
-            isBuiltIn: true,
-            createdAt: now,
-            updatedAt: now
-          },
-          {
-            id: uuidv4(),
-            orgId: null,
-            projectId,
-            name: "No Access",
-            slug: "no-access",
-            description: "No access to project resources.",
-            permissions: packedProjectNoAccess,
-            isBuiltIn: true,
-            createdAt: now,
-            updatedAt: now
-          }
-        ];
+    const projectRolesToInsert = projects.flatMap(({ id: projectId, type }) => {
+      const rows = [];
 
-        if (type === ProjectType.SSH) {
-          rows.push({
-            id: uuidv4(),
-            orgId: null,
-            projectId,
-            name: "SSH Host Bootstrapper",
-            slug: "ssh-host-bootstrapper",
-            description: "Allows bootstrapping SSH hosts.",
-            permissions: packedSshBootstrap,
-            isBuiltIn: true,
-            createdAt: now,
-            updatedAt: now
-          });
-        }
+      if (!alreadySeededProjectSet.has(`${projectId}:member`)) {
+        rows.push({
+          id: uuidv4(),
+          orgId: null,
+          projectId,
+          name: "Member",
+          slug: "member",
+          description: "Members can read and modify project resources.",
+          permissions: packedProjectMember,
+          isBuiltIn: true,
+          createdAt: now,
+          updatedAt: now
+        });
+      }
 
-        if (type === ProjectType.KMS) {
-          rows.push({
-            id: uuidv4(),
-            orgId: null,
-            projectId,
-            name: "Cryptographic Operator",
-            slug: "cryptographic-operator",
-            description: "Can perform cryptographic operations.",
-            permissions: packedCryptoOperator,
-            isBuiltIn: true,
-            createdAt: now,
-            updatedAt: now
-          });
-        }
+      if (!alreadySeededProjectSet.has(`${projectId}:viewer`)) {
+        rows.push({
+          id: uuidv4(),
+          orgId: null,
+          projectId,
+          name: "Viewer",
+          slug: "viewer",
+          description: "Viewers can only read project resources.",
+          permissions: packedProjectViewer,
+          isBuiltIn: true,
+          createdAt: now,
+          updatedAt: now
+        });
+      }
 
-        return rows;
-      });
+      if (!alreadySeededProjectSet.has(`${projectId}:no-access`)) {
+        rows.push({
+          id: uuidv4(),
+          orgId: null,
+          projectId,
+          name: "No Access",
+          slug: "no-access",
+          description: "No access to project resources.",
+          permissions: packedProjectNoAccess,
+          isBuiltIn: true,
+          createdAt: now,
+          updatedAt: now
+        });
+      }
+
+      if (type === ProjectType.SSH && !alreadySeededProjectSet.has(`${projectId}:ssh-host-bootstrapper`)) {
+        rows.push({
+          id: uuidv4(),
+          orgId: null,
+          projectId,
+          name: "SSH Host Bootstrapper",
+          slug: "ssh-host-bootstrapper",
+          description: "Allows bootstrapping SSH hosts.",
+          permissions: packedSshBootstrap,
+          isBuiltIn: true,
+          createdAt: now,
+          updatedAt: now
+        });
+      }
+
+      if (type === ProjectType.KMS && !alreadySeededProjectSet.has(`${projectId}:cryptographic-operator`)) {
+        rows.push({
+          id: uuidv4(),
+          orgId: null,
+          projectId,
+          name: "Cryptographic Operator",
+          slug: "cryptographic-operator",
+          description: "Can perform cryptographic operations.",
+          permissions: packedCryptoOperator,
+          isBuiltIn: true,
+          createdAt: now,
+          updatedAt: now
+        });
+      }
+
+      return rows;
+    });
 
     if (projectRolesToInsert.length > 0) {
       await knex.batchInsert(TableName.Role, projectRolesToInsert, BATCH_SIZE).transacting(trx);

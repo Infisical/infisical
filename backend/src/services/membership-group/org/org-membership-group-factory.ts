@@ -16,7 +16,6 @@ import { BadRequestError, InternalServerError, PermissionBoundaryError } from "@
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
-import { isCustomOrgRole } from "@app/services/org/org-role-fns";
 
 import { TMembershipGroupScopeFactory } from "../membership-group-types";
 
@@ -44,8 +43,6 @@ export const newOrgMembershipGroupFactory = ({
     }
     throw new InternalServerError({ message: "Invalid scope provided for the org factory" });
   };
-
-  const isCustomRole: TMembershipGroupScopeFactory["isCustomRole"] = (role: string) => isCustomOrgRole(role);
 
   const onCreateMembershipGroupGuard: TMembershipGroupScopeFactory["onCreateMembershipGroupGuard"] = async (dto) => {
     const isSubOrg = dto.permission.orgId !== dto.permission.rootOrgId;
@@ -234,7 +231,6 @@ export const newOrgMembershipGroupFactory = ({
     onListMembershipGroupGuard,
     onGetMembershipGroupByGroupIdGuard,
     getScopeField,
-    getScopeDatabaseFields,
-    isCustomRole
+    getScopeDatabaseFields
   };
 };

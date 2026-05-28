@@ -16,7 +16,6 @@ import { ActorType } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
-import { isCustomOrgRole } from "@app/services/org/org-role-fns";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 import { LoginMethod } from "@app/services/super-admin/super-admin-types";
@@ -61,8 +60,6 @@ export const newOrgMembershipUserFactory = ({
     }
     throw new InternalServerError({ message: "Invalid scope provided for the org factory" });
   };
-
-  const isCustomRole: TMembershipUserScopeFactory["isCustomRole"] = (role: string) => isCustomOrgRole(role);
 
   const onCreateMembershipUserGuard: TMembershipUserScopeFactory["onCreateMembershipUserGuard"] = async (
     dto,
@@ -310,7 +307,6 @@ export const newOrgMembershipUserFactory = ({
     onListMembershipUserGuard,
     onGetMembershipUserByUserIdGuard,
     getScopeField,
-    getScopeDatabaseFields,
-    isCustomRole
+    getScopeDatabaseFields
   };
 };

@@ -7,11 +7,7 @@ import {
   validatePrivilegeChangeOperation
 } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import {
-  isCustomProjectRole,
-  ProjectPermissionGroupActions,
-  ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+import { ProjectPermissionGroupActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, InternalServerError, PermissionBoundaryError } from "@app/lib/errors";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
@@ -46,8 +42,6 @@ export const newProjectMembershipGroupFactory = ({
     }
     throw new InternalServerError({ message: "Invalid scope provided for the project factory" });
   };
-
-  const isCustomRole: TMembershipGroupScopeFactory["isCustomRole"] = (role) => isCustomProjectRole(role);
 
   const onCreateMembershipGroupGuard: TMembershipGroupScopeFactory["onCreateMembershipGroupGuard"] = async (dto) => {
     const scope = getScopeField(dto.scopeData);
@@ -220,7 +214,6 @@ export const newProjectMembershipGroupFactory = ({
     onListMembershipGroupGuard,
     onGetMembershipGroupByGroupIdGuard,
     getScopeField,
-    getScopeDatabaseFields,
-    isCustomRole
+    getScopeDatabaseFields
   };
 };

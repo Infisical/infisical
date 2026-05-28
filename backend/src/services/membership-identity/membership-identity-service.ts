@@ -93,7 +93,9 @@ export const membershipIdentityServiceFactory = ({
 
     const scopeField = factory.getScopeField(dto.scopeData);
 
-    const roleSlugsToResolve = data.roles.filter((el) => el.role !== "admin").map(({ role }) => role);
+    const roleSlugsToResolve = data.roles
+      .filter((el) => el.role !== ProjectMembershipRole.Admin)
+      .map(({ role }) => role);
     const resolvedRoles = roleSlugsToResolve.length
       ? await roleDAL.find({
           [scopeField.key]: scopeField.value,
@@ -214,7 +216,9 @@ export const membershipIdentityServiceFactory = ({
 
     const scopeField = factory.getScopeField(dto.scopeData);
 
-    const roleSlugsToResolve = data.roles.filter((el) => el.role !== "admin").map(({ role }) => role);
+    const roleSlugsToResolve = data.roles
+      .filter((el) => el.role !== ProjectMembershipRole.Admin)
+      .map(({ role }) => role);
     const resolvedRoles = roleSlugsToResolve.length
       ? await roleDAL.find({
           [scopeField.key]: scopeField.value,

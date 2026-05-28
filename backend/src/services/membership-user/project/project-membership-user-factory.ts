@@ -7,7 +7,6 @@ import {
 } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
-  isCustomProjectRole,
   ProjectPermissionMemberActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
@@ -53,8 +52,6 @@ export const newProjectMembershipUserFactory = ({
     }
     throw new InternalServerError({ message: "Invalid scope provided for the project factory" });
   };
-
-  const isCustomRole: TMembershipUserScopeFactory["isCustomRole"] = (role) => isCustomProjectRole(role);
 
   const onCreateMembershipUserGuard: TMembershipUserScopeFactory["onCreateMembershipUserGuard"] = async (
     dto,
@@ -277,7 +274,6 @@ export const newProjectMembershipUserFactory = ({
     onListMembershipUserGuard,
     onGetMembershipUserByUserIdGuard,
     getScopeField,
-    getScopeDatabaseFields,
-    isCustomRole
+    getScopeDatabaseFields
   };
 };

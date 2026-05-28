@@ -12,7 +12,6 @@ import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
-import { isCustomOrgRole } from "@app/services/org/org-role-fns";
 
 import { TMembershipIdentityScopeFactory } from "../membership-identity-types";
 
@@ -40,8 +39,6 @@ export const newOrgMembershipIdentityFactory = ({
     }
     throw new InternalServerError({ message: "Invalid scope provided for the org factory" });
   };
-
-  const isCustomRole: TMembershipIdentityScopeFactory["isCustomRole"] = (role: string) => isCustomOrgRole(role);
 
   const onCreateMembershipIdentityGuard: TMembershipIdentityScopeFactory["onCreateMembershipIdentityGuard"] = async (
     dto
@@ -218,7 +215,6 @@ export const newOrgMembershipIdentityFactory = ({
     onListMembershipIdentityGuard,
     onGetMembershipIdentityByIdentityIdGuard,
     getScopeField,
-    getScopeDatabaseFields,
-    isCustomRole
+    getScopeDatabaseFields
   };
 };

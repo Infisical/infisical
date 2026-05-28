@@ -13,7 +13,6 @@ export interface TMembershipIdentityScopeFactory {
     scopeOrgId: string;
     scopeProjectId?: string | null;
   };
-  isCustomRole: (role: string) => boolean;
 }
 
 export type TCreateMembershipIdentityDTO = {

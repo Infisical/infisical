@@ -19,27 +19,27 @@ export const getDefaultOrgMembershipRoleForUpdateOrg = async ({
   roleDAL: TRoleDALFactory;
   plan: TFeatureSet;
 }) => {
-  if (isCustomOrgRole(membershipRoleSlug)) {
+  if (membershipRoleSlug === OrgMembershipRole.Admin) return membershipRoleSlug;
+
+  const role = await roleDAL.findOne({ slug: membershipRoleSlug, orgId });
+  if (!role) {
+    throw new NotFoundError({
+      name: "UpdateOrg",
+      message: `Organization role with slug '${membershipRoleSlug}' not found`
+    });
+  }
+
+  // Built-in roles (member, no-access) do not require an enterprise RBAC plan.
+  // Only user-created custom roles do.
+  if (!role.isBuiltIn) {
     if (!plan?.rbac)
       throw new BadRequestError({
         message:
           "Failed to set custom default role due to plan RBAC restriction. Upgrade plan to set custom default org membership role."
       });
-
-    const customRole = await roleDAL.findOne({ slug: membershipRoleSlug, orgId });
-    if (!customRole) {
-      throw new NotFoundError({
-        name: "UpdateOrg",
-        message: `Organization role with slug '${membershipRoleSlug}' not found`
-      });
-    }
-
-    // use ID for default role
-    return customRole.id;
   }
 
-  // not custom, use reserved slug
-  return membershipRoleSlug;
+  return role.id;
 };
 
 export const getDefaultOrgMembershipRole = (defaultOrgMembershipRole: string) => {
