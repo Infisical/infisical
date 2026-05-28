@@ -15,9 +15,9 @@ export const RolesSchema = z.object({
   permissions: z.unknown(),
   orgId: z.string().uuid().nullable().optional(),
   projectId: z.string().nullable().optional(),
-  isBuiltIn: z.boolean().default(false),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  isBuiltIn: z.boolean().default(false)
 });
 
 export type TRoles = z.infer<typeof RolesSchema>;
