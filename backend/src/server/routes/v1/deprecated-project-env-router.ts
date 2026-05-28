@@ -274,7 +274,7 @@ export const registerDeprecatedProjectEnvRouter = async (server: FastifyZodProvi
         actorOrgId: req.permission.orgId,
         projectId: req.params.workspaceId,
         id: req.params.id,
-        hardDelete: true // for backwards compatibility
+        hardDelete: false
       });
 
       await server.services.auditLog.createAuditLog({
@@ -285,7 +285,7 @@ export const registerDeprecatedProjectEnvRouter = async (server: FastifyZodProvi
           metadata: {
             slug: environment.slug,
             name: environment.name,
-            hardDelete: true
+            hardDelete: false
           }
         }
       });
