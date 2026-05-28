@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/infisical/api/internal/libs/errutil"
+	"github.com/infisical/api/internal/libs/fn"
 	"github.com/infisical/api/internal/services/auditlog"
 	"github.com/infisical/api/internal/services/auth"
 	"github.com/infisical/api/internal/services/permission"
@@ -27,12 +28,17 @@ type getSecretByNameInternalOpts struct {
 	IncludeImports         bool
 }
 
+// getSecretByNameResponse is the internal response type.
+type getSecretByNameResponse struct {
+	Secret SecretRaw
+}
+
 // getSecretByName is the unified internal method for getting a secret by name.
 // Both V3 and V4 handlers call this with different options.
-func (h *Handler) getSecretByName(ctx context.Context, opts *getSecretByNameInternalOpts) (GetSecretByNameV4Response, error) {
+func (h *Handler) getSecretByName(ctx context.Context, opts *getSecretByNameInternalOpts) (*getSecretByNameResponse, error) {
 	identity, err := auth.IdentityFromContext(ctx)
 	if err != nil {
-		return GetSecretByNameV4Response{}, err
+		return nil, err
 	}
 
 	// 1. Get permission
@@ -45,7 +51,7 @@ func (h *Handler) getSecretByName(ctx context.Context, opts *getSecretByNameInte
 		ActionProjectType: permission.ActionProjectTypeSecretManager,
 	})
 	if err != nil {
-		return GetSecretByNameV4Response{}, err
+		return nil, err
 	}
 	checker := permsecretsvc.NewSecretAccessChecker(permResult.Permission.Ability)
 
@@ -60,7 +66,7 @@ func (h *Handler) getSecretByName(ctx context.Context, opts *getSecretByNameInte
 		IncludeImports: opts.IncludeImports,
 	})
 	if err != nil {
-		return GetSecretByNameV4Response{}, err
+		return nil, err
 	}
 
 	secret := result.Secret
@@ -72,12 +78,12 @@ func (h *Handler) getSecretByName(ctx context.Context, opts *getSecretByNameInte
 	}
 
 	if !checker.CanDescribeSecret(secret.Environment, secret.SecretPath, secret.Secret.Key, tagSlugs) {
-		return GetSecretByNameV4Response{}, errutil.Forbidden("Permission denied to access this secret")
+		return nil, errutil.Forbidden("Permission denied to access this secret")
 	}
 
 	canReadValue := checker.CanReadSecretValue(secret.Environment, secret.SecretPath, secret.Secret.Key, tagSlugs)
 	if opts.ViewSecretValue && !canReadValue {
-		return GetSecretByNameV4Response{}, errutil.Forbidden("Read value denied")
+		return nil, errutil.Forbidden("Read value denied")
 	}
 
 	// 4. Set ValueHidden
@@ -173,7 +179,7 @@ func (h *Handler) getSecretByName(ctx context.Context, opts *getSecretByNameInte
 		expander.Expand()
 
 		if expander.HasDeniedRefs() {
-			return GetSecretByNameV4Response{}, errutil.Forbidden("Permission denied for secret reference expansion").WithErrf("denied refs: %v", expander.DeniedRefs())
+			return nil, errutil.Forbidden("Permission denied for secret reference expansion").WithErrf("denied refs: %v", expander.DeniedRefs())
 		}
 	}
 
@@ -181,84 +187,104 @@ func (h *Handler) getSecretByName(ctx context.Context, opts *getSecretByNameInte
 	secretRaw := h.buildSecretRaw(secret, opts.ProjectID)
 
 	// 7. Audit log
-	if err := h.createGetSecretAuditLog(ctx, opts.ProjectID, opts.Environment, opts.SecretPath, secretRaw); err != nil {
-		return GetSecretByNameV4Response{}, err
+	if err := h.createGetSecretAuditLog(ctx, opts.ProjectID, opts.Environment, opts.SecretPath, &secretRaw); err != nil {
+		return nil, err
 	}
 
-	return GetSecretByNameV4Response{Secret: secretRaw}, nil
+	return &getSecretByNameResponse{Secret: secretRaw}, nil
 }
 
 // GetSecretByNameV4 is the handler for getting a secret by name (V4).
-func (h *Handler) GetSecretByNameV4(ctx context.Context, req *GetSecretByNameV4Request) (GetSecretByNameV4Response, error) {
+func (h *Handler) GetSecretByNameV4(ctx context.Context, opts *GetSecretByNameV4ServiceRequestOptions) (*GetSecretByNameV4ResponseData, error) {
+	q := opts.Query
+	p := opts.PathParams
+
 	h.logger.InfoContext(ctx, "getting secret by name v4",
-		slog.String("projectId", req.ProjectID.Get()),
-		slog.String("environment", req.Environment.Get()),
-		slog.String("secretPath", req.SecretPath.Get()),
-		slog.String("secretName", req.SecretName.Get()),
+		slog.String("projectId", q.ProjectID),
+		slog.String("environment", q.Environment),
+		slog.String("secretPath", fn.ValueOr(q.SecretPath, "/")),
+		slog.String("secretName", p.SecretName),
 	)
 
 	identity, err := auth.IdentityFromContext(ctx)
 	if err != nil {
-		return GetSecretByNameV4Response{}, err
+		return nil, err
 	}
 
-	return h.getSecretByName(ctx, &getSecretByNameInternalOpts{
-		ProjectID:              req.ProjectID.Get(),
-		Environment:            req.Environment.Get(),
-		SecretPath:             req.SecretPath.Get(),
-		SecretName:             req.SecretName.Get(),
-		SecretType:             getSecretType(identity, req.Type.Get()),
+	secretType := "shared"
+	if q.Type != nil {
+		secretType = string(*q.Type)
+	}
+
+	response, err := h.getSecretByName(ctx, &getSecretByNameInternalOpts{
+		ProjectID:              q.ProjectID,
+		Environment:            q.Environment,
+		SecretPath:             fn.ValueOr(q.SecretPath, "/"),
+		SecretName:             p.SecretName,
+		SecretType:             getSecretType(identity, secretType),
 		UserID:                 getUserID(identity),
-		ViewSecretValue:        req.ViewSecretValue.Get(),
-		ExpandSecretReferences: req.ExpandSecretReferences.Get(),
-		IncludeImports:         req.IncludeImports.Get(),
+		ViewSecretValue:        fn.ValueOr(q.ViewSecretValue, true),
+		ExpandSecretReferences: fn.ValueOr(q.ExpandSecretReferences, true),
+		IncludeImports:         fn.ValueOr(q.IncludeImports, true),
 	})
+	if err != nil {
+		return nil, err
+	}
+
+	return NewGetSecretByNameV4ResponseData(&GetSecretByNameV4Response{
+		Secret: response.Secret,
+	}), nil
 }
 
 // GetSecretByNameRawV3 is the handler for getting a raw secret by name (V3, deprecated).
-func (h *Handler) GetSecretByNameRawV3(ctx context.Context, req *GetSecretByNameRawV3Request) (GetSecretByNameV4Response, error) {
+func (h *Handler) GetSecretByNameRawV3(ctx context.Context, opts *GetSecretByNameRawV3ServiceRequestOptions) (*GetSecretByNameRawV3ResponseData, error) {
+	q := opts.Query
+	p := opts.PathParams
+
 	identity, err := auth.IdentityFromContext(ctx)
 	if err != nil {
-		return GetSecretByNameV4Response{}, err
+		return nil, err
 	}
 
-	// Convert Optional to *string for ResolveProjectID
-	var workspaceID, workspaceSlug *string
-	if req.WorkspaceID.IsSet() {
-		v := req.WorkspaceID.Get()
-		workspaceID = &v
-	}
-	if req.WorkspaceSlug.IsSet() {
-		v := req.WorkspaceSlug.Get()
-		workspaceSlug = &v
-	}
-
-	projectID, err := h.project.ResolveProjectID(ctx, identity.OrgID, workspaceID, workspaceSlug)
+	projectID, err := h.project.ResolveProjectID(ctx, identity.OrgID, q.WorkspaceID, q.WorkspaceSlug)
 	if err != nil {
-		return GetSecretByNameV4Response{}, err
+		return nil, err
 	}
 
 	h.logger.InfoContext(ctx, "getting secret by name raw v3",
-		slog.String("secretName", req.SecretName.Get()),
+		slog.String("secretName", p.SecretName),
 		slog.String("projectId", projectID),
-		slog.String("environment", req.Environment.Get()),
+		slog.String("environment", fn.ValueOr(q.Environment, "")),
 	)
 
-	if !req.Environment.IsSet() || req.Environment.Get() == "" {
-		return GetSecretByNameV4Response{}, errutil.BadRequest("Environment is required")
+	env := fn.ValueOr(q.Environment, "")
+	if env == "" {
+		return nil, errutil.BadRequest("Environment is required")
 	}
 
-	return h.getSecretByName(ctx, &getSecretByNameInternalOpts{
+	secretType := "shared"
+	if q.Type != nil {
+		secretType = string(*q.Type)
+	}
+
+	response, err := h.getSecretByName(ctx, &getSecretByNameInternalOpts{
 		ProjectID:              projectID,
-		Environment:            req.Environment.Get(),
-		SecretPath:             req.SecretPath.Get(),
-		SecretName:             req.SecretName.Get(),
-		SecretType:             getSecretType(identity, req.Type.Get()),
+		Environment:            env,
+		SecretPath:             fn.ValueOr(q.SecretPath, "/"),
+		SecretName:             p.SecretName,
+		SecretType:             getSecretType(identity, secretType),
 		UserID:                 getUserID(identity),
-		ViewSecretValue:        req.ViewSecretValue.Get(),
-		ExpandSecretReferences: req.ExpandSecretReferences.Get(),
-		IncludeImports:         req.IncludeImports.Get(),
+		ViewSecretValue:        fn.ValueOr(q.ViewSecretValue, true),
+		ExpandSecretReferences: fn.ValueOr(q.ExpandSecretReferences, true),
+		IncludeImports:         fn.ValueOr(q.IncludeImports, true),
 	})
+	if err != nil {
+		return nil, err
+	}
+
+	return NewGetSecretByNameRawV3ResponseData(&GetSecretByNameRawV3Response{
+		Secret: response.Secret,
+	}), nil
 }
 
 func (h *Handler) createGetSecretAuditLog(ctx context.Context, projectID, env, secretPath string, sec *SecretRaw) error {
@@ -276,14 +302,14 @@ func (h *Handler) createGetSecretAuditLog(ctx context.Context, projectID, env, s
 	if sec.SecretMetadata != nil {
 		secretMetadata = make([]auditlog.SecretMetadataEntry, len(sec.SecretMetadata))
 		for i, m := range sec.SecretMetadata {
-			value := m.Value.Get()
-			if m.IsEncrypted.Get() {
+			value := m.Value
+			if m.IsEncrypted {
 				value = auditlog.AuditLogSensitiveValue
 			}
 			secretMetadata[i] = auditlog.SecretMetadataEntry{
-				Key:         m.Key.Get(),
+				Key:         m.Key,
 				Value:       value,
-				IsEncrypted: m.IsEncrypted.Get(),
+				IsEncrypted: m.IsEncrypted,
 			}
 		}
 	}
@@ -293,9 +319,9 @@ func (h *Handler) createGetSecretAuditLog(ctx context.Context, projectID, env, s
 			Metadata: auditlog.GetSecretEventMetadata{
 				Environment:    env,
 				SecretPath:     secretPath,
-				SecretID:       sec.ID.Get(),
-				SecretKey:      sec.SecretKey.Get(),
-				SecretVersion:  sec.Version.Get(),
+				SecretID:       sec.ID,
+				SecretKey:      sec.SecretKey,
+				SecretVersion:  sec.Version,
 				SecretMetadata: secretMetadata,
 			},
 		},

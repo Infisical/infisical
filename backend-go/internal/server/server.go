@@ -7,49 +7,28 @@ import (
 	"sync"
 	"time"
 
+	"github.com/go-chi/chi/v5"
 	chimw "github.com/go-chi/chi/v5/middleware"
 
 	"github.com/infisical/api/internal/libs/requestid"
 	"github.com/infisical/api/internal/server/api"
-	serverauth "github.com/infisical/api/internal/server/auth"
 	"github.com/infisical/api/internal/server/middlewares"
-	"github.com/infisical/api/pkg/chita"
 )
 
 // Server is the HTTP server for the Infisical API.
 type Server struct {
 	services *api.Services
 	logger   *slog.Logger
-	router   *chita.Router
+	router   chi.Router
 }
 
-// NewServer creates a new HTTP server with chita routing.
+// NewServer creates a new HTTP server with chi routing.
 func NewServer(services *api.Services, logger *slog.Logger) *Server {
-	securityRegistry := serverauth.NewSecurityRegistry(services.Platform.Authenticator)
-
-	app := chita.NewApp(chita.AppConfig{
-		ErrorHandler:     NewErrorHandler(logger),
-		SecurityRegistry: securityRegistry,
-	})
-
-	router := chita.NewRouter(chita.RouterConfig{
-		App: app,
-		Spec: &chita.OpenAPIConfig{
-			Info: chita.OpenAPIInfo{
-				Title:       "Infisical API",
-				Version:     "0.0.1",
-				Description: "Infisical secret management API",
-			},
-			Servers: []chita.Server{
-				{URL: "/api", Description: "API server"},
-			},
-			SecuritySchemes: securityRegistry.Schemes(),
-		},
-	})
+	router := chi.NewRouter()
 
 	// Register domain routes
-	api.RegisterPlatformRoutes(router, app, logger, services.Platform)
-	api.RegisterSecretManagerRoutes(router, app, logger, services.Platform, services.SecretManager)
+	api.RegisterPlatformRoutes(router, logger, services.Platform)
+	api.RegisterSecretManagerRoutes(router, logger, services.Platform, services.SecretManager)
 
 	return &Server{
 		services: services,

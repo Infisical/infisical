@@ -3,16 +3,51 @@
 package secret_test
 
 import (
+	"encoding/json"
+	"fmt"
+	"net/http/httptest"
+	"net/url"
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/infisical/api/internal/server/api/secretmanager/secret"
+	"github.com/infisical/api/internal/server/api/shared"
 	"github.com/infisical/api/internal/services/auth"
 	"github.com/infisical/api/internal/testutil/infra"
-	"github.com/infisical/api/pkg/chita"
 )
+
+// httpGetSecretV4 makes a direct HTTP GET request to /api/v4/secrets/{secretName}
+func httpGetSecretV4(t *testing.T, srv *httptest.Server, secretName string, params *GetSecretByNameV4Params) (body []byte, statusCode int) {
+	t.Helper()
+
+	urlParams := url.Values{}
+	urlParams.Set("projectId", params.ProjectID)
+	urlParams.Set("environment", params.Environment)
+	if params.SecretPath != nil {
+		urlParams.Set("secretPath", *params.SecretPath)
+	}
+	if params.Version != nil {
+		urlParams.Set("version", strconv.Itoa(*params.Version))
+	}
+	if params.Type != nil {
+		urlParams.Set("type", *params.Type)
+	}
+	if params.ViewSecretValue != nil {
+		urlParams.Set("viewSecretValue", strconv.FormatBool(*params.ViewSecretValue))
+	}
+	if params.ExpandSecretReferences != nil {
+		urlParams.Set("expandSecretReferences", strconv.FormatBool(*params.ExpandSecretReferences))
+	}
+	if params.IncludeImports != nil {
+		urlParams.Set("includeImports", strconv.FormatBool(*params.IncludeImports))
+	}
+
+	path := fmt.Sprintf("/api/v4/secrets/%s?%s", url.PathEscape(secretName), urlParams.Encode())
+	return doGet(t, srv, path)
+}
 
 // =============================================================================
 // Basic GetSecretByName Tests
@@ -27,17 +62,16 @@ func TestGetSecretByName_ReturnsSecret(t *testing.T) {
 	identity := nodejs.CreateIdentity(t, "get-basic-identity")
 	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
 
-	result, err := getSecretByName(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &secret.GetSecretByNameV4Request{
-		SecretName:      chita.NewRequired("PLAIN_SECRET"),
-		ProjectID:       chita.NewRequired(proj.ID),
-		Environment:     chita.NewRequired(proj.EnvSlug),
-		SecretPath:      chita.NewOptional("/"),
-		ViewSecretValue: chita.NewOptional(true),
+	result, err := getSecretByName(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), "PLAIN_SECRET", &GetSecretByNameV4Params{
+		ProjectID:       proj.ID,
+		Environment:     proj.EnvSlug,
+		SecretPath:      new("/"),
+		ViewSecretValue: new(true),
 	})
 
 	require.NoError(t, err)
-	assert.Equal(t, "PLAIN_SECRET", result.Secret.SecretKey.Get())
-	assert.Equal(t, "plain-value", result.Secret.SecretValue.Get())
+	assert.Equal(t, "PLAIN_SECRET", result.Secret.SecretKey)
+	assert.Equal(t, "plain-value", result.Secret.SecretValue)
 }
 
 func TestGetSecretByName_WithExpansion(t *testing.T) {
@@ -51,18 +85,17 @@ func TestGetSecretByName_WithExpansion(t *testing.T) {
 	identity := nodejs.CreateIdentity(t, "get-expansion-identity")
 	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
 
-	result, err := getSecretByName(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &secret.GetSecretByNameV4Request{
-		SecretName:             chita.NewRequired("ENDPOINT"),
-		ProjectID:              chita.NewRequired(proj.ID),
-		Environment:            chita.NewRequired(proj.EnvSlug),
-		SecretPath:             chita.NewOptional("/"),
-		ViewSecretValue:        chita.NewOptional(true),
-		ExpandSecretReferences: chita.NewOptional(true),
+	result, err := getSecretByName(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), "ENDPOINT", &GetSecretByNameV4Params{
+		ProjectID:              proj.ID,
+		Environment:            proj.EnvSlug,
+		SecretPath:             new("/"),
+		ViewSecretValue:        new(true),
+		ExpandSecretReferences: new(true),
 	})
 
 	require.NoError(t, err)
-	assert.Equal(t, "ENDPOINT", result.Secret.SecretKey.Get())
-	assert.Equal(t, "myhost.com:5432", result.Secret.SecretValue.Get(), "should expand references")
+	assert.Equal(t, "ENDPOINT", result.Secret.SecretKey)
+	assert.Equal(t, "myhost.com:5432", result.Secret.SecretValue, "should expand references")
 }
 
 func TestGetSecretByName_WithoutExpansion(t *testing.T) {
@@ -75,18 +108,17 @@ func TestGetSecretByName_WithoutExpansion(t *testing.T) {
 	identity := nodejs.CreateIdentity(t, "get-no-expansion-identity")
 	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
 
-	result, err := getSecretByName(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &secret.GetSecretByNameV4Request{
-		SecretName:             chita.NewRequired("ENDPOINT"),
-		ProjectID:              chita.NewRequired(proj.ID),
-		Environment:            chita.NewRequired(proj.EnvSlug),
-		SecretPath:             chita.NewOptional("/"),
-		ViewSecretValue:        chita.NewOptional(true),
-		ExpandSecretReferences: chita.NewOptional(false),
+	result, err := getSecretByName(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), "ENDPOINT", &GetSecretByNameV4Params{
+		ProjectID:              proj.ID,
+		Environment:            proj.EnvSlug,
+		SecretPath:             new("/"),
+		ViewSecretValue:        new(true),
+		ExpandSecretReferences: new(false),
 	})
 
 	require.NoError(t, err)
-	assert.Equal(t, "ENDPOINT", result.Secret.SecretKey.Get())
-	assert.Equal(t, "${HOST}:8080", result.Secret.SecretValue.Get(), "should not expand references")
+	assert.Equal(t, "ENDPOINT", result.Secret.SecretKey)
+	assert.Equal(t, "${HOST}:8080", result.Secret.SecretValue, "should not expand references")
 }
 
 func TestGetSecretByName_NotFound(t *testing.T) {
@@ -97,12 +129,11 @@ func TestGetSecretByName_NotFound(t *testing.T) {
 	identity := nodejs.CreateIdentity(t, "get-not-found-identity")
 	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
 
-	_, err := getSecretByName(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &secret.GetSecretByNameV4Request{
-		SecretName:      chita.NewRequired("NON_EXISTENT_SECRET"),
-		ProjectID:       chita.NewRequired(proj.ID),
-		Environment:     chita.NewRequired(proj.EnvSlug),
-		SecretPath:      chita.NewOptional("/"),
-		ViewSecretValue: chita.NewOptional(true),
+	_, err := getSecretByName(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), "NON_EXISTENT_SECRET", &GetSecretByNameV4Params{
+		ProjectID:       proj.ID,
+		Environment:     proj.EnvSlug,
+		SecretPath:      new("/"),
+		ViewSecretValue: new(true),
 	})
 
 	require.Error(t, err)
@@ -120,17 +151,16 @@ func TestGetSecretByName_WithComment(t *testing.T) {
 	identity := nodejs.CreateIdentity(t, "get-comment-identity")
 	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
 
-	result, err := getSecretByName(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &secret.GetSecretByNameV4Request{
-		SecretName:      chita.NewRequired("COMMENTED_SECRET"),
-		ProjectID:       chita.NewRequired(proj.ID),
-		Environment:     chita.NewRequired(proj.EnvSlug),
-		SecretPath:      chita.NewOptional("/"),
-		ViewSecretValue: chita.NewOptional(true),
+	result, err := getSecretByName(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), "COMMENTED_SECRET", &GetSecretByNameV4Params{
+		ProjectID:       proj.ID,
+		Environment:     proj.EnvSlug,
+		SecretPath:      new("/"),
+		ViewSecretValue: new(true),
 	})
 
 	require.NoError(t, err)
-	assert.Equal(t, "COMMENTED_SECRET", result.Secret.SecretKey.Get())
-	assert.Equal(t, "This is a comment for the secret", result.Secret.SecretComment.Get())
+	assert.Equal(t, "COMMENTED_SECRET", result.Secret.SecretKey)
+	assert.Equal(t, "This is a comment for the secret", result.Secret.SecretComment)
 }
 
 func TestGetSecretByName_WithMetadata(t *testing.T) {
@@ -147,21 +177,20 @@ func TestGetSecretByName_WithMetadata(t *testing.T) {
 	identity := nodejs.CreateIdentity(t, "get-metadata-identity")
 	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
 
-	result, err := getSecretByName(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &secret.GetSecretByNameV4Request{
-		SecretName:      chita.NewRequired("METADATA_SECRET"),
-		ProjectID:       chita.NewRequired(proj.ID),
-		Environment:     chita.NewRequired(proj.EnvSlug),
-		SecretPath:      chita.NewOptional("/"),
-		ViewSecretValue: chita.NewOptional(true),
+	result, err := getSecretByName(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), "METADATA_SECRET", &GetSecretByNameV4Params{
+		ProjectID:       proj.ID,
+		Environment:     proj.EnvSlug,
+		SecretPath:      new("/"),
+		ViewSecretValue: new(true),
 	})
 
 	require.NoError(t, err)
-	assert.Equal(t, "METADATA_SECRET", result.Secret.SecretKey.Get())
+	assert.Equal(t, "METADATA_SECRET", result.Secret.SecretKey)
 	require.NotEmpty(t, result.Secret.SecretMetadata)
 
 	metadataMap := make(map[string]string)
 	for _, m := range result.Secret.SecretMetadata {
-		metadataMap[m.Key.Get()] = m.Value.Get()
+		metadataMap[m.Key] = m.Value
 	}
 	assert.Equal(t, "production", metadataMap["env"])
 	assert.Equal(t, "platform-team", metadataMap["owner"])
@@ -182,18 +211,17 @@ func TestGetSecretByName_ExpandsSameFolderRefsWithoutImports(t *testing.T) {
 	identity := nodejs.CreateIdentity(t, "no-imports-expansion-identity")
 	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
 
-	result, err := getSecretByName(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &secret.GetSecretByNameV4Request{
-		SecretName:             chita.NewRequired("ENDPOINT"),
-		ProjectID:              chita.NewRequired(proj.ID),
-		Environment:            chita.NewRequired("dev"),
-		SecretPath:             chita.NewOptional("/"),
-		ViewSecretValue:        chita.NewOptional(true),
-		ExpandSecretReferences: chita.NewOptional(true),
+	result, err := getSecretByName(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), "ENDPOINT", &GetSecretByNameV4Params{
+		ProjectID:              proj.ID,
+		Environment:            "dev",
+		SecretPath:             new("/"),
+		ViewSecretValue:        new(true),
+		ExpandSecretReferences: new(true),
 	})
 
 	require.NoError(t, err)
-	assert.Equal(t, "ENDPOINT", result.Secret.SecretKey.Get())
-	assert.Equal(t, "https://api.example.com/v1/users", result.Secret.SecretValue.Get(),
+	assert.Equal(t, "ENDPOINT", result.Secret.SecretKey)
+	assert.Equal(t, "https://api.example.com/v1/users", result.Secret.SecretValue,
 		"should expand same-folder reference even without imports configured")
 }
 
@@ -210,18 +238,17 @@ func TestGetSecretByName_ExpandsNestedRefsWithoutImports(t *testing.T) {
 	identity := nodejs.CreateIdentity(t, "nested-no-imports-identity")
 	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
 
-	result, err := getSecretByName(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &secret.GetSecretByNameV4Request{
-		SecretName:             chita.NewRequired("FULL_DSN"),
-		ProjectID:              chita.NewRequired(proj.ID),
-		Environment:            chita.NewRequired("dev"),
-		SecretPath:             chita.NewOptional("/"),
-		ViewSecretValue:        chita.NewOptional(true),
-		ExpandSecretReferences: chita.NewOptional(true),
+	result, err := getSecretByName(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), "FULL_DSN", &GetSecretByNameV4Params{
+		ProjectID:              proj.ID,
+		Environment:            "dev",
+		SecretPath:             new("/"),
+		ViewSecretValue:        new(true),
+		ExpandSecretReferences: new(true),
 	})
 
 	require.NoError(t, err)
-	assert.Equal(t, "FULL_DSN", result.Secret.SecretKey.Get())
-	assert.Equal(t, "postgres://user@db.example.com:5432/mydb", result.Secret.SecretValue.Get(),
+	assert.Equal(t, "FULL_DSN", result.Secret.SecretKey)
+	assert.Equal(t, "postgres://user@db.example.com:5432/mydb", result.Secret.SecretValue,
 		"should expand nested references without imports")
 }
 
@@ -235,17 +262,16 @@ func TestGetSecretByNameRawV3_WithWorkspaceSlug(t *testing.T) {
 	proj := nodejs.CreateProject(t, "v3-get-slug-test")
 	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "V3_SECRET", "v3-value", nil)
 
-	result, err := getSecretByNameRawV3AsUser(t, nodejs.UserID(), nodejs.OrgID(), &secret.GetSecretByNameRawV3Request{
-		SecretName:      chita.NewRequired("V3_SECRET"),
-		WorkspaceSlug:   chita.NewOptional(proj.Slug),
-		Environment:     chita.NewOptional(proj.EnvSlug),
-		SecretPath:      chita.NewOptional("/"),
-		ViewSecretValue: chita.NewOptional(true),
+	result, err := getSecretByNameRawV3AsUser(t, nodejs.UserID(), nodejs.OrgID(), "V3_SECRET", &GetSecretByNameV3Params{
+		WorkspaceSlug:   new(proj.Slug),
+		Environment:     new(proj.EnvSlug),
+		SecretPath:      new("/"),
+		ViewSecretValue: new(true),
 	})
 
 	require.NoError(t, err)
-	assert.Equal(t, "V3_SECRET", result.Secret.SecretKey.Get())
-	assert.Equal(t, "v3-value", result.Secret.SecretValue.Get())
+	assert.Equal(t, "V3_SECRET", result.Secret.SecretKey)
+	assert.Equal(t, "v3-value", result.Secret.SecretValue)
 }
 
 func TestGetSecretByNameRawV3_WithWorkspaceId(t *testing.T) {
@@ -254,17 +280,16 @@ func TestGetSecretByNameRawV3_WithWorkspaceId(t *testing.T) {
 	proj := nodejs.CreateProject(t, "v3-get-id-test")
 	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "V3_ID_SECRET", "v3-id-value", nil)
 
-	result, err := getSecretByNameRawV3AsUser(t, nodejs.UserID(), nodejs.OrgID(), &secret.GetSecretByNameRawV3Request{
-		SecretName:      chita.NewRequired("V3_ID_SECRET"),
-		WorkspaceID:     chita.NewOptional(proj.ID),
-		Environment:     chita.NewOptional(proj.EnvSlug),
-		SecretPath:      chita.NewOptional("/"),
-		ViewSecretValue: chita.NewOptional(true),
+	result, err := getSecretByNameRawV3AsUser(t, nodejs.UserID(), nodejs.OrgID(), "V3_ID_SECRET", &GetSecretByNameV3Params{
+		WorkspaceID:     new(proj.ID),
+		Environment:     new(proj.EnvSlug),
+		SecretPath:      new("/"),
+		ViewSecretValue: new(true),
 	})
 
 	require.NoError(t, err)
-	assert.Equal(t, "V3_ID_SECRET", result.Secret.SecretKey.Get())
-	assert.Equal(t, "v3-id-value", result.Secret.SecretValue.Get())
+	assert.Equal(t, "V3_ID_SECRET", result.Secret.SecretKey)
+	assert.Equal(t, "v3-id-value", result.Secret.SecretValue)
 }
 
 // =============================================================================
@@ -282,19 +307,18 @@ func TestGetSecretByName_FromImport(t *testing.T) {
 	identity := nodejs.CreateIdentity(t, "get-import-identity")
 	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
 
-	result, err := getSecretByName(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &secret.GetSecretByNameV4Request{
-		SecretName:      chita.NewRequired("STAGING_SECRET"),
-		ProjectID:       chita.NewRequired(proj.ID),
-		Environment:     chita.NewRequired("dev"),
-		SecretPath:      chita.NewOptional("/"),
-		ViewSecretValue: chita.NewOptional(true),
-		IncludeImports:  chita.NewOptional(true),
+	result, err := getSecretByName(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), "STAGING_SECRET", &GetSecretByNameV4Params{
+		ProjectID:       proj.ID,
+		Environment:     "dev",
+		SecretPath:      new("/"),
+		ViewSecretValue: new(true),
+		IncludeImports:  new(true),
 	})
 
 	require.NoError(t, err)
-	assert.Equal(t, "STAGING_SECRET", result.Secret.SecretKey.Get())
-	assert.Equal(t, "staging-value", result.Secret.SecretValue.Get())
-	assert.Equal(t, "staging", result.Secret.Environment.Get(), "should return actual source environment")
+	assert.Equal(t, "STAGING_SECRET", result.Secret.SecretKey)
+	assert.Equal(t, "staging-value", result.Secret.SecretValue)
+	assert.Equal(t, "staging", result.Secret.Environment, "should return actual source environment")
 }
 
 func TestGetSecretByName_ImportNotFoundWhenExcluded(t *testing.T) {
@@ -308,13 +332,12 @@ func TestGetSecretByName_ImportNotFoundWhenExcluded(t *testing.T) {
 	identity := nodejs.CreateIdentity(t, "get-import-excluded-identity")
 	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
 
-	_, err := getSecretByName(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &secret.GetSecretByNameV4Request{
-		SecretName:      chita.NewRequired("STAGING_ONLY"),
-		ProjectID:       chita.NewRequired(proj.ID),
-		Environment:     chita.NewRequired("dev"),
-		SecretPath:      chita.NewOptional("/"),
-		ViewSecretValue: chita.NewOptional(true),
-		IncludeImports:  chita.NewOptional(false),
+	_, err := getSecretByName(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), "STAGING_ONLY", &GetSecretByNameV4Params{
+		ProjectID:       proj.ID,
+		Environment:     "dev",
+		SecretPath:      new("/"),
+		ViewSecretValue: new(true),
+		IncludeImports:  new(false),
 	})
 
 	require.Error(t, err)
@@ -341,63 +364,63 @@ func TestGetSecretByNameV4_HTTP(t *testing.T) {
 	defer srv.Close()
 
 	t.Run("success with path param and query params", func(t *testing.T) {
-		resp, status := chita.HTTPTest[*secret.GetSecretByNameV4Request, secret.GetSecretByNameV4Response](
-			t, srv, "GET", "/api/v4/secrets/{secretName}", &secret.GetSecretByNameV4Request{
-				SecretName:  chita.NewRequired("HTTP_GET_SECRET"),
-				ProjectID:   chita.NewRequired(proj.ID),
-				Environment: chita.NewRequired(proj.EnvSlug),
-			})
+		body, status := httpGetSecretV4(t, srv, "HTTP_GET_SECRET", &GetSecretByNameV4Params{
+			ProjectID:   proj.ID,
+			Environment: proj.EnvSlug,
+		})
 
 		assert.Equal(t, 200, status)
-		assert.Equal(t, "HTTP_GET_SECRET", resp.Secret.SecretKey.Get())
-		assert.Equal(t, "http-get-value", resp.Secret.SecretValue.Get())
+		var resp secret.GetSecretByNameV4Response
+		require.NoError(t, json.Unmarshal(body, &resp))
+		assert.Equal(t, "HTTP_GET_SECRET", resp.Secret.SecretKey)
+		assert.Equal(t, "http-get-value", resp.Secret.SecretValue)
 	})
 
 	t.Run("secretPath query param filters correctly", func(t *testing.T) {
-		resp, status := chita.HTTPTest[*secret.GetSecretByNameV4Request, secret.GetSecretByNameV4Response](
-			t, srv, "GET", "/api/v4/secrets/{secretName}", &secret.GetSecretByNameV4Request{
-				SecretName:  chita.NewRequired("NESTED_GET_SECRET"),
-				ProjectID:   chita.NewRequired(proj.ID),
-				Environment: chita.NewRequired(proj.EnvSlug),
-				SecretPath:  chita.NewOptional("/nested"),
-			})
+		body, status := httpGetSecretV4(t, srv, "NESTED_GET_SECRET", &GetSecretByNameV4Params{
+			ProjectID:   proj.ID,
+			Environment: proj.EnvSlug,
+			SecretPath:  new("/nested"),
+		})
 
 		assert.Equal(t, 200, status)
-		assert.Equal(t, "NESTED_GET_SECRET", resp.Secret.SecretKey.Get())
-		assert.Equal(t, "nested-get-value", resp.Secret.SecretValue.Get())
+		var resp secret.GetSecretByNameV4Response
+		require.NoError(t, json.Unmarshal(body, &resp))
+		assert.Equal(t, "NESTED_GET_SECRET", resp.Secret.SecretKey)
+		assert.Equal(t, "nested-get-value", resp.Secret.SecretValue)
 	})
 
 	t.Run("missing projectId returns 400", func(t *testing.T) {
-		resp, status := chita.HTTPTest[*secret.GetSecretByNameV4Request, chita.ErrorBody](
-			t, srv, "GET", "/api/v4/secrets/{secretName}", &secret.GetSecretByNameV4Request{
-				SecretName:  chita.NewRequired("HTTP_GET_SECRET"),
-				Environment: chita.NewRequired(proj.EnvSlug),
-			})
+		body, status := httpGetSecretV4(t, srv, "HTTP_GET_SECRET", &GetSecretByNameV4Params{
+			Environment: proj.EnvSlug,
+		})
 
-		assert.Equal(t, 422, status)
-		assert.Equal(t, "ValidationFailure", resp.Error)
+		assert.Equal(t, 400, status)
+		var resp shared.Error
+		require.NoError(t, json.Unmarshal(body, &resp))
+		assert.NotEmpty(t, resp.Message)
 	})
 
 	t.Run("missing environment returns 400", func(t *testing.T) {
-		resp, status := chita.HTTPTest[*secret.GetSecretByNameV4Request, chita.ErrorBody](
-			t, srv, "GET", "/api/v4/secrets/{secretName}", &secret.GetSecretByNameV4Request{
-				SecretName: chita.NewRequired("HTTP_GET_SECRET"),
-				ProjectID:  chita.NewRequired(proj.ID),
-			})
+		body, status := httpGetSecretV4(t, srv, "HTTP_GET_SECRET", &GetSecretByNameV4Params{
+			ProjectID: proj.ID,
+		})
 
-		assert.Equal(t, 422, status)
-		assert.Equal(t, "ValidationFailure", resp.Error)
+		assert.Equal(t, 400, status)
+		var resp shared.Error
+		require.NoError(t, json.Unmarshal(body, &resp))
+		assert.NotEmpty(t, resp.Message)
 	})
 
 	t.Run("secret not found returns 404", func(t *testing.T) {
-		resp, status := chita.HTTPTest[*secret.GetSecretByNameV4Request, chita.ErrorBody](
-			t, srv, "GET", "/api/v4/secrets/{secretName}", &secret.GetSecretByNameV4Request{
-				SecretName:  chita.NewRequired("NON_EXISTENT"),
-				ProjectID:   chita.NewRequired(proj.ID),
-				Environment: chita.NewRequired(proj.EnvSlug),
-			})
+		body, status := httpGetSecretV4(t, srv, "NON_EXISTENT", &GetSecretByNameV4Params{
+			ProjectID:   proj.ID,
+			Environment: proj.EnvSlug,
+		})
 
 		assert.Equal(t, 404, status)
+		var resp shared.Error
+		require.NoError(t, json.Unmarshal(body, &resp))
 		assert.Contains(t, resp.Message, "not found")
 	})
 }

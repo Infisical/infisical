@@ -1,4 +1,4 @@
-.PHONY: lint lint-fix test test-integration test-all dev build
+.PHONY: lint lint-fix test test-integration test-all dev build generate
 
 # Run linters
 lint:
@@ -21,3 +21,7 @@ dev:
 # Build the server binary
 build:
 	go build -o infisical ./cmd/infisical/...
+
+# Regenerate oapi-codegen-dd code from openapi.yml specs
+generate:
+	go generate ./...

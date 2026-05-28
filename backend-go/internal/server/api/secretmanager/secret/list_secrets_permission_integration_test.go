@@ -9,10 +9,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/infisical/api/internal/server/api/secretmanager/secret"
 	"github.com/infisical/api/internal/services/auth"
 	"github.com/infisical/api/internal/testutil/infra"
-	"github.com/infisical/api/pkg/chita"
 )
 
 // =============================================================================
@@ -29,18 +27,18 @@ func TestIdentityAdmin_CanReadAllSecrets(t *testing.T) {
 	identity := nodejs.CreateIdentity(t, "admin-secrets-identity")
 	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
 
-	result, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &secret.ListSecretsV4Request{
-		ProjectID:       chita.NewRequired(proj.ID),
-		Environment:     chita.NewRequired(proj.EnvSlug),
-		SecretPath:      chita.NewOptional("/"),
-		ViewSecretValue: chita.NewOptional(true),
+	result, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &ListSecretsV4Params{
+		ProjectID:       proj.ID,
+		Environment:     proj.EnvSlug,
+		SecretPath:      new("/"),
+		ViewSecretValue: new(true),
 	})
 
 	require.NoError(t, err)
 	require.Len(t, result.Secrets, 2)
 
 	for _, secret := range result.Secrets {
-		assert.False(t, secret.SecretValueHidden.Get(), "admin should see secret values")
+		assert.False(t, secret.SecretValueHidden, "admin should see secret values")
 		assert.NotEmpty(t, secret.SecretValue, "admin should see secret values")
 	}
 }
@@ -54,18 +52,18 @@ func TestIdentityMember_CanReadAllSecrets(t *testing.T) {
 	identity := nodejs.CreateIdentity(t, "member-secrets-identity")
 	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("member"))
 
-	result, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &secret.ListSecretsV4Request{
-		ProjectID:       chita.NewRequired(proj.ID),
-		Environment:     chita.NewRequired(proj.EnvSlug),
-		SecretPath:      chita.NewOptional("/"),
-		ViewSecretValue: chita.NewOptional(true),
+	result, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &ListSecretsV4Params{
+		ProjectID:       proj.ID,
+		Environment:     proj.EnvSlug,
+		SecretPath:      new("/"),
+		ViewSecretValue: new(true),
 	})
 
 	require.NoError(t, err)
 	require.Len(t, result.Secrets, 1)
 
-	assert.False(t, result.Secrets[0].SecretValueHidden.Get(), "member should see secret values")
-	assert.Equal(t, "member-value", result.Secrets[0].SecretValue.Get())
+	assert.False(t, result.Secrets[0].SecretValueHidden, "member should see secret values")
+	assert.Equal(t, "member-value", result.Secrets[0].SecretValue)
 }
 
 func TestIdentityViewer_CanReadSecrets(t *testing.T) {
@@ -77,18 +75,18 @@ func TestIdentityViewer_CanReadSecrets(t *testing.T) {
 	identity := nodejs.CreateIdentity(t, "viewer-secrets-identity")
 	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("viewer"))
 
-	result, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &secret.ListSecretsV4Request{
-		ProjectID:       chita.NewRequired(proj.ID),
-		Environment:     chita.NewRequired(proj.EnvSlug),
-		SecretPath:      chita.NewOptional("/"),
-		ViewSecretValue: chita.NewOptional(true),
+	result, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &ListSecretsV4Params{
+		ProjectID:       proj.ID,
+		Environment:     proj.EnvSlug,
+		SecretPath:      new("/"),
+		ViewSecretValue: new(true),
 	})
 
 	require.NoError(t, err)
 	require.Len(t, result.Secrets, 1)
 
-	assert.False(t, result.Secrets[0].SecretValueHidden.Get(), "viewer should see secret values")
-	assert.Equal(t, "viewer-visible-value", result.Secrets[0].SecretValue.Get())
+	assert.False(t, result.Secrets[0].SecretValueHidden, "viewer should see secret values")
+	assert.Equal(t, "viewer-visible-value", result.Secrets[0].SecretValue)
 }
 
 func TestIdentityNoAccess_EmptyResult(t *testing.T) {
@@ -100,11 +98,11 @@ func TestIdentityNoAccess_EmptyResult(t *testing.T) {
 	identity := nodejs.CreateIdentity(t, "noaccess-secrets-identity")
 	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("no-access"))
 
-	result, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &secret.ListSecretsV4Request{
-		ProjectID:       chita.NewRequired(proj.ID),
-		Environment:     chita.NewRequired(proj.EnvSlug),
-		SecretPath:      chita.NewOptional("/"),
-		ViewSecretValue: chita.NewOptional(true),
+	result, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &ListSecretsV4Params{
+		ProjectID:       proj.ID,
+		Environment:     proj.EnvSlug,
+		SecretPath:      new("/"),
+		ViewSecretValue: new(true),
 	})
 
 	require.NoError(t, err)
@@ -119,11 +117,11 @@ func TestIdentityNotMember_Forbidden(t *testing.T) {
 
 	identity := nodejs.CreateIdentity(t, "outsider-secrets-identity")
 
-	_, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &secret.ListSecretsV4Request{
-		ProjectID:       chita.NewRequired(proj.ID),
-		Environment:     chita.NewRequired(proj.EnvSlug),
-		SecretPath:      chita.NewOptional("/"),
-		ViewSecretValue: chita.NewOptional(true),
+	_, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &ListSecretsV4Params{
+		ProjectID:       proj.ID,
+		Environment:     proj.EnvSlug,
+		SecretPath:      new("/"),
+		ViewSecretValue: new(true),
 	})
 
 	require.Error(t, err)
@@ -143,16 +141,16 @@ func TestUserAdmin_CanReadSecrets(t *testing.T) {
 	user := nodejs.InviteAndCreateUser(t, "user-admin-secrets@test.local")
 	nodejs.AddUserToProject(t, proj.ID, user.Email, []string{"admin"})
 
-	result, err := listSecrets(t, auth.ActorTypeUser, user.ID, nodejs.OrgID(), &secret.ListSecretsV4Request{
-		ProjectID:       chita.NewRequired(proj.ID),
-		Environment:     chita.NewRequired(proj.EnvSlug),
-		SecretPath:      chita.NewOptional("/"),
-		ViewSecretValue: chita.NewOptional(true),
+	result, err := listSecrets(t, auth.ActorTypeUser, user.ID, nodejs.OrgID(), &ListSecretsV4Params{
+		ProjectID:       proj.ID,
+		Environment:     proj.EnvSlug,
+		SecretPath:      new("/"),
+		ViewSecretValue: new(true),
 	})
 
 	require.NoError(t, err)
 	require.Len(t, result.Secrets, 1)
-	assert.Equal(t, "admin-value", result.Secrets[0].SecretValue.Get())
+	assert.Equal(t, "admin-value", result.Secrets[0].SecretValue)
 }
 
 func TestUserViewer_CanReadSecrets(t *testing.T) {
@@ -164,17 +162,17 @@ func TestUserViewer_CanReadSecrets(t *testing.T) {
 	user := nodejs.InviteAndCreateUser(t, "user-viewer-secrets@test.local")
 	nodejs.AddUserToProject(t, proj.ID, user.Email, []string{"viewer"})
 
-	result, err := listSecrets(t, auth.ActorTypeUser, user.ID, nodejs.OrgID(), &secret.ListSecretsV4Request{
-		ProjectID:       chita.NewRequired(proj.ID),
-		Environment:     chita.NewRequired(proj.EnvSlug),
-		SecretPath:      chita.NewOptional("/"),
-		ViewSecretValue: chita.NewOptional(true),
+	result, err := listSecrets(t, auth.ActorTypeUser, user.ID, nodejs.OrgID(), &ListSecretsV4Params{
+		ProjectID:       proj.ID,
+		Environment:     proj.EnvSlug,
+		SecretPath:      new("/"),
+		ViewSecretValue: new(true),
 	})
 
 	require.NoError(t, err)
 	require.Len(t, result.Secrets, 1)
-	assert.False(t, result.Secrets[0].SecretValueHidden.Get(), "viewer should see secret values")
-	assert.Equal(t, "user-viewer-value", result.Secrets[0].SecretValue.Get())
+	assert.False(t, result.Secrets[0].SecretValueHidden, "viewer should see secret values")
+	assert.Equal(t, "user-viewer-value", result.Secrets[0].SecretValue)
 }
 
 // =============================================================================
@@ -202,21 +200,21 @@ func TestIdentityCustomRole_EnvironmentScoped(t *testing.T) {
 	identity := nodejs.CreateIdentity(t, "env-scoped-identity")
 	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role(customRole.Slug))
 
-	devResult, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &secret.ListSecretsV4Request{
-		ProjectID:       chita.NewRequired(proj.ID),
-		Environment:     chita.NewRequired("dev"),
-		SecretPath:      chita.NewOptional("/"),
-		ViewSecretValue: chita.NewOptional(true),
+	devResult, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &ListSecretsV4Params{
+		ProjectID:       proj.ID,
+		Environment:     "dev",
+		SecretPath:      new("/"),
+		ViewSecretValue: new(true),
 	})
 	require.NoError(t, err)
 	require.Len(t, devResult.Secrets, 1)
-	assert.Equal(t, "DEV_SECRET", devResult.Secrets[0].SecretKey.Get())
+	assert.Equal(t, "DEV_SECRET", devResult.Secrets[0].SecretKey)
 
-	stagingResult, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &secret.ListSecretsV4Request{
-		ProjectID:       chita.NewRequired(proj.ID),
-		Environment:     chita.NewRequired("staging"),
-		SecretPath:      chita.NewOptional("/"),
-		ViewSecretValue: chita.NewOptional(true),
+	stagingResult, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &ListSecretsV4Params{
+		ProjectID:       proj.ID,
+		Environment:     "staging",
+		SecretPath:      new("/"),
+		ViewSecretValue: new(true),
 	})
 	require.NoError(t, err)
 	assert.Empty(t, stagingResult.Secrets, "should not see staging secrets with dev-only role")
@@ -250,31 +248,31 @@ func TestIdentityCustomRole_PathScoped(t *testing.T) {
 	identity := nodejs.CreateIdentity(t, "path-scoped-identity")
 	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role(customRole.Slug))
 
-	appResult, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &secret.ListSecretsV4Request{
-		ProjectID:       chita.NewRequired(proj.ID),
-		Environment:     chita.NewRequired(proj.EnvSlug),
-		SecretPath:      chita.NewOptional("/app"),
-		ViewSecretValue: chita.NewOptional(true),
+	appResult, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &ListSecretsV4Params{
+		ProjectID:       proj.ID,
+		Environment:     proj.EnvSlug,
+		SecretPath:      new("/app"),
+		ViewSecretValue: new(true),
 	})
 	require.NoError(t, err)
 	require.Len(t, appResult.Secrets, 1)
-	assert.Equal(t, "APP_SECRET", appResult.Secrets[0].SecretKey.Get())
+	assert.Equal(t, "APP_SECRET", appResult.Secrets[0].SecretKey)
 
-	configResult, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &secret.ListSecretsV4Request{
-		ProjectID:       chita.NewRequired(proj.ID),
-		Environment:     chita.NewRequired(proj.EnvSlug),
-		SecretPath:      chita.NewOptional("/app/config"),
-		ViewSecretValue: chita.NewOptional(true),
+	configResult, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &ListSecretsV4Params{
+		ProjectID:       proj.ID,
+		Environment:     proj.EnvSlug,
+		SecretPath:      new("/app/config"),
+		ViewSecretValue: new(true),
 	})
 	require.NoError(t, err)
 	require.Len(t, configResult.Secrets, 1)
-	assert.Equal(t, "CONFIG_SECRET", configResult.Secrets[0].SecretKey.Get())
+	assert.Equal(t, "CONFIG_SECRET", configResult.Secrets[0].SecretKey)
 
-	otherResult, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &secret.ListSecretsV4Request{
-		ProjectID:       chita.NewRequired(proj.ID),
-		Environment:     chita.NewRequired(proj.EnvSlug),
-		SecretPath:      chita.NewOptional("/other"),
-		ViewSecretValue: chita.NewOptional(true),
+	otherResult, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &ListSecretsV4Params{
+		ProjectID:       proj.ID,
+		Environment:     proj.EnvSlug,
+		SecretPath:      new("/other"),
+		ViewSecretValue: new(true),
 	})
 	require.NoError(t, err)
 	assert.Empty(t, otherResult.Secrets, "should not see /other secrets with /app/** role")
@@ -295,17 +293,17 @@ func TestGroupAdmin_UserInheritsAccess(t *testing.T) {
 	nodejs.AddUserToGroup(t, group.ID, user.Email)
 	nodejs.AddGroupToProject(t, proj.ID, group.ID, "admin")
 
-	result, err := listSecrets(t, auth.ActorTypeUser, user.ID, nodejs.OrgID(), &secret.ListSecretsV4Request{
-		ProjectID:       chita.NewRequired(proj.ID),
-		Environment:     chita.NewRequired(proj.EnvSlug),
-		SecretPath:      chita.NewOptional("/"),
-		ViewSecretValue: chita.NewOptional(true),
+	result, err := listSecrets(t, auth.ActorTypeUser, user.ID, nodejs.OrgID(), &ListSecretsV4Params{
+		ProjectID:       proj.ID,
+		Environment:     proj.EnvSlug,
+		SecretPath:      new("/"),
+		ViewSecretValue: new(true),
 	})
 
 	require.NoError(t, err)
 	require.Len(t, result.Secrets, 1)
-	assert.Equal(t, "group-value", result.Secrets[0].SecretValue.Get())
-	assert.False(t, result.Secrets[0].SecretValueHidden.Get())
+	assert.Equal(t, "group-value", result.Secrets[0].SecretValue)
+	assert.False(t, result.Secrets[0].SecretValueHidden)
 }
 
 func TestGroupViewer_UserInheritsReadAccess(t *testing.T) {
@@ -319,17 +317,17 @@ func TestGroupViewer_UserInheritsReadAccess(t *testing.T) {
 	nodejs.AddUserToGroup(t, group.ID, user.Email)
 	nodejs.AddGroupToProject(t, proj.ID, group.ID, "viewer")
 
-	result, err := listSecrets(t, auth.ActorTypeUser, user.ID, nodejs.OrgID(), &secret.ListSecretsV4Request{
-		ProjectID:       chita.NewRequired(proj.ID),
-		Environment:     chita.NewRequired(proj.EnvSlug),
-		SecretPath:      chita.NewOptional("/"),
-		ViewSecretValue: chita.NewOptional(true),
+	result, err := listSecrets(t, auth.ActorTypeUser, user.ID, nodejs.OrgID(), &ListSecretsV4Params{
+		ProjectID:       proj.ID,
+		Environment:     proj.EnvSlug,
+		SecretPath:      new("/"),
+		ViewSecretValue: new(true),
 	})
 
 	require.NoError(t, err)
 	require.Len(t, result.Secrets, 1)
-	assert.False(t, result.Secrets[0].SecretValueHidden.Get(), "group viewer should see secret values")
-	assert.Equal(t, "group-viewer-value", result.Secrets[0].SecretValue.Get())
+	assert.False(t, result.Secrets[0].SecretValueHidden, "group viewer should see secret values")
+	assert.Equal(t, "group-viewer-value", result.Secrets[0].SecretValue)
 }
 
 func TestGroupCustomRole_UserInheritsCustomPermissions(t *testing.T) {
@@ -355,21 +353,21 @@ func TestGroupCustomRole_UserInheritsCustomPermissions(t *testing.T) {
 	nodejs.AddUserToGroup(t, group.ID, user.Email)
 	nodejs.AddGroupToProject(t, proj.ID, group.ID, customRole.Slug)
 
-	devResult, err := listSecrets(t, auth.ActorTypeUser, user.ID, nodejs.OrgID(), &secret.ListSecretsV4Request{
-		ProjectID:       chita.NewRequired(proj.ID),
-		Environment:     chita.NewRequired("dev"),
-		SecretPath:      chita.NewOptional("/"),
-		ViewSecretValue: chita.NewOptional(true),
+	devResult, err := listSecrets(t, auth.ActorTypeUser, user.ID, nodejs.OrgID(), &ListSecretsV4Params{
+		ProjectID:       proj.ID,
+		Environment:     "dev",
+		SecretPath:      new("/"),
+		ViewSecretValue: new(true),
 	})
 	require.NoError(t, err)
 	require.Len(t, devResult.Secrets, 1)
-	assert.Equal(t, "DEV_SECRET", devResult.Secrets[0].SecretKey.Get())
+	assert.Equal(t, "DEV_SECRET", devResult.Secrets[0].SecretKey)
 
-	stagingResult, err := listSecrets(t, auth.ActorTypeUser, user.ID, nodejs.OrgID(), &secret.ListSecretsV4Request{
-		ProjectID:       chita.NewRequired(proj.ID),
-		Environment:     chita.NewRequired("staging"),
-		SecretPath:      chita.NewOptional("/"),
-		ViewSecretValue: chita.NewOptional(true),
+	stagingResult, err := listSecrets(t, auth.ActorTypeUser, user.ID, nodejs.OrgID(), &ListSecretsV4Params{
+		ProjectID:       proj.ID,
+		Environment:     "staging",
+		SecretPath:      new("/"),
+		ViewSecretValue: new(true),
 	})
 	require.NoError(t, err)
 	assert.Empty(t, stagingResult.Secrets)
@@ -399,21 +397,21 @@ func TestIdentityAdditionalPrivilege_ExtendsRole(t *testing.T) {
 		},
 	}, nil)
 
-	devResult, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &secret.ListSecretsV4Request{
-		ProjectID:       chita.NewRequired(proj.ID),
-		Environment:     chita.NewRequired("dev"),
-		SecretPath:      chita.NewOptional("/"),
-		ViewSecretValue: chita.NewOptional(true),
+	devResult, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &ListSecretsV4Params{
+		ProjectID:       proj.ID,
+		Environment:     "dev",
+		SecretPath:      new("/"),
+		ViewSecretValue: new(true),
 	})
 	require.NoError(t, err)
 	require.Len(t, devResult.Secrets, 1)
-	assert.Equal(t, "DEV_SECRET", devResult.Secrets[0].SecretKey.Get())
+	assert.Equal(t, "DEV_SECRET", devResult.Secrets[0].SecretKey)
 
-	stagingResult, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &secret.ListSecretsV4Request{
-		ProjectID:       chita.NewRequired(proj.ID),
-		Environment:     chita.NewRequired("staging"),
-		SecretPath:      chita.NewOptional("/"),
-		ViewSecretValue: chita.NewOptional(true),
+	stagingResult, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &ListSecretsV4Params{
+		ProjectID:       proj.ID,
+		Environment:     "staging",
+		SecretPath:      new("/"),
+		ViewSecretValue: new(true),
 	})
 	require.NoError(t, err)
 	assert.Empty(t, stagingResult.Secrets)
@@ -449,20 +447,20 @@ func TestIdentityMultipleAdditionalPrivileges_Merge(t *testing.T) {
 		},
 	}, nil)
 
-	devResult, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &secret.ListSecretsV4Request{
-		ProjectID:       chita.NewRequired(proj.ID),
-		Environment:     chita.NewRequired("dev"),
-		SecretPath:      chita.NewOptional("/"),
-		ViewSecretValue: chita.NewOptional(true),
+	devResult, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &ListSecretsV4Params{
+		ProjectID:       proj.ID,
+		Environment:     "dev",
+		SecretPath:      new("/"),
+		ViewSecretValue: new(true),
 	})
 	require.NoError(t, err)
 	require.Len(t, devResult.Secrets, 1)
 
-	stagingResult, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &secret.ListSecretsV4Request{
-		ProjectID:       chita.NewRequired(proj.ID),
-		Environment:     chita.NewRequired("staging"),
-		SecretPath:      chita.NewOptional("/"),
-		ViewSecretValue: chita.NewOptional(true),
+	stagingResult, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &ListSecretsV4Params{
+		ProjectID:       proj.ID,
+		Environment:     "staging",
+		SecretPath:      new("/"),
+		ViewSecretValue: new(true),
 	})
 	require.NoError(t, err)
 	require.Len(t, stagingResult.Secrets, 1)
@@ -493,16 +491,16 @@ func TestIdentityTemporaryRole_ActiveGrantsAccess(t *testing.T) {
 		},
 	})
 
-	result, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &secret.ListSecretsV4Request{
-		ProjectID:       chita.NewRequired(proj.ID),
-		Environment:     chita.NewRequired(proj.EnvSlug),
-		SecretPath:      chita.NewOptional("/"),
-		ViewSecretValue: chita.NewOptional(true),
+	result, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &ListSecretsV4Params{
+		ProjectID:       proj.ID,
+		Environment:     proj.EnvSlug,
+		SecretPath:      new("/"),
+		ViewSecretValue: new(true),
 	})
 
 	require.NoError(t, err)
 	require.Len(t, result.Secrets, 1)
-	assert.Equal(t, "temp-value", result.Secrets[0].SecretValue.Get())
+	assert.Equal(t, "temp-value", result.Secrets[0].SecretValue)
 }
 
 func TestIdentityTemporaryRole_ExpiredDeniesAccess(t *testing.T) {
@@ -526,11 +524,11 @@ func TestIdentityTemporaryRole_ExpiredDeniesAccess(t *testing.T) {
 		},
 	})
 
-	result, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &secret.ListSecretsV4Request{
-		ProjectID:       chita.NewRequired(proj.ID),
-		Environment:     chita.NewRequired(proj.EnvSlug),
-		SecretPath:      chita.NewOptional("/"),
-		ViewSecretValue: chita.NewOptional(true),
+	result, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &ListSecretsV4Params{
+		ProjectID:       proj.ID,
+		Environment:     proj.EnvSlug,
+		SecretPath:      new("/"),
+		ViewSecretValue: new(true),
 	})
 
 	require.NoError(t, err)
@@ -558,17 +556,17 @@ func TestIdentityTemporaryRole_MixedWithPermanent(t *testing.T) {
 		},
 	})
 
-	result, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &secret.ListSecretsV4Request{
-		ProjectID:       chita.NewRequired(proj.ID),
-		Environment:     chita.NewRequired(proj.EnvSlug),
-		SecretPath:      chita.NewOptional("/"),
-		ViewSecretValue: chita.NewOptional(true),
+	result, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &ListSecretsV4Params{
+		ProjectID:       proj.ID,
+		Environment:     proj.EnvSlug,
+		SecretPath:      new("/"),
+		ViewSecretValue: new(true),
 	})
 
 	require.NoError(t, err)
 	require.Len(t, result.Secrets, 1)
-	assert.False(t, result.Secrets[0].SecretValueHidden.Get(), "viewer role should allow reading values")
-	assert.Equal(t, "mixed-value", result.Secrets[0].SecretValue.Get())
+	assert.False(t, result.Secrets[0].SecretValueHidden, "viewer role should allow reading values")
+	assert.Equal(t, "mixed-value", result.Secrets[0].SecretValue)
 }
 
 func TestIdentityTemporaryAdditionalPrivilege_Active(t *testing.T) {
@@ -586,16 +584,16 @@ func TestIdentityTemporaryAdditionalPrivilege_Active(t *testing.T) {
 		},
 	}, &infra.IdentityPrivilegeOpts{TemporaryRange: "1h", TemporaryAccessStartTime: time.Now().UTC().Format(time.RFC3339)})
 
-	result, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &secret.ListSecretsV4Request{
-		ProjectID:       chita.NewRequired(proj.ID),
-		Environment:     chita.NewRequired(proj.EnvSlug),
-		SecretPath:      chita.NewOptional("/"),
-		ViewSecretValue: chita.NewOptional(true),
+	result, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &ListSecretsV4Params{
+		ProjectID:       proj.ID,
+		Environment:     proj.EnvSlug,
+		SecretPath:      new("/"),
+		ViewSecretValue: new(true),
 	})
 
 	require.NoError(t, err)
 	require.Len(t, result.Secrets, 1)
-	assert.Equal(t, "temp-addl-value", result.Secrets[0].SecretValue.Get())
+	assert.Equal(t, "temp-addl-value", result.Secrets[0].SecretValue)
 }
 
 func TestIdentityTemporaryAdditionalPrivilege_Expired(t *testing.T) {
@@ -613,11 +611,11 @@ func TestIdentityTemporaryAdditionalPrivilege_Expired(t *testing.T) {
 		},
 	}, &infra.IdentityPrivilegeOpts{TemporaryRange: "1h", TemporaryAccessStartTime: time.Now().Add(-2 * time.Hour).UTC().Format(time.RFC3339)})
 
-	result, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &secret.ListSecretsV4Request{
-		ProjectID:       chita.NewRequired(proj.ID),
-		Environment:     chita.NewRequired(proj.EnvSlug),
-		SecretPath:      chita.NewOptional("/"),
-		ViewSecretValue: chita.NewOptional(true),
+	result, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &ListSecretsV4Params{
+		ProjectID:       proj.ID,
+		Environment:     proj.EnvSlug,
+		SecretPath:      new("/"),
+		ViewSecretValue: new(true),
 	})
 
 	require.NoError(t, err)
@@ -637,17 +635,17 @@ func TestViewSecretValue_False_HidesValues(t *testing.T) {
 	identity := nodejs.CreateIdentity(t, "view-value-identity")
 	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
 
-	result, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &secret.ListSecretsV4Request{
-		ProjectID:       chita.NewRequired(proj.ID),
-		Environment:     chita.NewRequired(proj.EnvSlug),
-		SecretPath:      chita.NewOptional("/"),
-		ViewSecretValue: chita.NewOptional(false),
+	result, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &ListSecretsV4Params{
+		ProjectID:       proj.ID,
+		Environment:     proj.EnvSlug,
+		SecretPath:      new("/"),
+		ViewSecretValue: new(false),
 	})
 
 	require.NoError(t, err)
 	require.Len(t, result.Secrets, 1)
-	assert.True(t, result.Secrets[0].SecretValueHidden.Get(), "value should be hidden when viewSecretValue=false")
-	assert.Equal(t, "<hidden-by-infisical>", result.Secrets[0].SecretValue.Get(), "value should be masked when viewSecretValue=false")
+	assert.True(t, result.Secrets[0].SecretValueHidden, "value should be hidden when viewSecretValue=false")
+	assert.Equal(t, "<hidden-by-infisical>", result.Secrets[0].SecretValue, "value should be masked when viewSecretValue=false")
 }
 
 func TestViewSecretValue_True_ShowsValues(t *testing.T) {
@@ -659,15 +657,15 @@ func TestViewSecretValue_True_ShowsValues(t *testing.T) {
 	identity := nodejs.CreateIdentity(t, "view-value-true-identity")
 	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
 
-	result, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &secret.ListSecretsV4Request{
-		ProjectID:       chita.NewRequired(proj.ID),
-		Environment:     chita.NewRequired(proj.EnvSlug),
-		SecretPath:      chita.NewOptional("/"),
-		ViewSecretValue: chita.NewOptional(true),
+	result, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &ListSecretsV4Params{
+		ProjectID:       proj.ID,
+		Environment:     proj.EnvSlug,
+		SecretPath:      new("/"),
+		ViewSecretValue: new(true),
 	})
 
 	require.NoError(t, err)
 	require.Len(t, result.Secrets, 1)
-	assert.False(t, result.Secrets[0].SecretValueHidden.Get(), "value should not be hidden when viewSecretValue=true")
-	assert.Equal(t, "should-be-visible", result.Secrets[0].SecretValue.Get())
+	assert.False(t, result.Secrets[0].SecretValueHidden, "value should not be hidden when viewSecretValue=true")
+	assert.Equal(t, "should-be-visible", result.Secrets[0].SecretValue)
 }

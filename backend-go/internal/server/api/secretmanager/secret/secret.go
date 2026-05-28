@@ -1,3 +1,5 @@
+//go:generate go tool oapi-codegen -config cfg.yaml openapi.yml
+
 package secret
 
 import (
@@ -14,6 +16,9 @@ import (
 	"github.com/infisical/api/internal/services/permission"
 	secretsvc "github.com/infisical/api/internal/services/secretmanager/secret"
 )
+
+// Compile-time check that Handler implements ServiceInterface.
+var _ ServiceInterface = (*Handler)(nil)
 
 // --- Service Interfaces (consumer-defined) ---
 

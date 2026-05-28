@@ -7,11 +7,11 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/infisical/api/internal/libs/errutil"
+	"github.com/infisical/api/internal/libs/fn"
 	"github.com/infisical/api/internal/services/auth"
 	"github.com/infisical/api/internal/services/permission"
 	permsecretsvc "github.com/infisical/api/internal/services/permission/secretmanager"
 	secretsvc "github.com/infisical/api/internal/services/secretmanager/secret"
-	"github.com/infisical/api/pkg/chita"
 )
 
 // PersonalOverridesBehavior controls how personal secret overrides are handled.
@@ -41,12 +41,18 @@ type listSecretsInternalOpts struct {
 	MetadataFilter            []secretsvc.MetadataFilter
 }
 
+// listSecretsResponse is the internal response type for listing secrets.
+type listSecretsResponse struct {
+	Secrets []SecretRaw
+	Imports []SecretImport
+}
+
 // listSecrets is the unified internal method for listing secrets.
 // Both V3 and V4 handlers call this with different options.
-func (h *Handler) listSecrets(ctx context.Context, opts *listSecretsInternalOpts) (ListSecretsV4Response, error) {
+func (h *Handler) listSecrets(ctx context.Context, opts *listSecretsInternalOpts) (*listSecretsResponse, error) {
 	identity, err := auth.IdentityFromContext(ctx)
 	if err != nil {
-		return ListSecretsV4Response{}, err
+		return nil, err
 	}
 
 	// 1. Get permission
@@ -59,7 +65,7 @@ func (h *Handler) listSecrets(ctx context.Context, opts *listSecretsInternalOpts
 		ActionProjectType: permission.ActionProjectTypeSecretManager,
 	})
 	if err != nil {
-		return ListSecretsV4Response{}, err
+		return nil, err
 	}
 	checker := permsecretsvc.NewSecretAccessChecker(permResult.Permission.Ability)
 
@@ -74,7 +80,7 @@ func (h *Handler) listSecrets(ctx context.Context, opts *listSecretsInternalOpts
 		MetadataFilter: opts.MetadataFilter,
 	})
 	if err != nil {
-		return ListSecretsV4Response{}, err
+		return nil, err
 	}
 
 	// 3. Expand references (on full pool, before filtering)
@@ -96,7 +102,7 @@ func (h *Handler) listSecrets(ctx context.Context, opts *listSecretsInternalOpts
 		expander.Expand()
 
 		if expander.HasDeniedRefs() {
-			return ListSecretsV4Response{}, errutil.Forbidden("Permission denied for secret reference expansion").WithErrf("denied refs: %v", expander.DeniedRefs())
+			return nil, errutil.Forbidden("Permission denied for secret reference expansion").WithErrf("denied refs: %v", expander.DeniedRefs())
 		}
 	}
 
@@ -143,7 +149,7 @@ func (h *Handler) listSecrets(ctx context.Context, opts *listSecretsInternalOpts
 
 	// 7. Audit log
 	if err := h.createGetSecretsAuditLog(ctx, opts.ProjectID, opts.Environment, opts.SecretPath, len(response.Secrets)); err != nil {
-		return ListSecretsV4Response{}, err
+		return nil, err
 	}
 
 	return response, nil
@@ -179,90 +185,94 @@ func filterListSecretsByPermission(secrets []secretsvc.ProcessedSecret, checker 
 }
 
 // ListSecretsV4 is the handler for listing secrets (V4).
-func (h *Handler) ListSecretsV4(ctx context.Context, req *ListSecretsV4Request) (ListSecretsV4Response, error) {
+func (h *Handler) ListSecretsV4(ctx context.Context, opts *ListSecretsV4ServiceRequestOptions) (*ListSecretsV4ResponseData, error) {
+	q := opts.Query
+
 	h.logger.InfoContext(ctx, "listing secrets v4",
-		slog.String("projectId", req.ProjectID.Get()),
-		slog.String("environment", req.Environment.Get()),
-		slog.String("secretPath", req.SecretPath.Get()),
+		slog.String("projectId", q.ProjectID),
+		slog.String("environment", q.Environment),
+		slog.String("secretPath", fn.ValueOr(q.SecretPath, "/")),
 	)
 
 	identity, err := auth.IdentityFromContext(ctx)
 	if err != nil {
-		return ListSecretsV4Response{}, err
+		return nil, err
 	}
 
 	behavior := PersonalOverridesNeverInclude
-	if req.IncludePersonalOverrides.Get() {
+	if fn.ValueOr(q.IncludePersonalOverrides, false) {
 		behavior = PersonalOverridesPriority
 	}
 
-	tagSlugs := req.TagSlugs.Get()
-	metadataFilter := req.MetadataFilter.Get()
-
-	return h.listSecrets(ctx, &listSecretsInternalOpts{
-		ProjectID:                 req.ProjectID.Get(),
-		Environment:               req.Environment.Get(),
-		SecretPath:                req.SecretPath.Get(),
+	response, err := h.listSecrets(ctx, &listSecretsInternalOpts{
+		ProjectID:                 q.ProjectID,
+		Environment:               q.Environment,
+		SecretPath:                fn.ValueOr(q.SecretPath, "/"),
 		UserID:                    getUserID(identity),
-		Recursive:                 req.Recursive.Get(),
-		ViewSecretValue:           req.ViewSecretValue.Get(),
-		ExpandSecretReferences:    req.ExpandSecretReferences.Get(),
-		IncludeImports:            req.IncludeImports.Get(),
+		Recursive:                 fn.ValueOr(q.Recursive, false),
+		ViewSecretValue:           fn.ValueOr(q.ViewSecretValue, true),
+		ExpandSecretReferences:    fn.ValueOr(q.ExpandSecretReferences, true),
+		IncludeImports:            fn.ValueOr(q.IncludeImports, true),
 		PersonalOverridesBehavior: behavior,
-		TagSlugs:                  parseTagSlugs(&tagSlugs),
-		MetadataFilter:            parseMetadataFilter(&metadataFilter),
+		TagSlugs:                  parseTagSlugs(q.TagSlugs),
+		MetadataFilter:            parseMetadataFilter(q.MetadataFilter),
 	})
+	if err != nil {
+		return nil, err
+	}
+
+	return NewListSecretsV4ResponseData(&ListSecretsV4Response{
+		Secrets: response.Secrets,
+		Imports: response.Imports,
+	}), nil
 }
 
 // ListSecretsRawV3 is the handler for listing raw secrets (V3, deprecated).
-func (h *Handler) ListSecretsRawV3(ctx context.Context, req *ListSecretsRawV3Request) (ListSecretsV4Response, error) {
+func (h *Handler) ListSecretsRawV3(ctx context.Context, opts *ListSecretsRawV3ServiceRequestOptions) (*ListSecretsRawV3ResponseData, error) {
+	q := opts.Query
+
 	identity, err := auth.IdentityFromContext(ctx)
 	if err != nil {
-		return ListSecretsV4Response{}, err
+		return nil, err
 	}
 
-	// Convert Optional to *string for ResolveProjectID
-	var workspaceID, workspaceSlug *string
-	if req.WorkspaceID.IsSet() {
-		v := req.WorkspaceID.Get()
-		workspaceID = &v
-	}
-	if req.WorkspaceSlug.IsSet() {
-		v := req.WorkspaceSlug.Get()
-		workspaceSlug = &v
-	}
-
-	projectID, err := h.project.ResolveProjectID(ctx, identity.OrgID, workspaceID, workspaceSlug)
+	projectID, err := h.project.ResolveProjectID(ctx, identity.OrgID, q.WorkspaceID, q.WorkspaceSlug)
 	if err != nil {
-		return ListSecretsV4Response{}, err
+		return nil, err
 	}
 
 	h.logger.InfoContext(ctx, "listing secrets raw v3",
 		slog.String("projectId", projectID),
-		slog.String("environment", req.Environment.Get()),
-		slog.String("secretPath", req.SecretPath.Get()),
+		slog.String("environment", fn.ValueOr(q.Environment, "")),
+		slog.String("secretPath", fn.ValueOr(q.SecretPath, "/")),
 	)
 
-	if !req.Environment.IsSet() || req.Environment.Get() == "" {
-		return ListSecretsV4Response{}, errutil.BadRequest("Environment is required")
+	env := fn.ValueOr(q.Environment, "")
+	if env == "" {
+		return nil, errutil.BadRequest("Environment is required")
 	}
 
-	tagSlugs := req.TagSlugs.Get()
-	metadataFilter := req.MetadataFilter.Get()
-
-	return h.listSecrets(ctx, &listSecretsInternalOpts{
+	response, err := h.listSecrets(ctx, &listSecretsInternalOpts{
 		ProjectID:                 projectID,
-		Environment:               req.Environment.Get(),
-		SecretPath:                req.SecretPath.Get(),
+		Environment:               env,
+		SecretPath:                fn.ValueOr(q.SecretPath, "/"),
 		UserID:                    getUserID(identity),
-		Recursive:                 req.Recursive.Get(),
-		ViewSecretValue:           req.ViewSecretValue.Get(),
-		ExpandSecretReferences:    req.ExpandSecretReferences.Get(),
-		IncludeImports:            req.IncludeImports.Get(),
+		Recursive:                 fn.ValueOr(q.Recursive, false),
+		ViewSecretValue:           fn.ValueOr(q.ViewSecretValue, true),
+		ExpandSecretReferences:    fn.ValueOr(q.ExpandSecretReferences, true),
+		IncludeImports:            fn.ValueOr(q.IncludeImports, true),
 		PersonalOverridesBehavior: PersonalOverridesIncludeAll, // V3 default
-		TagSlugs:                  parseTagSlugs(&tagSlugs),
-		MetadataFilter:            parseMetadataFilter(&metadataFilter),
+		TagSlugs:                  parseTagSlugs(q.TagSlugs),
+		MetadataFilter:            parseMetadataFilter(q.MetadataFilter),
 	})
+	if err != nil {
+		return nil, err
+	}
+
+	return NewListSecretsRawV3ResponseData(&ListSecretsRawV3Response{
+		Secrets: response.Secrets,
+		Imports: response.Imports,
+	}), nil
 }
 
 // buildListSecretsResponse builds the response for ListSecretsV4.
@@ -270,46 +280,46 @@ func (h *Handler) buildListSecretsResponse(
 	result *secretsvc.ListSecretsResult,
 	projectID string,
 	includeImports bool,
-) ListSecretsV4Response {
-	secretsResponse := make([]*SecretRaw, 0, len(result.DirectSecrets))
+) *listSecretsResponse {
+	secretsResponse := make([]SecretRaw, 0, len(result.DirectSecrets))
 	for i := range result.DirectSecrets {
 		secretsResponse = append(secretsResponse, h.buildSecretRaw(&result.DirectSecrets[i], projectID))
 	}
 
-	var importsResponse []*SecretImport
+	var importsResponse []SecretImport
 	if includeImports {
 		importsResponse = h.buildImportsResponse(result, projectID)
 	}
 
-	return ListSecretsV4Response{
+	return &listSecretsResponse{
 		Secrets: secretsResponse,
 		Imports: importsResponse,
 	}
 }
 
 // buildSecretRaw converts a ProcessedSecret to the API response type.
-func (h *Handler) buildSecretRaw(ps *secretsvc.ProcessedSecret, projectID string) *SecretRaw {
+func (h *Handler) buildSecretRaw(ps *secretsvc.ProcessedSecret, projectID string) SecretRaw {
 	sec := ps.Secret
 
-	tags := make([]*SecretTag, 0, len(sec.Tags))
+	tags := make([]SecretTag, 0, len(sec.Tags))
 	for _, tag := range sec.Tags {
-		t := &SecretTag{
-			ID:   chita.NewRequired(tag.ID.String()),
-			Slug: chita.NewRequired(tag.Slug),
-			Name: chita.NewRequired(tag.Slug),
+		t := SecretTag{
+			ID:   tag.ID.String(),
+			Slug: tag.Slug,
+			Name: tag.Slug,
 		}
 		if tag.Color != "" {
-			t.Color = chita.NewOptional(tag.Color)
+			t.Color = &tag.Color
 		}
 		tags = append(tags, t)
 	}
 
-	metadata := make([]*ResourceMetadata, 0, len(ps.Metadata))
+	metadata := make([]ResourceMetadata, 0, len(ps.Metadata))
 	for _, m := range ps.Metadata {
-		metadata = append(metadata, &ResourceMetadata{
-			Key:         chita.NewRequired(m.Key),
-			Value:       chita.NewRequired(m.Value),
-			IsEncrypted: chita.NewRequired(m.IsEncrypted),
+		metadata = append(metadata, ResourceMetadata{
+			Key:         m.Key,
+			Value:       m.Value,
+			IsEncrypted: m.IsEncrypted,
 		})
 	}
 
@@ -325,71 +335,66 @@ func (h *Handler) buildSecretRaw(ps *secretsvc.ProcessedSecret, projectID string
 		skipMultilineEncoding = &sec.SkipMultilineEncoding.V
 	}
 
-	raw := &SecretRaw{
-		ID:                chita.NewRequired(sec.ID.String()),
-		LegacyID:          chita.NewRequired(sec.ID.String()),
-		Workspace:         chita.NewRequired(projectID),
-		Environment:       chita.NewRequired(ps.Environment),
-		Version:           chita.NewRequired(int(sec.Version)),
-		Type:              chita.NewRequired(sec.Type),
-		SecretKey:         chita.NewRequired(sec.Key),
-		SecretValue:       chita.NewRequired(ps.Value),
-		SecretComment:     chita.NewRequired(ps.Comment),
-		SecretPath:        chita.NewOptional(ps.SecretPath),
-		CreatedAt:         chita.NewRequired(sec.CreatedAt.Format("2006-01-02T15:04:05.000Z")),
-		UpdatedAt:         chita.NewRequired(sec.UpdatedAt.Format("2006-01-02T15:04:05.000Z")),
-		SecretValueHidden: chita.NewRequired(ps.ValueHidden),
-		Tags:              tags,
-		SecretMetadata:    metadata,
-	}
-
-	// Set optional fields
-	if skipMultilineEncoding != nil {
-		raw.SkipMultilineEncoding = chita.NewOptional(*skipMultilineEncoding)
-	}
-	raw.IsRotatedSecret = chita.NewOptional(isRotated)
-	if rotationID != nil {
-		raw.RotationID = chita.NewOptional(*rotationID)
+	raw := SecretRaw{
+		ID:                    sec.ID.String(),
+		UnderscoreID:          sec.ID.String(),
+		Workspace:             projectID,
+		Environment:           ps.Environment,
+		Version:               int(sec.Version),
+		Type:                  SecretRawType(sec.Type),
+		SecretKey:             sec.Key,
+		SecretValue:           ps.Value,
+		SecretComment:         ps.Comment,
+		SecretPath:            &ps.SecretPath,
+		CreatedAt:             sec.CreatedAt.Format("2006-01-02T15:04:05.000Z"),
+		UpdatedAt:             sec.UpdatedAt.Format("2006-01-02T15:04:05.000Z"),
+		SecretValueHidden:     ps.ValueHidden,
+		Tags:                  tags,
+		SecretMetadata:        metadata,
+		SkipMultilineEncoding: skipMultilineEncoding,
+		IsRotatedSecret:       &isRotated,
+		RotationID:            rotationID,
 	}
 
 	return raw
 }
 
 // buildImportSecretRaw converts a ProcessedSecret to the import API response type.
-func (h *Handler) buildImportSecretRaw(ps *secretsvc.ProcessedSecret, projectID string) *ImportSecretRaw {
+func (h *Handler) buildImportSecretRaw(ps *secretsvc.ProcessedSecret, projectID string) ImportSecretRaw {
 	sec := ps.Secret
 
-	metadata := make([]*ResourceMetadata, 0, len(ps.Metadata))
+	metadata := make([]ResourceMetadata, 0, len(ps.Metadata))
 	for _, m := range ps.Metadata {
-		metadata = append(metadata, &ResourceMetadata{
-			Key:         chita.NewRequired(m.Key),
-			Value:       chita.NewRequired(m.Value),
-			IsEncrypted: chita.NewRequired(m.IsEncrypted),
+		metadata = append(metadata, ResourceMetadata{
+			Key:         m.Key,
+			Value:       m.Value,
+			IsEncrypted: m.IsEncrypted,
 		})
 	}
 
 	isRotated := sec.IsRotatedSecret()
 
-	raw := &ImportSecretRaw{
-		ID:                chita.NewRequired(sec.ID.String()),
-		LegacyID:          chita.NewRequired(sec.ID.String()),
-		Workspace:         chita.NewRequired(projectID),
-		Environment:       chita.NewRequired(ps.Environment),
-		Version:           chita.NewRequired(int(sec.Version)),
-		Type:              chita.NewRequired(sec.Type),
-		SecretKey:         chita.NewRequired(sec.Key),
-		SecretValue:       chita.NewRequired(ps.Value),
-		SecretComment:     chita.NewRequired(ps.Comment),
-		SecretValueHidden: chita.NewRequired(ps.ValueHidden),
+	raw := ImportSecretRaw{
+		ID:                sec.ID.String(),
+		UnderscoreID:      sec.ID.String(),
+		Workspace:         projectID,
+		Environment:       ps.Environment,
+		Version:           int(sec.Version),
+		Type:              ImportSecretRawType(sec.Type),
+		SecretKey:         sec.Key,
+		SecretValue:       ps.Value,
+		SecretComment:     ps.Comment,
+		SecretValueHidden: ps.ValueHidden,
 		SecretMetadata:    metadata,
+		IsRotatedSecret:   &isRotated,
 	}
 
 	if sec.SkipMultilineEncoding.Valid {
-		raw.SkipMultilineEncoding = chita.NewOptional(sec.SkipMultilineEncoding.V)
+		raw.SkipMultilineEncoding = &sec.SkipMultilineEncoding.V
 	}
-	raw.IsRotatedSecret = chita.NewOptional(isRotated)
 	if isRotated {
-		raw.RotationID = chita.NewOptional(sec.GetRotationID().String())
+		rid := sec.GetRotationID().String()
+		raw.RotationID = &rid
 	}
 
 	return raw
@@ -399,7 +404,7 @@ func (h *Handler) buildImportSecretRaw(ps *secretsvc.ProcessedSecret, projectID 
 func (h *Handler) buildImportsResponse(
 	result *secretsvc.ListSecretsResult,
 	projectID string,
-) []*SecretImport {
+) []SecretImport {
 	secretsByImport := make(map[string][]secretsvc.ProcessedSecret)
 	for i := range result.ImportedSecrets {
 		sec := &result.ImportedSecrets[i]
@@ -407,22 +412,23 @@ func (h *Handler) buildImportsResponse(
 		secretsByImport[key] = append(secretsByImport[key], *sec)
 	}
 
-	imports := make([]*SecretImport, 0, len(result.Imports))
+	imports := make([]SecretImport, 0, len(result.Imports))
 	for i := range result.Imports {
 		imp := &result.Imports[i]
 		envSlug, _ := result.FolderLookup.GetEnvSlug(imp.EnvID)
 		key := envSlug + ":" + imp.Path
 		impSecrets := secretsByImport[key]
 
-		importSecrets := make([]*ImportSecretRaw, 0, len(impSecrets))
+		importSecrets := make([]ImportSecretRaw, 0, len(impSecrets))
 		for j := range impSecrets {
 			importSecrets = append(importSecrets, h.buildImportSecretRaw(&impSecrets[j], projectID))
 		}
 
-		imports = append(imports, &SecretImport{
-			SecretPath:  chita.NewRequired(imp.Path),
-			Environment: chita.NewRequired(envSlug),
-			FolderID:    chita.NewOptional(imp.FolderID.String()),
+		folderID := imp.FolderID.String()
+		imports = append(imports, SecretImport{
+			SecretPath:  imp.Path,
+			Environment: envSlug,
+			FolderID:    &folderID,
 			Secrets:     importSecrets,
 		})
 	}

@@ -1,6 +1,6 @@
 # backend-go
 
-Partial Go rewrite of the Node.js backend using chi + chita framework + raw pgx queries.
+Partial Go rewrite of the Node.js backend using chi + oapi-codegen + raw pgx queries.
 
 ## Commands
 
@@ -10,6 +10,7 @@ make dev        # hot-reload via docker-compose + air
 make test       # integration tests (testcontainers, -race)
 make lint       # must pass before submission
 make lint-fix   # auto-fix linting issues
+make generate   # run go generate ./... for oapi-codegen
 ```
 
 ## Code Rules
@@ -43,16 +44,17 @@ internal/
 ├── libs/                       # crypto, errutil, fn, logutil
 ├── server/
 │   ├── api/                    # Endpoint implementations + DI wiring
-│   ├── auth/                   # Security registry + auth validators
-│   └── middlewares/            # HTTP middlewares
+│   │   ├── shared/             # Shared types (Error, ValidationError) + ErrorHandler
+│   │   ├── platform/           # Platform handlers (projects, etc.)
+│   │   └── secretmanager/      # Secret manager handlers
+│   └── middlewares/            # HTTP middlewares (RequireAuth, etc.)
 ├── services/                   # Shared business logic (auth, permission, kms, ...)
 ├── keystore/                   # Redis key-value operations
 └── testutil/                   # Test infra (testcontainers)
-pkg/api/                        # HTTP routing framework (chi + OpenAPI)
 ```
 
 **Two tiers:**
-- `server/api/` — DI wiring + chi endpoint implementations. Handlers 1:1 with endpoints.
+- `server/api/` — DI wiring + endpoint implementations. Handlers 1:1 with endpoints.
 - `services/` — Business logic, uses `pg.DB` directly.
 
 ### Wiring (Composition Root)
@@ -64,8 +66,9 @@ server/api/
 ├── api.go                         # Infra, Registry, NewRegistry()
 ├── platform_services.go           # newPlatformServices() — kms, auth, permission, etc.
 ├── secretmanager_services.go      # newSecretManagerServices() — secret, folder, import
-├── platform_handlers.go           # newPlatformHandlers()
-├── secretmanager_handlers.go      # newSecretManagerHandlers()
+├── platform_routes.go             # RegisterPlatformRoutes() — chi routing
+├── secretmanager_routes.go        # RegisterSecretManagerRoutes() — chi routing
+├── shared/                        # Shared types + error handler
 ├── platform/<handler>/            # Handler implementations
 └── secretmanager/<handler>/       # Handler implementations
 ```
@@ -74,72 +77,133 @@ Initialize as local variables first, then assign to struct fields.
 
 ### Handler Package Structure
 
+Each handler package is generated from an OpenAPI spec using `oapi-codegen`:
+
 ```
 server/api/<product>/<handler>/
-├── models.go      # ALL request/response types + Schema() methods (incl. shared types)
-├── <endpoint>.go  # One handler method per file (list_secrets.go, get_secret.go, ...)
-├── routes.go      # RegisterRoutes(router, app, handler)
-└── <name>.go      # Handler struct + NewHandler()
+├── openapi.yml    # OpenAPI 3.0 spec (source of truth)
+├── cfg.yaml       # oapi-codegen config
+├── gen.go         # GENERATED types, HTTPAdapter, ServiceInterface
+├── <name>.go      # Handler struct + NewHandler() + //go:generate directive
+└── <endpoint>.go  # One handler method per file (list_secrets.go, get_secret.go, ...)
 ```
 
 ### Handler Pattern
 
-Uses the `chita` framework with typed request/response structs:
+Uses `oapi-codegen` (DoorDash fork) to generate types and HTTP adapters from OpenAPI specs:
 
+**`openapi.yml`** — OpenAPI 3.0 source of truth:
+```yaml
+paths:
+  /api/v4/secrets:
+    get:
+      operationId: ListSecretsV4
+      summary: List secrets
+      parameters:
+        - name: projectId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: environment
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: secretPath
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListSecretsV4Response'
+```
+
+**`<handler>.go`** — Handler implements generated `ServiceInterface`:
 ```go
-// models.go
-type ListSecretsRequest struct {
-    ProjectID    string                 `json:"-"`
-    Environment  string                 `json:"-"`
-    SecretPath   chita.Optional[string] `json:"-"`  // Optional field with presence tracking
-    Recursive    chita.Optional[bool]   `json:"-"`
+//go:generate go tool oapi-codegen -config cfg.yaml openapi.yml
+
+package secret
+
+var _ ServiceInterface = (*Handler)(nil)
+
+type Handler struct {
+    logger     *slog.Logger
+    permission PermissionService
+    secrets    SecretsService
 }
 
-func (r *ListSecretsRequest) Schema() *chita.ObjectSchema {
-    return chita.Object(map[string]chita.Schema{
-        "projectId":   chita.Str(&r.ProjectID).From(chita.SourceQuery).Required(),
-        "environment": chita.Str(&r.Environment).From(chita.SourceQuery).Required(),
-        "secretPath":  chita.OptStr(&r.SecretPath).From(chita.SourceQuery).Default("/"),
-        "recursive":   chita.OptBool(&r.Recursive).From(chita.SourceQuery).Default(false),
-    })
+func NewHandler(deps *Deps) *Handler {
+    return &Handler{...}
 }
 
-type ListSecretsResponse struct {
-    chita.StatusOK
-    Secrets []*SecretRaw `json:"secrets"`
+// ListSecretsV4 implements ServiceInterface
+func (h *Handler) ListSecretsV4(ctx context.Context, opts *ListSecretsV4ServiceRequestOptions) (*ListSecretsV4ResponseData, error) {
+    q := opts.Query
+    secretPath := fn.ValueOr(q.SecretPath, "/")  // Use helper for optional fields
+    
+    // ... business logic ...
+    
+    return NewListSecretsV4ResponseData(&ListSecretsV4Response{
+        Secrets: secrets,
+    }), nil
 }
+```
 
-func (r *ListSecretsResponse) Schema() *chita.ObjectSchema {
-    return chita.Object(map[string]chita.Schema{
-        "secrets": chita.Array((&SecretRaw{}).Schema()).Required(),
-    })
-}
+**Generated types:**
+- Required fields: plain types (`string`, `int`, etc.)
+- Optional fields: pointers (`*string`, `*int`, etc.)
+- Use `fn.ValueOr(ptr, default)` for safe access with fallback
+- Use `new(value)` to create pointers for optional fields (Go 1.26+)
 
-// list_secrets.go
-func (h *Handler) ListSecrets(ctx context.Context, req *ListSecretsRequest) (ListSecretsResponse, error) {
-    path := req.SecretPath.ValueOr("/")  // Use default if not provided
-    // ...
-    return ListSecretsResponse{Secrets: secrets}, nil
-}
+**Route registration** (`<product>_routes.go`):
+```go
+func RegisterSecretManagerRoutes(router chi.Router, logger *slog.Logger, platform *PlatformServices, svc *SecretManagerServices) {
+    secretsHandler := secret.NewHandler(&secret.Deps{...})
+    secretsAdapter := secret.NewHTTPAdapter(secretsHandler, shared.NewErrorHandler(logger))
 
-// routes.go
-func RegisterRoutes(router *chita.Router, app *chita.App, handler *Handler) {
-    router.Route("/api/v4/secrets", func(r *chita.Router) {
-        r.WithTags("Secrets")
-        r.GET("/", chita.Handler(app, handler.ListSecrets).
-            Summary("List secrets").
-            OperationID("listSecretsV4"))
+    router.Group(func(r chi.Router) {
+        r.Use(middlewares.RequireAuth(
+            platform.Authenticator,
+            middlewares.JWTAuth,
+            middlewares.IdentityAccessTokenAuth,
+            middlewares.ServiceTokenAuth,
+        ))
+        r.Get("/api/v4/secrets", secretsAdapter.ListSecretsV4)
+        r.Get("/api/v4/secrets/{secretName}", secretsAdapter.GetSecretByNameV4)
     })
 }
 ```
 
-**Schema helpers**:
-- Required: `chita.Str(&field)`, `chita.Bool(&field)`, `chita.Int(&field)`
-- Optional: `chita.OptStr(&field)`, `chita.OptBool(&field)`, `chita.OptInt(&field)` — binds to `chita.Optional[T]`
-- Sources: `.From(chita.SourcePath)`, `.From(chita.SourceQuery)`, `.From(chita.SourceHeader)`, body is default
-- Modifiers: `.Required()`, `.Default(val)`, `.Description("...")`, `.Optional()`
+### Auth Middleware
 
-**`chita.Optional[T]`**: distinguishes "not provided" from "provided as zero value". Use `.IsSet()` to check presence, `.Value()` for the value (panics if unset), `.ValueOr(default)` for safe access.
+`RequireAuth` is a fail-closed middleware that validates bearer tokens:
+
+```go
+r.Use(middlewares.RequireAuth(
+    authenticator,
+    middlewares.JWTAuth,              // User session JWT
+    middlewares.IdentityAccessTokenAuth,  // Machine identity token
+    middlewares.ServiceTokenAuth,     // Service token
+))
+```
+
+- No bearer header → 401
+- Bearer present but mode not in allowed list → 401
+- Validator returns error → 401
+- Success: identity stored in context via `auth.WithIdentity()`
+
+### Error Handling
+
+`shared.ErrorHandler` translates errors to HTTP responses:
+- `errutil.Error` → appropriate status + JSON body
+- `runtime.ValidationErrors` → 400 with field errors
+- Unknown errors → 500
+
+All errors include request ID and are logged appropriately (warn for 4xx, error for 5xx).
 
 ### Handler vs Service Responsibilities
 
@@ -253,9 +317,21 @@ secrets, _ := pgx.CollectRows(rows, pgx.RowToStructByName[Secret])
 
 ## Wiring a New Feature
 
-1. Service in `services/<product>/<name>/` with interface-based deps.
-2. Handler in `server/api/<product>/<name>/`:
-   - `models.go`, `<handler>.go`, one file per endpoint, `routes.go`.
-3. If new permission checks are needed: add action constants in `services/permission/<product>/actions.go`, subject struct in `subjects.go`, and a checker in `<domain>_permission.go`.
-4. Register service in `server/api/<product>_services.go`, handler in `<product>_handlers.go`, routes in `server/routes.go`.
-5. `make test && make lint`.
+1. **Service** in `services/<product>/<name>/` with interface-based deps.
+
+2. **Handler** in `server/api/<product>/<name>/`:
+   - Create `openapi.yml` with endpoints
+   - Create `cfg.yaml` from template (see existing handlers)
+   - Run `go generate ./...` to create `gen.go`
+   - Create `<handler>.go` with `//go:generate` directive, `Handler` struct, `NewHandler()`
+   - Implement `ServiceInterface` methods (one file per endpoint)
+
+3. **Permission checks** (if needed): add action constants in `services/permission/<product>/actions.go`, subject struct in `subjects.go`, and a checker in `<domain>_permission.go`.
+
+4. **Wire routes** in `server/api/<product>_routes.go`:
+   - Create handler and HTTP adapter
+   - Mount routes with appropriate auth middleware
+
+5. **Register** service in `server/api/<product>_services.go`.
+
+6. Run `make test && make lint`.
