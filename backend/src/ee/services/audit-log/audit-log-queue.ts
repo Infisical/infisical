@@ -80,12 +80,18 @@ export const auditLogQueueServiceFactory = async ({
   // retry (reprocessing the same batch after a failed insert) re-inserts byte-identical rows
   // instead of regenerating ids. UUIDv7 embeds the timestamp for ClickHouse's time-sorted id;
   // UUIDv4 keeps the existing Postgres schema expectation.
+  const appendToIngestStream = async (data: TCreateAuditLogDTO) => {
+    const createdAt = new Date();
+    const id = isClickHouseBatchEnabled ? uuidv7({ msecs: createdAt.getTime() }) : randomUUID();
+    const entry: TAuditLogStreamEntry = { ...data, id, createdAt: createdAt.toISOString() };
+    await keyStore.streamAdd(AUDIT_LOG_STREAM_KEY, "*", { data: JSON.stringify(entry) });
+  };
+
+  // Request-path push: a transient Redis failure must not fail the request that produced
+  // the audit event, so errors are logged and swallowed (at-most-once on this path).
   const pushToLog = async (data: TCreateAuditLogDTO) => {
     try {
-      const createdAt = new Date();
-      const id = isClickHouseBatchEnabled ? uuidv7({ msecs: createdAt.getTime() }) : randomUUID();
-      const entry: TAuditLogStreamEntry = { ...data, id, createdAt: createdAt.toISOString() };
-      await keyStore.streamAdd(AUDIT_LOG_STREAM_KEY, "*", { data: JSON.stringify(entry) });
+      await appendToIngestStream(data);
     } catch (error) {
       logger.error(
         error,
@@ -96,11 +102,12 @@ export const auditLogQueueServiceFactory = async ({
 
   // Compatibility shim: legacy per-log AuditLog jobs enqueued by old pods (before the
   // stream rollout) get re-routed into the unified stream so a rolling deploy doesn't
-  // strand them with no consumer.
+  // strand them with no consumer. Unlike the request path we re-throw on stream-add
+  // failure so BullMQ retries the job instead of dropping it.
   // TODO: remove next release once the legacy QueueName.AuditLog queue has drained.
   queueService.start(QueueName.AuditLog, async (job) => {
     if (!job.data) return;
-    await pushToLog(job.data);
+    await appendToIngestStream(job.data);
   });
 
   const insertBatch = async (logs: TAuditLogs[]) => {

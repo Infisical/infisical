@@ -152,6 +152,15 @@ describe("audit-log-queue pushToLog", () => {
 
     expect(keyStore.streamAdd).toHaveBeenCalledTimes(1);
   });
+
+  test("compatibility shim re-throws on streamAdd failure so BullMQ retries the legacy job", async () => {
+    const { shim, keyStore } = await createHarness();
+    keyStore.streamAdd.mockRejectedValueOnce(new Error("redis down"));
+
+    await expect(
+      shim({ data: { event: { type: "e", metadata: {} }, actor: { type: "platform", metadata: {} }, orgId: "o" } })
+    ).rejects.toThrow("redis down");
+  });
 });
 
 describe("audit-log-queue unified consumer", () => {
