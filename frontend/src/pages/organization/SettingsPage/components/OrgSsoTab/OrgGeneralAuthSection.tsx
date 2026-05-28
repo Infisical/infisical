@@ -259,7 +259,7 @@ export const OrgGeneralAuthSection = ({
                 {(isAllowed) => (
                   <Switch
                     id="enforce-saml-auth"
-                    variant="org"
+                    variant="project"
                     checked={currentOrg?.authEnforced ?? false}
                     onCheckedChange={(value) =>
                       handleEnforceOrgAuthToggle(value, EnforceAuthType.SAML)
@@ -282,7 +282,7 @@ export const OrgGeneralAuthSection = ({
                 {(isAllowed) => (
                   <Switch
                     id="enforce-oidc-auth"
-                    variant="org"
+                    variant="project"
                     checked={currentOrg?.authEnforced ?? false}
                     onCheckedChange={(value) =>
                       handleEnforceOrgAuthToggle(value, EnforceAuthType.OIDC)
@@ -309,7 +309,7 @@ export const OrgGeneralAuthSection = ({
                 {(isAllowed) => (
                   <Switch
                     id="enforce-google-sso"
-                    variant="org"
+                    variant="project"
                     checked={currentOrg?.googleSsoAuthEnforced ?? false}
                     onCheckedChange={(value) =>
                       handleEnforceOrgAuthToggle(value, EnforceAuthType.GOOGLE)
@@ -365,7 +365,7 @@ export const OrgGeneralAuthSection = ({
                 {(isAllowed) => (
                   <Switch
                     id="allow-admin-bypass"
-                    variant="org"
+                    variant="project"
                     checked={currentOrg?.bypassOrgAuthEnabled ?? false}
                     onCheckedChange={(value) => handleEnableBypassOrgAuthToggle(value)}
                     disabled={!isAllowed}
@@ -425,7 +425,7 @@ export const OrgGeneralAuthSection = ({
               </FieldContent>
               <Switch
                 id="bypass-enabled-modal"
-                variant="org"
+                variant="project"
                 checked={bypassEnabledInModal}
                 onCheckedChange={setBypassEnabledInModal}
               />

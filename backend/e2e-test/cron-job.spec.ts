@@ -46,7 +46,7 @@ const makeFactory = (overrides?: Partial<Parameters<typeof cronJobFactory>[0]>) 
     slotRefreshMs: 100,
     enqueueIntervalMs: 500,
     processIntervalMs: 200,
-    leaseDurationMs: 2000,
+    leaseDurationMs: 5_000,
     retryBackoffBaseMs: 100,
     retryBackoffMaxMs: 500,
     handlerTimeoutMs: 5_000,
@@ -91,7 +91,7 @@ beforeEach(async () => {
   allFactories.length = 0;
   lockManager.clear();
   await waitForFreshMinute();
-});
+}, 20_000);
 
 afterEach(async () => {
   await Promise.allSettled(allFactories.map((f) => f.stop()));
@@ -408,7 +408,7 @@ describe("graceful shutdown", () => {
         })
     );
 
-    const f = factory({ handlerTimeoutMs: 30_000, drainTimeoutMs: 5_000 });
+    const f = factory({ leaseDurationMs: 30_000, handlerTimeoutMs: 30_000, drainTimeoutMs: 5_000 });
     f.register({ name: "drain-job", pattern: FAST_PATTERN, handler, runHashTtlS: 3600 });
     f.start();
 
@@ -447,7 +447,7 @@ describe("graceful shutdown", () => {
   // drain timer expires.
   test("stop() releases the slot even when an in-flight handler hangs past drainTimeoutMs", async () => {
     const handler = vi.fn().mockImplementation(() => new Promise<void>(() => {})); // never resolves
-    const f = factory({ handlerTimeoutMs: 30_000, drainTimeoutMs: 300 });
+    const f = factory({ leaseDurationMs: 30_000, handlerTimeoutMs: 30_000, drainTimeoutMs: 300 });
     f.register({ name: "hang-drain-job", pattern: FAST_PATTERN, handler, runHashTtlS: 3600 });
     f.start();
 

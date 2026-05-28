@@ -2,7 +2,14 @@ import { useState } from "react";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { Checkbox } from "@app/components/v2";
+import {
+  Card,
+  CardAction,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Switch
+} from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
 import { useUpdateProject } from "@app/hooks/api/projects/queries";
 
@@ -36,23 +43,26 @@ export const SecretSharingSection = () => {
   };
 
   return (
-    <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <p className="mb-3 text-xl font-medium">Allow Secret Sharing</p>
-      <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Settings}>
-        {(isAllowed) => (
-          <div>
-            <Checkbox
-              id="secretSharing"
-              isDisabled={!isAllowed || isLoading}
-              isChecked={currentProject?.secretSharing ?? true}
-              onCheckedChange={(state) => handleToggle(state as boolean)}
-              allowMultilineLabel
-            >
-              This feature enables your project members to securely share secrets.
-            </Checkbox>
-          </div>
-        )}
-      </ProjectPermissionCan>
-    </div>
+    <Card className="mb-6">
+      <CardHeader>
+        <CardTitle>Allow Secret Sharing</CardTitle>
+        <CardDescription>
+          This feature enables your project members to securely share secrets.
+        </CardDescription>
+        <CardAction>
+          <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Settings}>
+            {(isAllowed) => (
+              <Switch
+                id="secretSharing"
+                variant="project"
+                checked={currentProject?.secretSharing ?? true}
+                disabled={!isAllowed || isLoading}
+                onCheckedChange={(state) => handleToggle(state)}
+              />
+            )}
+          </ProjectPermissionCan>
+        </CardAction>
+      </CardHeader>
+    </Card>
   );
 };

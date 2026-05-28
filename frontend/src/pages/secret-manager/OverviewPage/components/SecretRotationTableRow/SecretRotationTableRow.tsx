@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { subject } from "@casl/ability";
 import {
+  ActivityIcon,
   AsteriskIcon,
-  Check,
   ChevronDownIcon,
   EditIcon,
   HandshakeIcon,
@@ -151,7 +151,11 @@ export const SecretRotationTableRow = ({
                     isDisabled={!isAllowed || Boolean(checkingRotationId)}
                     onClick={() => handleCheckActiveCredentials(secretRotation)}
                   >
-                    {isCheckingRotation ? <LoaderCircleIcon className="animate-spin" /> : <Check />}
+                    {isCheckingRotation ? (
+                      <LoaderCircleIcon className="animate-spin" />
+                    ) : (
+                      <ActivityIcon />
+                    )}
                   </IconButton>
                 </TooltipTrigger>
                 <TooltipContent>Validate Credentials</TooltipContent>

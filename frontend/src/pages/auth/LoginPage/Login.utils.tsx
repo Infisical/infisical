@@ -17,6 +17,13 @@ export enum LoginSection {
   OIDC = "oidc"
 }
 
+const navigateToOrg = (navigate: NavigateFn, organizationId: string, navigateTo?: string) => {
+  navigate({
+    to: navigateTo || ("/organizations/$orgId/projects" as const),
+    params: { orgId: organizationId }
+  });
+};
+
 export const navigateUserToOrg = async ({
   navigate,
   organizationId,
@@ -24,25 +31,17 @@ export const navigateUserToOrg = async ({
 }: NavigateUserToOrgParams) => {
   if (organizationId) {
     localStorage.setItem("orgData.id", organizationId);
-    navigate({
-      to: navigateTo || "/organizations/$orgId/projects",
-      params: { orgId: organizationId }
-    });
+    navigateToOrg(navigate, organizationId, navigateTo);
     return;
   }
 
   const userOrgs = await fetchOrganizations();
   const nonAuthEnforcedOrgs = userOrgs.filter((org) => !org.authEnforced);
   if (nonAuthEnforcedOrgs.length > 0) {
-    // user is part of at least 1 non-auth enforced org
     const userOrg = nonAuthEnforcedOrgs[0] && nonAuthEnforcedOrgs[0].id;
     localStorage.setItem("orgData.id", userOrg);
-    navigate({
-      to: navigateTo || "/organizations/$orgId/projects",
-      params: { orgId: userOrg }
-    });
+    navigateToOrg(navigate, userOrg, navigateTo);
   } else {
-    // user is not part of any non-auth enforced orgs
     localStorage.removeItem("orgData.id");
     navigate({ to: "/organizations/none" });
   }

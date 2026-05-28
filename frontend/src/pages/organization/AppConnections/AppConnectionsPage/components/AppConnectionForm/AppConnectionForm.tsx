@@ -67,6 +67,7 @@ import { PostgresConnectionForm } from "./PostgresConnectionForm";
 import { RailwayConnectionForm } from "./RailwayConnectionForm";
 import { RedisConnectionForm } from "./RedisConnectionForm";
 import { RenderConnectionForm } from "./RenderConnectionForm";
+import { SalesforceConnectionForm } from "./SalesforceConnectionForm";
 import { SmbConnectionForm } from "./SmbConnectionForm";
 import { SnowflakeConnectionForm } from "./SnowflakeConnectionForm";
 import { SshConnectionForm } from "./SshConnectionForm";
@@ -93,6 +94,7 @@ type AppConnectionFormData = DiscriminativePick<
     rotationInterval: number;
     rotateAtUtc: { hours: number; minutes: number };
   };
+  configuration?: Record<string, unknown>;
 };
 
 const RotationConfirmation = ({
@@ -299,6 +301,8 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
         return <DigiCertConnectionForm onSubmit={onSubmit} />;
       case AppConnection.TravisCI:
         return <TravisCIConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.Salesforce:
+        return <SalesforceConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Snowflake:
         return <SnowflakeConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Datadog:
@@ -526,6 +530,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         return <DigiCertConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.TravisCI:
         return <TravisCIConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.Salesforce:
+        return <SalesforceConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Snowflake:
         return <SnowflakeConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Datadog:

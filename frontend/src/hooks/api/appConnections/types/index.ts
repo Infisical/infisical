@@ -53,6 +53,7 @@ import { TPostgresConnection } from "./postgres-connection";
 import { TRailwayConnection } from "./railway-connection";
 import { TRedisConnection } from "./redis-connection";
 import { TRenderConnection } from "./render-connection";
+import { TSalesforceConnection } from "./salesforce-connection";
 import { TSmbConnection } from "./smb-connection";
 import { TSnowflakeConnection } from "./snowflake-connection";
 import { TSshConnection } from "./ssh-connection";
@@ -117,6 +118,7 @@ export * from "./postgres-connection";
 export * from "./railway-connection";
 export * from "./redis-connection";
 export * from "./render-connection";
+export * from "./salesforce-connection";
 export * from "./smb-connection";
 export * from "./snowflake-connection";
 export * from "./ssh-connection";
@@ -194,6 +196,7 @@ export type TAppConnection =
   | TOnaConnection
   | TDigiCertConnection
   | TTravisCIConnection
+  | TSalesforceConnection
   | TSnowflakeConnection
   | TDatadogConnection;
 
@@ -217,7 +220,9 @@ export type TCreateAppConnectionDTO = Pick<
   | "gatewayId"
   | "gatewayPoolId"
   | "projectId"
->;
+> & {
+  configuration?: Record<string, unknown>;
+};
 
 export type TUpdateAppConnectionDTO = Partial<
   Pick<
@@ -237,6 +242,7 @@ export type TUpdateAppConnectionDTO = Partial<
     rotationInterval?: number;
     rotateAtUtc?: { hours: number; minutes: number };
   };
+  configuration?: Record<string, unknown>;
 };
 
 export type TDeleteAppConnectionDTO = {

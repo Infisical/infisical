@@ -25,6 +25,7 @@ import {
   CertStatus,
   TAltNameType
 } from "@app/services/certificate/certificate-types";
+import { CertificateRequestCancelledError } from "@app/services/certificate-common/certificate-request-errors";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TPkiSubscriberDALFactory } from "@app/services/pki-subscriber/pki-subscriber-dal";
@@ -1107,7 +1108,8 @@ export const AzureAdCsCertificateAuthorityFns = ({
     signatureAlgorithm,
     keyAlgorithm = CertKeyAlgorithm.RSA_2048,
     isRenewal,
-    originalCertificateId
+    originalCertificateId,
+    isCancelled
   }: {
     caId: string;
     profileId: string;
@@ -1123,6 +1125,7 @@ export const AzureAdCsCertificateAuthorityFns = ({
     keyAlgorithm?: CertKeyAlgorithm;
     isRenewal?: boolean;
     originalCertificateId?: string;
+    isCancelled?: () => Promise<boolean>;
   }) => {
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
     if (!ca.externalCa || ca.externalCa.type !== CaType.AZURE_AD_CS) {
@@ -1395,6 +1398,10 @@ export const AzureAdCsCertificateAuthorityFns = ({
     const { cipherTextBlob: encryptedPrivateKey } = await kmsEncryptor({
       plainText: Buffer.from(skLeaf)
     });
+
+    if (isCancelled && (await isCancelled())) {
+      throw new CertificateRequestCancelledError();
+    }
 
     let certificateId: string;
 

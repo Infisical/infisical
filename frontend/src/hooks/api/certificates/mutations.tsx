@@ -6,6 +6,7 @@ import { pkiSubscriberKeys } from "../pkiSubscriber/queries";
 import { projectKeys } from "../projects";
 import { certKeys } from "./queries";
 import {
+  TCancelCertificateRequestResponse,
   TCertificate,
   TDeleteCertDTO,
   TDownloadPkcs12DTO,
@@ -32,7 +33,7 @@ export const useDeleteCert = () => {
       );
       return certificate;
     },
-    onSuccess: (_, { id, projectId }) => {
+    onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({
         queryKey: certKeys.getCertificateById(id)
       });
@@ -46,10 +47,7 @@ export const useDeleteCert = () => {
         queryKey: projectKeys.allProjectCertificates()
       });
       queryClient.invalidateQueries({
-        queryKey: projectKeys.forProjectCertificates(projectId)
-      });
-      queryClient.invalidateQueries({
-        queryKey: certKeys.getDashboardStats(projectId)
+        queryKey: ["cert-dashboard-stats"]
       });
     }
   });
@@ -69,7 +67,7 @@ export const useRevokeCert = () => {
       );
       return certificate;
     },
-    onSuccess: (_, { id, projectId }) => {
+    onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({
         queryKey: certKeys.getCertificateById(id)
       });
@@ -83,10 +81,7 @@ export const useRevokeCert = () => {
         queryKey: projectKeys.allProjectCertificates()
       });
       queryClient.invalidateQueries({
-        queryKey: projectKeys.forProjectCertificates(projectId)
-      });
-      queryClient.invalidateQueries({
-        queryKey: certKeys.getDashboardStats(projectId)
+        queryKey: ["cert-dashboard-stats"]
       });
     }
   });
@@ -102,9 +97,9 @@ export const useImportCertificate = () => {
       );
       return data;
     },
-    onSuccess: (_, { projectSlug }) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: projectKeys.forProjectCertificates(projectSlug)
+        queryKey: projectKeys.allProjectCertificates()
       });
       queryClient.invalidateQueries({
         queryKey: ["cert-dashboard-stats"]
@@ -162,12 +157,9 @@ export const useUpdateRenewalConfig = () => {
       );
       return data;
     },
-    onSuccess: (_, { certificateId, projectSlug }) => {
+    onSuccess: (_, { certificateId }) => {
       queryClient.invalidateQueries({
         queryKey: certKeys.getCertificateById(certificateId)
-      });
-      queryClient.invalidateQueries({
-        queryKey: projectKeys.forProjectCertificates(projectSlug)
       });
       queryClient.invalidateQueries({
         queryKey: projectKeys.allProjectCertificates()
@@ -178,7 +170,7 @@ export const useUpdateRenewalConfig = () => {
 
 export const useDownloadCertPkcs12 = () => {
   return useMutation<void, object, TDownloadPkcs12DTO>({
-    mutationFn: async ({ certificateId, projectSlug, password, alias }) => {
+    mutationFn: async ({ certificateId, password, alias }) => {
       try {
         const response = await apiRequest.post(
           `/api/v1/cert-manager/certificates/${certificateId}/pkcs12`,
@@ -187,7 +179,6 @@ export const useDownloadCertPkcs12 = () => {
             alias
           },
           {
-            params: { projectSlug },
             responseType: "arraybuffer"
           }
         );
@@ -228,15 +219,12 @@ export const useUpdateCertificate = () => {
       }>(`/api/v1/cert-manager/certificates/${certificateId}`, { metadata });
       return data;
     },
-    onSuccess: (_, { certificateId, projectId }) => {
+    onSuccess: (_, { certificateId }) => {
       queryClient.invalidateQueries({
         queryKey: certKeys.getCertificateById(certificateId)
       });
       queryClient.invalidateQueries({
         queryKey: projectKeys.allProjectCertificates()
-      });
-      queryClient.invalidateQueries({
-        queryKey: projectKeys.forProjectCertificates(projectId)
       });
     }
   });
@@ -246,14 +234,13 @@ export const useUnifiedCertificateIssuance = () => {
   const queryClient = useQueryClient();
   return useMutation<TUnifiedCertificateIssuanceResponse, object, TUnifiedCertificateIssuanceDTO>({
     mutationFn: async (body) => {
-      const { projectSlug, ...requestData } = body;
       const { data } = await apiRequest.post<TUnifiedCertificateIssuanceResponse>(
         "/api/v1/cert-manager/certificates",
-        requestData
+        body
       );
       return data;
     },
-    onSuccess: (_, { projectSlug }) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: ["certificate-profiles", "list"]
       });
@@ -264,13 +251,34 @@ export const useUnifiedCertificateIssuance = () => {
         queryKey: projectKeys.allProjectCertificates()
       });
       queryClient.invalidateQueries({
-        queryKey: projectKeys.forProjectCertificates(projectSlug)
-      });
-      queryClient.invalidateQueries({
-        queryKey: ["certificateRequests", "list", projectSlug]
+        queryKey: ["certificateRequests", "list"]
       });
       queryClient.invalidateQueries({
         queryKey: ["cert-dashboard-stats"]
+      });
+      queryClient.invalidateQueries({ queryKey: ["approval-requests"] });
+    }
+  });
+};
+
+export const useAssignCertificateToApplication = () => {
+  const queryClient = useQueryClient();
+  return useMutation<TCertificate, object, { certificateId: string; applicationId: string }>({
+    mutationFn: async ({ certificateId, applicationId }) => {
+      const {
+        data: { certificate }
+      } = await apiRequest.post<{ certificate: TCertificate }>(
+        `/api/v1/cert-manager/certificates/${certificateId}/application`,
+        { applicationId }
+      );
+      return certificate;
+    },
+    onSuccess: (_, { certificateId }) => {
+      queryClient.invalidateQueries({
+        queryKey: certKeys.getCertificateById(certificateId)
+      });
+      queryClient.invalidateQueries({
+        queryKey: projectKeys.allProjectCertificates()
       });
     }
   });
@@ -282,6 +290,21 @@ export const useTriggerCertificateRequestValidation = () => {
     mutationFn: async ({ requestId }) => {
       const { data } = await apiRequest.post<TTriggerCertificateRequestValidationResponse>(
         `/api/v1/cert-manager/certificates/certificate-requests/${requestId}/trigger-validation`
+      );
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["certificateRequests", "list"] });
+    }
+  });
+};
+
+export const useCancelCertificateRequest = () => {
+  const queryClient = useQueryClient();
+  return useMutation<TCancelCertificateRequestResponse, object, { requestId: string }>({
+    mutationFn: async ({ requestId }) => {
+      const { data } = await apiRequest.post<TCancelCertificateRequestResponse>(
+        `/api/v1/cert-manager/certificates/certificate-requests/${requestId}/cancel`
       );
       return data;
     },

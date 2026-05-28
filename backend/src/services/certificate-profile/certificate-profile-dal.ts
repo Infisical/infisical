@@ -347,17 +347,22 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
       enrollmentType?: EnrollmentType;
       issuerType?: IssuerType;
       caId?: string;
+      profileIds?: string[];
     } = {},
     processedRules?: ProcessedPermissionRules,
     tx?: Knex
   ): Promise<TCertificateProfile[] | TCertificateProfileWithConfigs[]> => {
     try {
-      const { offset = 0, limit = 20, search, enrollmentType, issuerType, caId } = options;
+      const { offset = 0, limit = 20, search, enrollmentType, issuerType, caId, profileIds } = options;
 
       let baseQuery = (tx || db)(TableName.PkiCertificateProfile).where(
         `${TableName.PkiCertificateProfile}.projectId`,
         projectId
       );
+
+      if (profileIds) {
+        baseQuery = baseQuery.whereIn(`${TableName.PkiCertificateProfile}.id`, profileIds);
+      }
 
       if (search) {
         baseQuery = baseQuery.where((builder) => {
@@ -557,14 +562,19 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
       enrollmentType?: EnrollmentType;
       issuerType?: IssuerType;
       caId?: string;
+      profileIds?: string[];
     } = {},
     processedRules?: ProcessedPermissionRules,
     tx?: Knex
   ): Promise<number> => {
     try {
-      const { search, enrollmentType, issuerType, caId } = options;
+      const { search, enrollmentType, issuerType, caId, profileIds } = options;
 
       let query = (tx || db)(TableName.PkiCertificateProfile).where({ projectId });
+
+      if (profileIds) {
+        query = query.whereIn("id", profileIds);
+      }
 
       if (search) {
         query = query.where((builder) => {

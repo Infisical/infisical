@@ -70,15 +70,13 @@ export const PkiCollectionModal = ({ popUp, handlePopUpToggle }: Props) => {
       await updatePkiCollection({
         collectionId: pkiCollection.id,
         name,
-        description,
-        projectId
+        description
       });
     } else {
       // create
       const { id: collectionId } = await createPkiCollection({
         name,
-        description,
-        projectId
+        description
       });
 
       navigate({

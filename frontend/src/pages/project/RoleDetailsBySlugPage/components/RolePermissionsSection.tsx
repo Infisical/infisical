@@ -22,7 +22,7 @@ import { CertificatePolicyPermissionConditions } from "./CertificatePolicyPermis
 import { CertificateProfilePermissionConditions } from "./CertificateProfilePermissionConditions";
 import { DynamicSecretPermissionConditions } from "./DynamicSecretPermissionConditions";
 import { GeneralPermissionConditions } from "./GeneralPermissionConditions";
-import { GeneralPermissionPolicies } from "./GeneralPermissionPolicies";
+import { GeneralPermissionPolicies, TPermissionAction } from "./GeneralPermissionPolicies";
 import { GroupPermissionConditions } from "./GroupPermissionConditions";
 import { IdentityManagementPermissionConditions } from "./IdentityManagementPermissionConditions";
 import { McpEndpointPermissionConditions } from "./McpEndpointPermissionConditions";
@@ -280,12 +280,24 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
                     .map((subject) => (
                       <GeneralPermissionPolicies
                         subject={subject}
-                        actions={PROJECT_PERMISSION_OBJECT[subject].actions}
+                        actions={PROJECT_PERMISSION_OBJECT[subject].actions as TPermissionAction[]}
                         title={PROJECT_PERMISSION_OBJECT[subject].title}
                         description={PROJECT_PERMISSION_OBJECT[subject].description}
                         key={`project-permission-${subject}`}
                         isDisabled={isDisabled}
                         isOpen={openPolicies.includes(subject)}
+                        isConditional={isConditionalSubjects(subject)}
+                        onRemoveLastRule={
+                          !isDisabled
+                            ? () =>
+                                form.setValue(
+                                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                  `permissions.${subject}` as any,
+                                  [],
+                                  { shouldDirty: true }
+                                )
+                            : undefined
+                        }
                         onShowAccessTree={
                           [
                             ProjectPermissionSub.Secrets,
@@ -293,7 +305,7 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
                             ProjectPermissionSub.DynamicSecrets,
                             ProjectPermissionSub.SecretImports
                           ].includes(subject)
-                            ? setShowAccessTree
+                            ? (setShowAccessTree as (subject: string) => void)
                             : undefined
                         }
                       >

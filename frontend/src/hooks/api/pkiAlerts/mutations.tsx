@@ -14,8 +14,8 @@ export const useCreatePkiAlert = () => {
       const { data: alert } = await apiRequest.post<TPkiAlert>("/api/v1/pki/alerts", body);
       return alert;
     },
-    onSuccess: (_, { projectId }) => {
-      queryClient.invalidateQueries({ queryKey: projectKeys.getProjectPkiAlerts(projectId) });
+    onSuccess: (alert) => {
+      queryClient.invalidateQueries({ queryKey: projectKeys.getProjectPkiAlerts(alert.projectId) });
     }
   });
 };
@@ -31,8 +31,8 @@ export const useUpdatePkiAlert = () => {
       );
       return alert;
     },
-    onSuccess: (_, { projectId, alertId }) => {
-      queryClient.invalidateQueries({ queryKey: projectKeys.getProjectPkiAlerts(projectId) });
+    onSuccess: (alert, { alertId }) => {
+      queryClient.invalidateQueries({ queryKey: projectKeys.getProjectPkiAlerts(alert.projectId) });
       queryClient.invalidateQueries({ queryKey: pkiAlertKeys.getPkiAlertById(alertId) });
     }
   });
@@ -46,8 +46,8 @@ export const useDeletePkiAlert = () => {
       const { data: alert } = await apiRequest.delete<TPkiAlert>(`/api/v1/pki/alerts/${alertId}`);
       return alert;
     },
-    onSuccess: (_, { projectId, alertId }) => {
-      queryClient.invalidateQueries({ queryKey: projectKeys.getProjectPkiAlerts(projectId) });
+    onSuccess: (alert, { alertId }) => {
+      queryClient.invalidateQueries({ queryKey: projectKeys.getProjectPkiAlerts(alert.projectId) });
       queryClient.invalidateQueries({ queryKey: pkiAlertKeys.getPkiAlertById(alertId) });
     }
   });

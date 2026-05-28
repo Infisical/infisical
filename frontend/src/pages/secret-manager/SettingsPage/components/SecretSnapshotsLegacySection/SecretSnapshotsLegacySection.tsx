@@ -2,7 +2,14 @@ import { useState } from "react";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { Checkbox } from "@app/components/v2";
+import {
+  Card,
+  CardAction,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Switch
+} from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
 import { useUpdateProject } from "@app/hooks/api/projects/queries";
 
@@ -36,24 +43,26 @@ export const SecretSnapshotsLegacySection = () => {
   };
 
   return (
-    <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <p className="mb-3 text-xl font-medium">Show Secret Snapshots ( legacy )</p>
-      <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Settings}>
-        {(isAllowed) => (
-          <div>
-            <Checkbox
-              id="showSnapshotsLegacy"
-              isDisabled={!isAllowed || isLoading}
-              isChecked={currentProject?.showSnapshotsLegacy ?? false}
-              onCheckedChange={(state) => handleToggle(state as boolean)}
-              allowMultilineLabel
-            >
-              This feature enables your project members to view secret snapshots in the legacy
-              format.
-            </Checkbox>
-          </div>
-        )}
-      </ProjectPermissionCan>
-    </div>
+    <Card className="mb-6">
+      <CardHeader>
+        <CardTitle>Show Secret Snapshots (legacy)</CardTitle>
+        <CardDescription>
+          This feature enables your project members to view secret snapshots in the legacy format.
+        </CardDescription>
+        <CardAction>
+          <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Settings}>
+            {(isAllowed) => (
+              <Switch
+                id="showSnapshotsLegacy"
+                variant="project"
+                checked={currentProject?.showSnapshotsLegacy ?? false}
+                disabled={!isAllowed || isLoading}
+                onCheckedChange={(state) => handleToggle(state)}
+              />
+            )}
+          </ProjectPermissionCan>
+        </CardAction>
+      </CardHeader>
+    </Card>
   );
 };

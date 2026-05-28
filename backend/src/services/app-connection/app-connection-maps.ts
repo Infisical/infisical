@@ -64,6 +64,7 @@ export const APP_CONNECTION_NAME_MAP: Record<AppConnection, string> = {
   [AppConnection.Ona]: "Ona",
   [AppConnection.DigiCert]: "DigiCert",
   [AppConnection.TravisCI]: "Travis CI",
+  [AppConnection.Salesforce]: "Salesforce",
   [AppConnection.Snowflake]: "Snowflake",
   [AppConnection.Datadog]: "Datadog"
 };
@@ -132,6 +133,7 @@ export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanTyp
   [AppConnection.Ona]: AppConnectionPlanType.Regular,
   [AppConnection.DigiCert]: AppConnectionPlanType.Regular,
   [AppConnection.TravisCI]: AppConnectionPlanType.Regular,
+  [AppConnection.Salesforce]: AppConnectionPlanType.Regular,
   [AppConnection.Snowflake]: AppConnectionPlanType.Regular,
   [AppConnection.Datadog]: AppConnectionPlanType.Regular
 };

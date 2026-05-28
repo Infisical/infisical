@@ -9,7 +9,7 @@ import {
 } from "@app/db/schemas";
 import { ms } from "@app/lib/ms";
 
-import { ApproverType } from "./approval-policy-enums";
+import { ApprovalPolicyScope, ApproverType, EnforcementLevel } from "./approval-policy-enums";
 
 const ApprovalPolicyStepSchema = z.object({
   name: z.string().min(1).max(128).nullable().optional(),
@@ -23,6 +23,11 @@ const ApprovalPolicyStepSchema = z.object({
     .array()
 });
 
+const BypasserSchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal(ApproverType.User), id: z.string().uuid() }),
+  z.object({ type: z.literal(ApproverType.Group), id: z.string().uuid() })
+]);
+
 const MaxRequestTtlSchema = z.string().refine(
   (val) => {
     const duration = ms(val) / 1000;
@@ -35,22 +40,29 @@ const MaxRequestTtlSchema = z.string().refine(
 
 // Policy
 export const BaseApprovalPolicySchema = ApprovalPoliciesSchema.extend({
-  steps: ApprovalPolicyStepSchema.array()
+  steps: ApprovalPolicyStepSchema.array(),
+  enforcementLevel: z.nativeEnum(EnforcementLevel).default(EnforcementLevel.Hard),
+  bypassers: BypasserSchema.array().default([])
 });
 
 export const BaseCreateApprovalPolicySchema = z.object({
-  projectId: z.string().uuid(),
+  scope: z.nativeEnum(ApprovalPolicyScope),
+  scopeId: z.string().uuid(),
   name: z.string().min(1).max(128),
   maxRequestTtl: MaxRequestTtlSchema.nullable().optional(),
   steps: ApprovalPolicyStepSchema.array(),
-  bypassForMachineIdentities: z.boolean().optional().default(false)
+  bypassForMachineIdentities: z.boolean().optional().default(false),
+  enforcementLevel: z.nativeEnum(EnforcementLevel).optional().default(EnforcementLevel.Hard),
+  bypassers: BypasserSchema.array().max(100).optional().default([])
 });
 
 export const BaseUpdateApprovalPolicySchema = z.object({
   name: z.string().min(1).max(128).optional(),
   maxRequestTtl: MaxRequestTtlSchema.nullable().optional(),
   steps: ApprovalPolicyStepSchema.array().optional(),
-  bypassForMachineIdentities: z.boolean().optional()
+  bypassForMachineIdentities: z.boolean().optional(),
+  enforcementLevel: z.nativeEnum(EnforcementLevel).optional(),
+  bypassers: BypasserSchema.array().max(100).optional()
 });
 
 // Request
@@ -72,11 +84,15 @@ const ApprovalRequestStepSchema = ApprovalRequestStepsSchema.extend({
 });
 
 export const BaseApprovalRequestSchema = ApprovalRequestsSchema.extend({
-  steps: ApprovalRequestStepSchema.array()
+  steps: ApprovalRequestStepSchema.array(),
+  canBreakGlass: z.boolean().default(false),
+  isBreakGlass: z.boolean().default(false),
+  bypassReason: z.string().nullable().optional()
 });
 
 export const BaseCreateApprovalRequestSchema = z.object({
-  projectId: z.string().uuid(),
+  scope: z.nativeEnum(ApprovalPolicyScope),
+  scopeId: z.string().uuid(),
   justification: z.string().max(256).nullable().optional(),
   requestDuration: z
     .string()

@@ -6,9 +6,11 @@ import { getConfig } from "@app/lib/config/env";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { addAuthOriginDomainCookie } from "@app/server/lib/cookie";
 import { GenericResourceNameSchema } from "@app/server/lib/schemas";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { sanitizedOrganizationSchema } from "@app/services/org/org-schema";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { SanitizedUserSchema } from "../sanitizedSchemas";
 
@@ -208,6 +210,19 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId,
         ...req.body
       });
+
+      if (req.body.role) {
+        void server.services.telemetry.sendPostHogEvents({
+          event: PostHogEventTypes.OrgMembershipRoleUpdated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.params.organizationId,
+          properties: {
+            membershipId: req.params.membershipId,
+            newRole: req.body.role
+          }
+        });
+      }
+
       return {
         membership: {
           ...membership,
@@ -256,6 +271,16 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         membershipId: req.params.membershipId,
         actorOrgId: req.permission.orgId
       });
+
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.OrgMembershipDeleted,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.params.organizationId,
+        properties: {
+          membershipIds: [req.params.membershipId]
+        }
+      });
+
       return {
         membership: {
           ...membership,
@@ -306,6 +331,16 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         membershipIds: req.body.membershipIds,
         actorOrgId: req.permission.orgId
       });
+
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.OrgMembershipDeleted,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.params.organizationId,
+        properties: {
+          membershipIds: memberships.map((el) => el.id)
+        }
+      });
+
       return {
         memberships: memberships.map((el) => ({
           ...el,
@@ -400,6 +435,15 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         userId: req.permission.id,
         userEmail: req.auth.user.email,
         orgName: req.body.name
+      });
+
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.OrganizationCreated,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: organization.id,
+        properties: {
+          name: req.body.name
+        }
       });
 
       return { organization };

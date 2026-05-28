@@ -1,37 +1,39 @@
 import { useEffect, useState } from "react";
-import {
-  faEllipsis,
-  faMagnifyingGlass,
-  faPlus,
-  faSyncAlt
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "@tanstack/react-router";
 import { format } from "date-fns";
+import { MoreHorizontalIcon, PlusIcon, RefreshCwIcon, SearchIcon } from "lucide-react";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
+import { HoverCard, HoverCardContent, HoverCardTrigger, Tag } from "@app/components/v2";
 import {
   Button,
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  EmptyState,
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-  Input,
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+  IconButton,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
   Pagination,
+  Skeleton,
   Table,
-  TableContainer,
-  TableSkeleton,
-  Tag,
-  TBody,
-  Td,
-  Th,
-  THead,
-  Tr
-} from "@app/components/v2";
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from "@app/components/v3";
 import {
   ProjectPermissionPkiDiscoveryActions,
   ProjectPermissionSub,
@@ -151,165 +153,183 @@ export const DiscoveryJobsTab = ({ projectId }: Props) => {
   };
 
   return (
-    <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <div className="mb-4 flex items-start justify-between">
-        <div>
-          <h2 className="text-lg font-semibold">Discovery Jobs</h2>
-          <p className="text-sm text-mineshaft-400">
-            Configure and manage scans to discover certificates across your infrastructure.
-          </p>
-        </div>
-        <ProjectPermissionCan
-          I={ProjectPermissionPkiDiscoveryActions.Create}
-          a={ProjectPermissionSub.PkiDiscovery}
-        >
-          {(isAllowed) => (
-            <Button
-              colorSchema="primary"
-              leftIcon={<FontAwesomeIcon icon={faPlus} />}
-              onClick={() => handlePopUpOpen("createJob")}
-              isDisabled={!isAllowed}
-            >
-              Add Job
-            </Button>
-          )}
-        </ProjectPermissionCan>
-      </div>
-      <div className="mb-4">
-        <Input
-          value={searchFilter}
-          onChange={(e) => setSearchFilter(e.target.value)}
-          leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-          placeholder="Search by name, domain, or IP..."
-          className="flex-1"
-        />
-      </div>
-
-      <TableContainer>
-        <Table>
-          <THead>
-            <Tr>
-              <Th>Name</Th>
-              <Th>Target</Th>
-              <Th>Ports</Th>
-              <Th>Status</Th>
-              <Th>Last Scan</Th>
-              <Th className="w-5" />
-            </Tr>
-          </THead>
-          <TBody>
-            {isPending && <TableSkeleton columns={6} innerKey="discovery-jobs" />}
-            {!isPending && discoveries.length === 0 && (
-              <Tr>
-                <Td colSpan={6}>
-                  <EmptyState title="No jobs found" />
-                </Td>
-              </Tr>
+    <Card>
+      <CardHeader>
+        <CardTitle>Discovery Jobs</CardTitle>
+        <CardDescription>
+          Configure scans to run on a schedule and find certificates on the domains and IP addresses
+          you select.
+        </CardDescription>
+        <CardAction>
+          <ProjectPermissionCan
+            I={ProjectPermissionPkiDiscoveryActions.Create}
+            a={ProjectPermissionSub.PkiDiscovery}
+          >
+            {(isAllowed) => (
+              <Button
+                variant="project"
+                onClick={() => handlePopUpOpen("createJob")}
+                isDisabled={!isAllowed}
+              >
+                <PlusIcon />
+                Add Job
+              </Button>
             )}
-            {!isPending &&
-              discoveries.map((discovery) => (
-                <Tr
-                  key={discovery.id}
-                  className="cursor-pointer hover:bg-mineshaft-700"
-                  onClick={() =>
-                    navigate({
-                      to: "/organizations/$orgId/projects/cert-manager/$projectId/discovery/$discoveryId",
-                      params: {
-                        orgId: currentOrg.id,
-                        projectId,
-                        discoveryId: discovery.id
-                      }
-                    })
-                  }
-                >
-                  <Td>{discovery.name}</Td>
-                  <Td className="max-w-[200px] truncate">{getTargetDisplay(discovery)}</Td>
-                  <Td>{renderPortsBadges(discovery)}</Td>
-                  <Td>
-                    {getDiscoveryStatusBadge(
-                      discovery.lastScanStatus,
-                      discovery.isActive,
-                      Boolean(discovery.lastScanMessage)
-                    )}
-                  </Td>
-                  <Td>
-                    {discovery.lastScannedAt
-                      ? format(new Date(discovery.lastScannedAt), "MMM dd, yyyy HH:mm")
-                      : "Never"}
-                  </Td>
-                  <Td onClick={(e) => e.stopPropagation()}>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="plain" colorSchema="secondary" size="xs">
-                          <FontAwesomeIcon icon={faEllipsis} />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <ProjectPermissionCan
-                          I={ProjectPermissionPkiDiscoveryActions.RunScan}
-                          a={ProjectPermissionSub.PkiDiscovery}
-                        >
-                          {(isAllowed) => (
-                            <DropdownMenuItem
-                              isDisabled={
-                                !isAllowed ||
-                                !discovery.isActive ||
-                                discovery.lastScanStatus === PkiDiscoveryScanStatus.Running ||
-                                discovery.lastScanStatus === PkiDiscoveryScanStatus.Pending
-                              }
-                              onClick={() => handleTriggerScan(discovery)}
-                            >
-                              <FontAwesomeIcon icon={faSyncAlt} className="mr-2" />
-                              Run Scan
-                            </DropdownMenuItem>
-                          )}
-                        </ProjectPermissionCan>
-                        <ProjectPermissionCan
-                          I={ProjectPermissionPkiDiscoveryActions.Edit}
-                          a={ProjectPermissionSub.PkiDiscovery}
-                        >
-                          {(isAllowed) => (
-                            <DropdownMenuItem
-                              isDisabled={!isAllowed}
-                              onClick={() => handlePopUpOpen("editJob", discovery)}
-                            >
-                              Edit
-                            </DropdownMenuItem>
-                          )}
-                        </ProjectPermissionCan>
-                        <ProjectPermissionCan
-                          I={ProjectPermissionPkiDiscoveryActions.Delete}
-                          a={ProjectPermissionSub.PkiDiscovery}
-                        >
-                          {(isAllowed) => (
-                            <DropdownMenuItem
-                              isDisabled={!isAllowed}
-                              onClick={() => handlePopUpOpen("deleteJob", discovery)}
-                            >
-                              Delete
-                            </DropdownMenuItem>
-                          )}
-                        </ProjectPermissionCan>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </Td>
-                </Tr>
-              ))}
-          </TBody>
-        </Table>
-      </TableContainer>
-
-      {totalCount > PAGE_SIZE && (
-        <div className="mt-4 flex justify-end">
-          <Pagination
-            count={totalCount}
-            page={page}
-            perPage={PAGE_SIZE}
-            onChangePage={setPage}
-            onChangePerPage={() => {}}
-          />
+          </ProjectPermissionCan>
+        </CardAction>
+      </CardHeader>
+      <CardContent>
+        <div className="mb-4">
+          <InputGroup>
+            <InputGroupAddon>
+              <SearchIcon />
+            </InputGroupAddon>
+            <InputGroupInput
+              value={searchFilter}
+              onChange={(e) => setSearchFilter(e.target.value)}
+              placeholder="Search by name, domain, or IP…"
+            />
+          </InputGroup>
         </div>
-      )}
+
+        {/* eslint-disable-next-line no-nested-ternary */}
+        {isPending ? (
+          <div className="space-y-2">
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+          </div>
+        ) : discoveries.length === 0 ? (
+          <Empty className="border">
+            <EmptyHeader>
+              <EmptyTitle>No discovery jobs defined</EmptyTitle>
+              <EmptyDescription>
+                Define a job to scan domains or IP ranges and surface the certificates running on
+                them.
+              </EmptyDescription>
+            </EmptyHeader>
+          </Empty>
+        ) : (
+          <>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Target</TableHead>
+                  <TableHead>Ports</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Last Scan</TableHead>
+                  <TableHead className="w-5" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {discoveries.map((discovery) => (
+                  <TableRow
+                    key={discovery.id}
+                    className="cursor-pointer"
+                    onClick={() =>
+                      navigate({
+                        to: "/organizations/$orgId/projects/cert-manager/$projectId/discovery/$discoveryId",
+                        params: {
+                          orgId: currentOrg.id,
+                          projectId,
+                          discoveryId: discovery.id
+                        }
+                      })
+                    }
+                  >
+                    <TableCell>{discovery.name}</TableCell>
+                    <TableCell className="max-w-[200px] truncate">
+                      {getTargetDisplay(discovery)}
+                    </TableCell>
+                    <TableCell>{renderPortsBadges(discovery)}</TableCell>
+                    <TableCell>
+                      {getDiscoveryStatusBadge(
+                        discovery.lastScanStatus,
+                        discovery.isActive,
+                        Boolean(discovery.lastScanMessage)
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {discovery.lastScannedAt
+                        ? format(new Date(discovery.lastScannedAt), "MMM dd, yyyy HH:mm")
+                        : "Never"}
+                    </TableCell>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <IconButton variant="ghost" size="xs">
+                            <MoreHorizontalIcon />
+                          </IconButton>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <ProjectPermissionCan
+                            I={ProjectPermissionPkiDiscoveryActions.RunScan}
+                            a={ProjectPermissionSub.PkiDiscovery}
+                          >
+                            {(isAllowed) => (
+                              <DropdownMenuItem
+                                isDisabled={
+                                  !isAllowed ||
+                                  !discovery.isActive ||
+                                  discovery.lastScanStatus === PkiDiscoveryScanStatus.Running ||
+                                  discovery.lastScanStatus === PkiDiscoveryScanStatus.Pending
+                                }
+                                onClick={() => handleTriggerScan(discovery)}
+                              >
+                                <RefreshCwIcon />
+                                Run Scan
+                              </DropdownMenuItem>
+                            )}
+                          </ProjectPermissionCan>
+                          <ProjectPermissionCan
+                            I={ProjectPermissionPkiDiscoveryActions.Edit}
+                            a={ProjectPermissionSub.PkiDiscovery}
+                          >
+                            {(isAllowed) => (
+                              <DropdownMenuItem
+                                isDisabled={!isAllowed}
+                                onClick={() => handlePopUpOpen("editJob", discovery)}
+                              >
+                                Edit
+                              </DropdownMenuItem>
+                            )}
+                          </ProjectPermissionCan>
+                          <ProjectPermissionCan
+                            I={ProjectPermissionPkiDiscoveryActions.Delete}
+                            a={ProjectPermissionSub.PkiDiscovery}
+                          >
+                            {(isAllowed) => (
+                              <DropdownMenuItem
+                                isDisabled={!isAllowed}
+                                onClick={() => handlePopUpOpen("deleteJob", discovery)}
+                              >
+                                Delete
+                              </DropdownMenuItem>
+                            )}
+                          </ProjectPermissionCan>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+
+            {totalCount > PAGE_SIZE && (
+              <div className="mt-4 flex justify-end">
+                <Pagination
+                  count={totalCount}
+                  page={page}
+                  perPage={PAGE_SIZE}
+                  onChangePage={setPage}
+                  onChangePerPage={() => {}}
+                />
+              </div>
+            )}
+          </>
+        )}
+      </CardContent>
 
       <DiscoveryJobModal
         isOpen={popUp.createJob.isOpen}
@@ -330,6 +350,6 @@ export const DiscoveryJobsTab = ({ projectId }: Props) => {
         onConfirm={handleDelete}
         discoveryName={(popUp.deleteJob.data as TPkiDiscovery)?.name || ""}
       />
-    </div>
+    </Card>
   );
 };

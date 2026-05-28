@@ -146,7 +146,14 @@ export enum ProjectPermissionCertificateProfileActions {
   Delete = "delete",
   IssueCert = "issue-cert",
   RevealAcmeEabSecret = "reveal-acme-eab-secret",
-  RotateAcmeEabSecret = "rotate-acme-eab-secret"
+  RotateAcmeEabSecret = "rotate-acme-eab-secret",
+  ManageApplicationAttachments = "manage-application-attachments"
+}
+
+export enum ProjectPermissionApplicationActions {
+  Read = "read",
+  List = "list",
+  Create = "create"
 }
 
 export enum ProjectPermissionSecretSyncActions {
@@ -378,6 +385,7 @@ export enum ProjectPermissionSub {
   PamInsights = "pam-insights",
   CertificateProfiles = "certificate-profiles",
   CertificatePolicies = "certificate-policies",
+  Application = "certificate-application",
   ApprovalRequests = "approval-requests",
   ApprovalRequestGrants = "approval-request-grants",
   McpEndpoints = "mcp-endpoints",
@@ -475,6 +483,11 @@ export type SecretImportSubjectFields = {
   secretPath: string;
 };
 
+export type CommitsSubjectFields = {
+  environment: string;
+  secretPath: string;
+};
+
 export type SecretRotationsSubjectFields = {
   environment?: string;
   secretPath?: string;
@@ -528,6 +541,10 @@ export type CertificateSubjectFields = {
 };
 
 export type CertificateProfileSubjectFields = {
+  slug: string;
+};
+
+export type ApplicationSubjectFields = {
   slug: string;
 };
 
@@ -673,7 +690,10 @@ export type ProjectPermissionSet =
   | [ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback]
   | [ProjectPermissionActions.Create, ProjectPermissionSub.SecretRollback]
   | [ProjectPermissionActions.Edit, ProjectPermissionSub.Kms]
-  | [ProjectPermissionCommitsActions, ProjectPermissionSub.Commits]
+  | [
+      ProjectPermissionCommitsActions,
+      ProjectPermissionSub.Commits | (ForcedSubject<ProjectPermissionSub.Commits> & CommitsSubjectFields)
+    ]
   | [ProjectPermissionSecretScanningDataSourceActions, ProjectPermissionSub.SecretScanningDataSources]
   | [ProjectPermissionSecretScanningFindingActions, ProjectPermissionSub.SecretScanningFindings]
   | [ProjectPermissionSecretScanningConfigActions, ProjectPermissionSub.SecretScanningConfigs]
@@ -721,6 +741,10 @@ export type ProjectPermissionSet =
         | ProjectPermissionSub.CertificateProfiles
         | (ForcedSubject<ProjectPermissionSub.CertificateProfiles> & CertificateProfileSubjectFields)
       )
+    ]
+  | [
+      ProjectPermissionApplicationActions,
+      ProjectPermissionSub.Application | (ForcedSubject<ProjectPermissionSub.Application> & ApplicationSubjectFields)
     ]
   | [
       ProjectPermissionCertificatePolicyActions,
@@ -897,6 +921,23 @@ const PkiSyncConditionSchema = z
   .partial();
 
 const SecretImportConditionSchema = z
+  .object({
+    environment: z.union([
+      z.string(),
+      z
+        .object({
+          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
+          [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
+          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN],
+          [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB]
+        })
+        .partial()
+    ]),
+    secretPath: SECRET_PATH_PERMISSION_OPERATOR_SCHEMA
+  })
+  .partial();
+
+const CommitsConditionSchema = z
   .object({
     environment: z.union([
       z.string(),
@@ -1730,9 +1771,13 @@ const GeneralPermissionSchema = [
   }),
   z.object({
     subject: z.literal(ProjectPermissionSub.Commits).describe("The entity this permission pertains to."),
+    inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionCommitsActions).describe(
       "Describe what action an entity can take."
-    )
+    ),
+    conditions: CommitsConditionSchema.describe(
+      "When specified, only matching conditions will be allowed to access given resource."
+    ).optional()
   }),
   z.object({
     subject: z

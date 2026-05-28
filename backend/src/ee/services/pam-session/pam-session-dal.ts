@@ -118,6 +118,15 @@ export const pamSessionDALFactory = (db: TDbClient) => {
     return updated;
   };
 
+  const activateSession = async (sessionId: string, tx?: Knex) => {
+    const [updated] = await (tx || db)(TableName.PamSession)
+      .where("id", sessionId)
+      .where("status", PamSessionStatus.Starting)
+      .update({ status: PamSessionStatus.Active, startedAt: new Date() })
+      .returning("*");
+    return updated;
+  };
+
   const startSession = async (
     sessionId: string,
     patch: {
@@ -203,6 +212,7 @@ export const pamSessionDALFactory = (db: TDbClient) => {
     findTopActorsByProjectId,
     endSessionById,
     terminateSessionById,
+    activateSession,
     startSession
   };
 };

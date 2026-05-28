@@ -46,6 +46,7 @@ import { GeneralPermissionPolicies } from "@app/pages/project/RoleDetailsBySlugP
 import { PermissionEmptyState } from "@app/pages/project/RoleDetailsBySlugPage/components/PermissionEmptyState";
 import {
   formRolePermission2API,
+  isConditionalSubjects,
   PROJECT_PERMISSION_OBJECT,
   projectRoleFormSchema,
   rolePermission2Form
@@ -444,6 +445,7 @@ export const MembershipProjectAdditionalPrivilegeModifySection = ({
                           isDisabled={isDisabled}
                           isOpen={openPolicies.includes(permissionSubject)}
                           menuPortalContainerRef={menuPortalContainerRef}
+                          isConditional={isConditionalSubjects(permissionSubject)}
                         >
                           {renderConditionalComponents(permissionSubject, isDisabled)}
                         </GeneralPermissionPolicies>

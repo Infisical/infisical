@@ -25,6 +25,7 @@ import { OPEN_ROUTER_API_KEY_ROTATION_LIST_OPTION } from "./open-router-api-key"
 import { ORACLEDB_CREDENTIALS_ROTATION_LIST_OPTION } from "./oracledb-credentials";
 import { POSTGRES_CREDENTIALS_ROTATION_LIST_OPTION } from "./postgres-credentials";
 import { REDIS_CREDENTIALS_ROTATION_LIST_OPTION } from "./redis-credentials";
+import { SALESFORCE_OAUTH_CREDENTIALS_ROTATION_LIST_OPTION } from "./salesforce-oauth-credentials";
 import { TSecretRotationV2DALFactory } from "./secret-rotation-v2-dal";
 import { SecretRotation, SecretRotationStatus } from "./secret-rotation-v2-enums";
 import { TSecretRotationV2ServiceFactory, TSecretRotationV2ServiceFactoryDep } from "./secret-rotation-v2-service";
@@ -65,6 +66,7 @@ const SECRET_ROTATION_LIST_OPTIONS: Record<SecretRotation, TSecretRotationV2List
   [SecretRotation.OpenRouterApiKey]: OPEN_ROUTER_API_KEY_ROTATION_LIST_OPTION,
   [SecretRotation.HpIloLocalAccount]: HP_ILO_ROTATION_LIST_OPTION,
   [SecretRotation.SupabaseApiKey]: SUPABASE_API_KEY_ROTATION_LIST_OPTION,
+  [SecretRotation.SalesforceOauthCredentials]: SALESFORCE_OAUTH_CREDENTIALS_ROTATION_LIST_OPTION,
   [SecretRotation.DatadogApplicationKeySecret]: DATADOG_APPLICATION_KEY_SECRET_ROTATION_LIST_OPTION
 };
 

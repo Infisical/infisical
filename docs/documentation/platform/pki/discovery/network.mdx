@@ -11,32 +11,26 @@ Network discovery scans network endpoints over TLS to discover certificates serv
 
 <Tabs>
   <Tab title="Infisical UI">
-    1. Navigate to your Certificate Management Project > **Discovery** and press **Add Job**.
-    ![Discovery Page](/images/platform/pki/discovery/network-tls/create-discovery-job.png)
+    1. In **Certificate Manager**, go to **Discovery** and click **Add Job**.
 
-    2. Fill in the discovery job details and click **Create**.
-    ![Create Discovery Job](/images/platform/pki/discovery/network-tls/configure-discovery-job.png)
-
+    2. Fill in the discovery job details and click **Create**:
         - **Name**: A slug-friendly name for the discovery job (e.g., `prod-tls-scan`).
-        - **Description**: An optional description for the discovery job.
-        - **Targets**: A list of domains, IP addresses, or CIDR ranges to scan (e.g., `example.com`, `192.168.1.1`, `10.0.0.0/24`).
-        - **Ports**: The ports to scan for TLS certificates. Defaults to common TLS ports if not specified.
-        - **Gateway** (optional): The Infisical Gateway to use for running the scan. Only required to reach endpoints in private networks.
-        - **Auto Scan**: Toggle to enable automatic periodic scanning. When enabled, select a scan interval (e.g., daily, weekly).
+        - **Description**: An optional description.
+        - **Targets**: Domains, IP addresses, or CIDR ranges to scan (e.g., `example.com`, `192.168.1.1`, `10.0.0.0/24`).
+        - **Ports**: Ports to scan for TLS certificates. Defaults to common TLS ports if not specified.
+        - **Gateway** (optional): The Infisical Gateway for scanning private networks.
+        - **Auto Scan**: Enable automatic periodic scanning with a configurable interval.
 
         <Note>
           At least one target (domain or IP) must be specified.
         </Note>
 
-    3. Trigger a scan manually by pressing **Scan Now** on the discovery job's page, or wait for the next automatic scan if auto scan is enabled.
-    ![Scan Now](/images/platform/pki/discovery/network-tls/scan-now.png)
+    3. Trigger a scan manually by pressing **Scan Now**, or wait for the next automatic scan if enabled.
 
-    4. After a scan completes, view the results on the discovery job's detail page:
-    ![Scan Results](/images/platform/pki/discovery/network-tls/scan-results.png)
-
-        - **Installations**: The unique locations where certificates were found.
-        - **Certificates**: The certificates discovered at each installation, including details such as common name, issuer, and expiration date.
-        - **Scan History**: A log of all scans that have been run, including status and timestamps.
+    4. After a scan completes, view the results:
+        - **Installations**: Unique locations where certificates were found.
+        - **Certificates**: Details including common name, issuer, and expiration date.
+        - **Scan History**: Log of all scans with status and timestamps.
   </Tab>
   <Tab title="API">
     To create a **Network** discovery job, make an API request to the [Create Discovery](/api-reference/endpoints/pki-discovery/create) API endpoint.
@@ -49,7 +43,6 @@ Network discovery scans network endpoints over TLS to discover certificates serv
       --header 'Authorization: Bearer <access-token>' \
       --header 'Content-Type: application/json' \
       --data '{
-        "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
         "name": "prod-tls-scan",
         "description": "Scan production network for TLS certificates",
         "type": "network-tls",

@@ -1,9 +1,7 @@
 import { components, OptionProps, SingleValue } from "react-select";
-import { faCheckCircle } from "@fortawesome/free-regular-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { CheckIcon } from "lucide-react";
 
-import { FilterableSelect } from "@app/components/v2";
-import { Badge } from "@app/components/v3";
+import { Badge, FilterableSelect } from "@app/components/v3";
 import { AWS_REGIONS } from "@app/helpers/appConnections";
 
 const Option = ({ isSelected, children, ...props }: OptionProps<(typeof AWS_REGIONS)[number]>) => {
@@ -14,9 +12,7 @@ const Option = ({ isSelected, children, ...props }: OptionProps<(typeof AWS_REGI
         <Badge variant="neutral" className="mr-auto ml-1">
           {props.data.slug}
         </Badge>
-        {isSelected && (
-          <FontAwesomeIcon className="ml-2 text-primary" icon={faCheckCircle} size="sm" />
-        )}
+        {isSelected && <CheckIcon className="ml-2 size-4 text-primary" />}
       </div>
     </components.Option>
   );

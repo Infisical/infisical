@@ -268,11 +268,11 @@ export const ShareSecretForm = ({
             render={({ field: { onChange, ...field }, fieldState: { error } }) => (
               <Field orientation="horizontal">
                 <Switch
+                  variant="project"
                   checked={
                     field.value === SecretSharingAccessType.Organization ||
                     !allowSecretSharingOutsideOrganization
                   }
-                  variant="org"
                   disabled={!allowSecretSharingOutsideOrganization}
                   onCheckedChange={(v) =>
                     onChange(
@@ -444,9 +444,9 @@ export const ShareSecretForm = ({
                     }) => (
                       <Field orientation="horizontal">
                         <Switch
+                          variant="project"
                           checked={isOrgAccess ? false : (isChecked ?? false)}
                           onCheckedChange={onChange}
-                          variant="org"
                           disabled={isOrgAccess}
                           id="allow-external-emails"
                           {...field}

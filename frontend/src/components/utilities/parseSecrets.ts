@@ -68,11 +68,21 @@ export function parseDotEnv(src: ArrayBuffer | string) {
 
 export const parseJson = (src: ArrayBuffer | string) => {
   const file = src.toString();
-  const formatedData: Record<string, string> = JSON.parse(file);
+  const formatedData = JSON.parse(file);
   const env: Record<string, { value: string; comments: string[] }> = {};
-  Object.keys(formatedData).forEach((key) => {
-    if (typeof formatedData[key] === "string") {
-      env[key] = { value: formatedData[key], comments: [] };
+  if (formatedData === null || typeof formatedData !== "object" || Array.isArray(formatedData)) {
+    return env;
+  }
+  const data = formatedData as Record<string, unknown>;
+  Object.keys(data).forEach((key) => {
+    const val = data[key];
+    if (val === null || val === undefined) {
+      return;
+    }
+    if (typeof val === "object") {
+      env[key] = { value: JSON.stringify(val), comments: [] };
+    } else {
+      env[key] = { value: String(val), comments: [] };
     }
   });
   return env;

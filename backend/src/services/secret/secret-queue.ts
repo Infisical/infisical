@@ -666,6 +666,7 @@ export const secretQueueFactory = ({
       projectId,
       orgId,
       environmentSlug: environment,
+      environmentName,
       excludeReplication,
       actorId,
       actor
@@ -678,6 +679,7 @@ export const secretQueueFactory = ({
         type: WebhookEvents.SecretModified,
         payload: {
           environment,
+          environmentName,
           projectId,
           secretPath,
           changedBy: actorId,
@@ -714,7 +716,8 @@ export const secretQueueFactory = ({
         actorId,
         actor,
         excludeReplication,
-        environmentSlug: environment
+        environmentSlug: environment,
+        environmentName
       });
     }
   });
@@ -805,6 +808,7 @@ export const secretQueueFactory = ({
                 orgId: project.orgId,
                 secretPath: foldersGroupedById[folderId][0]?.path as string,
                 environmentSlug: foldersGroupedById[folderId][0]?.environmentSlug as string,
+                environmentName: foldersGroupedById[folderId][0]?.environmentName as string,
                 _deDupeQueue: deDupeQueue,
                 _depth: depth + 1,
                 excludeReplication: true,
@@ -866,6 +870,7 @@ export const secretQueueFactory = ({
                 orgId: project.orgId,
                 secretPath: referencedFoldersGroupedById[folderId][0]?.path as string,
                 environmentSlug: referencedFoldersGroupedById[folderId][0]?.environmentSlug as string,
+                environmentName: referencedFoldersGroupedById[folderId][0]?.environmentName as string,
                 _deDupeQueue: deDupeQueue,
                 _depth: depth + 1,
                 excludeReplication: true,

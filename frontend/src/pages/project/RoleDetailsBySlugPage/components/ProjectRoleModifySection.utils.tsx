@@ -231,7 +231,8 @@ const CertificateProfilePolicyActionSchema = z.object({
   [ProjectPermissionCertificateProfileActions.Delete]: z.boolean().optional(),
   [ProjectPermissionCertificateProfileActions.IssueCert]: z.boolean().optional(),
   [ProjectPermissionCertificateProfileActions.RevealAcmeEabSecret]: z.boolean().optional(),
-  [ProjectPermissionCertificateProfileActions.RotateAcmeEabSecret]: z.boolean().optional()
+  [ProjectPermissionCertificateProfileActions.RotateAcmeEabSecret]: z.boolean().optional(),
+  [ProjectPermissionCertificateProfileActions.ManageApplicationAttachments]: z.boolean().optional()
 });
 
 const CertificatePolicyPolicyActionSchema = z.object({
@@ -699,7 +700,12 @@ export const projectRoleFormSchema = z.object({
         .array()
         .default([]),
 
-      [ProjectPermissionSub.Commits]: CommitPolicyActionSchema.array().default([]),
+      [ProjectPermissionSub.Commits]: CommitPolicyActionSchema.extend({
+        inverted: z.boolean().optional(),
+        conditions: ConditionSchema
+      })
+        .array()
+        .default([]),
       [ProjectPermissionSub.Member]: MemberPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.Groups]: GroupPolicyActionSchemaWithConditions.array().default([]),
       [ProjectPermissionSub.Role]: GeneralPolicyActionSchema.array().default([]),
@@ -909,7 +915,8 @@ type TConditionalFields =
   | ProjectPermissionSub.PamDomains
   | ProjectPermissionSub.McpEndpoints
   | ProjectPermissionSub.Member
-  | ProjectPermissionSub.Groups;
+  | ProjectPermissionSub.Groups
+  | ProjectPermissionSub.Commits;
 
 export const isConditionalSubjects = (
   subject: ProjectPermissionSub
@@ -936,7 +943,8 @@ export const isConditionalSubjects = (
   subject === ProjectPermissionSub.PamDomains ||
   subject === ProjectPermissionSub.McpEndpoints ||
   subject === ProjectPermissionSub.Member ||
-  subject === ProjectPermissionSub.Groups;
+  subject === ProjectPermissionSub.Groups ||
+  subject === ProjectPermissionSub.Commits;
 
 const CONDITION_DISPLAY_ORDER = [
   "userEmail",
@@ -1725,10 +1733,13 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
       const canRead = action.includes(ProjectPermissionCommitsActions.Read);
       const canPerformRollback = action.includes(ProjectPermissionCommitsActions.PerformRollback);
 
-      if (!formVal[subject]) formVal[subject] = [{}];
-      if (canRead) formVal[subject]![0][ProjectPermissionCommitsActions.Read] = true;
-      if (canPerformRollback)
-        formVal[subject]![0][ProjectPermissionCommitsActions.PerformRollback] = true;
+      if (!formVal[subject]) formVal[subject] = [];
+      formVal[subject]!.push({
+        [ProjectPermissionCommitsActions.Read]: canRead,
+        [ProjectPermissionCommitsActions.PerformRollback]: canPerformRollback,
+        conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
+        inverted
+      });
       return;
     }
 

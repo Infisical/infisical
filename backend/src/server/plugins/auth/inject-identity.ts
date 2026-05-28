@@ -16,7 +16,8 @@ import {
   AuthModeJwtTokenPayload,
   AuthTokenType,
   MfaMethod,
-  TGatewayAccessTokenJwtPayload
+  TGatewayAccessTokenJwtPayload,
+  TRelayAccessTokenJwtPayload
 } from "@app/services/auth/auth-type";
 import { TIdentityAccessTokenJwtPayload } from "@app/services/identity-access-token/identity-access-token-types";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
@@ -88,6 +89,16 @@ export type TAuthMode =
       parentOrgId: string;
       authMethod: null;
       token: TGatewayAccessTokenJwtPayload;
+    }
+  | {
+      authMode: AuthMode.RELAY_ACCESS_TOKEN;
+      actor: ActorType.RELAY;
+      relayId: string;
+      orgId: string;
+      rootOrgId: string;
+      parentOrgId: string;
+      authMethod: null;
+      token: TRelayAccessTokenJwtPayload;
     };
 
 export const extractAuth = async (req: FastifyRequest, jwtSecret: string) => {
@@ -146,6 +157,12 @@ export const extractAuth = async (req: FastifyRequest, jwtSecret: string) => {
         token: decodedToken as TGatewayAccessTokenJwtPayload,
         actor: ActorType.GATEWAY
       } as const;
+    case AuthTokenType.RELAY_ACCESS_TOKEN:
+      return {
+        authMode: AuthMode.RELAY_ACCESS_TOKEN,
+        token: decodedToken as TRelayAccessTokenJwtPayload,
+        actor: ActorType.RELAY
+      } as const;
     default:
       return { authMode: null, token: null } as const;
   }
@@ -202,6 +219,11 @@ export const injectIdentity = fp(
 
       // Authentication is handled on a route-level (enrollment token in body)
       if (pathname === "/api/v3/gateways/token-auth/enroll") {
+        return;
+      }
+
+      // Authentication is handled on a route-level (enrollment token / AWS creds in body)
+      if (pathname === "/api/v2/relays/login") {
         return;
       }
 
@@ -366,6 +388,31 @@ export const injectIdentity = fp(
             authMode: AuthMode.GATEWAY_ACCESS_TOKEN,
             actor,
             gatewayId: token.gatewayId,
+            orgId: token.orgId,
+            rootOrgId: token.orgId,
+            parentOrgId: token.orgId,
+            authMethod: null,
+            token
+          };
+          break;
+        }
+        case AuthMode.RELAY_ACCESS_TOKEN: {
+          const relay = await server.services.relay.getRelayById({ relayId: token.relayId });
+
+          if (relay.tokenVersion !== token.tokenVersion) {
+            throw new UnauthorizedError({ message: "Relay token has been revoked" });
+          }
+
+          if (relay.orgId !== token.orgId) {
+            throw new UnauthorizedError({ message: "Relay token org mismatch" });
+          }
+
+          requestContext.set(RequestContextKey.OrgId, token.orgId);
+
+          req.auth = {
+            authMode: AuthMode.RELAY_ACCESS_TOKEN,
+            actor,
+            relayId: token.relayId,
             orgId: token.orgId,
             rootOrgId: token.orgId,
             parentOrgId: token.orgId,

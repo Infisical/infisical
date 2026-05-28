@@ -1,10 +1,18 @@
-import { faPlus } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { PlusIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { Button, DeleteActionModal } from "@app/components/v2";
-import { DocumentationLinkBadge } from "@app/components/v3";
+import { DeleteActionModal } from "@app/components/v2";
+import {
+  Button,
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  DocumentationLinkBadge
+} from "@app/components/v3";
 import {
   ProjectPermissionCertificateAuthorityActions,
   ProjectPermissionSub,
@@ -13,6 +21,7 @@ import {
 import { CaStatus, CaType, useDeleteCa, useUpdateCa } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 
+import { PkiDocsUrls } from "../../pki-docs-urls";
 import { ExternalCaModal } from "./ExternalCaModal";
 import { ExternalCaTable } from "./ExternalCaTable";
 
@@ -30,7 +39,7 @@ export const ExternalCaSection = () => {
   const onRemoveCaSubmit = async (id: string, type: CaType) => {
     if (!currentProject?.id) return;
 
-    await deleteCa({ id, type, projectId: currentProject.id });
+    await deleteCa({ id, type });
 
     createNotification({
       text: "Successfully deleted CA",
@@ -62,35 +71,43 @@ export const ExternalCaSection = () => {
   };
 
   return (
-    <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <div className="mb-4 flex justify-between">
-        <div className="flex items-center gap-x-2">
-          <p className="text-xl font-medium text-mineshaft-100">External Certificate Authorities</p>
-          <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/pki/ca/external-ca" />
-        </div>
-        <ProjectPermissionCan
-          I={ProjectPermissionCertificateAuthorityActions.Create}
-          a={ProjectPermissionSub.CertificateAuthorities}
-        >
-          {(isAllowed) => (
-            <Button
-              colorSchema="primary"
-              leftIcon={<FontAwesomeIcon icon={faPlus} />}
-              onClick={() => handlePopUpOpen("ca")}
-              isDisabled={!isAllowed}
-            >
-              Create CA
-            </Button>
-          )}
-        </ProjectPermissionCan>
-      </div>
+    <Card className="mb-6">
+      <CardHeader>
+        <CardTitle>
+          External Certificate Authorities
+          <DocumentationLinkBadge href={PkiDocsUrls.ca.external} />
+        </CardTitle>
+        <CardDescription>
+          Third-party CAs connected to Infisical. Use them to issue certificates from providers you
+          already have.
+        </CardDescription>
+        <CardAction>
+          <ProjectPermissionCan
+            I={ProjectPermissionCertificateAuthorityActions.Create}
+            a={ProjectPermissionSub.CertificateAuthorities}
+          >
+            {(isAllowed) => (
+              <Button
+                variant="project"
+                onClick={() => handlePopUpOpen("ca")}
+                isDisabled={!isAllowed}
+              >
+                <PlusIcon />
+                Create CA
+              </Button>
+            )}
+          </ProjectPermissionCan>
+        </CardAction>
+      </CardHeader>
+      <CardContent>
+        <ExternalCaTable handlePopUpOpen={handlePopUpOpen} />
+      </CardContent>
       <ExternalCaModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-      <ExternalCaTable handlePopUpOpen={handlePopUpOpen} />
       <DeleteActionModal
         isOpen={popUp.deleteCa.isOpen}
         title={`Are you sure you want to remove the CA ${
           (popUp?.deleteCa?.data as { dn: string })?.dn || ""
-        } from the project?`}
+        }?`}
         subTitle="This action will delete other CAs and certificates below it in your CA hierarchy."
         onChange={(isOpen) => handlePopUpToggle("deleteCa", isOpen)}
         deleteKey="confirm"
@@ -107,7 +124,7 @@ export const ExternalCaSection = () => {
           (popUp?.caStatus?.data as { status: string })?.status === CaStatus.ACTIVE
             ? "enable"
             : "disable"
-        } the CA ${(popUp?.caStatus?.data as { dn: string })?.dn || ""} from the project?`}
+        } the CA ${(popUp?.caStatus?.data as { dn: string })?.dn || ""}?`}
         subTitle={
           (popUp?.caStatus?.data as { status: string })?.status === CaStatus.ACTIVE
             ? "This action will allow the CA to start issuing certificates again."
@@ -122,6 +139,6 @@ export const ExternalCaSection = () => {
           )
         }
       />
-    </div>
+    </Card>
   );
 };

@@ -2,7 +2,19 @@ import { Controller, useFormContext, useWatch } from "react-hook-form";
 import { SingleValue } from "react-select";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
-import { FilterableSelect, FormControl, Select, SelectItem } from "@app/components/v2";
+import {
+  Field,
+  FieldContent,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+  FilterableSelect,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@app/components/v3";
 import {
   TCloudflarePagesProject,
   useCloudflareConnectionListPagesProjects
@@ -35,7 +47,7 @@ export const CloudflarePagesSyncFields = () => {
     });
 
   return (
-    <>
+    <FieldGroup>
       <SecretSyncConnectionField
         onChange={() => {
           setValue("destinationConfig.projectName", "");
@@ -46,20 +58,24 @@ export const CloudflarePagesSyncFields = () => {
         name="destinationConfig.projectName"
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl errorText={error?.message} isError={Boolean(error?.message)} label="Project">
-            <FilterableSelect
-              isLoading={isProjectsPending && Boolean(connectionId)}
-              isDisabled={!connectionId}
-              value={projects ? (projects.find((project) => project.name === value) ?? []) : []}
-              onChange={(option) => {
-                onChange((option as SingleValue<TCloudflarePagesProject>)?.name ?? null);
-              }}
-              options={projects}
-              placeholder="Select a project..."
-              getOptionLabel={(option) => option.name}
-              getOptionValue={(option) => option.id.toString()}
-            />
-          </FormControl>
+          <Field>
+            <FieldLabel>Project</FieldLabel>
+            <FieldContent>
+              <FilterableSelect
+                isLoading={isProjectsPending && Boolean(connectionId)}
+                isDisabled={!connectionId}
+                value={projects ? (projects.find((project) => project.name === value) ?? []) : []}
+                onChange={(option) => {
+                  onChange((option as SingleValue<TCloudflarePagesProject>)?.name ?? null);
+                }}
+                options={projects}
+                placeholder="Select a project..."
+                getOptionLabel={(option) => option.name}
+                getOptionValue={(option) => option.id.toString()}
+              />
+              <FieldError errors={[error]} />
+            </FieldContent>
+          </Field>
         )}
       />
       <Controller
@@ -67,29 +83,26 @@ export const CloudflarePagesSyncFields = () => {
         control={control}
         defaultValue="preview"
         render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl
-            errorText={error?.message}
-            isError={Boolean(error?.message)}
-            label="Environment"
-            tooltipClassName="max-w-lg py-3"
-          >
-            <Select
-              value={value}
-              onValueChange={(val) => onChange(val)}
-              className="w-full border border-mineshaft-500 capitalize"
-              position="popper"
-              placeholder="Select an environment..."
-              dropdownContainerClassName="max-w-none"
-            >
-              {CLOUDFLARE_ENVIRONMENTS.map(({ name, value: envValue }) => (
-                <SelectItem className="capitalize" value={envValue} key={envValue}>
-                  {name}
-                </SelectItem>
-              ))}
-            </Select>
-          </FormControl>
+          <Field>
+            <FieldLabel>Environment</FieldLabel>
+            <FieldContent>
+              <Select value={value} onValueChange={(val) => onChange(val)}>
+                <SelectTrigger className="w-full capitalize" isError={Boolean(error)}>
+                  <SelectValue placeholder="Select an environment..." />
+                </SelectTrigger>
+                <SelectContent position="popper">
+                  {CLOUDFLARE_ENVIRONMENTS.map(({ name, value: envValue }) => (
+                    <SelectItem className="capitalize" value={envValue} key={envValue}>
+                      {name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FieldError errors={[error]} />
+            </FieldContent>
+          </Field>
         )}
       />
-    </>
+    </FieldGroup>
   );
 };

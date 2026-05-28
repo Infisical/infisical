@@ -15,6 +15,7 @@ import { PAM_RECORDING_STORAGE_FACTORY_MAP } from "../pam-session-recording-stor
 import { buildExternalChunkObjectKey } from "../pam-session-recording-storage/pam-session-recording-storage-types";
 import { ProjectPermissionPamSessionActions, ProjectPermissionSub } from "../permission/project-permission";
 import { TPamSessionDALFactory } from "./pam-session-dal";
+import { PamSessionStatus } from "./pam-session-enums";
 import { TPamSessionEventChunkDALFactory } from "./pam-session-event-chunk-dal";
 import { decryptSessionKey, verifyGatewayUploadToken } from "./pam-session-recording-secrets";
 
@@ -231,9 +232,11 @@ export const pamSessionChunkServiceFactory = ({
       ProjectPermissionSub.PamSessions
     );
 
+    const sessionComplete = session.status !== PamSessionStatus.Active && session.status !== PamSessionStatus.Starting;
+
     if (!session.encryptedSessionKey) {
       // Legacy session fall through to legacy decrypt path
-      return { sessionKey: null, chunks: [], legacy: true as const };
+      return { sessionKey: null, chunks: [], legacy: true as const, sessionComplete };
     }
 
     const sessionKey = await decryptSessionKey({
@@ -266,6 +269,7 @@ export const pamSessionChunkServiceFactory = ({
     return {
       sessionKey: sessionKey.toString("base64"),
       legacy: false as const,
+      sessionComplete,
       projectId: session.projectId,
       storageBackend: config?.backend ?? PamRecordingStorageBackend.Postgres,
       chunks: chunks.map((c) => ({

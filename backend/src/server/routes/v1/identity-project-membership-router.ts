@@ -434,6 +434,63 @@ export const registerIdentityProjectMembershipRouter = async (server: FastifyZod
 
   server.route({
     method: "GET",
+    url: "/identities/:identityId/permissions/audit",
+    config: {
+      rateLimit: readLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      hide: true,
+      params: z.object({
+        projectId: z.string().min(1).trim(),
+        identityId: z.string().min(1).trim()
+      }),
+      response: {
+        200: z.object({
+          sources: z
+            .object({
+              id: z.string(),
+              type: z.enum(["role", "group_role", "additional_privilege"]),
+              name: z.string(),
+              slug: z.string().optional(),
+              groupId: z.string().optional(),
+              groupName: z.string().optional(),
+              isTemporary: z.boolean(),
+              temporaryAccessStartTime: z.string().optional(),
+              temporaryAccessEndTime: z.string().optional(),
+              permissions: z.array(z.unknown())
+            })
+            .array()
+        })
+      }
+    },
+    handler: async (req) => {
+      const { sources } = await server.services.permission.getIdentityPermissionAudit({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        projectId: req.params.projectId,
+        targetIdentityId: req.params.identityId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        projectId: req.params.projectId,
+        ...req.auditLogInfo,
+        event: {
+          type: EventType.GET_PROJECT_IDENTITY_PERMISSION_AUDIT,
+          metadata: {
+            targetIdentityId: req.params.identityId
+          }
+        }
+      });
+
+      return { sources };
+    }
+  });
+
+  server.route({
+    method: "GET",
     url: "/available-identities",
     config: {
       rateLimit: readLimit

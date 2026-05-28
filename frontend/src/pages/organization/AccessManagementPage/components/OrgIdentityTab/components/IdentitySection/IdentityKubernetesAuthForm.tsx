@@ -24,28 +24,29 @@ import {
   Tooltip
 } from "@app/components/v2";
 import { GatewayPicker } from "@app/components/v3";
-import { useOrganization, useOrgPermission, useSubscription } from "@app/context";
+import { useOrganization, useSubscription } from "@app/context";
 import {
   OrgGatewayPermissionActions,
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
 import { SECONDS_PER_DAY } from "@app/helpers/datetime";
 import { accessTokenTtlSchema } from "@app/helpers/identityAuthSchemas";
-import { OrgMembershipRole } from "@app/helpers/roles";
 import {
   useAddIdentityKubernetesAuth,
   useGetIdentityKubernetesAuth,
   useUpdateIdentityKubernetesAuth
 } from "@app/hooks/api";
+import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import {
+  useListAppConnections,
+  useListAvailableAppConnections
+} from "@app/hooks/api/appConnections/queries";
 import {
   IdentityKubernetesAuthTokenReviewMode,
   IdentityTrustedIp
 } from "@app/hooks/api/identities/types";
-import { useGetExternalMigrationConfigs } from "@app/hooks/api/migration/queries";
-import {
-  ExternalMigrationProviders,
-  VaultKubernetesAuthRole
-} from "@app/hooks/api/migration/types";
+import { VaultKubernetesAuthRole } from "@app/hooks/api/migration/types";
+import { useCanUseOrgAppConnectionImport } from "@app/hooks/useCanUseAppConnectionImport";
 import { usePopUp, UsePopUpState } from "@app/hooks/usePopUp";
 
 import { IdentityFormTab } from "./types";
@@ -168,12 +169,20 @@ export const IdentityKubernetesAuthForm = ({
   const { popUp, handlePopUpToggle: handleImportPopUpToggle } = usePopUp([
     "importFromVault"
   ] as const);
-  const { data: vaultConfigs = [] } = useGetExternalMigrationConfigs(
-    ExternalMigrationProviders.Vault
+  const { data: projectVaultAppConnections = [] } = useListAvailableAppConnections(
+    AppConnection.HCVault,
+    projectId ?? "",
+    { enabled: Boolean(projectId) }
   );
-  const hasVaultConnection = vaultConfigs.some((config) => config.connectionId);
-  const { hasOrgRole } = useOrgPermission();
-  const isOrgAdmin = hasOrgRole(OrgMembershipRole.Admin);
+  const { data: orgAppConnections = [] } = useListAppConnections(undefined, {
+    enabled: !projectId
+  });
+  const vaultAppConnections = useMemo(() => {
+    if (projectId) return projectVaultAppConnections;
+    return orgAppConnections.filter((c) => c.app === AppConnection.HCVault && !c.projectId);
+  }, [projectId, projectVaultAppConnections, orgAppConnections]);
+  const canUseAppConnectionImport = useCanUseOrgAppConnectionImport();
+  const hasVaultConnection = vaultAppConnections.length > 0;
 
   const resolver = useMemo(() => zodResolver(buildSchema(maxAccessTokenTTL)), [maxAccessTokenTTL]);
 
@@ -447,7 +456,7 @@ export const IdentityKubernetesAuthForm = ({
           <Tab value={IdentityFormTab.Advanced}>Advanced</Tab>
         </TabList>
         <TabPanel value={IdentityFormTab.Configuration}>
-          {hasVaultConnection && !isUpdate && (
+          {hasVaultConnection && canUseAppConnectionImport && !isUpdate && (
             <div className="mb-4 flex items-center justify-between rounded-md border border-primary/30 bg-primary/10 p-3">
               <div className="flex items-start gap-2 text-sm">
                 <FontAwesomeIcon icon={faInfoCircle} className="mt-0.5 text-primary" />
@@ -455,8 +464,8 @@ export const IdentityKubernetesAuthForm = ({
               </div>
               <Tooltip
                 content={
-                  !isOrgAdmin
-                    ? "Only organization admins can import configurations from HashiCorp Vault"
+                  !canUseAppConnectionImport
+                    ? "You don't have permission to import configurations from HashiCorp Vault"
                     : undefined
                 }
               >
@@ -471,7 +480,7 @@ export const IdentityKubernetesAuthForm = ({
                     />
                   }
                   onClick={() => handleImportPopUpToggle("importFromVault", true)}
-                  isDisabled={!isOrgAdmin}
+                  isDisabled={!canUseAppConnectionImport}
                 >
                   Load from Vault
                 </Button>
@@ -929,6 +938,7 @@ export const IdentityKubernetesAuthForm = ({
       <VaultKubernetesAuthImportModal
         isOpen={popUp.importFromVault.isOpen}
         onOpenChange={(isOpen) => handleImportPopUpToggle("importFromVault", isOpen)}
+        appConnections={vaultAppConnections}
         onImport={handleImportFromVault}
       />
     </form>

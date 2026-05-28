@@ -226,6 +226,7 @@
     "ioredis": "^5.3.2",
     "isomorphic-dompurify": "^2.22.0",
     "jose": "^6.1.0",
+    "jsforce": "^3.10.14",
     "jsonwebtoken": "^9.0.2",
     "jsrp": "^0.2.4",
     "jwks-rsa": "^3.1.0",

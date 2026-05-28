@@ -27,7 +27,11 @@ export const CronJobName = {
   SecretRotationV2QueueRotations: "secret-rotation-v2-queue-rotations",
   AppConnectionCredentialRotationQueueRotations: "app-connection-credential-rotation-queue-rotations",
   TelemetryInstanceStats: "telemetry-instance-stats",
-  TelemetryAggregatedEvents: "telemetry-aggregated-events"
+  TelemetryAggregatedEvents: "telemetry-aggregated-events",
+  DigiCertOrderPolling: "digicert-order-polling",
+  ProjectEnvHardDelete: "project-env-hard-delete",
+  DigiCertRevocationSync: "digicert-revocation-sync",
+  CaCrlRotation: "ca-crl-rotation"
 } as const;
 
 // ── tuning constants ──────────────────────────────────────────────────────────
@@ -108,7 +112,15 @@ const RELEASE_SLOT_IF_MINE_LUA = `if redis.call('get', KEYS[1]) == ARGV[1] then 
 // ── types ─────────────────────────────────────────────────────────────────────
 
 type Handler = () => Promise<void>;
-type CronEntry = { name: string; pattern: string; maxAttempts: number; handler: Handler; runHashTtlS: number };
+type CronEntry = {
+  name: string;
+  pattern: string;
+  maxAttempts: number;
+  handler: Handler;
+  runHashTtlS: number;
+  handlerTimeoutMs?: number;
+  leaseDurationMs?: number;
+};
 class HandlerTimeoutError extends Error {
   constructor(message: string) {
     super(message);
@@ -254,7 +266,9 @@ export const cronJobFactory = ({
     handler,
     runHashTtlS,
     maxAttempts = 3,
-    enabled = true
+    enabled = true,
+    handlerTimeoutMs: entryHandlerTimeoutMs,
+    leaseDurationMs: entryLeaseDurationMs
   }: {
     name: string;
     pattern: string;
@@ -262,6 +276,8 @@ export const cronJobFactory = ({
     runHashTtlS: number;
     maxAttempts?: number;
     enabled?: boolean;
+    handlerTimeoutMs?: number;
+    leaseDurationMs?: number;
   }) => {
     if (!enabled) {
       logger.info(`cron[${name}]: disabled`);
@@ -269,7 +285,24 @@ export const cronJobFactory = ({
     }
     if (entries.has(name)) throw new Error(`cron[${name}] already registered`);
     CronExpressionParser.parse(pattern, { tz: "UTC" }); // validate at registration
-    entries.set(name, { name, pattern, maxAttempts, handler, runHashTtlS });
+
+    const effectiveHandlerTimeoutMs = entryHandlerTimeoutMs ?? handlerTimeoutMs;
+    const effectiveLeaseDurationMs = entryLeaseDurationMs ?? leaseDurationMs;
+    if (effectiveHandlerTimeoutMs > effectiveLeaseDurationMs) {
+      throw new Error(
+        `cron[${name}] handlerTimeoutMs (${effectiveHandlerTimeoutMs}) must be <= leaseDurationMs (${effectiveLeaseDurationMs})`
+      );
+    }
+
+    entries.set(name, {
+      name,
+      pattern,
+      maxAttempts,
+      handler,
+      runHashTtlS,
+      handlerTimeoutMs: entryHandlerTimeoutMs,
+      leaseDurationMs: entryLeaseDurationMs
+    });
     logger.info(`cron[${name}]: registered (pattern="${pattern}")`);
   };
 
@@ -361,7 +394,7 @@ export const cronJobFactory = ({
     logger.info(`cron[${entry.name}]: start (attempt ${attempt}/${entry.maxAttempts}) [id=${id}]`);
 
     try {
-      await withTimeout(() => entry.handler(), handlerTimeoutMs);
+      await withTimeout(() => entry.handler(), entry.handlerTimeoutMs ?? handlerTimeoutMs);
       await markCompleted(id);
       logger.info(`cron[${entry.name}]: complete [id=${id}] [duration_ms=${Date.now() - startMs}]`);
     } catch (err) {
@@ -439,7 +472,9 @@ export const cronJobFactory = ({
     // Track the in-flight run so stop() can wait for it to settle before
     // tearing down. Lock-contention rejections settle within a tick, so they
     // don't measurably delay shutdown drain.
-    const tracked = redlock.using([LEASE_KEY(id)], leaseDurationMs, () => executeUnderLease(entry, id, attempts + 1));
+    const tracked = redlock.using([LEASE_KEY(id)], entry.leaseDurationMs ?? leaseDurationMs, () =>
+      executeUnderLease(entry, id, attempts + 1)
+    );
     inFlight.add(tracked);
     try {
       await tracked;

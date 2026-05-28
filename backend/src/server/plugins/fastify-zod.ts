@@ -49,6 +49,113 @@ const zodToJsonSchemaOptions = {
   postProcess: jsonDescription
 } as const;
 
+/**
+ * Recursively removes properties marked with "x-hidden": true from the JSON schema.
+ * This allows fields to be hidden from OpenAPI docs while still being validated.
+ * Usage: .describe(JSON.stringify({ "x-hidden": true }))
+ */
+const removeHiddenProperties = (schema: FreeformRecord): FreeformRecord => {
+  if (!schema || typeof schema !== "object") {
+    return schema;
+  }
+
+  const result = { ...schema };
+
+  if (result.properties && typeof result.properties === "object") {
+    const filteredProperties: FreeformRecord = {};
+    const hiddenKeys: string[] = [];
+
+    for (const key of Object.keys(result.properties)) {
+      const prop = result.properties[key];
+      if (prop?.["x-hidden"]) {
+        hiddenKeys.push(key);
+      } else {
+        filteredProperties[key] = removeHiddenProperties(prop);
+      }
+    }
+
+    result.properties = filteredProperties;
+
+    if (result.required && Array.isArray(result.required)) {
+      result.required = result.required.filter((r: string) => !hiddenKeys.includes(r));
+      if (result.required.length === 0) {
+        delete result.required;
+      }
+    }
+  }
+
+  if (Array.isArray(result.items)) {
+    const variants = (result.items as FreeformRecord[]).map((v) => removeHiddenProperties(v));
+    if (result.additionalItems && typeof result.additionalItems === "object") {
+      const rest = removeHiddenProperties(result.additionalItems);
+      if (Object.keys(rest).length > 0) variants.push(rest);
+    }
+    delete result.additionalItems;
+    const unique = variants.filter((v, i, arr) => arr.findIndex((x) => JSON.stringify(x) === JSON.stringify(v)) === i);
+    result.items = unique.length === 1 ? unique[0] : { oneOf: unique };
+  } else if (result.items) {
+    result.items = removeHiddenProperties(result.items);
+  }
+
+  if (result.allOf && Array.isArray(result.allOf)) {
+    result.allOf = result.allOf.map(removeHiddenProperties);
+  }
+
+  if (result.oneOf && Array.isArray(result.oneOf)) {
+    result.oneOf = result.oneOf.map(removeHiddenProperties);
+  }
+
+  if (result.anyOf && Array.isArray(result.anyOf)) {
+    result.anyOf = result.anyOf.map(removeHiddenProperties);
+  }
+
+  return result;
+};
+
+/**
+ * Recursively strips a named property (and references in `required`) from every nested object schema.
+ * Used to elide auto-resolved fields (e.g. `projectId` on Cert Manager routes) from the OpenAPI spec
+ * even though they remain part of the runtime response.
+ */
+const stripPropertyDeep = (schema: FreeformRecord, propertyName: string): FreeformRecord => {
+  if (!schema || typeof schema !== "object") return schema;
+  const result: FreeformRecord = Array.isArray(schema) ? [...schema] : { ...schema };
+
+  if (Array.isArray(result)) {
+    return result.map((item) => stripPropertyDeep(item, propertyName));
+  }
+
+  if (result.properties && typeof result.properties === "object" && result.properties[propertyName]) {
+    const next: FreeformRecord = {};
+    for (const key of Object.keys(result.properties)) {
+      if (key !== propertyName) next[key] = stripPropertyDeep(result.properties[key], propertyName);
+    }
+    result.properties = next;
+    if (Array.isArray(result.required)) {
+      result.required = result.required.filter((r: string) => r !== propertyName);
+      if (result.required.length === 0) delete result.required;
+    }
+  } else if (result.properties && typeof result.properties === "object") {
+    const next: FreeformRecord = {};
+    for (const key of Object.keys(result.properties)) {
+      next[key] = stripPropertyDeep(result.properties[key], propertyName);
+    }
+    result.properties = next;
+  }
+
+  if (result.items) {
+    result.items = stripPropertyDeep(result.items, propertyName);
+  }
+  if (Array.isArray(result.allOf)) result.allOf = result.allOf.map((s: FreeformRecord) => stripPropertyDeep(s, propertyName));
+  if (Array.isArray(result.oneOf)) result.oneOf = result.oneOf.map((s: FreeformRecord) => stripPropertyDeep(s, propertyName));
+  if (Array.isArray(result.anyOf)) result.anyOf = result.anyOf.map((s: FreeformRecord) => stripPropertyDeep(s, propertyName));
+
+  return result;
+};
+
+const CERT_MANAGER_URL_PREFIXES = ["/api/v1/cert-manager/"];
+const isCertManagerUrl = (url: string) => CERT_MANAGER_URL_PREFIXES.some((p) => url.startsWith(p));
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function hasOwnProperty<T, K extends PropertyKey>(obj: T, prop: K): obj is T & Record<K, any> {
   return Object.prototype.hasOwnProperty.call(obj, prop);
@@ -90,23 +197,29 @@ export const createJsonSchemaTransform = ({ skipList }: { skipList: readonly str
     for (const prop in zodSchemas) {
       const zodSchema = zodSchemas[prop];
       if (zodSchema) {
-        transformed[prop] = zodToJsonSchema(zodSchema, zodToJsonSchemaOptions);
+        transformed[prop] = removeHiddenProperties(zodToJsonSchema(zodSchema, zodToJsonSchemaOptions));
       }
     }
 
     if (response) {
       transformed.response = {};
+      const stripProjectId = isCertManagerUrl(url);
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       for (const prop in response as any) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const schema = resolveSchema((response as any)[prop]);
 
-        const transformedResponse = zodToJsonSchema(
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          schema as any,
-          zodToJsonSchemaOptions
+        let transformedResponse = removeHiddenProperties(
+          zodToJsonSchema(
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            schema as any,
+            zodToJsonSchemaOptions
+          )
         );
+        if (stripProjectId) {
+          transformedResponse = stripPropertyDeep(transformedResponse, "projectId");
+        }
         transformed.response[prop] = transformedResponse;
       }
     }

@@ -4,8 +4,10 @@ import { SecretTagsSchema } from "@app/db/schemas";
 import { ApiDocsTags, SECRET_TAGS } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 export const registerSecretTagRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -142,6 +144,16 @@ export const registerSecretTagRouter = async (server: FastifyZodProvider) => {
         projectId: req.params.projectId,
         ...req.body
       });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.SecretTagCreated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: { projectId: req.params.projectId, tagId: tag.id }
+        })
+        .catch(() => {});
+
       return { tag };
     }
   });
@@ -180,6 +192,19 @@ export const registerSecretTagRouter = async (server: FastifyZodProvider) => {
         ...req.body,
         id: req.params.tagId
       });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.SecretTagUpdated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            projectId: req.params.projectId,
+            tagId: tag.id
+          }
+        })
+        .catch(() => {});
+
       return { tag };
     }
   });
@@ -213,6 +238,19 @@ export const registerSecretTagRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId,
         id: req.params.tagId
       });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.SecretTagDeleted,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            projectId: req.params.projectId,
+            tagId: tag.id
+          }
+        })
+        .catch(() => {});
+
       return { tag };
     }
   });

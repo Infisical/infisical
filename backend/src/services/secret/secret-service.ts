@@ -10,7 +10,8 @@ import {
   SecretEncryptionAlgo,
   SecretKeyEncoding,
   SecretsSchema,
-  SecretType
+  SecretType,
+  TableName
 } from "@app/db/schemas";
 import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
@@ -20,11 +21,8 @@ import {
   throwIfMissingSecretReadValueOrDescribePermission
 } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import {
-  ProjectPermissionActions,
-  ProjectPermissionSecretActions,
-  ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+import { ProjectPermissionSecretActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { ProjectEvents, TProjectEventPayload } from "@app/ee/services/project-events/project-events-types";
 import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
 import { TSecretApprovalRequestDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-dal";
 import { TSecretApprovalRequestSecretDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-secret-dal";
@@ -42,12 +40,15 @@ import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { OrgServiceActor } from "@app/lib/types";
 import {
   SecretUpdateMode,
+  TDuplicateSecretDTO,
   TGetSecretReferencesDTO,
   TGetSecretsRawByFolderMappingsDTO
 } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
 
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 import { ChangeType } from "../folder-commit/folder-commit-service";
+import { TKmsServiceFactory } from "../kms/kms-service";
+import { KmsDataKey } from "../kms/kms-types";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
@@ -140,7 +141,8 @@ type TSecretServiceFactoryDep = {
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   reminderService: Pick<TReminderServiceFactory, "createReminder">;
   secretVersionV2DAL: Pick<TSecretVersionV2DALFactory, "findOne">;
-  secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "invalidateSecretCacheByProjectId">;
+  secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "invalidateSecretCacheByProjectId" | "find">;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
   identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find">;
 };
@@ -169,6 +171,7 @@ export const secretServiceFactory = ({
   reminderService,
   secretVersionV2DAL,
   secretV2BridgeDAL,
+  kmsService,
   userGroupMembershipDAL,
   identityGroupMembershipDAL
 }: TSecretServiceFactoryDep) => {
@@ -329,7 +332,8 @@ export const secretServiceFactory = ({
         actor,
         projectId,
         orgId: actorOrgId,
-        environmentSlug: folder.environment.slug
+        environmentSlug: folder.environment.slug,
+        environmentName: folder.environment.name
       });
     }
     return { ...secret[0], environment, workspace: projectId, tags, secretPath: path };
@@ -474,7 +478,8 @@ export const secretServiceFactory = ({
         actorId,
         actor,
         projectId,
-        environmentSlug: folder.environment.slug
+        environmentSlug: folder.environment.slug,
+        environmentName: folder.environment.name
       });
     }
 
@@ -589,7 +594,8 @@ export const secretServiceFactory = ({
         actor,
         projectId,
         orgId: actorOrgId,
-        environmentSlug: folder.environment.slug
+        environmentSlug: folder.environment.slug,
+        environmentName: folder.environment.name
       });
     }
 
@@ -916,7 +922,8 @@ export const secretServiceFactory = ({
       secretPath: path,
       projectId,
       orgId: actorOrgId,
-      environmentSlug: folder.environment.slug
+      environmentSlug: folder.environment.slug,
+      environmentName: folder.environment.name
     });
 
     return newSecrets;
@@ -1039,7 +1046,8 @@ export const secretServiceFactory = ({
       secretPath: path,
       projectId,
       orgId: actorOrgId,
-      environmentSlug: folder.environment.slug
+      environmentSlug: folder.environment.slug,
+      environmentName: folder.environment.name
     });
 
     return secrets;
@@ -1141,7 +1149,8 @@ export const secretServiceFactory = ({
       secretPath: path,
       projectId,
       orgId: actorOrgId,
-      environmentSlug: folder.environment.slug
+      environmentSlug: folder.environment.slug,
+      environmentName: folder.environment.name
     });
 
     return secretsDeleted;
@@ -2636,96 +2645,18 @@ export const secretServiceFactory = ({
     secretId,
     secretVersions: filterSecretVersions
   }: TGetSecretVersionsDTO) => {
-    const secretVersionV2 = await secretV2BridgeService
-      .getSecretVersions({
-        actorId,
-        actor,
-        actorOrgId,
-        actorAuthMethod,
-        limit,
-        offset,
-        secretId,
-        secretVersions: filterSecretVersions
-      })
-      .catch((err) => {
-        if ((err as Error).message === "BadRequest: Failed to find secret") {
-          return null;
-        }
-
-        logger.error(err);
-      });
-
-    if (secretVersionV2) return secretVersionV2;
-
-    const secret = await secretDAL.findById(secretId);
-    if (!secret) throw new NotFoundError({ message: `Secret with ID '${secretId}' not found` });
-    const folder = await folderDAL.findById(secret.folderId);
-    if (!folder) throw new NotFoundError({ message: `Folder with ID '${secret.folderId}' not found` });
-
-    const [folderWithPath] = await folderDAL.findSecretPathByFolderIds(folder.projectId, [folder.id]);
-
-    if (!folderWithPath) {
-      throw new NotFoundError({ message: `Folder with ID '${folder.id}' not found` });
-    }
-
-    const { botKey } = await projectBotService.getBotKey(folder.projectId);
-    if (!botKey)
-      throw new NotFoundError({ message: `Project bot for project with ID '${folder.projectId}' not found` });
-
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
+    const secretVersionV2 = await secretV2BridgeService.getSecretVersions({
       actorId,
-      projectId: folder.projectId,
-      actorAuthMethod,
+      actor,
       actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback);
-    const secretVersions = await secretVersionDAL.findBySecretId(secretId, {
-      offset,
+      actorAuthMethod,
       limit,
-      sort: [["createdAt", "desc"]]
+      offset,
+      secretId,
+      secretVersions: filterSecretVersions
     });
 
-    return secretVersions.map((el) => {
-      const secretKey = crypto.encryption().symmetric().decrypt({
-        ciphertext: secret.secretKeyCiphertext,
-        iv: secret.secretKeyIV,
-        tag: secret.secretKeyTag,
-        key: botKey,
-        keySize: SymmetricKeySize.Bits128
-      });
-
-      const secretValueHidden = !hasSecretReadValueOrDescribePermission(
-        permission,
-        ProjectPermissionSecretActions.ReadValue,
-        {
-          environment: folder.environment.envSlug,
-          secretPath: folderWithPath.path,
-          secretName: secretKey,
-          ...(el.tags?.length && {
-            secretTags: el.tags.map((tag) => tag.slug)
-          })
-        }
-      );
-
-      return {
-        ...decryptSecretRaw(
-          {
-            secretValueHidden,
-            ...el,
-            workspace: folder.projectId,
-            environment: folder.environment.envSlug,
-            secretPath: folderWithPath.path
-          },
-          botKey
-        ),
-        redactedByActor: null,
-        isRedacted: false,
-        redactedAt: null,
-        redactedByUserId: null
-      };
-    });
+    return secretVersionV2;
   };
 
   const getSecretVersionsV2ByIds = async ({
@@ -2855,6 +2786,7 @@ export const secretServiceFactory = ({
       projectId: project.id,
       orgId: project.orgId,
       environmentSlug: environment,
+      environmentName: folder.environment.name,
       excludeReplication: true
     });
     await secretV2BridgeDAL.invalidateSecretCacheByProjectId(project.id);
@@ -2966,6 +2898,7 @@ export const secretServiceFactory = ({
       projectId: project.id,
       orgId: project.orgId,
       environmentSlug: environment,
+      environmentName: folder.environment.name,
       excludeReplication: true
     });
     await secretV2BridgeDAL.invalidateSecretCacheByProjectId(project.id);
@@ -3461,6 +3394,7 @@ export const secretServiceFactory = ({
         orgId: project.orgId,
         secretPath: destinationFolder.path,
         environmentSlug: destinationFolder.environment.slug,
+        environmentName: destinationFolder.environment.name,
         actorId,
         actor
       });
@@ -3473,6 +3407,7 @@ export const secretServiceFactory = ({
         orgId: project.orgId,
         secretPath: sourceFolder.path,
         environmentSlug: sourceFolder.environment.slug,
+        environmentName: sourceFolder.environment.name,
         actorId,
         actor
       });
@@ -3482,6 +3417,280 @@ export const secretServiceFactory = ({
       projectId: project.id,
       isSourceUpdated,
       isDestinationUpdated
+    };
+  };
+
+  const duplicateSecrets = async ({
+    projectId: inputProjectId,
+    sourceEnvironment,
+    sourceSecretPath,
+    destinationEnvironment,
+    destinationSecretPath,
+    secretIds,
+    shouldOverwrite,
+    attributesToCopy,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TDuplicateSecretDTO) => {
+    const project = await requestMemoize(requestMemoKeys.projectFindById(inputProjectId), () =>
+      projectDAL.findById(inputProjectId)
+    );
+    if (!project) {
+      throw new NotFoundError({ message: `Project with ID '${inputProjectId}' not found` });
+    }
+    if (project.version !== ProjectVersion.V3) {
+      throw new BadRequestError({
+        message: "Duplicating secrets is only supported on v3 projects. Please upgrade your project."
+      });
+    }
+    const projectId = project.id;
+
+    if (sourceSecretPath === destinationSecretPath && sourceEnvironment === destinationEnvironment) {
+      throw new BadRequestError({ message: "Cannot duplicate secrets to the same environment and path" });
+    }
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
+
+    const [sourceFolder, destinationFolder] = await Promise.all([
+      folderDAL.findBySecretPath(projectId, sourceEnvironment, sourceSecretPath),
+      folderDAL.findBySecretPath(projectId, destinationEnvironment, destinationSecretPath)
+    ]);
+    if (!sourceFolder) {
+      throw new NotFoundError({
+        message: `Source folder with path '${sourceSecretPath}' in environment with slug '${sourceEnvironment}' not found`
+      });
+    }
+    if (!destinationFolder) {
+      throw new NotFoundError({
+        message: `Destination folder with path '${destinationSecretPath}' in environment with slug '${destinationEnvironment}' not found`
+      });
+    }
+
+    const uniqueSecretIds = Array.from(new Set(secretIds));
+    const sourceSecrets = await secretV2BridgeDAL.find({
+      $in: {
+        [`${TableName.SecretV2}.id` as "id"]: uniqueSecretIds
+      },
+      [`${TableName.SecretV2}.type` as "type"]: SecretType.Shared,
+      [`${TableName.SecretV2}.folderId` as "folderId"]: sourceFolder.id
+    });
+    if (sourceSecrets.length !== uniqueSecretIds.length) {
+      const foundIds = new Set(sourceSecrets.map((s) => s.id));
+      const missingId = uniqueSecretIds.find((id) => !foundIds.has(id));
+      throw new NotFoundError({
+        message: `Secret with ID '${missingId}' not found in source folder with path '${sourceSecretPath}' and environment slug '${sourceEnvironment}'`
+      });
+    }
+
+    for (const sourceSecret of sourceSecrets) {
+      if (sourceSecret.isRotatedSecret) {
+        throw new BadRequestError({ message: `Cannot duplicate rotated secret: ${sourceSecret.key}` });
+      }
+      if (sourceSecret.isHoneyTokenSecret) {
+        throw new BadRequestError({ message: `Cannot duplicate honey token secret: ${sourceSecret.key}` });
+      }
+
+      const sourceTagSlugs = sourceSecret.tags?.map((t) => t.slug) ?? [];
+      throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
+        environment: sourceEnvironment,
+        secretPath: sourceSecretPath,
+        secretName: sourceSecret.key,
+        secretTags: sourceTagSlugs
+      });
+      if (attributesToCopy.value) {
+        throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
+          environment: sourceEnvironment,
+          secretPath: sourceSecretPath,
+          secretName: sourceSecret.key,
+          secretTags: sourceTagSlugs
+        });
+      }
+    }
+
+    const existingAtDestRows = await secretV2BridgeDAL.find({
+      $in: {
+        [`${TableName.SecretV2}.key` as "key"]: sourceSecrets.map((s) => s.key)
+      },
+      [`${TableName.SecretV2}.folderId` as "folderId"]: destinationFolder.id,
+      [`${TableName.SecretV2}.type` as "type"]: SecretType.Shared
+    });
+    const existingByKey = new Map(existingAtDestRows.map((row) => [row.key, row]));
+
+    for (const sourceSecret of sourceSecrets) {
+      const existingAtDest = existingByKey.get(sourceSecret.key);
+      if (existingAtDest) {
+        if (!shouldOverwrite) {
+          throw new BadRequestError({
+            message: `Secret with key '${sourceSecret.key}' already exists at destination. Set shouldOverwrite to true to replace it.`
+          });
+        }
+        if (existingAtDest.isRotatedSecret) {
+          throw new BadRequestError({
+            message: `Cannot duplicate to '${destinationFolder.path}' because the destination key '${sourceSecret.key}' is managed by a secret rotation.`
+          });
+        }
+        if (existingAtDest.isHoneyTokenSecret) {
+          throw new BadRequestError({
+            message: `Cannot duplicate to '${destinationFolder.path}' because the destination key '${sourceSecret.key}' is a honey token secret.`
+          });
+        }
+      }
+    }
+
+    const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId
+    });
+
+    const buildSecretPayload = (sourceSecret: (typeof sourceSecrets)[number]) => ({
+      secretKey: sourceSecret.key,
+      secretValue:
+        attributesToCopy.value && sourceSecret.encryptedValue
+          ? secretManagerDecryptor({ cipherTextBlob: sourceSecret.encryptedValue }).toString()
+          : undefined,
+      secretComment:
+        attributesToCopy.comment && sourceSecret.encryptedComment
+          ? secretManagerDecryptor({ cipherTextBlob: sourceSecret.encryptedComment }).toString()
+          : undefined,
+      skipMultilineEncoding: attributesToCopy.skipMultilineEncoding
+        ? Boolean(sourceSecret.skipMultilineEncoding)
+        : undefined,
+      tagIds: attributesToCopy.tags ? (sourceSecret.tags?.map((t) => t.id) ?? []) : undefined,
+      secretMetadata: attributesToCopy.metadata
+        ? (sourceSecret.secretMetadata?.map((el) => ({
+            key: el.key,
+            value: el.encryptedValue
+              ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString()
+              : (el.value ?? ""),
+            isEncrypted: Boolean(el.encryptedValue)
+          })) ?? [])
+        : undefined
+    });
+
+    const sourcesToUpdate = sourceSecrets.filter((s) => existingByKey.has(s.key));
+    const sourcesToCreate = sourceSecrets.filter((s) => !existingByKey.has(s.key));
+
+    const destFolderPolicy = await secretApprovalPolicyService.getSecretApprovalPolicy(
+      projectId,
+      destinationEnvironment,
+      destinationSecretPath
+    );
+
+    if (destFolderPolicy && actor === ActorType.USER) {
+      const approval = await secretApprovalRequestService.generateSecretApprovalRequestV2Bridge({
+        projectId,
+        environment: destinationEnvironment,
+        secretPath: destinationSecretPath,
+        policy: destFolderPolicy,
+        data: {
+          [SecretOperations.Create]: sourcesToCreate.map(buildSecretPayload),
+          [SecretOperations.Update]: sourcesToUpdate.map(buildSecretPayload)
+        },
+        actor,
+        actorId,
+        actorAuthMethod,
+        actorOrgId
+      });
+
+      return {
+        projectId,
+        results: sourceSecrets.map((sourceSecret) => ({
+          sourceSecretId: sourceSecret.id,
+          sourceSecretKey: sourceSecret.key,
+          approval
+        }))
+      };
+    }
+
+    const baseManyArgs = {
+      projectId,
+      environment: destinationEnvironment,
+      secretPath: destinationSecretPath,
+      actor,
+      actorId,
+      actorAuthMethod,
+      actorOrgId
+    } as const;
+
+    const { createdSecrets, updatedSecrets } = await secretDAL.transaction(async (tx) => {
+      const created = sourcesToCreate.length
+        ? await secretV2BridgeService.createManySecret({
+            ...baseManyArgs,
+            tx,
+            skipPostProcessing: true,
+            secrets: sourcesToCreate.map((sourceSecret) => {
+              const { secretKey, secretValue, ...rest } = buildSecretPayload(sourceSecret);
+              return { secretKey, secretValue: secretValue ?? "", ...rest };
+            })
+          })
+        : ([] as Awaited<ReturnType<typeof secretV2BridgeService.createManySecret>>);
+
+      const updated = sourcesToUpdate.length
+        ? await secretV2BridgeService.updateManySecret({
+            ...baseManyArgs,
+            tx,
+            skipPostProcessing: true,
+            mode: SecretUpdateMode.FailOnNotFound,
+            secrets: sourcesToUpdate.map(buildSecretPayload)
+          })
+        : ([] as Awaited<ReturnType<typeof secretV2BridgeService.updateManySecret>>);
+
+      return { createdSecrets: created, updatedSecrets: updated };
+    });
+
+    const events: TProjectEventPayload[] = [];
+    if (createdSecrets.length) {
+      events.push({
+        type: ProjectEvents.SecretCreate,
+        secretKeys: createdSecrets.map((s) => s.secretKey),
+        secretPath: destinationFolder.path,
+        environment: destinationFolder.environment.slug,
+        projectId
+      });
+    }
+    if (updatedSecrets.length) {
+      events.push({
+        type: ProjectEvents.SecretUpdate,
+        secretKeys: updatedSecrets.map((s) => s.secretKey),
+        secretPath: destinationFolder.path,
+        environment: destinationFolder.environment.slug,
+        projectId
+      });
+    }
+
+    await snapshotService.performSnapshot(destinationFolder.id);
+    await secretQueueService.syncSecrets({
+      actor,
+      actorId,
+      secretPath: destinationFolder.path,
+      projectId,
+      orgId: project.orgId,
+      environmentName: destinationFolder.environment.name,
+      environmentSlug: destinationFolder.environment.slug,
+      events
+    });
+
+    const destinationIdByKey = new Map<string, string>([
+      ...createdSecrets.map((s): [string, string] => [s.secretKey, s.id]),
+      ...updatedSecrets.map((s): [string, string] => [s.secretKey, s.id])
+    ]);
+
+    return {
+      projectId,
+      results: sourceSecrets.map((sourceSecret) => ({
+        sourceSecretId: sourceSecret.id,
+        sourceSecretKey: sourceSecret.key,
+        destinationSecretId: destinationIdByKey.get(sourceSecret.key) as string
+      }))
     };
   };
 
@@ -3627,6 +3836,7 @@ export const secretServiceFactory = ({
     getSecretVersions,
     backfillSecretReferences,
     moveSecrets,
+    duplicateSecrets,
     startSecretV2Migration,
     getSecretsCount,
     getSecretsCountMultiEnv,

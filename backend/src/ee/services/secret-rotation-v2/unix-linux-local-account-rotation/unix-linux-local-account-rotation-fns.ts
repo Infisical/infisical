@@ -401,6 +401,15 @@ export const unixLinuxLocalAccountRotationFactory: TRotationFactory<
     if (username === credentials.username)
       throw new BadRequestError({ message: "Provided username is used in Infisical app connections." });
 
+    if (conn.configuration?.blockedUsers) {
+      const blockedUsersList = conn.configuration.blockedUsers.split(",").map((u) => u.trim().toLowerCase());
+      if (blockedUsersList.includes(username.toLowerCase())) {
+        throw new BadRequestError({
+          message: `Username '${username}' is blocked from rotation by the SSH connection configuration.`
+        });
+      }
+    }
+
     let connectConfig: TSshConnectionConfig;
 
     if (isSelfRotation && currentPassword) {

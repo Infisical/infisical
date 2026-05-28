@@ -19,7 +19,16 @@ import { HubSpotSignupMethod, PostHogEventTypes, TPostHogEvent, TSecretModifiedE
 export const TELEMETRY_SECRET_PROCESSED_KEY = "telemetry-secret-processed";
 export const TELEMETRY_SECRET_OPERATIONS_KEY = "telemetry-secret-operations";
 
-export const POSTHOG_AGGREGATED_EVENTS = [PostHogEventTypes.SecretPulled, PostHogEventTypes.MachineIdentityLogin];
+export const POSTHOG_AGGREGATED_EVENTS = [
+  PostHogEventTypes.SecretPulled,
+  PostHogEventTypes.MachineIdentityLogin,
+  PostHogEventTypes.IssueCert,
+  PostHogEventTypes.SignCert,
+  PostHogEventTypes.PkiSyncExecuted,
+  PostHogEventTypes.CertificateRequestCreated,
+  PostHogEventTypes.CmekEncrypt,
+  PostHogEventTypes.CmekDecrypt
+];
 
 // Bucket configuration
 const TELEMETRY_BUCKET_COUNT = 30;
