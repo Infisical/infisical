@@ -208,7 +208,10 @@ type TProjectServiceFactoryDep = {
   >;
   projectTemplateService: TProjectTemplateServiceFactory;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
-  projectAccessRequestDAL: Pick<TProjectAccessRequestDALFactory, "upsert" | "findPendingForRequesterInOrg">;
+  projectAccessRequestDAL: Pick<
+    TProjectAccessRequestDALFactory,
+    "upsertPendingRequest" | "findPendingForRequesterInOrg"
+  >;
 };
 
 export type TProjectServiceFactory = ReturnType<typeof projectServiceFactory>;
@@ -2547,20 +2550,11 @@ export const projectServiceFactory = ({
       ? `**${userDetails.firstName} ${userDetails.lastName}** (${userDetails.email}) has requested access to **${productLabel}**.`
       : `**${userDetails.firstName} ${userDetails.lastName}** (${userDetails.email}) has requested access to the project **${project.name}**.`;
 
-    await projectAccessRequestDAL.upsert(
-      [
-        {
-          projectId,
-          requesterUserId: permission.id,
-          status: "pending",
-          comment: comment ?? null,
-          createdAt: new Date()
-        } as Parameters<typeof projectAccessRequestDAL.upsert>[0][number] & { createdAt: Date }
-      ],
-      ["projectId", "requesterUserId"],
-      undefined,
-      ["status", "comment", "createdAt"]
-    );
+    await projectAccessRequestDAL.upsertPendingRequest({
+      projectId,
+      requesterUserId: permission.id,
+      comment: comment ?? null
+    });
 
     await notificationService.createUserNotifications(
       projectMembers

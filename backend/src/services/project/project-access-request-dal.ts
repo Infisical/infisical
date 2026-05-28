@@ -1,5 +1,6 @@
 import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas";
+import { DatabaseError } from "@app/lib/errors";
 import { ormify } from "@app/lib/knex";
 
 export type TProjectAccessRequestDALFactory = ReturnType<typeof projectAccessRequestDALFactory>;
@@ -19,5 +20,26 @@ export const projectAccessRequestDALFactory = (db: TDbClient) => {
       >(`${TableName.ProjectAccessRequest}.projectId`, `${TableName.ProjectAccessRequest}.createdAt`);
   };
 
-  return { ...orm, findPendingForRequesterInOrg };
+  const upsertPendingRequest = async ({
+    projectId,
+    requesterUserId,
+    comment
+  }: {
+    projectId: string;
+    requesterUserId: string;
+    comment: string | null;
+  }) => {
+    try {
+      const [row] = await db(TableName.ProjectAccessRequest)
+        .insert({ projectId, requesterUserId, status: "pending", comment })
+        .onConflict(["projectId", "requesterUserId"])
+        .merge({ status: "pending", comment, createdAt: db.fn.now() } as never)
+        .returning("*");
+      return row;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "UpsertPendingProjectAccessRequest" });
+    }
+  };
+
+  return { ...orm, findPendingForRequesterInOrg, upsertPendingRequest };
 };
