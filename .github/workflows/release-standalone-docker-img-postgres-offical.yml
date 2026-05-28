@@ -92,12 +92,17 @@ jobs:
               run: aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin public.ecr.aws
             - name: 🪞 Mirror image to Amazon ECR Public
               if: env.ECR_PUBLIC_PUBLISH_ROLE_ARN != ''
+              env:
+                  # Passed via env (not interpolated into the script) so a crafted
+                  # tag name can't inject shell commands.
+                  IMAGE_VERSION: ${{ steps.extract_version.outputs.version }}
+                  IMAGE_SHORT_SHA: ${{ steps.commit.outputs.short }}
               run: |
                   docker buildx imagetools create \
-                    --tag public.ecr.aws/infisical/infisical:latest \
-                    --tag public.ecr.aws/infisical/infisical:${{ steps.commit.outputs.short }} \
-                    --tag public.ecr.aws/infisical/infisical:${{ steps.extract_version.outputs.version }} \
-                    infisical/infisical:${{ steps.extract_version.outputs.version }}
+                    --tag "public.ecr.aws/infisical/infisical:latest" \
+                    --tag "public.ecr.aws/infisical/infisical:${IMAGE_SHORT_SHA}" \
+                    --tag "public.ecr.aws/infisical/infisical:${IMAGE_VERSION}" \
+                    "infisical/infisical:${IMAGE_VERSION}"
             - name: Snyk to check Docker image for vulnerabilities
               continue-on-error: true 
               uses: snyk/actions/docker@9cf6ca713d71123d2d229cc3d7f145b96ea3c518 # master @ 2026-05-05
