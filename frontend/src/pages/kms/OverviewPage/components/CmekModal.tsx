@@ -14,7 +14,8 @@ import {
   SelectItem,
   TextArea
 } from "@app/components/v2";
-import { useProject } from "@app/context";
+import { Badge } from "@app/components/v3";
+import { useProject, useSubscription } from "@app/context";
 import { keyUsageDefaultOption, kmsKeyUsageOptions } from "@app/helpers/kms";
 import {
   AllowedEncryptionKeyAlgorithms,
@@ -52,6 +53,7 @@ const CmekForm = ({ onComplete, cmek }: FormProps) => {
   const { currentProject } = useProject();
   const projectId = currentProject.id;
   const isUpdate = !!cmek;
+  const { subscription } = useSubscription();
 
   const {
     control,
@@ -185,11 +187,22 @@ const CmekForm = ({ onComplete, cmek }: FormProps) => {
                         return false;
                       })
                       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                      .map(([_, value]) => (
-                        <SelectItem value={value} key={`encryption-algorithm-${value}`}>
-                          <span className="uppercase">{value.replaceAll("-", " ")}</span>
-                        </SelectItem>
-                      ))}
+                      .map(([_, value]) => {
+                        const isPqc = value.startsWith("ML_DSA");
+                        const isDisabled = isPqc && !subscription?.kmsPqc;
+                        return (
+                          <SelectItem
+                            value={value}
+                            key={`encryption-algorithm-${value}`}
+                            isDisabled={isDisabled}
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className="uppercase">{value.replaceAll("-", " ")}</span>
+                              {isDisabled && <Badge variant="info">Enterprise</Badge>}
+                            </div>
+                          </SelectItem>
+                        );
+                      })}
                   </Select>
                 </FormControl>
               )}

@@ -2406,7 +2406,8 @@ export const registerRoutes = async (
   const cmekService = cmekServiceFactory({
     kmsDAL,
     kmsService,
-    permissionService
+    permissionService,
+    licenseService
   });
 
   const externalMigrationQueue = externalMigrationQueueFactory({
