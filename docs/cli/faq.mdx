@@ -58,3 +58,32 @@ Yes. This is simply a configuration file and contains no sensitive data.
   export INFISICAL_CUSTOM_HEADERS="Header1=value1 Header2=value2 Header3=value3"
   ```
 </Accordion>
+
+<Accordion title="Why do I keep getting logged out of the CLI?">
+  
+  By default, CLI login sessions expire after **30 days**. If you're experiencing more frequent logouts, you can configure the session timeout using the `JWT_AUTH_LIFETIME` environment variable.
+  
+  To extend your session timeout, set the environment variable before running Infisical commands:
+  
+  ```bash
+  # Extend timeout to 90 days
+  export JWT_AUTH_LIFETIME="90d"
+  
+  # Or run commands with the variable set inline
+  JWT_AUTH_LIFETIME="90d" infisical run -- your-command
+  ```
+  
+  **Available time formats:**
+  - Days: `"7d"`, `"14d"`, `"30d"`, `"90d"`
+  - Months/Years: `"3m"`, `"6m"`, `"1y"`
+  - Seconds: `"86400"` (24 hours)
+  
+  **For self-hosted deployments:** If you're running a self-hosted Infisical server, you can set this globally in your server configuration:
+  
+  ```bash
+  # In your Docker Compose or deployment config
+  JWT_AUTH_LIFETIME=90d
+  ```
+  
+  **Note:** The default is already set to 30 days, which should be sufficient for most use cases. If you need longer timeouts, consider your security requirements before extending this further.
+</Accordion>
