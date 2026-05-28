@@ -36,6 +36,29 @@ import { GitLabSyncScope } from "@app/hooks/api/secretSyncs/types/gitlab-sync";
 
 import { TSecretSyncForm } from "../schemas";
 
+const formatGitLabGroupOptionLabel = (group: TGitLabGroup) => (
+  <div className="flex min-w-0 items-center gap-2">
+    <span className="shrink-0">{group.name}</span>
+    {group.fullPath !== group.name && (
+      <span className="min-w-0 truncate text-muted">{group.fullPath}</span>
+    )}
+  </div>
+);
+
+const formatGitLabProjectOptionLabel = (project: TGitLabProject) => {
+  const fullPathWithNamespace = project.name;
+  const shortName = fullPathWithNamespace.split("/").pop() || fullPathWithNamespace;
+
+  return (
+    <div className="flex min-w-0 items-center gap-2">
+      <span className="shrink-0">{shortName}</span>
+      {fullPathWithNamespace !== shortName && (
+        <span className="min-w-0 truncate text-muted">{fullPathWithNamespace}</span>
+      )}
+    </div>
+  );
+};
+
 const SecretProtectionOption = ({
   title,
   description,
@@ -208,7 +231,8 @@ export const GitLabSyncFields = () => {
                   filterOption={null}
                   options={groupOptions}
                   placeholder="Search for a group..."
-                  getOptionLabel={(option) => option.fullName}
+                  getOptionLabel={(option) => `${option.name} · ${option.fullPath}`}
+                  formatOptionLabel={formatGitLabGroupOptionLabel}
                   getOptionValue={(option) => option.id}
                   noOptionsMessage={({ inputValue }) =>
                     inputValue ? "No groups found matching your search." : "No groups found."
@@ -256,7 +280,11 @@ export const GitLabSyncFields = () => {
                   filterOption={null}
                   options={projectOptions}
                   placeholder="Search for a project..."
-                  getOptionLabel={(option) => option.name}
+                  getOptionLabel={(option) => {
+                    const shortName = option.name.split("/").pop() || option.name;
+                    return `${shortName} · ${option.name}`;
+                  }}
+                  formatOptionLabel={formatGitLabProjectOptionLabel}
                   getOptionValue={(option) => option.id}
                   noOptionsMessage={({ inputValue }) =>
                     inputValue ? "No projects found matching your search." : "No projects found."

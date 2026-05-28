@@ -18,7 +18,7 @@ import { GitLabAccessTokenType, GitLabConnectionMethod } from "./gitlab-connecti
 import { TGitLabConnection, TGitLabConnectionConfig, TGitLabGroup, TGitLabProject } from "./gitlab-connection-types";
 
 // Cap provider list calls to the first page; users narrow further via server-side search.
-const SEARCH_ITEMS_LIMIT = 20;
+// const SEARCH_ITEMS_LIMIT = 20;
 
 interface GitLabOAuthTokenResponse {
   access_token: string;
@@ -354,14 +354,15 @@ export const listGitLabProjects = async ({
     );
     const projects = await client.Projects.all({
       pagination: "offset",
-      perPage: SEARCH_ITEMS_LIMIT,
+      // perPage: SEARCH_ITEMS_LIMIT,
       maxPages: 1,
       ...(search ? { search } : {}),
       archived: false,
       includePendingDelete: false,
       membership: true,
       includeHidden: false,
-      imported: false
+      imported: false,
+      searchNamespaces: !!search
     });
 
     return projects.map((project) => ({
@@ -402,7 +403,7 @@ export const listGitLabGroups = async ({
   try {
     const groups = await client.Groups.all({
       pagination: "offset",
-      perPage: SEARCH_ITEMS_LIMIT,
+      // perPage: SEARCH_ITEMS_LIMIT,
       maxPages: 1,
       orderBy: "name",
       sort: "asc",
