@@ -8,7 +8,7 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
 import { SearchResourceOperators } from "@app/lib/search-resource/search";
-import { getIdentityActiveLockoutAuthMethods } from "@app/services/identity-v2/identity-fns";
+import { getIdentityActiveLockoutAuthMethods } from "@app/services/identity/identity-fns";
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
 import { TIdentityDALFactory } from "../identity/identity-dal";
