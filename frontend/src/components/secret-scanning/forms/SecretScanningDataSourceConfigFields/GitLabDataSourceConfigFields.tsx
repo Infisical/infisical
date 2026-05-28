@@ -39,11 +39,13 @@ export const GitLabDataSourceConfigFields = () => {
   const { data: projects, isPending: isProjectsPending } = useGitLabConnectionListProjects(
     connectionId,
     undefined,
+    undefined,
     { enabled: Boolean(connectionId) }
   );
 
   const { data: groups, isPending: isGroupsPending } = useGitLabConnectionListGroups(
     connectionId,
+    undefined,
     undefined,
     {
       enabled: Boolean(connectionId) && scope === GitLabDataSourceScope.Group

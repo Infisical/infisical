@@ -36,6 +36,8 @@ import { GitLabSyncScope } from "@app/hooks/api/secretSyncs/types/gitlab-sync";
 
 import { TSecretSyncForm } from "../schemas";
 
+const GITLAB_SYNC_LIST_LIMIT = 20;
+
 const formatGitLabGroupOptionLabel = (group: TGitLabGroup) => (
   <div className="flex min-w-0 items-center gap-2">
     <span className="shrink-0">{group.name}</span>
@@ -109,9 +111,13 @@ export const GitLabSyncFields = () => {
   const groupId = useWatch({ name: "destinationConfig.groupId", control });
   const groupName = useWatch({ name: "destinationConfig.groupName", control });
 
+  const groupListLimit = debouncedGroupSearch ? undefined : GITLAB_SYNC_LIST_LIMIT;
+  const projectListLimit = debouncedProjectSearch ? undefined : GITLAB_SYNC_LIST_LIMIT;
+
   const { data: groups, isLoading: isGroupsLoading } = useGitLabConnectionListGroups(
     connectionId,
     debouncedGroupSearch || undefined,
+    groupListLimit,
     {
       enabled: Boolean(connectionId) && scope === GitLabSyncScope.Group
     }
@@ -120,6 +126,7 @@ export const GitLabSyncFields = () => {
   const { data: projects, isLoading: isProjectsLoading } = useGitLabConnectionListProjects(
     connectionId,
     debouncedProjectSearch || undefined,
+    projectListLimit,
     {
       enabled: Boolean(connectionId) && scope === GitLabSyncScope.Project
     }

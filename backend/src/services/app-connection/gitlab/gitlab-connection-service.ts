@@ -18,10 +18,16 @@ export const gitlabConnectionService = (
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">,
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">
 ) => {
-  const listProjects = async (connectionId: string, actor: OrgServiceActor, search?: string) => {
+  const listProjects = async (connectionId: string, actor: OrgServiceActor, search?: string, limit?: number) => {
     try {
       const appConnection = await getAppConnection(AppConnection.GitLab, connectionId, actor);
-      const projects = await listGitLabProjects({ appConnection, appConnectionDAL, kmsService, search });
+      const projects = await listGitLabProjects({
+        appConnection,
+        appConnectionDAL,
+        kmsService,
+        search,
+        limit
+      });
       return projects;
     } catch (error) {
       logger.error(error, `Failed to establish connection with GitLab for app ${connectionId}`);
@@ -29,10 +35,16 @@ export const gitlabConnectionService = (
     }
   };
 
-  const listGroups = async (connectionId: string, actor: OrgServiceActor, search?: string) => {
+  const listGroups = async (connectionId: string, actor: OrgServiceActor, search?: string, limit?: number) => {
     try {
       const appConnection = await getAppConnection(AppConnection.GitLab, connectionId, actor);
-      const groups = await listGitLabGroups({ appConnection, appConnectionDAL, kmsService, search });
+      const groups = await listGitLabGroups({
+        appConnection,
+        appConnectionDAL,
+        kmsService,
+        search,
+        limit
+      });
       return groups;
     } catch (error) {
       logger.error(error, `Failed to establish connection with GitLab for app ${connectionId}`);

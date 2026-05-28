@@ -17,9 +17,6 @@ import { TAppConnectionDALFactory } from "../app-connection-dal";
 import { GitLabAccessTokenType, GitLabConnectionMethod } from "./gitlab-connection-enums";
 import { TGitLabConnection, TGitLabConnectionConfig, TGitLabGroup, TGitLabProject } from "./gitlab-connection-types";
 
-// Cap provider list calls to the first page; users narrow further via server-side search.
-// const SEARCH_ITEMS_LIMIT = 20;
-
 interface GitLabOAuthTokenResponse {
   access_token: string;
   token_type: string;
@@ -321,12 +318,14 @@ export const listGitLabProjects = async ({
   appConnection,
   appConnectionDAL,
   kmsService,
-  search
+  search,
+  limit
 }: {
   appConnection: TGitLabConnection;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   search?: string;
+  limit?: number;
 }): Promise<TGitLabProject[]> => {
   let { accessToken } = appConnection.credentials;
 
@@ -354,8 +353,7 @@ export const listGitLabProjects = async ({
     );
     const projects = await client.Projects.all({
       pagination: "offset",
-      // perPage: SEARCH_ITEMS_LIMIT,
-      maxPages: 1,
+      ...(limit !== undefined ? { perPage: limit } : {}),
       ...(search ? { search } : {}),
       archived: false,
       includePendingDelete: false,
@@ -390,12 +388,14 @@ export const listGitLabGroups = async ({
   appConnection,
   appConnectionDAL,
   kmsService,
-  search
+  search,
+  limit
 }: {
   appConnection: TGitLabConnection;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   search?: string;
+  limit?: number;
 }): Promise<TGitLabGroup[]> => {
   const client = await getNavigationClient({ appConnection, appConnectionDAL, kmsService });
   if (!client) return [];
@@ -403,7 +403,7 @@ export const listGitLabGroups = async ({
   try {
     const groups = await client.Groups.all({
       pagination: "offset",
-      // perPage: SEARCH_ITEMS_LIMIT,
+      ...(limit !== undefined ? { perPage: limit } : {}),
       maxPages: 1,
       orderBy: "name",
       sort: "asc",
