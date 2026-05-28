@@ -53,6 +53,7 @@ const createHarness = async ({ clickhouse = false, streamsEnabled = false } = {}
     upsertJobScheduler: vi.fn(async () => undefined)
   };
 
+  const release = vi.fn(async () => undefined);
   const keyStore = {
     streamAdd: vi.fn<
       (key: string, id: string, fieldValue: { data: string }, maxLen?: number) => Promise<string | null>
@@ -61,7 +62,14 @@ const createHarness = async ({ clickhouse = false, streamsEnabled = false } = {}
       entries: [],
       lastId: null
     })),
-    streamTrim: vi.fn<(key: string, minId: string, inclusive?: boolean) => Promise<number>>(async () => 0)
+    streamTrim: vi.fn<(key: string, minId: string, inclusive?: boolean) => Promise<number>>(async () => 0),
+    acquireLock: vi.fn<
+      (
+        resources: string[],
+        duration: number,
+        settings?: { retryCount?: number }
+      ) => Promise<{ release: typeof release }>
+    >(async () => ({ release }))
   };
 
   const auditLogDAL = { batchCreate: vi.fn<(logs: Record<string, unknown>[]) => Promise<void>>(async () => undefined) };
@@ -98,6 +106,7 @@ const createHarness = async ({ clickhouse = false, streamsEnabled = false } = {}
     service,
     queueService,
     keyStore,
+    release,
     auditLogDAL,
     projectDAL,
     licenseService,
@@ -321,5 +330,26 @@ describe("audit-log-queue unified consumer", () => {
     const rows = auditLogDAL.batchCreate.mock.calls[0][0];
     expect(rows).toHaveLength(1);
     expect(rows[0].id).toBe("ok");
+  });
+
+  test("skips the tick when the consumer lock is already held by another runner", async () => {
+    const { consumer, auditLogDAL, keyStore, release } = await createHarness();
+    keyStore.acquireLock.mockRejectedValueOnce(new Error("ResourceLockedError"));
+    keyStore.streamCollect.mockResolvedValueOnce(collectResult([streamEntry()]));
+
+    await consumer();
+
+    expect(keyStore.streamCollect).not.toHaveBeenCalled();
+    expect(auditLogDAL.batchCreate).not.toHaveBeenCalled();
+    expect(release).not.toHaveBeenCalled();
+  });
+
+  test("releases the consumer lock even when the drain throws", async () => {
+    const { consumer, keyStore, release } = await createHarness();
+    keyStore.streamCollect.mockRejectedValueOnce(new Error("redis hiccup"));
+
+    await expect(consumer()).rejects.toThrow("redis hiccup");
+
+    expect(release).toHaveBeenCalledTimes(1);
   });
 });

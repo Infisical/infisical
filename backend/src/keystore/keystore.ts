@@ -141,7 +141,8 @@ export const KeyStorePrefixes = {
     `telemetry-event-${event}-${bucketId}-${distinctId}-${uuid}` as const,
   TelemetryEventByBucketPattern: (event: string, bucketId: string) => `telemetry-event-${event}-${bucketId}-*` as const,
 
-  AuditLogStreamFlushDebounce: (streamId: string) => `audit-log-stream:${streamId}:flush-debounce` as const
+  AuditLogStreamFlushDebounce: (streamId: string) => `audit-log-stream:${streamId}:flush-debounce` as const,
+  AuditLogIngestConsumerLock: "audit-log-ingest:consumer-lock" as const
 };
 
 export const KeyStoreTtls = {

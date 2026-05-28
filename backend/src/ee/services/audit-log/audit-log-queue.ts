@@ -4,7 +4,7 @@ import { v7 as uuidv7 } from "uuid";
 
 import type { TAuditLogs, TProjects } from "@app/db/schemas";
 import { TAuditLogStreamOutboxServiceFactory } from "@app/ee/services/audit-log-stream-outbox/audit-log-stream-outbox-service";
-import { TKeyStoreFactory } from "@app/keystore/keystore";
+import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
 import { JOB_SCHEDULER_PREFIX, QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
@@ -21,7 +21,7 @@ type TAuditLogQueueServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findById">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   clickhouseClient: ClickHouseClient | null;
-  keyStore: Pick<TKeyStoreFactory, "streamAdd" | "streamCollect" | "streamTrim">;
+  keyStore: Pick<TKeyStoreFactory, "streamAdd" | "streamCollect" | "streamTrim" | "acquireLock">;
 };
 
 export type TAuditLogQueueServiceFactory = {
@@ -55,12 +55,10 @@ export const AUDIT_LOG_STREAM_TIMEOUT = 5 * 1000;
 export const AUDIT_LOG_STREAM_BATCH_TIMEOUT = 30 * 1000;
 const MS_IN_DAY = 24 * 60 * 60 * 1000;
 
-// Redis ingest stream shared by both storage backends. `pushToLog` appends raw-ish entries
-// here; a single scheduled consumer drains, enriches, batch-inserts, fans out to the outbox,
-// and trims. Keep the key literal stable so a rolling deploy doesn't strand in-flight entries.
 const AUDIT_LOG_STREAM_KEY = "audit-log-stream";
 const AUDIT_LOG_STREAM_BATCH_SIZE = 10_000;
 const AUDIT_LOG_STREAM_MAX_ENTRIES = 50_000;
+const AUDIT_LOG_STREAM_CONSUMER_LOCK_TTL_MS = 60_000;
 
 export const auditLogQueueServiceFactory = async ({
   auditLogDAL,
@@ -127,7 +125,7 @@ export const auditLogQueueServiceFactory = async ({
   // into the active backend, fan out to the stream outbox, and trim. Trim happens only after a
   // successful insert so a failed batch is retried on the next tick (re-inserts are idempotent:
   // ClickHouse ReplacingMergeTree dedups on id, Postgres uses ON CONFLICT (id) DO NOTHING).
-  const consumeAuditLogStream = async () => {
+  const drainAuditLogStream = async () => {
     const { entries, lastId } = await keyStore.streamCollect(
       AUDIT_LOG_STREAM_KEY,
       AUDIT_LOG_STREAM_BATCH_SIZE,
@@ -269,6 +267,34 @@ export const auditLogQueueServiceFactory = async ({
     // Trim whenever the insert step did not throw — including the all-dropped case — so skipped
     // and handled entries don't accumulate in the stream forever.
     await keyStore.streamTrim(AUDIT_LOG_STREAM_KEY, lastId, true);
+  };
+
+  // Cron fires every 5 s but a tick can run longer under load (big batch, slow DB). Multiple
+  // pods all subscribe to the scheduler so two ticks can overlap. The work is idempotent, but
+  // overlap doubles DB / Redis pressure when we're already behind. Guard the body with redlock
+  // (`retryCount: 0` makes it non-blocking): if another runner holds the lock we just skip —
+  // the next scheduled tick will pick up where it left off. The TTL is a safety net for a
+  // crashed consumer; release uses a fencing-token Lua script so a slow runner whose lock
+  // already expired can't accidentally release a successor's lock.
+  const consumeAuditLogStream = async () => {
+    let lock;
+    try {
+      lock = await keyStore.acquireLock(
+        [KeyStorePrefixes.AuditLogIngestConsumerLock],
+        AUDIT_LOG_STREAM_CONSUMER_LOCK_TTL_MS,
+        {
+          retryCount: 0
+        }
+      );
+    } catch {
+      // Another runner holds the lock — skip this tick.
+      return;
+    }
+    try {
+      await drainAuditLogStream();
+    } finally {
+      await lock.release();
+    }
   };
 
   // Single scheduled consumer for both backends, every 5 seconds. Registered unconditionally
