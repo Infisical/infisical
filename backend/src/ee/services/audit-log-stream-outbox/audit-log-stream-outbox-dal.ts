@@ -267,10 +267,25 @@ export const auditLogStreamOutboxDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findStreamsWithOverdueRows = async (): Promise<{ streamId: string; orgId: string; provider: string }[]> => {
+    try {
+      return await db(`${TableName.AuditLogStreamOutbox} as o`)
+        .join(`${TableName.AuditLogStream} as s`, "s.id", "o.streamId")
+        .whereIn("o.status", [AuditLogStreamOutboxStatus.Pending, AuditLogStreamOutboxStatus.Retry])
+        .andWhere("o.nextRetryAt", "<=", db.fn.now())
+        .distinct<
+          { streamId: string; orgId: string; provider: string }[]
+        >("o.streamId as streamId", "o.orgId as orgId", "s.provider as provider");
+    } catch (error) {
+      throw new DatabaseError({ error, name: "AuditLogStreamOutbox: findStreamsWithOverdueRows" });
+    }
+  };
+
   return {
     batchInsert,
     claimBatchForStream,
     commitDeliveryResult,
-    recoverStaleClaims
+    recoverStaleClaims,
+    findStreamsWithOverdueRows
   };
 };

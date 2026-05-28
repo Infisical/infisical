@@ -268,9 +268,23 @@ export const auditLogStreamOutboxServiceFactory = ({
     }
   };
 
-  // Stale-claim sweeper. Rows whose worker crashed mid-batch stay 'processing'
-  // forever and never re-enter the drain query. Flip them back to 'retry' so
-  // the next event for that stream picks them up via the normal debounce path.
+  // Stale-claim sweeper. Two responsibilities, both about preventing rows from
+  // getting stuck in the outbox:
+  //   1. Rows whose worker crashed mid-batch stay 'processing' forever and never
+  //      re-enter the drain query — flip them back to 'retry' (or DLQ if attempts
+  //      are exhausted).
+  //   2. Rows in 'pending'/'retry' whose nextRetryAt is now in the past but never
+  //      got a follow-up flush job (drainStream bailed on a chunk failure and no
+  //      new event arrived after backoff). For these, enqueue a flush via the
+  //      normal debounce path.
+  //
+  // The wake-up step does not touch row state — it only enqueues a flush. Duplicate
+  // deliveries are still prevented by:
+  //   - BullMQ jobId dedup ('flush:<streamId>') if a real flush is already
+  //     delayed/active for the stream;
+  //   - the SETNX debounce key inside debounceAndEnqueueFlush;
+  //   - claimBatchForStream's FOR UPDATE SKIP LOCKED + atomic flip to 'processing'
+  //     so even concurrent workers claim disjoint rows.
   const sweepStaleClaims = async () => {
     const { retried, movedToDlq } = await auditLogStreamOutboxDAL.recoverStaleClaims(
       STALE_CLAIM_THRESHOLD_MS,
@@ -281,6 +295,17 @@ export const auditLogStreamOutboxServiceFactory = ({
         `audit-log-stream-outbox: recovered stale claims [retried=${retried}] [movedToDlq=${movedToDlq}] [thresholdMs=${STALE_CLAIM_THRESHOLD_MS}]`
       );
     }
+
+    const overdueStreams = await auditLogStreamOutboxDAL.findStreamsWithOverdueRows();
+    if (overdueStreams.length === 0) return;
+
+    const results = await Promise.allSettled(
+      overdueStreams.map(({ streamId, orgId, provider }) =>
+        debounceAndEnqueueFlush(streamId, orgId, provider as LogProvider)
+      )
+    );
+    const woken = results.filter((r) => r.status === "fulfilled" && r.value === true).length;
+    logger.info(`audit-log-stream-outbox: swept overdue streams [overdue=${overdueStreams.length}] [woken=${woken}]`);
   };
 
   return {
