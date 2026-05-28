@@ -6,12 +6,12 @@ description: "Run the Infisical gateway or manage its systemd service"
 <Tabs>
   <Tab title="CLI">
     ```bash
-    infisical gateway start <name> --enroll-method=token --token=<enrollment-token> --domain=<domain>
+    infisical gateway start <gateway-name> --enroll-method=token --token=<enrollment-token> --domain=<domain>
     ```
   </Tab>
   <Tab title="systemd">
     ```bash
-    sudo infisical gateway systemd install <name> --enroll-method=token --token=<enrollment-token> --domain=<domain>
+    sudo infisical gateway systemd install <gateway-name> --enroll-method=token --token=<enrollment-token> --domain=<domain>
     ```
   </Tab>
 </Tabs>
@@ -36,7 +36,7 @@ If you are moving from Gateway v1 to Gateway v2, this is NOT a drop-in switch. G
   Run the Infisical gateway component within your the network where your target resources are located. The gateway establishes an SSH reverse tunnel to a relay server and provides secure access to private resources within your network.
 
 ```bash
-infisical gateway start <name> --enroll-method=token --token=<enrollment-token> --domain=<domain>
+infisical gateway start <gateway-name> --enroll-method=token --token=<enrollment-token> --domain=<domain>
 ```
 
 The gateway name is provided as a positional argument.
@@ -100,7 +100,7 @@ Once started, the gateway component will:
 
     ```bash
     # Example
-    infisical gateway start <name> --domain=https://app.your-domain.com --enroll-method=token --token=<token>
+    infisical gateway start <gateway-name> --domain=https://app.your-domain.com --enroll-method=token --token=<token>
     ```
 
   </Accordion>
@@ -172,8 +172,8 @@ sudo infisical gateway systemd install my-gateway --enroll-method=token --token=
 
 The systemd service is installed with secure defaults:
 
-- Service file: `/etc/systemd/system/<name>.service`
-- Config file: `/etc/infisical/gateways/<name>.conf`
+- Service file: `/etc/systemd/system/<gateway-name>.service`
+- Config file: `/etc/infisical/gateways/<gateway-name>.conf`
 - Runs with restricted privileges:
   - InaccessibleDirectories=/home
   - PrivateTmp=yes

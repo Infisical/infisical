@@ -229,7 +229,7 @@ Check gateway logs for detailed error information:
 
 - **systemd service:**
   ```bash
-  sudo journalctl -u <name> -f
+  sudo journalctl -u <gateway-name> -f
   ```
 - **Local installation:** Logs appear in the terminal where you started the gateway
 </Accordion>
@@ -241,12 +241,12 @@ Enrollment tokens expire after 1 hour. If the token expires before deployment, o
 <Accordion title="Where are gateway credentials stored?">
 For **token-method** gateways, the access token and domain are saved to a config file scoped by gateway name:
 
-- **Running as root/sudo:** `/etc/infisical/gateways/<name>.conf`
-- **Running as a regular user:** `~/.infisical/gateways/<name>.conf`
+- **Running as root/sudo:** `/etc/infisical/gateways/<gateway-name>.conf`
+- **Running as a regular user:** `~/.infisical/gateways/<gateway-name>.conf`
 
 For **AWS-method** gateways, no JWT is persisted to disk. The gateway re-authenticates by signing a fresh STS request on every start using the host's AWS credentials. Only the gateway id and domain are stored locally.
 
-For systemd-based installations, the configuration is at `/etc/infisical/gateways/<name>.conf`. All config files are created with restricted permissions (0600).
+For systemd-based installations, the configuration is at `/etc/infisical/gateways/<gateway-name>.conf`. All config files are created with restricted permissions (0600).
 </Accordion>
 
 <Accordion title="Can I run multiple gateways on the same machine?">
