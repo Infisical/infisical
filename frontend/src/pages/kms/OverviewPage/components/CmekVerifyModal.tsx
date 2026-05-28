@@ -19,6 +19,7 @@ import {
   Tooltip
 } from "@app/components/v2";
 import { Badge } from "@app/components/v3";
+import { getDefaultSigningAlgorithm } from "@app/helpers/kms";
 import { SigningAlgorithm, TCmek, useCmekVerify } from "@app/hooks/api/cmeks";
 import { isBase64 } from "@app/lib/fn/base64";
 
@@ -48,16 +49,6 @@ type Props = {
 };
 
 type FormProps = Pick<Props, "cmek">;
-
-const getDefaultSigningAlgorithm = (cmek: TCmek): SigningAlgorithm => {
-  if (cmek?.encryptionAlgorithm?.startsWith("ML_DSA")) {
-    return cmek.encryptionAlgorithm as unknown as SigningAlgorithm;
-  }
-  if (cmek?.encryptionAlgorithm?.startsWith("RSA")) {
-    return SigningAlgorithm.RSASSA_PSS_SHA_512;
-  }
-  return SigningAlgorithm.ECDSA_SHA_256;
-};
 
 const VerifyForm = ({ cmek }: FormProps) => {
   const cmekVerify = useCmekVerify();

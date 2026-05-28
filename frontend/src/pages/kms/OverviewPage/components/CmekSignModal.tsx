@@ -17,6 +17,7 @@ import {
   TextArea,
   Tooltip
 } from "@app/components/v2";
+import { getDefaultSigningAlgorithm } from "@app/helpers/kms";
 import { useTimedReset } from "@app/hooks";
 import { SigningAlgorithm, TCmek, useCmekSign } from "@app/hooks/api/cmeks";
 
@@ -35,16 +36,6 @@ type Props = {
 };
 
 type FormProps = Pick<Props, "cmek">;
-
-const getDefaultSigningAlgorithm = (cmek: TCmek): SigningAlgorithm => {
-  if (cmek?.encryptionAlgorithm?.startsWith("ML_DSA")) {
-    return cmek.encryptionAlgorithm as unknown as SigningAlgorithm;
-  }
-  if (cmek?.encryptionAlgorithm?.startsWith("RSA")) {
-    return SigningAlgorithm.RSASSA_PSS_SHA_512;
-  }
-  return SigningAlgorithm.ECDSA_SHA_256;
-};
 
 const SignForm = ({ cmek }: FormProps) => {
   const cmekSign = useCmekSign();
