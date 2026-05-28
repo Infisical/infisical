@@ -56,6 +56,7 @@ import {
   OrgPermissionActions,
   OrgPermissionSubjects,
   useOrganization,
+  useOrgPermission,
   useSubscription
 } from "@app/context";
 import { OrgPermissionAdminConsoleAction } from "@app/context/OrgPermissionContext/types";
@@ -625,6 +626,11 @@ const AllProjectsForType = ({
   });
 
   const orgAdminAccessProject = useOrgAdminAccessProject();
+  const { permission } = useOrgPermission();
+  const canAccessAllProjects = permission.can(
+    OrgPermissionAdminConsoleAction.AccessAllProjects,
+    OrgPermissionSubjects.AdminConsole
+  );
 
   const handlePerPageChange = (newPerPage: number) => {
     setPerPage(newPerPage);
@@ -749,52 +755,44 @@ const AllProjectsForType = ({
                   {format(new Date(workspace.createdAt), "MMM d, yyyy")}
                 </TableCell>
                 <TableCell className="w-0 pr-3 text-right">
+                  {/* eslint-disable-next-line no-nested-ternary */}
                   {workspace.isMember ? (
                     <Badge variant="info">
                       <CheckIcon />
                       Joined
                     </Badge>
-                  ) : (
-                    <OrgPermissionCan
-                      I={OrgPermissionAdminConsoleAction.AccessAllProjects}
-                      an={OrgPermissionSubjects.AdminConsole}
-                    >
-                      {(isAllowed) =>
-                        isAllowed ? (
-                          <Button
-                            size="xs"
-                            variant="outline"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              e.preventDefault();
-                              handleAccessProject(
-                                workspace.type,
-                                workspace.id,
-                                workspace.environments,
-                                workspace.orgId
-                              );
-                            }}
-                            isDisabled={
-                              orgAdminAccessProject.variables?.projectId === workspace.id &&
-                              orgAdminAccessProject.isPending
-                            }
-                          >
-                            Join as Admin
-                          </Button>
-                        ) : (
-                          <Button
-                            size="xs"
-                            variant="outline"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handlePopUpOpen("requestAccessConfirmation", workspace);
-                            }}
-                          >
-                            Request Access
-                          </Button>
-                        )
+                  ) : canAccessAllProjects ? (
+                    <Button
+                      size="xs"
+                      variant="outline"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        handleAccessProject(
+                          workspace.type,
+                          workspace.id,
+                          workspace.environments,
+                          workspace.orgId
+                        );
+                      }}
+                      isDisabled={
+                        orgAdminAccessProject.variables?.projectId === workspace.id &&
+                        orgAdminAccessProject.isPending
                       }
-                    </OrgPermissionCan>
+                    >
+                      Join as Admin
+                    </Button>
+                  ) : (
+                    <Button
+                      size="xs"
+                      variant="outline"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handlePopUpOpen("requestAccessConfirmation", workspace);
+                      }}
+                    >
+                      Request Access
+                    </Button>
                   )}
                 </TableCell>
               </TableRow>
