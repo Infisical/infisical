@@ -197,8 +197,9 @@ export const throwOnPlanSeatLimitReached = async (
   type?: UserAliasType
 ) => {
   const plan = await licenseService.getPlan(orgId);
+  const isEnterpriseBypass = plan?.slug === "enterprise" && !plan?.enforceIdentityLimit;
 
-  if (plan?.slug !== "enterprise" && plan?.identityLimit && plan.identitiesUsed >= plan.identityLimit) {
+  if (!isEnterpriseBypass && plan?.identityLimit && plan.identitiesUsed >= plan.identityLimit) {
     // limit imposed on number of identities allowed / number of identities used exceeds the number of identities allowed
     throw new BadRequestError({
       message: `Failed to create new member${type ? ` via ${type.toUpperCase()}` : ""} due to member limit reached. Upgrade plan to add more members.`
