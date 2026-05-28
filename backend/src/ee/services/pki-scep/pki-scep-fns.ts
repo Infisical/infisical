@@ -159,18 +159,34 @@ export const normalizeX500Name = (name: x509.Name): string => {
   return canonicalRdns.join(",");
 };
 
+// SANs are an unordered set in RFC 5280; normalize each entry and sort for comparison.
+export const normalizeSubjectAltNames = (ext: x509.SubjectAlternativeNameExtension | null | undefined): string => {
+  if (!ext) return "";
+  const pairs: string[] = [];
+  for (const item of ext.names.items) {
+    const type = String(item.type).toLowerCase();
+    const value = String(item.value).normalize("NFC").trim().toLowerCase();
+    pairs.push(`${type}:${value}`);
+  }
+  return pairs.sort().join(",");
+};
+
 export const evaluateScepRenewalAuthorization = ({
   isValidSigner,
   storedSignerCert,
   profileId,
   csrSubjectName,
-  signerCertSubjectName
+  signerCertSubjectName,
+  csrSubjectAltNames,
+  signerCertSubjectAltNames
 }: {
   isValidSigner: boolean;
   storedSignerCert?: { profileId?: string | null } | null;
   profileId: string;
   csrSubjectName: x509.Name;
   signerCertSubjectName: x509.Name;
+  csrSubjectAltNames?: x509.SubjectAlternativeNameExtension | null;
+  signerCertSubjectAltNames?: x509.SubjectAlternativeNameExtension | null;
 }): TScepRenewalAuthResult => {
   if (!isValidSigner) {
     return { authorized: false, reason: ScepRenewalDenyReason.InvalidSigner };
@@ -180,7 +196,10 @@ export const evaluateScepRenewalAuthorization = ({
     return { authorized: false, reason: ScepRenewalDenyReason.WrongProfile };
   }
 
-  if (normalizeX500Name(csrSubjectName) !== normalizeX500Name(signerCertSubjectName)) {
+  if (
+    normalizeX500Name(csrSubjectName) !== normalizeX500Name(signerCertSubjectName) ||
+    normalizeSubjectAltNames(csrSubjectAltNames) !== normalizeSubjectAltNames(signerCertSubjectAltNames)
+  ) {
     return { authorized: false, reason: ScepRenewalDenyReason.IdentityMismatch };
   }
 

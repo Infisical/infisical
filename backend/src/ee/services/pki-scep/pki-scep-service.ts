@@ -583,13 +583,27 @@ export const pkiScepServiceFactory = ({
         ? await certificateDAL.findOne({ serialNumber: signerCertObj.serialNumber, caId: profile.caId! })
         : null;
 
+    const toSanExt = (ext: x509.Extension | null): x509.SubjectAlternativeNameExtension | null => {
+      if (!ext) return null;
+      if (ext instanceof x509.SubjectAlternativeNameExtension) return ext;
+      try {
+        return new x509.SubjectAlternativeNameExtension(ext.rawData);
+      } catch {
+        return null;
+      }
+    };
+    const csrSanExt = toSanExt(csrObj.getExtension("2.5.29.17"));
+    const signerSanExt = signerCertObj ? toSanExt(signerCertObj.getExtension("2.5.29.17")) : null;
+
     const renewalAuth: TScepRenewalAuthResult = signerCertObj
       ? evaluateScepRenewalAuthorization({
           isValidSigner,
           storedSignerCert,
           profileId: profile.id,
           csrSubjectName: csrObj.subjectName,
-          signerCertSubjectName: signerCertObj.subjectName
+          signerCertSubjectName: signerCertObj.subjectName,
+          csrSubjectAltNames: csrSanExt,
+          signerCertSubjectAltNames: signerSanExt
         })
       : { authorized: false, reason: ScepRenewalDenyReason.InvalidSigner };
 
