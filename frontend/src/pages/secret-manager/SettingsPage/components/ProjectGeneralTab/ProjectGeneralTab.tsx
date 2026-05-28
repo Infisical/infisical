@@ -9,6 +9,7 @@ import { SecretDetectionIgnoreValuesSection } from "../SecretDetectionIgnoreValu
 import { SecretSharingSection } from "../SecretSharingSection";
 import { SecretSnapshotsLegacySection } from "../SecretSnapshotsLegacySection";
 import { SecretTagsSection } from "../SecretTagsSection";
+import { SecretValidationRulesSection } from "../SecretValidationRulesSection";
 
 export const SecretSettingsTab = () => {
   const { config } = useServerConfig();
@@ -17,6 +18,7 @@ export const SecretSettingsTab = () => {
     <div>
       <EnvironmentSection />
       <SecretTagsSection />
+      <SecretValidationRulesSection />
       <AutoCapitalizationSection />
       <EnforceEncryptedMetadataSection />
       <SecretSharingSection />
