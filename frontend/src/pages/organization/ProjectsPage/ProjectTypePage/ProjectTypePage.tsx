@@ -8,6 +8,7 @@ import {
   ArrowUpAZIcon,
   CheckIcon,
   ChevronLeftIcon,
+  ClockIcon,
   LayoutGridIcon,
   ListIcon,
   PlusIcon,
@@ -74,7 +75,12 @@ import {
   setUserTablePreference
 } from "@app/helpers/userTablePreferences";
 import { useDebounce, usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
-import { useGetUserProjects, useOrgAdminAccessProject, useSearchProjects } from "@app/hooks/api";
+import {
+  useGetMyPendingProjectAccessRequests,
+  useGetUserProjects,
+  useOrgAdminAccessProject,
+  useSearchProjects
+} from "@app/hooks/api";
 import { useCertManagerInstanceState } from "@app/hooks/api/certManagerInstance";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { Project, ProjectEnv, ProjectType } from "@app/hooks/api/projects/types";
@@ -379,9 +385,9 @@ const MyProjectsForType = ({
         <CardHeader>
           <div className="flex items-start gap-3">
             <div
-              className={`shrink-0 rounded-sm border p-1.5 transition-colors duration-200 ${tileStyle.containerClassName}`}
+              className={`shrink-0 rounded-sm border p-[5px] transition-colors duration-200 ${tileStyle.containerClassName}`}
             >
-              <WorkspaceIcon className={`h-4 w-4 shrink-0 ${tileStyle.iconClassName}`} />
+              <WorkspaceIcon className={`h-4.5 w-4.5 shrink-0 ${tileStyle.iconClassName}`} />
             </div>
             <div className="min-w-0 flex-1">
               <CardDescription className="text-base font-semibold text-foreground">
@@ -649,6 +655,10 @@ const AllProjectsForType = ({
     type: projectType
   });
 
+  const { data: pendingAccessRequestByProjectId } = useGetMyPendingProjectAccessRequests({
+    enabled: !canAccessAllProjects
+  });
+
   const handleAccessProject = async (
     type: ProjectType,
     projectId: string,
@@ -755,45 +765,77 @@ const AllProjectsForType = ({
                   {format(new Date(workspace.createdAt), "MMM d, yyyy")}
                 </TableCell>
                 <TableCell className="w-0 pr-3 text-right">
-                  {/* eslint-disable-next-line no-nested-ternary */}
-                  {workspace.isMember ? (
-                    <Badge variant="info">
-                      <CheckIcon />
-                      Joined
-                    </Badge>
-                  ) : canAccessAllProjects ? (
-                    <Button
-                      size="xs"
-                      variant="outline"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        e.preventDefault();
-                        handleAccessProject(
-                          workspace.type,
-                          workspace.id,
-                          workspace.environments,
-                          workspace.orgId
-                        );
-                      }}
-                      isDisabled={
-                        orgAdminAccessProject.variables?.projectId === workspace.id &&
-                        orgAdminAccessProject.isPending
-                      }
-                    >
-                      Join as Admin
-                    </Button>
-                  ) : (
-                    <Button
-                      size="xs"
-                      variant="outline"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handlePopUpOpen("requestAccessConfirmation", workspace);
-                      }}
-                    >
-                      Request Access
-                    </Button>
-                  )}
+                  {(() => {
+                    if (workspace.isMember) {
+                      return (
+                        <Badge variant="info">
+                          <CheckIcon />
+                          Joined
+                        </Badge>
+                      );
+                    }
+                    if (canAccessAllProjects) {
+                      return (
+                        <Button
+                          size="xs"
+                          variant="outline"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                            handleAccessProject(
+                              workspace.type,
+                              workspace.id,
+                              workspace.environments,
+                              workspace.orgId
+                            );
+                          }}
+                          isDisabled={
+                            orgAdminAccessProject.variables?.projectId === workspace.id &&
+                            orgAdminAccessProject.isPending
+                          }
+                        >
+                          Join as Admin
+                        </Button>
+                      );
+                    }
+                    const requestedAt = pendingAccessRequestByProjectId?.get(workspace.id);
+                    if (requestedAt) {
+                      return (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Badge variant="warning" asChild>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handlePopUpOpen("requestAccessConfirmation", workspace);
+                                }}
+                              >
+                                <ClockIcon />
+                                Requested
+                              </button>
+                            </Badge>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            Requested on {format(requestedAt, "MMM d, yyyy 'at' h:mm a")}. Click to
+                            resend.
+                          </TooltipContent>
+                        </Tooltip>
+                      );
+                    }
+                    return (
+                      <Button
+                        size="xs"
+                        variant="outline"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handlePopUpOpen("requestAccessConfirmation", workspace);
+                        }}
+                      >
+                        Request Access
+                      </Button>
+                    );
+                  })()}
                 </TableCell>
               </TableRow>
             );

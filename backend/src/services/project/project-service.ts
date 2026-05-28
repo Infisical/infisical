@@ -60,7 +60,7 @@ import { groupBy } from "@app/lib/fn";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
-import { TProjectPermission } from "@app/lib/types";
+import { OrgServiceActor, TProjectPermission } from "@app/lib/types";
 import { TPkiSubscriberDALFactory } from "@app/services/pki-subscriber/pki-subscriber-dal";
 
 import { TGroupDALFactory } from "../../ee/services/group/group-dal";
@@ -94,6 +94,7 @@ import { TSlackIntegrationDALFactory } from "../slack/slack-integration-dal";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
 import { TUserDALFactory } from "../user/user-dal";
 import { WorkflowIntegration, WorkflowIntegrationStatus } from "../workflow-integration/workflow-integration-types";
+import { TProjectAccessRequestDALFactory } from "./project-access-request-dal";
 import { TProjectDALFactory } from "./project-dal";
 import { bootstrapSshProject } from "./project-fns";
 import { TProjectQueueFactory } from "./project-queue";
@@ -207,6 +208,10 @@ type TProjectServiceFactoryDep = {
   >;
   projectTemplateService: TProjectTemplateServiceFactory;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
+  projectAccessRequestDAL: Pick<
+    TProjectAccessRequestDALFactory,
+    "create" | "findOne" | "updateById" | "findPendingForRequesterInOrg"
+  >;
 };
 
 export type TProjectServiceFactory = ReturnType<typeof projectServiceFactory>;
@@ -249,7 +254,8 @@ export const projectServiceFactory = ({
   membershipGroupDAL,
   membershipRoleDAL,
   roleDAL,
-  groupDAL
+  groupDAL,
+  projectAccessRequestDAL
 }: TProjectServiceFactoryDep) => {
   /*
    * Create workspace. Make user the admin
@@ -2476,6 +2482,12 @@ export const projectServiceFactory = ({
       });
     if (projectMember) throw new BadRequestError({ message: "User already has access to the project" });
 
+    const existingRequest = await projectAccessRequestDAL.findOne({
+      projectId,
+      requesterUserId: permission.id,
+      status: "pending"
+    });
+
     const projectMembers = await projectMembershipDAL.findAllProjectMembers(projectId);
 
     let filteredProjectMembers = projectMembers
@@ -2544,6 +2556,17 @@ export const projectServiceFactory = ({
       ? `**${userDetails.firstName} ${userDetails.lastName}** (${userDetails.email}) has requested access to **${productLabel}**.`
       : `**${userDetails.firstName} ${userDetails.lastName}** (${userDetails.email}) has requested access to the project **${project.name}**.`;
 
+    if (existingRequest) {
+      await projectAccessRequestDAL.updateById(existingRequest.id, { comment: comment ?? null });
+    } else {
+      await projectAccessRequestDAL.create({
+        projectId,
+        requesterUserId: permission.id,
+        status: "pending",
+        comment: comment ?? null
+      });
+    }
+
     await notificationService.createUserNotifications(
       projectMembers
         .filter((member) => member.roles.some((role) => role.role === ProjectMembershipRole.Admin))
@@ -2571,6 +2594,14 @@ export const projectServiceFactory = ({
         ...(productLabel ? { productLabel } : {})
       }
     });
+  };
+
+  const getMyPendingProjectAccessRequests = async ({ permission }: { permission: OrgServiceActor }) => {
+    if (permission.type !== ActorType.USER) {
+      return { requests: [] as { projectId: string; createdAt: Date }[] };
+    }
+    const requests = await projectAccessRequestDAL.findPendingForRequesterInOrg(permission.id, permission.orgId);
+    return { requests };
   };
 
   return {
@@ -2610,6 +2641,7 @@ export const projectServiceFactory = ({
     getProjectSshConfig,
     updateProjectSshConfig,
     requestProjectAccess,
+    getMyPendingProjectAccessRequests,
     searchProjects,
     extractProjectIdFromSlug
   };
