@@ -2,7 +2,11 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { LogProvider } from "../audit-log-stream/audit-log-stream-enums";
 import { auditLogStreamOutboxServiceFactory } from "./audit-log-stream-outbox-service";
-import { AuditLogStreamOutboxStatus, TAuditLogStreamOutboxRow } from "./audit-log-stream-outbox-types";
+import {
+  AuditLogStreamOutboxStatus,
+  TAuditLogStreamOutboxRow,
+  TFailedStreamRow
+} from "./audit-log-stream-outbox-types";
 
 const STREAM_ID = "stream-1";
 const ORG_ID = "org-1";
@@ -11,6 +15,12 @@ const PROVIDER = LogProvider.Datadog;
 const FAILURE_MESSAGE = "upstream failure";
 
 const batchStreamLog = vi.fn<(input: unknown) => Promise<void>>();
+// Configurable per-test so we can force chunking (e.g. maxLogs: 1) to drive the
+// partial-chunk-failure path without rewiring the factory mock for each case.
+const getProviderBatchLimit = vi.fn<() => { maxLogs: number; maxBytes: number }>(() => ({
+  maxLogs: 1_000,
+  maxBytes: 4 * 1024 * 1024
+}));
 
 vi.mock("@app/lib/logger", () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() }
@@ -28,7 +38,8 @@ vi.mock("../audit-log-stream/audit-log-stream-factory", () => ({
     {
       get: () => () => ({
         batchStreamLog,
-        validateCredentials: async ({ credentials }: { credentials: unknown }) => credentials
+        validateCredentials: async ({ credentials }: { credentials: unknown }) => credentials,
+        getProviderBatchLimit
       })
     }
   )
@@ -57,8 +68,7 @@ const createService = () => {
   const auditLogStreamOutboxDAL = {
     batchInsert: vi.fn(async () => undefined),
     claimBatchForStream: vi.fn<(...args: unknown[]) => Promise<TAuditLogStreamOutboxRow[]>>(async () => []),
-    deleteByIds: vi.fn(async () => undefined),
-    applyBatchFailure: vi.fn(async () => undefined),
+    commitDeliveryResult: vi.fn<(input: unknown) => Promise<void>>(async () => undefined),
     recoverStaleClaims: vi.fn(async () => ({ retried: 0, movedToDlq: 0 }))
   };
 
@@ -87,6 +97,8 @@ const createService = () => {
 describe("audit-log-stream-outbox-service drainStream failure wiring", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Reset to the generous default; tests that need chunking override per-call.
+    getProviderBatchLimit.mockReturnValue({ maxLogs: 1_000, maxBytes: 4 * 1024 * 1024 });
   });
 
   test("invokes onStreamFailure with the truncated error message when the provider rejects", async () => {
@@ -105,12 +117,16 @@ describe("audit-log-stream-outbox-service drainStream failure wiring", () => {
       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- asymmetric matcher is typed `any`
       errorMessage: expect.stringContaining(FAILURE_MESSAGE)
     });
-    expect(auditLogStreamOutboxDAL.applyBatchFailure).toHaveBeenCalledTimes(1);
-    expect(auditLogStreamOutboxDAL.applyBatchFailure.mock.calls[0][0]).toMatchObject({
-      retriable: { ids: [1] },
-      exhausted: []
-    });
-    expect(auditLogStreamOutboxDAL.deleteByIds).not.toHaveBeenCalled();
+    expect(auditLogStreamOutboxDAL.commitDeliveryResult).toHaveBeenCalledTimes(1);
+    const call = auditLogStreamOutboxDAL.commitDeliveryResult.mock.calls[0][0] as {
+      successIds: number[];
+      retriable: { rows: TFailedStreamRow[]; nextRetryAt: Date } | null;
+      exhausted: TFailedStreamRow[];
+    };
+    expect(call.successIds).toEqual([]);
+    expect(call.retriable?.rows.map(({ row }) => row.id)).toEqual([1]);
+    expect(call.retriable?.rows[0].errorMessage).toEqual(expect.stringContaining(FAILURE_MESSAGE));
+    expect(call.exhausted).toEqual([]);
   });
 
   test("routes rows that hit MAX_ATTEMPTS to DLQ instead of retry", async () => {
@@ -125,13 +141,16 @@ describe("audit-log-stream-outbox-service drainStream failure wiring", () => {
     await service.drainStream({ streamId: STREAM_ID, orgId: ORG_ID, provider: PROVIDER });
 
     expect(onStreamFailure).toHaveBeenCalledTimes(1);
-    expect(auditLogStreamOutboxDAL.applyBatchFailure).toHaveBeenCalledTimes(1);
-    const call = auditLogStreamOutboxDAL.applyBatchFailure.mock.calls[0][0] as {
-      retriable: unknown;
-      exhausted: TAuditLogStreamOutboxRow[];
+    expect(auditLogStreamOutboxDAL.commitDeliveryResult).toHaveBeenCalledTimes(1);
+    const call = auditLogStreamOutboxDAL.commitDeliveryResult.mock.calls[0][0] as {
+      successIds: number[];
+      retriable: { rows: TFailedStreamRow[]; nextRetryAt: Date } | null;
+      exhausted: TFailedStreamRow[];
     };
+    expect(call.successIds).toEqual([]);
     expect(call.retriable).toBeNull();
     expect(call.exhausted).toHaveLength(1);
+    expect(call.exhausted[0].errorMessage).toEqual(expect.stringContaining(FAILURE_MESSAGE));
   });
 
   test("does not invoke onStreamFailure on the success path", async () => {
@@ -143,8 +162,15 @@ describe("audit-log-stream-outbox-service drainStream failure wiring", () => {
     await service.drainStream({ streamId: STREAM_ID, orgId: ORG_ID, provider: PROVIDER });
 
     expect(onStreamFailure).not.toHaveBeenCalled();
-    expect(auditLogStreamOutboxDAL.deleteByIds).toHaveBeenCalledTimes(1);
-    expect(auditLogStreamOutboxDAL.applyBatchFailure).not.toHaveBeenCalled();
+    expect(auditLogStreamOutboxDAL.commitDeliveryResult).toHaveBeenCalledTimes(1);
+    const call = auditLogStreamOutboxDAL.commitDeliveryResult.mock.calls[0][0] as {
+      successIds: number[];
+      retriable: { rows: TFailedStreamRow[]; nextRetryAt: Date } | null;
+      exhausted: TFailedStreamRow[];
+    };
+    expect(call.successIds).toEqual([1]);
+    expect(call.retriable).toBeNull();
+    expect(call.exhausted).toEqual([]);
   });
 
   test("stops draining after the first failed batch — does not claim another batch", async () => {
@@ -157,6 +183,31 @@ describe("audit-log-stream-outbox-service drainStream failure wiring", () => {
 
     expect(auditLogStreamOutboxDAL.claimBatchForStream).toHaveBeenCalledTimes(1);
   });
+
+  test("partial-chunk failure: commits delivered rows + retries failed ones in one call", async () => {
+    const { service, auditLogStreamOutboxDAL } = createService();
+
+    // maxLogs=1 → claim of 2 rows splits into 2 chunks. First send resolves,
+    // second rejects: row 1 lands in successIds, row 2 in retriable. Both flow
+    // through a single commitDeliveryResult so they share a transaction.
+    getProviderBatchLimit.mockReturnValue({ maxLogs: 1, maxBytes: 4 * 1024 * 1024 });
+    auditLogStreamOutboxDAL.claimBatchForStream
+      .mockResolvedValueOnce([buildRow({ id: 1, auditLogId: "log-1" }), buildRow({ id: 2, auditLogId: "log-2" })])
+      .mockResolvedValueOnce([]);
+    batchStreamLog.mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error(FAILURE_MESSAGE));
+
+    await service.drainStream({ streamId: STREAM_ID, orgId: ORG_ID, provider: PROVIDER });
+
+    expect(auditLogStreamOutboxDAL.commitDeliveryResult).toHaveBeenCalledTimes(1);
+    const call = auditLogStreamOutboxDAL.commitDeliveryResult.mock.calls[0][0] as {
+      successIds: number[];
+      retriable: { rows: TFailedStreamRow[]; nextRetryAt: Date } | null;
+      exhausted: TFailedStreamRow[];
+    };
+    expect(call.successIds).toEqual([1]);
+    expect(call.retriable?.rows.map(({ row }) => row.id)).toEqual([2]);
+    expect(call.exhausted).toEqual([]);
+  });
 });
 
 describe("audit-log-stream-outbox-service enqueueForLogs batch fanout", () => {
@@ -164,8 +215,7 @@ describe("audit-log-stream-outbox-service enqueueForLogs batch fanout", () => {
     const auditLogStreamOutboxDAL = {
       batchInsert: vi.fn<(rows: unknown[]) => Promise<void>>(async () => undefined),
       claimBatchForStream: vi.fn(async () => []),
-      deleteByIds: vi.fn(async () => undefined),
-      applyBatchFailure: vi.fn(async () => undefined),
+      commitDeliveryResult: vi.fn(async () => undefined),
       recoverStaleClaims: vi.fn(async () => ({ retried: 0, movedToDlq: 0 }))
     };
 

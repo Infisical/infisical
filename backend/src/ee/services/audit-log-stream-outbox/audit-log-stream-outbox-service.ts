@@ -7,12 +7,17 @@ import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
+import { chunkAuditLogsByBatchLimit } from "../audit-log-stream/audit-log-stream-batching";
 import { TAuditLogStreamDALFactory } from "../audit-log-stream/audit-log-stream-dal";
 import { LogProvider } from "../audit-log-stream/audit-log-stream-enums";
 import { LOG_STREAM_FACTORY_MAP } from "../audit-log-stream/audit-log-stream-factory";
 import { decryptLogStreamCredentials } from "../audit-log-stream/audit-log-stream-fns";
 import { TAuditLogStreamOutboxDALFactory } from "./audit-log-stream-outbox-dal";
-import { TAuditLogStreamFlushJobData, TAuditLogStreamOutboxRow } from "./audit-log-stream-outbox-types";
+import {
+  TAuditLogStreamFlushJobData,
+  TAuditLogStreamOutboxRow,
+  TFailedStreamRow
+} from "./audit-log-stream-outbox-types";
 
 // Debounce window: first writer for a stream enqueues a flush job delayed by this many ms.
 // Subsequent writers within the window are absorbed by the same job (SETNX is a no-op for them).
@@ -203,50 +208,61 @@ export const auditLogStreamOutboxServiceFactory = ({
       const claimed = await auditLogStreamOutboxDAL.claimBatchForStream(streamId, BATCH_SIZE, workerId);
       if (claimed.length === 0) return;
 
-      const auditLogs = claimed.map((row) => row.payload);
-      try {
-        // eslint-disable-next-line no-await-in-loop
-        await providerImpl.batchStreamLog({ credentials, auditLogs });
-        // eslint-disable-next-line no-await-in-loop
-        await auditLogStreamOutboxDAL.deleteByIds(claimed.map((row) => row.id));
-      } catch (error) {
-        const errorMessage = truncateError(error);
-        const logMessage = formatErrorMessage(error);
-        logger.error(
-          error,
-          `audit-log-stream-outbox: batch delivery failed [streamId=${streamId}] [orgId=${orgId}] [provider=${provider}] [batchSize=${claimed.length}]: ${logMessage}`
-        );
-
-        const exhausted: TAuditLogStreamOutboxRow[] = [];
-        const retriable: TAuditLogStreamOutboxRow[] = [];
-        for (const row of claimed) {
-          if (row.attempts + 1 >= MAX_ATTEMPTS) {
-            exhausted.push(row);
-          } else {
-            retriable.push(row);
-          }
-        }
-
-        const retriableInput = retriable.length
-          ? {
-              ids: retriable.map((row) => row.id),
-              nextRetryAt: computeBackoff(Math.max(...retriable.map((row) => row.attempts + 1)))
-            }
-          : null;
-        // eslint-disable-next-line no-await-in-loop
-        await auditLogStreamOutboxDAL.applyBatchFailure({
-          retriable: retriableInput,
-          exhausted,
-          errorMessage
-        });
-
-        if (onStreamFailure) {
+      const chunks = chunkAuditLogsByBatchLimit(claimed, providerImpl.getProviderBatchLimit());
+      const streamSuccess: TAuditLogStreamOutboxRow[] = [];
+      const streamFail: TFailedStreamRow[] = [];
+      for (const chunk of chunks) {
+        try {
           // eslint-disable-next-line no-await-in-loop
-          await Promise.resolve(onStreamFailure({ orgId, streamId, provider, errorMessage }));
+          await providerImpl.batchStreamLog({ credentials, auditLogs: chunk.map((row) => row.payload) });
+          streamSuccess.push(...chunk);
+        } catch (error) {
+          const logMessage = formatErrorMessage(error);
+          logger.error(
+            error,
+            `audit-log-stream-outbox: batch delivery failed [streamId=${streamId}] [orgId=${orgId}] [provider=${provider}] [chunkSize=${chunk.length}]: ${logMessage}`
+          );
+          const errorMessage = truncateError(error);
+          streamFail.push(...chunk.map((row) => ({ row, errorMessage })));
+        }
+      }
+
+      const exhausted: TFailedStreamRow[] = [];
+      const retriable: TFailedStreamRow[] = [];
+      for (const failed of streamFail) {
+        if (failed.row.attempts + 1 >= MAX_ATTEMPTS) {
+          exhausted.push(failed);
+        } else {
+          retriable.push(failed);
+        }
+      }
+
+      const retriableInput = retriable.length
+        ? {
+            rows: retriable,
+            nextRetryAt: computeBackoff(Math.max(...retriable.map(({ row }) => row.attempts + 1)))
+          }
+        : null;
+
+      // eslint-disable-next-line no-await-in-loop
+      await auditLogStreamOutboxDAL.commitDeliveryResult({
+        successIds: streamSuccess.map((row) => row.id),
+        retriable: retriableInput,
+        exhausted
+      });
+
+      if (streamFail.length > 0) {
+        if (onStreamFailure) {
+          const representativeError = streamFail.at(-1)?.errorMessage ?? "Unknown error";
+          // eslint-disable-next-line no-await-in-loop
+          await Promise.resolve(onStreamFailure({ orgId, streamId, provider, errorMessage: representativeError }));
         }
 
-        // Stop draining on the first failure — let backoff govern the retry cadence
-        // instead of hammering a failing endpoint with the next batch.
+        // Bail when this claim saw any failure. The inner loop already attempted
+        // every chunk independently (so partial-success rows are committed
+        // above), but hopping straight to the next claim risks compounding load
+        // on a degraded endpoint — let backoff on the retriable rows govern
+        // when we come back.
         return;
       }
     }

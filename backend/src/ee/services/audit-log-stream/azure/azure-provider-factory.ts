@@ -5,7 +5,11 @@ import { BadRequestError } from "@app/lib/errors";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 
 import { AUDIT_LOG_STREAM_BATCH_TIMEOUT, AUDIT_LOG_STREAM_TIMEOUT } from "../../audit-log/audit-log-queue";
-import { TLogStreamFactoryBatchStreamLog, TLogStreamFactoryValidateCredentials } from "../audit-log-stream-types";
+import {
+  TLogStreamFactoryBatchStreamLog,
+  TLogStreamFactoryGetProviderBatchLimit,
+  TLogStreamFactoryValidateCredentials
+} from "../audit-log-stream-types";
 import { TAzureProviderCredentials } from "./azure-provider-types";
 
 function buildAzureEvent(event: { createdAt?: Date | string } & Record<string, unknown>) {
@@ -97,8 +101,14 @@ export const AzureProviderFactory = () => {
     );
   };
 
+  const getProviderBatchLimit: TLogStreamFactoryGetProviderBatchLimit = () => ({
+    maxLogs: 400,
+    maxBytes: 900 * 1024
+  });
+
   return {
     validateCredentials,
-    batchStreamLog
+    batchStreamLog,
+    getProviderBatchLimit
   };
 };

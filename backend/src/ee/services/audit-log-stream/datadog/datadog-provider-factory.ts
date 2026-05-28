@@ -6,7 +6,11 @@ import { BadRequestError } from "@app/lib/errors";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 
 import { AUDIT_LOG_STREAM_BATCH_TIMEOUT, AUDIT_LOG_STREAM_TIMEOUT } from "../../audit-log/audit-log-queue";
-import { TLogStreamFactoryBatchStreamLog, TLogStreamFactoryValidateCredentials } from "../audit-log-stream-types";
+import {
+  TLogStreamFactoryBatchStreamLog,
+  TLogStreamFactoryGetProviderBatchLimit,
+  TLogStreamFactoryValidateCredentials
+} from "../audit-log-stream-types";
 import { TDatadogProviderCredentials } from "./datadog-provider-types";
 
 function createPayload(event: Record<string, unknown>) {
@@ -64,8 +68,14 @@ export const DatadogProviderFactory = () => {
     });
   };
 
+  const getProviderBatchLimit: TLogStreamFactoryGetProviderBatchLimit = () => ({
+    maxLogs: 900,
+    maxBytes: 4 * 1024 * 1024
+  });
+
   return {
     validateCredentials,
-    batchStreamLog
+    batchStreamLog,
+    getProviderBatchLimit
   };
 };

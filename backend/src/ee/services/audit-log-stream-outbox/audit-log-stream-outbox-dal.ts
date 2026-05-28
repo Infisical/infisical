@@ -5,7 +5,11 @@ import { TableName, TAuditLogs } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { chunkArray } from "@app/lib/fn";
 
-import { AuditLogStreamOutboxStatus, TAuditLogStreamOutboxRow } from "./audit-log-stream-outbox-types";
+import {
+  AuditLogStreamOutboxStatus,
+  TAuditLogStreamOutboxRow,
+  TFailedStreamRow
+} from "./audit-log-stream-outbox-types";
 
 export type TAuditLogStreamOutboxDALFactory = ReturnType<typeof auditLogStreamOutboxDALFactory>;
 
@@ -146,24 +150,61 @@ export const auditLogStreamOutboxDALFactory = (db: TDbClient) => {
     }
   };
 
-  const applyBatchFailure = async (input: {
-    retriable: { ids: number[]; nextRetryAt: Date } | null;
-    exhausted: TAuditLogStreamOutboxRow[];
-    errorMessage: string;
+  // Commit the outcome of a chunked delivery for a single claimed batch in one
+  // transaction:
+  //   - successIds: rows that reached the provider — delete them.
+  //   - retriable:  rows whose chunk failed but can still retry — flip to 'retry'
+  //                 with attempt+1 and lastError = the chunk's error.
+  //   - exhausted:  rows whose chunk failed and used up MAX_ATTEMPTS — move to DLQ.
+  // Failed rows arrive as TFailedStreamRow so each carries the errorMessage from
+  // its own chunk (different chunks of one claim can fail with different errors).
+  // We group by errorMessage and issue one markBatchForRetry / moveToDlq per
+  // group so each row's lastError reflects what actually broke for it.
+  //
+  // Folding all three outcomes into a single transaction means a crash between
+  // the delete and the retry/DLQ writes can't leave the claim half-applied
+  // (e.g. delivered rows deleted but retriable rows still 'processing'); either
+  // every write commits or none do, and the stale-claim sweeper picks up an
+  // un-applied claim on the next pass.
+  const commitDeliveryResult = async (input: {
+    successIds: number[];
+    retriable: { rows: TFailedStreamRow[]; nextRetryAt: Date } | null;
+    exhausted: TFailedStreamRow[];
   }) => {
-    const retriableIds = input.retriable?.ids ?? [];
-    if (retriableIds.length === 0 && input.exhausted.length === 0) return;
+    const retriableRows = input.retriable?.rows ?? [];
+    if (input.successIds.length === 0 && retriableRows.length === 0 && input.exhausted.length === 0) return;
     try {
       await db.transaction(async (tx) => {
-        if (input.retriable && retriableIds.length > 0) {
-          await markBatchForRetry(input.retriable.ids, input.retriable.nextRetryAt, input.errorMessage, tx);
+        if (input.successIds.length > 0) {
+          await deleteByIds(input.successIds, tx);
+        }
+        if (input.retriable && retriableRows.length > 0) {
+          const idsByError = new Map<string, number[]>();
+          for (const { row, errorMessage } of retriableRows) {
+            const existing = idsByError.get(errorMessage);
+            if (existing) existing.push(row.id);
+            else idsByError.set(errorMessage, [row.id]);
+          }
+          for (const [errorMessage, ids] of idsByError) {
+            // eslint-disable-next-line no-await-in-loop
+            await markBatchForRetry(ids, input.retriable.nextRetryAt, errorMessage, tx);
+          }
         }
         if (input.exhausted.length > 0) {
-          await moveToDlq(input.exhausted, input.errorMessage, tx);
+          const rowsByError = new Map<string, TAuditLogStreamOutboxRow[]>();
+          for (const { row, errorMessage } of input.exhausted) {
+            const existing = rowsByError.get(errorMessage);
+            if (existing) existing.push(row);
+            else rowsByError.set(errorMessage, [row]);
+          }
+          for (const [errorMessage, rows] of rowsByError) {
+            // eslint-disable-next-line no-await-in-loop
+            await moveToDlq(rows, errorMessage, tx);
+          }
         }
       });
     } catch (error) {
-      throw new DatabaseError({ error, name: "AuditLogStreamOutbox: applyBatchFailure" });
+      throw new DatabaseError({ error, name: "AuditLogStreamOutbox: commitDeliveryResult" });
     }
   };
 
@@ -229,8 +270,7 @@ export const auditLogStreamOutboxDALFactory = (db: TDbClient) => {
   return {
     batchInsert,
     claimBatchForStream,
-    deleteByIds,
-    applyBatchFailure,
+    commitDeliveryResult,
     recoverStaleClaims
   };
 };

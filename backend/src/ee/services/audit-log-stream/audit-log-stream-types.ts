@@ -36,7 +36,15 @@ export type TLogStreamFactoryBatchStreamLog<C extends TAuditLogStreamCredentials
   auditLogs: TAuditLogs[];
 }) => Promise<void>;
 
+export type TLogStreamFactoryProviderBatchLimit = {
+  maxLogs: number;
+  maxBytes: number;
+};
+
+export type TLogStreamFactoryGetProviderBatchLimit = () => TLogStreamFactoryProviderBatchLimit;
+
 export type TLogStreamFactory<C extends TAuditLogStreamCredentials> = () => {
   validateCredentials: TLogStreamFactoryValidateCredentials<C>;
   batchStreamLog: TLogStreamFactoryBatchStreamLog<C>;
+  getProviderBatchLimit: TLogStreamFactoryGetProviderBatchLimit;
 };

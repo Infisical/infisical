@@ -6,12 +6,12 @@ import { TDbClient } from "@app/db";
 import { TableName, TAuditLogs, TAuditLogsInsert } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { DatabaseError, GatewayTimeoutError } from "@app/lib/errors";
+import { chunkArray } from "@app/lib/fn";
 import { ormify, selectAllTableCols, TOrmify } from "@app/lib/knex";
 import { logger } from "@app/lib/logger";
 import { ActorType } from "@app/services/auth/auth-type";
 
 import { ACTOR_TYPE_TO_METADATA_ID_KEY, EventType, filterableSecretEvents } from "./audit-log-types";
-import { chunkArray } from "@app/lib/fn";
 
 type TAggregateQuery = {
   orgId: string;

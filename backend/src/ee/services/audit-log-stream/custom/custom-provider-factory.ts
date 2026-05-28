@@ -5,7 +5,11 @@ import { BadRequestError } from "@app/lib/errors";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 
 import { AUDIT_LOG_STREAM_BATCH_TIMEOUT, AUDIT_LOG_STREAM_TIMEOUT } from "../../audit-log/audit-log-queue";
-import { TLogStreamFactoryBatchStreamLog, TLogStreamFactoryValidateCredentials } from "../audit-log-stream-types";
+import {
+  TLogStreamFactoryBatchStreamLog,
+  TLogStreamFactoryGetProviderBatchLimit,
+  TLogStreamFactoryValidateCredentials
+} from "../audit-log-stream-types";
 import { TCustomProviderCredentials } from "./custom-provider-types";
 
 export const CustomProviderFactory = () => {
@@ -65,8 +69,14 @@ export const CustomProviderFactory = () => {
     });
   };
 
+  const getProviderBatchLimit: TLogStreamFactoryGetProviderBatchLimit = () => ({
+    maxLogs: 400,
+    maxBytes: 800 * 1024
+  });
+
   return {
     validateCredentials,
-    batchStreamLog
+    batchStreamLog,
+    getProviderBatchLimit
   };
 };
