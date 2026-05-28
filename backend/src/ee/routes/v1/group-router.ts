@@ -45,7 +45,7 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
       tags: [ApiDocsTags.Groups],
       body: z.object({
         name: z.string().trim().min(1).max(50).describe(GROUPS.CREATE.name),
-        slug: slugSchema({ min: 5, max: 36 }).optional().describe(GROUPS.CREATE.slug),
+        slug: slugSchema({ min: 5, max: 255 }).optional().describe(GROUPS.CREATE.slug),
         role: z.string().trim().min(1).default(OrgMembershipRole.NoAccess).describe(GROUPS.CREATE.role)
       }),
       response: {
@@ -169,7 +169,7 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
       body: z
         .object({
           name: z.string().trim().min(1).describe(GROUPS.UPDATE.name),
-          slug: slugSchema({ min: 5, max: 36 }).describe(GROUPS.UPDATE.slug),
+          slug: slugSchema({ min: 5, max: 255 }).describe(GROUPS.UPDATE.slug),
           role: z.string().trim().min(1).describe(GROUPS.UPDATE.role)
         })
         .partial(),
