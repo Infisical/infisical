@@ -38,7 +38,7 @@ sequenceDiagram
 
 1. **Gateway**: An Infisical Gateway deployed in your network that can reach the MsSQL server. The Gateway handles secure communication between users and your MsSQL instance.
 
-2. **Authentication**: Credentials are stored securely in Infisical and used by the Gateway to authenticate with MsSQL on behalf of the user. Both SQL Server Authentication (username/password) and Windows Authentication (NTLM) are supported.
+2. **Authentication**: Credentials are stored securely in Infisical and used by the Gateway to authenticate with MsSQL on behalf of the user. SQL Server Authentication (username/password), Windows Authentication (NTLM), and Windows Authentication (Kerberos) are supported.
 
 3. **Local Proxy**: The Infisical CLI starts a local proxy on your machine that intercepts MsSQL connections and routes them securely through the Gateway to your MsSQL instance.
 
@@ -63,13 +63,14 @@ Infisical tracks:
 Before configuring MsSQL access in Infisical PAM, you need:
 
 1. **Infisical Gateway** - A Gateway deployed in your network with access to the MsSQL server
-2. **MsSQL Credentials** - SQL Server credentials (username/password) or Windows domain credentials (domain/username/password) for the MsSQL instance
+2. **MsSQL Credentials** - SQL Server credentials (username/password), Windows domain credentials for NTLM (domain/username/password), or Kerberos credentials (realm/SPN/username/password) for the MsSQL instance
 3. **Infisical CLI** - The Infisical CLI installed on user machines
 
 <Warning>
   **Gateway Required**: MsSQL access requires an Infisical Gateway to be
   deployed and registered with your Infisical instance. The Gateway must have
-  network connectivity to your MsSQL server.
+  network connectivity to your MsSQL server. For Kerberos authentication, the
+  Gateway also needs access to the Key Distribution Center (KDC) on port 88.
 </Warning>
 
 ## Create the PAM Resource

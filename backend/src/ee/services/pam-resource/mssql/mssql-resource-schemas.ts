@@ -70,6 +70,7 @@ const SanitizedMsSQLCredentialsSchema = z.union([
     authMethod: z.literal(MsSqlAuthMethod.Kerberos),
     username: z.string(),
     realm: z.string(),
+    kdcAddress: z.string().optional(),
     spn: z.string()
   }),
   z.object({ authMethod: z.literal(MsSqlAuthMethod.Ntlm), username: z.string(), domain: z.string() }),
