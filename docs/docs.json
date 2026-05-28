@@ -1070,7 +1070,14 @@
                   "api-reference/endpoints/identities/delete",
                   "api-reference/endpoints/identities/get-by-id",
                   "api-reference/endpoints/identities/list",
-                  "api-reference/endpoints/identities/search"
+                  "api-reference/endpoints/identities/search",
+                  "api-reference/endpoints/identities/search-count",
+                  {
+                    "group": "Legacy",
+                    "pages": [
+                      "api-reference/endpoints/deprecated/identities/search"
+                    ]
+                  }
                 ]
               },
               {
@@ -2137,6 +2144,7 @@
                   "api-reference/endpoints/environments/create",
                   "api-reference/endpoints/environments/update",
                   "api-reference/endpoints/environments/delete",
+                  "api-reference/endpoints/environments/restore",
                   {
                     "group": "Legacy",
                     "pages": [
@@ -3051,6 +3059,7 @@
                       "api-reference/endpoints/certificates/read",
                       "api-reference/endpoints/certificates/certificate-request",
                       "api-reference/endpoints/certificates/search-certificate-requests",
+                      "api-reference/endpoints/certificates/cancel-certificate-request",
                       "api-reference/endpoints/certificates/create-certificate",
                       "api-reference/endpoints/certificates/renew",
                       "api-reference/endpoints/certificates/update-config",

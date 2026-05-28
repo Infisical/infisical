@@ -826,6 +826,24 @@ export const projectServiceFactory = ({
       return {
         ...project,
         environments: envs,
+        deletedEnvironments: [] as {
+          id: string;
+          name: string;
+          slug: string;
+          deleteAfter: Date;
+          softDeletedAt: Date;
+          deletedBy:
+            | {
+                type: "user";
+                id: string;
+                email: string | null;
+                username: string | null;
+                firstName: string | null;
+                lastName: string | null;
+              }
+            | { type: "identity"; id: string; name: string }
+            | null;
+        }[],
         _id: project.id
       };
     });
@@ -932,10 +950,31 @@ export const projectServiceFactory = ({
   };
 
   const getProjects = async ({ actorId, actor, includeRoles, actorAuthMethod, actorOrgId, type }: TListProjectsDTO) => {
-    const workspaces =
+    const workspaces = (
       actor === ActorType.IDENTITY
         ? await projectDAL.findIdentityProjects(actorId, actorOrgId, type)
-        : await projectDAL.findUserProjects(actorId, actorOrgId, type);
+        : await projectDAL.findUserProjects(actorId, actorOrgId, type)
+    ).map((workspace) => ({
+      ...workspace,
+      deletedEnvironments: [] as {
+        id: string;
+        name: string;
+        slug: string;
+        deleteAfter: Date;
+        softDeletedAt: Date;
+        deletedBy:
+          | {
+              type: "user";
+              id: string;
+              email: string | null;
+              username: string | null;
+              firstName: string | null;
+              lastName: string | null;
+            }
+          | { type: "identity"; id: string; name: string }
+          | null;
+      }[]
+    }));
 
     if (includeRoles) {
       const { permission } = await permissionService.getOrgPermission({
@@ -984,7 +1023,9 @@ export const projectServiceFactory = ({
       actionProjectType: ActionProjectType.Any
     });
 
-    return project;
+    const deletedEnvironments = await projectDAL.findProjectDeletedEnvironments(project.id);
+
+    return { ...project, deletedEnvironments };
   };
 
   const updateProject = async ({ actor, actorId, actorOrgId, actorAuthMethod, update, filter }: TUpdateProjectDTO) => {

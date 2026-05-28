@@ -3,7 +3,20 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, FormControl, Input, Modal, ModalContent } from "@app/components/v2";
+import {
+  Button,
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+  Input
+} from "@app/components/v3";
 import { useProject } from "@app/context";
 import { useUpdateWsEnvironment } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
@@ -51,27 +64,28 @@ export const UpdateEnvironmentModal = ({ popUp, handlePopUpClose, handlePopUpTog
   };
 
   return (
-    <Modal
-      isOpen={popUp?.updateEnv?.isOpen}
+    <Dialog
+      open={popUp?.updateEnv?.isOpen}
       onOpenChange={(isOpen) => {
         handlePopUpToggle("updateEnv", isOpen);
-        reset();
+        if (!isOpen) reset();
       }}
     >
-      <ModalContent title="Update environment">
-        <form onSubmit={handleSubmit(onFormSubmit)}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Update Environment</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit(onFormSubmit)} className="flex flex-col gap-6">
           <Controller
             control={control}
             defaultValue=""
             name="name"
             render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Environment Name"
-                isError={Boolean(error)}
-                errorText={error?.message}
-              >
-                <Input {...field} />
-              </FormControl>
+              <Field>
+                <FieldLabel htmlFor="updateEnvName">Environment Name</FieldLabel>
+                <Input id="updateEnvName" isError={Boolean(error)} {...field} />
+                <FieldError>{error?.message}</FieldError>
+              </Field>
             )}
           />
           <Controller
@@ -79,37 +93,28 @@ export const UpdateEnvironmentModal = ({ popUp, handlePopUpClose, handlePopUpTog
             defaultValue=""
             name="slug"
             render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Environment Slug"
-                helperText="Slugs are shorthands used in cli to access environment"
-                isError={Boolean(error)}
-                errorText={error?.message}
-              >
-                <Input {...field} />
-              </FormControl>
+              <Field>
+                <FieldLabel htmlFor="updateEnvSlug">Environment Slug</FieldLabel>
+                <Input id="updateEnvSlug" isError={Boolean(error)} {...field} />
+                <FieldError>{error?.message}</FieldError>
+                <FieldDescription>
+                  Slugs are shorthand identifiers used to reference this environment.
+                </FieldDescription>
+              </Field>
             )}
           />
-          <div className="mt-8 flex items-center">
-            <Button
-              className="mr-4"
-              size="sm"
-              type="submit"
-              isLoading={isPending}
-              isDisabled={isPending}
-            >
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="ghost" type="button">
+                Cancel
+              </Button>
+            </DialogClose>
+            <Button type="submit" variant="project" isPending={isPending} isDisabled={isPending}>
               Update
             </Button>
-
-            <Button
-              onClick={() => handlePopUpClose("updateEnv")}
-              colorSchema="secondary"
-              variant="plain"
-            >
-              Cancel
-            </Button>
-          </div>
+          </DialogFooter>
         </form>
-      </ModalContent>
-    </Modal>
+      </DialogContent>
+    </Dialog>
   );
 };

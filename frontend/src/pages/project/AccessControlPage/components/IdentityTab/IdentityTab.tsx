@@ -3,8 +3,6 @@ import { subject } from "@casl/ability";
 import { useNavigate } from "@tanstack/react-router";
 import {
   ChevronDownIcon,
-  ClockAlertIcon,
-  ClockIcon,
   FilterIcon,
   InfoIcon,
   MoreHorizontalIcon,
@@ -17,7 +15,7 @@ import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal, Modal, ModalContent, Spinner } from "@app/components/v2";
+import { DeleteActionModal, Spinner } from "@app/components/v2";
 import { Blur } from "@app/components/v2/Blur";
 import {
   Badge,
@@ -28,6 +26,11 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
   DocumentationLinkBadge,
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -40,14 +43,12 @@ import {
   EmptyHeader,
   EmptyTitle,
   IconButton,
+  IdentityRoleBadges,
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
   OrgIcon,
   Pagination,
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
   ProjectIcon,
   Skeleton,
   SubOrgIcon,
@@ -57,6 +58,9 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  Tabs,
+  TabsList,
+  TabsTrigger,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -68,7 +72,6 @@ import {
   useProject
 } from "@app/context";
 import { getProjectBaseURL } from "@app/helpers/project";
-import { formatProjectRoleName } from "@app/helpers/roles";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -89,11 +92,9 @@ import { ProjectIdentityModal } from "@app/pages/project/AccessControlPage/compo
 
 import { ProjectLinkIdentityModal } from "./components/ProjectLinkIdentityModal";
 
-const MAX_ROLES_TO_BE_SHOWN_IN_TABLE = 2;
-
 enum AddIdentityType {
-  CreateNew,
-  AssignExisting
+  CreateNew = "create-new",
+  AssignExisting = "assign-existing"
 }
 
 export const IdentityTab = withProjectPermission(
@@ -406,114 +407,7 @@ export const IdentityTab = withProjectPermission(
                             >
                               <TableCell isTruncatable>{name}</TableCell>
                               <TableCell>
-                                <div className="flex items-center gap-1.5">
-                                  {roles
-                                    .slice(0, MAX_ROLES_TO_BE_SHOWN_IN_TABLE)
-                                    .map(
-                                      ({
-                                        role,
-                                        customRoleName,
-                                        id: roleId,
-                                        isTemporary,
-                                        temporaryAccessEndTime
-                                      }) => {
-                                        const isExpired =
-                                          new Date() >
-                                          new Date(temporaryAccessEndTime || ("" as string));
-                                        return (
-                                          <Badge
-                                            key={roleId}
-                                            variant={isExpired ? "danger" : "neutral"}
-                                          >
-                                            <span className="capitalize">
-                                              {formatProjectRoleName(role, customRoleName)}
-                                            </span>
-                                            {isTemporary && (
-                                              <Tooltip>
-                                                <TooltipTrigger>
-                                                  <ClockIcon />
-                                                </TooltipTrigger>
-                                                <TooltipContent>
-                                                  {isExpired
-                                                    ? "Access expired"
-                                                    : "Temporary access"}
-                                                </TooltipContent>
-                                              </Tooltip>
-                                            )}
-                                          </Badge>
-                                        );
-                                      }
-                                    )}
-                                  {roles.length > MAX_ROLES_TO_BE_SHOWN_IN_TABLE && (
-                                    <Popover>
-                                      <Tooltip>
-                                        <TooltipTrigger className="flex h-4 items-center">
-                                          <PopoverTrigger asChild>
-                                            <Badge variant="neutral" asChild>
-                                              <button
-                                                type="button"
-                                                onClick={(e) => e.stopPropagation()}
-                                              >
-                                                +{roles.length - MAX_ROLES_TO_BE_SHOWN_IN_TABLE}
-                                              </button>
-                                            </Badge>
-                                          </PopoverTrigger>
-                                        </TooltipTrigger>
-                                        <TooltipContent>
-                                          Click to view additional roles
-                                        </TooltipContent>
-                                      </Tooltip>
-                                      <PopoverContent
-                                        side="right"
-                                        className="flex w-auto max-w-sm flex-wrap gap-1.5"
-                                        onClick={(e) => e.stopPropagation()}
-                                      >
-                                        {roles
-                                          .slice(MAX_ROLES_TO_BE_SHOWN_IN_TABLE)
-                                          .map(
-                                            ({
-                                              role,
-                                              customRoleName,
-                                              id: roleId,
-                                              isTemporary,
-                                              temporaryAccessEndTime
-                                            }) => {
-                                              const isExpired =
-                                                new Date() >
-                                                new Date(temporaryAccessEndTime || ("" as string));
-                                              return (
-                                                <Badge
-                                                  key={roleId}
-                                                  className="z-10"
-                                                  variant={isExpired ? "danger" : "neutral"}
-                                                >
-                                                  <span className="capitalize">
-                                                    {formatProjectRoleName(role, customRoleName)}
-                                                  </span>
-                                                  {isTemporary && (
-                                                    <Tooltip>
-                                                      <TooltipTrigger tabIndex={-1}>
-                                                        {isExpired ? (
-                                                          <ClockAlertIcon />
-                                                        ) : (
-                                                          <ClockIcon />
-                                                        )}
-                                                      </TooltipTrigger>
-                                                      <TooltipContent>
-                                                        {isExpired
-                                                          ? "Access expired"
-                                                          : "Temporary access"}
-                                                      </TooltipContent>
-                                                    </Tooltip>
-                                                  )}
-                                                </Badge>
-                                              );
-                                            }
-                                          )}
-                                      </PopoverContent>
-                                    </Popover>
-                                  )}
-                                </div>
+                                <IdentityRoleBadges roles={roles} />
                               </TableCell>
                               <TableCell>
                                 <Badge
@@ -623,50 +517,32 @@ export const IdentityTab = withProjectPermission(
             </div>
           </CardContent>
         </Card>
-        <Modal
-          isOpen={popUp.createIdentity.isOpen}
+        <Dialog
+          open={popUp.createIdentity.isOpen}
           onOpenChange={(open) => {
             handlePopUpToggle("createIdentity", open);
+            if (!open) {
+              setAddMachineIdentityType(AddIdentityType.CreateNew);
+            }
           }}
         >
-          <ModalContent
-            bodyClassName="overflow-visible"
-            title={`Add Machine Identity to ${productLabel}`}
-            subTitle="Create a new machine identity or assign an existing one"
-          >
-            <div className="mb-4 flex items-center justify-center gap-x-2">
-              <div className="flex w-3/4 gap-x-0.5 rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setAddMachineIdentityType(AddIdentityType.CreateNew);
-                  }}
-                  size="xs"
-                  className={twMerge(
-                    "min-w-[2.4rem] flex-1 rounded border-none hover:bg-mineshaft-600",
-                    addMachineIdentityType === AddIdentityType.CreateNew
-                      ? "bg-mineshaft-500"
-                      : "bg-transparent"
-                  )}
-                >
-                  Create New
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setAddMachineIdentityType(AddIdentityType.AssignExisting);
-                  }}
-                  size="xs"
-                  className={twMerge(
-                    "min-w-[2.4rem] flex-1 rounded border-none hover:bg-mineshaft-600",
-                    addMachineIdentityType === AddIdentityType.AssignExisting
-                      ? "bg-mineshaft-500"
-                      : "bg-transparent"
-                  )}
-                >
-                  Assign Existing
-                </Button>
-              </div>
+          <DialogContent className="max-w-xl overflow-visible">
+            <DialogHeader>
+              <DialogTitle>{`Add Machine Identity to ${productLabel}`}</DialogTitle>
+              <DialogDescription>
+                Create a new machine identity or assign an existing one
+              </DialogDescription>
+            </DialogHeader>
+            <div className="mx-auto flex items-center gap-2">
+              <Tabs
+                value={addMachineIdentityType}
+                onValueChange={(value) => setAddMachineIdentityType(value as AddIdentityType)}
+              >
+                <TabsList>
+                  <TabsTrigger value={AddIdentityType.CreateNew}>Create New</TabsTrigger>
+                  <TabsTrigger value={AddIdentityType.AssignExisting}>Assign Existing</TabsTrigger>
+                </TabsList>
+              </Tabs>
               <Tooltip>
                 <TooltipTrigger>
                   <InfoIcon size={16} className="text-mineshaft-400" />
@@ -708,8 +584,8 @@ export const IdentityTab = withProjectPermission(
             {addMachineIdentityType === AddIdentityType.AssignExisting && (
               <ProjectLinkIdentityModal handlePopUpToggle={handlePopUpToggle} />
             )}
-          </ModalContent>
-        </Modal>
+          </DialogContent>
+        </Dialog>
         <DeleteActionModal
           isOpen={popUp.deleteIdentity.isOpen}
           title={`Are you sure you want to remove ${

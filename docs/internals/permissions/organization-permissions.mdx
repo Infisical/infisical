@@ -67,9 +67,11 @@ Below is a comprehensive list of all available organization-level subjects and t
 | `create`           | Create new groups in the organization            |
 | `edit`             | Modify existing groups                           |
 | `delete`           | Remove groups from the organization              |
-| `grant-privileges` | Change permission levels for organization groups |
-| `add-members`      | Add members to groups                            |
-| `remove-members`   | Remove members from groups                       |
+| `grant-privileges`  | Change permission levels for organization groups |
+| `add-identities`    | Add identities to groups                         |
+| `add-members`       | Add members to groups                            |
+| `remove-members`    | Remove members from groups                       |
+| `remove-identities` | Remove identities from groups                    |
 
 #### Subject: `identity`
 
@@ -120,6 +122,15 @@ Below is a comprehensive list of all available organization-level subjects and t
 | ------ | ---------------------------- |
 | `read` | View organization audit logs |
 
+#### Subject: `email-domains`
+
+| Action          | Description                              |
+| --------------- | ---------------------------------------- |
+| `read`          | View configured email domains            |
+| `create`        | Add new email domains to the organization |
+| `verify-domain` | Verify ownership of an email domain      |
+| `delete`        | Remove email domains                     |
+
 ### Identity Provider Integration
 
 #### Subject: `sso`
@@ -150,6 +161,15 @@ Below is a comprehensive list of all available organization-level subjects and t
 | `edit`   | Modify existing LDAP settings |
 | `delete` | Remove LDAP configurations    |
 
+#### Subject: `github-org-sync`
+
+| Action   | Description                                |
+| -------- | ------------------------------------------ |
+| `read`   | View GitHub organization sync settings     |
+| `create` | Set up GitHub organization sync            |
+| `edit`   | Modify GitHub organization sync settings   |
+| `delete` | Remove GitHub organization sync            |
+
 ### Billing & Subscriptions
 
 #### Subject: `billing`
@@ -178,11 +198,12 @@ Supports conditions and permission inversion
 
 | Action    | Description                        |
 | --------- | ---------------------------------- |
-| `read`    | View app connection configurations |
-| `create`  | Create new app connections         |
-| `edit`    | Modify existing app connections    |
-| `delete`  | Remove app connections             |
-| `connect` | Use app connections                |
+| `read`               | View app connection configurations |
+| `create`             | Create new app connections         |
+| `edit`               | Modify existing app connections    |
+| `delete`             | Remove app connections             |
+| `connect`            | Use app connections                |
+| `rotate-credentials` | Rotate app connection credentials  |
 
 ### Key Management
 
@@ -199,8 +220,15 @@ Supports conditions and permission inversion
 
 | Action  | Description                        |
 | ------- | ---------------------------------- |
-| `setup` | Configure KMIP server settings     |
 | `proxy` | Act as a proxy for KMIP operations |
+
+### Honey Tokens
+
+#### Subject: `honey-tokens`
+
+| Action  | Description                  |
+| ------- | ---------------------------- |
+| `setup` | Set up and configure honey tokens |
 
 ### Admin Tools
 

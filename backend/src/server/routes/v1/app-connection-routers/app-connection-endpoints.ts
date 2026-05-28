@@ -416,6 +416,15 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
         }
       });
 
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.AppConnectionUpdated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: { appConnectionId: connectionId, app }
+        })
+        .catch(() => {});
+
       return { appConnection };
     }
   });

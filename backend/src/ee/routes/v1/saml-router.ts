@@ -456,7 +456,8 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
           organizationId: req.permission.orgId,
           properties: {
             provider: authProvider,
-            action: "create"
+            action: "create",
+            orgId: req.permission.orgId
           }
         })
         .catch((err) => logger.error(err, "Failed to send SSOConfigured telemetry event"));
@@ -521,7 +522,8 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
           organizationId: req.permission.orgId,
           properties: {
             provider: authProvider ?? "saml",
-            action: "update"
+            action: "update",
+            orgId: req.permission.orgId
           }
         })
         .catch((err) => logger.error(err, "Failed to send SSOConfigured telemetry event"));

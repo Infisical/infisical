@@ -371,6 +371,7 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.GET_CERTIFICATE_FROM_REQUEST]: "Get Certificate From Request",
   [EventType.LIST_CERTIFICATE_REQUESTS]: "List Certificate Requests",
   [EventType.TRIGGER_CERTIFICATE_REQUEST_VALIDATION]: "Trigger Certificate Request Validation",
+  [EventType.CANCEL_CERTIFICATE_REQUEST]: "Cancel Certificate Request",
 
   [EventType.SCEP_ENROLLMENT]: "SCEP Certificate Enrollment",
   [EventType.SCEP_RENEWAL]: "SCEP Certificate Renewal",

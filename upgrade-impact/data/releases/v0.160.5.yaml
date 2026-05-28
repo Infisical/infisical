@@ -1,0 +1,61 @@
+version: v0.160.5
+releasedAt: 2026-05-25T08:16:57-07:00
+sourceTag: v0.160.5
+previousTag: v0.160.4
+impactLevel: low
+summary: Startup applies three additive database migrations. Public secret
+  sharing can now be disabled with a new environment variable.
+requiresDbMigration: true
+breakingChanges: []
+dbSchemaChanges:
+  - title: LDAP mTLS columns
+    description: Startup adds nullable LDAP client certificate and key columns for
+      LDAP mutual TLS support.
+    action: No manual action required; Infisical runs this migration during startup.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20260519204340_add-ldap-client-certificate-mtls.ts
+        path: backend/src/db/migrations/20260519204340_add-ldap-client-certificate-mtls.ts
+        description: Adds LDAP client cert and key columns
+  - title: Relay resource auth migration
+    description: Startup adds relayId to resource auth methods and tokenVersion to
+      relays for relay resource authentication.
+    action: No manual action required; Infisical runs this migration during startup.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20260521025807_relay-resource-auth.ts
+        path: backend/src/db/migrations/20260521025807_relay-resource-auth.ts
+        description: Adds relayId and relay tokenVersion
+  - title: App connection encrypted configuration
+    description: Startup adds a nullable encryptedConfiguration column to app connections.
+    action: No manual action required; Infisical runs this migration during startup.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20260521164116_add-app-connection-encrypted-configuration.ts
+        path: backend/src/db/migrations/20260521164116_add-app-connection-encrypted-configuration.ts
+        description: Adds encryptedConfiguration column
+configChanges:
+  - title: Public secret sharing setting
+    description: You can now disable public secret sharing with
+      DISABLE_PUBLIC_SECRET_SHARING. The default remains false.
+    action: Set DISABLE_PUBLIC_SECRET_SHARING=true only if you want to block public
+      secret sharing after upgrade.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/lib/config/env.ts
+        path: backend/src/lib/config/env.ts
+        description: Adds DISABLE_PUBLIC_SECRET_SHARING env var
+deploymentNotes: []
+knownIssues: []
+generatedBy:
+  generator: "@infisical/upgrade-impact"
+  generatorVersion: "1"
+  model: gpt-5.4
+  generatedAt: 2026-05-25T18:40:37.891Z
+  sourceRange:
+    from: v0.160.4
+    to: v0.160.5

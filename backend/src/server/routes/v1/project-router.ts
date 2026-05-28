@@ -52,7 +52,33 @@ import { sanitizedServiceTokenSchema } from "../v2/service-token-router";
 const projectWithEnv = SanitizedProjectSchema.merge(
   z.object({
     _id: z.string(),
-    environments: z.object({ name: z.string(), slug: z.string(), id: z.string() }).array()
+    environments: z.object({ name: z.string(), slug: z.string(), id: z.string() }).array(),
+    deletedEnvironments: z
+      .object({
+        id: z.string(),
+        name: z.string(),
+        slug: z.string(),
+        deleteAfter: z.date(),
+        softDeletedAt: z.date(),
+        deletedBy: z
+          .discriminatedUnion("type", [
+            z.object({
+              type: z.literal("user"),
+              id: z.string(),
+              email: z.string().nullable(),
+              username: z.string().nullable(),
+              firstName: z.string().nullable(),
+              lastName: z.string().nullable()
+            }),
+            z.object({
+              type: z.literal("identity"),
+              id: z.string(),
+              name: z.string()
+            })
+          ])
+          .nullable()
+      })
+      .array()
   })
 );
 
@@ -204,6 +230,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         properties: {
           orgId: project.orgId,
           name: project.name,
+          projectType: req.body.type,
           ...req.auditLogInfo
         }
       });

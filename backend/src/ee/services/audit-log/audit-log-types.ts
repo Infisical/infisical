@@ -310,6 +310,7 @@ export enum EventType {
   CREATE_ENVIRONMENT = "create-environment",
   UPDATE_ENVIRONMENT = "update-environment",
   DELETE_ENVIRONMENT = "delete-environment",
+  RESTORE_ENVIRONMENT = "restore-environment",
   GET_ENVIRONMENT = "get-environment",
   ADD_PROJECT_MEMBER = "add-project-member",
   ADD_BATCH_PROJECT_MEMBER = "add-project-members",
@@ -495,6 +496,7 @@ export enum EventType {
   GET_CERTIFICATE_FROM_REQUEST = "get-certificate-from-request",
   LIST_CERTIFICATE_REQUESTS = "list-certificate-requests",
   TRIGGER_CERTIFICATE_REQUEST_VALIDATION = "trigger-certificate-request-validation",
+  CANCEL_CERTIFICATE_REQUEST = "cancel-certificate-request",
   ATTEMPT_CREATE_SLACK_INTEGRATION = "attempt-create-slack-integration",
   ATTEMPT_REINSTALL_SLACK_INTEGRATION = "attempt-reinstall-slack-integration",
   GET_PROJECT_SLACK_CONFIG = "get-project-slack-config",
@@ -2346,6 +2348,15 @@ interface UpdateEnvironmentEvent {
 
 interface DeleteEnvironmentEvent {
   type: EventType.DELETE_ENVIRONMENT;
+  metadata: {
+    name: string;
+    slug: string;
+    hardDelete: boolean;
+  };
+}
+
+interface RestoreEnvironmentEvent {
+  type: EventType.RESTORE_ENVIRONMENT;
   metadata: {
     name: string;
     slug: string;
@@ -4459,6 +4470,7 @@ interface CreateSharedSecretEvent {
     expiresAfterViews?: number;
     usingPassword: boolean;
     expiresAt: string;
+    emails?: string[];
   };
 }
 
@@ -6200,6 +6212,16 @@ interface TriggerCertificateRequestValidationEvent {
   };
 }
 
+interface CancelCertificateRequestEvent {
+  type: EventType.CANCEL_CERTIFICATE_REQUEST;
+  metadata: {
+    certificateRequestId: string;
+    cancelled: boolean;
+    previousStatus: string;
+    previousPendingMessage: string | null;
+  };
+}
+
 interface ListCertificateRequestsEvent {
   type: EventType.LIST_CERTIFICATE_REQUESTS;
   metadata: {
@@ -7261,6 +7283,7 @@ export type Event =
   | GetEnvironmentEvent
   | UpdateEnvironmentEvent
   | DeleteEnvironmentEvent
+  | RestoreEnvironmentEvent
   | AddProjectMemberEvent
   | AddBatchProjectMemberEvent
   | RemoveProjectMemberEvent
@@ -7665,6 +7688,7 @@ export type Event =
   | GetCertificateFromRequestEvent
   | ListCertificateRequestsEvent
   | TriggerCertificateRequestValidationEvent
+  | CancelCertificateRequestEvent
   | AutomatedRenewCertificate
   | AutomatedRenewCertificateFailed
   | UserLoginEvent

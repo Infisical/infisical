@@ -1,4 +1,4 @@
-import { GenericFieldLabel } from "@app/components/secret-syncs";
+import { Detail, DetailLabel, DetailValue } from "@app/components/v3";
 import { TNetlifySync } from "@app/hooks/api/secretSyncs/types/netlify-sync";
 
 type Props = {
@@ -10,13 +10,20 @@ export const NetlifySyncDestinationSection = ({ secretSync }: Props) => {
 
   return (
     <>
-      <GenericFieldLabel label="Account">
-        {destinationConfig.accountName || destinationConfig.accountId}
-      </GenericFieldLabel>
-      <GenericFieldLabel label="Site">
-        {destinationConfig.siteName || destinationConfig.siteId || "None"}
-      </GenericFieldLabel>
-      <GenericFieldLabel label="Context">{destinationConfig.context || "None"}</GenericFieldLabel>
+      <Detail>
+        <DetailLabel>Account</DetailLabel>
+        <DetailValue>{destinationConfig.accountName || destinationConfig.accountId}</DetailValue>
+      </Detail>
+      <Detail>
+        <DetailLabel>Site</DetailLabel>
+        <DetailValue>
+          {destinationConfig.siteName || destinationConfig.siteId || "None"}
+        </DetailValue>
+      </Detail>
+      <Detail>
+        <DetailLabel>Context</DetailLabel>
+        <DetailValue>{destinationConfig.context || "None"}</DetailValue>
+      </Detail>
     </>
   );
 };

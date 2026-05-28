@@ -20,7 +20,7 @@ export const useCreateOrgIdentityMembership = () => {
       return data.identityMembership;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: identitiesKeys.searchIdentities({ search: {} }) });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.searchIdentitiesRoot });
     }
   });
 };
@@ -35,7 +35,7 @@ export const useDeleteOrgIdentityMembership = () => {
       return data.identityMembership;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: identitiesKeys.searchIdentities({ search: {} }) });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.searchIdentitiesRoot });
     }
   });
 };

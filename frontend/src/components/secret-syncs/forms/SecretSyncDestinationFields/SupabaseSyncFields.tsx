@@ -2,7 +2,14 @@ import { Controller, useFormContext, useWatch } from "react-hook-form";
 import { SingleValue } from "react-select";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
-import { FilterableSelect, FormControl } from "@app/components/v2";
+import {
+  Field,
+  FieldContent,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+  FilterableSelect
+} from "@app/components/v3";
 import {
   TSupabaseProject,
   useSupabaseConnectionListProjects
@@ -26,7 +33,7 @@ export const SupabaseSyncFields = () => {
   );
 
   return (
-    <>
+    <FieldGroup>
       <SecretSyncConnectionField
         onChange={() => {
           setValue("destinationConfig.projectName", "");
@@ -37,29 +44,28 @@ export const SupabaseSyncFields = () => {
         name="destinationConfig.projectId"
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl
-            isError={Boolean(error)}
-            errorText={error?.message}
-            label="Select a project"
-            tooltipClassName="max-w-md"
-          >
-            <FilterableSelect
-              isLoading={isProjectsLoading && Boolean(connectionId)}
-              isDisabled={!connectionId}
-              value={projects.find((p) => p.id === value) ?? null}
-              onChange={(option) => {
-                const v = option as SingleValue<TSupabaseProject>;
-                onChange(v?.id ?? null);
-                setValue("destinationConfig.projectName", v?.name ?? "");
-              }}
-              options={projects}
-              placeholder="Select project..."
-              getOptionLabel={(option) => option.name}
-              getOptionValue={(option) => option.id}
-            />
-          </FormControl>
+          <Field>
+            <FieldLabel>Select a project</FieldLabel>
+            <FieldContent>
+              <FilterableSelect
+                isLoading={isProjectsLoading && Boolean(connectionId)}
+                isDisabled={!connectionId}
+                value={projects.find((p) => p.id === value) ?? null}
+                onChange={(option) => {
+                  const v = option as SingleValue<TSupabaseProject>;
+                  onChange(v?.id ?? null);
+                  setValue("destinationConfig.projectName", v?.name ?? "");
+                }}
+                options={projects}
+                placeholder="Select project..."
+                getOptionLabel={(option) => option.name}
+                getOptionValue={(option) => option.id}
+              />
+              <FieldError errors={[error]} />
+            </FieldContent>
+          </Field>
         )}
       />
-    </>
+    </FieldGroup>
   );
 };

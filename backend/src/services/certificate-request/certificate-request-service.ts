@@ -15,11 +15,15 @@ import {
 } from "@app/ee/services/permission/resource-permission";
 import { getProcessedPermissionRules } from "@app/lib/casl/permission-filter-utils";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
+import { QueueName, TQueueServiceFactory } from "@app/queue";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TCertificateServiceFactory } from "@app/services/certificate/certificate-service";
 
-import { ActorType } from "../auth/auth-type";
+import { ActorAuthMethod, ActorType } from "../auth/auth-type";
+import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
+import { TUserDALFactory } from "../user/user-dal";
 import { TCertificateRequestDALFactory } from "./certificate-request-dal";
 import {
   CertificateRequestStatus,
@@ -37,6 +41,9 @@ type TCertificateRequestServiceFactoryDep = {
   certificateService: Pick<TCertificateServiceFactory, "getCertBody" | "getCertPrivateKey">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find" | "insertMany">;
+  queueService: Pick<TQueueServiceFactory, "stopJobById" | "cancelActiveJob">;
+  userDAL: Pick<TUserDALFactory, "findById">;
+  identityDAL: Pick<TIdentityDALFactory, "findById">;
 };
 
 export type TCertificateRequestServiceFactory = ReturnType<typeof certificateRequestServiceFactory>;
@@ -128,7 +135,10 @@ export const certificateRequestServiceFactory = ({
   certificateDAL,
   certificateService,
   permissionService,
-  resourceMetadataDAL
+  resourceMetadataDAL,
+  queueService,
+  userDAL,
+  identityDAL
 }: TCertificateRequestServiceFactoryDep) => {
   const createCertificateRequest = async ({
     acmeOrderId,
@@ -322,6 +332,7 @@ export const certificateRequestServiceFactory = ({
           privateKey: null,
           serialNumber: null,
           errorMessage: certificateRequest.errorMessage || null,
+          pendingMessage: certificateRequest.pendingMessage || null,
           commonName: certificateRequest.commonName || null,
           organization: certificateRequest.organization || null,
           organizationalUnit: certificateRequest.organizationalUnit || null,
@@ -398,6 +409,7 @@ export const certificateRequestServiceFactory = ({
         privateKey,
         serialNumber: certificateRequest.certificate.serialNumber,
         errorMessage: certificateRequest.errorMessage || null,
+        pendingMessage: certificateRequest.pendingMessage || null,
         commonName: certificateRequest.commonName || null,
         organization: certificateRequest.organization || null,
         organizationalUnit: certificateRequest.organizationalUnit || null,
@@ -423,7 +435,7 @@ export const certificateRequestServiceFactory = ({
       throw new NotFoundError({ message: "Certificate request not found" });
     }
 
-    return certificateRequestDAL.updateStatus(certificateRequestId, status, errorMessage);
+    return certificateRequestDAL.transitionFromPending(certificateRequestId, status, errorMessage);
   };
 
   const attachCertificateToRequest = async ({
@@ -531,12 +543,154 @@ export const certificateRequestServiceFactory = ({
     };
   };
 
+  const cancelCertificateRequest = async ({
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId,
+    certificateRequestId
+  }: {
+    actor: ActorType;
+    actorId: string;
+    actorAuthMethod: ActorAuthMethod;
+    actorOrgId: string;
+    certificateRequestId: string;
+  }) => {
+    const certificateRequest = await certificateRequestDAL.findById(certificateRequestId);
+    if (!certificateRequest) {
+      throw new NotFoundError({ message: "Certificate request not found" });
+    }
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: certificateRequest.projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.CertificateManager
+    });
+
+    const requestMetadata = (await resourceMetadataDAL.find({ certificateRequestId: certificateRequest.id })).map(
+      ({ key, value }) => ({ key, value: value || "" })
+    );
+
+    let allowedByResource = false;
+    if (certificateRequest.applicationId) {
+      const { permission: resourcePermission } = await permissionService.getResourcePermission({
+        actor,
+        actorId,
+        projectId: certificateRequest.projectId,
+        resourceType: ResourceType.CertificateApplication,
+        resourceId: certificateRequest.applicationId,
+        actorAuthMethod,
+        actorOrgId
+      });
+      allowedByResource = resourcePermission.can(
+        ResourcePermissionCertificateActions.Edit,
+        ResourcePermissionSub.Certificates
+      );
+    }
+    if (!allowedByResource) {
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionCertificateActions.Edit,
+        subject(ProjectPermissionSub.Certificates, {
+          commonName: certificateRequest.commonName ?? undefined,
+          altNames: Array.isArray(certificateRequest.altNames)
+            ? (certificateRequest.altNames as { type: string; value: string }[]).map((san) => san.value)
+            : undefined,
+          metadata: requestMetadata
+        })
+      );
+    }
+
+    const previousStatus = certificateRequest.status as CertificateRequestStatus;
+    const previousPendingMessage = certificateRequest.pendingMessage ?? null;
+
+    if (
+      certificateRequest.status !== CertificateRequestStatus.PENDING &&
+      certificateRequest.status !== CertificateRequestStatus.PENDING_VALIDATION
+    ) {
+      return {
+        certificateRequest,
+        projectId: certificateRequest.projectId,
+        cancelled: false,
+        previousStatus,
+        previousPendingMessage
+      };
+    }
+
+    let actorLabel = "user";
+    if (actor === ActorType.USER) {
+      const user = await userDAL.findById(actorId);
+      const name = user
+        ? `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.username || user.email || ""
+        : "";
+      actorLabel = name ? `user ${name}` : "user";
+    } else if (actor === ActorType.IDENTITY) {
+      const identity = await identityDAL.findById(actorId);
+      actorLabel = identity?.name ? `identity ${identity.name}` : "identity";
+    }
+
+    const updated = await certificateRequestDAL.transitionFromPending(
+      certificateRequestId,
+      CertificateRequestStatus.FAILED,
+      `Cancelled by ${actorLabel}`
+    );
+
+    if (!updated) {
+      const refreshed = await certificateRequestDAL.findById(certificateRequestId);
+      return {
+        certificateRequest: refreshed,
+        projectId: certificateRequest.projectId,
+        cancelled: false,
+        previousStatus,
+        previousPendingMessage
+      };
+    }
+
+    const jobId = `certificate-issuance-${certificateRequestId}`;
+
+    try {
+      const signalled = queueService.cancelActiveJob(
+        QueueName.CertificateIssuance,
+        jobId,
+        `Cancelled by ${actorLabel}`
+      );
+      logger.info(
+        `Issued cancellation signal to issuance worker [certificateRequestId=${certificateRequestId}] [signalled=${signalled}]`
+      );
+    } catch (error) {
+      logger.warn(
+        error,
+        `Failed to signal active issuance job during cancellation [certificateRequestId=${certificateRequestId}]`
+      );
+    }
+
+    try {
+      await queueService.stopJobById(QueueName.CertificateIssuance, jobId);
+    } catch (error) {
+      logger.warn(
+        error,
+        `Failed to stop issuance job during cancellation [certificateRequestId=${certificateRequestId}]`
+      );
+    }
+
+    return {
+      certificateRequest: updated,
+      projectId: certificateRequest.projectId,
+      cancelled: true,
+      previousStatus,
+      previousPendingMessage
+    };
+  };
+
   return {
     createCertificateRequest,
     getCertificateRequest,
     getCertificateFromRequest,
     updateCertificateRequestStatus,
     attachCertificateToRequest,
+    cancelCertificateRequest,
     listCertificateRequests
   };
 };

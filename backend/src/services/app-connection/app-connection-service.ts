@@ -528,6 +528,8 @@ export const appConnectionServiceFactory = ({
         credentials,
         method,
         orgId: actor.orgId,
+        projectId,
+        version: 2,
         gatewayId: validationGatewayId
       } as TAppConnectionConfig,
       gatewayService,
@@ -563,6 +565,7 @@ export const appConnectionServiceFactory = ({
               gatewayPoolId: gatewayPoolId ?? null,
               projectId,
               isAutoRotationEnabled,
+              version: 2, // v1 (legacy) always used orgId as AWS ExternalId; v2 uses scope-based ID
               ...params
             },
             tx

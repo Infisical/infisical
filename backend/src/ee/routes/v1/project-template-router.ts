@@ -10,9 +10,11 @@ import {
 import { ApiDocsTags, ProjectTemplates } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { UnpackedPermissionSchema } from "@app/server/routes/sanitizedSchema/permission";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const MAX_JSON_SIZE_LIMIT_IN_BYTES = 32_768;
 
@@ -331,6 +333,15 @@ export const registerProjectTemplateRouter = async (server: FastifyZodProvider) 
         }
       });
 
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.ProjectTemplateCreated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: { templateId: projectTemplate.id, name: projectTemplate.name }
+        })
+        .catch(() => {});
+
       return { projectTemplate };
     }
   });
@@ -397,6 +408,18 @@ export const registerProjectTemplateRouter = async (server: FastifyZodProvider) 
         }
       });
 
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.ProjectTemplateUpdated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            templateId: projectTemplate.id,
+            name: projectTemplate.name
+          }
+        })
+        .catch(() => {});
+
       return { projectTemplate };
     }
   });
@@ -435,6 +458,18 @@ export const registerProjectTemplateRouter = async (server: FastifyZodProvider) 
           }
         }
       });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.ProjectTemplateDeleted,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            templateId: projectTemplate.id,
+            name: projectTemplate.name
+          }
+        })
+        .catch(() => {});
 
       return { projectTemplate };
     }

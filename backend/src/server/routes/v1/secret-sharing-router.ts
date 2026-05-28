@@ -362,6 +362,7 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
         event: {
           type: EventType.CREATE_SHARED_SECRET,
           metadata: {
+            emails: authorizedEmails,
             accessType: req.body.accessType,
             expiresAt: sharedSecret.expiresAt.toISOString(),
             expiresAfterViews: req.body.maxViews,

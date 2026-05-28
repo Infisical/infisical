@@ -106,7 +106,8 @@ export const newOrgMembershipUserFactory = ({
     }
 
     const plan = await licenseService.getPlan(dto.permission.orgId);
-    if (plan?.slug !== "enterprise" && plan?.identityLimit && plan.identitiesUsed >= plan.identityLimit) {
+    const isEnterpriseBypass = plan?.slug === "enterprise" && !plan?.enforceIdentityLimit;
+    if (!isEnterpriseBypass && plan?.identityLimit && plan.identitiesUsed >= plan.identityLimit) {
       // limit imposed on number of identities allowed / number of identities used exceeds the number of identities allowed
       throw new BadRequestError({
         name: "InviteUser",

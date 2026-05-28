@@ -51,7 +51,11 @@ export const projectDALFactory = (db: TDbClient) => {
             void qb.where(`${TableName.Project}.type`, projectType);
           }
         })
-        .leftJoin(TableName.Environment, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
+        .leftJoin(TableName.Environment, function joinActiveEnvByProject() {
+          this.on(`${TableName.Environment}.projectId`, `${TableName.Project}.id`).andOnNull(
+            `${TableName.Environment}.deleteAfter`
+          );
+        })
         .select(
           selectAllTableCols(TableName.Project),
           db.ref("id").withSchema(TableName.Project).as("_id"),
@@ -113,7 +117,11 @@ export const projectDALFactory = (db: TDbClient) => {
             void qb.where(`${TableName.Project}.type`, projectType);
           }
         })
-        .leftJoin(TableName.Environment, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
+        .leftJoin(TableName.Environment, function joinActiveEnvByProject() {
+          this.on(`${TableName.Environment}.projectId`, `${TableName.Project}.id`).andOnNull(
+            `${TableName.Environment}.deleteAfter`
+          );
+        })
         .select(
           selectAllTableCols(TableName.Project),
           db.ref("id").withSchema(TableName.Project).as("_id"),
@@ -152,6 +160,57 @@ export const projectDALFactory = (db: TDbClient) => {
     }
   };
 
+  // Lightweight variant of findUserProjects/findIdentityProjects that returns only the
+  // project IDs the actor has direct or group-based project membership on. Skips the
+  // Project/Environment joins + sqlNestRelationships hydration used by the full variants,
+  // for hot paths that need permission scoping but don't need the project rows themselves.
+  const findActorAccessibleProjectIds = async (
+    actorId: string,
+    actorType: ActorType,
+    orgId: string,
+    tx?: Knex
+  ): Promise<string[]> => {
+    try {
+      if (actorType !== ActorType.USER && actorType !== ActorType.IDENTITY) {
+        return [];
+      }
+      const isUser = actorType === ActorType.USER;
+      const groupMembershipTable = isUser ? TableName.UserGroupMembership : TableName.IdentityGroupMembership;
+      const groupMembershipActorColumn = isUser ? "userId" : "identityId";
+      const actorColumn = isUser ? "actorUserId" : "actorIdentityId";
+
+      const groupSubquery = (tx || db.replicaNode())(TableName.Groups)
+        .leftJoin(groupMembershipTable, `${groupMembershipTable}.groupId`, `${TableName.Groups}.id`)
+        .where(`${groupMembershipTable}.${groupMembershipActorColumn}`, actorId)
+        .select(db.ref("id").withSchema(TableName.Groups));
+
+      const rows = await (tx || db.replicaNode())(TableName.Membership)
+        .where(`${TableName.Membership}.scope`, AccessScope.Project)
+        .where(`${TableName.Membership}.scopeOrgId`, orgId)
+        .whereNotNull(`${TableName.Membership}.scopeProjectId`)
+        .andWhere((qb) => {
+          void qb
+            .where(`${TableName.Membership}.${actorColumn}`, actorId)
+            .orWhereIn(`${TableName.Membership}.actorGroupId`, groupSubquery);
+        })
+        .distinct<{ scopeProjectId: string }[]>(`${TableName.Membership}.scopeProjectId`);
+
+      return rows.map((r) => r.scopeProjectId);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find actor accessible project ids" });
+    }
+  };
+
+  // Lightweight all-projects-in-org lookup that returns only the IDs.
+  const findOrgProjectIds = async (orgId: string, tx?: Knex): Promise<string[]> => {
+    try {
+      const rows = await (tx || db.replicaNode())(TableName.Project).where({ orgId }).select("id");
+      return rows.map((r) => r.id);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find org project ids" });
+    }
+  };
+
   const findProjectGhostUser = async (projectId: string, tx?: Knex) => {
     try {
       const ghostUser = await (tx || db.replicaNode())(TableName.Membership)
@@ -184,7 +243,11 @@ export const projectDALFactory = (db: TDbClient) => {
       const workspaces = await db
         .replicaNode()(TableName.Project)
         .where(`${TableName.Project}.id`, id)
-        .leftJoin(TableName.Environment, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
+        .leftJoin(TableName.Environment, function joinActiveEnvByProject() {
+          this.on(`${TableName.Environment}.projectId`, `${TableName.Project}.id`).andOnNull(
+            `${TableName.Environment}.deleteAfter`
+          );
+        })
         .select(
           selectAllTableCols(TableName.Project),
           db.ref("id").withSchema(TableName.Environment).as("envId"),
@@ -237,7 +300,11 @@ export const projectDALFactory = (db: TDbClient) => {
         .replicaNode()(TableName.Project)
         .where(`${TableName.Project}.slug`, slug)
         .where(`${TableName.Project}.orgId`, orgId)
-        .leftJoin(TableName.Environment, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
+        .leftJoin(TableName.Environment, function joinActiveEnvByProject() {
+          this.on(`${TableName.Environment}.projectId`, `${TableName.Project}.id`).andOnNull(
+            `${TableName.Environment}.deleteAfter`
+          );
+        })
         .select(
           selectAllTableCols(TableName.Project),
           db.ref("id").withSchema(TableName.Environment).as("envId"),
@@ -429,12 +496,99 @@ export const projectDALFactory = (db: TDbClient) => {
 
   const findProjectByEnvId = async (envId: string, tx?: Knex) => {
     const project = await (tx || db.replicaNode())(TableName.Project)
-      .leftJoin(TableName.Environment, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
+      .leftJoin(TableName.Environment, function joinActiveEnvByProject() {
+        this.on(`${TableName.Environment}.projectId`, `${TableName.Project}.id`).andOnNull(
+          `${TableName.Environment}.deleteAfter`
+        );
+      })
       // eslint-disable-next-line @typescript-eslint/no-misused-promises
       .where(buildFindFilter({ id: envId }, TableName.Environment))
       .select(selectAllTableCols(TableName.Project))
       .first();
     return project;
+  };
+
+  const findProjectDeletedEnvironments = async (projectId: string, tx?: Knex) => {
+    try {
+      type DeletedEnvironmentRow = {
+        id: string;
+        slug: string;
+        name: string;
+        deleteAfter: Date;
+        softDeletedAt: Date;
+        deletedByUserId: string | null;
+        deletedByIdentityId: string | null;
+        deletedByUserEmail: string | null;
+        deletedByUserUsername: string | null;
+        deletedByUserFirstName: string | null;
+        deletedByUserLastName: string | null;
+        deletedByIdentityName: string | null;
+      };
+
+      const rows = (await (tx || db.replicaNode())(TableName.Environment)
+        .leftJoin(TableName.Users, `${TableName.Environment}.deletedByUserId`, `${TableName.Users}.id`)
+        .leftJoin(TableName.Identity, `${TableName.Environment}.deletedByIdentityId`, `${TableName.Identity}.id`)
+        .where(`${TableName.Environment}.projectId`, projectId)
+        .whereNotNull(`${TableName.Environment}.deleteAfter`)
+        .whereNotNull(`${TableName.Environment}.softDeletedAt`)
+        .select(
+          `${TableName.Environment}.id`,
+          `${TableName.Environment}.slug`,
+          `${TableName.Environment}.name`,
+          `${TableName.Environment}.deleteAfter`,
+          `${TableName.Environment}.softDeletedAt`,
+          `${TableName.Environment}.deletedByUserId`,
+          `${TableName.Environment}.deletedByIdentityId`,
+          db.ref("email").withSchema(TableName.Users).as("deletedByUserEmail"),
+          db.ref("username").withSchema(TableName.Users).as("deletedByUserUsername"),
+          db.ref("firstName").withSchema(TableName.Users).as("deletedByUserFirstName"),
+          db.ref("lastName").withSchema(TableName.Users).as("deletedByUserLastName"),
+          db.ref("name").withSchema(TableName.Identity).as("deletedByIdentityName")
+        )
+        .orderBy(`${TableName.Environment}.position`, "asc")) as DeletedEnvironmentRow[];
+
+      return rows.map((row) => {
+        let deletedBy:
+          | {
+              type: "user";
+              id: string;
+              email: string | null;
+              username: string | null;
+              firstName: string | null;
+              lastName: string | null;
+            }
+          | { type: "identity"; id: string; name: string }
+          | null = null;
+
+        if (row.deletedByUserId) {
+          deletedBy = {
+            type: "user",
+            id: row.deletedByUserId,
+            email: row.deletedByUserEmail,
+            username: row.deletedByUserUsername,
+            firstName: row.deletedByUserFirstName,
+            lastName: row.deletedByUserLastName
+          };
+        } else if (row.deletedByIdentityId) {
+          deletedBy = {
+            type: "identity",
+            id: row.deletedByIdentityId,
+            name: row.deletedByIdentityName ?? ""
+          };
+        }
+
+        return {
+          id: row.id,
+          slug: row.slug,
+          name: row.name,
+          deleteAfter: row.deleteAfter,
+          softDeletedAt: row.softDeletedAt,
+          deletedBy
+        };
+      });
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find project deleted environments" });
+    }
   };
 
   const countOfOrgProjects = async (orgId: string | null, tx?: Knex) => {
@@ -458,6 +612,8 @@ export const projectDALFactory = (db: TDbClient) => {
     ...projectOrm,
     findUserProjects,
     findIdentityProjects,
+    findActorAccessibleProjectIds,
+    findOrgProjectIds,
     setProjectUpgradeStatus,
     findProjectGhostUser,
     findProjectById,
@@ -467,6 +623,7 @@ export const projectDALFactory = (db: TDbClient) => {
     checkProjectUpgradeStatus,
     searchProjects,
     findProjectByEnvId,
+    findProjectDeletedEnvironments,
     countOfOrgProjects
   };
 };

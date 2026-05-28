@@ -1,4 +1,4 @@
-import { GenericFieldLabel } from "@app/components/secret-syncs";
+import { Detail, DetailLabel, DetailValue } from "@app/components/v3";
 import { TWindmillSync } from "@app/hooks/api/secretSyncs/types/windmill-sync";
 
 type Props = {
@@ -12,8 +12,14 @@ export const WindmillSyncDestinationSection = ({ secretSync }: Props) => {
 
   return (
     <>
-      <GenericFieldLabel label="Workspace">{workspace}</GenericFieldLabel>
-      <GenericFieldLabel label="Path">{path}</GenericFieldLabel>
+      <Detail>
+        <DetailLabel>Workspace</DetailLabel>
+        <DetailValue>{workspace}</DetailValue>
+      </Detail>
+      <Detail>
+        <DetailLabel>Path</DetailLabel>
+        <DetailValue>{path}</DetailValue>
+      </Detail>
     </>
   );
 };

@@ -3,7 +3,20 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, FormControl, Input, Modal, ModalClose, ModalContent } from "@app/components/v2";
+import {
+  Button,
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Field,
+  FieldError,
+  FieldLabel,
+  Input
+} from "@app/components/v3";
 import { useProject } from "@app/context";
 import { useCreateWsTag } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
@@ -57,45 +70,55 @@ export const AddSecretTagModal = ({ popUp, handlePopUpClose, handlePopUpToggle }
   };
 
   return (
-    <Modal
-      isOpen={popUp?.CreateSecretTag?.isOpen}
+    <Dialog
+      open={popUp?.CreateSecretTag?.isOpen}
       onOpenChange={(open) => {
         handlePopUpToggle("CreateSecretTag", open);
-        reset();
+        if (!open) reset();
       }}
     >
-      <ModalContent
-        title={`Add a tag for ${currentProject?.name ?? ""}`}
-        subTitle="Specify your tag name, and the slug will be created automatically."
-      >
-        <form onSubmit={handleSubmit(onFormSubmit)}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Add a Tag for {currentProject?.name ?? ""}</DialogTitle>
+          <DialogDescription>
+            Specify your tag name, and the slug will be created automatically.
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit(onFormSubmit)} className="flex flex-col gap-6">
           <Controller
             control={control}
             name="slug"
             defaultValue=""
             render={({ field, fieldState: { error } }) => (
-              <FormControl label="Tag Slug" isError={Boolean(error)} errorText={error?.message}>
-                <Input {...field} placeholder="Type your tag slug" />
-              </FormControl>
+              <Field>
+                <FieldLabel htmlFor="tagSlug">Tag Slug</FieldLabel>
+                <Input
+                  id="tagSlug"
+                  placeholder="Type your tag slug"
+                  isError={Boolean(error)}
+                  {...field}
+                />
+                <FieldError>{error?.message}</FieldError>
+              </Field>
             )}
           />
-          <div className="mt-8 flex items-center">
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="ghost" type="button">
+                Cancel
+              </Button>
+            </DialogClose>
             <Button
-              className="mr-4"
               type="submit"
+              variant="project"
+              isPending={isSubmitting}
               isDisabled={isSubmitting}
-              isLoading={isSubmitting}
             >
               Create
             </Button>
-            <ModalClose asChild>
-              <Button variant="plain" colorSchema="secondary">
-                Cancel
-              </Button>
-            </ModalClose>
-          </div>
+          </DialogFooter>
         </form>
-      </ModalContent>
-    </Modal>
+      </DialogContent>
+    </Dialog>
   );
 };

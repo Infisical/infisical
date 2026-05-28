@@ -211,6 +211,31 @@ export const IDENTITIES = {
   }
 } as const;
 
+export const IDENTITIES_V2 = {
+  SEARCH: {
+    scope:
+      "Array of scopes to search across. Accepts 'organization' to include organization-level identities and/or 'project' to include identities from projects the caller has access to. Defaults to ['organization'].",
+    search: {
+      desc: "The filters to apply to the search.",
+      name: "The name of the identity to filter by.",
+      role: "The role to filter by. Matches against the role name or slug for custom roles and the role type for predefined roles."
+    },
+    offset: "The offset to start from. If you enter 10, it will start from the 10th identity.",
+    limit: "The number of identities to return.",
+    orderBy: "The column to order identities by.",
+    orderDirection: "The direction to order identities in."
+  },
+  SEARCH_COUNT: {
+    scope:
+      "Array of scopes to count. Returns a count for each requested scope. Accepts 'organization' and/or 'project'.",
+    search: {
+      desc: "The filters to apply when counting.",
+      name: "The name of the identity to filter by.",
+      role: "The role to filter by. Matches against the role name or slug for custom roles and the role type for predefined roles."
+    }
+  }
+} as const;
+
 export const UNIVERSAL_AUTH = {
   LOGIN: {
     clientId: "Your Machine Identity Client ID.",
@@ -1193,7 +1218,13 @@ export const ENVIRONMENTS = {
   },
   DELETE: {
     projectId: "The ID of the project to delete the environment from.",
-    id: "The ID of the environment to delete."
+    id: "The ID of the environment to delete.",
+    hardDelete:
+      "When true, permanently removes the environment. When false or omitted, the environment is soft-deleted (preserved and scheduled for permanent deletion after a grace period) and hidden from subsequent reads."
+  },
+  RESTORE: {
+    projectId: "The ID of the project the environment belongs to.",
+    id: "The ID of the soft-deleted environment to restore."
   },
   GET: {
     projectId: "The ID of the project the environment belongs to.",

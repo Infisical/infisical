@@ -1,3 +1,5 @@
+import { Knex } from "knex";
+
 import {
   AccessScope,
   OrgMembershipRole,
@@ -451,7 +453,7 @@ export const membershipUserServiceFactory = ({
     return { membership: membershipDoc };
   };
 
-  const deleteMembership = async (dto: TDeleteMembershipUserDTO) => {
+  const deleteMembership = async (dto: TDeleteMembershipUserDTO, externalTx?: Knex) => {
     const { scopeData } = dto;
     const factory = scopeFactory[scopeData.scope];
 
@@ -473,7 +475,7 @@ export const membershipUserServiceFactory = ({
         message: "You can't delete your own membership"
       });
 
-    const membershipDoc = await membershipUserDAL.transaction(async (tx) => {
+    const performDelete = async (tx: Knex) => {
       if (dto.scopeData.scope === AccessScope.Organization) {
         const [doc] = await deleteOrgMembershipsFn({
           orgMembershipIds: [existingMembership.id],
@@ -504,7 +506,11 @@ export const membershipUserServiceFactory = ({
       await membershipRoleDAL.delete({ membershipId: existingMembership.id }, tx);
       const doc = await membershipUserDAL.deleteById(existingMembership.id, tx);
       return doc;
-    });
+    };
+
+    const membershipDoc = externalTx
+      ? await performDelete(externalTx)
+      : await membershipUserDAL.transaction(performDelete);
     return { membership: membershipDoc };
   };
 

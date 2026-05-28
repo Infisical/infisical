@@ -118,7 +118,8 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
           projectId: req.body.projectId,
           environment: webhook.environment.slug,
           webhookId: webhook.id,
-          type: req.body.type
+          type: req.body.type,
+          eventTypes: req.body.eventsFilter?.map((e) => e.eventName)
         }
       });
 
@@ -188,6 +189,15 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
         }
       });
 
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.WebhookUpdated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: { webhookId: webhook.id, projectId: webhook.projectId }
+        })
+        .catch(() => {});
+
       return { message: "Successfully updated webhook", webhook };
     }
   });
@@ -227,6 +237,15 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
           }
         }
       });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.WebhookDeleted,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: { webhookId: webhook.id, projectId: webhook.projectId }
+        })
+        .catch(() => {});
 
       return { message: "Successfully deleted webhook", webhook };
     }

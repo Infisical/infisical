@@ -27,6 +27,7 @@ export const snapshotDALFactory = (db: TDbClient) => {
       const data = await (tx || db.replicaNode())(TableName.Snapshot)
         .where(`${TableName.Snapshot}.id`, id)
         .join(TableName.Environment, `${TableName.Snapshot}.envId`, `${TableName.Environment}.id`)
+        .whereNull(`${TableName.Environment}.deleteAfter`)
         .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
         .select(selectAllTableCols(TableName.Snapshot))
         .select(
@@ -64,6 +65,7 @@ export const snapshotDALFactory = (db: TDbClient) => {
       const data = await (tx || db.replicaNode())(TableName.Snapshot)
         .where(`${TableName.Snapshot}.id`, snapshotId)
         .join(TableName.Environment, `${TableName.Snapshot}.envId`, `${TableName.Environment}.id`)
+        .whereNull(`${TableName.Environment}.deleteAfter`)
         .leftJoin(TableName.SnapshotSecret, `${TableName.Snapshot}.id`, `${TableName.SnapshotSecret}.snapshotId`)
         .leftJoin(
           TableName.SecretVersion,
@@ -158,6 +160,7 @@ export const snapshotDALFactory = (db: TDbClient) => {
       const data = await (tx || db.replicaNode())(TableName.Snapshot)
         .where(`${TableName.Snapshot}.id`, snapshotId)
         .join(TableName.Environment, `${TableName.Snapshot}.envId`, `${TableName.Environment}.id`)
+        .whereNull(`${TableName.Environment}.deleteAfter`)
         .leftJoin(TableName.SnapshotSecretV2, `${TableName.Snapshot}.id`, `${TableName.SnapshotSecretV2}.snapshotId`)
         .leftJoin(
           TableName.SecretVersionV2,
@@ -655,10 +658,11 @@ export const snapshotDALFactory = (db: TDbClient) => {
                   );
               })
               .join(TableName.SecretFolder, `${TableName.SecretFolder}.id`, `${TableName.Snapshot}.folderId`)
-              .join(TableName.Environment, `${TableName.Environment}.id`, `${TableName.SecretFolder}.envId`)
+              .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
               .join(TableName.Project, `${TableName.Project}.id`, `${TableName.Environment}.projectId`)
               .join("snapshot_cte", "snapshot_cte.id", `${TableName.Snapshot}.id`)
               .whereRaw(`snapshot_cte.row_num > ${TableName.Project}."pitVersionLimit"`)
+              .whereNull(`${TableName.Environment}.deleteAfter`)
               .delete();
           } catch (err) {
             logger.error(
@@ -708,10 +712,11 @@ export const snapshotDALFactory = (db: TDbClient) => {
                 `${TableName.SecretFolderVersion}.folderId`,
                 `${TableName.Snapshot}.folderId`
               )
-              .join(TableName.Environment, `${TableName.Environment}.id`, `${TableName.SecretFolderVersion}.envId`)
+              .join(TableName.Environment, `${TableName.SecretFolderVersion}.envId`, `${TableName.Environment}.id`)
               .join(TableName.Project, `${TableName.Project}.id`, `${TableName.Environment}.projectId`)
               .join("snapshot_cte", "snapshot_cte.id", `${TableName.Snapshot}.id`)
               .whereRaw(`snapshot_cte.row_num > ${TableName.Project}."pitVersionLimit"`)
+              .whereNull(`${TableName.Environment}.deleteAfter`)
               .delete();
           } catch (err) {
             logger.error(

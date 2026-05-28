@@ -1,4 +1,4 @@
-import { GenericFieldLabel } from "@app/components/secret-syncs";
+import { Detail, DetailLabel, DetailValue } from "@app/components/v3";
 import { TBitbucketSync } from "@app/hooks/api/secretSyncs/types/bitbucket-sync";
 
 type Props = {
@@ -12,10 +12,19 @@ export const BitbucketSyncDestinationSection = ({ secretSync }: Props) => {
 
   return (
     <>
-      <GenericFieldLabel label="Workspace">{workspaceSlug}</GenericFieldLabel>
-      <GenericFieldLabel label="Repository">{repositorySlug}</GenericFieldLabel>
+      <Detail>
+        <DetailLabel>Workspace</DetailLabel>
+        <DetailValue>{workspaceSlug}</DetailValue>
+      </Detail>
+      <Detail>
+        <DetailLabel>Repository</DetailLabel>
+        <DetailValue>{repositorySlug}</DetailValue>
+      </Detail>
       {environmentId && (
-        <GenericFieldLabel label="Deployment Environment">{environmentId}</GenericFieldLabel>
+        <Detail>
+          <DetailLabel>Deployment Environment</DetailLabel>
+          <DetailValue>{environmentId}</DetailValue>
+        </Detail>
       )}
     </>
   );
