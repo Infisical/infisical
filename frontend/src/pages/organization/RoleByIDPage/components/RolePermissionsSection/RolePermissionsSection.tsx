@@ -82,7 +82,7 @@ export const RolePermissionsSection = ({ roleId }: Props) => {
     }
   });
 
-  const isCustomRole = !["admin", "member", "no-access"].includes(role?.slug ?? "");
+  const isCustomRole = role?.slug !== "admin";
 
   const permissions = useWatch({ control: form.control, name: "permissions" });
 
