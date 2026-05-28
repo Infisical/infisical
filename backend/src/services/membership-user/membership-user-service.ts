@@ -35,6 +35,7 @@ import { LoginMethod } from "../super-admin/super-admin-types";
 import { TUserDALFactory } from "../user/user-dal";
 import { TUserAliasDALFactory } from "../user-alias/user-alias-dal";
 import { TMembershipUserDALFactory } from "./membership-user-dal";
+import { assertWillRetainAdmin } from "./membership-user-fns";
 import {
   TCreateMembershipUserDTO,
   TDeleteMembershipUserDTO,
@@ -378,6 +379,19 @@ export const membershipUserServiceFactory = ({
         message: "User doesn't have membership"
       });
 
+    const newIsActive = typeof data.isActive === "undefined" ? existingMembership.isActive : data.isActive;
+    const newRolesHavePermanentAdmin =
+      newIsActive && data.roles.some((r) => r.role === OrgMembershipRole.Admin && !r.isTemporary);
+    if (!newRolesHavePermanentAdmin) {
+      await assertWillRetainAdmin({
+        scope: scopeData.scope,
+        scopeOrgId: scopeData.orgId,
+        scopeProjectId: scopeData.scope === AccessScope.Project ? scopeData.projectId : undefined,
+        excludeMembershipIds: [existingMembership.id],
+        dal: membershipUserDAL
+      });
+    }
+
     const scopeField = factory.getScopeField(dto.scopeData);
     const customRoles = hasCustomRole
       ? await roleDAL.find({
@@ -466,6 +480,14 @@ export const membershipUserServiceFactory = ({
       throw new BadRequestError({
         message: "You can't delete your own membership"
       });
+
+    await assertWillRetainAdmin({
+      scope: scopeData.scope,
+      scopeOrgId: scopeData.orgId,
+      scopeProjectId: scopeData.scope === AccessScope.Project ? scopeData.projectId : undefined,
+      excludeMembershipIds: [existingMembership.id],
+      dal: membershipUserDAL
+    });
 
     const performDelete = async (tx: Knex) => {
       if (dto.scopeData.scope === AccessScope.Organization) {
