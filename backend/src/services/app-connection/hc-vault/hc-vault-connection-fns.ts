@@ -569,10 +569,10 @@ export const listHCVaultNamespaces = async (
       }
 
       // vault 1.0.0 does not support namespace root or /, so we need to handle this case
-      // if the error is 301 and the namespace path is /, try to fetch the namespaces at the root
+      // if the error is 301 and the namespace path is /, try to fetch the namespaces without the namespace header
       if (
         ((error instanceof AxiosError && error.response?.status === 301) || isGateway301Error(error)) &&
-        namespacePath === "/"
+        (namespacePath === "/" || namespacePath === "root")
       ) {
         return fetchHCVaultNamespacesWithoutNamespaceHeader({
           connection,
