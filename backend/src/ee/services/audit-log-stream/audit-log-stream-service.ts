@@ -13,11 +13,7 @@ import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { classifyError } from "@app/lib/errors/classify";
 import { logger } from "@app/lib/logger";
-import {
-  auditLogStreamAlertFiredCounter,
-  auditLogStreamDeliveryCounter,
-  auditLogStreamDeliveryDurationHistogram
-} from "@app/lib/telemetry/metrics";
+import { auditLogStreamAlertFiredCounter, auditLogStreamDeliveryDurationHistogram } from "@app/lib/telemetry/metrics";
 import { OrgServiceActor } from "@app/lib/types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
@@ -423,12 +419,10 @@ export const auditLogStreamServiceFactory = ({
         try {
           await factory.streamLog({ credentials, auditLog });
           const durationS = (Date.now() - deliveryStart) / 1000;
-          auditLogStreamDeliveryCounter.add(1, { ...metricBaseAttrs, outcome: "success" });
           auditLogStreamDeliveryDurationHistogram.record(durationS, { ...metricBaseAttrs, outcome: "success" });
         } catch (error) {
           const durationS = (Date.now() - deliveryStart) / 1000;
           const errorType = classifyError(error);
-          auditLogStreamDeliveryCounter.add(1, { ...metricBaseAttrs, outcome: "failure", "error.type": errorType });
           auditLogStreamDeliveryDurationHistogram.record(durationS, {
             ...metricBaseAttrs,
             outcome: "failure",

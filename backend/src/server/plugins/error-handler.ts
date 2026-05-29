@@ -137,7 +137,7 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
 
       const coreAttrs: Record<string, string | number> = {
         "http.request.method": method,
-        "http.route": route,
+        "http.route": route ?? "unknown",
         "error.type": classifyError(error)
       };
       if (orgId) coreAttrs["infisical.organization.id"] = orgId;

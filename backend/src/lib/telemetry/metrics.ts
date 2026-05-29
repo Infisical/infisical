@@ -249,18 +249,10 @@ export const auditLogDroppedCounter = infisicalCoreMeter.createCounter("infisica
 });
 
 // Audit log stream metrics. Wired in audit-log-stream-service.ts streamLog().
-export const auditLogStreamDeliveryCounter = infisicalCoreMeter.createCounter(
-  "infisical.audit_log_stream.delivery.count",
-  {
-    description: "Per-provider audit log stream delivery attempts (success or failure).",
-    unit: "{delivery}"
-  }
-);
-
 export const auditLogStreamDeliveryDurationHistogram = infisicalCoreMeter.createHistogram(
   "infisical.audit_log_stream.delivery.duration",
   {
-    description: "Per-provider audit log stream delivery latency.",
+    description: "Per-provider audit log stream delivery latency and attempt count (use _count for delivery volume).",
     unit: "s"
   }
 );
@@ -287,13 +279,9 @@ export enum KmsKeyType {
   HSM = "hsm"
 }
 
-export const kmsCryptoCounter = infisicalCoreMeter.createCounter("infisical.kms.crypto.count", {
-  description: "KMS encrypt/decrypt operations by key type and outcome.",
-  unit: "{operation}"
-});
-
 export const kmsCryptoDurationHistogram = infisicalCoreMeter.createHistogram("infisical.kms.crypto.duration", {
-  description: "KMS encrypt/decrypt operation latency. External KMS (AWS/GCP) includes network round trip.",
+  description:
+    "External KMS (AWS/GCP/HSM) encrypt/decrypt latency including network round trip (use _count for operation volume).",
   unit: "s"
 });
 
@@ -305,6 +293,7 @@ export const recordKmsCryptoMetric = (params: {
   errorType?: string;
 }) => {
   if (!isTelemetryEnabled()) return;
+  if (params.keyType === KmsKeyType.INTERNAL) return;
   const attributes = {
     ...buildBaseAttributes(),
     "kms.operation": params.operation,
@@ -312,7 +301,6 @@ export const recordKmsCryptoMetric = (params: {
     outcome: params.outcome,
     ...(params.errorType ? { "error.type": params.errorType } : {})
   };
-  kmsCryptoCounter.add(1, attributes);
   kmsCryptoDurationHistogram.record(params.durationSeconds, attributes);
 };
 
@@ -412,13 +400,8 @@ export enum ScimOperation {
   DeleteGroup = "delete_group"
 }
 
-export const scimOperationCounter = infisicalCoreMeter.createCounter("infisical.scim.operation.count", {
-  description: "SCIM provisioning operations (user/group create, update, replace, delete) by outcome.",
-  unit: "{operation}"
-});
-
 export const scimOperationDurationHistogram = infisicalCoreMeter.createHistogram("infisical.scim.operation.duration", {
-  description: "SCIM provisioning operation latency by operation type and outcome.",
+  description: "SCIM provisioning operation latency by operation type and outcome (use _count for operation volume).",
   unit: "s"
 });
 
@@ -436,7 +419,6 @@ export const recordScimOperationMetric = (params: {
   };
   if (params.orgId) attributes["infisical.organization.id"] = params.orgId;
   if (params.error !== undefined) attributes["error.type"] = classifyError(params.error);
-  scimOperationCounter.add(1, attributes);
   scimOperationDurationHistogram.record((performance.now() - params.startTime) / 1000, attributes);
 };
 
