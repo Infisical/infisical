@@ -111,13 +111,10 @@ export const GitLabSyncFields = () => {
   const groupId = useWatch({ name: "destinationConfig.groupId", control });
   const groupName = useWatch({ name: "destinationConfig.groupName", control });
 
-  const groupListLimit = debouncedGroupSearch ? undefined : GITLAB_SYNC_LIST_LIMIT;
-  const projectListLimit = debouncedProjectSearch ? undefined : GITLAB_SYNC_LIST_LIMIT;
-
   const { data: groups, isLoading: isGroupsLoading } = useGitLabConnectionListGroups(
     connectionId,
     debouncedGroupSearch || undefined,
-    groupListLimit,
+    GITLAB_SYNC_LIST_LIMIT,
     {
       enabled: Boolean(connectionId) && scope === GitLabSyncScope.Group
     }
@@ -126,7 +123,7 @@ export const GitLabSyncFields = () => {
   const { data: projects, isLoading: isProjectsLoading } = useGitLabConnectionListProjects(
     connectionId,
     debouncedProjectSearch || undefined,
-    projectListLimit,
+    GITLAB_SYNC_LIST_LIMIT,
     {
       enabled: Boolean(connectionId) && scope === GitLabSyncScope.Project
     }
@@ -218,7 +215,7 @@ export const GitLabSyncFields = () => {
                   </TooltipTrigger>
                   <TooltipContent className="max-w-md">
                     Ensure the group exists in the connection&apos;s GitLab instance URL. Only the
-                    first results are shown — search by name to find more.
+                    first results are shown, search by name to find more.
                   </TooltipContent>
                 </Tooltip>
               </FieldLabel>
@@ -266,8 +263,8 @@ export const GitLabSyncFields = () => {
                   </TooltipTrigger>
                   <TooltipContent className="max-w-md">
                     Ensure the project exists in the connection&apos;s GitLab instance URL and the
-                    connection has access to it. Only the first results are shown — search by name
-                    to find more.
+                    connection has access to it. Only the first results are shown, search by name to
+                    find more.
                   </TooltipContent>
                 </Tooltip>
               </FieldLabel>

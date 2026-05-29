@@ -355,6 +355,7 @@ export const listGitLabProjects = async ({
       pagination: "offset",
       ...(limit !== undefined ? { perPage: limit } : {}),
       ...(search ? { search } : {}),
+      maxPages: 1,
       archived: false,
       includePendingDelete: false,
       membership: true,
