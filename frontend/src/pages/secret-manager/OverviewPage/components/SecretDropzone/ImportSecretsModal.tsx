@@ -690,7 +690,7 @@ const ImportSecretsContent = ({
               </Tooltip>
             </FieldLabel>
             <Switch
-              variant="project"
+              variant="danger"
               checked={shouldOverwrite}
               onCheckedChange={setShouldOverwrite}
             />
