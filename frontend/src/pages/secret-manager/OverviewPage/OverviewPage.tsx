@@ -2644,7 +2644,7 @@ const OverviewPageContent = () => {
                   <span>
                     {pendingApprovalsCount} secret change request
                     {pendingApprovalsCount === 1 ? "" : "s"} pending approval
-                    {!canApproveAny && "  waiting for a reviewer"}
+                    {!canApproveAny && ". Waiting for a reviewer"}
                   </span>
                   {canApproveAny && (
                     <Link
