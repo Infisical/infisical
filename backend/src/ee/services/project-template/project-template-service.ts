@@ -8,7 +8,8 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { ProjectTemplateDefaultEnvironments } from "@app/ee/services/project-template/project-template-constants";
 import {
   getDefaultProjectTemplate,
-  getDefaultTemplateRoles
+  getDefaultTemplateRoles,
+  INFISICAL_DEFAULT_PROJECT_TEMPLATE_ID
 } from "@app/ee/services/project-template/project-template-fns";
 import {
   TProjectTemplateEnvironment,
@@ -47,18 +48,30 @@ const $unpackProjectTemplate = (
   users: TProjectTemplateUser[],
   groups: TProjectTemplateGroup[],
   identities: TProjectTemplateOrgManagedIdentity[]
-) => ({
-  ...rest,
-  environments: environments as TProjectTemplateEnvironment[],
-  roles: (roles as TProjectTemplateRole[]).map((role) => ({
+) => {
+  const storedRoles = (roles as TProjectTemplateRole[]).map((role) => ({
     ...role,
     permissions: unpackPermissions(role.permissions)
-  })),
-  users,
-  groups,
-  identities,
-  projectManagedIdentities: (projectManagedIdentities as TProjectTemplateProjectManagedIdentity[]) || null
-});
+  }));
+
+  const storedSlugs = new Set(storedRoles.map((r) => r.slug));
+
+  // Restore any built-in role that isn't explicitly overridden so existing
+  // templates continue to return the complete role set (backwards compatible).
+  const missingDefaults = getDefaultTemplateRoles(rest.type as ProjectType)
+    .filter((r) => !storedSlugs.has(r.slug))
+    .map(({ name, slug, permissions }) => ({ name, slug, permissions }));
+
+  return {
+    ...rest,
+    environments: environments as TProjectTemplateEnvironment[],
+    roles: [...missingDefaults, ...storedRoles],
+    users,
+    groups,
+    identities,
+    projectManagedIdentities: (projectManagedIdentities as TProjectTemplateProjectManagedIdentity[]) || null
+  };
+};
 
 export const projectTemplateServiceFactory = ({
   licenseService,
@@ -492,6 +505,11 @@ export const projectTemplateServiceFactory = ({
     { roles, environments, users, groups, identities, projectManagedIdentities, ...params },
     actor
   ) => {
+    if (id === INFISICAL_DEFAULT_PROJECT_TEMPLATE_ID)
+      throw new BadRequestError({
+        message: "The built-in default project template is read-only and cannot be modified."
+      });
+
     const plan = await licenseService.getPlan(actor.orgId);
 
     if (!plan.projectTemplates)
@@ -806,6 +824,11 @@ export const projectTemplateServiceFactory = ({
   };
 
   const deleteProjectTemplateById: TProjectTemplateServiceFactory["deleteProjectTemplateById"] = async (id, actor) => {
+    if (id === INFISICAL_DEFAULT_PROJECT_TEMPLATE_ID)
+      throw new BadRequestError({
+        message: "The built-in default project template is read-only and cannot be deleted."
+      });
+
     const plan = await licenseService.getPlan(actor.orgId);
 
     if (!plan.projectTemplates)

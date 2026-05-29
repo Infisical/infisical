@@ -835,48 +835,38 @@ export const permissionServiceFactory = ({
   // instead of actor type this will fetch by role slug. meaning it can be the pre defined slugs like
   // admin member or user defined ones like biller etc
   const getOrgPermissionByRoles: TPermissionServiceFactory["getOrgPermissionByRoles"] = async (roles, orgId) => {
-    const formattedRoles = roles.map((role) => ({
-      name: role,
-      isCustom: !Object.values(OrgMembershipRole).includes(role as OrgMembershipRole)
-    }));
+    const nonAdminRoles = roles.filter((role) => role !== OrgMembershipRole.Admin);
 
-    const customRoles = formattedRoles.filter((el) => el.isCustom).map((el) => el.name);
-    const customRoleDetails = customRoles.length
+    const resolvedRoles = nonAdminRoles.length
       ? await roleDAL.find({
           orgId,
-          $in: {
-            slug: customRoles
-          }
+          $in: { slug: nonAdminRoles }
         })
       : [];
-    if (customRoles.length !== customRoleDetails.length) {
-      const missingRoles = customRoles.filter((role) => !customRoleDetails.find((el) => el.slug === role));
+
+    if (resolvedRoles.length !== nonAdminRoles.length) {
+      const missingRoles = nonAdminRoles.filter((role) => !resolvedRoles.find((el) => el.slug === role));
       throw new NotFoundError({
         message: `Specified roles '${missingRoles.join(",")}' was not found in the organization with ID '${orgId}'`
       });
     }
 
-    return formattedRoles.map((el) => {
-      if (el.isCustom) {
-        const roleDetails = customRoleDetails.find((role) => role.slug === el.name);
+    return roles.map((role) => {
+      if (role === OrgMembershipRole.Admin) {
         return {
-          permission: createMongoAbility<OrgPermissionSet>(
-            buildOrgPermissionRules([{ role: OrgMembershipRole.Custom, permissions: roleDetails?.permissions || [] }]),
-            {
-              conditionsMatcher
-            }
-          ),
-          role: roleDetails!
+          permission: createMongoAbility<OrgPermissionSet>(buildOrgPermissionRules([{ role, permissions: [] }]), {
+            conditionsMatcher
+          })
         };
       }
 
+      const roleDetails = resolvedRoles.find((r) => r.slug === role)!;
       return {
         permission: createMongoAbility<OrgPermissionSet>(
-          buildOrgPermissionRules([{ role: el.name, permissions: [] }]),
-          {
-            conditionsMatcher
-          }
-        )
+          buildOrgPermissionRules([{ role: OrgMembershipRole.Custom, permissions: roleDetails.permissions || [] }]),
+          { conditionsMatcher }
+        ),
+        role: roleDetails
       };
     });
   };
@@ -885,51 +875,42 @@ export const permissionServiceFactory = ({
     roles,
     projectId
   ) => {
-    const formattedRoles = roles.map((role) => ({
-      name: role,
-      isCustom: !Object.values(ProjectMembershipRole).includes(role as ProjectMembershipRole)
-    }));
+    const nonAdminRoles = roles.filter((role) => role !== ProjectMembershipRole.Admin);
 
-    const customRoles = formattedRoles.filter((el) => el.isCustom).map((el) => el.name);
-    const customRoleDetails = customRoles.length
+    const resolvedRoles = nonAdminRoles.length
       ? await roleDAL.find({
           projectId,
-          $in: {
-            slug: customRoles
-          }
+          $in: { slug: nonAdminRoles }
         })
       : [];
-    if (customRoles.length !== customRoleDetails.length) {
-      const missingRoles = customRoles.filter((role) => !customRoleDetails.find((el) => el.slug === role));
+
+    if (resolvedRoles.length !== nonAdminRoles.length) {
+      const missingRoles = nonAdminRoles.filter((role) => !resolvedRoles.find((el) => el.slug === role));
       throw new NotFoundError({
         message: `Specified roles '${missingRoles.join(",")}' was not found in the project with ID '${projectId}'`
       });
     }
 
-    return formattedRoles.map((el) => {
-      if (el.isCustom) {
-        const roleDetails = customRoleDetails.find((role) => role.slug === el.name);
+    return roles.map((role) => {
+      if (role === ProjectMembershipRole.Admin) {
         return {
           permission: createMongoAbility<ProjectPermissionSet>(
-            buildProjectPermissionRules([
-              { role: ProjectMembershipRole.Custom, permissions: roleDetails?.permissions || [] }
-            ]),
-            {
-              conditionsMatcher
-            }
+            buildProjectPermissionRules([{ role, permissions: [] }]),
+            { conditionsMatcher }
           ),
-          role: roleDetails!
+          role: { name: "Admin", slug: ProjectMembershipRole.Admin }
         };
       }
 
+      const roleDetails = resolvedRoles.find((r) => r.slug === role)!;
       return {
         permission: createMongoAbility<ProjectPermissionSet>(
-          buildProjectPermissionRules([{ role: el.name, permissions: [] }]),
-          {
-            conditionsMatcher
-          }
+          buildProjectPermissionRules([
+            { role: ProjectMembershipRole.Custom, permissions: roleDetails.permissions || [] }
+          ]),
+          { conditionsMatcher }
         ),
-        role: { name: el.name, slug: el.name }
+        role: roleDetails
       };
     });
   };

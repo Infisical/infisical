@@ -57,8 +57,13 @@ export const getDefaultTemplateRoles = (type: ProjectType) => {
   return roles;
 };
 
+// Stable sentinel UUID for the synthetic built-in default template.
+// This ID is never stored in the database; it identifies the hardcoded read-only
+// template returned at list time. Update / delete operations must be blocked for it.
+export const INFISICAL_DEFAULT_PROJECT_TEMPLATE_ID = "b11b49a9-09a9-4443-916a-4246f9ff2c69";
+
 export const getDefaultProjectTemplate = (orgId: string, type: ProjectType) => ({
-  id: "b11b49a9-09a9-4443-916a-4246f9ff2c69", // random ID to appease zod
+  id: INFISICAL_DEFAULT_PROJECT_TEMPLATE_ID,
   type,
   name: InfisicalProjectTemplate.Default,
   createdAt: new Date(),

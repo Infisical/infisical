@@ -191,47 +191,51 @@ export async function up(knex: Knex): Promise<void> {
   });
 
   // Back-fill customRoleId on membership_roles ────────────────────────────
+  // Wrapped in its own transaction so a partial failure leaves the migration
+  // incomplete rather than partially applied. The seeding above is idempotent
+  // so a retry on next startup is always safe.
+  await knex.transaction(async (backfillTrx) => {
+    // org-scoped
+    await backfillTrx.raw(`
+      UPDATE "${TableName.MembershipRole}" mr
+      SET "customRoleId" = r.id
+      FROM "${TableName.Membership}" m,
+           "${TableName.Role}" r
+      WHERE mr."membershipId" = m.id
+        AND r.slug = mr.role
+        AND r."orgId" = m."scopeOrgId"
+        AND r."projectId" IS NULL
+        AND m.scope = 'organization'
+        AND mr.role <> 'admin'
+        AND mr."customRoleId" IS NULL
+    `);
 
-  // org-scoped
-  await knex.raw(`
-    UPDATE "${TableName.MembershipRole}" mr
-    SET "customRoleId" = r.id
-    FROM "${TableName.Membership}" m,
-         "${TableName.Role}" r
-    WHERE mr."membershipId" = m.id
-      AND r.slug = mr.role
-      AND r."orgId" = m."scopeOrgId"
-      AND r."projectId" IS NULL
-      AND m.scope = 'organization'
-      AND mr.role <> 'admin'
-      AND mr."customRoleId" IS NULL
-  `);
+    // project-scoped
+    await backfillTrx.raw(`
+      UPDATE "${TableName.MembershipRole}" mr
+      SET "customRoleId" = r.id
+      FROM "${TableName.Membership}" m,
+           "${TableName.Role}" r
+      WHERE mr."membershipId" = m.id
+        AND r.slug = mr.role
+        AND r."projectId" = m."scopeProjectId"
+        AND r."orgId" IS NULL
+        AND m.scope IN ('project', 'resource')
+        AND mr.role <> 'admin'
+        AND mr."customRoleId" IS NULL
+    `);
 
-  // project-scoped
-  await knex.raw(`
-    UPDATE "${TableName.MembershipRole}" mr
-    SET "customRoleId" = r.id
-    FROM "${TableName.Membership}" m,
-         "${TableName.Role}" r
-    WHERE mr."membershipId" = m.id
-      AND r.slug = mr.role
-      AND r."projectId" = m."scopeProjectId"
-      AND r."orgId" IS NULL
-      AND m.scope IN ('project', 'resource')
-      AND mr.role <> 'admin'
-      AND mr."customRoleId" IS NULL
-  `);
-
-  // Convert org.defaultMembershipRole from slug to UUID so the field is always a role ID.
-  await knex.raw(`
-    UPDATE "${TableName.Organization}" o
-    SET "defaultMembershipRole" = r.id
-    FROM "${TableName.Role}" r
-    WHERE r.slug = o."defaultMembershipRole"
-      AND r."orgId" = o.id
-      AND r."projectId" IS NULL
-      AND o."defaultMembershipRole" <> 'admin'
-  `);
+    // Convert org.defaultMembershipRole from slug to UUID so the field is always a role ID.
+    await backfillTrx.raw(`
+      UPDATE "${TableName.Organization}" o
+      SET "defaultMembershipRole" = r.id
+      FROM "${TableName.Role}" r
+      WHERE r.slug = o."defaultMembershipRole"
+        AND r."orgId" = o.id
+        AND r."projectId" IS NULL
+        AND o."defaultMembershipRole" <> 'admin'
+    `);
+  });
 }
 
 export async function down(knex: Knex): Promise<void> {
