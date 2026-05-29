@@ -843,18 +843,6 @@ Per-provider observability for the audit-log stream feature (Datadog, Splunk, Cu
 
     **Attributes**: `audit_log_stream.provider`, `infisical.organization.id`, `outcome`, `error.type` (on failure)
   </Accordion>
-
-  <Accordion title="Audit Log Stream Alert Fired">
-    **Metric Name**: `infisical.audit_log_stream.alert.fired.count`
-
-    **Type**: Counter
-
-    **Unit**: `{alert}`
-
-    **Description**: Times the sliding-window failure threshold (default 20 failures in 5 minutes) tripped an admin email alert. Useful for catching repeated SIEM degradations even if individual deliveries succeed in between.
-
-    **Attributes**: `audit_log_stream.provider`, `infisical.organization.id`
-  </Accordion>
 </AccordionGroup>
 
 ### Permission Cache Metrics (InfisicalCore)

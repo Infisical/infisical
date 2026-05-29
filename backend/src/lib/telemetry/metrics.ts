@@ -308,14 +308,6 @@ export const auditLogStreamDeliveryDurationHistogram = infisicalCoreMeter.create
   }
 );
 
-export const auditLogStreamAlertFiredCounter = infisicalCoreMeter.createCounter(
-  "infisical.audit_log_stream.alert.fired.count",
-  {
-    description: "Times the audit log stream sliding-window failure threshold tripped an admin alert.",
-    unit: "{alert}"
-  }
-);
-
 // Permission cache metrics. Wired in lib/cache/with-cache.ts withCacheFingerprint().
 export const permissionCacheLookupCounter = infisicalCoreMeter.createCounter(
   "infisical.permission_cache.lookup.count",
