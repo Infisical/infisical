@@ -95,7 +95,9 @@ export const auditLogStreamOutboxDALFactory = (db: TDbClient) => {
 
   // Release a claim by flipping rows back to 'retry' with an updated attempt count
   // and a future nextRetryAt. Used when the provider call fails for the whole batch.
-  const markBatchForRetry = async (ids: number[], nextRetryAt: Date, tx?: Knex) => {
+  // nextRetryAt is computed DB-side as NOW() + delay so it uses the same clock the
+  // claim query compares against (no app/DB clock-skew drift on the retry schedule).
+  const markBatchForRetry = async (ids: number[], nextRetryDelayMs: number, tx?: Knex) => {
     if (ids.length === 0) return;
     try {
       await (tx || db)(TableName.AuditLogStreamOutbox)
@@ -103,7 +105,7 @@ export const auditLogStreamOutboxDALFactory = (db: TDbClient) => {
         .update({
           status: AuditLogStreamOutboxStatus.Retry,
           attempts: db.raw('"attempts" + 1'),
-          nextRetryAt,
+          nextRetryAt: db.raw(`NOW() + (? || ' milliseconds')::INTERVAL`, [nextRetryDelayMs]),
           lockedAt: null
         });
     } catch (error) {
@@ -166,22 +168,21 @@ export const auditLogStreamOutboxDALFactory = (db: TDbClient) => {
   // claim on the next pass.
   const commitDeliveryResult = async (input: {
     successIds: number[];
-    retriable: { rows: TFailedStreamRow[]; nextRetryAt: Date } | null;
+    retriable: { groups: { ids: number[]; nextRetryDelayMs: number }[] } | null;
     exhausted: TFailedStreamRow[];
   }) => {
-    const retriableRows = input.retriable?.rows ?? [];
-    if (input.successIds.length === 0 && retriableRows.length === 0 && input.exhausted.length === 0) return;
+    const retriableCount = input.retriable?.groups.reduce((n, g) => n + g.ids.length, 0) ?? 0;
+    if (input.successIds.length === 0 && retriableCount === 0 && input.exhausted.length === 0) return;
     try {
       await db.transaction(async (tx) => {
         if (input.successIds.length > 0) {
           await markBatchAsDelivered(input.successIds, tx);
         }
-        if (input.retriable && retriableRows.length > 0) {
-          await markBatchForRetry(
-            retriableRows.map(({ row }) => row.id),
-            input.retriable.nextRetryAt,
-            tx
-          );
+        if (input.retriable) {
+          for (const group of input.retriable.groups) {
+            // eslint-disable-next-line no-await-in-loop
+            await markBatchForRetry(group.ids, group.nextRetryDelayMs, tx);
+          }
         }
         if (input.exhausted.length > 0) {
           const rowsByError = new Map<string, TAuditLogStreamOutboxRow[]>();

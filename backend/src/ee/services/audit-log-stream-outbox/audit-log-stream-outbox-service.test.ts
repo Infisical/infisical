@@ -121,12 +121,11 @@ describe("audit-log-stream-outbox-service drainStream failure wiring", () => {
     expect(auditLogStreamOutboxDAL.commitDeliveryResult).toHaveBeenCalledTimes(1);
     const call = auditLogStreamOutboxDAL.commitDeliveryResult.mock.calls[0][0] as {
       successIds: number[];
-      retriable: { rows: TFailedStreamRow[]; nextRetryAt: Date } | null;
+      retriable: { groups: { ids: number[]; nextRetryDelayMs: number }[] } | null;
       exhausted: TFailedStreamRow[];
     };
     expect(call.successIds).toEqual([]);
-    expect(call.retriable?.rows.map(({ row }) => row.id)).toEqual([1]);
-    expect(call.retriable?.rows[0].errorMessage).toEqual(expect.stringContaining(FAILURE_MESSAGE));
+    expect(call.retriable?.groups.flatMap((g) => g.ids)).toEqual([1]);
     expect(call.exhausted).toEqual([]);
   });
 
@@ -145,7 +144,7 @@ describe("audit-log-stream-outbox-service drainStream failure wiring", () => {
     expect(auditLogStreamOutboxDAL.commitDeliveryResult).toHaveBeenCalledTimes(1);
     const call = auditLogStreamOutboxDAL.commitDeliveryResult.mock.calls[0][0] as {
       successIds: number[];
-      retriable: { rows: TFailedStreamRow[]; nextRetryAt: Date } | null;
+      retriable: { groups: { ids: number[]; nextRetryDelayMs: number }[] } | null;
       exhausted: TFailedStreamRow[];
     };
     expect(call.successIds).toEqual([]);
@@ -166,7 +165,7 @@ describe("audit-log-stream-outbox-service drainStream failure wiring", () => {
     expect(auditLogStreamOutboxDAL.commitDeliveryResult).toHaveBeenCalledTimes(1);
     const call = auditLogStreamOutboxDAL.commitDeliveryResult.mock.calls[0][0] as {
       successIds: number[];
-      retriable: { rows: TFailedStreamRow[]; nextRetryAt: Date } | null;
+      retriable: { groups: { ids: number[]; nextRetryDelayMs: number }[] } | null;
       exhausted: TFailedStreamRow[];
     };
     expect(call.successIds).toEqual([1]);
@@ -202,12 +201,47 @@ describe("audit-log-stream-outbox-service drainStream failure wiring", () => {
     expect(auditLogStreamOutboxDAL.commitDeliveryResult).toHaveBeenCalledTimes(1);
     const call = auditLogStreamOutboxDAL.commitDeliveryResult.mock.calls[0][0] as {
       successIds: number[];
-      retriable: { rows: TFailedStreamRow[]; nextRetryAt: Date } | null;
+      retriable: { groups: { ids: number[]; nextRetryDelayMs: number }[] } | null;
       exhausted: TFailedStreamRow[];
     };
     expect(call.successIds).toEqual([1]);
-    expect(call.retriable?.rows.map(({ row }) => row.id)).toEqual([2]);
+    expect(call.retriable?.groups.flatMap((g) => g.ids)).toEqual([2]);
     expect(call.exhausted).toEqual([]);
+  });
+
+  test("per-attempt backoff: rows at different attempts retry in separate groups with distinct delays", async () => {
+    const { service, auditLogStreamOutboxDAL } = createService();
+
+    // One chunk (default maxLogs) carrying two rows with different attempt counts.
+    // The single send rejects, so both are retriable but must land in separate
+    // groups, each backed off by its own attempt count — not the batch max.
+    auditLogStreamOutboxDAL.claimBatchForStream
+      .mockResolvedValueOnce([
+        buildRow({ id: 1, auditLogId: "log-1", attempts: 0 }),
+        buildRow({ id: 2, auditLogId: "log-2", attempts: 3 })
+      ])
+      .mockResolvedValueOnce([]);
+    batchStreamLog.mockRejectedValueOnce(new Error(FAILURE_MESSAGE));
+
+    await service.drainStream({ streamId: STREAM_ID, orgId: ORG_ID, provider: PROVIDER });
+
+    expect(auditLogStreamOutboxDAL.commitDeliveryResult).toHaveBeenCalledTimes(1);
+    const call = auditLogStreamOutboxDAL.commitDeliveryResult.mock.calls[0][0] as {
+      successIds: number[];
+      retriable: { groups: { ids: number[]; nextRetryDelayMs: number }[] } | null;
+      exhausted: TFailedStreamRow[];
+    };
+    const groups = call.retriable?.groups ?? [];
+    expect(groups).toHaveLength(2);
+
+    const groupForId = (id: number) => groups.find((g) => g.ids.includes(id));
+    const lowAttemptGroup = groupForId(1);
+    const highAttemptGroup = groupForId(2);
+
+    expect(lowAttemptGroup?.ids).toEqual([1]);
+    expect(highAttemptGroup?.ids).toEqual([2]);
+    // The row that has already failed more times must wait strictly longer.
+    expect(highAttemptGroup!.nextRetryDelayMs).toBeGreaterThan(lowAttemptGroup!.nextRetryDelayMs);
   });
 });
 

@@ -58,11 +58,11 @@ const PROVIDER_QUEUE_MAP: Record<LogProvider, QueueName> = {
 
 const LAST_ERROR_MAX_LENGTH = 1_000;
 
-const computeBackoff = (attemptsAfterIncrement: number): Date => {
+const computeBackoffMs = (attemptsAfterIncrement: number): number => {
   const exponent = Math.min(attemptsAfterIncrement - 1, 10);
   const base = Math.min(BACKOFF_BASE_MS * 2 ** exponent, BACKOFF_MAX_MS);
   const jitter = Math.floor(Math.random() * Math.min(base / 2, 30_000));
-  return new Date(Date.now() + base + jitter);
+  return base + jitter;
 };
 
 const formatErrorMessage = (error: unknown): string => {
@@ -249,10 +249,18 @@ export const auditLogStreamOutboxServiceFactory = ({
         }
       }
 
-      const retriableInput = retriable.length
+      const retriableByAttempts = new Map<number, number[]>();
+      for (const { row } of retriable) {
+        const ids = retriableByAttempts.get(row.attempts);
+        if (ids) ids.push(row.id);
+        else retriableByAttempts.set(row.attempts, [row.id]);
+      }
+      const retriableInput = retriableByAttempts.size
         ? {
-            rows: retriable,
-            nextRetryAt: computeBackoff(Math.max(...retriable.map(({ row }) => row.attempts + 1)))
+            groups: Array.from(retriableByAttempts, ([attempts, ids]) => ({
+              ids,
+              nextRetryDelayMs: computeBackoffMs(attempts + 1)
+            }))
           }
         : null;
 
