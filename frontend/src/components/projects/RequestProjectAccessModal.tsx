@@ -1,7 +1,19 @@
 import { useForm } from "react-hook-form";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, FormControl, Input, Modal, ModalClose, ModalContent } from "@app/components/v2";
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  Button,
+  Field,
+  FieldLabel,
+  TextArea
+} from "@app/components/v3";
 import { useRequestProjectAccess } from "@app/hooks/api";
 import { Project } from "@app/hooks/api/projects/types";
 
@@ -12,7 +24,6 @@ type ContentProps = {
 
 const Content = ({ projectId, onComplete }: ContentProps) => {
   const form = useForm<{ note: string }>();
-
   const requestProjectAccess = useRequestProjectAccess();
 
   const onFormSubmit = ({ note }: { note: string }) => {
@@ -36,20 +47,17 @@ const Content = ({ projectId, onComplete }: ContentProps) => {
   };
 
   return (
-    <form onSubmit={form.handleSubmit(onFormSubmit)}>
-      <FormControl label="Note">
-        <Input {...form.register("note")} />
-      </FormControl>
-      <div className="mt-4 flex items-center">
-        <Button className="mr-4" size="sm" type="submit" isLoading={form.formState.isSubmitting}>
+    <form onSubmit={form.handleSubmit(onFormSubmit)} className="flex flex-col gap-4">
+      <Field>
+        <FieldLabel htmlFor="note">Note</FieldLabel>
+        <TextArea id="note" rows={3} {...form.register("note")} />
+      </Field>
+      <AlertDialogFooter>
+        <AlertDialogCancel>Cancel</AlertDialogCancel>
+        <Button type="submit" size="sm" variant="project" isPending={form.formState.isSubmitting}>
           Submit Request
         </Button>
-        <ModalClose asChild>
-          <Button colorSchema="secondary" variant="plain">
-            Cancel
-          </Button>
-        </ModalClose>
-      </div>
+      </AlertDialogFooter>
     </form>
   );
 };
@@ -74,22 +82,23 @@ export const RequestProjectAccessModal = ({
   if (!project) return null;
 
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-      <ModalContent
-        title={title}
-        subTitle={
-          subTitle ??
-          `Requesting access to project ${project?.name}. You may include an optional note for project admins to review your request.`
-        }
-      >
+    <AlertDialog open={isOpen} onOpenChange={onOpenChange}>
+      <AlertDialogContent className="sm:max-w-xl!">
+        <AlertDialogHeader>
+          <AlertDialogTitle>{title}</AlertDialogTitle>
+          <AlertDialogDescription>
+            {subTitle ??
+              `Requesting access to project ${project.name}. You may include an optional note for project admins to review your request.`}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
         <Content
+          projectId={project.id}
           onComplete={() => {
             onOpenChange(false);
             if (onComplete) onComplete();
           }}
-          projectId={project?.id}
         />
-      </ModalContent>
-    </Modal>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 };
