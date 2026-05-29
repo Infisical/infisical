@@ -1,3 +1,4 @@
+import { ForbiddenError } from "@casl/ability";
 import jwt from "jsonwebtoken";
 
 import {
@@ -59,7 +60,8 @@ const getErrorCode = (err: unknown): string | undefined =>
 export const classifyError = (err: unknown): ErrorType => {
   if (err instanceof jwt.JsonWebTokenError) return "auth";
   if (err instanceof UnauthorizedError) return "auth";
-  if (err instanceof ForbiddenRequestError || err instanceof PermissionBoundaryError) return "permission";
+  if (err instanceof ForbiddenError || err instanceof ForbiddenRequestError || err instanceof PermissionBoundaryError)
+    return "permission";
   if (err instanceof RateLimitError) return "rate_limit";
   if (err instanceof NotFoundError) return "not_found";
   if (err instanceof BadRequestError) return "validation";

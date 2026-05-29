@@ -1,3 +1,4 @@
+import { createMongoAbility, ForbiddenError } from "@casl/ability";
 import { AxiosError } from "axios";
 
 import { classifyError } from "./classify";
@@ -10,6 +11,10 @@ describe("classifyError", () => {
     expect(classifyError(new RateLimitError({ message: "x" }))).toBe("rate_limit");
     expect(classifyError(new NotFoundError({ message: "x" }))).toBe("not_found");
     expect(classifyError(new BadRequestError({ message: "x" }))).toBe("validation");
+  });
+
+  test("maps CASL ForbiddenError (thrown by permission checks) to permission, not unknown", () => {
+    expect(classifyError(ForbiddenError.from(createMongoAbility([])))).toBe("permission");
   });
 
   test("classifies connection-level codes on raw Node errors (not just axios)", () => {
