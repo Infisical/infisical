@@ -2564,6 +2564,7 @@ const OverviewPageContent = () => {
                 />
                 {userAvailableEnvs.length > 0 && (
                   <AddResourceButtons
+                    requiresApproval={isProtectedBranch}
                     onAddSecret={() => handlePopUpOpen("addSecretsInAllEnvs")}
                     onAddFolder={() => {
                       handlePopUpOpen("addFolder");
@@ -2647,14 +2648,15 @@ const OverviewPageContent = () => {
                     {!canApproveAny && ". Waiting for a reviewer"}
                   </span>
                   {canApproveAny && (
-                    <Link
-                      to="/organizations/$orgId/projects/secret-management/$projectId/approval"
-                      params={{ orgId, projectId }}
-                      search={{ selectedTab: "approval-requests", requestId: "" }}
-                      className="ml-auto text-white underline-offset-2 hover:underline"
-                    >
-                      Review
-                    </Link>
+                    <Button asChild variant="outline" size="xs" className="ml-auto">
+                      <Link
+                        to={ROUTE_PATHS.SecretManager.ApprovalPage.path}
+                        params={{ orgId, projectId }}
+                        search={{ selectedTab: "approval-requests", requestId: "" }}
+                      >
+                        Review
+                      </Link>
+                    </Button>
                   )}
                 </AlertTitle>
               </Alert>
