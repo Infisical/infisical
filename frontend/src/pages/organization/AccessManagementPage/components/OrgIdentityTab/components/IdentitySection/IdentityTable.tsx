@@ -1,42 +1,29 @@
-import { useCallback, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import {
-  ChevronDownIcon,
-  EditIcon,
-  FilterIcon,
-  InfoIcon,
-  MoreHorizontalIcon,
-  SearchIcon,
-  TrashIcon
-} from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
+import { ChevronDownIcon, EditIcon, MoreHorizontalIcon, SearchIcon, TrashIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
-import { createNotification } from "@app/components/notifications";
 import { LastLoginSection } from "@app/components/organization/LastLoginSection";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
   Badge,
   DropdownMenu,
-  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuTrigger,
   Empty,
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
   IconButton,
+  IdentityRoleBadges,
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
   OrgIcon,
   Pagination,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  ProjectIcon,
   Skeleton,
   SubOrgIcon,
   Table,
@@ -45,17 +32,15 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  Tabs,
+  TabsList,
+  TabsTrigger,
   Tooltip,
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import {
-  OrgPermissionIdentityActions,
-  OrgPermissionSubjects,
-  useOrganization,
-  useSubscription
-} from "@app/context";
-import { isCustomOrgRole } from "@app/helpers/roles";
+import { OrgPermissionIdentityActions, OrgPermissionSubjects, useOrganization } from "@app/context";
+import { getProjectBaseURL } from "@app/helpers/project";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -64,11 +49,11 @@ import {
 import { usePagination, useResetPageHelper } from "@app/hooks";
 import {
   identityAuthToNameMap,
-  useGetOrgRoles,
-  useSearchOrgIdentityMemberships,
-  useUpdateOrgIdentity
+  useCountOrgIdentityMemberships,
+  useSearchOrgIdentityMemberships
 } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
+import { IdentityMembershipSearchResult, SearchIdentitiesScope } from "@app/hooks/api/identities";
 import { OrgIdentityOrderBy } from "@app/hooks/api/organization/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -84,14 +69,299 @@ type Props = {
   ) => void;
 };
 
-type Filter = {
-  roles: string[];
+type ScopeTab = "all" | "organization" | "project";
+
+const TAB_TO_SCOPE: Record<ScopeTab, SearchIdentitiesScope[]> = {
+  all: [SearchIdentitiesScope.OrganizationScope, SearchIdentitiesScope.ProjectScope],
+  organization: [SearchIdentitiesScope.OrganizationScope],
+  project: [SearchIdentitiesScope.ProjectScope]
 };
 
-export const IdentityTable = ({ handlePopUpOpen }: Props) => {
+const formatLastUsed = (lastLoginTime?: string | null) => {
+  if (!lastLoginTime) return "Never";
+  const date = new Date(lastLoginTime);
+  if (Number.isNaN(date.getTime())) return "Never";
+  if (Date.now() - date.getTime() < 60_000) return "Just now";
+  return `${formatDistanceToNow(date)} ago`;
+};
+
+type SortableHeadProps = {
+  column: OrgIdentityOrderBy;
+  label: string;
+  activeColumn: OrgIdentityOrderBy;
+  direction: OrderByDirection;
+  onSort: (column: OrgIdentityOrderBy) => void;
+};
+
+const SortableHead = ({ column, label, activeColumn, direction, onSort }: SortableHeadProps) => {
+  const isActive = activeColumn === column;
+  return (
+    <TableHead className="w-1/4 cursor-pointer" onClick={() => onSort(column)}>
+      {label}
+      <ChevronDownIcon
+        className={twMerge(
+          "transition-transform",
+          isActive && direction === OrderByDirection.DESC && "rotate-180",
+          !isActive && "opacity-30"
+        )}
+      />
+    </TableHead>
+  );
+};
+
+type ManagedByCellProps = {
+  scope: SearchIdentitiesScope;
+  project?: IdentityMembershipSearchResult["project"];
+  isSubOrganization: boolean;
+  isSubOrgIdentity: boolean;
+};
+
+const ManagedByCell = ({
+  scope,
+  project,
+  isSubOrganization,
+  isSubOrgIdentity
+}: ManagedByCellProps) => {
+  if (scope === SearchIdentitiesScope.ProjectScope) {
+    return (
+      <Badge variant="project">
+        <ProjectIcon />
+        {project?.name ?? "Project"}
+      </Badge>
+    );
+  }
+
+  if (isSubOrganization && isSubOrgIdentity) {
+    return (
+      <Badge variant="sub-org">
+        <SubOrgIcon />
+        Sub-Organization
+      </Badge>
+    );
+  }
+
+  if (isSubOrganization) {
+    return (
+      <Badge variant="org">
+        <OrgIcon />
+        Root Organization
+      </Badge>
+    );
+  }
+
+  return (
+    <Badge variant="org">
+      <OrgIcon />
+      Organization
+    </Badge>
+  );
+};
+
+type LastUsedCellProps = Pick<
+  IdentityMembershipSearchResult,
+  "lastLoginAuthMethod" | "lastLoginTime"
+>;
+
+const LastUsedCell = ({ lastLoginAuthMethod, lastLoginTime }: LastUsedCellProps) => {
+  const label = formatLastUsed(lastLoginTime);
+
+  if (!lastLoginAuthMethod || !lastLoginTime) {
+    return <span className="text-sm text-mineshaft-400">{label}</span>;
+  }
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className="cursor-default text-sm text-foreground/80">{label}</span>
+      </TooltipTrigger>
+      <TooltipContent className="max-w-96 min-w-52">
+        <LastLoginSection
+          lastLoginAuthMethod={identityAuthToNameMap[lastLoginAuthMethod]}
+          lastLoginTime={lastLoginTime}
+        />
+      </TooltipContent>
+    </Tooltip>
+  );
+};
+
+type IdentityActionsMenuProps = {
+  isProjectScoped: boolean;
+  isSubOrgIdentity: boolean;
+  onEdit: () => void;
+  onDelete: () => void;
+};
+
+const getEditLabel = ({ isProjectScoped, isSubOrgIdentity }: IdentityActionsMenuProps) => {
+  if (isProjectScoped) return "Open in Project";
+  if (isSubOrgIdentity) return "Edit Machine Identity";
+  return "Edit Machine Identity Membership";
+};
+
+const IdentityActionsMenu = (props: IdentityActionsMenuProps) => {
+  const { isProjectScoped, isSubOrgIdentity, onEdit, onDelete } = props;
+  const deleteLabel = isSubOrgIdentity ? "Delete Machine Identity" : "Remove From Sub-Organization";
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <IconButton variant="ghost" size="xs" onClick={(e) => e.stopPropagation()}>
+          <MoreHorizontalIcon />
+        </IconButton>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        {isProjectScoped ? (
+          <DropdownMenuItem
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit();
+            }}
+          >
+            <EditIcon />
+            {getEditLabel(props)}
+          </DropdownMenuItem>
+        ) : (
+          <OrgPermissionCan
+            I={OrgPermissionIdentityActions.Edit}
+            a={OrgPermissionSubjects.Identity}
+          >
+            {(isAllowed) => (
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEdit();
+                }}
+                isDisabled={!isAllowed}
+              >
+                <EditIcon />
+                {getEditLabel(props)}
+              </DropdownMenuItem>
+            )}
+          </OrgPermissionCan>
+        )}
+        {!isProjectScoped && (
+          <OrgPermissionCan
+            I={OrgPermissionIdentityActions.Delete}
+            a={OrgPermissionSubjects.Identity}
+          >
+            {(isAllowed) => (
+              <DropdownMenuItem
+                variant="danger"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete();
+                }}
+                isDisabled={!isAllowed}
+              >
+                <TrashIcon />
+                {deleteLabel}
+              </DropdownMenuItem>
+            )}
+          </OrgPermissionCan>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+};
+
+const SkeletonRow = () => (
+  <TableRow>
+    <TableCell>
+      <Skeleton className="h-4 w-full" />
+    </TableCell>
+    <TableCell>
+      <Skeleton className="h-4 w-full" />
+    </TableCell>
+    <TableCell>
+      <Skeleton className="h-4 w-24" />
+    </TableCell>
+    <TableCell>
+      <Skeleton className="h-4 w-20" />
+    </TableCell>
+    <TableCell>
+      <Skeleton className="h-4 w-4" />
+    </TableCell>
+  </TableRow>
+);
+
+type IdentityRowProps = {
+  membership: IdentityMembershipSearchResult;
+  onDelete: (data: { identityId: string; name: string }) => void;
+};
+
+const IdentityRow = ({ membership, onDelete }: IdentityRowProps) => {
   const navigate = useNavigate();
   const { currentOrg, isSubOrganization } = useOrganization();
-  const { subscription } = useSubscription();
+
+  const {
+    scope,
+    project,
+    identity: { id, name, orgId },
+    roles: membershipRoles,
+    lastLoginAuthMethod,
+    lastLoginTime
+  } = membership;
+
+  const isSubOrgIdentity = currentOrg.id === orgId;
+  const isProjectScoped = scope === SearchIdentitiesScope.ProjectScope;
+
+  const navigateToIdentity = () => {
+    if (isProjectScoped && project) {
+      navigate({
+        to: `${getProjectBaseURL(project.type)}/identities/$identityId` as const,
+        params: {
+          orgId: currentOrg.id,
+          projectId: project.id,
+          identityId: id
+        }
+      });
+      return;
+    }
+    navigate({
+      to: "/organizations/$orgId/identities/$identityId",
+      params: { identityId: id, orgId: currentOrg.id }
+    });
+  };
+
+  return (
+    <TableRow className="cursor-pointer" onClick={navigateToIdentity}>
+      <TableCell isTruncatable>{name}</TableCell>
+      <TableCell>
+        <IdentityRoleBadges roles={membershipRoles ?? []} />
+      </TableCell>
+      <TableCell>
+        <ManagedByCell
+          scope={scope}
+          project={project}
+          isSubOrganization={isSubOrganization}
+          isSubOrgIdentity={isSubOrgIdentity}
+        />
+      </TableCell>
+      <TableCell>
+        <LastUsedCell lastLoginAuthMethod={lastLoginAuthMethod} lastLoginTime={lastLoginTime} />
+      </TableCell>
+      <TableCell>
+        <IdentityActionsMenu
+          isProjectScoped={isProjectScoped}
+          isSubOrgIdentity={isSubOrgIdentity}
+          onEdit={navigateToIdentity}
+          onDelete={() => onDelete({ identityId: id, name })}
+        />
+      </TableCell>
+    </TableRow>
+  );
+};
+
+const renderTabCount = (count: number | undefined) =>
+  count === undefined ? null : (
+    <span className="ml-1.5 self-end pb-[3px] text-xs leading-none text-muted tabular-nums">
+      {count}
+    </span>
+  );
+
+export const IdentityTable = ({ handlePopUpOpen }: Props) => {
+  const { currentOrg, isSubOrganization } = useOrganization();
+
+  const [scopeTab, setScopeTab] = useState<ScopeTab>("organization");
 
   const {
     offset,
@@ -116,33 +386,41 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
     setUserTablePreference("identityTable", PreferenceKey.PerPage, newPerPage);
   };
 
-  const [filter, setFilter] = useState<Filter>({
-    roles: []
-  });
-
   const organizationId = currentOrg?.id || "";
 
-  const { mutateAsync: updateMutateAsync } = useUpdateOrgIdentity();
+  // A single search term matches either the identity name or any of its role names/slugs,
+  // so name + role are OR'd rather than AND'd (top-level keys would otherwise combine with AND).
+  const searchPayload = debouncedSearch
+    ? {
+        $or: [{ name: { $contains: debouncedSearch } }, { role: { $contains: debouncedSearch } }]
+      }
+    : {};
 
   const { data, isPending } = useSearchOrgIdentityMemberships({
+    orgId: organizationId,
     offset,
     limit,
     orderDirection,
     orderBy,
-    search: {
-      name: debouncedSearch ? { $contains: debouncedSearch } : undefined,
-      role: filter.roles?.length ? { $in: filter.roles } : undefined
-    }
+    scope: TAB_TO_SCOPE[scopeTab],
+    search: searchPayload
   });
+
+  const { data: scopeCounts } = useCountOrgIdentityMemberships({
+    orgId: organizationId,
+    scope: TAB_TO_SCOPE.all,
+    search: searchPayload
+  });
+
+  const orgScopeCount = scopeCounts?.organization;
+  const projectScopeCount = scopeCounts?.project;
+  const allScopeCount =
+    orgScopeCount === undefined && projectScopeCount === undefined
+      ? undefined
+      : (orgScopeCount ?? 0) + (projectScopeCount ?? 0);
 
   const { totalCount = 0 } = data ?? {};
-  useResetPageHelper({
-    totalCount,
-    offset,
-    setPage
-  });
-
-  const { data: roles } = useGetOrgRoles(organizationId);
+  useResetPageHelper({ totalCount, offset, setPage });
 
   const handleSort = (column: OrgIdentityOrderBy) => {
     if (column === orderBy) {
@@ -153,103 +431,75 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
     }
 
     setOrderBy(column);
-    setOrderDirection(OrderByDirection.ASC);
+    // Last-used reads more naturally newest-first; other columns start ascending.
+    setOrderDirection(
+      column === OrgIdentityOrderBy.LastLogin ? OrderByDirection.DESC : OrderByDirection.ASC
+    );
   };
 
-  const handleChangeRole = async ({ identityId, role }: { identityId: string; role: string }) => {
-    if (isCustomOrgRole(role) && subscription && !subscription?.rbac) {
-      handlePopUpOpen("upgradePlan", {
-        text: "Assigning custom roles to machine identities can be unlocked if you upgrade to Infisical Enterprise plan.",
-        isEnterpriseFeature: true
-      });
-      return;
-    }
+  const isFiltered = debouncedSearch.trim().length > 0;
+  const isEmpty = !isPending && !data?.identities?.length;
 
-    await updateMutateAsync({
-      identityId,
-      role,
-      organizationId
-    });
+  const orgWord = isSubOrganization ? "sub-organization" : "organization";
+  const isProjectTab = scopeTab === "project";
+  const scopeLabel = isProjectTab ? "project" : orgWord;
 
-    createNotification({
-      text: "Successfully updated machine identity role",
-      type: "success"
-    });
-  };
-
-  const handleRoleToggle = useCallback(
-    (roleSlug: string) =>
-      setFilter((state) => {
-        const currentRoles = state.roles || [];
-
-        if (currentRoles.includes(roleSlug)) {
-          return { ...state, roles: currentRoles.filter((role) => role !== roleSlug) };
-        }
-        return { ...state, roles: [...currentRoles, roleSlug] };
-      }),
-    []
-  );
-
-  const isTableFiltered = Boolean(filter.roles.length);
-
-  const isFiltered = debouncedSearch.trim().length > 0 || isTableFiltered;
+  let emptyTitle: string;
+  let emptyDescription: string;
+  if (isFiltered) {
+    emptyTitle =
+      scopeTab === "all"
+        ? "No machine identities match your search"
+        : `No ${scopeLabel} machine identities match your search`;
+    emptyDescription = "Try adjusting your search.";
+  } else if (isProjectTab) {
+    emptyTitle = "No project machine identities found";
+    emptyDescription = "Machine identities scoped to a project will appear here.";
+  } else {
+    emptyTitle = `No machine identities have been added to this ${orgWord}`;
+    emptyDescription = "Add a machine identity to get started.";
+  }
 
   return (
     <>
-      <div className="mb-4 flex gap-2">
-        <InputGroup className="flex-1">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <Tabs value={scopeTab} onValueChange={(value) => setScopeTab(value as ScopeTab)}>
+          <TabsList variant="filled">
+            <TabsTrigger value="organization">
+              <span
+                className={twMerge(
+                  "size-1.5 rounded-full",
+                  isSubOrganization ? "bg-sub-org" : "bg-org"
+                )}
+                aria-hidden
+              />
+              {isSubOrganization ? "Sub-Organization" : "Organization"}
+              {renderTabCount(orgScopeCount)}
+            </TabsTrigger>
+            <TabsTrigger value="project">
+              <span className="size-1.5 rounded-full bg-project" aria-hidden />
+              Project
+              {renderTabCount(projectScopeCount)}
+            </TabsTrigger>
+            <TabsTrigger value="all">All{renderTabCount(allScopeCount)}</TabsTrigger>
+          </TabsList>
+        </Tabs>
+        <InputGroup className="w-1/2">
           <InputGroupAddon>
             <SearchIcon />
           </InputGroupAddon>
           <InputGroupInput
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder={`Search ${isSubOrganization ? "sub-organization" : "organization"} machine identities by name...`}
+            placeholder={`Search ${isSubOrganization ? "sub-organization " : ""}machine identities by name or role...`}
           />
         </InputGroup>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <IconButton
-              variant={
-                // eslint-disable-next-line no-nested-ternary
-                isTableFiltered ? (isSubOrganization ? "sub-org" : "org") : "outline"
-              }
-            >
-              <FilterIcon />
-            </IconButton>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="max-h-80 overflow-y-auto">
-            <DropdownMenuLabel>
-              Filter by {isSubOrganization ? "Sub-" : ""}Organization Role
-            </DropdownMenuLabel>
-            {roles?.map(({ id, slug, name }) => (
-              <DropdownMenuCheckboxItem
-                key={id}
-                checked={filter.roles.includes(slug)}
-                onClick={(e) => {
-                  e.preventDefault();
-                  handleRoleToggle(slug);
-                }}
-              >
-                {name}
-              </DropdownMenuCheckboxItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
       </div>
-      {!isPending && !data?.identities?.length ? (
+      {isEmpty ? (
         <Empty className="border">
           <EmptyHeader>
-            <EmptyTitle>
-              {isFiltered
-                ? `No ${isSubOrganization ? "sub-" : ""}organization machine identities match search filter`
-                : `No machine identities have been added to this ${isSubOrganization ? "sub-" : ""}organization`}
-            </EmptyTitle>
-            <EmptyDescription>
-              {isFiltered
-                ? "Adjust your search or filter criteria."
-                : "Add a machine identity to get started."}
-            </EmptyDescription>
+            <EmptyTitle>{emptyTitle}</EmptyTitle>
+            <EmptyDescription>{emptyDescription}</EmptyDescription>
           </EmptyHeader>
         </Empty>
       ) : (
@@ -257,217 +507,45 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead
-                  className="w-1/2 cursor-pointer"
-                  onClick={() => handleSort(OrgIdentityOrderBy.Name)}
-                >
-                  Name
-                  <ChevronDownIcon
-                    className={twMerge(
-                      "transition-transform",
-                      orderBy === OrgIdentityOrderBy.Name &&
-                        orderDirection === OrderByDirection.DESC &&
-                        "rotate-180",
-                      orderBy !== OrgIdentityOrderBy.Name && "opacity-30"
-                    )}
-                  />
-                </TableHead>
-                <TableHead
-                  className="cursor-pointer"
-                  onClick={() => handleSort(OrgIdentityOrderBy.Role)}
-                >
-                  {isSubOrganization ? "Sub-" : ""}Organization Role
-                  <ChevronDownIcon
-                    className={twMerge(
-                      "transition-transform",
-                      orderBy === OrgIdentityOrderBy.Role &&
-                        orderDirection === OrderByDirection.DESC &&
-                        "rotate-180",
-                      orderBy !== OrgIdentityOrderBy.Role && "opacity-30"
-                    )}
-                  />
-                </TableHead>
-                {isSubOrganization && <TableHead>Managed By</TableHead>}
+                <SortableHead
+                  column={OrgIdentityOrderBy.Name}
+                  label="Name"
+                  activeColumn={orderBy}
+                  direction={orderDirection}
+                  onSort={handleSort}
+                />
+                <SortableHead
+                  column={OrgIdentityOrderBy.Role}
+                  label="Role"
+                  activeColumn={orderBy}
+                  direction={orderDirection}
+                  onSort={handleSort}
+                />
+                <TableHead className="w-1/4">Managed by</TableHead>
+                <SortableHead
+                  column={OrgIdentityOrderBy.LastLogin}
+                  label="Last Used"
+                  activeColumn={orderBy}
+                  direction={orderDirection}
+                  onSort={handleSort}
+                />
                 <TableHead className="w-5" />
               </TableRow>
             </TableHeader>
             <TableBody>
               {isPending &&
                 Array.from({ length: perPage }).map((_, i) => (
-                  <TableRow key={`skeleton-${i + 1}`}>
-                    <TableCell>
-                      <Skeleton className="h-4 w-full" />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-4 w-full" />
-                    </TableCell>
-                    {isSubOrganization && (
-                      <TableCell>
-                        <Skeleton className="h-4 w-full" />
-                      </TableCell>
-                    )}
-                    <TableCell>
-                      <Skeleton className="h-4 w-4" />
-                    </TableCell>
-                  </TableRow>
+                  // eslint-disable-next-line react/no-array-index-key
+                  <SkeletonRow key={`skeleton-${i}`} />
                 ))}
               {!isPending &&
-                data?.identities?.map(
-                  ({
-                    identity: { id, name, orgId },
-                    role,
-                    customRole,
-                    lastLoginAuthMethod,
-                    lastLoginTime
-                  }) => {
-                    const isSubOrgIdentity = currentOrg.id === orgId;
-
-                    return (
-                      <TableRow
-                        key={`identity-${id}`}
-                        className="cursor-pointer"
-                        onClick={() =>
-                          navigate({
-                            to: "/organizations/$orgId/identities/$identityId",
-                            params: {
-                              identityId: id,
-                              orgId: currentOrg.id
-                            }
-                          })
-                        }
-                      >
-                        <TableCell isTruncatable className="group">
-                          {name}
-                          {lastLoginAuthMethod && lastLoginTime && (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <InfoIcon className="ml-2 inline size-3.5 text-mineshaft-400 opacity-0 transition-all group-hover:opacity-100" />
-                              </TooltipTrigger>
-                              <TooltipContent className="max-w-96 min-w-52">
-                                <LastLoginSection
-                                  lastLoginAuthMethod={identityAuthToNameMap[lastLoginAuthMethod]}
-                                  lastLoginTime={lastLoginTime}
-                                />
-                              </TooltipContent>
-                            </Tooltip>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <OrgPermissionCan
-                            I={OrgPermissionIdentityActions.Edit}
-                            a={OrgPermissionSubjects.Identity}
-                          >
-                            {(isAllowed) => (
-                              <Select
-                                value={role === "custom" ? (customRole?.slug as string) : role}
-                                disabled={!isAllowed}
-                                onValueChange={(selectedRole) =>
-                                  handleChangeRole({
-                                    identityId: id,
-                                    role: selectedRole
-                                  })
-                                }
-                              >
-                                <SelectTrigger
-                                  className="w-full max-w-32 lg:max-w-64"
-                                  size="sm"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent className="max-w-32 lg:max-w-64">
-                                  {(roles || []).map(({ slug, name: roleName }) => (
-                                    <SelectItem value={slug} key={`owner-option-${slug}`}>
-                                      {roleName}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            )}
-                          </OrgPermissionCan>
-                        </TableCell>
-                        {isSubOrganization && (
-                          <TableCell>
-                            <Badge variant={isSubOrgIdentity ? "sub-org" : "org"}>
-                              {isSubOrgIdentity ? (
-                                <>
-                                  <SubOrgIcon />
-                                  Sub-Organization
-                                </>
-                              ) : (
-                                <>
-                                  <OrgIcon />
-                                  Root Organization
-                                </>
-                              )}
-                            </Badge>
-                          </TableCell>
-                        )}
-                        <TableCell>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <IconButton
-                                variant="ghost"
-                                size="xs"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <MoreHorizontalIcon />
-                              </IconButton>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <OrgPermissionCan
-                                I={OrgPermissionIdentityActions.Edit}
-                                a={OrgPermissionSubjects.Identity}
-                              >
-                                {(isAllowed) => (
-                                  <DropdownMenuItem
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      navigate({
-                                        to: "/organizations/$orgId/identities/$identityId",
-                                        params: {
-                                          identityId: id,
-                                          orgId
-                                        }
-                                      });
-                                    }}
-                                    isDisabled={!isAllowed}
-                                  >
-                                    <EditIcon />
-                                    Edit Machine Identity {isSubOrgIdentity ? "" : "Membership"}
-                                  </DropdownMenuItem>
-                                )}
-                              </OrgPermissionCan>
-                              <OrgPermissionCan
-                                I={OrgPermissionIdentityActions.Delete}
-                                a={OrgPermissionSubjects.Identity}
-                              >
-                                {(isAllowed) => (
-                                  <DropdownMenuItem
-                                    variant="danger"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handlePopUpOpen("deleteIdentity", {
-                                        identityId: id,
-                                        name
-                                      });
-                                    }}
-                                    isDisabled={!isAllowed}
-                                  >
-                                    <TrashIcon />
-                                    {isSubOrgIdentity
-                                      ? "Delete Machine Identity"
-                                      : "Remove From Sub-Organization"}
-                                  </DropdownMenuItem>
-                                )}
-                              </OrgPermissionCan>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  }
-                )}
+                data?.identities?.map((membership) => (
+                  <IdentityRow
+                    key={`identity-${membership.id}`}
+                    membership={membership}
+                    onDelete={(payload) => handlePopUpOpen("deleteIdentity", payload)}
+                  />
+                ))}
             </TableBody>
           </Table>
           {totalCount > 0 && (

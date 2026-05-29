@@ -39,6 +39,22 @@ const base64Schema = z.string().superRefine((val, ctx) => {
   }
 });
 
+const signatureBase64Schema = z.string().superRefine((val, ctx) => {
+  if (!isBase64(val)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "signature must be base64 encoded"
+    });
+  }
+
+  if (getBase64SizeInBytes(val) > 8192) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "signature cannot exceed 8192 bytes"
+    });
+  }
+});
+
 export const registerCmekRouter = async (server: FastifyZodProvider) => {
   // create encryption key
   server.route({
@@ -809,7 +825,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
       body: z.object({
         isDigest: z.boolean().optional().default(false).describe(KMS.VERIFY.isDigest),
         data: base64Schema.describe(KMS.VERIFY.data),
-        signature: base64Schema.describe(KMS.VERIFY.signature),
+        signature: signatureBase64Schema.describe(KMS.VERIFY.signature),
         signingAlgorithm: z.nativeEnum(SigningAlgorithm)
       }),
       response: {

@@ -2333,18 +2333,20 @@ export const certificateV3ServiceFactory = ({
         const projectId = profile?.projectId || originalCert.projectId;
 
         if (originalCert.applicationId) {
-          const { permission } = await permissionService.getResourcePermission({
-            actor,
-            actorId,
-            projectId,
-            resourceType: ResourceType.CertificateApplication,
-            resourceId: originalCert.applicationId,
-            actorAuthMethod,
-            actorOrgId
-          });
-          ForbiddenError.from(permission).throwUnlessCan(
-            ResourcePermissionCertificateActions.Create,
-            ResourcePermissionSub.Certificates
+          const originalProfile = await certificateProfileDAL.findByIdWithConfigs(originalCert.profileId);
+          if (!originalProfile) {
+            throw new NotFoundError({ message: "Original certificate profile not found" });
+          }
+          await $resolveApplicationIdForProfile(
+            originalProfile,
+            originalCert.applicationId,
+            {
+              actor,
+              actorId,
+              actorAuthMethod,
+              actorOrgId
+            },
+            EnrollmentType.API
           );
         } else if (profile) {
           const { permission } = await permissionService.getProjectPermission({

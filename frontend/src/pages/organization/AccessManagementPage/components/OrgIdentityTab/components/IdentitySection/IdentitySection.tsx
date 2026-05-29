@@ -117,11 +117,13 @@ export const IdentitySection = withPermission(
           <Card>
             <CardHeader>
               <CardTitle>
-                {isSubOrganization ? "Sub-" : ""}Organization Machine Identities
+                {isSubOrganization ? "Sub-Organization " : ""}Machine Identities
                 <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/identities/machine-identities" />
               </CardTitle>
               <CardDescription>
-                Create and manage {isSubOrganization ? "sub-" : ""}organization machine identities
+                All machine identities across your{" "}
+                {isSubOrganization ? "sub-organization" : "organization"}, including those scoped to
+                individual projects.
               </CardDescription>
               <CardAction>
                 <OrgPermissionCan

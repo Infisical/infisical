@@ -42,6 +42,7 @@ export type TFeatureSet = {
   membersUsed: number;
   identityLimit: null;
   identitiesUsed: number;
+  enforceIdentityLimit?: boolean;
   subOrganization: false;
   environmentLimit: null;
   environmentsUsed: 0;
@@ -81,6 +82,7 @@ export type TFeatureSet = {
   pkiAcme: true;
   pkiScep: false;
   pkiPqc: false;
+  kmsPqc: false;
   enforceMfa: false;
   projectTemplates: false;
   kmip: false;

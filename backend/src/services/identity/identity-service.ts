@@ -14,7 +14,6 @@ import { BadRequestError, NotFoundError, PermissionBoundaryError } from "@app/li
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { TIdentityProjectDALFactory } from "@app/services/identity-project/identity-project-dal";
-import { getIdentityActiveLockoutAuthMethods } from "@app/services/identity-v2/identity-fns";
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
 import { ActorType } from "../auth/auth-type";
@@ -23,6 +22,7 @@ import { TMembershipIdentityDALFactory } from "../membership-identity/membership
 import { TOrgDALFactory } from "../org/org-dal";
 import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/super-admin-fns";
 import { TIdentityDALFactory } from "./identity-dal";
+import { getIdentityActiveLockoutAuthMethods } from "./identity-fns";
 import { TIdentityMetadataDALFactory } from "./identity-metadata-dal";
 import { TIdentityOrgDALFactory } from "./identity-org-dal";
 import {
@@ -129,7 +129,8 @@ export const identityServiceFactory = ({
       // Check identity limit inside the transaction after acquiring the lock
       // We count directly from the database to get the accurate count, not the cached plan value
       const plan = await licenseService.getPlan(orgId);
-      if (plan?.slug !== "enterprise" && plan?.identityLimit) {
+      const isEnterpriseBypass = plan?.slug === "enterprise" && !plan?.enforceIdentityLimit;
+      if (!isEnterpriseBypass && plan?.identityLimit) {
         const currentIdentityCount = await licenseDAL.countOrgUsersAndIdentities(orgId, tx);
         if (currentIdentityCount >= plan.identityLimit) {
           throw new BadRequestError({
