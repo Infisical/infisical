@@ -2,6 +2,7 @@ import { Knex } from "knex";
 
 import { AccessScope, ProjectMembershipRole, ProjectType, ProjectVersion, TableName } from "../schemas";
 import { seedData1 } from "../seed-data";
+import { getSecretManagerBuiltInProjectRoles } from "./3-project";
 
 export const DEFAULT_PROJECT_ENVS = [
   { name: "Development", slug: "dev" },
@@ -22,6 +23,8 @@ export async function seed(knex: Knex): Promise<void> {
       id: seedData1.projectV3.id
     })
     .returning("*");
+
+  await knex(TableName.Role).insert(getSecretManagerBuiltInProjectRoles(projectV2.id));
 
   const projectMembershipV3 = await knex(TableName.Membership)
     .insert({

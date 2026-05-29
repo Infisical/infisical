@@ -1,7 +1,13 @@
+import { packRules } from "@casl/ability/extra";
 import { Knex } from "knex";
 
 import { initializeHsmModule } from "@app/ee/services/hsm/hsm-fns";
 import { hsmServiceFactory } from "@app/ee/services/hsm/hsm-service";
+import {
+  projectMemberPermissions,
+  projectNoAccessPermissions,
+  projectViewerPermission
+} from "@app/ee/services/permission/default-roles";
 import { getHsmConfig, initEnvConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { generateUserSrpKeys } from "@app/lib/crypto/srp";
@@ -186,11 +192,43 @@ const createUserWithGhostUser = async (
   };
 };
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const packPermissions = (rules: unknown) => JSON.stringify((packRules as (r: any) => unknown[])(rules));
+
+// Built-in project roles (excluding Admin, which is resolved in-code) seeded as DB rows
+export const getSecretManagerBuiltInProjectRoles = (projectId: string) => [
+  {
+    projectId,
+    name: "Member",
+    slug: ProjectMembershipRole.Member,
+    description: "Limited read/write role in a project",
+    permissions: packPermissions(projectMemberPermissions),
+    isBuiltIn: true
+  },
+  {
+    projectId,
+    name: "Viewer",
+    slug: ProjectMembershipRole.Viewer,
+    description: "Only read role in a project",
+    permissions: packPermissions(projectViewerPermission),
+    isBuiltIn: true
+  },
+  {
+    projectId,
+    name: "No Access",
+    slug: ProjectMembershipRole.NoAccess,
+    description: "No access to any resources in the project",
+    permissions: packPermissions(projectNoAccessPermissions),
+    isBuiltIn: true
+  }
+];
+
 export async function seed(knex: Knex): Promise<void> {
   // Deletes ALL existing entries
   await knex(TableName.Project).del();
   await knex(TableName.Environment).del();
   await knex(TableName.SecretFolder).del();
+  await knex(TableName.Role).whereNotNull("projectId").whereNull("orgId").del();
 
   initLogger();
 
@@ -222,6 +260,8 @@ export async function seed(knex: Knex): Promise<void> {
       id: seedData1.project.id
     })
     .returning("*");
+
+  await knex(TableName.Role).insert(getSecretManagerBuiltInProjectRoles(project.id));
 
   const userOrgMembership = await knex(TableName.Membership)
     .where({
