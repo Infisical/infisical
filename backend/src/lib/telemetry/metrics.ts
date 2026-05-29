@@ -57,8 +57,9 @@ const lazyMeter = (meterName: string): LazyMeter => ({
   }
 });
 
-// Legacy meter — kept for backwards compatibility. The pre-existing metrics below already ship with
-// high-cardinality labels documented in the docs.
+// High-cardinality, per-actor meter, kept on by default for self-hosted (where per-actor visibility is
+// useful and cardinality is bounded by a single org); dropped in multi-tenant/cloud via
+// OTEL_DROP_HIGH_CARDINALITY_METERS. The pre-existing metrics below ship with per-actor labels documented in the docs.
 const infisicalMeter = lazyMeter("Infisical");
 
 // The MeterProvider applies a strict attribute allowlist (View in

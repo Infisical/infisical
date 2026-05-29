@@ -26,9 +26,6 @@ dotenv.config();
 // unbounded label by mistake is caught automatically.
 //
 // If you need per-actor breakdowns, query the audit log table. It carries actorId, actorType, ip, userAgent and full event detail.
-// Legacy meters ("Infisical", "API", "SecretSyncs", "PkiSyncs", "Integrations") have no allowlist View —
-// their existing labels (including unbounded ones like syncId) flow through unchanged for self-hosted
-// backwards compatibility, and are dropped wholesale by OTEL_DROP_LEGACY_METERS (see LEGACY_METER_NAMES).
 const INFISICAL_CORE_METER_ATTRIBUTES = [
   // HTTP semantics
   "http.request.method",
@@ -64,9 +61,10 @@ const INFISICAL_CORE_METER_ATTRIBUTES = [
   "node.version"
 ];
 
-// Every meter that predates the InfisicalCore allowlist. None have a View, so their labels (including
-// unbounded ones like syncId) flow through unchanged unless OTEL_DROP_LEGACY_METERS drops them wholesale.
-const LEGACY_METER_NAMES = ["Infisical", "API", "SecretSyncs", "PkiSyncs", "Integrations"];
+// Every meter that predates the InfisicalCore allowlist. None have a View, so their per-actor / unbounded
+// labels (user.email, client.address, syncId, ...) flow through unchanged unless dropped wholesale via
+// OTEL_DROP_HIGH_CARDINALITY_METERS. Kept on by default for self-hosted; dropped in multi-tenant/cloud.
+const HIGH_CARDINALITY_METER_NAMES = ["Infisical", "API", "SecretSyncs", "PkiSyncs", "Integrations"];
 
 const initTelemetryInstrumentation = ({
   exportType,
@@ -74,14 +72,14 @@ const initTelemetryInstrumentation = ({
   otlpUser,
   otlpPassword,
   otlpPushInterval,
-  dropLegacyMeters
+  dropHighCardinalityMeters
 }: {
   exportType?: string;
   otlpURL?: string;
   otlpUser?: string;
   otlpPassword?: string;
   otlpPushInterval?: number;
-  dropLegacyMeters?: boolean;
+  dropHighCardinalityMeters?: boolean;
 }) => {
   diag.setLogger(new DiagConsoleLogger(), DiagLogLevel.DEBUG);
 
@@ -129,8 +127,8 @@ const initTelemetryInstrumentation = ({
     })
   ];
 
-  if (dropLegacyMeters) {
-    LEGACY_METER_NAMES.forEach((meterName) => {
+  if (dropHighCardinalityMeters) {
+    HIGH_CARDINALITY_METER_NAMES.forEach((meterName) => {
       views.push(new View({ meterName, aggregation: Aggregation.Drop() }));
     });
   }
@@ -156,7 +154,7 @@ const setupTelemetry = () => {
     console.log("Initializing telemetry instrumentation");
     initTelemetryInstrumentation({
       ...appCfg.OTEL,
-      dropLegacyMeters: Boolean(appCfg.dropLegacyMeters)
+      dropHighCardinalityMeters: Boolean(appCfg.dropHighCardinalityMeters)
     });
   }
 
