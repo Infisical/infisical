@@ -106,7 +106,6 @@ export const SM_SETTINGS_SUBMENU: Submenu = {
   items: [
     { label: "General", icon: Cog, tab: "tab-project-general" },
     { label: "Secrets Management", icon: FileKey, tab: "tab-secret-general" },
-    { label: "Secret Validation Rules", icon: ShieldCheck, tab: "tab-secret-validation-rules" },
     { label: "Encryption", icon: Lock, tab: "tab-project-encryption" },
     { label: "Workflow Integrations", icon: Plug, tab: "tab-workflow-integrations" },
     { label: "Webhooks", icon: Cable, tab: "tab-project-webhooks" }

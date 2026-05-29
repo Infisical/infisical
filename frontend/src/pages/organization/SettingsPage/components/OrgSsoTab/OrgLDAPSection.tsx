@@ -177,7 +177,7 @@ export const OrgLDAPSection = ({ onSwitchProvider }: Props): JSX.Element => {
                     <div>
                       <Switch
                         id="enable-ldap-sso"
-                        variant="project"
+                        variant="org"
                         checked={data.isActive}
                         onCheckedChange={(value) => handleLDAPToggle(value)}
                         disabled={!isAllowed || isGoogleOAuthEnabled}

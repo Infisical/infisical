@@ -26,6 +26,12 @@ interface GitLabOAuthTokenResponse {
   scope?: string;
 }
 
+type TNavigationParams = {
+  appConnection: TGitLabConnection;
+  appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+};
+
 export const getGitLabConnectionListItem = () => {
   const { INF_APP_CONNECTION_GITLAB_OAUTH_CLIENT_ID } = getConfig();
 
@@ -132,6 +138,39 @@ export const refreshGitLabToken = async (
       message: "Unable to refresh GitLab token"
     });
   }
+};
+
+const getNavigationClient = async ({ appConnection, appConnectionDAL, kmsService }: TNavigationParams) => {
+  let { accessToken } = appConnection.credentials;
+
+  if (
+    appConnection.method === GitLabConnectionMethod.AccessToken &&
+    appConnection.credentials.accessTokenType === GitLabAccessTokenType.Project
+  ) {
+    return null;
+  }
+
+  if (
+    appConnection.method === GitLabConnectionMethod.OAuth &&
+    appConnection.credentials.refreshToken &&
+    new Date(appConnection.credentials.expiresAt) < new Date()
+  ) {
+    accessToken = await refreshGitLabToken(
+      appConnection.credentials.refreshToken,
+      appConnection.id,
+      appConnection.orgId,
+      appConnection.projectId,
+      appConnectionDAL,
+      kmsService,
+      appConnection.credentials.instanceUrl
+    );
+  }
+
+  return getGitLabClient(
+    accessToken,
+    appConnection.credentials.instanceUrl,
+    appConnection.method === GitLabConnectionMethod.OAuth
+  );
 };
 
 export const exchangeGitLabOAuthCode = async (
@@ -278,11 +317,15 @@ export const getGitLabConnectionClient = async (
 export const listGitLabProjects = async ({
   appConnection,
   appConnectionDAL,
-  kmsService
+  kmsService,
+  search,
+  limit
 }: {
   appConnection: TGitLabConnection;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  search?: string;
+  limit?: number;
 }): Promise<TGitLabProject[]> => {
   let { accessToken } = appConnection.credentials;
 
@@ -309,11 +352,16 @@ export const listGitLabProjects = async ({
       appConnection.method === GitLabConnectionMethod.OAuth
     );
     const projects = await client.Projects.all({
+      pagination: "offset",
+      ...(limit !== undefined ? { perPage: limit } : {}),
+      ...(search ? { search } : {}),
+      maxPages: 1,
       archived: false,
       includePendingDelete: false,
       membership: true,
       includeHidden: false,
-      imported: false
+      imported: false,
+      searchNamespaces: !!search
     });
 
     return projects.map((project) => ({
@@ -340,53 +388,35 @@ export const listGitLabProjects = async ({
 export const listGitLabGroups = async ({
   appConnection,
   appConnectionDAL,
-  kmsService
+  kmsService,
+  search,
+  limit
 }: {
   appConnection: TGitLabConnection;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  search?: string;
+  limit?: number;
 }): Promise<TGitLabGroup[]> => {
-  let { accessToken } = appConnection.credentials;
-
-  if (
-    appConnection.method === GitLabConnectionMethod.AccessToken &&
-    appConnection.credentials.accessTokenType === GitLabAccessTokenType.Project
-  ) {
-    return [];
-  }
-
-  if (
-    appConnection.method === GitLabConnectionMethod.OAuth &&
-    appConnection.credentials.refreshToken &&
-    new Date(appConnection.credentials.expiresAt) < new Date()
-  ) {
-    accessToken = await refreshGitLabToken(
-      appConnection.credentials.refreshToken,
-      appConnection.id,
-      appConnection.orgId,
-      appConnection.projectId,
-      appConnectionDAL,
-      kmsService,
-      appConnection.credentials.instanceUrl
-    );
-  }
+  const client = await getNavigationClient({ appConnection, appConnectionDAL, kmsService });
+  if (!client) return [];
 
   try {
-    const client = await getGitLabClient(
-      accessToken,
-      appConnection.credentials.instanceUrl,
-      appConnection.method === GitLabConnectionMethod.OAuth
-    );
-
     const groups = await client.Groups.all({
+      pagination: "offset",
+      ...(limit !== undefined ? { perPage: limit } : {}),
+      maxPages: 1,
       orderBy: "name",
       sort: "asc",
-      minAccessLevel: 50
+      minAccessLevel: 50,
+      ...(search ? { search } : {})
     });
 
     return groups.map((group) => ({
       id: group.id.toString(),
-      fullName: group.fullName
+      name: group.name,
+      fullName: group.fullName,
+      fullPath: group.fullPath
     }));
   } catch (error: unknown) {
     if (error instanceof GitbeakerRequestError) {

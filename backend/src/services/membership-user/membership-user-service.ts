@@ -24,6 +24,7 @@ import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TOrgDALFactory } from "../org/org-dal";
 import { deleteOrgMembershipsFn } from "../org/org-fns";
+import { TProjectAccessRequestDALFactory } from "../project/project-access-request-dal";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectKeyDALFactory } from "../project-key/project-key-dal";
 import { TRoleDALFactory } from "../role/role-dal";
@@ -65,6 +66,7 @@ type TMembershipUserServiceFactoryDep = {
   userGroupMembershipDAL: TUserGroupMembershipDALFactory;
   projectDAL: TProjectDALFactory;
   additionalPrivilegeDAL: TAdditionalPrivilegeDALFactory;
+  projectAccessRequestDAL: TProjectAccessRequestDALFactory;
 };
 
 export type TMembershipUserServiceFactory = ReturnType<typeof membershipUserServiceFactory>;
@@ -83,7 +85,8 @@ export const membershipUserServiceFactory = ({
   tokenService,
   userGroupMembershipDAL,
   projectDAL,
-  additionalPrivilegeDAL
+  additionalPrivilegeDAL,
+  projectAccessRequestDAL
 }: TMembershipUserServiceFactoryDep) => {
   const scopeFactory = {
     [AccessScope.Organization]: newOrgMembershipUserFactory({
@@ -102,7 +105,8 @@ export const membershipUserServiceFactory = ({
       membershipUserDAL,
       projectDAL,
       smtpService,
-      userDAL
+      userDAL,
+      projectAccessRequestDAL
     })
   };
 

@@ -312,7 +312,7 @@ export const honeyTokenServiceFactory = ({
       plainText: Buffer.from(JSON.stringify(honeyTokenCredentials))
     }).cipherTextBlob;
 
-    const { encryptor: secretEncryptor } = await kmsService.createCipherPairWithDataKey({
+    const { encryptor: secretEncryptor, generateSecretBlindIndex } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId
     });
@@ -362,17 +362,22 @@ export const honeyTokenServiceFactory = ({
         tx
       );
 
-      const createdSecrets = await fnSecretBulkInsert({
-        folderId: folder.id,
-        orgId: actor.orgId,
-        inputSecrets: secretEntries.map(({ key, value }) => ({
+      const inputSecretsWithBlindIndex = await Promise.all(
+        secretEntries.map(async ({ key, value }) => ({
           key,
           type: SecretType.Shared,
           encryptedValue: secretEncryptor({
             plainText: Buffer.from(value)
           }).cipherTextBlob,
+          secretValueBlindIndex: await generateSecretBlindIndex(Buffer.from(value)),
           references: []
-        })),
+        }))
+      );
+
+      const createdSecrets = await fnSecretBulkInsert({
+        folderId: folder.id,
+        orgId: actor.orgId,
+        inputSecrets: inputSecretsWithBlindIndex,
         secretDAL,
         secretVersionDAL,
         secretVersionTagDAL,
@@ -508,10 +513,11 @@ export const honeyTokenServiceFactory = ({
         decryptor({ cipherTextBlob: honeyToken.encryptedCredentials }).toString()
       ) as Record<string, string>;
 
-      const { encryptor: secretEncryptor } = await kmsService.createCipherPairWithDataKey({
-        type: KmsDataKey.SecretManager,
-        projectId
-      });
+      const { encryptor: secretEncryptor, generateSecretBlindIndex: generateBlindIndex } =
+        await kmsService.createCipherPairWithDataKey({
+          type: KmsDataKey.SecretManager,
+          projectId
+        });
 
       const secretEntries = Object.entries(nextSecretsMapping).map(([credentialField, secretKey]) => {
         const credentialValue = decryptedCredentials[credentialField];
@@ -537,17 +543,22 @@ export const honeyTokenServiceFactory = ({
           tx
         });
 
-        const createdSecrets = await fnSecretBulkInsert({
-          folderId: honeyToken.folderId,
-          orgId: actor.orgId,
-          inputSecrets: secretEntries.map(({ key, value }) => ({
+        const inputSecretsWithBlindIndex = await Promise.all(
+          secretEntries.map(async ({ key, value }) => ({
             key,
             type: SecretType.Shared,
             encryptedValue: secretEncryptor({
               plainText: Buffer.from(value)
             }).cipherTextBlob,
+            secretValueBlindIndex: await generateBlindIndex(Buffer.from(value)),
             references: []
-          })),
+          }))
+        );
+
+        const createdSecrets = await fnSecretBulkInsert({
+          folderId: honeyToken.folderId,
+          orgId: actor.orgId,
+          inputSecrets: inputSecretsWithBlindIndex,
           secretDAL,
           secretVersionDAL,
           secretVersionTagDAL,

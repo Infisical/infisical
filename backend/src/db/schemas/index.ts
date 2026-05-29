@@ -168,6 +168,7 @@ export * from "./pki-signers";
 export * from "./pki-signing-operations";
 export * from "./pki-subscribers";
 export * from "./pki-syncs";
+export * from "./project-access-requests";
 export * from "./project-bots";
 export * from "./project-environments";
 export * from "./project-gateways";

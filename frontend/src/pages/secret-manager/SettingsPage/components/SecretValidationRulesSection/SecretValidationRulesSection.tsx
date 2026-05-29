@@ -17,6 +17,12 @@ import {
   AlertDialogTitle,
   Badge,
   Button,
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -72,7 +78,7 @@ import {
   ruleFormSchema,
   RuleType,
   TRuleForm
-} from "./SecretValidationRulesTab.utils";
+} from "./SecretValidationRulesSection.utils";
 
 const RuleFormContent = ({
   defaultValues,
@@ -353,7 +359,7 @@ type SheetState =
   | { open: true; mode: "create" }
   | { open: true; mode: "edit"; ruleId: string };
 
-export const SecretValidationRulesTab = () => {
+export const SecretValidationRulesSection = () => {
   const { currentProject } = useProject();
 
   const [sheetState, setSheetState] = useState<SheetState>({ open: false });
@@ -441,15 +447,11 @@ export const SecretValidationRulesTab = () => {
   const isEditing = sheetState.open && sheetState.mode === "edit";
 
   return (
-    <div className="w-full">
-      <div className="flex h-full w-full flex-1 flex-col rounded-lg border border-border bg-card py-4">
-        <div className="mx-4 flex items-center justify-between border-b border-border pb-4">
-          <div>
-            <h3 className="text-lg font-medium text-foreground">Secret Validation Rules</h3>
-            <p className="text-sm leading-3 text-muted">
-              Define validation constraints for secret keys and values
-            </p>
-          </div>
+    <Card className="mb-6">
+      <CardHeader>
+        <CardTitle>Secret Validation Rules</CardTitle>
+        <CardDescription>Define validation constraints for secret keys and values</CardDescription>
+        <CardAction>
           <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Settings}>
             {(isAllowed) => (
               <Tooltip>
@@ -457,8 +459,8 @@ export const SecretValidationRulesTab = () => {
                   <span>
                     <Button
                       isDisabled={!isAllowed}
-                      variant="outline"
-                      size="xs"
+                      variant="project"
+                      size="sm"
                       onClick={() => setSheetState({ open: true, mode: "create" })}
                     >
                       <PlusIcon className="size-4" />
@@ -472,145 +474,143 @@ export const SecretValidationRulesTab = () => {
               </Tooltip>
             )}
           </ProjectPermissionCan>
-        </div>
-        <div className="flex flex-1 flex-col overflow-hidden px-4">
-          <div className="thin-scrollbar flex-1 overflow-y-scroll py-4">
-            {isLoading && (
-              <div className="flex items-center justify-center py-12">
-                <p className="text-sm text-muted">Loading rules...</p>
-              </div>
-            )}
-            {!isLoading && rules.length === 0 ? (
-              <Empty className="border">
-                <EmptyHeader>
-                  <EmptyTitle>No validation rules configured</EmptyTitle>
-                  <EmptyDescription>
-                    Create a rule to enforce validation constraints on secret keys and values
-                  </EmptyDescription>
-                </EmptyHeader>
-                <EmptyContent>
-                  <ProjectPermissionCan
-                    I={ProjectPermissionActions.Edit}
-                    a={ProjectPermissionSub.Settings}
-                  >
-                    {(isAllowed) => (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <span>
-                            <Button
-                              variant="outline"
-                              size="xs"
-                              isDisabled={!isAllowed}
-                              onClick={() => setSheetState({ open: true, mode: "create" })}
-                            >
-                              <PlusIcon className="size-4" />
-                              Create Rule
-                            </Button>
-                          </span>
-                        </TooltipTrigger>
-                        <TooltipContent side="top" hidden={isAllowed}>
-                          <p>Access restricted</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    )}
-                  </ProjectPermissionCan>
-                </EmptyContent>
-              </Empty>
-            ) : (
-              !isLoading && (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Scope</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="w-12" />
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {rules.map((rule) => (
-                      <TableRow key={rule.id}>
-                        <TableCell className="py-3">
-                          <div className="flex items-center">
-                            <span className="text-sm font-medium text-foreground">{rule.name}</span>
-                            {rule.description && (
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <InfoIcon className="ml-1.5 size-3.5 text-muted" />
-                                </TooltipTrigger>
-                                <TooltipContent>{rule.description}</TooltipContent>
-                              </Tooltip>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell className="py-3">
-                          <Badge variant="neutral">
-                            {RULE_TYPE_LABELS[rule.type as string as RuleType] ?? rule.type}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="py-3">
-                          <div className="flex items-center gap-1.5">
-                            <Badge variant="neutral">{resolveEnvName(rule.envId)}</Badge>
-                            <Badge variant="neutral">{rule.secretPath}</Badge>
-                          </div>
-                        </TableCell>
-                        <TableCell className="py-3">
-                          <Badge variant={rule.isActive ? "success" : "neutral"}>
-                            {rule.isActive ? "Active" : "Inactive"}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="py-3">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <IconButton aria-label="Actions" variant="ghost" size="xs">
-                                <EllipsisVerticalIcon className="size-4" />
-                              </IconButton>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <ProjectPermissionCan
-                                I={ProjectPermissionActions.Edit}
-                                a={ProjectPermissionSub.Settings}
-                              >
-                                {(isAllowed) => (
-                                  <DropdownMenuItem
-                                    isDisabled={!isAllowed}
-                                    onClick={() =>
-                                      setSheetState({ open: true, mode: "edit", ruleId: rule.id })
-                                    }
-                                  >
-                                    <PencilIcon className="mr-2 size-4" />
-                                    Edit
-                                  </DropdownMenuItem>
-                                )}
-                              </ProjectPermissionCan>
-                              <ProjectPermissionCan
-                                I={ProjectPermissionActions.Edit}
-                                a={ProjectPermissionSub.Settings}
-                              >
-                                {(isAllowed) => (
-                                  <DropdownMenuItem
-                                    variant="danger"
-                                    isDisabled={!isAllowed}
-                                    onClick={() => setDeleteRuleId(rule.id)}
-                                  >
-                                    <TrashIcon className="mr-2 size-4" />
-                                    Delete
-                                  </DropdownMenuItem>
-                                )}
-                              </ProjectPermissionCan>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )
-            )}
+        </CardAction>
+      </CardHeader>
+      <CardContent>
+        {isLoading && (
+          <div className="flex items-center justify-center py-12">
+            <p className="text-sm text-muted">Loading rules...</p>
           </div>
-        </div>
-      </div>
+        )}
+        {!isLoading && rules.length === 0 ? (
+          <Empty className="border">
+            <EmptyHeader>
+              <EmptyTitle>No validation rules configured</EmptyTitle>
+              <EmptyDescription>
+                Create a rule to enforce validation constraints on secret keys and values
+              </EmptyDescription>
+            </EmptyHeader>
+            <EmptyContent>
+              <ProjectPermissionCan
+                I={ProjectPermissionActions.Edit}
+                a={ProjectPermissionSub.Settings}
+              >
+                {(isAllowed) => (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span>
+                        <Button
+                          variant="outline"
+                          size="xs"
+                          isDisabled={!isAllowed}
+                          onClick={() => setSheetState({ open: true, mode: "create" })}
+                        >
+                          <PlusIcon className="size-4" />
+                          Create Rule
+                        </Button>
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" hidden={isAllowed}>
+                      <p>Access restricted</p>
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+              </ProjectPermissionCan>
+            </EmptyContent>
+          </Empty>
+        ) : (
+          !isLoading && (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Scope</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="w-12" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {rules.map((rule) => (
+                  <TableRow key={rule.id}>
+                    <TableCell className="py-3">
+                      <div className="flex items-center">
+                        <span className="text-sm font-medium text-foreground">{rule.name}</span>
+                        {rule.description && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <InfoIcon className="ml-1.5 size-3.5 text-muted" />
+                            </TooltipTrigger>
+                            <TooltipContent>{rule.description}</TooltipContent>
+                          </Tooltip>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="py-3">
+                      <Badge variant="neutral">
+                        {RULE_TYPE_LABELS[rule.type as string as RuleType] ?? rule.type}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="py-3">
+                      <div className="flex items-center gap-1.5">
+                        <Badge variant="neutral">{resolveEnvName(rule.envId)}</Badge>
+                        <Badge variant="neutral">{rule.secretPath}</Badge>
+                      </div>
+                    </TableCell>
+                    <TableCell className="py-3">
+                      <Badge variant={rule.isActive ? "success" : "neutral"}>
+                        {rule.isActive ? "Active" : "Inactive"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="py-3">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <IconButton aria-label="Actions" variant="ghost" size="xs">
+                            <EllipsisVerticalIcon className="size-4" />
+                          </IconButton>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <ProjectPermissionCan
+                            I={ProjectPermissionActions.Edit}
+                            a={ProjectPermissionSub.Settings}
+                          >
+                            {(isAllowed) => (
+                              <DropdownMenuItem
+                                isDisabled={!isAllowed}
+                                onClick={() =>
+                                  setSheetState({ open: true, mode: "edit", ruleId: rule.id })
+                                }
+                              >
+                                <PencilIcon className="mr-2 size-4" />
+                                Edit
+                              </DropdownMenuItem>
+                            )}
+                          </ProjectPermissionCan>
+                          <ProjectPermissionCan
+                            I={ProjectPermissionActions.Edit}
+                            a={ProjectPermissionSub.Settings}
+                          >
+                            {(isAllowed) => (
+                              <DropdownMenuItem
+                                variant="danger"
+                                isDisabled={!isAllowed}
+                                onClick={() => setDeleteRuleId(rule.id)}
+                              >
+                                <TrashIcon className="mr-2 size-4" />
+                                Delete
+                              </DropdownMenuItem>
+                            )}
+                          </ProjectPermissionCan>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )
+        )}
+      </CardContent>
 
       <AlertDialog
         open={deleteRuleId !== null}
@@ -676,6 +676,6 @@ export const SecretValidationRulesTab = () => {
           )}
         </SheetContent>
       </Sheet>
-    </div>
+    </Card>
   );
 };
