@@ -265,44 +265,6 @@ export const auditLogStreamAlertFiredCounter = infisicalCoreMeter.createCounter(
   }
 );
 
-// KMS crypto metrics. Wired in kms-service.ts by wrapping the encryptor/decryptor returned by
-// encryptWithKmsKey / decryptWithKmsKey. Captures per-operation latency including external KMS network calls.
-export enum KmsCryptoOperation {
-  ENCRYPT = "encrypt",
-  DECRYPT = "decrypt"
-}
-
-export enum KmsKeyType {
-  INTERNAL = "internal",
-  AWS = "aws",
-  GCP = "gcp"
-}
-
-export const kmsCryptoDurationHistogram = infisicalCoreMeter.createHistogram("infisical.kms.crypto.duration", {
-  description:
-    "External KMS (AWS/GCP) encrypt/decrypt latency including network round trip (use _count for operation volume).",
-  unit: "s"
-});
-
-export const recordKmsCryptoMetric = (params: {
-  operation: KmsCryptoOperation;
-  keyType: KmsKeyType;
-  outcome: "success" | "failure";
-  durationSeconds: number;
-  errorType?: string;
-}) => {
-  if (!isTelemetryEnabled()) return;
-  if (params.keyType === KmsKeyType.INTERNAL) return;
-  const attributes = {
-    ...buildBaseAttributes(),
-    "kms.operation": params.operation,
-    "kms.key_type": params.keyType,
-    outcome: params.outcome,
-    ...(params.errorType ? { "error.type": params.errorType } : {})
-  };
-  kmsCryptoDurationHistogram.record(params.durationSeconds, attributes);
-};
-
 // Permission cache metrics. Wired in lib/cache/with-cache.ts withCacheFingerprint().
 export const permissionCacheLookupCounter = infisicalCoreMeter.createCounter(
   "infisical.permission_cache.lookup.count",

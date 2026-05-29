@@ -343,7 +343,7 @@ Replace `otel-collector:8889` with the actual hostname and port where your OpenT
 Infisical emits metrics on two OpenTelemetry meters simultaneously. Choose which to scrape based on your deployment scale.
 
 - **Legacy meters (high-cardinality):** the `Infisical` and `API` meters' original metrics (`infisical.http.server.request.*`, `infisical.http.server.error.count`, `infisical.secret.read.count`, `infisical.auth.attempt.count`, `infisical.kmip.operation.count`) include per-actor labels such as `user.email`, `identity.name`, `client.address`, `user_agent.original`, `organization.name`, `project.name`, `secret.path`, and `secret.name`. The `SecretSyncs`, `PkiSyncs`, and `Integrations` meters likewise carry unbounded labels such as `syncId`. Useful for small self-hosted deployments where you want per-user visibility directly in Grafana. May become expensive at large scale due to label cardinality.
-- **`InfisicalCore` meter (bounded-cardinality):** all newer metrics (queue, audit log, KMS, permission cache, secret cache, rate limit, build info, `infisical.core.http.error.count`, authentication latency, token renewal, SSO config changes, SCIM provisioning, and database connection pool) use only IDs and bounded enums as labels. No names, emails, IPs, or user agents. Designed for large or multi-tenant deployments. Per-actor detail is available in audit logs instead.
+- **`InfisicalCore` meter (bounded-cardinality):** all newer metrics (queue, audit log, permission cache, secret cache, rate limit, build info, `infisical.core.http.error.count`, authentication latency, token renewal, SSO config changes, SCIM provisioning, and database connection pool) use only IDs and bounded enums as labels. No names, emails, IPs, or user agents. Designed for large or multi-tenant deployments. Per-actor detail is available in audit logs instead.
 
 All meters emit at the same time. If you are a small self-hosted instance and find the per-actor labels useful, keep using the legacy-meter metrics. For larger deployments, scrape only the `InfisicalCore` metrics to keep cardinality under control.
 
@@ -854,40 +854,6 @@ Per-provider observability for the audit-log stream feature (Datadog, Splunk, Cu
     **Description**: Times the sliding-window failure threshold (default 20 failures in 5 minutes) tripped an admin email alert. Useful for catching repeated SIEM degradations even if individual deliveries succeed in between.
 
     **Attributes**: `audit_log_stream.provider`, `infisical.organization.id`
-  </Accordion>
-</AccordionGroup>
-
-### KMS Crypto Metrics (InfisicalCore)
-
-KMS encrypt/decrypt is the hottest path in the system (every secret read and write touches it). These metrics capture per-operation latency, including the network round trip for external KMS providers (AWS / GCP).
-
-<AccordionGroup>
-  <Accordion title="KMS Crypto Count">
-    **Metric Name**: `infisical.kms.crypto.count`
-
-    **Type**: Counter
-
-    **Unit**: `{operation}`
-
-    **Description**: KMS encrypt/decrypt operations by key type and outcome.
-
-    **Attributes**:
-      - `kms.operation` (string): `encrypt` or `decrypt`
-      - `kms.key_type` (string): `internal`, `aws`, `gcp`
-      - `outcome` (string): `success` or `failure`
-      - `error.type` (string, only on failure)
-  </Accordion>
-
-  <Accordion title="KMS Crypto Duration">
-    **Metric Name**: `infisical.kms.crypto.duration`
-
-    **Type**: Histogram
-
-    **Unit**: `s`
-
-    **Description**: Per-operation latency. Internal KMS is local AES-GCM (sub-millisecond). External KMS includes a network round trip (typically 50-200ms).
-
-    **Attributes**: `kms.operation`, `kms.key_type`, `outcome`, `error.type` (on failure)
   </Accordion>
 </AccordionGroup>
 

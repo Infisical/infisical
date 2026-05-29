@@ -52,8 +52,6 @@ const INFISICAL_CORE_METER_ATTRIBUTES = [
   "audit_log.backend",
   "audit_log.drop_reason",
   "audit_log_stream.provider",
-  "kms.operation",
-  "kms.key_type",
   "scim.operation",
   "sso.provider",
   "sso.action",

@@ -20,12 +20,10 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { detectPqcVariantFromDer } from "@app/lib/crypto/pqc/pqc-crypto";
 import { AsymmetricKeyAlgorithm, isPqcKeyAlgorithm, KMS_TO_OPENSSL_NAME, signingService } from "@app/lib/crypto/sign";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
-import { classifyError } from "@app/lib/errors/classify";
 import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
-import { KmsCryptoOperation, KmsKeyType, recordKmsCryptoMetric } from "@app/lib/telemetry/metrics";
 import {
   getByteLengthForSymmetricEncryptionAlgorithm,
   KMS_ROOT_CONFIG_UUID,
@@ -337,27 +335,10 @@ export const kmsServiceFactory = ({
           throw new BadRequestError({ message: "Invalid KMS provider." });
       }
 
-      const externalKeyType = kmsDoc.externalKms.provider === KmsProviders.Aws ? KmsKeyType.AWS : KmsKeyType.GCP;
       return async ({ cipherTextBlob }: Pick<TDecryptWithKmsDTO, "cipherTextBlob">) => {
-        const cryptoStart = Date.now();
         try {
           const { data } = await externalKms.decrypt(cipherTextBlob);
-          recordKmsCryptoMetric({
-            operation: KmsCryptoOperation.DECRYPT,
-            keyType: externalKeyType,
-            outcome: "success",
-            durationSeconds: (Date.now() - cryptoStart) / 1000
-          });
           return data;
-        } catch (err) {
-          recordKmsCryptoMetric({
-            operation: KmsCryptoOperation.DECRYPT,
-            keyType: externalKeyType,
-            outcome: "failure",
-            durationSeconds: (Date.now() - cryptoStart) / 1000,
-            errorType: classifyError(err)
-          });
-          throw err;
         } finally {
           await externalKms.cleanup();
         }
@@ -636,27 +617,10 @@ export const kmsServiceFactory = ({
           throw new BadRequestError({ message: "Invalid KMS provider." });
       }
 
-      const externalKeyType = kmsDoc.externalKms.provider === KmsProviders.Aws ? KmsKeyType.AWS : KmsKeyType.GCP;
       return async ({ plainText }: Pick<TEncryptWithKmsDTO, "plainText">) => {
-        const cryptoStart = Date.now();
         try {
           const { encryptedBlob } = await externalKms.encrypt(plainText);
-          recordKmsCryptoMetric({
-            operation: KmsCryptoOperation.ENCRYPT,
-            keyType: externalKeyType,
-            outcome: "success",
-            durationSeconds: (Date.now() - cryptoStart) / 1000
-          });
           return { cipherTextBlob: encryptedBlob };
-        } catch (err) {
-          recordKmsCryptoMetric({
-            operation: KmsCryptoOperation.ENCRYPT,
-            keyType: externalKeyType,
-            outcome: "failure",
-            durationSeconds: (Date.now() - cryptoStart) / 1000,
-            errorType: classifyError(err)
-          });
-          throw err;
         } finally {
           await externalKms.cleanup();
         }
