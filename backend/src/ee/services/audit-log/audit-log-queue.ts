@@ -159,12 +159,14 @@ export const auditLogQueueServiceFactory = async ({
         // Push to Redis stream for ClickHouse batch processing
         const persistStart = Date.now();
         const backend = isClickHouseBatchEnabled ? "clickhouse" : "postgres";
+        let persistOutcome: "success" | "failure" = "success";
         if (isClickHouseBatchEnabled) {
           try {
             await keyStore.streamAdd(AUDIT_LOG_CLICKHOUSE_STREAM_KEY, "*", {
               data: JSON.stringify(auditLog)
             });
           } catch (error) {
+            persistOutcome = "failure";
             logger.error(
               error,
               `audit-log-queue: Failed to push audit log to Redis stream for ClickHouse batch [jobId=${job.id}] [event=${job.data.event?.type}] [orgId=${job.data.orgId}] [projectId=${job.data.projectId}]`
@@ -176,7 +178,8 @@ export const auditLogQueueServiceFactory = async ({
         auditLogPersistDurationHistogram.record((Date.now() - persistStart) / 1000, {
           "audit_log.backend": backend,
           "audit_log.event_type": event.type,
-          "infisical.organization.id": orgId
+          "infisical.organization.id": orgId,
+          outcome: persistOutcome
         });
 
         if (getConfig().AUDIT_LOG_STREAMS_ENABLED) {

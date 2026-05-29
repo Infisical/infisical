@@ -342,12 +342,12 @@ Replace `otel-collector:8889` with the actual hostname and port where your OpenT
 
 Infisical emits metrics on two OpenTelemetry meters simultaneously. Choose which to scrape based on your deployment scale.
 
-- **`Infisical` meter (high-cardinality):** the original metrics (`infisical.http.server.request.*`, `infisical.http.server.error.count`, `infisical.secret.read.count`, `infisical.auth.attempt.count`, `infisical.kmip.operation.count`) include per-actor labels such as `user.email`, `identity.name`, `client.address`, `user_agent.original`, `organization.name`, `project.name`, `secret.path`, and `secret.name`. Useful for small self-hosted deployments where you want per-user visibility directly in Grafana. May become expensive at large scale due to label cardinality.
-- **`InfisicalCore` meter (bounded-cardinality):** all newer metrics (queue, audit log, KMS, permission cache, rate limit, build info, `infisical.core.http.error.count`, authentication latency, token renewal, SSO config changes, SCIM provisioning, and database connection pool) use only IDs and bounded enums as labels. No names, emails, IPs, or user agents. Designed for large or multi-tenant deployments. Per-actor detail is available in audit logs instead.
+- **Legacy meters (high-cardinality):** the `Infisical` and `API` meters' original metrics (`infisical.http.server.request.*`, `infisical.http.server.error.count`, `infisical.secret.read.count`, `infisical.auth.attempt.count`, `infisical.kmip.operation.count`) include per-actor labels such as `user.email`, `identity.name`, `client.address`, `user_agent.original`, `organization.name`, `project.name`, `secret.path`, and `secret.name`. The `SecretSyncs`, `PkiSyncs`, and `Integrations` meters likewise carry unbounded labels such as `syncId`. Useful for small self-hosted deployments where you want per-user visibility directly in Grafana. May become expensive at large scale due to label cardinality.
+- **`InfisicalCore` meter (bounded-cardinality):** all newer metrics (queue, audit log, KMS, permission cache, secret cache, rate limit, build info, `infisical.core.http.error.count`, authentication latency, token renewal, SSO config changes, SCIM provisioning, and database connection pool) use only IDs and bounded enums as labels. No names, emails, IPs, or user agents. Designed for large or multi-tenant deployments. Per-actor detail is available in audit logs instead.
 
-Both meters emit at the same time. If you are a small self-hosted instance and find the per-actor labels useful, keep using the `Infisical`-meter metrics. For larger deployments, scrape only the `InfisicalCore` metrics to keep cardinality under control.
+All meters emit at the same time. If you are a small self-hosted instance and find the per-actor labels useful, keep using the legacy-meter metrics. For larger deployments, scrape only the `InfisicalCore` metrics to keep cardinality under control.
 
-To eliminate the in-memory cost of the legacy meters entirely, set `OTEL_DROP_LEGACY_METERS=true`. When enabled, the SDK discards all data points from the `Infisical` and `API` meters before aggregation. The instruments still exist in code (no errors), but nothing is stored or exported. Only `InfisicalCore` metrics are emitted. Defaults to `false`.
+To eliminate the in-memory cost of the legacy meters entirely, set `OTEL_DROP_LEGACY_METERS=true`. When enabled, the SDK discards all data points from the legacy `Infisical`, `API`, `SecretSyncs`, `PkiSyncs`, and `Integrations` meters before aggregation. The instruments still exist in code (no errors), but nothing is stored or exported. Only `InfisicalCore` metrics are emitted. Defaults to `false`.
 
 For per-user / per-identity / per-IP breakdowns, query the audit log table. It carries `actorId`, `actorType`, `ip`, `userAgent` and full event detail. Metrics give you the *rate* and *latency*; audit logs give you the *who*.
 
@@ -873,7 +873,7 @@ KMS encrypt/decrypt is the hottest path in the system (every secret read and wri
 
     **Attributes**:
       - `kms.operation` (string): `encrypt` or `decrypt`
-      - `kms.key_type` (string): `internal`, `aws`, `gcp`, `hsm`
+      - `kms.key_type` (string): `internal`, `aws`, `gcp`
       - `outcome` (string): `success` or `failure`
       - `error.type` (string, only on failure)
   </Accordion>
@@ -917,6 +917,45 @@ The CASL permission cache uses a fingerprint-based two-tier scheme. These metric
     **Unit**: `s`
 
     **Description**: Time to compute the lightweight permission fingerprint (1 DB read on marker expiry).
+  </Accordion>
+</AccordionGroup>
+
+### Secret Cache Metrics (InfisicalCore)
+
+The secret service caches encrypted secret payloads to avoid redundant decryption on repeated reads. These metrics tell you whether the cache is effective and whether entries are being skipped for exceeding the size cap.
+
+<AccordionGroup>
+  <Accordion title="Secret Cache Access">
+    **Metric Name**: `infisical.secret.cache.access.count`
+
+    **Type**: Counter
+
+    **Unit**: `{access}`
+
+    **Description**: Secret service-layer cache accesses by outcome. `not_modified` (client revalidation returned 304), `hit` (served from cache), or `miss` (cache empty/stale, full read performed).
+
+    **Attributes**:
+      - `cache.result` (string): `not_modified`, `hit`, `miss`
+  </Accordion>
+
+  <Accordion title="Secret Cache Entry Bytes">
+    **Metric Name**: `infisical.secret.cache.entry.bytes`
+
+    **Type**: Histogram
+
+    **Unit**: `By`
+
+    **Description**: Encrypted secret cache entry size computed at write time. Use this to size the cache and tune the per-entry byte cap.
+  </Accordion>
+
+  <Accordion title="Secret Cache Oversize Skip">
+    **Metric Name**: `infisical.secret.cache.oversize_skip.count`
+
+    **Type**: Counter
+
+    **Unit**: `{skip}`
+
+    **Description**: Secret cache writes skipped because the entry exceeded the max byte cap. A high rate means large payloads are never being cached and will always incur a full read.
   </Accordion>
 </AccordionGroup>
 

@@ -375,27 +375,9 @@ export const kmsServiceFactory = ({
     const kmsKey = keyCipher.decrypt(kmsDoc.internalKms?.encryptedKey as Buffer, ROOT_ENCRYPTION_KEY);
 
     return ({ cipherTextBlob: versionedCipherTextBlob }: Pick<TDecryptWithKmsDTO, "cipherTextBlob">) => {
-      const cryptoStart = Date.now();
-      try {
-        const cipherTextBlob = versionedCipherTextBlob.subarray(0, -KMS_VERSION_BLOB_LENGTH);
-        const decryptedBlob = dataCipher.decrypt(cipherTextBlob, kmsKey);
-        recordKmsCryptoMetric({
-          operation: KmsCryptoOperation.DECRYPT,
-          keyType: KmsKeyType.INTERNAL,
-          outcome: "success",
-          durationSeconds: (Date.now() - cryptoStart) / 1000
-        });
-        return Promise.resolve(decryptedBlob);
-      } catch (err) {
-        recordKmsCryptoMetric({
-          operation: KmsCryptoOperation.DECRYPT,
-          keyType: KmsKeyType.INTERNAL,
-          outcome: "failure",
-          durationSeconds: (Date.now() - cryptoStart) / 1000,
-          errorType: classifyError(err)
-        });
-        throw err;
-      }
+      const cipherTextBlob = versionedCipherTextBlob.subarray(0, -KMS_VERSION_BLOB_LENGTH);
+      const decryptedBlob = dataCipher.decrypt(cipherTextBlob, kmsKey);
+      return Promise.resolve(decryptedBlob);
     };
   };
 
@@ -690,32 +672,14 @@ export const kmsServiceFactory = ({
     const keyCipher = symmetricCipherService(SymmetricKeyAlgorithm.AES_GCM_256);
     const dataCipher = symmetricCipherService(encryptionAlgorithm);
     return ({ plainText }: Pick<TEncryptWithKmsDTO, "plainText">) => {
-      const cryptoStart = Date.now();
-      try {
-        const kmsKey = keyCipher.decrypt(kmsDoc.internalKms?.encryptedKey as Buffer, ROOT_ENCRYPTION_KEY);
-        const encryptedPlainTextBlob = dataCipher.encrypt(plainText, kmsKey);
+      const kmsKey = keyCipher.decrypt(kmsDoc.internalKms?.encryptedKey as Buffer, ROOT_ENCRYPTION_KEY);
+      const encryptedPlainTextBlob = dataCipher.encrypt(plainText, kmsKey);
 
-        // Buffer#1 encrypted text + Buffer#2 version number
-        const versionBlob = Buffer.from(KMS_VERSION, "utf8"); // length is 3
-        const cipherTextBlob = Buffer.concat([encryptedPlainTextBlob, versionBlob]);
+      // Buffer#1 encrypted text + Buffer#2 version number
+      const versionBlob = Buffer.from(KMS_VERSION, "utf8"); // length is 3
+      const cipherTextBlob = Buffer.concat([encryptedPlainTextBlob, versionBlob]);
 
-        recordKmsCryptoMetric({
-          operation: KmsCryptoOperation.ENCRYPT,
-          keyType: KmsKeyType.INTERNAL,
-          outcome: "success",
-          durationSeconds: (Date.now() - cryptoStart) / 1000
-        });
-        return Promise.resolve({ cipherTextBlob });
-      } catch (err) {
-        recordKmsCryptoMetric({
-          operation: KmsCryptoOperation.ENCRYPT,
-          keyType: KmsKeyType.INTERNAL,
-          outcome: "failure",
-          durationSeconds: (Date.now() - cryptoStart) / 1000,
-          errorType: classifyError(err)
-        });
-        throw err;
-      }
+      return Promise.resolve({ cipherTextBlob });
     };
   };
 

@@ -26,8 +26,9 @@ dotenv.config();
 // unbounded label by mistake is caught automatically.
 //
 // If you need per-actor breakdowns, query the audit log table. It carries actorId, actorType, ip, userAgent and full event detail.
-// Legacy meters ("Infisical", "API") have no View — their existing labels flow through unchanged for
-// self-hosted backwards compatibility.
+// Legacy meters ("Infisical", "API", "SecretSyncs", "PkiSyncs", "Integrations") have no allowlist View —
+// their existing labels (including unbounded ones like syncId) flow through unchanged for self-hosted
+// backwards compatibility, and are dropped wholesale by OTEL_DROP_LEGACY_METERS (see LEGACY_METER_NAMES).
 const INFISICAL_CORE_METER_ATTRIBUTES = [
   // HTTP semantics
   "http.request.method",
@@ -64,6 +65,10 @@ const INFISICAL_CORE_METER_ATTRIBUTES = [
   "git.commit.sha",
   "node.version"
 ];
+
+// Every meter that predates the InfisicalCore allowlist. None have a View, so their labels (including
+// unbounded ones like syncId) flow through unchanged unless OTEL_DROP_LEGACY_METERS drops them wholesale.
+const LEGACY_METER_NAMES = ["Infisical", "API", "SecretSyncs", "PkiSyncs", "Integrations"];
 
 const initTelemetryInstrumentation = ({
   exportType,
@@ -127,10 +132,9 @@ const initTelemetryInstrumentation = ({
   ];
 
   if (dropLegacyMeters) {
-    views.push(
-      new View({ meterName: "Infisical", aggregation: Aggregation.Drop() }),
-      new View({ meterName: "API", aggregation: Aggregation.Drop() })
-    );
+    LEGACY_METER_NAMES.forEach((meterName) => {
+      views.push(new View({ meterName, aggregation: Aggregation.Drop() }));
+    });
   }
 
   const meterProvider = new MeterProvider({

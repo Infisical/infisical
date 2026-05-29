@@ -599,10 +599,11 @@ export const queueServiceFactory = (redisCfg: TRedisConfigKeys): TQueueServiceFa
   // Observable gauge for queue depth. The SDK invokes the callback on each export (every 30s for OTLP
   // push, on each scrape for Prometheus). Iterates only initialized queues in queueContainer; one
   // snapshot covers all ~30 named queues. Failures are swallowed because metrics must never crash the app.
+  const QUEUE_DEPTH_STATES = ["waiting", "active", "delayed", "failed"] as const;
   const queueDepthGauge = opentelemetry.metrics
     .getMeter("InfisicalCore")
     .createObservableGauge("infisical.queue.depth", {
-      description: "Number of jobs in each queue state (waiting, active, delayed, failed, completed)",
+      description: "Number of jobs in each queue state (waiting, active, delayed, failed)",
       unit: "{job}"
     });
 
@@ -612,7 +613,7 @@ export const queueServiceFactory = (redisCfg: TRedisConfigKeys): TQueueServiceFa
       Object.entries(queueContainer).map(async ([name, q]) => {
         if (!q) return;
         try {
-          const counts = await q.getJobCounts();
+          const counts = await q.getJobCounts(...QUEUE_DEPTH_STATES);
           Object.entries(counts).forEach(([state, count]) => {
             if (typeof count !== "number") return;
             observableResult.observe(count, { "queue.name": name, "queue.state": state });

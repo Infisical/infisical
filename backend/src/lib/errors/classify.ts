@@ -42,10 +42,15 @@ export type ErrorType = (typeof ERROR_TYPES)[number];
 const isAxiosLikeError = (err: unknown): err is { code?: string; response?: { status?: number } } =>
   typeof err === "object" &&
   err !== null &&
-  // axios sets isAxiosError = true on the error instance
-  (("isAxiosError" in err && (err as { isAxiosError?: boolean }).isAxiosError === true) ||
-    "response" in err ||
-    ("code" in err && typeof (err as { code?: string }).code === "string"));
+  // axios sets isAxiosError = true on the error instance, and always attaches a response on HTTP errors
+  (("isAxiosError" in err && (err as { isAxiosError?: boolean }).isAxiosError === true) || "response" in err);
+
+// Connection-level error codes that unambiguously mean timeout/network regardless of whether the error
+// originated from axios or a raw Node socket. Pulled out so they're classified before the axios check.
+const getErrorCode = (err: unknown): string | undefined =>
+  typeof err === "object" && err !== null && "code" in err && typeof (err as { code?: unknown }).code === "string"
+    ? (err as { code: string }).code
+    : undefined;
 
 /**
  * Classify a thrown error into one of the bounded ERROR_TYPES values. Used for the `error.type` label
@@ -66,10 +71,11 @@ export const classifyError = (err: unknown): ErrorType => {
   if (err instanceof OidcAuthError) return "oidc";
   if (err instanceof InternalServerError) return "internal";
 
+  const code = getErrorCode(err);
+  if (code === "ECONNABORTED" || code === "ETIMEDOUT") return "timeout";
+  if (code === "ECONNRESET" || code === "ENOTFOUND" || code === "ECONNREFUSED") return "network";
+
   if (isAxiosLikeError(err)) {
-    const { code } = err as { code?: string };
-    if (code === "ECONNABORTED" || code === "ETIMEDOUT") return "timeout";
-    if (code === "ECONNRESET" || code === "ENOTFOUND" || code === "ECONNREFUSED") return "network";
     const status = err.response?.status;
     if (status === 429) return "rate_limit";
     if (status === 401 || status === 403) return "auth";

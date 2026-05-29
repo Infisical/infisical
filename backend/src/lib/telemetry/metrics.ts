@@ -275,13 +275,12 @@ export enum KmsCryptoOperation {
 export enum KmsKeyType {
   INTERNAL = "internal",
   AWS = "aws",
-  GCP = "gcp",
-  HSM = "hsm"
+  GCP = "gcp"
 }
 
 export const kmsCryptoDurationHistogram = infisicalCoreMeter.createHistogram("infisical.kms.crypto.duration", {
   description:
-    "External KMS (AWS/GCP/HSM) encrypt/decrypt latency including network round trip (use _count for operation volume).",
+    "External KMS (AWS/GCP) encrypt/decrypt latency including network round trip (use _count for operation volume).",
   unit: "s"
 });
 
@@ -320,6 +319,45 @@ export const permissionCacheFingerprintDurationHistogram = infisicalCoreMeter.cr
     unit: "s"
   }
 );
+
+// Secret service-layer cache metrics. Wired in secret-service.ts at cache read/write boundaries.
+export enum SecretCacheAccessResult {
+  NOT_MODIFIED = "not_modified",
+  HIT = "hit",
+  MISS = "miss"
+}
+
+export const secretCacheAccessCounter = infisicalCoreMeter.createCounter("infisical.secret.cache.access.count", {
+  description: "Secret service-layer cache accesses by outcome (304 not-modified / hit / miss)",
+  unit: "{access}"
+});
+
+export const secretCacheEntryBytesHistogram = infisicalCoreMeter.createHistogram("infisical.secret.cache.entry.bytes", {
+  description: "Encrypted secret cache entry size computed at write time",
+  unit: "By"
+});
+
+export const secretCacheOversizeSkipCounter = infisicalCoreMeter.createCounter(
+  "infisical.secret.cache.oversize_skip.count",
+  {
+    description: "Secret cache writes skipped because the entry exceeded the max byte cap",
+    unit: "{skip}"
+  }
+);
+
+export const recordSecretCacheAccessMetric = (result: SecretCacheAccessResult) => {
+  if (!isTelemetryEnabled()) return;
+  secretCacheAccessCounter.add(1, { ...buildBaseAttributes(), "cache.result": result });
+};
+
+export const recordSecretCacheWriteMetric = (params: { bytes: number; stored: boolean }) => {
+  if (!isTelemetryEnabled()) return;
+  const attributes = buildBaseAttributes();
+  secretCacheEntryBytesHistogram.record(params.bytes, attributes);
+  if (!params.stored) {
+    secretCacheOversizeSkipCounter.add(1, attributes);
+  }
+};
 
 export const coreHttpErrorCounter = infisicalCoreMeter.createCounter("infisical.core.http.error.count", {
   description: "API errors with bounded error classification. Labels limited to InfisicalCore View allowlist.",
