@@ -92,7 +92,8 @@ export const identityServiceFactory = ({
     const { shouldUseNewPrivilegeSystem } = await requestMemoize(requestMemoKeys.orgFindById(actorOrgId), () =>
       orgDAL.findById(actorOrgId)
     );
-    const isCustomRole = Boolean(rolePermissionDetails?.role);
+
+    const isCustomRole = Boolean(rolePermissionDetails?.role && !rolePermissionDetails.role.isBuiltIn);
     if (isCustomRole) {
       const plan = await licenseService.getPlan(orgId);
       if (!plan?.rbac)
@@ -218,13 +219,14 @@ export const identityServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
 
     let customRole: TRoles | undefined;
+    let resolvedRoleId: string | null = null;
     if (role) {
       const [rolePermissionDetails] = await permissionService.getOrgPermissionByRoles([role], actorOrgId);
       const { shouldUseNewPrivilegeSystem } = await requestMemoize(requestMemoKeys.orgFindById(actorOrgId), () =>
         orgDAL.findById(actorOrgId)
       );
 
-      const isCustomRole = Boolean(rolePermissionDetails?.role);
+      const isCustomRole = Boolean(rolePermissionDetails?.role && !rolePermissionDetails.role.isBuiltIn);
       if (isCustomRole) {
         const plan = await licenseService.getPlan(actorOrgId);
         if (!plan?.rbac)
@@ -252,6 +254,7 @@ export const identityServiceFactory = ({
         });
 
       if (isCustomRole) customRole = rolePermissionDetails?.role;
+      resolvedRoleId = rolePermissionDetails?.role?.id ?? null;
     }
 
     const identityDetails = await requestMemoize(requestMemoKeys.identityFindById(id), () => identityDAL.findById(id));
@@ -272,7 +275,7 @@ export const identityServiceFactory = ({
           {
             membershipId: identityOrgMembership.id,
             role: customRole ? OrgMembershipRole.Custom : role,
-            customRoleId: customRole?.id || null
+            customRoleId: resolvedRoleId
           },
           tx
         );

@@ -134,7 +134,8 @@ export const groupServiceFactory = ({
     const { shouldUseNewPrivilegeSystem } = await requestMemoize(requestMemoKeys.orgFindById(actorOrgId), () =>
       orgDAL.findById(actorOrgId)
     );
-    const isCustomRole = Boolean(rolePermissionDetails?.role);
+
+    const isCustomRole = Boolean(rolePermissionDetails?.role && !rolePermissionDetails.role.isBuiltIn);
     if (role !== OrgMembershipRole.NoAccess) {
       const permissionBoundary = validatePrivilegeChangeOperation(
         shouldUseNewPrivilegeSystem,
@@ -249,13 +250,15 @@ export const groupServiceFactory = ({
     }
 
     let customRole: TRoles | undefined;
+
+    let resolvedRoleId: string | null = null;
     if (role) {
       const [rolePermissionDetails] = await permissionService.getOrgPermissionByRoles([role], actorOrgId);
 
       const { shouldUseNewPrivilegeSystem } = await requestMemoize(requestMemoKeys.orgFindById(actorOrgId), () =>
         orgDAL.findById(actorOrgId)
       );
-      const isCustomRole = Boolean(rolePermissionDetails?.role);
+      const isCustomRole = Boolean(rolePermissionDetails?.role && !rolePermissionDetails.role.isBuiltIn);
 
       const permissionBoundary = validatePrivilegeChangeOperation(
         shouldUseNewPrivilegeSystem,
@@ -275,6 +278,7 @@ export const groupServiceFactory = ({
           details: { missingPermissions: permissionBoundary.missingPermissions }
         });
       if (isCustomRole) customRole = rolePermissionDetails?.role;
+      resolvedRoleId = rolePermissionDetails?.role?.id ?? null;
     }
 
     const updatedGroup = await groupDAL.transaction(async (tx): Promise<TGroups> => {
@@ -312,7 +316,7 @@ export const groupServiceFactory = ({
           {
             membershipId: membership.id,
             role: customRole ? OrgMembershipRole.Custom : role,
-            customRoleId: customRole?.id ?? null
+            customRoleId: resolvedRoleId
           },
           tx
         );

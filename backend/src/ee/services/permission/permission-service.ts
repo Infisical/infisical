@@ -66,7 +66,7 @@ const buildOrgPermissionRules = (orgUserRoles: TBuildOrgPermissionDTO) => {
       if (role === OrgMembershipRole.Admin) {
         return orgAdminPermissions;
       }
-      if (permissions && (!Array.isArray(permissions) || (permissions as unknown[]).length > 0)) {
+      if (permissions !== null && permissions !== undefined) {
         return unpackRules<RawRuleOf<MongoAbility<OrgPermissionSet>>>(
           permissions as PackRule<RawRuleOf<MongoAbility<OrgPermissionSet>>>[]
         );
@@ -89,7 +89,7 @@ const buildProjectPermissionRules = (projectUserRoles: TBuildProjectPermissionDT
         if (role === ProjectMembershipRole.Admin) {
           return projectAdminPermissions;
         }
-        if (permissions && (!Array.isArray(permissions) || (permissions as unknown[]).length > 0)) {
+        if (permissions !== null && permissions !== undefined) {
           return unpackRules<RawRuleOf<MongoAbility<ProjectPermissionSet>>>(
             permissions as PackRule<RawRuleOf<MongoAbility<ProjectPermissionSet>>>[]
           );
