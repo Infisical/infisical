@@ -123,18 +123,25 @@ export const auditLogStreamOutboxServiceFactory = ({
     const acquired = await keyStore.setItemWithExpiryNX(debounceKey, FLUSH_DEBOUNCE_SECONDS, "1");
     if (!acquired) return false;
 
-    // Job ID matches the debounce key so BullMQ collapses any in-flight duplicates.
-    await queueService.queue(
-      queueName,
-      QueueJobs.AuditLogStreamFlush,
-      { streamId, orgId, provider },
-      {
-        jobId: `flush:${streamId}`,
-        delay: FLUSH_DEBOUNCE_MS,
-        removeOnComplete: true,
-        removeOnFail: { count: 50 }
-      }
-    );
+    try {
+      await queueService.queue(
+        queueName,
+        QueueJobs.AuditLogStreamFlush,
+        { streamId, orgId, provider },
+        {
+          jobId: `flush-${streamId}`,
+          delay: FLUSH_DEBOUNCE_MS,
+          removeOnComplete: true,
+          removeOnFail: { count: 50 }
+        }
+      );
+    } catch (error) {
+      logger.error(
+        error,
+        `audit-log-stream-outbox: failed to enqueue flush job [provider=${provider}] [queue=${queueName}] [streamId=${streamId}] [orgId=${orgId}]`
+      );
+      return false;
+    }
     return true;
   };
 
