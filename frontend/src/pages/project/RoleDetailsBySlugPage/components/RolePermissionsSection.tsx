@@ -7,7 +7,7 @@ import { SaveIcon } from "lucide-react";
 import { createNotification } from "@app/components/notifications";
 import { AccessTree } from "@app/components/permissions";
 import { Accordion, Button } from "@app/components/v3";
-import { ProjectPermissionSub, useProject } from "@app/context";
+import { ProjectPermissionSub, useProject, useSubscription } from "@app/context";
 import { ProjectPermissionSet } from "@app/context/ProjectPermissionContext";
 import { evaluatePermissionsAbility } from "@app/helpers/permissions";
 import { useGetProjectRoleBySlug, useUpdateProjectRole } from "@app/hooks/api";
@@ -197,7 +197,9 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
     }
   });
 
-  const isCustomRole = role?.slug !== "admin";
+  const { subscription } = useSubscription();
+
+  const isEditable = role?.slug !== "admin" && (!role?.isBuiltIn || !!subscription?.rbac);
 
   const permissions = useWatch({ control: form.control, name: "permissions" });
 
@@ -228,7 +230,7 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
               <h3 className="text-lg font-medium text-foreground">Policies</h3>
               <p className="text-sm leading-3 text-muted">Configure granular access policies</p>
             </div>
-            {isCustomRole && (
+            {isEditable && (
               <div className="flex items-center gap-2">
                 {isDirty && (
                   <Button

@@ -63,7 +63,7 @@ import {
   useOrganization,
   useSubscription
 } from "@app/context";
-import { isCustomOrgRole } from "@app/helpers/roles";
+import { isCustomOrgRole, OrgMembershipRole } from "@app/helpers/roles";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -349,11 +349,11 @@ export const OrgRoleTable = () => {
                       ))}
                     {filteredRolesPage.map((role) => {
                       const { id, name, slug, isBuiltIn } = role;
-                      const isNonMutatable = slug === "admin";
-                      const isBuiltInRole = slug === "admin" || isBuiltIn;
+                      const isNonMutatable = slug === OrgMembershipRole.Admin;
+                      const isBuiltInRole = slug === OrgMembershipRole.Admin || isBuiltIn;
                       const isDefaultOrgRole =
-                        slug === "admin"
-                          ? currentOrg?.defaultMembershipRole === "admin"
+                        slug === OrgMembershipRole.Admin
+                          ? currentOrg?.defaultMembershipRole === OrgMembershipRole.Admin
                           : id === currentOrg?.defaultMembershipRole;
                       return (
                         <TableRow
