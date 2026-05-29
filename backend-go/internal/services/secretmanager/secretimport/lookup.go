@@ -252,6 +252,12 @@ func (l *ImportLookup) ResolveChain(
 
 		start, end := l.ImportsOfFolder(folderID)
 		for i := start; i < end; i++ {
+			// Skip replication imports - they should only be resolved through
+			// the reserved replicated folder, not the live replication source.
+			if l.IsReplication(i) {
+				continue
+			}
+
 			envID := l.TargetEnvID(i)
 			path := l.TargetPath(i)
 			key := importTarget{envID: envID, path: path}

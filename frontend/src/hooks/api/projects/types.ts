@@ -243,3 +243,7 @@ export type TGetMembershipPermissionAuditResponse = {
 export type TGetIdentityPermissionAuditResponse = {
   sources: TPermissionAuditSource[];
 };
+
+export type TMyPendingProjectAccessRequestsResponse = {
+  requests: { projectId: string; createdAt: string }[];
+};

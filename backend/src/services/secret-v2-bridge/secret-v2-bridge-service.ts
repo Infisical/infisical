@@ -380,10 +380,14 @@ export const secretV2BridgeServiceFactory = ({
 
     await $validateSecretReferences(projectId, permission, allSecretReferences);
 
-    const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.SecretManager,
-      projectId
-    });
+    const { encryptor: secretManagerEncryptor, generateSecretBlindIndex } =
+      await kmsService.createCipherPairWithDataKey({
+        type: KmsDataKey.SecretManager,
+        projectId
+      });
+    const secretValueBlindIndex = inputSecretData.secretValue
+      ? await generateSecretBlindIndex(Buffer.from(inputSecretData.secretValue))
+      : undefined;
     const secret = await secretDAL.transaction(async (tx) => {
       const [createdSecret] = await fnSecretBulkInsert({
         folderId,
@@ -399,6 +403,7 @@ export const secretV2BridgeServiceFactory = ({
             encryptedValue: inputSecretData.secretValue
               ? secretManagerEncryptor({ plainText: Buffer.from(inputSecretData.secretValue) }).cipherTextBlob
               : undefined,
+            secretValueBlindIndex,
             skipMultilineEncoding: inputSecretData.skipMultilineEncoding,
             key: secretName,
             userId: inputSecret.type === SecretType.Personal ? actorId : null,
@@ -653,16 +658,20 @@ export const secretV2BridgeServiceFactory = ({
       await $validateSecretReferences(projectId, permission, allSecretReferences);
     }
 
-    const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } =
-      await kmsService.createCipherPairWithDataKey({
-        type: KmsDataKey.SecretManager,
-        projectId
-      });
+    const {
+      encryptor: secretManagerEncryptor,
+      decryptor: secretManagerDecryptor,
+      generateSecretBlindIndex
+    } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId
+    });
     const encryptedValue =
       typeof secretValue === "string"
         ? {
             encryptedValue: secretManagerEncryptor({ plainText: Buffer.from(secretValue) }).cipherTextBlob,
-            references: getAllSecretReferences(secretValue).nestedReferences
+            references: getAllSecretReferences(secretValue).nestedReferences,
+            secretValueBlindIndex: await generateSecretBlindIndex(Buffer.from(secretValue))
           }
         : {};
 
@@ -730,6 +739,7 @@ export const secretV2BridgeServiceFactory = ({
           secretQueueService,
           encryptor: ({ plainText }) => secretManagerEncryptor({ plainText }),
           decryptor: ({ cipherTextBlob }) => secretManagerDecryptor({ cipherTextBlob }),
+          generateSecretBlindIndex,
           tx
         });
       }
@@ -2035,13 +2045,19 @@ export const secretV2BridgeServiceFactory = ({
     });
     await $validateSecretReferences(projectId, permission, secretReferences);
 
-    const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } =
-      await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
+    const {
+      encryptor: secretManagerEncryptor,
+      decryptor: secretManagerDecryptor,
+      generateSecretBlindIndex
+    } = await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
 
     const executeBulkInsert = async (tx: Knex) => {
-      const modifiedSecretsInDB = await fnSecretBulkInsert({
-        inputSecrets: deduplicatedSecrets.map((el) => {
+      const inputSecretsWithBlindIndex = await Promise.all(
+        deduplicatedSecrets.map(async (el) => {
           const references = secretReferencesGroupByInputSecretKey[el.secretKey]?.nestedReferences;
+          const secretValueBlindIndex = el.secretValue
+            ? await generateSecretBlindIndex(Buffer.from(el.secretValue))
+            : null;
 
           return {
             version: 1,
@@ -2062,9 +2078,14 @@ export const secretV2BridgeServiceFactory = ({
                 ? secretManagerEncryptor({ plainText: Buffer.from(meta.value) }).cipherTextBlob
                 : meta.value
             })),
-            type: SecretType.Shared
+            type: SecretType.Shared,
+            secretValueBlindIndex
           };
-        }),
+        })
+      );
+
+      const modifiedSecretsInDB = await fnSecretBulkInsert({
+        inputSecrets: inputSecretsWithBlindIndex,
         folderId,
         commitChanges,
         orgId: actorOrgId,
@@ -2196,8 +2217,11 @@ export const secretV2BridgeServiceFactory = ({
     );
     const secretPaths = Object.keys(secretsToUpdateGroupByPath);
 
-    const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } =
-      await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
+    const {
+      encryptor: secretManagerEncryptor,
+      decryptor: secretManagerDecryptor,
+      generateSecretBlindIndex
+    } = await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
 
     // Function to execute the bulk update operation
     const executeBulkUpdate = async (tx: Knex) => {
@@ -2415,13 +2439,8 @@ export const secretV2BridgeServiceFactory = ({
           newSecretKey: string;
         }[] = [];
 
-        const bulkUpdatedSecrets = await fnSecretBulkUpdate({
-          folderId,
-          orgId: actorOrgId,
-          folderCommitService,
-          tx,
-          commitChanges,
-          inputSecrets: secretsToUpdate.map((el) => {
+        const inputSecretsForUpdate = await Promise.all(
+          secretsToUpdate.map(async (el) => {
             const originalSecret = secretsToUpdateInDBGroupedByKey[el.secretKey][0];
             const shouldUpdateValue = !originalSecret.isRotatedSecret && typeof el.secretValue !== "undefined";
             const shouldUpdateName = !originalSecret.isRotatedSecret && el.newSecretName;
@@ -2438,7 +2457,8 @@ export const secretV2BridgeServiceFactory = ({
               shouldUpdateValue && el.secretValue !== undefined
                 ? {
                     encryptedValue: secretManagerEncryptor({ plainText: Buffer.from(el.secretValue) }).cipherTextBlob,
-                    references: secretReferencesGroupByInputSecretKey[el.secretKey]?.nestedReferences
+                    references: secretReferencesGroupByInputSecretKey[el.secretKey]?.nestedReferences,
+                    secretValueBlindIndex: await generateSecretBlindIndex(Buffer.from(el.secretValue))
                   }
                 : {};
 
@@ -2461,7 +2481,16 @@ export const secretV2BridgeServiceFactory = ({
                 ...encryptedValue
               }
             };
-          }),
+          })
+        );
+
+        const bulkUpdatedSecrets = await fnSecretBulkUpdate({
+          folderId,
+          orgId: actorOrgId,
+          folderCommitService,
+          tx,
+          commitChanges,
+          inputSecrets: inputSecretsForUpdate,
           secretDAL,
           secretVersionDAL,
           secretTagDAL,
@@ -2491,6 +2520,7 @@ export const secretV2BridgeServiceFactory = ({
               secretQueueService,
               encryptor: ({ plainText }) => secretManagerEncryptor({ plainText }),
               decryptor: ({ cipherTextBlob }) => secretManagerDecryptor({ cipherTextBlob }),
+              generateSecretBlindIndex,
               tx
             });
           }
@@ -2505,9 +2535,12 @@ export const secretV2BridgeServiceFactory = ({
         );
 
         if (updateMode === SecretUpdateMode.Upsert) {
-          const bulkInsertedSecrets = await fnSecretBulkInsert({
-            inputSecrets: secretsToCreate.map((el) => {
+          const inputSecretsForCreate = await Promise.all(
+            secretsToCreate.map(async (el) => {
               const references = secretReferencesGroupByInputSecretKey[el.secretKey]?.nestedReferences;
+              const secretValueBlindIndex = el.secretValue
+                ? await generateSecretBlindIndex(Buffer.from(el.secretValue))
+                : null;
 
               return {
                 version: 1,
@@ -2528,9 +2561,14 @@ export const secretV2BridgeServiceFactory = ({
                     ? secretManagerEncryptor({ plainText: Buffer.from(meta.value) }).cipherTextBlob
                     : meta.value
                 })),
-                type: SecretType.Shared
+                type: SecretType.Shared,
+                secretValueBlindIndex
               };
-            }),
+            })
+          );
+
+          const bulkInsertedSecrets = await fnSecretBulkInsert({
+            inputSecrets: inputSecretsForCreate,
             folderId,
             orgId: actorOrgId,
             secretDAL,
@@ -3016,11 +3054,14 @@ export const secretV2BridgeServiceFactory = ({
       });
     }
 
-    const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } =
-      await kmsService.createCipherPairWithDataKey({
-        type: KmsDataKey.SecretManager,
-        projectId
-      });
+    const {
+      encryptor: secretManagerEncryptor,
+      decryptor: secretManagerDecryptor,
+      generateSecretBlindIndex
+    } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId
+    });
     const decryptedSourceSecrets = sourceSecrets.map((secret) => ({
       ...secret,
       value: secret.encryptedValue
@@ -3194,6 +3235,27 @@ export const secretV2BridgeServiceFactory = ({
         let createdSecrets: { id: string; key: string }[] = [];
 
         if (locallyCreatedSecrets.length) {
+          const inputSecretsForCreate = await Promise.all(
+            locallyCreatedSecrets.map(async (doc) => ({
+              type: doc.type,
+              metadata: doc.metadata,
+              key: doc.key,
+              encryptedValue: doc.encryptedValue,
+              encryptedComment: doc.encryptedComment,
+              skipMultilineEncoding: doc.skipMultilineEncoding,
+              reminderNote: doc.reminderNote,
+              reminderRepeatDays: doc.reminderRepeatDays,
+              secretMetadata: doc.secretMetadata?.map(({ key, value, encryptedValue }) => ({
+                key,
+                value: value || undefined,
+                encryptedValue: encryptedValue || undefined
+              })) as { key: string; value?: string; encryptedValue?: Buffer }[] | undefined,
+              references: doc.value ? getAllSecretReferences(doc.value).nestedReferences : [],
+              tagIds: doc.tags.map((tag) => tag.id),
+              secretValueBlindIndex: doc.value ? await generateSecretBlindIndex(Buffer.from(doc.value)) : undefined
+            }))
+          );
+
           createdSecrets = await fnSecretBulkInsert({
             folderId: destinationFolder.id,
             orgId: actorOrgId,
@@ -3208,28 +3270,43 @@ export const secretV2BridgeServiceFactory = ({
               type: actor,
               actorId
             },
-            inputSecrets: locallyCreatedSecrets.map((doc) => {
-              return {
-                type: doc.type,
-                metadata: doc.metadata,
-                key: doc.key,
-                encryptedValue: doc.encryptedValue,
-                encryptedComment: doc.encryptedComment,
-                skipMultilineEncoding: doc.skipMultilineEncoding,
-                reminderNote: doc.reminderNote,
-                reminderRepeatDays: doc.reminderRepeatDays,
-                secretMetadata: doc.secretMetadata?.map(({ key, value, encryptedValue }) => ({
-                  key,
-                  value: value || undefined,
-                  encryptedValue: encryptedValue || undefined
-                })) as { key: string; value?: string; encryptedValue?: Buffer }[] | undefined,
-                references: doc.value ? getAllSecretReferences(doc.value).nestedReferences : [],
-                tagIds: doc.tags.map((tag) => tag.id)
-              };
-            })
+            inputSecrets: inputSecretsForCreate
           });
         }
         if (locallyUpdatedSecrets.length) {
+          const inputSecretsForUpdate = await Promise.all(
+            locallyUpdatedSecrets.map(async (doc) => ({
+              filter: {
+                folderId: destinationFolder.id,
+                id: destinationSecretsGroupedByKey[doc.key][0].id
+              },
+              data: {
+                metadata: doc.metadata,
+                key: doc.key,
+                encryptedComment: doc.encryptedComment,
+                skipMultilineEncoding: doc.skipMultilineEncoding,
+                secretMetadata: doc.secretMetadata?.map(({ key, value, encryptedValue }) => ({
+                  key,
+                  value,
+                  encryptedValue
+                })) as { key: string; value?: string; encryptedValue?: Buffer }[] | undefined,
+                tags: doc.tags.map((tag) => tag.id),
+                ...(doc.encryptedValue
+                  ? {
+                      encryptedValue: doc.encryptedValue,
+                      references: doc.value ? getAllSecretReferences(doc.value).nestedReferences : [],
+                      secretValueBlindIndex: doc.value
+                        ? await generateSecretBlindIndex(Buffer.from(doc.value))
+                        : undefined
+                    }
+                  : {
+                      encryptedValue: undefined,
+                      references: undefined
+                    })
+              }
+            }))
+          );
+
           await fnSecretBulkUpdate({
             folderId: destinationFolder.id,
             orgId: actorOrgId,
@@ -3244,35 +3321,7 @@ export const secretV2BridgeServiceFactory = ({
               type: actor,
               actorId
             },
-            inputSecrets: locallyUpdatedSecrets.map((doc) => {
-              return {
-                filter: {
-                  folderId: destinationFolder.id,
-                  id: destinationSecretsGroupedByKey[doc.key][0].id
-                },
-                data: {
-                  metadata: doc.metadata,
-                  key: doc.key,
-                  encryptedComment: doc.encryptedComment,
-                  skipMultilineEncoding: doc.skipMultilineEncoding,
-                  secretMetadata: doc.secretMetadata?.map(({ key, value, encryptedValue }) => ({
-                    key,
-                    value,
-                    encryptedValue
-                  })) as { key: string; value?: string; encryptedValue?: Buffer }[] | undefined,
-                  tags: doc.tags.map((tag) => tag.id),
-                  ...(doc.encryptedValue
-                    ? {
-                        encryptedValue: doc.encryptedValue,
-                        references: doc.value ? getAllSecretReferences(doc.value).nestedReferences : []
-                      }
-                    : {
-                        encryptedValue: undefined,
-                        references: undefined
-                      })
-                }
-              };
-            })
+            inputSecrets: inputSecretsForUpdate
           });
         }
 
@@ -3378,6 +3427,7 @@ export const secretV2BridgeServiceFactory = ({
             secretQueueService,
             encryptor: ({ plainText }) => secretManagerEncryptor({ plainText }),
             decryptor: ({ cipherTextBlob }) => secretManagerDecryptor({ cipherTextBlob }),
+            generateSecretBlindIndex,
             tx
           });
         }
@@ -4010,6 +4060,7 @@ export const secretV2BridgeServiceFactory = ({
 
     const updatedSecretVersion = await secretVersionDAL.updateById(versionId, {
       encryptedValue,
+      secretValueBlindIndex: null,
       isRedacted: true,
       redactedAt: new Date(),
       redactedByUserId: actorId

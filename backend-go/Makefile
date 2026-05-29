@@ -1,4 +1,4 @@
-.PHONY: lint lint-fix test test-integration test-all gen-goa dev build
+.PHONY: lint lint-fix test test-integration test-all dev build generate
 
 # Run linters
 lint:
@@ -7,20 +7,12 @@ lint:
 lint-fix:
 	go fix ./... && golangci-lint run --build-tags integration --fix
 
-test:
+test-unit:
 	go test -v ./internal/... -count=1 -race -timeout 120s
 
 # Run integration tests — testcontainers spins up isolated containers per package
-test-integration:
+test:
 	go test -v -tags integration ./internal/... -count=1 -race -timeout 300s
-
-# Run all tests (unit + integration)
-test-all:
-	go test -v -tags integration ./internal/... -count=1 -race -timeout 300s
-
-# Generate Goa code from design DSL
-gen-goa:
-	goa gen github.com/infisical/api/internal/server/design -o ./internal/server/
 
 # Start Go backend with hot-reload (uses root docker-compose.dev.yml)
 dev:
@@ -29,3 +21,7 @@ dev:
 # Build the server binary
 build:
 	go build -o infisical ./cmd/infisical/...
+
+# Regenerate oapi-codegen-dd code from openapi.yml specs
+generate:
+	go generate ./...

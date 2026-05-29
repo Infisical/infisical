@@ -6,6 +6,8 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+
+	"github.com/infisical/api/internal/libs/errutil"
 )
 
 // ActorType identifies the kind of entity performing an action.
@@ -122,6 +124,10 @@ type Identity struct {
 	AuthMethod   ActorAuthMethod
 	IsSuperAdmin bool
 
+	// TokenVersionID is the session/token version ID (for JWT user auth).
+	// Used for assume privilege validation to ensure token is still valid.
+	TokenVersionID uuid.UUID
+
 	// MFA fields (for JWT user auth).
 	IsMfaVerified bool
 	MfaMethod     string
@@ -143,7 +149,6 @@ type Identity struct {
 
 type ctxKey struct{}
 type httpInfoKey struct{}
-type authInfoKey struct{}
 
 // HTTPInfo holds HTTP request information for audit logging.
 type HTTPInfo struct {
@@ -168,19 +173,35 @@ func WithIdentity(ctx context.Context, id *Identity) context.Context {
 	return context.WithValue(ctx, ctxKey{}, id)
 }
 
-// IdentityFromContext returns the identity stored in ctx, or nil if absent.
-func IdentityFromContext(ctx context.Context) *Identity {
-	id, _ := ctx.Value(ctxKey{}).(*Identity)
-	return id
+// IdentityFromContext returns the identity stored in ctx.
+// Returns an error if identity is not present (authentication required).
+func IdentityFromContext(ctx context.Context) (*Identity, error) {
+	id, ok := ctx.Value(ctxKey{}).(*Identity)
+	if !ok || id == nil {
+		return nil, errutil.Unauthorized("Authentication required")
+	}
+	return id, nil
 }
 
-// WithAuthInfo stores the actor auth info in the context.
-func WithAuthInfo(ctx context.Context, info *AuthInfo) context.Context {
-	return context.WithValue(ctx, authInfoKey{}, info)
+// AssumedPrivilegeDetails holds the decoded assume privilege token payload.
+// This is stored in request context when a user is assuming another actor's privileges.
+type AssumedPrivilegeDetails struct {
+	TokenVersionID uuid.UUID
+	ProjectID      string
+	RequesterID    uuid.UUID
+	ActorType      ActorType
+	ActorID        uuid.UUID
 }
 
-// AuthInfoFromContext returns the actor auth info stored in ctx, or nil if absent.
-func AuthInfoFromContext(ctx context.Context) *AuthInfo {
-	info, _ := ctx.Value(authInfoKey{}).(*AuthInfo)
-	return info
+type assumedPrivilegeKey struct{}
+
+// WithAssumedPrivilege stores the assumed privilege details in the context.
+func WithAssumedPrivilege(ctx context.Context, details *AssumedPrivilegeDetails) context.Context {
+	return context.WithValue(ctx, assumedPrivilegeKey{}, details)
+}
+
+// AssumedPrivilegeFromContext returns the assumed privilege details stored in ctx, or nil if absent.
+func AssumedPrivilegeFromContext(ctx context.Context) *AssumedPrivilegeDetails {
+	details, _ := ctx.Value(assumedPrivilegeKey{}).(*AssumedPrivilegeDetails)
+	return details
 }

@@ -440,3 +440,29 @@ func TestResolveChain_DiamondDedup(t *testing.T) {
 	assert.Equal(t, sharedFolder, chain[1].FolderID)
 	assert.Equal(t, chainFolderC, chain[2].FolderID)
 }
+
+func TestResolveChain_SkipsReplicationImports(t *testing.T) {
+	// Security regression test: replication imports must be skipped.
+	// Live replication source folders should only be accessed through
+	// the reserved replicated folder, not directly via import chains.
+	liveFolder := uuid.MustParse("30000000-0000-0000-0000-0000000000a1")
+	approvedFolder := uuid.MustParse("30000000-0000-0000-0000-0000000000a2")
+
+	rows := []importRow{
+		{ID: chainImp1, ImportPath: "/live", ImportEnvID: devEnvID, Position: 1, FolderID: chainFolderA, IsReplication: nullBool(true)},
+		{ID: chainImp2, ImportPath: "/approved", ImportEnvID: devEnvID, Position: 2, FolderID: chainFolderA, IsReserved: nullBool(true)},
+	}
+	l := newImportLookup(rows)
+
+	resolver := mockResolver(map[importTarget]uuid.UUID{
+		{devEnvID, "/live"}:     liveFolder,
+		{devEnvID, "/approved"}: approvedFolder,
+	})
+
+	chain := l.ResolveChain(chainFolderA, resolver)
+
+	// Only the approved (reserved) import should be included, not the replication source.
+	require.Len(t, chain, 1)
+	assert.Equal(t, approvedFolder, chain[0].FolderID)
+	assert.Equal(t, chainImp2, l.ID(chain[0].ImportIdx))
+}

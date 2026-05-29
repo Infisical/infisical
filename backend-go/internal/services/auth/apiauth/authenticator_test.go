@@ -1,11 +1,14 @@
 package apiauth
 
 import (
+	"database/sql"
 	"testing"
+	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/infisical/api/internal/services/auth"
 )
@@ -537,4 +540,105 @@ func TestIdentityTokenUsesRemainingKey(t *testing.T) {
 	result := identityTokenUsesRemainingKey(identityID, tokenID)
 
 	assert.Equal(t, "identity-token-uses-remaining:identity-123:token-456", result)
+}
+
+// =============================================================================
+// validateLegacyAccessTokenConstraints Tests (no DB needed)
+// =============================================================================
+
+func TestValidateLegacyAccessTokenConstraints(t *testing.T) {
+	t.Parallel()
+
+	now := time.Now()
+
+	tests := []struct {
+		name        string
+		token       *identityAccessTokenRow
+		expectError bool
+		errorMsg    string
+	}{
+		{
+			name: "valid token - all constraints pass",
+			token: &identityAccessTokenRow{
+				CreatedAt:                sql.Null[time.Time]{Valid: true, V: now.Add(-1 * time.Minute)},
+				AccessTokenLastRenewedAt: sql.Null[time.Time]{Valid: true, V: now.Add(-30 * time.Second)},
+				AccessTokenTTL:           3600,
+				AccessTokenMaxTTL:        7200,
+				AccessTokenNumUses:       1,
+				AccessTokenNumUsesLimit:  10,
+			},
+			expectError: false,
+		},
+		{
+			name: "expired TTL",
+			token: &identityAccessTokenRow{
+				CreatedAt:                sql.Null[time.Time]{Valid: true, V: now.Add(-2 * time.Hour)},
+				AccessTokenLastRenewedAt: sql.Null[time.Time]{Valid: true, V: now.Add(-2 * time.Hour)},
+				AccessTokenTTL:           3600, // 1 hour TTL, but 2 hours have passed
+				AccessTokenMaxTTL:        0,
+				AccessTokenNumUsesLimit:  0,
+			},
+			expectError: true,
+			errorMsg:    "TTL expired",
+		},
+		{
+			name: "expired maxTTL",
+			token: &identityAccessTokenRow{
+				CreatedAt:                sql.Null[time.Time]{Valid: true, V: now.Add(-3 * time.Hour)},
+				AccessTokenLastRenewedAt: sql.Null[time.Time]{Valid: true, V: now.Add(-1 * time.Minute)},
+				AccessTokenTTL:           3600,
+				AccessTokenMaxTTL:        7200, // 2 hour max TTL, but 3 hours since creation
+				AccessTokenNumUsesLimit:  0,
+			},
+			expectError: true,
+			errorMsg:    "max TTL expired",
+		},
+		{
+			name: "usage limit reached",
+			token: &identityAccessTokenRow{
+				CreatedAt:               sql.Null[time.Time]{Valid: true, V: now.Add(-1 * time.Minute)},
+				AccessTokenTTL:          3600,
+				AccessTokenMaxTTL:       0,
+				AccessTokenNumUses:      5,
+				AccessTokenNumUsesLimit: 5, // limit reached
+			},
+			expectError: true,
+			errorMsg:    "usage limit reached",
+		},
+		{
+			name: "usage limit exceeded",
+			token: &identityAccessTokenRow{
+				CreatedAt:               sql.Null[time.Time]{Valid: true, V: now.Add(-1 * time.Minute)},
+				AccessTokenTTL:          0,
+				AccessTokenMaxTTL:       0,
+				AccessTokenNumUses:      10,
+				AccessTokenNumUsesLimit: 5, // already exceeded
+			},
+			expectError: true,
+			errorMsg:    "usage limit reached",
+		},
+		{
+			name: "no constraints - always valid",
+			token: &identityAccessTokenRow{
+				CreatedAt:               sql.Null[time.Time]{Valid: true, V: now.Add(-24 * time.Hour)},
+				AccessTokenTTL:          0,
+				AccessTokenMaxTTL:       0,
+				AccessTokenNumUsesLimit: 0,
+			},
+			expectError: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			err := validateLegacyAccessTokenConstraints(tt.token, now)
+			if tt.expectError {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tt.errorMsg)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
 }

@@ -18,8 +18,6 @@ import { OrgPermissionActions } from "@app/context/OrgPermissionContext/types";
 import { AUDIT_LOG_STREAM_PROVIDER_MAP, getProviderUrl } from "@app/helpers/auditLogStreams";
 import { TAuditLogStream } from "@app/hooks/api/types";
 
-import { LastErrorDialog } from "./LastErrorDialog";
-
 type Props = {
   logStream: TAuditLogStream;
   onDelete: (logStream: TAuditLogStream) => void;
@@ -27,12 +25,10 @@ type Props = {
 };
 
 export const AuditLogStreamRow = ({ logStream, onDelete, onEditCredentials }: Props) => {
-  const { id, provider, lastErrorMessage, lastErrorTimestamp } = logStream;
+  const { id, provider } = logStream;
 
   const providerDetails = AUDIT_LOG_STREAM_PROVIDER_MAP[provider];
   const url = getProviderUrl(logStream);
-
-  const hasLastError = Boolean(lastErrorMessage || lastErrorTimestamp);
 
   return (
     <Tr
@@ -63,12 +59,6 @@ export const AuditLogStreamRow = ({ logStream, onDelete, onEditCredentials }: Pr
       <Td className="max-w-0 min-w-32!">
         <div className="flex w-full items-center gap-2">
           <p className="truncate">{url}</p>
-          {hasLastError && (
-            <LastErrorDialog
-              lastErrorMessage={lastErrorMessage ?? null}
-              lastErrorTimestamp={lastErrorTimestamp ?? null}
-            />
-          )}
         </div>
       </Td>
       <Td>

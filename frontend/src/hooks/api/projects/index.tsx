@@ -14,6 +14,7 @@ export {
   useDeleteWorkspace,
   useDeleteWsEnvironment,
   useGetMembershipPermissionAudit,
+  useGetMyPendingProjectAccessRequests,
   useGetProjectSshConfig,
   useGetUpgradeProjectStatus,
   useGetUserProjects,
