@@ -29,6 +29,7 @@ type TInternalCertificateAuthorityConfiguration = {
   serialNumber?: string | null;
   activeCaCertId?: string | null;
   crlDistributionPointUrls?: string[];
+  disableManagedCrlDistributionPointUrl?: boolean;
 };
 
 export const InternalCertificateAuthorityConfigurationSchema = z
@@ -51,7 +52,12 @@ export const InternalCertificateAuthorityConfigurationSchema = z
     activeCaCertId: z.string().uuid().nullish(),
     crlDistributionPointUrls: distributionPointUrlsSchema
       .optional()
-      .describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.crlDistributionPointUrls)
+      .describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.crlDistributionPointUrls),
+    disableManagedCrlDistributionPointUrl: z
+      .boolean()
+      .optional()
+      .default(false)
+      .describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.disableManagedCrlDistributionPointUrl)
   })
   .refine(
     (data) => {
@@ -81,7 +87,11 @@ export const CreateInternalCertificateAuthoritySchema = GenericCreateCertificate
 export const UpdateInternalCertificateAuthorityConfigurationSchema = z.object({
   crlDistributionPointUrls: distributionPointUrlsSchema
     .optional()
-    .describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.crlDistributionPointUrls)
+    .describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.crlDistributionPointUrls),
+  disableManagedCrlDistributionPointUrl: z
+    .boolean()
+    .optional()
+    .describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.disableManagedCrlDistributionPointUrl)
 });
 
 export const UpdateInternalCertificateAuthoritySchema = GenericUpdateCertificateAuthorityFieldsSchema(

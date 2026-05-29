@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 import { dashboardKeys } from "@app/hooks/api/dashboard/queries";
 import {
+  TCheckSecretRotationV2CredentialsDTO,
   TCreateSecretRotationV2DTO,
   TDeleteSecretRotationV2DTO,
   TMoveSecretRotationV2DTO,
@@ -144,5 +145,13 @@ export const useReconcileLocalAccountRotation = () => {
       queryClient.invalidateQueries({
         queryKey: dashboardKeys.getDashboardSecrets({ projectId, secretPath })
       })
+  });
+};
+
+export const useCheckSecretRotationV2Credentials = () => {
+  return useMutation({
+    mutationFn: async ({ type, rotationId }: TCheckSecretRotationV2CredentialsDTO) => {
+      await apiRequest.post(`/api/v2/secret-rotations/${type}/${rotationId}/check-credentials`);
+    }
   });
 };

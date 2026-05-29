@@ -3,6 +3,7 @@ import https from "https";
 
 import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
+import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TGatewayV2ConnectionDetails } from "@app/ee/services/gateway-v2/gateway-v2-types";
 import { request } from "@app/lib/config/request";
@@ -12,7 +13,7 @@ import { GatewayProxyProtocol, withGatewayProxy } from "@app/lib/gateway";
 import { GatewayVersion, TGatewayV1RelayDetails } from "@app/lib/gateway/types";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { logger } from "@app/lib/logger";
-import { safeRequest } from "@app/lib/validator";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 import { HCVaultAuthType, HCVaultConnectionMethod } from "./hc-vault-connection-enums";
@@ -34,8 +35,6 @@ import {
   THCVaultMount,
   THCVaultMountResponse
 } from "./hc-vault-connection-types";
-
-export type THCVaultGatewayRequestConfig = AxiosRequestConfig & { url: string };
 
 // HashiCorp Vault stores JSON data, so values can be any valid JSON type
 export type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
@@ -64,6 +63,15 @@ const isVault404Error = (error: unknown): boolean => {
     return axiosError.response?.status === 404;
   }
   return false;
+};
+
+// Helper to check if error is 404 from gateway
+const isGateway404Error = (error: unknown): boolean => {
+  return error instanceof BadRequestError && error.message?.includes("Request failed with status code 404");
+};
+
+const isGateway301Error = (error: unknown): boolean => {
+  return error instanceof BadRequestError && error.message?.includes("Request failed with status code 301");
 };
 
 // Helper to extract error message from Vault API errors
@@ -109,8 +117,10 @@ const createConcurrencyLimiter = (limit: number) => {
   };
 };
 
-export const getHCVaultInstanceUrl = (config: THCVaultConnectionConfig) => {
-  return removeTrailingSlash(config.credentials.instanceUrl);
+export const getHCVaultInstanceUrl = async (config: THCVaultConnectionConfig) => {
+  const instanceUrl = removeTrailingSlash(config.credentials.instanceUrl);
+
+  return instanceUrl;
 };
 
 export const getHCVaultConnectionListItem = () => ({
@@ -129,19 +139,31 @@ type TokenRespData = {
 };
 
 export const requestWithHCVaultGateway = async <T>(
-  appConnection: { gatewayId?: string | null },
+  appConnection: { gatewayId?: string | null; gatewayPoolId?: string | null },
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
-  requestConfig: THCVaultGatewayRequestConfig,
-  gatewayDetails?: TGatewayDetails
+  requestConfig: AxiosRequestConfig,
+  gatewayDetails?: TGatewayDetails,
+  gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">
 ): Promise<AxiosResponse<T>> => {
-  const { gatewayId } = appConnection;
+  const { gatewayId: directGatewayId, gatewayPoolId } = appConnection;
 
-  const url = new URL(requestConfig.url);
+  if (gatewayPoolId && !gatewayPoolService) {
+    throw new BadRequestError({
+      message: "Pool-backed connections require gatewayPoolService at the call site"
+    });
+  }
+  const gatewayId =
+    gatewayPoolId && gatewayPoolService
+      ? await gatewayPoolService.resolveEffectiveGatewayId({ gatewayId: directGatewayId, gatewayPoolId })
+      : directGatewayId;
+
+  const url = new URL(requestConfig.url as string);
+  await blockLocalAndPrivateIpAddresses(url.toString(), Boolean(gatewayId));
 
   // If gateway isn't set up, don't proxy request
   if (!gatewayId) {
-    return safeRequest.request<T>(requestConfig);
+    return request.request(requestConfig);
   }
 
   let gatewayConnectionDetailsV2: TGatewayV2ConnectionDetails | undefined;
@@ -198,7 +220,12 @@ export const requestWithHCVaultGateway = async <T>(
         } catch (error) {
           if (error instanceof AxiosError) {
             logger.error(
-              { message: error.message, data: (error.response as undefined | { data: unknown })?.data },
+              {
+                error,
+                message: error.message,
+                data: (error.response as undefined | { data: unknown })?.data,
+                url: url.toString()
+              },
               "Error during HashiCorp Vault gateway request:"
             );
           }
@@ -245,7 +272,12 @@ export const requestWithHCVaultGateway = async <T>(
       } catch (error) {
         if (error instanceof AxiosError) {
           logger.error(
-            { message: error.message, data: (error.response as undefined | { data: unknown })?.data },
+            {
+              error,
+              message: error.message,
+              data: (error.response as undefined | { data: unknown })?.data,
+              url: url.toString()
+            },
             "Error during HashiCorp Vault gateway request:"
           );
         }
@@ -305,7 +337,7 @@ export const validateHCVaultConnectionCredentials = async (
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
 ) => {
-  const instanceUrl = getHCVaultInstanceUrl(connection);
+  const instanceUrl = await getHCVaultInstanceUrl(connection);
 
   try {
     const accessToken = await getHCVaultAccessToken(connection, gatewayService, gatewayV2Service);
@@ -344,7 +376,7 @@ export const getHCVaultPolicyNames = async (
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
   gatewayDetails?: TGatewayDetails
 ) => {
-  const instanceUrl = getHCVaultInstanceUrl(connection);
+  const instanceUrl = await getHCVaultInstanceUrl(connection);
   const accessToken = await getHCVaultAccessToken(connection, gatewayService, gatewayV2Service);
 
   try {
@@ -392,7 +424,7 @@ export const listHCVaultPolicies = async (
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
   gatewayDetails?: TGatewayDetails
 ) => {
-  const instanceUrl = getHCVaultInstanceUrl(connection);
+  const instanceUrl = await getHCVaultInstanceUrl(connection);
   const accessToken = await getHCVaultAccessToken(connection, gatewayService, gatewayV2Service);
 
   try {
@@ -461,12 +493,47 @@ export const listHCVaultPolicies = async (
   }
 };
 
+const fetchHCVaultNamespacesWithoutNamespaceHeader = async ({
+  connection,
+  gatewayService,
+  gatewayV2Service,
+  instanceUrl,
+  accessToken
+}: {
+  connection: THCVaultConnection;
+  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
+  instanceUrl: string;
+  accessToken: string;
+}): Promise<string[]> => {
+  try {
+    const { data } = await requestWithHCVaultGateway<{
+      data: { keys: string[] };
+    }>(connection, gatewayService, gatewayV2Service, {
+      url: `${instanceUrl}/v1/sys/namespaces?list=true`,
+      method: "GET",
+      headers: {
+        "X-Vault-Token": accessToken
+      }
+    });
+
+    return data.data.keys || [];
+  } catch (error: unknown) {
+    if (error instanceof AxiosError) {
+      throw new BadRequestError({
+        message: `Failed to list namespaces: ${error.message || "Unknown error"}`
+      });
+    }
+    throw error;
+  }
+};
+
 export const listHCVaultNamespaces = async (
   connection: THCVaultConnection,
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
 ) => {
-  const instanceUrl = getHCVaultInstanceUrl(connection);
+  const instanceUrl = await getHCVaultInstanceUrl(connection);
   const accessToken = await getHCVaultAccessToken(connection, gatewayService, gatewayV2Service);
 
   const currentNamespace = connection.credentials.namespace || "/";
@@ -496,10 +563,26 @@ export const listHCVaultNamespaces = async (
 
       return data.data.keys || [];
     } catch (error: unknown) {
-      if (error instanceof AxiosError && error.response?.status === 404) {
+      if ((error instanceof AxiosError && error.response?.status === 404) || isGateway404Error(error)) {
         // No child namespaces at this path
         return null;
       }
+
+      // vault 1.0.0 does not support namespace root or /, so we need to handle this case
+      // if the error is 301 and the namespace path is /, try to fetch the namespaces without the namespace header
+      if (
+        ((error instanceof AxiosError && error.response?.status === 301) || isGateway301Error(error)) &&
+        (namespacePath === "/" || namespacePath === "root")
+      ) {
+        return fetchHCVaultNamespacesWithoutNamespaceHeader({
+          connection,
+          gatewayService,
+          gatewayV2Service,
+          instanceUrl,
+          accessToken
+        });
+      }
+
       throw error;
     }
   };
@@ -585,7 +668,7 @@ export const listHCVaultMounts = async (
   namespace?: string,
   gatewayDetails?: TGatewayDetails
 ) => {
-  const instanceUrl = getHCVaultInstanceUrl(connection);
+  const instanceUrl = await getHCVaultInstanceUrl(connection);
   const accessToken = await getHCVaultAccessToken(connection, gatewayService, gatewayV2Service);
 
   const targetNamespace = namespace || connection.credentials.namespace;
@@ -626,7 +709,7 @@ export const listHCVaultSecretPaths = async (
   filterMountPath?: string,
   gatewayDetails?: TGatewayDetails
 ) => {
-  const instanceUrl = getHCVaultInstanceUrl(connection);
+  const instanceUrl = await getHCVaultInstanceUrl(connection);
   const accessToken = await getHCVaultAccessToken(connection, gatewayService, gatewayV2Service);
 
   const getPaths = async (mountPath: string, secretPath: string, kvVersion: "1" | "2"): Promise<string[] | null> => {
@@ -661,7 +744,7 @@ export const listHCVaultSecretPaths = async (
 
       return data.data.keys;
     } catch (error) {
-      if (error instanceof AxiosError && error.response?.status === 404) {
+      if ((error instanceof AxiosError && error.response?.status === 404) || isGateway404Error(error)) {
         return null;
       }
 
@@ -676,27 +759,25 @@ export const listHCVaultSecretPaths = async (
     limiter: ReturnType<typeof createConcurrencyLimiter>,
     currentPath: string = ""
   ): Promise<string[]> => {
-    const paths = await getPaths(mountPath, currentPath, kvVersion);
+    const paths = await limiter(() => getPaths(mountPath, currentPath, kvVersion));
 
     if (paths === null || paths.length === 0) {
       return [];
     }
 
-    // Process paths in parallel with concurrency control
+    // Process paths in parallel; concurrency is enforced on getPaths
     const secretPathsArrays = await Promise.all(
-      paths.map((path) =>
-        limiter(async () => {
-          const cleanPath = path.endsWith("/") ? path.slice(0, -1) : path;
-          const fullItemPath = currentPath ? `${currentPath}/${cleanPath}` : cleanPath;
+      paths.map(async (path) => {
+        const cleanPath = path.endsWith("/") ? path.slice(0, -1) : path;
+        const fullItemPath = currentPath ? `${currentPath}/${cleanPath}` : cleanPath;
 
-          if (path.endsWith("/")) {
-            // it's a folder so we recurse into it
-            return recursivelyGetAllPaths(mountPath, kvVersion, limiter, fullItemPath);
-          }
-          // it's a secret so we return it
-          return [`${mountPath}/${fullItemPath}`];
-        })
-      )
+        if (path.endsWith("/")) {
+          // it's a folder so we recurse into it
+          return recursivelyGetAllPaths(mountPath, kvVersion, limiter, fullItemPath);
+        }
+        // it's a secret so we return it
+        return [`${mountPath}/${fullItemPath}`];
+      })
     );
 
     // Flatten the arrays into a single array
@@ -842,7 +923,7 @@ export const getHCVaultSecretsForPaths = async (
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
 ): Promise<Array<{ vaultSecretPath: string; secrets: Record<string, JsonValue> }>> => {
-  const instanceUrl = getHCVaultInstanceUrl(connection);
+  const instanceUrl = await getHCVaultInstanceUrl(connection);
   const accessToken = await getHCVaultAccessToken(connection, gatewayService, gatewayV2Service);
   const mounts = await listHCVaultMounts(connection, gatewayService, gatewayV2Service, namespace);
   const limiter = createConcurrencyLimiter(HC_VAULT_CONCURRENCY_LIMIT);
@@ -874,7 +955,7 @@ export const getHCVaultAuthMounts = async (
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
   gatewayDetails?: TGatewayDetails
 ): Promise<THCVaultAuthMount[]> => {
-  const instanceUrl = getHCVaultInstanceUrl(connection);
+  const instanceUrl = await getHCVaultInstanceUrl(connection);
   const accessToken = await getHCVaultAccessToken(connection, gatewayService, gatewayV2Service);
 
   try {
@@ -931,7 +1012,7 @@ export const getHCVaultKubernetesAuthRoles = async (
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
 ): Promise<THCVaultKubernetesAuthRoleWithConfig[]> => {
-  const instanceUrl = getHCVaultInstanceUrl(connection);
+  const instanceUrl = await getHCVaultInstanceUrl(connection);
   const accessToken = await getHCVaultAccessToken(connection, gatewayService, gatewayV2Service);
 
   // Remove trailing slash from mount path
@@ -1036,7 +1117,7 @@ export const getHCVaultKubernetesRoles = async (
   const cleanMountPath = mountPath.endsWith("/") ? mountPath.slice(0, -1) : mountPath;
 
   try {
-    const instanceUrl = getHCVaultInstanceUrl(connection);
+    const instanceUrl = await getHCVaultInstanceUrl(connection);
     const accessToken = await getHCVaultAccessToken(connection, gatewayService, gatewayV2Service);
     // 1. Get the Kubernetes secrets engine configuration for this mount
     const { data: configResponse } = await requestWithHCVaultGateway<{ data: THCVaultKubernetesSecretsConfig }>(
@@ -1073,7 +1154,7 @@ export const getHCVaultKubernetesRoles = async (
       );
       roleNames = roleListResponse.data.keys || [];
     } catch (error) {
-      if (isVault404Error(error)) return [];
+      if (isVault404Error(error) || isGateway404Error(error)) return [];
       throw error;
     }
 
@@ -1139,7 +1220,7 @@ export const getHCVaultDatabaseRoles = async (
   const cleanMountPath = mountPath.endsWith("/") ? mountPath.slice(0, -1) : mountPath;
 
   try {
-    const instanceUrl = getHCVaultInstanceUrl(connection);
+    const instanceUrl = await getHCVaultInstanceUrl(connection);
     const accessToken = await getHCVaultAccessToken(connection, gatewayService, gatewayV2Service);
 
     // 1. List all database connections in this mount to get their configs
@@ -1160,7 +1241,7 @@ export const getHCVaultDatabaseRoles = async (
       );
       connectionNames = connectionListResponse.data.keys || [];
     } catch (error) {
-      if (isVault404Error(error)) return [];
+      if (isVault404Error(error) || isGateway404Error(error)) return [];
       throw error;
     }
 
@@ -1208,7 +1289,7 @@ export const getHCVaultDatabaseRoles = async (
       );
       roleNames = roleListResponse.data.keys || [];
     } catch (error) {
-      if (isVault404Error(error)) return [];
+      if (isVault404Error(error) || isGateway404Error(error)) return [];
       throw error;
     }
 
@@ -1276,7 +1357,7 @@ export const getHCVaultLdapRoles = async (
   const cleanMountPath = mountPath.endsWith("/") ? mountPath.slice(0, -1) : mountPath;
 
   try {
-    const instanceUrl = getHCVaultInstanceUrl(connection);
+    const instanceUrl = await getHCVaultInstanceUrl(connection);
     const accessToken = await getHCVaultAccessToken(connection, gatewayService, gatewayV2Service);
 
     // 1. Get the LDAP secrets engine configuration for this mount
@@ -1314,7 +1395,7 @@ export const getHCVaultLdapRoles = async (
       );
       roleNames = roleListResponse.data.keys || [];
     } catch (error) {
-      if (isVault404Error(error)) return [];
+      if (isVault404Error(error) || isGateway404Error(error)) return [];
       throw error;
     }
 

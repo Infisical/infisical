@@ -73,6 +73,10 @@ import {
   DatabricksConnectionListItemSchema,
   SanitizedDatabricksConnectionSchema
 } from "@app/services/app-connection/databricks";
+import {
+  DatadogConnectionListItemSchema,
+  SanitizedDatadogConnectionSchema
+} from "@app/services/app-connection/datadog";
 import { DbtConnectionListItemSchema, SanitizedDbtConnectionSchema } from "@app/services/app-connection/dbt";
 import { DevinConnectionListItemSchema, SanitizedDevinConnectionSchema } from "@app/services/app-connection/devin";
 import {
@@ -159,6 +163,10 @@ import {
   RenderConnectionListItemSchema,
   SanitizedRenderConnectionSchema
 } from "@app/services/app-connection/render/render-connection-schema";
+import {
+  SalesforceConnectionListItemSchema,
+  SanitizedSalesforceConnectionSchema
+} from "@app/services/app-connection/salesforce";
 import { SanitizedSmbConnectionSchema, SmbConnectionListItemSchema } from "@app/services/app-connection/smb";
 import {
   SanitizedSnowflakeConnectionSchema,
@@ -259,7 +267,9 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedOnaConnectionSchema.options,
   ...SanitizedDigiCertConnectionSchema.options,
   ...SanitizedTravisCIConnectionSchema.options,
-  ...SanitizedSnowflakeConnectionSchema.options
+  ...SanitizedSalesforceConnectionSchema.options,
+  ...SanitizedSnowflakeConnectionSchema.options,
+  ...SanitizedDatadogConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -326,7 +336,9 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   OnaConnectionListItemSchema,
   DigiCertConnectionListItemSchema,
   TravisCIConnectionListItemSchema,
-  SnowflakeConnectionListItemSchema
+  SalesforceConnectionListItemSchema,
+  SnowflakeConnectionListItemSchema,
+  DatadogConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

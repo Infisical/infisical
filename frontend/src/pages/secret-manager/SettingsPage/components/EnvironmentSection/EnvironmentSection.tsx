@@ -1,10 +1,30 @@
-import { faPlus } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useState } from "react";
+import { addDays, format } from "date-fns";
+import { ClockIcon, KeyIcon, PlusIcon, RotateCcwIcon, TriangleAlertIcon } from "lucide-react";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { PermissionDeniedBanner, ProjectPermissionCan } from "@app/components/permissions";
-import { Button, DeleteActionModal } from "@app/components/v2";
+import {
+  Alert,
+  AlertDescription,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  Button,
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Input
+} from "@app/components/v3";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
@@ -25,6 +45,7 @@ export const EnvironmentSection = () => {
   const { permission } = useProjectPermission();
 
   const deleteWsEnvironment = useDeleteWsEnvironment();
+  const [hardDeleteConfirmation, setHardDeleteConfirmation] = useState("");
 
   const isMoreEnvironmentsAllowed =
     subscription?.environmentLimit && currentProject?.environments
@@ -35,15 +56,47 @@ export const EnvironmentSection = () => {
     "createEnv",
     "updateEnv",
     "deleteEnv",
+    "hardDeleteEnv",
     "upgradePlan"
   ] as const);
 
-  const onEnvDeleteSubmit = async (id: string) => {
-    if (!currentProject?.id) return;
+  const deleteEnvData = popUp?.deleteEnv?.data as
+    | { name: string; slug: string; id: string }
+    | undefined;
+
+  const hardDeleteEnvData = popUp?.hardDeleteEnv?.data as
+    | { name: string; slug: string; id: string; deleteAfter?: string }
+    | undefined;
+
+  const onEnvDeleteSubmit = async () => {
+    if (!currentProject?.id || !deleteEnvData?.id) return;
 
     await deleteWsEnvironment.mutateAsync({
       projectId: currentProject.id,
-      id
+      id: deleteEnvData.id
+    });
+
+    createNotification({
+      text: "Environment scheduled for deletion",
+      type: "success"
+    });
+
+    handlePopUpClose("deleteEnv");
+  };
+
+  const onSwitchToHardDelete = () => {
+    if (!deleteEnvData) return;
+    handlePopUpClose("deleteEnv");
+    handlePopUpOpen("hardDeleteEnv", deleteEnvData);
+  };
+
+  const onEnvHardDeleteSubmit = async () => {
+    if (!currentProject?.id || !hardDeleteEnvData?.id) return;
+
+    await deleteWsEnvironment.mutateAsync({
+      projectId: currentProject.id,
+      id: hardDeleteEnvData.id,
+      hardDelete: true
     });
 
     createNotification({
@@ -51,25 +104,27 @@ export const EnvironmentSection = () => {
       type: "success"
     });
 
-    handlePopUpClose("deleteEnv");
+    handlePopUpClose("hardDeleteEnv");
+    setHardDeleteConfirmation("");
   };
 
   return (
-    <div
-      id="environments"
-      className="mb-6 scroll-m-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4"
-    >
-      <div className="mb-8 flex justify-between">
-        <p className="text-xl font-medium text-mineshaft-100">Environments</p>
-        <div>
+    <Card id="environments" className="mb-6 scroll-m-6">
+      <CardHeader>
+        <CardTitle>Environments</CardTitle>
+        <CardDescription>
+          Choose which environments will show up in your dashboard like development, staging,
+          production.
+        </CardDescription>
+        <CardAction>
           <ProjectPermissionCan
             I={ProjectPermissionActions.Create}
             a={ProjectPermissionSub.Environments}
           >
             {(isAllowed) => (
               <Button
-                colorSchema="secondary"
-                leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                variant="project"
+                size="sm"
                 onClick={() => {
                   if (isMoreEnvironmentsAllowed) {
                     handlePopUpOpen("createEnv");
@@ -79,21 +134,20 @@ export const EnvironmentSection = () => {
                 }}
                 isDisabled={!isAllowed}
               >
-                Create environment
+                <PlusIcon className="size-4" />
+                Create Environment
               </Button>
             )}
           </ProjectPermissionCan>
-        </div>
-      </div>
-      <p className="mb-8 text-gray-400">
-        Choose which environments will show up in your dashboard like development, staging,
-        production
-      </p>
-      {permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Environments) ? (
-        <EnvironmentTable handlePopUpOpen={handlePopUpOpen} />
-      ) : (
-        <PermissionDeniedBanner />
-      )}
+        </CardAction>
+      </CardHeader>
+      <CardContent>
+        {permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Environments) ? (
+          <EnvironmentTable handlePopUpOpen={handlePopUpOpen} />
+        ) : (
+          <PermissionDeniedBanner />
+        )}
+      </CardContent>
       <AddEnvironmentModal
         isOpen={popUp.createEnv.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("createEnv", isOpen)}
@@ -103,20 +157,117 @@ export const EnvironmentSection = () => {
         handlePopUpClose={handlePopUpClose}
         handlePopUpToggle={handlePopUpToggle}
       />
-      <DeleteActionModal
-        isOpen={popUp.deleteEnv.isOpen}
-        title={`Are you sure you want to delete ${
-          (popUp?.deleteEnv?.data as { name: string })?.name || " "
-        }?`}
-        onChange={(isOpen) => handlePopUpToggle("deleteEnv", isOpen)}
-        deleteKey={(popUp?.deleteEnv?.data as { slug: string })?.slug || ""}
-        onDeleteApproved={() => onEnvDeleteSubmit((popUp?.deleteEnv?.data as { id: string })?.id)}
-      />
+      <AlertDialog
+        open={popUp.deleteEnv.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("deleteEnv", isOpen)}
+      >
+        <AlertDialogContent className="sm:max-w-xl!">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Schedule deletion of {deleteEnvData?.name ?? "environment"}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              The {deleteEnvData?.slug ?? ""} environment will be inaccessible immediately, then
+              permanently deleted on{" "}
+              <span className="font-medium text-foreground">
+                {format(addDays(new Date(), 14), "MMM d, yyyy")}
+              </span>
+              .
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-2 rounded-md border border-border bg-foreground/5 p-3 text-sm">
+            <div className="flex gap-2">
+              <RotateCcwIcon className="mt-0.5 size-4 shrink-0 text-muted" />
+              <p>
+                <span className="font-medium text-foreground">Restore anytime within 14 days</span>{" "}
+                <span className="opacity-80">secrets, folders, and history are preserved.</span>
+              </p>
+            </div>
+            <div className="flex gap-2 opacity-80">
+              <KeyIcon className="mt-0.5 size-4 shrink-0 text-muted" />
+              <p>
+                Service tokens and integrations referencing {deleteEnvData?.slug ?? ""} will fail to
+                resolve. Fix or remove them before the grace period ends.
+              </p>
+            </div>
+            <div className="flex gap-2 opacity-80">
+              <ClockIcon className="mt-0.5 size-4 shrink-0 text-muted" />
+              <p>After 14 days, all secret data is wiped and cannot be recovered.</p>
+            </div>
+          </div>
+          <AlertDialogFooter className="sm:justify-between">
+            <Button variant="danger" size="sm" onClick={onSwitchToHardDelete}>
+              Delete Permanently
+            </Button>
+            <div className="flex gap-2">
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction variant="project" onClick={onEnvDeleteSubmit}>
+                Confirm
+              </AlertDialogAction>
+            </div>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog
+        open={popUp.hardDeleteEnv.isOpen}
+        onOpenChange={(isOpen) => {
+          handlePopUpToggle("hardDeleteEnv", isOpen);
+          if (!isOpen) setHardDeleteConfirmation("");
+        }}
+      >
+        <AlertDialogContent className="sm:max-w-xl!">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Permanently delete {hardDeleteEnvData?.name ?? "environment"}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Bypass the grace period and wipe {hardDeleteEnvData?.slug ?? ""} immediately. All
+              secrets, folders, and history will be lost. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <Alert variant="danger">
+            <TriangleAlertIcon />
+            <AlertDescription>
+              <p>
+                <span className="font-medium text-foreground">All secrets and folders</span> will be
+                wiped from storage.
+              </p>
+              <p>
+                Any service token or integration referencing {hardDeleteEnvData?.slug ?? ""} will
+                fail immediately and cannot be restored from this UI.
+              </p>
+            </AlertDescription>
+          </Alert>
+          <div className="w-full pt-2 pb-4">
+            <p className="mb-2 text-sm text-muted">
+              Type {hardDeleteEnvData?.slug ?? ""} to confirm.
+            </p>
+            <Input
+              value={hardDeleteConfirmation}
+              onChange={(e) => setHardDeleteConfirmation(e.target.value)}
+              placeholder={hardDeleteEnvData?.slug ?? ""}
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <Button
+              variant="danger"
+              size="sm"
+              onClick={onEnvHardDeleteSubmit}
+              isDisabled={
+                !hardDeleteEnvData?.slug || hardDeleteConfirmation !== hardDeleteEnvData.slug
+              }
+            >
+              Delete Permanently
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <UpgradePlanModal
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         text="You have reached the maximum number of environments allowed on the free plan. Upgrade to Infisical Pro plan to add more environments."
       />
-    </div>
+    </Card>
   );
 };

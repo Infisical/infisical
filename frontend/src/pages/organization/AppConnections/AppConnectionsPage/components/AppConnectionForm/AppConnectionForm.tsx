@@ -32,6 +32,7 @@ import { ChefConnectionForm } from "./ChefConnectionForm";
 import { CircleCIConnectionForm } from "./CircleCIConnectionForm";
 import { CloudflareConnectionForm } from "./CloudflareConnectionForm";
 import { DatabricksConnectionForm } from "./DatabricksConnectionForm";
+import { DatadogConnectionForm } from "./DatadogConnectionForm";
 import { DbtConnectionForm } from "./DbtConnectionForm";
 import { DevinConnectionForm } from "./DevinConnectionForm";
 import { DigiCertConnectionForm } from "./DigiCertConnectionForm";
@@ -66,6 +67,7 @@ import { PostgresConnectionForm } from "./PostgresConnectionForm";
 import { RailwayConnectionForm } from "./RailwayConnectionForm";
 import { RedisConnectionForm } from "./RedisConnectionForm";
 import { RenderConnectionForm } from "./RenderConnectionForm";
+import { SalesforceConnectionForm } from "./SalesforceConnectionForm";
 import { SmbConnectionForm } from "./SmbConnectionForm";
 import { SnowflakeConnectionForm } from "./SnowflakeConnectionForm";
 import { SshConnectionForm } from "./SshConnectionForm";
@@ -92,6 +94,7 @@ type AppConnectionFormData = DiscriminativePick<
     rotationInterval: number;
     rotateAtUtc: { hours: number; minutes: number };
   };
+  configuration?: Record<string, unknown>;
 };
 
 const RotationConfirmation = ({
@@ -298,8 +301,12 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
         return <DigiCertConnectionForm onSubmit={onSubmit} />;
       case AppConnection.TravisCI:
         return <TravisCIConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.Salesforce:
+        return <SalesforceConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Snowflake:
         return <SnowflakeConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.Datadog:
+        return <DatadogConnectionForm onSubmit={onSubmit} />;
       default:
         throw new Error(`Unhandled App ${app}`);
     }
@@ -523,8 +530,12 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         return <DigiCertConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.TravisCI:
         return <TravisCIConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.Salesforce:
+        return <SalesforceConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Snowflake:
         return <SnowflakeConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.Datadog:
+        return <DatadogConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Venafi:
         return <VenafiConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.VenafiTpp:

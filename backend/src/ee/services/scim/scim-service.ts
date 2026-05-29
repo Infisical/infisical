@@ -1,5 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 import slugify from "@sindresorhus/slugify";
+import { Knex } from "knex";
 import { scimPatch } from "scim-patch";
 
 import {
@@ -16,6 +17,7 @@ import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { addUsersToGroupByUserIds, removeUsersFromGroupByUserIds } from "@app/ee/services/group/group-fns";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TScimDALFactory } from "@app/ee/services/scim/scim-dal";
+import { PgSqlLock } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, NotFoundError, ScimRequestError, UnauthorizedError } from "@app/lib/errors";
@@ -39,6 +41,8 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
 import { TProjectKeyDALFactory } from "@app/services/project-key/project-key-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
+import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 import { UserAliasType } from "@app/services/user-alias/user-alias-types";
@@ -124,6 +128,7 @@ type TScimServiceFactoryDep = {
   additionalPrivilegeDAL: TAdditionalPrivilegeDALFactory;
   scimEventsDAL: Pick<TScimEventsDALFactory, "create" | "findEventsByOrgId">;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "findOne">;
+  telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
 };
 
 export const scimServiceFactory = ({
@@ -145,7 +150,8 @@ export const scimServiceFactory = ({
   membershipRoleDAL,
   additionalPrivilegeDAL,
   scimEventsDAL,
-  emailDomainDAL
+  emailDomainDAL,
+  telemetryService
 }: TScimServiceFactoryDep): TScimServiceFactory => {
   const createScimToken: TScimServiceFactory["createScimToken"] = async ({
     actor,
@@ -428,9 +434,14 @@ export const scimServiceFactory = ({
 
     await verifyEmailDomainOwnership({ email, orgId, emailDomainDAL });
 
-    const { user: createdUser, orgMembership: createdOrgMembership } = await userDAL.transaction(async (tx) => {
+    const {
+      user: createdUser,
+      orgMembership: createdOrgMembership,
+      isNewUser
+    } = await userDAL.transaction(async (tx) => {
       let user: TUsers | undefined;
       let orgMembership: TMemberships;
+      let newUserCreated = false;
       if (userAlias) {
         user = await userDAL.findById(userAlias.userId, tx);
         const effectiveMembership = await membershipUserDAL.findOne(
@@ -482,6 +493,7 @@ export const scimServiceFactory = ({
             },
             tx
           );
+          newUserCreated = true;
         }
 
         await userAliasDAL.create(
@@ -546,8 +558,21 @@ export const scimServiceFactory = ({
         tx
       );
       await licenseService.updateSubscriptionOrgMemberCount(org.id);
-      return { user, orgMembership };
+      return { user, orgMembership, isNewUser: newUserCreated };
     });
+
+    if (isNewUser) {
+      void telemetryService.sendPostHogEvents({
+        event: PostHogEventTypes.UserSignedUp,
+        distinctId: createdUser.username ?? "",
+        organizationId: orgId,
+        properties: {
+          username: createdUser.username,
+          email: createdUser.email ?? "",
+          signupMethod: "scim"
+        }
+      });
+    }
 
     if (email) {
       await smtpService.sendMail({
@@ -816,11 +841,10 @@ export const scimServiceFactory = ({
       [`${TableName.Membership}.scope` as "scope"]: AccessScope.Organization
     });
 
-    if (!membership)
-      throw new ScimRequestError({
-        detail: "User not found",
-        status: 404
-      });
+    // Return success even if user not found (idempotent delete per SCIM RFC 7644)
+    if (!membership) {
+      return {};
+    }
 
     if (!membership.scimEnabled) {
       throw new ScimRequestError({
@@ -942,27 +966,33 @@ export const scimServiceFactory = ({
     });
   };
 
-  const $syncNewMembersRoles = async (group: TGroups, members: TScimGroup["members"]) => {
+  const $syncNewMembersRoles = async (group: TGroups, members: TScimGroup["members"], tx?: Knex) => {
     // this function handles configuring newly provisioned users org membership if an external group mapping exists
 
     if (!members.length) return;
 
-    const externalGroupMapping = await externalGroupOrgRoleMappingDAL.findOne({
-      orgId: group.orgId,
-      groupName: group.name
-    });
+    const externalGroupMapping = await externalGroupOrgRoleMappingDAL.findOne(
+      {
+        orgId: group.orgId,
+        groupName: group.name
+      },
+      tx
+    );
 
     // no mapping, user will have default org membership
     if (!externalGroupMapping) return;
 
     // only get org memberships that are new (invites)
-    const newOrgMemberships = await membershipUserDAL.find({
-      status: "invited",
-      scope: AccessScope.Organization,
-      $in: {
-        id: members.map((member) => member.value)
-      }
-    });
+    const newOrgMemberships = await membershipUserDAL.find(
+      {
+        status: "invited",
+        scope: AccessScope.Organization,
+        $in: {
+          id: members.map((member) => member.value)
+        }
+      },
+      { tx }
+    );
 
     if (!newOrgMemberships.length) return;
 
@@ -976,7 +1006,8 @@ export const scimServiceFactory = ({
       {
         role: externalGroupMapping.role,
         customRoleId: externalGroupMapping.roleId
-      }
+      },
+      tx
     );
   };
 
@@ -1045,13 +1076,16 @@ export const scimServiceFactory = ({
       );
 
       if (members && members.length) {
-        const orgMemberships = await membershipUserDAL.find({
-          scope: AccessScope.Organization,
-          scopeOrgId: orgId,
-          $in: {
-            id: members.map((member) => member.value)
-          }
-        });
+        const orgMemberships = await membershipUserDAL.find(
+          {
+            scope: AccessScope.Organization,
+            scopeOrgId: orgId,
+            $in: {
+              id: members.map((member) => member.value)
+            }
+          },
+          { tx }
+        );
 
         const newMembers = await addUsersToGroupByUserIds({
           group,
@@ -1063,10 +1097,11 @@ export const scimServiceFactory = ({
           projectDAL,
           projectBotDAL,
           membershipGroupDAL,
-          tx
+          tx,
+          shouldFailOnMissingMembers: false
         });
 
-        await $syncNewMembersRoles(group, members);
+        await $syncNewMembersRoles(group, members, tx);
 
         return { group, newMembers };
       }
@@ -1103,7 +1138,7 @@ export const scimServiceFactory = ({
     });
   };
 
-  const getScimGroup: TScimServiceFactory["getScimGroup"] = async ({ groupId, orgId }) => {
+  const getScimGroup: TScimServiceFactory["getScimGroup"] = async ({ groupId, orgId, isMembersExcluded }) => {
     const plan = await licenseService.getPlan(orgId);
     if (!plan.groups)
       throw new BadRequestError({
@@ -1120,6 +1155,26 @@ export const scimServiceFactory = ({
         detail: "Group Not Found",
         status: 404
       });
+    }
+
+    if (isMembersExcluded) {
+      await scimEventsDAL.create({
+        orgId,
+        eventType: ScimEvent.GET_GROUP,
+        event: {
+          groupName: group.name
+        }
+      });
+
+      const scimGroup = buildScimGroup({
+        groupId: group.id,
+        name: group.name,
+        members: [],
+        createdAt: group.createdAt,
+        updatedAt: group.updatedAt
+      });
+      const { members, ...scimGroupWithoutMembers } = scimGroup;
+      return scimGroupWithoutMembers as TScimGroup;
     }
 
     const users = await groupDAL
@@ -1163,25 +1218,33 @@ export const scimServiceFactory = ({
   const $replaceGroupDAL = async (
     groupId: string,
     orgId: string,
-    { displayName, members = [] }: { displayName: string; members: { value: string }[] }
+    {
+      displayName,
+      members = [],
+      shouldFailOnMissingMembers = true,
+      tx: outerTx
+    }: { displayName: string; members: { value: string }[]; shouldFailOnMissingMembers?: boolean; tx?: Knex }
   ) => {
-    let group = await groupDAL.findOne({
-      id: groupId,
-      orgId
-    });
+    const processReplacement = async (tx: Knex) => {
+      let group = await groupDAL.findOne(
+        {
+          id: groupId,
+          orgId
+        },
+        tx
+      );
 
-    if (!group) {
-      throw new ScimRequestError({
-        detail: "Group Not Found",
-        status: 404
-      });
-    }
+      if (!group) {
+        throw new ScimRequestError({
+          detail: "Group Not Found",
+          status: 404
+        });
+      }
 
-    const updatedGroup = await groupDAL.transaction(async (tx) => {
-      if (group?.name !== displayName) {
+      if (group.name !== displayName) {
         await externalGroupOrgRoleMappingDAL.update(
           {
-            groupName: group?.name,
+            groupName: group.name,
             orgId
           },
           {
@@ -1249,7 +1312,8 @@ export const scimServiceFactory = ({
           projectDAL,
           projectBotDAL,
           membershipGroupDAL,
-          tx
+          tx,
+          shouldFailOnMissingMembers
         });
       }
 
@@ -1261,14 +1325,25 @@ export const scimServiceFactory = ({
           userGroupMembershipDAL,
           membershipGroupDAL,
           projectKeyDAL,
-          tx
+          tx,
+          shouldFailOnMissingMembers
         });
       }
 
       return group;
-    });
+    };
 
-    await $syncNewMembersRoles(group, members);
+    let updatedGroup: TGroups;
+    if (outerTx) {
+      updatedGroup = await processReplacement(outerTx);
+      await $syncNewMembersRoles(updatedGroup, members, outerTx);
+    } else {
+      updatedGroup = await groupDAL.transaction(async (tx) => {
+        const replacedGroup = await processReplacement(tx);
+        await $syncNewMembersRoles(updatedGroup, members, tx);
+        return replacedGroup;
+      });
+    }
 
     return updatedGroup;
   };
@@ -1299,7 +1374,17 @@ export const scimServiceFactory = ({
         status: 403
       });
 
-    const updatedGroup = await $replaceGroupDAL(groupId, orgId, { displayName, members });
+    const updatedGroup = await groupDAL.transaction(async (tx) => {
+      // Acquire advisory lock to serialize concurrent SCIM PUT requests for the same group
+      await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.ScimGroupUpdate(groupId)]);
+
+      return $replaceGroupDAL(groupId, orgId, {
+        displayName,
+        members,
+        shouldFailOnMissingMembers: false,
+        tx
+      });
+    });
 
     await scimEventsDAL.create({
       orgId,
@@ -1341,33 +1426,49 @@ export const scimServiceFactory = ({
         status: 403
       });
 
-    const group = await groupDAL.findOne({
-      id: groupId,
-      orgId
-    });
+    const { scimGroup, updatedScimMembers } = await groupDAL.transaction(async (tx) => {
+      // Acquire advisory lock to serialize concurrent SCIM PATCH requests for the same group
+      await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.ScimGroupUpdate(groupId)]);
 
-    if (!group) {
-      throw new ScimRequestError({
-        detail: "Group Not Found",
-        status: 404
+      const group = await groupDAL.findOne(
+        {
+          id: groupId,
+          orgId
+        },
+        tx
+      );
+
+      if (!group) {
+        throw new ScimRequestError({
+          detail: "Group Not Found",
+          status: 404
+        });
+      }
+
+      const members = await userGroupMembershipDAL.findGroupMembershipsByGroupIdInOrg(group.id, orgId, tx);
+      const patchedScimGroup = buildScimGroup({
+        groupId: group.id,
+        name: group.name,
+        members: members.map((member) => ({
+          value: member.orgMembershipId
+        })),
+        createdAt: group.createdAt,
+        updatedAt: group.updatedAt
       });
-    }
+      scimPatch(patchedScimGroup, operations);
 
-    const members = await userGroupMembershipDAL.findGroupMembershipsByGroupIdInOrg(group.id, orgId);
-    const scimGroup = buildScimGroup({
-      groupId: group.id,
-      name: group.name,
-      members: members.map((member) => ({
-        value: member.orgMembershipId
-      })),
-      createdAt: group.createdAt,
-      updatedAt: group.updatedAt
+      // Apply the patched state with idempotent operations
+      await $replaceGroupDAL(groupId, orgId, {
+        displayName: patchedScimGroup.displayName,
+        members: patchedScimGroup.members,
+        shouldFailOnMissingMembers: false,
+        tx
+      });
+
+      const finalMembers = await userGroupMembershipDAL.findGroupMembershipsByGroupIdInOrg(group.id, orgId, tx);
+
+      return { scimGroup: patchedScimGroup, updatedScimMembers: finalMembers };
     });
-    scimPatch(scimGroup, operations);
-    // remove members is a weird case not following scim convention
-    await $replaceGroupDAL(groupId, orgId, { displayName: scimGroup.displayName, members: scimGroup.members });
-
-    const updatedScimMembers = await userGroupMembershipDAL.findGroupMembershipsByGroupIdInOrg(group.id, orgId);
 
     await scimEventsDAL.create({
       orgId,
@@ -1413,11 +1514,9 @@ export const scimServiceFactory = ({
       orgId
     });
 
+    // Return success even if group not found (idempotent delete per SCIM RFC 7644)
     if (!group) {
-      throw new ScimRequestError({
-        detail: "Group Not Found",
-        status: 404
-      });
+      return {};
     }
 
     await scimEventsDAL.create({
@@ -1428,7 +1527,7 @@ export const scimServiceFactory = ({
       }
     });
 
-    return {}; // intentionally return empty object upon success
+    return {};
   };
 
   const fnValidateScimToken: TScimServiceFactory["fnValidateScimToken"] = async (token) => {

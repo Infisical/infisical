@@ -39,7 +39,9 @@ export const CertificateRequestsSchema = z.object({
   country: z.string().nullable().optional(),
   state: z.string().nullable().optional(),
   locality: z.string().nullable().optional(),
-  encryptedPrivateKey: zodBuffer.nullable().optional()
+  encryptedPrivateKey: zodBuffer.nullable().optional(),
+  pendingMessage: z.string().nullable().optional(),
+  applicationId: z.string().uuid().nullable().optional()
 });
 
 export type TCertificateRequests = z.infer<typeof CertificateRequestsSchema>;

@@ -1,6 +1,7 @@
 import acme from "acme-client";
 import { UnrecoverableError } from "bullmq";
 
+import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { NotFoundError } from "@app/lib/errors";
@@ -22,17 +23,25 @@ import { TAppConnectionServiceFactory } from "../app-connection/app-connection-s
 import { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal";
 import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
 import { CertKeyAlgorithm } from "../certificate-common/certificate-constants";
+import {
+  calculateFinalRenewBeforeDays,
+  resolveEffectiveApiConfig
+} from "../certificate-common/certificate-issuance-utils";
+import { CertificateRequestCancelledError } from "../certificate-common/certificate-request-errors";
 import { DigiCertExternalMetadataSchema } from "../certificate-common/external-metadata-schemas";
 import { TCertificateRequestDALFactory } from "../certificate-request/certificate-request-dal";
 import { TCertificateRequestServiceFactory } from "../certificate-request/certificate-request-service";
 import { CertificateRequestStatus } from "../certificate-request/certificate-request-types";
+import { TApiEnrollmentConfigDALFactory } from "../enrollment-config/api-enrollment-config-dal";
 import { TPkiAlertV2QueueServiceFactory } from "../pki-alert-v2/pki-alert-v2-queue";
 import { PkiAlertEventType } from "../pki-alert-v2/pki-alert-v2-types";
+import { TPkiApplicationProfileDALFactory } from "../pki-application/pki-application-profile-dal";
 import { TPkiSubscriberDALFactory } from "../pki-subscriber/pki-subscriber-dal";
 import { TPkiSyncDALFactory } from "../pki-sync/pki-sync-dal";
 import { TPkiSyncQueueFactory } from "../pki-sync/pki-sync-queue";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 import { copyMetadataFromRequestToCertificate } from "../resource-metadata/resource-metadata-fns";
+import { runWithAcmeCancellation } from "./acme/acme-cancellation";
 import {
   ACME_ORDER_TIMEOUT_MS,
   AcmeOrderTimeoutError,
@@ -102,6 +111,7 @@ export type TIssueCertificateFromProfileJobData = {
   country?: string;
   state?: string;
   locality?: string;
+  applicationId?: string;
 };
 
 type TCertificateIssuanceQueueFactoryDep = {
@@ -126,10 +136,16 @@ type TCertificateIssuanceQueueFactoryDep = {
     TCertificateRequestServiceFactory,
     "attachCertificateToRequest" | "updateCertificateRequestStatus"
   >;
-  certificateRequestDAL?: Pick<TCertificateRequestDALFactory, "updateById">;
+  certificateRequestDAL?: Pick<
+    TCertificateRequestDALFactory,
+    "updateById" | "findById" | "setPendingMessage" | "transitionToPendingValidation"
+  >;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find" | "insertMany">;
   pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
+  pkiApplicationProfileDAL?: Pick<TPkiApplicationProfileDALFactory, "findOneByApplicationAndProfile">;
+  apiEnrollmentConfigDAL?: Pick<TApiEnrollmentConfigDALFactory, "findById">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
+  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
 };
 
 export type TCertificateIssuanceQueueFactory = ReturnType<typeof certificateIssuanceQueueFactory>;
@@ -153,7 +169,10 @@ export const certificateIssuanceQueueFactory = ({
   certificateRequestDAL,
   resourceMetadataDAL,
   pkiAlertV2Queue,
-  gatewayV2Service
+  pkiApplicationProfileDAL,
+  apiEnrollmentConfigDAL,
+  gatewayV2Service,
+  gatewayPoolService
 }: TCertificateIssuanceQueueFactoryDep) => {
   const acmeFns = AcmeCertificateAuthorityFns({
     appConnectionDAL,
@@ -236,7 +255,8 @@ export const certificateIssuanceQueueFactory = ({
     kmsService,
     projectDAL,
     certificateProfileDAL,
-    gatewayV2Service
+    gatewayV2Service,
+    gatewayPoolService
   });
 
   /**
@@ -262,7 +282,8 @@ export const certificateIssuanceQueueFactory = ({
     organizationalUnit,
     country,
     state,
-    locality
+    locality,
+    applicationId
   }: TIssueCertificateFromProfileJobData) => {
     const jobData: TIssueCertificateFromProfileJobData = {
       certificateId,
@@ -284,7 +305,8 @@ export const certificateIssuanceQueueFactory = ({
       organizationalUnit,
       country,
       state,
-      locality
+      locality,
+      applicationId
     };
 
     // ACM DNS validation can take 5–30 minutes; the function is fully idempotent via
@@ -294,8 +316,18 @@ export const certificateIssuanceQueueFactory = ({
         ? { attempts: 30, backoff: { type: "fixed" as const, delay: 60000 } }
         : { attempts: 3, backoff: { type: "exponential" as const, delay: 5000 } };
 
+    const jobIdSeed = certificateRequestId ?? certificateId;
+
+    if (certificateRequestId && certificateRequestDAL) {
+      try {
+        await certificateRequestDAL.setPendingMessage(certificateRequestId, "Waiting in the issuance queue");
+      } catch (error) {
+        logger.warn(error, `Failed to set queued pendingMessage [certificateRequestId=${certificateRequestId}]`);
+      }
+    }
+
     await queueService.queue(QueueName.CertificateIssuance, QueueJobs.CaIssueCertificateFromProfile, jobData, {
-      jobId: `certificate-issuance-${certificateId}`,
+      jobId: `certificate-issuance-${jobIdSeed}`,
       ...queueOpts
     });
   };
@@ -303,7 +335,7 @@ export const certificateIssuanceQueueFactory = ({
   /**
    * Process certificate issuance jobs
    */
-  const processCertificateIssuanceJobs = async (data: TIssueCertificateFromProfileJobData) => {
+  const processCertificateIssuanceJobs = async (data: TIssueCertificateFromProfileJobData, signal?: AbortSignal) => {
     const {
       certificateId,
       profileId,
@@ -326,8 +358,34 @@ export const certificateIssuanceQueueFactory = ({
       locality
     } = data;
 
+    const setPending = async (message: string) => {
+      if (!certificateRequestId || !certificateRequestDAL) return;
+      try {
+        await certificateRequestDAL.setPendingMessage(certificateRequestId, message);
+      } catch (error) {
+        logger.warn(error, `Failed to set pendingMessage [certificateRequestId=${certificateRequestId}]`);
+      }
+    };
+
+    const isCancelled = async (): Promise<boolean> => {
+      if (!certificateRequestId || !certificateRequestDAL) return false;
+      const current = await certificateRequestDAL.findById(certificateRequestId);
+      if (!current) return false;
+      return (
+        current.status !== CertificateRequestStatus.PENDING &&
+        current.status !== CertificateRequestStatus.PENDING_VALIDATION
+      );
+    };
+
     try {
       logger.info(`Processing certificate issuance job for [certificateId=${certificateId}] [caId=${caId}]`);
+
+      if (await isCancelled()) {
+        logger.info(
+          `Skipping issuance — certificate request is no longer pending [certificateRequestId=${certificateRequestId}]`
+        );
+        return;
+      }
 
       if (!caId) {
         throw new NotFoundError({
@@ -336,6 +394,8 @@ export const certificateIssuanceQueueFactory = ({
       }
 
       const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
+
+      await setPending("Starting certificate issuance");
 
       if (ca.externalCa?.type === CaType.ACME) {
         let certificateCsr: string;
@@ -360,27 +420,36 @@ export const certificateIssuanceQueueFactory = ({
           certificateCsr = generatedCsr.toString();
         }
 
+        if (await isCancelled()) {
+          logger.info(`Cancelled before ACME order [certificateRequestId=${certificateRequestId}]`);
+          return;
+        }
+
         let acmeResult;
         try {
-          acmeResult = await runWithAcmeOrderTimeout(
-            (signal) =>
-              acmeFns.orderCertificateFromProfile({
-                caId,
-                profileId,
-                commonName: commonName || "",
-                altNames: altNames?.map((san) => san.value) || [],
-                csr: Buffer.from(certificateCsr),
-                csrPrivateKey: skLeaf,
-                keyUsages: keyUsages as CertKeyUsage[],
-                extendedKeyUsages: extendedKeyUsages as CertExtendedKeyUsage[],
-                ttl,
-                signatureAlgorithm,
-                keyAlgorithm,
-                isRenewal,
-                originalCertificateId,
-                abortSignal: signal
-              }),
-            ACME_ORDER_TIMEOUT_MS
+          acmeResult = await runWithAcmeCancellation(signal, () =>
+            runWithAcmeOrderTimeout(
+              (timeoutSignal) =>
+                acmeFns.orderCertificateFromProfile({
+                  caId,
+                  profileId,
+                  commonName: commonName || "",
+                  altNames: altNames?.map((san) => san.value) || [],
+                  csr: Buffer.from(certificateCsr),
+                  csrPrivateKey: skLeaf,
+                  keyUsages: keyUsages as CertKeyUsage[],
+                  extendedKeyUsages: extendedKeyUsages as CertExtendedKeyUsage[],
+                  ttl,
+                  signatureAlgorithm,
+                  keyAlgorithm,
+                  isRenewal,
+                  originalCertificateId,
+                  onProgress: setPending,
+                  isCancelled,
+                  abortSignal: timeoutSignal
+                }),
+              ACME_ORDER_TIMEOUT_MS
+            )
           );
         } catch (acmeError) {
           if (isAcmeRateLimitError(acmeError)) {
@@ -388,6 +457,13 @@ export const certificateIssuanceQueueFactory = ({
             throw new AcmeRateLimitError(`ACME CA rate-limited the order: ${message}`);
           }
           throw acmeError;
+        }
+
+        if (await isCancelled()) {
+          logger.info(
+            `Cancelled after ACME order — certificate exists at CA but will not be attached [certificateRequestId=${certificateRequestId}]`
+          );
+          return;
         }
 
         if (certificateRequestId && certificateRequestService && acmeResult?.id) {
@@ -424,6 +500,7 @@ export const certificateIssuanceQueueFactory = ({
           }
         }
       } else if (ca.externalCa?.type === CaType.AZURE_AD_CS) {
+        await setPending("Submitting the request to Azure AD CS");
         let template: string | undefined;
         if (certificateProfileDAL) {
           try {
@@ -458,10 +535,21 @@ export const certificateIssuanceQueueFactory = ({
           isRenewal,
           originalCertificateId,
           template,
-          ...(csr && { csr })
+          ...(csr && { csr }),
+          isCancelled
         };
 
+        if (await isCancelled()) {
+          logger.info(`Cancelled before Azure AD CS order [certificateRequestId=${certificateRequestId}]`);
+          return;
+        }
+
         const azureResult = await azureAdCsFns.orderCertificateFromProfile(azureParams);
+
+        if (await isCancelled()) {
+          logger.info(`Cancelled after Azure AD CS order [certificateRequestId=${certificateRequestId}]`);
+          return;
+        }
 
         if (certificateRequestId && certificateRequestService && azureResult?.certificateId) {
           try {
@@ -496,6 +584,7 @@ export const certificateIssuanceQueueFactory = ({
           }
         }
       } else if (ca.externalCa?.type === CaType.AWS_ACM_PUBLIC_CA) {
+        await setPending("Submitting the request to AWS ACM Public CA");
         const acmParams = {
           caId,
           profileId,
@@ -514,10 +603,21 @@ export const certificateIssuanceQueueFactory = ({
           organizationalUnit,
           country,
           state,
-          locality
+          locality,
+          isCancelled
         };
 
+        if (await isCancelled()) {
+          logger.info(`Cancelled before AWS ACM Public CA order [certificateRequestId=${certificateRequestId}]`);
+          return;
+        }
+
         const acmResult = await awsAcmPublicCaFns.orderCertificateFromProfile(acmParams);
+
+        if (await isCancelled()) {
+          logger.info(`Cancelled after AWS ACM Public CA order [certificateRequestId=${certificateRequestId}]`);
+          return;
+        }
 
         if (certificateRequestId && certificateRequestService && acmResult?.certificateId) {
           try {
@@ -552,6 +652,7 @@ export const certificateIssuanceQueueFactory = ({
           }
         }
       } else if (ca.externalCa?.type === CaType.AWS_PCA) {
+        await setPending("Submitting the request to AWS Private CA");
         const awsPcaParams = {
           caId,
           profileId,
@@ -569,10 +670,21 @@ export const certificateIssuanceQueueFactory = ({
           organizationalUnit,
           country,
           state,
-          locality
+          locality,
+          isCancelled
         };
 
+        if (await isCancelled()) {
+          logger.info(`Cancelled before AWS Private CA order [certificateRequestId=${certificateRequestId}]`);
+          return;
+        }
+
         const awsPcaResult = await awsPcaFns.orderCertificateFromProfile(awsPcaParams);
+
+        if (await isCancelled()) {
+          logger.info(`Cancelled after AWS Private CA order [certificateRequestId=${certificateRequestId}]`);
+          return;
+        }
 
         if (certificateRequestId && certificateRequestService && awsPcaResult?.certificateId) {
           try {
@@ -613,6 +725,8 @@ export const certificateIssuanceQueueFactory = ({
           });
         }
 
+        await setPending("Submitting the request to DigiCert");
+
         let renewalOfOrderId: number | undefined;
         if (isRenewal && originalCertificateId) {
           const originalCert = await certificateDAL.findById(originalCertificateId);
@@ -626,6 +740,11 @@ export const certificateIssuanceQueueFactory = ({
           }
         }
 
+        if (await isCancelled()) {
+          logger.info(`Cancelled before DigiCert order [certificateRequestId=${certificateRequestId}]`);
+          return;
+        }
+
         const digicertResult = await digicertFns.orderCertificateFromProfile({
           caId,
           commonName: commonName || "",
@@ -636,6 +755,13 @@ export const certificateIssuanceQueueFactory = ({
           ...(csr && { csr }),
           ...(renewalOfOrderId !== undefined && { renewalOfOrderId })
         });
+
+        if (await isCancelled()) {
+          logger.info(
+            `Cancelled after DigiCert order — order placed at CA but will not be tracked locally [certificateRequestId=${certificateRequestId}]`
+          );
+          return;
+        }
 
         let encryptedPrivateKey: Buffer | undefined;
         if (digicertResult.privateKey) {
@@ -657,11 +783,17 @@ export const certificateIssuanceQueueFactory = ({
           }
         };
 
-        await certificateRequestDAL.updateById(certificateRequestId, {
-          status: CertificateRequestStatus.PENDING_VALIDATION,
+        const transitioned = await certificateRequestDAL.transitionToPendingValidation(certificateRequestId, {
           metadata: JSON.stringify(metadataWithRenewal),
           ...(encryptedPrivateKey && { encryptedPrivateKey })
         });
+
+        if (!transitioned) {
+          logger.info(
+            `Skipping DigiCert validation transition — request is no longer pending [certificateRequestId=${certificateRequestId}]`
+          );
+          return;
+        }
 
         if (digicertResult.immediateCertificateId) {
           try {
@@ -705,11 +837,13 @@ export const certificateIssuanceQueueFactory = ({
             );
           }
         } else {
+          await setPending(`DigiCert is processing the request — order #${digicertResult.metadata.digicert.orderId}`);
           logger.info(
             `DigiCert order placed, awaiting validation [certificateRequestId=${certificateRequestId}] [orderId=${digicertResult.metadata.digicert.orderId}]`
           );
         }
       } else if (ca.externalCa?.type === CaType.VENAFI_TPP) {
+        await setPending("Submitting the request to Venafi TPP");
         const venafiTppParams = {
           caId,
           profileId,
@@ -727,10 +861,21 @@ export const certificateIssuanceQueueFactory = ({
           organizationalUnit,
           country,
           state,
-          locality
+          locality,
+          isCancelled
         };
 
+        if (await isCancelled()) {
+          logger.info(`Cancelled before Venafi TPP order [certificateRequestId=${certificateRequestId}]`);
+          return;
+        }
+
         const venafiTppResult = await venafiTppFns.orderCertificateFromProfile(venafiTppParams);
+
+        if (await isCancelled()) {
+          logger.info(`Cancelled after Venafi TPP order [certificateRequestId=${certificateRequestId}]`);
+          return;
+        }
 
         if (certificateRequestId && certificateRequestService && venafiTppResult?.certificateId) {
           try {
@@ -770,20 +915,82 @@ export const certificateIssuanceQueueFactory = ({
         `Successfully processed certificate issuance job with [certificateId=${certificateId}] [caId=${caId}]`
       );
 
+      let scopedApplicationId: string | null = data.applicationId ?? null;
+      try {
+        if (!scopedApplicationId && isRenewal && originalCertificateId) {
+          const orig = await certificateDAL.findById(originalCertificateId);
+          scopedApplicationId = orig?.applicationId ?? null;
+        }
+        if (scopedApplicationId && certificateRequestId && certificateRequestDAL) {
+          const req = await certificateRequestDAL.findById(certificateRequestId);
+          if (req?.certificateId) {
+            await certificateDAL.updateById(req.certificateId, { applicationId: scopedApplicationId });
+          }
+        }
+      } catch (stampErr) {
+        logger.warn(
+          stampErr,
+          `Failed to stamp applicationId on async-issued certificate [certificateRequestId=${certificateRequestId}]`
+        );
+      }
+
+      try {
+        if (scopedApplicationId && profileId && certificateProfileDAL && certificateRequestDAL) {
+          const req = await certificateRequestDAL.findById(certificateRequestId!);
+          if (req?.certificateId) {
+            const profile = await certificateProfileDAL.findByIdWithConfigs(profileId);
+            if (profile) {
+              const effectiveApiConfig = await resolveEffectiveApiConfig({
+                applicationId: scopedApplicationId,
+                profileId,
+                profileApiConfig: profile.apiConfig,
+                pkiApplicationProfileDAL,
+                apiEnrollmentConfigDAL
+              });
+              const cert = await certificateDAL.findById(req.certificateId);
+              if (cert && !cert.renewBeforeDays) {
+                const finalRenewBeforeDays = calculateFinalRenewBeforeDays(
+                  { apiConfig: effectiveApiConfig },
+                  ttl,
+                  new Date(cert.notAfter)
+                );
+                if (finalRenewBeforeDays !== undefined) {
+                  await certificateDAL.updateById(req.certificateId, { renewBeforeDays: finalRenewBeforeDays });
+                }
+              }
+            }
+          }
+        }
+      } catch (renewErr) {
+        logger.warn(
+          renewErr,
+          `Failed to set renewBeforeDays on async-issued certificate [certificateRequestId=${certificateRequestId}]`
+        );
+      }
+
       try {
         await pkiAlertV2Queue?.queueCertificateEvent({
           certificateId,
           projectId: ca.projectId,
-          eventType: isRenewal ? PkiAlertEventType.RENEWAL : PkiAlertEventType.ISSUANCE
+          eventType: isRenewal ? PkiAlertEventType.RENEWAL : PkiAlertEventType.ISSUANCE,
+          applicationId: scopedApplicationId
         });
       } catch {
         logger.debug("Failed to queue PKI alert event for async certificate issuance");
       }
     } catch (error: unknown) {
+      if (error instanceof CertificateRequestCancelledError) {
+        logger.info(
+          `Certificate issuance aborted — request was cancelled before persistence [certificateRequestId=${certificateRequestId}]`
+        );
+        throw new UnrecoverableError(error.message);
+      }
+
       // AcmPendingError signals that an ACM operation (DNS validation, renewal, export) is still
       // in flight. Don't mark the request as FAILED on every poll — only after the queue exhausts attempts.
       const isRetryable = error instanceof AcmPendingError;
       if (isRetryable) {
+        await setPending(`AWS ACM is validating DNS records — ${error.message}`);
         logger.info(
           `Certificate issuance pending ACM operation — will retry [certificateId=${certificateId}] [caId=${caId}]`
         );
@@ -824,38 +1031,70 @@ export const certificateIssuanceQueueFactory = ({
     }
   };
 
-  queueService.start(QueueName.CertificateIssuance, async (job) => {
-    try {
-      await processCertificateIssuanceJobs(job.data);
-    } catch (error) {
-      // AcmPendingError is rethrown on every retry so BullMQ keeps polling; the in-handler
-      // FAILED-update branch never runs for it. On the final attempt we still need to flip the request
-      // row to FAILED ourselves — BullMQ will move the job to the failed state but has no hook to
-      // update our DB, and no queue-level "failed" listener is wired for CertificateIssuance.
-      if (error instanceof AcmPendingError) {
-        const attemptsMade = job.attemptsMade ?? 0;
-        const maxAttempts = job.opts?.attempts ?? 1;
-        const isFinalAttempt = attemptsMade + 1 >= maxAttempts;
-        const { certificateRequestId, certificateId, caId } = job.data;
-        if (isFinalAttempt && certificateRequestId && certificateRequestService) {
-          try {
-            await certificateRequestService.updateCertificateRequestStatus({
-              certificateRequestId,
-              status: CertificateRequestStatus.FAILED,
-              errorMessage: `AWS ACM DNS validation did not complete after ${maxAttempts} attempts: ${error.message}`
-            });
-            logger.info(
-              `Marked certificate request FAILED after exhausted ACM validation retries [certificateRequestId=${certificateRequestId}] [certificateId=${certificateId}] [caId=${caId}]`
-            );
-          } catch (updateError) {
-            logger.error(
-              updateError,
-              `Failed to mark certificate request FAILED after exhausted ACM retries [certificateRequestId=${certificateRequestId}]`
-            );
+  queueService.start(QueueName.CertificateIssuance, async (job, _token, signal) => {
+    const work = (async () => {
+      try {
+        await processCertificateIssuanceJobs(job.data, signal);
+      } catch (error) {
+        // AcmPendingError is rethrown on every retry so BullMQ keeps polling; the in-handler
+        // FAILED-update branch never runs for it. On the final attempt we still need to flip the request
+        // row to FAILED ourselves — BullMQ will move the job to the failed state but has no hook to
+        // update our DB, and no queue-level "failed" listener is wired for CertificateIssuance.
+        if (error instanceof AcmPendingError) {
+          const attemptsMade = job.attemptsMade ?? 0;
+          const maxAttempts = job.opts?.attempts ?? 1;
+          const isFinalAttempt = attemptsMade + 1 >= maxAttempts;
+          const { certificateRequestId, certificateId, caId } = job.data;
+          if (isFinalAttempt && certificateRequestId && certificateRequestService) {
+            try {
+              await certificateRequestService.updateCertificateRequestStatus({
+                certificateRequestId,
+                status: CertificateRequestStatus.FAILED,
+                errorMessage: `AWS ACM DNS validation did not complete after ${maxAttempts} attempts: ${error.message}`
+              });
+              logger.info(
+                `Marked certificate request FAILED after exhausted ACM validation retries [certificateRequestId=${certificateRequestId}] [certificateId=${certificateId}] [caId=${caId}]`
+              );
+            } catch (updateError) {
+              logger.error(
+                updateError,
+                `Failed to mark certificate request FAILED after exhausted ACM retries [certificateRequestId=${certificateRequestId}]`
+              );
+            }
           }
         }
+        throw error;
+      }
+    })();
+
+    if (!signal) {
+      await work;
+      return;
+    }
+
+    if (signal.aborted) {
+      // Someone called cancelActiveJob before we even started racing. Detach the orphan
+      // and surface the cancellation as a non-retryable failure so BullMQ frees the worker.
+      work.catch((err) => logger.warn(err, `Orphaned cert issuance after cancel [jobId=${job.id}]`));
+      throw new UnrecoverableError(`Cancelled: ${(signal.reason as string | undefined) ?? "cancelled"}`);
+    }
+
+    let onAbort: (() => void) | undefined;
+    const aborted = new Promise<never>((_, reject) => {
+      onAbort = () => reject(new Error(`Cancelled: ${(signal.reason as string | undefined) ?? "cancelled"}`));
+      signal.addEventListener("abort", onAbort, { once: true });
+    });
+
+    try {
+      await Promise.race([work, aborted]);
+    } catch (error) {
+      if (signal.aborted) {
+        work.catch((err) => logger.warn(err, `Orphaned cert issuance after cancel [jobId=${job.id}]`));
+        throw new UnrecoverableError(error instanceof Error ? error.message : String(error));
       }
       throw error;
+    } finally {
+      if (onAbort) signal.removeEventListener("abort", onAbort);
     }
   });
 

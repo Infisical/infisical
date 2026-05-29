@@ -35,6 +35,7 @@ export type TLoginWithAwsDTO = {
 
 export type TLoginWithTokenDTO = {
   token: string;
+  expectedResourceType: "gateway" | "relay";
 };
 
 export type TAuthMethodView =

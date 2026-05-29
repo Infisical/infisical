@@ -54,6 +54,7 @@ const envSchema = z
       .enum(["true", "false"])
       .default("false")
       .transform((el) => el === "true"),
+    DISABLE_PUBLIC_SECRET_SHARING: zodStrBool.default("false"),
     REDIS_URL: zpStr(z.string().optional()),
     REDIS_USERNAME: zpStr(z.string().optional()),
     REDIS_PASSWORD: zpStr(z.string().optional()),
@@ -229,6 +230,12 @@ const envSchema = z
     // HubSpot Forms API for capturing signups
     HUBSPOT_PORTAL_ID: zpStr(z.string().optional()),
     HUBSPOT_SIGNUP_FORM_ID: zpStr(z.string().optional()),
+    // In-app announcements (Contentful). Public read-only delivery token; safe to bake in defaults.
+    // Self-hosted admins can disable outbound calls with ANNOUNCEMENTS_ENABLED=false.
+    ANNOUNCEMENTS_ENABLED: zodStrBool.default("true"),
+    CONTENTFUL_SPACE_ID: zpStr(z.string().optional()),
+    CONTENTFUL_DELIVERY_TOKEN: zpStr(z.string().optional()),
+    CONTENTFUL_ENVIRONMENT: zpStr(z.string().optional().default("master")),
     // GitHub API token for upgrade path tool
     GITHUB_API_TOKEN: zpStr(z.string().optional()),
     // jwt options
@@ -485,6 +492,9 @@ const envSchema = z
 
     /* OracleDB ----------------------------------------------------------------------------- */
     TNS_ADMIN: zpStr(z.string().optional()),
+
+    /* Go Sidecar ----------------------------------------------------------------------------- */
+    GOLANG_SIDECAR_URL: zpStr(z.string().optional()),
 
     /* INTERNAL ----------------------------------------------------------------------------- */
     INTERNAL_REGION: zpStr(z.enum(["us", "eu"]).optional())
@@ -911,6 +921,16 @@ export const overwriteSchema: {
       {
         key: "INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_SECRET",
         description: "The Client Secret of your Heroku application."
+      }
+    ]
+  },
+  secretSharing: {
+    name: "Secret Sharing",
+    fields: [
+      {
+        key: "DISABLE_PUBLIC_SECRET_SHARING",
+        description:
+          "Disable creation of unauthenticated public secret shares (the /share-secret page). Set to 'true' to block public sharing."
       }
     ]
   }

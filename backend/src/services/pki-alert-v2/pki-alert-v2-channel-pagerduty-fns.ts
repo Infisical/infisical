@@ -17,6 +17,7 @@ import {
   TPagerDutyChannelConfig,
   TPagerDutyPayload
 } from "./pki-alert-v2-types";
+import { buildAlertViewUrl } from "./pki-alert-v2-url-fns";
 
 const PAGERDUTY_EVENTS_URL = "https://events.pagerduty.com/v2/enqueue";
 const PAGERDUTY_TIMEOUT = 7 * 1000;
@@ -112,7 +113,7 @@ export const buildPagerDutyPayload = ({
 
   const displayCertificates = sortedCertificates.slice(0, MAX_CERTIFICATES_IN_PAYLOAD);
 
-  const viewUrl = `${appUrl}/projects/cert-manager/${alert.projectId}/policies`;
+  const viewUrl = buildAlertViewUrl(appUrl, alert);
 
   const summary =
     eventType === PkiAlertEventType.EXPIRATION

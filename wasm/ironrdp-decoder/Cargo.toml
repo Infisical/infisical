@@ -1,0 +1,28 @@
+[package]
+name = "infisical-rdp-decoder-wasm"
+version = "0.0.1"
+edition = "2021"
+description = "Minimal IronRDP-backed decoder for offline session replay (WASM)"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+ironrdp-pdu = "0.7"
+ironrdp-core = "0.1"
+ironrdp-graphics = "0.7"
+ironrdp-session = "0.8"
+ironrdp-connector = "0.8"
+ironrdp-svc = "0.6"
+
+wasm-bindgen = "0.2"
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+strip = true
+
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = ["-O", "--enable-bulk-memory"]

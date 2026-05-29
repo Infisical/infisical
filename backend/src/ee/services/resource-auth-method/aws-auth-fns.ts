@@ -1,5 +1,6 @@
 import RE2 from "re2";
 
+import { isValidAwsRegion } from "@app/lib/aws/region";
 import { request } from "@app/lib/config/request";
 import { UnauthorizedError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -27,19 +28,12 @@ const awsRegionFromHeader = (authorizationHeader: string): string | null => {
   return null;
 };
 
-const validRegionPattern = new RE2("^[a-z0-9-]+$");
-
-const isValidAwsRegion = (region: string | null): boolean => {
-  if (typeof region !== "string" || region.length === 0 || region.length > 20) return false;
-  return validRegionPattern.test(region);
-};
-
 type TVerifyStsCallerInput = {
   iamHttpRequestMethod: string;
   iamRequestBody: string;
   iamRequestHeaders: string;
   defaultStsEndpoint: string;
-  errorContext: { gatewayId: string; orgId: string; gatewayName: string };
+  errorContext: Record<string, unknown>;
 };
 
 /**
@@ -86,7 +80,10 @@ export const verifyStsAndExtractCaller = async ({
       data: body
     });
   } catch (err) {
-    logger.error(err, `Resource AWS Auth Login: STS verification failed [gateway-id=${errorContext.gatewayId}]`);
+    logger.error(
+      err,
+      `Resource AWS Auth Login: STS verification failed [resourceId=${String(errorContext.resourceId)}]`
+    );
     throw new UnauthorizedError({
       message: "STS verification failed",
       detail: { reasonCode: "sts_request_failed", ...errorContext }
@@ -107,7 +104,7 @@ type TValidateAllowlistsInput = {
   Arn: string;
   allowedAccountIds: string;
   allowedPrincipalArns: string;
-  errorContext: { gatewayId: string; orgId: string; gatewayName: string };
+  errorContext: Record<string, unknown>;
 };
 
 export const validateAllowlists = ({
@@ -151,13 +148,13 @@ export const validateAllowlists = ({
       .filter((principalArn) => principalArn.length > 0)
       .some((principalArn) => {
         // Convert wildcard to regex; arnRegex in validators ensures safe input.
-        const regex = new RE2(`^${principalArn.replaceAll("*", ".*")}$`);
+        const regex = new RE2(`^${principalArn.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replaceAll("*", ".*")}$`);
         return regex.test(formattedArn) || regex.test(extractPrincipalArn(Arn, true));
       });
 
     if (!isArnAllowed) {
       logger.error(
-        `Resource AWS Auth Login: AWS principal ARN not allowed [principal-arn=${formattedArn}] [raw-arn=${Arn}] [gateway-id=${errorContext.gatewayId}]`
+        `Resource AWS Auth Login: AWS principal ARN not allowed [principal-arn=${formattedArn}] [raw-arn=${Arn}] [resourceId=${String(errorContext.resourceId)}]`
       );
       throw new UnauthorizedError({
         message: `Access denied: AWS principal ARN not allowed. [principal-arn=${formattedArn}]`,

@@ -1,5 +1,5 @@
+import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
-import { safeRequest } from "@app/lib/validator";
 import { getOctopusDeployInstanceUrl } from "@app/services/app-connection/octopus-deploy";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
@@ -38,14 +38,14 @@ export const OctopusDeploySyncFns = {
       environment,
       syncOptions: { disableSecretDeletion, keySchema }
     } = secretSync;
-    const instanceUrl = getOctopusDeployInstanceUrl(connection);
+    const instanceUrl = await getOctopusDeployInstanceUrl(connection);
     const { apiKey } = connection.credentials;
 
     const { spaceId, projectId, scope } = secretSync.destinationConfig;
 
     const url = this.buildVariableUrl(instanceUrl, spaceId, projectId, scope);
 
-    const { data: variableSet } = await safeRequest.get<TOctopusDeployVariableSet>(url, {
+    const { data: variableSet } = await request.get<TOctopusDeployVariableSet>(url, {
       headers: this.getAuthHeader(apiKey)
     });
 
@@ -101,7 +101,7 @@ export const OctopusDeploySyncFns = {
     // Keep sensitive variables that are not in the new variables array, to avoid duplication
     sensitiveVariables = sensitiveVariables.filter((variable) => !newVariableKeys.includes(variable.Name));
 
-    await safeRequest.put(
+    await request.put(
       url,
       {
         ...variableSet,
@@ -118,12 +118,12 @@ export const OctopusDeploySyncFns = {
       destinationConfig: { spaceId, projectId, scope }
     } = secretSync;
 
-    const instanceUrl = getOctopusDeployInstanceUrl(connection);
+    const instanceUrl = await getOctopusDeployInstanceUrl(connection);
     const { apiKey } = connection.credentials;
 
     const url = this.buildVariableUrl(instanceUrl, spaceId, projectId, scope);
 
-    const { data: variableSet } = await safeRequest.get<TOctopusDeployVariableSet>(url, {
+    const { data: variableSet } = await request.get<TOctopusDeployVariableSet>(url, {
       headers: this.getAuthHeader(apiKey)
     });
 
@@ -134,7 +134,7 @@ export const OctopusDeploySyncFns = {
         infisicalSecretKeys.includes(variable.Name) && variable.IsSensitive === true && variable.Type === "Sensitive"
     ).map((variable) => variable.Id);
 
-    await safeRequest.put(
+    await request.put(
       url,
       {
         ...variableSet,

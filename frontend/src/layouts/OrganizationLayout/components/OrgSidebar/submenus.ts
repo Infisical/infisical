@@ -27,7 +27,6 @@ import {
   Shield,
   ShieldCheck,
   ShieldUser,
-  Trash2,
   User,
   Users,
   Video
@@ -83,6 +82,23 @@ export const SECRET_MANAGER_ACCESS_CONTROL_SUBMENU: Submenu = {
   ]
 };
 
+export const CERT_MANAGER_ACCESS_CONTROL_SUBMENU: Submenu = {
+  title: "Access Control",
+  pathSuffix: "access-management",
+  defaultTab: "members",
+  activeMatch: /\/members\/|\/groups\/|\/identities\//,
+  items: [
+    { label: "Users", icon: User, tab: "members", activeMatch: /\/members\// },
+    { label: "Groups", icon: Users, tab: "groups", activeMatch: /\/groups\// },
+    {
+      label: "Machine Identities",
+      icon: HardDrive,
+      tab: "identities",
+      activeMatch: /\/identities\//
+    }
+  ]
+};
+
 export const SM_SETTINGS_SUBMENU: Submenu = {
   title: "Settings",
   pathSuffix: "settings",
@@ -90,7 +106,6 @@ export const SM_SETTINGS_SUBMENU: Submenu = {
   items: [
     { label: "General", icon: Cog, tab: "tab-project-general" },
     { label: "Secrets Management", icon: FileKey, tab: "tab-secret-general" },
-    { label: "Secret Validation Rules", icon: ShieldCheck, tab: "tab-secret-validation-rules" },
     { label: "Encryption", icon: Lock, tab: "tab-project-encryption" },
     { label: "Workflow Integrations", icon: Plug, tab: "tab-workflow-integrations" },
     { label: "Webhooks", icon: Cable, tab: "tab-project-webhooks" }
@@ -103,7 +118,12 @@ export const INTEGRATIONS_SUBMENU: Submenu = {
   defaultTab: "app-connections",
   items: [
     { label: "App Connections", icon: Cable, tab: "app-connections" },
-    { label: "Secret Syncs", icon: ArrowLeftRight, tab: "secret-syncs" },
+    {
+      label: "Secret Syncs",
+      icon: ArrowLeftRight,
+      tab: "secret-syncs",
+      activeMatch: /\/integrations\/secret-syncs\//
+    },
     { label: "Framework Integrations", icon: Blocks, tab: "framework-integrations" },
     { label: "Infrastructure Integrations", icon: Container, tab: "infrastructure-integrations" },
     { label: "Native Integrations", icon: Plug, tab: "native-integrations" }
@@ -134,7 +154,7 @@ export const getOrgSettingsSubmenu = ({
     { label: "Audit Log Streams", icon: FileText, tab: "tag-audit-log-streams" },
     { label: "External Migrations", icon: Database, tab: "tab-external-migrations" },
     { label: "Project Templates", icon: FolderCog, tab: "project-templates" },
-    { label: "Product Enforcements", icon: ClipboardList, tab: "product-enforcements" },
+    { label: "Product Settings", icon: ClipboardList, tab: "product-settings" },
     ...(!isSubOrganization && hasSubOrganization
       ? [{ label: "Sub Organizations", icon: SubOrgIcon, tab: "tab-sub-organizations" }]
       : [])
@@ -197,16 +217,6 @@ export const CERT_APPROVALS_SUBMENU: Submenu = {
   items: [
     { label: "Requests", icon: FileCheck, tab: "requests" },
     { label: "Policies", icon: Shield, tab: "policies" }
-  ]
-};
-
-export const CERT_SETTINGS_SUBMENU: Submenu = {
-  title: "Settings",
-  pathSuffix: "settings",
-  defaultTab: "general",
-  items: [
-    { label: "General", icon: Cog, tab: "general" },
-    { label: "Certificate Cleanup", icon: Trash2, tab: "certificate-cleanup" }
   ]
 };
 

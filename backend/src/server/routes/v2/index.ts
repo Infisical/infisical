@@ -1,9 +1,12 @@
+import { injectCertManagerProjectId } from "@app/server/plugins/inject-cert-manager-project-id";
+
 import { registerCaRouter } from "./certificate-authority-router";
 import { registerDeprecatedGroupProjectRouter } from "./deprecated-group-project-router";
 import { registerDeprecatedIdentityProjectRouter } from "./deprecated-identity-project-router";
 import { registerDeprecatedProjectMembershipRouter } from "./deprecated-project-membership-router";
 import { registerDeprecatedProjectRouter } from "./deprecated-project-router";
 import { registerIdentityOrgRouter } from "./identity-org-router";
+import { registerIdentityRouter } from "./identity-router";
 import { registerMfaRouter } from "./mfa-router";
 import { registerMfaSessionRouter } from "./mfa-session-router";
 import { registerOrgRouter } from "./organization-router";
@@ -24,6 +27,7 @@ export const registerV2Routes = async (server: FastifyZodProvider) => {
 
   await server.register(
     async (pkiRouter) => {
+      await pkiRouter.register(injectCertManagerProjectId);
       await pkiRouter.register(registerCaRouter, { prefix: "/ca" });
       await pkiRouter.register(registerPkiTemplatesRouter, { prefix: "/certificate-templates" });
       await pkiRouter.register(registerPkiAlertRouter, { prefix: "/alerts" });
@@ -38,6 +42,8 @@ export const registerV2Routes = async (server: FastifyZodProvider) => {
     },
     { prefix: "/organizations" }
   );
+
+  await server.register(registerIdentityRouter, { prefix: "/identities" });
 
   await server.register(registerSecretFolderRouter, { prefix: "/folders" });
   await server.register(registerSecretImportRouter, { prefix: "/secret-imports" });

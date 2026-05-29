@@ -19,7 +19,7 @@ export type TValidateVenafiTppConnectionCredentialsSchema = typeof ValidateVenaf
 
 export type TVenafiTppConnectionConfig = DiscriminativePick<
   TVenafiTppConnectionInput,
-  "method" | "app" | "credentials" | "gatewayId"
+  "method" | "app" | "credentials" | "gatewayId" | "gatewayPoolId"
 > & {
   orgId: string;
 };

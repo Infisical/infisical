@@ -1,6 +1,7 @@
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
+import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { logger } from "@app/lib/logger";
-import { JOB_SCHEDULER_PREFIX, QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
+import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 
 import { ActorType } from "../auth/auth-type";
 import { TCertificateDALFactory } from "../certificate/certificate-dal";
@@ -8,27 +9,36 @@ import { TCertificateAuthorityDALFactory } from "../certificate-authority/certif
 import { CaStatus, CaType } from "../certificate-authority/certificate-authority-enums";
 import { TCertificateAuthorityQueueFactory } from "../certificate-authority/certificate-authority-queue";
 import { InternalCertificateAuthorityFns } from "../certificate-authority/internal/internal-certificate-authority-fns";
+import { TProjectDALFactory } from "../project/project-dal";
+import { TTelemetryServiceFactory } from "../telemetry/telemetry-service";
+import { PostHogEventTypes } from "../telemetry/telemetry-types";
 import { TPkiSubscriberDALFactory } from "./pki-subscriber-dal";
 import { PkiSubscriberStatus, SubscriberOperationStatus } from "./pki-subscriber-types";
 
 type TPkiSubscriberQueueServiceFactoryDep = {
   queueService: TQueueServiceFactory;
+  cronJob: TCronJobFactory;
   pkiSubscriberDAL: TPkiSubscriberDALFactory;
+  projectDAL: Pick<TProjectDALFactory, "findById">;
   certificateAuthorityDAL: TCertificateAuthorityDALFactory;
   certificateAuthorityQueue: TCertificateAuthorityQueueFactory;
   internalCaFns: ReturnType<typeof InternalCertificateAuthorityFns>;
   certificateDAL: TCertificateDALFactory;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
+  telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
 };
 
 export const pkiSubscriberQueueServiceFactory = ({
   queueService,
+  cronJob,
   pkiSubscriberDAL,
+  projectDAL,
   certificateAuthorityDAL,
   certificateAuthorityQueue,
   internalCaFns,
   certificateDAL,
-  auditLogService
+  auditLogService,
+  telemetryService
 }: TPkiSubscriberQueueServiceFactoryDep) => {
   queueService.start(QueueName.PkiSubscriber, async (job) => {
     if (job.name === QueueJobs.PkiSubscriberDailyAutoRenewal) {
@@ -82,6 +92,23 @@ export const pkiSubscriberQueueServiceFactory = ({
                     lastOperationMessage: "No CA assigned to subscriber",
                     lastOperationAt: new Date()
                   });
+
+                  try {
+                    const project = await projectDAL.findById(subscriber.projectId);
+                    if (project) {
+                      // eslint-disable-next-line no-await-in-loop
+                      await telemetryService.sendPostHogEvents({
+                        event: PostHogEventTypes.CertificateAutoRenewalFailed,
+                        distinctId: `platform/${subscriber.projectId}`,
+                        organizationId: project.orgId,
+                        properties: {
+                          orgId: project.orgId
+                        }
+                      });
+                    }
+                  } catch {
+                    logger.warn(`Failed to send telemetry for auto-renewal failure [subscriberId=${subscriber.id}]`);
+                  }
                   return;
                 }
 
@@ -92,6 +119,23 @@ export const pkiSubscriberQueueServiceFactory = ({
                     lastOperationMessage: "CA not found",
                     lastOperationAt: new Date()
                   });
+
+                  try {
+                    const project = await projectDAL.findById(subscriber.projectId);
+                    if (project) {
+                      // eslint-disable-next-line no-await-in-loop
+                      await telemetryService.sendPostHogEvents({
+                        event: PostHogEventTypes.CertificateAutoRenewalFailed,
+                        distinctId: `platform/${subscriber.projectId}`,
+                        organizationId: project.orgId,
+                        properties: {
+                          orgId: project.orgId
+                        }
+                      });
+                    }
+                  } catch {
+                    logger.warn(`Failed to send telemetry for auto-renewal failure [subscriberId=${subscriber.id}]`);
+                  }
                   return;
                 }
 
@@ -102,6 +146,23 @@ export const pkiSubscriberQueueServiceFactory = ({
                     lastOperationMessage: "CA is not active",
                     lastOperationAt: new Date()
                   });
+
+                  try {
+                    const project = await projectDAL.findById(subscriber.projectId);
+                    if (project) {
+                      // eslint-disable-next-line no-await-in-loop
+                      await telemetryService.sendPostHogEvents({
+                        event: PostHogEventTypes.CertificateAutoRenewalFailed,
+                        distinctId: `platform/${subscriber.projectId}`,
+                        organizationId: project.orgId,
+                        properties: {
+                          orgId: project.orgId
+                        }
+                      });
+                    }
+                  } catch {
+                    logger.warn(`Failed to send telemetry for auto-renewal failure [subscriberId=${subscriber.id}]`);
+                  }
                   return;
                 }
                 // Order new certificate based on CA type
@@ -146,6 +207,22 @@ export const pkiSubscriberQueueServiceFactory = ({
                 lastOperationMessage: error instanceof Error ? error.message : "Unknown error",
                 lastOperationAt: new Date()
               });
+
+              try {
+                const project = await projectDAL.findById(subscriber.projectId);
+                if (project) {
+                  await telemetryService.sendPostHogEvents({
+                    event: PostHogEventTypes.CertificateAutoRenewalFailed,
+                    distinctId: `platform/${subscriber.projectId}`,
+                    organizationId: project.orgId,
+                    properties: {
+                      orgId: project.orgId
+                    }
+                  });
+                }
+              } catch {
+                logger.warn(`Failed to send telemetry for auto-renewal failure [subscriberId=${subscriber.id}]`);
+              }
             }
           })
         );
@@ -157,14 +234,17 @@ export const pkiSubscriberQueueServiceFactory = ({
     }
   });
 
-  // we do a repeat cron job in utc timezone at 12 Midnight each day
-  const startDailyAutoRenewalJob = async () => {
-    await queueService.upsertJobScheduler(
-      QueueName.PkiSubscriber,
-      `${JOB_SCHEDULER_PREFIX}:${QueueName.PkiSubscriber}`,
-      { pattern: "0 0 * * *" },
-      { name: QueueJobs.PkiSubscriberDailyAutoRenewal, opts: { delay: 5000 } }
-    );
+  const startDailyAutoRenewalJob = () => {
+    cronJob.register({
+      name: CronJobName.PkiSubscriberDailyAutoRenewal,
+      pattern: "0 0 * * *",
+      runHashTtlS: 3 * 24 * 60 * 60,
+      handler: async () => {
+        await queueService.queue(QueueName.PkiSubscriber, QueueJobs.PkiSubscriberDailyAutoRenewal, undefined as never, {
+          jobId: CronJobName.PkiSubscriberDailyAutoRenewal
+        });
+      }
+    });
   };
 
   queueService.listen(QueueName.PkiSubscriber, "failed", (_, err) => {

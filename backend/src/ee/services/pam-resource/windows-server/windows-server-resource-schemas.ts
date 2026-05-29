@@ -122,7 +122,7 @@ export const SanitizedWindowsAccountWithResourceSchema = BasePamAccountSchemaWit
 
 // Sessions
 // Renames `hostname` to `host` so the gateway can dispatch all resource types
-// uniformly on a `host` field.
+// uniformly on a `host` field. `domain` is set on AD-account sessions for NTLM.
 export const WindowsSessionCredentialsSchema = WindowsResourceConnectionDetailsSchema.omit({ hostname: true })
-  .extend({ host: z.string().trim().min(1).max(255) })
+  .extend({ host: z.string().trim().min(1).max(255), domain: z.string().optional() })
   .and(WindowsAccountCredentialsSchema);

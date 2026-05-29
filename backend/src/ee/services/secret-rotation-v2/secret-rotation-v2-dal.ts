@@ -36,6 +36,7 @@ const baseSecretRotationV2Query = ({
   const query = (tx || db.replicaNode())(TableName.SecretRotationV2)
     .join(TableName.SecretFolder, `${TableName.SecretRotationV2}.folderId`, `${TableName.SecretFolder}.id`)
     .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+    .whereNull(`${TableName.Environment}.deleteAfter`)
     .join(TableName.AppConnection, `${TableName.SecretRotationV2}.connectionId`, `${TableName.AppConnection}.id`)
     .select(selectAllTableCols(TableName.SecretRotationV2))
     .select(
@@ -54,6 +55,7 @@ const baseSecretRotationV2Query = ({
       db.ref("description").withSchema(TableName.AppConnection).as("connectionDescription"),
       db.ref("version").withSchema(TableName.AppConnection).as("connectionVersion"),
       db.ref("gatewayId").withSchema(TableName.AppConnection).as("connectionGatewayId"),
+      db.ref("gatewayPoolId").withSchema(TableName.AppConnection).as("connectionGatewayPoolId"),
       db.ref("projectId").withSchema(TableName.AppConnection).as("connectionProjectId"),
       db.ref("createdAt").withSchema(TableName.AppConnection).as("connectionCreatedAt"),
       db.ref("updatedAt").withSchema(TableName.AppConnection).as("connectionUpdatedAt"),
@@ -109,6 +111,7 @@ const expandSecretRotation = <T extends Awaited<ReturnType<typeof baseSecretRota
     connectionUpdatedAt,
     connectionVersion,
     connectionGatewayId,
+    connectionGatewayPoolId,
     connectionProjectId,
     connectionIsPlatformManagedCredentials,
     connectionIsAutoRotationEnabled,
@@ -131,6 +134,7 @@ const expandSecretRotation = <T extends Awaited<ReturnType<typeof baseSecretRota
       updatedAt: connectionUpdatedAt,
       version: connectionVersion,
       gatewayId: connectionGatewayId,
+      gatewayPoolId: connectionGatewayPoolId,
       projectId: connectionProjectId,
       isPlatformManagedCredentials: connectionIsPlatformManagedCredentials,
       isAutoRotationEnabled: connectionIsAutoRotationEnabled
@@ -188,6 +192,7 @@ export const secretRotationV2DALFactory = (
     const query = (tx || db.replicaNode())(TableName.SecretRotationV2)
       .join(TableName.SecretFolder, `${TableName.SecretRotationV2}.folderId`, `${TableName.SecretFolder}.id`)
       .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+      .whereNull(`${TableName.Environment}.deleteAfter`)
       .join(
         TableName.SecretRotationV2SecretMapping,
         `${TableName.SecretRotationV2SecretMapping}.rotationId`,
@@ -488,6 +493,7 @@ export const secretRotationV2DALFactory = (
       const query = (tx || db.replicaNode())(TableName.SecretRotationV2)
         .join(TableName.SecretFolder, `${TableName.SecretRotationV2}.folderId`, `${TableName.SecretFolder}.id`)
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+        .whereNull(`${TableName.Environment}.deleteAfter`)
         .join(TableName.AppConnection, `${TableName.SecretRotationV2}.connectionId`, `${TableName.AppConnection}.id`)
         .join(
           TableName.SecretRotationV2SecretMapping,
@@ -568,7 +574,11 @@ export const secretRotationV2DALFactory = (
     try {
       const rawRotations = await (tx || db.replicaNode())(TableName.SecretRotationV2)
         .join(TableName.SecretFolder, `${TableName.SecretRotationV2}.folderId`, `${TableName.SecretFolder}.id`)
-        .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+        .join(TableName.Environment, function joinActiveEnvForSecretRotationV2() {
+          this.on(`${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`).andOnNull(
+            `${TableName.Environment}.deleteAfter`
+          );
+        })
         .join(TableName.AppConnection, `${TableName.SecretRotationV2}.connectionId`, `${TableName.AppConnection}.id`)
         .join(
           TableName.SecretRotationV2SecretMapping,

@@ -26,6 +26,7 @@ export const INVENTORY_COLUMNS: ColumnDef[] = [
   { key: "expiresAt", label: "Expires", defaultVisible: true },
   { key: "ca", label: "CA", defaultVisible: true },
   { key: "profile", label: "Profile", defaultVisible: true },
+  { key: "application", label: "Application", defaultVisible: false },
   { key: "algorithm", label: "Algorithm", defaultVisible: true },
   { key: "source", label: "Source", defaultVisible: false }
 ];

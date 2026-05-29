@@ -4,6 +4,7 @@ import RE2 from "re2";
 
 import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
+import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { getConfig } from "@app/lib/config/env";
 import { request as httpRequest } from "@app/lib/config/request";
@@ -12,14 +13,12 @@ import { BadRequestError, ForbiddenRequestError, InternalServerError } from "@ap
 import { GatewayProxyProtocol, withGatewayProxy } from "@app/lib/gateway";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { logger } from "@app/lib/logger";
-import { blockLocalAndPrivateIpAddresses, safeRequest } from "@app/lib/validator";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { getAppConnectionMethodName } from "@app/services/app-connection/app-connection-fns";
 
 import { AppConnection } from "../app-connection-enums";
 import { GitHubConnectionMethod } from "./github-connection-enums";
 import { TGitHubConnection, TGitHubConnectionConfig } from "./github-connection-types";
-
-export type TGitHubGatewayRequestConfig = AxiosRequestConfig & { url: string };
 
 export const getGitHubConnectionListItem = () => {
   const { INF_APP_CONNECTION_GITHUB_OAUTH_CLIENT_ID, INF_APP_CONNECTION_GITHUB_APP_SLUG } = getConfig();
@@ -75,17 +74,17 @@ export const requestWithGitHubGateway = async <T>(
   appConnection: { gatewayId?: string | null },
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
-  requestConfig: TGitHubGatewayRequestConfig,
+  requestConfig: AxiosRequestConfig,
   gatewayConnectionDetails?: Awaited<ReturnType<TGatewayV2ServiceFactory["getPlatformConnectionDetailsByGatewayId"]>>
 ): Promise<AxiosResponse<T>> => {
   const { gatewayId } = appConnection;
 
   // If gateway isn't set up, don't proxy request
   if (!gatewayId) {
-    return safeRequest.request<T>(requestConfig);
+    return httpRequest.request(requestConfig);
   }
 
-  const url = new URL(requestConfig.url);
+  const url = new URL(requestConfig.url as string);
 
   await blockLocalAndPrivateIpAddresses(url.toString());
 
@@ -177,7 +176,8 @@ export const requestWithGitHubGateway = async <T>(
 export const getGitHubAppAuthToken = async (
   appConnection: TGitHubConnection,
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
-  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
+  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">
 ) => {
   const appCfg = getConfig();
   const appId = appCfg.INF_APP_CONNECTION_GITHUB_APP_ID;
@@ -210,12 +210,17 @@ export const getGitHubAppAuthToken = async (
   const apiBaseUrl = await getGitHubInstanceApiUrl(appConnection);
   const { installationId } = appConnection.credentials;
 
-  const gatewayConnectionDetails = appConnection.gatewayId
-    ? await getGitHubGatewayConnectionDetails(appConnection.gatewayId, apiBaseUrl, gatewayV2Service)
+  const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
+    gatewayId: appConnection.gatewayId,
+    gatewayPoolId: appConnection.gatewayPoolId
+  });
+
+  const gatewayConnectionDetails = effectiveGatewayId
+    ? await getGitHubGatewayConnectionDetails(effectiveGatewayId, apiBaseUrl, gatewayV2Service)
     : undefined;
 
   const response = await requestWithGitHubGateway<{ token: string; expires_at: string }>(
-    appConnection,
+    { gatewayId: effectiveGatewayId },
     gatewayService,
     gatewayV2Service,
     {
@@ -260,6 +265,7 @@ export const makePaginatedGitHubRequest = async <T, R = T[]>(
   appConnection: TGitHubConnection,
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
+  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">,
   path: string,
   dataMapper?: (data: R) => T[]
 ): Promise<T[]> => {
@@ -275,7 +281,7 @@ export const makePaginatedGitHubRequest = async <T, R = T[]>(
       token = credentials.personalAccessToken;
       break;
     default:
-      token = await getGitHubAppAuthToken(appConnection, gatewayService, gatewayV2Service);
+      token = await getGitHubAppAuthToken(appConnection, gatewayService, gatewayV2Service, gatewayPoolService);
   }
 
   const baseUrl = `https://${await getGitHubInstanceApiUrl(appConnection)}${path}`;
@@ -283,16 +289,21 @@ export const makePaginatedGitHubRequest = async <T, R = T[]>(
   initialUrlObj.searchParams.set("per_page", "100");
 
   const apiBaseUrl = await getGitHubInstanceApiUrl(appConnection);
-  const gatewayConnectionDetails = appConnection.gatewayId
-    ? await getGitHubGatewayConnectionDetails(appConnection.gatewayId, apiBaseUrl, gatewayV2Service)
+  const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
+    gatewayId: appConnection.gatewayId,
+    gatewayPoolId: appConnection.gatewayPoolId
+  });
+  const gatewayConnectionDetails = effectiveGatewayId
+    ? await getGitHubGatewayConnectionDetails(effectiveGatewayId, apiBaseUrl, gatewayV2Service)
     : undefined;
+  const resolvedConn = { gatewayId: effectiveGatewayId };
 
   let results: T[] = [];
   const maxIterations = 1000;
 
   // Make initial request to get link header
   const firstResponse: AxiosResponse<R> = await requestWithGitHubGateway<R>(
-    appConnection,
+    resolvedConn,
     gatewayService,
     gatewayV2Service,
     {
@@ -326,7 +337,7 @@ export const makePaginatedGitHubRequest = async <T, R = T[]>(
 
       pageRequests.push(
         requestWithGitHubGateway<R>(
-          appConnection,
+          resolvedConn,
           gatewayService,
           gatewayV2Service,
           {
@@ -356,7 +367,7 @@ export const makePaginatedGitHubRequest = async <T, R = T[]>(
     while (url && i < maxIterations) {
       // eslint-disable-next-line no-await-in-loop
       const response: AxiosResponse<R> = await requestWithGitHubGateway<R>(
-        appConnection,
+        resolvedConn,
         gatewayService,
         gatewayV2Service,
         {
@@ -409,13 +420,15 @@ type GitHubEnvironment = {
 export const getGitHubRepositories = async (
   appConnection: TGitHubConnection,
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
-  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
+  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">
 ) => {
   if (appConnection.method === GitHubConnectionMethod.App) {
     return makePaginatedGitHubRequest<GitHubRepository, { repositories: GitHubRepository[] }>(
       appConnection,
       gatewayService,
       gatewayV2Service,
+      gatewayPoolService,
       "/installation/repositories",
       (data) => data.repositories
     );
@@ -425,6 +438,7 @@ export const getGitHubRepositories = async (
     appConnection,
     gatewayService,
     gatewayV2Service,
+    gatewayPoolService,
     "/user/repos"
   );
 
@@ -434,13 +448,21 @@ export const getGitHubRepositories = async (
 export const getGitHubOrganizations = async (
   appConnection: TGitHubConnection,
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
-  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
+  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">
 ) => {
   if (appConnection.method === GitHubConnectionMethod.App) {
     const installationRepositories = await makePaginatedGitHubRequest<
       GitHubRepository,
       { repositories: GitHubRepository[] }
-    >(appConnection, gatewayService, gatewayV2Service, "/installation/repositories", (data) => data.repositories);
+    >(
+      appConnection,
+      gatewayService,
+      gatewayV2Service,
+      gatewayPoolService,
+      "/installation/repositories",
+      (data) => data.repositories
+    );
 
     const organizationMap: Record<string, GitHubOrganization> = {};
     installationRepositories.forEach((repo) => {
@@ -452,13 +474,20 @@ export const getGitHubOrganizations = async (
     return Object.values(organizationMap);
   }
 
-  return makePaginatedGitHubRequest<GitHubOrganization>(appConnection, gatewayService, gatewayV2Service, "/user/orgs");
+  return makePaginatedGitHubRequest<GitHubOrganization>(
+    appConnection,
+    gatewayService,
+    gatewayV2Service,
+    gatewayPoolService,
+    "/user/orgs"
+  );
 };
 
 export const getGitHubEnvironments = async (
   appConnection: TGitHubConnection,
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
+  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">,
   owner: string,
   repo: string
 ) => {
@@ -467,6 +496,7 @@ export const getGitHubEnvironments = async (
       appConnection,
       gatewayService,
       gatewayV2Service,
+      gatewayPoolService,
       `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/environments`,
       (data) => data.environments
     );
@@ -503,13 +533,14 @@ export const validateGitHubConnectionCredentials = async (
   const gatewayConnectionDetails = config.gatewayId
     ? await getGitHubGatewayConnectionDetails(config.gatewayId, apiBaseUrl, gatewayV2Service)
     : undefined;
+  const resolvedConfig = { gatewayId: config.gatewayId };
 
   // PAT validation
   if (method === GitHubConnectionMethod.Pat) {
     try {
       const apiUrl = await getGitHubInstanceApiUrl(config);
       await requestWithGitHubGateway(
-        config,
+        resolvedConfig,
         gatewayService,
         gatewayV2Service,
         {
@@ -576,7 +607,7 @@ export const validateGitHubConnectionCredentials = async (
 
   try {
     tokenResp = await requestWithGitHubGateway<GithubTokenRespData>(
-      config,
+      resolvedConfig,
       gatewayService,
       gatewayV2Service,
       {
@@ -634,7 +665,7 @@ export const validateGitHubConnectionCredentials = async (
         };
       }[];
     }>(
-      config,
+      resolvedConfig,
       gatewayService,
       gatewayV2Service,
       {

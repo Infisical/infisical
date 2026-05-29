@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { PamSessionsSchema } from "@app/db/schemas";
 
-import { TerminalChannelType } from "./pam-session-enums";
+import { SessionChannelType } from "./pam-session-enums";
 
 export const PamSessionCommandLogSchema = z.object({
   input: z.string(),
@@ -10,17 +10,17 @@ export const PamSessionCommandLogSchema = z.object({
   timestamp: z.coerce.date()
 });
 
-// SSH Terminal Event schemas
-export const TerminalEventTypeSchema = z.enum(["input", "output", "resize", "error"]);
+// "rdp" events carry a JSON envelope in `data` (target_frame / keyboard / unicode / mouse).
+export const SessionEventTypeSchema = z.enum(["input", "output", "resize", "error", "rdp"]);
 
-export const TerminalChannelTypeSchema = z.nativeEnum(TerminalChannelType);
+export const SessionChannelTypeSchema = z.nativeEnum(SessionChannelType);
 
 export const HttpEventTypeSchema = z.enum(["request", "response"]);
 
-export const TerminalEventSchema = z.object({
+export const SessionEventSchema = z.object({
   timestamp: z.coerce.date(),
-  eventType: TerminalEventTypeSchema,
-  channelType: TerminalChannelTypeSchema.optional(), // Optional for backwards compatibility with existing logs
+  eventType: SessionEventTypeSchema,
+  channelType: SessionChannelTypeSchema.optional(), // Optional for backwards compatibility with existing logs
   data: z.string(), // Base64 encoded binary data
   elapsedTime: z.number() // Seconds since session start (for replay)
 });
@@ -28,7 +28,7 @@ export const TerminalEventSchema = z.object({
 export const HttpBaseEventSchema = z.object({
   timestamp: z.coerce.date(),
   requestId: z.string(),
-  eventType: TerminalEventTypeSchema,
+  eventType: SessionEventTypeSchema,
   headers: z.record(z.string(), z.array(z.string())),
   body: z.string().optional()
 });
@@ -62,7 +62,7 @@ const SessionInternalFieldsOmit = {
 } as const;
 
 export const SanitizedSessionSchema = PamSessionsSchema.omit(SessionInternalFieldsOmit).extend({
-  logs: z.array(z.union([PamSessionCommandLogSchema, HttpEventSchema, TerminalEventSchema])),
+  logs: z.array(z.union([PamSessionCommandLogSchema, HttpEventSchema, SessionEventSchema])),
   gatewayIdentityId: z.string().nullable().optional(),
   gatewayId: z.string().nullable().optional(),
   aiInsights: AiInsightsSchema
@@ -74,7 +74,7 @@ export const SanitizedSessionListItemSchema = PamSessionsSchema.omit(SessionInte
 });
 
 export const SessionLogsPageSchema = z.object({
-  logs: z.array(z.union([PamSessionCommandLogSchema, TerminalEventSchema, HttpEventSchema])),
+  logs: z.array(z.union([PamSessionCommandLogSchema, SessionEventSchema, HttpEventSchema])),
   hasMore: z.boolean(),
   batchCount: z.number()
 });

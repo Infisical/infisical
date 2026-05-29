@@ -14,6 +14,7 @@ import {
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { getConfig } from "@app/lib/config/env";
+import { request } from "@app/lib/config/request";
 import {
   BadRequestError,
   ForbiddenRequestError,
@@ -27,7 +28,6 @@ import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
-import { safeRequest } from "@app/lib/validator";
 
 import { ActorType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "../identity/identity-dal";
@@ -58,7 +58,7 @@ type TIdentityAwsAuthServiceFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findById" | "findOne" | "findEffectiveOrgMembership">;
   identityAccessTokenService: Pick<
     TIdentityAccessTokenServiceFactory,
-    "issueIdentityAccessToken" | "revokeAllTokensForIdentity"
+    "issueIdentityAccessToken" | "revokeTokensForIdentityAuthMethod"
   >;
 };
 
@@ -156,7 +156,7 @@ export const identityAwsAuthServiceFactory = ({
             GetCallerIdentityResult: { Account, Arn, UserId }
           }
         }
-      }: { data: TGetCallerIdentityResponse } = await safeRequest.request({
+      }: { data: TGetCallerIdentityResponse } = await request({
         method: iamHttpRequestMethod,
         url,
         headers,
@@ -195,7 +195,7 @@ export const identityAwsAuthServiceFactory = ({
             // convert wildcard ARN to a regular expression: "arn:aws:iam::123456789012:*" -> "^arn:aws:iam::123456789012:.*$"
             // considers exact matches + wildcard matches
             // heavily validated in router
-            const regex = new RE2(`^${principalArn.replaceAll("*", ".*")}$`);
+            const regex = new RE2(`^${principalArn.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replaceAll("*", ".*")}$`);
             return regex.test(formattedArn) || regex.test(extractPrincipalArn(Arn, true));
           });
 
@@ -677,7 +677,10 @@ export const identityAwsAuthServiceFactory = ({
     // Detaching the auth method must invalidate any tokens already issued
     // through it; without this, leaked tokens authenticate up to MAX_AGE
     // even after the admin pulled the auth method.
-    await identityAccessTokenService.revokeAllTokensForIdentity(identityId);
+    await identityAccessTokenService.revokeTokensForIdentityAuthMethod({
+      identityId,
+      authMethod: IdentityAuthMethod.AWS_AUTH
+    });
 
     return revokedIdentityAwsAuth;
   };

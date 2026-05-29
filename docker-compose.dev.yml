@@ -65,6 +65,21 @@ services:
     ports:
       - "8085:8081"
 
+  bull-board:
+    container_name: infisical-dev-bull-board
+    image: venatum/bull-board:3.3.7
+    restart: always
+    depends_on:
+      - redis
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - BULL_VERSION=BULLMQ
+      - BULL_PREFIX=bull
+    ports:
+      - "3008:3000"
+    profiles: [queue]
+
   db-test:
     profiles: ["test"]
     image: postgres:14-alpine
@@ -103,6 +118,12 @@ services:
       - softhsm_tokens:/etc/softhsm2/tokens # SoftHSM tokens are stored in a volume to persist across container restarts
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4000/api/status"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 120s
 
   prometheus:
     image: prom/prometheus
@@ -151,7 +172,31 @@ services:
     volumes:
       - ./frontend/src:/app/src/ # mounted whole src to avoid missing reload on new files
       - ./frontend/public:/app/public
+      - ./frontend/index.html:/app/index.html
     env_file: .env
+
+  backend-go:
+    container_name: infisical-dev-api-go
+    build:
+      context: ./backend-go
+      dockerfile: Dockerfile.dev.fips
+    depends_on:
+      db:
+        condition: service_started
+      redis:
+        condition: service_started
+      backend:
+        condition: service_healthy
+    ports:
+      - 4040:4040
+    volumes:
+      - ./backend-go:/app
+    environment:
+      - DB_CONNECTION_URI=postgres://infisical:infisical@db/infisical?sslmode=disable
+      - REDIS_URL=redis://redis:6379
+    env_file:
+      - .env
+    profiles: [go]
 
   pgadmin:
     image: dpage/pgadmin4
@@ -176,7 +221,8 @@ services:
       - 1025:1025 # SMTP server
       - 8025:8025 # Web UI
 
-  openldap: # note: more advanced configuration is available
+  openldap:
+    # note: more advanced configuration is available
     image: osixia/openldap:1.5.0
     restart: always
     environment:
@@ -191,7 +237,8 @@ services:
       - ldap_config:/etc/ldap/slapd.d
     profiles: [ldap]
 
-  phpldapadmin: # username: cn=admin,dc=acme,dc=com, pass is admin
+  phpldapadmin:
+    # username: cn=admin,dc=acme,dc=com, pass is admin
     image: osixia/phpldapadmin:latest
     restart: always
     environment:

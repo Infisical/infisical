@@ -20,6 +20,7 @@ import { registerChecklyConnectionRouter } from "./checkly-connection-router";
 import { registerCircleCIConnectionRouter } from "./circleci-connection-router";
 import { registerCloudflareConnectionRouter } from "./cloudflare-connection-router";
 import { registerDatabricksConnectionRouter } from "./databricks-connection-router";
+import { registerDatadogConnectionRouter } from "./datadog-connection-router";
 import { registerDbtConnectionRouter } from "./dbt-connection-router";
 import { registerDevinConnectionRouter } from "./devin-connection-router";
 import { registerDigiCertConnectionRouter } from "./digicert-connection-router";
@@ -52,6 +53,7 @@ import { registerPostgresConnectionRouter } from "./postgres-connection-router";
 import { registerRailwayConnectionRouter } from "./railway-connection-router";
 import { registerRedisConnectionRouter } from "./redis-connection-router";
 import { registerRenderConnectionRouter } from "./render-connection-router";
+import { registerSalesforceConnectionRouter } from "./salesforce-connection-router";
 import { registerSmbConnectionRouter } from "./smb-connection-router";
 import { registerSnowflakeConnectionRouter } from "./snowflake-connection-router";
 import { registerSshConnectionRouter } from "./ssh-connection-router";
@@ -132,5 +134,7 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.Ona]: registerOnaConnectionRouter,
     [AppConnection.DigiCert]: registerDigiCertConnectionRouter,
     [AppConnection.TravisCI]: registerTravisCIConnectionRouter,
-    [AppConnection.Snowflake]: registerSnowflakeConnectionRouter
+    [AppConnection.Salesforce]: registerSalesforceConnectionRouter,
+    [AppConnection.Snowflake]: registerSnowflakeConnectionRouter,
+    [AppConnection.Datadog]: registerDatadogConnectionRouter
   };

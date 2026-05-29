@@ -1,4 +1,4 @@
-import { GenericFieldLabel } from "@app/components/secret-syncs";
+import { Detail, DetailLabel, DetailValue } from "@app/components/v3";
 import { ZabbixSyncScope } from "@app/hooks/api/appConnections/zabbix";
 import { TZabbixSync } from "@app/hooks/api/secretSyncs/types/zabbix-sync";
 
@@ -17,17 +17,20 @@ export const ZabbixSyncDestinationSection = ({ secretSync }: Props) => {
     <>
       {secretSync.destinationConfig.scope === ZabbixSyncScope.Host && (
         <>
-          <GenericFieldLabel label="Host Name">
-            {secretSync.destinationConfig.hostName}
-          </GenericFieldLabel>
-          <GenericFieldLabel label="Host ID">
-            {secretSync.destinationConfig.hostId}
-          </GenericFieldLabel>
+          <Detail>
+            <DetailLabel>Host Name</DetailLabel>
+            <DetailValue>{secretSync.destinationConfig.hostName}</DetailValue>
+          </Detail>
+          <Detail>
+            <DetailLabel>Host ID</DetailLabel>
+            <DetailValue>{secretSync.destinationConfig.hostId}</DetailValue>
+          </Detail>
         </>
       )}
-      <GenericFieldLabel label="Macro Type">
-        {isTextMacro(macroType) ? "Text" : "Secret"}
-      </GenericFieldLabel>
+      <Detail>
+        <DetailLabel>Macro Type</DetailLabel>
+        <DetailValue>{isTextMacro(macroType) ? "Text" : "Secret"}</DetailValue>
+      </Detail>
     </>
   );
 };

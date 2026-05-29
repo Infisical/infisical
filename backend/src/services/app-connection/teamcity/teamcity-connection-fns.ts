@@ -1,8 +1,9 @@
 import { AxiosError } from "axios";
 
+import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
-import { safeRequest } from "@app/lib/validator";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 import { TeamCityConnectionMethod } from "./teamcity-connection-enums";
@@ -12,8 +13,12 @@ import {
   TTeamCityListProjectsResponse
 } from "./teamcity-connection-types";
 
-export const getTeamCityInstanceUrl = (config: TTeamCityConnectionConfig) => {
-  return removeTrailingSlash(config.credentials.instanceUrl);
+export const getTeamCityInstanceUrl = async (config: TTeamCityConnectionConfig) => {
+  const instanceUrl = removeTrailingSlash(config.credentials.instanceUrl);
+
+  await blockLocalAndPrivateIpAddresses(instanceUrl);
+
+  return instanceUrl;
 };
 
 export const getTeamCityConnectionListItem = () => {
@@ -25,12 +30,12 @@ export const getTeamCityConnectionListItem = () => {
 };
 
 export const validateTeamCityConnectionCredentials = async (config: TTeamCityConnectionConfig) => {
-  const instanceUrl = getTeamCityInstanceUrl(config);
+  const instanceUrl = await getTeamCityInstanceUrl(config);
 
   const { accessToken } = config.credentials;
 
   try {
-    await safeRequest.get(`${instanceUrl}/app/rest/server`, {
+    await request.get(`${instanceUrl}/app/rest/server`, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
         Accept: "application/json"
@@ -51,10 +56,10 @@ export const validateTeamCityConnectionCredentials = async (config: TTeamCityCon
 };
 
 export const listTeamCityProjects = async (appConnection: TTeamCityConnection) => {
-  const instanceUrl = getTeamCityInstanceUrl(appConnection);
+  const instanceUrl = await getTeamCityInstanceUrl(appConnection);
   const { accessToken } = appConnection.credentials;
 
-  const resp = await safeRequest.get<TTeamCityListProjectsResponse>(
+  const resp = await request.get<TTeamCityListProjectsResponse>(
     `${instanceUrl}/app/rest/projects?fields=project(id,name,buildTypes(buildType(id,name)))`,
     {
       headers: {

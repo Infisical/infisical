@@ -1,17 +1,12 @@
 /* eslint-disable jsx-a11y/label-has-associated-control */
 import { useMemo } from "react";
-import { subject } from "@casl/ability";
 import { faEdit } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format } from "date-fns";
 
-import { ProjectPermissionCan } from "@app/components/permissions";
 import { PkiSyncStatusBadge } from "@app/components/pki-syncs";
 import { IconButton } from "@app/components/v2";
-import { ProjectPermissionSub } from "@app/context";
-import { ProjectPermissionPkiSyncActions } from "@app/context/ProjectPermissionContext/types";
-import { PKI_SYNC_MAP } from "@app/helpers/pkiSyncs";
-import { PkiSyncStatus, TPkiSync } from "@app/hooks/api/pkiSyncs";
+import { PkiSyncStatus, TPkiSync, usePkiSyncPermissions } from "@app/hooks/api/pkiSyncs";
 
 const GenericFieldLabel = ({
   label,
@@ -52,30 +47,21 @@ export const PkiSyncDetailsSection = ({ pkiSync, onEditDetails }: Props) => {
     return null;
   }, [syncStatus, lastSyncMessage]);
 
-  const destinationName = PKI_SYNC_MAP[pkiSync.destination].name;
-
-  const permissionSubject = subject(ProjectPermissionSub.PkiSyncs, {
-    subscriberName: destinationName,
-    name: pkiSync.name
-  });
+  const { canEdit } = usePkiSyncPermissions(pkiSync);
 
   return (
     <div className="flex w-full flex-col gap-3 rounded-lg border border-mineshaft-600 bg-mineshaft-900 px-4 py-3">
       <div className="flex items-center justify-between border-b border-mineshaft-400 pb-2">
         <h3 className="text-lg font-medium text-mineshaft-100">Details</h3>
-        <ProjectPermissionCan I={ProjectPermissionPkiSyncActions.Edit} a={permissionSubject}>
-          {(isAllowed) => (
-            <IconButton
-              variant="plain"
-              colorSchema="secondary"
-              isDisabled={!isAllowed}
-              ariaLabel="Edit sync details"
-              onClick={onEditDetails}
-            >
-              <FontAwesomeIcon icon={faEdit} />
-            </IconButton>
-          )}
-        </ProjectPermissionCan>
+        <IconButton
+          variant="plain"
+          colorSchema="secondary"
+          isDisabled={!canEdit}
+          ariaLabel="Edit sync details"
+          onClick={onEditDetails}
+        >
+          <FontAwesomeIcon icon={faEdit} />
+        </IconButton>
       </div>
       <div className="pt-2">
         <GenericFieldLabel label="Name" truncate>

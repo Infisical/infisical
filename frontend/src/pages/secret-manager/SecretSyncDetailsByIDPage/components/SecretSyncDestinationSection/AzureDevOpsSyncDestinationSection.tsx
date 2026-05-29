@@ -1,4 +1,4 @@
-import { GenericFieldLabel } from "@app/components/secret-syncs";
+import { Detail, DetailLabel, DetailValue } from "@app/components/v3";
 import { TAzureDevOpsSync } from "@app/hooks/api/secretSyncs/types/azure-devops-sync";
 
 type Props = {
@@ -11,8 +11,9 @@ export const AzureDevOpsSyncDestinationSection = ({ secretSync }: Props) => {
   } = secretSync;
 
   return (
-    <GenericFieldLabel label={devopsProjectName ? "Project" : "Project ID"}>
-      {devopsProjectName || devopsProjectId}
-    </GenericFieldLabel>
+    <Detail>
+      <DetailLabel>{devopsProjectName ? "Project" : "Project ID"}</DetailLabel>
+      <DetailValue>{devopsProjectName || devopsProjectId}</DetailValue>
+    </Detail>
   );
 };

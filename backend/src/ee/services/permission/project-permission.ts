@@ -146,7 +146,14 @@ export enum ProjectPermissionCertificateProfileActions {
   Delete = "delete",
   IssueCert = "issue-cert",
   RevealAcmeEabSecret = "reveal-acme-eab-secret",
-  RotateAcmeEabSecret = "rotate-acme-eab-secret"
+  RotateAcmeEabSecret = "rotate-acme-eab-secret",
+  ManageApplicationAttachments = "manage-application-attachments"
+}
+
+export enum ProjectPermissionApplicationActions {
+  Read = "read",
+  List = "list",
+  Create = "create"
 }
 
 export enum ProjectPermissionSecretSyncActions {
@@ -294,6 +301,15 @@ export enum ProjectPermissionMcpEndpointActions {
   Connect = "connect"
 }
 
+export enum ProjectPermissionHoneyTokenActions {
+  Read = "read",
+  ReadCredentials = "read-credentials",
+  Create = "create",
+  Edit = "edit",
+  Reset = "reset",
+  Revoke = "revoke"
+}
+
 export enum ProjectPermissionApprovalRequestActions {
   Read = "read",
   Create = "create"
@@ -369,11 +385,13 @@ export enum ProjectPermissionSub {
   PamInsights = "pam-insights",
   CertificateProfiles = "certificate-profiles",
   CertificatePolicies = "certificate-policies",
+  Application = "certificate-application",
   ApprovalRequests = "approval-requests",
   ApprovalRequestGrants = "approval-request-grants",
   McpEndpoints = "mcp-endpoints",
   McpServers = "mcp-servers",
   McpActivityLogs = "mcp-activity-logs",
+  HoneyTokens = "honey-tokens",
   Insights = "insights"
 }
 
@@ -465,6 +483,11 @@ export type SecretImportSubjectFields = {
   secretPath: string;
 };
 
+export type CommitsSubjectFields = {
+  environment: string;
+  secretPath: string;
+};
+
 export type SecretRotationsSubjectFields = {
   environment?: string;
   secretPath?: string;
@@ -518,6 +541,10 @@ export type CertificateSubjectFields = {
 };
 
 export type CertificateProfileSubjectFields = {
+  slug: string;
+};
+
+export type ApplicationSubjectFields = {
   slug: string;
 };
 
@@ -663,7 +690,10 @@ export type ProjectPermissionSet =
   | [ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback]
   | [ProjectPermissionActions.Create, ProjectPermissionSub.SecretRollback]
   | [ProjectPermissionActions.Edit, ProjectPermissionSub.Kms]
-  | [ProjectPermissionCommitsActions, ProjectPermissionSub.Commits]
+  | [
+      ProjectPermissionCommitsActions,
+      ProjectPermissionSub.Commits | (ForcedSubject<ProjectPermissionSub.Commits> & CommitsSubjectFields)
+    ]
   | [ProjectPermissionSecretScanningDataSourceActions, ProjectPermissionSub.SecretScanningDataSources]
   | [ProjectPermissionSecretScanningFindingActions, ProjectPermissionSub.SecretScanningFindings]
   | [ProjectPermissionSecretScanningConfigActions, ProjectPermissionSub.SecretScanningConfigs]
@@ -702,6 +732,7 @@ export type ProjectPermissionSet =
       ProjectPermissionMcpEndpointActions,
       ProjectPermissionSub.McpEndpoints | (ForcedSubject<ProjectPermissionSub.McpEndpoints> & McpEndpointSubjectFields)
     ]
+  | [ProjectPermissionHoneyTokenActions, ProjectPermissionSub.HoneyTokens]
   | [ProjectPermissionActions, ProjectPermissionSub.McpServers]
   | [ProjectPermissionActions, ProjectPermissionSub.McpActivityLogs]
   | [
@@ -710,6 +741,10 @@ export type ProjectPermissionSet =
         | ProjectPermissionSub.CertificateProfiles
         | (ForcedSubject<ProjectPermissionSub.CertificateProfiles> & CertificateProfileSubjectFields)
       )
+    ]
+  | [
+      ProjectPermissionApplicationActions,
+      ProjectPermissionSub.Application | (ForcedSubject<ProjectPermissionSub.Application> & ApplicationSubjectFields)
     ]
   | [
       ProjectPermissionCertificatePolicyActions,
@@ -886,6 +921,23 @@ const PkiSyncConditionSchema = z
   .partial();
 
 const SecretImportConditionSchema = z
+  .object({
+    environment: z.union([
+      z.string(),
+      z
+        .object({
+          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
+          [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
+          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN],
+          [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB]
+        })
+        .partial()
+    ]),
+    secretPath: SECRET_PATH_PERMISSION_OPERATOR_SCHEMA
+  })
+  .partial();
+
+const CommitsConditionSchema = z
   .object({
     environment: z.union([
       z.string(),
@@ -1719,9 +1771,13 @@ const GeneralPermissionSchema = [
   }),
   z.object({
     subject: z.literal(ProjectPermissionSub.Commits).describe("The entity this permission pertains to."),
+    inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionCommitsActions).describe(
       "Describe what action an entity can take."
-    )
+    ),
+    conditions: CommitsConditionSchema.describe(
+      "When specified, only matching conditions will be allowed to access given resource."
+    ).optional()
   }),
   z.object({
     subject: z
@@ -1832,6 +1888,12 @@ const GeneralPermissionSchema = [
   z.object({
     subject: z.literal(ProjectPermissionSub.McpActivityLogs).describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.HoneyTokens).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionHoneyTokenActions).describe(
       "Describe what action an entity can take."
     )
   }),
@@ -2059,8 +2121,10 @@ export type TProjectPermissionV2Schema = z.infer<typeof ProjectPermissionV2Schem
 
 export const buildServiceTokenProjectPermission = (
   scopes: Array<{ secretPath: string; environment: string }>,
-  permission: string[]
+  permission: string[],
+  options: { useLegacyRead?: boolean } = {}
 ) => {
+  const { useLegacyRead = true } = options;
   const canWrite = permission.includes("write");
   const canRead = permission.includes("read");
   const { can, build } = new AbilityBuilder<MongoAbility<ProjectPermissionSet>>(createMongoAbility);
@@ -2085,11 +2149,26 @@ export const buildServiceTokenProjectPermission = (
           });
         }
         if (canRead) {
-          can(ProjectPermissionActions.Read, subject, {
-            // @ts-expect-error type
-            secretPath: { $glob: secretPath },
-            environment
-          });
+          if (!useLegacyRead && subject === ProjectPermissionSub.Secrets) {
+            // @ts-expect-error CASL's per-action condition schema doesn't expose $glob, but the
+            // conditionsMatcher resolves it at runtime; same pattern is used in the legacy branch.
+            can(ProjectPermissionSecretActions.ReadValue, subject, {
+              secretPath: { $glob: secretPath },
+              environment
+            });
+            // @ts-expect-error CASL's per-action condition schema doesn't expose $glob, but the
+            // conditionsMatcher resolves it at runtime; same pattern is used in the legacy branch.
+            can(ProjectPermissionSecretActions.DescribeSecret, subject, {
+              secretPath: { $glob: secretPath },
+              environment
+            });
+          } else {
+            can(ProjectPermissionActions.Read, subject, {
+              // @ts-expect-error type
+              secretPath: { $glob: secretPath },
+              environment
+            });
+          }
         }
       }
     );

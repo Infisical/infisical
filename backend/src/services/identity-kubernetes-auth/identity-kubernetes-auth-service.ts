@@ -48,7 +48,6 @@ import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
-import { safeRequest } from "@app/lib/validator";
 
 import { ActorType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "../identity/identity-dal";
@@ -100,7 +99,7 @@ type TIdentityKubernetesAuthServiceFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findById" | "findOne" | "findEffectiveOrgMembership">;
   identityAccessTokenService: Pick<
     TIdentityAccessTokenServiceFactory,
-    "issueIdentityAccessToken" | "revokeAllTokensForIdentity"
+    "issueIdentityAccessToken" | "revokeTokensForIdentityAuthMethod"
   >;
 };
 
@@ -277,8 +276,11 @@ export const identityKubernetesAuthServiceFactory = ({
     };
   };
 
-  const $resolveEffectiveVerifyTlsCertificate = (caCert: string, storedVerify: boolean | null | undefined): boolean => {
-    if (!caCert.length) return false;
+  const $resolveEffectiveVerifyTlsCertificate = (
+    caCert: string | null | undefined,
+    storedVerify: boolean | null | undefined
+  ): boolean => {
+    if (!caCert?.length) return false;
     return storedVerify ?? false;
   };
 
@@ -350,7 +352,7 @@ export const identityKubernetesAuthServiceFactory = ({
 
         const baseUrl = port ? `${host}:${port}` : host;
 
-        const res = await safeRequest
+        const res = await request
           .post<TCreateTokenReviewResponse>(
             `${baseUrl}/apis/authentication.k8s.io/v1/tokenreviews`,
             {
@@ -370,13 +372,14 @@ export const identityKubernetesAuthServiceFactory = ({
               },
               signal: AbortSignal.timeout(10000),
               timeout: 10000,
-              allowPrivateIps: true,
-              ca: caCert || undefined,
-              rejectUnauthorized: $resolveEffectiveVerifyTlsCertificate(
-                caCert,
-                identityKubernetesAuth.verifyTlsCertificate
-              ),
-              servername
+              httpsAgent: new https.Agent({
+                ca: caCert || undefined,
+                rejectUnauthorized: $resolveEffectiveVerifyTlsCertificate(
+                  caCert,
+                  identityKubernetesAuth.verifyTlsCertificate
+                ),
+                servername
+              })
             }
           )
           .catch((err) => {
@@ -1018,7 +1021,12 @@ export const identityKubernetesAuthServiceFactory = ({
       return doc;
     });
 
-    return { ...identityKubernetesAuth, caCert, tokenReviewerJwt, orgId: identityMembershipOrg.scopeOrgId };
+    return {
+      ...identityKubernetesAuth,
+      caCert: caCert ?? "",
+      tokenReviewerJwt,
+      orgId: identityMembershipOrg.scopeOrgId
+    };
   };
 
   const updateKubernetesAuth = async ({
@@ -1235,7 +1243,7 @@ export const identityKubernetesAuthServiceFactory = ({
     }
     const effectiveVerifyTlsCertificate =
       resolvedVerifyTlsCertificate ??
-      $resolveEffectiveVerifyTlsCertificate(effectiveCaCert ?? "", identityKubernetesAuth.verifyTlsCertificate);
+      $resolveEffectiveVerifyTlsCertificate(effectiveCaCert, identityKubernetesAuth.verifyTlsCertificate);
 
     if (
       effectiveVerifyTlsCertificate &&
@@ -1544,7 +1552,10 @@ export const identityKubernetesAuthServiceFactory = ({
     // Detaching the auth method must invalidate any tokens already issued
     // through it; without this, leaked tokens authenticate up to MAX_AGE
     // even after the admin pulled the auth method.
-    await identityAccessTokenService.revokeAllTokensForIdentity(identityId);
+    await identityAccessTokenService.revokeTokensForIdentityAuthMethod({
+      identityId,
+      authMethod: IdentityAuthMethod.KUBERNETES_AUTH
+    });
 
     return revokedIdentityKubernetesAuth;
   };

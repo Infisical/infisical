@@ -1,5 +1,7 @@
+import { lazy, Suspense, useEffect } from "react";
 import { ExternalLinkIcon, Loader2Icon } from "lucide-react";
 
+import { Lottie } from "@app/components/v2";
 import { Button } from "@app/components/v3";
 import {
   PamResourceType,
@@ -7,7 +9,7 @@ import {
   THttpEvent,
   TPamCommandLog,
   TPamSession,
-  TTerminalEvent,
+  TSessionEvent,
   useGetPamSessionLogs
 } from "@app/hooks/api/pam";
 import { useDecryptedSessionLogs } from "@app/hooks/api/pam/session-playback";
@@ -15,6 +17,10 @@ import { useDecryptedSessionLogs } from "@app/hooks/api/pam/session-playback";
 import { CommandLogView } from "./CommandLogView";
 import { HttpEventView } from "./HttpEventView";
 import { TerminalEventView } from "./TerminalEventView";
+
+// Lazy-load to keep the WASM decoder out of the main bundle.
+const importRdpReplayView = () => import("./RdpReplayView/RdpReplayView");
+const RdpReplayView = lazy(importRdpReplayView);
 
 type Props = {
   session: TPamSession;
@@ -25,16 +31,19 @@ export const PamSessionLogsSection = ({ session, scrollToLogIndex }: Props) => {
   const isActive =
     session.status === PamSessionStatus.Active || session.status === PamSessionStatus.Starting;
 
-  const playback = useDecryptedSessionLogs(session.id, true);
+  const playback = useDecryptedSessionLogs(session.id, true, isActive);
+
+  const isLive = isActive && !playback.sessionComplete;
   const isLegacyOrNoChunks = playback.legacy || (!playback.loading && playback.totalChunks === 0);
 
-  const legacy = useGetPamSessionLogs(session.id, isActive, isLegacyOrNoChunks);
+  const legacy = useGetPamSessionLogs(session.id, isLive, isLegacyOrNoChunks);
 
-  const logs = isLegacyOrNoChunks ? legacy.logs : (playback.events as typeof legacy.logs);
-  const isLoading = isLegacyOrNoChunks ? legacy.isLoading : playback.loading;
-  const hasMore = isLegacyOrNoChunks ? legacy.hasMore : false;
-  const loadMore = isLegacyOrNoChunks ? legacy.loadMore : () => {};
-  const isLoadingMore = isLegacyOrNoChunks ? legacy.isLoadingMore : false;
+  const hasChunkEvents = !playback.legacy && playback.events.length > 0;
+  const logs = hasChunkEvents ? (playback.events as typeof legacy.logs) : legacy.logs;
+  const isLoading = hasChunkEvents ? false : legacy.isLoading || (isLive && logs.length === 0);
+  const hasMore = hasChunkEvents ? false : legacy.hasMore;
+  const loadMore = hasChunkEvents ? () => {} : legacy.loadMore;
+  const isLoadingMore = hasChunkEvents ? false : legacy.isLoadingMore;
 
   const isSSHSession = session.resourceType === PamResourceType.SSH;
   const isDatabaseSession =
@@ -42,16 +51,31 @@ export const PamSessionLogsSection = ({ session, scrollToLogIndex }: Props) => {
     session.resourceType === PamResourceType.MySQL ||
     session.resourceType === PamResourceType.MsSQL ||
     session.resourceType === PamResourceType.MongoDB ||
-    session.resourceType === PamResourceType.Redis;
+    session.resourceType === PamResourceType.Redis ||
+    session.resourceType === PamResourceType.OracleDB;
   const isHttpSession = session.resourceType === PamResourceType.Kubernetes;
   const isAwsIamSession = session.resourceType === PamResourceType.AwsIam;
+  const isRdpSession = session.resourceType === PamResourceType.Windows;
   const hasLogs = logs.length > 0;
 
+  // Warm the lazy chunk so Suspense doesn't fall back on first mount.
+  useEffect(() => {
+    if (isRdpSession) {
+      importRdpReplayView().catch(() => undefined);
+    }
+  }, [isRdpSession]);
+
   return (
-    <div className="flex h-full w-full flex-col gap-4 rounded-lg border border-border bg-container p-4">
+    <div
+      className={`flex w-full flex-col gap-4 rounded-lg border border-border bg-container p-4 ${
+        isRdpSession ? "" : "h-full"
+      }`}
+    >
       <div className="flex items-center gap-3 border-b border-border pb-4">
-        <h3 className="text-lg font-medium text-foreground">Session Logs</h3>
-        {isActive && (
+        <h3 className="text-lg font-medium text-foreground">
+          {isRdpSession ? "Session Recording" : "Session Logs"}
+        </h3>
+        {isLive && (
           <span className="flex animate-pulse items-center gap-1.5 rounded-full bg-success/10 px-2.5 py-1 text-xs font-medium text-success">
             <span className="size-1.5 animate-pulse rounded-full bg-success" />
             LIVE
@@ -59,7 +83,7 @@ export const PamSessionLogsSection = ({ session, scrollToLogIndex }: Props) => {
         )}
       </div>
 
-      {isLoading && !hasLogs && (
+      {isLoading && !hasLogs && !isRdpSession && (
         <div className="flex grow items-center justify-center">
           <div className="flex items-center gap-2 text-sm text-muted">
             <Loader2Icon className="size-4 animate-spin" />
@@ -71,8 +95,30 @@ export const PamSessionLogsSection = ({ session, scrollToLogIndex }: Props) => {
       {isDatabaseSession && hasLogs && (
         <CommandLogView logs={logs as TPamCommandLog[]} scrollToLogIndex={scrollToLogIndex} />
       )}
-      {isSSHSession && hasLogs && <TerminalEventView events={logs as TTerminalEvent[]} />}
+      {isSSHSession && hasLogs && <TerminalEventView events={logs as TSessionEvent[]} />}
       {isHttpSession && hasLogs && <HttpEventView events={logs as THttpEvent[]} />}
+      {isRdpSession && hasLogs && (
+        <Suspense
+          fallback={
+            <div className="flex grow flex-col items-center justify-center gap-2">
+              <Lottie isAutoPlay icon="infisical_loading" className="pointer-events-none size-12" />
+              <span className="text-sm text-muted">Loading session recording</span>
+            </div>
+          }
+        >
+          <RdpReplayView
+            events={logs as TSessionEvent[]}
+            isStreaming={isLive}
+            totalDurationMs={isLegacyOrNoChunks ? undefined : playback.totalDurationMs}
+          />
+        </Suspense>
+      )}
+      {isRdpSession && !hasLogs && isLoading && (
+        <div className="flex grow flex-col items-center justify-center gap-2">
+          <Lottie isAutoPlay icon="infisical_loading" className="pointer-events-none size-12" />
+          <span className="text-sm text-muted">Loading session recording</span>
+        </div>
+      )}
       {isAwsIamSession && (
         <div className="flex grow items-center justify-center text-muted">
           <div className="text-center">
@@ -106,7 +152,7 @@ export const PamSessionLogsSection = ({ session, scrollToLogIndex }: Props) => {
         </div>
       )}
 
-      {!isActive && hasMore && !isAwsIamSession && (
+      {!isLive && hasMore && !isAwsIamSession && (
         <div className="flex justify-center pt-2">
           <Button variant="outline" size="xs" isPending={isLoadingMore} onClick={loadMore}>
             Load more

@@ -1,9 +1,9 @@
+import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { logger } from "@app/lib/logger";
-import { JOB_SCHEDULER_PREFIX, QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TPkiAlertServiceFactory } from "@app/services/pki-alert/pki-alert-service";
 
 type TDailyExpiringPkiItemAlertQueueServiceFactoryDep = {
-  queueService: TQueueServiceFactory;
+  cronJob: TCronJobFactory;
   pkiAlertService: Pick<TPkiAlertServiceFactory, "sendPkiItemExpiryNotices">;
 };
 
@@ -12,28 +12,20 @@ export type TDailyExpiringPkiItemAlertQueueServiceFactory = ReturnType<
 >;
 
 export const dailyExpiringPkiItemAlertQueueServiceFactory = ({
-  queueService,
+  cronJob,
   pkiAlertService
 }: TDailyExpiringPkiItemAlertQueueServiceFactoryDep) => {
-  queueService.start(QueueName.DailyExpiringPkiItemAlert, async () => {
-    logger.info(`${QueueName.DailyExpiringPkiItemAlert}: queue task started`);
-    await pkiAlertService.sendPkiItemExpiryNotices();
-    logger.info(`${QueueName.DailyExpiringPkiItemAlert}: queue task completed`);
-  });
-
-  // we do a repeat cron job in utc timezone at 12 Midnight each day
-  const startSendingAlerts = async () => {
-    await queueService.upsertJobScheduler(
-      QueueName.DailyExpiringPkiItemAlert,
-      `${JOB_SCHEDULER_PREFIX}:${QueueName.DailyExpiringPkiItemAlert}`,
-      { pattern: "0 0 * * *" },
-      { name: QueueJobs.DailyExpiringPkiItemAlert, opts: { delay: 5000 } }
-    );
+  const startSendingAlerts = () => {
+    cronJob.register({
+      name: CronJobName.DailyExpiringPkiItemAlert,
+      pattern: "0 0 * * *",
+      runHashTtlS: 3 * 24 * 60 * 60,
+      handler: async () => {
+        logger.info("cron[daily-expiring-pki-item-alert]: task started");
+        await pkiAlertService.sendPkiItemExpiryNotices();
+      }
+    });
   };
-
-  queueService.listen(QueueName.DailyExpiringPkiItemAlert, "failed", (_, err) => {
-    logger.error(err, `${QueueName.DailyExpiringPkiItemAlert}: Expiring PKI item alert failed`);
-  });
 
   return {
     startSendingAlerts

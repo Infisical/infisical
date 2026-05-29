@@ -26,64 +26,38 @@ Infisical supports two ways to use AD CS: as an **External CA** for direct certi
 
     <Steps>
       <Step title="Navigate to External Certificate Authorities">
-        In your Infisical project, go to your **Certificate Project** →
-        **Certificate Authority** to access the external CAs page. ![External CA
-        Page](/images/platform/pki/azure-adcs/azure-adcs-external-ca-page.png)
+        In **Certificate Manager**, go to **Settings → Certificate Authorities** and scroll to the **External Certificate Authorities** section.
       </Step>
 
-      <Step title="Create New Azure ADCS Certificate Service CA">
-        Click **Create CA** and configure: - **Type**: Choose **Active Directory
-        Certificate Services (AD CS)** - **Name**: Friendly name for this CA (e.g.,
-        "Production ADCS CA") - **App Connection**: Choose your ADCS connection from
-        the dropdown ![External CA
-        Form](/images/platform/pki/azure-adcs/azure-adcs-external-ca-form.png)
+      <Step title="Create New Azure ADCS Certificate Authority">
+        Click **Create CA** and configure:
+        - **Type**: Choose **Active Directory Certificate Services (AD CS)**
+        - **Name**: Friendly name for this CA (e.g., "Production ADCS CA")
+        - **App Connection**: Choose your ADCS connection from the dropdown
       </Step>
 
-      <Step title="Certificate Authority Created">
-        Once created, your Azure ADCS Certificate Authority will appear in the list
-        and be ready for use. ![External CA
-        Created](/images/platform/pki/azure-adcs/azure-adcs-external-ca-created.png)
+      <Step title="Create a Certificate Profile">
+        Go to **Certificate Manager → Settings → Certificate Profiles** and create a new profile:
+        - **Certificate Authority**: Select your ADCS CA
+        - **Certificate Policy**: Select a policy
+        - **Certificate Template**: Select from dynamically loaded ADCS templates
+        - Configure default certificate attributes (TTL, key algorithm, etc.)
       </Step>
 
-      <Step title="Navigate to Subscribers">
-        Go to **Subscribers** to access the subscribers page. ![Subscribers
-        Page](/images/platform/pki/azure-adcs/azure-adcs-subscribers-page.png)
+      <Step title="Create an Application and Configure Enrollment">
+        Go to **Certificate Manager → Applications** and create an Application:
+        - Attach the profile you created
+        - Configure an [enrollment method](/documentation/platform/pki/applications/enrollment-methods/overview) (API, ACME, EST, or SCEP)
+        - Assign team members who need to issue certificates
       </Step>
 
-      <Step title="Create New Subscriber">
-        Click **Add Subscriber** and configure: - **Name**: Unique subscriber name
-        (e.g., "web-server-certs") - **Certificate Authority**: Select your ADCS CA -
-        **Common Name**: Certificate CN (e.g., "api.example.com") - **Certificate
-        Template**: Select from dynamically loaded ADCS templates - **Subject
-        Alternative Names**: DNS names, IP addresses, or email addresses - **TTL**:
-        Certificate validity period (e.g., "1y" for 1 year) - **Additional Subject
-        Fields**: Organization, OU, locality, state, country, email (if required by
-        template) ![Subscribers
-        Form](/images/platform/pki/azure-adcs/azure-adcs-subscribers-form.png)
-      </Step>
+      <Step title="Issue a Certificate">
+        In your Application, go to the **Certificate Requests** tab and click **Request**:
+        - Select the profile linked to your ADCS CA
+        - Fill in the certificate details (common name, SANs, TTL)
+        - Click **Submit**
 
-      <Step title="Subscriber Created">
-        Your subscriber is now created and ready to issue certificates. ![Subscriber
-        Created](/images/platform/pki/azure-adcs/azure-adcs-subscribers-created.png)
-      </Step>
-
-      <Step title="Issue New Certificate">
-        Click into your subscriber and click **Order Certificate** to generate a new
-        certificate using your ADCS template. ![Issue New
-        Certificate](/images/platform/pki/azure-adcs/azure-adcs-subscriber-issue-new-certificate.png)
-      </Step>
-
-      <Step title="Certificate Created">
-        Your certificate has been successfully issued by the ADCS server and is ready
-        for use. ![Certificate
-        Created](/images/platform/pki/azure-adcs/azure-adcs-certificate-created.png)
-      </Step>
-
-      <Step title="View Certificate Details">
-        Navigate to **Certificates** to view detailed information about all issued
-        certificates, including expiration dates, serial numbers, and certificate
-        chains. ![Certificates
-        Page](/images/platform/pki/azure-adcs/azure-adcs-certificates-page.png)
+        The certificate is submitted to ADCS and issued using your configured template.
       </Step>
     </Steps>
 
@@ -197,14 +171,12 @@ Infisical supports two ways to use AD CS: as an **External CA** for direct certi
           </Step>
           <Step title="Open the Install Certificate Modal">
             Press **Install CA Certificate** on the intermediate CA. Select **External CA (Automated)** and press **Choose Integration**.
-            ![pki install select method](/images/platform/pki/ca/ca-install-adcs-select-method.png)
           </Step>
           <Step title="Select Azure AD CS">
             Choose **Azure AD CS** as the integration provider.
-            ![pki install external select](/images/platform/pki/ca/ca-install-adcs-external-select.png)
           </Step>
           <Step title="Configure Signing Details">
-            ![pki install adcs form](/images/platform/pki/ca/ca-install-adcs.png)
+            Configure the following:
             - **Azure AD CS Connection**: Select your AD CS Connection.
             - **Certificate Template**: The AD CS template name (e.g., `SubCA`).
             - **Validity Period**: Optional TTL (e.g., `365`). Requires `EDITF_ATTRIBUTEENDDATE` on the AD CS server.
@@ -256,11 +228,7 @@ Infisical supports two ways to use AD CS: as an **External CA** for direct certi
       <Tab title="Infisical UI">
         Navigate to the CA details page of your AD CS-signed intermediate CA. Click the **edit** (pencil) icon in the Details section to open the renewal settings.
 
-        ![pki adcs auto-renewal page](/images/platform/pki/ca/ca-adcs-auto-renewal-page.png)
-
         Toggle **Auto-Renewal** on and set the **Days Before Expiry** to configure when the renewal should be triggered.
-
-        ![pki adcs auto-renewal modal](/images/platform/pki/ca/ca-adcs-auto-renewal-modal.png)
       </Tab>
       <Tab title="API">
         ### Enable Auto-Renewal
@@ -303,11 +271,7 @@ Infisical supports two ways to use AD CS: as an **External CA** for direct certi
       <Tab title="Infisical UI">
         Navigate to the CA details page and press the **Renew CA** button.
 
-        ![pki adcs renew page](/images/platform/pki/ca/ca-adcs-renew-page.png)
-
         The renewal modal will confirm that this CA is configured to use Azure AD CS for signing. Press **Renew via AD CS** to submit a new CSR to AD CS and install the renewed certificate.
-
-        ![pki adcs renew modal](/images/platform/pki/ca/ca-adcs-renew-modal.png)
       </Tab>
       <Tab title="API">
         To manually renew an AD CS-signed CA, re-trigger the install flow via the API.
@@ -329,51 +293,37 @@ Infisical supports two ways to use AD CS: as an **External CA** for direct certi
 
 ## Troubleshooting
 
-### Common Issues
+<AccordionGroup>
+  <Accordion title="Certificate Request Denied">
+    - Verify ADCS template permissions for your connection account
+    - Check template subject name requirements
+    - Ensure template allows the requested key algorithm and size
+  </Accordion>
+  <Accordion title="Template Not Found">
+    - Verify the template exists on your ADCS server and is published
+    - Check that your connection account has enrollment permissions
+    - Templates are dynamically loaded — refresh the form if they don't appear
+  </Accordion>
+  <Accordion title="Certificate Request Pending/Timeout">
+    Infisical only supports **immediate issuance**. If your request times out:
+    - Check if your ADCS template requires manual approval
+    - Verify the template is configured for auto-approval
+    - Review ADCS server policies that might be holding requests
+  </Accordion>
+  <Accordion title="Network Connectivity Issues">
+    - Verify your ADCS server's firewall allows connections from Infisical
+    - **Infisical Cloud**: Whitelist Infisical's IPs (see [Networking Configuration](/documentation/setup/networking))
+    - **Self-hosted**: Whitelist your Infisical server's IP on the ADCS server
+    - Test HTTPS connectivity to the ADCS web enrollment endpoint
+  </Accordion>
+  <Accordion title="Authentication Failures">
+    - Verify ADCS connection credentials
+    - Check domain account permissions
+    - Ensure network connectivity to the ADCS server
+  </Accordion>
+  <Accordion title="SSL/TLS Certificate Errors">
+    Common errors: `UNABLE_TO_VERIFY_LEAF_SIGNATURE`, `SELF_SIGNED_CERT_IN_CHAIN`, `CERT_HAS_EXPIRED`
 
-**Certificate Request Denied**
-
-- Verify ADCS template permissions for your connection account
-- Check template subject name requirements
-- Ensure template allows the requested key algorithm and size
-
-**Revocation Service Unavailable**
-
-- Verify IIS is running and the revocation endpoint is accessible
-- Check IIS application pool permissions
-- Test endpoint connectivity from Infisical
-
-**Template Not Found**
-
-- Verify template exists on ADCS server and is published
-- Check that your connection account has enrollment permissions for the template
-- Ensure the template is properly configured and available in the ADCS web enrollment interface
-- Templates are dynamically loaded - refresh the PKI Subscriber form if templates don't appear
-
-**Certificate Request Pending/Timeout**
-
-- Check if your ADCS template requires manual approval - Infisical only supports immediate issuance
-- Verify the certificate template is configured for auto-approval
-- Ensure your connection account has sufficient permissions to request certificates without approval
-- Review ADCS server policies that might be holding the certificate request
-
-**Network Connectivity Issues**
-
-- Verify your ADCS server's firewall allows connections from Infisical
-- For Infisical Cloud: Ensure Infisical's IP addresses are whitelisted (see [Networking Configuration](/documentation/setup/networking))
-- For self-hosted: Whitelist your Infisical server's IP address on the ADCS server
-- Test HTTPS connectivity to the ADCS web enrollment endpoint
-- Check for any network security appliances blocking the connection
-
-**Authentication Failures**
-
-- Verify ADCS connection credentials
-- Check domain account permissions
-- Ensure network connectivity to ADCS server
-
-**SSL/TLS Certificate Errors**
-
-- For ADCS servers with self-signed or private certificates: disable "Reject Unauthorized" in the SSL tab of your Azure ADCS app connection, or provide the certificate in PEM format
-- Common SSL errors: `UNABLE_TO_VERIFY_LEAF_SIGNATURE`, `SELF_SIGNED_CERT_IN_CHAIN`, `CERT_HAS_EXPIRED`
-- The SSL configuration applies to all HTTPS communications between Infisical and your ADCS server
-- Only HTTPS URLs are supported - HTTP connections are not allowed for security reasons
+    For ADCS servers with self-signed or private certificates, disable **Reject Unauthorized** in the SSL tab of your Azure ADCS app connection, or provide the CA certificate in PEM format.
+  </Accordion>
+</AccordionGroup>

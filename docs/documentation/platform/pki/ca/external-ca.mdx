@@ -1,52 +1,97 @@
 ---
 title: "External CA"
-sidebarTitle: "External CA"
-description: "Learn how to connect External Certificate Authorities with Infisical."
+sidebarTitle: "Overview"
+description: "Connect external Certificate Authorities to Infisical."
 ---
 
-## Concept
+Integrate with External Certificate Authorities (CAs) to use existing PKI infrastructure or connect to public CAs for certificate issuance.
 
-Infisical lets you integrate with External Certificate Authorities (CAs), allowing you to use existing PKI infrastructure or connect to public CAs to issue certificates for your end-entities.
-
-<div align="center">
+<Info>
+  This page is for product admins setting up PKI infrastructure. Teams issuing certificates should see [Applications](/documentation/platform/pki/applications/overview).
+</Info>
 
 ```mermaid
 graph TD
-    A1[External Public CA<br>e.g. Let's Encrypt, ZeroSSL, ...] --> Infisical
-    A2[External Private CA<br>e.g. AWS Private CA, HashiCorp Vault PKI, ...] --> Infisical
+    A1[External Public CA<br>e.g. Let's Encrypt, DigiCert] --> Infisical
+    A2[External Private CA<br>e.g. AWS Private CA, Venafi] --> Infisical
 ```
 
-</div>
+## Types of External CAs
 
-As shown above, these CAs commonly fall under two categories:
+| Type | Examples | Use Case |
+|------|----------|----------|
+| **External Public CAs** | Let's Encrypt, DigiCert, Sectigo | Public-facing services with browser trust |
+| **External Private CAs** | AWS Private CA, Venafi, Azure ADCS | Internal services, cloud-hosted or on-prem |
 
-- External Private CAs: CAs like AWS Private CA, HashiCorp Vault PKI, Azure ADCS, etc. that are privately owned and are used to issue certificates for internal services; these are often either cloud-hosted private CAs or on-prem / enterprise CAs.
-- External Public CAs: CAs like Let's Encrypt, DigiCert, GlobalSign, etc. that are publicly trusted and are used to issue certificates for public-facing services.
+Infisical can act as an ACME client, allowing integration with any [ACME-compatible CA](/documentation/platform/pki/ca/acme-ca).
 
-Note that Infisical can act as an _ACME client_, allowing you to integrate upstream with any [ACME-compatible CA](/documentation/platform/pki/ca/acme-ca) to automate certificate issuance and renewal.
+## Supported External CAs
 
-## Workflow
+### Public CAs
 
-A typical workflow for integrating an External CA with Infisical consists of choosing the desired External CA type
-and specifying the configuration or connection details necessary to connect to the CA.
+<CardGroup cols={2}>
+  <Card title="ACME CA (Generic)" icon="robot" href="/documentation/platform/pki/ca/acme-ca">
+    Connect to any ACME-compatible CA (Let's Encrypt, ZeroSSL, Buypass, etc.)
+  </Card>
+  <Card title="Let's Encrypt" icon="lock" href="/documentation/platform/pki/ca/lets-encrypt">
+    Free, automated certificates for public domains.
+  </Card>
+  <Card title="AWS ACM Public CA" icon="aws" href="/documentation/platform/pki/ca/aws-acm-public-ca">
+    Publicly trusted certificates via AWS Certificate Manager.
+  </Card>
+  <Card title="DigiCert" icon="shield-halved" href="/documentation/platform/pki/ca/digicert">
+    Enterprise certificates via DigiCert CertCentral.
+  </Card>
+  <Card title="DigiCert Direct" icon="shield-halved" href="/documentation/platform/pki/ca/digicert-direct">
+    Direct integration with DigiCert infrastructure.
+  </Card>
+  <Card title="Sectigo" icon="certificate" href="/documentation/platform/pki/ca/sectigo">
+    Enterprise certificates via Sectigo Certificate Manager.
+  </Card>
+</CardGroup>
 
-The specific steps and requirements vary depending on the External CA type you choose to integrate.
+### Private CAs
 
-## Supported External CA Types
+<CardGroup cols={2}>
+  <Card title="AWS Private CA" icon="aws" href="/documentation/platform/pki/ca/aws-pca">
+    Cloud-native private certificate management via AWS PCA.
+  </Card>
+  <Card title="Azure ADCS" icon="microsoft" href="/documentation/platform/pki/ca/azure-adcs">
+    Microsoft Active Directory Certificate Services integration.
+  </Card>
+  <Card title="Venafi TLS Protect Cloud" icon="cloud" href="/documentation/platform/pki/ca/venafi">
+    Venafi's cloud-based certificate management platform.
+  </Card>
+  <Card title="Venafi TPP" icon="server" href="/documentation/platform/pki/ca/venafi-tpp">
+    Venafi Trust Protection Platform (on-premises).
+  </Card>
+</CardGroup>
 
-Infisical currently supports the following External CA types out of the box:
-
-- [ACME CA](/documentation/platform/pki/ca/acme-ca): An ACME-compatible CA that supports the ACME protocol, such as Let's Encrypt, ZeroSSL, Buypass, DigiCert, Sectigo, etc.
-- [Azure ADCS](/documentation/platform/pki/ca/azure-adcs): Issue certificates and automate the signing and renewal of internal intermediate CA certificates through Microsoft Active Directory Certificate Services (ADCS).
-- [AWS Private CA](/documentation/platform/pki/ca/aws-pca): An AWS Private Certificate Authority (PCA) for cloud-native private certificate management.
-- [Venafi TLS Protect Cloud](/documentation/platform/pki/ca/venafi): Automate the signing and renewal of internal intermediate CA certificates through Venafi TLS Protect Cloud.
-
-If you don’t see a specific external CA listed here or need a dedicated integration guide, please reach out to sales@infisical.com and we’ll help you set up the integration for your external CA.
+<Note>
+  Don't see your CA? Contact sales@infisical.com and we'll help you set up the integration.
+</Note>
 
 ## FAQ
 
 <AccordionGroup>
-  <Accordion title="Can I use both Private CAs and External CAs in the same project?">
-    Yes. You can have both Private and External CAs in the same project.
+  <Accordion title="Can I use both Internal CAs and External CAs together?">
+    Yes. You can have both Internal and External CAs in the same Certificate Manager.
   </Accordion>
 </AccordionGroup>
+
+## What's Next?
+
+<CardGroup cols={2}>
+  <Card title="Internal CA" icon="building-columns" href="/documentation/platform/pki/ca/private-ca">
+    Create your own private CA hierarchy.
+  </Card>
+  <Card title="Certificate Policies" icon="file-contract" href="/documentation/platform/pki/settings/policies">
+    Define constraints for certificates.
+  </Card>
+  <Card title="Certificate Profiles" icon="id-card" href="/documentation/platform/pki/settings/profiles">
+    Create profiles that link CAs with policies.
+  </Card>
+  <Card title="Applications" icon="grid-2" href="/documentation/platform/pki/applications/overview">
+    Issue certificates through Applications.
+  </Card>
+</CardGroup>

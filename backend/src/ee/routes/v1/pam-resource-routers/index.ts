@@ -23,6 +23,11 @@ import {
   MySQLResourceSchema,
   UpdateMySQLResourceSchema
 } from "@app/ee/services/pam-resource/mysql/mysql-resource-schemas";
+import {
+  CreateOracleResourceSchema,
+  OracleResourceSchema,
+  UpdateOracleResourceSchema
+} from "@app/ee/services/pam-resource/oracle/oracle-resource-schemas";
 import { PamResource } from "@app/ee/services/pam-resource/pam-resource-enums";
 import {
   CreatePostgresResourceSchema,
@@ -133,6 +138,15 @@ export const PAM_RESOURCE_REGISTER_ROUTER_MAP: Record<PamResource, (server: Fast
       resourceResponseSchema: SanitizedWindowsResourceSchema,
       createResourceSchema: CreateWindowsResourceSchema,
       updateResourceSchema: UpdateWindowsResourceSchema
+    });
+  },
+  [PamResource.OracleDB]: async (server: FastifyZodProvider) => {
+    registerPamResourceEndpoints({
+      server,
+      resourceType: PamResource.OracleDB,
+      resourceResponseSchema: OracleResourceSchema,
+      createResourceSchema: CreateOracleResourceSchema,
+      updateResourceSchema: UpdateOracleResourceSchema
     });
   }
 };

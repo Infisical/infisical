@@ -14,7 +14,7 @@ export enum IdentityKubernetesAuthTokenReviewMode {
 export type TAttachKubernetesAuthDTO = {
   identityId: string;
   kubernetesHost: string | null;
-  caCert: string;
+  caCert?: string;
   verifyTlsCertificate?: boolean;
   tokenReviewerJwt?: string;
   tokenReviewMode: IdentityKubernetesAuthTokenReviewMode;

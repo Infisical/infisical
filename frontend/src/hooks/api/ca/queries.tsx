@@ -12,10 +12,10 @@ import {
 
 export const caKeys = {
   getCaById: (caId: string) => [{ caId }, "ca"],
-  getCaByNameAndProjectId: (caName: string, projectId: string) => [{ caName, projectId }, "ca"],
-  listCasByTypeAndProjectId: (type: CaType, projectId: string) => [{ type, projectId }, "cas"],
-  listCasByProjectId: (projectId: string) => [{ projectId }, "cas"],
-  listExternalCasByProjectId: (projectId: string) => [{ projectId }, "external-cas"],
+  getCaByNameAndProjectId: (caName: string) => [{ caName }, "ca"],
+  listCasByTypeAndProjectId: (type: CaType) => [{ type }, "cas"],
+  listCasByProjectId: () => ["cas"] as const,
+  listExternalCasByProjectId: () => ["external-cas"] as const,
   getCaCerts: (caId: string) => [{ caId }, "ca-cert"],
   getCaCrls: (caId: string) => [{ caId }, "ca-crls"],
   getCaCert: (caId: string) => [{ caId }, "ca-cert"],
@@ -23,10 +23,7 @@ export const caKeys = {
   getCaCrl: (caId: string) => [{ caId }, "ca-crl"],
   getCaCertTemplates: (caId: string) => [{ caId }, "ca-cert-templates"],
   getCaEstConfig: (caId: string) => [{ caId }, "ca-est-config"],
-  getAzureAdcsTemplates: (caId: string, projectId: string) => [
-    { caId, projectId },
-    "azure-adcs-templates"
-  ],
+  getAzureAdcsTemplates: (caId: string) => [{ caId }, "azure-adcs-templates"],
   getCaSigningConfig: (caId: string) => [{ caId }, "ca-signing-config"],
   getCaAutoRenewal: (caId: string) => [{ caId }, "ca-auto-renewal"]
 };
@@ -52,12 +49,12 @@ export const useGetCa = ({
   });
 };
 
-export const useListCasByTypeAndProjectId = (type: CaType, projectId: string) => {
+export const useListCasByTypeAndProjectId = (type: CaType) => {
   return useQuery({
-    queryKey: caKeys.listCasByTypeAndProjectId(type, projectId),
+    queryKey: caKeys.listCasByTypeAndProjectId(type),
     queryFn: async () => {
       const { data } = await apiRequest.get<TUnifiedCertificateAuthority[]>(
-        `/api/v1/cert-manager/ca/${type}?projectId=${projectId}`
+        `/api/v1/cert-manager/ca/${type}`
       );
 
       return data;
@@ -65,22 +62,22 @@ export const useListCasByTypeAndProjectId = (type: CaType, projectId: string) =>
   });
 };
 
-export const useListCasByProjectId = (projectId: string) => {
+export const useListCasByProjectId = () => {
   return useQuery({
-    queryKey: caKeys.listCasByProjectId(projectId),
+    queryKey: caKeys.listCasByProjectId(),
     queryFn: async () => {
       const { data } = await apiRequest.get<{
         certificateAuthorities: TUnifiedCertificateAuthority[];
-      }>(`/api/v1/cert-manager/ca?projectId=${projectId}`);
+      }>("/api/v1/cert-manager/ca");
 
       return data.certificateAuthorities;
     }
   });
 };
 
-export const useListExternalCasByProjectId = (projectId: string) => {
+export const useListExternalCasByProjectId = () => {
   return useQuery({
-    queryKey: caKeys.listExternalCasByProjectId(projectId),
+    queryKey: caKeys.listExternalCasByProjectId(),
     queryFn: async () => {
       const [
         acmeResponse,
@@ -90,23 +87,19 @@ export const useListExternalCasByProjectId = (projectId: string) => {
         awsAcmPublicCaResponse,
         venafiTppResponse
       ] = await Promise.allSettled([
+        apiRequest.get<TUnifiedCertificateAuthority[]>(`/api/v1/cert-manager/ca/${CaType.ACME}`),
         apiRequest.get<TUnifiedCertificateAuthority[]>(
-          `/api/v1/cert-manager/ca/${CaType.ACME}?projectId=${projectId}`
+          `/api/v1/cert-manager/ca/${CaType.AZURE_AD_CS}`
+        ),
+        apiRequest.get<TUnifiedCertificateAuthority[]>(`/api/v1/cert-manager/ca/${CaType.AWS_PCA}`),
+        apiRequest.get<TUnifiedCertificateAuthority[]>(
+          `/api/v1/cert-manager/ca/${CaType.DIGICERT}`
         ),
         apiRequest.get<TUnifiedCertificateAuthority[]>(
-          `/api/v1/cert-manager/ca/${CaType.AZURE_AD_CS}?projectId=${projectId}`
+          `/api/v1/cert-manager/ca/${CaType.AWS_ACM_PUBLIC_CA}`
         ),
         apiRequest.get<TUnifiedCertificateAuthority[]>(
-          `/api/v1/cert-manager/ca/${CaType.AWS_PCA}?projectId=${projectId}`
-        ),
-        apiRequest.get<TUnifiedCertificateAuthority[]>(
-          `/api/v1/cert-manager/ca/${CaType.DIGICERT}?projectId=${projectId}`
-        ),
-        apiRequest.get<TUnifiedCertificateAuthority[]>(
-          `/api/v1/cert-manager/ca/${CaType.AWS_ACM_PUBLIC_CA}?projectId=${projectId}`
-        ),
-        apiRequest.get<TUnifiedCertificateAuthority[]>(
-          `/api/v1/cert-manager/ca/${CaType.VENAFI_TPP}?projectId=${projectId}`
+          `/api/v1/cert-manager/ca/${CaType.VENAFI_TPP}`
         )
       ]);
 
@@ -285,21 +278,19 @@ export const useGetCaAutoRenewal = (caId: string, options?: { enabled?: boolean 
 
 export const useGetAzureAdcsTemplates = ({
   caId,
-  projectId,
   isAzureAdcsCa
 }: {
   caId: string;
-  projectId: string;
   isAzureAdcsCa: boolean;
 }) => {
   return useQuery({
-    queryKey: caKeys.getAzureAdcsTemplates(caId, projectId),
+    queryKey: caKeys.getAzureAdcsTemplates(caId),
     queryFn: async () => {
       const { data } = await apiRequest.get<{
         templates: TAzureAdCsTemplate[];
-      }>(`/api/v1/cert-manager/ca/azure-ad-cs/${caId}/templates?projectId=${projectId}`);
+      }>(`/api/v1/cert-manager/ca/azure-ad-cs/${caId}/templates`);
       return data;
     },
-    enabled: Boolean(caId && projectId && isAzureAdcsCa)
+    enabled: Boolean(caId && isAzureAdcsCa)
   });
 };

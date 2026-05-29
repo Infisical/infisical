@@ -381,6 +381,19 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
         }
       });
 
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.SecretRevertPerformed,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            projectId: req.body.projectId,
+            commitId: req.params.commitId,
+            changesReverted: result.changesReverted
+          }
+        })
+        .catch(() => {});
+
       return result;
     }
   });

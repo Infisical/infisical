@@ -1,12 +1,26 @@
 import { useEffect } from "react";
 import { Controller, useFormContext, useWatch } from "react-hook-form";
 import { SingleValue } from "react-select";
-import { faCircleInfo } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { Info } from "lucide-react";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
-import { FilterableSelect, FormControl, Select, SelectItem, Tooltip } from "@app/components/v2";
-import { Badge } from "@app/components/v3";
+import {
+  Badge,
+  Field,
+  FieldContent,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+  FilterableSelect,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { GCP_SYNC_SCOPES } from "@app/helpers/secretSyncs";
 import {
   useGcpConnectionListProjectLocations,
@@ -49,7 +63,7 @@ export const GcpSyncFields = () => {
   }, []);
 
   return (
-    <>
+    <FieldGroup>
       <SecretSyncConnectionField
         onChange={() => {
           setValue("destinationConfig.projectId", "");
@@ -60,84 +74,86 @@ export const GcpSyncFields = () => {
         name="destinationConfig.projectId"
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl
-            isError={Boolean(error)}
-            errorText={error?.message}
-            label="Project"
-            helperText={
-              <Tooltip
-                className="max-w-md"
-                content="Ensure that you've enabled the Secret Manager API, Cloud Resource Manager API, and Service Usage API on your GCP project. Additionally, make sure that the service account is assigned the appropriate GCP roles."
-              >
-                <div>
-                  <span>Don&#39;t see the project you&#39;re looking for?</span>{" "}
-                  <FontAwesomeIcon icon={faCircleInfo} className="text-mineshaft-400" />
-                </div>
+          <Field>
+            <FieldLabel>
+              Project
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-md">
+                  Ensure that you&apos;ve enabled the Secret Manager API, Cloud Resource Manager
+                  API, and Service Usage API on your GCP project. Additionally, make sure that the
+                  service account is assigned the appropriate GCP roles.
+                </TooltipContent>
               </Tooltip>
-            }
-          >
-            <FilterableSelect
-              menuPlacement="top"
-              isLoading={isPending && Boolean(connectionId)}
-              isDisabled={!connectionId}
-              value={projects?.find((project) => project.id === value) ?? null}
-              onChange={(option) => {
-                setValue("destinationConfig.locationId", "");
-                onChange((option as SingleValue<TGcpProject>)?.id ?? null);
-              }}
-              options={projects}
-              placeholder="Select a GCP project..."
-              getOptionLabel={(option) => option.name}
-              getOptionValue={(option) => option.id.toString()}
-            />
-          </FormControl>
+            </FieldLabel>
+            <FieldContent>
+              <FilterableSelect
+                isLoading={isPending && Boolean(connectionId)}
+                isDisabled={!connectionId}
+                value={projects?.find((project) => project.id === value) ?? null}
+                onChange={(option) => {
+                  setValue("destinationConfig.locationId", "");
+                  onChange((option as SingleValue<TGcpProject>)?.id ?? null);
+                }}
+                options={projects}
+                placeholder="Select a GCP project..."
+                getOptionLabel={(option) => option.name}
+                getOptionValue={(option) => option.id.toString()}
+              />
+              <FieldError errors={[error]} />
+            </FieldContent>
+          </Field>
         )}
       />
       <Controller
         name="destinationConfig.scope"
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl
-            isError={Boolean(error?.message)}
-            tooltipText={
-              <div className="flex flex-col gap-3">
-                <p>
-                  Specify how Infisical should sync secrets to GCP. The following options are
-                  available:
-                </p>
-                <ul className="flex list-disc flex-col gap-3 pl-4">
-                  {Object.values(GCP_SYNC_SCOPES).map(({ name, description }) => {
-                    return (
-                      <li key={name}>
-                        <p className="text-mineshaft-300">
-                          <span className="font-medium text-bunker-200">{name}</span>: {description}
-                        </p>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            }
-            tooltipClassName="max-w-lg"
-            label="Scope"
-          >
-            <Select
-              value={value}
-              onValueChange={(val) => onChange(val)}
-              className="w-full border border-mineshaft-500 capitalize"
-              position="popper"
-              dropdownContainerClassName="max-w-none"
-              isDisabled={!projectId}
-            >
-              {Object.values(GcpSyncScope).map((scope) => {
-                return (
-                  <SelectItem className="capitalize" value={scope} key={scope}>
-                    {scope}
-                  </SelectItem>
-                );
-              })}
-            </Select>
-          </FormControl>
+          <Field>
+            <FieldLabel>
+              Scope
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-lg">
+                  <div className="flex flex-col gap-3">
+                    <p>
+                      Specify how Infisical should sync secrets to GCP. The following options are
+                      available:
+                    </p>
+                    <ul className="flex list-disc flex-col gap-3 pl-4">
+                      {Object.values(GCP_SYNC_SCOPES).map(({ name, description }) => (
+                        <li key={name}>
+                          <p className="text-mineshaft-300">
+                            <span className="font-medium text-bunker-200">{name}</span>:{" "}
+                            {description}
+                          </p>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            </FieldLabel>
+            <FieldContent>
+              <Select value={value} onValueChange={(val) => onChange(val)} disabled={!projectId}>
+                <SelectTrigger className="w-full capitalize" isError={Boolean(error)}>
+                  <SelectValue placeholder="Select a scope..." />
+                </SelectTrigger>
+                <SelectContent position="popper">
+                  {Object.values(GcpSyncScope).map((scope) => (
+                    <SelectItem className="capitalize" value={scope} key={scope}>
+                      {scope}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FieldError errors={[error]} />
+            </FieldContent>
+          </Field>
         )}
       />
       {selectedScope === GcpSyncScope.Region && (
@@ -145,24 +161,27 @@ export const GcpSyncFields = () => {
           name="destinationConfig.locationId"
           control={control}
           render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl isError={Boolean(error)} errorText={error?.message} label="Region">
-              <FilterableSelect
-                menuPlacement="top"
-                isLoading={areLocationsPending && Boolean(projectId)}
-                isDisabled={!projectId}
-                value={locations?.find((option) => option.locationId === value) ?? null}
-                onChange={(option) =>
-                  onChange((option as SingleValue<TGcpLocation>)?.locationId ?? null)
-                }
-                options={locations}
-                placeholder="Select a region..."
-                getOptionValue={(option) => option.locationId}
-                formatOptionLabel={formatOptionLabel}
-              />
-            </FormControl>
+            <Field>
+              <FieldLabel>Region</FieldLabel>
+              <FieldContent>
+                <FilterableSelect
+                  isLoading={areLocationsPending && Boolean(projectId)}
+                  isDisabled={!projectId}
+                  value={locations?.find((option) => option.locationId === value) ?? null}
+                  onChange={(option) =>
+                    onChange((option as SingleValue<TGcpLocation>)?.locationId ?? null)
+                  }
+                  options={locations}
+                  placeholder="Select a region..."
+                  getOptionValue={(option) => option.locationId}
+                  formatOptionLabel={formatOptionLabel}
+                />
+                <FieldError errors={[error]} />
+              </FieldContent>
+            </Field>
           )}
         />
       )}
-    </>
+    </FieldGroup>
   );
 };

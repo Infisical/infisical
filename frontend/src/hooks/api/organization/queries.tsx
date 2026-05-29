@@ -20,6 +20,7 @@ import {
   TaxID,
   TListOrgIdentitiesDTO,
   TOrgIdentitiesList,
+  TOrgProductStats,
   UpdateOrgDTO
 } from "./types";
 
@@ -63,7 +64,8 @@ export const organizationKeys = {
   getOrgIntegrationAuths: (orgId: string) => [{ orgId }, "integration-auths"] as const,
   getOrgById: (orgId: string) => ["organization", { orgId }],
   getAvailableIdentities: () => ["available-identities"],
-  getAvailableUsers: () => ["available-users"]
+  getAvailableUsers: () => ["available-users"],
+  getOrgProductStats: (orgId: string) => [{ orgId }, "organization-product-stats"] as const
 };
 
 export const fetchOrganizations = async () => {
@@ -738,4 +740,14 @@ export const useGetAvailableOrgUsers = (enabled = true) =>
       return data.users;
     },
     enabled
+  });
+
+export const useGetOrgProductStats = (orgId: string) =>
+  useQuery({
+    queryKey: organizationKeys.getOrgProductStats(orgId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<TOrgProductStats>("/api/v1/organization/product-stats");
+      return data;
+    },
+    enabled: Boolean(orgId)
   });

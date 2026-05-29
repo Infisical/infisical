@@ -1,5 +1,6 @@
 import { ForbiddenError, subject } from "@casl/ability";
 import { requestContext } from "@fastify/request-context";
+import https from "https";
 import jwt from "jsonwebtoken";
 import { JwksClient } from "jwks-rsa";
 
@@ -19,6 +20,7 @@ import {
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { getConfig } from "@app/lib/config/env";
+import { request } from "@app/lib/config/request";
 import { crypto } from "@app/lib/crypto";
 import {
   BadRequestError,
@@ -34,7 +36,7 @@ import { RequestContextKey } from "@app/lib/request-context/request-context-keys
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
 import { getValueByDot } from "@app/lib/template/dot-access";
-import { blockLocalAndPrivateIpAddresses, buildSsrfSafeAgent, safeRequest } from "@app/lib/validator";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 
 import { ActorType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "../identity/identity-dal";
@@ -66,7 +68,7 @@ type TIdentityOidcAuthServiceFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findById" | "findOne" | "findEffectiveOrgMembership">;
   identityAccessTokenService: Pick<
     TIdentityAccessTokenServiceFactory,
-    "issueIdentityAccessToken" | "revokeAllTokensForIdentity"
+    "issueIdentityAccessToken" | "revokeTokensForIdentityAuthMethod"
   >;
 };
 
@@ -117,11 +119,17 @@ export const identityOidcAuthServiceFactory = ({
         caCert = decryptor({ cipherTextBlob: identityOidcAuth.encryptedCaCertificate }).toString();
       }
 
+      const requestAgent = caCert ? new https.Agent({ ca: caCert, rejectUnauthorized: true }) : undefined;
+
+      await blockLocalAndPrivateIpAddresses(identityOidcAuth.oidcDiscoveryUrl);
+
       let discoveryDoc: { jwks_uri: string };
       try {
-        const response = await safeRequest.get<{ jwks_uri: string }>(
+        const response = await request.get<{ jwks_uri: string }>(
           `${identityOidcAuth.oidcDiscoveryUrl}/.well-known/openid-configuration`,
-          caCert && identityOidcAuth.oidcDiscoveryUrl.includes("https") ? { ca: caCert } : {}
+          {
+            httpsAgent: identityOidcAuth.oidcDiscoveryUrl.includes("https") ? requestAgent : undefined
+          }
         );
         discoveryDoc = response.data;
       } catch (error) {
@@ -161,6 +169,8 @@ export const identityOidcAuthServiceFactory = ({
         });
       }
 
+      await blockLocalAndPrivateIpAddresses(jwksUri);
+
       const decodedToken = crypto.jwt().decode(oidcJwt, { complete: true });
       if (!decodedToken) {
         throw new UnauthorizedError({
@@ -174,18 +184,9 @@ export const identityOidcAuthServiceFactory = ({
         });
       }
 
-      // Validate the jwks_uri AND build a pinned agent in one step. JwksClient
-      // performs its own HTTP under the hood, so we hand it our pinned agent
-      // to defeat DNS rebinding on the JWKS fetch (TOCTOU window between a
-      // pre-validation and the actual connection).
-      const jwksRequestAgent = await buildSsrfSafeAgent(jwksUri, {
-        ca: caCert || undefined,
-        rejectUnauthorized: true
-      });
-
       const client = new JwksClient({
         jwksUri,
-        requestAgent: jwksRequestAgent
+        requestAgent: identityOidcAuth.oidcDiscoveryUrl.includes("https") ? requestAgent : undefined
       });
 
       const { kid } = decodedToken.header as { kid?: string };
@@ -968,7 +969,10 @@ export const identityOidcAuthServiceFactory = ({
     // Detaching the auth method must invalidate any tokens already issued
     // through it; without this, leaked tokens authenticate up to MAX_AGE
     // even after the admin pulled the auth method.
-    await identityAccessTokenService.revokeAllTokensForIdentity(identityId);
+    await identityAccessTokenService.revokeTokensForIdentityAuthMethod({
+      identityId,
+      authMethod: IdentityAuthMethod.OIDC_AUTH
+    });
 
     return revokedIdentityOidcAuth;
   };

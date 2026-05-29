@@ -63,7 +63,8 @@ export const WindowsResourceForm = ({ resource, onSubmit, closeSheet }: Props) =
     defaultValues: resource
       ? {
           ...resource,
-          gateway: resource.gatewayId ? { id: resource.gatewayId, name: "" } : undefined,
+          gatewayId: resource.gatewayId ?? null,
+          gatewayPoolId: resource.gatewayPoolId ?? null,
           domainId: resource.domainId ?? null,
           connectionDetails: {
             ...(resource.connectionDetails as FormData["connectionDetails"]),
@@ -77,7 +78,8 @@ export const WindowsResourceForm = ({ resource, onSubmit, closeSheet }: Props) =
         }
       : {
           resourceType: PamResourceType.Windows,
-          gateway: undefined,
+          gatewayId: null,
+          gatewayPoolId: null,
           connectionDetails: {
             protocol: WindowsProtocol.RDP,
             hostname: "",

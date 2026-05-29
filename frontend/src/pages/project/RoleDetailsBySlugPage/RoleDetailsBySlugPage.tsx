@@ -22,6 +22,7 @@ import {
 } from "@app/context";
 import { getProjectBaseURL } from "@app/helpers/project";
 import { useDeleteProjectRole, useGetProjectRoleBySlug } from "@app/hooks/api";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 import { DuplicateProjectRoleModal } from "@app/pages/project/RoleDetailsBySlugPage/components/DuplicateProjectRoleModal";
@@ -41,7 +42,9 @@ const Page = () => {
   const projectId = currentProject?.id || "";
   const orgId = currentOrg?.id || "";
 
-  const { data } = useGetProjectRoleBySlug(projectId, roleSlug as string);
+  const isCertManager = currentProject?.type === ProjectType.CertificateManager;
+  const { data } = useGetProjectRoleBySlug(projectId, roleSlug as string, currentProject?.type);
+  const displayName = data?.name ?? "";
 
   const { mutateAsync: deleteProjectRole } = useDeleteProjectRole();
 
@@ -96,11 +99,11 @@ const Page = () => {
             className="mb-4 flex items-center gap-x-2 text-sm text-muted"
           >
             <ChevronLeftIcon className="size-4" />
-            Project Roles
+            {isCertManager ? "Roles" : "Project Roles"}
           </Link>
           <PageHeader
             scope={currentProject.type}
-            title={data.name}
+            title={displayName}
             description={
               <>
                 {data.slug} {data.description && `- ${data.description}`}
@@ -199,6 +202,19 @@ const Page = () => {
               </DropdownMenu>
             )}
           </PageHeader>
+          {isCertManager && isCustomRole && (
+            <div className="mb-4 rounded-md border border-mineshaft-600 bg-mineshaft-900 p-4 text-sm text-mineshaft-200">
+              <p className="font-medium text-mineshaft-100">
+                Custom roles act as Member in Certificate Manager
+              </p>
+              <p className="mt-1 text-mineshaft-300">
+                In the new Certificate Manager flow, access is granted through Application
+                memberships (Admin or Member). Permissions defined here only apply to legacy
+                endpoints — users with this role are treated as Member at the project level and only
+                see resources inside Applications they are explicitly added to.
+              </p>
+            </div>
+          )}
           <RolePermissionsSection roleSlug={roleSlug} isDisabled={!isCustomRole} />
         </div>
       )}

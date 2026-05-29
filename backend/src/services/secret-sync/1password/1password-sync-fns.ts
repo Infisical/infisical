@@ -1,4 +1,4 @@
-import { safeRequest } from "@app/lib/validator";
+import { request } from "@app/lib/config/request";
 import { getOnePassInstanceUrl } from "@app/services/app-connection/1password";
 import {
   TDeleteOnePassVariable,
@@ -17,7 +17,7 @@ import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 const VALUE_LABEL_DEFAULT = "value";
 
 const listOnePassItems = async ({ instanceUrl, apiToken, vaultId, valueLabel }: TOnePassListVariables) => {
-  const { data } = await safeRequest.get<TOnePassListVariablesResponse>(`${instanceUrl}/v1/vaults/${vaultId}/items`, {
+  const { data } = await request.get<TOnePassListVariablesResponse>(`${instanceUrl}/v1/vaults/${vaultId}/items`, {
     headers: {
       Authorization: `Bearer ${apiToken}`,
       Accept: "application/json"
@@ -37,15 +37,12 @@ const listOnePassItems = async ({ instanceUrl, apiToken, vaultId, valueLabel }: 
       continue;
     }
 
-    const { data: secret } = await safeRequest.get<TOnePassVariable>(
-      `${instanceUrl}/v1/vaults/${vaultId}/items/${s.id}`,
-      {
-        headers: {
-          Authorization: `Bearer ${apiToken}`,
-          Accept: "application/json"
-        }
+    const { data: secret } = await request.get<TOnePassVariable>(`${instanceUrl}/v1/vaults/${vaultId}/items/${s.id}`, {
+      headers: {
+        Authorization: `Bearer ${apiToken}`,
+        Accept: "application/json"
       }
-    );
+    });
 
     const valueField = secret.fields.find((f) => f.label === valueLabel);
 
@@ -70,7 +67,7 @@ const createOnePassItem = async ({
   itemValue,
   valueLabel
 }: TPostOnePassVariable) => {
-  return safeRequest.post(
+  return request.post(
     `${instanceUrl}/v1/vaults/${vaultId}/items`,
     {
       title: itemTitle,
@@ -107,7 +104,7 @@ const updateOnePassItem = async ({
   valueLabel,
   otherFields
 }: TPutOnePassVariable) => {
-  return safeRequest.put(
+  return request.put(
     `${instanceUrl}/v1/vaults/${vaultId}/items/${itemId}`,
     {
       id: itemId,
@@ -137,7 +134,7 @@ const updateOnePassItem = async ({
 };
 
 const deleteOnePassItem = async ({ instanceUrl, apiToken, vaultId, itemId }: TDeleteOnePassVariable) => {
-  return safeRequest.delete(`${instanceUrl}/v1/vaults/${vaultId}/items/${itemId}`, {
+  return request.delete(`${instanceUrl}/v1/vaults/${vaultId}/items/${itemId}`, {
     headers: {
       Authorization: `Bearer ${apiToken}`
     }
@@ -152,7 +149,7 @@ export const OnePassSyncFns = {
       destinationConfig: { vaultId, valueLabel }
     } = secretSync;
 
-    const instanceUrl = getOnePassInstanceUrl(connection);
+    const instanceUrl = await getOnePassInstanceUrl(connection);
     const { apiToken } = connection.credentials;
 
     const { items, duplicates } = await listOnePassItems({
@@ -246,7 +243,7 @@ export const OnePassSyncFns = {
       destinationConfig: { vaultId, valueLabel }
     } = secretSync;
 
-    const instanceUrl = getOnePassInstanceUrl(connection);
+    const instanceUrl = await getOnePassInstanceUrl(connection);
     const { apiToken } = connection.credentials;
 
     const { items } = await listOnePassItems({
@@ -280,7 +277,7 @@ export const OnePassSyncFns = {
       destinationConfig: { vaultId, valueLabel }
     } = secretSync;
 
-    const instanceUrl = getOnePassInstanceUrl(connection);
+    const instanceUrl = await getOnePassInstanceUrl(connection);
     const { apiToken } = connection.credentials;
 
     const res = await listOnePassItems({

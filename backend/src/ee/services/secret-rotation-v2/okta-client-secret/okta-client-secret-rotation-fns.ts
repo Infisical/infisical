@@ -3,14 +3,16 @@ import { AxiosError } from "axios";
 
 import {
   TRotationFactory,
+  TRotationFactoryCheckActiveCredentials,
   TRotationFactoryGetSecretsPayload,
   TRotationFactoryIssueCredentials,
   TRotationFactoryRevokeCredentials,
   TRotationFactoryRotateCredentials
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
+import { request } from "@app/lib/config/request";
 import { delay as delayMs } from "@app/lib/delay";
 import { BadRequestError } from "@app/lib/errors";
-import { safeRequest } from "@app/lib/validator";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { getOktaInstanceUrl } from "@app/services/app-connection/okta";
 
 import {
@@ -63,10 +65,10 @@ export const oktaClientSecretRotationFactory: TRotationFactory<
    * Creates a new client secret for the Okta app.
    */
   const $rotateClientSecret = async () => {
-    const instanceUrl = getOktaInstanceUrl(connection);
+    const instanceUrl = await getOktaInstanceUrl(connection);
 
     try {
-      const { data } = await safeRequest.post<TOktaClientSecret>(
+      const { data } = await request.post<TOktaClientSecret>(
         `${instanceUrl}/api/v1/apps/${clientId}/credentials/secrets`,
         {},
         {
@@ -109,10 +111,10 @@ export const oktaClientSecretRotationFactory: TRotationFactory<
    * List client secrets.
    */
   const $listClientSecrets = async () => {
-    const instanceUrl = getOktaInstanceUrl(connection);
+    const instanceUrl = await getOktaInstanceUrl(connection);
 
     try {
-      const { data } = await safeRequest.get<TOktaClientSecret[]>(
+      const { data } = await request.get<TOktaClientSecret[]>(
         `${instanceUrl}/api/v1/apps/${clientId}/credentials/secrets`,
         {
           headers: {
@@ -134,10 +136,10 @@ export const oktaClientSecretRotationFactory: TRotationFactory<
    * Checks if a credential with the given secretId exists.
    */
   const credentialExists = async (secretId: string): Promise<boolean> => {
-    const instanceUrl = getOktaInstanceUrl(connection);
+    const instanceUrl = await getOktaInstanceUrl(connection);
 
     try {
-      const { data } = await safeRequest.get<TOktaClientSecret>(
+      const { data } = await request.get<TOktaClientSecret>(
         `${instanceUrl}/api/v1/apps/${clientId}/credentials/secrets/${secretId}`,
         {
           headers: {
@@ -164,11 +166,11 @@ export const oktaClientSecretRotationFactory: TRotationFactory<
       return; // Credential doesn't exist, nothing to revoke
     }
 
-    const instanceUrl = getOktaInstanceUrl(connection);
+    const instanceUrl = await getOktaInstanceUrl(connection);
 
     try {
       // First deactivate the secret
-      await safeRequest.post(
+      await request.post(
         `${instanceUrl}/api/v1/apps/${clientId}/credentials/secrets/${secretId}/lifecycle/deactivate`,
         undefined,
         {
@@ -179,7 +181,7 @@ export const oktaClientSecretRotationFactory: TRotationFactory<
       );
 
       // Then delete it
-      await safeRequest.delete(`${instanceUrl}/api/v1/apps/${clientId}/credentials/secrets/${secretId}`, {
+      await request.delete(`${instanceUrl}/api/v1/apps/${clientId}/credentials/secrets/${secretId}`, {
         headers: {
           Authorization: `SSWS ${connection.credentials.apiToken}`
         }
@@ -264,10 +266,51 @@ export const oktaClientSecretRotationFactory: TRotationFactory<
     { key: secretsMapping.clientSecret, value: clientSecret }
   ];
 
+  const checkActiveCredentials: TRotationFactoryCheckActiveCredentials<
+    TOktaClientSecretRotationGeneratedCredentials
+  > = async ({ clientId: activeClientId, clientSecret }) => {
+    const instanceUrl = await getOktaInstanceUrl(connection);
+    // replace the -admin on the instanceUrl
+    const apiURL = instanceUrl.replace("-admin", "");
+
+    const tokenUrl = `${apiURL}/oauth2/default/v1/introspect`;
+    await blockLocalAndPrivateIpAddresses(tokenUrl);
+    const basicAuth = Buffer.from(`${activeClientId}:${clientSecret}`).toString("base64");
+
+    try {
+      await request.post(
+        tokenUrl,
+        new URLSearchParams({
+          token: "access_token", // this can be anything
+          token_type_hint: "access_token"
+        }).toString(),
+        {
+          headers: {
+            Accept: "application/json",
+            "Content-Type": "application/x-www-form-urlencoded",
+            Authorization: `Basic ${basicAuth}`
+          }
+        }
+      );
+    } catch (error: unknown) {
+      if (error instanceof AxiosError) {
+        const errorData = error.response?.data as { error?: string; error_description?: string } | undefined;
+        if (errorData?.error === "invalid_scope") return;
+        throw new BadRequestError({
+          message: `Okta client credentials check failed: ${errorData?.error_description ?? errorData?.error ?? error.message}`
+        });
+      }
+      throw new BadRequestError({
+        message: `Okta client credentials check failed: ${createErrorMessage(error)}`
+      });
+    }
+  };
+
   return {
     issueCredentials,
     revokeCredentials,
     rotateCredentials,
-    getSecretsPayload
+    getSecretsPayload,
+    checkActiveCredentials
   };
 };

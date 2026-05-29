@@ -6,7 +6,7 @@ import { TDbClient } from "@app/db";
 import { ProjectType, SecretsV2Schema, SecretType, TableName, TSecretsV2, TSecretsV2Update } from "@app/db/schemas";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { generateCacheKeyFromData } from "@app/lib/crypto/cache";
-import { applyJitter } from "@app/lib/dates";
+import { applyJitter, utcDayStamp } from "@app/lib/dates";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import {
   buildFindFilter,
@@ -56,7 +56,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
   const invalidateSecretCacheByProjectId = async (projectId: string, tx?: Knex) => {
     const secretDalVersionKey = SecretServiceCacheKeys.getSecretDalVersion(projectId);
     await keyStore.pgIncrementBy(secretDalVersionKey, { incr: 1, tx, expiry: SECRET_DAL_VERSION_TTL });
-    await keyStore.deleteItem(KeyStorePrefixes.SecretEtag(projectId));
+    await keyStore.deleteItem(KeyStorePrefixes.SecretEtag(projectId, utcDayStamp()));
   };
 
   const findOne = async (filter: Partial<TSecretsV2>, tx?: Knex) => {
@@ -80,6 +80,11 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
           `${TableName.SecretRotationV2SecretMapping}.secretId`
         )
         .leftJoin(
+          TableName.HoneyTokenSecretMapping,
+          `${TableName.SecretV2}.id`,
+          `${TableName.HoneyTokenSecretMapping}.secretId`
+        )
+        .leftJoin(
           TableName.SecretReminderRecipients,
           `${TableName.SecretV2}.id`,
           `${TableName.SecretReminderRecipients}.secretId`
@@ -93,13 +98,15 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
         .select(db.ref("id").withSchema(TableName.SecretTag).as("tagId"))
         .select(db.ref("color").withSchema(TableName.SecretTag).as("tagColor"))
         .select(db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug"))
-        .select(db.ref("rotationId").withSchema(TableName.SecretRotationV2SecretMapping));
+        .select(db.ref("rotationId").withSchema(TableName.SecretRotationV2SecretMapping))
+        .select(db.ref("honeyTokenId").withSchema(TableName.HoneyTokenSecretMapping).as("honeyTokenId"));
       const data = sqlNestRelationships({
         data: docs,
         key: "id",
         parentMapper: (el) => ({
           _id: el.id,
           ...SecretsV2Schema.parse(el),
+          isHoneyTokenSecret: Boolean(el.honeyTokenId),
           isRotatedSecret: Boolean(el.rotationId),
           rotationId: el.rotationId
         }),
@@ -161,8 +168,17 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
           `${TableName.SecretV2}.id`,
           `${TableName.SecretRotationV2SecretMapping}.secretId`
         )
+        .leftJoin(
+          TableName.HoneyTokenSecretMapping,
+          `${TableName.SecretV2}.id`,
+          `${TableName.HoneyTokenSecretMapping}.secretId`
+        )
         .leftJoin(TableName.SecretFolder, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
-        .leftJoin(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+        .leftJoin(TableName.Environment, function joinActiveEnvForFolder() {
+          this.on(`${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`).andOnNull(
+            `${TableName.Environment}.deleteAfter`
+          );
+        })
         .select(
           db.ref("id").withSchema(TableName.ResourceMetadata).as("metadataId"),
           db.ref("key").withSchema(TableName.ResourceMetadata).as("metadataKey"),
@@ -174,7 +190,8 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
         .select(db.ref("id").withSchema(TableName.SecretTag).as("tagId"))
         .select(db.ref("color").withSchema(TableName.SecretTag).as("tagColor"))
         .select(db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug"))
-        .select(db.ref("rotationId").withSchema(TableName.SecretRotationV2SecretMapping));
+        .select(db.ref("rotationId").withSchema(TableName.SecretRotationV2SecretMapping))
+        .select(db.ref("honeyTokenId").withSchema(TableName.HoneyTokenSecretMapping).as("honeyTokenId"));
 
       if (filter?.projectId) {
         void query.where(`${TableName.Environment}.projectId`, filter.projectId);
@@ -193,6 +210,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
         parentMapper: (el) => ({
           _id: el.id,
           ...SecretsV2Schema.parse(el),
+          isHoneyTokenSecret: Boolean(el.honeyTokenId),
           rotationId: el.rotationId,
           isRotatedSecret: Boolean(el.rotationId),
           projectId: el.environmentProjectId
@@ -485,6 +503,11 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
           `${TableName.SecretV2}.id`,
           `${TableName.SecretRotationV2SecretMapping}.secretId`
         )
+        .leftJoin(
+          TableName.HoneyTokenSecretMapping,
+          `${TableName.SecretV2}.id`,
+          `${TableName.HoneyTokenSecretMapping}.secretId`
+        )
         .whereIn("folderId", folderIds)
         .where((bd) => {
           if (filters?.search) {
@@ -540,7 +563,6 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
       }
 
       const secrets = await query;
-
       // @ts-expect-error not inferred by knex
       return Number(secrets[0]?.count ?? 0);
     } catch (error) {
@@ -604,6 +626,11 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
           `${TableName.SecretV2}.id`,
           `${TableName.SecretRotationV2SecretMapping}.secretId`
         )
+        .leftJoin(
+          TableName.HoneyTokenSecretMapping,
+          `${TableName.SecretV2}.id`,
+          `${TableName.HoneyTokenSecretMapping}.secretId`
+        )
         .leftJoin(TableName.Reminder, `${TableName.SecretV2}.id`, `${TableName.Reminder}.secretId`)
         .leftJoin(TableName.ReminderRecipient, `${TableName.Reminder}.id`, `${TableName.ReminderRecipient}.reminderId`)
         .leftJoin(TableName.Users, `${TableName.ReminderRecipient}.userId`, `${TableName.Users}.id`)
@@ -648,6 +675,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
           db.ref("encryptedValue").withSchema(TableName.ResourceMetadata).as("metadataEncryptedValue")
         )
         .select(db.ref("rotationId").withSchema(TableName.SecretRotationV2SecretMapping))
+        .select(db.ref("honeyTokenId").withSchema(TableName.HoneyTokenSecretMapping).as("honeyTokenId"))
         .where((bd) => {
           const slugs = filters?.tagSlugs?.filter(Boolean);
           if (slugs && slugs.length > 0) {
@@ -684,6 +712,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
         parentMapper: (el) => ({
           _id: el.id,
           ...SecretsV2Schema.parse(el),
+          isHoneyTokenSecret: Boolean(el.honeyTokenId),
           rotationId: el.rotationId,
           isRotatedSecret: Boolean(el.rotationId)
         }),
@@ -761,6 +790,11 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
           `${TableName.SecretV2}.id`,
           `${TableName.SecretRotationV2SecretMapping}.secretId`
         )
+        .leftJoin(
+          TableName.HoneyTokenSecretMapping,
+          `${TableName.SecretV2}.id`,
+          `${TableName.HoneyTokenSecretMapping}.secretId`
+        )
 
         .leftJoin(
           TableName.SecretV2JnTag,
@@ -783,13 +817,15 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
           db.ref("encryptedValue").withSchema(TableName.ResourceMetadata).as("metadataEncryptedValue")
         )
         .select(selectAllTableCols(TableName.SecretV2))
-        .select(db.ref("rotationId").withSchema(TableName.SecretRotationV2SecretMapping));
+        .select(db.ref("rotationId").withSchema(TableName.SecretRotationV2SecretMapping))
+        .select(db.ref("honeyTokenId").withSchema(TableName.HoneyTokenSecretMapping).as("honeyTokenId"));
 
       const docs = sqlNestRelationships({
         data: secrets,
         key: "id",
         parentMapper: (secret) => ({
           ...secret,
+          isHoneyTokenSecret: Boolean(secret.honeyTokenId),
           isRotatedSecret: Boolean(secret.rotationId)
         }),
         childrenMapper: [
@@ -838,7 +874,8 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
             .from(TableName.SecretV2)
             .join(TableName.SecretFolder, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
             .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
-            .where(`${TableName.Environment}.projectId`, projectId);
+            .where(`${TableName.Environment}.projectId`, projectId)
+            .whereNull(`${TableName.Environment}.deleteAfter`);
         })
         .where({
           environment: envSlug,
@@ -898,6 +935,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
         .join(TableName.SecretFolder, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
         .where("projectId", projectId)
+        .whereNull(`${TableName.Environment}.deleteAfter`)
         .select(selectAllTableCols(TableName.SecretReferenceV2))
         .select("folderId");
 
@@ -928,6 +966,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
           [`${TableName.SecretFolder}.isReserved` as "isReserved"]: false
         })
         .where("projectId", projectId)
+        .whereNull(`${TableName.Environment}.deleteAfter`)
         .select(selectAllTableCols(TableName.SecretReferenceV2))
         .select("folderId");
 
@@ -954,7 +993,8 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
             .from(TableName.SecretV2)
             .join(TableName.SecretFolder, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
             .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
-            .where(`${TableName.Environment}.projectId`, projectId);
+            .where(`${TableName.Environment}.projectId`, projectId)
+            .whereNull(`${TableName.Environment}.deleteAfter`);
         })
         .where({
           environment: oldEnvSlug,
@@ -976,6 +1016,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
         .join(TableName.SecretFolder, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
         .where("projectId", projectId)
+        .whereNull(`${TableName.Environment}.deleteAfter`)
         // not empty
         .whereNotNull("encryptedValue")
         .select("encryptedValue", `${TableName.SecretV2}.id` as "id");
@@ -1001,7 +1042,11 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
         )
 
         .leftJoin(TableName.SecretFolder, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
-        .leftJoin(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+        .leftJoin(TableName.Environment, function joinActiveEnvForFolder() {
+          this.on(`${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`).andOnNull(
+            `${TableName.Environment}.deleteAfter`
+          );
+        })
         .leftJoin(TableName.ResourceMetadata, `${TableName.SecretV2}.id`, `${TableName.ResourceMetadata}.secretId`)
         .select(selectAllTableCols(TableName.SecretV2))
         .select(db.ref("id").withSchema(TableName.SecretTag).as("tagId"))
@@ -1139,6 +1184,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
         .join(TableName.SecretFolder, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
         .where(`${TableName.Environment}.projectId`, projectId)
+        .whereNull(`${TableName.Environment}.deleteAfter`)
         .whereNull(`${TableName.SecretV2}.userId`)
         .where(`${TableName.SecretV2}.updatedAt`, "<", staleBeforeDate)
         .select(
@@ -1163,6 +1209,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
         .join(TableName.SecretFolder, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
         .where(`${TableName.Environment}.projectId`, projectId)
+        .whereNull(`${TableName.Environment}.deleteAfter`)
         .whereNull(`${TableName.SecretV2}.userId`)
         .where(`${TableName.SecretV2}.updatedAt`, "<", staleBeforeDate)
         .count("* as count")

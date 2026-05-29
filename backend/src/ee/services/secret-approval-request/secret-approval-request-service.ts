@@ -337,16 +337,18 @@ export const secretApprovalRequestServiceFactory = ({
     const getHasSecretReadAccess = (environment: string, tags: { slug: string }[], secretPath?: string) => {
       const isReviewer = policy.approvers.some(({ userId }) => userId === actorId);
 
-      if (!isReviewer) {
-        const canRead = hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
-          environment,
-          secretPath: secretPath || "/",
-          secretTags: tags.map((i) => i.slug)
-        });
-        return canRead;
+      // Reviewers get temporary read access only while the request is open for review
+      if (isReviewer && secretApprovalRequest.status === RequestState.Open) {
+        return true;
       }
 
-      return true;
+      // Otherwise check actual read permissions
+      const canRead = hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
+        environment,
+        secretPath: secretPath || "/",
+        secretTags: tags.map((i) => i.slug)
+      });
+      return canRead;
     };
 
     let secrets;
@@ -689,7 +691,11 @@ export const secretApprovalRequestServiceFactory = ({
         throw new NotFoundError({ message: `No secrets found in secret change request with ID '${approvalId}'` });
       }
 
-      const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
+      const {
+        decryptor: secretManagerDecryptor,
+        generateSecretBlindIndex,
+        encryptor: secretManagerEncryptor
+      } = await kmsService.createCipherPairWithDataKey({
         type: KmsDataKey.SecretManager,
         projectId
       });
@@ -742,6 +748,14 @@ export const secretApprovalRequestServiceFactory = ({
 
       const secretDeletionCommits = secretApprovalSecrets.filter(({ op }) => op === SecretOperations.Delete);
       mergeStatus = await secretApprovalRequestDAL.transaction(async (tx) => {
+        const creationBlindIndexes = await Promise.all(
+          secretCreationCommits.map((el) =>
+            el.encryptedValue
+              ? generateSecretBlindIndex(secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }))
+              : Promise.resolve(undefined)
+          )
+        );
+
         const newSecrets = secretCreationCommits.length
           ? await fnSecretV2BridgeBulkInsert({
               tx,
@@ -751,12 +765,13 @@ export const secretApprovalRequestServiceFactory = ({
                 type: actor
               },
               orgId: actorOrgId,
-              inputSecrets: secretCreationCommits.map((el) => {
+              inputSecrets: secretCreationCommits.map((el, idx) => {
                 return {
                   tagIds: el?.tags.map(({ id }) => id),
                   version: 1,
                   encryptedComment: el.encryptedComment,
                   encryptedValue: el.encryptedValue,
+                  secretValueBlindIndex: creationBlindIndexes[idx],
                   skipMultilineEncoding: el.skipMultilineEncoding,
                   key: el.key,
                   secretMetadata: (Array.isArray(el.secretMetadata)
@@ -796,11 +811,6 @@ export const secretApprovalRequestServiceFactory = ({
           const folderPaths = await folderDAL.findSecretPathByFolderIds(projectId, [folderId], tx);
           const destinationSecretPath = folderPaths?.[0]?.path || "/";
 
-          const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({
-            type: KmsDataKey.SecretManager,
-            projectId
-          });
-
           const createdSecretsByKey = new Map(newSecrets.map((s) => [s.key, s]));
 
           for await (const moveCommit of moveSecretCommits) {
@@ -834,10 +844,21 @@ export const secretApprovalRequestServiceFactory = ({
               folderDAL,
               encryptor: ({ plainText }) => secretManagerEncryptor({ plainText }),
               decryptor: ({ cipherTextBlob }) => secretManagerDecryptor({ cipherTextBlob }),
+              generateSecretBlindIndex,
               tx
             });
           }
         }
+
+        const updationBlindIndexes = await Promise.all(
+          secretUpdationCommits.map((el) => {
+            const shouldComputeBlindIndex =
+              !el.secret?.isRotatedSecret && el.encryptedValue !== null && el.encryptedValue !== undefined;
+            return shouldComputeBlindIndex
+              ? generateSecretBlindIndex(secretManagerDecryptor({ cipherTextBlob: el.encryptedValue as Buffer }))
+              : Promise.resolve(undefined);
+          })
+        );
 
         const updatedSecrets = secretUpdationCommits.length
           ? await fnSecretV2BridgeBulkUpdate({
@@ -848,11 +869,12 @@ export const secretApprovalRequestServiceFactory = ({
                 type: actor
               },
               tx,
-              inputSecrets: secretUpdationCommits.map((el) => {
+              inputSecrets: secretUpdationCommits.map((el, idx) => {
                 const encryptedValue =
                   !el.secret?.isRotatedSecret && el.encryptedValue !== null && el.encryptedValue !== undefined
                     ? {
                         encryptedValue: el.encryptedValue,
+                        secretValueBlindIndex: updationBlindIndexes[idx],
                         references: el.encryptedValue
                           ? getAllSecretReferencesV2Bridge(
                               secretManagerDecryptor({
@@ -901,11 +923,6 @@ export const secretApprovalRequestServiceFactory = ({
           const folderPaths = await folderDAL.findSecretPathByFolderIds(projectId, [folderId], tx);
           const secretPath = folderPaths?.[0]?.path || "/";
 
-          const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({
-            type: KmsDataKey.SecretManager,
-            projectId
-          });
-
           for await (const rename of secretKeyRenames) {
             // eslint-disable-next-line no-continue
             if (!rename.secret || !rename.secretId) continue;
@@ -926,6 +943,7 @@ export const secretApprovalRequestServiceFactory = ({
               folderDAL,
               encryptor: ({ plainText }) => secretManagerEncryptor({ plainText }),
               decryptor: ({ cipherTextBlob }) => secretManagerDecryptor({ cipherTextBlob }),
+              generateSecretBlindIndex,
               tx
             });
           }
@@ -1200,6 +1218,7 @@ export const secretApprovalRequestServiceFactory = ({
       orgId: actorOrgId,
       secretPath: folder.path,
       environmentSlug: folder.environmentSlug,
+      environmentName: folder.environmentName,
       actorId,
       actor,
       events
@@ -1638,7 +1657,7 @@ export const secretApprovalRequestServiceFactory = ({
     });
 
     const env = await projectEnvDAL.findOne({ slug: environment, projectId });
-    const user = await userDAL.findById(actorId);
+    const user = await requestMemoize(requestMemoKeys.userFindById(actorId), () => userDAL.findById(actorId));
 
     const projectPath = `/organizations/${actorOrgId}/projects/secret-management/${projectId}`;
     const approvalPath = `${projectPath}/approval`;
@@ -2071,7 +2090,7 @@ export const secretApprovalRequestServiceFactory = ({
       ? await executeApprovalRequestCreation(providedTx)
       : await secretApprovalRequestDAL.transaction(executeApprovalRequestCreation);
 
-    const user = await userDAL.findById(actorId);
+    const user = await requestMemoize(requestMemoKeys.userFindById(actorId), () => userDAL.findById(actorId));
     const env = await projectEnvDAL.findOne({ slug: environment, projectId });
 
     const projectPath = `/organizations/${actorOrgId}/projects/secret-management/${project.id}`;

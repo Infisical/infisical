@@ -1,10 +1,15 @@
 import { ReactNode } from "react";
-import { faInfoCircle } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { InfoIcon } from "lucide-react";
 
-import { GenericFieldLabel } from "@app/components/secret-syncs";
 import { GitHubSyncSelectedRepositoriesTooltipContent } from "@app/components/secret-syncs/github";
-import { Tooltip } from "@app/components/v2";
+import {
+  Detail,
+  DetailLabel,
+  DetailValue,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import {
   GitHubSyncScope,
   GitHubSyncVisibility,
@@ -23,38 +28,56 @@ export const GitHubSyncDestinationSection = ({ secretSync }: Props) => {
     case GitHubSyncScope.Organization:
       Components = (
         <>
-          <GenericFieldLabel label="Organization">{destinationConfig.org}</GenericFieldLabel>
-          <GenericFieldLabel label="Visibility" className="capitalize">
-            {destinationConfig.visibility} Repositories
-          </GenericFieldLabel>
+          <Detail>
+            <DetailLabel>Organization</DetailLabel>
+            <DetailValue>{destinationConfig.org}</DetailValue>
+          </Detail>
+          <Detail className="capitalize">
+            <DetailLabel>Visibility</DetailLabel>
+            <DetailValue>{destinationConfig.visibility} Repositories</DetailValue>
+          </Detail>
           {destinationConfig.visibility === GitHubSyncVisibility.Selected && (
-            <GenericFieldLabel label="Selected Repositories">
-              {destinationConfig.selectedRepositoryIds?.length ?? 0} Repositories
-              <Tooltip
-                side="bottom"
-                content={<GitHubSyncSelectedRepositoriesTooltipContent secretSync={secretSync} />}
-              >
-                <FontAwesomeIcon size="xs" className="ml-1 text-bunker-300" icon={faInfoCircle} />
-              </Tooltip>
-            </GenericFieldLabel>
+            <Detail>
+              <DetailLabel>Selected Repositories</DetailLabel>
+              <DetailValue>
+                {destinationConfig.selectedRepositoryIds?.length ?? 0} Repositories
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <InfoIcon className="ml-1 inline size-3 text-bunker-300" />
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">
+                    <GitHubSyncSelectedRepositoriesTooltipContent secretSync={secretSync} />
+                  </TooltipContent>
+                </Tooltip>
+              </DetailValue>
+            </Detail>
           )}
         </>
       );
       break;
     case GitHubSyncScope.Repository:
       Components = (
-        <GenericFieldLabel label="Repository">
-          {destinationConfig.owner}/{destinationConfig.repo}
-        </GenericFieldLabel>
+        <Detail>
+          <DetailLabel>Repository</DetailLabel>
+          <DetailValue>
+            {destinationConfig.owner}/{destinationConfig.repo}
+          </DetailValue>
+        </Detail>
       );
       break;
     case GitHubSyncScope.RepositoryEnvironment:
       Components = (
         <>
-          <GenericFieldLabel label="Repository">
-            {destinationConfig.owner}/{destinationConfig.repo}
-          </GenericFieldLabel>
-          <GenericFieldLabel label="Environment">{destinationConfig.env}</GenericFieldLabel>
+          <Detail>
+            <DetailLabel>Repository</DetailLabel>
+            <DetailValue>
+              {destinationConfig.owner}/{destinationConfig.repo}
+            </DetailValue>
+          </Detail>
+          <Detail>
+            <DetailLabel>Environment</DetailLabel>
+            <DetailValue>{destinationConfig.env}</DetailValue>
+          </Detail>
         </>
       );
       break;
@@ -66,9 +89,10 @@ export const GitHubSyncDestinationSection = ({ secretSync }: Props) => {
 
   return (
     <>
-      <GenericFieldLabel className="capitalize" label="Scope">
-        {destinationConfig.scope.replace("-", " ")}
-      </GenericFieldLabel>
+      <Detail className="capitalize">
+        <DetailLabel>Scope</DetailLabel>
+        <DetailValue>{destinationConfig.scope.replace("-", " ")}</DetailValue>
+      </Detail>
       {Components}
     </>
   );

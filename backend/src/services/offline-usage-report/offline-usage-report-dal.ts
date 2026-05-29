@@ -108,7 +108,9 @@ export const offlineUsageReportDALFactory = (db: TDbClient) => {
       .select("p.id as projectId")
       .count("s.id as count")
       .leftJoin(`${TableName.SecretFolder} as sf`, "s.folderId", "sf.id")
-      .leftJoin(`${TableName.Environment} as e`, "sf.envId", "e.id")
+      .leftJoin(`${TableName.Environment} as e`, function joinActiveEnvForFolder() {
+        this.on("sf.envId", "e.id").andOnNull("e.deleteAfter");
+      })
       .leftJoin(`${TableName.Project} as p`, "e.projectId", "p.id")
       .where("p.type", ProjectType.SecretManager)
       .groupBy("p.id")
@@ -143,7 +145,9 @@ export const offlineUsageReportDALFactory = (db: TDbClient) => {
       .select("p.id as projectId", "p.name as projectName")
       .count("s.id as secretCount")
       .leftJoin(`${TableName.SecretFolder} as sf`, "s.folderId", "sf.id")
-      .leftJoin(`${TableName.Environment} as e`, "sf.envId", "e.id")
+      .leftJoin(`${TableName.Environment} as e`, function joinActiveEnvForFolder() {
+        this.on("sf.envId", "e.id").andOnNull("e.deleteAfter");
+      })
       .leftJoin(`${TableName.Project} as p`, "e.projectId", "p.id")
       .where("p.type", ProjectType.SecretManager)
       .groupBy("p.id", "p.name")

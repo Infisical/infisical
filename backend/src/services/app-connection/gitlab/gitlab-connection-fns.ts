@@ -3,10 +3,11 @@ import { GitbeakerRequestError, Gitlab } from "@gitbeaker/rest";
 import { AxiosError } from "axios";
 
 import { getConfig } from "@app/lib/config/env";
+import { request } from "@app/lib/config/request";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
-import { blockLocalAndPrivateIpAddresses, safeRequest } from "@app/lib/validator";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { encryptAppConnectionCredentials } from "@app/services/app-connection/app-connection-fns";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
@@ -24,6 +25,12 @@ interface GitLabOAuthTokenResponse {
   created_at: number;
   scope?: string;
 }
+
+type TNavigationParams = {
+  appConnection: TGitLabConnection;
+  appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+};
 
 export const getGitLabConnectionListItem = () => {
   const { INF_APP_CONNECTION_GITLAB_OAUTH_CLIENT_ID } = getConfig();
@@ -96,7 +103,7 @@ export const refreshGitLabToken = async (
 
   try {
     const url = await getGitLabInstanceUrl(instanceUrl);
-    const { data } = await safeRequest.post<GitLabOAuthTokenResponse>(`${url}/oauth/token`, payload.toString(), {
+    const { data } = await request.post<GitLabOAuthTokenResponse>(`${url}/oauth/token`, payload.toString(), {
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
         Accept: "application/json"
@@ -133,6 +140,39 @@ export const refreshGitLabToken = async (
   }
 };
 
+const getNavigationClient = async ({ appConnection, appConnectionDAL, kmsService }: TNavigationParams) => {
+  let { accessToken } = appConnection.credentials;
+
+  if (
+    appConnection.method === GitLabConnectionMethod.AccessToken &&
+    appConnection.credentials.accessTokenType === GitLabAccessTokenType.Project
+  ) {
+    return null;
+  }
+
+  if (
+    appConnection.method === GitLabConnectionMethod.OAuth &&
+    appConnection.credentials.refreshToken &&
+    new Date(appConnection.credentials.expiresAt) < new Date()
+  ) {
+    accessToken = await refreshGitLabToken(
+      appConnection.credentials.refreshToken,
+      appConnection.id,
+      appConnection.orgId,
+      appConnection.projectId,
+      appConnectionDAL,
+      kmsService,
+      appConnection.credentials.instanceUrl
+    );
+  }
+
+  return getGitLabClient(
+    accessToken,
+    appConnection.credentials.instanceUrl,
+    appConnection.method === GitLabConnectionMethod.OAuth
+  );
+};
+
 export const exchangeGitLabOAuthCode = async (
   code: string,
   instanceUrl?: string
@@ -164,7 +204,7 @@ export const exchangeGitLabOAuthCode = async (
     });
     const url = await getGitLabInstanceUrl(instanceUrl);
 
-    const response = await safeRequest.post<GitLabOAuthTokenResponse>(`${url}/oauth/token`, payload.toString(), {
+    const response = await request.post<GitLabOAuthTokenResponse>(`${url}/oauth/token`, payload.toString(), {
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
         Accept: "application/json"
@@ -277,11 +317,15 @@ export const getGitLabConnectionClient = async (
 export const listGitLabProjects = async ({
   appConnection,
   appConnectionDAL,
-  kmsService
+  kmsService,
+  search,
+  limit
 }: {
   appConnection: TGitLabConnection;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  search?: string;
+  limit?: number;
 }): Promise<TGitLabProject[]> => {
   let { accessToken } = appConnection.credentials;
 
@@ -308,11 +352,16 @@ export const listGitLabProjects = async ({
       appConnection.method === GitLabConnectionMethod.OAuth
     );
     const projects = await client.Projects.all({
+      pagination: "offset",
+      ...(limit !== undefined ? { perPage: limit } : {}),
+      ...(search ? { search } : {}),
+      maxPages: 1,
       archived: false,
       includePendingDelete: false,
       membership: true,
       includeHidden: false,
-      imported: false
+      imported: false,
+      searchNamespaces: !!search
     });
 
     return projects.map((project) => ({
@@ -339,53 +388,35 @@ export const listGitLabProjects = async ({
 export const listGitLabGroups = async ({
   appConnection,
   appConnectionDAL,
-  kmsService
+  kmsService,
+  search,
+  limit
 }: {
   appConnection: TGitLabConnection;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  search?: string;
+  limit?: number;
 }): Promise<TGitLabGroup[]> => {
-  let { accessToken } = appConnection.credentials;
-
-  if (
-    appConnection.method === GitLabConnectionMethod.AccessToken &&
-    appConnection.credentials.accessTokenType === GitLabAccessTokenType.Project
-  ) {
-    return [];
-  }
-
-  if (
-    appConnection.method === GitLabConnectionMethod.OAuth &&
-    appConnection.credentials.refreshToken &&
-    new Date(appConnection.credentials.expiresAt) < new Date()
-  ) {
-    accessToken = await refreshGitLabToken(
-      appConnection.credentials.refreshToken,
-      appConnection.id,
-      appConnection.orgId,
-      appConnection.projectId,
-      appConnectionDAL,
-      kmsService,
-      appConnection.credentials.instanceUrl
-    );
-  }
+  const client = await getNavigationClient({ appConnection, appConnectionDAL, kmsService });
+  if (!client) return [];
 
   try {
-    const client = await getGitLabClient(
-      accessToken,
-      appConnection.credentials.instanceUrl,
-      appConnection.method === GitLabConnectionMethod.OAuth
-    );
-
     const groups = await client.Groups.all({
+      pagination: "offset",
+      ...(limit !== undefined ? { perPage: limit } : {}),
+      maxPages: 1,
       orderBy: "name",
       sort: "asc",
-      minAccessLevel: 50
+      minAccessLevel: 50,
+      ...(search ? { search } : {})
     });
 
     return groups.map((group) => ({
       id: group.id.toString(),
-      fullName: group.fullName
+      name: group.name,
+      fullName: group.fullName,
+      fullPath: group.fullPath
     }));
   } catch (error: unknown) {
     if (error instanceof GitbeakerRequestError) {

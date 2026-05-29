@@ -1,9 +1,10 @@
+import { useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { subject } from "@casl/ability";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
-import { ChevronLeftIcon, EllipsisIcon, InfoIcon } from "lucide-react";
+import { ChevronLeftIcon, EllipsisIcon, InfoIcon, ShieldIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan, ProjectPermissionCan } from "@app/components/permissions";
@@ -50,10 +51,12 @@ import {
 } from "@app/hooks/api";
 import { ActorType } from "@app/hooks/api/auditLogs/enums";
 import { projectIdentityQuery, useDeleteProjectIdentity } from "@app/hooks/api/projectIdentity";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectIdentityAuthenticationSection } from "@app/pages/project/IdentityDetailsByIDPage/components/ProjectIdentityAuthSection";
 import { ProjectIdentityDetailsSection } from "@app/pages/project/IdentityDetailsByIDPage/components/ProjectIdentityDetailsSection";
 import { ProjectAccessControlTabs } from "@app/types/project";
 
+import { IdentityPermissionAuditSheet } from "./components/IdentityPermissionAuditSheet";
 import { IdentityProjectAdditionalPrivilegeSection } from "./components/IdentityProjectAdditionalPrivilegeSection";
 import { IdentityRoleDetailsSection } from "./components/IdentityRoleDetailsSection";
 
@@ -67,11 +70,12 @@ const Page = () => {
   const { currentOrg, isSubOrganization } = useOrganization();
 
   const { data: identityMembershipDetails, isPending: isMembershipDetailsLoading } =
-    useGetProjectIdentityMembershipV2(projectId, identityId);
+    useGetProjectIdentityMembershipV2(projectId, identityId, currentProject?.type);
 
   const { mutateAsync: removeIdentityMutateAsync } = useDeleteProjectIdentityMembership();
 
   const isProjectIdentity = Boolean(identityMembershipDetails?.identity.projectId);
+  const isCertManager = currentProject?.type === ProjectType.CertificateManager;
 
   const {
     data: identity,
@@ -93,6 +97,8 @@ const Page = () => {
     "assumePrivileges"
   ] as const);
   const assumePrivileges = useAssumeProjectPrivileges();
+
+  const [isPermissionAuditOpen, setIsPermissionAuditOpen] = useState(false);
 
   const handleAssumePrivileges = async () => {
     assumePrivileges.mutate(
@@ -187,77 +193,89 @@ const Page = () => {
             className="mb-4 flex w-fit items-center gap-x-1 text-sm text-mineshaft-400 transition duration-100 hover:text-mineshaft-400/80"
           >
             <ChevronLeftIcon size={16} />
-            Project Machine Identities
+            {isCertManager ? "Machine Identities" : "Project Machine Identities"}
           </Link>
           <PageHeader
             scope={currentProject.type}
-            description={`Configure and manage${isProjectIdentity ? " machine identity and " : " "}project access control`}
+            description={
+              isCertManager
+                ? `Configure and manage${isProjectIdentity ? " machine identity and " : " "}certificate manager access control`
+                : `Configure and manage${isProjectIdentity ? " machine identity and " : " "}project access control`
+            }
             title={identityMembershipDetails.identity.name}
           >
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline">
-                  Options
-                  <EllipsisIcon />
+            <div className="flex items-center gap-2">
+              {!isCertManager && (
+                <Button variant="outline" onClick={() => setIsPermissionAuditOpen(true)}>
+                  <ShieldIcon />
+                  Permission Audit
                 </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  onClick={() => {
-                    navigator.clipboard.writeText(identityMembershipDetails.identity.id);
-                    createNotification({
-                      text: "Machine identity ID copied to clipboard",
-                      type: "info"
-                    });
-                  }}
-                >
-                  Copy Machine Identity ID
-                </DropdownMenuItem>
-                <ProjectPermissionCan
-                  I={ProjectPermissionIdentityActions.AssumePrivileges}
-                  a={subject(ProjectPermissionSub.Identity, {
-                    identityId: identityMembershipDetails?.identity.id
-                  })}
-                >
-                  {(isAllowed) => (
-                    <DropdownMenuItem
-                      isDisabled={!isAllowed}
-                      onClick={() => handlePopUpOpen("assumePrivileges")}
-                    >
-                      Assume Privileges
-                      <Tooltip
-                        side="bottom"
-                        content="Assume the privileges of this machine identity, allowing you to replicate their access behavior."
+              )}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline">
+                    Options
+                    <EllipsisIcon />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    onClick={() => {
+                      navigator.clipboard.writeText(identityMembershipDetails.identity.id);
+                      createNotification({
+                        text: "Machine identity ID copied to clipboard",
+                        type: "info"
+                      });
+                    }}
+                  >
+                    Copy Machine Identity ID
+                  </DropdownMenuItem>
+                  <ProjectPermissionCan
+                    I={ProjectPermissionIdentityActions.AssumePrivileges}
+                    a={subject(ProjectPermissionSub.Identity, {
+                      identityId: identityMembershipDetails?.identity.id
+                    })}
+                  >
+                    {(isAllowed) => (
+                      <DropdownMenuItem
+                        isDisabled={!isAllowed}
+                        onClick={() => handlePopUpOpen("assumePrivileges")}
                       >
-                        <div>
-                          <InfoIcon className="text-muted" />
-                        </div>
-                      </Tooltip>
-                    </DropdownMenuItem>
-                  )}
-                </ProjectPermissionCan>
-                <ProjectPermissionCan
-                  I={ProjectPermissionActions.Delete}
-                  a={subject(ProjectPermissionSub.Identity, {
-                    identityId: identityMembershipDetails?.identity?.id
-                  })}
-                >
-                  {(isAllowed) => (
-                    <DropdownMenuItem
-                      variant="danger"
-                      isDisabled={!isAllowed}
-                      onClick={() =>
-                        isProjectIdentity
-                          ? handlePopUpOpen("deleteIdentity")
-                          : handlePopUpOpen("removeIdentity")
-                      }
-                    >
-                      {isProjectIdentity ? "Delete Machine Identity" : "Remove From Project"}
-                    </DropdownMenuItem>
-                  )}
-                </ProjectPermissionCan>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                        Assume Privileges
+                        <Tooltip
+                          side="bottom"
+                          content="Assume the privileges of this machine identity, allowing you to replicate their access behavior."
+                        >
+                          <div>
+                            <InfoIcon className="text-muted" />
+                          </div>
+                        </Tooltip>
+                      </DropdownMenuItem>
+                    )}
+                  </ProjectPermissionCan>
+                  <ProjectPermissionCan
+                    I={ProjectPermissionActions.Delete}
+                    a={subject(ProjectPermissionSub.Identity, {
+                      identityId: identityMembershipDetails?.identity?.id
+                    })}
+                  >
+                    {(isAllowed) => (
+                      <DropdownMenuItem
+                        variant="danger"
+                        isDisabled={!isAllowed}
+                        onClick={() =>
+                          isProjectIdentity
+                            ? handlePopUpOpen("deleteIdentity")
+                            : handlePopUpOpen("removeIdentity")
+                        }
+                      >
+                        {isProjectIdentity ? "Delete Machine Identity" : "Remove From Project"}
+                      </DropdownMenuItem>
+                    )}
+                  </ProjectPermissionCan>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </PageHeader>
           <div className="flex flex-col gap-5 lg:flex-row">
             <ProjectIdentityDetailsSection
@@ -325,9 +343,11 @@ const Page = () => {
                 identityMembershipDetails={identityMembershipDetails}
                 isMembershipDetailsLoading={isMembershipDetailsLoading}
               />
-              <IdentityProjectAdditionalPrivilegeSection
-                identityMembershipDetails={identityMembershipDetails}
-              />
+              {!isCertManager && (
+                <IdentityProjectAdditionalPrivilegeSection
+                  identityMembershipDetails={identityMembershipDetails}
+                />
+              )}
             </div>
           </div>
           <DeleteActionModal
@@ -353,6 +373,14 @@ const Page = () => {
             deleteKey="confirm"
             onDeleteApproved={handleDeleteIdentity}
           />
+          {isPermissionAuditOpen && (
+            <IdentityPermissionAuditSheet
+              open={isPermissionAuditOpen}
+              onOpenChange={setIsPermissionAuditOpen}
+              identityId={identityId}
+              targetName={identityMembershipDetails.identity.name}
+            />
+          )}
         </>
       ) : (
         <EmptyState title="Error: Unable to find the machine identity." className="py-12" />

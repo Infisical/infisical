@@ -1,10 +1,11 @@
 import { AxiosError } from "axios";
 
 import { getConfig } from "@app/lib/config/env";
+import { request } from "@app/lib/config/request";
 import { delay } from "@app/lib/delay";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { safeRequest } from "@app/lib/validator/validate-url";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator/validate-url";
 
 import { PKI_ALERT_RETRY_CONFIG, RETRYABLE_NETWORK_ERRORS } from "./pki-alert-v2-constants";
 import {
@@ -18,6 +19,7 @@ import {
   TSlackChannelConfig,
   TSlackPayload
 } from "./pki-alert-v2-types";
+import { buildAlertViewUrl } from "./pki-alert-v2-url-fns";
 
 const SLACK_WEBHOOK_TIMEOUT = 7 * 1000;
 
@@ -29,7 +31,7 @@ const SLACK_WEBHOOK_TIMEOUT = 7 * 1000;
  * - Hostname must be exactly "hooks.slack.com" (prevents bypass via hooks.slack.com.evil.com)
  * - Must not resolve to private/local IP addresses (SSRF protection)
  */
-export const validateSlackWebhookUrl = (url: string): void => {
+export const validateSlackWebhookUrl = async (url: string): Promise<void> => {
   const parsedUrl = new URL(url);
 
   // Must be HTTPS
@@ -44,6 +46,9 @@ export const validateSlackWebhookUrl = (url: string): void => {
       message: "Invalid Slack webhook URL. Must be from hooks.slack.com"
     });
   }
+
+  // SSRF protection - resolve DNS and block private IPs
+  await blockLocalAndPrivateIpAddresses(url);
 };
 
 /**
@@ -92,7 +97,7 @@ export const buildSlackPayload = ({
   const displayCertificates = sortedCertificates.slice(0, 2);
   const remainingCount = totalCertificates - displayCertificates.length;
 
-  const viewUrl = `${appUrl}/projects/cert-manager/${alert.projectId}/policies`;
+  const viewUrl = buildAlertViewUrl(appUrl, alert);
 
   const headerText = `${label} Alert: ${alert.name}`;
 
@@ -192,7 +197,7 @@ const isSlackErrorRetryable = (err: AxiosError): boolean => {
 };
 
 const triggerSlackWebhook = async (url: string, payload: TSlackPayload): Promise<void> => {
-  await safeRequest.post(url, payload, {
+  await request.post(url, payload, {
     headers: {
       "Content-Type": "application/json"
     },
@@ -261,7 +266,7 @@ export const sendSlackNotificationWithRetry = async (
   channelId: string,
   eventType: PkiAlertEventType = PkiAlertEventType.EXPIRATION
 ): Promise<TChannelResult> => {
-  validateSlackWebhookUrl(config.webhookUrl);
+  await validateSlackWebhookUrl(config.webhookUrl);
 
   const appCfg = getConfig();
   const payload = buildSlackPayload({

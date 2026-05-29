@@ -16,10 +16,12 @@ import {
   ModalContent,
   Select,
   SelectItem,
+  Switch,
   Tooltip
   // DatePicker
 } from "@app/components/v2";
-import { useProject } from "@app/context";
+import { Badge } from "@app/components/v3";
+import { useProject, useSubscription } from "@app/context";
 import {
   CaStatus,
   CaType,
@@ -30,7 +32,7 @@ import {
   useGetCa,
   useUpdateCa
 } from "@app/hooks/api/ca";
-import { certKeyAlgorithms } from "@app/hooks/api/certificates/constants";
+import { certKeyAlgorithms, isPqcAlgorithm } from "@app/hooks/api/certificates/constants";
 import { CertKeyAlgorithm } from "@app/hooks/api/certificates/enums";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 import { slugSchema } from "@app/lib/schemas";
@@ -95,7 +97,8 @@ const schema = z
         notAfter: z.string().trim().refine(isValidDate, { message: "Invalid date format" }),
         maxPathLength: z.string(),
         keyAlgorithm: z.nativeEnum(CertKeyAlgorithm),
-        crlDistributionPointUrls: distributionPointUrlsSchema.default([])
+        crlDistributionPointUrls: distributionPointUrlsSchema.default([]),
+        disableManagedCrlDistributionPointUrl: z.boolean().default(false)
       })
       .required()
   })
@@ -115,6 +118,7 @@ const caTypes = [
 
 export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
   const { currentProject } = useProject();
+  const { subscription } = useSubscription();
   const { data: ca } = useGetCa({
     caId: (popUp?.ca?.data as { caId: string })?.caId || "",
     type: CaType.INTERNAL
@@ -146,7 +150,8 @@ export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
         notAfter: getDateTenYearsFromToday(),
         maxPathLength: "-1",
         keyAlgorithm: CertKeyAlgorithm.RSA_2048,
-        crlDistributionPointUrls: []
+        crlDistributionPointUrls: [],
+        disableManagedCrlDistributionPointUrl: false
       }
     }
   });
@@ -185,7 +190,9 @@ export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
             : CertKeyAlgorithm.RSA_2048,
           crlDistributionPointUrls: (ca.configuration.crlDistributionPointUrls ?? []).map(
             (value) => ({ value })
-          )
+          ),
+          disableManagedCrlDistributionPointUrl:
+            ca.configuration.disableManagedCrlDistributionPointUrl ?? false
         }
       });
     } else {
@@ -204,7 +211,8 @@ export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
           notAfter: getDateTenYearsFromToday(),
           maxPathLength: "-1",
           keyAlgorithm: CertKeyAlgorithm.RSA_2048,
-          crlDistributionPointUrls: []
+          crlDistributionPointUrls: [],
+          disableManagedCrlDistributionPointUrl: false
         }
       });
     }
@@ -224,7 +232,6 @@ export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
     } else {
       // create
       await createMutateAsync({
-        projectId: currentProject.id,
         name,
         type,
         status,
@@ -374,8 +381,17 @@ export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
                   isDisabled={Boolean(ca)}
                 >
                   {certKeyAlgorithms.map(({ label, value }) => (
-                    <SelectItem value={String(value || "")} key={label}>
-                      {label}
+                    <SelectItem
+                      value={String(value || "")}
+                      key={label}
+                      isDisabled={isPqcAlgorithm(value) && !subscription?.pkiPqc}
+                    >
+                      <div className="flex items-center gap-2">
+                        {label}
+                        {isPqcAlgorithm(value) && !subscription?.pkiPqc && (
+                          <Badge variant="info">Enterprise</Badge>
+                        )}
+                      </div>
                     </SelectItem>
                   ))}
                 </Select>
@@ -482,57 +498,76 @@ export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
             )}
           />
           {!ca && (
-            <FormControl
-              label="CRL Distribution Points"
-              helperText={`Backup CRL URLs embedded in issued certificates. Up to ${MAX_INTERNAL_CA_DISTRIBUTION_POINT_URLS}.`}
-            >
-              <div className="flex flex-col gap-2">
-                {crlUrlsFieldArray.fields.map((field, index) => (
-                  <Controller
-                    key={field.id}
-                    control={control}
-                    name={`configuration.crlDistributionPointUrls.${index}.value`}
-                    render={({ field: inputField, fieldState: { error } }) => (
-                      <div className="flex items-start gap-2">
-                        <FormControl
-                          isError={Boolean(error)}
-                          errorText={error?.message}
-                          className="mb-0 flex-1"
-                        >
-                          <Input
-                            {...inputField}
-                            placeholder="https://crl.example.com/internal-ca.crl"
-                          />
-                        </FormControl>
-                        <Tooltip content="Remove URL" position="right">
-                          <IconButton
-                            ariaLabel="Remove URL"
-                            colorSchema="danger"
-                            variant="plain"
-                            size="sm"
-                            className="mt-1.5"
-                            onClick={() => crlUrlsFieldArray.remove(index)}
+            <>
+              <Controller
+                control={control}
+                name="configuration.disableManagedCrlDistributionPointUrl"
+                render={({ field: { value, onChange } }) => (
+                  <FormControl>
+                    <Switch
+                      id="disableManagedCrlDistributionPointUrl"
+                      className="bg-mineshaft-400/80 shadow-inner data-[state=checked]:bg-green/80"
+                      thumbClassName="bg-mineshaft-800"
+                      isChecked={value}
+                      onCheckedChange={onChange}
+                    >
+                      Disable managed CRL URL
+                    </Switch>
+                  </FormControl>
+                )}
+              />
+              <FormControl
+                label="CRL Distribution Points"
+                helperText={`Backup CRL URLs embedded in issued certificates. Up to ${MAX_INTERNAL_CA_DISTRIBUTION_POINT_URLS}.`}
+              >
+                <div className="flex flex-col gap-2">
+                  {crlUrlsFieldArray.fields.map((field, index) => (
+                    <Controller
+                      key={field.id}
+                      control={control}
+                      name={`configuration.crlDistributionPointUrls.${index}.value`}
+                      render={({ field: inputField, fieldState: { error } }) => (
+                        <div className="flex items-start gap-2">
+                          <FormControl
+                            isError={Boolean(error)}
+                            errorText={error?.message}
+                            className="mb-0 flex-1"
                           >
-                            <FontAwesomeIcon icon={faTrash} />
-                          </IconButton>
-                        </Tooltip>
-                      </div>
-                    )}
-                  />
-                ))}
-                <Button
-                  leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                  size="xs"
-                  variant="outline_bg"
-                  isDisabled={
-                    crlUrlsFieldArray.fields.length >= MAX_INTERNAL_CA_DISTRIBUTION_POINT_URLS
-                  }
-                  onClick={() => crlUrlsFieldArray.append({ value: "" })}
-                >
-                  Add URL
-                </Button>
-              </div>
-            </FormControl>
+                            <Input
+                              {...inputField}
+                              placeholder="https://crl.example.com/internal-ca.crl"
+                            />
+                          </FormControl>
+                          <Tooltip content="Remove URL" position="right">
+                            <IconButton
+                              ariaLabel="Remove URL"
+                              colorSchema="danger"
+                              variant="plain"
+                              size="sm"
+                              className="mt-1.5"
+                              onClick={() => crlUrlsFieldArray.remove(index)}
+                            >
+                              <FontAwesomeIcon icon={faTrash} />
+                            </IconButton>
+                          </Tooltip>
+                        </div>
+                      )}
+                    />
+                  ))}
+                  <Button
+                    leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                    size="xs"
+                    variant="outline_bg"
+                    isDisabled={
+                      crlUrlsFieldArray.fields.length >= MAX_INTERNAL_CA_DISTRIBUTION_POINT_URLS
+                    }
+                    onClick={() => crlUrlsFieldArray.append({ value: "" })}
+                  >
+                    Add URL
+                  </Button>
+                </div>
+              </FormControl>
+            </>
           )}
           <div className="flex items-center">
             <Button

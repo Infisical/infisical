@@ -4,7 +4,14 @@ import { Knex } from "knex";
 
 import { AccessScope, OrganizationActionScope, OrgMembershipRole, TGroups, TRoles } from "@app/db/schemas";
 import { TOidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
-import { BadRequestError, NotFoundError, PermissionBoundaryError, UnauthorizedError } from "@app/lib/errors";
+import { DatabaseErrorCode } from "@app/lib/error-codes";
+import {
+  BadRequestError,
+  DatabaseError,
+  NotFoundError,
+  PermissionBoundaryError,
+  UnauthorizedError
+} from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
@@ -150,21 +157,27 @@ export const groupServiceFactory = ({
     }
 
     const group = await groupDAL.transaction(async (tx) => {
-      const existingGroup = await groupDAL.findOne({ orgId: actorOrgId, name }, tx);
-      if (existingGroup) {
-        throw new BadRequestError({
-          message: `Failed to create group with name '${name}'. Group with the same name already exists`
+      const effectiveSlug = slug || slugify(`${name}-${alphaNumericNanoId(4)}`);
+      const newGroup = await groupDAL
+        .create(
+          {
+            name,
+            slug: effectiveSlug,
+            orgId: actorOrgId
+          },
+          tx
+        )
+        .catch((err) => {
+          if (
+            err instanceof DatabaseError &&
+            (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation
+          ) {
+            throw new BadRequestError({
+              message: `This name or slug is already in use by another group in your organization. Please choose a different one.`
+            });
+          }
+          throw err;
         });
-      }
-
-      const newGroup = await groupDAL.create(
-        {
-          name,
-          slug: slug || slugify(`${name}-${alphaNumericNanoId(4)}`),
-          orgId: actorOrgId
-        },
-        tx
-      );
 
       const membership = await membershipGroupDAL.create(
         {
@@ -264,19 +277,22 @@ export const groupServiceFactory = ({
       if (isCustomRole) customRole = rolePermissionDetails?.role;
     }
 
-    if (!isLinkedGroup && name) {
-      const existingGroup = await groupDAL.findOne({ orgId: actorOrgId, name });
-      if (existingGroup && existingGroup.id !== id) {
-        throw new BadRequestError({
-          message: `Failed to update group with name '${name}'. Group with the same name already exists`
-        });
-      }
-    }
-
     const updatedGroup = await groupDAL.transaction(async (tx): Promise<TGroups> => {
       const [nameSlugRow] =
         !isLinkedGroup && (name || slug)
-          ? await groupDAL.update({ id: group.id }, { name, slug: slug ? slugify(slug) : undefined }, tx)
+          ? await groupDAL
+              .update({ id: group.id }, { name, slug: slug ? slugify(slug) : undefined }, tx)
+              .catch((err) => {
+                if (
+                  err instanceof DatabaseError &&
+                  (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation
+                ) {
+                  throw new BadRequestError({
+                    message: `This name or slug is already in use by another group in your organization. Please choose a different one.`
+                  });
+                }
+                throw err;
+              })
           : [];
 
       if (role) {
@@ -582,10 +598,16 @@ export const groupServiceFactory = ({
     const isLinkedGroup = group.orgId !== actorOrgId;
 
     if (isLinkedGroup) {
-      return unlinkGroupFromSubOrg({ groupId: id, groupMembershipId: groupMembership.id, actorOrgId });
+      const unlinkedGroup = await unlinkGroupFromSubOrg({
+        groupId: id,
+        groupMembershipId: groupMembership.id,
+        actorOrgId
+      });
+      return { group: unlinkedGroup, isUnlinked: true };
     }
 
-    return deleteOwnedGroup({ groupId: id, actorOrgId });
+    const deletedGroup = await deleteOwnedGroup({ groupId: id, actorOrgId });
+    return { group: deletedGroup, isUnlinked: false };
   };
 
   const getGroupById = async ({ id, actor, actorId, actorAuthMethod, actorOrgId }: TGetGroupByIdDTO) => {
@@ -928,7 +950,7 @@ export const groupServiceFactory = ({
       projectBotDAL
     });
 
-    return users[0];
+    return { user: users[0], group: groupMembership.group };
   };
 
   const addMachineIdentityToGroup = async ({
@@ -1009,7 +1031,7 @@ export const groupServiceFactory = ({
       identityGroupMembershipDAL
     });
 
-    return identities[0];
+    return { identity: identities[0], group: groupMembership.group };
   };
 
   const removeUserFromGroup = async ({
@@ -1101,7 +1123,7 @@ export const groupServiceFactory = ({
       identityIds: []
     });
 
-    return users[0];
+    return { user: users[0], group: groupMembership.group };
   };
 
   const removeMachineIdentityFromGroup = async ({
@@ -1187,7 +1209,7 @@ export const groupServiceFactory = ({
       identityIds: [identityId]
     });
 
-    return identities[0];
+    return { identity: identities[0], group: groupMembership.group };
   };
 
   return {

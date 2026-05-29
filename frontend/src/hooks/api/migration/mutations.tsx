@@ -5,15 +5,10 @@ import { dashboardKeys } from "@app/hooks/api/dashboard/queries";
 import { secretKeys } from "@app/hooks/api/secrets/queries";
 
 import { projectKeys } from "../projects";
-import { externalMigrationQueryKeys } from "./queries";
 import {
   ExternalMigrationImportStatus,
-  TCreateExternalMigrationConfigDTO,
-  TDeleteExternalMigrationConfigDTO,
-  TExternalMigrationConfig,
   TImportDopplerSecretsDTO,
-  TImportVaultSecretsDTO,
-  TUpdateExternalMigrationConfigDTO
+  TImportVaultSecretsDTO
 } from "./types";
 
 export const useImportEnvKey = () => {
@@ -97,62 +92,6 @@ export const useImportVaultSecrets = () => {
           environment,
           secretPath
         })
-      });
-    }
-  });
-};
-
-export const useCreateExternalMigrationConfig = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation<TExternalMigrationConfig, Error, TCreateExternalMigrationConfigDTO>({
-    mutationFn: async ({ connectionId, input }) => {
-      const { data } = await apiRequest.post<{ config: TExternalMigrationConfig }>(
-        `/api/v3/external-migration/${input.provider}/configs`,
-        { connectionId, input }
-      );
-      return data.config;
-    },
-    onSuccess: (_, { input }) => {
-      queryClient.invalidateQueries({
-        queryKey: externalMigrationQueryKeys.configs(input.provider)
-      });
-    }
-  });
-};
-
-export const useUpdateExternalMigrationConfig = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation<TExternalMigrationConfig, Error, TUpdateExternalMigrationConfigDTO>({
-    mutationFn: async ({ id, connectionId, input }) => {
-      const { data } = await apiRequest.put<{ config: TExternalMigrationConfig }>(
-        `/api/v3/external-migration/${input.provider}/configs/${id}`,
-        { connectionId, input }
-      );
-      return data.config;
-    },
-    onSuccess: (_, { input }) => {
-      queryClient.invalidateQueries({
-        queryKey: externalMigrationQueryKeys.configs(input.provider)
-      });
-    }
-  });
-};
-
-export const useDeleteExternalMigrationConfig = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation<TExternalMigrationConfig, Error, TDeleteExternalMigrationConfigDTO>({
-    mutationFn: async ({ provider, id }) => {
-      const { data } = await apiRequest.delete<{ config: TExternalMigrationConfig }>(
-        `/api/v3/external-migration/${provider}/configs/${id}`
-      );
-      return data.config;
-    },
-    onSuccess: (_, { provider }) => {
-      queryClient.invalidateQueries({
-        queryKey: externalMigrationQueryKeys.configs(provider)
       });
     }
   });

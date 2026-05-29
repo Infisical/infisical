@@ -242,6 +242,17 @@ In the following steps, we explore how to generate a key and use it to sign data
                - `ECDSA SHA 384`: Not deterministic, and includes randomness.
                - `ECDSA SHA 256`: Not deterministic, and includes randomness.
 
+               **For ML-DSA keys (post-quantum):**
+               - `ML_DSA_44`: The signing algorithm is the same as the key algorithm.
+               - `ML_DSA_65`: The signing algorithm is the same as the key algorithm.
+               - `ML_DSA_87`: The signing algorithm is the same as the key algorithm.
+
+               ML-DSA is a NIST-standardized post-quantum digital signature algorithm. Unlike RSA and ECC, each ML-DSA key variant has exactly one signing algorithm (itself), and does not use a separate hash algorithm.
+
+               <Info>
+                ML-DSA algorithms are an enterprise feature. Self-hosted users can contact [sales@infisical.com](mailto:sales@infisical.com) to purchase an enterprise license.
+               </Info>
+
                In this example, we'll use the `RSASSA PSS SHA 512` signing algorithm.
 
               <Note>
@@ -417,15 +428,22 @@ The exported file is a JSON array where each entry is one of the following shape
     external sources.
   </Accordion>
   <Accordion title="What algorithms does Infisical KMS support?">
-    Currently Infisical supports 4 different key algorithms with different purposes:
+    Infisical supports the following key algorithms:
 
-    - `RSA_4096`: For signing and verifying data.
-    - `ECC_NIST_P256`: For signing and verifying data.
+    **Signing and verification:**
+    - `RSA_4096`
+    - `ECC_NIST_P256`
+    - `ML_DSA_44` (post-quantum)
+    - `ML_DSA_65` (post-quantum)
+    - `ML_DSA_87` (post-quantum)
 
-    - `AES-256-GCM`: For encryption and decryption operations.
-    - `AES-128-GCM`: For encryption and decryption operations.
+    **Encryption and decryption:**
+    - `AES-256-GCM`
+    - `AES-128-GCM`
 
-    We anticipate to further expand our supported algorithms and support cryptographic operations in the future.
+    <Info>
+      ML-DSA algorithms are an enterprise feature. Self-hosted users can contact [sales@infisical.com](mailto:sales@infisical.com) to purchase an enterprise license.
+    </Info>
   </Accordion>
   <Accordion title="How do I sign and verify a digest using the Infisical KMS?">
     To sign and verify a digest using the Infisical KMS, you can use the `Sign` and `Verify` endpoints respectively.
@@ -486,7 +504,7 @@ The exported file is a JSON array where each entry is one of the following shape
     ```
 
     <Note>
-      Please note that `RSA PSS` signing algorithms are not supported for digest signing and verification. Please use `RSA PKCS1 V1.5` signing algorithms for digest signing and verification, or `ECDSA` if you're using an ECC key.
+      Please note that `RSA PSS` signing algorithms are not supported for digest signing and verification. Please use `RSA PKCS1 V1.5` signing algorithms for digest signing and verification, or `ECDSA` if you're using an ECC key. ML-DSA keys also do not support digest signing and verification, as ML-DSA handles hashing internally.
     </Note>
   </Accordion>
 </AccordionGroup>

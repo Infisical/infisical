@@ -50,6 +50,9 @@ import {
   TApprovalPolicies,
   TApprovalPoliciesInsert,
   TApprovalPoliciesUpdate,
+  TApprovalPolicyBypassers,
+  TApprovalPolicyBypassersInsert,
+  TApprovalPolicyBypassersUpdate,
   TApprovalPolicyStepApprovers,
   TApprovalPolicyStepApproversInsert,
   TApprovalPolicyStepApproversUpdate,
@@ -185,6 +188,18 @@ import {
   TGroups,
   TGroupsInsert,
   TGroupsUpdate,
+  THoneyTokenConfigs,
+  THoneyTokenConfigsInsert,
+  THoneyTokenConfigsUpdate,
+  THoneyTokenEvents,
+  THoneyTokenEventsInsert,
+  THoneyTokenEventsUpdate,
+  THoneyTokens,
+  THoneyTokenSecretMappings,
+  THoneyTokenSecretMappingsInsert,
+  THoneyTokenSecretMappingsUpdate,
+  THoneyTokensInsert,
+  THoneyTokensUpdate,
   TIdentities,
   TIdentitiesInsert,
   TIdentitiesUpdate,
@@ -344,6 +359,12 @@ import {
   TPkiApiEnrollmentConfigs,
   TPkiApiEnrollmentConfigsInsert,
   TPkiApiEnrollmentConfigsUpdate,
+  TPkiApplicationProfiles,
+  TPkiApplicationProfilesInsert,
+  TPkiApplicationProfilesUpdate,
+  TPkiApplications,
+  TPkiApplicationsInsert,
+  TPkiApplicationsUpdate,
   TPkiCertificateInstallationCerts,
   TPkiCertificateInstallationCertsInsert,
   TPkiCertificateInstallationCertsUpdate,
@@ -398,6 +419,9 @@ import {
   TPkiSyncs,
   TPkiSyncsInsert,
   TPkiSyncsUpdate,
+  TProjectAccessRequests,
+  TProjectAccessRequestsInsert,
+  TProjectAccessRequestsUpdate,
   TProjectBots,
   TProjectBotsInsert,
   TProjectBotsUpdate,
@@ -889,6 +913,16 @@ declare module "knex/types/tables" {
       TPkiCertificateProfilesInsert,
       TPkiCertificateProfilesUpdate
     >;
+    [TableName.PkiApplication]: KnexOriginal.CompositeTableType<
+      TPkiApplications,
+      TPkiApplicationsInsert,
+      TPkiApplicationsUpdate
+    >;
+    [TableName.PkiApplicationProfile]: KnexOriginal.CompositeTableType<
+      TPkiApplicationProfiles,
+      TPkiApplicationProfilesInsert,
+      TPkiApplicationProfilesUpdate
+    >;
     [TableName.PkiEstEnrollmentConfig]: KnexOriginal.CompositeTableType<
       TPkiEstEnrollmentConfigs,
       TPkiEstEnrollmentConfigsInsert,
@@ -1073,6 +1107,11 @@ declare module "knex/types/tables" {
       TProjectEnvironments,
       TProjectEnvironmentsInsert,
       TProjectEnvironmentsUpdate
+    >;
+    [TableName.ProjectAccessRequest]: KnexOriginal.CompositeTableType<
+      TProjectAccessRequests,
+      TProjectAccessRequestsInsert,
+      TProjectAccessRequestsUpdate
     >;
     [TableName.ProjectBot]: KnexOriginal.CompositeTableType<TProjectBots, TProjectBotsInsert, TProjectBotsUpdate>;
     [TableName.ProjectKeys]: KnexOriginal.CompositeTableType<TProjectKeys, TProjectKeysInsert, TProjectKeysUpdate>;
@@ -1519,6 +1558,22 @@ declare module "knex/types/tables" {
       TGithubOrgSyncConfigsInsert,
       TGithubOrgSyncConfigsUpdate
     >;
+    [TableName.HoneyTokenConfig]: KnexOriginal.CompositeTableType<
+      THoneyTokenConfigs,
+      THoneyTokenConfigsInsert,
+      THoneyTokenConfigsUpdate
+    >;
+    [TableName.HoneyToken]: KnexOriginal.CompositeTableType<THoneyTokens, THoneyTokensInsert, THoneyTokensUpdate>;
+    [TableName.HoneyTokenEvent]: KnexOriginal.CompositeTableType<
+      THoneyTokenEvents,
+      THoneyTokenEventsInsert,
+      THoneyTokenEventsUpdate
+    >;
+    [TableName.HoneyTokenSecretMapping]: KnexOriginal.CompositeTableType<
+      THoneyTokenSecretMappings,
+      THoneyTokenSecretMappingsInsert,
+      THoneyTokenSecretMappingsUpdate
+    >;
     [TableName.FolderCommit]: KnexOriginal.CompositeTableType<
       TFolderCommits,
       TFolderCommitsInsert,
@@ -1751,6 +1806,11 @@ declare module "knex/types/tables" {
       TApprovalPolicies,
       TApprovalPoliciesInsert,
       TApprovalPoliciesUpdate
+    >;
+    [TableName.ApprovalPolicyBypassers]: KnexOriginal.CompositeTableType<
+      TApprovalPolicyBypassers,
+      TApprovalPolicyBypassersInsert,
+      TApprovalPolicyBypassersUpdate
     >;
     [TableName.ApprovalPolicyStepApprovers]: KnexOriginal.CompositeTableType<
       TApprovalPolicyStepApprovers,

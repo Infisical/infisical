@@ -95,6 +95,13 @@ export const injectAuditLogInfo = fp(async (server: FastifyZodProvider) => {
           gatewayId: req.permission.id
         }
       };
+    } else if (req.auth.actor === ActorType.RELAY) {
+      payload.actor = {
+        type: ActorType.RELAY,
+        metadata: {
+          relayId: req.permission.id
+        }
+      };
     } else {
       throw new BadRequestError({ message: "Invalid actor type provided" });
     }

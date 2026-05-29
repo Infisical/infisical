@@ -35,6 +35,7 @@ const addMemberFormSchema = z.object({
         name: z.string(),
         id: z.string(),
         slug: z.string(),
+        type: z.string().optional(),
         version: z.nativeEnum(ProjectVersion)
       })
     )
@@ -118,6 +119,7 @@ export const AddSubOrgMemberModal = ({ onClose }: Props) => {
         addUserToProject({
           orgId: currentOrg.id,
           projectId: el.id,
+          projectType: el.type,
           roleSlugs: [projectRoleSlug],
           usernames
         })
@@ -131,7 +133,7 @@ export const AddSubOrgMemberModal = ({ onClose }: Props) => {
       case ProjectType.SecretManager:
         return "Secrets";
       case ProjectType.CertificateManager:
-        return "PKI";
+        return "Certificate Manager";
       case ProjectType.KMS:
         return "KMS";
       case ProjectType.SSH:

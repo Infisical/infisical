@@ -143,7 +143,8 @@ const renderOutputForm = (
     provider === DynamicSecretProviders.Vertica ||
     provider === DynamicSecretProviders.SapAse ||
     provider === DynamicSecretProviders.AzureSqlDatabase ||
-    provider === DynamicSecretProviders.Clickhouse
+    provider === DynamicSecretProviders.Clickhouse ||
+    provider === DynamicSecretProviders.Milvus
   ) {
     const { DB_PASSWORD, DB_USERNAME } = data as { DB_USERNAME: string; DB_PASSWORD: string };
     return (
@@ -197,7 +198,10 @@ const renderOutputForm = (
     );
   }
 
-  if (provider === DynamicSecretProviders.AwsElastiCache) {
+  if (
+    provider === DynamicSecretProviders.AwsElastiCache ||
+    provider === DynamicSecretProviders.AwsMemoryDb
+  ) {
     const { DB_USERNAME, DB_PASSWORD } = data as {
       DB_USERNAME: string;
       DB_PASSWORD: string;

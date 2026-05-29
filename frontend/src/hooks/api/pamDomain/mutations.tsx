@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
+import { gatewayPoolsQueryKeys } from "../gateway-pools/queries";
 import { pamDomainKeys } from "./queries";
 import { TCreatePamDomainDTO, TDeletePamDomainDTO, TPamDomain, TUpdatePamDomainDTO } from "./types";
 
@@ -17,6 +18,7 @@ export const useCreatePamDomain = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: pamDomainKeys.domain() });
+      queryClient.invalidateQueries({ queryKey: gatewayPoolsQueryKeys.allKey() });
     }
   });
 };
@@ -33,6 +35,7 @@ export const useUpdatePamDomain = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: pamDomainKeys.domain() });
+      queryClient.invalidateQueries({ queryKey: gatewayPoolsQueryKeys.allKey() });
     }
   });
 };
@@ -48,6 +51,7 @@ export const useDeletePamDomain = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: pamDomainKeys.domain() });
+      queryClient.invalidateQueries({ queryKey: gatewayPoolsQueryKeys.allKey() });
     }
   });
 };

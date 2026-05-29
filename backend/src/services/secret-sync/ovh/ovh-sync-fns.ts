@@ -3,6 +3,7 @@ import https from "https";
 
 import { request } from "@app/lib/config/request";
 import { deepEqual } from "@app/lib/fn/object";
+import { validateSsrfUrl } from "@app/lib/validator";
 import { getOvhHttpsAgent } from "@app/services/app-connection/ovh";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
@@ -64,6 +65,7 @@ const readSecret = async (
   httpsAgent: https.Agent
 ): Promise<TOvhSecretRead> => {
   try {
+    await validateSsrfUrl(okmsDomain);
     const { data } = await request.get<TOvhGetSecretResponse>(
       `${getSecretUrl(okmsDomain, okmsId, path)}?includeData=true`,
       {
@@ -90,8 +92,9 @@ const createSecret = async (
   path: string,
   data: Record<string, string>,
   httpsAgent: https.Agent
-) =>
-  request.post(
+) => {
+  await validateSsrfUrl(okmsDomain);
+  return request.post(
     `${okmsDomain}/api/${encodeURIComponent(okmsId)}/v2/secret`,
     { path, version: { data } },
     {
@@ -103,6 +106,7 @@ const createSecret = async (
       }
     }
   );
+};
 
 const updateSecret = async (
   okmsDomain: string,
@@ -112,6 +116,7 @@ const updateSecret = async (
   cas: number | null,
   httpsAgent: https.Agent
 ) => {
+  await validateSsrfUrl(okmsDomain);
   const base = getSecretUrl(okmsDomain, okmsId, path);
   const url = cas !== null ? `${base}?cas=${cas}` : base;
   return request.put(

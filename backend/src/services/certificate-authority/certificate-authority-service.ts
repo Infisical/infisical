@@ -1,6 +1,7 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
 import { ActionProjectType, TableName } from "@app/db/schemas";
+import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
@@ -120,10 +121,11 @@ type TCertificateAuthorityServiceFactoryDep = {
   certificateProfileDAL?: Pick<TCertificateProfileDALFactory, "findById" | "findByIdWithConfigs">;
   certificateRequestDAL: Pick<
     TCertificateRequestDALFactory,
-    "findById" | "updateById" | "updateStatus" | "attachCertificate"
+    "findById" | "updateById" | "transitionFromPending" | "attachCertificate" | "setPendingMessage"
   >;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find" | "insertMany">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
+  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
 };
 
 export type TCertificateAuthorityServiceFactory = ReturnType<typeof certificateAuthorityServiceFactory>;
@@ -146,7 +148,8 @@ export const certificateAuthorityServiceFactory = ({
   certificateProfileDAL,
   certificateRequestDAL,
   resourceMetadataDAL,
-  gatewayV2Service
+  gatewayV2Service,
+  gatewayPoolService
 }: TCertificateAuthorityServiceFactoryDep) => {
   const acmeFns = AcmeCertificateAuthorityFns({
     appConnectionDAL,
@@ -191,7 +194,8 @@ export const certificateAuthorityServiceFactory = ({
     kmsService,
     projectDAL,
     certificateProfileDAL,
-    gatewayV2Service
+    gatewayV2Service,
+    gatewayPoolService
   });
 
   const awsPcaFns = AwsPcaCertificateAuthorityFns({
@@ -594,14 +598,17 @@ export const certificateAuthorityServiceFactory = ({
         });
       }
 
-      const internalConfig = configuration as { crlDistributionPointUrls?: string[] } | undefined;
+      const internalConfig = configuration as
+        | { crlDistributionPointUrls?: string[]; disableManagedCrlDistributionPointUrl?: boolean }
+        | undefined;
 
       const updatedCa = await internalCertificateAuthorityService.updateCaById({
         isInternal: true,
         caId: certificateAuthority.id,
         status,
         name,
-        crlDistributionPointUrls: internalConfig?.crlDistributionPointUrls
+        crlDistributionPointUrls: internalConfig?.crlDistributionPointUrls,
+        disableManagedCrlDistributionPointUrl: internalConfig?.disableManagedCrlDistributionPointUrl
       });
 
       if (!updatedCa.internalCa) {
@@ -1144,7 +1151,7 @@ export const certificateAuthorityServiceFactory = ({
         certificateRequestDAL,
         certificateRequestService: {
           updateCertificateRequestStatus: async ({ certificateRequestId: id, status, errorMessage }) =>
-            certificateRequestDAL.updateStatus(id, status, errorMessage),
+            certificateRequestDAL.transitionFromPending(id, status, errorMessage),
           attachCertificateToRequest: async ({ certificateRequestId: id, certificateId }) =>
             certificateRequestDAL.attachCertificate(id, certificateId)
         },

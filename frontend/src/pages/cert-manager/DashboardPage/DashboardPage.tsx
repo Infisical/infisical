@@ -17,6 +17,7 @@ import {
   useGetCertPqcTrend
 } from "@app/hooks/api/certificates";
 import { ProjectType } from "@app/hooks/api/projects/types";
+import { CertManagerAdminOnly } from "@app/pages/cert-manager/components/CertManagerAdminOnly";
 
 import {
   ActivityTrend,
@@ -43,13 +44,13 @@ export const DashboardPage = () => {
   const navigateToInventory = useCallback(
     (filters: Record<string, string | undefined>) => {
       navigate({
-        to: "/organizations/$orgId/projects/cert-manager/$projectId/policies",
+        to: "/organizations/$orgId/projects/cert-manager/$projectId/inventory",
         params: {
           orgId: currentProject?.orgId || "",
           projectId: currentProject?.id || ""
         },
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        search: { selectedTab: "certificates", ...filters } as any
+        search: filters as any
       });
     },
     [navigate, currentProject]
@@ -67,50 +68,52 @@ export const DashboardPage = () => {
           <PageHeader
             scope={ProjectType.CertificateManager}
             title="Certificate Dashboard"
-            description="At-a-glance view of your certificate estate."
+            description="See the overall state of your certificates at a glance."
           />
-          <ProjectPermissionCan
-            renderGuardBanner
-            I={ProjectPermissionCertificateActions.Read}
-            a={ProjectPermissionSub.Certificates}
-          >
-            {isStatsLoading || !stats ? (
-              <PageLoader />
-            ) : (
-              <div className="flex flex-col gap-6">
-                <KpiCards stats={stats} onNavigate={navigateToInventory} />
-                <div className="flex flex-wrap gap-4">
-                  <DistributionCharts stats={stats} onNavigate={navigateToInventory} />
-                  <ExpirationTimeline
-                    buckets={stats.expirationBuckets}
-                    onNavigate={navigateToInventory}
-                  />
-                </div>
-                <CodeSigningSection projectId={currentProject.id} />
-                <ActivityTrend
-                  data={trendData?.periods || []}
-                  currentRange={trendRange}
-                  onRangeChange={setTrendRange}
-                />
-                <ValidityReadinessSection stats={stats} />
-                {stats.totals.total > 0 && (
-                  <div className="flex flex-col gap-4">
-                    <h2 className="text-lg font-semibold text-foreground">
-                      Post-Quantum Readiness
-                    </h2>
-                    <div className="flex flex-wrap gap-4">
-                      <PqcReadinessChart stats={stats} onNavigate={navigateToInventory} />
-                      <PqcTrend
-                        data={pqcTrendData?.periods || []}
-                        currentRange={pqcTrendRange}
-                        onRangeChange={setPqcTrendRange}
-                      />
-                    </div>
+          <CertManagerAdminOnly>
+            <ProjectPermissionCan
+              renderGuardBanner
+              I={ProjectPermissionCertificateActions.Read}
+              a={ProjectPermissionSub.Certificates}
+            >
+              {isStatsLoading || !stats ? (
+                <PageLoader />
+              ) : (
+                <div className="flex flex-col gap-6">
+                  <KpiCards stats={stats} onNavigate={navigateToInventory} />
+                  <div className="flex flex-wrap gap-4">
+                    <DistributionCharts stats={stats} onNavigate={navigateToInventory} />
+                    <ExpirationTimeline
+                      buckets={stats.expirationBuckets}
+                      onNavigate={navigateToInventory}
+                    />
                   </div>
-                )}
-              </div>
-            )}
-          </ProjectPermissionCan>
+                  <CodeSigningSection projectId={currentProject.id} />
+                  <ActivityTrend
+                    data={trendData?.periods || []}
+                    currentRange={trendRange}
+                    onRangeChange={setTrendRange}
+                  />
+                  <ValidityReadinessSection stats={stats} />
+                  {stats.totals.total > 0 && (
+                    <div className="flex flex-col gap-4">
+                      <h2 className="text-lg font-semibold text-foreground">
+                        Post-Quantum Readiness
+                      </h2>
+                      <div className="flex flex-wrap gap-4">
+                        <PqcReadinessChart stats={stats} onNavigate={navigateToInventory} />
+                        <PqcTrend
+                          data={pqcTrendData?.periods || []}
+                          currentRange={pqcTrendRange}
+                          onRangeChange={setPqcTrendRange}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </ProjectPermissionCan>
+          </CertManagerAdminOnly>
         </div>
       </div>
     </div>

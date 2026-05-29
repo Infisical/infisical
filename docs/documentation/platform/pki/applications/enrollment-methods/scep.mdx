@@ -1,0 +1,302 @@
+---
+title: "SCEP Enrollment"
+sidebarTitle: "SCEP"
+description: "Issue certificates using the Simple Certificate Enrollment Protocol (SCEP) for network devices, mobile devices, and MDM systems."
+---
+
+<Tip>
+  New to Certificate Manager? Start with [Issue Your First Certificate](/documentation/platform/pki/quick-starts/issue-first-certificate).
+</Tip>
+
+Use the SCEP enrollment method to provision certificates to network devices, mobile devices, printers, routers, and other endpoints that support the SCEP protocol. SCEP is widely used by MDM tools like Jamf Pro, Ivanti, and Microsoft Intune.
+
+<Info>
+  SCEP enrollment is configured on profiles attached to your [Application](/documentation/platform/pki/applications/overview). Product Admins attach [profiles](/documentation/platform/pki/settings/profiles), and Application Admins configure enrollment methods on those profiles.
+</Info>
+
+## When to Use SCEP Enrollment
+
+<CardGroup cols={2}>
+  <Card title="MDM Systems" icon="mobile">
+    Jamf Pro, Ivanti, Microsoft Intune, Workspace ONE.
+  </Card>
+  <Card title="Network Devices" icon="network-wired">
+    Routers, switches, firewalls, and access points.
+  </Card>
+  <Card title="Printers & IoT" icon="print">
+    Network printers, scanners, and IoT devices.
+  </Card>
+  <Card title="Legacy Systems" icon="clock-rotate-left">
+    Devices that only support SCEP (not ACME or EST).
+  </Card>
+</CardGroup>
+
+Infisical's SCEP service is based on [RFC 8894](https://datatracker.ietf.org/doc/html/rfc8894) and implements the following operations:
+
+- **GetCACaps**: returns the SCEP server's supported capabilities (algorithms, features).
+- **GetCACert**: returns the RA (Registration Authority) certificate and the CA certificate chain in a PKCS#7 bundle.
+- **PKIOperation**: processes certificate enrollment requests (PKCSReq), renewal requests (RenewalReq), and certificate polling (GetCertInitial).
+
+These SCEP endpoints are exposed under the `/scep` path and structured as:
+
+```
+https://app.infisical.com/scep/{profile_id}/pkiclient.exe
+```
+
+For self-hosted Infisical instances, replace `app.infisical.com` with your instance's domain.
+
+## Prerequisites
+
+- A SCEP-compatible client (e.g., [sscep](https://github.com/certnanny/sscep)) or a network device with built-in SCEP support.
+- A certificate profile with a **CA-issued** issuer type.
+
+## Challenge Types
+
+Infisical supports two challenge authentication modes for SCEP enrollment:
+
+<Tabs>
+  <Tab title="Static Challenge">
+    A single shared secret password is configured on the certificate profile. All SCEP clients must include this password in their certificate signing request (CSR) to authenticate.
+
+    This is the simplest option and works well when the same challenge password is acceptable for all devices enrolling through the profile.
+
+    - The challenge password must be at least 8 characters.
+    - The password is hashed before storage and cannot be retrieved after creation.
+  </Tab>
+  <Tab title="Dynamic Challenge">
+    One-time-use challenge passwords are generated on demand via an authenticated API endpoint. Each challenge can only be used once and expires after a configurable time period.
+
+    This mode is designed for MDM tools like **Jamf Pro** that support fetching a challenge from an external webhook before delivering the SCEP profile to a device.
+
+    When dynamic challenges are enabled, Infisical exposes a challenge endpoint at:
+
+    ```
+    https://app.infisical.com/scep/{profile_id}/challenge
+    ```
+
+    The endpoint accepts authenticated `POST` requests and returns a plain-text one-time challenge password. The caller must authenticate using a [Machine Identity](/documentation/platform/identities/machine-identities) access token.
+
+    The following settings are part of the certificate profile configuration and apply to all challenges generated for this profile:
+
+    - **Challenge Expiry (minutes)**: How long each generated challenge remains valid before expiring. Default: 60 minutes. Maximum: 1440 minutes (24 hours).
+    - **Max Pending Challenges**: Maximum number of unused challenges that can exist at once. Default: 100. Maximum: 1000.
+
+    <Note>
+      Dynamic challenges are consumed on first use. Once a device successfully enrolls with a challenge, that challenge cannot be reused. Expired and used challenges are automatically cleaned up.
+    </Note>
+  </Tab>
+</Tabs>
+
+## Configure SCEP Enrollment
+
+<Steps>
+  <Step title="Navigate to your Application">
+    Go to **Certificate Manager → Applications** and select your Application.
+  </Step>
+  <Step title="Configure enrollment on an attached profile">
+    Go to the **Settings** tab and find the **Certificate Profiles** section. Click **Configure** on the profile you want to enable SCEP enrollment for.
+    
+    <Note>
+      Profiles are attached by Product Admins. If you don't see any profiles, ask your Product Admin to attach one. The profile must use a **CA-issued** issuer type for SCEP enrollment.
+    </Note>
+  </Step>
+  <Step title="Add SCEP enrollment">
+    In the modal, click **Add enrollment method** and select **SCEP**.
+  </Step>
+  <Step title="Configure SCEP settings">
+
+    Here's some guidance on each SCEP-specific configuration field:
+
+    - **Challenge Type**: Select **Static** for a shared password or **Dynamic** for one-time-use challenges generated via API. See [Challenge Types](#challenge-types) above.
+    - **Challenge Password** (static only): A shared secret that SCEP clients must include in their certificate signing request (CSR) to authenticate with Infisical's SCEP server. Must be at least 8 characters.
+    - **Challenge Expiry** (dynamic only): How long each generated challenge remains valid, in minutes.
+    - **Max Pending Challenges** (dynamic only): Maximum number of unused challenges that can exist at once.
+    - **Include CA Cert in Response**: When enabled, the CA certificate chain is included alongside the RA certificate in the GetCACert response. Most SCEP clients expect this to be enabled (default: enabled).
+    - **Allow Certificate-Based Renewal**: When enabled, devices that already hold a valid certificate issued by the same CA can renew their certificate without providing the challenge password (default: enabled).
+
+  </Step>
+  <Step title="Obtain the SCEP endpoint URL">
+    After configuring SCEP enrollment, you can obtain the SCEP endpoint URL from the enrollment configuration in your Application. The URL is displayed in the enrollment details after you save the configuration.
+
+    <Info>
+      The SCEP endpoint URL is unique to this Application + Profile pair. Certificates enrolled through this URL are associated with this Application and follow the selected profile's policy.
+    </Info>
+
+    For configurations with **dynamic challenges** enabled, you will also see a **Challenge Endpoint URL** that your MDM tool or automation calls to generate one-time challenge passwords.
+
+  </Step>
+  <Step title="Configure your SCEP client and enroll">
+    Provide the **SCEP endpoint URL** and **challenge password** from the previous steps to your SCEP client.
+
+    <Tabs>
+      <Tab title="Static Challenge">
+        Below is an example using [sscep](https://github.com/certnanny/sscep), an open-source SCEP client.
+
+        **1. Retrieve the CA/RA certificates:**
+
+        ```bash
+        sscep getca \
+          -u https://app.infisical.com/scep/{profile_id}/pkiclient.exe \
+          -c ca.pem
+        ```
+
+        This writes the RA certificate to `ca.pem-0` and the CA certificate to `ca.pem-1` (when "Include CA Cert in Response" is enabled).
+
+        **2. Generate a device key and CSR with the challenge password:**
+
+        The challenge password must be embedded in the CSR as a PKCS#9 attribute. Create an OpenSSL config file to include it:
+
+        ```bash
+        cat > device-csr.cnf << 'EOF'
+        [req]
+        default_bits = 2048
+        prompt = no
+        distinguished_name = dn
+        attributes = req_attributes
+
+        [dn]
+        CN = my-device.example.com
+
+        [req_attributes]
+        challengePassword = your-challenge-password
+        EOF
+
+        # Generate the key and CSR
+        openssl genrsa -out device.key 2048
+        openssl req -new -key device.key -out device.csr -config device-csr.cnf
+        ```
+
+        **3. Create a self-signed certificate for the sscep signing identity:**
+
+        sscep requires a local signing certificate to sign the SCEP request envelope:
+
+        ```bash
+        openssl x509 -req -in device.csr -signkey device.key \
+          -out device-selfsigned.pem -days 1
+        ```
+
+        **4. Enroll via SCEP:**
+
+        ```bash
+        sscep enroll \
+          -u https://app.infisical.com/scep/{profile_id}/pkiclient.exe \
+          -c ca.pem-0 \
+          -k device.key \
+          -r device.csr \
+          -l device-cert.pem \
+          -K device.key \
+          -O device-selfsigned.pem \
+          -E aes256 \
+          -S sha256
+        ```
+
+        On success, the issued certificate is written to `device-cert.pem`.
+
+        <Note>
+          Flag reference for the enroll command:
+          - `-c ca.pem-0` is the RA certificate from step 1
+          - `-K` / `-O` are the signing key and self-signed certificate used to sign the SCEP message envelope
+          - `-E aes256` selects AES-256-CBC encryption
+          - `-S sha256` selects SHA-256 for the message digest
+        </Note>
+      </Tab>
+      <Tab title="Dynamic Challenge">
+        For dynamic challenges, you first generate a one-time challenge password via the API, then use it as the challenge password in the SCEP enrollment.
+
+        **1. Generate a dynamic challenge:**
+
+        ```bash
+        curl -s -X POST \
+          https://app.infisical.com/scep/{profile_id}/challenge \
+          -H "Authorization: Bearer <machine-identity-access-token>"
+        ```
+
+        The response body is the plain-text challenge password. Save it for use in the enrollment.
+
+        **2. Use the challenge in your SCEP enrollment:**
+
+        Follow the same steps as the static challenge flow above, but use the dynamically generated challenge password instead of a fixed one.
+
+        <Note>
+          Each dynamic challenge can only be used once. If enrollment fails, generate a new challenge and retry.
+        </Note>
+
+        For MDM integrations (Jamf Pro, Ivanti, etc.), the MDM tool handles this automatically via webhook. See the [Jamf Pro integration guide](/documentation/platform/pki/guides/applications/jamf-pro-scep) for details.
+      </Tab>
+    </Tabs>
+
+    <Note>
+      SCEP uses CMS/PKCS#7 encrypted messages to protect the certificate request in transit. The challenge password is included inside the encrypted envelope and is never sent in plaintext over the network.
+    </Note>
+
+  </Step>
+  <Step title="Renew a certificate via SCEP (optional)">
+    If **Allow Certificate-Based Renewal** is enabled on the certificate profile, devices that already hold a valid certificate issued by the same CA can renew without the challenge password.
+
+    The device signs the SCEP request with its existing issued certificate instead of a self-signed one. Using sscep:
+
+    ```bash
+    # Generate a new CSR (no challenge password needed for renewal)
+    openssl req -new -key device.key -out device-renew.csr \
+      -subj "/CN=my-device.example.com"
+
+    # Enroll using the issued certificate as the signing identity
+    sscep enroll \
+      -u https://app.infisical.com/scep/{profile_id}/pkiclient.exe \
+      -c ca.pem-0 \
+      -k device.key \
+      -r device-renew.csr \
+      -l device-renewed.pem \
+      -K device.key \
+      -O device-cert.pem \
+      -E aes256 \
+      -S sha256
+    ```
+
+    The key difference from the initial enrollment is `-O device-cert.pem` (the previously issued certificate) instead of `-O device-selfsigned.pem`. On success, the renewed certificate is written to `device-renewed.pem`.
+  </Step>
+</Steps>
+
+## Supported Algorithms
+
+Infisical's SCEP server supports the following algorithms for the CMS message exchange:
+
+- **Encryption**: AES-256-CBC, AES-128-CBC, 3DES-CBC (DES-EDE3-CBC)
+- **Signing**: SHA-256, SHA-384, SHA-512, SHA-1
+
+
+## FAQ
+
+<AccordionGroup>
+  <Accordion title="What is the RA certificate?">
+    The RA (Registration Authority) certificate is automatically generated when you create a SCEP-enabled certificate profile. It is used to encrypt and sign the SCEP message exchange between the client and server. The RA certificate has a 10-year validity and is separate from your CA certificate.
+  </Accordion>
+  <Accordion title="When should I use static vs. dynamic challenges?">
+    Use **static challenges** for simple setups where a shared password is acceptable, such as network devices or test environments.
+
+    Use **dynamic challenges** when integrating with MDM tools (Jamf Pro, Ivanti, Workspace ONE) that support fetching one-time challenges via webhook. Dynamic challenges provide stronger security since each challenge can only be used once and expires automatically.
+  </Accordion>
+  <Accordion title="Can devices renew their certificates without the challenge password?">
+    Yes, if **Allow Certificate-Based Renewal** is enabled on the certificate profile. Devices that already hold a valid certificate issued by the same CA can submit a renewal request (RenewalReq) signed with their existing certificate, without needing the challenge password.
+  </Accordion>
+  <Accordion title="What happens if my SCEP client uses an unsupported encryption algorithm?">
+    The server will reject the request with a `400 Bad Request` error indicating the unsupported cipher OID. Configure your client to use AES-256-CBC (`-E aes256` in sscep) for compatibility.
+  </Accordion>
+</AccordionGroup>
+
+## What's Next?
+
+<CardGroup cols={2}>
+  <Card title="Jamf Pro Guide" icon="mobile" href="/documentation/platform/pki/guides/applications/jamf-pro-scep">
+    Set up SCEP enrollment with Jamf Pro MDM.
+  </Card>
+  <Card title="Certificate Syncs" icon="arrows-rotate" href="/documentation/platform/pki/applications/certificate-syncs/overview">
+    Push certificates to cloud destinations.
+  </Card>
+  <Card title="Alerting" icon="bell" href="/documentation/platform/pki/applications/alerting/overview">
+    Get notified when certificates are about to expire.
+  </Card>
+  <Card title="Managing Certificates" icon="list" href="/documentation/platform/pki/applications/certificates">
+    View and manage certificates in your Application.
+  </Card>
+</CardGroup>

@@ -4,7 +4,9 @@ import { GripHorizontalIcon } from "lucide-react";
 import { cn } from "@app/components/v3/utils";
 
 import type { FieldInfo } from "../data-explorer-types";
+import { copyData, exportData } from "../data-export";
 import type { QueryTab } from "../use-query-tabs";
+import { ExportDropdown } from "./ExportDropdown";
 import { QueryResultsTable } from "./QueryResultsTable";
 import { QueryToolbar } from "./QueryToolbar";
 import { SqlEditor } from "./SqlEditor";
@@ -172,7 +174,7 @@ export function QueryPanel({
             <QueryResultsTable result={result} error={error} isRunning={isRunning} />
           </div>
           {!isRunning && result && !error && (
-            <div className="flex shrink-0 items-center border-t border-mineshaft-600 px-3 py-1">
+            <div className="flex shrink-0 items-center justify-between border-t border-mineshaft-600 px-3 py-1">
               <span className="text-xs text-mineshaft-400">
                 {result.rowCount != null
                   ? getRowLabel(result.rowCount, result.isTruncated)
@@ -180,6 +182,24 @@ export function QueryPanel({
                 {" · "}
                 {result.executionTimeMs}ms
               </span>
+              {result.rows.length > 0 && (
+                <ExportDropdown
+                  onExport={(fmt) =>
+                    exportData(
+                      result.rows,
+                      result.fields.map((f) => f.name),
+                      fmt
+                    )
+                  }
+                  onCopy={(fmt) =>
+                    copyData(
+                      result.rows,
+                      result.fields.map((f) => f.name),
+                      fmt
+                    )
+                  }
+                />
+              )}
             </div>
           )}
         </div>

@@ -1,6 +1,7 @@
 import { isAxiosError } from "axios";
 
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
+import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { BadRequestError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
@@ -162,18 +163,24 @@ export const HCVaultSyncFns = {
     secretSync: THCVaultSyncWithCredentials,
     secretMap: TSecretMap,
     gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
-    gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
+    gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
+    gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">
   ) => {
     const {
-      connection,
+      connection: rawConnection,
       environment,
       destinationConfig: { mount, path },
       syncOptions: { disableSecretDeletion, keySchema }
     } = secretSync;
+    const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
+      gatewayId: rawConnection.gatewayId,
+      gatewayPoolId: rawConnection.gatewayPoolId
+    });
+    const connection = { ...rawConnection, gatewayId: effectiveGatewayId, gatewayPoolId: null };
 
     const { namespace } = connection.credentials;
     const accessToken = await getHCVaultAccessToken(connection, gatewayService, gatewayV2Service);
-    const instanceUrl = getHCVaultInstanceUrl(connection);
+    const instanceUrl = await getHCVaultInstanceUrl(connection);
 
     // Get mount details to determine KV version
     const { version: mountVersion } = await getKvMountVersion({
@@ -259,16 +266,22 @@ export const HCVaultSyncFns = {
     secretSync: THCVaultSyncWithCredentials,
     secretMap: TSecretMap,
     gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
-    gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
+    gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
+    gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">
   ) => {
     const {
-      connection,
+      connection: rawConnection,
       destinationConfig: { mount, path }
     } = secretSync;
+    const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
+      gatewayId: rawConnection.gatewayId,
+      gatewayPoolId: rawConnection.gatewayPoolId
+    });
+    const connection = { ...rawConnection, gatewayId: effectiveGatewayId, gatewayPoolId: null };
 
     const { namespace } = connection.credentials;
     const accessToken = await getHCVaultAccessToken(connection, gatewayService, gatewayV2Service);
-    const instanceUrl = getHCVaultInstanceUrl(connection);
+    const instanceUrl = await getHCVaultInstanceUrl(connection);
 
     // Get mount details to determine KV version
     const { version: mountVersion } = await getKvMountVersion({
@@ -328,16 +341,22 @@ export const HCVaultSyncFns = {
   getSecrets: async (
     secretSync: THCVaultSyncWithCredentials,
     gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
-    gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
+    gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
+    gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">
   ) => {
     const {
-      connection,
+      connection: rawConnection,
       destinationConfig: { mount, path }
     } = secretSync;
+    const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
+      gatewayId: rawConnection.gatewayId,
+      gatewayPoolId: rawConnection.gatewayPoolId
+    });
+    const connection = { ...rawConnection, gatewayId: effectiveGatewayId, gatewayPoolId: null };
 
     const { namespace } = connection.credentials;
     const accessToken = await getHCVaultAccessToken(connection, gatewayService, gatewayV2Service);
-    const instanceUrl = getHCVaultInstanceUrl(connection);
+    const instanceUrl = await getHCVaultInstanceUrl(connection);
 
     // Get mount details to determine KV version
     const { version: mountVersion } = await getKvMountVersion({

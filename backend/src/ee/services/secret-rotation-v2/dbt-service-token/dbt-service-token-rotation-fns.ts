@@ -3,14 +3,15 @@ import { AxiosError } from "axios";
 
 import {
   TRotationFactory,
+  TRotationFactoryCheckActiveCredentials,
   TRotationFactoryGetSecretsPayload,
   TRotationFactoryIssueCredentials,
   TRotationFactoryRevokeCredentials,
   TRotationFactoryRotateCredentials
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
+import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { safeRequest } from "@app/lib/validator";
 import { createDbtError, getDbtUrl, retrieveDbtAccount } from "@app/services/app-connection/dbt";
 
 import {
@@ -37,7 +38,7 @@ export const dbtServiceTokenRotationFactory: TRotationFactory<
     const instanceUrl = await getDbtUrl(connection);
 
     try {
-      const { data } = await safeRequest.post<TCreateDbtServiceTokenResponse>(
+      const { data } = await request.post<TCreateDbtServiceTokenResponse>(
         `${instanceUrl}/api/v3/accounts/${connection.credentials.accountId}/service-tokens/`,
         {
           name: tokenName,
@@ -92,7 +93,7 @@ export const dbtServiceTokenRotationFactory: TRotationFactory<
     const instanceUrl = await getDbtUrl(connection);
 
     try {
-      const { data } = await safeRequest.get<TGetDbtServiceTokenResponse>(
+      const { data } = await request.get<TGetDbtServiceTokenResponse>(
         `${instanceUrl}/api/v3/accounts/${connection.credentials.accountId}/service-tokens/${tokenId}`,
         {
           headers: {
@@ -129,7 +130,7 @@ export const dbtServiceTokenRotationFactory: TRotationFactory<
     const instanceUrl = await getDbtUrl(connection);
 
     try {
-      await safeRequest.delete(
+      await request.delete(
         `${instanceUrl}/api/v3/accounts/${connection.credentials.accountId}/service-tokens/${tokenId}`,
         {
           headers: {
@@ -209,10 +210,34 @@ export const dbtServiceTokenRotationFactory: TRotationFactory<
     serviceToken
   }) => [{ key: secretsMapping.serviceToken, value: serviceToken }];
 
+  const checkActiveCredentials: TRotationFactoryCheckActiveCredentials<
+    TDbtServiceTokenRotationGeneratedCredentials
+  > = async ({ serviceToken }) => {
+    const instanceUrl = await getDbtUrl(connection);
+
+    try {
+      await request.get(`${instanceUrl}/api/v2/accounts/${connection.credentials.accountId}/`, {
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${serviceToken}`
+        }
+      });
+    } catch (error: unknown) {
+      if (error instanceof AxiosError) {
+        const dbtErrorMessage = createDbtError(error);
+        throw new BadRequestError({
+          message: `DBT service token verification failed: ${dbtErrorMessage ?? error.message ?? "Unknown error"}`
+        });
+      }
+      throw error;
+    }
+  };
+
   return {
     issueCredentials,
     revokeCredentials,
     rotateCredentials,
-    getSecretsPayload
+    getSecretsPayload,
+    checkActiveCredentials
   };
 };

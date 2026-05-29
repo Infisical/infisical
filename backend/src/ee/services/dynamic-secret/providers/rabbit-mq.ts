@@ -1,5 +1,4 @@
 import axios, { Axios } from "axios";
-import http from "http";
 import https from "https";
 import { customAlphabet } from "nanoid";
 import { z } from "zod";
@@ -8,7 +7,6 @@ import { TDynamicSecrets } from "@app/db/schemas";
 import { BadRequestError } from "@app/lib/errors";
 import { sanitizeString } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
-import { buildSsrfSafeAgent } from "@app/lib/validator";
 
 import { ActorIdentityAttributes } from "../../dynamic-secret-lease/dynamic-secret-lease-types";
 import { verifyHostInputValidity } from "../dynamic-secret-fns";
@@ -85,16 +83,8 @@ export const RabbitMqProvider = (): TDynamicProviderFns => {
   };
 
   const $getClient = async (providerInputs: z.infer<typeof DynamicSecretRabbitMqSchema>) => {
-    const baseURL = `${providerInputs.host}:${providerInputs.port}/api`;
-    const isHttps = baseURL.startsWith("https:");
-    const pinnedAgent = await buildSsrfSafeAgent(baseURL, {
-      allowPrivateIps: true,
-      ca: providerInputs.ca || undefined,
-      rejectUnauthorized: isHttps ? providerInputs.sslRejectUnauthorized : undefined
-    });
-
     const axiosInstance = axios.create({
-      baseURL,
+      baseURL: `${providerInputs.host}:${providerInputs.port}/api`,
       auth: {
         username: providerInputs.username,
         password: providerInputs.password
@@ -103,9 +93,9 @@ export const RabbitMqProvider = (): TDynamicProviderFns => {
         "Content-Type": "application/json"
       },
       maxRedirects: 0,
-      ...(isHttps
-        ? { httpsAgent: pinnedAgent as https.Agent | undefined }
-        : { httpAgent: pinnedAgent as http.Agent | undefined })
+      ...(providerInputs.ca && {
+        httpsAgent: new https.Agent({ ca: providerInputs.ca, rejectUnauthorized: providerInputs.sslRejectUnauthorized })
+      })
     });
 
     return axiosInstance;

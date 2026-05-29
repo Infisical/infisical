@@ -62,7 +62,9 @@ export enum AppConnection {
   Ona = "ona",
   DigiCert = "digicert",
   TravisCI = "travis-ci",
-  Snowflake = "snowflake"
+  Salesforce = "salesforce",
+  Snowflake = "snowflake",
+  Datadog = "datadog"
 }
 
 export enum AWSRegion {

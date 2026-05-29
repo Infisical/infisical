@@ -99,8 +99,10 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
     secretsLimit: 40
   },
   pkiEst: false,
-  pkiAcme: false,
+  pkiAcme: true,
   pkiScep: false,
+  pkiPqc: false,
+  kmsPqc: false,
   enforceMfa: false,
   projectTemplates: false,
   kmip: false,
@@ -115,7 +117,9 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   eventSubscriptions: false,
   machineIdentityAuthTemplates: false,
   pkiLegacyTemplates: false,
-  secretShareExternalBranding: false
+  secretShareExternalBranding: false,
+  honeyTokens: false,
+  honeyTokenLimit: 0
 });
 
 export const setupLicenseRequestWithStore = (
@@ -193,8 +197,9 @@ export const throwOnPlanSeatLimitReached = async (
   type?: UserAliasType
 ) => {
   const plan = await licenseService.getPlan(orgId);
+  const isEnterpriseBypass = plan?.slug === "enterprise" && !plan?.enforceIdentityLimit;
 
-  if (plan?.slug !== "enterprise" && plan?.identityLimit && plan.identitiesUsed >= plan.identityLimit) {
+  if (!isEnterpriseBypass && plan?.identityLimit && plan.identitiesUsed >= plan.identityLimit) {
     // limit imposed on number of identities allowed / number of identities used exceeds the number of identities allowed
     throw new BadRequestError({
       message: `Failed to create new member${type ? ` via ${type.toUpperCase()}` : ""} due to member limit reached. Upgrade plan to add more members.`

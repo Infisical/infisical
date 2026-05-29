@@ -1,8 +1,8 @@
 import { customAlphabet } from "nanoid";
 
+import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { sanitizeString } from "@app/lib/fn";
-import { safeRequest } from "@app/lib/validator";
 
 import { AzureEntraIDSchema, TDynamicProviderFns } from "./models";
 
@@ -29,7 +29,7 @@ export const AzureEntraIDProvider = (): TDynamicProviderFns & {
     applicationId: string,
     clientSecret: string
   ): Promise<{ token?: string; success: boolean }> => {
-    const response = await safeRequest.post<{ access_token: string }>(
+    const response = await request.post<{ access_token: string }>(
       `${MSFT_LOGIN_URL}/${tenantId}/oauth2/v2.0/token`,
       {
         grant_type: "client_credentials",
@@ -76,7 +76,7 @@ export const AzureEntraIDProvider = (): TDynamicProviderFns & {
         throw new BadRequestError({ message: "Failed to authorize to Microsoft Entra ID" });
       }
 
-      const response = await safeRequest.patch(
+      const response = await request.patch(
         `${MSFT_GRAPH_API_URL}/users/${providerInputs.userId}`,
         {
           passwordProfile: {
@@ -136,13 +136,15 @@ export const AzureEntraIDProvider = (): TDynamicProviderFns & {
       throw new BadRequestError({ message: "Failed to authorize to Microsoft Entra ID" });
     }
 
-    const response = await safeRequest.get<{
-      value: { id: string; displayName: string; userPrincipalName: string }[];
-    }>(`${MSFT_GRAPH_API_URL}/users`, {
-      headers: {
-        Authorization: `Bearer ${data.token}`
+    const response = await request.get<{ value: [{ id: string; displayName: string; userPrincipalName: string }] }>(
+      `${MSFT_GRAPH_API_URL}/users`,
+      {
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          Authorization: `Bearer ${data.token}`
+        }
       }
-    });
+    );
 
     if (response.status !== 200) {
       throw new BadRequestError({ message: "Failed to fetch users" });

@@ -1,5 +1,5 @@
 import { ForbiddenError } from "@casl/ability";
-import { AxiosError } from "axios";
+import { isAxiosError } from "axios";
 
 import { OrganizationActionScope, TAuditLogs } from "@app/db/schemas";
 import {
@@ -228,7 +228,8 @@ export const auditLogStreamServiceFactory = ({
   const streamLog = async (orgId: string, auditLog: TAuditLogs) => {
     const logStreams = await auditLogStreamDAL.find({ orgId });
     await Promise.allSettled(
-      logStreams.map(async ({ provider, encryptedCredentials }) => {
+      logStreams.map(async (logStream) => {
+        const { provider, encryptedCredentials } = logStream;
         const credentials = await decryptLogStreamCredentials({
           encryptedCredentials,
           orgId,
@@ -238,16 +239,18 @@ export const auditLogStreamServiceFactory = ({
         const factory = LOG_STREAM_FACTORY_MAP[provider as LogProvider]();
 
         try {
-          await factory.streamLog({
-            credentials,
-            auditLog
-          });
+          await factory.streamLog({ credentials, auditLog });
         } catch (error) {
-          logger.error(
-            error,
-            `Failed to stream audit log [auditLogId=${auditLog.id}] [provider=${provider}] [orgId=${orgId}]${error instanceof AxiosError ? `: ${error.message}` : ""}`
-          );
-          throw error;
+          if (isAxiosError(error)) {
+            logger.error(
+              `audit-log-queue: Failed to stream audit log due to request error [auditLogId=${auditLog.id}] [event=${auditLog.eventType}] [provider=${provider}] [orgId=${orgId}] [projectId=${auditLog.projectId}] [message=${error?.message}] [response=${JSON.stringify(error?.response?.data)}]`
+            );
+          } else {
+            logger.error(
+              error,
+              `audit-log-queue: Failed to stream audit log [auditLogId=${auditLog.id}] [event=${auditLog.eventType}] [provider=${provider}] [orgId=${orgId}] [projectId=${auditLog.projectId}]: ${(error as Error)?.message}`
+            );
+          }
         }
       })
     );

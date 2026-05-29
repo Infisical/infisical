@@ -29,7 +29,6 @@ export const CertificateRenewalDisableModal = ({ popUp, handlePopUpToggle }: Pro
 
     await updateRenewalConfig({
       certificateId: certificateData.certificateId,
-      projectSlug: currentProject.slug,
       enableAutoRenewal: false
     });
 

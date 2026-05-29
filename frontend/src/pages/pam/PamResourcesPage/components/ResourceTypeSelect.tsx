@@ -15,7 +15,6 @@ type Props = {
 };
 
 const COMING_SOON_RESOURCES = [
-  { name: "OracleDB", resource: PamResourceType.OracleDB },
   { name: "SQLite", resource: PamResourceType.SQLite },
   { name: "Cassandra", resource: PamResourceType.Cassandra },
   { name: "CockroachDB", resource: PamResourceType.CockroachDB },

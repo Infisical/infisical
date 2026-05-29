@@ -2,13 +2,15 @@ import { AxiosError } from "axios";
 
 import {
   TRotationFactory,
+  TRotationFactoryCheckActiveCredentials,
   TRotationFactoryGetSecretsPayload,
   TRotationFactoryIssueCredentials,
   TRotationFactoryRevokeCredentials,
   TRotationFactoryRotateCredentials
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
+import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
-import { safeRequest } from "@app/lib/validator";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import {
   getSupabaseAuthHeaders,
   getSupabaseInstanceUrl
@@ -52,11 +54,11 @@ export const supabaseApiKeyRotationFactory: TRotationFactory<
   };
 
   const $createApiKey = async () => {
-    const baseUrl = getSupabaseInstanceUrl(connectionConfig);
+    const baseUrl = await getSupabaseInstanceUrl(connectionConfig);
     const headers = getSupabaseAuthHeaders(connectionConfig);
 
     try {
-      const { data } = await safeRequest.post<TSupabaseApiKeyCreateResponse>(
+      const { data } = await request.post<TSupabaseApiKeyCreateResponse>(
         `${baseUrl}/v1/projects/${encodeURIComponent(projectRef)}/api-keys`,
         {
           type: keyType === SupabaseApiKeyType.Publishable ? "publishable" : "secret",
@@ -88,11 +90,11 @@ export const supabaseApiKeyRotationFactory: TRotationFactory<
   };
 
   const $deleteApiKey = async (keyId: string) => {
-    const baseUrl = getSupabaseInstanceUrl(connectionConfig);
+    const baseUrl = await getSupabaseInstanceUrl(connectionConfig);
     const headers = getSupabaseAuthHeaders(connectionConfig);
 
     try {
-      await safeRequest.delete(
+      await request.delete(
         `${baseUrl}/v1/projects/${encodeURIComponent(projectRef)}/api-keys/${encodeURIComponent(keyId)}`,
         {
           headers,
@@ -147,10 +149,33 @@ export const supabaseApiKeyRotationFactory: TRotationFactory<
     apiKey
   }) => [{ key: secretsMapping.apiKey, value: apiKey }];
 
+  const checkActiveCredentials: TRotationFactoryCheckActiveCredentials<
+    TSupabaseApiKeyRotationGeneratedCredentials
+  > = async ({ apiKey }) => {
+    const projectUrl = connection.credentials.instanceUrl
+      ? await getSupabaseInstanceUrl(connectionConfig)
+      : `https://${projectRef}.supabase.co`;
+
+    await blockLocalAndPrivateIpAddresses(projectUrl);
+
+    try {
+      await request.get(`${projectUrl}/auth/v1/settings`, {
+        headers: {
+          apikey: apiKey
+        }
+      });
+    } catch (error: unknown) {
+      throw new BadRequestError({
+        message: `Supabase API key verification failed: ${createErrorMessage(error)}`
+      });
+    }
+  };
+
   return {
     issueCredentials,
     revokeCredentials,
     rotateCredentials,
-    getSecretsPayload
+    getSecretsPayload,
+    checkActiveCredentials
   };
 };

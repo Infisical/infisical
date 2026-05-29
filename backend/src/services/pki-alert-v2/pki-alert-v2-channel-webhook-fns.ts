@@ -3,9 +3,10 @@ import crypto from "node:crypto";
 import { AxiosError } from "axios";
 
 import { getConfig } from "@app/lib/config/env";
+import { request } from "@app/lib/config/request";
 import { delay } from "@app/lib/delay";
 import { logger } from "@app/lib/logger";
-import { safeRequest } from "@app/lib/validator/validate-url";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator/validate-url";
 
 import { PKI_ALERT_RETRY_CONFIG, RETRYABLE_NETWORK_ERRORS } from "./pki-alert-v2-constants";
 import {
@@ -18,6 +19,7 @@ import {
   TPkiWebhookPayload,
   TWebhookChannelConfig
 } from "./pki-alert-v2-types";
+import { buildAlertViewUrl } from "./pki-alert-v2-url-fns";
 
 const PKI_WEBHOOK_TIMEOUT = 7 * 1000;
 
@@ -45,12 +47,14 @@ type TBuildWebhookPayloadParams = {
 // Builds CloudEvents envelope (shared across all events)
 const buildBasePayload = (params: {
   eventType: PkiWebhookEventType;
-  projectId: string;
+  applicationId?: string;
   alertId: string;
 }): TPkiWebhookBase => ({
   specversion: "1.0" as const,
   type: params.eventType,
-  source: `/projects/${params.projectId}/alerts/${params.alertId}`,
+  source: params.applicationId
+    ? `/applications/${params.applicationId}/alerts/${params.alertId}`
+    : `/alerts/${params.alertId}`,
   id: crypto.randomUUID(),
   time: new Date().toISOString(),
   datacontenttype: "application/json" as const
@@ -103,12 +107,12 @@ const buildEventData = (params: {
       id: params.alert.id,
       name: params.alert.name,
       ...(params.alert.alertBefore ? { alertBefore: params.alert.alertBefore } : {}),
-      projectId: params.alert.projectId
+      ...(params.alert.applicationId ? { applicationId: params.alert.applicationId } : {})
     },
     certificates: transformCertificates(params.certificates),
     metadata: {
       totalCertificates: params.certificates.length,
-      viewUrl: `${params.appUrl}/projects/cert-manager/${params.alert.projectId}/policies`
+      viewUrl: buildAlertViewUrl(params.appUrl, params.alert)
     }
   }
 });
@@ -121,7 +125,7 @@ export const buildWebhookPayload = ({
 }: TBuildWebhookPayloadParams): TPkiWebhookPayload => {
   const base = buildBasePayload({
     eventType,
-    projectId: alert.projectId,
+    applicationId: alert.applicationId,
     alertId: alert.id
   });
 
@@ -153,7 +157,7 @@ const triggerPkiWebhook = async (params: {
     headers["x-infisical-signature"] = `t=${timestamp},v1=${signature}`;
   }
 
-  await safeRequest.post(url, payload, {
+  await request.post(url, payload, {
     headers,
     timeout: PKI_WEBHOOK_TIMEOUT,
     signal: AbortSignal.timeout(PKI_WEBHOOK_TIMEOUT)
@@ -213,6 +217,8 @@ export const sendWebhookNotification = async (
   eventType: PkiWebhookEventType,
   channelId: string
 ): Promise<TChannelResult> => {
+  await blockLocalAndPrivateIpAddresses(config.url);
+
   const appCfg = getConfig();
   const payload = buildWebhookPayload({
     alert: alertData,

@@ -1,7 +1,7 @@
 import { AxiosResponse } from "axios";
 
+import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
-import { safeRequest } from "@app/lib/validator";
 
 import { Integrations, IntegrationUrls } from "./integration-list";
 
@@ -16,7 +16,7 @@ const getTeamsGitLab = async ({ url, accessToken }: { url: string; accessToken: 
   let page: number = 1;
   while (page > 0) {
     // eslint-disable-next-line no-await-in-loop
-    const { data, headers }: AxiosResponse<{ name: string; id: string }[]> = await safeRequest.get(
+    const { data, headers }: AxiosResponse<{ name: string; id: string }[]> = await request.get(
       `${gitLabApiUrl}/v4/groups?page=${page}`,
       {
         headers: {

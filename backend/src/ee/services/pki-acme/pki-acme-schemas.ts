@@ -148,6 +148,7 @@ export const GetAcmeAuthorizationResponseSchema = z.object({
     type: z.string(),
     value: z.string()
   }),
+  wildcard: z.boolean().optional(),
   challenges: z.array(
     z.object({
       type: z.enum(Object.values(AcmeChallengeType) as [string, ...string[]]),

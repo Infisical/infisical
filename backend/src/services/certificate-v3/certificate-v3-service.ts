@@ -3,13 +3,18 @@ import * as x509 from "@peculiar/x509";
 import { randomUUID } from "crypto";
 import RE2 from "re2";
 
-import { ActionProjectType, TCertificates } from "@app/db/schemas";
+import { ActionProjectType, ResourceType, TCertificates } from "@app/db/schemas";
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificateActions,
   ProjectPermissionCertificateProfileActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
+import {
+  ResourcePermissionCertificateActions,
+  ResourcePermissionSub
+} from "@app/ee/services/permission/resource-permission";
 import { TPkiAcmeAccountDALFactory } from "@app/ee/services/pki-acme/pki-acme-account-dal";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -42,11 +47,16 @@ import {
   TCertificateAuthorityWithAssociatedCa
 } from "@app/services/certificate-authority/certificate-authority-dal";
 import { CaStatus, CaType } from "@app/services/certificate-authority/certificate-authority-enums";
-import { createDistinguishedName, extractDnParts } from "@app/services/certificate-authority/certificate-authority-fns";
+import {
+  assertCaInProfileProject,
+  createDistinguishedName,
+  extractDnParts
+} from "@app/services/certificate-authority/certificate-authority-fns";
 import { TInternalCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-service";
 import { TCertificatePolicyServiceFactory } from "@app/services/certificate-policy/certificate-policy-service";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import { EnrollmentType, IssuerType } from "@app/services/certificate-profile/certificate-profile-types";
+import { TApiEnrollmentConfigDALFactory } from "@app/services/enrollment-config/api-enrollment-config-dal";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TPkiAlertV2QueueServiceFactory } from "@app/services/pki-alert-v2/pki-alert-v2-queue";
@@ -75,6 +85,7 @@ import {
   generateSelfSignedCertificate,
   getEffectiveAlgorithms,
   isValidRenewalTiming,
+  resolveEffectiveApiConfig,
   validateAlgorithmCompatibility,
   validateCaSupport
 } from "../certificate-common/certificate-issuance-utils";
@@ -86,13 +97,15 @@ import {
   convertKeyUsageArrayToLegacy,
   mapEnumsForValidation,
   normalizeDateForApi,
-  removeRootCaFromChain
+  removeRootCaFromChain,
+  validatePqcLicense
 } from "../certificate-common/certificate-utils";
 import { TCertificateRequest } from "../certificate-policy/certificate-policy-types";
 import { TCertificateRequestDALFactory } from "../certificate-request/certificate-request-dal";
 import { TCertificateRequestServiceFactory } from "../certificate-request/certificate-request-service";
 import { CertificateRequestStatus } from "../certificate-request/certificate-request-types";
 import { TCertificateSyncDALFactory } from "../certificate-sync/certificate-sync-dal";
+import { TPkiApplicationProfileDALFactory } from "../pki-application/pki-application-profile-dal";
 import { TPkiSyncDALFactory } from "../pki-sync/pki-sync-dal";
 import { TPkiSyncQueueFactory } from "../pki-sync/pki-sync-queue";
 import { addRenewedCertificateToSyncs, triggerAutoSyncForCertificate } from "../pki-sync/pki-sync-utils";
@@ -131,7 +144,7 @@ type TCertificateV3ServiceFactoryDep = {
   acmeAccountDAL: Pick<TPkiAcmeAccountDALFactory, "findById">;
   certificatePolicyService: Pick<TCertificatePolicyServiceFactory, "validateCertificateRequest" | "getPolicyById">;
   internalCaService: Pick<TInternalCertificateAuthorityServiceFactory, "signCertFromCa" | "issueCertFromCa">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
   certificateSyncDAL: Pick<
     TCertificateSyncDALFactory,
     "findPkiSyncIdsByCertificateId" | "addCertificates" | "findByPkiSyncAndCertificate" | "updateSyncMetadata"
@@ -155,6 +168,12 @@ type TCertificateV3ServiceFactoryDep = {
   approvalPolicyService: Pick<TApprovalPolicyServiceFactory, "createRequestFromPolicy">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete" | "find">;
   pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
+  pkiApplicationProfileDAL: Pick<
+    TPkiApplicationProfileDALFactory,
+    "findAllByProfileId" | "findOneByApplicationAndProfile"
+  >;
+  apiEnrollmentConfigDAL: Pick<TApiEnrollmentConfigDALFactory, "findById">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
 
 export type TCertificateV3ServiceFactory = ReturnType<typeof certificateV3ServiceFactory>;
@@ -169,7 +188,8 @@ const validateProfileAndPermissions = async ({
   acmeAccountDAL,
   permissionService,
   requiredEnrollmentType,
-  isInternal = false
+  isInternal = false,
+  applicationId
 }: {
   profileId: string;
   actor?: ActorType;
@@ -178,16 +198,17 @@ const validateProfileAndPermissions = async ({
   actorOrgId?: string;
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findByIdWithConfigs">;
   acmeAccountDAL: Pick<TPkiAcmeAccountDALFactory, "findById">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
   requiredEnrollmentType: EnrollmentType;
   isInternal?: boolean;
+  applicationId?: string;
 }) => {
   const profile = await certificateProfileDAL.findByIdWithConfigs(profileId);
   if (!profile) {
     throw new NotFoundError({ message: "Certificate profile not found" });
   }
 
-  if (profile.enrollmentType !== requiredEnrollmentType) {
+  if (!applicationId && profile.enrollmentType !== requiredEnrollmentType) {
     throw new ForbiddenRequestError({
       message: `Profile is not configured for ${requiredEnrollmentType} enrollment`
     });
@@ -223,6 +244,24 @@ const validateProfileAndPermissions = async ({
         message: "SCEP profile mismatch"
       });
     }
+    return profile;
+  }
+
+  if (applicationId && (actor === ActorType.USER || actor === ActorType.IDENTITY)) {
+    const { permission } = await permissionService.getResourcePermission({
+      actor,
+      actorId,
+      projectId: profile.projectId,
+      resourceType: ResourceType.CertificateApplication,
+      resourceId: applicationId,
+      actorAuthMethod: actorAuthMethod || null,
+      actorOrgId
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionCertificateProfileActions.IssueCert,
+      ProjectPermissionSub.CertificateProfiles
+    );
     return profile;
   }
 
@@ -652,11 +691,104 @@ export const certificateV3ServiceFactory = ({
   identityDAL,
   approvalPolicyService,
   resourceMetadataDAL,
-  pkiAlertV2Queue
+  pkiAlertV2Queue,
+  pkiApplicationProfileDAL,
+  apiEnrollmentConfigDAL,
+  licenseService
 }: TCertificateV3ServiceFactoryDep) => {
-  /**
-   * Resolves requester name and email based on actor type
-   */
+  const $resolveApplicationIdForProfile = async (
+    profile: {
+      id: string;
+      projectId: string;
+      apiConfigId?: string | null;
+      estConfigId?: string | null;
+      acmeConfigId?: string | null;
+      scepConfigId?: string | null;
+    },
+    explicit: string | undefined,
+    actorContext?: {
+      actor?: ActorType;
+      actorId?: string;
+      actorAuthMethod?: ActorAuthMethod;
+      actorOrgId?: string;
+    },
+    requiredEnrollmentType?: EnrollmentType
+  ): Promise<string | undefined> => {
+    const junctions = await pkiApplicationProfileDAL.findAllByProfileId(profile.id);
+
+    if (explicit) {
+      const junction = junctions.find((j) => j.applicationId === explicit);
+      if (!junction) {
+        throw new BadRequestError({
+          message: "This profile is not attached to the specified Application."
+        });
+      }
+
+      if (requiredEnrollmentType) {
+        let junctionConfigId: string | null | undefined;
+        switch (requiredEnrollmentType) {
+          case EnrollmentType.API:
+            junctionConfigId = junction.apiConfigId;
+            break;
+          case EnrollmentType.EST:
+            junctionConfigId = junction.estConfigId;
+            break;
+          case EnrollmentType.ACME:
+            junctionConfigId = junction.acmeConfigId;
+            break;
+          case EnrollmentType.SCEP:
+            junctionConfigId = junction.scepConfigId;
+            break;
+          default:
+            junctionConfigId = null;
+        }
+        if (!junctionConfigId) {
+          throw new BadRequestError({
+            message: `${requiredEnrollmentType.toUpperCase()} enrollment is not configured for this profile on the Application.`
+          });
+        }
+      }
+
+      if (
+        actorContext?.actor &&
+        actorContext.actor !== ActorType.ACME_ACCOUNT &&
+        actorContext.actor !== ActorType.ACME_PROFILE &&
+        actorContext.actor !== ActorType.EST_ACCOUNT &&
+        actorContext.actor !== ActorType.SCEP_ACCOUNT &&
+        actorContext.actorId &&
+        actorContext.actorAuthMethod &&
+        actorContext.actorOrgId
+      ) {
+        const { permission } = await permissionService.getResourcePermission({
+          actor: actorContext.actor,
+          actorId: actorContext.actorId,
+          projectId: profile.projectId,
+          resourceType: ResourceType.CertificateApplication,
+          resourceId: explicit,
+          actorAuthMethod: actorContext.actorAuthMethod,
+          actorOrgId: actorContext.actorOrgId
+        });
+        ForbiddenError.from(permission).throwUnlessCan(
+          ResourcePermissionCertificateActions.Create,
+          ResourcePermissionSub.Certificates
+        );
+      }
+
+      return explicit;
+    }
+
+    const hasProfileLevelEnrollment = Boolean(
+      profile.apiConfigId || profile.estConfigId || profile.acmeConfigId || profile.scepConfigId
+    );
+    if (!hasProfileLevelEnrollment) {
+      throw new BadRequestError({
+        message: "This profile must be issued through an Application. Attach it to an Application and issue from there."
+      });
+    }
+
+    return undefined;
+  };
+
   const resolveRequesterInfo = async (
     actor: ActorType,
     actorId: string,
@@ -689,9 +821,6 @@ export const certificateV3ServiceFactory = ({
     return { requesterName: "Unknown Client", requesterEmail: "" };
   };
 
-  /**
-   * Checks if actor should bypass approval based on machine identity flag
-   */
   const shouldBypassApproval = (actor: ActorType, policy: TCertRequestPolicy | null): boolean => {
     return actor === ActorType.IDENTITY && policy?.bypassForMachineIdentities === true;
   };
@@ -704,7 +833,8 @@ export const certificateV3ServiceFactory = ({
     actorId,
     actorAuthMethod,
     actorOrgId,
-    removeRootsFromChain
+    removeRootsFromChain,
+    applicationId: explicitApplicationId
   }: TIssueCertificateFromProfileDTO): Promise<TCertificateIssuanceResponse> => {
     const profile = await validateProfileAndPermissions({
       profileId,
@@ -716,15 +846,41 @@ export const certificateV3ServiceFactory = ({
       acmeAccountDAL,
       permissionService,
       requiredEnrollmentType: EnrollmentType.API,
-      isInternal: actor === ActorType.EST_ACCOUNT || actor === ActorType.SCEP_ACCOUNT
+      isInternal: actor === ActorType.EST_ACCOUNT || actor === ActorType.SCEP_ACCOUNT,
+      applicationId: explicitApplicationId
     });
+
+    const applicationId = await $resolveApplicationIdForProfile(
+      profile,
+      explicitApplicationId,
+      { actor, actorId, actorAuthMethod, actorOrgId },
+      EnrollmentType.API
+    );
+
+    if (certificateRequest.keyAlgorithm) {
+      await validatePqcLicense({
+        keyAlgorithm: certificateRequest.keyAlgorithm,
+        projectId: profile.projectId,
+        projectDAL,
+        licenseService
+      });
+    }
+    if (certificateRequest.signatureAlgorithm) {
+      await validatePqcLicense({
+        keyAlgorithm: certificateRequest.signatureAlgorithm,
+        projectId: profile.projectId,
+        projectDAL,
+        licenseService
+      });
+    }
 
     const approvalFactory = APPROVAL_POLICY_FACTORY_MAP[ApprovalPolicyType.CertRequest](ApprovalPolicyType.CertRequest);
     const matchedApprovalPolicy = (await approvalFactory.matchPolicy(
       approvalPolicyDAL as TApprovalPolicyDALFactory,
       profile.projectId,
       {
-        profileName: profile.slug
+        profileName: profile.slug,
+        applicationId
       }
     )) as TCertRequestPolicy | null;
 
@@ -778,6 +934,7 @@ export const certificateV3ServiceFactory = ({
           {
             projectId: profile.projectId,
             profileId: profile.id,
+            applicationId: applicationId ?? null,
             commonName: certificateRequest.commonName || null,
             altNames: certificateRequest.altNames ? JSON.stringify(certificateRequest.altNames) : null,
             keyUsages: convertKeyUsageArrayToLegacy(certificateRequest.keyUsages) || null,
@@ -787,6 +944,7 @@ export const certificateV3ServiceFactory = ({
             keyAlgorithm: certificateRequest.keyAlgorithm || null,
             signatureAlgorithm: certificateRequest.signatureAlgorithm || null,
             ttl: resolvedTtl,
+            enrollmentType: EnrollmentType.API,
             status: CertificateRequestStatus.PENDING_APPROVAL,
             organization: certificateRequest.organization || null,
             organizationalUnit: certificateRequest.organizationalUnit || null,
@@ -969,6 +1127,7 @@ export const certificateV3ServiceFactory = ({
         });
 
         const certRequestResult = await certificateRequestService.createCertificateRequest({
+          internal: true,
           actor,
           actorId,
           actorAuthMethod,
@@ -976,6 +1135,7 @@ export const certificateV3ServiceFactory = ({
           projectId: profile.projectId,
           tx,
           profileId: profile.id,
+          applicationId,
           commonName: certificateRequest.commonName,
           altNames: certificateRequest.altNames,
           keyUsages: convertKeyUsageArrayToLegacy(certificateRequest.keyUsages),
@@ -1011,8 +1171,15 @@ export const certificateV3ServiceFactory = ({
           });
         }
 
+        const effectiveApiConfig = await resolveEffectiveApiConfig({
+          applicationId,
+          profileId: profile.id,
+          profileApiConfig: profile.apiConfig,
+          pkiApplicationProfileDAL,
+          apiEnrollmentConfigDAL
+        });
         const finalRenewBeforeDays = calculateFinalRenewBeforeDays(
-          profile,
+          { apiConfig: effectiveApiConfig },
           resolvedTtl,
           processResult.selfSignedResult.notAfter
         );
@@ -1025,6 +1192,10 @@ export const certificateV3ServiceFactory = ({
             },
             tx
           );
+        }
+
+        if (applicationId) {
+          await certificateDAL.updateById(processResult.certificateData.id, { applicationId }, tx);
         }
 
         return { ...processResult, certificateRequestId: certRequestResult.id };
@@ -1046,12 +1217,40 @@ export const certificateV3ServiceFactory = ({
         actionProjectType: ActionProjectType.CertificateManager
       });
 
-      const canReadPrivateKey = permission.can(
-        ProjectPermissionCertificateActions.ReadPrivateKey,
-        ProjectPermissionSub.Certificates
-      );
+      let canReadPrivateKey: boolean;
+      if (applicationId) {
+        const { permission: resourcePermission } = await permissionService.getResourcePermission({
+          actor,
+          actorId,
+          projectId: profile.projectId,
+          resourceType: ResourceType.CertificateApplication,
+          resourceId: applicationId,
+          actorAuthMethod,
+          actorOrgId
+        });
+        canReadPrivateKey = resourcePermission.can(
+          ResourcePermissionCertificateActions.ReadPrivateKey,
+          ResourcePermissionSub.Certificates
+        );
+      } else {
+        canReadPrivateKey = permission.can(
+          ProjectPermissionCertificateActions.ReadPrivateKey,
+          ProjectPermissionSub.Certificates
+        );
+      }
 
       const privateKeyForResponse = canReadPrivateKey ? selfSignedResult.privateKey.toString("utf8") : undefined;
+
+      try {
+        await pkiAlertV2Queue?.queueCertificateEvent({
+          certificateId: certificateData.id,
+          projectId: profile.projectId,
+          eventType: PkiAlertEventType.ISSUANCE,
+          applicationId: applicationId ?? null
+        });
+      } catch {
+        logger.debug("Failed to queue PKI issuance alert event");
+      }
 
       return {
         status: CertificateRequestStatus.ISSUED,
@@ -1077,6 +1276,8 @@ export const certificateV3ServiceFactory = ({
       throw new NotFoundError({ message: "Certificate Authority not found" });
     }
 
+    assertCaInProfileProject(ca, profile);
+
     validateCaSupport(ca, "direct certificate issuance");
     validateAlgorithmCompatibility(ca, policy);
 
@@ -1094,8 +1295,6 @@ export const certificateV3ServiceFactory = ({
     const caBasicConstraints = shouldIssueAsCA
       ? { isCA: true, pathLength: policy.basicConstraints?.maxPathLength }
       : undefined;
-
-    const isInternalRequest = actor === ActorType.EST_ACCOUNT;
 
     const {
       certificate,
@@ -1127,18 +1326,17 @@ export const certificateV3ServiceFactory = ({
         keyAlgorithm: effectiveKeyAlgorithm,
         isFromProfile: true,
         organization: certificateRequestWithDefaults.organization,
-        organizationalUnit: certificateRequestWithDefaults.organizationalUnit,
+        ou: certificateRequestWithDefaults.organizationalUnit,
         country: certificateRequestWithDefaults.country,
         state: certificateRequestWithDefaults.state,
         locality: certificateRequestWithDefaults.locality,
         tx
       };
 
-      const certResult = await internalCaService.issueCertFromCa(
-        isInternalRequest
-          ? { ...baseCertParams, internal: true as const }
-          : { ...baseCertParams, actor, actorId, actorAuthMethod, actorOrgId }
-      );
+      const certResult = await internalCaService.issueCertFromCa({
+        ...baseCertParams,
+        internal: true as const
+      });
 
       const certificateRecord = await certificateDAL.findById(certResult.certificateId, tx);
       if (!certificateRecord) {
@@ -1151,19 +1349,32 @@ export const certificateV3ServiceFactory = ({
         flowDefaultTtl: ""
       });
 
+      const effectiveApiConfig = await resolveEffectiveApiConfig({
+        applicationId,
+        profileId: profile.id,
+        profileApiConfig: profile.apiConfig,
+        pkiApplicationProfileDAL,
+        apiEnrollmentConfigDAL
+      });
       const finalRenewBeforeDays = calculateFinalRenewBeforeDays(
-        profile,
+        { apiConfig: effectiveApiConfig },
         effectiveTtl,
         new Date(certificateRecord.notAfter)
       );
 
-      const updateData: { profileId: string; renewBeforeDays?: number } = { profileId };
+      const updateData: { profileId: string; renewBeforeDays?: number; applicationId?: string } = {
+        profileId
+      };
       if (finalRenewBeforeDays !== undefined) {
         updateData.renewBeforeDays = finalRenewBeforeDays;
+      }
+      if (applicationId) {
+        updateData.applicationId = applicationId;
       }
       await certificateDAL.updateById(certificateRecord.id, updateData, tx);
 
       const certRequestResult = await certificateRequestService.createCertificateRequest({
+        internal: true,
         actor,
         actorId,
         actorAuthMethod,
@@ -1172,6 +1383,7 @@ export const certificateV3ServiceFactory = ({
         tx,
         caId: ca.id,
         profileId: profile.id,
+        applicationId,
         commonName: certificateRequest.commonName,
         altNames: certificateRequest.altNames,
         keyUsages: convertKeyUsageArrayToLegacy(certificateRequest.keyUsages),
@@ -1226,10 +1438,27 @@ export const certificateV3ServiceFactory = ({
       actionProjectType: ActionProjectType.CertificateManager
     });
 
-    const canReadPrivateKey = permission.can(
-      ProjectPermissionCertificateActions.ReadPrivateKey,
-      ProjectPermissionSub.Certificates
-    );
+    let canReadPrivateKey: boolean;
+    if (applicationId) {
+      const { permission: resourcePermission } = await permissionService.getResourcePermission({
+        actor,
+        actorId,
+        projectId: profile.projectId,
+        resourceType: ResourceType.CertificateApplication,
+        resourceId: applicationId,
+        actorAuthMethod,
+        actorOrgId
+      });
+      canReadPrivateKey = resourcePermission.can(
+        ResourcePermissionCertificateActions.ReadPrivateKey,
+        ResourcePermissionSub.Certificates
+      );
+    } else {
+      canReadPrivateKey = permission.can(
+        ProjectPermissionCertificateActions.ReadPrivateKey,
+        ProjectPermissionSub.Certificates
+      );
+    }
 
     const privateKeyForResponse = canReadPrivateKey ? bufferToString(privateKey) : undefined;
 
@@ -1237,7 +1466,8 @@ export const certificateV3ServiceFactory = ({
       await pkiAlertV2Queue?.queueCertificateEvent({
         certificateId: cert.id,
         projectId: profile.projectId,
-        eventType: PkiAlertEventType.ISSUANCE
+        eventType: PkiAlertEventType.ISSUANCE,
+        applicationId: applicationId ?? null
       });
     } catch {
       logger.debug("Failed to queue PKI issuance alert event");
@@ -1271,7 +1501,8 @@ export const certificateV3ServiceFactory = ({
     enrollmentType,
     metadata,
     removeRootsFromChain,
-    basicConstraints
+    basicConstraints,
+    applicationId: explicitApplicationId
   }: TSignCertificateFromProfileDTO): Promise<TCertificateIssuanceResponse> => {
     const profile = await validateProfileAndPermissions({
       profileId,
@@ -1283,8 +1514,15 @@ export const certificateV3ServiceFactory = ({
       acmeAccountDAL,
       permissionService,
       requiredEnrollmentType: enrollmentType,
-      isInternal: actor === ActorType.EST_ACCOUNT || actor === ActorType.SCEP_ACCOUNT
+      isInternal: actor === ActorType.EST_ACCOUNT || actor === ActorType.SCEP_ACCOUNT,
+      applicationId: explicitApplicationId
     });
+    const applicationId = await $resolveApplicationIdForProfile(
+      profile,
+      explicitApplicationId,
+      { actor, actorId, actorAuthMethod, actorOrgId },
+      enrollmentType
+    );
 
     if (!profile.caId) {
       throw new BadRequestError({
@@ -1296,6 +1534,8 @@ export const certificateV3ServiceFactory = ({
     if (!ca) {
       throw new NotFoundError({ message: "Certificate Authority not found" });
     }
+
+    assertCaInProfileProject(ca, profile);
 
     validateCaSupport(ca, "CSR signing");
 
@@ -1361,7 +1601,8 @@ export const certificateV3ServiceFactory = ({
       approvalPolicyDAL as TApprovalPolicyDALFactory,
       profile.projectId,
       {
-        profileName: profile.slug
+        profileName: profile.slug,
+        applicationId
       }
     )) as TCertRequestPolicy | null;
 
@@ -1378,6 +1619,7 @@ export const certificateV3ServiceFactory = ({
           {
             projectId: profile.projectId,
             profileId: profile.id,
+            applicationId: applicationId ?? null,
             csr,
             commonName: mappedCertificateRequest.commonName || null,
             altNames: mappedCertificateRequest.subjectAlternativeNames
@@ -1547,19 +1789,32 @@ export const certificateV3ServiceFactory = ({
           throw new NotFoundError({ message: "Certificate was signed but could not be found in database" });
         }
 
+        const effectiveApiConfig = await resolveEffectiveApiConfig({
+          applicationId,
+          profileId: profile.id,
+          profileApiConfig: profile.apiConfig,
+          pkiApplicationProfileDAL,
+          apiEnrollmentConfigDAL
+        });
         const finalRenewBeforeDays = calculateFinalRenewBeforeDays(
-          profile,
+          { apiConfig: effectiveApiConfig },
           effectiveTtl,
           new Date(signedCertRecord.notAfter)
         );
 
-        const updateData: { profileId: string; renewBeforeDays?: number } = { profileId };
+        const updateData: { profileId: string; renewBeforeDays?: number; applicationId?: string } = {
+          profileId
+        };
         if (finalRenewBeforeDays !== undefined) {
           updateData.renewBeforeDays = finalRenewBeforeDays;
+        }
+        if (applicationId) {
+          updateData.applicationId = applicationId;
         }
         await certificateDAL.updateById(signedCertRecord.id, updateData, tx);
 
         const certRequestResult = await certificateRequestService.createCertificateRequest({
+          internal: true,
           actor,
           actorId,
           actorAuthMethod,
@@ -1568,6 +1823,7 @@ export const certificateV3ServiceFactory = ({
           tx,
           caId: ca.id,
           profileId: profile.id,
+          applicationId,
           csr,
           commonName: mappedCertificateRequest.commonName,
           altNames: mappedCertificateRequest.subjectAlternativeNames,
@@ -1581,7 +1837,7 @@ export const certificateV3ServiceFactory = ({
           certificateId: certResult.certificateId,
           basicConstraints,
           ttl: validity.ttl,
-          enrollmentType: EnrollmentType.API
+          enrollmentType
         });
 
         if (metadata && metadata.length > 0) {
@@ -1613,7 +1869,8 @@ export const certificateV3ServiceFactory = ({
       await pkiAlertV2Queue?.queueCertificateEvent({
         certificateId: cert.id,
         projectId: profile.projectId,
-        eventType: PkiAlertEventType.ISSUANCE
+        eventType: PkiAlertEventType.ISSUANCE,
+        applicationId: applicationId ?? null
       });
     } catch {
       logger.debug("Failed to queue PKI issuance alert event");
@@ -1640,7 +1897,8 @@ export const certificateV3ServiceFactory = ({
     actor,
     actorId,
     actorAuthMethod,
-    actorOrgId
+    actorOrgId,
+    applicationId: explicitApplicationId
   }: TOrderCertificateFromProfileDTO): Promise<TCertificateIssuanceResponse> => {
     const profile = await validateProfileAndPermissions({
       profileId,
@@ -1652,8 +1910,15 @@ export const certificateV3ServiceFactory = ({
       acmeAccountDAL,
       permissionService,
       requiredEnrollmentType: EnrollmentType.API,
-      isInternal: actor === ActorType.EST_ACCOUNT || actor === ActorType.SCEP_ACCOUNT
+      isInternal: actor === ActorType.EST_ACCOUNT || actor === ActorType.SCEP_ACCOUNT,
+      applicationId: explicitApplicationId
     });
+    const applicationId = await $resolveApplicationIdForProfile(
+      profile,
+      explicitApplicationId,
+      { actor, actorId, actorAuthMethod, actorOrgId },
+      EnrollmentType.API
+    );
 
     let certificateRequest: TCertificateRequest;
     let extractedKeyAlgorithm: string | undefined;
@@ -1722,6 +1987,9 @@ export const certificateV3ServiceFactory = ({
     // already approved a request that's guaranteed to fail downstream.
     if (profile.caId) {
       const preflightCa = await certificateAuthorityDAL.findByIdWithAssociatedCa(profile.caId);
+      if (preflightCa) {
+        assertCaInProfileProject(preflightCa, profile);
+      }
       if (preflightCa?.externalCa?.type === CaType.AWS_ACM_PUBLIC_CA) {
         validateAcmIssuanceInputs({
           csr: certificateOrder.csr,
@@ -1746,7 +2014,8 @@ export const certificateV3ServiceFactory = ({
       approvalPolicyDAL as TApprovalPolicyDALFactory,
       profile.projectId,
       {
-        profileName: profile.slug
+        profileName: profile.slug,
+        applicationId
       }
     )) as TCertRequestPolicy | null;
 
@@ -1763,6 +2032,7 @@ export const certificateV3ServiceFactory = ({
           {
             projectId: profile.projectId,
             profileId: profile.id,
+            applicationId: applicationId ?? null,
             csr: certificateOrder.csr || null,
             commonName: certificateOrder.commonName || null,
             altNames: certificateOrder.altNames ? JSON.stringify(certificateOrder.altNames) : null,
@@ -1779,6 +2049,7 @@ export const certificateV3ServiceFactory = ({
             country: certificateRequest.country || null,
             state: certificateRequest.state || null,
             locality: certificateRequest.locality || null,
+            enrollmentType: EnrollmentType.API,
             status: CertificateRequestStatus.PENDING_APPROVAL,
             createdAt: certRequestCreatedAt
           } as Parameters<typeof certificateRequestDAL.create>[0] & { createdAt: Date },
@@ -1875,6 +2146,8 @@ export const certificateV3ServiceFactory = ({
       throw new NotFoundError({ message: "Certificate Authority not found" });
     }
 
+    assertCaInProfileProject(ca, profile);
+
     const caType = (ca.externalCa?.type as CaType) ?? CaType.INTERNAL;
 
     if (caType === CaType.INTERNAL) {
@@ -1912,6 +2185,7 @@ export const certificateV3ServiceFactory = ({
       const orderId = randomUUID();
 
       const certRequest = await certificateRequestService.createCertificateRequest({
+        internal: true,
         actor,
         actorId,
         actorAuthMethod,
@@ -1919,6 +2193,7 @@ export const certificateV3ServiceFactory = ({
         projectId: profile.projectId,
         caId: ca.id,
         profileId: profile.id,
+        applicationId,
         commonName: certificateOrder.commonName || "",
         keyUsages: convertKeyUsageArrayToLegacy(certificateOrder.keyUsages) || [],
         extendedKeyUsages: convertExtendedKeyUsageArrayToLegacy(certificateOrder.extendedKeyUsages) || [],
@@ -1965,7 +2240,8 @@ export const certificateV3ServiceFactory = ({
         organizationalUnit: certificateRequest.organizationalUnit,
         country: certificateRequest.country,
         state: certificateRequest.state,
-        locality: certificateRequest.locality
+        locality: certificateRequest.locality,
+        ...(applicationId && { applicationId })
       });
 
       return {
@@ -2055,16 +2331,32 @@ export const certificateV3ServiceFactory = ({
 
       if (!internal) {
         const projectId = profile?.projectId || originalCert.projectId;
-        const { permission } = await permissionService.getProjectPermission({
-          actor,
-          actorId,
-          projectId,
-          actorAuthMethod,
-          actorOrgId,
-          actionProjectType: ActionProjectType.CertificateManager
-        });
 
-        if (profile) {
+        if (originalCert.applicationId) {
+          const originalProfile = await certificateProfileDAL.findByIdWithConfigs(originalCert.profileId);
+          if (!originalProfile) {
+            throw new NotFoundError({ message: "Original certificate profile not found" });
+          }
+          await $resolveApplicationIdForProfile(
+            originalProfile,
+            originalCert.applicationId,
+            {
+              actor,
+              actorId,
+              actorAuthMethod,
+              actorOrgId
+            },
+            EnrollmentType.API
+          );
+        } else if (profile) {
+          const { permission } = await permissionService.getProjectPermission({
+            actor,
+            actorId,
+            projectId,
+            actorAuthMethod,
+            actorOrgId,
+            actionProjectType: ActionProjectType.CertificateManager
+          });
           ForbiddenError.from(permission).throwUnlessCan(
             ProjectPermissionCertificateProfileActions.IssueCert,
             subject(ProjectPermissionSub.CertificateProfiles, { slug: profile.slug })
@@ -2085,6 +2377,8 @@ export const certificateV3ServiceFactory = ({
         if (!ca) {
           throw new NotFoundError({ message: "Certificate Authority not found" });
         }
+
+        assertCaInProfileProject(ca, profile ?? originalCert);
 
         const eligibilityCheck = validateRenewalEligibility(originalCert, ca);
         if (!eligibilityCheck.isEligible) {
@@ -2142,6 +2436,11 @@ export const certificateV3ServiceFactory = ({
 
       const certificateRequest = {
         commonName: originalCert.commonName || undefined,
+        organization: originalCert.subjectOrganization || undefined,
+        organizationalUnit: originalCert.subjectOrganizationalUnit || undefined,
+        country: originalCert.subjectCountry || undefined,
+        state: originalCert.subjectState || undefined,
+        locality: originalCert.subjectLocality || undefined,
         keyUsages: parseKeyUsages(originalCert.keyUsages),
         extendedKeyUsages: parseExtendedKeyUsages(originalCert.extendedKeyUsages),
         subjectAlternativeNames: originalCert.altNames
@@ -2179,7 +2478,18 @@ export const certificateV3ServiceFactory = ({
       const notBefore = new Date();
       const notAfter = new Date(Date.now() + parseTtlToMs(ttl));
 
-      const finalRenewBeforeDays = profile ? calculateFinalRenewBeforeDays(profile, ttl, notAfter) : undefined;
+      const effectiveApiConfig = profile
+        ? await resolveEffectiveApiConfig({
+            applicationId: originalCert.applicationId ?? undefined,
+            profileId: profile.id,
+            profileApiConfig: profile.apiConfig,
+            pkiApplicationProfileDAL,
+            apiEnrollmentConfigDAL
+          })
+        : undefined;
+      const finalRenewBeforeDays = profile
+        ? calculateFinalRenewBeforeDays({ apiConfig: effectiveApiConfig }, ttl, notAfter)
+        : undefined;
 
       let certificate: string;
       let certificateChain: string;
@@ -2219,6 +2529,11 @@ export const certificateV3ServiceFactory = ({
             signatureAlgorithm: originalSignatureAlgorithm,
             keyAlgorithm: originalKeyAlgorithm,
             isFromProfile: true,
+            organization: originalCert.subjectOrganization || undefined,
+            ou: originalCert.subjectOrganizationalUnit || undefined,
+            country: originalCert.subjectCountry || undefined,
+            state: originalCert.subjectState || undefined,
+            locality: originalCert.subjectLocality || undefined,
             actor,
             actorId,
             actorAuthMethod,
@@ -2302,6 +2617,7 @@ export const certificateV3ServiceFactory = ({
           profileId: string | null;
           renewedFromCertificateId: string;
           renewBeforeDays?: number;
+          applicationId?: string | null;
         } = {
           profileId: originalCert.profileId || null,
           renewedFromCertificateId: originalCert.id
@@ -2311,10 +2627,22 @@ export const certificateV3ServiceFactory = ({
           renewalUpdateData.renewBeforeDays = finalRenewBeforeDays;
         }
 
+        if (originalCert.applicationId) {
+          renewalUpdateData.applicationId = originalCert.applicationId;
+        }
+
         await certificateDAL.updateById(newCert.id, renewalUpdateData, tx);
-      } else if (finalRenewBeforeDays !== undefined) {
-        // For self-signed certificates, just update the renewBeforeDays if needed
-        await certificateDAL.updateById(newCert.id, { renewBeforeDays: finalRenewBeforeDays }, tx);
+      } else {
+        const selfSignedUpdate: { renewBeforeDays?: number; applicationId?: string | null } = {};
+        if (finalRenewBeforeDays !== undefined) {
+          selfSignedUpdate.renewBeforeDays = finalRenewBeforeDays;
+        }
+        if (originalCert.applicationId) {
+          selfSignedUpdate.applicationId = originalCert.applicationId;
+        }
+        if (Object.keys(selfSignedUpdate).length > 0) {
+          await certificateDAL.updateById(newCert.id, selfSignedUpdate, tx);
+        }
       }
 
       await certificateDAL.updateById(
@@ -2333,6 +2661,7 @@ export const certificateV3ServiceFactory = ({
         : undefined;
 
       const certRequestResult = await certificateRequestService.createCertificateRequest({
+        internal: true,
         actor,
         actorId,
         actorAuthMethod,
@@ -2341,6 +2670,7 @@ export const certificateV3ServiceFactory = ({
         tx,
         caId: ca?.id || originalCert.caId || undefined,
         profileId: originalCert.profileId || undefined,
+        applicationId: originalCert.applicationId ?? undefined,
         commonName: originalCert.commonName || undefined,
         altNames: renewalAltNames,
         keyUsages: parseKeyUsages(originalCert.keyUsages),
@@ -2353,7 +2683,12 @@ export const certificateV3ServiceFactory = ({
         status: CertificateRequestStatus.ISSUED,
         certificateId: newCert.id,
         ttl,
-        enrollmentType: EnrollmentType.API
+        enrollmentType: EnrollmentType.API,
+        organization: certificateRequest.organization,
+        organizationalUnit: certificateRequest.organizationalUnit,
+        country: certificateRequest.country,
+        state: certificateRequest.state,
+        locality: certificateRequest.locality
       });
 
       // Copy metadata from original cert to new cert and cert request
@@ -2391,12 +2726,14 @@ export const certificateV3ServiceFactory = ({
       const structuredAltNames = altNamesArray.map((san) => detectSanType(san));
 
       const certificateRequest = await certificateRequestService.createCertificateRequest({
+        internal: true,
         actor,
         actorId,
         actorAuthMethod,
         actorOrgId,
         projectId: originalCert.projectId,
         profileId: profile?.id,
+        applicationId: originalCert.applicationId ?? undefined,
         caId: ca.id,
         commonName: originalCert.commonName || undefined,
         altNames: structuredAltNames.length > 0 ? structuredAltNames : undefined,
@@ -2407,7 +2744,12 @@ export const certificateV3ServiceFactory = ({
         metadata: `Renewed from certificate ID: ${originalCert.id}`,
         status: CertificateRequestStatus.PENDING,
         ttl,
-        enrollmentType: EnrollmentType.API
+        enrollmentType: EnrollmentType.API,
+        organization: originalCert.subjectOrganization || undefined,
+        organizationalUnit: originalCert.subjectOrganizationalUnit || undefined,
+        country: originalCert.subjectCountry || undefined,
+        state: originalCert.subjectState || undefined,
+        locality: originalCert.subjectLocality || undefined
       });
 
       certificateRequestId = certificateRequest.id;
@@ -2439,7 +2781,8 @@ export const certificateV3ServiceFactory = ({
         locality: originalCert.subjectLocality || undefined,
         isRenewal: true,
         originalCertificateId: certificateId,
-        certificateRequestId: certificateRequest.id
+        certificateRequestId: certificateRequest.id,
+        ...(originalCert.applicationId && { applicationId: originalCert.applicationId })
       });
 
       return {
@@ -2476,7 +2819,8 @@ export const certificateV3ServiceFactory = ({
       await pkiAlertV2Queue?.queueCertificateEvent({
         certificateId: renewalResult.newCert.id,
         projectId: renewalResult.originalCert.projectId,
-        eventType: PkiAlertEventType.RENEWAL
+        eventType: PkiAlertEventType.RENEWAL,
+        applicationId: renewalResult.originalCert.applicationId ?? null
       });
     } catch {
       logger.debug("Failed to queue PKI renewal alert event");
@@ -2509,27 +2853,43 @@ export const certificateV3ServiceFactory = ({
       throw new NotFoundError({ message: "Certificate not found" });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId: certificate.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
-    });
-
     const metadataRows = await resourceMetadataDAL.find({ certificateId: certificate.id });
     const certMetadata = metadataRows.map(({ key, value }) => ({ key, value: value || "" }));
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateActions.Edit,
-      subject(ProjectPermissionSub.Certificates, {
-        commonName: certificate.commonName,
-        altNames: certificate.altNames?.split(",").map((s) => s.trim()),
-        serialNumber: certificate.serialNumber,
-        metadata: certMetadata
-      })
-    );
+    if (certificate.applicationId) {
+      const { permission } = await permissionService.getResourcePermission({
+        actor,
+        actorId,
+        projectId: certificate.projectId,
+        resourceType: ResourceType.CertificateApplication,
+        resourceId: certificate.applicationId,
+        actorAuthMethod,
+        actorOrgId
+      });
+      ForbiddenError.from(permission).throwUnlessCan(
+        ResourcePermissionCertificateActions.Edit,
+        ResourcePermissionSub.Certificates
+      );
+    } else {
+      const { permission } = await permissionService.getProjectPermission({
+        actor,
+        actorId,
+        projectId: certificate.projectId,
+        actorAuthMethod,
+        actorOrgId,
+        actionProjectType: ActionProjectType.CertificateManager
+      });
+
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionCertificateActions.Edit,
+        subject(ProjectPermissionSub.Certificates, {
+          commonName: certificate.commonName,
+          altNames: certificate.altNames?.split(",").map((s) => s.trim()),
+          serialNumber: certificate.serialNumber,
+          metadata: certMetadata
+        })
+      );
+    }
 
     if (!certificate.profileId) {
       throw new BadRequestError({
@@ -2626,27 +2986,43 @@ export const certificateV3ServiceFactory = ({
       throw new NotFoundError({ message: "Certificate not found" });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId: certificate.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
-    });
-
     const metadataRows = await resourceMetadataDAL.find({ certificateId: certificate.id });
     const certMetadata = metadataRows.map(({ key, value }) => ({ key, value: value || "" }));
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateActions.Edit,
-      subject(ProjectPermissionSub.Certificates, {
-        commonName: certificate.commonName,
-        altNames: certificate.altNames?.split(",").map((s) => s.trim()),
-        serialNumber: certificate.serialNumber,
-        metadata: certMetadata
-      })
-    );
+    if (certificate.applicationId) {
+      const { permission } = await permissionService.getResourcePermission({
+        actor,
+        actorId,
+        projectId: certificate.projectId,
+        resourceType: ResourceType.CertificateApplication,
+        resourceId: certificate.applicationId,
+        actorAuthMethod,
+        actorOrgId
+      });
+      ForbiddenError.from(permission).throwUnlessCan(
+        ResourcePermissionCertificateActions.Edit,
+        ResourcePermissionSub.Certificates
+      );
+    } else {
+      const { permission } = await permissionService.getProjectPermission({
+        actor,
+        actorId,
+        projectId: certificate.projectId,
+        actorAuthMethod,
+        actorOrgId,
+        actionProjectType: ActionProjectType.CertificateManager
+      });
+
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionCertificateActions.Edit,
+        subject(ProjectPermissionSub.Certificates, {
+          commonName: certificate.commonName,
+          altNames: certificate.altNames?.split(",").map((s) => s.trim()),
+          serialNumber: certificate.serialNumber,
+          metadata: certMetadata
+        })
+      );
+    }
 
     if (!certificate.profileId) {
       throw new BadRequestError({
@@ -2694,38 +3070,52 @@ export const certificateV3ServiceFactory = ({
       throw new NotFoundError({ message: "Certificate not found" });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId: certificate.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
-    });
-
     const currentMetadataRows = await resourceMetadataDAL.find({ certificateId: certificate.id });
     const currentMetadata = currentMetadataRows.map(({ key, value }) => ({ key, value: value || "" }));
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateActions.Edit,
-      subject(ProjectPermissionSub.Certificates, {
+    if (certificate.applicationId) {
+      const { permission: resourcePermission } = await permissionService.getResourcePermission({
+        actor,
+        actorId,
+        projectId: certificate.projectId,
+        resourceType: ResourceType.CertificateApplication,
+        resourceId: certificate.applicationId,
+        actorAuthMethod,
+        actorOrgId
+      });
+      ForbiddenError.from(resourcePermission).throwUnlessCan(
+        ResourcePermissionCertificateActions.Edit,
+        ResourcePermissionSub.Certificates
+      );
+    } else {
+      const { permission } = await permissionService.getProjectPermission({
+        actor,
+        actorId,
+        projectId: certificate.projectId,
+        actorAuthMethod,
+        actorOrgId,
+        actionProjectType: ActionProjectType.CertificateManager
+      });
+
+      const currentSubject = subject(ProjectPermissionSub.Certificates, {
         commonName: certificate.commonName,
         altNames: certificate.altNames?.split(",").map((s) => s.trim()),
         serialNumber: certificate.serialNumber,
         metadata: currentMetadata
-      })
-    );
+      });
+      ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCertificateActions.Edit, currentSubject);
 
-    if (metadata) {
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionCertificateActions.Edit,
-        subject(ProjectPermissionSub.Certificates, {
-          commonName: certificate.commonName,
-          altNames: certificate.altNames?.split(",").map((s) => s.trim()),
-          serialNumber: certificate.serialNumber,
-          metadata
-        })
-      );
+      if (metadata) {
+        ForbiddenError.from(permission).throwUnlessCan(
+          ProjectPermissionCertificateActions.Edit,
+          subject(ProjectPermissionSub.Certificates, {
+            commonName: certificate.commonName,
+            altNames: certificate.altNames?.split(",").map((s) => s.trim()),
+            serialNumber: certificate.serialNumber,
+            metadata
+          })
+        );
+      }
     }
 
     let updatedMetadata: Array<{ key: string; value: string }> = [];

@@ -34,6 +34,8 @@ import { TProjectKeyDALFactory } from "@app/services/project-key/project-key-dal
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 import { LoginMethod } from "@app/services/super-admin/super-admin-types";
+import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 import { UserAliasType } from "@app/services/user-alias/user-alias-types";
@@ -54,7 +56,7 @@ import {
   TTestLdapConnectionDTO,
   TUpdateLdapCfgDTO
 } from "./ldap-config-types";
-import { searchGroups, testLDAPConfig } from "./ldap-fns";
+import { buildLdapTlsOptions, searchGroups, testLDAPConfig } from "./ldap-fns";
 import { TLdapGroupMapDALFactory } from "./ldap-group-map-dal";
 
 type TLdapConfigServiceFactoryDep = {
@@ -92,6 +94,7 @@ type TLdapConfigServiceFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   loginService: Pick<TAuthLoginFactory, "processProviderCallback">;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "findOne">;
+  telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
 };
 
 export type TLdapConfigServiceFactory = ReturnType<typeof ldapConfigServiceFactory>;
@@ -115,7 +118,8 @@ export const ldapConfigServiceFactory = ({
   smtpService,
   kmsService,
   loginService,
-  emailDomainDAL
+  emailDomainDAL,
+  telemetryService
 }: TLdapConfigServiceFactoryDep) => {
   const createLdapCfg = async ({
     actor,
@@ -132,7 +136,9 @@ export const ldapConfigServiceFactory = ({
     searchFilter,
     groupSearchBase,
     groupSearchFilter,
-    caCert
+    caCert,
+    clientCertificate,
+    clientKeyCertificate
   }: TCreateLdapCfgDTO) => {
     const { permission } = await permissionService.getOrgPermission({
       scope: OrganizationActionScope.ParentOrganization,
@@ -166,6 +172,12 @@ export const ldapConfigServiceFactory = ({
 
     await blockLocalAndPrivateIpAddresses(url);
 
+    if (Boolean(clientCertificate) !== Boolean(clientKeyCertificate)) {
+      throw new BadRequestError({
+        message: "clientCertificate and clientKeyCertificate must be provided together for mTLS."
+      });
+    }
+
     const { encryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId
@@ -175,6 +187,8 @@ export const ldapConfigServiceFactory = ({
       bindDN,
       bindPass,
       caCert,
+      clientCertificate,
+      clientKeyCertificate,
       url
     });
 
@@ -195,7 +209,13 @@ export const ldapConfigServiceFactory = ({
       groupSearchFilter,
       encryptedLdapCaCertificate: encryptor({ plainText: Buffer.from(caCert) }).cipherTextBlob,
       encryptedLdapBindDN: encryptor({ plainText: Buffer.from(bindDN) }).cipherTextBlob,
-      encryptedLdapBindPass: encryptor({ plainText: Buffer.from(bindPass) }).cipherTextBlob
+      encryptedLdapBindPass: encryptor({ plainText: Buffer.from(bindPass) }).cipherTextBlob,
+      encryptedLdapClientCertificate: clientCertificate
+        ? encryptor({ plainText: Buffer.from(clientCertificate) }).cipherTextBlob
+        : null,
+      encryptedLdapClientKeyCertificate: clientKeyCertificate
+        ? encryptor({ plainText: Buffer.from(clientKeyCertificate) }).cipherTextBlob
+        : null
     });
 
     return ldapConfig;
@@ -229,6 +249,16 @@ export const ldapConfigServiceFactory = ({
       caCert = decryptor({ cipherTextBlob: ldapConfig.encryptedLdapCaCertificate }).toString();
     }
 
+    let clientCertificate = "";
+    if (ldapConfig.encryptedLdapClientCertificate) {
+      clientCertificate = decryptor({ cipherTextBlob: ldapConfig.encryptedLdapClientCertificate }).toString();
+    }
+
+    let clientKeyCertificate = "";
+    if (ldapConfig.encryptedLdapClientKeyCertificate) {
+      clientKeyCertificate = decryptor({ cipherTextBlob: ldapConfig.encryptedLdapClientKeyCertificate }).toString();
+    }
+
     return {
       id: ldapConfig.id,
       organization: ldapConfig.orgId,
@@ -241,7 +271,9 @@ export const ldapConfigServiceFactory = ({
       searchFilter: ldapConfig.searchFilter,
       groupSearchBase: ldapConfig.groupSearchBase,
       groupSearchFilter: ldapConfig.groupSearchFilter,
-      caCert
+      caCert,
+      clientCertificate,
+      clientKeyCertificate
     };
   };
 
@@ -260,7 +292,9 @@ export const ldapConfigServiceFactory = ({
     searchFilter,
     groupSearchBase,
     groupSearchFilter,
-    caCert
+    caCert,
+    clientCertificate,
+    clientKeyCertificate
   }: TUpdateLdapCfgDTO) => {
     const { permission } = await permissionService.getOrgPermission({
       scope: OrganizationActionScope.ParentOrganization,
@@ -323,9 +357,27 @@ export const ldapConfigServiceFactory = ({
       updateQuery.encryptedLdapCaCertificate = encryptor({ plainText: Buffer.from(caCert) }).cipherTextBlob;
     }
 
+    if (clientCertificate !== undefined) {
+      updateQuery.encryptedLdapClientCertificate = clientCertificate
+        ? encryptor({ plainText: Buffer.from(clientCertificate) }).cipherTextBlob
+        : null;
+    }
+
+    if (clientKeyCertificate !== undefined) {
+      updateQuery.encryptedLdapClientKeyCertificate = clientKeyCertificate
+        ? encryptor({ plainText: Buffer.from(clientKeyCertificate) }).cipherTextBlob
+        : null;
+    }
+
     const config = await ldapConfigDAL.transaction(async (tx) => {
       const [updatedLdapCfg] = await ldapConfigDAL.update({ orgId }, updateQuery, tx);
       const decryptedLdapCfg = await getLdapCfg({ orgId }, tx);
+
+      if (Boolean(decryptedLdapCfg.clientCertificate) !== Boolean(decryptedLdapCfg.clientKeyCertificate)) {
+        throw new BadRequestError({
+          message: "clientCertificate and clientKeyCertificate must be provided together for mTLS."
+        });
+      }
 
       const isSoftDeletion = !decryptedLdapCfg.url && !decryptedLdapCfg.bindDN && !decryptedLdapCfg.bindPass;
       if (!isSoftDeletion) {
@@ -360,9 +412,12 @@ export const ldapConfigServiceFactory = ({
       actorOrgId
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Ldap);
-    return getLdapCfg({
-      orgId
-    });
+    const ldap = await getLdapCfg({ orgId });
+    const { clientKeyCertificate, ...rest } = ldap;
+    return {
+      ...rest,
+      hasClientKeyCertificate: Boolean(clientKeyCertificate)
+    };
   };
 
   const bootLdap = async (organizationSlug: string) => {
@@ -374,6 +429,7 @@ export const ldapConfigServiceFactory = ({
       isActive: true
     });
 
+    const tlsOptions = buildLdapTlsOptions(ldapConfig);
     const opts = {
       server: {
         url: ldapConfig.url,
@@ -383,13 +439,7 @@ export const ldapConfigServiceFactory = ({
         searchBase: ldapConfig.searchBase,
         searchFilter: ldapConfig.searchFilter || "(uid={{username}})",
         // searchAttributes: ["uid", "uidNumber", "givenName", "sn", "mail"],
-        ...(ldapConfig.caCert !== ""
-          ? {
-              tlsOptions: {
-                ca: [ldapConfig.caCert]
-              }
-            }
-          : {})
+        ...(tlsOptions ? { tlsOptions } : {})
       },
       passReqToCallback: true
     };
@@ -470,9 +520,12 @@ export const ldapConfigServiceFactory = ({
             },
             tx
           );
+        } else if (!orgMembership.isActive) {
+          throw new ForbiddenRequestError({ message: "User organization membership is inactive" });
         }
       });
     } else {
+      let isNewUser = false;
       userAlias = await userDAL.transaction(async (tx) => {
         let newUser: TUsers | undefined;
 
@@ -490,6 +543,7 @@ export const ldapConfigServiceFactory = ({
             },
             tx
           );
+          isNewUser = true;
         }
 
         const newUserAlias = await userAliasDAL.create(
@@ -541,6 +595,19 @@ export const ldapConfigServiceFactory = ({
 
         return newUserAlias;
       });
+
+      if (isNewUser) {
+        void telemetryService.sendPostHogEvents({
+          event: PostHogEventTypes.UserSignedUp,
+          distinctId: sanitizedEmail,
+          organizationId: orgId,
+          properties: {
+            username: sanitizedEmail,
+            email: sanitizedEmail,
+            signupMethod: "ldap"
+          }
+        });
+      }
     }
     await licenseService.updateSubscriptionOrgMemberCount(organization.id);
 
@@ -803,6 +870,8 @@ export const ldapConfigServiceFactory = ({
     bindDN,
     bindPass,
     caCert,
+    clientCertificate,
+    clientKeyCertificate,
     url
   }: TTestLdapConnectionDTO) => {
     const { permission } = await permissionService.getOrgPermission({
@@ -821,10 +890,18 @@ export const ldapConfigServiceFactory = ({
         message: "Failed to test LDAP connection due to plan restriction. Upgrade plan to test the LDAP connection."
       });
 
+    if (Boolean(clientCertificate) !== Boolean(clientKeyCertificate)) {
+      throw new BadRequestError({
+        message: "clientCertificate and clientKeyCertificate must be provided together for mTLS."
+      });
+    }
+
     return testLDAPConfig({
       bindDN,
       bindPass,
       caCert,
+      clientCertificate,
+      clientKeyCertificate,
       url
     });
   };

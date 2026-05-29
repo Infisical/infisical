@@ -154,6 +154,7 @@ export const pkiAlertV2DALFactory = (db: TDbClient) => {
       enabled?: boolean;
       limit?: number;
       offset?: number;
+      applicationId?: string | null;
     },
     tx?: Knex
   ): Promise<{ alerts: TAlertWithChannels[]; total: number }> => {
@@ -175,6 +176,14 @@ export const pkiAlertV2DALFactory = (db: TDbClient) => {
         countQuery = countQuery.where(`${TableName.PkiAlertsV2}.enabled`, filters.enabled);
       }
 
+      if (filters?.applicationId !== undefined) {
+        if (filters.applicationId === null) {
+          countQuery = countQuery.whereNull(`${TableName.PkiAlertsV2}.applicationId`);
+        } else {
+          countQuery = countQuery.where(`${TableName.PkiAlertsV2}.applicationId`, filters.applicationId);
+        }
+      }
+
       let alertQuery = (tx || db.replicaNode())
         .select(selectAllTableCols(TableName.PkiAlertsV2))
         .from(TableName.PkiAlertsV2)
@@ -190,6 +199,14 @@ export const pkiAlertV2DALFactory = (db: TDbClient) => {
 
       if (filters?.enabled !== undefined) {
         alertQuery = alertQuery.where(`${TableName.PkiAlertsV2}.enabled`, filters.enabled);
+      }
+
+      if (filters?.applicationId !== undefined) {
+        if (filters.applicationId === null) {
+          alertQuery = alertQuery.whereNull(`${TableName.PkiAlertsV2}.applicationId`);
+        } else {
+          alertQuery = alertQuery.where(`${TableName.PkiAlertsV2}.applicationId`, filters.applicationId);
+        }
       }
 
       alertQuery = alertQuery.orderBy(`${TableName.PkiAlertsV2}.createdAt`, "desc");
@@ -355,11 +372,13 @@ export const pkiAlertV2DALFactory = (db: TDbClient) => {
       excludeAlerted?: boolean;
       alertId?: string;
       certificateId?: string;
+      applicationId?: string;
     },
     tx?: Knex
   ): Promise<{ certificates: TCertificatePreview[]; total: number }> => {
     try {
-      const includeCAs = shouldIncludeCAs(filters);
+      const isApplicationScoped = Boolean(options?.applicationId);
+      const includeCAs = shouldIncludeCAs(filters) && !isApplicationScoped;
       const needsProfileJoin = requiresProfileJoin(filters);
       const limit = options?.limit || 10;
       const offset = options?.offset || 0;
@@ -410,6 +429,10 @@ export const pkiAlertV2DALFactory = (db: TDbClient) => {
       }
 
       certCountQuery = applyCertificateFilters(certCountQuery, filters, projectId) as typeof certCountQuery;
+
+      if (options?.applicationId) {
+        certCountQuery = certCountQuery.where(`${TableName.Certificate}.applicationId`, options.applicationId);
+      }
 
       if (options?.certificateId) {
         certCountQuery = certCountQuery.where(`${TableName.Certificate}.id`, options.certificateId);
@@ -488,6 +511,10 @@ export const pkiAlertV2DALFactory = (db: TDbClient) => {
           );
 
         certificateQuery = applyCertificateFilters(certificateQuery, filters, projectId) as typeof certificateQuery;
+
+        if (options?.applicationId) {
+          certificateQuery = certificateQuery.where(`${TableName.Certificate}.applicationId`, options.applicationId);
+        }
 
         if (options?.certificateId) {
           certificateQuery = certificateQuery.where(`${TableName.Certificate}.id`, options.certificateId);

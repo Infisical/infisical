@@ -12,6 +12,7 @@ interface ProjectAccessRequestTemplateProps extends Omit<BaseEmailWrapperProps, 
   orgName: string;
   note: string;
   callback_url: string;
+  productLabel?: string;
 }
 
 export const ProjectAccessRequestTemplate = ({
@@ -21,21 +22,38 @@ export const ProjectAccessRequestTemplate = ({
   requesterEmail,
   orgName,
   note,
-  callback_url
+  callback_url,
+  productLabel
 }: ProjectAccessRequestTemplateProps) => {
+  const title = productLabel ? `${productLabel} Access Request` : "Project Access Request";
+  const preview = productLabel
+    ? `A user has requested access to ${productLabel}.`
+    : "A user has requested access to an Infisical project.";
   return (
-    <BaseEmailWrapper
-      title="Project Access Request"
-      preview="A user has requested access to an Infisical project."
-      siteUrl={siteUrl}
-    >
+    <BaseEmailWrapper title={title} preview={preview} siteUrl={siteUrl}>
       <Heading className="text-black text-[18px] leading-[28px] text-center font-normal p-0 mx-0">
-        A user has requested access to the project <strong>{projectName}</strong>
+        {productLabel ? (
+          <>
+            A user has requested access to <strong>{productLabel}</strong>
+          </>
+        ) : (
+          <>
+            A user has requested access to the project <strong>{projectName}</strong>
+          </>
+        )}
       </Heading>
       <Section className="px-[24px] mb-[28px] mt-[36px] pt-[12px] pb-[8px] border border-solid border-gray-200 rounded-md bg-gray-50">
         <Text className="text-black text-[14px] leading-[24px]">
           <strong>{requesterName}</strong> (<BaseLink href={`mailto:${requesterEmail}`}>{requesterEmail}</BaseLink>) has
-          requested access to the project <strong>{projectName}</strong> in the organization <strong>{orgName}</strong>.
+          requested access to{" "}
+          {productLabel ? (
+            <strong>{productLabel}</strong>
+          ) : (
+            <>
+              the project <strong>{projectName}</strong>
+            </>
+          )}{" "}
+          in the organization <strong>{orgName}</strong>.
         </Text>
         <Text className="text-[14px] text-slate-700 leading-[24px]">
           <strong className="text-black">User note:</strong> "{note}"

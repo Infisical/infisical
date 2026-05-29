@@ -26,14 +26,17 @@ def _next_enroll_name(context: Context) -> str:
 
 
 class ScepProfile:
-    def __init__(self, profile_id: str, challenge_password: str):
+    def __init__(self, profile_id: str, app_id: str, challenge_password: str):
         self.id = profile_id
+        self.app_id = app_id
         self.challenge_password = challenge_password
 
 
 class SscepHelper:
-    def __init__(self, base_url: str, profile_id: str, work_dir: str):
-        self.scep_url = f"{base_url}/scep/{profile_id}/pkiclient.exe"
+    def __init__(self, base_url: str, app_id: str, profile_id: str, work_dir: str):
+        self.scep_url = (
+            f"{base_url}/scep/applications/{app_id}/profiles/{profile_id}/pkiclient.exe"
+        )
         self.work_dir = work_dir
         self.ca_cert_prefix = os.path.join(work_dir, "ca.pem")
 
@@ -190,31 +193,59 @@ def _create_scep_profile(
     include_ca_cert: bool = True,
     allow_renewal: bool = True,
 ) -> ScepProfile:
+    """Create a certificate profile, a PKI application, attach them, and enable
+    SCEP enrollment on the junction. Returns a ScepProfile carrying both the
+    profile id and the application id needed for the new application-scoped
+    SCEP routes."""
     jwt_token = context.vars["AUTH_TOKEN"]
-    profile_slug = faker.slug()
+    headers = {"authorization": f"Bearer {jwt_token}"}
+    project_id = context.vars["PROJECT_ID"]
 
     response = context.http_client.post(
         "/api/v1/cert-manager/certificate-profiles",
-        headers={"authorization": f"Bearer {jwt_token}"},
+        headers=headers,
         json={
-            "projectId": context.vars["PROJECT_ID"],
-            "slug": profile_slug,
+            "projectId": project_id,
+            "slug": faker.slug(),
             "description": "SCEP Profile created by BDD test",
-            "enrollmentType": "scep",
             "caId": context.vars["CERT_CA_ID"],
             "certificatePolicyId": context.vars["CERT_POLICY_ID"],
-            "scepConfig": {
-                "challengePassword": challenge_password,
-                "includeCaCertInResponse": include_ca_cert,
-                "allowCertBasedRenewal": allow_renewal,
-            },
         },
     )
     response.raise_for_status()
-    resp_json = response.json()
-    profile_id = resp_json["certificateProfile"]["id"]
+    profile_id = response.json()["certificateProfile"]["id"]
 
-    return ScepProfile(profile_id, challenge_password)
+    response = context.http_client.post(
+        "/api/v1/cert-manager/applications",
+        headers=headers,
+        params={"projectId": project_id},
+        json={"name": faker.slug()},
+    )
+    response.raise_for_status()
+    app_id = response.json()["application"]["id"]
+
+    response = context.http_client.post(
+        f"/api/v1/cert-manager/applications/{app_id}/profiles",
+        headers=headers,
+        params={"projectId": project_id},
+        json={"profileIds": [profile_id]},
+    )
+    response.raise_for_status()
+
+    response = context.http_client.put(
+        f"/api/v1/cert-manager/applications/{app_id}/profiles/{profile_id}/enrollment/scep",
+        headers=headers,
+        params={"projectId": project_id},
+        json={
+            "challengeType": "static",
+            "challengePassword": challenge_password,
+            "includeCaCertInResponse": include_ca_cert,
+            "allowCertBasedRenewal": allow_renewal,
+        },
+    )
+    response.raise_for_status()
+
+    return ScepProfile(profile_id, app_id, challenge_password)
 
 
 def _get_sscep_helper(context: Context, profile_var: str) -> SscepHelper:
@@ -225,6 +256,7 @@ def _get_sscep_helper(context: Context, profile_var: str) -> SscepHelper:
         work_dir = tempfile.mkdtemp(prefix="scep_bdd_")
         context.vars[helper_key] = SscepHelper(
             base_url=context.vars["BASE_URL"],
+            app_id=profile.app_id,
             profile_id=profile.id,
             work_dir=work_dir,
         )
@@ -256,11 +288,17 @@ def step_impl(context: Context, profile_var: str):
     )
 
 
+def _scep_pkiclient_url(profile: ScepProfile, operation: str) -> str:
+    return (
+        f"/scep/applications/{profile.app_id}/profiles/{profile.id}"
+        f"/pkiclient.exe?operation={operation}"
+    )
+
+
 @when('I send a SCEP GetCACaps request for profile "{profile_var}"')
 def step_impl(context: Context, profile_var: str):
     profile: ScepProfile = context.vars[profile_var]
-    url = f"/scep/{profile.id}/pkiclient.exe?operation=GetCACaps"
-    response = context.http_client.get(url)
+    response = context.http_client.get(_scep_pkiclient_url(profile, "GetCACaps"))
     context.vars["response"] = response
     context.vars["scep_caps_response"] = response.text
 
@@ -268,8 +306,7 @@ def step_impl(context: Context, profile_var: str):
 @when('I send a SCEP GetCACert request for profile "{profile_var}"')
 def step_impl(context: Context, profile_var: str):
     profile: ScepProfile = context.vars[profile_var]
-    url = f"/scep/{profile.id}/pkiclient.exe?operation=GetCACert"
-    response = context.http_client.get(url)
+    response = context.http_client.get(_scep_pkiclient_url(profile, "GetCACert"))
     context.vars["response"] = response
     context.vars["scep_getcacert_response"] = response
 
@@ -277,8 +314,7 @@ def step_impl(context: Context, profile_var: str):
 @when('I send a SCEP request with unsupported operation "{operation}" for profile "{profile_var}"')
 def step_impl(context: Context, operation: str, profile_var: str):
     profile: ScepProfile = context.vars[profile_var]
-    url = f"/scep/{profile.id}/pkiclient.exe?operation={operation}"
-    response = context.http_client.get(url)
+    response = context.http_client.get(_scep_pkiclient_url(profile, operation))
     context.vars["response"] = response
 
 

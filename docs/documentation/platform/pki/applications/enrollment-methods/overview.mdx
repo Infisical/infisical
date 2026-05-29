@@ -1,0 +1,71 @@
+---
+title: "Enrollment Methods"
+sidebarTitle: "Overview"
+description: "Configure how your services and devices request certificates from Certificate Manager."
+---
+
+Enrollment methods define how certificates are requested from your Application. Each method supports different use cases — from UI-based issuance and the Infisical Agent to standard protocols like ACME that work with existing tooling.
+
+## Choose an Enrollment Method
+
+<CardGroup cols={2}>
+  <Card title="API" icon="code" href="/documentation/platform/pki/applications/enrollment-methods/api">
+    **Best for:** Manual UI issuance, Infisical Agent, custom integrations
+    
+    Issue certificates through the Infisical UI, Agent, or direct API calls. Supports server-driven auto-renewal.
+  </Card>
+  <Card title="ACME" icon="robot" href="/documentation/platform/pki/applications/enrollment-methods/acme">
+    **Best for:** Web servers, Kubernetes, standard tooling
+    
+    Works with Certbot, cert-manager, and any ACME-compatible client.
+  </Card>
+  <Card title="EST" icon="building" href="/documentation/platform/pki/applications/enrollment-methods/est">
+    **Best for:** Enterprise device enrollment, IoT
+    
+    RFC 7030 compliant protocol for secure certificate enrollment and re-enrollment.
+  </Card>
+  <Card title="SCEP" icon="mobile" href="/documentation/platform/pki/applications/enrollment-methods/scep">
+    **Best for:** MDM systems, network devices
+    
+    Legacy protocol supported by Jamf, Intune, and network equipment.
+  </Card>
+</CardGroup>
+
+## Comparison
+
+| Method | Protocol | Auto-Renewal | Domain Validation | Best For |
+|--------|----------|--------------|-------------------|----------|
+| **API** | REST/HTTP | Server-driven or client-driven | None | UI issuance, Agent, integrations |
+| **ACME** | RFC 8555 | Client-driven | HTTP-01 | Web servers, Kubernetes |
+| **EST** | RFC 7030 | Re-enrollment | Certificate-based | Enterprise devices |
+| **SCEP** | Draft RFC | Re-enrollment | Challenge password | MDM, network devices |
+
+## How Enrollment Works
+
+<Steps>
+  <Step title="Product Admin attaches a profile">
+    A Product Admin attaches a [Certificate Profile](/documentation/platform/pki/settings/profiles) to the Application. The profile defines certificate parameters (CA, validity, constraints).
+  </Step>
+  <Step title="Configure enrollment methods on the profile">
+    In your Application's **Settings** tab, click **Configure** on an attached profile and add enrollment methods (API, ACME, EST, or SCEP).
+  </Step>
+  <Step title="Point your client to the endpoint">
+    Configure your service, device, or tooling to use the enrollment endpoint provided by Infisical.
+  </Step>
+  <Step title="Request a certificate">
+    Your client requests a certificate. Infisical validates the request against the profile's policy and issues the certificate.
+  </Step>
+</Steps>
+
+<Note>
+  Each enrollment method is tied to a specific profile attached to the Application — meaning the enrollment URL (e.g., ACME directory) is unique to that Application + Profile pair.
+</Note>
+
+## After Enrollment
+
+Once certificates are issued, you can:
+
+- **[View and manage certificates](/documentation/platform/pki/applications/certificates)** in your Application's certificate inventory
+- **[Sync certificates](/documentation/platform/pki/applications/certificate-syncs/overview)** to external destinations like [AWS ACM](/documentation/platform/pki/applications/certificate-syncs/aws-certificate-manager), [Azure Key Vault](/documentation/platform/pki/applications/certificate-syncs/azure-key-vault), or [Cloudflare](/documentation/platform/pki/applications/certificate-syncs/cloudflare)
+- **[Set up alerting](/documentation/platform/pki/applications/alerting/overview)** to get notified before certificates expire
+- **[Configure approval policies](/documentation/platform/pki/applications/approvals)** to require human review before issuance

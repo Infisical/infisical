@@ -1,6 +1,7 @@
+import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
-import { safeRequest } from "@app/lib/validator";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { encryptAppConnectionCredentials } from "@app/services/app-connection/app-connection-fns";
@@ -26,7 +27,9 @@ const authorizeDatabricksConnection = async ({
   clientSecret,
   workspaceUrl
 }: Pick<TDatabricksConnection["credentials"], "workspaceUrl" | "clientId" | "clientSecret">) => {
-  const { data } = await safeRequest.post<TAuthorizeDatabricksConnection>(
+  await blockLocalAndPrivateIpAddresses(workspaceUrl);
+
+  const { data } = await request.post<TAuthorizeDatabricksConnection>(
     `${removeTrailingSlash(workspaceUrl)}/oidc/v1/token`,
     "grant_type=client_credentials&scope=all-apis",
     {

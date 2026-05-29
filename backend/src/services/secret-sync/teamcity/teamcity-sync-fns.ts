@@ -1,4 +1,4 @@
-import { safeRequest } from "@app/lib/validator";
+import { request } from "@app/lib/config/request";
 import { getTeamCityInstanceUrl } from "@app/services/app-connection/teamcity";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
@@ -14,7 +14,7 @@ import {
 // Note: Most variables won't be returned with a value due to them being a "password" type.
 // TeamCity API returns empty string for password-type variables for security reasons.
 const listTeamCityVariables = async ({ instanceUrl, accessToken, project, buildConfig }: TTeamCityListVariables) => {
-  const { data } = await safeRequest.get<TTeamCityListVariablesResponse>(
+  const { data } = await request.get<TTeamCityListVariablesResponse>(
     buildConfig
       ? `${instanceUrl}/app/rest/buildTypes/${encodeURIComponent(buildConfig)}/parameters`
       : `${instanceUrl}/app/rest/projects/id:${encodeURIComponent(project)}/parameters`,
@@ -48,7 +48,7 @@ const updateTeamCityVariable = async ({
   key,
   value
 }: TPostTeamCityVariable) => {
-  return safeRequest.post(
+  return request.post(
     buildConfig
       ? `${instanceUrl}/app/rest/buildTypes/${encodeURIComponent(buildConfig)}/parameters`
       : `${instanceUrl}/app/rest/projects/id:${encodeURIComponent(project)}/parameters`,
@@ -75,7 +75,7 @@ const deleteTeamCityVariable = async ({
   buildConfig,
   key
 }: TDeleteTeamCityVariable) => {
-  return safeRequest.delete(
+  return request.delete(
     buildConfig
       ? `${instanceUrl}/app/rest/buildTypes/${encodeURIComponent(buildConfig)}/parameters/${encodeURIComponent(key)}`
       : `${instanceUrl}/app/rest/projects/id:${encodeURIComponent(project)}/parameters/${encodeURIComponent(key)}`,
@@ -94,7 +94,7 @@ export const TeamCitySyncFns = {
       destinationConfig: { project, buildConfig }
     } = secretSync;
 
-    const instanceUrl = getTeamCityInstanceUrl(connection);
+    const instanceUrl = await getTeamCityInstanceUrl(connection);
     const { accessToken } = connection.credentials;
 
     for await (const entry of Object.entries(secretMap)) {
@@ -153,7 +153,7 @@ export const TeamCitySyncFns = {
       destinationConfig: { project, buildConfig }
     } = secretSync;
 
-    const instanceUrl = getTeamCityInstanceUrl(connection);
+    const instanceUrl = await getTeamCityInstanceUrl(connection);
     const { accessToken } = connection.credentials;
 
     const variables = await listTeamCityVariables({ instanceUrl, accessToken, project, buildConfig });
@@ -183,7 +183,7 @@ export const TeamCitySyncFns = {
       destinationConfig: { project, buildConfig }
     } = secretSync;
 
-    const instanceUrl = getTeamCityInstanceUrl(connection);
+    const instanceUrl = await getTeamCityInstanceUrl(connection);
     const { accessToken } = connection.credentials;
 
     return listTeamCityVariables({ instanceUrl, accessToken, project, buildConfig });

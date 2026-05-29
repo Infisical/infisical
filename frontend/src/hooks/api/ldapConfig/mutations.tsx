@@ -1,6 +1,8 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
+import { oidcConfigKeys } from "@app/hooks/api/oidcConfig/queries";
+import { ssoConfigKeys } from "@app/hooks/api/ssoConfig/queries";
 
 import { ldapConfigKeys } from "./queries";
 
@@ -18,7 +20,9 @@ export const useCreateLDAPConfig = () => {
       searchFilter,
       groupSearchBase,
       groupSearchFilter,
-      caCert
+      caCert,
+      clientCertificate,
+      clientKeyCertificate
     }: {
       organizationId: string;
       isActive: boolean;
@@ -31,6 +35,8 @@ export const useCreateLDAPConfig = () => {
       groupSearchBase: string;
       groupSearchFilter: string;
       caCert?: string;
+      clientCertificate?: string;
+      clientKeyCertificate?: string;
     }) => {
       const { data } = await apiRequest.post("/api/v1/ldap/config", {
         organizationId,
@@ -43,13 +49,17 @@ export const useCreateLDAPConfig = () => {
         searchFilter,
         groupSearchBase,
         groupSearchFilter,
-        caCert
+        caCert,
+        clientCertificate,
+        clientKeyCertificate
       });
 
       return data;
     },
     onSuccess(_, dto) {
       queryClient.invalidateQueries({ queryKey: ldapConfigKeys.getLDAPConfig(dto.organizationId) });
+      queryClient.invalidateQueries({ queryKey: oidcConfigKeys.getOIDCConfig(dto.organizationId) });
+      queryClient.invalidateQueries({ queryKey: ssoConfigKeys.getSSOConfig(dto.organizationId) });
     }
   });
 };
@@ -68,7 +78,9 @@ export const useUpdateLDAPConfig = () => {
       searchFilter,
       groupSearchBase,
       groupSearchFilter,
-      caCert
+      caCert,
+      clientCertificate,
+      clientKeyCertificate
     }: {
       organizationId: string;
       isActive?: boolean;
@@ -81,6 +93,8 @@ export const useUpdateLDAPConfig = () => {
       groupSearchBase?: string;
       groupSearchFilter?: string;
       caCert?: string;
+      clientCertificate?: string;
+      clientKeyCertificate?: string;
     }) => {
       const { data } = await apiRequest.patch("/api/v1/ldap/config", {
         organizationId,
@@ -93,13 +107,17 @@ export const useUpdateLDAPConfig = () => {
         searchFilter,
         groupSearchBase,
         groupSearchFilter,
-        caCert
+        caCert,
+        clientCertificate,
+        clientKeyCertificate
       });
 
       return data;
     },
     onSuccess(_, dto) {
       queryClient.invalidateQueries({ queryKey: ldapConfigKeys.getLDAPConfig(dto.organizationId) });
+      queryClient.invalidateQueries({ queryKey: oidcConfigKeys.getOIDCConfig(dto.organizationId) });
+      queryClient.invalidateQueries({ queryKey: ssoConfigKeys.getSSOConfig(dto.organizationId) });
     }
   });
 };
@@ -155,18 +173,24 @@ export const useTestLDAPConnection = () => {
       url,
       bindDN,
       bindPass,
-      caCert
+      caCert,
+      clientCertificate,
+      clientKeyCertificate
     }: {
       url: string;
       bindDN: string;
       bindPass: string;
       caCert: string;
+      clientCertificate?: string;
+      clientKeyCertificate?: string;
     }) => {
       const { data } = await apiRequest.post<boolean>("/api/v1/ldap/config/test-connection", {
         url,
         bindDN,
         bindPass,
-        caCert
+        caCert,
+        clientCertificate,
+        clientKeyCertificate
       });
       return data;
     }

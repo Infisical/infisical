@@ -133,20 +133,27 @@ export type TRevokeCertDTO = {
   revocationReason: CrlReason;
 } & Omit<TProjectPermission, "projectId">;
 
+export type TAssignCertToApplicationDTO = {
+  certificateId: string;
+  applicationId: string;
+} & Omit<TProjectPermission, "projectId">;
+
 export type TGetCertBodyDTO = {
   id?: string;
   serialNumber?: string;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TImportCertDTO = {
-  projectSlug: string;
+  projectId?: string;
+  projectSlug?: string;
+  applicationId?: string;
 
   friendlyName?: string;
   pkiCollectionId?: string;
 
   certificatePem: string;
-  privateKeyPem: string;
-  chainPem: string;
+  privateKeyPem?: string;
+  chainPem?: string;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TGetCertPrivateKeyDTO = {

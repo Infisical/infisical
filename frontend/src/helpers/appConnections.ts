@@ -56,6 +56,7 @@ import { BitbucketConnectionMethod } from "@app/hooks/api/appConnections/types/b
 import { ChecklyConnectionMethod } from "@app/hooks/api/appConnections/types/checkly-connection";
 import { ChefConnectionMethod } from "@app/hooks/api/appConnections/types/chef-connection";
 import { CircleCIConnectionMethod } from "@app/hooks/api/appConnections/types/circleci-connection";
+import { DatadogConnectionMethod } from "@app/hooks/api/appConnections/types/datadog-connection";
 import { DigiCertConnectionMethod } from "@app/hooks/api/appConnections/types/digicert-connection";
 import { DigitalOceanConnectionMethod } from "@app/hooks/api/appConnections/types/digital-ocean";
 import { DNSMadeEasyConnectionMethod } from "@app/hooks/api/appConnections/types/dns-made-easy-connection";
@@ -72,6 +73,7 @@ import { OpenRouterConnectionMethod } from "@app/hooks/api/appConnections/types/
 import { OVHConnectionMethod } from "@app/hooks/api/appConnections/types/ovh-connection";
 import { RailwayConnectionMethod } from "@app/hooks/api/appConnections/types/railway-connection";
 import { RenderConnectionMethod } from "@app/hooks/api/appConnections/types/render-connection";
+import { SalesforceConnectionMethod } from "@app/hooks/api/appConnections/types/salesforce-connection";
 import { SmbConnectionMethod } from "@app/hooks/api/appConnections/types/smb-connection";
 import { SnowflakeConnectionMethod } from "@app/hooks/api/appConnections/types/snowflake-connection";
 import { SshConnectionMethod } from "@app/hooks/api/appConnections/types/ssh-connection";
@@ -177,7 +179,9 @@ export const APP_CONNECTION_MAP: Record<
   [AppConnection.Ona]: { name: "Ona", image: "Ona.png", aliases: ["gitpod"] },
   [AppConnection.DigiCert]: { name: "DigiCert", image: "DigiCert.png" },
   [AppConnection.TravisCI]: { name: "Travis CI", image: "Travis CI.png" },
-  [AppConnection.Snowflake]: { name: "Snowflake", image: "Snowflake.png" }
+  [AppConnection.Salesforce]: { name: "Salesforce", image: "Salesforce.png" },
+  [AppConnection.Snowflake]: { name: "Snowflake", image: "Snowflake.png" },
+  [AppConnection.Datadog]: { name: "Datadog", image: "DatadogWhite.png" }
 };
 
 export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) => {
@@ -244,6 +248,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case NetlifyConnectionMethod.AccessToken:
       return { name: "Access Token", icon: faKey };
     case Auth0ConnectionMethod.ClientCredentials:
+    case SalesforceConnectionMethod.ClientCredentials:
       return { name: "Client Credentials", icon: faServer };
     case HCVaultConnectionMethod.AppRole:
       return { name: "App Role", icon: faUser };
@@ -273,6 +278,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case AzureDevOpsConnectionMethod.ClientSecret:
       return { name: "Client Secret", icon: faKey };
     case AzureClientSecretsConnectionMethod.Certificate:
+    case AzureKeyVaultConnectionMethod.Certificate:
       return { name: "Certificate", icon: faCertificate };
     case DNSMadeEasyConnectionMethod.APIKeySecret:
       return { name: "API Key & Secret", icon: faKey };
@@ -280,6 +286,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case AzureEntraIdConnectionMethod.ClientSecret:
       return { name: "Client Secret", icon: faKey };
     case OctopusDeployConnectionMethod.ApiKey:
+    case DatadogConnectionMethod.ApiKey:
       return { name: "API Key", icon: faKey };
     case SshConnectionMethod.Password:
       return { name: "Password", icon: faLock };

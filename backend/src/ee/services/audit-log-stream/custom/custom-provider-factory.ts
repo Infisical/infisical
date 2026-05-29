@@ -1,7 +1,8 @@
 import { RawAxiosRequestHeaders } from "axios";
 
+import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
-import { safeRequest } from "@app/lib/validator";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 
 import { AUDIT_LOG_STREAM_TIMEOUT } from "../../audit-log/audit-log-queue";
 import { TLogStreamFactoryStreamLog, TLogStreamFactoryValidateCredentials } from "../audit-log-stream-types";
@@ -13,6 +14,8 @@ export const CustomProviderFactory = () => {
   }) => {
     const { url, headers } = credentials;
 
+    await blockLocalAndPrivateIpAddresses(url);
+
     const streamHeaders: RawAxiosRequestHeaders = { "Content-Type": "application/json" };
     if (headers.length) {
       headers.forEach(({ key, value }) => {
@@ -20,13 +23,14 @@ export const CustomProviderFactory = () => {
       });
     }
 
-    await safeRequest
+    await request
       .post(
         url,
         { ping: "ok" },
         {
           headers: streamHeaders,
-          timeout: AUDIT_LOG_STREAM_TIMEOUT
+          timeout: AUDIT_LOG_STREAM_TIMEOUT,
+          maxRedirects: 0
         }
       )
       .catch((err) => {
@@ -39,6 +43,8 @@ export const CustomProviderFactory = () => {
   const streamLog: TLogStreamFactoryStreamLog<TCustomProviderCredentials> = async ({ credentials, auditLog }) => {
     const { url, headers } = credentials;
 
+    await blockLocalAndPrivateIpAddresses(url);
+
     const streamHeaders: RawAxiosRequestHeaders = { "Content-Type": "application/json" };
 
     if (headers.length) {
@@ -47,7 +53,7 @@ export const CustomProviderFactory = () => {
       });
     }
 
-    await safeRequest.post(url, auditLog, {
+    await request.post(url, auditLog, {
       headers: streamHeaders,
       timeout: AUDIT_LOG_STREAM_TIMEOUT
     });

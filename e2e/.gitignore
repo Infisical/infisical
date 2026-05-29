@@ -1,0 +1,10 @@
+node_modules
+playwright-report
+test-results
+.env
+.env.local
+*.log
+
+# Local-only artifacts (e.g. private-key material staged for `wrangler secret put`).
+# Public cert is committed at fixtures/idp-cert.pem; matching key never enters git.
+fixtures/.local-*

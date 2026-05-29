@@ -4,6 +4,7 @@ import { Auth0ClientSecretRotationSchema } from "@app/ee/services/secret-rotatio
 import { AwsIamUserSecretRotationSchema } from "@app/ee/services/secret-rotation-v2/aws-iam-user-secret";
 import { AzureClientSecretRotationSchema } from "@app/ee/services/secret-rotation-v2/azure-client-secret";
 import { DatabricksServicePrincipalSecretRotationSchema } from "@app/ee/services/secret-rotation-v2/databricks-service-principal-secret";
+import { DatadogApplicationKeySecretRotationSchema } from "@app/ee/services/secret-rotation-v2/datadog-application-key-secret";
 import { LdapPasswordRotationSchema } from "@app/ee/services/secret-rotation-v2/ldap-password";
 import { MongoDBCredentialsRotationSchema } from "@app/ee/services/secret-rotation-v2/mongodb-credentials";
 import { MsSqlCredentialsRotationSchema } from "@app/ee/services/secret-rotation-v2/mssql-credentials";
@@ -13,6 +14,7 @@ import { OpenRouterApiKeyRotationSchema } from "@app/ee/services/secret-rotation
 import { OracleDBCredentialsRotationSchema } from "@app/ee/services/secret-rotation-v2/oracledb-credentials";
 import { PostgresCredentialsRotationSchema } from "@app/ee/services/secret-rotation-v2/postgres-credentials";
 import { RedisCredentialsRotationSchema } from "@app/ee/services/secret-rotation-v2/redis-credentials";
+import { SalesforceOauthCredentialsRotationSchema } from "@app/ee/services/secret-rotation-v2/salesforce-oauth-credentials";
 import { UnixLinuxLocalAccountRotationSchema } from "@app/ee/services/secret-rotation-v2/unix-linux-local-account-rotation";
 import { WindowsLocalAccountRotationSchema } from "@app/ee/services/secret-rotation-v2/windows-local-account-rotation";
 
@@ -38,5 +40,7 @@ export const SecretRotationV2Schema = z.discriminatedUnion("type", [
   WindowsLocalAccountRotationSchema,
   OpenRouterApiKeyRotationSchema,
   HpIloRotationSchema,
-  SupabaseApiKeyRotationSchema
+  SupabaseApiKeyRotationSchema,
+  SalesforceOauthCredentialsRotationSchema,
+  DatadogApplicationKeySecretRotationSchema
 ]);

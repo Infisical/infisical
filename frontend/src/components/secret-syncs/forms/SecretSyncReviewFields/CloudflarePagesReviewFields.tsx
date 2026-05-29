@@ -1,7 +1,7 @@
 import { useFormContext } from "react-hook-form";
 
 import { TSecretSyncForm } from "@app/components/secret-syncs/forms/schemas";
-import { GenericFieldLabel } from "@app/components/v2";
+import { Detail, DetailLabel, DetailValue } from "@app/components/v3";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
 export const CloudflarePagesSyncReviewFields = () => {
@@ -11,8 +11,14 @@ export const CloudflarePagesSyncReviewFields = () => {
 
   return (
     <>
-      <GenericFieldLabel label="Project">{projectName}</GenericFieldLabel>
-      <GenericFieldLabel label="Environment">{environment}</GenericFieldLabel>
+      <Detail>
+        <DetailLabel>Project</DetailLabel>
+        <DetailValue>{projectName}</DetailValue>
+      </Detail>
+      <Detail>
+        <DetailLabel>Environment</DetailLabel>
+        <DetailValue>{environment}</DetailValue>
+      </Detail>
     </>
   );
 };

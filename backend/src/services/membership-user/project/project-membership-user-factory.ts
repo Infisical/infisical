@@ -16,6 +16,7 @@ import { BadRequestError, InternalServerError, NotFoundError, PermissionBoundary
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
+import { TProjectAccessRequestDALFactory } from "@app/services/project/project-access-request-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
@@ -30,6 +31,7 @@ type TProjectMembershipUserScopeFactoryDep = {
   membershipUserDAL: Pick<TMembershipUserDALFactory, "find">;
   smtpService: Pick<TSmtpService, "sendMail">;
   userDAL: Pick<TUserDALFactory, "findById">;
+  projectAccessRequestDAL: Pick<TProjectAccessRequestDALFactory, "delete">;
 };
 
 export const newProjectMembershipUserFactory = ({
@@ -38,7 +40,8 @@ export const newProjectMembershipUserFactory = ({
   projectDAL,
   membershipUserDAL,
   smtpService,
-  userDAL
+  userDAL,
+  projectAccessRequestDAL
 }: TProjectMembershipUserScopeFactoryDep): TMembershipUserScopeFactory => {
   const getScopeField: TMembershipUserScopeFactory["getScopeField"] = (dto) => {
     if (dto.scope === AccessScope.Project) {
@@ -61,15 +64,22 @@ export const newProjectMembershipUserFactory = ({
     newUsers
   ) => {
     const scope = getScopeField(dto.scopeData);
-    const { permission } = await permissionService.getProjectPermission({
-      actor: dto.permission.type,
-      actorId: dto.permission.id,
-      actionProjectType: ActionProjectType.Any,
-      actorAuthMethod: dto.permission.authMethod,
-      projectId: scope.value,
-      actorOrgId: dto.permission.orgId
-    });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Create, ProjectPermissionSub.Member);
+    let permission: Awaited<ReturnType<typeof permissionService.getProjectPermission>>["permission"] | null = null;
+    if (!dto.bootstrapForApplication) {
+      const { permission: projectPermission } = await permissionService.getProjectPermission({
+        actor: dto.permission.type,
+        actorId: dto.permission.id,
+        actionProjectType: ActionProjectType.Any,
+        actorAuthMethod: dto.permission.authMethod,
+        projectId: scope.value,
+        actorOrgId: dto.permission.orgId
+      });
+      ForbiddenError.from(projectPermission).throwUnlessCan(
+        ProjectPermissionMemberActions.Create,
+        ProjectPermissionSub.Member
+      );
+      permission = projectPermission;
+    }
 
     // TODO(namespace): this becomes tricky in namespace due to group flow
     const orgMemberships = await membershipUserDAL.find({
@@ -84,6 +94,10 @@ export const newProjectMembershipUserFactory = ({
         .filter((el) => !orgMemberships.find((memb) => memb.actorUserId === el.id))
         .map((el) => el.email);
       throw new BadRequestError({ message: `Users ${missingUsers.join(",")} not part of organization` });
+    }
+
+    if (dto.bootstrapForApplication) {
+      return;
     }
 
     const { shouldUseNewPrivilegeSystem } = await requestMemoize(
@@ -102,7 +116,7 @@ export const newProjectMembershipUserFactory = ({
           shouldUseNewPrivilegeSystem,
           [ProjectPermissionMemberActions.AssignRole, ProjectPermissionMemberActions.GrantPrivileges],
           ProjectPermissionSub.Member,
-          permission,
+          permission as NonNullable<typeof permission>,
           permissionRole.permission,
           {
             userEmail: newUser.email ?? undefined,
@@ -128,6 +142,15 @@ export const newProjectMembershipUserFactory = ({
     dto,
     newMembers
   ) => {
+    const scopeField = getScopeField(dto.scopeData);
+    const newMemberUserIds = newMembers.map((m) => m.id);
+    if (newMemberUserIds.length) {
+      await projectAccessRequestDAL.delete({
+        projectId: scopeField.value,
+        $in: { requesterUserId: newMemberUserIds }
+      });
+    }
+
     const orgMembershipAccepted = await membershipUserDAL.find({
       scope: AccessScope.Organization,
       scopeOrgId: dto.permission.orgId,
@@ -175,7 +198,9 @@ export const newProjectMembershipUserFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Edit, ProjectPermissionSub.Member);
 
-    const targetUser = await userDAL.findById(dto.selector.userId);
+    const targetUser = await requestMemoize(requestMemoKeys.userFindById(dto.selector.userId), () =>
+      userDAL.findById(dto.selector.userId)
+    );
     if (!targetUser) {
       throw new NotFoundError({ message: `User not found for project membership update` });
     }

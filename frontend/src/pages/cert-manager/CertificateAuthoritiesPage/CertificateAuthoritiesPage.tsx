@@ -20,7 +20,7 @@ export const CertificateAuthoritiesPage = () => {
         <PageHeader
           scope={ProjectType.CertificateManager}
           title="Certificate Authorities"
-          description="Manage certificate authorities for issuing and signing certificates"
+          description="Define the trust anchors that sign certificates in this project — internal CAs you operate, plus external CAs you connect to."
         />
         <ProjectPermissionCan
           renderGuardBanner

@@ -53,7 +53,6 @@ export const CertificateRevocationModal = ({ popUp, handlePopUpToggle }: Props) 
     const { certificateId } = popUp.revokeCertificate.data as { certificateId: string };
 
     await revokeCertificate({
-      projectId: currentProject.id,
       id: certificateId,
       revocationReason
     });

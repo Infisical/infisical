@@ -19,6 +19,7 @@ import {
   Tooltip
 } from "@app/components/v2";
 import { Badge } from "@app/components/v3";
+import { getDefaultSigningAlgorithm } from "@app/helpers/kms";
 import { SigningAlgorithm, TCmek, useCmekVerify } from "@app/hooks/api/cmeks";
 import { isBase64 } from "@app/lib/fn/base64";
 
@@ -61,9 +62,7 @@ const VerifyForm = ({ cmek }: FormProps) => {
   } = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      signingAlgorithm: cmek?.encryptionAlgorithm?.startsWith("RSA")
-        ? SigningAlgorithm.RSASSA_PSS_SHA_512
-        : SigningAlgorithm.ECDSA_SHA_256,
+      signingAlgorithm: getDefaultSigningAlgorithm(cmek),
       isBase64Encoded: false
     }
   });
@@ -92,11 +91,12 @@ const VerifyForm = ({ cmek }: FormProps) => {
   const signatureValid = cmekVerify.data?.signatureValid;
   const signingAlgorithm = cmekVerify.data?.signingAlgorithm;
 
-  const allowedSigningAlgorithms = Object.values(SigningAlgorithm).filter((a) =>
-    cmek?.encryptionAlgorithm?.startsWith("RSA")
-      ? a.toLowerCase().startsWith("rsa")
-      : a.toLowerCase().startsWith("ecdsa")
-  );
+  const allowedSigningAlgorithms = Object.values(SigningAlgorithm).filter((a) => {
+    if (cmek?.encryptionAlgorithm?.startsWith("ML_DSA"))
+      return (a as string) === (cmek.encryptionAlgorithm as string);
+    if (cmek?.encryptionAlgorithm?.startsWith("RSA")) return a.toLowerCase().startsWith("rsa");
+    return a.toLowerCase().startsWith("ecdsa");
+  });
 
   return (
     <form onSubmit={handleSubmit(handleVerifyData)}>

@@ -46,3 +46,9 @@ export const SecretNameSchema = BaseSecretNameSchema.refine(
   (el) => !el.includes(":") && !el.includes("/"),
   "Secret name cannot contain colon or forward slash."
 );
+
+/**
+ * Helper to hide a field from OpenAPI documentation while still accepting it in the API.
+ * Usage: z.string().describe(openApiHidden())
+ */
+export const openApiHidden = () => JSON.stringify({ "x-hidden": true });

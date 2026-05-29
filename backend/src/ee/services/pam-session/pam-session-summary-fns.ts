@@ -3,12 +3,12 @@ import { generateObject } from "ai";
 import { z } from "zod";
 
 import { PamResource } from "../pam-resource/pam-resource-enums";
-import { TPamSessionCommandLog, TTerminalEvent } from "./pam-session-types";
+import { TPamSessionCommandLog, TSessionEvent } from "./pam-session-types";
 
 export const MAX_LOG_CHARS = 200_000; // rough guard before sending to LLM
 
 export const formatLogsForSummary = (
-  logs: (TPamSessionCommandLog | TTerminalEvent)[],
+  logs: (TPamSessionCommandLog | TSessionEvent)[],
   resourceType: PamResource
 ): string => {
   if (resourceType === PamResource.Postgres) {
@@ -21,7 +21,7 @@ export const formatLogsForSummary = (
   }
 
   // SSH: extract input events and decode Base64 → printable text
-  const terminalLogs = logs as TTerminalEvent[];
+  const terminalLogs = logs as TSessionEvent[];
   const inputLines: string[] = [];
   for (const event of terminalLogs.filter((e) => e.eventType === "input")) {
     try {

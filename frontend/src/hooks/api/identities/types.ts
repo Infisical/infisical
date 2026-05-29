@@ -2,7 +2,7 @@ import { TemporaryPermissionMode } from "@app/hooks/api/shared";
 
 import { OrderByDirection } from "../generic/types";
 import { OrgIdentityOrderBy } from "../organization/types";
-import { Project } from "../projects/types";
+import { Project, ProjectType } from "../projects/types";
 import { TOrgRole } from "../roles/types";
 import { IdentityAuthMethod, IdentityJwtConfigurationType } from "./enums";
 
@@ -949,13 +949,73 @@ export type TProjectIdentityMembershipsListV2 = {
   totalCount: number;
 };
 
+export enum SearchIdentitiesScope {
+  OrganizationScope = "organization",
+  ProjectScope = "project"
+}
+
+type IdentitySearchFilter = {
+  name?: { $contains: string };
+  role?: { $contains: string };
+  $or?: Array<{
+    name?: { $contains: string };
+    role?: { $contains: string };
+  }>;
+};
+
 export type TSearchIdentitiesDTO = {
+  orgId: string;
   limit?: number;
   offset?: number;
   orderBy?: OrgIdentityOrderBy;
   orderDirection?: OrderByDirection;
-  search: {
-    name?: { $contains: string };
-    role?: { $in: string[] };
+  scope?: SearchIdentitiesScope[];
+  search: IdentitySearchFilter;
+};
+
+export type TCountIdentitiesDTO = {
+  orgId: string;
+  scope: SearchIdentitiesScope[];
+  search: IdentitySearchFilter;
+};
+
+export type TIdentityMembershipCounts = {
+  organization?: number;
+  project?: number;
+};
+
+export type IdentityMembershipSearchRole = {
+  id: string;
+  role: "admin" | "member" | "viewer" | "no-access" | "custom" | string;
+  customRoleId?: string | null;
+  customRoleName?: string | null;
+  customRoleSlug?: string | null;
+  customRoleDescription?: string | null;
+  isTemporary: boolean;
+  temporaryMode?: string | null;
+  temporaryRange?: string | null;
+  temporaryAccessStartTime?: string | null;
+  temporaryAccessEndTime?: string | null;
+};
+
+export type IdentityMembershipSearchResult = {
+  id: string;
+  identityId: string;
+  scope: SearchIdentitiesScope;
+  orgId: string;
+  projectId?: string | null;
+  project?: {
+    id: string;
+    name: string;
+    slug: string;
+    type: ProjectType;
+  } | null;
+  createdAt: string;
+  updatedAt: string;
+  lastLoginAuthMethod?: IdentityAuthMethod | null;
+  lastLoginTime?: string | null;
+  roles: IdentityMembershipSearchRole[];
+  identity: Pick<Identity, "id" | "name" | "hasDeleteProtection" | "orgId"> & {
+    authMethods: IdentityAuthMethod[];
   };
 };

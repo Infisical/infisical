@@ -18,6 +18,7 @@ import { TChefConnection } from "./chef-connection";
 import { TCircleCIConnection } from "./circleci-connection";
 import { TCloudflareConnection } from "./cloudflare-connection";
 import { TDatabricksConnection } from "./databricks-connection";
+import { TDatadogConnection } from "./datadog-connection";
 import { TDbtConnection } from "./dbt-connection";
 import { TDevinConnection } from "./devin-connection";
 import { TDigiCertConnection } from "./digicert-connection";
@@ -52,6 +53,7 @@ import { TPostgresConnection } from "./postgres-connection";
 import { TRailwayConnection } from "./railway-connection";
 import { TRedisConnection } from "./redis-connection";
 import { TRenderConnection } from "./render-connection";
+import { TSalesforceConnection } from "./salesforce-connection";
 import { TSmbConnection } from "./smb-connection";
 import { TSnowflakeConnection } from "./snowflake-connection";
 import { TSshConnection } from "./ssh-connection";
@@ -82,6 +84,7 @@ export * from "./chef-connection";
 export * from "./circleci-connection";
 export * from "./cloudflare-connection";
 export * from "./databricks-connection";
+export * from "./datadog-connection";
 export * from "./dbt-connection";
 export * from "./devin-connection";
 export * from "./digicert-connection";
@@ -115,6 +118,7 @@ export * from "./postgres-connection";
 export * from "./railway-connection";
 export * from "./redis-connection";
 export * from "./render-connection";
+export * from "./salesforce-connection";
 export * from "./smb-connection";
 export * from "./snowflake-connection";
 export * from "./ssh-connection";
@@ -192,7 +196,9 @@ export type TAppConnection =
   | TOnaConnection
   | TDigiCertConnection
   | TTravisCIConnection
-  | TSnowflakeConnection;
+  | TSalesforceConnection
+  | TSnowflakeConnection
+  | TDatadogConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id" | "projectId">;
 
@@ -212,13 +218,21 @@ export type TCreateAppConnectionDTO = Pick<
   | "description"
   | "isPlatformManagedCredentials"
   | "gatewayId"
+  | "gatewayPoolId"
   | "projectId"
->;
+> & {
+  configuration?: Record<string, unknown>;
+};
 
 export type TUpdateAppConnectionDTO = Partial<
   Pick<
     TAppConnection,
-    "name" | "credentials" | "description" | "isPlatformManagedCredentials" | "gatewayId"
+    | "name"
+    | "credentials"
+    | "description"
+    | "isPlatformManagedCredentials"
+    | "gatewayId"
+    | "gatewayPoolId"
   >
 > & {
   connectionId: string;
@@ -228,6 +242,7 @@ export type TUpdateAppConnectionDTO = Partial<
     rotationInterval?: number;
     rotateAtUtc?: { hours: number; minutes: number };
   };
+  configuration?: Record<string, unknown>;
 };
 
 export type TDeleteAppConnectionDTO = {

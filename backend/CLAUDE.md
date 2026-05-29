@@ -81,7 +81,7 @@ Services live in `src/services/` (100+ modules). Each typically contains:
 - `*-dal.ts` — data access via `ormify()` + custom queries
 - `*-service.ts` — business logic factory
 - `*-types.ts` — DTOs and type definitions
-- `*-queue.ts` — BullMQ async job handlers (when needed)
+- `*-queue.ts` — BullMQ async job handlers and/or cron-manager registrations (when needed)
 - `*-fns.ts` — pure utility functions (when needed)
 
 ### Route Handler Pattern
@@ -174,9 +174,53 @@ const project = await requestMemoize(
 
 Queue infrastructure in `src/queue/queue-service.ts`. Defines 30+ named queues via `QueueName` enum (e.g., `SecretRotation`, `AuditLog`, `IntegrationSync`, `SecretReplication`, `SecretSync`, `DynamicSecretRevocation`). Each queue has typed payloads defined in `TQueueJobTypes`.
 
-Queue jobs support: delays, attempts with exponential/fixed backoff, cron-pattern repeats, and completion/failure cleanup.
+Queue jobs support: delays, attempts with exponential/fixed backoff, and completion/failure cleanup. **Use BullMQ only for event-driven, payload-carrying work** — jobs enqueued in response to a request or another job (audit log writes, integration syncs, secret replication, webhook fan-out, etc.).
+
+**Do NOT use BullMQ repeatable jobs or `JobScheduler` for recurring/cron-pattern work.** All scheduled/periodic tasks must use the cron manager (see below). The previous BullMQ-repeatable pattern has been migrated off, and `queueServiceFactory` actively cleans up stale repeatable queues and schedulers on boot (`src/queue/queue-service.ts:585-650`) — re-introducing a BullMQ repeatable will collide with that cleanup and cause double execution.
 
 Queue handler factories (e.g., `src/services/secret/secret-queue.ts`) follow the same DI pattern as services — they receive DALs and services as dependencies.
+
+### Scheduled Jobs (Cron Manager)
+
+Recurring work runs through the cron manager in `src/lib/cron/cron-job.ts` (`cronJobFactory`). A single instance is constructed in `src/server/routes/index.ts` (~line 541) and injected as `cronJob` into any service that needs to schedule periodic work. The factory exposes `register`, `start`, and `stop`; `start` is called once after construction, and `stop` is invoked during graceful shutdown to drain in-flight handlers.
+
+**Why this exists instead of BullMQ repeatables**: cron runs are coordinated across pods via a slot-election scheme (5 participant slots backed by Redis SET NX/PX) plus per-run redlocks, so each fire executes exactly once across the fleet without the orphaned-scheduler / duplicate-execution failure modes the BullMQ `JobScheduler` had. The manager also handles crash recovery via lease TTLs, hang recovery via per-handler timeouts, and bounded exponential backoff that won't overlap with the next scheduled fire.
+
+**Registering a cron job**:
+
+1. Add a new entry to the `CronJobName` registry at the top of `src/lib/cron/cron-job.ts`. All cron names must be defined there — don't pass raw strings.
+2. In the owning service/queue file, take `cronJob: TCronJobFactory` as a dependency and call `cronJob.register(...)` from an `init()` (or `start*()`) method:
+
+   ```ts
+   import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
+
+   export const myServiceFactory = ({ cronJob }: { cronJob: TCronJobFactory }) => {
+     const init = () => {
+       cronJob.register({
+         name: CronJobName.MyJob,
+         pattern: "*/5 * * * *",      // standard cron, UTC
+         runHashTtlS: 60 * 60,        // how long the run hash lives in Redis
+         enabled: !appCfg.isSecondaryInstance, // gate per-deploy if needed
+         maxAttempts: 3,              // optional, default 3
+         handler: async () => { /* work */ }
+       });
+     };
+     return { init };
+   };
+   ```
+
+**Handler contract**:
+- Each scheduled fire runs exactly once across the fleet: pods race for a per-run redlock, the winner executes the handler, and the others no-op. You don't need in-handler locking to guard against concurrent pods.
+- Handlers must be idempotent at the boundary of `handlerTimeoutMs` (default 5 min). A timeout marks the run failed-final and waits for the next fire — it does NOT retry the same fire, because the timed-out handler may still be running.
+- Failures (non-timeout) retry with exponential backoff (base 30 s, max 5 min) up to `maxAttempts`, but only if the retry would still fit before the next scheduled fire. Otherwise the next fire is treated as the natural retry.
+- Long-running handlers should override `handlerTimeoutMs` / `leaseDurationMs` per-entry (must satisfy `handlerTimeoutMs <= leaseDurationMs`).
+
+**When to use cron vs. queue**:
+- Scheduled/recurring (every N minutes, daily at X, cron pattern) → `cronJob.register(...)`.
+- One-shot or event-triggered work (enqueued from a request handler or another job) → BullMQ queue + worker.
+- A cron handler that fans out per-tenant work typically *enqueues BullMQ jobs* for each unit of work rather than doing the work inline — keep the cron tick fast and let the queue worker handle parallelism and retries for the actual payload.
+
+See `src/services/health-alert/health-alert-queue.ts` for a minimal example, `src/services/resource-cleanup/resource-cleanup-queue.ts` for a service with multiple registrations, and `src/ee/services/secret-rotation-v2/secret-rotation-v2-queue.ts` for a cron-tick that fans out into a BullMQ queue.
 
 ### Error Handling
 
@@ -208,100 +252,6 @@ logger.info(`getPlan: Process done for [orgId=${orgId}] [projectId=${projectId}]
 // NOT preferred: identifiers only in structured object, not in message
 logger.error({ sessionId, err }, "Failed to get connection details");
 ```
-
-### Outbound HTTP & SSRF Protection
-
-Anywhere the backend issues an HTTP request to a URL derived from user input (webhooks, integrations, app connections, OIDC/JWKS, audit log streams, ACME, etc.), use the `safeRequest` helper from `@app/lib/validator` instead of the raw `request` (Axios) client.
-
-```ts
-import { safeRequest } from "@app/lib/validator";
-
-// Replace:
-//   await blockLocalAndPrivateIpAddresses(url);
-//   await request.post(url, body, { headers, timeout });
-// With:
-const res = await safeRequest.post<TResponse>(url, body, { headers, timeout });
-```
-
-`safeRequest` (in `src/lib/validator/validate-url.ts`) does three things atomically in one call:
-1. **Validates** the URL — rejects local/private IPs, Infisical's own DB/Redis hosts, URLs with embedded credentials.
-2. **Pins** the connection — resolves the hostname once, then installs a custom `lookup` on a per-request `http(s).Agent` so the connect-time DNS call returns the validated IP. This closes the DNS-rebinding TOCTOU between the validation lookup and Axios's connect lookup. Pre-validating with `blockLocalAndPrivateIpAddresses` and *then* calling raw `request` does **not** close this window; only `safeRequest` does.
-3. **Disables redirects** (`maxRedirects: 0`). For redirect-following GETs that need to validate each hop, use `ssrfSafeGet` instead — it loops on top of the same pinned-agent dispatcher.
-
-**Available methods** (all return Axios-shaped `AxiosResponse<T>`):
-- `safeRequest.get<T>(url, opts?)`
-- `safeRequest.post<T>(url, body, opts?)`
-- `safeRequest.put<T>(url, body, opts?)`
-- `safeRequest.patch<T>(url, body, opts?)`
-- `safeRequest.delete<T>(url, opts?)`
-- `safeRequest.request<T>(config)` — full Axios-style config; **`config.url` must be `string`** (not `string | undefined`). When wrapping in helper types, use `AxiosRequestConfig & { url: string }` to enforce at compile time.
-
-Generic `T` defaults to `any` to mirror Axios so `safeRequest` is a near-drop-in replacement for raw `request`.
-
-**When to use what:**
-- `safeRequest.{get,post,put,patch,delete,request}` — most outbound HTTP. URL comes from user/admin config or stored data.
-- `ssrfSafeGet` — when redirects must be followed (e.g. fetching JWKS or OIDC discovery docs that may 302). Re-validates and re-pins each hop. **If you find yourself wanting to set `maxRedirects > 0` directly on a `safeRequest` config, the answer is `ssrfSafeGet`, not raising the cap.**
-- `ssrfSafePost` — POSTs that need to opt into `allowPrivateIps` (rare, used by AI MCP server).
-- `buildSsrfSafeAgent` — when a third-party HTTP client (`jwks-rsa`'s `JwksClient`, `openid-client`, `axios-ntlm`, etc.) builds its own Axios/`got`/`http` client and won't accept a wrapped instance. See "Third-party HTTP clients that build their own agent" below.
-- `blockLocalAndPrivateIpAddresses` directly — two cases:
-  1. **Save-time / config-time validation** — reject obviously bad URLs at the API edge before persisting. Defense-in-depth, not a substitute for `safeRequest` at request time.
-  2. **Truly non-HTTP clients** — LDAP, SSH, SMB, ssh2, ldapjs, raw TCP, etc. — where there is no `http.Agent` to install a `lookup` on. For HTTP clients that take an agent, use `buildSsrfSafeAgent` instead; falling back to `blockLocalAndPrivateIpAddresses` here loses DNS pinning.
-
-**Agent customization (TLS extras)**
-
-`safeRequest` builds its own pinned `http(s).Agent` per request. To preserve the pinning, do **not** pass a pre-built `httpsAgent` in the config — it would replace the pinned agent and disable rebinding protection. Instead pass these flat options and `safeRequest` bakes them into the pinned agent:
-
-| Option | Purpose | Example |
-|---|---|---|
-| `ca` | Custom CA cert(s) for HTTPS — `string \| string[]` | NetScaler, Venafi TPP, self-hosted K8s API |
-| `rejectUnauthorized` | Allow self-signed/invalid certs (use sparingly) | Internal services that ship their own CA |
-| `servername` | TLS SNI when connecting by IP — cert verifies against the original hostname | Kubernetes API servers |
-| `addressFamily` | Force IPv4 (`4`) or IPv6 (`6`) — filters the validated IP set | Azure App Configuration in our docker setup |
-| `keepAlive` | Persistent TCP connection across the multi-step handshake. Only for protocols that genuinely need it — connection pooling otherwise widens the blast radius if a pinned IP misbehaves. | NTLM (Azure ADCS) |
-| `checkServerIdentity` | Override the default hostname-vs-cert check. Set to `() => undefined` only when the cert is presented for an IP literal and the trust boundary is the explicit CA. | Azure ADCS web enrollment with IP-pinned certs |
-
-Migration tip: when refactoring code that built a custom `https.Agent`, drop the agent and forward `ca` / `rejectUnauthorized` / `servername` as flat options; `safeRequest` will compose them into its pinned agent.
-
-**Opt-outs that skip pinning** (in all three, `safeRequest` falls back to Axios's default agent and there is no rebinding protection):
-- `NODE_ENV=development` — validation is bypassed entirely.
-- Calling `blockLocalAndPrivateIpAddresses(url, isGateway = true)` — gateway-routed traffic doesn't go through Axios DNS, so pinning would do nothing.
-- `allowPrivateIps: true` option — caller skips the private-IP refusal **and** DNS pinning **and** the Infisical internal-infrastructure blocklist (`verifyHostInputValidity`). `validateSsrfUrl` short-circuits when this flag is set, so no DNS resolution happens at validation time and Node's default resolver is used at connect time.
-
-**`allowPrivateIps: true` is only acceptable when there is a stronger runtime trust boundary than the IP class** (e.g., TLS cert verification + cluster token, or save-time host validation). The flag does not preserve rebinding protection or the internal-infra blocklist on its own.
-
-**Gateway-aware patterns**
-
-Some integrations route through an Infisical gateway (a TCP/HTTP tunnel to an in-customer-network agent). The gateway opens a localhost listener and the backend connects to `https://localhost:<ephemeralPort>`. Two patterns exist:
-
-- **Single HTTP call per logical operation** (HC Vault, GitHub, Venafi TPP, NetScaler) — implemented as a per-app `requestWithXGateway` wrapper that branches once: gateway path uses raw `request` with the relay-supplied `httpsAgent` (preserves the relay TLS context); direct path uses `safeRequest` with the user's `ca` / `servername`. Pattern lives in each `*-connection-fns.ts`. Tighten the wrapper's `requestConfig` parameter type to `AxiosRequestConfig & { url: string }` so call sites must supply a URL — avoids `as string` casts.
-- **Multi-step conversations under one callback** (only Kubernetes today) — a per-request HTTP-client factory (`k8sHttpClient` in `ee/services/dynamic-secret/providers/kubernetes.ts`) selects `request` vs `safeRequest` and translates `httpsAgent` → flat `ca` / `rejectUnauthorized` for the direct path. Used because a single callback closure runs many K8s API calls in either gateway-tunneled or direct mode.
-
-**Third-party HTTP clients that build their own agent**
-
-Some libraries (`jwks-rsa`'s `JwksClient`, `axios-ntlm`) instantiate their own HTTP client internally and don't accept a wrapped `axios` instance. They do typically expose a `requestAgent` / `agent` / `httpsAgent` injection point. For those, use `buildSsrfSafeAgent` from `@app/lib/validator` — it runs the same validation as `safeRequest` and returns an `http.Agent` / `https.Agent` with the validated IPs pinned via a custom `lookup`.
-
-```ts
-import { buildSsrfSafeAgent } from "@app/lib/validator";
-
-const agent = await buildSsrfSafeAgent(jwksUri, {
-  ca: caCert || undefined,
-  rejectUnauthorized: true
-});
-
-const client = new JwksClient({ jwksUri, requestAgent: agent });
-```
-
-Existing call sites:
-- Identity OIDC JWKS — `src/services/identity-oidc-auth/identity-oidc-auth-service.ts`
-- Identity JWT JWKS — `src/services/identity-jwt-auth/identity-jwt-auth-service.ts`
-- Azure ADCS NTLM — `src/services/app-connection/azure-adcs/azure-adcs-connection-fns.ts` (passes `keepAlive: true` and `checkServerIdentity: () => undefined`)
-
-Anti-pattern: don't reach for `blockLocalAndPrivateIpAddresses(url)` followed by handing the library an unsafe agent — you'd lose DNS pinning and reintroduce the rebinding TOCTOU.
-
-**When you add a new outbound flow**
-
-1. Use `safeRequest` (or `buildSsrfSafeAgent` for third-party clients) by default.
-2. Decide deliberately whether the flow needs `allowPrivateIps: true`. The default is no.
 
 ### Enterprise (EE) Features
 

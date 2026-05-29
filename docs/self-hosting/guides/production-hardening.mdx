@@ -83,60 +83,12 @@ CORS_ALLOWED_ORIGINS=["https://your-app.example.com"]
 ALLOW_INTERNAL_IP_CONNECTIONS=false
 ```
 
-#### Outbound Egress & SSRF Protection
-
-Infisical issues outbound HTTP requests on behalf of users — to identity providers (OIDC/JWT/Kubernetes), to integration targets (GitHub, GitLab, Vault, RabbitMQ, etc.), to webhook destinations, and to certificate authorities. The platform applies layered protections to those outbound calls so a user-supplied URL cannot be abused to reach internal infrastructure (Server-Side Request Forgery, SSRF).
-
-##### How Infisical hardens outbound calls
-
-- **`ALLOW_INTERNAL_IP_CONNECTIONS=false` (default)** — outbound calls whose hostname resolves to a loopback, link-local, or RFC1918 address are rejected. Literal `localhost` and `host.docker.internal` are always rejected.
-- **DNS pinning** — for every protected request, Infisical resolves the hostname once, validates the resulting IPs, and then pins the underlying TCP connection to those IPs. This defeats DNS-rebinding attacks where a hostname is benign at validation time but flips to an internal IP before the connection is opened.
-- **No automatic redirects** — outbound calls do not follow `3xx` responses. If a destination redirects (for example, an `http://` URL that's fronted by an HTTPS-redirecting proxy), configure the final URL directly.
-- **Embedded credentials rejected** — URLs containing a `user:pass@` userinfo segment are refused.
-- **Internal infrastructure block** — even when `ALLOW_INTERNAL_IP_CONNECTIONS=true`, hostnames that match Infisical's own database, Redis, KMS, or HSM endpoints remain blocked.
-
-##### When you need `ALLOW_INTERNAL_IP_CONNECTIONS=true`
-
-Set this flag only when a trusted integration target is itself on a private network and there is no Infisical Gateway in front of it. Typical cases: self-hosted identity providers (OIDC, JWT, SPIFFE), self-hosted integrations and app connections (GitLab, GitHub Enterprise, Vault, NetScaler, Azure AD CS, etc.), webhook targets, audit-log streams, or ACME challenge endpoints reachable only via RFC1918 addresses.
-
-When the flag is enabled, Infisical still pins DNS per request, so a previously validated hostname cannot rebind mid-flight. You lose only the private-IP guardrail — pair the flag with strict egress firewall rules from the Infisical host(s) to the specific internal targets you intend to reach.
-
-<Note>
-  Identity authentication and dynamic-secret access against an in-cluster **Kubernetes API server**, and **RabbitMQ dynamic secrets**, are allowed to target private IPs by design and do not require this flag. The trust boundary is enforced by the cluster token + TLS verification (Kubernetes) or by save-time host validation (RabbitMQ), not by the IP class.
-</Note>
-
-<Warning>
-  Do NOT enable `ALLOW_INTERNAL_IP_CONNECTIONS=true` purely for convenience. On a multi-tenant cloud Infisical deployment this flag effectively disables the SSRF guardrail. It is intended for self-hosted deployments where the operator controls both Infisical and the targets it dials.
-</Warning>
-
-##### Gateway-proxied calls
-
-Where available (Kubernetes dynamic secrets, Kubernetes identity auth, Vault external migration, etc.), the **Infisical Gateway** is the recommended way to reach internal services. The gateway terminates the connection inside your network, so Infisical itself only opens a connection to the gateway endpoint — `ALLOW_INTERNAL_IP_CONNECTIONS` does not need to be relaxed and SSRF protection is not weakened.
-
 **Implement network firewalls**. Restrict network access to only necessary services:
 
 - **Required ports**: Infisical API (8080) and HTTPS (if applicable)
 - **Database access**: Restrict PostgreSQL and Redis to authorized sources only
 - **Principle**: Default deny incoming, allow only required traffic
 - **Implementation**: See your deployment-specific section below for exact configuration
-
-#### Reverse Proxy Configuration
-
-If Infisical is deployed behind a reverse proxy (Nginx, AWS ALB, Cloudflare, GCP Load Balancer, etc.), configure the trusted proxy CIDR list so that client IP detection cannot be spoofed by attackers forging `X-Forwarded-For` headers:
-
-```bash
-# Comma-separated list of reverse-proxy CIDR ranges whose forwarded-IP headers Infisical will trust.
-# Accepts IPv4/IPv6 CIDR notation or the named aliases `loopback`, `linklocal`, `uniquelocal`.
-TRUSTED_PROXY_CIDRS="10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
-```
-
-When set, only requests arriving from a socket address inside the listed CIDRs will have their forwarded-IP headers respected. Requests from any other source fall back to the raw socket IP.
-
-When unset, Infisical trusts all forwarded-IP headers (legacy behavior, preserved for backwards compatibility). On a deployment reachable directly from the internet, this lets a client supply any value in `X-Forwarded-For` — bypassing per-IP rate limits (including login/MFA throttles) and any IP allowlists.
-
-<Warning>
-  Set `TRUSTED_PROXY_CIDRS` on any deployment that is reachable from the internet through a reverse proxy. Leaving it unset is only safe when Infisical is not directly internet-facing.
-</Warning>
 
 ### Application Security
 

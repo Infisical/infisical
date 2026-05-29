@@ -32,7 +32,9 @@ export const LdapConfigsSchema = z.object({
   uniqueUserAttribute: z.string().default(""),
   encryptedLdapBindDN: zodBuffer,
   encryptedLdapBindPass: zodBuffer,
-  encryptedLdapCaCertificate: zodBuffer.nullable().optional()
+  encryptedLdapCaCertificate: zodBuffer.nullable().optional(),
+  encryptedLdapClientCertificate: zodBuffer.nullable().optional(),
+  encryptedLdapClientKeyCertificate: zodBuffer.nullable().optional()
 });
 
 export type TLdapConfigs = z.infer<typeof LdapConfigsSchema>;

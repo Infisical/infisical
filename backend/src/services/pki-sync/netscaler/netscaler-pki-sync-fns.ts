@@ -1,15 +1,13 @@
 /* eslint-disable no-await-in-loop */
-import { AxiosError } from "axios";
+import { AxiosError, AxiosRequestConfig } from "axios";
 import handlebars from "handlebars";
 import RE2 from "re2";
 
 import { TCertificateSyncs } from "@app/db/schemas";
+import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { logger } from "@app/lib/logger";
-import {
-  executeNetScalerOperationWithGateway,
-  TNetScalerRequestConfig
-} from "@app/services/app-connection/netscaler/netscaler-connection-fns";
+import { executeNetScalerOperationWithGateway } from "@app/services/app-connection/netscaler/netscaler-connection-fns";
 import { TNetScalerConnection } from "@app/services/app-connection/netscaler/netscaler-connection-types";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TCertificateSyncDALFactory } from "@app/services/certificate-sync/certificate-sync-dal";
@@ -22,7 +20,7 @@ import { TNetScalerPkiSyncConfig } from "./netscaler-pki-sync-types";
 
 type TNetScalerCredentials = TNetScalerConnection["credentials"];
 
-type TRequestFn = <R>(requestCfg: TNetScalerRequestConfig) => Promise<R>;
+type TRequestFn = <R>(requestCfg: AxiosRequestConfig) => Promise<R>;
 
 type TNetScalerSession = {
   baseUrl: string;
@@ -43,6 +41,7 @@ type TNetScalerPkiSyncFactoryDeps = {
   >;
   certificateDAL: Pick<TCertificateDALFactory, "findById">;
   gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
+  gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
 };
 
 const getNetScalerCredentials = (pkiSync: TPkiSyncWithCredentials): TNetScalerCredentials => {
@@ -299,11 +298,42 @@ const removeNetScalerCertificate = async (
   await deleteCertKey(session, certKeyName, true);
 };
 
+const escapeRegex = (s: string) => s.replace(new RE2("[\\\\^$.*+?()\\[\\]{}|/]", "g"), "\\$&");
+
+const buildManagedCertNamePattern = (certificateNameSchema: string | undefined): RE2 => {
+  if (!certificateNameSchema) {
+    return new RE2("^Infisical-[0-9a-f]{32}(-[a-zA-Z0-9]*)?$");
+  }
+
+  const CERT_ID_TOKEN = "__INFISICAL_CERT_ID_PLACEHOLDER__";
+  const ENV_TOKEN = "__INFISICAL_ENV_PLACEHOLDER__";
+
+  const tokenized = certificateNameSchema
+    .replace(new RE2("\\{\\{certificateId\\}\\}", "g"), CERT_ID_TOKEN)
+    .replace(new RE2("\\{\\{environment\\}\\}", "g"), ENV_TOKEN);
+
+  const pattern = escapeRegex(tokenized)
+    .replace(new RE2(CERT_ID_TOKEN, "g"), "[0-9a-f]{32}")
+    .replace(new RE2(ENV_TOKEN, "g"), "global");
+
+  return new RE2(`^${pattern}$`);
+};
+
 export const netScalerPkiSyncFactory = ({
   certificateSyncDAL,
   certificateDAL,
-  gatewayV2Service
+  gatewayV2Service,
+  gatewayPoolService
 }: TNetScalerPkiSyncFactoryDeps) => {
+  const resolveGateway = async (pkiSync: TPkiSyncWithCredentials) => {
+    return gatewayPoolService
+      ? gatewayPoolService.resolveEffectiveGatewayId({
+          gatewayId: pkiSync.connection.gatewayId,
+          gatewayPoolId: pkiSync.connection.gatewayPoolId
+        })
+      : (pkiSync.connection.gatewayId ?? null);
+  };
+
   const syncCertificates = async (
     pkiSync: TPkiSyncWithCredentials,
     certificateMap: TCertificateMap
@@ -327,8 +357,10 @@ export const netScalerPkiSyncFactory = ({
     const preserveItemOnRenewal = syncOptions?.preserveItemOnRenewal ?? true;
     const certificateNameSchema = syncOptions?.certificateNameSchema;
 
+    const effectiveGatewayId = await resolveGateway(pkiSync);
+
     return executeNetScalerOperationWithGateway(
-      { gatewayId: pkiSync.connection.gatewayId, credentials },
+      { gatewayId: effectiveGatewayId, credentials },
       gatewayV2Service,
       async (makeRequest) => {
         let uploaded = 0;
@@ -556,13 +588,11 @@ export const netScalerPkiSyncFactory = ({
               }
             }
 
-            const namingPrefix = certificateNameSchema ? certificateNameSchema.split("{{")[0] : "Infisical-";
+            const managedCertNamePattern = buildManagedCertNamePattern(certificateNameSchema);
 
-            if (namingPrefix) {
-              for (const certKeyName of existingCertKeyNames) {
-                if (certKeyName.startsWith(namingPrefix) && !activeExternalIdentifiers.has(certKeyName)) {
-                  certKeysToRemove.add(certKeyName);
-                }
+            for (const certKeyName of existingCertKeyNames) {
+              if (managedCertNamePattern.test(certKeyName) && !activeExternalIdentifiers.has(certKeyName)) {
+                certKeysToRemove.add(certKeyName);
               }
             }
 
@@ -641,8 +671,10 @@ export const netScalerPkiSyncFactory = ({
       return;
     }
 
+    const effectiveGatewayId = await resolveGateway(pkiSync);
+
     await executeNetScalerOperationWithGateway(
-      { gatewayId: pkiSync.connection.gatewayId, credentials },
+      { gatewayId: effectiveGatewayId, credentials },
       gatewayV2Service,
       async (makeRequest) => {
         const session = await createNetScalerSession(credentials, makeRequest);

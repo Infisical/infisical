@@ -1,6 +1,16 @@
+import {
+  FileKeyIcon,
+  LockIcon,
+  LucideIcon,
+  ScanSearchIcon,
+  TerminalIcon,
+  UsersIcon,
+  VaultIcon
+} from "lucide-react";
+
 import { apiRequest } from "@app/config/request";
 import { createWorkspace } from "@app/hooks/api/projects/queries";
-import { ProjectEnv, ProjectType } from "@app/hooks/api/projects/types";
+import { Project, ProjectEnv, ProjectType } from "@app/hooks/api/projects/types";
 
 const secretsToBeAdded = [
   {
@@ -56,6 +66,35 @@ export const initProjectHelper = async ({ projectName }: { projectName: string }
   return project;
 };
 
+export const projectTypeToUrlSlug = (type: ProjectType): string => {
+  if (type === ProjectType.SecretManager) return "secret-management";
+  return type;
+};
+
+const VALID_PROJECT_SLUGS = new Set<string>([
+  "secret-management",
+  ProjectType.CertificateManager,
+  ProjectType.KMS,
+  ProjectType.SecretScanning,
+  ProjectType.PAM
+]);
+
+export const urlSlugToProjectType = (slug: string): ProjectType | null => {
+  if (!VALID_PROJECT_SLUGS.has(slug)) return null;
+  if (slug === "secret-management") return ProjectType.SecretManager;
+  return slug as ProjectType;
+};
+
+const PROJECT_TYPES_WITH_INTERMEDIATE_VIEW = new Set<ProjectType>([
+  ProjectType.SecretManager,
+  ProjectType.KMS,
+  ProjectType.SecretScanning,
+  ProjectType.PAM
+]);
+
+export const hasIntermediateProjectsView = (type: ProjectType) =>
+  PROJECT_TYPES_WITH_INTERMEDIATE_VIEW.has(type);
+
 export const getProjectBaseURL = (type: ProjectType) => {
   switch (type) {
     case ProjectType.SecretManager:
@@ -87,13 +126,54 @@ export const getProjectHomePage = (type: ProjectType, environments: ProjectEnv[]
 export const getProjectTitle = (type: ProjectType) => {
   const titleConvert: Partial<Record<ProjectType, string>> = {
     [ProjectType.SecretManager]: "Secrets Management",
-    [ProjectType.KMS]: "Key Management",
+    [ProjectType.KMS]: "KMS",
     [ProjectType.CertificateManager]: "Certificate Manager",
     [ProjectType.SSH]: "SSH",
     [ProjectType.SecretScanning]: "Secret Scanning",
     [ProjectType.PAM]: "PAM"
   };
   return titleConvert[type] || type;
+};
+
+export const getProjectDescription = (type: ProjectType) => {
+  const descriptions: Partial<Record<ProjectType, string>> = {
+    [ProjectType.SecretManager]:
+      "Centralized secrets across environments — sync, rotation, dynamic credentials, and lifecycle policies.",
+    [ProjectType.CertificateManager]:
+      "Issue, rotate, and govern X.509 certificates for TLS, mTLS, code signing, and device identity.",
+    [ProjectType.KMS]:
+      "Key Management — generate, store, and use cryptographic keys. Encrypt, decrypt, sign, and verify against managed CMKs.",
+    [ProjectType.SecretScanning]:
+      "Continuously scan repositories, builds, and runtime artifacts for leaked secrets and misconfigurations.",
+    [ProjectType.PAM]:
+      "Privileged Access Management — just-in-time access, session brokering, and credential vaulting for privileged users and machines."
+  };
+  return descriptions[type] ?? "";
+};
+
+export const collapseCertManagerProjects = (
+  projects: Project[],
+  activeCertManagerProjectId: string | null
+): Project[] => {
+  const certManagerProjects = projects.filter((p) => p.type === ProjectType.CertificateManager);
+  if (certManagerProjects.length <= 1) return projects;
+
+  const others = projects.filter((p) => p.type !== ProjectType.CertificateManager);
+  const display =
+    certManagerProjects.find((p) => p.id === activeCertManagerProjectId) ?? certManagerProjects[0];
+  const otherCount = certManagerProjects.length - 1;
+
+  return [
+    ...others,
+    {
+      ...display,
+      name: "Certificate Manager",
+      description:
+        otherCount > 0
+          ? `Active: ${display.name} · ${otherCount} other instance${otherCount === 1 ? "" : "s"}`
+          : display.name
+    }
+  ];
 };
 
 export const getProjectLottieIcon = (type: ProjectType) => {
@@ -106,4 +186,31 @@ export const getProjectLottieIcon = (type: ProjectType) => {
     [ProjectType.PAM]: "groups"
   };
   return iconConvert[type] || "vault";
+};
+
+export const getProjectLucideIcon = (type: ProjectType): LucideIcon => {
+  const iconConvert: Partial<Record<ProjectType, LucideIcon>> = {
+    [ProjectType.SecretManager]: VaultIcon,
+    [ProjectType.KMS]: LockIcon,
+    [ProjectType.CertificateManager]: FileKeyIcon,
+    [ProjectType.SSH]: TerminalIcon,
+    [ProjectType.SecretScanning]: ScanSearchIcon,
+    [ProjectType.PAM]: UsersIcon
+  };
+  return iconConvert[type] || VaultIcon;
+};
+
+export type ProjectTileStyle = {
+  iconClassName: string;
+  containerClassName: string;
+  cardHoverClassName: string;
+  titleUnderlineClassName: string;
+};
+
+export const PROJECT_TILE_STYLE: ProjectTileStyle = {
+  iconClassName: "text-project",
+  containerClassName:
+    "border-project/30 bg-gradient-to-br from-project/20 to-project/5 group-hover:border-project/50 group-hover:from-project/25 group-hover:to-project/10",
+  cardHoverClassName: "hover:bg-gradient-to-br hover:from-project/[0.04] hover:to-transparent",
+  titleUnderlineClassName: "decoration-project/60"
 };
