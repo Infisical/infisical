@@ -9,7 +9,7 @@ import { zodBuffer } from "@app/lib/zod";
 
 import { TImmutableDBKeys } from "./models";
 
-export const GitHubAppsSchema = z.object({
+export const GithubAppsSchema = z.object({
   id: z.string().uuid(),
   orgId: z.string().uuid(),
   name: z.string(),
@@ -22,6 +22,6 @@ export const GitHubAppsSchema = z.object({
   updatedAt: z.date()
 });
 
-export type TGitHubApps = z.infer<typeof GitHubAppsSchema>;
-export type TGitHubAppsInsert = Omit<z.input<typeof GitHubAppsSchema>, TImmutableDBKeys>;
-export type TGitHubAppsUpdate = Partial<Omit<z.input<typeof GitHubAppsSchema>, TImmutableDBKeys>>;
+export type TGithubApps = z.infer<typeof GithubAppsSchema>;
+export type TGithubAppsInsert = Omit<z.input<typeof GithubAppsSchema>, TImmutableDBKeys>;
+export type TGithubAppsUpdate = Partial<Omit<z.input<typeof GithubAppsSchema>, TImmutableDBKeys>>;
