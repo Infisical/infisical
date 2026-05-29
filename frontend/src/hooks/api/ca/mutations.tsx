@@ -132,6 +132,9 @@ export const useImportCaCertificate = () => {
       queryClient.invalidateQueries({
         queryKey: caKeys.listCasByProjectId()
       });
+      queryClient.invalidateQueries({
+        predicate: (query) => query.queryKey.includes("project-cas")
+      });
     }
   });
 };
@@ -390,6 +393,9 @@ export const useGenerateCaCertificate = () => {
       });
       queryClient.invalidateQueries({
         queryKey: caKeys.listCasByProjectId()
+      });
+      queryClient.invalidateQueries({
+        predicate: (query) => query.queryKey.includes("project-cas")
       });
     }
   });
