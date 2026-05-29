@@ -1059,7 +1059,8 @@ export const registerRoutes = async (
     membershipRoleDAL,
     membershipUserDAL,
     keyStore,
-    permissionService
+    permissionService,
+    roleDAL
   });
 
   const samlService = samlConfigServiceFactory({
@@ -1106,7 +1107,8 @@ export const registerRoutes = async (
     membershipRoleDAL,
     loginService,
     emailDomainDAL,
-    telemetryService
+    telemetryService,
+    roleDAL
   });
   const passwordService = authPaswordServiceFactory({
     tokenService,
@@ -2385,7 +2387,8 @@ export const registerRoutes = async (
     membershipRoleDAL,
     loginService,
     emailDomainDAL,
-    telemetryService
+    telemetryService,
+    roleDAL
   });
 
   const userEngagementService = userEngagementServiceFactory({

@@ -457,7 +457,7 @@ export const scimServiceFactory = ({
         );
 
         if (!effectiveMembership) {
-          const { role, roleId } = getDefaultOrgMembershipRole(org.defaultMembershipRole);
+          const { role, roleId } = await getDefaultOrgMembershipRole(org.defaultMembershipRole, { roleDAL, orgId });
 
           orgMembership = await membershipUserDAL.create(
             {
@@ -521,7 +521,7 @@ export const scimServiceFactory = ({
         );
 
         if (!effectiveMembership) {
-          const { role, roleId } = getDefaultOrgMembershipRole(org.defaultMembershipRole);
+          const { role, roleId } = await getDefaultOrgMembershipRole(org.defaultMembershipRole, { roleDAL, orgId });
 
           orgMembership = await membershipUserDAL.create(
             {

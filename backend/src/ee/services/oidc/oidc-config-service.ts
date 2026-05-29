@@ -39,6 +39,7 @@ import { getDefaultOrgMembershipRole } from "@app/services/org/org-role-fns";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
 import { TProjectKeyDALFactory } from "@app/services/project-key/project-key-dal";
+import { TRoleDALFactory } from "@app/services/role/role-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 import { LoginMethod } from "@app/services/super-admin/super-admin-types";
@@ -101,6 +102,7 @@ type TOidcConfigServiceFactoryDep = {
   loginService: Pick<TAuthLoginFactory, "processProviderCallback">;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "findOne">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
+  roleDAL: Pick<TRoleDALFactory, "findOne">;
 };
 
 export type TOidcConfigServiceFactory = ReturnType<typeof oidcConfigServiceFactory>;
@@ -125,7 +127,8 @@ export const oidcConfigServiceFactory = ({
   kmsService,
   loginService,
   emailDomainDAL,
-  telemetryService
+  telemetryService,
+  roleDAL
 }: TOidcConfigServiceFactoryDep) => {
   const getOidc = async (dto: TGetOidcCfgDTO) => {
     const oidcCfg = await oidcConfigDAL.findOne({
@@ -235,7 +238,10 @@ export const oidcConfigServiceFactory = ({
           { tx }
         );
         if (!orgMembership) {
-          const { role, roleId } = getDefaultOrgMembershipRole(organization.defaultMembershipRole);
+          const { role, roleId } = await getDefaultOrgMembershipRole(organization.defaultMembershipRole, {
+            roleDAL,
+            orgId
+          });
 
           const membership = await orgDAL.createMembership(
             {
@@ -311,7 +317,10 @@ export const oidcConfigServiceFactory = ({
         if (!orgMembership) {
           await throwOnPlanSeatLimitReached(licenseService, orgId, UserAliasType.OIDC);
 
-          const { role, roleId } = getDefaultOrgMembershipRole(organization.defaultMembershipRole);
+          const { role, roleId } = await getDefaultOrgMembershipRole(organization.defaultMembershipRole, {
+            roleDAL,
+            orgId
+          });
 
           const membership = await orgDAL.createMembership(
             {

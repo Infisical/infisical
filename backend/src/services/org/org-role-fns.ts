@@ -1,6 +1,7 @@
 import { OrgMembershipRole } from "@app/db/schemas";
 import { TFeatureSet } from "@app/ee/services/license/license-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { isUuidV4 } from "@app/lib/validator";
 
 import { TRoleDALFactory } from "../role/role-dal";
 
@@ -42,8 +43,24 @@ export const getDefaultOrgMembershipRoleForUpdateOrg = async ({
   return role.id;
 };
 
-export const getDefaultOrgMembershipRole = (defaultOrgMembershipRole: string) => {
+export const getDefaultOrgMembershipRole = async (
+  defaultOrgMembershipRole: string, // either "admin", a built-in slug (member/no-access) or a custom role UUID
+  { roleDAL, orgId }: { roleDAL: Pick<TRoleDALFactory, "findOne">; orgId: string }
+) => {
   if (defaultOrgMembershipRole === OrgMembershipRole.Admin) return { roleId: null, role: OrgMembershipRole.Admin };
 
-  return { roleId: defaultOrgMembershipRole, role: OrgMembershipRole.Custom };
+  // Built-in (member/no-access) and custom roles are all DB-backed rows referenced via customRoleId.
+  // The stored value can be a slug (built-in default) or a role UUID (custom default), so resolve to the row id.
+  const role = isUuidV4(defaultOrgMembershipRole)
+    ? await roleDAL.findOne({ id: defaultOrgMembershipRole, orgId })
+    : await roleDAL.findOne({ slug: defaultOrgMembershipRole, orgId });
+
+  if (!role) {
+    throw new NotFoundError({
+      name: "OrgMembershipRoleInvalid",
+      message: `Organization role '${defaultOrgMembershipRole}' not found`
+    });
+  }
+
+  return { roleId: role.id, role: OrgMembershipRole.Custom };
 };

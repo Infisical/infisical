@@ -580,7 +580,10 @@ export const samlConfigServiceFactory = ({
         );
 
         if (!orgMembership) {
-          const { role, roleId } = getDefaultOrgMembershipRole(organization.defaultMembershipRole);
+          const { role, roleId } = await getDefaultOrgMembershipRole(organization.defaultMembershipRole, {
+            roleDAL,
+            orgId
+          });
 
           const membership = await orgDAL.createMembership(
             {
@@ -680,7 +683,10 @@ export const samlConfigServiceFactory = ({
         if (!orgMembership) {
           await throwOnPlanSeatLimitReached(licenseService, orgId, UserAliasType.SAML);
 
-          const { role, roleId } = getDefaultOrgMembershipRole(organization.defaultMembershipRole);
+          const { role, roleId } = await getDefaultOrgMembershipRole(organization.defaultMembershipRole, {
+            roleDAL,
+            orgId
+          });
 
           const membership = await orgDAL.createMembership(
             {

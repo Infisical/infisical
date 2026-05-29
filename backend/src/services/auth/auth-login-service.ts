@@ -40,6 +40,7 @@ import { TNotificationServiceFactory } from "../notification/notification-servic
 import { NotificationType } from "../notification/notification-types";
 import { TOrgDALFactory } from "../org/org-dal";
 import { getDefaultOrgMembershipRole } from "../org/org-role-fns";
+import { TRoleDALFactory } from "../role/role-dal";
 import { SmtpTemplates, throwIfSmtpError, TSmtpService } from "../smtp/smtp-service";
 import { LoginMethod } from "../super-admin/super-admin-types";
 import { TTotpServiceFactory } from "../totp/totp-service";
@@ -77,6 +78,7 @@ type TAuthLoginServiceFactoryDep = {
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock" | "setItemWithExpiry" | "getItem">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
+  roleDAL: Pick<TRoleDALFactory, "findOne">;
 };
 
 export type TAuthLoginFactory = ReturnType<typeof authLoginServiceFactory>;
@@ -92,7 +94,8 @@ export const authLoginServiceFactory = ({
   membershipUserDAL,
   membershipRoleDAL,
   keyStore,
-  permissionService
+  permissionService,
+  roleDAL
 }: TAuthLoginServiceFactoryDep) => {
   /*
    * Private
@@ -959,7 +962,10 @@ export const authLoginServiceFactory = ({
           });
 
           if (!existingMembership) {
-            const { role, roleId } = getDefaultOrgMembershipRole(defaultOrg.defaultMembershipRole);
+            const { role, roleId } = await getDefaultOrgMembershipRole(defaultOrg.defaultMembershipRole, {
+              roleDAL,
+              orgId
+            });
 
             const membership = await membershipUserDAL.create(
               {
