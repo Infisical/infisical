@@ -120,6 +120,7 @@ type THandleWebSocketConnectionDTO = {
   actorIp: string;
   actorUserAgent: string;
   reason?: string | null;
+  grantExpiresAt?: string | null;
   preAuthMessages: TEarlyBufferedMsg[];
   preAuthHandler: (raw: Buffer | ArrayBuffer | Buffer[], isBinary: boolean) => void;
 };
@@ -262,14 +263,14 @@ export const pamWebAccessServiceFactory = ({
       accountName: accountIdentity
     };
 
-    const hasApprovalGrant = await approvalPolicy.canAccess(
+    const approvalGrant = await approvalPolicy.canAccess(
       approvalRequestGrantsDAL,
       resource.projectId,
       actor.id,
       policyInputs
     );
 
-    if (!hasApprovalGrant) {
+    if (!approvalGrant) {
       const matchedPolicy = await approvalPolicy.matchPolicy(approvalPolicyDAL, resource.projectId, policyInputs);
 
       if (matchedPolicy) {
@@ -396,7 +397,8 @@ export const pamWebAccessServiceFactory = ({
         actorEmail,
         actorName,
         auditLogInfo,
-        reason: trimmedReason
+        reason: trimmedReason,
+        grantExpiresAt: approvalGrant?.expiresAt?.toISOString() ?? null
       })
     });
 
@@ -432,6 +434,7 @@ export const pamWebAccessServiceFactory = ({
     actorIp,
     actorUserAgent,
     reason: accessReason,
+    grantExpiresAt: grantExpiresAtIso,
     preAuthMessages,
     preAuthHandler
   }: THandleWebSocketConnectionDTO): Promise<void> => {
@@ -594,7 +597,16 @@ export const pamWebAccessServiceFactory = ({
 
       // 3. CREATE SESSION
       const user = await requestMemoize(requestMemoKeys.userFindById(userId), () => userDAL.findById(userId));
-      const expiresAt = new Date(Date.now() + DEFAULT_WEB_SESSION_DURATION_MS);
+      let sessionDurationMs = DEFAULT_WEB_SESSION_DURATION_MS;
+      if (grantExpiresAtIso) {
+        const grantRemainingMs = new Date(grantExpiresAtIso).getTime() - Date.now();
+        if (grantRemainingMs <= 0) {
+          sendSessionEndAndClose(socket, SessionEndReason.SessionGrantExpired);
+          return;
+        }
+        sessionDurationMs = Math.min(sessionDurationMs, grantRemainingMs);
+      }
+      const expiresAt = new Date(Date.now() + sessionDurationMs);
 
       const isDomainAccount = !account.resourceId;
 
@@ -627,7 +639,7 @@ export const pamWebAccessServiceFactory = ({
         resourceType: resource.resourceType as PamResource,
         host,
         port,
-        duration: DEFAULT_WEB_SESSION_DURATION_MS,
+        duration: sessionDurationMs,
         actorMetadata: {
           id: userId,
           type: ActorType.USER,
@@ -775,7 +787,7 @@ export const pamWebAccessServiceFactory = ({
           void cleanup();
           sendSessionEndAndClose(socket, SessionEndReason.SessionCompleted);
         }
-      }, DEFAULT_WEB_SESSION_DURATION_MS);
+      }, sessionDurationMs);
 
       // WebSocket close/error
       socket.on("close", () => {
