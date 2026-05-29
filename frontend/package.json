@@ -34,7 +34,9 @@
     "cosmiconfig": {
       "yaml": "^1.10.3"
     },
-    "minimatch": "^9.0.7"
+    "@eslint/eslintrc": {
+      "minimatch": "^3.1.2"
+    }
   },
   "dependencies": {
     "@casl/ability": "^6.7.5",

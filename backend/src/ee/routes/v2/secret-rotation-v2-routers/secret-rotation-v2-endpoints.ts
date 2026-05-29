@@ -591,7 +591,7 @@ export const registerSecretRotationEndpoints = <
         req.permission
       );
 
-      return res.status(204).send();
+      return res.status(204).send("");
     }
   });
 };
