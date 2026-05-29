@@ -18,7 +18,7 @@ type TAuditLogQueueServiceFactoryDep = {
   auditLogDAL: TAuditLogDALFactory;
   auditLogStreamOutboxService: Pick<TAuditLogStreamOutboxServiceFactory, "enqueueForLogs">;
   queueService: TQueueServiceFactory;
-  projectDAL: Pick<TProjectDALFactory, "findById">;
+  projectDAL: Pick<TProjectDALFactory, "find">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   clickhouseClient: ClickHouseClient | null;
   keyStore: Pick<TKeyStoreFactory, "streamAdd" | "streamCollect" | "streamTrim" | "acquireLock">;
@@ -152,9 +152,11 @@ export const auditLogQueueServiceFactory = async ({
     const distinctProjectIds = [
       ...new Set(parsed.filter((entry) => !entry.orgId && entry.projectId).map((entry) => entry.projectId as string))
     ];
-    for (const projectId of distinctProjectIds) {
-      // eslint-disable-next-line no-await-in-loop
-      projectCache.set(projectId, await projectDAL.findById(projectId));
+    if (distinctProjectIds.length > 0) {
+      const projects = await projectDAL.find({ $in: { id: distinctProjectIds } });
+      for (const project of projects) {
+        projectCache.set(project.id, project);
+      }
     }
 
     const resolveOrgId = (entry: TAuditLogStreamEntry): string | undefined =>

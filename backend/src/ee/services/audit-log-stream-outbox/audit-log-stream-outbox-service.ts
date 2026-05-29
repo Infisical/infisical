@@ -160,14 +160,16 @@ export const auditLogStreamOutboxServiceFactory = ({
     // Dedup streams touched this batch so each is debounced/woken exactly once.
     const streamsToFlush = new Map<string, { orgId: string; provider: LogProvider }>();
 
-    for (const [orgId, logs] of logsByOrg) {
-      // eslint-disable-next-line no-await-in-loop
-      const streams = await auditLogStreamDAL.find({ orgId });
-      for (const stream of streams) {
+    // One lookup for every org in the batch instead of a query per org — the common case is
+    // that most orgs have no streams configured, so a per-org loop is mostly empty round-trips.
+    const streams = await auditLogStreamDAL.find({ $in: { orgId: [...logsByOrg.keys()] } });
+    for (const stream of streams) {
+      const logs = logsByOrg.get(stream.orgId);
+      if (logs) {
         for (const log of logs) {
-          outboxRows.push({ streamId: stream.id, orgId, payload: log });
+          outboxRows.push({ streamId: stream.id, orgId: stream.orgId, payload: log });
         }
-        streamsToFlush.set(stream.id, { orgId, provider: stream.provider as LogProvider });
+        streamsToFlush.set(stream.id, { orgId: stream.orgId, provider: stream.provider as LogProvider });
       }
     }
 
