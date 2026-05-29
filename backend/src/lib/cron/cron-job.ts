@@ -37,7 +37,7 @@ export const CronJobName = {
   SignerDailyAutoRenewal: "signer-daily-auto-renewal",
   SignerIssuancePolling: "signer-issuance-polling",
   AuditLogStreamOutboxStaleClaimSweeper: "audit-log-stream-outbox-stale-claim-sweeper",
-  AuditLogStreamOutboxDeliveredCleanup: "audit-log-stream-outbox-delivered-cleanup"
+  AuditLogStreamOutboxCleanup: "audit-log-stream-outbox-cleanup"
 } as const;
 
 // ── tuning constants ──────────────────────────────────────────────────────────

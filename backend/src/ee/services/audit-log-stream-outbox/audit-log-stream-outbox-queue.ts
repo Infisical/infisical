@@ -63,7 +63,7 @@ export const auditLogStreamOutboxQueueFactory = ({
     });
 
     cronJob.register({
-      name: CronJobName.AuditLogStreamOutboxDeliveredCleanup,
+      name: CronJobName.AuditLogStreamOutboxCleanup,
       pattern: CLEANUP_CRON,
       runHashTtlS: CLEANUP_RUN_HASH_TTL_S,
       handler: async () => {
