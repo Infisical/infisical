@@ -256,9 +256,8 @@ export const ShareSecretForm = ({
               </Select>
               {expiresInOptions.length !== filteredExpiresInOptions.length && (
                 <FieldDescription className="text-info">
-                  Limited to{" "}
-                  {filteredExpiresInOptions[filteredExpiresInOptions.length - 1].label} by
-                  organization
+                  Limited to {filteredExpiresInOptions[filteredExpiresInOptions.length - 1].label}{" "}
+                  by organization
                 </FieldDescription>
               )}
               {error && <FieldError>{error.message}</FieldError>}
@@ -403,8 +402,8 @@ export const ShareSecretForm = ({
                       </TooltipTrigger>
                       <TooltipContent className="max-w-sm">
                         <p>
-                          Unique secret links will be emailed to each individual. The secret
-                          will only be accessible to those links.
+                          Unique secret links will be emailed to each individual. The secret will
+                          only be accessible to those links.
                         </p>
                         <p className="mt-2">
                           {isAllowingExternalEmails
@@ -453,8 +452,8 @@ export const ShareSecretForm = ({
                           <Info className="ml-2 size-3 cursor-help text-muted" />
                         </TooltipTrigger>
                         <TooltipContent>
-                          When enabled, the defined emails will receive the secret link via
-                          email but will need the password to access the secret.
+                          When enabled, the defined emails will receive the secret link via email
+                          but will need the password to access the secret.
                         </TooltipContent>
                       </Tooltip>
                       {!allowSecretSharingOutsideOrganization && (
