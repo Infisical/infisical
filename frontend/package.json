@@ -33,7 +33,8 @@
     },
     "cosmiconfig": {
       "yaml": "^1.10.3"
-    }
+    },
+    "minimatch": "^9.0.7"
   },
   "dependencies": {
     "@casl/ability": "^6.7.5",
