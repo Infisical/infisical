@@ -6,6 +6,8 @@ import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { UnauthorizedError } from "@app/lib/errors";
 import { checkIPAgainstBlocklist, TIp } from "@app/lib/ip";
+import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
+import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 
 import { ActorType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "../identity/identity-dal";
@@ -234,9 +236,11 @@ export const identityAccessTokenServiceFactory = ({
   const loadLegacyTokenSource = async (decoded: TMinimalRenewClaims): Promise<TRenewSource> => {
     // Qualify the column — the DAL joins with Identity which also has an `id`,
     // so an unprefixed filter is ambiguous and the DB rejects the query.
-    const row = await identityAccessTokenDAL.findOne({
-      [`${TableName.IdentityAccessToken}.id` as "id"]: decoded.identityAccessTokenId
-    });
+    const row = await requestMemoize(requestMemoKeys.identityAccessTokenFindById(decoded.identityAccessTokenId), () =>
+      identityAccessTokenDAL.findOne({
+        [`${TableName.IdentityAccessToken}.id` as "id"]: decoded.identityAccessTokenId
+      })
+    );
     if (!row || row.isAccessTokenRevoked) {
       throw new UnauthorizedError({ message: "Cannot renew revoked or unknown access token" });
     }

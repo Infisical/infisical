@@ -64,5 +64,10 @@ export const requestMemoKeys = {
 
   orgFindById: (orgId: string) => `org:findById:${orgId}`,
 
-  orgFindOrgById: (orgId: string) => `org:findOrgById:${orgId}`
+  orgFindOrgById: (orgId: string) => `org:findOrgById:${orgId}`,
+
+  identityAccessTokenFindById: (identityAccessTokenId: string) =>
+    `identityAccessToken:findById:${identityAccessTokenId}`,
+  identityUaFindByClientId: (clientId: string) => `identityUa:findByClientId:${clientId}`,
+  identityUaFindByIdentityId: (identityId: string) => `identityUa:findByIdentityId:${identityId}`
 };

@@ -87,7 +87,9 @@ export const identityUaServiceFactory = ({
 }: TIdentityUaServiceFactoryDep) => {
   const login = async ({ clientId, clientSecret, ip, organizationSlug }: TLoginUaDTO) => {
     const appCfg = getConfig();
-    const identityUa = await identityUaDAL.findOne({ clientId });
+    const identityUa = await requestMemoize(requestMemoKeys.identityUaFindByClientId(clientId), () =>
+      identityUaDAL.findOne({ clientId })
+    );
     if (!identityUa) {
       throw new UnauthorizedError({
         message: "Invalid credentials",
@@ -648,7 +650,9 @@ export const identityUaServiceFactory = ({
     });
     if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
 
-    const uaIdentityAuth = await identityUaDAL.findOne({ identityId });
+    const uaIdentityAuth = await requestMemoize(requestMemoKeys.identityUaFindByIdentityId(identityId), () =>
+      identityUaDAL.findOne({ identityId })
+    );
     if (!uaIdentityAuth) {
       throw new NotFoundError({ message: `Failed to find universal auth for identity with ID ${identityId}` });
     }
@@ -977,9 +981,11 @@ export const identityUaServiceFactory = ({
         });
     }
 
-    const identityUniversalAuth = await identityUaDAL.findOne({
-      identityId
-    });
+    const identityUniversalAuth = await requestMemoize(requestMemoKeys.identityUaFindByIdentityId(identityId), () =>
+      identityUaDAL.findOne({
+        identityId
+      })
+    );
 
     const clientSecrets = await identityUaClientSecretDAL.find({
       identityUAId: identityUniversalAuth.id,
@@ -1014,7 +1020,9 @@ export const identityUaServiceFactory = ({
       throw new ForbiddenRequestError({ message: "Sub organization not authorized to access this identity" });
     }
 
-    const identityUa = await identityUaDAL.findOne({ identityId });
+    const identityUa = await requestMemoize(requestMemoKeys.identityUaFindByIdentityId(identityId), () =>
+      identityUaDAL.findOne({ identityId })
+    );
     if (!identityUa) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
 
     const clientSecret = await identityUaClientSecretDAL.findOne({ id: clientSecretId, identityUAId: identityUa.id });
