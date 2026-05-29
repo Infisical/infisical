@@ -81,6 +81,13 @@ export default function CodeInputStep({
     return () => clearInterval(timer);
   }, []);
 
+  // Auto-submit when all 6 digits are entered
+  useEffect(() => {
+    if (code.length === 6 && !isVerifying) {
+      handleVerify();
+    }
+  }, [code]);
+
   const remainingCooldown = Math.max(0, Math.ceil((endTimeRef.current - Date.now()) / 1000));
 
   const isCooldownActive = endTimeRef.current > Date.now();
