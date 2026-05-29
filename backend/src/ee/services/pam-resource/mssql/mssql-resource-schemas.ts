@@ -49,7 +49,12 @@ const MsSQLKerberosCredentialsSchema = z.object({
     .regex(/^[A-Za-z0-9._:-]*$/, "KDC address must be a hostname or IP with optional port")
     .transform((v) => v || undefined)
     .optional(),
-  spn: z.string().trim().min(1, "SPN is required for Kerberos").max(500).regex(/^[A-Za-z0-9._:\/-]+$/, "SPN must contain only letters, numbers, dots, colons, slashes, hyphens")
+  spn: z
+    .string()
+    .trim()
+    .min(1, "SPN is required for Kerberos")
+    .max(500)
+    .regex(/^[A-Za-z0-9._:/-]+$/, "SPN must contain only letters, numbers, dots, colons, slashes, hyphens")
 });
 
 // z.union so old accounts without authMethod fall through to the sql-login .default()
