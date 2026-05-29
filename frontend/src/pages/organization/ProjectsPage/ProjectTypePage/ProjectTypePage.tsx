@@ -962,10 +962,12 @@ const Toolbar = ({
     <ButtonGroup>
       {isGridDisabled ? (
         <Tooltip>
-          <TooltipTrigger>
-            <IconButton variant="outline" size="sm" aria-label="Grid view" isDisabled>
-              <LayoutGridIcon />
-            </IconButton>
+          <TooltipTrigger tabIndex={-1} asChild>
+            <span className="cursor-not-allowed">
+              <IconButton variant="outline" size="sm" aria-label="Grid view" isDisabled>
+                <LayoutGridIcon />
+              </IconButton>
+            </span>
           </TooltipTrigger>
           <TooltipContent>Disabled across All Project view.</TooltipContent>
         </Tooltip>
