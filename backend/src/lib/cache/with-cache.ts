@@ -1,5 +1,6 @@
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { logger } from "@app/lib/logger";
+import { permissionCacheFingerprintDurationHistogram, permissionCacheLookupCounter } from "@app/lib/telemetry/metrics";
 
 type TCacheKeyStore = Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry">;
 
@@ -124,6 +125,7 @@ export const withCacheFingerprint = async <T>({
   if (markerValue !== null && cachedDataStr !== null) {
     try {
       const { payload } = JSON.parse(cachedDataStr) as TCachedData<T>;
+      permissionCacheLookupCounter.add(1, { "cache.result": "marker_hit" });
       return applyReviver(payload, reviver);
     } catch (err) {
       logger.warn(
@@ -135,9 +137,13 @@ export const withCacheFingerprint = async <T>({
 
   // Marker expired or cache miss — compute fingerprint (1 lightweight DB read)
   let currentFingerprint: string;
+  const fingerprintStart = Date.now();
   try {
     currentFingerprint = await fingerprintFetcher();
+    permissionCacheFingerprintDurationHistogram.record((Date.now() - fingerprintStart) / 1000);
   } catch (err) {
+    permissionCacheFingerprintDurationHistogram.record((Date.now() - fingerprintStart) / 1000);
+    permissionCacheLookupCounter.add(1, { "cache.result": "fingerprint_error" });
     logger.error({ err }, `withCacheFingerprint: fingerprint fetch failed, bypassing cache`);
     return dataFetcher();
   }
@@ -148,6 +154,7 @@ export const withCacheFingerprint = async <T>({
       const cachedData = JSON.parse(cachedDataStr) as TCachedData<T>;
       if (cachedData.fingerprint === currentFingerprint) {
         await cacheSet(keyStore, markerKey, markerTtlSeconds, "1", "withCacheFingerprint: marker reset failed");
+        permissionCacheLookupCounter.add(1, { "cache.result": "fingerprint_match" });
         return applyReviver(cachedData.payload, reviver);
       }
     } catch (err) {
@@ -159,6 +166,7 @@ export const withCacheFingerprint = async <T>({
   }
 
   // Fingerprint mismatch or no cached data — full re-fetch
+  permissionCacheLookupCounter.add(1, { "cache.result": "full_refetch" });
   const result = await dataFetcher();
 
   await cacheSet(

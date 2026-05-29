@@ -23,7 +23,12 @@ import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 import { fetchGithubEmails, fetchGithubUser } from "@app/lib/requests/github";
-import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
+import {
+  AuthAttemptAuthMethod,
+  AuthAttemptAuthResult,
+  authAttemptCounter,
+  recordAuthAttemptMetric
+} from "@app/lib/telemetry/metrics";
 import { authRateLimit } from "@app/server/config/rateLimiter";
 import { addAuthOriginDomainCookie } from "@app/server/lib/cookie";
 import { AuthMethod, ProviderAuthResult } from "@app/services/auth/auth-type";
@@ -54,6 +59,7 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
         },
         // eslint-disable-next-line
         async (req, _accessToken, _refreshToken, profile, cb) => {
+          const authMetricStartTime = performance.now();
           // @ts-expect-error this is because this is express type and not fastify
           const callbackPort = req.session.get("callbackPort");
           // @ts-expect-error this is because this is express type and not fastify
@@ -107,6 +113,13 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
               });
             }
 
+            recordAuthAttemptMetric({
+              startTime: authMetricStartTime,
+              method: AuthAttemptAuthMethod.GOOGLE,
+              result: AuthAttemptAuthResult.SUCCESS,
+              orgId: loginResult.orgId
+            });
+
             cb(null, loginResult);
           } catch (error) {
             logger.error(error);
@@ -119,6 +132,12 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
                 "user_agent.original": requestContext.get(RequestContextKey.UserAgent)
               });
             }
+            recordAuthAttemptMetric({
+              startTime: authMetricStartTime,
+              method: AuthAttemptAuthMethod.GOOGLE,
+              result: AuthAttemptAuthResult.FAILURE,
+              error
+            });
             cb(error as Error, false);
           }
         }
@@ -145,6 +164,7 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
         },
         // eslint-disable-next-line
         async (req: any, accessToken: string, _refreshToken: string, _profile: any, done: Function) => {
+          const authMetricStartTime = performance.now();
           const ghEmails = await fetchGithubEmails(accessToken);
           const { email } = ghEmails.filter((gitHubEmail) => gitHubEmail.primary && gitHubEmail.verified)[0];
 
@@ -195,6 +215,13 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
               });
             }
 
+            recordAuthAttemptMetric({
+              startTime: authMetricStartTime,
+              method: AuthAttemptAuthMethod.GITHUB,
+              result: AuthAttemptAuthResult.SUCCESS,
+              orgId: loginResult.orgId
+            });
+
             done(null, { ...loginResult, externalProviderAccessToken: accessToken });
           } catch (err) {
             if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
@@ -206,6 +233,12 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
                 "user_agent.original": requestContext.get(RequestContextKey.UserAgent)
               });
             }
+            recordAuthAttemptMetric({
+              startTime: authMetricStartTime,
+              method: AuthAttemptAuthMethod.GITHUB,
+              result: AuthAttemptAuthResult.FAILURE,
+              error: err
+            });
             logger.error(err);
             done(err as Error, false);
           }
@@ -231,6 +264,7 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
           pkce: true
         },
         async (req: any, _accessToken: string, _refreshToken: string, profile: any, cb: any) => {
+          const authMetricStartTime = performance.now();
           const email = profile.emails[0].value;
 
           try {
@@ -275,6 +309,13 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
               });
             }
 
+            recordAuthAttemptMetric({
+              startTime: authMetricStartTime,
+              method: AuthAttemptAuthMethod.GITLAB,
+              result: AuthAttemptAuthResult.SUCCESS,
+              orgId: loginResult.orgId
+            });
+
             return cb(null, loginResult);
           } catch (error) {
             if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
@@ -286,6 +327,13 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
                 "user_agent.original": requestContext.get(RequestContextKey.UserAgent)
               });
             }
+
+            recordAuthAttemptMetric({
+              startTime: authMetricStartTime,
+              method: AuthAttemptAuthMethod.GITLAB,
+              result: AuthAttemptAuthResult.FAILURE,
+              error
+            });
 
             logger.error(error);
             cb(error as Error, false);

@@ -19,6 +19,7 @@ import { axiosResponseInterceptor } from "./lib/config/request";
 import { removeTemporaryBaseDirectory } from "./lib/files";
 import { initLogger } from "./lib/logger";
 import { CustomLogger } from "./lib/logger/logger";
+import { registerInfrastructureMetrics } from "./lib/telemetry/metrics";
 import { queueServiceFactory } from "./queue";
 import { main } from "./server/app";
 import { bootstrapCheck } from "./server/boot-strap-check";
@@ -56,6 +57,9 @@ const run = async () => {
     dbRootCert: databaseCredentials.dbRootCert,
     readReplicas: databaseCredentials.readReplicas
   });
+
+  // Register connection-pool and entity-count observable gauges. No-ops when telemetry is disabled.
+  registerInfrastructureMetrics(db);
 
   const superAdminDAL = superAdminDALFactory(db);
   const kmsRootConfigDAL = kmsRootConfigDALFactory(db);

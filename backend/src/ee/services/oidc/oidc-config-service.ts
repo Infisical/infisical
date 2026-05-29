@@ -18,7 +18,15 @@ import { BadRequestError, ForbiddenRequestError, NotFoundError, OidcAuthError } 
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
-import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
+import {
+  AuthAttemptAuthMethod,
+  AuthAttemptAuthResult,
+  authAttemptCounter,
+  recordAuthAttemptMetric,
+  recordSsoConfigChangeMetric,
+  SsoConfigAction,
+  SsoProvider
+} from "@app/lib/telemetry/metrics";
 import { OrgServiceActor } from "@app/lib/types";
 import {
   blockLocalAndPrivateIpAddresses,
@@ -574,6 +582,7 @@ export const oidcConfigServiceFactory = ({
 
     const [ssoConfig] = await oidcConfigDAL.update({ orgId: org.id }, updateQuery);
     await orgDAL.updateById(org.id, { authEnforced: false, scimEnabled: false });
+    recordSsoConfigChangeMetric({ provider: SsoProvider.Oidc, action: SsoConfigAction.Update, orgId: org.id });
     return ssoConfig;
   };
 
@@ -662,6 +671,8 @@ export const oidcConfigServiceFactory = ({
       encryptedOidcClientId: encryptor({ plainText: Buffer.from(clientId) }).cipherTextBlob,
       encryptedOidcClientSecret: encryptor({ plainText: Buffer.from(clientSecret) }).cipherTextBlob
     });
+
+    recordSsoConfigChangeMetric({ provider: SsoProvider.Oidc, action: SsoConfigAction.Create, orgId: org.id });
 
     return oidcCfg;
   };
@@ -754,6 +765,7 @@ export const oidcConfigServiceFactory = ({
       },
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (_req: any, tokenSet: TokenSet, cb: any) => {
+        const authMetricStartTime = performance.now();
         const claims = tokenSet.claims();
         if (!claims.email) {
           throw new BadRequestError({
@@ -802,9 +814,16 @@ export const oidcConfigServiceFactory = ({
               });
             }
 
+            recordAuthAttemptMetric({
+              startTime: authMetricStartTime,
+              method: AuthAttemptAuthMethod.OIDC,
+              result: AuthAttemptAuthResult.SUCCESS,
+              orgId: org.id
+            });
+
             cb(null, loginResult);
           })
-          .catch((error) => {
+          .catch((error: unknown) => {
             if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
               authAttemptCounter.add(1, {
                 "infisical.user.email": claims?.email?.toLowerCase(),
@@ -816,6 +835,14 @@ export const oidcConfigServiceFactory = ({
                 "user_agent.original": requestContext.get(RequestContextKey.UserAgent)
               });
             }
+
+            recordAuthAttemptMetric({
+              startTime: authMetricStartTime,
+              method: AuthAttemptAuthMethod.OIDC,
+              result: AuthAttemptAuthResult.FAILURE,
+              orgId: org.id,
+              error
+            });
 
             cb(error);
           });

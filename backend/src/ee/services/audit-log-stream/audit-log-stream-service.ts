@@ -11,7 +11,13 @@ import {
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { classifyError } from "@app/lib/errors/classify";
 import { logger } from "@app/lib/logger";
+import {
+  auditLogStreamAlertFiredCounter,
+  auditLogStreamDeliveryCounter,
+  auditLogStreamDeliveryDurationHistogram
+} from "@app/lib/telemetry/metrics";
 import { OrgServiceActor } from "@app/lib/types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
@@ -374,6 +380,11 @@ export const auditLogStreamServiceFactory = ({
       );
       if (!acquired) return;
 
+      auditLogStreamAlertFiredCounter.add(1, {
+        "audit_log_stream.provider": provider,
+        "infisical.organization.id": orgId
+      });
+
       await notifyStreamFailure(orgId, streamId, provider, failureCount, lastError).catch(async (notifyErr) => {
         logger.error(
           notifyErr,
@@ -403,9 +414,26 @@ export const auditLogStreamServiceFactory = ({
 
         const factory = LOG_STREAM_FACTORY_MAP[provider as LogProvider]();
 
+        const deliveryStart = Date.now();
+        const metricBaseAttrs = {
+          "audit_log_stream.provider": provider,
+          "infisical.organization.id": orgId
+        };
+
         try {
           await factory.streamLog({ credentials, auditLog });
+          const durationS = (Date.now() - deliveryStart) / 1000;
+          auditLogStreamDeliveryCounter.add(1, { ...metricBaseAttrs, outcome: "success" });
+          auditLogStreamDeliveryDurationHistogram.record(durationS, { ...metricBaseAttrs, outcome: "success" });
         } catch (error) {
+          const durationS = (Date.now() - deliveryStart) / 1000;
+          const errorType = classifyError(error);
+          auditLogStreamDeliveryCounter.add(1, { ...metricBaseAttrs, outcome: "failure", "error.type": errorType });
+          auditLogStreamDeliveryDurationHistogram.record(durationS, {
+            ...metricBaseAttrs,
+            outcome: "failure",
+            "error.type": errorType
+          });
           let errorMessage: string;
           if (isAxiosError(error)) {
             errorMessage = `${error?.message ?? "Request failed"} — ${JSON.stringify(error?.response?.data) ?? ""}`;

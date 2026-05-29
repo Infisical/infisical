@@ -1,6 +1,8 @@
+import opentelemetry from "@opentelemetry/api";
 import {
   Job,
   JobSchedulerJson,
+  MetricsTime,
   Queue,
   QueueOptions,
   RepeatOptions,
@@ -28,7 +30,15 @@ import {
 import { getConfig } from "@app/lib/config/env";
 import { buildRedisFromConfig, TRedisConfigKeys } from "@app/lib/config/redis";
 import { crypto } from "@app/lib/crypto";
+import { classifyError } from "@app/lib/errors/classify";
 import { logger } from "@app/lib/logger";
+import {
+  queueJobCounter,
+  queueJobDurationHistogram,
+  queueJobFailureCounter,
+  queueJobWaitHistogram,
+  queueStalledCounter
+} from "@app/lib/telemetry/metrics";
 import { QueueWorkerProfile } from "@app/lib/types";
 import {
   TAppConnectionCredentialRotationRotateJobPayload,
@@ -586,6 +596,34 @@ export const queueServiceFactory = (redisCfg: TRedisConfigKeys): TQueueServiceFa
     Record<QueueName, Worker<TQueueJobTypes[QueueName]["payload"], void, TQueueJobTypes[QueueName]["name"]>>
   > = {};
 
+  // Observable gauge for queue depth. The SDK invokes the callback on each export (every 30s for OTLP
+  // push, on each scrape for Prometheus). Iterates only initialized queues in queueContainer; one
+  // snapshot covers all ~30 named queues. Failures are swallowed because metrics must never crash the app.
+  const queueDepthGauge = opentelemetry.metrics
+    .getMeter("InfisicalCore")
+    .createObservableGauge("infisical.queue.depth", {
+      description: "Number of jobs in each queue state (waiting, active, delayed, failed, completed)",
+      unit: "{job}"
+    });
+
+  queueDepthGauge.addCallback(async (observableResult) => {
+    if (!getConfig().OTEL_TELEMETRY_COLLECTION_ENABLED) return;
+    await Promise.allSettled(
+      Object.entries(queueContainer).map(async ([name, q]) => {
+        if (!q) return;
+        try {
+          const counts = await q.getJobCounts();
+          Object.entries(counts).forEach(([state, count]) => {
+            if (typeof count !== "number") return;
+            observableResult.observe(count, { "queue.name": name, "queue.state": state });
+          });
+        } catch (err) {
+          logger.warn({ err, queue: name }, `queue.depth gauge: getJobCounts failed [queue=${name}]`);
+        }
+      })
+    );
+  });
+
   // Remove orphaned job schedulers left in Redis by deleted queues.
   // Queues migrated to the cronJob system (cron-job.ts) are listed here so their
   // BullMQ schedulers and pending jobs are cleaned up on first boot of the new image.
@@ -688,12 +726,62 @@ export const queueServiceFactory = (redisCfg: TRedisConfigKeys): TQueueServiceFa
       return;
     }
 
-    workerContainer[name] = new Worker(name, jobFn, {
+    const worker = new Worker(name, jobFn, {
       prefix: isClusterMode ? `{${name}}` : undefined,
       ...fipsSettings,
       ...queueSettings,
+      // Enable BullMQ's built-in per-minute completion/failure tracking in Redis. Survives pod restarts
+      // (OTel cumulative counters reset), useful as a fallback when Prometheus retention is short.
+      metrics: { maxDataPoints: MetricsTime.ONE_WEEK * 2 },
       connection
     });
+
+    // Cross-cutting metric emission for every queue. Single registration covers all ~30 named queues
+    // since BullMQ Worker is an EventEmitter and we attach the listeners here.
+    worker.on("completed", (job) => {
+      const baseAttrs = { "queue.name": name, "job.name": job.name } as Record<string, string>;
+      queueJobCounter.add(1, { ...baseAttrs, outcome: "completed" });
+
+      if (typeof job.processedOn === "number" && typeof job.timestamp === "number") {
+        const durationMs = Date.now() - job.processedOn;
+        queueJobDurationHistogram.record(durationMs / 1000, { ...baseAttrs, outcome: "completed" });
+
+        // Wait = (worker pickup) - (enqueue time + intentional delay). Subtracting opts.delay is what
+        // makes this measure queue contention, not scheduling
+        const intentionalDelayMs = job.opts.delay ?? 0;
+        const waitMs = Math.max(0, job.processedOn - job.timestamp - intentionalDelayMs);
+        queueJobWaitHistogram.record(waitMs / 1000, baseAttrs);
+      }
+    });
+
+    worker.on("failed", (job, err) => {
+      const baseAttrs = {
+        "queue.name": name,
+        "job.name": job?.name ?? "unknown"
+      } as Record<string, string>;
+      queueJobCounter.add(1, { ...baseAttrs, outcome: "failed" });
+
+      // Skip duration on framework-level failures (job hydration failed before start). Emitting 0
+      // would pollute the histogram with phantom zero-duration points.
+      if (job && typeof job.processedOn === "number") {
+        const durationMs = Date.now() - job.processedOn;
+        queueJobDurationHistogram.record(durationMs / 1000, { ...baseAttrs, outcome: "failed" });
+      }
+
+      const errorType = classifyError(err);
+      const attemptsExhausted = !!(job?.opts.attempts && job.attemptsMade && job.attemptsMade >= job.opts.attempts);
+      queueJobFailureCounter.add(1, {
+        ...baseAttrs,
+        "error.type": errorType,
+        "attempts.exhausted": attemptsExhausted ? "true" : "false"
+      });
+    });
+
+    worker.on("stalled", () => {
+      queueStalledCounter.add(1, { "queue.name": name });
+    });
+
+    workerContainer[name] = worker;
   };
 
   const listen: TQueueServiceFactory["listen"] = (name, event, listener) => {

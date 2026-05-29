@@ -22,7 +22,9 @@ import {
   ScimRequestError,
   UnauthorizedError
 } from "@app/lib/errors";
+import { classifyError } from "@app/lib/errors/classify";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
+import { coreHttpErrorCounter, rateLimitExceededCounter } from "@app/lib/telemetry/metrics";
 
 enum JWTErrors {
   JwtExpired = "jwt expired",
@@ -132,6 +134,15 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
       }
 
       errorCounter.add(1, attributes);
+
+      const coreAttrs: Record<string, string | number> = {
+        "http.request.method": method,
+        "http.route": route,
+        "error.type": classifyError(error)
+      };
+      if (orgId) coreAttrs["infisical.organization.id"] = orgId;
+      if (projectDetails?.id) coreAttrs["infisical.project.id"] = projectDetails.id;
+      coreHttpErrorCounter.add(1, coreAttrs);
     }
 
     if (error instanceof BadRequestError) {
@@ -203,6 +214,10 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
         details: error?.details
       });
     } else if (error instanceof RateLimitError) {
+      rateLimitExceededCounter.add(1, {
+        "http.route": req.routerPath ?? "unknown",
+        "http.request.method": req.method
+      });
       void res.status(HttpStatusCodes.TooManyRequests).send({
         reqId: req.id,
         statusCode: HttpStatusCodes.TooManyRequests,

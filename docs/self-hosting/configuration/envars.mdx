@@ -870,6 +870,10 @@ If the export type is set to `otlp`, you will have to configure a value for `OTE
   The password for authenticating with the telemetry collector.
 </ParamField>
 
+<ParamField query="OTEL_DROP_LEGACY_METERS" type="string" default="false" optional>
+  When set to `true`, the SDK discards all data points from the high-cardinality `Infisical` and `API` meters before aggregation. The instruments still exist in code (no errors), but nothing is stored or exported. Only bounded-cardinality `InfisicalCore` metrics are emitted. Useful for large or multi-tenant deployments where per-actor label cardinality is too expensive. See [Monitoring & Telemetry](/self-hosting/guides/monitoring-telemetry#two-meter-tiers) for details.
+</ParamField>
+
 ## Identity Auth Method
 
 <ParamField

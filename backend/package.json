@@ -188,6 +188,7 @@
     "@opentelemetry/exporter-prometheus": "^0.55.0",
     "@opentelemetry/instrumentation": "^0.55.0",
     "@opentelemetry/instrumentation-http": "^0.57.2",
+    "@opentelemetry/instrumentation-runtime-node": "^0.31.0",
     "@opentelemetry/resources": "^1.28.0",
     "@opentelemetry/sdk-metrics": "^1.28.0",
     "@opentelemetry/semantic-conventions": "^1.27.0",

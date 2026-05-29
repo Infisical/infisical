@@ -20,10 +20,12 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { detectPqcVariantFromDer } from "@app/lib/crypto/pqc/pqc-crypto";
 import { AsymmetricKeyAlgorithm, isPqcKeyAlgorithm, KMS_TO_OPENSSL_NAME, signingService } from "@app/lib/crypto/sign";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { classifyError } from "@app/lib/errors/classify";
 import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
+import { KmsCryptoOperation, KmsKeyType, recordKmsCryptoMetric } from "@app/lib/telemetry/metrics";
 import {
   getByteLengthForSymmetricEncryptionAlgorithm,
   KMS_ROOT_CONFIG_UUID,
@@ -335,10 +337,27 @@ export const kmsServiceFactory = ({
           throw new BadRequestError({ message: "Invalid KMS provider." });
       }
 
+      const externalKeyType = kmsDoc.externalKms.provider === KmsProviders.Aws ? KmsKeyType.AWS : KmsKeyType.GCP;
       return async ({ cipherTextBlob }: Pick<TDecryptWithKmsDTO, "cipherTextBlob">) => {
+        const cryptoStart = Date.now();
         try {
           const { data } = await externalKms.decrypt(cipherTextBlob);
+          recordKmsCryptoMetric({
+            operation: KmsCryptoOperation.DECRYPT,
+            keyType: externalKeyType,
+            outcome: "success",
+            durationSeconds: (Date.now() - cryptoStart) / 1000
+          });
           return data;
+        } catch (err) {
+          recordKmsCryptoMetric({
+            operation: KmsCryptoOperation.DECRYPT,
+            keyType: externalKeyType,
+            outcome: "failure",
+            durationSeconds: (Date.now() - cryptoStart) / 1000,
+            errorType: classifyError(err)
+          });
+          throw err;
         } finally {
           await externalKms.cleanup();
         }
@@ -356,9 +375,27 @@ export const kmsServiceFactory = ({
     const kmsKey = keyCipher.decrypt(kmsDoc.internalKms?.encryptedKey as Buffer, ROOT_ENCRYPTION_KEY);
 
     return ({ cipherTextBlob: versionedCipherTextBlob }: Pick<TDecryptWithKmsDTO, "cipherTextBlob">) => {
-      const cipherTextBlob = versionedCipherTextBlob.subarray(0, -KMS_VERSION_BLOB_LENGTH);
-      const decryptedBlob = dataCipher.decrypt(cipherTextBlob, kmsKey);
-      return Promise.resolve(decryptedBlob);
+      const cryptoStart = Date.now();
+      try {
+        const cipherTextBlob = versionedCipherTextBlob.subarray(0, -KMS_VERSION_BLOB_LENGTH);
+        const decryptedBlob = dataCipher.decrypt(cipherTextBlob, kmsKey);
+        recordKmsCryptoMetric({
+          operation: KmsCryptoOperation.DECRYPT,
+          keyType: KmsKeyType.INTERNAL,
+          outcome: "success",
+          durationSeconds: (Date.now() - cryptoStart) / 1000
+        });
+        return Promise.resolve(decryptedBlob);
+      } catch (err) {
+        recordKmsCryptoMetric({
+          operation: KmsCryptoOperation.DECRYPT,
+          keyType: KmsKeyType.INTERNAL,
+          outcome: "failure",
+          durationSeconds: (Date.now() - cryptoStart) / 1000,
+          errorType: classifyError(err)
+        });
+        throw err;
+      }
     };
   };
 
@@ -617,10 +654,27 @@ export const kmsServiceFactory = ({
           throw new BadRequestError({ message: "Invalid KMS provider." });
       }
 
+      const externalKeyType = kmsDoc.externalKms.provider === KmsProviders.Aws ? KmsKeyType.AWS : KmsKeyType.GCP;
       return async ({ plainText }: Pick<TEncryptWithKmsDTO, "plainText">) => {
+        const cryptoStart = Date.now();
         try {
           const { encryptedBlob } = await externalKms.encrypt(plainText);
+          recordKmsCryptoMetric({
+            operation: KmsCryptoOperation.ENCRYPT,
+            keyType: externalKeyType,
+            outcome: "success",
+            durationSeconds: (Date.now() - cryptoStart) / 1000
+          });
           return { cipherTextBlob: encryptedBlob };
+        } catch (err) {
+          recordKmsCryptoMetric({
+            operation: KmsCryptoOperation.ENCRYPT,
+            keyType: externalKeyType,
+            outcome: "failure",
+            durationSeconds: (Date.now() - cryptoStart) / 1000,
+            errorType: classifyError(err)
+          });
+          throw err;
         } finally {
           await externalKms.cleanup();
         }
@@ -636,14 +690,32 @@ export const kmsServiceFactory = ({
     const keyCipher = symmetricCipherService(SymmetricKeyAlgorithm.AES_GCM_256);
     const dataCipher = symmetricCipherService(encryptionAlgorithm);
     return ({ plainText }: Pick<TEncryptWithKmsDTO, "plainText">) => {
-      const kmsKey = keyCipher.decrypt(kmsDoc.internalKms?.encryptedKey as Buffer, ROOT_ENCRYPTION_KEY);
-      const encryptedPlainTextBlob = dataCipher.encrypt(plainText, kmsKey);
+      const cryptoStart = Date.now();
+      try {
+        const kmsKey = keyCipher.decrypt(kmsDoc.internalKms?.encryptedKey as Buffer, ROOT_ENCRYPTION_KEY);
+        const encryptedPlainTextBlob = dataCipher.encrypt(plainText, kmsKey);
 
-      // Buffer#1 encrypted text + Buffer#2 version number
-      const versionBlob = Buffer.from(KMS_VERSION, "utf8"); // length is 3
-      const cipherTextBlob = Buffer.concat([encryptedPlainTextBlob, versionBlob]);
+        // Buffer#1 encrypted text + Buffer#2 version number
+        const versionBlob = Buffer.from(KMS_VERSION, "utf8"); // length is 3
+        const cipherTextBlob = Buffer.concat([encryptedPlainTextBlob, versionBlob]);
 
-      return Promise.resolve({ cipherTextBlob });
+        recordKmsCryptoMetric({
+          operation: KmsCryptoOperation.ENCRYPT,
+          keyType: KmsKeyType.INTERNAL,
+          outcome: "success",
+          durationSeconds: (Date.now() - cryptoStart) / 1000
+        });
+        return Promise.resolve({ cipherTextBlob });
+      } catch (err) {
+        recordKmsCryptoMetric({
+          operation: KmsCryptoOperation.ENCRYPT,
+          keyType: KmsKeyType.INTERNAL,
+          outcome: "failure",
+          durationSeconds: (Date.now() - cryptoStart) / 1000,
+          errorType: classifyError(err)
+        });
+        throw err;
+      }
     };
   };
 
