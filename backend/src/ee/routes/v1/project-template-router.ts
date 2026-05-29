@@ -70,7 +70,7 @@ const ProjectTemplateRolesSchema = z
   .object({
     name: z.string().trim().min(1),
     slug: slugSchema(),
-    permissions: z.union([ProjectPermissionV2Schema, UnpackedPermissionSchema]).array()
+    permissions: ProjectPermissionV2Schema.array()
   })
   .array()
   .superRefine((roles, ctx) => {

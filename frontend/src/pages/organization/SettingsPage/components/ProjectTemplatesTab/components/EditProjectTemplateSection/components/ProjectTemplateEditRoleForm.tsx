@@ -85,7 +85,15 @@ export const ProjectTemplateEditRoleForm = ({
     await updateProjectTemplate.mutateAsync({
       templateId: projectTemplate.id,
       roles: [
-        ...projectTemplate.roles.filter((r) => r.slug !== role?.slug),
+        // Sanitize sibling roles through the form round-trip so their permissions are
+        // normalised to the same shape ProjectPermissionV2Schema accepts (strips subjects
+        // not modeled by the form, e.g. certificate-application, and migrates legacy actions).
+        ...projectTemplate.roles
+          .filter((r) => r.slug !== role?.slug)
+          .map((r) => ({
+            ...r,
+            permissions: formRolePermission2API(rolePermission2Form(r.permissions))
+          })),
         {
           ...form,
           permissions: formRolePermission2API(form.permissions)

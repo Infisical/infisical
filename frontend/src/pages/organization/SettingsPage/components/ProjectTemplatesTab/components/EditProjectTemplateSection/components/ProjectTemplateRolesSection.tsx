@@ -21,6 +21,10 @@ import { isCustomProjectRole } from "@app/helpers/roles";
 import { usePopUp } from "@app/hooks";
 import { TProjectTemplate, useUpdateProjectTemplate } from "@app/hooks/api/projectTemplates";
 import { TProjectRole } from "@app/hooks/api/roles/types";
+import {
+  formRolePermission2API,
+  rolePermission2Form
+} from "@app/pages/project/RoleDetailsBySlugPage/components/ProjectRoleModifySection.utils";
 
 import { ProjectTemplateEditRoleForm } from "./ProjectTemplateEditRoleForm";
 
@@ -72,7 +76,15 @@ export const ProjectTemplateRolesSection = ({ projectTemplate, isInfisicalTempla
 
     await updateProjectTemplate.mutateAsync({
       templateId: projectTemplate.id,
-      roles: projectTemplate.roles.filter((role) => role.slug !== slug)
+      // Sanitize remaining roles through the form round-trip so their permissions match the
+      // shape ProjectPermissionV2Schema accepts (strips subjects not modeled by the form,
+      // e.g. certificate-application, and migrates legacy actions).
+      roles: projectTemplate.roles
+        .filter((role) => role.slug !== slug)
+        .map((role) => ({
+          ...role,
+          permissions: formRolePermission2API(rolePermission2Form(role.permissions))
+        }))
     });
 
     createNotification({
