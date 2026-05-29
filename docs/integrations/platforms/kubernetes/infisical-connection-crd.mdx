@@ -1,0 +1,80 @@
+---
+sidebarTitle: "InfisicalConnection"
+title: "Using the InfisicalConnection CRD"
+description: "Learn how to configure the InfisicalConnection CRD to define how the operator connects to your Infisical instance."
+---
+
+## Overview
+
+The **InfisicalConnection** CRD defines how the Infisical Operator connects to your Infisical instance. It holds the instance address and an optional TLS configuration. Once created, it can be referenced by multiple `InfisicalAuth` CRDs so you only need to define connection details once per Infisical instance.
+
+### Prerequisites
+
+- The operator is installed on your Kubernetes cluster.
+- Access to an Infisical instance (cloud or self-hosted).
+
+## Example
+
+```yaml infisical-connection.yaml
+apiVersion: secrets.infisical.com/v1beta1
+kind: InfisicalConnection
+metadata:
+  name: my-infisical-connection
+spec:
+  address: https://app.infisical.com
+  # tls:
+  #  caCertificate:
+  #   name: secret-containing-ca-certificate
+  #   key: ca.crt
+  #   namespace: default
+```
+
+Apply the resource:
+
+```bash
+kubectl apply -f infisical-connection.yaml
+```
+
+## CRD properties
+
+<Accordion title="address">
+  The URL of the Infisical API to connect to.
+
+  When `address` is not defined, the operator connects to the address defined by the Helm value `hostAPI`.
+
+  For self-hosted instances, set this to `https://your-self-hosted-instance.com`.
+</Accordion>
+
+<Accordion title="tls">
+  This block defines TLS settings for connecting to the Infisical instance.
+</Accordion>
+
+<Accordion title="tls.caCertificate">
+  A reference to a Kubernetes secret containing a CA certificate for SSL/TLS connections.
+
+  - `name`: Name of the Kubernetes secret containing the CA certificate.
+  - `namespace`: Namespace of the Kubernetes secret containing the CA certificate.
+  - `key`: The key within the secret that holds the CA certificate value.
+
+  ```yaml
+  tls:
+    caCertificate:
+      name: secret-containing-ca-certificate
+      namespace: default
+      key: ca.crt
+  ```
+</Accordion>
+
+## Troubleshooting
+
+You can check the status of your `InfisicalConnection` resource by inspecting its conditions:
+
+```bash
+kubectl get infisicalconnection my-infisical-connection -o jsonpath='{.status.conditions}' | jq
+```
+
+When the connection is healthy, the `secrets.infisical.com/IsReady` condition will have `Status: "True"` and `Reason: "OK"`.
+
+If the connection is unhealthy, `Reason` will be set to `Error` and `Message` will contain details about what went wrong.
+
+The `ObservedGeneration` field indicates which generation of the resource spec the operator has last processed. If `ObservedGeneration` is less than `metadata.generation`, the operator has not yet reconciled the latest changes to the resource.

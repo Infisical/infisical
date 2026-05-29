@@ -1,0 +1,437 @@
+---
+sidebarTitle: "InfisicalAuth"
+title: "Using the InfisicalAuth CRD"
+description: "Learn how to configure the InfisicalAuth CRD to define how the operator authenticates with Infisical."
+---
+
+import KubernetesAuthShortLivedTokens from "/snippets/documentation/platform/identities/kubernetes-auth-short-lived-tokens.mdx";
+import KubernetesAuthGatewayReviewer from "/snippets/documentation/platform/identities/kubernetes-auth-gateway-reviewer.mdx";
+
+## Overview
+
+The **InfisicalAuth** CRD defines how the Infisical Operator authenticates with your Infisical instance. It encapsulates the machine identity authentication method and credentials. Once created, it can be referenced by multiple secret resources, so you only need to define authentication details once per identity.
+
+The operator caches authenticated credentials using the token's TTL (at 70% of the expiration time) so that multiple resources sharing the same `InfisicalAuth` don't trigger redundant login calls. The cache is automatically invalidated when the `InfisicalAuth` spec changes or when the referenced `InfisicalConnection` is updated.
+
+### Prerequisites
+
+- The operator is installed on your Kubernetes cluster.
+- A [machine identity](/documentation/platform/identities/machine-identities) configured in Infisical with access to the relevant project(s).
+- An [InfisicalConnection](/integrations/platforms/kubernetes/infisical-connection-crd) resource created in your cluster.
+
+## Example
+
+You can only define one authentication method per InfisicalAuth resource.
+
+<AccordionGroup>
+  <Accordion title="Kubernetes Auth (Recommended)">
+Authenticates using a Kubernetes service account token. This is the recommended method when running inside a Kubernetes cluster. The operator automatically creates short-lived service account tokens (10 minutes) for authentication.
+
+[Read more about Kubernetes Auth](/documentation/platform/identities/kubernetes-auth).
+
+<Accordion title="Short-lived service account tokens (Recommended)">
+  <Steps>
+    <KubernetesAuthShortLivedTokens />
+
+    <Step title="Create a generic Kubernetes secret containing the machine identity ID">
+      Create a generic Kubernetes secret containing the machine identity ID. Following this example, we'll create a secret named `kubernetes-credentials` in the default namespace, and add the machine identity ID as the value of the `identityId` key.
+
+      ```bash
+      kubectl create secret generic kubernetes-credentials \
+        --from-literal=identityId="<your-machine-identity-id>"
+      ```
+
+      <Tip>
+        You can find the machine identity ID in the Infisical UI by going to Access Control > Machine Identities, and clicking on the identity you want to view the details of.
+      </Tip>
+    </Step>
+
+    <Step title="Create the InfisicalAuth resource with your service account details">
+      After you bind the service account to the `system:auth-delegator` cluster role, you are ready to create the `InfisicalAuth` resource using the kubernetes auth method.
+
+
+      ```yaml infisical-auth.yaml
+      apiVersion: secrets.infisical.com/v1beta1
+      kind: InfisicalAuth
+      metadata:
+        name: my-infisical-auth
+      spec:
+        infisicalConnectionRef:
+          name: my-infisical-connection
+          namespace: default
+        method: kubernetes
+        kubernetes:
+          identityIdRef:
+            name: kubernetes-credentials
+            namespace: default
+            key: identityId
+          serviceAccountRef:
+            name: infisical-service-account
+            namespace: default
+      ```
+      </Step>
+
+      <Step title="Apply the resource">
+        ```bash
+        kubectl apply -f infisical-auth.yaml
+        ```
+      </Step>
+  </Steps>
+</Accordion>
+<Accordion title="Use Gateway as Reviewer">
+  <Note>
+    **When to use this option**: Choose this approach when you have a gateway deployed in your Kubernetes Cluster and wish to eliminate long-lived tokens. This approach simplifies Infisical Kubernetes Auth configuration, and only one service account will need to have the elevated `system:auth-delegator` ClusterRole binding.
+  </Note>
+
+  <Info>
+    **Note:** Gateway is a paid feature. - **Infisical Cloud users:** Gateway is
+    available under the **Enterprise Tier**. - **Self-Hosted Infisical:** Please
+    contact [sales@infisical.com](mailto:sales@infisical.com) to purchase an
+    enterprise license.
+  </Info>
+
+  <Steps>
+    <KubernetesAuthGatewayReviewer />
+
+    <Step title="Create a generic Kubernetes secret containing the machine identity ID">
+      Create a generic Kubernetes secret containing the machine identity ID. Following this example, we'll create a secret named `kubernetes-credentials` in the default namespace, and add the machine identity ID as the value of the `identityId` key.
+
+      ```bash
+      kubectl create secret generic kubernetes-credentials \
+        --from-literal=identityId="<your-machine-identity-id>"
+      ```
+    </Step>
+
+    <Step title="Create the InfisicalAuth resource">
+      After you have set up the Kubernetes Auth prerequisites above, add the identity ID and service account details to your InfisicalAuth resource.
+
+      ```yaml infisical-auth.yaml
+      apiVersion: secrets.infisical.com/v1beta1
+      kind: InfisicalAuth
+      metadata:
+        name: my-infisical-auth
+      spec:
+        infisicalConnectionRef:
+          name: my-infisical-connection
+          namespace: default
+        method: kubernetes
+        kubernetes:
+          identityIdRef:
+            name: kubernetes-credentials
+            namespace: default
+            key: identityId
+          serviceAccountRef:
+            name: infisical-service-account # Change to whichever service account you want the operator to use for authentication.
+            namespace: default
+      ```
+
+      <Tip>
+        Because you are using the gateway as the token reviewer, you are able to use a different service account for authentication. The gateway sits inside your Kubernetes cluster and has permissions to perform token reviews against the Kubernetes API Server. This means you can use any valid service account in the InfisicalAuth resource, as long as it lives inside the same Kubernetes cluster as the gateway configured inside Infisical.
+      </Tip>
+    </Step>
+
+    <Step title="Apply the resource">
+      ```bash
+      kubectl apply -f infisical-auth.yaml
+      ```
+    </Step>
+  </Steps>
+</Accordion>
+
+| Field                          | Required | Description                                               |
+| ------------------------------ | -------- | --------------------------------------------------------- |
+| `identityIdRef`                | Yes      | Reference to the secret containing the machine identity ID. |
+| `serviceAccountRef.name`       | Yes      | Name of the Kubernetes service account.                   |
+| `serviceAccountRef.namespace`  | Yes      | Namespace of the service account.                         |
+| `serviceAccountTokenAudiences` | No       | Custom audiences for the generated service account token. |
+
+<KubernetesAuthOperatorSetup apiVersion="v1beta1"/>
+</Accordion>
+
+  <Accordion title="Universal Auth">
+    Authenticates using a client ID and client secret. Works anywhere, not tied to any cloud provider.
+
+    [Read more about Universal Auth](/documentation/platform/identities/universal-auth).
+
+    | Field             | Required | Description                                           |
+    | ----------------- | -------- | ----------------------------------------------------- |
+    | `clientIdRef`     | Yes      | Reference to the secret containing the universal auth client ID.     |
+    | `clientSecretRef` | Yes      | Reference to the secret containing the universal auth client secret. |
+
+
+    <Steps>
+      <Step title="Create a machine identity">
+        You need to create a machine identity, and give it access to the project(s) you want to interact with. You can [read more about machine identities here](/documentation/platform/identities/universal-auth).
+      </Step>
+      <Step title="Create Kubernetes secret containing machine identity credentials">
+        Once you have created your machine identity and added it to your project(s), you will need to create a Kubernetes secret containing the identity credentials.
+        To quickly create a Kubernetes secret containing the identity credentials, you can run the command below.
+
+        Make sure you replace `<your-identity-client-id>` with the identity client ID and `<your-identity-client-secret>` with the identity client secret.
+
+        ``` bash
+          kubectl create secret generic universal-auth-credentials \
+           --from-literal=clientId="<your-identity-client-id>" \
+           --from-literal=clientSecret="<your-identity-client-secret>"
+        ```
+    </Step>
+
+    <Step title="Add reference for the Kubernetes secret containing the identity credentials">
+      Once the secret is created, add the `secretName` and `secretNamespace` of the secret that was just created under `universal.clientIdRef` and `universal.clientSecretRef` fields in the InfisicalAuth resource. See the full example below for reference.
+    </Step>
+  </Steps>
+
+
+
+```yaml infisical-auth.yaml
+apiVersion: secrets.infisical.com/v1beta1
+kind: InfisicalAuth
+metadata:
+  name: my-infisical-auth
+spec:
+  infisicalConnectionRef:
+    name: my-infisical-connection
+    namespace: default
+  method: universal
+  universal:
+    clientIdRef:
+      name: universal-auth-credentials
+      namespace: default
+      key: clientId
+    clientSecretRef:
+      name: universal-auth-credentials
+      namespace: default
+      key: clientSecret
+```
+
+Apply the resource:
+
+```bash
+kubectl apply -f infisical-auth.yaml
+```
+  </Accordion>
+  <Accordion title="AWS IAM Auth">
+Authenticates using AWS IAM. Can only be used within AWS environments such as EC2, Lambda, and EKS.
+
+[Read more about AWS IAM Auth](/documentation/platform/identities/aws-auth).
+
+| Field           | Required | Description                                               |
+| --------------- | -------- | --------------------------------------------------------- |
+| `identityIdRef` | Yes      | Reference to the secret containing the machine identity ID. |
+
+```yaml infisical-auth.yaml
+apiVersion: secrets.infisical.com/v1beta1
+kind: InfisicalAuth
+metadata:
+  name: my-infisical-auth
+spec:
+  infisicalConnectionRef:
+    name: my-infisical-connection
+    namespace: default
+  method: aws-iam
+  awsIam:
+    identityIdRef:
+      name: aws-iam-credentials
+      namespace: default
+      key: identityId
+```
+
+The referenced Kubernetes secret must contain the machine identity ID:
+
+```bash
+kubectl create secret generic aws-iam-credentials \
+  --from-literal=identityId="<your-machine-identity-id>"
+```
+
+Apply the resource:
+
+```bash
+kubectl apply -f infisical-auth.yaml
+```
+  </Accordion>
+  <Accordion title="Azure Auth">
+Authenticates using Azure managed identity. Can only be used within Azure environments.
+
+[Read more about Azure Auth](/documentation/platform/identities/azure-auth).
+
+| Field           | Required | Description                                               |
+| --------------- | -------- | --------------------------------------------------------- |
+| `identityIdRef` | Yes      | Reference to the secret containing the machine identity ID. |
+| `resource`      | No       | The Azure resource (audience) to request a token for.     |
+
+```yaml infisical-auth.yaml
+apiVersion: secrets.infisical.com/v1beta1
+kind: InfisicalAuth
+metadata:
+  name: my-infisical-auth
+spec:
+  infisicalConnectionRef:
+    name: my-infisical-connection
+    namespace: default
+  method: azure
+  azure:
+    identityIdRef:
+      name: azure-credentials
+      namespace: default
+      key: identityId
+```
+
+The referenced Kubernetes secret must contain the machine identity ID:
+
+```bash
+kubectl create secret generic azure-credentials \
+  --from-literal=identityId="<your-machine-identity-id>"
+```
+
+Apply the resource:
+
+```bash
+kubectl apply -f infisical-auth.yaml
+```
+  </Accordion>
+  <Accordion title="GCP ID Token Auth">
+Authenticates using GCP ID tokens. Can only be used within GCP environments.
+
+[Read more about GCP ID Token Auth](/documentation/platform/identities/gcp-auth).
+
+| Field           | Required | Description                                               |
+| --------------- | -------- | --------------------------------------------------------- |
+| `identityIdRef` | Yes      | Reference to the secret containing the machine identity ID. |
+
+```yaml infisical-auth.yaml
+apiVersion: secrets.infisical.com/v1beta1
+kind: InfisicalAuth
+metadata:
+  name: my-infisical-auth
+spec:
+  infisicalConnectionRef:
+    name: my-infisical-connection
+    namespace: default
+  method: gcp-id-token
+  gcpIdToken:
+    identityIdRef:
+      name: gcp-id-token-credentials
+      namespace: default
+      key: identityId
+```
+
+The referenced Kubernetes secret must contain the machine identity ID:
+
+```bash
+kubectl create secret generic gcp-id-token-credentials \
+  --from-literal=identityId="<your-machine-identity-id>"
+```
+
+Apply the resource:
+
+```bash
+kubectl apply -f infisical-auth.yaml
+```
+  </Accordion>
+  <Accordion title="GCP IAM Auth">
+Authenticates using GCP IAM with a service account key file. Works both within and outside GCP environments.
+
+[Read more about GCP IAM Auth](/documentation/platform/identities/gcp-auth).
+
+| Field                       | Required | Description                                               |
+| --------------------------- | -------- | --------------------------------------------------------- |
+| `identityIdRef`             | Yes      | Reference to the secret containing the machine identity ID. |
+| `serviceAccountKeyFilePath` | Yes      | Path to the GCP service account key file mounted in the operator pod. |
+
+```yaml infisical-auth.yaml
+apiVersion: secrets.infisical.com/v1beta1
+kind: InfisicalAuth
+metadata:
+  name: my-infisical-auth
+spec:
+  infisicalConnectionRef:
+    name: my-infisical-connection
+    namespace: default
+  method: gcp-iam
+  gcpIam:
+    identityIdRef:
+      name: gcp-iam-credentials
+      namespace: default
+      key: identityId
+    serviceAccountKeyFilePath: /path/to/service-account-key.json
+```
+
+The referenced Kubernetes secret must contain the machine identity ID:
+
+```bash
+kubectl create secret generic gcp-iam-credentials \
+  --from-literal=identityId="<your-machine-identity-id>"
+```
+
+Apply the resource:
+
+```bash
+kubectl apply -f infisical-auth.yaml
+```
+  </Accordion>
+  <Accordion title="LDAP Auth">
+Authenticates using LDAP credentials.
+
+[Read more about LDAP Auth](/documentation/platform/identities/ldap-auth).
+
+| Field           | Required | Description                                               |
+| --------------- | -------- | --------------------------------------------------------- |
+| `identityIdRef` | Yes      | Reference to the secret containing the machine identity ID. |
+| `usernameRef`   | Yes      | Reference to the secret containing the LDAP username.     |
+| `passwordRef`   | Yes      | Reference to the secret containing the LDAP password.     |
+
+```yaml infisical-auth.yaml
+apiVersion: secrets.infisical.com/v1beta1
+kind: InfisicalAuth
+metadata:
+  name: my-infisical-auth
+spec:
+  infisicalConnectionRef:
+    name: my-infisical-connection
+    namespace: default
+  method: ldap
+  ldap:
+    identityIdRef:
+      name: ldap-credentials
+      namespace: default
+      key: identityId
+    usernameRef:
+      name: ldap-credentials
+      namespace: default
+      key: username
+    passwordRef:
+      name: ldap-credentials
+      namespace: default
+      key: password
+```
+
+The referenced Kubernetes secret must contain `identityId`, `username`, and `password` keys:
+
+```bash
+kubectl create secret generic ldap-credentials \
+  --from-literal=identityId="<your-machine-identity-id>" \
+  --from-literal=username="<your-ldap-username>" \
+  --from-literal=password="<your-ldap-password>"
+```
+
+Apply the resource:
+
+```bash
+kubectl apply -f infisical-auth.yaml
+```
+  </Accordion>
+</AccordionGroup>
+
+## Troubleshooting
+
+You can check the status of your `InfisicalAuth` resource by inspecting its conditions:
+
+```bash
+kubectl get infisicalauth my-infisical-auth -o jsonpath='{.status.conditions}' | jq
+```
+
+When authentication is healthy, the `secrets.infisical.com/IsReady` condition will have `Status: "True"` and `Reason: "OK"`.
+
+If authentication is unhealthy, `Reason` will be set to `Error` and `Message` will contain details about what went wrong.
+
+The `ObservedGeneration` field indicates which generation of the resource spec the operator has last processed. If `ObservedGeneration` is less than `metadata.generation`, the operator has not yet reconciled the latest changes to the resource.
