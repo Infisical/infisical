@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/infisical/api/internal/services/assumeprivilege"
 	"github.com/infisical/api/internal/services/auditlog"
 	"github.com/infisical/api/internal/services/auth/apiauth"
 	"github.com/infisical/api/internal/services/kms"
@@ -12,16 +13,18 @@ import (
 	"github.com/infisical/api/internal/services/project"
 )
 
-type platformServices struct {
-	authenticator apiauth.Authenticator
-	permission    *permission.Service
-	kms           *kms.Service
-	license       *license.Service
-	project       *project.Service
-	auditLog      *auditlog.Service
+// PlatformServices holds platform-level services shared across handlers.
+type PlatformServices struct {
+	Authenticator   apiauth.Authenticator
+	Permission      *permission.Service
+	KMS             *kms.Service
+	License         *license.Service
+	Project         *project.Service
+	AuditLog        *auditlog.Service
+	AssumePrivilege *assumeprivilege.Service
 }
 
-func newPlatformServices(ctx context.Context, infra *Infra) (*platformServices, error) {
+func newPlatformServices(ctx context.Context, infra *Infra) (*PlatformServices, error) {
 	kmsSvc, err := kms.NewService(ctx, infra.Logger, &kms.Deps{
 		DB:     infra.DB,
 		HSM:    infra.HSM,
@@ -42,11 +45,16 @@ func newPlatformServices(ctx context.Context, infra *Infra) (*platformServices, 
 		KeyStore: infra.KeyStore,
 	})
 
-	authenticator := apiauth.NewAuthenticator(infra.DB, infra.Config.AuthSecret, infra.KeyStore)
-
 	permissionSvc := permission.NewService(ctx, infra.Logger, &permission.Deps{DB: infra.DB})
 
 	projectSvc := project.NewService(ctx, infra.Logger, &project.Deps{DB: infra.DB})
+
+	assumePrivilegeSvc := assumeprivilege.NewService(ctx, infra.Logger, &assumeprivilege.Deps{
+		AuthSecret:        infra.Config.AuthSecret,
+		PermissionService: permissionSvc,
+	})
+
+	authenticator := apiauth.NewAuthenticator(infra.DB, infra.Config.AuthSecret, infra.KeyStore, assumePrivilegeSvc)
 
 	auditLogSvc := auditlog.NewService(ctx, infra.Logger, &auditlog.Deps{
 		Queue:  infra.Queue,
@@ -62,13 +70,14 @@ func newPlatformServices(ctx context.Context, infra *Infra) (*platformServices, 
 	})
 	auditLogQueueHandler.Register(infra.Queue)
 
-	svc := &platformServices{
-		authenticator: authenticator,
-		permission:    permissionSvc,
-		kms:           kmsSvc,
-		license:       licenseSvc,
-		project:       projectSvc,
-		auditLog:      auditLogSvc,
+	svc := &PlatformServices{
+		Authenticator:   authenticator,
+		Permission:      permissionSvc,
+		KMS:             kmsSvc,
+		License:         licenseSvc,
+		Project:         projectSvc,
+		AuditLog:        auditLogSvc,
+		AssumePrivilege: assumePrivilegeSvc,
 	}
 
 	return svc, nil
