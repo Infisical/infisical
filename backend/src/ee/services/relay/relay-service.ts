@@ -27,6 +27,7 @@ import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { verifyHostInputValidity } from "../dynamic-secret/dynamic-secret-fns";
+import { CERT_NOT_BEFORE_BACKDATE_MS } from "../gateway-v2/gateway-v2-constants";
 import { TGatewayV2DALFactory } from "../gateway-v2/gateway-v2-dal";
 import { OrgPermissionRelayActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
@@ -656,7 +657,7 @@ export const relayServiceFactory = ({
     );
 
     const relayServerKeys = await crypto.nativeCrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
-    const relayServerCertIssuedAt = new Date();
+    const relayServerCertIssuedAt = new Date(Date.now() - CERT_NOT_BEFORE_BACKDATE_MS);
     const relayServerCertExpireAt = new Date(new Date().setDate(new Date().getDate() + 1));
     const relayServerCertPrivateKey = crypto.nativeCrypto.KeyObject.from(relayServerKeys.privateKey);
 
@@ -758,7 +759,7 @@ export const relayServiceFactory = ({
       ["sign"]
     );
 
-    const clientCertIssuedAt = new Date();
+    const clientCertIssuedAt = new Date(Date.now() - CERT_NOT_BEFORE_BACKDATE_MS);
     const clientCertExpiration = new Date(new Date().getTime() + (duration ?? 5 * 60 * 1000));
     const clientKeys = await crypto.nativeCrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
     const clientCertPrivateKey = crypto.nativeCrypto.KeyObject.from(clientKeys.privateKey);
