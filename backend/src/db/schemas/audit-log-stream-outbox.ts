@@ -17,8 +17,6 @@ export const AuditLogStreamOutboxSchema = z.object({
   attempts: z.number().default(0),
   nextRetryAt: z.date(),
   lockedAt: z.date().nullable().optional(),
-  workerId: z.string().nullable().optional(),
-  lastError: z.string().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date()
 });

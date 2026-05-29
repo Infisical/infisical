@@ -1,5 +1,4 @@
 import { isAxiosError } from "axios";
-import { randomUUID } from "crypto";
 
 import { TAuditLogs } from "@app/db/schemas";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
@@ -66,24 +65,16 @@ const computeBackoff = (attemptsAfterIncrement: number): Date => {
   return new Date(Date.now() + base + jitter);
 };
 
-const truncateError = (error: unknown): string => {
-  let message: string;
-  if (isAxiosError(error)) {
-    message = `${error.message ?? "Request failed"} — ${JSON.stringify(error.response?.data ?? null)}`;
-  } else {
-    message = (error as Error)?.message ?? "Unknown error";
-  }
-  if (message.length > LAST_ERROR_MAX_LENGTH) {
-    return `${message.slice(0, LAST_ERROR_MAX_LENGTH)}...`;
-  }
-  return message;
-};
-
 const formatErrorMessage = (error: unknown): string => {
   if (isAxiosError(error)) {
     return `${error.message ?? "Request failed"} — ${JSON.stringify(error.response?.data ?? null)}`;
   }
   return (error as Error)?.message ?? "Unknown error";
+};
+
+const truncateError = (error: unknown): string => {
+  const message = formatErrorMessage(error);
+  return message.length > LAST_ERROR_MAX_LENGTH ? `${message.slice(0, LAST_ERROR_MAX_LENGTH)}...` : message;
 };
 
 export type TAuditLogStreamOutboxServiceFactoryDep = {
@@ -214,12 +205,11 @@ export const auditLogStreamOutboxServiceFactory = ({
       kmsService
     });
 
-    const workerId = randomUUID();
     const providerImpl = factory();
 
     for (let batchIdx = 0; batchIdx < MAX_BATCHES_PER_JOB; batchIdx += 1) {
       // eslint-disable-next-line no-await-in-loop
-      const claimed = await auditLogStreamOutboxDAL.claimBatchForStream(streamId, BATCH_SIZE, workerId);
+      const claimed = await auditLogStreamOutboxDAL.claimBatchForStream(streamId, BATCH_SIZE);
       if (claimed.length === 0) return;
 
       const chunks = chunkAuditLogsByBatchLimit(claimed, providerImpl.getProviderBatchLimit());
@@ -231,12 +221,11 @@ export const auditLogStreamOutboxServiceFactory = ({
           await providerImpl.batchStreamLog({ credentials, auditLogs: chunk.map((row) => row.payload) });
           streamSuccess.push(...chunk);
         } catch (error) {
-          const logMessage = formatErrorMessage(error);
+          const errorMessage = truncateError(error);
           logger.error(
             error,
-            `audit-log-stream-outbox: batch delivery failed [streamId=${streamId}] [orgId=${orgId}] [provider=${provider}] [chunkSize=${chunk.length}]: ${logMessage}`
+            `audit-log-stream-outbox: batch delivery failed [streamId=${streamId}] [orgId=${orgId}] [provider=${provider}] [chunkSize=${chunk.length}]: ${errorMessage}`
           );
-          const errorMessage = truncateError(error);
           streamFail.push(...chunk.map((row) => ({ row, errorMessage })));
         }
       }

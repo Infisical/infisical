@@ -50,11 +50,7 @@ export const auditLogStreamOutboxDALFactory = (db: TDbClient) => {
   // Atomically claim up to `limit` ready rows for `streamId`: lock them with
   // FOR UPDATE SKIP LOCKED, mark them processing, and return them to the worker.
   // Runs inside a single transaction so the lock and the status flip commit together.
-  const claimBatchForStream = async (
-    streamId: string,
-    limit: number,
-    workerId: string
-  ): Promise<TAuditLogStreamOutboxRow[]> => {
+  const claimBatchForStream = async (streamId: string, limit: number): Promise<TAuditLogStreamOutboxRow[]> => {
     try {
       return await db.transaction(async (tx) => {
         const lockedRows = await tx(TableName.AuditLogStreamOutbox)
@@ -74,8 +70,7 @@ export const auditLogStreamOutboxDALFactory = (db: TDbClient) => {
           .whereIn("id", ids)
           .update({
             status: AuditLogStreamOutboxStatus.Processing,
-            lockedAt: tx.fn.now(),
-            workerId
+            lockedAt: tx.fn.now()
           })
           .returning("*");
 
@@ -91,9 +86,7 @@ export const auditLogStreamOutboxDALFactory = (db: TDbClient) => {
     try {
       await (tx || db)(TableName.AuditLogStreamOutbox).whereIn("id", ids).update({
         status: AuditLogStreamOutboxStatus.Delivered,
-        lockedAt: null,
-        workerId: null,
-        lastError: null
+        lockedAt: null
       });
     } catch (error) {
       throw new DatabaseError({ error, name: "AuditLogStreamOutbox: markBatchAsDelivered" });
@@ -102,7 +95,7 @@ export const auditLogStreamOutboxDALFactory = (db: TDbClient) => {
 
   // Release a claim by flipping rows back to 'retry' with an updated attempt count
   // and a future nextRetryAt. Used when the provider call fails for the whole batch.
-  const markBatchForRetry = async (ids: number[], nextRetryAt: Date, errorMessage: string, tx?: Knex) => {
+  const markBatchForRetry = async (ids: number[], nextRetryAt: Date, tx?: Knex) => {
     if (ids.length === 0) return;
     try {
       await (tx || db)(TableName.AuditLogStreamOutbox)
@@ -111,9 +104,7 @@ export const auditLogStreamOutboxDALFactory = (db: TDbClient) => {
           status: AuditLogStreamOutboxStatus.Retry,
           attempts: db.raw('"attempts" + 1'),
           nextRetryAt,
-          lockedAt: null,
-          workerId: null,
-          lastError: errorMessage
+          lockedAt: null
         });
     } catch (error) {
       throw new DatabaseError({ error, name: "AuditLogStreamOutbox: markBatchForRetry" });
@@ -161,12 +152,12 @@ export const auditLogStreamOutboxDALFactory = (db: TDbClient) => {
   //                 around as the dedup guard against a re-fanout from a
   //                 retried ingest tick; pruned later by the cleanup cron).
   //   - retriable:  rows whose chunk failed but can still retry — flip to 'retry'
-  //                 with attempt+1 and lastError = the chunk's error.
+  //                 with attempt+1.
   //   - exhausted:  rows whose chunk failed and used up MAX_ATTEMPTS — move to DLQ.
   // Failed rows arrive as TFailedStreamRow so each carries the errorMessage from
   // its own chunk (different chunks of one claim can fail with different errors).
-  // We group by errorMessage and issue one markBatchForRetry / moveToDlq per
-  // group so each row's lastError reflects what actually broke for it.
+  // Exhausted rows are grouped by errorMessage and moved to the DLQ one group at
+  // a time so each DLQ row records what actually broke for it.
   //
   // Folding all three outcomes into a single transaction means a crash between
   // the writes can't leave the claim half-applied (e.g. some rows flipped to
@@ -186,16 +177,11 @@ export const auditLogStreamOutboxDALFactory = (db: TDbClient) => {
           await markBatchAsDelivered(input.successIds, tx);
         }
         if (input.retriable && retriableRows.length > 0) {
-          const idsByError = new Map<string, number[]>();
-          for (const { row, errorMessage } of retriableRows) {
-            const existing = idsByError.get(errorMessage);
-            if (existing) existing.push(row.id);
-            else idsByError.set(errorMessage, [row.id]);
-          }
-          for (const [errorMessage, ids] of idsByError) {
-            // eslint-disable-next-line no-await-in-loop
-            await markBatchForRetry(ids, input.retriable.nextRetryAt, errorMessage, tx);
-          }
+          await markBatchForRetry(
+            retriableRows.map(({ row }) => row.id),
+            input.retriable.nextRetryAt,
+            tx
+          );
         }
         if (input.exhausted.length > 0) {
           const rowsByError = new Map<string, TAuditLogStreamOutboxRow[]>();
@@ -257,9 +243,7 @@ export const auditLogStreamOutboxDALFactory = (db: TDbClient) => {
               status: AuditLogStreamOutboxStatus.Retry,
               attempts: db.raw('"attempts" + 1'),
               nextRetryAt: tx.fn.now(),
-              lockedAt: null,
-              workerId: null,
-              lastError: errorMessage
+              lockedAt: null
             });
         }
 

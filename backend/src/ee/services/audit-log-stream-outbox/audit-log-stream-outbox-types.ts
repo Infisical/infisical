@@ -19,8 +19,6 @@ export type TAuditLogStreamOutboxRow = {
   attempts: number;
   nextRetryAt: Date;
   lockedAt: Date | null;
-  workerId: string | null;
-  lastError: string | null;
   createdAt: Date;
   updatedAt: Date;
 };

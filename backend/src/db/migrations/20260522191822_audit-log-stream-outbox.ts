@@ -16,31 +16,26 @@ export async function up(knex: Knex): Promise<void> {
       t.integer("attempts").notNullable().defaultTo(0);
       t.timestamp("nextRetryAt", { useTz: true }).notNullable().defaultTo(knex.fn.now());
       t.timestamp("lockedAt", { useTz: true });
-      t.string("workerId");
-      t.text("lastError");
       t.timestamps(true, true, true);
 
       t.foreign("streamId").references("id").inTable(TableName.AuditLogStream).onDelete("CASCADE");
       t.foreign("orgId").references("id").inTable(TableName.Organization).onDelete("CASCADE");
-      // Idempotency guard: the fanout insert targets this constraint with ON CONFLICT DO NOTHING.
+
       t.unique(["streamId", "auditLogId"]);
     });
 
-    // Worker drain query: WHERE streamId = ? AND status IN ('pending','retry') AND nextRetryAt <= NOW() ORDER BY id LIMIT N FOR UPDATE SKIP LOCKED
     await knex.schema.raw(`
       CREATE INDEX IF NOT EXISTS "${TableName.AuditLogStreamOutbox}_drain_idx"
       ON "${TableName.AuditLogStreamOutbox}" ("streamId", "nextRetryAt", "id")
       WHERE status IN ('pending', 'retry')
     `);
 
-    // Stale lock recovery: surface rows stuck in 'processing' (worker crashed mid-batch).
     await knex.schema.raw(`
       CREATE INDEX IF NOT EXISTS "${TableName.AuditLogStreamOutbox}_processing_idx"
       ON "${TableName.AuditLogStreamOutbox}" ("lockedAt")
       WHERE status = 'processing'
     `);
 
-    // Cleanup cron: prune delivered rows past the retention window.
     await knex.schema.raw(`
       CREATE INDEX IF NOT EXISTS "${TableName.AuditLogStreamOutbox}_delivered_idx"
       ON "${TableName.AuditLogStreamOutbox}" ("updatedAt")
@@ -64,9 +59,11 @@ export async function up(knex: Knex): Promise<void> {
 
       t.foreign("streamId").references("id").inTable(TableName.AuditLogStream).onDelete("CASCADE");
       t.foreign("orgId").references("id").inTable(TableName.Organization).onDelete("CASCADE");
-      t.index(["streamId", "failedAt"]);
-      t.index(["orgId", "failedAt"]);
-      // Cleanup cron scans by failedAt only — the per-stream/per-org composites above don't help.
+
+      // FK referencing columns: Postgres does not auto-index these, so cascade
+      // deletes (stream/org removal) would otherwise seq-scan the DLQ.
+      t.index(["streamId"]);
+      t.index(["orgId"]);
       t.index(["failedAt"]);
     });
   }

@@ -55,8 +55,6 @@ const buildRow = (overrides: Partial<TAuditLogStreamOutboxRow> = {}): TAuditLogS
   attempts: 0,
   nextRetryAt: new Date(),
   lockedAt: new Date(),
-  workerId: "worker-1",
-  lastError: null,
   createdAt: new Date(),
   updatedAt: new Date(),
   ...overrides
