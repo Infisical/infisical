@@ -8,10 +8,6 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
   Badge,
   Button,
   Field,
@@ -238,6 +234,99 @@ export const ShareSecretForm = ({
         />
         <Controller
           control={control}
+          name="expiresIn"
+          render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+            <Field>
+              <FieldLabel>Expires In</FieldLabel>
+              <Select value={field.value} onValueChange={(e) => onChange(e)}>
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {expiresInOptions.map(({ label, value: expiresInValue }) => (
+                    <SelectItem
+                      value={String(expiresInValue || "")}
+                      key={label}
+                      disabled={!filteredExpiresInOptions.some((v) => v.label === label)}
+                    >
+                      {label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {expiresInOptions.length !== filteredExpiresInOptions.length && (
+                <FieldDescription className="text-info">
+                  Limited to{" "}
+                  {filteredExpiresInOptions[filteredExpiresInOptions.length - 1].label} by
+                  organization
+                </FieldDescription>
+              )}
+              {error && <FieldError>{error.message}</FieldError>}
+            </Field>
+          )}
+        />
+        {(maxSharedSecretViewLimit === null || isLimitingView) && (
+          <div className="flex w-full items-end gap-2 overflow-visible">
+            {maxSharedSecretViewLimit === null && (
+              <Controller
+                control={control}
+                name="shouldLimitView"
+                render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                  <Field className="flex-1">
+                    <FieldLabel>Max Views</FieldLabel>
+                    <Select
+                      value={field.value.toString()}
+                      onValueChange={(e) => onChange(e === "true")}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {viewLimitOptions.map(({ label, value: viewLimitValue }) => (
+                          <SelectItem
+                            value={viewLimitValue.toString()}
+                            key={viewLimitValue.toString()}
+                          >
+                            {label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {error && <FieldError>{error.message}</FieldError>}
+                  </Field>
+                )}
+              />
+            )}
+            {isLimitingView && (
+              <Controller
+                control={control}
+                name="viewLimit"
+                render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                  <Field className="flex-1">
+                    {maxSharedSecretViewLimit && <FieldLabel>Max Views</FieldLabel>}
+                    <Input
+                      onChange={onChange}
+                      {...field}
+                      min={1}
+                      max={maxSharedSecretViewLimit ?? 1000}
+                      type="number"
+                      isError={Boolean(error)}
+                    />
+                    {maxSharedSecretViewLimit && (
+                      <FieldDescription className="text-info">
+                        Limited to {maxSharedSecretViewLimit} view
+                        {maxSharedSecretViewLimit === 1 ? "" : "s"} by organization
+                      </FieldDescription>
+                    )}
+                    {error && <FieldError>{error.message}</FieldError>}
+                  </Field>
+                )}
+              />
+            )}
+          </div>
+        )}
+        <Controller
+          control={control}
           name="password"
           render={({ field, fieldState: { error } }) => (
             <Field>
@@ -299,191 +388,93 @@ export const ShareSecretForm = ({
           />
         )}
 
-        <Accordion type="single" collapsible variant="ghost">
-          <AccordionItem value="advance-settings">
-            <AccordionTrigger>Advanced Settings</AccordionTrigger>
-            <AccordionContent className="flex flex-col gap-y-4">
-              <Controller
-                control={control}
-                name="expiresIn"
-                render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-                  <Field>
-                    <FieldLabel>Expires In</FieldLabel>
-                    <Select value={field.value} onValueChange={(e) => onChange(e)}>
-                      <SelectTrigger className="w-full">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {expiresInOptions.map(({ label, value: expiresInValue }) => (
-                          <SelectItem
-                            value={String(expiresInValue || "")}
-                            key={label}
-                            disabled={!filteredExpiresInOptions.some((v) => v.label === label)}
-                          >
-                            {label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {expiresInOptions.length !== filteredExpiresInOptions.length && (
-                      <FieldDescription className="text-info">
-                        Limited to{" "}
-                        {filteredExpiresInOptions[filteredExpiresInOptions.length - 1].label} by
-                        organization
-                      </FieldDescription>
-                    )}
-                    {error && <FieldError>{error.message}</FieldError>}
-                  </Field>
-                )}
-              />
-              <div className="flex w-full items-end gap-2 overflow-visible">
-                {maxSharedSecretViewLimit === null && (
-                  <Controller
-                    control={control}
-                    name="shouldLimitView"
-                    render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-                      <Field className="flex-1">
-                        <FieldLabel>Max Views</FieldLabel>
-                        <Select
-                          value={field.value.toString()}
-                          onValueChange={(e) => onChange(e === "true")}
-                        >
-                          <SelectTrigger className="w-full">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {viewLimitOptions.map(({ label, value: viewLimitValue }) => (
-                              <SelectItem
-                                value={viewLimitValue.toString()}
-                                key={viewLimitValue.toString()}
-                              >
-                                {label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        {error && <FieldError>{error.message}</FieldError>}
-                      </Field>
-                    )}
-                  />
-                )}
-                {isLimitingView && (
-                  <Controller
-                    control={control}
-                    name="viewLimit"
-                    render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-                      <Field className="flex-1">
-                        {maxSharedSecretViewLimit && <FieldLabel>Max Views</FieldLabel>}
-                        <Input
-                          onChange={onChange}
-                          {...field}
-                          min={1}
-                          max={maxSharedSecretViewLimit ?? 1000}
-                          type="number"
-                          isError={Boolean(error)}
-                        />
-                        {maxSharedSecretViewLimit && (
-                          <FieldDescription className="text-info">
-                            Limited to {maxSharedSecretViewLimit} view
-                            {maxSharedSecretViewLimit === 1 ? "" : "s"} by organization
-                          </FieldDescription>
-                        )}
-                        {error && <FieldError>{error.message}</FieldError>}
-                      </Field>
-                    )}
-                  />
-                )}
-              </div>
-              {!isPublic && (
-                <>
-                  <Controller
-                    control={control}
-                    name="emails"
-                    render={({ field, fieldState: { error } }) => (
-                      <Field>
-                        <FieldLabel>
-                          Emails <span className="text-xs text-muted italic">- Optional</span>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Info className="size-3 cursor-help text-muted" />
-                            </TooltipTrigger>
-                            <TooltipContent className="max-w-sm">
-                              <p>
-                                Unique secret links will be emailed to each individual. The secret
-                                will only be accessible to those links.
-                              </p>
-                              <p className="mt-2">
-                                {isAllowingExternalEmails
-                                  ? "External recipients (user without an Infisical account) will need the password to view the secret. Authorized recipients will also need a password if the secret is password-protected."
-                                  : "Recipients must have an Infisical account to verify their identity."}
-                              </p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </FieldLabel>
-                        <Input
-                          {...field}
-                          placeholder="user1@example.com, user2@example.com"
-                          autoComplete="off"
-                          isError={Boolean(error)}
-                        />
-                        <FieldDescription>
+        {!isPublic && (
+          <>
+            <Controller
+              control={control}
+              name="emails"
+              render={({ field, fieldState: { error } }) => (
+                <Field>
+                  <FieldLabel>
+                    Emails <span className="text-xs text-muted italic">- Optional</span>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Info className="size-3 cursor-help text-muted" />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-sm">
+                        <p>
+                          Unique secret links will be emailed to each individual. The secret
+                          will only be accessible to those links.
+                        </p>
+                        <p className="mt-2">
                           {isAllowingExternalEmails
-                            ? "All recipients will receive a link and need the password to access the secret. They don't need an Infisical account, but a password is mandatory in this case."
-                            : "Recipients must have an Infisical account to verify identity"}
-                        </FieldDescription>
-                        {error && <FieldError>{error.message}</FieldError>}
-                      </Field>
-                    )}
+                            ? "External recipients (user without an Infisical account) will need the password to view the secret. Authorized recipients will also need a password if the secret is password-protected."
+                            : "Recipients must have an Infisical account to verify their identity."}
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </FieldLabel>
+                  <Input
+                    {...field}
+                    placeholder="user1@example.com, user2@example.com"
+                    autoComplete="off"
+                    isError={Boolean(error)}
                   />
-                  <Controller
-                    control={control}
-                    name="allowExternalEmails"
-                    render={({
-                      field: { onChange, value: isChecked, ...field },
-                      fieldState: { error }
-                    }) => (
-                      <Field orientation="horizontal">
-                        <Switch
-                          variant="org"
-                          checked={isOrgAccess ? false : (isChecked ?? false)}
-                          onCheckedChange={onChange}
-                          disabled={isOrgAccess}
-                          id="allow-external-emails"
-                          {...field}
-                        />
-                        <FieldLabel className="flex-auto">
-                          <span className="flex items-center">
-                            Allow external recipients
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Info className="ml-2 size-3 cursor-help text-muted" />
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                When enabled, the defined emails will receive the secret link via
-                                email but will need the password to access the secret.
-                              </TooltipContent>
-                            </Tooltip>
-                            {!allowSecretSharingOutsideOrganization && (
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Lock className="ml-2 size-3 text-muted" />
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  External sharing is disabled by your organization
-                                </TooltipContent>
-                              </Tooltip>
-                            )}
-                          </span>
-                        </FieldLabel>
-                        {error && <FieldError>{error.message}</FieldError>}
-                      </Field>
-                    )}
-                  />
-                </>
+                  <FieldDescription>
+                    {isAllowingExternalEmails
+                      ? "All recipients will receive a link and need the password to access the secret. They don't need an Infisical account, but a password is mandatory in this case."
+                      : "Recipients must have an Infisical account to verify identity"}
+                  </FieldDescription>
+                  {error && <FieldError>{error.message}</FieldError>}
+                </Field>
               )}
-            </AccordionContent>
-          </AccordionItem>
-        </Accordion>
+            />
+            <Controller
+              control={control}
+              name="allowExternalEmails"
+              render={({
+                field: { onChange, value: isChecked, ...field },
+                fieldState: { error }
+              }) => (
+                <Field orientation="horizontal">
+                  <Switch
+                    variant="project"
+                    checked={isOrgAccess ? false : (isChecked ?? false)}
+                    onCheckedChange={onChange}
+                    disabled={isOrgAccess}
+                    id="allow-external-emails"
+                    {...field}
+                  />
+                  <FieldLabel className="flex-auto">
+                    <span className="flex items-center">
+                      Allow external recipients
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Info className="ml-2 size-3 cursor-help text-muted" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          When enabled, the defined emails will receive the secret link via
+                          email but will need the password to access the secret.
+                        </TooltipContent>
+                      </Tooltip>
+                      {!allowSecretSharingOutsideOrganization && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Lock className="ml-2 size-3 text-muted" />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            External sharing is disabled by your organization
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
+                    </span>
+                  </FieldLabel>
+                  {error && <FieldError>{error.message}</FieldError>}
+                </Field>
+              )}
+            />
+          </>
+        )}
         <div className="flex w-full justify-end">
           {isPublic && (
             <Badge variant="ghost" className="mt-auto mr-auto">
