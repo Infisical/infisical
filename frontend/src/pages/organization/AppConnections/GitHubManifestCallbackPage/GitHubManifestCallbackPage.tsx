@@ -58,7 +58,9 @@ export const GitHubManifestCallbackPage = () => {
     const githubHost = host && host.length > 0 ? `https://${host}` : "https://github.com";
     const appPathSegment = instanceType === "server" ? "github-apps" : "apps";
 
-    window.location.assign(`${githubHost}/${appPathSegment}/${slug}/installations/new?state=${installState}`);
+    window.location.assign(
+      `${githubHost}/${appPathSegment}/${slug}/installations/new?state=${installState}`
+    );
   }, []);
 
   return (

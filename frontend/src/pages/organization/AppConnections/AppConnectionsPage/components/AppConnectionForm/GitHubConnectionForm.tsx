@@ -23,12 +23,12 @@ import {
 } from "@app/components/v2";
 import { Badge } from "@app/components/v3/generic/Badge";
 import { GatewayPicker } from "@app/components/v3/platform/GatewayPicker";
+import { apiRequest } from "@app/config/request";
 import { useSubscription } from "@app/context";
 import {
   OrgGatewayPermissionActions,
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
-import { apiRequest } from "@app/config/request";
 import {
   APP_CONNECTION_MAP,
   getAppConnectionMethodDetails,
