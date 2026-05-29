@@ -22,6 +22,27 @@ export const getAwsConnectionListItem = () => {
   };
 };
 
+/**
+ * Derives the correct STS region from a role ARN's partition.
+ * GovCloud ARNs (arn:aws-us-gov:...) require a GovCloud STS endpoint,
+ * and China ARNs (arn:aws-cn:...) require a China STS endpoint.
+ */
+const getDefaultStsRegionFromArn = (roleArn: string, fallbackRegion: AWSRegion): AWSRegion => {
+  const arnParts = roleArn.split(":");
+  const partition = arnParts[1];
+
+  if (partition === "aws-us-gov") {
+    return AWSRegion.US_GOV_WEST_1;
+  }
+
+  if (partition === "aws-cn") {
+    // China regions aren't in the AWSRegion enum but return a valid region string
+    return "cn-north-1" as AWSRegion;
+  }
+
+  return fallbackRegion;
+};
+
 export const getAwsConnectionConfig = async (appConnection: TAwsConnectionConfig, region = AWSRegion.US_EAST_1) => {
   const appCfg = getConfig();
 
@@ -33,8 +54,12 @@ export const getAwsConnectionConfig = async (appConnection: TAwsConnectionConfig
 
   switch (method) {
     case AwsConnectionMethod.AssumeRole: {
+      // Use a region in the same partition as the role ARN for the STS call.
+      // GovCloud credentials are invalid at commercial STS endpoints and vice versa.
+      const stsRegion = getDefaultStsRegionFromArn(credentials.roleArn, region);
+
       const client = new STSClient({
-        region,
+        region: stsRegion,
         useFipsEndpoint: crypto.isFipsModeEnabled(),
         sha256: CustomAWSHasher,
         credentials:
@@ -89,7 +114,14 @@ export const getAwsConnectionConfig = async (appConnection: TAwsConnectionConfig
 
 export const validateAwsConnectionCredentials = async (appConnection: TAwsConnectionConfig) => {
   try {
-    const awsConfig = await getAwsConnectionConfig(appConnection);
+    // Derive the correct region from the role ARN's partition so that both the AssumeRole
+    // call and the subsequent GetCallerIdentity validation hit the correct STS endpoint.
+    const region =
+      appConnection.method === AwsConnectionMethod.AssumeRole
+        ? getDefaultStsRegionFromArn(appConnection.credentials.roleArn, AWSRegion.US_EAST_1)
+        : AWSRegion.US_EAST_1;
+
+    const awsConfig = await getAwsConnectionConfig(appConnection, region);
     const sts = new STSClient({
       region: awsConfig.region,
       credentials: awsConfig.credentials
