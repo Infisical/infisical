@@ -163,6 +163,9 @@ export const auditLogStreamOutboxServiceFactory = ({
       }
     }
 
+    // No log in the batch carried an orgId — nothing to fan out, skip the stream lookup.
+    if (logsByOrg.size === 0) return;
+
     const outboxRows: { streamId: string; orgId: string; payload: TAuditLogs }[] = [];
     // Dedup streams touched this batch so each is debounced/woken exactly once.
     const streamsToFlush = new Map<string, { orgId: string; provider: LogProvider }>();

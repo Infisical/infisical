@@ -257,7 +257,9 @@ describe("audit-log-stream-outbox-service enqueueForLogs batch fanout", () => {
     };
 
     const auditLogStreamDAL = {
-      find: vi.fn<(arg: { orgId: string }) => Promise<{ id: string; provider: LogProvider }[]>>(async () => []),
+      find: vi.fn<
+        (arg: { $in: { orgId: string[] } }) => Promise<{ id: string; orgId: string; provider: LogProvider }[]>
+      >(async () => []),
       findById: vi.fn()
     };
 
@@ -294,16 +296,17 @@ describe("audit-log-stream-outbox-service enqueueForLogs batch fanout", () => {
   test("groups by org: one find per distinct org, one batchInsert, one debounce per stream", async () => {
     const { service, auditLogStreamDAL, auditLogStreamOutboxDAL, keyStore, queueService } = buildService();
 
-    auditLogStreamDAL.find.mockImplementation(async ({ orgId }) => {
-      if (orgId === "orgA") return [{ id: "sA", provider: PROVIDER }];
-      if (orgId === "orgB") return [{ id: "sB", provider: PROVIDER }];
-      return [];
-    });
+    auditLogStreamDAL.find.mockImplementation(async ({ $in }) =>
+      [
+        { id: "sA", orgId: "orgA", provider: PROVIDER },
+        { id: "sB", orgId: "orgB", provider: PROVIDER }
+      ].filter((s) => $in.orgId.includes(s.orgId))
+    );
 
     await service.enqueueForLogs([log("1", "orgA"), log("2", "orgA"), log("3", "orgB")]);
 
-    // one lookup per distinct org
-    expect(auditLogStreamDAL.find).toHaveBeenCalledTimes(2);
+    // single batched lookup covering every distinct org
+    expect(auditLogStreamDAL.find).toHaveBeenCalledTimes(1);
     // single batch insert: sA × 2 logs + sB × 1 log = 3 rows
     expect(auditLogStreamOutboxDAL.batchInsert).toHaveBeenCalledTimes(1);
     expect(auditLogStreamOutboxDAL.batchInsert.mock.calls[0][0]).toHaveLength(3);

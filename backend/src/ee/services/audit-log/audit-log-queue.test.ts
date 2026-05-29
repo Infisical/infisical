@@ -74,7 +74,7 @@ const createHarness = async ({ clickhouse = false, streamsEnabled = false } = {}
 
   const auditLogDAL = { batchCreate: vi.fn<(logs: Record<string, unknown>[]) => Promise<void>>(async () => undefined) };
   const projectDAL = {
-    findById: vi.fn<(id: string) => Promise<Record<string, unknown> | undefined>>(async () => undefined)
+    find: vi.fn<(filter: { $in: { id: string[] } }) => Promise<Record<string, unknown>[]>>(async () => [])
   };
   const licenseService = {
     getPlan: vi.fn<(orgId: string) => Promise<{ auditLogsRetentionDays: number }>>(async () => ({
@@ -185,7 +185,7 @@ describe("audit-log-queue unified consumer", () => {
 
   test("postgres branch batch-inserts with null-normalized empties + projectName, then trims", async () => {
     const { consumer, auditLogDAL, projectDAL, keyStore } = await createHarness();
-    projectDAL.findById.mockResolvedValue({ orgId: "org-1", name: "proj", auditLogsRetentionDays: null });
+    projectDAL.find.mockResolvedValue([{ id: "p1", orgId: "org-1", name: "proj", auditLogsRetentionDays: null }]);
     keyStore.streamCollect.mockResolvedValueOnce(
       collectResult([streamEntry({ orgId: undefined, projectId: "p1", ipAddress: undefined })])
     );
@@ -216,9 +216,7 @@ describe("audit-log-queue unified consumer", () => {
 
   test("drops entries failing skip rules and inserts only survivors", async () => {
     const { consumer, auditLogDAL, projectDAL, licenseService, keyStore } = await createHarness();
-    projectDAL.findById.mockImplementation(async (id: string) =>
-      id === "pD" ? { orgId: "orgD", name: "d" } : undefined
-    );
+    projectDAL.find.mockResolvedValue([{ id: "pD", orgId: "orgD", name: "d" }]); // pB absent → treated as deleted
     licenseService.getPlan.mockImplementation(async (orgId: string) => ({
       auditLogsRetentionDays: orgId === "orgZero" ? 0 : 30
     }));
@@ -241,7 +239,9 @@ describe("audit-log-queue unified consumer", () => {
 
   test("dedups project and plan lookups across the batch", async () => {
     const { consumer, projectDAL, licenseService, keyStore } = await createHarness();
-    projectDAL.findById.mockImplementation(async (id: string) => ({ orgId: id === "p1" ? "orgA" : "orgB", name: id }));
+    projectDAL.find.mockImplementation(async ({ $in }) =>
+      $in.id.map((id) => ({ id, orgId: id === "p1" ? "orgA" : "orgB", name: id }))
+    );
     keyStore.streamCollect.mockResolvedValueOnce(
       collectResult([
         streamEntry({ id: "1", orgId: undefined, projectId: "p1" }),
@@ -253,7 +253,7 @@ describe("audit-log-queue unified consumer", () => {
 
     await consumer();
 
-    expect(projectDAL.findById).toHaveBeenCalledTimes(2); // p1, p2
+    expect(projectDAL.find).toHaveBeenCalledTimes(1); // single batched lookup for p1, p2
     expect(licenseService.getPlan).toHaveBeenCalledTimes(2); // orgA, orgB
   });
 
