@@ -190,7 +190,7 @@ RUN apt-get update && apt-get install -y \
     libc-bin=2.41-12+deb13u3 \
     libssl3t64=3.5.6-1~deb13u1 \
     dpkg=1.22.22 \
-    libcap2 \
+    libcap2=1:2.75-10+deb13u1 \
     libnghttp2-14=1.64.0-1.1+deb13u1 \
     libngtcp2-16=1.11.0-1+deb13u1 \
     libngtcp2-crypto-gnutls8=1.11.0-1+deb13u1 \
