@@ -866,11 +866,7 @@ export const registerRoutes = async (
     licenseService,
     permissionService,
     auditLogStreamDAL,
-    kmsService,
-    keyStore,
-    notificationService,
-    smtpService,
-    orgDAL
+    kmsService
   });
 
   const auditLogQueue = await auditLogQueueServiceFactory({
