@@ -1,5 +1,11 @@
 import { requestContext } from "@fastify/request-context";
-import opentelemetry from "@opentelemetry/api";
+import opentelemetry, {
+  type Attributes,
+  type Counter,
+  type Histogram,
+  type Meter,
+  type MetricOptions
+} from "@opentelemetry/api";
 import type { Knex } from "knex";
 
 import { classifyError } from "@app/lib/errors/classify";
@@ -7,13 +13,57 @@ import { RequestContextKey } from "@app/lib/request-context/request-context-keys
 
 import { getConfig } from "../config/env";
 
+// IMPORTANT: this module is imported (transitively, via instrumentation.ts) BEFORE setupTelemetry()
+// installs the global MeterProvider. A meter or instrument acquired at module-load time therefore binds
+// to the OpenTelemetry API's no-op provider permanently and silently records nothing. To avoid that we
+// resolve the real meter lazily (memoized, on first .add()/.record() — i.e. at request time, after init).
+// Observable gauges can't defer to first use (the SDK pulls them), so they're registered at boot in
+// registerInfrastructureMetrics(), which runs from main.ts after setupTelemetry().
+const meterCache = new Map<string, Meter>();
+const resolveMeter = (meterName: string): Meter => {
+  let meter = meterCache.get(meterName);
+  if (!meter) {
+    meter = opentelemetry.metrics.getMeter(meterName);
+    meterCache.set(meterName, meter);
+  }
+  return meter;
+};
+
+type LazyMeter = {
+  createCounter: (name: string, options?: MetricOptions) => Counter;
+  createHistogram: (name: string, options?: MetricOptions) => Histogram;
+};
+
+// Returns instrument wrappers whose underlying instrument is created on first use (after init), so it
+// binds to the real MeterProvider. Call sites keep using .add()/.record() exactly as before.
+const lazyMeter = (meterName: string): LazyMeter => ({
+  createCounter: (name, options) => {
+    let instrument: Counter | undefined;
+    return {
+      add: (value: number, attributes?: Attributes) => {
+        if (!instrument) instrument = resolveMeter(meterName).createCounter(name, options);
+        instrument.add(value, attributes);
+      }
+    } as Counter;
+  },
+  createHistogram: (name, options) => {
+    let instrument: Histogram | undefined;
+    return {
+      record: (value: number, attributes?: Attributes) => {
+        if (!instrument) instrument = resolveMeter(meterName).createHistogram(name, options);
+        instrument.record(value, attributes);
+      }
+    } as Histogram;
+  }
+});
+
 // Legacy meter — kept for backwards compatibility. The pre-existing metrics below already ship with
 // high-cardinality labels documented in the docs.
-const infisicalMeter = opentelemetry.metrics.getMeter("Infisical");
+const infisicalMeter = lazyMeter("Infisical");
 
 // The MeterProvider applies a strict attribute allowlist (View in
 // instrumentation.ts) to anything emitted here, dropping high-cardinality labels at the SDK level.
-const infisicalCoreMeter = opentelemetry.metrics.getMeter("InfisicalCore");
+const infisicalCoreMeter = lazyMeter("InfisicalCore");
 
 export enum AuthAttemptAuthMethod {
   EMAIL = "email",
@@ -332,20 +382,6 @@ export const rateLimitExceededCounter = infisicalCoreMeter.createCounter("infisi
   unit: "{request}"
 });
 
-// Build info. Constant-value observable gauge that emits 1 with build identification labels every export.
-const buildInfoGauge = infisicalCoreMeter.createObservableGauge("infisical.build.info", {
-  description: "Always 1. Labels carry build identification (version, git sha, node version)."
-});
-
-buildInfoGauge.addCallback((result) => {
-  if (!isTelemetryEnabled()) return;
-  result.observe(1, {
-    "service.version": process.env.INFISICAL_PLATFORM_VERSION || "unknown",
-    "git.commit.sha": process.env.DD_GIT_COMMIT_SHA || "unknown",
-    "node.version": process.version
-  });
-});
-
 // -- Authentication latency (InfisicalCore meter) ---------------------------------------------------
 export const authAttemptDurationHistogram = infisicalCoreMeter.createHistogram("infisical.auth.attempt.duration", {
   description:
@@ -453,11 +489,28 @@ export const recordSsoConfigChangeMetric = (params: {
   ssoConfigChangeCounter.add(1, attributes);
 };
 
-// -- Database connection-pool observable gauge (InfisicalCore meter) --------------------------------
-// Registered once at boot from main.ts with the primary Knex instance. Reads in-memory tarn pool
-// counters, so it's cheap to observe on every export.
+// -- Boot-time observable gauges (InfisicalCore meter) ----------------------------------------------
+// Registered once at boot from main.ts with the primary Knex instance. Runs AFTER setupTelemetry() has
+// installed the real MeterProvider, so we resolve the real meter directly here (observable gauges can't
+// be deferred to first use like counters/histograms — the SDK pulls them on each export).
 export const registerInfrastructureMetrics = (db: Knex) => {
-  const dbPoolGauge = infisicalCoreMeter.createObservableGauge("infisical.db.pool.connections", {
+  const meter = resolveMeter("InfisicalCore");
+
+  // Build info: constant-value gauge that emits 1 with build identification labels on every export.
+  const buildInfoGauge = meter.createObservableGauge("infisical.build.info", {
+    description: "Always 1. Labels carry build identification (version, git sha, node version)."
+  });
+  buildInfoGauge.addCallback((result) => {
+    if (!isTelemetryEnabled()) return;
+    result.observe(1, {
+      "service.version": process.env.INFISICAL_PLATFORM_VERSION || "unknown",
+      "git.commit.sha": process.env.DD_GIT_COMMIT_SHA || "unknown",
+      "node.version": process.version
+    });
+  });
+
+  // Connection pool: reads in-memory tarn pool counters, so it's cheap to observe on every export.
+  const dbPoolGauge = meter.createObservableGauge("infisical.db.pool.connections", {
     description: "Knex/tarn connection pool counts by state (used, free, pending).",
     unit: "{connection}"
   });
