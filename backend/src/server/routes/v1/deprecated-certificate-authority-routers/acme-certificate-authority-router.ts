@@ -1,4 +1,4 @@
-import { AcmeCertificateAuthoritySchema } from "@app/services/certificate-authority/acme/acme-certificate-authority-schemas";
+import { SanitizedAcmeCertificateAuthoritySchema } from "@app/services/certificate-authority/acme/acme-certificate-authority-schemas";
 import {
   CreateAcmeCertificateAuthoritySchema,
   UpdateAcmeCertificateAuthoritySchema
@@ -11,7 +11,7 @@ export const registerAcmeCertificateAuthorityRouter = async (server: FastifyZodP
   registerCertificateAuthorityEndpoints({
     caType: CaType.ACME,
     server,
-    responseSchema: AcmeCertificateAuthoritySchema,
+    responseSchema: SanitizedAcmeCertificateAuthoritySchema,
     createSchema: CreateAcmeCertificateAuthoritySchema,
     updateSchema: UpdateAcmeCertificateAuthoritySchema
   });
