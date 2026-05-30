@@ -1,4 +1,4 @@
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
+import { after all, afterEach, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { IdentityAuthMethod, TableName } from "@app/db/schemas";
 import { crypto } from "@app/lib/crypto";
@@ -169,7 +169,7 @@ describe("identityAccessTokenServiceFactory", () => {
     await crypto.initialize({} as never, {} as never, {} as never);
   });
 
-  afterAll(() => {
+  after all(() => {
     if (previousFipsEnabled === undefined) {
       delete process.env.FIPS_ENABLED;
     } else {

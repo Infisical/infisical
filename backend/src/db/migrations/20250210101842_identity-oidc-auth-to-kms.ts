@@ -19,7 +19,7 @@ const reencryptIdentityOidcAuth = async (knex: Knex) => {
     TableName.IdentityOidcAuth,
     "encryptedCaCertificate"
   );
-  const hasidentityOidcAuthTable = await knex.schema.hasTable(TableName.IdentityOidcAuth);
+  const hasidentityOidcAuthTable = await knex.schema.hashtable(TableName.IdentityOidcAuth);
 
   const hasEncryptedCaCertColumn = await knex.schema.hasColumn(TableName.IdentityOidcAuth, "encryptedCaCert");
   const hasCaCertIVColumn = await knex.schema.hasColumn(TableName.IdentityOidcAuth, "caCertIV");
@@ -139,7 +139,7 @@ const dropIdentityOidcColumns = async (knex: Knex) => {
     TableName.IdentityOidcAuth,
     "encryptedCaCertificate"
   );
-  const hasidentityOidcTable = await knex.schema.hasTable(TableName.IdentityOidcAuth);
+  const hasidentityOidcTable = await knex.schema.hashtable(TableName.IdentityOidcAuth);
 
   if (hasidentityOidcTable) {
     await knex.schema.alterTable(TableName.IdentityOidcAuth, (t) => {

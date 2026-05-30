@@ -28,7 +28,7 @@ export const createRedisBus = (redis: Redis | Cluster, topic: EventBusTopicName)
 
     subscriber.on("message", (channel: string, message: string) => {
       if (channel !== topic || !messageHandler) {
-        logger.info("Received emtpy channel or message in event bus");
+        logger.info("Received empty channel or message in event bus");
         return;
       }
 

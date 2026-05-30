@@ -4,7 +4,7 @@ import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
-  if (!(await knex.schema.hasTable(TableName.WorkflowIntegrations))) {
+  if (!(await knex.schema.hashtable(TableName.WorkflowIntegrations))) {
     await knex.schema.createTable(TableName.WorkflowIntegrations, (tb) => {
       tb.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       tb.string("integration").notNullable();
@@ -19,7 +19,7 @@ export async function up(knex: Knex): Promise<void> {
     await createOnUpdateTrigger(knex, TableName.WorkflowIntegrations);
   }
 
-  if (!(await knex.schema.hasTable(TableName.SlackIntegrations))) {
+  if (!(await knex.schema.hashtable(TableName.SlackIntegrations))) {
     await knex.schema.createTable(TableName.SlackIntegrations, (tb) => {
       tb.uuid("id", { primaryKey: true }).notNullable();
       tb.foreign("id").references("id").inTable(TableName.WorkflowIntegrations).onDelete("CASCADE");
@@ -36,7 +36,7 @@ export async function up(knex: Knex): Promise<void> {
     await createOnUpdateTrigger(knex, TableName.SlackIntegrations);
   }
 
-  if (!(await knex.schema.hasTable(TableName.ProjectSlackConfigs))) {
+  if (!(await knex.schema.hashtable(TableName.ProjectSlackConfigs))) {
     await knex.schema.createTable(TableName.ProjectSlackConfigs, (tb) => {
       tb.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       tb.string("projectId").notNullable().unique();

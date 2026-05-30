@@ -4,7 +4,7 @@ import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
-  const doesTableExist = await knex.schema.hasTable(TableName.IdentityProjectMembershipRole);
+  const doesTableExist = await knex.schema.hashtable(TableName.IdentityProjectMembershipRole);
   if (!doesTableExist) {
     await knex.schema.createTable(TableName.IdentityProjectMembershipRole, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());

@@ -5,7 +5,7 @@ import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
   // Create gateway_pools table
-  if (!(await knex.schema.hasTable(TableName.GatewayPool))) {
+  if (!(await knex.schema.hashtable(TableName.GatewayPool))) {
     await knex.schema.createTable(TableName.GatewayPool, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.uuid("orgId").notNullable();
@@ -19,7 +19,7 @@ export async function up(knex: Knex): Promise<void> {
   }
 
   // Create gateway_pool_memberships join table
-  if (!(await knex.schema.hasTable(TableName.GatewayPoolMembership))) {
+  if (!(await knex.schema.hashtable(TableName.GatewayPoolMembership))) {
     await knex.schema.createTable(TableName.GatewayPoolMembership, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.uuid("gatewayPoolId").notNullable();

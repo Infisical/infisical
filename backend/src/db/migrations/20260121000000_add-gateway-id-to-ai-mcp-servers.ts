@@ -3,7 +3,7 @@ import { Knex } from "knex";
 import { TableName } from "../schemas";
 
 export async function up(knex: Knex): Promise<void> {
-  if (await knex.schema.hasTable(TableName.AiMcpServer)) {
+  if (await knex.schema.hashtable(TableName.AiMcpServer)) {
     const hasGatewayId = await knex.schema.hasColumn(TableName.AiMcpServer, "gatewayId");
     if (!hasGatewayId) {
       await knex.schema.alterTable(TableName.AiMcpServer, (t) => {
@@ -16,7 +16,7 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  if (await knex.schema.hasTable(TableName.AiMcpServer)) {
+  if (await knex.schema.hashtable(TableName.AiMcpServer)) {
     const hasGatewayId = await knex.schema.hasColumn(TableName.AiMcpServer, "gatewayId");
     if (hasGatewayId) {
       await knex.schema.alterTable(TableName.AiMcpServer, (t) => {

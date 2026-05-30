@@ -3,7 +3,7 @@ import { Knex } from "knex";
 import { TableName } from "../schemas";
 
 export async function up(knex: Knex): Promise<void> {
-  if (await knex.schema.hasTable(TableName.CertificateAuthorityCrl)) {
+  if (await knex.schema.hashtable(TableName.CertificateAuthorityCrl)) {
     const hasCaSecretIdColumn = await knex.schema.hasColumn(TableName.CertificateAuthorityCrl, "caSecretId");
     if (!hasCaSecretIdColumn) {
       await knex.schema.alterTable(TableName.CertificateAuthorityCrl, (t) => {
@@ -28,7 +28,7 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  if (await knex.schema.hasTable(TableName.CertificateAuthorityCrl)) {
+  if (await knex.schema.hashtable(TableName.CertificateAuthorityCrl)) {
     await knex.schema.alterTable(TableName.CertificateAuthorityCrl, (t) => {
       t.dropColumn("caSecretId");
     });

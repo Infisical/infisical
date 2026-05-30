@@ -5,7 +5,7 @@ import { createOnUpdateTrigger, dropOnUpdateTrigger } from "@app/db/utils";
 import { CertificateSyncStatus } from "@app/services/certificate-sync/certificate-sync-enums";
 
 export async function up(knex: Knex): Promise<void> {
-  if (!(await knex.schema.hasTable(TableName.CertificateSync))) {
+  if (!(await knex.schema.hashtable(TableName.CertificateSync))) {
     await knex.schema.createTable(TableName.CertificateSync, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.uuid("pkiSyncId").notNullable();

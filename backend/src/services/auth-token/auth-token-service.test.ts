@@ -1,6 +1,6 @@
 import { createHmac } from "node:crypto";
 
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, type Mocked, test, vi } from "vitest";
+import { after all, afterEach, beforeAll, beforeEach, describe, expect, type Mocked, test, vi } from "vitest";
 
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -115,7 +115,7 @@ describe("tokenServiceFactory — email signup OTP", () => {
     await crypto.initialize({} as never, {} as never, {} as never);
   });
 
-  afterAll(() => {
+  after all(() => {
     delete process.env.FIPS_ENABLED;
   });
 

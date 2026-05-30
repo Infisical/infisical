@@ -4,7 +4,7 @@ import { SecretEncryptionAlgo, SecretKeyEncoding, SecretType, TableName } from "
 import { createJunctionTable, createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
-  if (!(await knex.schema.hasTable(TableName.SecretBlindIndex))) {
+  if (!(await knex.schema.hashtable(TableName.SecretBlindIndex))) {
     await knex.schema.createTable(TableName.SecretBlindIndex, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.text("encryptedSaltCipherText").notNullable();
@@ -19,7 +19,7 @@ export async function up(knex: Knex): Promise<void> {
   }
   await createOnUpdateTrigger(knex, TableName.SecretBlindIndex);
 
-  if (!(await knex.schema.hasTable(TableName.Secret))) {
+  if (!(await knex.schema.hashtable(TableName.Secret))) {
     await knex.schema.createTable(TableName.Secret, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.integer("version").defaultTo(1).notNullable();

@@ -6,7 +6,7 @@ import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
-  if (!(await knex.schema.hasTable(TableName.AccessApprovalPolicyEnvironment))) {
+  if (!(await knex.schema.hashtable(TableName.AccessApprovalPolicyEnvironment))) {
     await knex.schema.createTable(TableName.AccessApprovalPolicyEnvironment, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.uuid("policyId").notNullable();
@@ -32,7 +32,7 @@ export async function up(knex: Knex): Promise<void> {
 
     await Promise.all(accessApprovalPolicies);
   }
-  if (!(await knex.schema.hasTable(TableName.SecretApprovalPolicyEnvironment))) {
+  if (!(await knex.schema.hashtable(TableName.SecretApprovalPolicyEnvironment))) {
     await knex.schema.createTable(TableName.SecretApprovalPolicyEnvironment, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.uuid("policyId").notNullable();
@@ -75,11 +75,11 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  if (await knex.schema.hasTable(TableName.AccessApprovalPolicyEnvironment)) {
+  if (await knex.schema.hashtable(TableName.AccessApprovalPolicyEnvironment)) {
     await knex.schema.dropTableIfExists(TableName.AccessApprovalPolicyEnvironment);
     await dropOnUpdateTrigger(knex, TableName.AccessApprovalPolicyEnvironment);
   }
-  if (await knex.schema.hasTable(TableName.SecretApprovalPolicyEnvironment)) {
+  if (await knex.schema.hashtable(TableName.SecretApprovalPolicyEnvironment)) {
     await knex.schema.dropTableIfExists(TableName.SecretApprovalPolicyEnvironment);
     await dropOnUpdateTrigger(knex, TableName.SecretApprovalPolicyEnvironment);
   }

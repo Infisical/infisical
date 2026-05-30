@@ -4,7 +4,7 @@ import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
-  if (!(await knex.schema.hasTable(TableName.OrgBot))) {
+  if (!(await knex.schema.hashtable(TableName.OrgBot))) {
     await knex.schema.createTable(TableName.OrgBot, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.string("name").notNullable();

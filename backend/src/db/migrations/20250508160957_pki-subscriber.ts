@@ -4,7 +4,7 @@ import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
-  if (!(await knex.schema.hasTable(TableName.PkiSubscriber))) {
+  if (!(await knex.schema.hashtable(TableName.PkiSubscriber))) {
     await knex.schema.createTable(TableName.PkiSubscriber, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.timestamps(true, true, true);

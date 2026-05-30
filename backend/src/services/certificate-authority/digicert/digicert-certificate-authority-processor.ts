@@ -110,7 +110,7 @@ export const processDigiCertPendingValidationRequest = async (
     rawMetadata = JSON.parse(request.metadata);
   } catch {
     logger.warn(`DigiCert request metadata could not be parsed [certificateRequestId=${request.id}]`);
-    return { status: DigiCertProcessorOutcome.Skipped, reason: "unparseable metadata" };
+    return { status: DigiCertProcessorOutcome.Skipped, reason: "unparsable metadata" };
   }
 
   const parseResult = DigiCertCertificateRequestMetadataSchema.safeParse(rawMetadata);

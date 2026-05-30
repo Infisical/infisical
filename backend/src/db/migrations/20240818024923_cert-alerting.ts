@@ -4,7 +4,7 @@ import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
-  if (!(await knex.schema.hasTable(TableName.PkiCollection))) {
+  if (!(await knex.schema.hashtable(TableName.PkiCollection))) {
     await knex.schema.createTable(TableName.PkiCollection, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.timestamps(true, true, true);
@@ -17,7 +17,7 @@ export async function up(knex: Knex): Promise<void> {
 
   await createOnUpdateTrigger(knex, TableName.PkiCollection);
 
-  if (!(await knex.schema.hasTable(TableName.PkiCollectionItem))) {
+  if (!(await knex.schema.hashtable(TableName.PkiCollectionItem))) {
     await knex.schema.createTable(TableName.PkiCollectionItem, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.timestamps(true, true, true);
@@ -32,7 +32,7 @@ export async function up(knex: Knex): Promise<void> {
 
   await createOnUpdateTrigger(knex, TableName.PkiCollectionItem);
 
-  if (!(await knex.schema.hasTable(TableName.PkiAlert))) {
+  if (!(await knex.schema.hashtable(TableName.PkiAlert))) {
     await knex.schema.createTable(TableName.PkiAlert, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.timestamps(true, true, true);

@@ -769,7 +769,7 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
           if (!userPermission) return undefined;
           if (!userPermission?.roles?.[0]) return undefined;
 
-          // when introducting cron mode change it here
+          // when introducing cron mode change it here
           const activeRoles =
             userPermission?.roles?.filter(
               ({ isTemporary, temporaryAccessEndTime }) =>
@@ -921,7 +921,7 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
             return undefined;
           }
 
-          // when introducting cron mode change it here
+          // when introducing cron mode change it here
           const activeRoles = permission?.roles.filter(
             ({ isTemporary, temporaryAccessEndTime }) =>
               !isTemporary || (isTemporary && temporaryAccessEndTime && new Date() < temporaryAccessEndTime)

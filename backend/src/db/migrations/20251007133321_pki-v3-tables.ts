@@ -4,7 +4,7 @@ import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
-  if (!(await knex.schema.hasTable(TableName.PkiCertificateTemplateV2))) {
+  if (!(await knex.schema.hashtable(TableName.PkiCertificateTemplateV2))) {
     await knex.schema.createTable(TableName.PkiCertificateTemplateV2, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.string("projectId").notNullable();
@@ -28,7 +28,7 @@ export async function up(knex: Knex): Promise<void> {
     await createOnUpdateTrigger(knex, TableName.PkiCertificateTemplateV2);
   }
 
-  if (!(await knex.schema.hasTable(TableName.PkiEstEnrollmentConfig))) {
+  if (!(await knex.schema.hashtable(TableName.PkiEstEnrollmentConfig))) {
     await knex.schema.createTable(TableName.PkiEstEnrollmentConfig, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
 
@@ -42,7 +42,7 @@ export async function up(knex: Knex): Promise<void> {
     await createOnUpdateTrigger(knex, TableName.PkiEstEnrollmentConfig);
   }
 
-  if (!(await knex.schema.hasTable(TableName.PkiApiEnrollmentConfig))) {
+  if (!(await knex.schema.hashtable(TableName.PkiApiEnrollmentConfig))) {
     await knex.schema.createTable(TableName.PkiApiEnrollmentConfig, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
 
@@ -55,7 +55,7 @@ export async function up(knex: Knex): Promise<void> {
     await createOnUpdateTrigger(knex, TableName.PkiApiEnrollmentConfig);
   }
 
-  if (!(await knex.schema.hasTable(TableName.PkiCertificateProfile))) {
+  if (!(await knex.schema.hashtable(TableName.PkiCertificateProfile))) {
     await knex.schema.createTable(TableName.PkiCertificateProfile, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.string("projectId").notNullable();

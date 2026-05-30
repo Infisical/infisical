@@ -369,7 +369,7 @@ export const dynamicSecretLeaseServiceFactory = ({
         dynamicSecretLease.config as TDynamicSecretLeaseConfig
       )
       .catch(async (err) => {
-        // only propogate this error if forced is false
+        // only propagate this error if forced is false
         if (!isForced) return { error: err as Error };
       });
 

@@ -8,7 +8,7 @@ import {
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
 
 export async function up(knex: Knex): Promise<void> {
-  if (!(await knex.schema.hasTable(TableName.SecretScanningDataSource))) {
+  if (!(await knex.schema.hashtable(TableName.SecretScanningDataSource))) {
     await knex.schema.createTable(TableName.SecretScanningDataSource, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.string("externalId").index(); // if we need a unique way of identifying this data source from an external resource
@@ -29,7 +29,7 @@ export async function up(knex: Knex): Promise<void> {
     await createOnUpdateTrigger(knex, TableName.SecretScanningDataSource);
   }
 
-  if (!(await knex.schema.hasTable(TableName.SecretScanningResource))) {
+  if (!(await knex.schema.hashtable(TableName.SecretScanningResource))) {
     await knex.schema.createTable(TableName.SecretScanningResource, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.string("externalId").notNullable();
@@ -43,7 +43,7 @@ export async function up(knex: Knex): Promise<void> {
     await createOnUpdateTrigger(knex, TableName.SecretScanningResource);
   }
 
-  if (!(await knex.schema.hasTable(TableName.SecretScanningScan))) {
+  if (!(await knex.schema.hashtable(TableName.SecretScanningScan))) {
     await knex.schema.createTable(TableName.SecretScanningScan, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.string("status").notNullable().defaultTo(SecretScanningScanStatus.Queued);
@@ -55,7 +55,7 @@ export async function up(knex: Knex): Promise<void> {
     });
   }
 
-  if (!(await knex.schema.hasTable(TableName.SecretScanningFinding))) {
+  if (!(await knex.schema.hashtable(TableName.SecretScanningFinding))) {
     await knex.schema.createTable(TableName.SecretScanningFinding, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.string("dataSourceName").notNullable();
@@ -78,7 +78,7 @@ export async function up(knex: Knex): Promise<void> {
     await createOnUpdateTrigger(knex, TableName.SecretScanningFinding);
   }
 
-  if (!(await knex.schema.hasTable(TableName.SecretScanningConfig))) {
+  if (!(await knex.schema.hashtable(TableName.SecretScanningConfig))) {
     await knex.schema.createTable(TableName.SecretScanningConfig, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.string("projectId").notNullable().unique();

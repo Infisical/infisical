@@ -132,7 +132,7 @@ const getAppsHeroku = async ({ accessToken }: { accessToken: string }) => {
 
 /**
  * Return list of names of apps for Vercel integration
- * This is re-used for getting custom environments for Vercel
+ * This is reused for getting custom environments for Vercel
  */
 export const getAppsVercel = async ({
   accessToken,

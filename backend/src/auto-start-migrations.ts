@@ -160,8 +160,8 @@ const isMigrationInitialized = async (db: Knex, logger: Logger): Promise<boolean
   const lockTableName = getLockTableName(tableName);
   const startupLockTableName = getStartupLockTableName(tableName);
 
-  const lockTableExists = await db.schema.hasTable(lockTableName);
-  const startupLockTableExists = await db.schema.hasTable(startupLockTableName);
+  const lockTableExists = await db.schema.hashtable(lockTableName);
+  const startupLockTableExists = await db.schema.hashtable(startupLockTableName);
 
   if (!lockTableExists) {
     logger.debug("Migration tables not initialized");
@@ -204,7 +204,7 @@ const ensureStartupLockTable = async (db: Knex, logger: Logger): Promise<void> =
   const { tableName } = migrationConfig;
   const startupLockTableName = getStartupLockTableName(tableName);
 
-  const tableExists = await db.schema.hasTable(startupLockTableName);
+  const tableExists = await db.schema.hashtable(startupLockTableName);
   if (!tableExists) {
     await createStartupLockTable(startupLockTableName, db);
     logger.info(`Startup lock table created: ${startupLockTableName}`);
@@ -253,7 +253,7 @@ const ensureMigrationTables = async (db: Knex, logger: Logger): Promise<void> =>
  * Why not just use `pg_advisory_xact_lock` as we did previously?
  * Because `pg_advisory_xact_lock` will block the transaction until the lock is acquired.
  * We have new migration files that uses CREATE INDEX CONCURRENTLY, it cannot be run in a transaction.
- * Also, it will wait untill all the current transactions are committed.
+ * Also, it will wait until all the current transactions are committed.
  * If there are instances holding `pg_advisory_xact_lock` for migration (it will be in a transaction that's different from the migration transaction)
  * and CREATE INDEX CONCURRENTLY (cannot be run in a transaction) runs in side the migration, we will end up with a deadlock.
  *
@@ -404,7 +404,7 @@ export const runMigrations = async ({ applicationDb, auditLogDb, clickhouseClien
     // akhilmhdh(Feb 10 2025): 2 years  from now remove this
     if (isProduction) {
       const migrationTable = migrationConfig.tableName;
-      const hasMigrationTable = await applicationDb.schema.hasTable(migrationTable);
+      const hasMigrationTable = await applicationDb.schema.hashtable(migrationTable);
       if (hasMigrationTable) {
         const firstFile = (await applicationDb(migrationTable).where({}).first()) as { name: string };
         if (firstFile?.name?.includes(".ts")) {
@@ -414,7 +414,7 @@ export const runMigrations = async ({ applicationDb, auditLogDb, clickhouseClien
         }
       }
       if (auditLogDb) {
-        const hasMigrationTableInAuditLog = await auditLogDb.schema.hasTable(migrationTable);
+        const hasMigrationTableInAuditLog = await auditLogDb.schema.hashtable(migrationTable);
         if (hasMigrationTableInAuditLog) {
           const firstFile = (await auditLogDb(migrationTable).where({}).first()) as { name: string };
           if (firstFile?.name?.includes(".ts")) {

@@ -12,7 +12,7 @@ export async function up(knex: Knex): Promise<void> {
     });
   }
 
-  if (!(await knex.schema.hasTable(TableName.AppConnectionCredentialRotation))) {
+  if (!(await knex.schema.hashtable(TableName.AppConnectionCredentialRotation))) {
     await knex.schema.createTable(TableName.AppConnectionCredentialRotation, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.uuid("connectionId").notNullable().unique();

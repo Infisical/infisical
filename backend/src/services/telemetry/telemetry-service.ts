@@ -115,7 +115,7 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
     ? new PostHog(appCfg.POSTHOG_PROJECT_API_KEY, { host: appCfg.POSTHOG_HOST })
     : undefined;
 
-  // used for email marketting email sending purpose
+  // used for email marketing email sending purpose
   const sendLoopsEvent = async (email: string, firstName?: string, lastName?: string) => {
     if (appCfg.isProductionMode && appCfg.LOOPS_API_KEY) {
       try {

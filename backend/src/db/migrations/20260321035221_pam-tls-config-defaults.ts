@@ -31,7 +31,7 @@ export async function up(knex: Knex): Promise<void> {
     });
 
   // Backfill encrypted resource connection details
-  const hasPamResourceTable = await knex.schema.hasTable(TableName.PamResource);
+  const hasPamResourceTable = await knex.schema.hashtable(TableName.PamResource);
   if (!hasPamResourceTable) return;
 
   const resources = await knex(TableName.PamResource)

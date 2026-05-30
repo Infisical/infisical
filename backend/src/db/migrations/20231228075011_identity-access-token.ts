@@ -4,7 +4,7 @@ import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
-  if (!(await knex.schema.hasTable(TableName.IdentityAccessToken))) {
+  if (!(await knex.schema.hashtable(TableName.IdentityAccessToken))) {
     await knex.schema.createTable(TableName.IdentityAccessToken, (t) => {
       t.string("id", 36).primary().defaultTo(knex.fn.uuid());
       t.bigInteger("accessTokenTTL").defaultTo(2592000).notNullable(); // 30 days second

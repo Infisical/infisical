@@ -1101,7 +1101,7 @@ export const pkiAcmeServiceFactory = ({
         certIssuanceJobData
       } = await acmeOrderDAL.transaction(async (tx) => {
         const finalizingOrder = (await acmeOrderDAL.findByIdForFinalization(orderId, tx))!;
-        // TODO: ideally, this should be doen with onRequest: verifyAuth([AuthMode.ACME_JWS_SIGNATURE]), instead?
+        // TODO: ideally, this should be done with onRequest: verifyAuth([AuthMode.ACME_JWS_SIGNATURE]), instead?
         const { ownerOrgId: actorOrgId } = (await certificateProfileDAL.findByIdWithOwnerOrgId(profileId, tx))!;
         if (finalizingOrder.status !== AcmeOrderStatus.Ready) {
           throw new AcmeOrderNotReadyError({ message: "ACME order is not ready" });

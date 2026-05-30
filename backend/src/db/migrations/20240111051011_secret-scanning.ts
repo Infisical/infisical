@@ -4,7 +4,7 @@ import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
-  if (!(await knex.schema.hasTable(TableName.GitAppInstallSession))) {
+  if (!(await knex.schema.hashtable(TableName.GitAppInstallSession))) {
     await knex.schema.createTable(TableName.GitAppInstallSession, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.string("sessionId").notNullable().unique();
@@ -17,7 +17,7 @@ export async function up(knex: Knex): Promise<void> {
   }
   await createOnUpdateTrigger(knex, TableName.GitAppInstallSession);
 
-  if (!(await knex.schema.hasTable(TableName.GitAppOrg))) {
+  if (!(await knex.schema.hashtable(TableName.GitAppOrg))) {
     await knex.schema.createTable(TableName.GitAppOrg, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.string("installationId").notNullable().unique();
@@ -30,7 +30,7 @@ export async function up(knex: Knex): Promise<void> {
   }
   await createOnUpdateTrigger(knex, TableName.GitAppOrg);
 
-  if (!(await knex.schema.hasTable(TableName.SecretScanningGitRisk))) {
+  if (!(await knex.schema.hashtable(TableName.SecretScanningGitRisk))) {
     await knex.schema.createTable(TableName.SecretScanningGitRisk, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.string("description");

@@ -4,7 +4,7 @@ import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
-  if (!(await knex.schema.hasTable(TableName.IdentityKubernetesAuth))) {
+  if (!(await knex.schema.hashtable(TableName.IdentityKubernetesAuth))) {
     await knex.schema.createTable(TableName.IdentityKubernetesAuth, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.bigInteger("accessTokenTTL").defaultTo(7200).notNullable();

@@ -3,7 +3,7 @@ import { Knex } from "knex";
 import { TableName } from "../schemas";
 
 export async function up(knex: Knex): Promise<void> {
-  if (await knex.schema.hasTable(TableName.CertificateAuthority)) {
+  if (await knex.schema.hashtable(TableName.CertificateAuthority)) {
     const hasActiveCaCertIdColumn = await knex.schema.hasColumn(TableName.CertificateAuthority, "activeCaCertId");
     if (!hasActiveCaCertIdColumn) {
       await knex.schema.alterTable(TableName.CertificateAuthority, (t) => {
@@ -20,7 +20,7 @@ export async function up(knex: Knex): Promise<void> {
     }
   }
 
-  if (await knex.schema.hasTable(TableName.CertificateAuthorityCert)) {
+  if (await knex.schema.hashtable(TableName.CertificateAuthorityCert)) {
     const hasVersionColumn = await knex.schema.hasColumn(TableName.CertificateAuthorityCert, "version");
     if (!hasVersionColumn) {
       await knex.schema.alterTable(TableName.CertificateAuthorityCert, (t) => {
@@ -57,13 +57,13 @@ export async function up(knex: Knex): Promise<void> {
     }
   }
 
-  if (await knex.schema.hasTable(TableName.CertificateAuthoritySecret)) {
+  if (await knex.schema.hashtable(TableName.CertificateAuthoritySecret)) {
     await knex.schema.alterTable(TableName.CertificateAuthoritySecret, (t) => {
       t.dropUnique(["caId"]);
     });
   }
 
-  if (await knex.schema.hasTable(TableName.Certificate)) {
+  if (await knex.schema.hashtable(TableName.Certificate)) {
     const hasCaCertIdColumn = await knex.schema.hasColumn(TableName.Certificate, "caCertId");
     if (!hasCaCertIdColumn) {
       await knex.schema.alterTable(TableName.Certificate, (t) => {
@@ -87,7 +87,7 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  if (await knex.schema.hasTable(TableName.CertificateAuthority)) {
+  if (await knex.schema.hashtable(TableName.CertificateAuthority)) {
     if (await knex.schema.hasColumn(TableName.CertificateAuthority, "activeCaCertId")) {
       await knex.schema.alterTable(TableName.CertificateAuthority, (t) => {
         t.dropColumn("activeCaCertId");
@@ -95,7 +95,7 @@ export async function down(knex: Knex): Promise<void> {
     }
   }
 
-  if (await knex.schema.hasTable(TableName.CertificateAuthorityCert)) {
+  if (await knex.schema.hashtable(TableName.CertificateAuthorityCert)) {
     if (await knex.schema.hasColumn(TableName.CertificateAuthorityCert, "version")) {
       await knex.schema.alterTable(TableName.CertificateAuthorityCert, (t) => {
         t.dropColumn("version");
@@ -109,7 +109,7 @@ export async function down(knex: Knex): Promise<void> {
     }
   }
 
-  if (await knex.schema.hasTable(TableName.Certificate)) {
+  if (await knex.schema.hashtable(TableName.Certificate)) {
     if (await knex.schema.hasColumn(TableName.Certificate, "caCertId")) {
       await knex.schema.alterTable(TableName.Certificate, (t) => {
         t.dropColumn("caCertId");

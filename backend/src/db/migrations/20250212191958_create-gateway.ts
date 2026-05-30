@@ -4,7 +4,7 @@ import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
-  if (!(await knex.schema.hasTable(TableName.OrgGatewayConfig))) {
+  if (!(await knex.schema.hashtable(TableName.OrgGatewayConfig))) {
     await knex.schema.createTable(TableName.OrgGatewayConfig, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.string("rootCaKeyAlgorithm").notNullable();
@@ -43,7 +43,7 @@ export async function up(knex: Knex): Promise<void> {
     await createOnUpdateTrigger(knex, TableName.OrgGatewayConfig);
   }
 
-  if (!(await knex.schema.hasTable(TableName.Gateway))) {
+  if (!(await knex.schema.hashtable(TableName.Gateway))) {
     await knex.schema.createTable(TableName.Gateway, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
 
@@ -68,7 +68,7 @@ export async function up(knex: Knex): Promise<void> {
     await createOnUpdateTrigger(knex, TableName.Gateway);
   }
 
-  if (!(await knex.schema.hasTable(TableName.ProjectGateway))) {
+  if (!(await knex.schema.hashtable(TableName.ProjectGateway))) {
     await knex.schema.createTable(TableName.ProjectGateway, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
 
@@ -84,7 +84,7 @@ export async function up(knex: Knex): Promise<void> {
     await createOnUpdateTrigger(knex, TableName.ProjectGateway);
   }
 
-  if (await knex.schema.hasTable(TableName.DynamicSecret)) {
+  if (await knex.schema.hashtable(TableName.DynamicSecret)) {
     const doesGatewayColExist = await knex.schema.hasColumn(TableName.DynamicSecret, "projectGatewayId");
     await knex.schema.alterTable(TableName.DynamicSecret, (t) => {
       // not setting a foreign constraint so that cascade effects are not triggered
@@ -97,7 +97,7 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  if (await knex.schema.hasTable(TableName.DynamicSecret)) {
+  if (await knex.schema.hashtable(TableName.DynamicSecret)) {
     const doesGatewayColExist = await knex.schema.hasColumn(TableName.DynamicSecret, "projectGatewayId");
     await knex.schema.alterTable(TableName.DynamicSecret, (t) => {
       if (doesGatewayColExist) t.dropColumn("projectGatewayId");

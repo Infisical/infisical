@@ -4,7 +4,7 @@ import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
-  if (!(await knex.schema.hasTable(TableName.SecretFolder))) {
+  if (!(await knex.schema.hashtable(TableName.SecretFolder))) {
     await knex.schema.createTable(TableName.SecretFolder, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.string("name").notNullable();
@@ -18,7 +18,7 @@ export async function up(knex: Knex): Promise<void> {
   }
   await createOnUpdateTrigger(knex, TableName.SecretFolder);
 
-  if (!(await knex.schema.hasTable(TableName.SecretFolderVersion))) {
+  if (!(await knex.schema.hashtable(TableName.SecretFolderVersion))) {
     await knex.schema.createTable(TableName.SecretFolderVersion, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.string("name").notNullable();

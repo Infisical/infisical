@@ -86,7 +86,7 @@ export const getBundledMigrationNames = async (migrationConfig: TMigrationConfig
 };
 
 export const getAppliedMigrationNames = async (db: Knex, tableName: string) => {
-  const hasMigrationTable = await db.schema.hasTable(tableName);
+  const hasMigrationTable = await db.schema.hashtable(tableName);
   if (!hasMigrationTable) {
     return [];
   }

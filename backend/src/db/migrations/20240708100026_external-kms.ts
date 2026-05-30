@@ -6,8 +6,8 @@ import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { TableName } from "../schemas";
 
 const createInternalKmsTableAndBackfillData = async (knex: Knex) => {
-  const doesOldKmsKeyTableExist = await knex.schema.hasTable(TableName.KmsKey);
-  const doesInternalKmsTableExist = await knex.schema.hasTable(TableName.InternalKms);
+  const doesOldKmsKeyTableExist = await knex.schema.hashtable(TableName.KmsKey);
+  const doesInternalKmsTableExist = await knex.schema.hashtable(TableName.InternalKms);
 
   // building the internal kms table by filling from old kms table
   if (doesOldKmsKeyTableExist && !doesInternalKmsTableExist) {
@@ -36,8 +36,8 @@ const createInternalKmsTableAndBackfillData = async (knex: Knex) => {
 };
 
 const renameKmsKeyVersionTableAsInternalKmsKeyVersion = async (knex: Knex) => {
-  const doesOldKmsKeyVersionTableExist = await knex.schema.hasTable(TableName.KmsKeyVersion);
-  const doesNewKmsKeyVersionTableExist = await knex.schema.hasTable(TableName.InternalKmsKeyVersion);
+  const doesOldKmsKeyVersionTableExist = await knex.schema.hashtable(TableName.KmsKeyVersion);
+  const doesNewKmsKeyVersionTableExist = await knex.schema.hashtable(TableName.InternalKmsKeyVersion);
 
   if (doesOldKmsKeyVersionTableExist && !doesNewKmsKeyVersionTableExist) {
     // because we haven't started using versioning for kms thus no data exist
@@ -56,7 +56,7 @@ const renameKmsKeyVersionTableAsInternalKmsKeyVersion = async (knex: Knex) => {
 };
 
 const createExternalKmsKeyTable = async (knex: Knex) => {
-  const doesExternalKmsServiceExist = await knex.schema.hasTable(TableName.ExternalKms);
+  const doesExternalKmsServiceExist = await knex.schema.hashtable(TableName.ExternalKms);
   if (!doesExternalKmsServiceExist) {
     await knex.schema.createTable(TableName.ExternalKms, (tb) => {
       tb.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
@@ -71,7 +71,7 @@ const createExternalKmsKeyTable = async (knex: Knex) => {
 };
 
 const removeNonRequiredFieldsFromKmsKeyTableAndBackfillRequiredData = async (knex: Knex) => {
-  const doesOldKmsKeyTableExist = await knex.schema.hasTable(TableName.KmsKey);
+  const doesOldKmsKeyTableExist = await knex.schema.hashtable(TableName.KmsKey);
 
   // building the internal kms table by filling from old kms table
   if (doesOldKmsKeyTableExist) {
@@ -153,8 +153,8 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 const renameInternalKmsKeyVersionBackToKmsKeyVersion = async (knex: Knex) => {
-  const doesInternalKmsKeyVersionTableExist = await knex.schema.hasTable(TableName.InternalKmsKeyVersion);
-  const doesKmsKeyVersionTableExist = await knex.schema.hasTable(TableName.KmsKeyVersion);
+  const doesInternalKmsKeyVersionTableExist = await knex.schema.hashtable(TableName.InternalKmsKeyVersion);
+  const doesKmsKeyVersionTableExist = await knex.schema.hashtable(TableName.KmsKeyVersion);
   if (doesInternalKmsKeyVersionTableExist && !doesKmsKeyVersionTableExist) {
     // because we haven't started using versioning for kms thus no data exist
     await knex.schema.renameTable(TableName.InternalKmsKeyVersion, TableName.KmsKeyVersion);
@@ -172,8 +172,8 @@ const renameInternalKmsKeyVersionBackToKmsKeyVersion = async (knex: Knex) => {
 };
 
 const bringBackKmsKeyFields = async (knex: Knex) => {
-  const doesOldKmsKeyTableExist = await knex.schema.hasTable(TableName.KmsKey);
-  const doesInternalKmsTableExist = await knex.schema.hasTable(TableName.InternalKms);
+  const doesOldKmsKeyTableExist = await knex.schema.hashtable(TableName.KmsKey);
+  const doesInternalKmsTableExist = await knex.schema.hashtable(TableName.InternalKms);
   if (doesOldKmsKeyTableExist && doesInternalKmsTableExist) {
     const hasSlug = await knex.schema.hasColumn(TableName.KmsKey, "slug");
     const hasEncryptedKeyColumn = await knex.schema.hasColumn(TableName.KmsKey, "encryptedKey");
@@ -197,8 +197,8 @@ const bringBackKmsKeyFields = async (knex: Knex) => {
 };
 
 const backfillKmsKeyFromInternalKmsTable = async (knex: Knex) => {
-  const doesOldKmsKeyTableExist = await knex.schema.hasTable(TableName.KmsKey);
-  const doesInternalKmsTableExist = await knex.schema.hasTable(TableName.InternalKms);
+  const doesOldKmsKeyTableExist = await knex.schema.hashtable(TableName.KmsKey);
+  const doesInternalKmsTableExist = await knex.schema.hashtable(TableName.InternalKms);
   if (doesInternalKmsTableExist && doesOldKmsKeyTableExist) {
     // backfill kms key with internal kms data
     await knex(TableName.KmsKey).update({
@@ -240,7 +240,7 @@ export async function down(knex: Knex): Promise<void> {
   await bringBackKmsKeyFields(knex);
   await backfillKmsKeyFromInternalKmsTable(knex);
 
-  const doesOldKmsKeyTableExist = await knex.schema.hasTable(TableName.KmsKey);
+  const doesOldKmsKeyTableExist = await knex.schema.hashtable(TableName.KmsKey);
   if (doesOldKmsKeyTableExist) {
     await knex.schema.alterTable(TableName.KmsKey, (tb) => {
       tb.binary("encryptedKey").notNullable().alter();
@@ -248,9 +248,9 @@ export async function down(knex: Knex): Promise<void> {
     });
   }
 
-  const doesInternalKmsTableExist = await knex.schema.hasTable(TableName.InternalKms);
+  const doesInternalKmsTableExist = await knex.schema.hashtable(TableName.InternalKms);
   if (doesInternalKmsTableExist) await knex.schema.dropTable(TableName.InternalKms);
 
-  const doesExternalKmsServiceExist = await knex.schema.hasTable(TableName.ExternalKms);
+  const doesExternalKmsServiceExist = await knex.schema.hashtable(TableName.ExternalKms);
   if (doesExternalKmsServiceExist) await knex.schema.dropTable(TableName.ExternalKms);
 }

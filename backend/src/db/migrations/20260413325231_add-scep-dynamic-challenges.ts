@@ -4,7 +4,7 @@ import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
-  if (!(await knex.schema.hasTable(TableName.PkiScepDynamicChallenge))) {
+  if (!(await knex.schema.hashtable(TableName.PkiScepDynamicChallenge))) {
     await knex.schema.createTable(TableName.PkiScepDynamicChallenge, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
 
@@ -40,7 +40,7 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  if (await knex.schema.hasTable(TableName.PkiScepDynamicChallenge)) {
+  if (await knex.schema.hashtable(TableName.PkiScepDynamicChallenge)) {
     await dropOnUpdateTrigger(knex, TableName.PkiScepDynamicChallenge);
     await knex.schema.dropTable(TableName.PkiScepDynamicChallenge);
   }

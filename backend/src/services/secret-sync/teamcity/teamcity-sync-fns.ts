@@ -111,7 +111,7 @@ export const TeamCitySyncFns = {
 
       try {
         // Replace every secret since TeamCity does not return secret values that we can cross-check
-        // No need to differenciate create / update because TeamCity uses the same method for both
+        // No need to differentiate create / update because TeamCity uses the same method for both
         await updateTeamCityVariable(payload);
       } catch (error) {
         throw new SecretSyncError({

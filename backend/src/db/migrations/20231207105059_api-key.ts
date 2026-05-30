@@ -4,7 +4,7 @@ import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
-  const isTablePresent = await knex.schema.hasTable(TableName.DeprecatedApiKey);
+  const isTablePresent = await knex.schema.hashtable(TableName.DeprecatedApiKey);
   if (!isTablePresent) {
     await knex.schema.createTable(TableName.DeprecatedApiKey, (t) => {
       t.string("id", 36).primary().defaultTo(knex.fn.uuid());

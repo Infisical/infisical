@@ -3,7 +3,7 @@ import { Knex } from "knex";
 import { TableName } from "../schemas";
 
 export async function up(knex: Knex): Promise<void> {
-  if (!(await knex.schema.hasTable(TableName.PamResourceRotationRule))) {
+  if (!(await knex.schema.hashtable(TableName.PamResourceRotationRule))) {
     await knex.schema.createTable(TableName.PamResourceRotationRule, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.uuid("resourceId").notNullable();

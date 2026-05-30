@@ -4,7 +4,7 @@ import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
-  if (!(await knex.schema.hasTable(TableName.PkiSigners))) {
+  if (!(await knex.schema.hashtable(TableName.PkiSigners))) {
     await knex.schema.createTable(TableName.PkiSigners, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.string("projectId").notNullable().index();
@@ -26,7 +26,7 @@ export async function up(knex: Knex): Promise<void> {
     await createOnUpdateTrigger(knex, TableName.PkiSigners);
   }
 
-  if (!(await knex.schema.hasTable(TableName.PkiSigningOperations))) {
+  if (!(await knex.schema.hashtable(TableName.PkiSigningOperations))) {
     await knex.schema.createTable(TableName.PkiSigningOperations, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.uuid("signerId").notNullable();

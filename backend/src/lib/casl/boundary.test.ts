@@ -906,7 +906,7 @@ describe("Validate Permission Boundary: inverted (deny) rule overlap", () => {
   });
 
   // Picomatch supports extglob syntax (e.g. `@(a|b)`, `+(a|b)`, `!(...)`) at runtime and in the
-  // $glob schema, so the disjointness heuristic used by the deny-overlap check must treat extglob
+  // $glob schema, so the disjointedness heuristic used by the deny-overlap check must treat extglob
   // metacharacters as wildcards rather than literal text. Otherwise a deny rule like
   // `/@(secret|restricted)/**` looks disjoint from `/secret/**` even though both match
   // `/secret/foo` at runtime.

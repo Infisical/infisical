@@ -58,7 +58,7 @@ export const registerSecretTagRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          // akhilmhdh: for terraform backward compatiability
+          // akhilmhdh: for terraform backward compatibility
           tag: SecretTagsSchema.extend({ name: z.string() })
         })
       }
@@ -92,7 +92,7 @@ export const registerSecretTagRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          // akhilmhdh: for terraform backward compatiability
+          // akhilmhdh: for terraform backward compatibility
           tag: SecretTagsSchema.extend({ name: z.string() })
         })
       }

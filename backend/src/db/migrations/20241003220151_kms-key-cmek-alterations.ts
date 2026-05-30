@@ -4,7 +4,7 @@ import { dropConstraintIfExists } from "@app/db/migrations/utils/dropConstraintI
 import { TableName } from "@app/db/schemas";
 
 export async function up(knex: Knex): Promise<void> {
-  if (await knex.schema.hasTable(TableName.KmsKey)) {
+  if (await knex.schema.hashtable(TableName.KmsKey)) {
     const hasOrgId = await knex.schema.hasColumn(TableName.KmsKey, "orgId");
     const hasSlug = await knex.schema.hasColumn(TableName.KmsKey, "slug");
     const hasProjectId = await knex.schema.hasColumn(TableName.KmsKey, "projectId");
@@ -30,7 +30,7 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  if (await knex.schema.hasTable(TableName.KmsKey)) {
+  if (await knex.schema.hashtable(TableName.KmsKey)) {
     const hasOrgId = await knex.schema.hasColumn(TableName.KmsKey, "orgId");
     const hasName = await knex.schema.hasColumn(TableName.KmsKey, "name");
     const hasProjectId = await knex.schema.hasColumn(TableName.KmsKey, "projectId");

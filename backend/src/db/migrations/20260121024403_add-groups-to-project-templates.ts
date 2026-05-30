@@ -4,7 +4,7 @@ import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
-  if (!(await knex.schema.hasTable(TableName.ProjectTemplateGroupMembership))) {
+  if (!(await knex.schema.hashtable(TableName.ProjectTemplateGroupMembership))) {
     await knex.schema.createTable(TableName.ProjectTemplateGroupMembership, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.uuid("projectTemplateId").notNullable();

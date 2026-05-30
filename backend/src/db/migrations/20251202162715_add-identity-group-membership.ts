@@ -4,7 +4,7 @@ import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
-  if (!(await knex.schema.hasTable(TableName.IdentityGroupMembership))) {
+  if (!(await knex.schema.hashtable(TableName.IdentityGroupMembership))) {
     await knex.schema.createTable(TableName.IdentityGroupMembership, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.uuid("identityId").notNullable();
@@ -21,7 +21,7 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  if (await knex.schema.hasTable(TableName.IdentityGroupMembership)) {
+  if (await knex.schema.hashtable(TableName.IdentityGroupMembership)) {
     await knex.schema.dropTable(TableName.IdentityGroupMembership);
     await dropOnUpdateTrigger(knex, TableName.IdentityGroupMembership);
   }

@@ -4,7 +4,7 @@ import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
-  if (!(await knex.schema.hasTable(TableName.PamAccountPolicy))) {
+  if (!(await knex.schema.hashtable(TableName.PamAccountPolicy))) {
     await knex.schema.createTable(TableName.PamAccountPolicy, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
 
@@ -25,7 +25,7 @@ export async function up(knex: Knex): Promise<void> {
 
   await createOnUpdateTrigger(knex, TableName.PamAccountPolicy);
 
-  if (await knex.schema.hasTable(TableName.PamAccount)) {
+  if (await knex.schema.hashtable(TableName.PamAccount)) {
     const hasColumn = await knex.schema.hasColumn(TableName.PamAccount, "policyId");
     if (!hasColumn) {
       await knex.schema.alterTable(TableName.PamAccount, (t) => {
@@ -38,7 +38,7 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  if (await knex.schema.hasTable(TableName.PamAccount)) {
+  if (await knex.schema.hashtable(TableName.PamAccount)) {
     const hasColumn = await knex.schema.hasColumn(TableName.PamAccount, "policyId");
     if (hasColumn) {
       await knex.schema.alterTable(TableName.PamAccount, (t) => {

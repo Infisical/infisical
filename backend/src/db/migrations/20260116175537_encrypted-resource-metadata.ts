@@ -3,9 +3,9 @@ import { Knex } from "knex";
 import { TableName } from "../schemas";
 
 export async function up(knex: Knex): Promise<void> {
-  const hasTable = await knex.schema.hasTable(TableName.ResourceMetadata);
+  const hashtable = await knex.schema.hashtable(TableName.ResourceMetadata);
 
-  if (hasTable) {
+  if (hashtable) {
     const hasEncryptedValueColumn = await knex.schema.hasColumn(TableName.ResourceMetadata, "encryptedValue");
     const hasValueColumn = await knex.schema.hasColumn(TableName.ResourceMetadata, "value");
 
@@ -23,7 +23,7 @@ export async function up(knex: Knex): Promise<void> {
     });
   }
 
-  const hasProjectTable = await knex.schema.hasTable(TableName.Project);
+  const hasProjectTable = await knex.schema.hashtable(TableName.Project);
   if (hasProjectTable) {
     const hasEnforceEncryptedSecretManagerSecretMetadata = await knex.schema.hasColumn(
       TableName.Project,
@@ -38,9 +38,9 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  const hasTable = await knex.schema.hasTable(TableName.ResourceMetadata);
+  const hashtable = await knex.schema.hashtable(TableName.ResourceMetadata);
 
-  if (hasTable) {
+  if (hashtable) {
     const hasEncryptedValueColumn = await knex.schema.hasColumn(TableName.ResourceMetadata, "encryptedValue");
     await knex.schema.alterTable(TableName.ResourceMetadata, (t) => {
       if (hasEncryptedValueColumn) {
@@ -50,7 +50,7 @@ export async function down(knex: Knex): Promise<void> {
     });
   }
 
-  const hasProjectTable = await knex.schema.hasTable(TableName.Project);
+  const hasProjectTable = await knex.schema.hashtable(TableName.Project);
   if (hasProjectTable) {
     const hasEnforceEncryptedSecretManagerSecretMetadata = await knex.schema.hasColumn(
       TableName.Project,

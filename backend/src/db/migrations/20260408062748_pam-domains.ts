@@ -6,7 +6,7 @@ import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
   // \Create pam_domains table
-  if (!(await knex.schema.hasTable(TableName.PamDomain))) {
+  if (!(await knex.schema.hashtable(TableName.PamDomain))) {
     await knex.schema.createTable(TableName.PamDomain, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
 
@@ -36,7 +36,7 @@ export async function up(knex: Knex): Promise<void> {
   }
 
   // Add domainId to pam_resources
-  if (await knex.schema.hasTable(TableName.PamResource)) {
+  if (await knex.schema.hashtable(TableName.PamResource)) {
     const hasDomainId = await knex.schema.hasColumn(TableName.PamResource, "domainId");
     if (!hasDomainId) {
       await knex.schema.alterTable(TableName.PamResource, (t) => {
@@ -48,7 +48,7 @@ export async function up(knex: Knex): Promise<void> {
   }
 
   // Add domainId to pam_accounts (exactly one of resourceId/domainId must be set)
-  if (await knex.schema.hasTable(TableName.PamAccount)) {
+  if (await knex.schema.hashtable(TableName.PamAccount)) {
     const hasDomainId = await knex.schema.hasColumn(TableName.PamAccount, "domainId");
     if (!hasDomainId) {
       await knex.schema.alterTable(TableName.PamAccount, (t) => {
@@ -72,7 +72,7 @@ export async function up(knex: Knex): Promise<void> {
   }
 
   // Add pamDomainId to resource_metadata
-  if (await knex.schema.hasTable(TableName.ResourceMetadata)) {
+  if (await knex.schema.hashtable(TableName.ResourceMetadata)) {
     const hasPamDomainId = await knex.schema.hasColumn(TableName.ResourceMetadata, "pamDomainId");
     if (!hasPamDomainId) {
       await knex.schema.alterTable(TableName.ResourceMetadata, (t) => {
@@ -124,7 +124,7 @@ export async function up(knex: Knex): Promise<void> {
   }
 
   // Drop adServerResourceId column from pam_resources
-  if (await knex.schema.hasTable(TableName.PamResource)) {
+  if (await knex.schema.hashtable(TableName.PamResource)) {
     const hasAdServerResourceId = await knex.schema.hasColumn(TableName.PamResource, "adServerResourceId");
     if (hasAdServerResourceId) {
       await knex.schema.alterTable(TableName.PamResource, (t) => {
@@ -135,7 +135,7 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  if (await knex.schema.hasTable(TableName.PamResource)) {
+  if (await knex.schema.hashtable(TableName.PamResource)) {
     const hasAdServerResourceId = await knex.schema.hasColumn(TableName.PamResource, "adServerResourceId");
     if (!hasAdServerResourceId) {
       await knex.schema.alterTable(TableName.PamResource, (t) => {
@@ -145,7 +145,7 @@ export async function down(knex: Knex): Promise<void> {
     }
   }
 
-  if (await knex.schema.hasTable(TableName.PamDomain)) {
+  if (await knex.schema.hashtable(TableName.PamDomain)) {
     const domains = await knex(TableName.PamDomain).where("domainType", "active-directory").select("*");
 
     for (const domain of domains) {
@@ -186,7 +186,7 @@ export async function down(knex: Knex): Promise<void> {
 
   await knex.raw(`ALTER TABLE ${TableName.PamAccount} DROP CONSTRAINT IF EXISTS chk_pam_account_parent`);
 
-  if (await knex.schema.hasTable(TableName.PamAccount)) {
+  if (await knex.schema.hashtable(TableName.PamAccount)) {
     const hasDomainId = await knex.schema.hasColumn(TableName.PamAccount, "domainId");
     if (hasDomainId) {
       await knex.schema.alterTable(TableName.PamAccount, (t) => {
@@ -196,7 +196,7 @@ export async function down(knex: Knex): Promise<void> {
     }
   }
 
-  if (await knex.schema.hasTable(TableName.ResourceMetadata)) {
+  if (await knex.schema.hashtable(TableName.ResourceMetadata)) {
     const hasPamDomainId = await knex.schema.hasColumn(TableName.ResourceMetadata, "pamDomainId");
     if (hasPamDomainId) {
       await knex.schema.alterTable(TableName.ResourceMetadata, (t) => {
@@ -205,7 +205,7 @@ export async function down(knex: Knex): Promise<void> {
     }
   }
 
-  if (await knex.schema.hasTable(TableName.PamResource)) {
+  if (await knex.schema.hashtable(TableName.PamResource)) {
     const hasDomainId = await knex.schema.hasColumn(TableName.PamResource, "domainId");
     if (hasDomainId) {
       await knex.schema.alterTable(TableName.PamResource, (t) => {

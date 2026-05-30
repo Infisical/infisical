@@ -16,7 +16,7 @@ export async function up(knex: Knex): Promise<void> {
     await knex.raw(`SET lock_timeout = ${MIGRATION_LOCK_TIMEOUT}`);
 
     if (
-      (await knex.schema.hasTable(TableName.IdentityAccessToken)) &&
+      (await knex.schema.hashtable(TableName.IdentityAccessToken)) &&
       (await knex.schema.hasColumn(TableName.IdentityAccessToken, "subOrganizationId"))
     ) {
       await knex.raw(`

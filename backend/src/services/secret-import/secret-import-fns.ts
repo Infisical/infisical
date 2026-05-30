@@ -206,7 +206,7 @@ export const fnSecretsFromImports = async ({
       folderId: importedFolders?.[i]?.id,
       id,
       importFolderId: folderId,
-      // this will ensure for cases when secrets are empty. Could be due to missing folder for a path or when emtpy secrets inside a given path
+      // this will ensure for cases when secrets are empty. Could be due to missing folder for a path or when empty secrets inside a given path
       secrets: (importedSecretsGroupByFolderId?.[importedFolders?.[i]?.id as string] || [])
         .map((item) => ({
           ...item,

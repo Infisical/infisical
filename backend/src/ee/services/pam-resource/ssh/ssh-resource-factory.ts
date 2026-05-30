@@ -199,7 +199,7 @@ export const sshResourceFactory: TPamResourceFactory<
               });
               break;
             case SSHAuthMethod.Certificate:
-              // We cant fully validate the connection since ssh2 doesn't support cert auth
+              // We can't fully validate the connection since ssh2 doesn't support cert auth
               if (!resourceInternalMetadata) {
                 reject(
                   new BadRequestError({

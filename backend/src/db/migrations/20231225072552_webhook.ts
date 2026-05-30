@@ -4,7 +4,7 @@ import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
-  if (!(await knex.schema.hasTable(TableName.Webhook))) {
+  if (!(await knex.schema.hashtable(TableName.Webhook))) {
     await knex.schema.createTable(TableName.Webhook, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.string("secretPath").notNullable().defaultTo("/");

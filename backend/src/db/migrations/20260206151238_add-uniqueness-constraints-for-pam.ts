@@ -8,20 +8,20 @@ const ACCOUNT_CONSTRAINT_NAME = "pam_accounts_name_resource_id_unique";
 
 export async function up(knex: Knex): Promise<void> {
   // Delete all existing PAM access approval requests, grants, and policies because we're moving away from FOLDERS
-  if (await knex.schema.hasTable(TableName.ApprovalRequestGrants)) {
+  if (await knex.schema.hashtable(TableName.ApprovalRequestGrants)) {
     await knex(TableName.ApprovalRequestGrants).where("type", "pam-access").del();
   }
 
-  if (await knex.schema.hasTable(TableName.ApprovalRequests)) {
+  if (await knex.schema.hashtable(TableName.ApprovalRequests)) {
     await knex(TableName.ApprovalRequests).where("type", "pam-access").del();
   }
 
-  if (await knex.schema.hasTable(TableName.ApprovalPolicies)) {
+  if (await knex.schema.hashtable(TableName.ApprovalPolicies)) {
     await knex(TableName.ApprovalPolicies).where("type", "pam-access").del();
   }
 
   // 1. Add unique constraint for resource names within a project
-  if (await knex.schema.hasTable(TableName.PamResource)) {
+  if (await knex.schema.hashtable(TableName.PamResource)) {
     const hasName = await knex.schema.hasColumn(TableName.PamResource, "name");
     const hasProjectId = await knex.schema.hasColumn(TableName.PamResource, "projectId");
 
@@ -46,7 +46,7 @@ export async function up(knex: Knex): Promise<void> {
   }
 
   // 2. Add unique constraint for account names within the same resource
-  if (await knex.schema.hasTable(TableName.PamAccount)) {
+  if (await knex.schema.hashtable(TableName.PamAccount)) {
     const hasName = await knex.schema.hasColumn(TableName.PamAccount, "name");
     const hasResourceId = await knex.schema.hasColumn(TableName.PamAccount, "resourceId");
 
@@ -77,11 +77,11 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  if (await knex.schema.hasTable(TableName.PamResource)) {
+  if (await knex.schema.hashtable(TableName.PamResource)) {
     await dropConstraintIfExists(TableName.PamResource, RESOURCE_CONSTRAINT_NAME, knex);
   }
 
-  if (await knex.schema.hasTable(TableName.PamAccount)) {
+  if (await knex.schema.hashtable(TableName.PamAccount)) {
     await dropConstraintIfExists(TableName.PamAccount, ACCOUNT_CONSTRAINT_NAME, knex);
 
     // Restore the original project/folder-level uniqueness constraints

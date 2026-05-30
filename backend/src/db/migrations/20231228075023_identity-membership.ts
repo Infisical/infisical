@@ -4,7 +4,7 @@ import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
-  if (!(await knex.schema.hasTable(TableName.IdentityOrgMembership))) {
+  if (!(await knex.schema.hashtable(TableName.IdentityOrgMembership))) {
     await knex.schema.createTable(TableName.IdentityOrgMembership, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.string("role").notNullable();
@@ -19,7 +19,7 @@ export async function up(knex: Knex): Promise<void> {
   }
   await createOnUpdateTrigger(knex, TableName.IdentityOrgMembership);
 
-  if (!(await knex.schema.hasTable(TableName.IdentityProjectMembership))) {
+  if (!(await knex.schema.hashtable(TableName.IdentityProjectMembership))) {
     await knex.schema.createTable(TableName.IdentityProjectMembership, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.string("role").notNullable();

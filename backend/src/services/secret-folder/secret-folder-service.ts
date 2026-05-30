@@ -308,7 +308,7 @@ export const secretFolderServiceFactory = ({
           const folder = await folderDAL
             .findOne({ envId: env.id, id, parentId: parentFolder.id })
             // now folder api accepts id based change
-            // this is for cli backward compatiability and when cli removes this, we will remove this logic
+            // this is for cli backward compatibility and when cli removes this, we will remove this logic
             .catch(() => folderDAL.findOne({ envId: env.id, name: id, parentId: parentFolder.id }));
 
           if (!folder) {
@@ -441,7 +441,7 @@ export const secretFolderServiceFactory = ({
     const folder = await folderDAL
       .findOne({ envId: env.id, id, parentId: parentFolder.id, isReserved: false })
       // now folder api accepts id based change
-      // this is for cli backward compatiability and when cli removes this, we will remove this logic
+      // this is for cli backward compatibility and when cli removes this, we will remove this logic
       .catch(() => folderDAL.findOne({ envId: env.id, name: id, parentId: parentFolder.id }));
 
     if (!folder) throw new NotFoundError({ message: `Folder with ID '${id}' not found`, name: "UpdateFolder" });

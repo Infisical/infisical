@@ -44,7 +44,7 @@ export const seedData1 = {
     id: "a9dfafba-a3b7-42e3-8618-91abb702fd36"
   },
 
-  // We set these values during user creation, and later re-use them during project seeding.
+  // We set these values during user creation, and later reuse them during project seeding.
   encryptionKeys: {
     publicKey: "",
     privateKey: ""

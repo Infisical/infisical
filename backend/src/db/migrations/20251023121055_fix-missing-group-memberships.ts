@@ -3,9 +3,9 @@ import { Knex } from "knex";
 import { AccessScope, TableName } from "../schemas";
 
 export async function up(knex: Knex): Promise<void> {
-  const hasGroupsTable = await knex.schema.hasTable(TableName.Groups);
-  const hasMembershipTable = await knex.schema.hasTable(TableName.Membership);
-  const hasMembershipRoleTable = await knex.schema.hasTable(TableName.MembershipRole);
+  const hasGroupsTable = await knex.schema.hashtable(TableName.Groups);
+  const hasMembershipTable = await knex.schema.hashtable(TableName.Membership);
+  const hasMembershipRoleTable = await knex.schema.hashtable(TableName.MembershipRole);
 
   if (!hasGroupsTable || !hasMembershipTable || !hasMembershipRoleTable) {
     return;

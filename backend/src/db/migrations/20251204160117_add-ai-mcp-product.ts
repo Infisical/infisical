@@ -4,7 +4,7 @@ import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
-  if (!(await knex.schema.hasTable(TableName.AiMcpServer))) {
+  if (!(await knex.schema.hashtable(TableName.AiMcpServer))) {
     await knex.schema.createTable(TableName.AiMcpServer, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.string("name").notNullable();
@@ -23,7 +23,7 @@ export async function up(knex: Knex): Promise<void> {
     await createOnUpdateTrigger(knex, TableName.AiMcpServer);
   }
 
-  if (!(await knex.schema.hasTable(TableName.AiMcpServerTool))) {
+  if (!(await knex.schema.hashtable(TableName.AiMcpServerTool))) {
     await knex.schema.createTable(TableName.AiMcpServerTool, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.string("name").notNullable();
@@ -34,7 +34,7 @@ export async function up(knex: Knex): Promise<void> {
     });
   }
 
-  if (!(await knex.schema.hasTable(TableName.AiMcpEndpoint))) {
+  if (!(await knex.schema.hashtable(TableName.AiMcpEndpoint))) {
     await knex.schema.createTable(TableName.AiMcpEndpoint, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.string("name").notNullable();
@@ -49,7 +49,7 @@ export async function up(knex: Knex): Promise<void> {
     await createOnUpdateTrigger(knex, TableName.AiMcpEndpoint);
   }
 
-  if (!(await knex.schema.hasTable(TableName.AiMcpEndpointServer))) {
+  if (!(await knex.schema.hashtable(TableName.AiMcpEndpointServer))) {
     await knex.schema.createTable(TableName.AiMcpEndpointServer, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.uuid("aiMcpEndpointId").notNullable();
@@ -60,7 +60,7 @@ export async function up(knex: Knex): Promise<void> {
     });
   }
 
-  if (!(await knex.schema.hasTable(TableName.AiMcpEndpointServerTool))) {
+  if (!(await knex.schema.hashtable(TableName.AiMcpEndpointServerTool))) {
     await knex.schema.createTable(TableName.AiMcpEndpointServerTool, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.uuid("aiMcpEndpointId").notNullable();
@@ -73,7 +73,7 @@ export async function up(knex: Knex): Promise<void> {
   }
 
   // Store user OAuth credentials for MCP servers with "personal" credential mode
-  if (!(await knex.schema.hasTable(TableName.AiMcpServerUserCredential))) {
+  if (!(await knex.schema.hashtable(TableName.AiMcpServerUserCredential))) {
     await knex.schema.createTable(TableName.AiMcpServerUserCredential, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.uuid("userId").notNullable();
@@ -88,7 +88,7 @@ export async function up(knex: Knex): Promise<void> {
     await createOnUpdateTrigger(knex, TableName.AiMcpServerUserCredential);
   }
 
-  if (!(await knex.schema.hasTable(TableName.AiMcpActivityLog))) {
+  if (!(await knex.schema.hashtable(TableName.AiMcpActivityLog))) {
     await knex.schema.createTable(TableName.AiMcpActivityLog, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.string("projectId").notNullable();

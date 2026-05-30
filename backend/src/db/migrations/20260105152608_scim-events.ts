@@ -23,7 +23,7 @@ const createScimEventsPartition = async (knex: Knex, startDate: Date, endDate: D
 };
 
 export async function up(knex: Knex): Promise<void> {
-  if (!(await knex.schema.hasTable(TableName.ScimEvents))) {
+  if (!(await knex.schema.hashtable(TableName.ScimEvents))) {
     const createTableSql = knex.schema
       .createTable(TableName.ScimEvents, (t) => {
         t.uuid("id").defaultTo(knex.fn.uuid());

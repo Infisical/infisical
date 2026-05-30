@@ -655,7 +655,7 @@ export const orgServiceFactory = ({
     const customerId = await licenseService.generateOrgCustomerId(orgName, userEmail);
 
     const createOrg = async (tx: Knex) => {
-      // akhilmhdh: for now this is auto created. in future we can input from user and for previous users just modifiy
+      // akhilmhdh: for now this is auto created. in future we can input from user and for previous users just modify
       const org = await orgDAL.create(
         { name: orgName, customerId, slug: slugify(`${orgName}-${alphaNumericNanoId(4)}`) },
         tx
@@ -794,7 +794,7 @@ export const orgServiceFactory = ({
   };
   /*
    * Org membership management
-   * Not another service because it has close ties with how an org works doesn't make sense to seperate them
+   * Not another service because it has close ties with how an org works doesn't make sense to separate them
    * */
   const updateOrgMembership = async ({
     role,

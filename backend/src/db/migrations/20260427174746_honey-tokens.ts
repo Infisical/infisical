@@ -4,7 +4,7 @@ import { TableName } from "@app/db/schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "@app/db/utils";
 
 export async function up(knex: Knex): Promise<void> {
-  if (!(await knex.schema.hasTable(TableName.HoneyTokenConfig))) {
+  if (!(await knex.schema.hashtable(TableName.HoneyTokenConfig))) {
     await knex.schema.createTable(TableName.HoneyTokenConfig, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.uuid("orgId").notNullable();
@@ -21,7 +21,7 @@ export async function up(knex: Knex): Promise<void> {
     await createOnUpdateTrigger(knex, TableName.HoneyTokenConfig);
   }
 
-  if (!(await knex.schema.hasTable(TableName.HoneyToken))) {
+  if (!(await knex.schema.hashtable(TableName.HoneyToken))) {
     await knex.schema.createTable(TableName.HoneyToken, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.string("name", 64).notNullable();
@@ -52,7 +52,7 @@ export async function up(knex: Knex): Promise<void> {
     await createOnUpdateTrigger(knex, TableName.HoneyToken);
   }
 
-  if (!(await knex.schema.hasTable(TableName.HoneyTokenEvent))) {
+  if (!(await knex.schema.hashtable(TableName.HoneyTokenEvent))) {
     await knex.schema.createTable(TableName.HoneyTokenEvent, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.uuid("honeyTokenId").notNullable();
@@ -66,7 +66,7 @@ export async function up(knex: Knex): Promise<void> {
     await createOnUpdateTrigger(knex, TableName.HoneyTokenEvent);
   }
 
-  if (!(await knex.schema.hasTable(TableName.HoneyTokenSecretMapping))) {
+  if (!(await knex.schema.hashtable(TableName.HoneyTokenSecretMapping))) {
     await knex.schema.createTable(TableName.HoneyTokenSecretMapping, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.uuid("secretId").notNullable().unique();

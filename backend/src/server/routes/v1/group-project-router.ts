@@ -79,7 +79,7 @@ export const registerGroupProjectRouter = async (server: FastifyZodProvider) => 
     handler: async (req) => {
       let groupId = req.params.groupIdOrName;
       if (!isUuidV4(req.params.groupIdOrName)) {
-        const groupDetails = await server.services.convertor.getGroupIdFromName(groupId, req.permission.orgId);
+        const groupDetails = await server.services.converter.getGroupIdFromName(groupId, req.permission.orgId);
         groupId = groupDetails.groupId;
       }
 

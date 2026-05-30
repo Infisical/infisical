@@ -4,7 +4,7 @@ import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
-  if (!(await knex.schema.hasTable(TableName.PamProjectRecordingConfig))) {
+  if (!(await knex.schema.hashtable(TableName.PamProjectRecordingConfig))) {
     await knex.schema.createTable(TableName.PamProjectRecordingConfig, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
 
@@ -26,7 +26,7 @@ export async function up(knex: Knex): Promise<void> {
     await createOnUpdateTrigger(knex, TableName.PamProjectRecordingConfig);
   }
 
-  if (!(await knex.schema.hasTable(TableName.PamSessionEventChunk))) {
+  if (!(await knex.schema.hashtable(TableName.PamSessionEventChunk))) {
     await knex.schema.createTable(TableName.PamSessionEventChunk, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
 
@@ -62,7 +62,7 @@ export async function up(knex: Knex): Promise<void> {
     await createOnUpdateTrigger(knex, TableName.PamSessionEventChunk);
   }
 
-  if (await knex.schema.hasTable(TableName.PamSession)) {
+  if (await knex.schema.hashtable(TableName.PamSession)) {
     const hasEncryptedKey = await knex.schema.hasColumn(TableName.PamSession, "encryptedSessionKey");
     const hasUploadTokenHash = await knex.schema.hasColumn(TableName.PamSession, "gatewayUploadTokenHash");
 
@@ -74,7 +74,7 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  if (await knex.schema.hasTable(TableName.PamSession)) {
+  if (await knex.schema.hashtable(TableName.PamSession)) {
     const hasEncryptedKey = await knex.schema.hasColumn(TableName.PamSession, "encryptedSessionKey");
     const hasUploadTokenHash = await knex.schema.hasColumn(TableName.PamSession, "gatewayUploadTokenHash");
 

@@ -4,7 +4,7 @@ import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
-  if (!(await knex.schema.hasTable(TableName.DeprecatedSecretRotationV1))) {
+  if (!(await knex.schema.hashtable(TableName.DeprecatedSecretRotationV1))) {
     await knex.schema.createTable(TableName.DeprecatedSecretRotationV1, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.string("provider").notNullable();
@@ -25,7 +25,7 @@ export async function up(knex: Knex): Promise<void> {
   }
   await createOnUpdateTrigger(knex, TableName.DeprecatedSecretRotationV1);
 
-  if (!(await knex.schema.hasTable(TableName.DeprecatedSecretRotationOutput))) {
+  if (!(await knex.schema.hashtable(TableName.DeprecatedSecretRotationOutput))) {
     await knex.schema.createTable(TableName.DeprecatedSecretRotationOutput, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.string("key").notNullable();

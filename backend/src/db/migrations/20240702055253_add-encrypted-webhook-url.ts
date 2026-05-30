@@ -10,7 +10,7 @@ export async function up(knex: Knex): Promise<void> {
   const hasUrlTag = await knex.schema.hasColumn(TableName.Webhook, "urlTag");
   const hasType = await knex.schema.hasColumn(TableName.Webhook, "type");
 
-  if (await knex.schema.hasTable(TableName.Webhook)) {
+  if (await knex.schema.hashtable(TableName.Webhook)) {
     await knex.schema.alterTable(TableName.Webhook, (tb) => {
       if (!hasUrlCipherText) {
         tb.text("urlCipherText");
@@ -34,7 +34,7 @@ export async function down(knex: Knex): Promise<void> {
   const hasUrlTag = await knex.schema.hasColumn(TableName.Webhook, "urlTag");
   const hasType = await knex.schema.hasColumn(TableName.Webhook, "type");
 
-  if (await knex.schema.hasTable(TableName.Webhook)) {
+  if (await knex.schema.hashtable(TableName.Webhook)) {
     await knex.schema.alterTable(TableName.Webhook, (t) => {
       if (hasUrlCipherText) {
         t.dropColumn("urlCipherText");

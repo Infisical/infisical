@@ -4,7 +4,7 @@ import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
-  if (!(await knex.schema.hasTable(TableName.Project))) {
+  if (!(await knex.schema.hashtable(TableName.Project))) {
     await knex.schema.createTable(TableName.Project, (t) => {
       t.string("id", 36).primary().defaultTo(knex.fn.uuid());
       t.string("name").notNullable();
@@ -18,7 +18,7 @@ export async function up(knex: Knex): Promise<void> {
   }
   await createOnUpdateTrigger(knex, TableName.Project);
   // environments
-  if (!(await knex.schema.hasTable(TableName.Environment))) {
+  if (!(await knex.schema.hashtable(TableName.Environment))) {
     await knex.schema.createTable(TableName.Environment, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.string("name").notNullable();
@@ -35,7 +35,7 @@ export async function up(knex: Knex): Promise<void> {
     });
   }
   // project key
-  if (!(await knex.schema.hasTable(TableName.ProjectKeys))) {
+  if (!(await knex.schema.hashtable(TableName.ProjectKeys))) {
     await knex.schema.createTable(TableName.ProjectKeys, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.text("encryptedKey").notNullable();

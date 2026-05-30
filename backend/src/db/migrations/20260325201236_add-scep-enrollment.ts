@@ -9,7 +9,7 @@ const ENROLLMENT_TYPE_CHECK_CONSTRAINT = "pki_certificate_profiles_enrollment_ty
 const SCEP_TRANSACTION_UNIQUE_INDEX = "pki_scep_transactions_profile_id_transaction_id_unique";
 
 export async function up(knex: Knex): Promise<void> {
-  if (!(await knex.schema.hasTable(TableName.PkiScepEnrollmentConfig))) {
+  if (!(await knex.schema.hashtable(TableName.PkiScepEnrollmentConfig))) {
     await knex.schema.createTable(TableName.PkiScepEnrollmentConfig, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.binary("encryptedRaPrivateKey").notNullable();
@@ -24,7 +24,7 @@ export async function up(knex: Knex): Promise<void> {
     await createOnUpdateTrigger(knex, TableName.PkiScepEnrollmentConfig);
   }
 
-  if (!(await knex.schema.hasTable(TableName.PkiScepTransaction))) {
+  if (!(await knex.schema.hashtable(TableName.PkiScepTransaction))) {
     await knex.schema.createTable(TableName.PkiScepTransaction, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
 
@@ -72,7 +72,7 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  if (await knex.schema.hasTable(TableName.PkiScepTransaction)) {
+  if (await knex.schema.hashtable(TableName.PkiScepTransaction)) {
     await knex.schema.dropTable(TableName.PkiScepTransaction);
     await dropOnUpdateTrigger(knex, TableName.PkiScepTransaction);
   }
@@ -95,7 +95,7 @@ export async function down(knex: Knex): Promise<void> {
     });
   }
 
-  if (await knex.schema.hasTable(TableName.PkiScepEnrollmentConfig)) {
+  if (await knex.schema.hashtable(TableName.PkiScepEnrollmentConfig)) {
     await knex.schema.dropTable(TableName.PkiScepEnrollmentConfig);
     await dropOnUpdateTrigger(knex, TableName.PkiScepEnrollmentConfig);
   }

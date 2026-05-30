@@ -4,7 +4,7 @@ import { TableName } from "../schemas";
 
 export async function up(knex: Knex): Promise<void> {
   // Add adServerResourceId to pam_resources (optional reference to another resource for AD Server linkage)
-  if (await knex.schema.hasTable(TableName.PamResource)) {
+  if (await knex.schema.hashtable(TableName.PamResource)) {
     const hasAdServerResourceId = await knex.schema.hasColumn(TableName.PamResource, "adServerResourceId");
     if (!hasAdServerResourceId) {
       await knex.schema.alterTable(TableName.PamResource, (t) => {
@@ -15,7 +15,7 @@ export async function up(knex: Knex): Promise<void> {
   }
 
   // Add metadata (JSONB, not encrypted) to pam_accounts
-  if (await knex.schema.hasTable(TableName.PamAccount)) {
+  if (await knex.schema.hashtable(TableName.PamAccount)) {
     const hasMetadata = await knex.schema.hasColumn(TableName.PamAccount, "metadata");
     if (!hasMetadata) {
       await knex.schema.alterTable(TableName.PamAccount, (t) => {
@@ -26,7 +26,7 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  if (await knex.schema.hasTable(TableName.PamResource)) {
+  if (await knex.schema.hashtable(TableName.PamResource)) {
     const hasAdServerResourceId = await knex.schema.hasColumn(TableName.PamResource, "adServerResourceId");
     if (hasAdServerResourceId) {
       await knex.schema.alterTable(TableName.PamResource, (t) => {
@@ -35,7 +35,7 @@ export async function down(knex: Knex): Promise<void> {
     }
   }
 
-  if (await knex.schema.hasTable(TableName.PamAccount)) {
+  if (await knex.schema.hashtable(TableName.PamAccount)) {
     const hasMetadata = await knex.schema.hasColumn(TableName.PamAccount, "metadata");
     if (hasMetadata) {
       await knex.schema.alterTable(TableName.PamAccount, (t) => {

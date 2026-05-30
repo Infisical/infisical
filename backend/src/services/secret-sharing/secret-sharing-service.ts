@@ -52,7 +52,7 @@ type TSecretSharingServiceFactoryDep = {
 export type TSecretSharingServiceFactory = ReturnType<typeof secretSharingServiceFactory>;
 
 const mapIdentifierToId = (sharedSecret: TSecretSharing): Omit<TSecretSharing, "identifier"> => {
-  // secret requests don't use identifiers and are fully ID dependant. so for secret requests we just return it as-is
+  // secret requests don't use identifiers and are fully ID dependent. so for secret requests we just return it as-is
   if (sharedSecret.type === SecretSharingType.Request) {
     return sharedSecret;
   }

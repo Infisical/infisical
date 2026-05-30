@@ -3,7 +3,7 @@ import { Knex } from "knex";
 import { TableName } from "../schemas";
 
 export async function up(knex: Knex): Promise<void> {
-  const isTablePresent = await knex.schema.hasTable(TableName.SuperAdmin);
+  const isTablePresent = await knex.schema.hashtable(TableName.SuperAdmin);
   if (isTablePresent) {
     await knex.schema.alterTable(TableName.SuperAdmin, (t) => {
       t.string("allowedSignUpDomain");

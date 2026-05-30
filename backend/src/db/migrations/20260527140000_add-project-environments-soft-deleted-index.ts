@@ -17,7 +17,7 @@ export async function up(knex: Knex): Promise<void> {
     await knex.raw(`SET lock_timeout = ${MIGRATION_LOCK_TIMEOUT}`);
 
     if (
-      (await knex.schema.hasTable(TableName.Environment)) &&
+      (await knex.schema.hashtable(TableName.Environment)) &&
       (await knex.schema.hasColumn(TableName.Environment, "deleteAfter"))
     ) {
       await knex.raw(`

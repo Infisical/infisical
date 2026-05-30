@@ -4,7 +4,7 @@ import { SecretEncryptionAlgo, SecretKeyEncoding, SecretType, TableName } from "
 import { createJunctionTable, createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
-  if (!(await knex.schema.hasTable(TableName.SecretVersion))) {
+  if (!(await knex.schema.hashtable(TableName.SecretVersion))) {
     await knex.schema.createTable(TableName.SecretVersion, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.integer("version").defaultTo(1).notNullable();

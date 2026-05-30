@@ -56,7 +56,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
       if (!permissions && !privilegePermission) {
         throw new UnauthorizedError({ message: "Permission or privilegePermission must be provided" });
       }
-      const { id: projectId } = await server.services.convertor.projectSlugToId({
+      const { id: projectId } = await server.services.converter.projectSlugToId({
         orgId: req.permission.orgId,
         slug: req.body.projectSlug
       });
@@ -158,7 +158,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
           }))
         : permissions!;
 
-      const { id: projectId } = await server.services.convertor.projectSlugToId({
+      const { id: projectId } = await server.services.converter.projectSlugToId({
         orgId: req.permission.orgId,
         slug: req.body.projectSlug
       });
@@ -257,12 +257,12 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
           }))
         : permissions!;
 
-      const { id: projectId } = await server.services.convertor.projectSlugToId({
+      const { id: projectId } = await server.services.converter.projectSlugToId({
         orgId: req.permission.orgId,
         slug: req.body.projectSlug
       });
 
-      const { privilege: privilegeDoc } = await server.services.convertor.additionalPrivilegeNameToDoc(
+      const { privilege: privilegeDoc } = await server.services.converter.additionalPrivilegeNameToDoc(
         req.body.privilegeSlug,
         projectId
       );
@@ -334,12 +334,12 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { id: projectId } = await server.services.convertor.projectSlugToId({
+      const { id: projectId } = await server.services.converter.projectSlugToId({
         orgId: req.permission.orgId,
         slug: req.body.projectSlug
       });
 
-      const { privilegeId } = await server.services.convertor.additionalPrivilegeNameToDoc(
+      const { privilegeId } = await server.services.converter.additionalPrivilegeNameToDoc(
         req.body.privilegeSlug,
         projectId
       );
@@ -400,12 +400,12 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { id: projectId } = await server.services.convertor.projectSlugToId({
+      const { id: projectId } = await server.services.converter.projectSlugToId({
         orgId: req.permission.orgId,
         slug: req.query.projectSlug
       });
 
-      const { privilegeId } = await server.services.convertor.additionalPrivilegeNameToDoc(
+      const { privilegeId } = await server.services.converter.additionalPrivilegeNameToDoc(
         req.params.privilegeSlug,
         projectId
       );
@@ -463,7 +463,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { id: projectId } = await server.services.convertor.projectSlugToId({
+      const { id: projectId } = await server.services.converter.projectSlugToId({
         orgId: req.permission.orgId,
         slug: req.query.projectSlug
       });

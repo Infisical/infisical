@@ -101,7 +101,7 @@ import { TCertificateRequestServiceFactory } from "@app/services/certificate-req
 import { TCertificateTemplateServiceFactory } from "@app/services/certificate-template/certificate-template-service";
 import { TCertificateV3ServiceFactory } from "@app/services/certificate-v3/certificate-v3-service";
 import { TCmekServiceFactory } from "@app/services/cmek/cmek-service";
-import { TConvertorServiceFactory } from "@app/services/convertor/convertor-service";
+import { TConvertorServiceFactory } from "@app/services/converter/converter-service";
 import { TExternalGroupOrgRoleMappingServiceFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-service";
 import { TExternalMigrationServiceFactory } from "@app/services/external-migration/external-migration-service";
 import { TFolderCommitServiceFactory } from "@app/services/folder-commit/folder-commit-service";
@@ -425,7 +425,7 @@ declare module "fastify" {
       membershipGroup: TMembershipGroupServiceFactory;
       additionalPrivilege: TAdditionalPrivilegeServiceFactory;
       role: TRoleServiceFactory;
-      convertor: TConvertorServiceFactory;
+      converter: TConvertorServiceFactory;
       subOrganization: TSubOrgServiceFactory;
       pkiAlertV2: TPkiAlertV2ServiceFactory;
       aiMcpServer: TAiMcpServerServiceFactory;

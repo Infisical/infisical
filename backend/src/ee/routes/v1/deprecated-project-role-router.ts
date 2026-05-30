@@ -56,7 +56,7 @@ export const registerDeprecatedProjectRoleRouter = async (server: FastifyZodProv
         packRules(backfillPermissionV1SchemaToV2Schema(req.body.permissions, true))
       );
 
-      const { id: projectId } = await server.services.convertor.projectSlugToId({
+      const { id: projectId } = await server.services.converter.projectSlugToId({
         slug: req.params.projectSlug,
         orgId: req.permission.orgId
       });
@@ -146,7 +146,7 @@ export const registerDeprecatedProjectRoleRouter = async (server: FastifyZodProv
         ? JSON.stringify(packRules(backfillPermissionV1SchemaToV2Schema(req.body.permissions, true)))
         : undefined;
 
-      const { id: projectId } = await server.services.convertor.projectSlugToId({
+      const { id: projectId } = await server.services.converter.projectSlugToId({
         slug: req.params.projectSlug,
         orgId: req.permission.orgId
       });
@@ -225,7 +225,7 @@ export const registerDeprecatedProjectRoleRouter = async (server: FastifyZodProv
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { id: projectId } = await server.services.convertor.projectSlugToId({
+      const { id: projectId } = await server.services.converter.projectSlugToId({
         slug: req.params.projectSlug,
         orgId: req.permission.orgId
       });
@@ -296,7 +296,7 @@ export const registerDeprecatedProjectRoleRouter = async (server: FastifyZodProv
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { id: projectId } = await server.services.convertor.projectSlugToId({
+      const { id: projectId } = await server.services.converter.projectSlugToId({
         slug: req.params.projectSlug,
         orgId: req.permission.orgId
       });
@@ -333,7 +333,7 @@ export const registerDeprecatedProjectRoleRouter = async (server: FastifyZodProv
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { id: projectId } = await server.services.convertor.projectSlugToId({
+      const { id: projectId } = await server.services.converter.projectSlugToId({
         slug: req.params.projectSlug,
         orgId: req.permission.orgId
       });

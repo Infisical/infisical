@@ -31,7 +31,7 @@ export async function up(knex: Knex): Promise<void> {
   }
 
   // ---------- ACCESS APPROVAL REQUEST ------------
-  const hasAccessApprovalRequestTable = await knex.schema.hasTable(TableName.AccessApprovalRequest);
+  const hasAccessApprovalRequestTable = await knex.schema.hashtable(TableName.AccessApprovalRequest);
   const hasRequestedByUserId = await knex.schema.hasColumn(TableName.AccessApprovalRequest, "requestedByUserId");
   const hasRequestedBy = await knex.schema.hasColumn(TableName.AccessApprovalRequest, "requestedBy");
 
@@ -231,7 +231,7 @@ export async function down(knex: Knex): Promise<void> {
     }
 
     // ---------- ACCESS APPROVAL REQUEST ------------
-    const hasAccessApprovalRequestTable = await knex.schema.hasTable(TableName.AccessApprovalRequest);
+    const hasAccessApprovalRequestTable = await knex.schema.hashtable(TableName.AccessApprovalRequest);
     const hasRequestedByUserId = await knex.schema.hasColumn(TableName.AccessApprovalRequest, "requestedByUserId");
     const hasRequestedBy = await knex.schema.hasColumn(TableName.AccessApprovalRequest, "requestedBy");
 

@@ -4,7 +4,7 @@ import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
-  if (!(await knex.schema.hasTable(TableName.InstanceRelayConfig))) {
+  if (!(await knex.schema.hashtable(TableName.InstanceRelayConfig))) {
     await knex.schema.createTable(TableName.InstanceRelayConfig, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.timestamps(true, true, true);
@@ -42,7 +42,7 @@ export async function up(knex: Knex): Promise<void> {
   }
 
   // Org-level relay configuration (one-to-one with organization)
-  if (!(await knex.schema.hasTable(TableName.OrgRelayConfig))) {
+  if (!(await knex.schema.hashtable(TableName.OrgRelayConfig))) {
     await knex.schema.createTable(TableName.OrgRelayConfig, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.timestamps(true, true, true);
@@ -68,7 +68,7 @@ export async function up(knex: Knex): Promise<void> {
     await createOnUpdateTrigger(knex, TableName.OrgRelayConfig);
   }
 
-  if (!(await knex.schema.hasTable(TableName.OrgGatewayConfigV2))) {
+  if (!(await knex.schema.hashtable(TableName.OrgGatewayConfigV2))) {
     await knex.schema.createTable(TableName.OrgGatewayConfigV2, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.uuid("orgId").notNullable().unique();
@@ -87,7 +87,7 @@ export async function up(knex: Knex): Promise<void> {
     await createOnUpdateTrigger(knex, TableName.OrgGatewayConfigV2);
   }
 
-  if (!(await knex.schema.hasTable(TableName.Relay))) {
+  if (!(await knex.schema.hashtable(TableName.Relay))) {
     await knex.schema.createTable(TableName.Relay, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.timestamps(true, true, true);
@@ -107,7 +107,7 @@ export async function up(knex: Knex): Promise<void> {
     await createOnUpdateTrigger(knex, TableName.Relay);
   }
 
-  if (!(await knex.schema.hasTable(TableName.GatewayV2))) {
+  if (!(await knex.schema.hashtable(TableName.GatewayV2))) {
     await knex.schema.createTable(TableName.GatewayV2, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.timestamps(true, true, true);

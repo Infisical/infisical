@@ -4,7 +4,7 @@ import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
-  if (!(await knex.schema.hasTable(TableName.IntegrationAuth))) {
+  if (!(await knex.schema.hashtable(TableName.IntegrationAuth))) {
     await knex.schema.createTable(TableName.IntegrationAuth, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.string("integration").notNullable();
@@ -32,7 +32,7 @@ export async function up(knex: Knex): Promise<void> {
   }
   await createOnUpdateTrigger(knex, TableName.IntegrationAuth);
 
-  if (!(await knex.schema.hasTable(TableName.Integration))) {
+  if (!(await knex.schema.hashtable(TableName.Integration))) {
     await knex.schema.createTable(TableName.Integration, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.boolean("isActive").notNullable();

@@ -5,7 +5,7 @@ import { TableName } from "../schemas";
 export async function up(knex: Knex): Promise<void> {
   const hasAuthConsentContentCol = await knex.schema.hasColumn(TableName.SuperAdmin, "authConsentContent");
   const hasPageFrameContentCol = await knex.schema.hasColumn(TableName.SuperAdmin, "pageFrameContent");
-  if (await knex.schema.hasTable(TableName.SuperAdmin)) {
+  if (await knex.schema.hashtable(TableName.SuperAdmin)) {
     await knex.schema.alterTable(TableName.SuperAdmin, (t) => {
       if (!hasAuthConsentContentCol) {
         t.text("authConsentContent");

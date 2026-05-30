@@ -4,7 +4,7 @@ import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
-  if (!(await knex.schema.hasTable(TableName.CertificateInventoryView))) {
+  if (!(await knex.schema.hashtable(TableName.CertificateInventoryView))) {
     await knex.schema.createTable(TableName.CertificateInventoryView, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
 
@@ -29,7 +29,7 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  if (await knex.schema.hasTable(TableName.CertificateInventoryView)) {
+  if (await knex.schema.hashtable(TableName.CertificateInventoryView)) {
     await dropOnUpdateTrigger(knex, TableName.CertificateInventoryView);
     await knex.schema.dropTable(TableName.CertificateInventoryView);
   }

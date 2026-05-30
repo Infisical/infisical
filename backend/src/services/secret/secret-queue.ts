@@ -592,7 +592,7 @@ export const secretQueueFactory = ({
   };
 
   const syncSecrets = async <T extends boolean = false>({
-    // seperate de-dupe queue for integration sync and replication sync
+    // separate de-dupe queue for integration sync and replication sync
     _deDupeQueue: deDupeQueue = {},
     _depth: depth = 0,
     _deDupeReplicationQueue: deDupeReplicationQueue = {},
@@ -1493,7 +1493,7 @@ export const secretQueueFactory = ({
 
       /*
        * Integration Auth Migration
-       * Saving the new encrypted colum
+       * Saving the new encrypted column
        * */
       // eslint-disable-next-line no-await-in-loop
       const projectV1IntegrationAuths = await integrationAuthDAL.find({ projectId }, { tx });

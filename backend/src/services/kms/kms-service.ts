@@ -67,7 +67,7 @@ type TKmsServiceFactoryDep = {
 
 export type TKmsServiceFactory = ReturnType<typeof kmsServiceFactory>;
 
-// akhilmhdh: Don't edit this value. This is measured for blob concatination in kms
+// akhilmhdh: Don't edit this value. This is measured for blob concatenation in kms
 const KMS_VERSION = "v01";
 const KMS_VERSION_BLOB_LENGTH = 3;
 const KmsSanitizedSchema = KmsKeysSchema.extend({ isExternal: z.boolean() });
@@ -88,7 +88,7 @@ export const kmsServiceFactory = ({
 
   /*
    * Generate KMS Key
-   * This function is responsibile for generating the infisical internal KMS for various entities
+   * This function is responsible for generating the infisical internal KMS for various entities
    * Like for secret manager, cert manager or for organization
    */
   const generateKmsKey = async ({

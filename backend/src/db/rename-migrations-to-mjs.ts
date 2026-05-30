@@ -29,7 +29,7 @@ const runRename = async () => {
       })
     : undefined;
 
-  const hasMigrationTable = await applicationDb.schema.hasTable(migrationTable);
+  const hasMigrationTable = await applicationDb.schema.hashtable(migrationTable);
   if (hasMigrationTable) {
     const firstFile = (await applicationDb(migrationTable).where({}).first()) as { name: string };
     if (firstFile?.name?.includes(".ts")) {
@@ -39,7 +39,7 @@ const runRename = async () => {
     }
   }
   if (auditLogDb) {
-    const hasMigrationTableInAuditLog = await auditLogDb.schema.hasTable(migrationTable);
+    const hasMigrationTableInAuditLog = await auditLogDb.schema.hashtable(migrationTable);
     if (hasMigrationTableInAuditLog) {
       const firstFile = (await auditLogDb(migrationTable).where({}).first()) as { name: string };
       if (firstFile?.name?.includes(".ts")) {

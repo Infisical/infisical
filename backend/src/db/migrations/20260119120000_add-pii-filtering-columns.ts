@@ -3,8 +3,8 @@ import { Knex } from "knex";
 import { TableName } from "../schemas";
 
 export async function up(knex: Knex): Promise<void> {
-  const hasTable = await knex.schema.hasTable(TableName.AiMcpEndpoint);
-  if (!hasTable) {
+  const hashtable = await knex.schema.hashtable(TableName.AiMcpEndpoint);
+  if (!hashtable) {
     return;
   }
 
@@ -28,8 +28,8 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  const hasTable = await knex.schema.hasTable(TableName.AiMcpEndpoint);
-  if (!hasTable) {
+  const hashtable = await knex.schema.hashtable(TableName.AiMcpEndpoint);
+  if (!hashtable) {
     return;
   }
 

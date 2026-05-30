@@ -4,7 +4,7 @@ import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
-  if (!(await knex.schema.hasTable(TableName.Reminder))) {
+  if (!(await knex.schema.hashtable(TableName.Reminder))) {
     await knex.schema.createTable(TableName.Reminder, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.uuid("secretId").nullable();
@@ -17,7 +17,7 @@ export async function up(knex: Knex): Promise<void> {
     });
   }
 
-  if (!(await knex.schema.hasTable(TableName.ReminderRecipient))) {
+  if (!(await knex.schema.hashtable(TableName.ReminderRecipient))) {
     await knex.schema.createTable(TableName.ReminderRecipient, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.uuid("reminderId").notNullable();

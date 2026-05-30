@@ -4,7 +4,7 @@ import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
-  if (!(await knex.schema.hasTable(TableName.IdentityLdapAuth))) {
+  if (!(await knex.schema.hashtable(TableName.IdentityLdapAuth))) {
     await knex.schema.createTable(TableName.IdentityLdapAuth, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
 

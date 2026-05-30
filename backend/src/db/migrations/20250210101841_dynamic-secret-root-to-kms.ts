@@ -20,7 +20,7 @@ export async function up(knex: Knex): Promise<void> {
   const hasInputIVColumn = await knex.schema.hasColumn(TableName.DynamicSecret, "inputIV");
   const hasInputTagColumn = await knex.schema.hasColumn(TableName.DynamicSecret, "inputTag");
 
-  const hasDynamicSecretTable = await knex.schema.hasTable(TableName.DynamicSecret);
+  const hasDynamicSecretTable = await knex.schema.hashtable(TableName.DynamicSecret);
   if (hasDynamicSecretTable) {
     await knex.schema.alterTable(TableName.DynamicSecret, (t) => {
       if (!hasEncryptedInputColumn) t.binary("encryptedInput");
@@ -113,7 +113,7 @@ export async function up(knex: Knex): Promise<void> {
 export async function down(knex: Knex): Promise<void> {
   const hasEncryptedInputColumn = await knex.schema.hasColumn(TableName.DynamicSecret, "encryptedInput");
 
-  const hasDynamicSecretTable = await knex.schema.hasTable(TableName.DynamicSecret);
+  const hasDynamicSecretTable = await knex.schema.hashtable(TableName.DynamicSecret);
   if (hasDynamicSecretTable) {
     await knex.schema.alterTable(TableName.DynamicSecret, (t) => {
       if (hasEncryptedInputColumn) t.dropColumn("encryptedInput");

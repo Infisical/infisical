@@ -19,7 +19,7 @@ export async function up(knex: Knex): Promise<void> {
     "encryptedRotationData"
   );
 
-  const hasRotationTable = await knex.schema.hasTable(TableName.DeprecatedSecretRotationV1);
+  const hasRotationTable = await knex.schema.hashtable(TableName.DeprecatedSecretRotationV1);
   if (hasRotationTable) {
     await knex.schema.alterTable(TableName.DeprecatedSecretRotationV1, (t) => {
       if (!hasEncryptedRotationData) t.binary("encryptedRotationData");
@@ -109,7 +109,7 @@ export async function down(knex: Knex): Promise<void> {
     "encryptedRotationData"
   );
 
-  const hasRotationTable = await knex.schema.hasTable(TableName.DeprecatedSecretRotationV1);
+  const hasRotationTable = await knex.schema.hashtable(TableName.DeprecatedSecretRotationV1);
   if (hasRotationTable) {
     await knex.schema.alterTable(TableName.DeprecatedSecretRotationV1, (t) => {
       if (hasEncryptedRotationData) t.dropColumn("encryptedRotationData");

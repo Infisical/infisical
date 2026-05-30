@@ -3,7 +3,7 @@ import { Knex } from "knex";
 import { TableName } from "../schemas";
 
 export async function up(knex: Knex): Promise<void> {
-  if (await knex.schema.hasTable(TableName.PkiAlertChannels)) {
+  if (await knex.schema.hashtable(TableName.PkiAlertChannels)) {
     const hasEncryptedConfig = await knex.schema.hasColumn(TableName.PkiAlertChannels, "encryptedConfig");
     if (!hasEncryptedConfig) {
       await knex.schema.alterTable(TableName.PkiAlertChannels, (t) => {
@@ -18,7 +18,7 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  if (await knex.schema.hasTable(TableName.PkiAlertChannels)) {
+  if (await knex.schema.hashtable(TableName.PkiAlertChannels)) {
     const hasEncryptedConfig = await knex.schema.hasColumn(TableName.PkiAlertChannels, "encryptedConfig");
     if (hasEncryptedConfig) {
       await knex.schema.alterTable(TableName.PkiAlertChannels, (t) => {

@@ -4,7 +4,7 @@ import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
-  if (!(await knex.schema.hasTable(TableName.Groups))) {
+  if (!(await knex.schema.hashtable(TableName.Groups))) {
     await knex.schema.createTable(TableName.Groups, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.uuid("orgId").notNullable();
@@ -21,7 +21,7 @@ export async function up(knex: Knex): Promise<void> {
 
   await createOnUpdateTrigger(knex, TableName.Groups);
 
-  if (!(await knex.schema.hasTable(TableName.UserGroupMembership))) {
+  if (!(await knex.schema.hashtable(TableName.UserGroupMembership))) {
     await knex.schema.createTable(TableName.UserGroupMembership, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid()); // link to user and link to groups cascade on groups
       t.uuid("userId").notNullable();
@@ -34,7 +34,7 @@ export async function up(knex: Knex): Promise<void> {
 
   await createOnUpdateTrigger(knex, TableName.UserGroupMembership);
 
-  if (!(await knex.schema.hasTable(TableName.GroupProjectMembership))) {
+  if (!(await knex.schema.hashtable(TableName.GroupProjectMembership))) {
     await knex.schema.createTable(TableName.GroupProjectMembership, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.string("projectId").notNullable();
@@ -46,7 +46,7 @@ export async function up(knex: Knex): Promise<void> {
   }
   await createOnUpdateTrigger(knex, TableName.GroupProjectMembership);
 
-  if (!(await knex.schema.hasTable(TableName.GroupProjectMembershipRole))) {
+  if (!(await knex.schema.hashtable(TableName.GroupProjectMembershipRole))) {
     await knex.schema.createTable(TableName.GroupProjectMembershipRole, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.string("role").notNullable();

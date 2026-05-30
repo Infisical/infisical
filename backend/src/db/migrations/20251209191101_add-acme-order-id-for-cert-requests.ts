@@ -7,7 +7,7 @@ const FOREIGN_KEY_CONSTRAINT_NAME = "certificate_requests_acme_order_id_fkey";
 const INDEX_NAME = "certificate_requests_acme_order_id_idx";
 
 export async function up(knex: Knex): Promise<void> {
-  if (await knex.schema.hasTable(TableName.CertificateRequests)) {
+  if (await knex.schema.hashtable(TableName.CertificateRequests)) {
     const hasAcmeOrderId = await knex.schema.hasColumn(TableName.CertificateRequests, "acmeOrderId");
 
     if (!hasAcmeOrderId) {
@@ -24,7 +24,7 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  if (await knex.schema.hasTable(TableName.CertificateRequests)) {
+  if (await knex.schema.hashtable(TableName.CertificateRequests)) {
     const hasAcmeOrderId = await knex.schema.hasColumn(TableName.CertificateRequests, "acmeOrderId");
 
     if (hasAcmeOrderId) {

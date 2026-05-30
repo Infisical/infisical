@@ -5,7 +5,7 @@ import { OrgMembershipStatus } from "../schemas/models";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
-  const isOrgRolePresent = await knex.schema.hasTable(TableName.OrgRoles);
+  const isOrgRolePresent = await knex.schema.hashtable(TableName.OrgRoles);
   if (!isOrgRolePresent) {
     await knex.schema.createTable(TableName.OrgRoles, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
@@ -20,7 +20,7 @@ export async function up(knex: Knex): Promise<void> {
     });
   }
 
-  const isOrgTablePresent = await knex.schema.hasTable(TableName.OrgMembership);
+  const isOrgTablePresent = await knex.schema.hashtable(TableName.OrgMembership);
   if (!isOrgTablePresent) {
     await knex.schema.createTable(TableName.OrgMembership, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());

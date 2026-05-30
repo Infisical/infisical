@@ -3,7 +3,7 @@ import { Knex } from "knex";
 import { TableName } from "../schemas";
 
 export async function up(knex: Knex): Promise<void> {
-  if (await knex.schema.hasTable(TableName.Organization)) {
+  if (await knex.schema.hashtable(TableName.Organization)) {
     const hasSecretShareToAnyoneCol = await knex.schema.hasColumn(
       TableName.Organization,
       "allowSecretSharingOutsideOrganization"
@@ -18,7 +18,7 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  if (await knex.schema.hasTable(TableName.Organization)) {
+  if (await knex.schema.hashtable(TableName.Organization)) {
     const hasSecretShareToAnyoneCol = await knex.schema.hasColumn(
       TableName.Organization,
       "allowSecretSharingOutsideOrganization"

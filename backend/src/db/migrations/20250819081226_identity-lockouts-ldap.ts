@@ -3,7 +3,7 @@ import { Knex } from "knex";
 import { TableName } from "../schemas";
 
 export async function up(knex: Knex): Promise<void> {
-  if (await knex.schema.hasTable(TableName.IdentityLdapAuth)) {
+  if (await knex.schema.hashtable(TableName.IdentityLdapAuth)) {
     const hasLockoutEnabled = await knex.schema.hasColumn(TableName.IdentityLdapAuth, "lockoutEnabled");
     const hasLockoutThreshold = await knex.schema.hasColumn(TableName.IdentityLdapAuth, "lockoutThreshold");
     const hasLockoutDuration = await knex.schema.hasColumn(TableName.IdentityLdapAuth, "lockoutDurationSeconds");
@@ -30,7 +30,7 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  if (await knex.schema.hasTable(TableName.IdentityLdapAuth)) {
+  if (await knex.schema.hashtable(TableName.IdentityLdapAuth)) {
     const hasLockoutEnabled = await knex.schema.hasColumn(TableName.IdentityLdapAuth, "lockoutEnabled");
     const hasLockoutThreshold = await knex.schema.hasColumn(TableName.IdentityLdapAuth, "lockoutThreshold");
     const hasLockoutDuration = await knex.schema.hasColumn(TableName.IdentityLdapAuth, "lockoutDurationSeconds");

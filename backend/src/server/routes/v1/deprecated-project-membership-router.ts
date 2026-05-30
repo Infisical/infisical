@@ -124,7 +124,7 @@ export const registerDeprecatedProjectMembershipRouter = async (server: FastifyZ
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { userId } = await server.services.convertor.userMembershipIdToUserId(
+      const { userId } = await server.services.converter.userMembershipIdToUserId(
         req.params.membershipId,
         AccessScope.Project,
         req.permission.orgId
@@ -320,7 +320,7 @@ export const registerDeprecatedProjectMembershipRouter = async (server: FastifyZ
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { userId } = await server.services.convertor.userMembershipIdToUserId(
+      const { userId } = await server.services.converter.userMembershipIdToUserId(
         req.params.membershipId,
         AccessScope.Project,
         req.permission.orgId
@@ -370,7 +370,7 @@ export const registerDeprecatedProjectMembershipRouter = async (server: FastifyZ
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { userId } = await server.services.convertor.userMembershipIdToUserId(
+      const { userId } = await server.services.converter.userMembershipIdToUserId(
         req.params.membershipId,
         AccessScope.Project,
         req.permission.orgId

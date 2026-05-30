@@ -652,27 +652,27 @@ const migrateAdditionalPrivilegeData = async (knex: Knex) => {
 };
 
 export async function up(knex: Knex): Promise<void> {
-  const hasToMigrateNamespaceTable = !(await knex.schema.hasTable(TableName.Namespace));
+  const hasToMigrateNamespaceTable = !(await knex.schema.hashtable(TableName.Namespace));
   if (hasToMigrateNamespaceTable) {
     await createNamespaceTable(knex);
   }
 
-  const hasToMigrateMembershipTable = !(await knex.schema.hasTable(TableName.Membership));
+  const hasToMigrateMembershipTable = !(await knex.schema.hashtable(TableName.Membership));
   if (hasToMigrateMembershipTable) {
     await createMembershipTable(knex);
   }
 
-  const hasToMigrateRoleTable = !(await knex.schema.hasTable(TableName.Role));
+  const hasToMigrateRoleTable = !(await knex.schema.hashtable(TableName.Role));
   if (hasToMigrateRoleTable) {
     await createRoleTable(knex);
   }
 
-  const hasToMigrateMembershipRoleTable = !(await knex.schema.hasTable(TableName.MembershipRole));
+  const hasToMigrateMembershipRoleTable = !(await knex.schema.hashtable(TableName.MembershipRole));
   if (hasToMigrateMembershipRoleTable) {
     await createMembershipRoleTable(knex);
   }
 
-  const hasToMigrateAdditionalPrivilegeTable = !(await knex.schema.hasTable(TableName.AdditionalPrivilege));
+  const hasToMigrateAdditionalPrivilegeTable = !(await knex.schema.hashtable(TableName.AdditionalPrivilege));
   if (hasToMigrateAdditionalPrivilegeTable) {
     await createAdditionalPrivilegeTable(knex);
   }
@@ -1072,19 +1072,19 @@ const rollbackMembershipData = async (knex: Knex) => {
 };
 
 export async function down(knex: Knex): Promise<void> {
-  const hasRoleTable = await knex.schema.hasTable(TableName.Role);
-  const hasOrgRoleTable = await knex.schema.hasTable(TableName.OrgRoles);
-  const hasProjectRoleTable = await knex.schema.hasTable(TableName.ProjectRoles);
+  const hasRoleTable = await knex.schema.hashtable(TableName.Role);
+  const hasOrgRoleTable = await knex.schema.hashtable(TableName.OrgRoles);
+  const hasProjectRoleTable = await knex.schema.hashtable(TableName.ProjectRoles);
   if (hasRoleTable && hasOrgRoleTable && hasProjectRoleTable) {
     await rollbackRoleData(knex);
   }
 
-  const hasMembershipTable = await knex.schema.hasTable(TableName.Membership);
-  const hasOrgMembershipTable = await knex.schema.hasTable(TableName.OrgMembership);
-  const hasIdentityOrgMembershipTable = await knex.schema.hasTable(TableName.IdentityOrgMembership);
-  const hasProjectMembershipTable = await knex.schema.hasTable(TableName.ProjectMembership);
-  const hasIdentityProjectMembershipTable = await knex.schema.hasTable(TableName.IdentityProjectMembership);
-  const hasGroupProjectMembershipTable = await knex.schema.hasTable(TableName.GroupProjectMembership);
+  const hasMembershipTable = await knex.schema.hashtable(TableName.Membership);
+  const hasOrgMembershipTable = await knex.schema.hashtable(TableName.OrgMembership);
+  const hasIdentityOrgMembershipTable = await knex.schema.hashtable(TableName.IdentityOrgMembership);
+  const hasProjectMembershipTable = await knex.schema.hashtable(TableName.ProjectMembership);
+  const hasIdentityProjectMembershipTable = await knex.schema.hashtable(TableName.IdentityProjectMembership);
+  const hasGroupProjectMembershipTable = await knex.schema.hashtable(TableName.GroupProjectMembership);
   if (
     hasMembershipTable &&
     hasOrgMembershipTable &&
@@ -1096,11 +1096,11 @@ export async function down(knex: Knex): Promise<void> {
     await rollbackMembershipData(knex);
   }
 
-  const hasMembershipRoleTable = await knex.schema.hasTable(TableName.MembershipRole);
-  const hasProjectUserMembershipRoleTable = await knex.schema.hasTable(TableName.ProjectUserMembershipRole);
-  const hasIdentityProjectMembershipRoleTable = await knex.schema.hasTable(TableName.IdentityProjectMembershipRole);
-  const hasGroupProjectMembershipRoleTable = await knex.schema.hasTable(TableName.GroupProjectMembershipRole);
-  const hasGroupsTable = await knex.schema.hasTable(TableName.Groups);
+  const hasMembershipRoleTable = await knex.schema.hashtable(TableName.MembershipRole);
+  const hasProjectUserMembershipRoleTable = await knex.schema.hashtable(TableName.ProjectUserMembershipRole);
+  const hasIdentityProjectMembershipRoleTable = await knex.schema.hashtable(TableName.IdentityProjectMembershipRole);
+  const hasGroupProjectMembershipRoleTable = await knex.schema.hashtable(TableName.GroupProjectMembershipRole);
+  const hasGroupsTable = await knex.schema.hashtable(TableName.Groups);
   if (
     hasMembershipRoleTable &&
     hasProjectUserMembershipRoleTable &&
@@ -1111,9 +1111,9 @@ export async function down(knex: Knex): Promise<void> {
     await rollbackMembershipRoleData(knex);
   }
 
-  const hasAdditionalPrivilegeTable = await knex.schema.hasTable(TableName.AdditionalPrivilege);
-  const hasProjectUserAdditionalPrivilegeTable = await knex.schema.hasTable(TableName.ProjectUserAdditionalPrivilege);
-  const hasIdentityProjectAdditionalPrivilegeTable = await knex.schema.hasTable(
+  const hasAdditionalPrivilegeTable = await knex.schema.hashtable(TableName.AdditionalPrivilege);
+  const hasProjectUserAdditionalPrivilegeTable = await knex.schema.hashtable(TableName.ProjectUserAdditionalPrivilege);
+  const hasIdentityProjectAdditionalPrivilegeTable = await knex.schema.hashtable(
     TableName.IdentityProjectAdditionalPrivilege
   );
   if (

@@ -218,7 +218,7 @@ const extractLeafAndChain = (pemBundle: string): { leaf: string; chain: string }
       const basicConstraints = cert.getExtension(x509.BasicConstraintsExtension);
       if (!basicConstraints?.ca) leafIndex = index;
     } catch {
-      // skip unparseable entries
+      // skip unparsable entries
     }
   });
 

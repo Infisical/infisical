@@ -18,7 +18,7 @@ export async function up(knex: Knex): Promise<void> {
   const hasEncryptedUrl = await knex.schema.hasColumn(TableName.Webhook, "encryptedUrl");
   const hasUrl = await knex.schema.hasColumn(TableName.Webhook, "url");
 
-  const hasWebhookTable = await knex.schema.hasTable(TableName.Webhook);
+  const hasWebhookTable = await knex.schema.hashtable(TableName.Webhook);
   if (hasWebhookTable) {
     await knex.schema.alterTable(TableName.Webhook, (t) => {
       if (!hasEncryptedKey) t.binary("encryptedPassKey");
@@ -133,7 +133,7 @@ export async function down(knex: Knex): Promise<void> {
   const hasEncryptedKey = await knex.schema.hasColumn(TableName.Webhook, "encryptedPassKey");
   const hasEncryptedUrl = await knex.schema.hasColumn(TableName.Webhook, "encryptedUrl");
 
-  const hasWebhookTable = await knex.schema.hasTable(TableName.Webhook);
+  const hasWebhookTable = await knex.schema.hashtable(TableName.Webhook);
   if (hasWebhookTable) {
     await knex.schema.alterTable(TableName.Webhook, (t) => {
       if (hasEncryptedKey) t.dropColumn("encryptedPassKey");
