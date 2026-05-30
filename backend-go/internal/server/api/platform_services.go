@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/infisical/api/internal/ee/services/externalkms"
 	"github.com/infisical/api/internal/services/assumeprivilege"
 	"github.com/infisical/api/internal/services/auditlog"
 	"github.com/infisical/api/internal/services/auth/apiauth"
@@ -25,10 +26,16 @@ type PlatformServices struct {
 }
 
 func newPlatformServices(ctx context.Context, infra *Infra) (*PlatformServices, error) {
+	externalKmsSvc, err := externalkms.NewService(ctx, infra.Logger, &externalkms.Deps{})
+	if err != nil {
+		return nil, fmt.Errorf("external kms: %w", err)
+	}
+
 	kmsSvc, err := kms.NewService(ctx, infra.Logger, &kms.Deps{
-		DB:     infra.DB,
-		HSM:    infra.HSM,
-		Config: infra.Config,
+		DB:          infra.DB,
+		HSM:         infra.HSM,
+		ExternalKms: externalKmsSvc,
+		Config:      infra.Config,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("kms: %w", err)

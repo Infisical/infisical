@@ -1,3 +1,5 @@
+//go:build integration
+
 package infra
 
 // Test constants for infrastructure setup.

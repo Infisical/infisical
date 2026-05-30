@@ -1,3 +1,5 @@
+//go:build integration
+
 package infra
 
 // Request and response types for Node.js API calls.
@@ -193,6 +195,18 @@ type CreateSecretResponse struct {
 	} `json:"secret"`
 }
 
+// GetSecretResponse is the response from GET /api/v4/secrets/{key}.
+type GetSecretResponse struct {
+	Secret struct {
+		ID          string `json:"id"`
+		Key         string `json:"secretKey"`
+		Value       string `json:"secretValue"`
+		Version     int    `json:"version"`
+		SecretPath  string `json:"secretPath"`
+		Environment string `json:"environment"`
+	} `json:"secret"`
+}
+
 // CreateFolderRequest is the request body for POST /api/v2/folders.
 type CreateFolderRequest struct {
 	ProjectID   string `json:"projectId"`
@@ -307,4 +321,23 @@ type UniversalAuthLoginRequest struct {
 // UniversalAuthLoginResponse is the response from POST /api/v1/auth/universal-auth/login.
 type UniversalAuthLoginResponse struct {
 	AccessToken string `json:"accessToken"`
+}
+
+// CreateOrgRequest is the request body for POST /api/v1/organizations.
+type CreateOrgRequest struct {
+	Name string `json:"name"`
+}
+
+// CreateOrgResponse is the response from POST /api/v1/organizations.
+type CreateOrgResponse struct {
+	Organization struct {
+		ID   string `json:"id"`
+		Name string `json:"name"`
+	} `json:"organization"`
+}
+
+// OrgSeed contains metadata for an org created via the Node.js API.
+type OrgSeed struct {
+	ID   string
+	Name string
 }

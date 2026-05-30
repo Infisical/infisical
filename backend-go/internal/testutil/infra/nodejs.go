@@ -1,3 +1,5 @@
+//go:build integration
+
 package infra
 
 import (
@@ -951,5 +953,34 @@ func (n *NodeJSService) DeleteServiceToken(t *testing.T, serviceTokenID string) 
 	}
 	if r.IsError() {
 		t.Fatalf("infra.DeleteServiceToken: returned %d: %s", r.StatusCode(), r.String())
+	}
+}
+
+// GetSecretByKey reads a secret by key via the Node.js API.
+func (n *NodeJSService) GetSecretByKey(t *testing.T, projectID, environment, secretPath, key string) *SecretSeed {
+	t.Helper()
+
+	var resp GetSecretResponse
+	r, err := n.client.R().
+		SetAuthToken(n.identityToken).
+		SetQueryParams(map[string]string{
+			"projectId":   projectID,
+			"environment": environment,
+			"secretPath":  secretPath,
+		}).
+		SetResult(&resp).
+		Get(fmt.Sprintf("/api/v4/secrets/%s", key))
+	if err != nil {
+		t.Fatalf("infra.GetSecretByKey: request failed: %v", err)
+	}
+	if r.IsError() {
+		t.Fatalf("infra.GetSecretByKey: returned %d: %s", r.StatusCode(), r.String())
+	}
+
+	return &SecretSeed{
+		ID:      resp.Secret.ID,
+		Key:     resp.Secret.Key,
+		Value:   resp.Secret.Value,
+		Version: resp.Secret.Version,
 	}
 }

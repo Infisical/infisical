@@ -64,9 +64,10 @@ func newSecretsHandler(t *testing.T) *secret.Handler {
 	t.Cleanup(func() { redisClient.Close() })
 
 	kmsSvc, err := kms.NewService(ctx, testutil.NopLogger(), &kms.Deps{
-		DB:     stack.DB(),
-		HSM:    nil,
-		Config: stack.Config(),
+		DB:          stack.DB(),
+		HSM:         nil,
+		ExternalKms: nil,
+		Config:      stack.Config(),
 	})
 	require.NoError(t, err)
 
