@@ -471,6 +471,11 @@ import { secretValidationRuleServiceFactory } from "@app/services/secret-validat
 import { serviceTokenDALFactory } from "@app/services/service-token/service-token-dal";
 import { serviceTokenServiceFactory } from "@app/services/service-token/service-token-service";
 import { signerDALFactory, signerServiceFactory, signingOperationDALFactory } from "@app/services/signer";
+import { signerAutoRenewalQueueFactory } from "@app/services/signer/signer-auto-renewal-queue";
+import { signerIssuanceJobDALFactory } from "@app/services/signer/signer-issuance-job-dal";
+import { signerIssuanceServiceFactory } from "@app/services/signer/signer-issuance-service";
+import { signerPolicyServiceFactory } from "@app/services/signer/signer-policy-service";
+import { signerMembershipServiceFactory } from "@app/services/signer-membership";
 import { projectSlackConfigDALFactory } from "@app/services/slack/project-slack-config-dal";
 import { slackIntegrationDALFactory } from "@app/services/slack/slack-integration-dal";
 import { slackServiceFactory } from "@app/services/slack/slack-service";
@@ -1349,6 +1354,7 @@ export const registerRoutes = async (
 
   const signerDAL = signerDALFactory(db);
   const signingOperationDAL = signingOperationDALFactory(db);
+  const signerIssuanceJobDAL = signerIssuanceJobDALFactory(db);
 
   const instanceRelayConfigDAL = instanceRelayConfigDalFactory(db);
   const orgRelayConfigDAL = orgRelayConfigDalFactory(db);
@@ -1481,6 +1487,19 @@ export const registerRoutes = async (
     userDAL,
     identityDAL,
     groupDAL,
+    approvalPolicyDAL
+  });
+
+  const signerMembershipService = signerMembershipServiceFactory({
+    signerDAL,
+    membershipDAL,
+    membershipRoleDAL,
+    permissionService,
+    userDAL,
+    identityDAL,
+    groupDAL,
+    userGroupMembershipDAL,
+    identityGroupMembershipDAL,
     approvalPolicyDAL
   });
 
@@ -3043,16 +3062,62 @@ export const registerRoutes = async (
     permissionService
   });
 
+  const signerIssuanceService = signerIssuanceServiceFactory({
+    signerIssuanceJobDAL,
+    signerDAL,
+    certificateAuthorityDAL,
+    certificateBodyDAL,
+    certificateSecretDAL,
+    projectDAL,
+    kmsService,
+    certificateIssuanceQueue,
+    cronJob
+  });
+
   const signerService = signerServiceFactory({
     signerDAL,
     signingOperationDAL,
     certificateDAL,
+    certificateBodyDAL,
     certificateSecretDAL,
+    certificateAuthorityDAL,
+    signerIssuanceService,
+    internalCertificateAuthorityService,
     projectDAL,
     kmsService,
     permissionService,
     approvalPolicyDAL,
-    approvalRequestGrantsDAL
+    approvalPolicyStepsDAL,
+    approvalPolicyStepApproversDAL,
+    approvalRequestDAL,
+    approvalRequestGrantsDAL,
+    membershipDAL,
+    membershipRoleDAL
+  });
+
+  const signerAutoRenewalQueue = signerAutoRenewalQueueFactory({
+    queueService,
+    cronJob,
+    signerDAL,
+    signerService
+  });
+
+  const signerPolicyService = signerPolicyServiceFactory({
+    signerDAL,
+    approvalPolicyDAL,
+    approvalPolicyStepsDAL,
+    approvalPolicyStepApproversDAL,
+    approvalRequestDAL,
+    approvalRequestStepsDAL,
+    approvalRequestStepEligibleApproversDAL,
+    approvalRequestGrantsDAL,
+    membershipDAL,
+    membershipRoleDAL,
+    userGroupMembershipDAL,
+    identityGroupMembershipDAL,
+    userDAL,
+    identityDAL,
+    permissionService
   });
 
   const pkiTemplateService = pkiTemplatesServiceFactory({
@@ -3430,6 +3495,8 @@ export const registerRoutes = async (
   digicertCaQueue.init();
   digicertRevocationSyncQueue.init();
   caAutoRenewalQueue.startDailyAutoRenewalJob();
+  signerAutoRenewalQueue.start();
+  signerIssuanceService.start();
   await microsoftTeamsService.start();
   await eventBusService.init();
 
@@ -3513,6 +3580,8 @@ export const registerRoutes = async (
     certificateProfile: certificateProfileService,
     pkiApplication: pkiApplicationService,
     pkiApplicationMembership: pkiApplicationMembershipService,
+    signerMembership: signerMembershipService,
+    signerPolicy: signerPolicyService,
     pkiApplicationEnrollment: pkiApplicationEnrollmentService,
     certManagerProjectResolver,
     certManagerInstance: certManagerInstanceService,

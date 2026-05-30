@@ -21,7 +21,23 @@ export enum ResourcePermissionSub {
   ApprovalRequests = "approval-requests",
   ApprovalRequestGrants = "approval-request-grants",
   Member = "member",
-  Role = "role"
+  Role = "role",
+  Signer = "signer"
+}
+
+export enum ResourcePermissionSignerActions {
+  Read = "read",
+  Edit = "edit",
+  Delete = "delete",
+  EnableDisable = "enable-disable",
+  ManageMembers = "manage-members",
+  ManagePolicy = "manage-policy",
+  Sign = "sign",
+  RequestSign = "request-sign",
+  PreApprove = "pre-approve",
+  RevokeRequest = "revoke-request",
+  ReissueCertificate = "reissue-certificate",
+  ExportCertificate = "export-certificate"
 }
 
 export enum ResourcePermissionApplicationActions {
@@ -79,6 +95,7 @@ export type ResourcePermissionSet =
   | [ProjectPermissionApprovalRequestGrantActions, ResourcePermissionSub.ApprovalRequestGrants]
   | [ProjectPermissionMemberActions, ResourcePermissionSub.Member]
   | [ProjectPermissionActions, ResourcePermissionSub.Role]
+  | [ResourcePermissionSignerActions, ResourcePermissionSub.Signer]
   | [ProjectPermissionCertificateProfileActions, ProjectPermissionSub.CertificateProfiles]
   | [ProjectPermissionAuditLogsActions, ProjectPermissionSub.AuditLogs];
 

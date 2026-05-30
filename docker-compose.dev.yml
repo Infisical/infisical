@@ -18,7 +18,7 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      - postgres-data-2:/var/lib/postgresql/data
     environment:
       POSTGRES_PASSWORD: infisical
       POSTGRES_USER: infisical
@@ -254,7 +254,7 @@ services:
     profiles: [sso]
 
 volumes:
-  postgres-data:
+  postgres-data-2:
     driver: local
   redis_data:
     driver: local

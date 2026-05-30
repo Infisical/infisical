@@ -256,11 +256,10 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
         .status(error.status)
         .send({
           reqId: req.id,
-          error: error.name,
           status: error.status,
           type: `urn:ietf:params:acme:error:${error.type}`,
-          detail: error.message
-          // TODO: add subproblems if they exist
+          detail: error.message,
+          ...(error.subproblems && error.subproblems.length > 0 ? { subproblems: error.subproblems } : {})
         });
     } else if (error instanceof PolicyViolationError) {
       void res.status(HttpStatusCodes.Forbidden).send({

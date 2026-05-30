@@ -22,7 +22,8 @@ export const ApprovalRequestGrantsSchema = z.object({
   revokedAt: z.date().nullable().optional(),
   granteeMachineIdentityId: z.string().uuid().nullable().optional(),
   isBreakGlass: z.boolean().default(false),
-  bypassReason: z.string().nullable().optional()
+  bypassReason: z.string().nullable().optional(),
+  grantedByUserId: z.string().uuid().nullable().optional()
 });
 
 export type TApprovalRequestGrants = z.infer<typeof ApprovalRequestGrantsSchema>;

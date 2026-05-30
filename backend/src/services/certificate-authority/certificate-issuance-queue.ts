@@ -1,4 +1,4 @@
-import acme from "acme-client";
+import * as x509 from "@peculiar/x509";
 import { UnrecoverableError } from "bullmq";
 
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
@@ -92,7 +92,7 @@ const ensureCsrPemFormat = (csr: string): string => {
 
 export type TIssueCertificateFromProfileJobData = {
   certificateId: string;
-  profileId: string;
+  profileId?: string;
   caId: string;
   caType?: CaType;
   commonName?: string;
@@ -326,7 +326,8 @@ export const certificateIssuanceQueueFactory = ({
       }
     }
 
-    await queueService.queue(QueueName.CertificateIssuance, QueueJobs.CaIssueCertificateFromProfile, jobData, {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
+    await queueService.queue(QueueName.CertificateIssuance, QueueJobs.CaIssueCertificateFromProfile, jobData as any, {
       jobId: `certificate-issuance-${jobIdSeed}`,
       ...queueOpts
     });
@@ -410,14 +411,42 @@ export const certificateIssuanceQueueFactory = ({
           const skLeafObj = crypto.nativeCrypto.KeyObject.from(leafKeys.privateKey);
           skLeaf = skLeafObj.export({ format: "pem", type: "pkcs8" }) as string;
 
-          const [, generatedCsr] = await acme.crypto.createCsr(
-            {
-              altNames: altNames ? altNames.map((san) => san.value) : [],
-              commonName: commonName || ""
-            },
-            skLeaf
-          );
-          certificateCsr = generatedCsr.toString();
+          const csrExtensions: x509.Extension[] = [];
+          if (altNames && altNames.length > 0) {
+            csrExtensions.push(
+              new x509.SubjectAlternativeNameExtension(
+                altNames.map((san) => ({
+                  type: (san.type === "ip" ? "ip" : "dns") as "ip" | "dns",
+                  value: san.value
+                }))
+              )
+            );
+          }
+          if (keyUsages && keyUsages.length > 0) {
+            // eslint-disable-next-line no-bitwise
+            const bits = (keyUsages as CertKeyUsage[]).reduce(
+              // eslint-disable-next-line no-bitwise
+              (acc, ku) => acc | x509.KeyUsageFlags[ku],
+              0
+            );
+            if (bits) csrExtensions.push(new x509.KeyUsagesExtension(bits, true));
+          }
+          if (extendedKeyUsages && extendedKeyUsages.length > 0) {
+            csrExtensions.push(
+              new x509.ExtendedKeyUsageExtension(
+                (extendedKeyUsages as CertExtendedKeyUsage[]).map((eku) => x509.ExtendedKeyUsage[eku]),
+                true
+              )
+            );
+          }
+
+          const csrObj = await x509.Pkcs10CertificateRequestGenerator.create({
+            name: commonName ? `CN=${commonName}` : "",
+            keys: leafKeys,
+            signingAlgorithm: keyAlg,
+            extensions: csrExtensions
+          });
+          certificateCsr = csrObj.toString("pem");
         }
 
         if (await isCancelled()) {
@@ -502,7 +531,7 @@ export const certificateIssuanceQueueFactory = ({
       } else if (ca.externalCa?.type === CaType.AZURE_AD_CS) {
         await setPending("Submitting the request to Azure AD CS");
         let template: string | undefined;
-        if (certificateProfileDAL) {
+        if (certificateProfileDAL && profileId) {
           try {
             const profile = await certificateProfileDAL.findById(profileId);
             if (
@@ -544,7 +573,9 @@ export const certificateIssuanceQueueFactory = ({
           return;
         }
 
-        const azureResult = await azureAdCsFns.orderCertificateFromProfile(azureParams);
+        const azureResult = await azureAdCsFns.orderCertificateFromProfile(
+          azureParams as Parameters<typeof azureAdCsFns.orderCertificateFromProfile>[0]
+        );
 
         if (await isCancelled()) {
           logger.info(`Cancelled after Azure AD CS order [certificateRequestId=${certificateRequestId}]`);
@@ -612,7 +643,9 @@ export const certificateIssuanceQueueFactory = ({
           return;
         }
 
-        const acmResult = await awsAcmPublicCaFns.orderCertificateFromProfile(acmParams);
+        const acmResult = await awsAcmPublicCaFns.orderCertificateFromProfile(
+          acmParams as Parameters<typeof awsAcmPublicCaFns.orderCertificateFromProfile>[0]
+        );
 
         if (await isCancelled()) {
           logger.info(`Cancelled after AWS ACM Public CA order [certificateRequestId=${certificateRequestId}]`);
@@ -679,7 +712,9 @@ export const certificateIssuanceQueueFactory = ({
           return;
         }
 
-        const awsPcaResult = await awsPcaFns.orderCertificateFromProfile(awsPcaParams);
+        const awsPcaResult = await awsPcaFns.orderCertificateFromProfile(
+          awsPcaParams as Parameters<typeof awsPcaFns.orderCertificateFromProfile>[0]
+        );
 
         if (await isCancelled()) {
           logger.info(`Cancelled after AWS Private CA order [certificateRequestId=${certificateRequestId}]`);
@@ -870,7 +905,9 @@ export const certificateIssuanceQueueFactory = ({
           return;
         }
 
-        const venafiTppResult = await venafiTppFns.orderCertificateFromProfile(venafiTppParams);
+        const venafiTppResult = await venafiTppFns.orderCertificateFromProfile(
+          venafiTppParams as Parameters<typeof venafiTppFns.orderCertificateFromProfile>[0]
+        );
 
         if (await isCancelled()) {
           logger.info(`Cancelled after Venafi TPP order [certificateRequestId=${certificateRequestId}]`);
@@ -1100,6 +1137,12 @@ export const certificateIssuanceQueueFactory = ({
 
   return {
     queueCertificateIssuance,
-    processCertificateIssuanceJobs
+    processCertificateIssuanceJobs,
+    acmeFns,
+    azureAdCsFns,
+    awsPcaFns,
+    awsAcmPublicCaFns,
+    digicertFns,
+    venafiTppFns
   };
 };

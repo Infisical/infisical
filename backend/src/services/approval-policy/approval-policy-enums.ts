@@ -6,7 +6,8 @@ export enum ApprovalPolicyType {
 
 export enum ApprovalPolicyScope {
   Project = "project",
-  PkiApplication = "pki-application"
+  PkiApplication = "pki-application",
+  Signer = "signer"
 }
 
 export enum ApproverType {

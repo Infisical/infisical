@@ -159,7 +159,7 @@ const PageContent = () => {
               orgId: currentProject.orgId,
               projectId: currentProject.id
             },
-            search: isCodeSigning ? { tab: "approvals" } : undefined
+            search: undefined
           });
         }
       }
@@ -324,7 +324,7 @@ const PageContent = () => {
             : "/organizations/$orgId/projects/cert-manager/$projectId/approvals"
         }
         params={{ orgId: currentOrg.id, projectId: currentProject.id }}
-        search={isCodeSigning ? { tab: "approvals" } : { section: "certificates" }}
+        search={isCodeSigning ? undefined : { section: "certificates" }}
         className={linkClass}
       >
         <FontAwesomeIcon icon={faChevronLeft} />

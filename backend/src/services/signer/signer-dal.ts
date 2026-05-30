@@ -21,6 +21,7 @@ export type TSignerWithCertificateSummary = TPkiSigners & {
   certificateCommonName: string | null;
   certificateSerialNumber: string | null;
   certificateNotAfter: Date | null;
+  certificateStatus: string | null;
   approvalPolicyName: string | null;
 };
 
@@ -63,11 +64,13 @@ export const signerDALFactory = (db: TDbClient) => {
     {
       offset = 0,
       limit = 25,
-      search
+      search,
+      signerIds
     }: {
       offset?: number;
       limit?: number;
       search?: string;
+      signerIds?: string[];
     },
     tx?: Knex
   ) => {
@@ -84,9 +87,14 @@ export const signerDALFactory = (db: TDbClient) => {
           db.ref("commonName").withSchema(TableName.Certificate).as("certificateCommonName"),
           db.ref("serialNumber").withSchema(TableName.Certificate).as("certificateSerialNumber"),
           db.ref("notAfter").withSchema(TableName.Certificate).as("certificateNotAfter"),
+          db.ref("status").withSchema(TableName.Certificate).as("certificateStatus"),
           db.ref("name").withSchema(TableName.ApprovalPolicies).as("approvalPolicyName")
         )
         .where(`${TableName.PkiSigners}.projectId`, projectId);
+
+      if (signerIds) {
+        query = query.whereIn(`${TableName.PkiSigners}.id`, signerIds);
+      }
 
       if (search) {
         const sanitizedSearch = `%${sanitizeSqlLikeString(search)}%`;
@@ -106,12 +114,16 @@ export const signerDALFactory = (db: TDbClient) => {
     }
   };
 
-  const countByProjectId = async (projectId: string, search?: string, tx?: Knex) => {
+  const countByProjectId = async (projectId: string, search?: string, signerIds?: string[], tx?: Knex) => {
     try {
       let query: Knex.QueryBuilder = (tx || db.replicaNode())(TableName.PkiSigners).where(
         `${TableName.PkiSigners}.projectId`,
         projectId
       );
+
+      if (signerIds) {
+        query = query.whereIn(`${TableName.PkiSigners}.id`, signerIds);
+      }
 
       if (search) {
         const sanitizedSearch = `%${sanitizeSqlLikeString(search)}%`;

@@ -13,11 +13,17 @@ export const PkiSignersSchema = z.object({
   name: z.string(),
   description: z.string().nullable().optional(),
   status: z.string().default("active"),
-  certificateId: z.string().uuid(),
-  approvalPolicyId: z.string().uuid().nullable().optional(),
+  certificateId: z.string().uuid().nullable().optional(),
+  approvalPolicyId: z.string().uuid(),
   lastSignedAt: z.date().nullable().optional(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  caId: z.string().uuid().nullable().optional(),
+  commonName: z.string().nullable().optional(),
+  certificateTtlDays: z.number().nullable().optional(),
+  renewBeforeDays: z.number().nullable().optional(),
+  failureReason: z.string().nullable().optional(),
+  keyAlgorithm: z.string().default("RSA_2048")
 });
 
 export type TPkiSigners = z.infer<typeof PkiSignersSchema>;

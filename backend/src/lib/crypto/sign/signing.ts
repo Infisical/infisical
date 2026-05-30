@@ -93,10 +93,11 @@ export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSi
     // We will support more in the future
     switch (keyAlgorithm) {
       case AsymmetricKeyAlgorithm.ECC_NIST_P256:
-        return {
-          full: "prime256v1",
-          short: "p256"
-        };
+        return { full: "prime256v1", short: "p256" };
+      case AsymmetricKeyAlgorithm.ECC_NIST_P384:
+        return { full: "secp384r1", short: "p384" };
+      case AsymmetricKeyAlgorithm.ECC_NIST_P521:
+        return { full: "secp521r1", short: "p521" };
       default:
         throw new Error(`Unsupported EC curve: ${keyAlgorithm}`);
     }
@@ -347,6 +348,8 @@ export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSi
     (data: Buffer, signature: Buffer, publicKey: Buffer, hashAlgorithm: SupportedHashAlgorithm) => Promise<boolean>
   > = {
     [AsymmetricKeyAlgorithm.ECC_NIST_P256]: $verifyEccDigest,
+    [AsymmetricKeyAlgorithm.ECC_NIST_P384]: $verifyEccDigest,
+    [AsymmetricKeyAlgorithm.ECC_NIST_P521]: $verifyEccDigest,
     [AsymmetricKeyAlgorithm.RSA_4096]: $verifyRsaDigest
   };
 
@@ -360,6 +363,8 @@ export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSi
     ) => Promise<Buffer>
   > = {
     [AsymmetricKeyAlgorithm.ECC_NIST_P256]: $signEccDigest,
+    [AsymmetricKeyAlgorithm.ECC_NIST_P384]: $signEccDigest,
+    [AsymmetricKeyAlgorithm.ECC_NIST_P521]: $signEccDigest,
     [AsymmetricKeyAlgorithm.RSA_4096]: $signRsaDigest
   };
 

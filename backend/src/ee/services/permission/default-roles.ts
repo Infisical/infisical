@@ -51,6 +51,7 @@ import {
   ResourcePermissionCertificateActions,
   ResourcePermissionPkiSyncActions,
   ResourcePermissionSet,
+  ResourcePermissionSignerActions,
   ResourcePermissionSub
 } from "@app/ee/services/permission/resource-permission";
 
@@ -333,13 +334,7 @@ const buildAdminPermissionRules = () => {
   );
 
   can(
-    [
-      ProjectPermissionCodeSigningActions.Read,
-      ProjectPermissionCodeSigningActions.Create,
-      ProjectPermissionCodeSigningActions.Edit,
-      ProjectPermissionCodeSigningActions.Delete,
-      ProjectPermissionCodeSigningActions.Sign
-    ],
+    [ProjectPermissionCodeSigningActions.Read, ProjectPermissionCodeSigningActions.Create],
     ProjectPermissionSub.CodeSigners
   );
 
@@ -1097,3 +1092,95 @@ export const applicationAdminPermissions = buildApplicationAdminPermissionRules(
 export const applicationOperatorPermissions = buildApplicationOperatorPermissionRules();
 export const applicationAuditorPermissions = buildApplicationAuditorPermissionRules();
 export const applicationProjectAdminFallbackPermissions = buildApplicationProjectAdminFallbackRules();
+
+const buildSignerAdminPermissionRules = () => {
+  const { can, rules } = new AbilityBuilder<MongoAbility<ResourcePermissionSet>>(createMongoAbility);
+
+  can(
+    [
+      ResourcePermissionSignerActions.Read,
+      ResourcePermissionSignerActions.Edit,
+      ResourcePermissionSignerActions.Delete,
+      ResourcePermissionSignerActions.EnableDisable,
+      ResourcePermissionSignerActions.ManageMembers,
+      ResourcePermissionSignerActions.ManagePolicy,
+      ResourcePermissionSignerActions.Sign,
+      ResourcePermissionSignerActions.RequestSign,
+      ResourcePermissionSignerActions.PreApprove,
+      ResourcePermissionSignerActions.RevokeRequest,
+      ResourcePermissionSignerActions.ReissueCertificate,
+      ResourcePermissionSignerActions.ExportCertificate
+    ],
+    ResourcePermissionSub.Signer
+  );
+
+  can(
+    [
+      ProjectPermissionMemberActions.Read,
+      ProjectPermissionMemberActions.Create,
+      ProjectPermissionMemberActions.Edit,
+      ProjectPermissionMemberActions.Delete
+    ],
+    ResourcePermissionSub.Member
+  );
+
+  can([ProjectPermissionAuditLogsActions.Read], ProjectPermissionSub.AuditLogs);
+
+  return rules;
+};
+
+const buildSignerOperatorPermissionRules = () => {
+  const { can, rules } = new AbilityBuilder<MongoAbility<ResourcePermissionSet>>(createMongoAbility);
+
+  can(
+    [
+      ResourcePermissionSignerActions.Read,
+      ResourcePermissionSignerActions.Sign,
+      ResourcePermissionSignerActions.RequestSign,
+      ResourcePermissionSignerActions.ExportCertificate
+    ],
+    ResourcePermissionSub.Signer
+  );
+
+  can([ProjectPermissionMemberActions.Read], ResourcePermissionSub.Member);
+  can([ProjectPermissionAuditLogsActions.Read], ProjectPermissionSub.AuditLogs);
+
+  return rules;
+};
+
+const buildSignerAuditorPermissionRules = () => {
+  const { can, rules } = new AbilityBuilder<MongoAbility<ResourcePermissionSet>>(createMongoAbility);
+
+  can(
+    [ResourcePermissionSignerActions.Read, ResourcePermissionSignerActions.ExportCertificate],
+    ResourcePermissionSub.Signer
+  );
+
+  can([ProjectPermissionMemberActions.Read], ResourcePermissionSub.Member);
+  can([ProjectPermissionAuditLogsActions.Read], ProjectPermissionSub.AuditLogs);
+
+  return rules;
+};
+
+const buildSignerProjectAdminFallbackRules = () => {
+  const { can, rules } = new AbilityBuilder<MongoAbility<ResourcePermissionSet>>(createMongoAbility);
+
+  can([ResourcePermissionSignerActions.Read], ResourcePermissionSub.Signer);
+
+  can(
+    [
+      ProjectPermissionMemberActions.Read,
+      ProjectPermissionMemberActions.Create,
+      ProjectPermissionMemberActions.Edit,
+      ProjectPermissionMemberActions.Delete
+    ],
+    ResourcePermissionSub.Member
+  );
+
+  return rules;
+};
+
+export const signerAdminPermissions = buildSignerAdminPermissionRules();
+export const signerOperatorPermissions = buildSignerOperatorPermissionRules();
+export const signerAuditorPermissions = buildSignerAuditorPermissionRules();
+export const signerProjectAdminFallbackPermissions = buildSignerProjectAdminFallbackRules();

@@ -16,7 +16,9 @@ export type TAsymmetricSignVerifyFns = {
 // Supported asymmetric key types
 export enum AsymmetricKeyAlgorithm {
   RSA_4096 = "RSA_4096",
-  ECC_NIST_P256 = "ECC_NIST_P256"
+  ECC_NIST_P256 = "ECC_NIST_P256",
+  ECC_NIST_P384 = "ECC_NIST_P384",
+  ECC_NIST_P521 = "ECC_NIST_P521"
 }
 
 export const AsymmetricKeyAlgorithmEnum = z.enum(

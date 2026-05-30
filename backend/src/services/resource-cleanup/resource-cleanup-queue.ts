@@ -120,6 +120,11 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
       handler: async () => {
         logger.info(`cron[${CronJobName.FrequentResourceCleanup}]: task started`);
         await identityAccessTokenDAL.removeExpiredTokens();
+        const expiredApprovalRequestIds = await approvalRequestDAL.markExpiredRequests();
+        if (expiredApprovalRequestIds.length > 0) {
+          await certificateRequestDAL.markExpiredApprovalRequests(expiredApprovalRequestIds);
+        }
+        await approvalRequestGrantsDAL.markExpiredGrants();
       }
     });
   };

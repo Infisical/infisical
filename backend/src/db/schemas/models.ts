@@ -292,6 +292,7 @@ export enum TableName {
 
   // Code Signing
   PkiSigners = "pki_signers",
+  PkiSignerIssuanceJobs = "pki_signer_issuance_jobs",
   PkiSigningOperations = "pki_signing_operations",
 
   CaSigningConfig = "ca_signing_configs",
@@ -361,7 +362,8 @@ export enum ApplicationMembershipRole {
 }
 
 export enum ResourceType {
-  CertificateApplication = "certificate-application"
+  CertificateApplication = "certificate-application",
+  Signer = "signer"
 }
 
 export enum SecretEncryptionAlgo {

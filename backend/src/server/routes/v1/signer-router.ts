@@ -9,8 +9,19 @@ import { openApiHidden, slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { SignerStatus, SigningOperationStatus } from "@app/services/signer/signer-enums";
+import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
+import { SigningOperationStatus } from "@app/services/signer/signer-enums";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
+
+const SIGNER_KEY_ALGORITHM_VALUES = [
+  CertKeyAlgorithm.RSA_2048,
+  CertKeyAlgorithm.RSA_3072,
+  CertKeyAlgorithm.RSA_4096,
+  CertKeyAlgorithm.ECDSA_P256,
+  CertKeyAlgorithm.ECDSA_P384,
+  CertKeyAlgorithm.ECDSA_P521
+] as const;
+const SignerKeyAlgorithmEnum = z.enum(SIGNER_KEY_ALGORITHM_VALUES);
 
 export const registerSignerRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -26,8 +37,41 @@ export const registerSignerRouter = async (server: FastifyZodProvider) => {
         projectId: z.string().trim().optional().describe(openApiHidden()),
         name: slugSchema({ min: 1, max: 64, field: "name" }),
         description: z.string().trim().max(256).optional(),
-        certificateId: z.string().uuid(),
-        approvalPolicyId: z.string().uuid().optional()
+        caId: z.string().uuid().optional(),
+        commonName: z.string().trim().min(1).max(256).optional(),
+        certificateTtlDays: z.number().int().min(1).max(3650).optional(),
+        renewBeforeDays: z.number().int().min(1).max(30).nullable().optional(),
+        keyAlgorithm: SignerKeyAlgorithmEnum.optional(),
+        certificateId: z.string().uuid().optional(),
+        approvalPolicyId: z.string().uuid().optional(),
+        members: z
+          .array(
+            z.object({
+              kind: z.enum(["user", "identity", "group"]),
+              id: z.string().uuid(),
+              role: z.string().min(1)
+            })
+          )
+          .optional(),
+        approvalPolicy: z
+          .object({
+            steps: z.array(
+              z.object({
+                stepNumber: z.number().int().min(1),
+                name: z.string().trim().max(64).nullable().optional(),
+                requiredApprovals: z.number().int().min(1),
+                approverUserIds: z.array(z.string().uuid()).default([]),
+                approverGroupIds: z.array(z.string().uuid()).default([])
+              })
+            ),
+            constraints: z
+              .object({
+                maxSignings: z.number().int().min(1).nullable().optional(),
+                maxWindowDuration: z.string().nullable().optional()
+              })
+              .optional()
+          })
+          .optional()
       }),
       response: {
         200: PkiSignersSchema
@@ -181,6 +225,44 @@ export const registerSignerRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
+    method: "GET",
+    url: "/:signerId/my-permissions",
+    config: { rateLimit: readLimit },
+    schema: {
+      hide: false,
+      operationId: "getSignerMyPermissions",
+      tags: [ApiDocsTags.PkiSigners],
+      description: "Get the caller's effective per-signer capabilities",
+      params: z.object({ signerId: z.string().uuid() }),
+      response: {
+        200: z.object({
+          canRead: z.boolean(),
+          canEdit: z.boolean(),
+          canDelete: z.boolean(),
+          canEnableDisable: z.boolean(),
+          canManageMembers: z.boolean(),
+          canManagePolicy: z.boolean(),
+          canSign: z.boolean(),
+          canRequestSign: z.boolean(),
+          canPreApprove: z.boolean(),
+          canReissueCertificate: z.boolean(),
+          canExportCertificate: z.boolean()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      return server.services.pkiSigner.getMyPermissions({
+        signerId: req.params.signerId,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+    }
+  });
+
+  server.route({
     method: "PATCH",
     url: "/:signerId",
     config: { rateLimit: writeLimit },
@@ -195,9 +277,7 @@ export const registerSignerRouter = async (server: FastifyZodProvider) => {
       body: z.object({
         name: slugSchema({ min: 1, max: 64, field: "name" }).optional(),
         description: z.string().trim().max(256).nullable().optional(),
-        status: z.nativeEnum(SignerStatus).optional(),
-        certificateId: z.string().uuid().optional(),
-        approvalPolicyId: z.string().uuid().nullable().optional()
+        renewBeforeDays: z.number().int().min(1).max(30).nullable().optional()
       }),
       response: {
         200: PkiSignersSchema
@@ -397,6 +477,419 @@ export const registerSignerRouter = async (server: FastifyZodProvider) => {
             signerId: req.params.signerId,
             name: result.signerName
           }
+        }
+      });
+
+      return result;
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:signerId/enable",
+    config: { rateLimit: writeLimit },
+    schema: {
+      hide: false,
+      operationId: "enableSigner",
+      tags: [ApiDocsTags.PkiSigners],
+      description: "Enable a disabled signer",
+      params: z.object({ signerId: z.string().uuid() }),
+      response: { 200: PkiSignersSchema }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const signer = await server.services.pkiSigner.enable({
+        signerId: req.params.signerId,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: signer.projectId,
+        event: {
+          type: EventType.ENABLE_PKI_SIGNER,
+          metadata: { signerId: signer.id, name: signer.name }
+        }
+      });
+
+      return signer;
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:signerId/disable",
+    config: { rateLimit: writeLimit },
+    schema: {
+      hide: false,
+      operationId: "disableSigner",
+      tags: [ApiDocsTags.PkiSigners],
+      description: "Disable an active signer",
+      params: z.object({ signerId: z.string().uuid() }),
+      response: { 200: PkiSignersSchema }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const signer = await server.services.pkiSigner.disable({
+        signerId: req.params.signerId,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: signer.projectId,
+        event: {
+          type: EventType.DISABLE_PKI_SIGNER,
+          metadata: { signerId: signer.id, name: signer.name }
+        }
+      });
+
+      return signer;
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:signerId/certificate/reissue",
+    config: { rateLimit: writeLimit },
+    schema: {
+      hide: false,
+      operationId: "reissueSignerCertificate",
+      tags: [ApiDocsTags.PkiSigners],
+      description: "Re-issue the signer's certificate (optionally from a different CA)",
+      params: z.object({ signerId: z.string().uuid() }),
+      body: z.object({
+        caId: z.string().uuid(),
+        commonName: z.string().trim().min(1).max(256).optional(),
+        certificateTtlDays: z.number().int().min(1).max(3650).optional()
+      }),
+      response: { 200: PkiSignersSchema }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const signer = await server.services.pkiSigner.reissueCertificate({
+        signerId: req.params.signerId,
+        ...req.body,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: signer.projectId,
+        event: {
+          type: EventType.REISSUE_PKI_SIGNER_CERTIFICATE,
+          metadata: {
+            signerId: signer.id,
+            name: signer.name,
+            caId: req.body.caId,
+            commonName: req.body.commonName
+          }
+        }
+      });
+
+      return signer;
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:signerId/certificate",
+    config: { rateLimit: readLimit },
+    schema: {
+      hide: false,
+      operationId: "exportSignerCertificate",
+      tags: [ApiDocsTags.PkiSigners],
+      description: "Export the signer's leaf certificate as PEM",
+      params: z.object({ signerId: z.string().uuid() }),
+      response: {
+        200: z.object({
+          certificatePem: z.string(),
+          serialNumber: z.string(),
+          signerName: z.string()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { certificatePem, serialNumber, signerName, projectId } = await server.services.pkiSigner.exportCertificate(
+        {
+          signerId: req.params.signerId,
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          actorAuthMethod: req.permission.authMethod,
+          actorOrgId: req.permission.orgId
+        }
+      );
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId,
+        event: {
+          type: EventType.EXPORT_PKI_SIGNER_CERTIFICATE,
+          metadata: { signerId: req.params.signerId, name: signerName, serialNumber }
+        }
+      });
+
+      return { certificatePem, serialNumber, signerName };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:signerId/approval-policy",
+    config: { rateLimit: readLimit },
+    schema: {
+      hide: false,
+      operationId: "getSignerApprovalPolicy",
+      tags: [ApiDocsTags.PkiSigners],
+      description: "Read the signer's approval policy (steps, approvers, limits)",
+      params: z.object({ signerId: z.string().uuid() }),
+      response: {
+        200: z.object({
+          id: z.string().uuid(),
+          signerId: z.string().uuid(),
+          hasSteps: z.boolean(),
+          steps: z.array(z.any()),
+          constraints: z.object({
+            maxSignings: z.number().nullable(),
+            maxWindowDuration: z.string().nullable()
+          })
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      return server.services.signerPolicy.getPolicy({
+        signerId: req.params.signerId,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+    }
+  });
+
+  server.route({
+    method: "PATCH",
+    url: "/:signerId/approval-policy",
+    config: { rateLimit: writeLimit },
+    schema: {
+      hide: false,
+      operationId: "updateSignerApprovalPolicy",
+      tags: [ApiDocsTags.PkiSigners],
+      description: "Edit the signer's approval policy (steps, approvers, limits)",
+      params: z.object({ signerId: z.string().uuid() }),
+      body: z.object({
+        steps: z.array(
+          z.object({
+            stepNumber: z.number().int().min(1),
+            name: z.string().trim().max(64).nullable().optional(),
+            requiredApprovals: z.number().int().min(1),
+            approverUserIds: z.array(z.string().uuid()).default([]),
+            approverGroupIds: z.array(z.string().uuid()).default([])
+          })
+        ),
+        constraints: z
+          .object({
+            maxSignings: z.number().int().min(1).nullable().optional(),
+            maxWindowDuration: z.string().nullable().optional()
+          })
+          .optional()
+      })
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const policy = await server.services.signerPolicy.updatePolicy({
+        signerId: req.params.signerId,
+        ...req.body,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: req.internalCertManagerProjectId,
+        event: {
+          type: EventType.UPDATE_PKI_SIGNER_APPROVAL_POLICY,
+          metadata: { signerId: req.params.signerId, stepCount: req.body.steps.length }
+        }
+      });
+
+      return policy;
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:signerId/requests",
+    config: { rateLimit: readLimit },
+    schema: {
+      hide: false,
+      operationId: "listSignerRequests",
+      tags: [ApiDocsTags.PkiSigners],
+      description: "List signing approval requests for a signer",
+      params: z.object({ signerId: z.string().uuid() }),
+      querystring: z.object({
+        statuses: z
+          .string()
+          .optional()
+          .transform((v) =>
+            v
+              ? v
+                  .split(",")
+                  .map((s) => s.trim())
+                  .filter((s): s is "pending" | "approved" | "expired" | "revoked" =>
+                    ["pending", "approved", "expired", "revoked"].includes(s)
+                  )
+              : undefined
+          ),
+        offset: z.coerce.number().int().min(0).default(0),
+        limit: z.coerce.number().int().min(1).max(100).default(25)
+      })
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      return server.services.signerPolicy.listRequests({
+        signerId: req.params.signerId,
+        statuses: req.query.statuses,
+        offset: req.query.offset,
+        limit: req.query.limit,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:signerId/requests",
+    config: { rateLimit: writeLimit },
+    schema: {
+      hide: false,
+      operationId: "requestToSign",
+      tags: [ApiDocsTags.PkiSigners],
+      description: "Open a request to sign with this signer (operator self-serve)",
+      params: z.object({ signerId: z.string().uuid() }),
+      body: z.object({
+        justification: z.string().trim().min(1).max(2048),
+        requestedSignings: z.number().int().min(1).optional(),
+        requestedWindowStart: z.string().datetime().optional(),
+        requestedWindowEnd: z.string().datetime().optional()
+      })
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const request = await server.services.signerPolicy.requestToSign({
+        signerId: req.params.signerId,
+        ...req.body,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: req.internalCertManagerProjectId,
+        event: {
+          type: EventType.PKI_SIGNER_REQUEST_TO_SIGN,
+          metadata: { signerId: req.params.signerId, requestId: request?.id }
+        }
+      });
+
+      return request;
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:signerId/requests/pre-approve",
+    config: { rateLimit: writeLimit },
+    schema: {
+      hide: false,
+      operationId: "preApproveSigning",
+      tags: [ApiDocsTags.PkiSigners],
+      description: "Pre-approve signing for a member (admin only)",
+      params: z.object({ signerId: z.string().uuid() }),
+      body: z.object({
+        granteeUserId: z.string().uuid().optional(),
+        granteeIdentityId: z.string().uuid().optional(),
+        justification: z.string().trim().min(1).max(2048),
+        requestedSignings: z.number().int().min(1).optional(),
+        requestedWindowStart: z.string().datetime().optional(),
+        requestedWindowEnd: z.string().datetime().optional()
+      })
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const result = await server.services.signerPolicy.preApproveSigning({
+        signerId: req.params.signerId,
+        ...req.body,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: req.internalCertManagerProjectId,
+        event: {
+          type: EventType.PKI_SIGNER_PRE_APPROVE_SIGNING,
+          metadata: {
+            signerId: req.params.signerId,
+            requestId: result?.request?.id,
+            granteeUserId: req.body.granteeUserId,
+            granteeIdentityId: req.body.granteeIdentityId
+          }
+        }
+      });
+
+      return result;
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:signerId/requests/:requestId/revoke",
+    config: { rateLimit: writeLimit },
+    schema: {
+      hide: false,
+      operationId: "revokeSignerRequest",
+      tags: [ApiDocsTags.PkiSigners],
+      description: "Revoke a pending or active signing request",
+      params: z.object({ signerId: z.string().uuid(), requestId: z.string().uuid() })
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const result = await server.services.signerPolicy.revokeRequest({
+        signerId: req.params.signerId,
+        requestId: req.params.requestId,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: req.internalCertManagerProjectId,
+        event: {
+          type: EventType.PKI_SIGNER_REVOKE_REQUEST,
+          metadata: { signerId: req.params.signerId, requestId: req.params.requestId }
         }
       });
 

@@ -39,6 +39,7 @@ import { CaStatus, CaType } from "../certificate-authority-enums";
 import { extractDnParts, keyAlgorithmToAlgCfg } from "../certificate-authority-fns";
 import { TExternalCertificateAuthorityDALFactory } from "../external-certificate-authority-dal";
 import { createDigiCertApiClient } from "./digicert-api-client";
+import { DIGICERT_FINAL_ISSUED_STATUSES, DigiCertOrderStatus } from "./digicert-certificate-authority-enums";
 import {
   TCreateDigiCertCertificateAuthorityDTO,
   TDigiCertCertificateAuthority,
@@ -659,6 +660,57 @@ export const DigiCertCertificateAuthorityFns = ({
     return { certificateId: createdCertificateId, certificatePem: leaf };
   };
 
+  const pollOrderForCertificate = async ({
+    caId,
+    orderId
+  }: {
+    caId: string;
+    orderId: number;
+  }): Promise<
+    | { status: "issued"; certificateId: number }
+    | { status: "pending"; orderStatus: string }
+    | { status: "failed"; orderStatus: string; reason: string }
+  > => {
+    const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
+    if (!ca.externalCa || ca.externalCa.type !== CaType.DIGICERT) {
+      throw new BadRequestError({ message: "CA is not a DigiCert certificate authority" });
+    }
+    const digicertCa = castDbEntryToDigiCertCertificateAuthority(ca);
+
+    const { apiKey, baseUrl } = await getDigiCertClientCredentials(
+      digicertCa.configuration.appConnectionId,
+      appConnectionDAL,
+      kmsService
+    );
+    const client = createDigiCertApiClient(apiKey, baseUrl);
+
+    const orderInfo = await client.getOrder(orderId);
+    let orderStatus = orderInfo.status?.toLowerCase() ?? "unknown";
+    let certificateId = orderInfo.certificate?.id;
+
+    if (orderStatus === DigiCertOrderStatus.Pending) {
+      const checkResult = await client.checkValidation(orderId);
+      orderStatus = checkResult.order_status?.toLowerCase() ?? orderStatus;
+      certificateId = checkResult.certificate_id ?? certificateId;
+    }
+
+    const isFinalisable = DIGICERT_FINAL_ISSUED_STATUSES.some((status) => status === orderStatus);
+    if (isFinalisable && certificateId) {
+      return { status: "issued", certificateId };
+    }
+
+    if (
+      orderStatus === DigiCertOrderStatus.Rejected ||
+      orderStatus === DigiCertOrderStatus.Canceled ||
+      orderStatus === DigiCertOrderStatus.Expired ||
+      orderStatus === DigiCertOrderStatus.Revoked
+    ) {
+      return { status: "failed", orderStatus, reason: `DigiCert order ${orderStatus}` };
+    }
+
+    return { status: "pending", orderStatus };
+  };
+
   const revokeCertificate = async ({
     caId,
     serialNumber,
@@ -719,6 +771,7 @@ export const DigiCertCertificateAuthorityFns = ({
     listCertificateAuthorities,
     orderCertificateFromProfile,
     fetchAndAttachIssuedCertificate,
+    pollOrderForCertificate,
     revokeCertificate
   };
 };
