@@ -83,7 +83,7 @@ func (s *Service) ensureProjectDataKey(ctx context.Context, projectID string) (d
 	if err != nil {
 		return nil, fmt.Errorf("beginning transaction: %w", err)
 	}
-	defer errutil.DeferErr(ctx, func() error { return tx.Rollback(ctx) }, "rolling back project data key tx")
+	defer tx.Rollback(ctx)
 
 	lock, err := pglock.AcquireBlockingLock(ctx, tx, keyLockID)
 	if err != nil {

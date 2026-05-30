@@ -82,7 +82,7 @@ func (s *Service) ensureOrgDataKey(ctx context.Context, orgID uuid.UUID) (dataKe
 	if err != nil {
 		return nil, fmt.Errorf("beginning transaction: %w", err)
 	}
-	defer errutil.DeferErr(ctx, func() error { return tx.Rollback(ctx) }, "rolling back org data key tx")
+	defer tx.Rollback(ctx)
 
 	lock, err := pglock.AcquireBlockingLock(ctx, tx, keyLockID)
 	if err != nil {

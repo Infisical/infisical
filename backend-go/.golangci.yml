@@ -48,7 +48,7 @@ linters:
         - (net/http.ResponseWriter).Write
         - (*os.File).Write
         - (*encoding/json.Encoder).Encode
-        - (*github.com/jackc/pgx/v5.Tx).Rollback
+        - (github.com/jackc/pgx/v5.Tx).Rollback
 
     exhaustive:
       default-signifies-exhaustive: true

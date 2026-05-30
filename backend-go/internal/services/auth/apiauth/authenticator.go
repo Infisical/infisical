@@ -10,7 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"golang.org/x/crypto/bcrypt"
@@ -54,29 +53,47 @@ func (a *Authenticator) AssumePrivilege() AssumePrivilegeVerifier {
 	return a.assumePrivilege
 }
 
-// TODO(gov0): Missing test
-// ValidateJWT performs real JWT validation.
-// Exact port of fnValidateJwtIdentity in auth-token-service.ts:212-285.
-func (a *Authenticator) ValidateJWT(ctx context.Context, token string) (*auth.Identity, error) {
-	// 1. Parse and verify JWT signature (HS256 only).
-	claims := &UserJWTClaims{}
-	_, err := jwt.ParseWithClaims(token, claims, func(t *jwt.Token) (any, error) {
-		if t.Method.Alg() != jwt.SigningMethodHS256.Alg() {
-			return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
-		}
-		return a.authSecret, nil
-	})
+// ValidateJWTToken parses a JWT once, routes based on authTokenType, and validates.
+// This is the unified entry point for all JWT validation.
+// Returns (identity, authMode, error) where authMode indicates the actual token type.
+func (a *Authenticator) ValidateJWTToken(ctx context.Context, token, ipAddress string) (*auth.Identity, auth.AuthMode, error) {
+	claims, err := parseJWT(token, a.authSecret)
+	if err != nil {
+		return nil, "", errutil.Unauthorized("Invalid JWT token").WithErrf("validateJWTToken: %w", err)
+	}
 
+	switch claims.AuthTokenType {
+	case auth.AuthTokenTypeAccessToken:
+		identity, err := a.validateUserTokenClaims(ctx, claims.ToUserClaims())
+		return identity, auth.AuthModeJWT, err
+
+	case auth.AuthTokenTypeIdentityAccessToken:
+		identity, err := a.validateIdentityTokenClaims(ctx, claims.ToIdentityClaims(), ipAddress)
+		return identity, auth.AuthModeIdentityAccessToken, err
+
+	default:
+		return nil, "", errutil.Unauthorized("Unsupported token type").WithErrf("validateJWTToken: unsupported authTokenType %s", claims.AuthTokenType)
+	}
+}
+
+// ValidateJWT validates a user JWT token.
+// For unified JWT handling that auto-routes based on token type, use ValidateJWTToken.
+func (a *Authenticator) ValidateJWT(ctx context.Context, token string) (*auth.Identity, error) {
+	claims, err := parseJWT(token, a.authSecret)
 	if err != nil {
 		return nil, errutil.Unauthorized("Invalid JWT token").WithErrf("validateJWT: %w", err)
 	}
 
-	// 2. Validate authTokenType.
 	if claims.AuthTokenType != auth.AuthTokenTypeAccessToken {
 		return nil, errutil.Unauthorized("You are not allowed to access this resource").WithErrf("validateJWT: invalid authTokenType %s", claims.AuthTokenType)
 	}
 
-	// 3. Find session by tokenVersionId + userId.
+	return a.validateUserTokenClaims(ctx, claims.ToUserClaims())
+}
+
+// validateUserTokenClaims validates pre-parsed user JWT claims.
+func (a *Authenticator) validateUserTokenClaims(ctx context.Context, claims *UserJWTClaims) (*auth.Identity, error) {
+	// 1. Find session by tokenVersionId + userId.
 	session, err := a.findSessionByIDAndUserID(ctx, claims.TokenVersionID, claims.UserID)
 	if err != nil {
 		return nil, errutil.DatabaseErr("Failed to validate session").WithErrf("validateJWT(sessionId=%s, userId=%s): %w", claims.TokenVersionID, claims.UserID, err)
@@ -206,29 +223,24 @@ func (a *Authenticator) ValidateJWT(ctx context.Context, token string) (*auth.Id
 	}, nil
 }
 
-// ValidateIdentityAccessToken performs real identity access token validation.
-// Port of fnValidateIdentityAccessTokenFast in identity-access-token-service.ts.
-// New-format tokens carry all claims in the JWT for stateless validation; legacy tokens
-// fall back to DB lookup.
+// ValidateIdentityAccessToken validates an identity access token.
+// For unified JWT handling that auto-routes based on token type, use ValidateJWTToken.
 func (a *Authenticator) ValidateIdentityAccessToken(ctx context.Context, token, ipAddress string) (*auth.Identity, error) {
-	// 1. Parse and verify JWT signature (HS256 only).
-	claims := &IdentityJWTClaims{}
-	_, err := jwt.ParseWithClaims(token, claims, func(t *jwt.Token) (any, error) {
-		if t.Method.Alg() != jwt.SigningMethodHS256.Alg() {
-			return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
-		}
-		return a.authSecret, nil
-	})
+	claims, err := parseJWT(token, a.authSecret)
 	if err != nil {
 		return nil, errutil.Unauthorized("You are not allowed to access this resource").WithErrf("validateIdentityAccessToken: JWT parse failed: %w", err)
 	}
 
-	// 2. Validate authTokenType.
 	if claims.AuthTokenType != auth.AuthTokenTypeIdentityAccessToken {
 		return nil, errutil.Unauthorized("You are not allowed to access this resource").WithErrf("validateIdentityAccessToken: invalid authTokenType %s", claims.AuthTokenType)
 	}
 
-	// 3. Resolve token source - new format uses JWT claims, legacy falls back to DB.
+	return a.validateIdentityTokenClaims(ctx, claims.ToIdentityClaims(), ipAddress)
+}
+
+// validateIdentityTokenClaims validates pre-parsed identity JWT claims.
+func (a *Authenticator) validateIdentityTokenClaims(ctx context.Context, claims *IdentityJWTClaims, ipAddress string) (*auth.Identity, error) {
+	// 1. Resolve token source - new format uses JWT claims, legacy falls back to DB.
 	var (
 		identityID   = claims.IdentityID
 		identityName string

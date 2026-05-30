@@ -23,8 +23,8 @@ const (
 
 // Authenticator defines the methods needed for token validation.
 type Authenticator interface {
-	ValidateJWT(ctx context.Context, token string) (*auth.Identity, error)
-	ValidateIdentityAccessToken(ctx context.Context, token, ipAddress string) (*auth.Identity, error)
+	// ValidateJWTToken validates any JWT (user or identity) and returns the identity and actual auth mode.
+	ValidateJWTToken(ctx context.Context, token, ipAddress string) (*auth.Identity, auth.AuthMode, error)
 	ValidateServiceToken(ctx context.Context, token string) (*auth.Identity, error)
 	AssumePrivilege() apiauth.AssumePrivilegeVerifier
 }
@@ -84,33 +84,32 @@ func RequireAuth(authenticator Authenticator, opts ...AuthOption) func(http.Hand
 				return
 			}
 
-			classifiedMode := apiauth.ClassifyToken(token)
-			authMode, ok := mapClassifiedMode(classifiedMode)
-			if !ok {
-				writeUnauthorized(w, "Unsupported authentication method")
-				return
-			}
-
-			if !cfg.allowedModes[authMode] {
-				writeUnauthorized(w, "Authentication method not allowed for this endpoint")
-				return
-			}
-
 			ctx := r.Context()
 			var identity *auth.Identity
+			var actualMode AuthMode
 			var err error
 
-			switch authMode {
-			case JWTAuth:
-				identity, err = authenticator.ValidateJWT(ctx, token)
-			case IdentityAccessTokenAuth:
+			// Classify and validate token
+			classifiedMode := apiauth.ClassifyToken(token)
+			switch classifiedMode {
+			case auth.AuthModeServiceToken:
+				identity, err = authenticator.ValidateServiceToken(ctx, token)
+				actualMode = ServiceTokenAuth
+
+			case auth.AuthModeJWT:
+				// JWT tokens are validated and typed in one call
 				ipAddress := ""
 				if httpInfo := auth.HTTPInfoFromContext(ctx); httpInfo != nil {
 					ipAddress = httpInfo.IPAddress
 				}
-				identity, err = authenticator.ValidateIdentityAccessToken(ctx, token, ipAddress)
-			case ServiceTokenAuth:
-				identity, err = authenticator.ValidateServiceToken(ctx, token)
+				var authMode auth.AuthMode
+				identity, authMode, err = authenticator.ValidateJWTToken(ctx, token, ipAddress)
+				// Map the actual auth mode from validation
+				actualMode, _ = mapClassifiedMode(authMode)
+
+			default:
+				writeUnauthorized(w, "Unsupported authentication method")
+				return
 			}
 
 			if err != nil {
@@ -125,6 +124,12 @@ func RequireAuth(authenticator Authenticator, opts ...AuthOption) func(http.Hand
 
 			if identity == nil {
 				writeUnauthorized(w, "Authentication failed")
+				return
+			}
+
+			// Check if the actual token type is allowed for this endpoint
+			if !cfg.allowedModes[actualMode] {
+				writeUnauthorized(w, "Authentication method not allowed for this endpoint")
 				return
 			}
 
