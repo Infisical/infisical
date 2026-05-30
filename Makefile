@@ -1,3 +1,5 @@
+.PHONY: build push up-dev up-dev-ldap up-dev-metrics up-prod down reviewable-ui reviewable-api reviewable up-dev-sso go-generate validate-upgrade-impact generate-upgrade-impact generate-upgrade-impact-dry-run
+
 build:
 	docker-compose -f docker-compose.yml build
 
