@@ -21,7 +21,10 @@ type RedisService struct {
 func (r *RedisService) URL() string { return r.url }
 
 func (r *RedisService) Client() redis.UniversalClient {
-	opts, _ := redis.ParseURL(r.url)
+	opts, err := redis.ParseURL(r.url)
+	if err != nil {
+		panic(fmt.Sprintf("invalid redis URL %q: %v", r.url, err))
+	}
 	return redis.NewClient(opts)
 }
 

@@ -237,7 +237,7 @@ func (s *Service) findOrCreateConfig(ctx context.Context) (ServerConfig, error) 
 	if err != nil {
 		return ServerConfig{}, fmt.Errorf("beginning transaction: %w", err)
 	}
-	defer func() { _ = tx.Rollback(ctx) }()
+	defer errutil.DeferErr(ctx, func() error { return tx.Rollback(ctx) }, "rolling back serverconfig tx")
 
 	// Acquire advisory lock to prevent concurrent init.
 	if _, err := tx.Exec(ctx, "SELECT pg_advisory_xact_lock($1)", PgLockSuperAdminInit); err != nil {

@@ -16,7 +16,7 @@ import (
 
 // PlatformServices holds platform-level services shared across handlers.
 type PlatformServices struct {
-	Authenticator   apiauth.Authenticator
+	Authenticator   *apiauth.Authenticator
 	Permission      *permission.Service
 	KMS             *kms.Service
 	License         *license.Service
@@ -55,7 +55,7 @@ func newPlatformServices(ctx context.Context, infra *Infra) (*PlatformServices, 
 		PermissionService: permissionSvc,
 	})
 
-	authenticator := apiauth.NewAuthenticator(infra.DB, infra.Config.AuthSecret, infra.KeyStore, assumePrivilegeSvc)
+	authenticator := apiauth.NewAuthenticator(infra.Logger, infra.DB, infra.Config.AuthSecret, infra.KeyStore, assumePrivilegeSvc)
 
 	auditLogSvc := auditlog.NewService(ctx, infra.Logger, &auditlog.Deps{
 		Queue:  infra.Queue,

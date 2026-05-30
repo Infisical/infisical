@@ -22,7 +22,6 @@ import (
 	"github.com/infisical/api/internal/server/api/shared"
 	"github.com/infisical/api/internal/services/auditlog"
 	"github.com/infisical/api/internal/services/auth"
-	"github.com/infisical/api/internal/services/auth/apiauth"
 	"github.com/infisical/api/internal/services/kms"
 	"github.com/infisical/api/internal/services/permission"
 	"github.com/infisical/api/internal/services/project"
@@ -91,12 +90,11 @@ func newSecretsHandler(t *testing.T) *secret.Handler {
 	})
 
 	return secret.NewHandler(&secret.Deps{
-		Logger:        testutil.NopLogger(),
-		Authenticator: apiauth.Authenticator{},
-		Permission:    permSvc,
-		Project:       projectSvc,
-		AuditLog:      auditLogSvc,
-		Secrets:       secretsSvc,
+		Logger:     testutil.NopLogger(),
+		Permission: permSvc,
+		Project:    projectSvc,
+		AuditLog:   auditLogSvc,
+		Secrets:    secretsSvc,
 	})
 }
 

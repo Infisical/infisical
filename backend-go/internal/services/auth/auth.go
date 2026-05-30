@@ -164,7 +164,10 @@ func WithHTTPInfo(ctx context.Context, info *HTTPInfo) context.Context {
 
 // HTTPInfoFromContext returns the HTTPInfo stored in ctx, or nil if absent.
 func HTTPInfoFromContext(ctx context.Context) *HTTPInfo {
-	info, _ := ctx.Value(httpInfoKey{}).(*HTTPInfo)
+	info, ok := ctx.Value(httpInfoKey{}).(*HTTPInfo)
+	if !ok {
+		return nil
+	}
 	return info
 }
 
@@ -202,6 +205,9 @@ func WithAssumedPrivilege(ctx context.Context, details *AssumedPrivilegeDetails)
 
 // AssumedPrivilegeFromContext returns the assumed privilege details stored in ctx, or nil if absent.
 func AssumedPrivilegeFromContext(ctx context.Context) *AssumedPrivilegeDetails {
-	details, _ := ctx.Value(assumedPrivilegeKey{}).(*AssumedPrivilegeDetails)
+	details, ok := ctx.Value(assumedPrivilegeKey{}).(*AssumedPrivilegeDetails)
+	if !ok {
+		return nil
+	}
 	return details
 }

@@ -390,7 +390,9 @@ func (s *Service) GetPlan(ctx context.Context, orgID string) (*FeatureSet, error
 
 	// Cache the result.
 	if planJSON, err := json.Marshal(plan); err == nil {
-		_ = s.keyStore.SetItemWithExpiry(ctx, cacheKey, cloudPlanTTL, string(planJSON))
+		if err := s.keyStore.SetItemWithExpiry(ctx, cacheKey, cloudPlanTTL, string(planJSON)); err != nil {
+			s.logger.WarnContext(ctx, "failed to cache cloud plan", slog.String("cacheKey", cacheKey), slog.Any("error", err))
+		}
 	}
 
 	return &plan, nil
@@ -402,7 +404,9 @@ func (s *Service) fallbackPlan(ctx context.Context, cacheKey string) *FeatureSet
 	features := s.onPremFeatures
 	s.mu.RUnlock()
 	if planJSON, err := json.Marshal(features); err == nil {
-		_ = s.keyStore.SetItemWithExpiry(ctx, cacheKey, cloudPlanTTL, string(planJSON))
+		if err := s.keyStore.SetItemWithExpiry(ctx, cacheKey, cloudPlanTTL, string(planJSON)); err != nil {
+			s.logger.WarnContext(ctx, "failed to cache fallback plan", slog.String("cacheKey", cacheKey), slog.Any("error", err))
+		}
 	}
 	return &features
 }
@@ -410,7 +414,9 @@ func (s *Service) fallbackPlan(ctx context.Context, cacheKey string) *FeatureSet
 // RefreshPlan clears the cached plan for an org and re-fetches it.
 func (s *Service) RefreshPlan(ctx context.Context, orgID string) error {
 	cacheKey := planCachePrefix + orgID
-	_, _ = s.keyStore.DeleteItem(ctx, cacheKey)
+	if _, err := s.keyStore.DeleteItem(ctx, cacheKey); err != nil {
+		s.logger.WarnContext(ctx, "failed to delete cached plan", slog.String("cacheKey", cacheKey), slog.Any("error", err))
+	}
 
 	if s.instanceType == InstanceTypeCloud {
 		_, err := s.GetPlan(ctx, orgID)

@@ -15,12 +15,11 @@ func RegisterSecretManagerRoutes(router chi.Router, logger *slog.Logger, platfor
 	l := logger.With(slog.String("product", "secretmanager"))
 
 	secretsHandler := secret.NewHandler(&secret.Deps{
-		Logger:        l,
-		Authenticator: platform.Authenticator,
-		Permission:    platform.Permission,
-		Project:       platform.Project,
-		AuditLog:      platform.AuditLog,
-		Secrets:       svc.Secret,
+		Logger:     l,
+		Permission: platform.Permission,
+		Project:    platform.Project,
+		AuditLog:   platform.AuditLog,
+		Secrets:    svc.Secret,
 	})
 
 	// Create adapter with shared error handler

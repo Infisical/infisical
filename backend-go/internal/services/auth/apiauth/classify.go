@@ -55,7 +55,9 @@ func peekJWTClaims(token string) peekClaims {
 	}
 
 	var claims peekClaims
-	_ = json.Unmarshal(payload, &claims)
+	if err := json.Unmarshal(payload, &claims); err != nil {
+		return peekClaims{}
+	}
 
 	return claims
 }

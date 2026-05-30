@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/base64"
 	"errors"
+	"log/slog"
 	"os"
 	"strings"
 	"testing"
@@ -26,7 +27,7 @@ import (
 
 var (
 	stack         *infra.Stack
-	authenticator apiauth.Authenticator
+	authenticator *apiauth.Authenticator
 	memKeyStore   *keystore.MemoryKeyStore
 )
 
@@ -38,7 +39,7 @@ func TestMain(m *testing.M) {
 		MustStart()
 
 	memKeyStore = keystore.NewMemoryKeyStore()
-	authenticator = apiauth.NewAuthenticator(stack.DB(), infra.AuthSecret, memKeyStore, nil)
+	authenticator = apiauth.NewAuthenticator(slog.Default(), stack.DB(), infra.AuthSecret, memKeyStore, nil)
 
 	code := m.Run()
 	stack.Stop()
