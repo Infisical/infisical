@@ -70,6 +70,10 @@ const isGateway404Error = (error: unknown): boolean => {
   return error instanceof BadRequestError && error.message?.includes("Request failed with status code 404");
 };
 
+const isGateway301Error = (error: unknown): boolean => {
+  return error instanceof BadRequestError && error.message?.includes("Request failed with status code 301");
+};
+
 // Helper to extract error message from Vault API errors
 const getVaultErrorMessage = (error: unknown, fallback: string): string => {
   if (error instanceof AxiosError) {
@@ -216,7 +220,12 @@ export const requestWithHCVaultGateway = async <T>(
         } catch (error) {
           if (error instanceof AxiosError) {
             logger.error(
-              { message: error.message, data: (error.response as undefined | { data: unknown })?.data },
+              {
+                error,
+                message: error.message,
+                data: (error.response as undefined | { data: unknown })?.data,
+                url: url.toString()
+              },
               "Error during HashiCorp Vault gateway request:"
             );
           }
@@ -263,7 +272,12 @@ export const requestWithHCVaultGateway = async <T>(
       } catch (error) {
         if (error instanceof AxiosError) {
           logger.error(
-            { message: error.message, data: (error.response as undefined | { data: unknown })?.data },
+            {
+              error,
+              message: error.message,
+              data: (error.response as undefined | { data: unknown })?.data,
+              url: url.toString()
+            },
             "Error during HashiCorp Vault gateway request:"
           );
         }
@@ -479,6 +493,41 @@ export const listHCVaultPolicies = async (
   }
 };
 
+const fetchHCVaultNamespacesWithoutNamespaceHeader = async ({
+  connection,
+  gatewayService,
+  gatewayV2Service,
+  instanceUrl,
+  accessToken
+}: {
+  connection: THCVaultConnection;
+  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
+  instanceUrl: string;
+  accessToken: string;
+}): Promise<string[]> => {
+  try {
+    const { data } = await requestWithHCVaultGateway<{
+      data: { keys: string[] };
+    }>(connection, gatewayService, gatewayV2Service, {
+      url: `${instanceUrl}/v1/sys/namespaces?list=true`,
+      method: "GET",
+      headers: {
+        "X-Vault-Token": accessToken
+      }
+    });
+
+    return data.data.keys || [];
+  } catch (error: unknown) {
+    if (error instanceof AxiosError) {
+      throw new BadRequestError({
+        message: `Failed to list namespaces: ${error.message || "Unknown error"}`
+      });
+    }
+    throw error;
+  }
+};
+
 export const listHCVaultNamespaces = async (
   connection: THCVaultConnection,
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
@@ -518,6 +567,22 @@ export const listHCVaultNamespaces = async (
         // No child namespaces at this path
         return null;
       }
+
+      // vault 1.0.0 does not support namespace root or /, so we need to handle this case
+      // if the error is 301 and the namespace path is /, try to fetch the namespaces without the namespace header
+      if (
+        ((error instanceof AxiosError && error.response?.status === 301) || isGateway301Error(error)) &&
+        (namespacePath === "/" || namespacePath === "root")
+      ) {
+        return fetchHCVaultNamespacesWithoutNamespaceHeader({
+          connection,
+          gatewayService,
+          gatewayV2Service,
+          instanceUrl,
+          accessToken
+        });
+      }
+
       throw error;
     }
   };

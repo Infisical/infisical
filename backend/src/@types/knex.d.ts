@@ -422,6 +422,9 @@ import {
   TPkiSyncs,
   TPkiSyncsInsert,
   TPkiSyncsUpdate,
+  TProjectAccessRequests,
+  TProjectAccessRequestsInsert,
+  TProjectAccessRequestsUpdate,
   TProjectBots,
   TProjectBotsInsert,
   TProjectBotsUpdate,
@@ -1112,6 +1115,11 @@ declare module "knex/types/tables" {
       TProjectEnvironments,
       TProjectEnvironmentsInsert,
       TProjectEnvironmentsUpdate
+    >;
+    [TableName.ProjectAccessRequest]: KnexOriginal.CompositeTableType<
+      TProjectAccessRequests,
+      TProjectAccessRequestsInsert,
+      TProjectAccessRequestsUpdate
     >;
     [TableName.ProjectBot]: KnexOriginal.CompositeTableType<TProjectBots, TProjectBotsInsert, TProjectBotsUpdate>;
     [TableName.ProjectKeys]: KnexOriginal.CompositeTableType<TProjectKeys, TProjectKeysInsert, TProjectKeysUpdate>;

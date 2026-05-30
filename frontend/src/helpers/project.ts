@@ -1,3 +1,13 @@
+import {
+  FileKeyIcon,
+  LockIcon,
+  LucideIcon,
+  ScanSearchIcon,
+  TerminalIcon,
+  UsersIcon,
+  VaultIcon
+} from "lucide-react";
+
 import { apiRequest } from "@app/config/request";
 import { createWorkspace } from "@app/hooks/api/projects/queries";
 import { Project, ProjectEnv, ProjectType } from "@app/hooks/api/projects/types";
@@ -176,4 +186,31 @@ export const getProjectLottieIcon = (type: ProjectType) => {
     [ProjectType.PAM]: "groups"
   };
   return iconConvert[type] || "vault";
+};
+
+export const getProjectLucideIcon = (type: ProjectType): LucideIcon => {
+  const iconConvert: Partial<Record<ProjectType, LucideIcon>> = {
+    [ProjectType.SecretManager]: VaultIcon,
+    [ProjectType.KMS]: LockIcon,
+    [ProjectType.CertificateManager]: FileKeyIcon,
+    [ProjectType.SSH]: TerminalIcon,
+    [ProjectType.SecretScanning]: ScanSearchIcon,
+    [ProjectType.PAM]: UsersIcon
+  };
+  return iconConvert[type] || VaultIcon;
+};
+
+export type ProjectTileStyle = {
+  iconClassName: string;
+  containerClassName: string;
+  cardHoverClassName: string;
+  titleUnderlineClassName: string;
+};
+
+export const PROJECT_TILE_STYLE: ProjectTileStyle = {
+  iconClassName: "text-project",
+  containerClassName:
+    "border-project/30 bg-gradient-to-br from-project/20 to-project/5 group-hover:border-project/50 group-hover:from-project/25 group-hover:to-project/10",
+  cardHoverClassName: "hover:bg-gradient-to-br hover:from-project/[0.04] hover:to-transparent",
+  titleUnderlineClassName: "decoration-project/60"
 };

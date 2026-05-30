@@ -118,6 +118,12 @@ services:
       - softhsm_tokens:/etc/softhsm2/tokens # SoftHSM tokens are stored in a volume to persist across container restarts
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4000/api/status"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 120s
 
   prometheus:
     image: prom/prometheus
@@ -179,6 +185,8 @@ services:
         condition: service_started
       redis:
         condition: service_started
+      backend:
+        condition: service_healthy
     ports:
       - 4040:4040
     volumes:

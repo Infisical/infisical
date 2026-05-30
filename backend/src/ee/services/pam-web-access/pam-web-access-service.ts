@@ -86,7 +86,7 @@ type TPamWebAccessServiceFactoryDep = {
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
   pamSessionDAL: Pick<
     TPamSessionDALFactory,
-    "create" | "updateById" | "countActiveWebSessions" | "endSessionById" | "activateSession"
+    "create" | "updateById" | "countActiveWebSessions" | "endSessionById" | "activateSession" | "endExpiredWebSessions"
   >;
   pamSessionExpirationService: Pick<TPamSessionExpirationServiceFactory, "scheduleSessionExpiration">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
@@ -245,6 +245,9 @@ export const pamWebAccessServiceFactory = ({
       });
       accountIdentity = `${domainConnectionDetails.domain}:${account.name}`;
     }
+
+    // Sessions that outlived their expiresAt may still show as active — end them so that they don't count against the session limit.
+    await pamSessionDAL.endExpiredWebSessions(actor.id, projectId);
 
     const activeWebSessionCount = await pamSessionDAL.countActiveWebSessions(actor.id, projectId);
     if (activeWebSessionCount >= MAX_WEB_SESSIONS_PER_USER) {
@@ -489,16 +492,33 @@ export const pamWebAccessServiceFactory = ({
       }
 
       if (session) {
+        const sessionId = session.id;
         try {
-          await pamSessionDAL.endSessionById(session.id);
+          const updated = await pamSessionDAL.endSessionById(sessionId);
+          if (updated) {
+            await auditLogService.createAuditLog({
+              ...auditLogInfo,
+              orgId,
+              projectId,
+              event: {
+                type: EventType.PAM_SESSION_END,
+                metadata: {
+                  sessionId,
+                  accountName
+                }
+              }
+            });
+          }
         } catch (err) {
-          logger.debug(err, "Error marking session ended in cleanup");
+          logger.error(err, `Failed to end session in DB [sessionId=${sessionId}]`);
         } finally {
           session = null;
         }
       }
 
-      // Best-effort: triggers gateway-side cleanup (fire-and-forget)
+      // Best-effort ALPN session cancellation (fire-and-forget).
+      // Triggers gateway-side cleanup: log upload, and session end via API.
+      // If this fails, the scheduled queue job will expire the session at expiresAt time.
       if (relayCerts) {
         const certs = relayCerts;
         relayCerts = null;
@@ -566,6 +586,9 @@ export const pamWebAccessServiceFactory = ({
       if (!effectiveGatewayId) {
         throw new BadRequestError({ message: "Gateway not configured for this resource" });
       }
+
+      // Sessions that outlived their expiresAt may still show as active — end them so that they don't count against the session limit.
+      await pamSessionDAL.endExpiredWebSessions(userId, projectId);
 
       // Check web session limit
       const activeCount = await pamSessionDAL.countActiveWebSessions(userId, projectId);

@@ -10,7 +10,7 @@ export type TAsymmetricSignVerifyFns = {
     isDigest: boolean
   ) => Promise<boolean>;
   generateAsymmetricPrivateKey: () => Promise<Buffer>;
-  getPublicKeyFromPrivateKey: (privateKey: Buffer) => Buffer;
+  getPublicKeyFromPrivateKey: (privateKey: Buffer) => Promise<Buffer>;
 };
 
 // Supported asymmetric key types
@@ -18,7 +18,10 @@ export enum AsymmetricKeyAlgorithm {
   RSA_4096 = "RSA_4096",
   ECC_NIST_P256 = "ECC_NIST_P256",
   ECC_NIST_P384 = "ECC_NIST_P384",
-  ECC_NIST_P521 = "ECC_NIST_P521"
+  ECC_NIST_P521 = "ECC_NIST_P521",
+  ML_DSA_44 = "ML_DSA_44",
+  ML_DSA_65 = "ML_DSA_65",
+  ML_DSA_87 = "ML_DSA_87"
 }
 
 export const AsymmetricKeyAlgorithmEnum = z.enum(
@@ -43,5 +46,10 @@ export enum SigningAlgorithm {
   // None of these are deterministic and include randomness like RSA PSS.
   ECDSA_SHA_512 = "ECDSA_SHA_512",
   ECDSA_SHA_384 = "ECDSA_SHA_384",
-  ECDSA_SHA_256 = "ECDSA_SHA_256"
+  ECDSA_SHA_256 = "ECDSA_SHA_256",
+
+  // ML-DSA (post-quantum) — signing algorithm equals key algorithm, no hash variant
+  ML_DSA_44 = "ML_DSA_44",
+  ML_DSA_65 = "ML_DSA_65",
+  ML_DSA_87 = "ML_DSA_87"
 }

@@ -129,7 +129,8 @@ export const identityServiceFactory = ({
       // Check identity limit inside the transaction after acquiring the lock
       // We count directly from the database to get the accurate count, not the cached plan value
       const plan = await licenseService.getPlan(orgId);
-      if (plan?.slug !== "enterprise" && plan?.identityLimit) {
+      const isEnterpriseBypass = plan?.slug === "enterprise" && !plan?.enforceIdentityLimit;
+      if (!isEnterpriseBypass && plan?.identityLimit) {
         const currentIdentityCount = await licenseDAL.countOrgUsersAndIdentities(orgId, tx);
         if (currentIdentityCount >= plan.identityLimit) {
           throw new BadRequestError({
