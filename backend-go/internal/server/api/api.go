@@ -7,6 +7,7 @@ import (
 
 	"github.com/infisical/api/internal/config"
 	"github.com/infisical/api/internal/database/pg"
+	"github.com/infisical/api/internal/ee/services/license"
 	"github.com/infisical/api/internal/keystore"
 	"github.com/infisical/api/internal/queue"
 	"github.com/infisical/api/internal/services/kms"
@@ -18,6 +19,7 @@ type Infra struct {
 	Config   *config.Config
 	DB       pg.DB
 	HSM      kms.HsmService
+	License  *license.Service
 	KeyStore keystore.KeyStore
 	Queue    *queue.Service
 }

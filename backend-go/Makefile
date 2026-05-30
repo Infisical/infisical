@@ -1,4 +1,4 @@
-.PHONY: lint lint-fix test test-integration test-all dev build generate
+.PHONY: lint lint-fix test test-integration test-all dev build generate test-hsm-image test-hsm
 
 # Run linters
 lint:
@@ -25,3 +25,11 @@ build:
 # Regenerate oapi-codegen-dd code from openapi.yml specs
 generate:
 	go generate ./...
+
+# Build the HSM test container image (requires Docker)
+test-hsm-image:
+	docker build -t infisical/go-test-backend -f docker-test/Dockerfile docker-test/
+
+# Run HSM integration tests (requires test-hsm-image to be built first)
+test-hsm: test-hsm-image
+	INFISICAL_RUN_HSM_CONTAINER_TEST=1 go test -v -tags integration ./internal/ee/services/hsm/... -count=1 -timeout 300s

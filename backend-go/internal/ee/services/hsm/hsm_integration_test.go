@@ -1,3 +1,5 @@
+//go:build integration
+
 package hsm_test
 
 import (
@@ -9,22 +11,40 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/infisical/api/internal/hsm"
+	"github.com/infisical/api/internal/ee/services/hsm"
+	"github.com/infisical/api/internal/testutil/infra"
 )
 
-// setupHSM initializes a SoftHSM2 token and returns a ready HSM service.
-// Skips the test if SOFTHSM2_LIB is not set.
+var runner = infra.NewContainerTest(
+	"infisical/go-test-backend",
+	"INFISICAL_HSM_TEST_INSIDE",
+	"INFISICAL_RUN_HSM_CONTAINER_TEST",
+).
+	WithTestPath("./internal/ee/services/hsm/...").
+	WithBuildTags("integration").
+	WithEnv("SOFTHSM2_LIB", "/usr/lib/softhsm/libsofthsm2.so")
+
+func TestMain(m *testing.M) {
+	if runner.IsInsideContainer() {
+		os.Exit(m.Run())
+	}
+
+	os.Exit(runner.MustRun())
+}
+
+// ============================================================================
+// HSM tests (run inside the container)
+// ============================================================================
+
 func setupHSM(t *testing.T) *hsm.Service {
 	t.Helper()
 
-	libPath := os.Getenv("SOFTHSM2_LIB")
-	if libPath == "" {
-		t.Skip("Skipping HSM tests: SOFTHSM2_LIB environment variable not set. Set it to the path of libsofthsm2.so to enable HSM tests.")
+	if !runner.IsInsideContainer() {
+		t.Skip("skipping: not inside test container")
 	}
 
-	if _, err := exec.LookPath("softhsm2-util"); err != nil {
-		t.Skip("Skipping HSM tests: softhsm2-util not found in PATH")
-	}
+	libPath := os.Getenv("SOFTHSM2_LIB")
+	require.NotEmpty(t, libPath, "SOFTHSM2_LIB not set")
 
 	tokenDir := t.TempDir()
 	confPath := filepath.Join(tokenDir, "softhsm2.conf")
@@ -43,15 +63,15 @@ func setupHSM(t *testing.T) *hsm.Service {
 	require.NoError(t, err, "softhsm2-util: "+string(out))
 
 	svc, err := hsm.NewService(hsm.Config{
-		LibPath:  libPath,
-		Slot:     0,
-		Pin:      "1234",
-		KeyLabel: "test-infisical",
+		LibPath:    libPath,
+		TokenLabel: "test-token",
+		Pin:        "1234",
+		KeyLabel:   "test-infisical",
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() { svc.Close() })
 
-	require.NoError(t, svc.StartService())
+	require.NoError(t, svc.StartService(true))
 
 	return svc
 }
@@ -68,8 +88,6 @@ func TestEncrypt_RoundTrip(t *testing.T) {
 
 	blob, err := svc.Encrypt(plaintext)
 	require.NoError(t, err)
-
-	// Verify blob structure: IV(16) + at least one padded block(16) + HMAC(32).
 	assert.GreaterOrEqual(t, len(blob), 16+16+32)
 
 	got, err := svc.Decrypt(blob)
@@ -110,7 +128,6 @@ func TestDecrypt_TamperedHMAC(t *testing.T) {
 	blob, err := svc.Encrypt([]byte("tamper test"))
 	require.NoError(t, err)
 
-	// Flip a byte in the HMAC region (last 32 bytes).
 	blob[len(blob)-1] ^= 0xFF
 
 	_, err = svc.Decrypt(blob)
@@ -123,7 +140,6 @@ func TestDecrypt_TamperedCiphertext(t *testing.T) {
 	blob, err := svc.Encrypt([]byte("tamper ciphertext"))
 	require.NoError(t, err)
 
-	// Flip a byte in the ciphertext region (after IV, before HMAC).
 	blob[20] ^= 0xFF
 
 	_, err = svc.Decrypt(blob)
@@ -136,7 +152,6 @@ func TestDecrypt_TamperedIV(t *testing.T) {
 	blob, err := svc.Encrypt([]byte("tamper iv"))
 	require.NoError(t, err)
 
-	// Flip a byte in the IV region.
 	blob[0] ^= 0xFF
 
 	_, err = svc.Decrypt(blob)

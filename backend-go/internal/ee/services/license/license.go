@@ -460,3 +460,11 @@ func (s *Service) Close() {
 
 func (s *Service) GetInstanceType() InstanceType { return s.instanceType }
 func (s *Service) IsValidLicense() bool          { return s.isValid }
+
+// GetOnPremFeatures returns a copy of the on-prem feature set.
+// For cloud instances, this returns the default features (use GetPlan for org-specific features).
+func (s *Service) GetOnPremFeatures() FeatureSet {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.onPremFeatures
+}

@@ -28,10 +28,11 @@ const (
 
 // Config holds the HSM connection parameters.
 type Config struct {
-	LibPath  string
-	Slot     int
-	Pin      string
-	KeyLabel string
+	LibPath    string
+	Slot       int    // Slot number (used if TokenLabel is empty)
+	TokenLabel string // Token label (preferred over Slot if set)
+	Pin        string
+	KeyLabel   string
 }
 
 // Service provides HSM-backed encryption, decryption, and random byte generation.
@@ -45,12 +46,19 @@ type Service struct {
 
 // NewService loads the PKCS#11 library and opens a session pool to the token.
 func NewService(cfg Config) (*Service, error) {
-	slot := cfg.Slot
-	ctx, err := crypto11.Configure(&crypto11.Config{
-		Path:       cfg.LibPath,
-		SlotNumber: &slot,
-		Pin:        cfg.Pin,
-	})
+	cryptoCfg := &crypto11.Config{
+		Path: cfg.LibPath,
+		Pin:  cfg.Pin,
+	}
+
+	if cfg.TokenLabel != "" {
+		cryptoCfg.TokenLabel = cfg.TokenLabel
+	} else {
+		slot := cfg.Slot
+		cryptoCfg.SlotNumber = &slot
+	}
+
+	ctx, err := crypto11.Configure(cryptoCfg)
 	if err != nil {
 		return nil, fmt.Errorf("HSM: configuring PKCS#11: %w", err)
 	}
@@ -71,7 +79,12 @@ func (s *Service) Close() error {
 
 // StartService ensures the required AES and HMAC keys exist on the token,
 // then runs a self-test to validate the HSM is working correctly.
-func (s *Service) StartService() error {
+// The licenseAllowsHSM parameter must be true, otherwise returns an error.
+func (s *Service) StartService(licenseAllowsHSM bool) error {
+	if !licenseAllowsHSM {
+		return fmt.Errorf("HSM: your license does not include HSM integration, please upgrade to the Enterprise plan")
+	}
+
 	if err := s.ensureKeys(); err != nil {
 		return fmt.Errorf("HSM: ensuring keys: %w", err)
 	}
@@ -210,12 +223,12 @@ func (s *Service) RandomBytes(n int) ([]byte, error) {
 
 // ensureKeys creates the AES and HMAC keys on the token if they don't already exist.
 func (s *Service) ensureKeys() error {
-	// AES key.
-	aesKey, err := s.ctx.FindKey(nil, []byte(s.config.KeyLabel))
+	// AES key - use FindKeys (returns empty slice if not found, unlike FindKey which errors).
+	aesKeys, err := s.ctx.FindKeys(nil, []byte(s.config.KeyLabel))
 	if err != nil {
 		return fmt.Errorf("finding AES key: %w", err)
 	}
-	if aesKey == nil {
+	if len(aesKeys) == 0 {
 		_, err = s.ctx.GenerateSecretKeyWithLabel(
 			[]byte(s.config.KeyLabel),
 			[]byte(s.config.KeyLabel),
@@ -229,11 +242,11 @@ func (s *Service) ensureKeys() error {
 
 	// HMAC key.
 	hmacLabel := s.config.KeyLabel + "_HMAC"
-	hmacKey, err := s.ctx.FindKey(nil, []byte(hmacLabel))
+	hmacKeys, err := s.ctx.FindKeys(nil, []byte(hmacLabel))
 	if err != nil {
 		return fmt.Errorf("finding HMAC key: %w", err)
 	}
-	if hmacKey == nil {
+	if len(hmacKeys) == 0 {
 		_, err = s.ctx.GenerateSecretKeyWithLabel(
 			[]byte(hmacLabel),
 			[]byte(hmacLabel),

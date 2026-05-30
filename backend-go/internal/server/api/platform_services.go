@@ -5,11 +5,11 @@ import (
 	"fmt"
 
 	"github.com/infisical/api/internal/ee/services/externalkms"
+	"github.com/infisical/api/internal/ee/services/license"
 	"github.com/infisical/api/internal/services/assumeprivilege"
 	"github.com/infisical/api/internal/services/auditlog"
 	"github.com/infisical/api/internal/services/auth/apiauth"
 	"github.com/infisical/api/internal/services/kms"
-	"github.com/infisical/api/internal/services/license"
 	"github.com/infisical/api/internal/services/permission"
 	"github.com/infisical/api/internal/services/project"
 )
@@ -46,12 +46,6 @@ func newPlatformServices(ctx context.Context, infra *Infra) (*PlatformServices, 
 		return nil, fmt.Errorf("kms start: %w", err)
 	}
 
-	licenseSvc := license.NewService(ctx, infra.Logger, &license.Deps{
-		Config:   infra.Config,
-		DB:       infra.DB,
-		KeyStore: infra.KeyStore,
-	})
-
 	permissionSvc := permission.NewService(ctx, infra.Logger, &permission.Deps{DB: infra.DB})
 
 	projectSvc := project.NewService(ctx, infra.Logger, &project.Deps{DB: infra.DB})
@@ -71,7 +65,7 @@ func newPlatformServices(ctx context.Context, infra *Infra) (*PlatformServices, 
 	auditLogQueueHandler := auditlog.NewQueueHandler(ctx, infra.Logger, &auditlog.QueueHandlerDeps{
 		DB:       infra.DB,
 		Project:  projectSvc,
-		License:  licenseSvc,
+		License:  infra.License,
 		Config:   infra.Config,
 		KeyStore: infra.KeyStore,
 	})
@@ -81,7 +75,7 @@ func newPlatformServices(ctx context.Context, infra *Infra) (*PlatformServices, 
 		Authenticator:   authenticator,
 		Permission:      permissionSvc,
 		KMS:             kmsSvc,
-		License:         licenseSvc,
+		License:         infra.License,
 		Project:         projectSvc,
 		AuditLog:        auditLogSvc,
 		AssumePrivilege: assumePrivilegeSvc,
