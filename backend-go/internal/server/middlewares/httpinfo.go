@@ -35,8 +35,10 @@ func HTTPInfoMiddleware(trustedCIDRs []net.IPNet) func(http.Handler) http.Handle
 // getRealIP extracts the real client IP address from the request.
 //
 // When trustedCIDRs is non-empty (strict mode), forwarded headers are only
-// used if RemoteAddr belongs to a trusted proxy. Otherwise, RemoteAddr is
-// returned directly — preventing clients from spoofing their IP via headers.
+// used if RemoteAddr belongs to a trusted proxy. The X-Forwarded-For header
+// is walked right-to-left, skipping trusted proxy IPs, and the first
+// non-trusted IP is returned — this prevents attackers from injecting a fake
+// IP at the front of the header before the proxy appends the real client IP.
 //
 // When trustedCIDRs is empty (legacy mode), headers are trusted
 // unconditionally for backwards compatibility.
@@ -48,9 +50,31 @@ func getRealIP(r *http.Request, trustedCIDRs []net.IPNet) string {
 		if !isIPTrusted(remoteIP, trustedCIDRs) {
 			return remoteIP
 		}
+
+		// Walk X-Forwarded-For right-to-left, skipping trusted proxy IPs.
+		// Proxies append the real client IP, so attacker-controlled values
+		// are at the front. The rightmost non-trusted IP is the real client.
+		if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+			parts := strings.Split(xff, ",")
+			for i := len(parts) - 1; i >= 0; i-- {
+				ip := strings.TrimSpace(parts[i])
+				if ip == "" {
+					continue
+				}
+				if !isIPTrusted(ip, trustedCIDRs) {
+					return ip
+				}
+			}
+		}
+
+		if xri := r.Header.Get("X-Real-IP"); xri != "" {
+			return strings.TrimSpace(xri)
+		}
+
+		return remoteIP
 	}
 
-	// Trust forwarded headers (either legacy mode or request is from a trusted proxy).
+	// Legacy mode: trust forwarded headers unconditionally.
 	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
 		if before, _, ok := strings.Cut(xff, ","); ok {
 			return strings.TrimSpace(before)

@@ -80,10 +80,40 @@ func TestGetRealIP_StrictMode_XRealIP(t *testing.T) {
 }
 
 func TestGetRealIP_StrictMode_MultipleForwardedIPs(t *testing.T) {
-	// X-Forwarded-For with multiple IPs → take the first (original client)
+	// X-Forwarded-For with multiple IPs, last one is a trusted proxy →
+	// walk right-to-left, skip trusted, return first non-trusted
 	cidrs := []net.IPNet{mustParseCIDR("10.0.0.0/8")}
 	r := newRequest("10.0.0.1:8080", map[string]string{
 		"X-Forwarded-For": "1.2.3.4, 10.0.0.50",
+	})
+	got := getRealIP(r, cidrs)
+	if got != "1.2.3.4" {
+		t.Errorf("getRealIP = %q, want %q", got, "1.2.3.4")
+	}
+}
+
+func TestGetRealIP_StrictMode_ProxyAppendAttack(t *testing.T) {
+	// Attacker sets X-Forwarded-For: 9.9.9.9 before the proxy appends real client IP.
+	// Header arrives as "9.9.9.9, 5.5.5.5" where 5.5.5.5 is the real client.
+	// Walking right-to-left: 5.5.5.5 is not trusted → return it, ignore the fake 9.9.9.9.
+	cidrs := []net.IPNet{mustParseCIDR("10.0.0.0/8")}
+	r := newRequest("10.0.0.1:8080", map[string]string{
+		"X-Forwarded-For": "9.9.9.9, 5.5.5.5",
+	})
+	got := getRealIP(r, cidrs)
+	if got != "5.5.5.5" {
+		t.Errorf("getRealIP = %q, want %q (should ignore attacker-injected IP)", got, "5.5.5.5")
+	}
+}
+
+func TestGetRealIP_StrictMode_MultiHopProxy(t *testing.T) {
+	// Request passes through two trusted proxies:
+	// Client (1.2.3.4) → Proxy A (10.0.0.1) → Proxy B (10.0.0.2) → Server
+	// XFF: 1.2.3.4, 10.0.0.1
+	// Walking right-to-left: 10.0.0.1 is trusted (skip), 1.2.3.4 is not → return it.
+	cidrs := []net.IPNet{mustParseCIDR("10.0.0.0/8")}
+	r := newRequest("10.0.0.2:8080", map[string]string{
+		"X-Forwarded-For": "1.2.3.4, 10.0.0.1",
 	})
 	got := getRealIP(r, cidrs)
 	if got != "1.2.3.4" {
