@@ -10,6 +10,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	chimw "github.com/go-chi/chi/v5/middleware"
 
+	"github.com/infisical/api/internal/config"
 	"github.com/infisical/api/internal/libs/requestid"
 	"github.com/infisical/api/internal/server/api"
 	"github.com/infisical/api/internal/server/middlewares"
@@ -18,12 +19,13 @@ import (
 // Server is the HTTP server for the Infisical API.
 type Server struct {
 	services *api.Services
+	config   *config.Config
 	logger   *slog.Logger
 	router   chi.Router
 }
 
 // NewServer creates a new HTTP server with chi routing.
-func NewServer(services *api.Services, logger *slog.Logger) *Server {
+func NewServer(services *api.Services, cfg *config.Config, logger *slog.Logger) *Server {
 	router := chi.NewRouter()
 
 	// Register domain routes
@@ -32,6 +34,7 @@ func NewServer(services *api.Services, logger *slog.Logger) *Server {
 
 	return &Server{
 		services: services,
+		config:   cfg,
 		logger:   logger,
 		router:   router,
 	}
@@ -43,7 +46,7 @@ func (s *Server) Listen(ctx context.Context, addr string, wg *sync.WaitGroup, er
 
 	// Middleware stack (applied in reverse order - last wraps first)
 	handler = requestLogger(handler, s.logger)
-	handler = middlewares.HTTPInfoMiddleware(handler)
+	handler = middlewares.HTTPInfoMiddleware(s.config.ParsedTrustedProxyCIDRs)(handler)
 	handler = chimw.StripSlashes(handler)
 	handler = requestid.Middleware(handler)
 
