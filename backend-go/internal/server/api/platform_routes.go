@@ -5,6 +5,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/infisical/api/internal/ee/services/ratelimit"
 	"github.com/infisical/api/internal/server/api/platform/projects"
 	"github.com/infisical/api/internal/server/api/shared"
 	"github.com/infisical/api/internal/server/middlewares"
@@ -33,6 +34,7 @@ func RegisterPlatformRoutes(router chi.Router, logger *slog.Logger, svc *Platfor
 				svc.Authenticator,
 				middlewares.WithAuthModes(middlewares.JWTAuth, middlewares.IdentityAccessTokenAuth, middlewares.ServiceTokenAuth),
 			))
+			r.Use(svc.RateLimit.Middleware(ratelimit.PresetWrite))
 			r.Post("/", projectsAdapter.CreateProject)
 		})
 	})

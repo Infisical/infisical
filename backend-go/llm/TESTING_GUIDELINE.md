@@ -2,6 +2,24 @@
 
 You write tests to constrain behavior, not to hit coverage targets. Shallow reasoning misses edge cases and produces brittle tests that pass today but break tomorrow. Every test you write should answer: "what contract does this code promise, and what breaks if someone violates it?"
 
+## What NOT to Test
+
+Not all code needs tests. Skip tests for:
+
+- **Struct field assignment** — Tests like "sets default value" or "uses custom config" just verify that `=` works. If the constructor assigns `s.timeout = cfg.Timeout`, don't test it.
+- **Trivial helpers** — A 3-line function with obvious logic doesn't need dedicated tests. If the implementation is shorter than the test, reconsider.
+- **Constants** — Don't assert that a constant equals its defined value. If someone changes the constant, they meant to.
+- **Generated code** — Code from `oapi-codegen` or similar tools is tested by the generator's own test suite.
+- **Pass-through methods** — If a method just delegates to another and returns the result unchanged, test the underlying method instead.
+
+**When unit and integration tests overlap:** If integration tests cover the same behavior, prefer them and skip redundant unit tests. Integration tests verify real behavior; duplicating coverage with unit tests adds maintenance burden without value.
+
+**Keep unit tests for:**
+- Branching logic with multiple code paths
+- Parsing/formatting functions with edge cases
+- Error handling paths that are tedious to trigger via integration tests
+- Pure functions with complex transformations
+
 ## Core Rules
 
 - Table-driven tests MUST use named subtests — every test case needs a `name` field passed to `t.Run`.
@@ -185,7 +203,7 @@ make test  # runs: go test -race -tags=integration ./...
 
 ### Test database setup
 
-Use the `testutil` package to spin up a Postgres container. The container is shared across tests in the same package via `TestMain`:
+Use the `testutil/infra` package to spin up containers. The containers are shared across tests in the same package via `TestMain`:
 
 ```go
 //go:build integration
@@ -193,24 +211,39 @@ Use the `testutil` package to spin up a Postgres container. The container is sha
 package secrets_test
 
 import (
+	"fmt"
 	"os"
 	"testing"
 
 	"go.uber.org/goleak"
 
-	"your/module/internal/testutil"
+	"github.com/infisical/api/internal/testutil/infra"
 )
 
-func TestMain(m *testing.M) {
-	goleak.VerifyTestMain(m,
-		goleak.IgnoreTopFunction("..."), // known benign leaks from drivers, if any
-	)
+var stack *infra.Stack
 
-	// testutil.Setup starts containers and applies migrations.
-	// It returns a teardown func.
-	teardown := testutil.Setup()
+func TestMain(m *testing.M) {
+	// Setup MUST come before m.Run() — goleak.VerifyTestMain won't work here
+	// because it calls m.Run() internally and never returns.
+	stack = infra.New().
+		WithPostgres().
+		WithRedis().
+		MustStart()
+
 	code := m.Run()
-	teardown()
+
+	stack.Stop()
+
+	// Check for goroutine leaks only if tests passed
+	if code == 0 {
+		if err := goleak.Find(
+			goleak.IgnoreTopFunction("github.com/redis/go-redis/v9/internal/pool.(*ConnPool).reaper"),
+		); err != nil {
+			fmt.Fprintf(os.Stderr, "goleak: %v\n", err)
+			os.Exit(1)
+		}
+	}
+
 	os.Exit(code)
 }
 ```
@@ -268,7 +301,34 @@ Always call `t.Helper()` so failure messages point to the calling test, not the 
 
 ## Goroutine Leak Detection
 
-Any package that spawns goroutines (background workers, watchers, connection pools) SHOULD use `goleak.VerifyTestMain` in its `TestMain` to catch leaks:
+Any package that spawns goroutines (background workers, watchers, connection pools) SHOULD check for leaks.
+
+**Warning:** `goleak.VerifyTestMain(m)` calls `m.Run()` internally and never returns. If you need setup before tests run (e.g., starting containers), use `goleak.Find` after `m.Run()` instead:
+
+```go
+func TestMain(m *testing.M) {
+	// Setup MUST come before tests run
+	teardown := setupInfrastructure()
+
+	code := m.Run()
+
+	teardown()
+
+	// Check for leaks only if tests passed
+	if code == 0 {
+		if err := goleak.Find(
+			goleak.IgnoreTopFunction("..."), // known benign leaks
+		); err != nil {
+			fmt.Fprintf(os.Stderr, "goleak: %v\n", err)
+			os.Exit(1)
+		}
+	}
+
+	os.Exit(code)
+}
+```
+
+If no setup is needed, `goleak.VerifyTestMain(m)` is simpler:
 
 ```go
 func TestMain(m *testing.M) {
@@ -276,13 +336,10 @@ func TestMain(m *testing.M) {
 }
 ```
 
-If a known third-party goroutine is benign and cannot be stopped (e.g., a database driver's internal watcher), ignore it explicitly and leave a comment:
+If a known third-party goroutine is benign and cannot be stopped (e.g., a database driver's internal watcher), ignore it explicitly:
 
 ```go
-goleak.VerifyTestMain(m,
-	// pgxpool starts a background health-check goroutine
-	goleak.IgnoreTopFunction("github.com/jackc/pgx/v5/pgxpool.(*Pool).backgroundHealthCheck"),
-)
+goleak.IgnoreTopFunction("github.com/jackc/pgx/v5/pgxpool.(*Pool).backgroundHealthCheck")
 ```
 
 ## Race Detection

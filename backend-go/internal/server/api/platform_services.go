@@ -6,6 +6,7 @@ import (
 
 	"github.com/infisical/api/internal/ee/services/externalkms"
 	"github.com/infisical/api/internal/ee/services/license"
+	"github.com/infisical/api/internal/ee/services/ratelimit"
 	"github.com/infisical/api/internal/services/assumeprivilege"
 	"github.com/infisical/api/internal/services/auditlog"
 	"github.com/infisical/api/internal/services/auth/apiauth"
@@ -23,6 +24,7 @@ type PlatformServices struct {
 	Project         *project.Service
 	AuditLog        *auditlog.Service
 	AssumePrivilege *assumeprivilege.Service
+	RateLimit       *ratelimit.Service
 }
 
 func newPlatformServices(ctx context.Context, infra *Infra) (*PlatformServices, error) {
@@ -71,6 +73,13 @@ func newPlatformServices(ctx context.Context, infra *Infra) (*PlatformServices, 
 	})
 	auditLogQueueHandler.Register(infra.Queue)
 
+	rateLimitSvc := ratelimit.NewService(ctx, infra.Logger, &ratelimit.Deps{
+		Redis:      infra.Redis,
+		LicenseSvc: infra.License,
+		IsCloud:    infra.Config.IsCloud,
+		IsEnabled:  infra.Config.IsCloud && infra.Config.IsProductionMode,
+	})
+
 	svc := &PlatformServices{
 		Authenticator:   authenticator,
 		Permission:      permissionSvc,
@@ -79,6 +88,7 @@ func newPlatformServices(ctx context.Context, infra *Infra) (*PlatformServices, 
 		Project:         projectSvc,
 		AuditLog:        auditLogSvc,
 		AssumePrivilege: assumePrivilegeSvc,
+		RateLimit:       rateLimitSvc,
 	}
 
 	return svc, nil

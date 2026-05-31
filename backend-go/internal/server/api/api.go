@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/redis/go-redis/v9"
+
 	"github.com/infisical/api/internal/config"
 	"github.com/infisical/api/internal/database/pg"
 	"github.com/infisical/api/internal/ee/services/license"
@@ -18,6 +20,7 @@ type Infra struct {
 	Logger   *slog.Logger
 	Config   *config.Config
 	DB       pg.DB
+	Redis    redis.UniversalClient
 	HSM      kms.HsmService
 	License  *license.Service
 	KeyStore keystore.KeyStore

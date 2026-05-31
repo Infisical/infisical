@@ -114,6 +114,7 @@ func run(cfg *config.Config, logger *slog.Logger) error {
 		Logger:   logger,
 		Config:   cfg,
 		DB:       db,
+		Redis:    redisClient,
 		HSM:      hsmSvc,
 		License:  licenseSvc,
 		KeyStore: ks,
