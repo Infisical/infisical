@@ -38,7 +38,7 @@ sequenceDiagram
 
 1. **Gateway**: An Infisical Gateway deployed in your network that can reach the MsSQL server. The Gateway handles secure communication between users and your MsSQL instance.
 
-2. **Authentication**: Credentials are stored securely in Infisical and used by the Gateway to authenticate with MsSQL on behalf of the user. SQL Server Authentication (username/password), Windows Authentication (NTLM), and Windows Authentication (Kerberos) are supported.
+2. **Authentication**: Credentials are stored securely in Infisical and used by the Gateway to authenticate with MsSQL on behalf of the user. SQL Server Authentication and Windows Authentication (NTLM or Kerberos) are supported.
 
 3. **Local Proxy**: The Infisical CLI starts a local proxy on your machine that intercepts MsSQL connections and routes them securely through the Gateway to your MsSQL instance.
 
