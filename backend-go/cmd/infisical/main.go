@@ -127,7 +127,7 @@ func run(cfg *config.Config, logger *slog.Logger) error {
 	defer cleanup()
 
 	// Create server.
-	srv := server.NewServer(services, logger)
+	srv := server.NewServer(services, cfg, logger)
 
 	// Create error channel for signal handling and server errors.
 	// Buffered to prevent blocking if multiple senders (signal, queue, HTTP) fire after first receive.
