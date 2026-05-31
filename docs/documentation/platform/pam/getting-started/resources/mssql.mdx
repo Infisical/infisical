@@ -150,6 +150,10 @@ A PAM Account represents a specific set of credentials that users can request ac
       Hostname or IP of the Key Distribution Center (e.g., `dc.corp.example.com`). Optional — if omitted, the gateway attempts DNS-based KDC discovery.
     </ParamField>
 
+    <Info>
+      Kerberos credentials (realm, SPN, KDC address) are verified when the first session is started, not at account creation. Ensure your KDC is reachable from the gateway on port 88.
+    </Info>
+
     <ParamField path="Username" type="string" required>
       The MsSQL or domain username.
     </ParamField>
