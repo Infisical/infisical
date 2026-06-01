@@ -5,15 +5,15 @@ description: "Use the Infisical PKCS#11 module with GnuPG to sign git commits, t
 ---
 
 <Info>
-  This guide assumes your Product Admin has already created a [Signer](/documentation/platform/pki/code-signing/signers) and assigned you to it. If the signer has a signing policy, you'll also need an approved [grant](/documentation/platform/pki/code-signing/grants) before signing.
+  This guide assumes your Product Admin has already created a [Signer](/documentation/platform/pki/code-signing/signers) and assigned you to it. If the signer has an approval policy, you'll also need [active access](/documentation/platform/pki/code-signing/approvals#access-lifecycle) before signing.
 </Info>
 
-Use GnuPG with the Infisical PKCS#11 module via `gnupg-pkcs11-scd` to sign git commits and tags, RPM/DEB packages, and any other artifact that uses GPG signatures — all backed by keys stored securely in Infisical.
+Use GnuPG with the Infisical PKCS#11 module via `gnupg-pkcs11-scd` to sign git commits and tags, RPM/DEB packages, and any other artifact that uses GPG signatures.
 
 ## Prerequisites
 
 - A [Signer](/documentation/platform/pki/code-signing/signers) created by your Product Admin (RSA keys recommended for GPG compatibility)
-- An active [signing grant](/documentation/platform/pki/code-signing/grants) (if a signing policy is attached)
+- [Active signing access](/documentation/platform/pki/code-signing/approvals#access-lifecycle) (if an approval policy is attached)
 - A [machine identity](/documentation/platform/identities/machine-identities) added to the Signer
 - The Infisical [PKCS#11 module](/documentation/platform/pki/code-signing/pkcs11-module) installed and configured
 - GnuPG 2.2 or later
@@ -87,7 +87,7 @@ gpg-connect-agent "SCD LEARN" /bye
 Look for lines starting with `KEY-FRIEDNLY` or `KEYPAIRINFO`. These show the available keys and their key grips (40-character hex strings). Note the key grip for the signer you want to use.
 
 <Warning>
-  If multiple signers use the same certificate/key, they will share the same key grip. GPG will attempt to sign using the first matching slot. Ensure the signer in the first slot has an active signing grant, or configure your signers so each key is used by only one signer.
+  If multiple signers use the same certificate/key, they will share the same key grip. GPG will attempt to sign using the first matching slot. Ensure the signer in the first slot has active signing access, or configure your signers so each key is used by only one signer.
 </Warning>
 
 Then generate a key stub:

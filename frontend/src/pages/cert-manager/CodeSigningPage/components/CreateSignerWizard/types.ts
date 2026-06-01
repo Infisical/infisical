@@ -1,5 +1,7 @@
 import { SignerKeyAlgorithm, SignerMemberRole } from "@app/hooks/api/signers";
 
+import { PkiDocsUrls } from "../../../pki-docs-urls";
+
 export type CaGroup = "internal" | "external";
 export type CaOption = { id: string; name: string; groupType: CaGroup };
 export type MemberOption = { value: string; label: string };
@@ -66,6 +68,7 @@ export type WizardStep = {
   subtitle: string;
   rightLabel: string;
   rightDescription: string;
+  docsUrl: string;
 };
 
 export const STEPS: WizardStep[] = [
@@ -76,7 +79,8 @@ export const STEPS: WizardStep[] = [
     subtitle: "A short name and what this signer is for.",
     rightLabel: "BASICS",
     rightDescription:
-      "Set the signer's name and a short description so your team knows what it signs (for example, mobile-app-prod for production iOS and Android bundles)."
+      "Set the signer's name and a short description so your team knows what it signs (for example, mobile-app-prod for production iOS and Android bundles).",
+    docsUrl: PkiDocsUrls.codeSigning.signers.basics
   },
   {
     name: "Certificate",
@@ -85,7 +89,8 @@ export const STEPS: WizardStep[] = [
     subtitle: "Pick the Certificate Authority and the name on the certificate.",
     rightLabel: "CERTIFICATE",
     rightDescription:
-      "Tells Infisical which CA issues the signing certificate, the name shown on it, and how long it stays valid. The Common Name is fixed once issued."
+      "Tells Infisical which CA issues the signing certificate, the name shown on it, and how long it stays valid. The Common Name is fixed once issued.",
+    docsUrl: PkiDocsUrls.codeSigning.signers.certificate
   },
   {
     name: "Members",
@@ -94,7 +99,8 @@ export const STEPS: WizardStep[] = [
     subtitle: "Add users, machine identities, or groups that can work with this signer.",
     rightLabel: "MEMBERS",
     rightDescription:
-      "Choose who gets access. Each member has a role: Administrators manage the signer, Operators sign artifacts, Auditors read activity but cannot sign."
+      "Choose who gets access. Each member has a role: Administrators manage the signer, Operators sign artifacts, Auditors read activity but cannot sign.",
+    docsUrl: PkiDocsUrls.codeSigning.signers.members
   },
   {
     name: "Approval Policy",
@@ -103,7 +109,8 @@ export const STEPS: WizardStep[] = [
     subtitle: "Decide if signing needs approval, who approves it, and what each approval allows.",
     rightLabel: "APPROVAL POLICY",
     rightDescription:
-      "When approval is on, members ask before signing. Steps run in order with approvers per step. Limits cap how many signatures and how long each approval is valid."
+      "When approval is on, members ask before signing. Steps run in order with approvers per step. Limits cap how many signatures and how long each approval is valid.",
+    docsUrl: PkiDocsUrls.codeSigning.approvals.policy
   }
 ];
 

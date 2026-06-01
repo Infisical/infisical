@@ -176,7 +176,7 @@ export const EditSignerModal = ({ isOpen, onOpenChange, signer }: Props) => {
               <div>
                 <div className="flex items-center gap-x-2 text-mineshaft-300">
                   Edit Signer
-                  <DocumentationLinkBadge href={PkiDocsUrls.codeSigning.signers} />
+                  <DocumentationLinkBadge href={PkiDocsUrls.codeSigning.signers.edit} />
                 </div>
                 <p className="text-sm leading-4 text-mineshaft-400">
                   Update the signer&apos;s name, validity, and certificate authority.
@@ -244,7 +244,7 @@ export const EditSignerModal = ({ isOpen, onOpenChange, signer }: Props) => {
                   <p className="text-[11px] font-medium tracking-wider text-muted uppercase">
                     Step {step + 1} · {currentStep.rightLabel}
                   </p>
-                  <DocumentationLinkBadge href={PkiDocsUrls.codeSigning.signers} />
+                  <DocumentationLinkBadge href={currentStep.docsUrl} />
                 </div>
                 <p className="mt-4 text-sm font-semibold text-foreground">What this step does</p>
                 <p className="mt-2 text-sm leading-relaxed text-muted">

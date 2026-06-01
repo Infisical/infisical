@@ -77,7 +77,7 @@ export const SignersTable = ({ projectId, onCreateSigner }: Props) => {
       <CardHeader>
         <CardTitle>
           Signers
-          <DocumentationLinkBadge href={PkiDocsUrls.codeSigning.signers} />
+          <DocumentationLinkBadge href={PkiDocsUrls.codeSigning.signers.overview} />
         </CardTitle>
         <CardDescription>Manage signers and control who can sign artifacts.</CardDescription>
         <CardAction>

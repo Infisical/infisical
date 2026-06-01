@@ -215,7 +215,7 @@ export const EditSignerPolicyModal = ({
               <div>
                 <div className="flex items-center gap-x-2 text-mineshaft-300">
                   Edit approval policy
-                  <DocumentationLinkBadge href={PkiDocsUrls.codeSigning.signers} />
+                  <DocumentationLinkBadge href={PkiDocsUrls.codeSigning.approvals.policy} />
                 </div>
                 <p className="text-sm leading-4 text-mineshaft-400">
                   Choose who approves, and how much each approval gives.
@@ -271,12 +271,12 @@ export const EditSignerPolicyModal = ({
                   <p className="text-[11px] font-medium tracking-wider text-muted uppercase">
                     Step {safeStep + 1} · {WIZARD_STEPS[safeStep].title.toUpperCase()}
                   </p>
-                  <DocumentationLinkBadge href={PkiDocsUrls.codeSigning.signers} />
+                  <DocumentationLinkBadge href={WIZARD_STEPS[safeStep].docsUrl} />
                 </div>
                 <p className="mt-4 text-sm font-semibold text-foreground">What this step does</p>
                 <p className="mt-2 text-sm leading-relaxed text-muted">
                   {!showLimitsTab
-                    ? 'Approvals run in order. Each step has its own approvers and "required" count — the number of approvers that must approve before moving on.'
+                    ? 'Approvals run in order. Each step has its own approvers and a "required" count: the number of approvers that must approve before moving on.'
                     : "Limits decide how many signatures one approval can make and how long it stays valid before expiring."}
                 </p>
               </div>

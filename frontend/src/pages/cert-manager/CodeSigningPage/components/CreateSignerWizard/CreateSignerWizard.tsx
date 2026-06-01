@@ -241,7 +241,7 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
               <div>
                 <div className="flex items-center gap-x-2 text-mineshaft-300">
                   Create Signer
-                  <DocumentationLinkBadge href={PkiDocsUrls.codeSigning.signers} />
+                  <DocumentationLinkBadge href={PkiDocsUrls.codeSigning.signers.create} />
                 </div>
                 <p className="text-sm leading-4 text-mineshaft-400">
                   A Signer bundles a code-signing certificate, the members allowed to use it, and an
@@ -330,7 +330,7 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
                   <p className="text-[11px] font-medium tracking-wider text-muted uppercase">
                     Step {step + 1} · {currentStep.rightLabel}
                   </p>
-                  <DocumentationLinkBadge href={PkiDocsUrls.codeSigning.signers} />
+                  <DocumentationLinkBadge href={currentStep.docsUrl} />
                 </div>
                 <p className="mt-4 text-sm font-semibold text-foreground">What this step does</p>
                 <p className="mt-2 text-sm leading-relaxed text-muted">

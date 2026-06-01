@@ -1,125 +1,307 @@
 ---
 title: "Signers"
 sidebarTitle: "Signers"
-description: "Create and manage code-signing identities."
+description: "Create, configure, and manage code-signing identities for your team."
 ---
 
-A Signer is a named code-signing identity bound to an X.509 certificate with the `codeSigning` extended key usage (EKU). Signers represent signing capabilities—for example, `release-signer` for production releases or `ci-signer` for CI pipeline artifacts.
+A Signer is a single signing identity inside Code Signing. It bundles three things:
+
+- A code-signing certificate issued from a CA in your project
+- A list of members who are allowed to use it
+- An optional approval policy that decides whether signing needs sign-off
+
+You'll typically have one Signer per real-world signing concern, such as `mobile-app-prod`, `firmware-release`, or `ci-staging-builds`.
+
+## What's in a Signer?
+
+<CardGroup cols={2}>
+  <Card title="Certificate" icon="certificate">
+    The X.509 code-signing certificate the Signer uses, backed by an internal or external CA.
+  </Card>
+  <Card title="Members" icon="users">
+    Users, machine identities, and groups. Each member has an Administrator, Operator, or Auditor role on this Signer.
+  </Card>
+  <Card title="Approval policy" icon="check-double">
+    Optional. Decides whether signing needs approval, who approves, and how each approval is bounded. See [Approvals](/documentation/platform/pki/code-signing/approvals).
+  </Card>
+  <Card title="Activity" icon="clock-rotate-left">
+    Audit trail of every successful, failed, and denied signing operation.
+  </Card>
+</CardGroup>
+
+## Signer roles
+
+| Role | Capabilities |
+|------|--------------|
+| **Administrator** | Edit settings, manage members, edit the approval policy, pre-approve signing for others, sign, and export the certificate. |
+| **Operator** | Sign artifacts and submit signing requests. Export the certificate. Cannot manage members or the policy. |
+| **Auditor** | View members, activity, and the audit log. Export the certificate. Cannot sign or change anything. |
 
 <Info>
-  Signers are created by product admins. Team members are assigned to Signers and can then request signing access or sign directly (depending on policy).
+  The user who creates a Signer becomes its Administrator automatically.
 </Info>
-
-Private keys never leave the Infisical server. When a signing operation is requested, the server retrieves the key, computes the signature, and returns only the signature bytes.
-
-## Key Characteristics
-
-| Feature | Description |
-|---------|-------------|
-| **Bound to certificate** | Every signer must be linked to a certificate with the `codeSigning` EKU |
-| **Optional signing policy** | Attach a [signing policy](/documentation/platform/pki/code-signing/signing-policies) to require approval before signing |
-| **RSA and ECDSA** | Supports RSA (2048, 3072, 4096-bit) and ECDSA (P-256, P-384, P-521) |
-| **Audit trail** | Every signing operation is recorded with actor, algorithm, and grant information |
 
 ## Create a Signer
 
+In **Certificate Manager → Code Signing → Signers**, click **Create Signer**. The wizard walks you through four steps in order.
+
 <Steps>
-  <Step title="Issue a code-signing certificate">
-    You need a certificate with the `codeSigning` extended key usage. Follow the [certificate issuance guide](/documentation/platform/pki/applications/certificates#issuing-certificates) and specify `codeSigning` in the extended key usage field.
+  <Step title="Basics">
+    Pick a name for the Signer and (optionally) describe what it's for.
 
-    <Note>
-      Only certificates with the `codeSigning` EKU appear when creating a signer.
-    </Note>
+    | Field | Description |
+    |-------|-------------|
+    | **Signer name** | A short, slug-friendly identifier (lowercase, dashes). Example: `mobile-app-prod`. The PKCS#11 module shows this as the **token label**. |
+    | **Description** | Optional. What this Signer is for, in plain English. Example: *iOS and Android production bundles*. |
+
+    Click **Next** to move on to the certificate.
   </Step>
-  <Step title="(Optional) Create a signing policy">
-    To require approval before signing, create a [Signing Policy](/documentation/platform/pki/code-signing/signing-policies) first.
-    
-    Without a policy, any authorized user or identity can sign immediately.
+
+  <Step title="Certificate">
+    Infisical issues a fresh code-signing certificate for the Signer from a CA in your project.
+
+    | Field | Description |
+    |-------|-------------|
+    | **Certificate Authority** | The CA that issues the certificate. Internal CAs issue immediately. External CAs (ACME, DigiCert, Azure AD CS, AWS PCA, Venafi TPP) issue asynchronously and the Signer enters **Pending** until the cert lands. |
+    | **Common Name** | The legal name shown on the certificate, for example `Acme Mobile, Inc.`. Fixed once the certificate is issued. To change it you must reissue. |
+    | **Key algorithm** | The key for the signing certificate: `RSA-2048`, `RSA-3072`, `RSA-4096`, `ECDSA P-256`, `ECDSA P-384`, or `ECDSA P-521`. |
+    | **Validity (days)** | How long each issued certificate is valid for. Default 365. |
+    | **Renew before (days)** | Optional, 1 to 30. Auto-renew this many days before expiry. Must be less than Validity. Leave empty to disable auto-renewal. |
+
+    Click **Next** to add members.
   </Step>
-  <Step title="Create the signer">
-    Go to **Certificate Manager → Code Signing → Signers** and click **Create Signer**.
 
-    Fill in the following fields:
+  <Step title="Members">
+    Add the people and machine identities who will work with this Signer:
 
-    - **Name**: A slug-friendly name for the signer such as `release-signer`.
-    - **Description**: An optional description of the signer's purpose.
-    - **Certificate**: The code-signing certificate to bind to this signer.
-    - **Signing Policy** (optional): The signing policy that governs signing access for this signer. If omitted, signing is allowed without approval.
+    - **User**
+    - **Machine Identity**: a non-human caller (CI runner, build job, deploy script). Operator is the typical role.
+    - **Group**: a directory group. Everyone in the group inherits the role on this Signer.
 
-    Press **Create** to save the signer.
+    The user who creates the Signer is added as Administrator automatically and cannot be removed at creation time. You can manage members later from the Signer's **Members** tab.
+
+    Click **Next** to set up the approval policy.
+  </Step>
+
+  <Step title="Approval policy">
+    Decide whether this Signer needs approval before signing.
+
+    - **No approval required**: leave the policy empty. Members with sign rights can sign immediately. Recommended for dev and internal Signers.
+    - **Add approval steps**: require one or more sign-offs. See [Approvals → Configure the approval policy](/documentation/platform/pki/code-signing/approvals#configure-the-approval-policy) for the step editor and per-approval limits.
+
+    Press **Create Signer** to finish. Infisical issues the certificate (synchronously for internal CAs, asynchronously for external CAs) and the Signer appears in the list with a status badge.
   </Step>
 </Steps>
 
-## Supported Signing Algorithms
+## Signer statuses
 
-The available signing algorithms depend on the certificate's key type:
+| Status | Meaning |
+|--------|---------|
+| **Pending** | The Signer is created but the certificate has not been issued yet. Most common with external CAs that take time to respond (ACME validation, DigiCert order, etc.). The PKCS#11 module sees this slot but signing is rejected until the certificate lands. |
+| **Active** | Certificate issued and bound. Signing works, subject to the approval policy. |
+| **Failed** | Issuance failed. Hover the badge to see the reason. Use **Retry issuance** from the Options menu, or [Edit a Signer](#edit-a-signer) to change the CA, Common Name, or Validity and try again. |
+| **Disabled** | Manually disabled. Signing is blocked. Re-enable from the Options menu. |
+| **Expired** | The certificate's `notAfter` has passed and no auto-renewal was configured (or the renewal failed). Reissue with a new validity period. |
 
-### RSA
+## Signer detail page
 
-| Algorithm | Description |
-|-----------|-------------|
-| `RSASSA_PKCS1_V1_5_SHA256` | RSA PKCS#1 v1.5 with SHA-256 |
-| `RSASSA_PKCS1_V1_5_SHA384` | RSA PKCS#1 v1.5 with SHA-384 |
-| `RSASSA_PKCS1_V1_5_SHA512` | RSA PKCS#1 v1.5 with SHA-512 |
-| `RSASSA_PSS_SHA256` | RSA-PSS with SHA-256 |
-| `RSASSA_PSS_SHA384` | RSA-PSS with SHA-384 |
-| `RSASSA_PSS_SHA512` | RSA-PSS with SHA-512 |
+Click any Signer to open its detail page. Three tabs cover everything you can do with it.
 
-### ECDSA
+<Tabs>
+  <Tab title="Activity">
+    The **Signing History** table: an audit trail of every signing operation against this Signer, with the most recent at the top.
 
-| Algorithm | Description |
-|-----------|-------------|
-| `ECDSA_SHA256` | ECDSA with SHA-256 |
-| `ECDSA_SHA384` | ECDSA with SHA-384 |
-| `ECDSA_SHA512` | ECDSA with SHA-512 |
+    | Column | What you'll see |
+    |--------|-----------------|
+    | **Timestamp** | When the operation happened, down to the second. |
+    | **Status** | `Success`, `Failed`, or `Denied`. Denied entries show why on hover (no policy access, expired access, disabled Signer, etc.). |
+    | **Algorithm** | Friendly label for the signing algorithm, for example *RSA PKCS#1 v1.5 (SHA-256)* or *ECDSA (SHA-384)*. |
+    | **Data Hash** | First few bytes of the SHA digest that was signed, useful for matching an entry back to a specific artifact. Hover for the full value. |
+    | **Actor** | The user or machine identity that issued the call. Click through to see who else they are. |
 
-## Signing via API
+    Paginated at the bottom (1, 5, 10, 20, 50 per page). Read-only and visible to all roles, including Auditors.
+  </Tab>
 
-You can also sign data programmatically by making an API request to the Sign endpoint:
+  <Tab title="Approvals">
+    A two-panel view that ties together **who has to approve** signing and **who currently can sign**.
+
+    **Approval Policy** (left panel)
+
+    Summary card for the active policy. Shows the per-approval limits (**Max signings**, **Max window**) and the list of **Approval Steps** in order, each with its name and required-approver count. The pencil icon opens the 2-step editor; see [Configure the approval policy](/documentation/platform/pki/code-signing/approvals#configure-the-approval-policy).
+
+    If there's no policy, the panel reads *No policy required* and signing is direct for any member with sign rights.
+
+    **Requests** (right panel)
+
+    The full table of signing requests and active access. Includes both pending requests in flight and historical (expired, revoked, rejected) rows. Filter icon at the top right scopes the list by status.
+
+    | Column | What you'll see |
+    |--------|-----------------|
+    | **Member** | The user or machine identity who will hold the access, plus a one-line justification subtitle (e.g. *"Auto-requested by PKCS#11 module"*, *"Signing release v2.4.0"*). |
+    | **Status** | `Pending`, `Active`, `Expired`, `Revoked`, or `Rejected`. |
+    | **When** | When the request was submitted or the pre-approval was issued. |
+    | **Expires** | Live countdown plus remaining signature count for Active rows (e.g. *2 of 3 signings left*). Pending rows show *Awaiting approval*. Expired and revoked rows show the terminal reason. |
+
+    The **Pre-approve signing** and **Request to sign** buttons live at the top of this tab. Full coverage of both flows, plus revocation and approver decisions, is in [Approvals](/documentation/platform/pki/code-signing/approvals).
+  </Tab>
+
+  <Tab title="Members">
+    The **Members** table: everyone (and everything) who has access to this Signer.
+
+    Use the **Add Member** button (top right) to add a user, machine identity, or group. Pick a role at add time. Use the role dropdown on any row to promote or demote later. The kebab (`⋯`) on each row removes the member from the Signer.
+
+    | Column | What you'll see |
+    |--------|-----------------|
+    | **Member** | Display name of the user, machine identity, or group. |
+    | **Type** | Badge: `User`, `Machine Identity`, or `Group`. |
+    | **Role** | Dropdown: `Administrator`, `Operator`, or `Auditor`. See the [role table](#signer-roles) above for what each can do. |
+    | **Added** | Date the member was first added to this Signer. |
+
+    <Note>
+      At least one Administrator must remain on the Signer at all times. The last remaining Administrator can't be removed or demoted; promote someone else first.
+    </Note>
+  </Tab>
+</Tabs>
+
+## Edit a Signer
+
+Open the Signer and choose **Options → Edit settings**. The edit sheet walks you through two steps.
+
+<Steps>
+  <Step title="Edit basics">
+    Update the Signer's identifying information.
+
+    - **Signer name**: rename freely. The PKCS#11 token label updates on the next refresh.
+    - **Description**: edit at will.
+
+    Click **Next** to edit the certificate.
+  </Step>
+
+  <Step title="Edit certificate">
+    Change the certificate parameters. Saving here can trigger a fresh issuance, so what's editable depends on the Signer's current status.
+
+    **Always editable**
+
+    - **Certificate Authority**: swap to another CA in the project. Saving with a different CA reissues the certificate immediately from the new CA.
+    - **Renew before (days)**: edit any time, 1 to 30, must be less than Validity.
+
+    **Locked once the Signer is Active**
+
+    Once a certificate is bound, the **Common Name**, **Validity (days)**, and **Key algorithm** are all locked together so the issued cert and the Signer's stored intent can't drift apart.
+
+    - While the Signer is **Pending** or **Failed** (no certificate bound yet), **Common Name** and **Validity (days)** are editable so you can fix bad inputs and try issuance again. **Key algorithm** is still read-only here.
+    - Once **Active**, all three fields show as read-only.
+
+    To change any of them on an Active Signer: swap the CA (reissues with the new CN/Validity if you also fix those before going Active again) or, for **Key algorithm**, create a new Signer with the algorithm you want.
+
+    <Note>
+      Renewals always issue a new certificate from the same CA with a fresh key pair. Old artifacts remain valid under the old certificate; new sign operations use the new one.
+    </Note>
+
+    Press **Save** to apply the changes.
+  </Step>
+</Steps>
+
+## Lifecycle operations
+
+Each operation lives under the Signer's **Options** menu in the top right of the detail page.
+
+<Tabs>
+  <Tab title="Export certificate">
+    **Options → Export certificate** downloads the PEM-encoded X.509 certificate chain (leaf, intermediates, root). You'll typically ship the leaf alongside signed artifacts so verifiers can check the signature.
+  </Tab>
+
+  <Tab title="Disable / enable">
+    **Options → Disable signer** marks the Signer as Disabled and rejects all sign API calls. The certificate is not revoked, so re-enabling later resumes signing immediately. Use this when you suspect a member's machine identity is compromised but don't want to invalidate every artifact already signed.
+
+    Re-enable the Signer from the same Options menu (**Enable signer**) when you're ready to resume signing.
+  </Tab>
+
+  <Tab title="Retry issuance">
+    For Signers stuck in **Failed**: hover the badge to see the reason. **Options → Retry issuance** re-requests the certificate using the stored CA, Common Name, and Validity.
+
+    If the failure was caused by bad inputs (wrong CA, invalid Common Name), use [Edit a Signer](#edit-a-signer) instead to fix the fields before retrying.
+  </Tab>
+
+  <Tab title="Delete">
+    **Options → Delete signer** permanently removes:
+
+    - The Signer record
+    - Its approval policy, steps, and approvers
+    - All members on the Signer
+    - All signing requests and active access records
+    - The audit log entries
+
+    The certificate object itself remains in **Certificate Manager → Inventory** and can be revoked separately if needed. Deletion cascades cleanly.
+
+    <Note>
+      Deletion is irreversible. If you're not sure, disable the Signer first.
+    </Note>
+  </Tab>
+</Tabs>
+
+## Signing via the API
+
+For service-to-service signing you can call the [Sign API](/api-reference/endpoints/code-signing/signers/sign) directly (no PKCS#11 module required). The most common path is still the [PKCS#11 module](/documentation/platform/pki/code-signing/pkcs11-module); use the API directly only when you need precise control.
 
 ```bash
 curl --request POST \
-  --url https://app.infisical.com/api/v1/pki/signers/{signerId}/sign \
+  --url https://app.infisical.com/api/v1/cert-manager/signers/{signerId}/sign \
   --header 'Authorization: Bearer <access-token>' \
   --header 'Content-Type: application/json' \
   --data '{
-    "data": "<base64-encoded-data>",
-    "signingAlgorithm": "RSASSA_PKCS1_V1_5_SHA256",
+    "data": "<base64-encoded-digest>",
+    "signingAlgorithm": "RSASSA_PKCS1_V1_5_SHA_256",
     "isDigest": true,
     "clientMetadata": {
       "tool": "custom-pipeline",
-      "hostname": "build-server-1"
+      "hostname": "build-runner-42"
     }
   }'
 ```
 
-<Note>
-  - The `data` field must be base64-encoded and no larger than 128 bytes (the digest of what you want to sign).
-  - Set `isDigest` to `true` if the data is already a hash digest, or `false` if you want the server to hash it.
-  - The `clientMetadata` field is optional and recorded in the signing operation audit log.
-</Note>
+| Field | Description |
+|-------|-------------|
+| `data` | Base64-encoded payload. Must be the digest itself (≤128 bytes) when `isDigest=true`, or arbitrary data otherwise. |
+| `signingAlgorithm` | One of the algorithms allowed by the Signer's key (see below). |
+| `isDigest` | `true` if `data` is already a hash digest. `false` to let Infisical hash first. |
+| `clientMetadata` | Optional. Recorded verbatim on the audit entry. Handy for distinguishing CI jobs in the Activity log. |
+
+### Algorithms by key type
+
+| Key | Allowed `signingAlgorithm` values |
+|-----|-----------------------------------|
+| RSA (2048 / 3072 / 4096) | `RSASSA_PKCS1_V1_5_SHA_256`, `RSASSA_PKCS1_V1_5_SHA_384`, `RSASSA_PKCS1_V1_5_SHA_512`, `RSASSA_PSS_SHA_256`, `RSASSA_PSS_SHA_384`, `RSASSA_PSS_SHA_512` |
+| ECDSA P-256 | `ECDSA_SHA_256` |
+| ECDSA P-384 | `ECDSA_SHA_384` |
+| ECDSA P-521 | `ECDSA_SHA_512` |
 
 ## FAQ
 
 <AccordionGroup>
-  <Accordion title="Can I use the same certificate for multiple signers?">
-    Yes. Multiple signers can reference the same certificate, each with a different signing policy. This is useful if you want different approval workflows for different teams using the same signing key.
+  <Accordion title="Can I reuse one certificate across multiple Signers?">
+    No. Every Signer has its own certificate. If you want different teams or different approval workflows against the same CA, create one Signer per team or workflow. Each gets its own certificate from that CA.
   </Accordion>
-  <Accordion title="What happens if my certificate expires?">
-    Signing requests will be rejected if the signer's certificate has expired. You should issue a new certificate and update the signer's certificate binding before expiry.
+  <Accordion title="What's the difference between Disable and Delete?">
+    **Disable** is reversible. The Signer, its members, its policy, its history, and the certificate are all preserved; sign calls just get rejected. Re-enable to resume.
+
+    **Delete** is permanent. The Signer and everything attached to it (members, policy, access records, audit log) is removed. The certificate object remains in the inventory unless you delete that separately.
   </Accordion>
-  <Accordion title="Can machine identities sign without human approval?">
-    Yes, depending on the signing policy configuration. If the policy allows machine identity bypass, machine identities can sign without human intervention after obtaining a grant.
+  <Accordion title="Why is my new Signer stuck in Pending?">
+    External CAs (ACME, DigiCert, Azure AD CS, AWS PCA, Venafi TPP) issue asynchronously. Infisical polls the CA in the background and flips the Signer to **Active** once the certificate is delivered. If it stays Pending for more than a few minutes, hover the badge; the failure reason appears there once the polling job gives up.
+  </Accordion>
+  <Accordion title="What happens to signed artifacts when I delete a Signer?">
+    Artifacts already signed remain valid as long as the certificate they were signed with is still valid and the verifier trusts the issuing CA's chain. Deleting the Signer in Infisical only removes Infisical's ability to sign new artifacts with that certificate; it doesn't invalidate past signatures.
   </Accordion>
 </AccordionGroup>
 
-## What's Next?
+## What's next?
 
 <CardGroup cols={2}>
-  <Card title="Configure Signing Policies" icon="file-contract" href="/documentation/platform/pki/code-signing/signing-policies">
-    Add approval workflows before signing operations.
+  <Card title="Approvals" icon="check-double" href="/documentation/platform/pki/code-signing/approvals">
+    Add approval steps and per-approval limits to a Signer.
   </Card>
   <Card title="PKCS#11 Module" icon="plug" href="/documentation/platform/pki/code-signing/pkcs11-module">
-    Use standard signing tools with your signer.
+    Use jarsigner, cosign, osslsigncode, and friends with this Signer.
   </Card>
 </CardGroup>

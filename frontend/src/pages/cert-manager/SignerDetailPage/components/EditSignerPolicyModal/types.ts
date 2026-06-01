@@ -1,3 +1,5 @@
+import { PkiDocsUrls } from "../../../pki-docs-urls";
+
 export type ApproverKind = "user" | "group";
 export type ApproverOption = { value: string; label: string; kind: ApproverKind };
 
@@ -10,10 +12,15 @@ export type StepDraft = {
 
 export const approverKey = (kind: ApproverKind, id: string) => `${kind}:${id}`;
 
-export const APPROVERS_STEP = { title: "Approvers", subtitle: "Who approves" } as const;
+export const APPROVERS_STEP = {
+  title: "Approvers",
+  subtitle: "Who approves",
+  docsUrl: PkiDocsUrls.codeSigning.approvals.approvers
+} as const;
 export const LIMITS_STEP = {
   title: "Approval limits",
-  subtitle: "What each approval allows"
+  subtitle: "What each approval allows",
+  docsUrl: PkiDocsUrls.codeSigning.approvals.limits
 } as const;
 
 export const NO_WINDOW_LIMIT = "__no_limit__";

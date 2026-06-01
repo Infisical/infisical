@@ -5,7 +5,7 @@ description: "Use the Infisical PKCS#11 module to sign Android APK and AAB files
 ---
 
 <Info>
-  This guide assumes your Product Admin has already created a [Signer](/documentation/platform/pki/code-signing/signers) and assigned you to it. If the signer has a signing policy, you'll also need an approved [grant](/documentation/platform/pki/code-signing/grants) before signing.
+  This guide assumes your Product Admin has already created a [Signer](/documentation/platform/pki/code-signing/signers) and assigned you to it. If the signer has an approval policy, you'll also need [active access](/documentation/platform/pki/code-signing/approvals#access-lifecycle) before signing.
 </Info>
 
 Sign Android APK and Android App Bundle (AAB) files using `apksigner` with the Infisical PKCS#11 module. Since `apksigner` is a Java-based tool, it uses the same SunPKCS11 provider approach as jarsigner.
@@ -13,7 +13,7 @@ Sign Android APK and Android App Bundle (AAB) files using `apksigner` with the I
 ## Prerequisites
 
 - A [Signer](/documentation/platform/pki/code-signing/signers) created by your Product Admin
-- An active [signing grant](/documentation/platform/pki/code-signing/grants) (if a signing policy is attached)
+- [Active signing access](/documentation/platform/pki/code-signing/approvals#access-lifecycle) (if an approval policy is attached)
 - A [machine identity](/documentation/platform/identities/machine-identities) added to the Signer
 - The Infisical [PKCS#11 module](/documentation/platform/pki/code-signing/pkcs11-module) installed and configured
 - Android SDK Build Tools 30.0.0 or later (includes `apksigner`)

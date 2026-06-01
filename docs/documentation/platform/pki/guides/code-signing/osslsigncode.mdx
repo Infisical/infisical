@@ -5,7 +5,7 @@ description: "Use the Infisical PKCS#11 module to sign Windows executables, DLLs
 ---
 
 <Info>
-  This guide assumes your Product Admin has already created a [Signer](/documentation/platform/pki/code-signing/signers) and assigned you to it. If the signer has a signing policy, you'll also need an approved [grant](/documentation/platform/pki/code-signing/grants) before signing.
+  This guide assumes your Product Admin has already created a [Signer](/documentation/platform/pki/code-signing/signers) and assigned you to it. If the signer has an approval policy, you'll also need [active access](/documentation/platform/pki/code-signing/approvals#access-lifecycle) before signing.
 </Info>
 
 Sign Windows Authenticode artifacts using `osslsigncode` with the Infisical PKCS#11 module. osslsigncode is a cross-platform tool that lets you sign Windows binaries from Linux and macOS, making it ideal for CI/CD pipelines that don't run on Windows.
@@ -13,7 +13,7 @@ Sign Windows Authenticode artifacts using `osslsigncode` with the Infisical PKCS
 ## Prerequisites
 
 - A [Signer](/documentation/platform/pki/code-signing/signers) created by your Product Admin
-- An active [signing grant](/documentation/platform/pki/code-signing/grants) (if a signing policy is attached)
+- [Active signing access](/documentation/platform/pki/code-signing/approvals#access-lifecycle) (if an approval policy is attached)
 - A [machine identity](/documentation/platform/identities/machine-identities) added to the Signer
 - The Infisical [PKCS#11 module](/documentation/platform/pki/code-signing/pkcs11-module) installed and configured
 - `osslsigncode` 2.5 or later (includes native PKCS#11 support)
@@ -135,7 +135,7 @@ For any issue, enable debug logging in your config file (`"log_level": "debug"`,
 
 <AccordionGroup>
   <Accordion title="Key not found or signing errors">
-    Verify the object name in the PKCS#11 URI matches your signer name exactly and that you have an active signing grant. You can list available signers with `pkcs11-tool --module /path/to/lib --list-slots`.
+    Verify the object name in the PKCS#11 URI matches your signer name exactly and that you have active signing access. You can list available signers with `pkcs11-tool --module /path/to/lib --list-slots`.
   </Accordion>
   <Accordion title="Certificate not found in PKCS#11">
     The `-pkcs11cert` URI must match your signer name exactly. Use `pkcs11-tool --module /path/to/lib --list-objects --type cert` to verify available certificate labels.

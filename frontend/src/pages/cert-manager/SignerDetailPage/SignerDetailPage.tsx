@@ -141,7 +141,7 @@ export const SignerDetailPage = () => {
               title={
                 <span className="inline-flex items-center gap-x-2 align-middle">
                   {signer.name}
-                  <DocumentationLinkBadge href={PkiDocsUrls.codeSigning.signers} />
+                  <DocumentationLinkBadge href={PkiDocsUrls.codeSigning.signers.overview} />
                   {signer.status === SignerStatus.Failed && signer.failureReason ? (
                     <TooltipProvider>
                       <Tooltip>

@@ -5,7 +5,7 @@ description: "Use the Infisical PKCS#11 module to sign Java artifacts with jarsi
 ---
 
 <Info>
-  This guide assumes your Product Admin has already created a [Signer](/documentation/platform/pki/code-signing/signers) and assigned you to it. If the signer has a signing policy, you'll also need an approved [grant](/documentation/platform/pki/code-signing/grants) before signing.
+  This guide assumes your Product Admin has already created a [Signer](/documentation/platform/pki/code-signing/signers) and assigned you to it. If the signer has an approval policy, you'll also need [active access](/documentation/platform/pki/code-signing/approvals#access-lifecycle) before signing.
 </Info>
 
 Sign Java JAR files using `jarsigner` with the Infisical PKCS#11 module. The module implements the PKCS#11 v2.40 standard, allowing standard signing tools to use Infisical signers without code changes.
@@ -13,7 +13,7 @@ Sign Java JAR files using `jarsigner` with the Infisical PKCS#11 module. The mod
 ## Prerequisites
 
 - A [Signer](/documentation/platform/pki/code-signing/signers) created by your Product Admin
-- An active [signing grant](/documentation/platform/pki/code-signing/grants) (if a signing policy is attached)
+- [Active signing access](/documentation/platform/pki/code-signing/approvals#access-lifecycle) (if an approval policy is attached)
 - A [machine identity](/documentation/platform/identities/machine-identities) added to the Signer
 - The Infisical [PKCS#11 module](/documentation/platform/pki/code-signing/pkcs11-module) installed and configured
 - Java JDK 9 or later (for the `-addprovider` flag)
@@ -99,7 +99,7 @@ jarsigner \
 
 <Note>
   - Use `-storepass ""` to avoid the interactive password prompt in non-interactive environments.
-  - Ensure your machine identity has an active signing grant before the build starts. You can automate grant requests via the Infisical API.
+  - Ensure your machine identity has active signing access before the build starts. You can automate access requests via the Infisical API.
 </Note>
 
 ## Troubleshooting
@@ -115,7 +115,7 @@ For any issue, start by enabling debug logging in your config file to get detail
 
 <AccordionGroup>
   <Accordion title="CKR_GENERAL_ERROR when signing">
-    This typically means the signing request was denied by the server. Check that you have an active signing grant for the signer. You can verify this in the Infisical UI under **Code Signing > Approvals > Grants**.
+    This typically means the signing request was denied by the server. Check that you have active signing access for the signer. You can verify this in the Infisical UI by opening the signer's **Approvals** tab and looking at the **Requests** panel.
   </Accordion>
   <Accordion title="No slots visible or authentication errors">
     Verify that your credentials are correct and that the machine identity has been added to the Signer.

@@ -5,15 +5,15 @@ description: "Use the Infisical PKCS#11 module to sign OCI container images with
 ---
 
 <Info>
-  This guide assumes your Product Admin has already created a [Signer](/documentation/platform/pki/code-signing/signers) and assigned you to it. If the signer has a signing policy, you'll also need an approved [grant](/documentation/platform/pki/code-signing/grants) before signing.
+  This guide assumes your Product Admin has already created a [Signer](/documentation/platform/pki/code-signing/signers) and assigned you to it. If the signer has an approval policy, you'll also need [active access](/documentation/platform/pki/code-signing/approvals#access-lifecycle) before signing.
 </Info>
 
-Sign OCI container images using `cosign` (from the Sigstore project) with the Infisical PKCS#11 module. Container image signing is a critical part of securing software supply chains — it lets you verify that images in your registry were built by trusted pipelines.
+Sign OCI container images using `cosign` (from the Sigstore project) with the Infisical PKCS#11 module. Container image signing is a critical part of securing software supply chains. It lets you verify that images in your registry were built by trusted pipelines.
 
 ## Prerequisites
 
 - A [Signer](/documentation/platform/pki/code-signing/signers) created by your Product Admin
-- An active [signing grant](/documentation/platform/pki/code-signing/grants) (if a signing policy is attached)
+- [Active signing access](/documentation/platform/pki/code-signing/approvals#access-lifecycle) (if an approval policy is attached)
 - A [machine identity](/documentation/platform/identities/machine-identities) added to the Signer
 - The Infisical [PKCS#11 module](/documentation/platform/pki/code-signing/pkcs11-module) installed and configured
 - `cosign` v2.0 or later, **built with PKCS#11 support** (see below)

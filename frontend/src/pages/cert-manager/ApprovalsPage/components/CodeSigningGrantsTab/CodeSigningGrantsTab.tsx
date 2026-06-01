@@ -219,7 +219,7 @@ export const CodeSigningGrantsTab = () => {
       <CardHeader>
         <CardTitle>
           Signing Grants
-          <DocumentationLinkBadge href={PkiDocsUrls.codeSigning.grants} />
+          <DocumentationLinkBadge href={PkiDocsUrls.codeSigning.approvals.grantLifecycle} />
         </CardTitle>
         <CardDescription>View and revoke signing access grants.</CardDescription>
       </CardHeader>

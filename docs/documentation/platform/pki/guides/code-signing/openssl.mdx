@@ -5,15 +5,15 @@ description: "Use the Infisical PKCS#11 module with OpenSSL's pkcs11 engine for 
 ---
 
 <Info>
-  This guide assumes your Product Admin has already created a [Signer](/documentation/platform/pki/code-signing/signers) and assigned you to it. If the signer has a signing policy, you'll also need an approved [grant](/documentation/platform/pki/code-signing/grants) before signing.
+  This guide assumes your Product Admin has already created a [Signer](/documentation/platform/pki/code-signing/signers) and assigned you to it. If the signer has an approval policy, you'll also need [active access](/documentation/platform/pki/code-signing/approvals#access-lifecycle) before signing.
 </Info>
 
-Use OpenSSL with the Infisical PKCS#11 module via the `libp11` engine for general-purpose signing. OpenSSL is a versatile foundation for signing any file format — useful when you need raw signatures, custom signing pipelines, or integration with tools that wrap OpenSSL.
+Use OpenSSL with the Infisical PKCS#11 module via the `libp11` engine for general-purpose signing. OpenSSL is a versatile foundation for signing any file format, useful when you need raw signatures, custom signing pipelines, or integration with tools that wrap OpenSSL.
 
 ## Prerequisites
 
 - A [Signer](/documentation/platform/pki/code-signing/signers) created by your Product Admin
-- An active [signing grant](/documentation/platform/pki/code-signing/grants) (if a signing policy is attached)
+- [Active signing access](/documentation/platform/pki/code-signing/approvals#access-lifecycle) (if an approval policy is attached)
 - A [machine identity](/documentation/platform/identities/machine-identities) added to the Signer
 - The Infisical [PKCS#11 module](/documentation/platform/pki/code-signing/pkcs11-module) installed and configured
 - OpenSSL 1.1.1 or later
