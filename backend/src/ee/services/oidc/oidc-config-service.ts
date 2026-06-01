@@ -46,7 +46,7 @@ import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-serv
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
-import { ensureSsoAccountVerified } from "@app/services/user-alias/user-alias-fns";
+import { ensureSsoAccountVerified, isStaleSsoAlias } from "@app/services/user-alias/user-alias-fns";
 import { UserAliasType } from "@app/services/user-alias/user-alias-types";
 
 import { TEmailDomainDALFactory } from "../email-domain/email-domain-dal";
@@ -223,6 +223,11 @@ export const oidcConfigServiceFactory = ({
     const skipEmailVerification = Boolean(organization.authEnforced);
 
     let user: TUsers;
+    // A stale, still-unverified alias may point at another user's account. Don't mutate that
+    // account's org membership / group state until the IdP proves control of it (the
+    // email-verification fallback below issues no session). Resolved against the existing alias
+    // before any mutation; freshly created aliases are never stale.
+    let isStaleAlias = false;
     if (userAlias) {
       user = await userDAL.transaction(async (tx) => {
         const foundUser = await userDAL.findById(userAlias.userId, tx);
@@ -232,6 +237,11 @@ export const oidcConfigServiceFactory = ({
           orgId,
           emailDomainDAL
         });
+        isStaleAlias = isStaleSsoAlias({ user: foundUser, userAlias, assertedEmail: sanitizedEmail });
+        if (isStaleAlias) {
+          return foundUser;
+        }
+
         const [orgMembership] = await orgDAL.findMembership(
           {
             [`${TableName.Membership}.actorUserId` as "actorUserId"]: userAlias.userId,
@@ -360,7 +370,7 @@ export const oidcConfigServiceFactory = ({
       }
     }
 
-    if (manageGroupMemberships) {
+    if (manageGroupMemberships && !isStaleAlias) {
       const userGroups = await userGroupMembershipDAL.findGroupMembershipsByUserIdInOrg(user.id, orgId);
       const orgGroups = await groupDAL.findByOrgId(orgId);
 

@@ -38,7 +38,7 @@ import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-serv
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
-import { ensureSsoAccountVerified } from "@app/services/user-alias/user-alias-fns";
+import { ensureSsoAccountVerified, isStaleSsoAlias } from "@app/services/user-alias/user-alias-fns";
 import { UserAliasType } from "@app/services/user-alias/user-alias-types";
 
 import { TEmailDomainDALFactory } from "../email-domain/email-domain-dal";
@@ -486,6 +486,11 @@ export const ldapConfigServiceFactory = ({
     // org owns this domain, and password signup is blocked for enforced domains).
     const skipEmailVerification = Boolean(organization.authEnforced);
 
+    // A stale, still-unverified alias may point at another user's account. Don't mutate that
+    // account's org membership / group state until the IdP proves control of it (the
+    // email-verification fallback below issues no session). Resolved against the existing alias
+    // before any mutation; freshly created aliases are never stale.
+    let isStaleAlias = false;
     if (userAlias) {
       // Verify the existing user's stored email domain + cross-org check
       const existingUser = await userDAL.findOne({ id: userAlias.userId });
@@ -495,41 +500,43 @@ export const ldapConfigServiceFactory = ({
           orgId,
           emailDomainDAL
         });
+        isStaleAlias = isStaleSsoAlias({ user: existingUser, userAlias, assertedEmail: sanitizedEmail });
       }
-      await userDAL.transaction(async (tx) => {
-        const [orgMembership] = await orgDAL.findMembership(
-          {
-            [`${TableName.Membership}.actorUserId` as "actorUserId"]: userAlias.userId,
-            [`${TableName.Membership}.scopeOrgId` as "scopeOrgId"]: orgId,
-            [`${TableName.Membership}.scope` as "scope"]: AccessScope.Organization
-          },
-          { tx }
-        );
-        if (!orgMembership) {
-          const { role, roleId } = await getDefaultOrgMembershipRole(organization.defaultMembershipRole);
+      if (!isStaleAlias)
+        await userDAL.transaction(async (tx) => {
+          const [orgMembership] = await orgDAL.findMembership(
+            {
+              [`${TableName.Membership}.actorUserId` as "actorUserId"]: userAlias.userId,
+              [`${TableName.Membership}.scopeOrgId` as "scopeOrgId"]: orgId,
+              [`${TableName.Membership}.scope` as "scope"]: AccessScope.Organization
+            },
+            { tx }
+          );
+          if (!orgMembership) {
+            const { role, roleId } = await getDefaultOrgMembershipRole(organization.defaultMembershipRole);
 
-          const membership = await orgDAL.createMembership(
-            {
-              actorUserId: userAlias.userId,
-              scopeOrgId: orgId,
-              scope: AccessScope.Organization,
-              status: OrgMembershipStatus.Invited,
-              isActive: true
-            },
-            tx
-          );
-          await membershipRoleDAL.create(
-            {
-              membershipId: membership.id,
-              role,
-              customRoleId: roleId
-            },
-            tx
-          );
-        } else if (!orgMembership.isActive) {
-          throw new ForbiddenRequestError({ message: "User organization membership is inactive" });
-        }
-      });
+            const membership = await orgDAL.createMembership(
+              {
+                actorUserId: userAlias.userId,
+                scopeOrgId: orgId,
+                scope: AccessScope.Organization,
+                status: OrgMembershipStatus.Invited,
+                isActive: true
+              },
+              tx
+            );
+            await membershipRoleDAL.create(
+              {
+                membershipId: membership.id,
+                role,
+                customRoleId: roleId
+              },
+              tx
+            );
+          } else if (!orgMembership.isActive) {
+            throw new ForbiddenRequestError({ message: "User organization membership is inactive" });
+          }
+        });
     } else {
       let isNewUser = false;
       userAlias = await userDAL.transaction(async (tx) => {
@@ -622,7 +629,7 @@ export const ldapConfigServiceFactory = ({
 
     let user = await userDAL.transaction(async (tx) => {
       const newUser = await userDAL.findOne({ id: userAlias.userId }, tx);
-      if (groups) {
+      if (groups && !isStaleAlias) {
         const ldapGroupIdsToBePartOf = (
           await ldapGroupMapDAL.find({
             ldapConfigId,

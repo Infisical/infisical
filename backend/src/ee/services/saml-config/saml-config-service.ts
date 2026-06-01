@@ -40,7 +40,7 @@ import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-serv
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
-import { ensureSsoAccountVerified } from "@app/services/user-alias/user-alias-fns";
+import { ensureSsoAccountVerified, isStaleSsoAlias } from "@app/services/user-alias/user-alias-fns";
 import { UserAliasType } from "@app/services/user-alias/user-alias-types";
 
 import { TEmailDomainDALFactory } from "../email-domain/email-domain-dal";
@@ -566,7 +566,16 @@ export const samlConfigServiceFactory = ({
         orgId,
         emailDomainDAL
       });
+      // A stale, still-unverified alias may point at another user's account. Don't mutate that
+      // account's org membership / identity metadata / group state until the IdP proves control of
+      // it (the email-verification fallback below issues no session). This guard must run before the
+      // mutations, not just before ensureSsoAccountVerified at the end.
+      const isStaleAlias = isStaleSsoAlias({ user: foundUser, userAlias, assertedEmail: sanitizedEmail });
       user = await userDAL.transaction(async (tx) => {
+        if (isStaleAlias) {
+          return foundUser;
+        }
+
         const [orgMembership] = await orgDAL.findMembership(
           {
             [`${TableName.Membership}.actorUserId` as "actorUserId"]: userAlias.userId,

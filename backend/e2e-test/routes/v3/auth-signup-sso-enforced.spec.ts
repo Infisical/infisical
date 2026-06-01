@@ -126,6 +126,13 @@ describe("Auth SSO Signup V3 (SSO enforced)", () => {
     const victimAfter = await getDb()(TableName.Users).where({ id: victim.id }).first();
     expect(victimAfter?.isAccepted).toBe(true);
     expect(victimAfter?.isEmailVerified).toBe(true);
+
+    // The stale-alias guard must run BEFORE any state mutation: the victim is not enrolled into the
+    // org (no membership created) since the IdP never proved control of the victim's account.
+    const victimMembership = await getDb()(TableName.Membership)
+      .where({ actorUserId: victim.id, scopeOrgId: TEST_ORG_ID })
+      .first();
+    expect(victimMembership).toBeUndefined();
   });
 
   test("SAML login promotes an unverified alias when the asserted email matches the account", async () => {

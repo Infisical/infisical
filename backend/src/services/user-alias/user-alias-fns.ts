@@ -11,6 +11,34 @@ type TEnsureSsoAccountVerifiedDTO = {
   userAliasDAL: Pick<TUserAliasDALFactory, "updateById">;
 };
 
+type TIsStaleSsoAliasDTO = {
+  user: Pick<TUsers, "username" | "email">;
+  userAlias: Pick<TUserAliases, "isEmailVerified" | "emails">;
+  assertedEmail: string;
+};
+
+/**
+ * The legacy SSO flow persisted aliases before email verification completed, so an as-yet-unverified
+ * alias may point at a different user's account. Such an alias is "stale" when the email asserted by
+ * the IdP in this login does not match any of the aliased account's known emails — i.e. the IdP has
+ * not proven control of the aliased account. Callers must not provision org membership, identity
+ * metadata, or group memberships onto that account (nor issue a session for it) until ownership is
+ * proven via the separate email-verification flow. A verified alias is already trusted, so it is
+ * never considered stale.
+ */
+export const isStaleSsoAlias = ({ user, userAlias, assertedEmail }: TIsStaleSsoAliasDTO): boolean => {
+  if (userAlias.isEmailVerified) return false;
+
+  const normalizedAssertedEmail = assertedEmail?.toLowerCase().trim();
+  const accountEmails = new Set(
+    [user.username, user.email, ...(userAlias.emails ?? [])]
+      .filter((email): email is string => Boolean(email))
+      .map((email) => email.toLowerCase().trim())
+  );
+
+  return !normalizedAssertedEmail || !accountEmails.has(normalizedAssertedEmail);
+};
+
 /**
  * When an org enforces SSO, the verified domain + IdP are authoritative, so we skip the separate
  * email-verification step. This marks the user + alias as verified/accepted before a session is
@@ -36,16 +64,10 @@ export const ensureSsoAccountVerified = async ({
     return { user, userAlias };
   }
 
-  if (!userAlias.isEmailVerified) {
-    const normalizedAssertedEmail = assertedEmail?.toLowerCase().trim();
-    const accountEmails = new Set(
-      [user.username, user.email, ...(userAlias.emails ?? [])]
-        .filter((email): email is string => Boolean(email))
-        .map((email) => email.toLowerCase().trim())
-    );
-    if (!normalizedAssertedEmail || !accountEmails.has(normalizedAssertedEmail)) {
-      return { user, userAlias };
-    }
+  // A still-unverified alias whose asserted email doesn't match the aliased account is stale and
+  // must not be promoted — the caller falls back to the email-verification flow (no session issued).
+  if (isStaleSsoAlias({ user, userAlias, assertedEmail })) {
+    return { user, userAlias };
   }
 
   await userDAL.transaction(async (tx) => {
