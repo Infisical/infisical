@@ -76,6 +76,105 @@ describe("Auth SSO Signup V3 (SSO enforced)", () => {
     expect(user?.isEmailVerified).toBe(true);
   });
 
+  test("SAML login for a stale unverified alias is NOT promoted when the asserted email mismatches", async () => {
+    // Simulate the legacy flow that persisted an alias before email verification completed: an
+    // unverified SAML alias for `externalId` points at user A's account.
+    const victimEmail = `victim-${crypto.randomUUID()}@${TEST_DOMAIN}`;
+    const [victim] = await getDb()(TableName.Users)
+      .insert({
+        username: victimEmail,
+        email: victimEmail,
+        isAccepted: true,
+        isEmailVerified: true,
+        isGhost: false,
+        authMethods: []
+      })
+      .returning("*");
+    createdUserIds.push(victim.id);
+
+    const externalId = `stale-alias-${crypto.randomUUID()}`;
+    const [alias] = await getDb()(TableName.UserAliases)
+      .insert({
+        userId: victim.id,
+        aliasType: "saml",
+        externalId,
+        emails: [victimEmail],
+        orgId: TEST_ORG_ID,
+        isEmailVerified: false
+      })
+      .returning("*");
+
+    // A different identity (same verified domain) presents the externalId of the stale alias.
+    const attackerEmail = `attacker-${crypto.randomUUID()}@${TEST_DOMAIN}`;
+    const result = await getServices().saml.samlLogin({
+      externalId,
+      email: attackerEmail,
+      firstName: "Stale",
+      lastName: "Alias",
+      authProvider: "okta-saml",
+      orgId: TEST_ORG_ID,
+      ip: "127.0.0.1",
+      userAgent: "test-agent"
+    });
+
+    // No session should be issued for the victim's account.
+    expect(result.result).not.toBe(ProviderAuthResult.SESSION);
+
+    // The stale alias must remain unverified, and the victim's account must be untouched.
+    const aliasAfter = await getDb()(TableName.UserAliases).where({ id: alias.id }).first();
+    expect(aliasAfter?.isEmailVerified).toBe(false);
+    const victimAfter = await getDb()(TableName.Users).where({ id: victim.id }).first();
+    expect(victimAfter?.isAccepted).toBe(true);
+    expect(victimAfter?.isEmailVerified).toBe(true);
+  });
+
+  test("SAML login promotes an unverified alias when the asserted email matches the account", async () => {
+    const email = `match-${crypto.randomUUID()}@${TEST_DOMAIN}`;
+    const [user] = await getDb()(TableName.Users)
+      .insert({
+        username: email,
+        email,
+        // Provisioned before enforcement: not yet accepted/verified.
+        isAccepted: false,
+        isEmailVerified: false,
+        isGhost: false,
+        authMethods: []
+      })
+      .returning("*");
+    createdUserIds.push(user.id);
+
+    const externalId = `match-alias-${crypto.randomUUID()}`;
+    const [alias] = await getDb()(TableName.UserAliases)
+      .insert({
+        userId: user.id,
+        aliasType: "saml",
+        externalId,
+        emails: [email],
+        orgId: TEST_ORG_ID,
+        isEmailVerified: false
+      })
+      .returning("*");
+
+    const result = await getServices().saml.samlLogin({
+      externalId,
+      email, // the user's own email — matches the aliased account
+      firstName: "Match",
+      lastName: "User",
+      authProvider: "okta-saml",
+      orgId: TEST_ORG_ID,
+      ip: "127.0.0.1",
+      userAgent: "test-agent"
+    });
+
+    expect(result.result).toBe(ProviderAuthResult.SESSION);
+
+    const aliasAfter = await getDb()(TableName.UserAliases).where({ id: alias.id }).first();
+    expect(aliasAfter?.isEmailVerified).toBe(true);
+    const userAfter = await getDb()(TableName.Users).where({ id: user.id }).first();
+    expect(userAfter?.isAccepted).toBe(true);
+    expect(userAfter?.isEmailVerified).toBe(true);
+  });
+
   test("Email/password signup is blocked for a verified domain owned by an SSO-enforced org", async () => {
     const email = `pw-blocked-${crypto.randomUUID()}@${TEST_DOMAIN}`;
 

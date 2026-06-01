@@ -701,7 +701,13 @@ export const ldapConfigServiceFactory = ({
 
     // When SSO is enforced, mark the user + alias as verified/accepted before issuing a session.
     if (skipEmailVerification) {
-      ({ user, userAlias } = await ensureSsoAccountVerified({ user, userAlias, userDAL, userAliasDAL }));
+      ({ user, userAlias } = await ensureSsoAccountVerified({
+        user,
+        userAlias,
+        assertedEmail: sanitizedEmail,
+        userDAL,
+        userAliasDAL
+      }));
     }
 
     if (user.email && !userAlias.isEmailVerified) {
