@@ -1,0 +1,21 @@
+version: v0.160.9
+releasedAt: 2026-05-29T18:54:17-03:00
+sourceTag: v0.160.9
+previousTag: v0.160.8
+impactLevel: none
+summary: No self-hosted upgrade actions. Changes are limited to backend
+  integration fixes without deployment, config, or schema impact.
+requiresDbMigration: false
+breakingChanges: []
+dbSchemaChanges: []
+configChanges: []
+deploymentNotes: []
+knownIssues: []
+generatedBy:
+  generator: "@infisical/upgrade-impact"
+  generatorVersion: "1"
+  model: gpt-5.4
+  generatedAt: 2026-05-29T22:38:51.732Z
+  sourceRange:
+    from: v0.160.8
+    to: v0.160.9
