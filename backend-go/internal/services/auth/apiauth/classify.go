@@ -44,8 +44,12 @@ func ClassifyToken(token string) auth.AuthMode {
 // peekJWTClaims decodes the JWT payload segment (no signature verification)
 // to inspect the authTokenType claim.
 func peekJWTClaims(token string) peekClaims {
-	parts := strings.SplitN(token, ".", 4)
-	if len(parts) < 3 {
+	// A valid JWT has exactly three dot-separated segments (header.payload.signature).
+	// SplitN(..., 4) used to collapse 4+ segments into a single trailing element,
+	// which let tokens like "a.b.c.d" through with a usable parts[1]. Use unlimited
+	// Split + an exact-3 check so anything else is rejected up front.
+	parts := strings.Split(token, ".")
+	if len(parts) != 3 {
 		return peekClaims{}
 	}
 

@@ -69,6 +69,23 @@ func TestClassifyToken_VariousInputTypes(t *testing.T) {
 		}
 	})
 
+	// Regression: peekJWTClaims used SplitN(..., 4) + len(parts) < 3, which
+	// let 4+ segment tokens through because SplitN collapses the tail into
+	// the final element. A non-JWT four-segment token with a valid-looking
+	// middle segment got classified as a JWT and decoded.
+	// @see https://github.com/Infisical/infisical/issues/6651
+	t.Run("four-segment token is not classified as JWT", func(t *testing.T) {
+		header := base64.RawURLEncoding.EncodeToString([]byte(`{"alg":"HS256","typ":"JWT"}`))
+		payload, _ := json.Marshal(map[string]any{"authTokenType": string(auth.AuthTokenTypeAccessToken)})
+		payloadEnc := base64.RawURLEncoding.EncodeToString(payload)
+		// header.payload.signature.extra — four dot-separated segments.
+		token := header + "." + payloadEnc + ".sig.extra"
+		mode := ClassifyToken(token)
+		if mode != "" {
+			t.Errorf("expected empty (4-segment token rejected), got %q", mode)
+		}
+	})
+
 	t.Run("JWT with invalid base64 payload returns empty", func(t *testing.T) {
 		mode := ClassifyToken("header.!!!invalid!!!.signature")
 		if mode != "" {
