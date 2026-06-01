@@ -90,7 +90,8 @@ export const LockoutTab = ({
                 <Input
                   {...field}
                   id="lockoutThreshold"
-                  placeholder="Enter lockout threshold..."
+                  type="number"
+                  placeholder="Threshold..."
                   disabled={!lockoutEnabled}
                   isError={Boolean(error)}
                 />
@@ -99,7 +100,7 @@ export const LockoutTab = ({
             );
           }}
         />
-        <div className="flex items-start gap-2">
+        <div className="grid grid-cols-2 gap-2">
           <Controller
             control={control}
             name="lockoutDurationValue"
@@ -123,7 +124,8 @@ export const LockoutTab = ({
                   <Input
                     {...field}
                     id="lockoutDurationValue"
-                    placeholder="Enter lockout duration..."
+                    type="number"
+                    placeholder="Duration..."
                     disabled={!lockoutEnabled}
                     isError={Boolean(error)}
                   />
@@ -145,11 +147,7 @@ export const LockoutTab = ({
                   value={field.value}
                   onValueChange={field.onChange}
                 >
-                  <SelectTrigger
-                    id="lockoutDurationUnit"
-                    className="min-w-32"
-                    isError={Boolean(error)}
-                  >
+                  <SelectTrigger id="lockoutDurationUnit" isError={Boolean(error)}>
                     <SelectValue placeholder="Select unit" />
                   </SelectTrigger>
                   <SelectContent>
@@ -164,7 +162,7 @@ export const LockoutTab = ({
             )}
           />
         </div>
-        <div className="flex items-start gap-2">
+        <div className="grid grid-cols-2 gap-2">
           <Controller
             control={control}
             name="lockoutCounterResetValue"
@@ -189,7 +187,8 @@ export const LockoutTab = ({
                   <Input
                     {...field}
                     id="lockoutCounterResetValue"
-                    placeholder="Enter lockout counter reset..."
+                    placeholder="Counter reset..."
+                    type="number"
                     disabled={!lockoutEnabled}
                     isError={Boolean(error)}
                   />
