@@ -15,7 +15,7 @@ import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal, Spinner } from "@app/components/v2";
+import { ConfirmActionModal, DeleteActionModal, Spinner } from "@app/components/v2";
 import { Blur } from "@app/components/v2/Blur";
 import {
   Badge,
@@ -67,11 +67,12 @@ import {
 } from "@app/components/v3";
 import {
   ProjectPermissionActions,
+  ProjectPermissionIdentityActions,
   ProjectPermissionSub,
   useOrganization,
   useProject
 } from "@app/context";
-import { getProjectBaseURL } from "@app/helpers/project";
+import { getProjectBaseURL, getProjectHomePage } from "@app/helpers/project";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -80,11 +81,13 @@ import {
 import { withProjectPermission } from "@app/hoc";
 import { usePagination, useResetPageHelper } from "@app/hooks";
 import {
+  useAssumeProjectPrivileges,
   useDeleteProjectIdentity,
   useDeleteProjectIdentityMembership,
   useGetProjectRoles,
   useListProjectIdentityMemberships
 } from "@app/hooks/api";
+import { ActorType } from "@app/hooks/api/auditLogs/enums";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { ProjectIdentityOrderBy, ProjectType } from "@app/hooks/api/projects/types";
 import { usePopUp } from "@app/hooks/usePopUp";
@@ -173,13 +176,41 @@ export const IdentityTab = withProjectPermission(
 
     const { mutateAsync: deleteMembershipMutateAsync } = useDeleteProjectIdentityMembership();
     const { mutateAsync: deleteProjectIdentity } = useDeleteProjectIdentity();
+    const assumePrivileges = useAssumeProjectPrivileges();
 
     const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
       "createIdentity",
       "deleteIdentity",
       "upgradePlan",
-      "addOptions"
+      "addOptions",
+      "assumePrivileges"
     ] as const);
+
+    const handleAssumePrivileges = async () => {
+      const identityId = (popUp?.assumePrivileges?.data as { identityId: string })?.identityId;
+      if (!currentOrg?.id || !currentProject?.id) return;
+
+      assumePrivileges.mutate(
+        {
+          actorId: identityId,
+          actorType: ActorType.IDENTITY,
+          projectId
+        },
+        {
+          onSuccess: () => {
+            createNotification({
+              type: "success",
+              text: "Machine identity privilege assumption has started"
+            });
+
+            const url = getProjectHomePage(currentProject.type, currentProject.environments);
+            window.location.assign(
+              url.replace("$orgId", currentOrg.id).replace("$projectId", currentProject.id)
+            );
+          }
+        }
+      );
+    };
 
     const onRemoveIdentitySubmit = async (identityId: string, isProjectIdentity: boolean) => {
       if (isProjectIdentity) {
@@ -452,6 +483,36 @@ export const IdentityTab = withProjectPermission(
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent sideOffset={2} align="end">
                                     <ProjectPermissionCan
+                                      I={ProjectPermissionIdentityActions.AssumePrivileges}
+                                      a={subject(ProjectPermissionSub.Identity, {
+                                        identityId: id
+                                      })}
+                                    >
+                                      {(isAllowed) => (
+                                        <Tooltip>
+                                          <TooltipTrigger className="block w-full">
+                                            <DropdownMenuItem
+                                              isDisabled={!isAllowed}
+                                              onClick={(evt) => {
+                                                evt.stopPropagation();
+                                                evt.preventDefault();
+                                                handlePopUpOpen("assumePrivileges", {
+                                                  identityId: id
+                                                });
+                                              }}
+                                            >
+                                              Assume Privileges
+                                              <InfoIcon className="text-muted" />
+                                            </DropdownMenuItem>
+                                          </TooltipTrigger>
+                                          <TooltipContent className="max-w-80" side="left">
+                                            Assume the privileges of this machine identity, allowing
+                                            you to replicate their access behavior.
+                                          </TooltipContent>
+                                        </Tooltip>
+                                      )}
+                                    </ProjectPermissionCan>
+                                    <ProjectPermissionCan
                                       I={ProjectPermissionActions.Delete}
                                       a={subject(ProjectPermissionSub.Identity, {
                                         identityId: id
@@ -599,6 +660,15 @@ export const IdentityTab = withProjectPermission(
               popUp?.deleteIdentity?.data?.isProjectIdentity
             )
           }
+        />
+        <ConfirmActionModal
+          isOpen={popUp.assumePrivileges.isOpen}
+          confirmKey="assume"
+          title="Do you want to assume privileges of this machine identity?"
+          subTitle="This will set your privileges to those of the machine identity for the next hour."
+          onChange={(isOpen) => handlePopUpToggle("assumePrivileges", isOpen)}
+          onConfirmed={handleAssumePrivileges}
+          buttonText="Confirm"
         />
       </>
     );

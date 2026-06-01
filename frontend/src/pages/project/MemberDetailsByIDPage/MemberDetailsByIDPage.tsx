@@ -14,8 +14,7 @@ import {
   DeleteActionModal,
   EmptyState,
   PageHeader,
-  Spinner,
-  Tooltip
+  Spinner
 } from "@app/components/v2";
 import {
   Badge,
@@ -23,7 +22,10 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuTrigger
+  DropdownMenuTrigger,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import {
   ProjectPermissionActions,
@@ -175,17 +177,17 @@ export const Page = () => {
                 </Button>
               )}
               {isOwnProjectMembershipDetails ? (
-                <Tooltip
-                  side="right"
-                  content={
-                    isCertManager
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Badge variant="info" className="ml-2">
+                      <InfoIcon /> {isCertManager ? "Your membership" : "Your project membership"}
+                    </Badge>
+                  </TooltipTrigger>
+                  <TooltipContent side="right">
+                    {isCertManager
                       ? "You cannot modify your own membership. Ask a Certificate Manager admin to make changes to your membership."
-                      : "You cannot modify your own membership. Ask a project admin to make changes to your membership."
-                  }
-                >
-                  <Badge variant="info" className="ml-2">
-                    <InfoIcon /> {isCertManager ? "Your membership" : "Your project membership"}
-                  </Badge>
+                      : "You cannot modify your own membership. Ask a project admin to make changes to your membership."}
+                  </TooltipContent>
                 </Tooltip>
               ) : (
                 <DropdownMenu>
@@ -213,24 +215,25 @@ export const Page = () => {
                         a={ProjectPermissionSub.Member}
                       >
                         {(isAllowed) => (
-                          <DropdownMenuItem
-                            isDisabled={!isAllowed}
-                            onClick={() =>
-                              handlePopUpOpen("assumePrivileges", {
-                                userId: membershipDetails.user.id
-                              })
-                            }
-                          >
-                            Assume Privileges
-                            <Tooltip
-                              side="bottom"
-                              content="Assume the privileges of this user, allowing you to replicate their access behavior."
-                            >
-                              <div>
+                          <Tooltip>
+                            <TooltipTrigger className="block w-full">
+                              <DropdownMenuItem
+                                isDisabled={!isAllowed}
+                                onClick={() =>
+                                  handlePopUpOpen("assumePrivileges", {
+                                    userId: membershipDetails.user.id
+                                  })
+                                }
+                              >
+                                Assume Privileges
                                 <InfoIcon className="text-muted" />
-                              </div>
-                            </Tooltip>
-                          </DropdownMenuItem>
+                              </DropdownMenuItem>
+                            </TooltipTrigger>
+                            <TooltipContent className="max-w-80" side="left">
+                              Assume the privileges of this user, allowing you to replicate their
+                              access behavior.
+                            </TooltipContent>
+                          </Tooltip>
                         )}
                       </ProjectPermissionCan>
                     )}

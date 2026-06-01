@@ -2,7 +2,7 @@ import { UserPlusIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal } from "@app/components/v2";
+import { ConfirmActionModal, DeleteActionModal } from "@app/components/v2";
 import {
   Button,
   Card,
@@ -19,8 +19,10 @@ import {
   useOrganization,
   useProject
 } from "@app/context";
+import { getProjectHomePage } from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
-import { useDeleteUserFromWorkspace } from "@app/hooks/api";
+import { useAssumeProjectPrivileges, useDeleteUserFromWorkspace } from "@app/hooks/api";
+import { ActorType } from "@app/hooks/api/auditLogs/enums";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { AddMemberModal } from "./AddMemberModal";
@@ -33,11 +35,39 @@ export const MembersSection = () => {
   const productLabel = isCertManager ? "Certificate Manager" : "Project";
 
   const { mutateAsync: removeUserFromWorkspace } = useDeleteUserFromWorkspace();
+  const assumePrivileges = useAssumeProjectPrivileges();
 
   const { handlePopUpToggle, popUp, handlePopUpOpen, handlePopUpClose } = usePopUp([
     "addMember",
-    "removeMember"
+    "removeMember",
+    "assumePrivileges"
   ] as const);
+
+  const handleAssumePrivileges = async () => {
+    const userId = (popUp?.assumePrivileges?.data as { userId: string })?.userId;
+    if (!currentOrg?.id || !currentProject?.id) return;
+
+    assumePrivileges.mutate(
+      {
+        actorId: userId,
+        actorType: ActorType.USER,
+        projectId: currentProject.id
+      },
+      {
+        onSuccess: () => {
+          createNotification({
+            type: "success",
+            text: "User privilege assumption has started"
+          });
+
+          const url = getProjectHomePage(currentProject.type, currentProject.environments);
+          window.location.assign(
+            url.replace("$orgId", currentOrg.id).replace("$projectId", currentProject.id)
+          );
+        }
+      }
+    );
+  };
 
   const handleRemoveUser = async () => {
     const username = (popUp?.removeMember?.data as { username: string })?.username;
@@ -97,6 +127,15 @@ export const MembersSection = () => {
         title={`Do you want to remove this user from the ${productLabel.toLowerCase()}?`}
         onChange={(isOpen) => handlePopUpToggle("removeMember", isOpen)}
         onDeleteApproved={handleRemoveUser}
+      />
+      <ConfirmActionModal
+        isOpen={popUp.assumePrivileges.isOpen}
+        confirmKey="assume"
+        title="Do you want to assume privileges of this user?"
+        subTitle="This will set your privileges to those of the user for the next hour."
+        onChange={(isOpen) => handlePopUpToggle("assumePrivileges", isOpen)}
+        onConfirmed={handleAssumePrivileges}
+        buttonText="Confirm"
       />
     </>
   );

@@ -8,13 +8,7 @@ import { ChevronLeftIcon, EllipsisIcon, InfoIcon, ShieldIcon } from "lucide-reac
 
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan, ProjectPermissionCan } from "@app/components/permissions";
-import {
-  ConfirmActionModal,
-  DeleteActionModal,
-  EmptyState,
-  PageHeader,
-  Tooltip
-} from "@app/components/v2";
+import { ConfirmActionModal, DeleteActionModal, EmptyState, PageHeader } from "@app/components/v2";
 import {
   Alert,
   AlertDescription,
@@ -31,7 +25,10 @@ import {
   DropdownMenuTrigger,
   OrgIcon,
   PageLoader,
-  SubOrgIcon
+  SubOrgIcon,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import {
   OrgPermissionIdentityActions,
@@ -237,20 +234,21 @@ const Page = () => {
                     })}
                   >
                     {(isAllowed) => (
-                      <DropdownMenuItem
-                        isDisabled={!isAllowed}
-                        onClick={() => handlePopUpOpen("assumePrivileges")}
-                      >
-                        Assume Privileges
-                        <Tooltip
-                          side="bottom"
-                          content="Assume the privileges of this machine identity, allowing you to replicate their access behavior."
-                        >
-                          <div>
+                      <Tooltip>
+                        <TooltipTrigger className="block w-full">
+                          <DropdownMenuItem
+                            isDisabled={!isAllowed}
+                            onClick={() => handlePopUpOpen("assumePrivileges")}
+                          >
+                            Assume Privileges
                             <InfoIcon className="text-muted" />
-                          </div>
-                        </Tooltip>
-                      </DropdownMenuItem>
+                          </DropdownMenuItem>
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-80" side="left">
+                          Assume the privileges of this machine identity, allowing you to replicate
+                          their access behavior.
+                        </TooltipContent>
+                      </Tooltip>
                     )}
                   </ProjectPermissionCan>
                   <ProjectPermissionCan
