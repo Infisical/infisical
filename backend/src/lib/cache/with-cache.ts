@@ -125,8 +125,9 @@ export const withCacheFingerprint = async <T>({
   if (markerValue !== null && cachedDataStr !== null) {
     try {
       const { payload } = JSON.parse(cachedDataStr) as TCachedData<T>;
+      const revived = applyReviver(payload, reviver);
       permissionCacheLookupCounter.add(1, { "cache.result": "marker_hit" });
-      return applyReviver(payload, reviver);
+      return revived;
     } catch (err) {
       logger.warn(
         { key: dataKey, err },
@@ -154,8 +155,9 @@ export const withCacheFingerprint = async <T>({
       const cachedData = JSON.parse(cachedDataStr) as TCachedData<T>;
       if (cachedData.fingerprint === currentFingerprint) {
         await cacheSet(keyStore, markerKey, markerTtlSeconds, "1", "withCacheFingerprint: marker reset failed");
+        const revived = applyReviver(cachedData.payload, reviver);
         permissionCacheLookupCounter.add(1, { "cache.result": "fingerprint_match" });
-        return applyReviver(cachedData.payload, reviver);
+        return revived;
       }
     } catch (err) {
       logger.error(

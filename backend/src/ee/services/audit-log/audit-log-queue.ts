@@ -74,17 +74,17 @@ export const auditLogQueueServiceFactory = async ({
   const isClickHouseBatchEnabled = Boolean(clickhouseClient && CLICKHOUSE_AUDIT_LOG_ENABLED);
 
   const pushToLog = async (data: TCreateAuditLogDTO) => {
-    auditLogEnqueuedCounter.add(1, {
-      "audit_log.event_type": data.event?.type ?? "unknown",
-      "audit_log.actor_type": data.actor?.type ?? "unknown",
-      ...(data.orgId ? { "infisical.organization.id": data.orgId } : {})
-    });
     await queueService.queue<QueueName.AuditLog>(QueueName.AuditLog, QueueJobs.AuditLog, data, {
       removeOnFail: {
         count: 3
       },
       removeOnComplete: true,
       jobId: randomUUID()
+    });
+    auditLogEnqueuedCounter.add(1, {
+      "audit_log.event_type": data.event?.type ?? "unknown",
+      "audit_log.actor_type": data.actor?.type ?? "unknown",
+      ...(data.orgId ? { "infisical.organization.id": data.orgId } : {})
     });
   };
 

@@ -215,7 +215,7 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
       });
     } else if (error instanceof RateLimitError) {
       rateLimitExceededCounter.add(1, {
-        "http.route": req.routerPath ?? "unknown",
+        "http.route": req.routeOptions.url ?? "unknown",
         "http.request.method": req.method
       });
       void res.status(HttpStatusCodes.TooManyRequests).send({
