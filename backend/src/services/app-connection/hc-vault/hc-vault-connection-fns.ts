@@ -673,20 +673,37 @@ export const listHCVaultMounts = async (
 
   const targetNamespace = namespace || connection.credentials.namespace;
 
-  const { data } = await requestWithHCVaultGateway<THCVaultMountResponse>(
-    connection,
-    gatewayService,
-    gatewayV2Service,
-    {
-      url: `${instanceUrl}/v1/sys/mounts`,
-      method: "GET",
-      headers: {
-        "X-Vault-Token": accessToken,
-        ...(targetNamespace ? { "X-Vault-Namespace": targetNamespace } : {})
-      }
-    },
-    gatewayDetails
-  );
+  const fetchMounts = (namespaceHeader?: string) =>
+    requestWithHCVaultGateway<THCVaultMountResponse>(
+      connection,
+      gatewayService,
+      gatewayV2Service,
+      {
+        url: `${instanceUrl}/v1/sys/mounts`,
+        method: "GET",
+        headers: {
+          "X-Vault-Token": accessToken,
+          ...(namespaceHeader ? { "X-Vault-Namespace": namespaceHeader } : {})
+        }
+      },
+      gatewayDetails
+    );
+
+  let data: THCVaultMountResponse;
+  try {
+    ({ data } = await fetchMounts(targetNamespace));
+  } catch (error) {
+    // vault 1.0.0 does not support namespace root or /, so we need to handle this case
+    // if the error is 301 and the namespace is root or /, try to fetch mounts without the namespace header
+    if (
+      ((error instanceof AxiosError && error.response?.status === 301) || isGateway301Error(error)) &&
+      (targetNamespace === "/" || targetNamespace === "root" || !targetNamespace)
+    ) {
+      ({ data } = await fetchMounts());
+    } else {
+      throw error;
+    }
+  }
 
   const mounts: THCVaultMount[] = [];
 
