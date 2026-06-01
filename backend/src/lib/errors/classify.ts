@@ -1,6 +1,8 @@
 import { ForbiddenError } from "@casl/ability";
 import jwt from "jsonwebtoken";
 
+import { isAwsError } from "@app/lib/aws/error";
+
 import {
   BadRequestError,
   CryptographyError,
@@ -72,6 +74,8 @@ export const classifyError = (err: unknown): ErrorType => {
   if (err instanceof ScimRequestError) return "scim";
   if (err instanceof OidcAuthError) return "oidc";
   if (err instanceof InternalServerError) return "internal";
+
+  if (isAwsError(err, "ThrottlingException")) return "rate_limit";
 
   const code = getErrorCode(err);
   if (code === "ECONNABORTED" || code === "ETIMEDOUT") return "timeout";
