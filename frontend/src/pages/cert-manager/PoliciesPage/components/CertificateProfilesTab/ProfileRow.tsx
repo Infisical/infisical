@@ -1,14 +1,18 @@
 /* eslint-disable no-nested-ternary */
 import { useCallback } from "react";
 import { subject } from "@casl/ability";
-import { faCircleInfo } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link } from "@tanstack/react-router";
-import { CheckIcon, CopyIcon, MoreHorizontalIcon, PencilIcon, Trash2Icon } from "lucide-react";
+import {
+  CheckIcon,
+  CopyIcon,
+  InfoIcon,
+  MoreHorizontalIcon,
+  PencilIcon,
+  Trash2Icon
+} from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { Tooltip } from "@app/components/v2";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,7 +20,10 @@ import {
   DropdownMenuTrigger,
   IconButton,
   TableCell,
-  TableRow
+  TableRow,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
 import {
@@ -69,19 +76,22 @@ export const ProfileRow = ({ profile, onEditProfile, onDeleteProfile }: Props) =
               projectId: currentProject.id,
               profileId: profile.id
             }}
-            className="text-mineshaft-200 hover:underline"
+            className="hover:underline"
           >
             {profile.slug}
           </Link>
           {profile.description && (
-            <Tooltip content={profile.description}>
-              <FontAwesomeIcon icon={faCircleInfo} className="text-mineshaft-400" />
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <InfoIcon className="size-3.5 text-muted" />
+              </TooltipTrigger>
+              <TooltipContent>{profile.description}</TooltipContent>
             </Tooltip>
           )}
         </div>
       </TableCell>
       <TableCell className="text-start">
-        <span className="text-sm text-mineshaft-200">
+        <span className="text-sm">
           {profile.issuerType === IssuerType.SELF_SIGNED
             ? "Self-signed"
             : profile.certificateAuthority?.isExternal
@@ -99,7 +109,7 @@ export const ProfileRow = ({ profile, onEditProfile, onDeleteProfile }: Props) =
             projectId: currentProject.id,
             policyId: profile.certificatePolicyId
           }}
-          className="text-sm text-mineshaft-200 hover:underline"
+          className="text-sm hover:underline"
         >
           {policyData?.name || profile.certificatePolicyId}
         </Link>

@@ -9,7 +9,11 @@ import {
   CardTitle,
   Detail,
   DetailLabel,
-  DetailValue
+  DetailValue,
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle
 } from "@app/components/v3";
 import { TCertificateProfileWithDetails } from "@app/hooks/api/certificateProfiles";
 import {
@@ -64,7 +68,14 @@ export const ProfileDefaultsSection = ({ profile }: Props) => {
           <CardDescription>Values applied when issuing certificates</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="text-sm text-label">No defaults configured for this profile.</div>
+          <Empty className="border">
+            <EmptyHeader>
+              <EmptyTitle>No defaults configured</EmptyTitle>
+              <EmptyDescription>
+                This profile has no default values applied when issuing certificates.
+              </EmptyDescription>
+            </EmptyHeader>
+          </Empty>
         </CardContent>
       </Card>
     );

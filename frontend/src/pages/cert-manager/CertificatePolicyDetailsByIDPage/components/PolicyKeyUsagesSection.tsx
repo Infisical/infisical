@@ -1,14 +1,10 @@
 import {
-  Badge,
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-  Detail,
-  DetailGroup,
-  DetailLabel,
-  DetailValue
+  DetailGroup
 } from "@app/components/v3";
 import { TCertificatePolicy } from "@app/hooks/api/certificatePolicies";
 import {
@@ -18,32 +14,10 @@ import {
   formatKeyUsage
 } from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
 
+import { RuleList } from "./RuleList";
+
 type Props = {
   policy: TCertificatePolicy;
-};
-
-const RuleList = ({
-  label,
-  values,
-  formatter
-}: {
-  label: string;
-  values?: string[];
-  formatter: (value: string) => string;
-}) => {
-  if (!values || values.length === 0) return null;
-  return (
-    <Detail>
-      <DetailLabel>{label}</DetailLabel>
-      <DetailValue className="flex flex-wrap gap-1">
-        {values.map((value) => (
-          <Badge key={`${label}-${value}`} variant="neutral">
-            {formatter(value)}
-          </Badge>
-        ))}
-      </DetailValue>
-    </Detail>
-  );
 };
 
 export const PolicyKeyUsagesSection = ({ policy }: Props) => {

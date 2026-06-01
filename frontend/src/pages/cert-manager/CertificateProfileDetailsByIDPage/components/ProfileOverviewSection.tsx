@@ -1,7 +1,14 @@
 import { subject } from "@casl/ability";
 import { Link } from "@tanstack/react-router";
 import { format } from "date-fns";
-import { CheckIcon, ClipboardListIcon, EllipsisIcon, ExternalLinkIcon } from "lucide-react";
+import {
+  CheckIcon,
+  ClipboardListIcon,
+  EllipsisIcon,
+  ExternalLinkIcon,
+  PencilIcon,
+  Trash2Icon
+} from "lucide-react";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
@@ -67,17 +74,18 @@ export const ProfileOverviewSection = ({ profile, onEdit, onDelete, backContext 
         <CardAction>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <IconButton variant="outline" size="xs" aria-label="Profile options">
+              <IconButton variant="ghost" size="xs" aria-label="Profile options">
                 <EllipsisIcon />
               </IconButton>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent className="min-w-40" align="end" sideOffset={2}>
               <ProjectPermissionCan
                 I={ProjectPermissionCertificateProfileActions.Edit}
                 a={subject(ProjectPermissionSub.CertificateProfiles, { slug: profile.slug })}
               >
                 {(canEdit) => (
                   <DropdownMenuItem isDisabled={!canEdit} onClick={onEdit}>
+                    <PencilIcon />
                     Edit Profile
                   </DropdownMenuItem>
                 )}
@@ -88,6 +96,7 @@ export const ProfileOverviewSection = ({ profile, onEdit, onDelete, backContext 
               >
                 {(canDelete) => (
                   <DropdownMenuItem variant="danger" isDisabled={!canDelete} onClick={onDelete}>
+                    <Trash2Icon />
                     Delete Profile
                   </DropdownMenuItem>
                 )}
@@ -203,7 +212,7 @@ export const ProfileOverviewSection = ({ profile, onEdit, onDelete, backContext 
                           profileFrom: backContext.from,
                           profileApplicationName: backContext.applicationName
                         }}
-                        className="flex max-w-full items-center gap-x-1 text-mineshaft-200 hover:underline"
+                        className="flex max-w-full items-center gap-x-1 hover:underline"
                       >
                         <span className="min-w-0 truncate">
                           {internalCa?.name ||
@@ -244,7 +253,7 @@ export const ProfileOverviewSection = ({ profile, onEdit, onDelete, backContext 
                     profileFrom: backContext.from,
                     profileApplicationName: backContext.applicationName
                   }}
-                  className="flex max-w-full items-center gap-x-1 text-mineshaft-200 hover:underline"
+                  className="flex max-w-full items-center gap-x-1 hover:underline"
                 >
                   <span className="min-w-0 truncate">
                     {profile.certificatePolicy?.name || profile.certificatePolicyId}

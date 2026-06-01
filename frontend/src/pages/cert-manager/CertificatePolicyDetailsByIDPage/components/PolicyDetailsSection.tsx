@@ -1,6 +1,6 @@
 import { subject } from "@casl/ability";
 import { format } from "date-fns";
-import { CheckIcon, ClipboardListIcon, EllipsisIcon } from "lucide-react";
+import { CheckIcon, ClipboardListIcon, EllipsisIcon, PencilIcon, Trash2Icon } from "lucide-react";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
@@ -49,17 +49,18 @@ export const PolicyDetailsSection = ({ policy, onEdit, onDelete }: Props) => {
         <CardAction>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <IconButton variant="outline" size="xs" aria-label="Policy options">
+              <IconButton variant="ghost" size="xs" aria-label="Policy options">
                 <EllipsisIcon />
               </IconButton>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent className="min-w-40" align="end" sideOffset={2}>
               <ProjectPermissionCan
                 I={ProjectPermissionCertificatePolicyActions.Edit}
                 a={subject(ProjectPermissionSub.CertificatePolicies, { name: policy.name })}
               >
                 {(canEdit) => (
                   <DropdownMenuItem isDisabled={!canEdit} onClick={onEdit}>
+                    <PencilIcon />
                     Edit Policy
                   </DropdownMenuItem>
                 )}
@@ -70,6 +71,7 @@ export const PolicyDetailsSection = ({ policy, onEdit, onDelete }: Props) => {
               >
                 {(canDelete) => (
                   <DropdownMenuItem variant="danger" isDisabled={!canDelete} onClick={onDelete}>
+                    <Trash2Icon />
                     Delete Policy
                   </DropdownMenuItem>
                 )}

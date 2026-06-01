@@ -1,13 +1,17 @@
 import { useCallback } from "react";
 import { subject } from "@casl/ability";
-import { faCircleInfo } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link } from "@tanstack/react-router";
-import { CheckIcon, CopyIcon, MoreHorizontalIcon, PencilIcon, Trash2Icon } from "lucide-react";
+import {
+  CheckIcon,
+  CopyIcon,
+  InfoIcon,
+  MoreHorizontalIcon,
+  PencilIcon,
+  Trash2Icon
+} from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { Tooltip } from "@app/components/v2";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,7 +28,10 @@ import {
   TableCell,
   TableHead,
   TableHeader,
-  TableRow
+  TableRow,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
 import {
@@ -116,19 +123,22 @@ export const PolicyList = ({ onEditPolicy, onDeletePolicy }: Props) => {
                     projectId: currentProject.id,
                     policyId: policy.id
                   }}
-                  className="text-mineshaft-200 hover:underline"
+                  className="hover:underline"
                 >
                   {policy.name}
                 </Link>
                 {policy.description && (
-                  <Tooltip content={policy.description}>
-                    <FontAwesomeIcon icon={faCircleInfo} className="text-mineshaft-400" />
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <InfoIcon className="size-3.5 text-muted" />
+                    </TooltipTrigger>
+                    <TooltipContent>{policy.description}</TooltipContent>
                   </Tooltip>
                 )}
               </div>
             </TableCell>
             <TableCell>
-              <span className="text-sm text-mineshaft-200">{formatDate(policy.createdAt)}</span>
+              <span className="text-sm">{formatDate(policy.createdAt)}</span>
             </TableCell>
             <TableCell className="text-right">
               <DropdownMenu>
