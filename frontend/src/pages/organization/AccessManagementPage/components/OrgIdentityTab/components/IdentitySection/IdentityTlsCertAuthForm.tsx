@@ -1,19 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
-import { Controller, useFieldArray, useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useParams } from "@tanstack/react-router";
-import { InfoIcon, PlusIcon, XIcon } from "lucide-react";
+import { InfoIcon } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import {
-  Button,
   Field,
   FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
-  IconButton,
   Input,
   Tabs,
   TabsContent,
@@ -26,16 +24,21 @@ import {
 } from "@app/components/v3";
 import { useOrganization, useSubscription } from "@app/context";
 import { SECONDS_PER_DAY } from "@app/helpers/datetime";
-import { accessTokenTtlSchema } from "@app/helpers/identityAuthSchemas";
+import {
+  accessTokenTtlSchema,
+  DEFAULT_TRUSTED_IPS,
+  mapTrustedIpsFromServer,
+  trustedIpsSchema
+} from "@app/helpers/identityAuthSchemas";
 import { useScopeVariant } from "@app/hooks";
 import {
   useAddIdentityTlsCertAuth,
   useGetIdentityTlsCertAuth,
   useUpdateIdentityTlsCertAuth
 } from "@app/hooks/api";
-import { IdentityTrustedIp } from "@app/hooks/api/identities/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
+import { TrustedIpsField } from "./shared/TrustedIpsField";
 import { IDENTITY_AUTH_FORM_ID, IdentityFormTab } from "./types";
 
 const buildSchema = (maxAccessTokenTTL: number) =>
@@ -45,13 +48,7 @@ const buildSchema = (maxAccessTokenTTL: number) =>
     accessTokenTTL: accessTokenTtlSchema(maxAccessTokenTTL, "Access Token TTL"),
     accessTokenMaxTTL: accessTokenTtlSchema(maxAccessTokenTTL, "Access Token Max TTL"),
     accessTokenNumUsesLimit: z.string(),
-    accessTokenTrustedIps: z
-      .array(
-        z.object({
-          ipAddress: z.string().max(50)
-        })
-      )
-      .min(1)
+    accessTokenTrustedIps: trustedIpsSchema
   });
 
 export type FormData = z.infer<ReturnType<typeof buildSchema>>;
@@ -108,15 +105,9 @@ export const IdentityTlsCertAuthForm = ({
       accessTokenTTL: "2592000",
       accessTokenMaxTTL: "2592000",
       accessTokenNumUsesLimit: "",
-      accessTokenTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }]
+      accessTokenTrustedIps: DEFAULT_TRUSTED_IPS
     }
   });
-
-  const {
-    fields: accessTokenTrustedIpsFields,
-    append: appendAccessTokenTrustedIp,
-    remove: removeAccessTokenTrustedIp
-  } = useFieldArray({ control, name: "accessTokenTrustedIps" });
 
   useEffect(() => {
     if (data) {
@@ -128,13 +119,7 @@ export const IdentityTlsCertAuthForm = ({
         accessTokenNumUsesLimit: data.accessTokenNumUsesLimit
           ? String(data.accessTokenNumUsesLimit)
           : "",
-        accessTokenTrustedIps: data.accessTokenTrustedIps.map(
-          ({ ipAddress, prefix }: IdentityTrustedIp) => {
-            return {
-              ipAddress: `${ipAddress}${prefix !== undefined ? `/${prefix}` : ""}`
-            };
-          }
-        )
+        accessTokenTrustedIps: mapTrustedIpsFromServer(data.accessTokenTrustedIps)
       });
     } else {
       reset({
@@ -142,7 +127,7 @@ export const IdentityTlsCertAuthForm = ({
         accessTokenTTL: "2592000",
         accessTokenMaxTTL: "2592000",
         accessTokenNumUsesLimit: "",
-        accessTokenTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }]
+        accessTokenTrustedIps: DEFAULT_TRUSTED_IPS
       });
     }
   }, [data]);
@@ -364,91 +349,16 @@ export const IdentityTlsCertAuthForm = ({
         </TabsContent>
         <TabsContent value={IdentityFormTab.Advanced}>
           <FieldGroup>
-            <div className="flex flex-col gap-3">
-              {accessTokenTrustedIpsFields.map(({ id }, index) => (
-                <div className="flex items-start gap-2" key={id}>
-                  <Controller
-                    control={control}
-                    name={`accessTokenTrustedIps.${index}.ipAddress`}
-                    defaultValue="0.0.0.0/0"
-                    render={({ field, fieldState: { error } }) => (
-                      <Field className="flex-1">
-                        {index === 0 && (
-                          <FieldLabel
-                            htmlFor={`trustedIp-${index}`}
-                            className="inline-flex items-center gap-1.5"
-                          >
-                            Access Token Trusted IPs
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <InfoIcon className="size-3.5 text-muted" />
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                The IPs or CIDR ranges that access tokens can be used from. By
-                                default, each token is given the 0.0.0.0/0, allowing usage from any
-                                network address.
-                              </TooltipContent>
-                            </Tooltip>
-                          </FieldLabel>
-                        )}
-                        <Input
-                          id={`trustedIp-${index}`}
-                          value={field.value}
-                          onChange={(e) => {
-                            if (subscription?.ipAllowlisting) {
-                              field.onChange(e);
-                              return;
-                            }
-                            handlePopUpOpen("upgradePlan", {
-                              featureName: "IP allowlisting"
-                            });
-                          }}
-                          placeholder="123.456.789.0"
-                          isError={Boolean(error)}
-                        />
-                        <FieldError>{error?.message}</FieldError>
-                      </Field>
-                    )}
-                  />
-                  <IconButton
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    aria-label="Remove trusted IP"
-                    className={index === 0 ? "mt-[1.625rem]" : "mt-0.5"}
-                    onClick={() => {
-                      if (subscription?.ipAllowlisting) {
-                        removeAccessTokenTrustedIp(index);
-                        return;
-                      }
-                      handlePopUpOpen("upgradePlan", {
-                        featureName: "IP allowlisting"
-                      });
-                    }}
-                  >
-                    <XIcon />
-                  </IconButton>
-                </div>
-              ))}
-              <Button
-                type="button"
-                variant="outline"
-                size="xs"
-                className="w-fit"
-                onClick={() => {
-                  if (subscription?.ipAllowlisting) {
-                    appendAccessTokenTrustedIp({ ipAddress: "0.0.0.0/0" });
-                    return;
-                  }
-                  handlePopUpOpen("upgradePlan", {
-                    featureName: "IP allowlisting"
-                  });
-                }}
-              >
-                <PlusIcon />
-                Add IP Address
-              </Button>
-            </div>
+            <TrustedIpsField
+              control={control}
+              name="accessTokenTrustedIps"
+              label="Access Token Trusted IPs"
+              isAllowed={Boolean(subscription?.ipAllowlisting)}
+              onUpgradeRequired={() =>
+                handlePopUpOpen("upgradePlan", { featureName: "IP allowlisting" })
+              }
+              tooltip="The IPs or CIDR ranges that access tokens can be used from. By default, each token is given the 0.0.0.0/0, allowing usage from any network address."
+            />
           </FieldGroup>
         </TabsContent>
       </Tabs>
