@@ -865,6 +865,10 @@ export const pkiSyncQueueFactory = ({
         5 * 60 * 1000
       );
     } catch (e) {
+      if (job.name === QueueJobs.PkiSyncSyncCertificates) {
+        await $releaseConnectionConcurrency(connectionId);
+      }
+
       await $handleAcquireLockFailure(job as PkiSyncActionJob);
 
       return;
