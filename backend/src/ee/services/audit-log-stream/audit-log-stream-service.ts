@@ -15,7 +15,7 @@ import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TAuditLogStreamDALFactory } from "./audit-log-stream-dal";
-import { LogProvider } from "./audit-log-stream-enums";
+import { LogProvider, StreamMode } from "./audit-log-stream-enums";
 import { LOG_STREAM_FACTORY_MAP } from "./audit-log-stream-factory";
 import { TAuditLogStream, TCreateAuditLogStreamDTO, TUpdateAuditLogStreamDTO } from "./audit-log-stream-types";
 import { TCustomProviderCredentials } from "./custom/custom-provider-types";
@@ -73,14 +73,17 @@ export const auditLogStreamServiceFactory = ({
     const logStream = await auditLogStreamDAL.create({
       orgId: actor.orgId,
       provider,
-      encryptedCredentials
+      encryptedCredentials,
+      // All new streams use batch delivery. "single" is reachable only by existing
+      // custom streams that were migrated, and only as a one-way upgrade away from it.
+      streamMode: StreamMode.Batch
     });
 
     return { ...logStream, credentials: validatedCredentials } as TAuditLogStream;
   };
 
   const updateById = async (
-    { logStreamId, provider, credentials }: TUpdateAuditLogStreamDTO,
+    { logStreamId, provider, credentials, streamMode }: TUpdateAuditLogStreamDTO,
     actor: OrgServiceActor
   ) => {
     const plan = await licenseService.getPlan(actor.orgId);
@@ -103,6 +106,15 @@ export const auditLogStreamServiceFactory = ({
     });
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Settings);
+
+    // Stream mode can only be upgraded from "single" to "batch" — never the reverse.
+    // This covers every case: new/vendor streams are already "batch", so any attempt to
+    // set "single" on them is a forbidden downgrade.
+    if (streamMode === StreamMode.Single && logStream.streamMode === StreamMode.Batch) {
+      throw new BadRequestError({
+        message: "Audit Log Stream cannot be switched from batch delivery back to single delivery"
+      });
+    }
 
     const finalCredentials = { ...credentials };
 
@@ -150,7 +162,9 @@ export const auditLogStreamServiceFactory = ({
     });
 
     const updatedLogStream = await auditLogStreamDAL.updateById(logStreamId, {
-      encryptedCredentials
+      encryptedCredentials,
+      // Only persist a mode change when provided (the validated single -> batch upgrade).
+      ...(streamMode ? { streamMode } : {})
     });
 
     return { ...updatedLogStream, credentials: validatedCredentials } as TAuditLogStream;

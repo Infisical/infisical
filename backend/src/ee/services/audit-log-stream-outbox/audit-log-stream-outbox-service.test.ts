@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
-import { LogProvider } from "../audit-log-stream/audit-log-stream-enums";
+import { LogProvider, StreamMode } from "../audit-log-stream/audit-log-stream-enums";
 import { auditLogStreamOutboxServiceFactory } from "./audit-log-stream-outbox-service";
 import {
   AuditLogStreamOutboxStatus,
@@ -15,6 +15,8 @@ const PROVIDER = LogProvider.Datadog;
 const FAILURE_MESSAGE = "upstream failure";
 
 const batchStreamLog = vi.fn<(input: unknown) => Promise<void>>();
+// Single-event delivery spy (used by "single" stream mode tests).
+const streamLog = vi.fn<(input: unknown) => Promise<void>>();
 // Configurable per-test so we can force chunking (e.g. maxLogs: 1) to drive the
 // partial-chunk-failure path without rewiring the factory mock for each case.
 const getProviderBatchLimit = vi.fn<() => { maxLogs: number; maxBytes: number }>(() => ({
@@ -38,6 +40,7 @@ vi.mock("../audit-log-stream/audit-log-stream-factory", () => ({
     {
       get: () => () => ({
         batchStreamLog,
+        streamLog,
         validateCredentials: async ({ credentials }: { credentials: unknown }) => credentials,
         getProviderBatchLimit
       })
@@ -79,7 +82,8 @@ const createService = () => {
       id: STREAM_ID,
       provider: PROVIDER,
       orgId: ORG_ID,
-      encryptedCredentials: Buffer.from("x")
+      encryptedCredentials: Buffer.from("x"),
+      streamMode: StreamMode.Batch as StreamMode
     }))
   };
 
@@ -242,6 +246,76 @@ describe("audit-log-stream-outbox-service drainStream failure wiring", () => {
     expect(highAttemptGroup?.ids).toEqual([2]);
     // The row that has already failed more times must wait strictly longer.
     expect(highAttemptGroup!.nextRetryDelayMs).toBeGreaterThan(lowAttemptGroup!.nextRetryDelayMs);
+  });
+});
+
+describe("audit-log-stream-outbox-service drainStream single mode", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getProviderBatchLimit.mockReturnValue({ maxLogs: 1_000, maxBytes: 4 * 1024 * 1024 });
+  });
+
+  test("delivers one event per request via streamLog (not batchStreamLog)", async () => {
+    const { service, auditLogStreamOutboxDAL, auditLogStreamDAL } = createService();
+
+    auditLogStreamDAL.findById.mockResolvedValue({
+      id: STREAM_ID,
+      provider: LogProvider.Custom,
+      orgId: ORG_ID,
+      encryptedCredentials: Buffer.from("x"),
+      streamMode: StreamMode.Single
+    });
+
+    auditLogStreamOutboxDAL.claimBatchForStream
+      .mockResolvedValueOnce([buildRow({ id: 1, auditLogId: "log-1" }), buildRow({ id: 2, auditLogId: "log-2" })])
+      .mockResolvedValueOnce([]);
+    streamLog.mockResolvedValue(undefined);
+
+    await service.drainStream({ streamId: STREAM_ID, orgId: ORG_ID, provider: LogProvider.Custom });
+
+    // One HTTP call per row, never the array path.
+    expect(streamLog).toHaveBeenCalledTimes(2);
+    expect(batchStreamLog).not.toHaveBeenCalled();
+
+    expect(auditLogStreamOutboxDAL.commitDeliveryResult).toHaveBeenCalledTimes(1);
+    const call = auditLogStreamOutboxDAL.commitDeliveryResult.mock.calls[0][0] as {
+      successIds: number[];
+      retriable: { groups: { ids: number[]; nextRetryDelayMs: number }[] } | null;
+      exhausted: TFailedStreamRow[];
+    };
+    expect(call.successIds).toEqual([1, 2]);
+    expect(call.retriable).toBeNull();
+    expect(call.exhausted).toEqual([]);
+  });
+
+  test("retries only the row whose single-event send failed", async () => {
+    const { service, onStreamFailure, auditLogStreamOutboxDAL, auditLogStreamDAL } = createService();
+
+    auditLogStreamDAL.findById.mockResolvedValue({
+      id: STREAM_ID,
+      provider: LogProvider.Custom,
+      orgId: ORG_ID,
+      encryptedCredentials: Buffer.from("x"),
+      streamMode: StreamMode.Single
+    });
+
+    auditLogStreamOutboxDAL.claimBatchForStream
+      .mockResolvedValueOnce([buildRow({ id: 1, auditLogId: "log-1" }), buildRow({ id: 2, auditLogId: "log-2" })])
+      .mockResolvedValueOnce([]);
+    // First row delivers, second row fails — only the second should retry.
+    streamLog.mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error(FAILURE_MESSAGE));
+
+    await service.drainStream({ streamId: STREAM_ID, orgId: ORG_ID, provider: LogProvider.Custom });
+
+    expect(onStreamFailure).toHaveBeenCalledTimes(1);
+    const call = auditLogStreamOutboxDAL.commitDeliveryResult.mock.calls[0][0] as {
+      successIds: number[];
+      retriable: { groups: { ids: number[]; nextRetryDelayMs: number }[] } | null;
+      exhausted: TFailedStreamRow[];
+    };
+    expect(call.successIds).toEqual([1]);
+    expect(call.retriable?.groups.flatMap((g) => g.ids)).toEqual([2]);
+    expect(call.exhausted).toEqual([]);
   });
 });
 

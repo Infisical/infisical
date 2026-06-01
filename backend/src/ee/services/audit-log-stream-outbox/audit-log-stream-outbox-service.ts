@@ -8,7 +8,7 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 import { chunkAuditLogsByBatchLimit } from "../audit-log-stream/audit-log-stream-batching";
 import { TAuditLogStreamDALFactory } from "../audit-log-stream/audit-log-stream-dal";
-import { LogProvider } from "../audit-log-stream/audit-log-stream-enums";
+import { LogProvider, StreamMode } from "../audit-log-stream/audit-log-stream-enums";
 import { LOG_STREAM_FACTORY_MAP } from "../audit-log-stream/audit-log-stream-factory";
 import { decryptLogStreamCredentials } from "../audit-log-stream/audit-log-stream-fns";
 import { TAuditLogStreamOutboxDALFactory } from "./audit-log-stream-outbox-dal";
@@ -219,18 +219,32 @@ export const auditLogStreamOutboxServiceFactory = ({
 
     const providerImpl = factory();
 
+    // "single" streams (legacy custom webhooks) get one event per request; everything
+    // else gets a JSON array per request. Single mode treats each row as its own chunk.
+    const isSingleMode = stream.streamMode === StreamMode.Single;
+
     for (let batchIdx = 0; batchIdx < MAX_BATCHES_PER_JOB; batchIdx += 1) {
       // eslint-disable-next-line no-await-in-loop
       const claimed = await auditLogStreamOutboxDAL.claimBatchForStream(streamId, BATCH_SIZE);
       if (claimed.length === 0) return;
 
-      const chunks = chunkAuditLogsByBatchLimit(claimed, providerImpl.getProviderBatchLimit());
+      const chunks = isSingleMode
+        ? claimed.map((row) => [row])
+        : chunkAuditLogsByBatchLimit(claimed, providerImpl.getProviderBatchLimit());
       const streamSuccess: TAuditLogStreamOutboxRow[] = [];
       const streamFail: TFailedStreamRow[] = [];
       for (const chunk of chunks) {
         try {
-          // eslint-disable-next-line no-await-in-loop
-          await providerImpl.batchStreamLog({ credentials, auditLogs: chunk.map((row) => row.payload) });
+          if (isSingleMode) {
+            if (!providerImpl.streamLog) {
+              throw new Error(`provider '${provider}' does not support single stream mode`);
+            }
+            // eslint-disable-next-line no-await-in-loop
+            await providerImpl.streamLog({ credentials, auditLog: chunk[0].payload });
+          } else {
+            // eslint-disable-next-line no-await-in-loop
+            await providerImpl.batchStreamLog({ credentials, auditLogs: chunk.map((row) => row.payload) });
+          }
           streamSuccess.push(...chunk);
         } catch (error) {
           const errorMessage = truncateError(error);

@@ -8,6 +8,7 @@ import { AUDIT_LOG_STREAM_BATCH_TIMEOUT, AUDIT_LOG_STREAM_TIMEOUT } from "../../
 import {
   TLogStreamFactoryBatchStreamLog,
   TLogStreamFactoryGetProviderBatchLimit,
+  TLogStreamFactoryStreamLog,
   TLogStreamFactoryValidateCredentials
 } from "../audit-log-stream-types";
 import { TCustomProviderCredentials } from "./custom-provider-types";
@@ -69,6 +70,27 @@ export const CustomProviderFactory = () => {
     });
   };
 
+  // Legacy single-event delivery: each log is POSTed individually as a JSON object.
+  // Streams migrated to "single" mode keep this shape so their receivers don't break.
+  const streamLog: TLogStreamFactoryStreamLog<TCustomProviderCredentials> = async ({ credentials, auditLog }) => {
+    const { url, headers } = credentials;
+
+    await blockLocalAndPrivateIpAddresses(url);
+
+    const streamHeaders: RawAxiosRequestHeaders = { "Content-Type": "application/json" };
+
+    if (headers.length) {
+      headers.forEach(({ key, value }) => {
+        streamHeaders[key] = value;
+      });
+    }
+
+    await request.post(url, auditLog, {
+      headers: streamHeaders,
+      timeout: AUDIT_LOG_STREAM_TIMEOUT
+    });
+  };
+
   const getProviderBatchLimit: TLogStreamFactoryGetProviderBatchLimit = () => ({
     maxLogs: 400,
     maxBytes: 800 * 1024
@@ -77,6 +99,7 @@ export const CustomProviderFactory = () => {
   return {
     validateCredentials,
     batchStreamLog,
+    streamLog,
     getProviderBatchLimit
   };
 };
