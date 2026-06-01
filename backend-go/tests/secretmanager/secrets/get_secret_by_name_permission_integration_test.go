@@ -1,6 +1,6 @@
 //go:build integration
 
-package secret_test
+package secrets_test
 
 import (
 	"testing"
@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/infisical/api/internal/services/auth"
-	"github.com/infisical/api/internal/testutil/infra"
+	"github.com/infisical/api/tests/infra"
 )
 
 // =============================================================================

@@ -1,6 +1,6 @@
 //go:build integration
 
-package secret_test
+package secrets_test
 
 import (
 	"encoding/json"
@@ -28,8 +28,7 @@ import (
 	secretSvc "github.com/infisical/api/internal/services/secretmanager/secret"
 	"github.com/infisical/api/internal/services/secretmanager/secretfolder"
 	"github.com/infisical/api/internal/services/secretmanager/secretimport"
-	"github.com/infisical/api/internal/testutil"
-	"github.com/infisical/api/internal/testutil/infra"
+	"github.com/infisical/api/tests/infra"
 )
 
 var (
@@ -57,12 +56,12 @@ func newSecretsHandler(t *testing.T) *secret.Handler {
 
 	ctx := t.Context()
 
-	permSvc := permission.NewService(ctx, testutil.NopLogger(), &permission.Deps{DB: stack.DB()})
+	permSvc := permission.NewService(ctx, infra.NopLogger(), &permission.Deps{DB: stack.DB()})
 
 	redisClient := stack.Redis().Client()
 	t.Cleanup(func() { redisClient.Close() })
 
-	kmsSvc, err := kms.NewService(ctx, testutil.NopLogger(), &kms.Deps{
+	kmsSvc, err := kms.NewService(ctx, infra.NopLogger(), &kms.Deps{
 		DB:          stack.DB(),
 		HSM:         nil,
 		ExternalKms: nil,
@@ -73,16 +72,16 @@ func newSecretsHandler(t *testing.T) *secret.Handler {
 	err = kmsSvc.Start(ctx, false)
 	require.NoError(t, err)
 
-	projectSvc := project.NewService(ctx, testutil.NopLogger(), &project.Deps{DB: stack.DB()})
+	projectSvc := project.NewService(ctx, infra.NopLogger(), &project.Deps{DB: stack.DB()})
 
-	queueSvc := queue.NewService(ctx, testutil.NopLogger(), redisClient)
+	queueSvc := queue.NewService(ctx, infra.NopLogger(), redisClient)
 
-	auditLogSvc := auditlog.NewService(ctx, testutil.NopLogger(), &auditlog.Deps{Queue: queueSvc, Config: stack.Config()})
+	auditLogSvc := auditlog.NewService(ctx, infra.NopLogger(), &auditlog.Deps{Queue: queueSvc, Config: stack.Config()})
 
-	secretFolderSvc := secretfolder.NewService(ctx, testutil.NopLogger(), &secretfolder.Deps{DB: stack.DB()})
-	secretImportSvc := secretimport.NewService(ctx, testutil.NopLogger(), &secretimport.Deps{DB: stack.DB()})
+	secretFolderSvc := secretfolder.NewService(ctx, infra.NopLogger(), &secretfolder.Deps{DB: stack.DB()})
+	secretImportSvc := secretimport.NewService(ctx, infra.NopLogger(), &secretimport.Deps{DB: stack.DB()})
 
-	secretsSvc := secretSvc.NewService(ctx, testutil.NopLogger(), &secretSvc.Deps{
+	secretsSvc := secretSvc.NewService(ctx, infra.NopLogger(), &secretSvc.Deps{
 		DB:                  stack.DB(),
 		SecretFolderService: secretFolderSvc,
 		SecretImportService: secretImportSvc,
@@ -90,7 +89,7 @@ func newSecretsHandler(t *testing.T) *secret.Handler {
 	})
 
 	return secret.NewHandler(&secret.Deps{
-		Logger:     testutil.NopLogger(),
+		Logger:     infra.NopLogger(),
 		Permission: permSvc,
 		Project:    projectSvc,
 		AuditLog:   auditLogSvc,
@@ -394,7 +393,7 @@ func newTestServer(t *testing.T, handler *secret.Handler, actorType auth.ActorTy
 	router := secret.NewRouter(
 		handler,
 		secret.WithMiddleware(testAuthMiddleware(actorType, actorID, orgID)),
-		secret.WithErrorHandler(shared.NewErrorHandler(testutil.NopLogger())),
+		secret.WithErrorHandler(shared.NewErrorHandler(infra.NopLogger())),
 	)
 
 	return httptest.NewServer(router)

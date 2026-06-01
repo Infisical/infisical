@@ -15,8 +15,7 @@ import (
 
 	"github.com/infisical/api/internal/server/api/platform/projects"
 	"github.com/infisical/api/internal/services/permission"
-	"github.com/infisical/api/internal/testutil"
-	"github.com/infisical/api/internal/testutil/infra"
+	"github.com/infisical/api/tests/infra"
 )
 
 var stack *infra.Stack
@@ -38,10 +37,10 @@ func newProjectsRouter(t *testing.T) http.Handler {
 	t.Helper()
 
 	ctx := t.Context()
-	permLib := permission.NewService(ctx, testutil.NopLogger(), &permission.Deps{DB: stack.DB()})
+	permLib := permission.NewService(ctx, infra.NopLogger(), &permission.Deps{DB: stack.DB()})
 
 	handler := projects.NewHandler(&projects.Deps{
-		Logger:     testutil.NopLogger(),
+		Logger:     infra.NopLogger(),
 		Permission: permLib,
 	})
 

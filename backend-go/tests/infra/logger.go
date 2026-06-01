@@ -1,4 +1,6 @@
-package testutil
+//go:build integration
+
+package infra
 
 import (
 	"log/slog"

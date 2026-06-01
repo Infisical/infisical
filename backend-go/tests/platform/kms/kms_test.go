@@ -15,8 +15,7 @@ import (
 
 	"github.com/infisical/api/internal/ee/services/externalkms"
 	"github.com/infisical/api/internal/services/kms"
-	"github.com/infisical/api/internal/testutil"
-	"github.com/infisical/api/internal/testutil/infra"
+	"github.com/infisical/api/tests/infra"
 )
 
 var stack *infra.Stack
@@ -35,7 +34,7 @@ func TestMain(m *testing.M) {
 
 func startedService(t *testing.T) *kms.Service {
 	t.Helper()
-	svc, err := kms.NewService(context.Background(), testutil.NopLogger(), &kms.Deps{
+	svc, err := kms.NewService(context.Background(), infra.NopLogger(), &kms.Deps{
 		DB:          stack.DB(),
 		HSM:         nil,
 		ExternalKms: nil,
@@ -276,7 +275,7 @@ func TestCreateCipherPair_EmptyProjectIDFails(t *testing.T) {
 
 func startedServiceWithExternalKms(t *testing.T, extKms kms.ExternalKmsService) *kms.Service {
 	t.Helper()
-	svc, err := kms.NewService(context.Background(), testutil.NopLogger(), &kms.Deps{
+	svc, err := kms.NewService(context.Background(), infra.NopLogger(), &kms.Deps{
 		DB:          stack.DB(),
 		HSM:         nil,
 		ExternalKms: extKms,

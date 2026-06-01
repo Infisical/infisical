@@ -1,6 +1,6 @@
 //go:build integration
 
-package secret_test
+package secrets_test
 
 import (
 	"encoding/json"
@@ -16,7 +16,7 @@ import (
 	"github.com/infisical/api/internal/server/api/secretmanager/secret"
 	"github.com/infisical/api/internal/server/api/shared"
 	"github.com/infisical/api/internal/services/auth"
-	"github.com/infisical/api/internal/testutil/infra"
+	"github.com/infisical/api/tests/infra"
 )
 
 // httpGetSecretV4 makes a direct HTTP GET request to /api/v4/secrets/{secretName}

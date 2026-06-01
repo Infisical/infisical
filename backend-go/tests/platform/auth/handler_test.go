@@ -22,7 +22,7 @@ import (
 	"github.com/infisical/api/internal/libs/errutil"
 	"github.com/infisical/api/internal/services/auth"
 	"github.com/infisical/api/internal/services/auth/apiauth"
-	"github.com/infisical/api/internal/testutil/infra"
+	"github.com/infisical/api/tests/infra"
 )
 
 var (
@@ -217,9 +217,6 @@ func TestValidateJWT_UserToken_Errors(t *testing.T) {
 }
 
 func TestValidateJWT_UserToken_StaleAccessVersion(t *testing.T) {
-	// This test requires DB manipulation to create a session with a different access version
-	// We create a valid token but modify the session's access version in DB
-
 	userID := uuid.MustParse(stack.NodeJS().UserID())
 	sessionID := uuid.New()
 
@@ -249,7 +246,6 @@ func TestValidateJWT_UserToken_StaleAccessVersion(t *testing.T) {
 }
 
 func TestValidateJWT_UserToken_UserLocked(t *testing.T) {
-	// Create a user that is permanently locked
 	lockedUserID := uuid.New()
 	testEmail := "locked-" + uuid.New().String() + "@test.com"
 	_, err := stack.DB().Primary().Exec(context.Background(), `
@@ -263,7 +259,6 @@ func TestValidateJWT_UserToken_UserLocked(t *testing.T) {
 			pgx.NamedArgs{"userID": lockedUserID})
 	})
 
-	// Create a session for the locked user
 	sessionID := uuid.New()
 	_, err = stack.DB().Primary().Exec(context.Background(), `
 		INSERT INTO auth_token_sessions (id, "userId", "accessVersion", "refreshVersion", ip, "userAgent", "lastUsed", "createdAt", "updatedAt")
@@ -289,10 +284,9 @@ func TestValidateJWT_UserToken_UserLocked(t *testing.T) {
 }
 
 func TestValidateJWT_UserToken_UserTemporarilyLocked(t *testing.T) {
-	// Create a user that is temporarily locked (lock expires in the future)
 	tempLockedUserID := uuid.New()
 	testEmail := "templocked-" + uuid.New().String() + "@test.com"
-	lockEnd := time.Now().Add(time.Hour) // Locked for another hour
+	lockEnd := time.Now().Add(time.Hour)
 	_, err := stack.DB().Primary().Exec(context.Background(), `
 		INSERT INTO users (id, email, username, "isAccepted", "temporaryLockDateEnd", "createdAt", "updatedAt")
 		VALUES (@userID, @email, @username, true, @lockEnd, NOW(), NOW())
@@ -304,7 +298,6 @@ func TestValidateJWT_UserToken_UserTemporarilyLocked(t *testing.T) {
 			pgx.NamedArgs{"userID": tempLockedUserID})
 	})
 
-	// Create a session for the temp-locked user
 	sessionID := uuid.New()
 	_, err = stack.DB().Primary().Exec(context.Background(), `
 		INSERT INTO auth_token_sessions (id, "userId", "accessVersion", "refreshVersion", ip, "userAgent", "lastUsed", "createdAt", "updatedAt")
@@ -330,7 +323,6 @@ func TestValidateJWT_UserToken_UserTemporarilyLocked(t *testing.T) {
 }
 
 func TestValidateJWT_UserToken_UserNotAccepted(t *testing.T) {
-	// Create a user that has not accepted
 	notAcceptedUserID := uuid.New()
 	testEmail := "notaccepted-" + uuid.New().String() + "@test.com"
 	_, err := stack.DB().Primary().Exec(context.Background(), `
@@ -344,7 +336,6 @@ func TestValidateJWT_UserToken_UserNotAccepted(t *testing.T) {
 			pgx.NamedArgs{"userID": notAcceptedUserID})
 	})
 
-	// Create a session for the not-accepted user
 	sessionID := uuid.New()
 	_, err = stack.DB().Primary().Exec(context.Background(), `
 		INSERT INTO auth_token_sessions (id, "userId", "accessVersion", "refreshVersion", ip, "userAgent", "lastUsed", "createdAt", "updatedAt")
@@ -383,7 +374,6 @@ func TestValidateIdentityAccessToken_Valid(t *testing.T) {
 	assert.Equal(t, auth.ActorTypeIdentity, identity.Actor)
 	assert.NotEqual(t, uuid.Nil, identity.ActorID)
 	assert.Equal(t, uuid.MustParse(stack.NodeJS().OrgID()), identity.OrgID)
-	// Verify identity-specific fields
 	require.NotNil(t, identity.IdentityAuthInfo)
 	assert.NotEqual(t, uuid.Nil, identity.IdentityAuthInfo.IdentityID)
 }
@@ -451,7 +441,6 @@ func TestValidateIdentityAccessToken_Errors(t *testing.T) {
 func TestValidateIdentityAccessToken_CustomIdentity(t *testing.T) {
 	nodejs := stack.NodeJS()
 
-	// Create unique project and identity for this test
 	projName := "test-" + uuid.New().String()[:8]
 	proj := nodejs.CreateProject(t, projName)
 	t.Cleanup(func() {
@@ -475,7 +464,6 @@ func TestValidateIdentityAccessToken_CustomIdentity(t *testing.T) {
 func TestValidateIdentityAccessToken_Revoked(t *testing.T) {
 	nodejs := stack.NodeJS()
 
-	// Create identity and get token
 	projName := "test-revoke-" + uuid.New().String()[:8]
 	proj := nodejs.CreateProject(t, projName)
 	t.Cleanup(func() {
@@ -487,7 +475,6 @@ func TestValidateIdentityAccessToken_Revoked(t *testing.T) {
 
 	token := nodejs.GetIdentityAccessToken(t, identity.ID)
 
-	// Revoke the token via Node.js API
 	nodejs.RevokeAccessToken(t, token)
 
 	_, err := authenticator.ValidateIdentityAccessToken(context.Background(), token, "")
@@ -499,7 +486,6 @@ func TestValidateIdentityAccessToken_Revoked(t *testing.T) {
 func TestValidateIdentityAccessToken_IdentityDeleted(t *testing.T) {
 	nodejs := stack.NodeJS()
 
-	// Create identity and get token
 	projName := "test-idelete-" + uuid.New().String()[:8]
 	proj := nodejs.CreateProject(t, projName)
 	t.Cleanup(func() {
@@ -511,12 +497,10 @@ func TestValidateIdentityAccessToken_IdentityDeleted(t *testing.T) {
 
 	token := nodejs.GetIdentityAccessToken(t, identity.ID)
 
-	// Delete the identity - this revokes all tokens for the identity
 	nodejs.DeleteIdentity(t, identity.ID)
 
 	_, err := authenticator.ValidateIdentityAccessToken(context.Background(), token, "")
 
-	// Token should fail - either as revoked or identity not found
 	require.Error(t, err)
 }
 
@@ -564,14 +548,12 @@ func TestValidateServiceToken_Errors(t *testing.T) {
 func TestValidateServiceToken_Valid(t *testing.T) {
 	nodejs := stack.NodeJS()
 
-	// Create a project with an environment
 	projName := "test-st-valid-" + uuid.New().String()[:8]
 	proj := nodejs.CreateProject(t, projName)
 	t.Cleanup(func() {
 		nodejs.DeleteProject(t, proj.ID)
 	})
 
-	// Create a service token (no expiry)
 	st := nodejs.CreateServiceToken(t, proj.ID, "dev", nil)
 	t.Cleanup(func() {
 		nodejs.DeleteServiceToken(t, st.ID)
@@ -589,7 +571,6 @@ func TestValidateServiceToken_Valid(t *testing.T) {
 func TestValidateServiceToken_WrongSecret(t *testing.T) {
 	nodejs := stack.NodeJS()
 
-	// Create a project and service token
 	projName := "test-st-wrongsec-" + uuid.New().String()[:8]
 	proj := nodejs.CreateProject(t, projName)
 	t.Cleanup(func() {
@@ -601,8 +582,6 @@ func TestValidateServiceToken_WrongSecret(t *testing.T) {
 		nodejs.DeleteServiceToken(t, st.ID)
 	})
 
-	// Extract the token ID and use a wrong secret
-	// Token format: st.<id>.<secret>
 	parts := strings.SplitN(st.Token, ".", 3)
 	require.Len(t, parts, 3)
 	wrongToken := "st." + parts[1] + ".wrong-secret-here"
@@ -616,24 +595,19 @@ func TestValidateServiceToken_WrongSecret(t *testing.T) {
 func TestValidateServiceToken_Expired(t *testing.T) {
 	nodejs := stack.NodeJS()
 
-	// Create a project
 	projName := "test-st-expired-" + uuid.New().String()[:8]
 	proj := nodejs.CreateProject(t, projName)
 	t.Cleanup(func() {
 		nodejs.DeleteProject(t, proj.ID)
 	})
 
-	// Create a service token that expires in 1 second
 	expiresIn := 1
 	st := nodejs.CreateServiceToken(t, proj.ID, "dev", &expiresIn)
-	// No cleanup needed - token is auto-deleted when expired
 
-	// Wait for expiration
 	time.Sleep(2 * time.Second)
 
 	_, err := authenticator.ValidateServiceToken(context.Background(), st.Token)
 
-	// Should fail - token is expired (and possibly deleted)
 	require.Error(t, err)
 }
 
@@ -644,7 +618,6 @@ func TestValidateServiceToken_Expired(t *testing.T) {
 func TestValidateIdentityAccessToken_NumUsesLimitExhausted(t *testing.T) {
 	nodejs := stack.NodeJS()
 
-	// Create identity with numUsesLimit
 	projName := "test-numlimit-" + uuid.New().String()[:8]
 	proj := nodejs.CreateProject(t, projName)
 	t.Cleanup(func() {
@@ -654,11 +627,8 @@ func TestValidateIdentityAccessToken_NumUsesLimitExhausted(t *testing.T) {
 	identity := nodejs.CreateIdentity(t, "identity-numlimit-"+uuid.New().String()[:8])
 	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
 
-	// Get token - this creates universal auth with default settings (no limit)
-	// We need to set up the limit in Redis manually since the token is already issued
 	token := nodejs.GetIdentityAccessToken(t, identity.ID)
 
-	// Parse to get token ID
 	claims := &apiauth.IdentityJWTClaims{}
 	_, _ = jwt.ParseWithClaims(token, claims, func(_ *jwt.Token) (any, error) {
 		return []byte(infra.AuthSecret), nil
@@ -669,13 +639,10 @@ func TestValidateIdentityAccessToken_NumUsesLimitExhausted(t *testing.T) {
 		tokenID = claims.IdentityAccessTokenID
 	}
 
-	// Set uses remaining to 0 in keystore (simulating exhausted limit)
 	key := "identity-token-uses-remaining:" + identity.ID + ":" + tokenID
 	err := memKeyStore.SetItem(context.Background(), key, "0")
 	require.NoError(t, err)
 
-	// Create a new authenticator that checks numUsesLimit
-	// We need to sign a token WITH numUsesLimit claim
 	tokenWithLimit := signIdentityJWT(t, infra.AuthSecret, func(c *apiauth.IdentityJWTClaims) {
 		c.IdentityID = uuid.MustParse(identity.ID)
 		c.OrgID = uuid.MustParse(stack.NodeJS().OrgID())
@@ -683,7 +650,7 @@ func TestValidateIdentityAccessToken_NumUsesLimitExhausted(t *testing.T) {
 		c.ParentOrgID = uuid.MustParse(stack.NodeJS().OrgID())
 		c.AuthMethod = "universal-auth"
 		c.AccessTokenTTL = 3600
-		c.NumUsesLimit = 5 // Has a limit
+		c.NumUsesLimit = 5
 		c.ID = tokenID
 	})
 
@@ -698,8 +665,6 @@ func TestValidateIdentityAccessToken_NumUsesLimitExhausted(t *testing.T) {
 // =============================================================================
 
 func TestValidateJWT_UserToken_AlgNoneAttack(t *testing.T) {
-	// Create a token with alg=none - this should be rejected
-	// JWT with alg:none has no signature
 	header := base64URLEncode(`{"alg":"none","typ":"JWT"}`)
 	payload := base64URLEncode(`{"authTokenType":"accessToken","userId":"` + stack.NodeJS().UserID() + `"}`)
 	algNoneToken := header + "." + payload + "."
@@ -710,8 +675,6 @@ func TestValidateJWT_UserToken_AlgNoneAttack(t *testing.T) {
 }
 
 func TestValidateJWT_UserToken_WrongAlgorithm(t *testing.T) {
-	// Try to use RS256 when the server expects HS256
-	// This tests that the server properly validates the algorithm
 	token := jwt.NewWithClaims(jwt.SigningMethodHS384, &apiauth.UserJWTClaims{
 		AuthTokenType:  auth.AuthTokenTypeAccessToken,
 		UserID:         uuid.MustParse(stack.NodeJS().UserID()),
@@ -723,13 +686,11 @@ func TestValidateJWT_UserToken_WrongAlgorithm(t *testing.T) {
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 		},
 	})
-	// Sign with the correct secret but wrong algorithm
 	tokenString, err := token.SignedString([]byte(infra.AuthSecret))
 	require.NoError(t, err)
 
 	_, err = authenticator.ValidateJWT(context.Background(), tokenString)
 
-	// Should fail because algorithm doesn't match
 	assertUnauthorized(t, err)
 }
 
@@ -740,7 +701,6 @@ func TestValidateJWT_UserToken_WrongAlgorithm(t *testing.T) {
 func TestValidateIdentityAccessToken_LegacyRevoked(t *testing.T) {
 	nodejs := stack.NodeJS()
 
-	// Create identity
 	projName := "test-legacy-rev-" + uuid.New().String()[:8]
 	proj := nodejs.CreateProject(t, projName)
 	t.Cleanup(func() {
@@ -750,8 +710,6 @@ func TestValidateIdentityAccessToken_LegacyRevoked(t *testing.T) {
 	identity := nodejs.CreateIdentity(t, "identity-legacy-"+uuid.New().String()[:8])
 	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
 
-	// Create a legacy-style token (without full renew claims) that points to a DB row
-	// Insert a revoked token row directly into DB
 	tokenID := uuid.New()
 	identityID := uuid.MustParse(identity.ID)
 
@@ -770,12 +728,9 @@ func TestValidateIdentityAccessToken_LegacyRevoked(t *testing.T) {
 			pgx.NamedArgs{"tokenID": tokenID})
 	})
 
-	// Create a legacy token (no full renew claims) pointing to this DB row
 	legacyToken := signIdentityJWT(t, infra.AuthSecret, func(c *apiauth.IdentityJWTClaims) {
 		c.IdentityID = identityID
 		c.IdentityAccessTokenID = tokenID.String()
-		// Don't set OrgID, RootOrgID, ParentOrgID, AuthMethod, AccessTokenTTL
-		// This makes HasFullRenewClaims() return false, triggering legacy DB lookup
 		c.OrgID = uuid.Nil
 		c.RootOrgID = uuid.Nil
 		c.ParentOrgID = uuid.Nil
@@ -825,31 +780,3 @@ func TestValidateJWT_MalformedTokens(t *testing.T) {
 		})
 	}
 }
-
-// =============================================================================
-// TODO(go:akhilmhdh): Missing Edge Cases
-// =============================================================================
-//
-// The following edge cases are not yet covered by tests. They require additional
-// setup (EE features, complex fixtures) or test infrastructure not yet available.
-//
-// JWT/User Token:
-// - TODO: Sub-organization scoping (claims.SubOrganizationID set) - requires EE sub-org feature
-// - TODO: Sub-org doesn't belong to root org (forbidden case)
-// - TODO: Org membership inactive
-// - TODO: Group-based org membership (actorGroupId IN (...) branch)
-// - TODO: SuperAdmin field propagation onto Identity
-// - TODO: IsMfaVerified/MfaMethod field propagation onto Identity
-// - TODO: AuthMethod field propagation onto Identity
-//
-// Identity Access Token:
-// - TODO: IdentityAuth claims propagation (OIDC details)
-// - TODO: IdentityAuth claims propagation (Kubernetes details)
-// - TODO: IdentityAuth claims propagation (AWS details)
-// - TODO: Sub-org scoping for identity tokens
-// - TODO: Explicit test for new-format token path (HasFullRenewClaims=true)
-// - TODO: Explicit test for legacy DB-lookup path (HasFullRenewClaims=false)
-//
-// Cross-cutting:
-// - TODO: HTTPInfoMiddleware propagation (IPAddress/UserAgent onto Identity)
-// - TODO: IP blocklist check (currently bypassed with empty string)

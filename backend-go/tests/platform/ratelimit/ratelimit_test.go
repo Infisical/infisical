@@ -18,8 +18,7 @@ import (
 	"github.com/infisical/api/internal/ee/services/license"
 	"github.com/infisical/api/internal/ee/services/ratelimit"
 	"github.com/infisical/api/internal/services/auth"
-	"github.com/infisical/api/internal/testutil"
-	"github.com/infisical/api/internal/testutil/infra"
+	"github.com/infisical/api/tests/infra"
 )
 
 var stack *infra.Stack
@@ -59,7 +58,7 @@ func (m *mockLicenseService) GetPlan(ctx context.Context, orgID string) (*licens
 
 func newTestService(t *testing.T, isCloud bool) *ratelimit.Service {
 	t.Helper()
-	return ratelimit.NewService(context.Background(), testutil.NopLogger(), &ratelimit.Deps{
+	return ratelimit.NewService(context.Background(), infra.NopLogger(), &ratelimit.Deps{
 		Redis:      stack.Redis().Client(),
 		LicenseSvc: &mockLicenseService{},
 		IsCloud:    isCloud,
@@ -78,7 +77,7 @@ func TestRedisCounter_IncrementAndGet_BasicFlow(t *testing.T) {
 	counter := ratelimit.NewRedisCounter(&ratelimit.RedisCounterConfig{
 		Client:    client,
 		PrefixKey: "test-basic-" + t.Name(),
-		Logger:    testutil.NopLogger(),
+		Logger:    infra.NopLogger(),
 	})
 	counter.Config(100, time.Minute)
 
@@ -105,7 +104,7 @@ func TestRedisCounter_Get_ReturnsZeroForNewKey(t *testing.T) {
 	counter := ratelimit.NewRedisCounter(&ratelimit.RedisCounterConfig{
 		Client:    client,
 		PrefixKey: "test-zero-" + t.Name(),
-		Logger:    testutil.NopLogger(),
+		Logger:    infra.NopLogger(),
 	})
 	counter.Config(100, time.Minute)
 
@@ -126,7 +125,7 @@ func TestRedisCounter_SeparateWindows_HaveIndependentCounts(t *testing.T) {
 	counter := ratelimit.NewRedisCounter(&ratelimit.RedisCounterConfig{
 		Client:    client,
 		PrefixKey: "test-windows-" + t.Name(),
-		Logger:    testutil.NopLogger(),
+		Logger:    infra.NopLogger(),
 	})
 	counter.Config(100, time.Minute)
 
@@ -157,7 +156,7 @@ func TestRedisCounter_DifferentKeys_HaveIndependentCounts(t *testing.T) {
 	counter := ratelimit.NewRedisCounter(&ratelimit.RedisCounterConfig{
 		Client:    client,
 		PrefixKey: "test-keys-" + t.Name(),
-		Logger:    testutil.NopLogger(),
+		Logger:    infra.NopLogger(),
 	})
 	counter.Config(100, time.Minute)
 
@@ -188,7 +187,7 @@ func TestRedisCounter_IncrementBy_IncrementsCorrectAmount(t *testing.T) {
 	counter := ratelimit.NewRedisCounter(&ratelimit.RedisCounterConfig{
 		Client:    client,
 		PrefixKey: "test-incrby-" + t.Name(),
-		Logger:    testutil.NopLogger(),
+		Logger:    infra.NopLogger(),
 	})
 	counter.Config(100, time.Minute)
 
@@ -339,7 +338,7 @@ func TestRateLimitMiddleware_UsesDynamicLimitFromPlan(t *testing.T) {
 		},
 	}
 
-	svc := ratelimit.NewService(context.Background(), testutil.NopLogger(), &ratelimit.Deps{
+	svc := ratelimit.NewService(context.Background(), infra.NopLogger(), &ratelimit.Deps{
 		Redis:      stack.Redis().Client(),
 		LicenseSvc: licenseSvc,
 		IsCloud:    true,

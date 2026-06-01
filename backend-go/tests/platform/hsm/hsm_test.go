@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/infisical/api/internal/ee/services/hsm"
-	"github.com/infisical/api/internal/testutil/infra"
+	"github.com/infisical/api/tests/infra"
 )
 
 var runner = infra.NewContainerTest(
@@ -20,7 +20,7 @@ var runner = infra.NewContainerTest(
 	"INFISICAL_HSM_TEST_INSIDE",
 	"INFISICAL_RUN_HSM_CONTAINER_TEST",
 ).
-	WithTestPath("./internal/ee/services/hsm/...").
+	WithTestPath("./tests/platform/hsm/...").
 	WithBuildTags("integration").
 	WithEnv("SOFTHSM2_LIB", "/usr/lib/softhsm/libsofthsm2.so")
 

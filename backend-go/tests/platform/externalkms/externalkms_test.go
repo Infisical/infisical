@@ -10,8 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/infisical/api/internal/ee/services/externalkms"
-	"github.com/infisical/api/internal/testutil"
-	"github.com/infisical/api/internal/testutil/infra"
+	"github.com/infisical/api/tests/infra"
 )
 
 // Secret keys in Infisical /platform folder.
@@ -33,7 +32,7 @@ const (
 
 func newService(t *testing.T) *externalkms.Service {
 	t.Helper()
-	svc, err := externalkms.NewService(context.Background(), testutil.NopLogger(), &externalkms.Deps{})
+	svc, err := externalkms.NewService(context.Background(), infra.NopLogger(), &externalkms.Deps{})
 	require.NoError(t, err)
 	return svc
 }
