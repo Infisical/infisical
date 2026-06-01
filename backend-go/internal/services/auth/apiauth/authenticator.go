@@ -214,6 +214,12 @@ func (a Authenticator) validateJWT(ctx context.Context, token string) (*auth.Ide
 			if err != nil {
 				return nil, errutil.DatabaseErr("Failed to find organization").WithErrf("validateJWT(orgId=%s): %w", claims.OrganizationID, err)
 			}
+			if org == nil {
+				// findOrgByID returns (nil, nil) on pgx.ErrNoRows. The org row can be
+				// missing if it was deleted between JWT issue and validation; without
+				// this guard `org.Name` below panics.
+				return nil, errutil.BadRequest("Organization %s not found", claims.OrganizationID).WithErrf("validateJWT(orgId=%s): organization not found", claims.OrganizationID)
+			}
 
 			orgMembership, err := a.findEffectiveOrgMembership(ctx, auth.ActorTypeUser, user.ID, claims.OrganizationID, "accepted")
 			if err != nil {
