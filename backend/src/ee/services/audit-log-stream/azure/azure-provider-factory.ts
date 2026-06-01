@@ -103,7 +103,7 @@ export const AzureProviderFactory = () => {
 
   const getProviderBatchLimit: TLogStreamFactoryGetProviderBatchLimit = () => ({
     maxLogs: 400,
-    maxBytes: 900 * 1024
+    maxBytes: 700 * 1024
   });
 
   return {

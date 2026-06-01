@@ -89,7 +89,7 @@ export const SplunkProviderFactory = () => {
 
   const getProviderBatchLimit: TLogStreamFactoryGetProviderBatchLimit = () => ({
     maxLogs: 400,
-    maxBytes: 800 * 1024
+    maxBytes: 700 * 1024
   });
 
   return {
