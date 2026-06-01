@@ -190,6 +190,8 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
             metadata: userMetadata
           });
 
+          cb(null, loginResult);
+
           if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
             authAttemptCounter.add(1, {
               "infisical.user.email": email.toLowerCase(),
@@ -209,8 +211,6 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
             result: AuthAttemptAuthResult.SUCCESS,
             orgId: loginResult.orgId
           });
-
-          cb(null, loginResult);
         } catch (error) {
           if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
             authAttemptCounter.add(1, {

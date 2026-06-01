@@ -801,6 +801,8 @@ export const oidcConfigServiceFactory = ({
           manageGroupMemberships: oidcCfg.manageGroupMemberships
         })
           .then((loginResult) => {
+            cb(null, loginResult);
+
             if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
               authAttemptCounter.add(1, {
                 "infisical.user.email": claims?.email?.toLowerCase(),
@@ -820,8 +822,6 @@ export const oidcConfigServiceFactory = ({
               result: AuthAttemptAuthResult.SUCCESS,
               orgId: org.id
             });
-
-            cb(null, loginResult);
           })
           .catch((error: unknown) => {
             if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {

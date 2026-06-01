@@ -100,6 +100,8 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
               );
             }
 
+            cb(null, loginResult);
+
             if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
               authAttemptCounter.add(1, {
                 "infisical.user.email": email,
@@ -119,8 +121,6 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
               result: AuthAttemptAuthResult.SUCCESS,
               orgId: loginResult.orgId
             });
-
-            cb(null, loginResult);
           } catch (error) {
             logger.error(error);
             if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
@@ -202,6 +202,8 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
               );
             }
 
+            done(null, { ...loginResult, externalProviderAccessToken: accessToken });
+
             if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
               authAttemptCounter.add(1, {
                 "infisical.user.email": email,
@@ -221,8 +223,6 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
               result: AuthAttemptAuthResult.SUCCESS,
               orgId: loginResult.orgId
             });
-
-            done(null, { ...loginResult, externalProviderAccessToken: accessToken });
           } catch (err) {
             if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
               authAttemptCounter.add(1, {
@@ -296,6 +296,8 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
               );
             }
 
+            cb(null, loginResult);
+
             if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
               authAttemptCounter.add(1, {
                 "infisical.user.email": email,
@@ -315,8 +317,6 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
               result: AuthAttemptAuthResult.SUCCESS,
               orgId: loginResult.orgId
             });
-
-            return cb(null, loginResult);
           } catch (error) {
             if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
               authAttemptCounter.add(1, {
