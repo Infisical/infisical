@@ -6,9 +6,10 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { ChevronLeftIcon, EllipsisIcon, InfoIcon, ShieldIcon } from "lucide-react";
 
+import { AssumePrivilegesModal } from "@app/components/assume-privileges";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan, ProjectPermissionCan } from "@app/components/permissions";
-import { ConfirmActionModal, DeleteActionModal, EmptyState, PageHeader } from "@app/components/v2";
+import { DeleteActionModal, EmptyState, PageHeader } from "@app/components/v2";
 import {
   Alert,
   AlertDescription,
@@ -39,10 +40,9 @@ import {
   useOrganization,
   useProject
 } from "@app/context";
-import { getProjectBaseURL, getProjectHomePage } from "@app/helpers/project";
+import { getProjectBaseURL } from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
 import {
-  useAssumeProjectPrivileges,
   useDeleteProjectIdentityMembership,
   useGetProjectIdentityMembershipV2
 } from "@app/hooks/api";
@@ -93,31 +93,7 @@ const Page = () => {
     "deleteIdentity",
     "assumePrivileges"
   ] as const);
-  const assumePrivileges = useAssumeProjectPrivileges();
-
   const [isPermissionAuditOpen, setIsPermissionAuditOpen] = useState(false);
-
-  const handleAssumePrivileges = async () => {
-    assumePrivileges.mutate(
-      {
-        actorId: identityId,
-        actorType: ActorType.IDENTITY,
-        projectId
-      },
-      {
-        onSuccess: () => {
-          createNotification({
-            type: "success",
-            text: "Machine identity privilege assumption has started"
-          });
-          const url = getProjectHomePage(currentProject.type, currentProject.environments);
-          window.location.assign(
-            url.replace("$orgId", currentOrg.id).replace("$projectId", currentProject.id)
-          );
-        }
-      }
-    );
-  };
 
   const onRemoveIdentitySubmit = async () => {
     await removeIdentityMutateAsync({
@@ -241,13 +217,15 @@ const Page = () => {
                             onClick={() => handlePopUpOpen("assumePrivileges")}
                           >
                             Assume Privileges
-                            <InfoIcon className="text-muted" />
+                            {isAllowed && <InfoIcon className="text-muted" />}
                           </DropdownMenuItem>
                         </TooltipTrigger>
-                        <TooltipContent className="max-w-80" side="left">
-                          Assume the privileges of this machine identity, allowing you to replicate
-                          their access behavior.
-                        </TooltipContent>
+                        {isAllowed && (
+                          <TooltipContent className="max-w-80" side="left">
+                            Assume the privileges of this machine identity, allowing you to
+                            replicate their access behavior.
+                          </TooltipContent>
+                        )}
                       </Tooltip>
                     )}
                   </ProjectPermissionCan>
@@ -355,14 +333,11 @@ const Page = () => {
             deleteKey="remove"
             onDeleteApproved={() => onRemoveIdentitySubmit()}
           />
-          <ConfirmActionModal
+          <AssumePrivilegesModal
             isOpen={popUp.assumePrivileges.isOpen}
-            confirmKey="assume"
-            title="Do you want to assume privileges of this machine identity?"
-            subTitle="This will set your privileges to those of the machine identity for the next hour."
-            onChange={(isOpen) => handlePopUpToggle("assumePrivileges", isOpen)}
-            onConfirmed={handleAssumePrivileges}
-            buttonText="Confirm"
+            onOpenChange={(isOpen) => handlePopUpToggle("assumePrivileges", isOpen)}
+            actorType={ActorType.IDENTITY}
+            actorId={identityId}
           />
           <DeleteActionModal
             isOpen={popUp.deleteIdentity.isOpen}

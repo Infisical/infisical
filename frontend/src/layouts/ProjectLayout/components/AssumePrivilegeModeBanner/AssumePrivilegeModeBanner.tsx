@@ -20,7 +20,7 @@ export const AssumePrivilegeModeBanner = () => {
       You are currently viewing the project with privileges of&nbsp;
       <b>
         {assumedPrivilegeDetails.actorType === ActorType.IDENTITY ? "identity" : "user"}{" "}
-        {assumedPrivilegeDetails.actorName}
+        {assumedPrivilegeDetails.actorName || assumedPrivilegeDetails.actorEmail}
       </b>
       <Button
         size="xs"

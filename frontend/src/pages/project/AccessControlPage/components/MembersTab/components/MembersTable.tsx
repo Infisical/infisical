@@ -477,13 +477,15 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
                                         }}
                                       >
                                         Assume Privileges
-                                        <InfoIcon className="text-muted" />
+                                        {isAllowed && <InfoIcon className="text-muted" />}
                                       </DropdownMenuItem>
                                     </TooltipTrigger>
-                                    <TooltipContent className="max-w-80" side="left">
-                                      Assume the privileges of this user, allowing you to replicate
-                                      their access behavior.
-                                    </TooltipContent>
+                                    {isAllowed && (
+                                      <TooltipContent className="max-w-80" side="left">
+                                        Assume the privileges of this user, allowing you to
+                                        replicate their access behavior.
+                                      </TooltipContent>
+                                    )}
                                   </Tooltip>
                                 )}
                               </ProjectPermissionCan>
