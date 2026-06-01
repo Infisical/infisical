@@ -922,11 +922,7 @@ export const registerRoutes = async (
     auditLogStreamDAL,
     kmsService,
     keyStore,
-    queueService,
-    // Reuse the existing sliding-window alerting so a wedged provider still
-    // emails org admins after the failure threshold is crossed.
-    onStreamFailure: ({ orgId, streamId, provider, errorMessage }) =>
-      auditLogStreamService.recordStreamFailure(orgId, streamId, provider, errorMessage)
+    queueService
   });
 
   const auditLogStreamOutboxQueue = auditLogStreamOutboxQueueFactory({
