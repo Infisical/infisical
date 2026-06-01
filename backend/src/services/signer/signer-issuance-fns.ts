@@ -119,10 +119,9 @@ export const issueSignerCertificate = async (
   const leafKeys = await crypto.nativeCrypto.subtle.generateKey(alg as any, true, ["sign", "verify"]);
 
   const csrObj = await x509.Pkcs10CertificateRequestGenerator.create({
-    name: `CN=${commonName}`,
+    name: [{ CN: [commonName] }],
     keys: leafKeys,
     signingAlgorithm: alg,
-    // eslint-disable-next-line no-bitwise
     extensions: [
       new x509.KeyUsagesExtension(
         // eslint-disable-next-line no-bitwise

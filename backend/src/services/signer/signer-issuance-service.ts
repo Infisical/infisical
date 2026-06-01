@@ -84,7 +84,7 @@ export const signerIssuanceServiceFactory = ({
     const privateKeyPem = skLeafObj.export({ format: "pem", type: "pkcs8" }) as string;
 
     const csrObj = await x509.Pkcs10CertificateRequestGenerator.create({
-      name: `CN=${commonName}`,
+      name: [{ CN: [commonName] }],
       keys: leafKeys,
       signingAlgorithm: alg,
       extensions: [
