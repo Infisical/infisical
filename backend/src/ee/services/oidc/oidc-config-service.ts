@@ -46,6 +46,7 @@ import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-serv
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
+import { ensureSsoAccountVerified } from "@app/services/user-alias/user-alias-fns";
 import { UserAliasType } from "@app/services/user-alias/user-alias-types";
 
 import { TEmailDomainDALFactory } from "../email-domain/email-domain-dal";
@@ -71,7 +72,7 @@ type TOidcConfigServiceFactoryDep = {
     | "find"
     | "transaction"
   >;
-  userAliasDAL: Pick<TUserAliasDALFactory, "create" | "findOne">;
+  userAliasDAL: Pick<TUserAliasDALFactory, "create" | "findOne" | "updateById">;
   orgDAL: Pick<
     TOrgDALFactory,
     "createMembership" | "updateMembershipById" | "findMembership" | "findOrgById" | "findOne" | "updateById"
@@ -216,6 +217,11 @@ export const oidcConfigServiceFactory = ({
     const organization = await requestMemoize(requestMemoKeys.orgFindOrgById(orgId), () => orgDAL.findOrgById(orgId));
     if (!organization) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
 
+    // When the org enforces SSO, the verified domain + IdP are authoritative, so we skip the
+    // separate email-verification step (the email-domain ownership check above already proves the
+    // org owns this domain, and password signup is blocked for enforced domains).
+    const skipEmailVerification = Boolean(organization.authEnforced);
+
     let user: TUsers;
     if (userAlias) {
       user = await userDAL.transaction(async (tx) => {
@@ -281,7 +287,9 @@ export const oidcConfigServiceFactory = ({
               username: sanitizedEmail,
               lastName,
               authMethods: [],
-              isGhost: false
+              isGhost: false,
+              isEmailVerified: skipEmailVerification,
+              isAccepted: skipEmailVerification
             },
             tx
           );
@@ -294,7 +302,8 @@ export const oidcConfigServiceFactory = ({
             aliasType: UserAliasType.OIDC,
             externalId,
             emails: sanitizedEmail ? [sanitizedEmail] : [],
-            orgId
+            orgId,
+            isEmailVerified: skipEmailVerification
           },
           tx
         );
@@ -431,6 +440,11 @@ export const oidcConfigServiceFactory = ({
     await licenseService.updateSubscriptionOrgMemberCount(organization.id);
 
     await oidcConfigDAL.update({ orgId }, { lastUsed: new Date() });
+
+    // When SSO is enforced, mark the user + alias as verified/accepted before issuing a session.
+    if (skipEmailVerification) {
+      ({ user, userAlias } = await ensureSsoAccountVerified({ user, userAlias, userDAL, userAliasDAL }));
+    }
 
     if (user.email && !userAlias.isEmailVerified) {
       const token = await tokenService.createTokenForUser({

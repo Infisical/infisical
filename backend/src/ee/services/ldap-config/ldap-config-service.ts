@@ -38,6 +38,7 @@ import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-serv
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
+import { ensureSsoAccountVerified } from "@app/services/user-alias/user-alias-fns";
 import { UserAliasType } from "@app/services/user-alias/user-alias-types";
 
 import { TEmailDomainDALFactory } from "../email-domain/email-domain-dal";
@@ -86,7 +87,7 @@ type TLdapConfigServiceFactoryDep = {
     | "find"
     | "findUserEncKeyByUserId"
   >;
-  userAliasDAL: Pick<TUserAliasDALFactory, "create" | "findOne">;
+  userAliasDAL: Pick<TUserAliasDALFactory, "create" | "findOne" | "updateById">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan" | "updateSubscriptionOrgMemberCount">;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
@@ -480,6 +481,11 @@ export const ldapConfigServiceFactory = ({
     const organization = await requestMemoize(requestMemoKeys.orgFindOrgById(orgId), () => orgDAL.findOrgById(orgId));
     if (!organization) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
 
+    // When the org enforces SSO, the verified domain + IdP are authoritative, so we skip the
+    // separate email-verification step (the email-domain ownership check above already proves the
+    // org owns this domain, and password signup is blocked for enforced domains).
+    const skipEmailVerification = Boolean(organization.authEnforced);
+
     if (userAlias) {
       // Verify the existing user's stored email domain + cross-org check
       const existingUser = await userDAL.findOne({ id: userAlias.userId });
@@ -539,7 +545,9 @@ export const ldapConfigServiceFactory = ({
               firstName,
               lastName,
               authMethods: [],
-              isGhost: false
+              isGhost: false,
+              isEmailVerified: skipEmailVerification,
+              isAccepted: skipEmailVerification
             },
             tx
           );
@@ -553,7 +561,8 @@ export const ldapConfigServiceFactory = ({
             aliasType: UserAliasType.LDAP,
             externalId,
             emails: [sanitizedEmail],
-            orgId
+            orgId,
+            isEmailVerified: skipEmailVerification
           },
           tx
         );
@@ -611,7 +620,7 @@ export const ldapConfigServiceFactory = ({
     }
     await licenseService.updateSubscriptionOrgMemberCount(organization.id);
 
-    const user = await userDAL.transaction(async (tx) => {
+    let user = await userDAL.transaction(async (tx) => {
       const newUser = await userDAL.findOne({ id: userAlias.userId }, tx);
       if (groups) {
         const ldapGroupIdsToBePartOf = (
@@ -689,6 +698,11 @@ export const ldapConfigServiceFactory = ({
 
       return newUser;
     });
+
+    // When SSO is enforced, mark the user + alias as verified/accepted before issuing a session.
+    if (skipEmailVerification) {
+      ({ user, userAlias } = await ensureSsoAccountVerified({ user, userAlias, userDAL, userAliasDAL }));
+    }
 
     if (user.email && !userAlias.isEmailVerified) {
       const token = await tokenService.createTokenForUser({
