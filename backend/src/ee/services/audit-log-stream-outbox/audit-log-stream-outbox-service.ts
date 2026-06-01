@@ -132,7 +132,7 @@ export const auditLogStreamOutboxServiceFactory = ({
           jobId: `flush-${streamId}`,
           delay: FLUSH_DEBOUNCE_MS,
           removeOnComplete: true,
-          removeOnFail: { count: 50 }
+          removeOnFail: true
         }
       );
     } catch (error) {
