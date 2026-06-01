@@ -5,7 +5,7 @@ import { ActorType } from "@app/services/auth/auth-type";
 
 // inject permission type needed based on auth extracted
 export const injectPermission = fp(async (server) => {
-  server.decorateRequest("permission", null);
+  server.decorateRequest("permission");
   server.addHook("onRequest", async (req) => {
     if (!req.auth) return;
 

@@ -800,9 +800,7 @@ const OverviewPageContent = () => {
 
   // Auto-open honey token drawer when linked via notification/email
   useEffect(() => {
-    console.log("[HoneyTokenDrawer] useEffect fired", { honeyTokenId: routerSearch.honeyTokenId });
     if (routerSearch.honeyTokenId) {
-      console.log("[HoneyTokenDrawer] setting drawer id to", routerSearch.honeyTokenId);
       setDetailsDrawerHoneyTokenId(routerSearch.honeyTokenId);
     }
   }, [routerSearch.honeyTokenId]);

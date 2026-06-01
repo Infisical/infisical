@@ -172,7 +172,8 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
             })
             .array()
             .optional()
-        })
+        }),
+        304: z.void()
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),

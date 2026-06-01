@@ -176,6 +176,17 @@ RUN apt-get update && apt-get install -y \
     openssh-client \
     && curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash \
     && apt-get update && apt-get install -y infisical=0.43.79 \
+    # Patch CVEs in base image packages (pinned versions for reproducibility)
+    && apt-get install -y --only-upgrade \
+    libgnutls30t64=3.8.9-3+deb13u4 \
+    libc6=2.41-12+deb13u3 \
+    libc-bin=2.41-12+deb13u3 \
+    libssl3t64=3.5.6-1~deb13u1 \
+    dpkg=1.22.22 \
+    libcap2 \
+    libnghttp2-14=1.64.0-1.1+deb13u1 \
+    libngtcp2-16=1.11.0-1+deb13u1 \
+    libngtcp2-crypto-gnutls8=1.11.0-1+deb13u1 \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy Oracle Instant Client from parallel stage

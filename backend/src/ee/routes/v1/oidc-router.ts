@@ -83,7 +83,11 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
     },
     preValidation: [
       async (req, res) => {
-        const { domain, orgSlug, callbackPort } = req.query;
+        const { domain, orgSlug, callbackPort } = req.query as {
+          domain?: string;
+          orgSlug?: string;
+          callbackPort?: string;
+        };
 
         const identifier = domain || orgSlug;
         if (!identifier) {
