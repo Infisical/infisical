@@ -43,6 +43,9 @@ export const TrustedIpsField = ({
 }: Props) => {
   const { fields, append, remove } = useFieldArray({ control, name });
 
+  // At least one trusted IP is required, so the last remaining row can't be removed.
+  const isLast = fields.length <= 1;
+
   // IP allowlisting is a paid feature, so every mutation is gated behind the upgrade prompt.
   const guard = (action: () => void) => {
     if (isAllowed) {
@@ -89,16 +92,24 @@ export const TrustedIpsField = ({
               </Field>
             )}
           />
-          <IconButton
-            type="button"
-            variant="ghost"
-            size="sm"
-            aria-label="Remove trusted IP"
-            className={index === 0 ? "mt-[1.625rem]" : "mt-0.5"}
-            onClick={() => guard(() => remove(index))}
-          >
-            <XIcon />
-          </IconButton>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              {/* Wrapper span keeps the tooltip hoverable while the button is disabled. */}
+              <span className={index === 0 ? "mt-[1.625rem]" : "mt-0.5"}>
+                <IconButton
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  aria-label="Remove trusted IP"
+                  isDisabled={isLast}
+                  onClick={() => guard(() => remove(index))}
+                >
+                  <XIcon />
+                </IconButton>
+              </span>
+            </TooltipTrigger>
+            {isLast && <TooltipContent>At least one IP is required</TooltipContent>}
+          </Tooltip>
         </div>
       ))}
       <Button
