@@ -8,7 +8,6 @@ import { z } from "zod";
 import { createNotification } from "@app/components/notifications";
 import {
   Field,
-  FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
@@ -28,11 +27,11 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { useOrganization, useSubscription } from "@app/context";
-import { SECONDS_PER_DAY } from "@app/helpers/datetime";
 import {
   accessTokenTtlSchema,
   DEFAULT_TRUSTED_IPS,
   mapTrustedIpsFromServer,
+  superRefineAccessTokenTtl,
   trustedIpsSchema
 } from "@app/helpers/identityAuthSchemas";
 import { useScopeVariant } from "@app/hooks";
@@ -41,6 +40,7 @@ import { SpiffeTrustBundleProfile } from "@app/hooks/api/identities/enums";
 import { useGetIdentitySpiffeAuth } from "@app/hooks/api/identities/queries";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
+import { AccessTokenTtlFields } from "./shared/AccessTokenTtlFields";
 import { TrustedIpsField } from "./shared/TrustedIpsField";
 import { IDENTITY_AUTH_FORM_ID, IdentityFormTab } from "./types";
 
@@ -67,7 +67,9 @@ const buildSchema = (maxAccessTokenTTL: number) => {
     accessTokenMaxTTL: accessTokenTtlSchema(maxAccessTokenTTL, "Access Token Max TTL"),
     accessTokenNumUsesLimit: z.string()
   });
-  return common.extend({ trustBundleDistribution: trustBundleDistributionSchema });
+  return common
+    .extend({ trustBundleDistribution: trustBundleDistributionSchema })
+    .superRefine(superRefineAccessTokenTtl);
 };
 
 export type FormData = z.infer<ReturnType<typeof buildSchema>>;
@@ -254,8 +256,6 @@ export const IdentitySpiffeAuthForm = ({
     reset();
   };
 
-  const maxDaysHelper = `Max: ${Math.floor(maxAccessTokenTTL / SECONDS_PER_DAY)} days`;
-
   return (
     <form
       id={IDENTITY_AUTH_FORM_ID}
@@ -288,7 +288,7 @@ export const IdentitySpiffeAuthForm = ({
                     >
                       <SelectValue placeholder="Select trust bundle profile" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent position="popper">
                       <SelectItem value={SpiffeTrustBundleProfile.STATIC}>Static</SelectItem>
                       <SelectItem value={SpiffeTrustBundleProfile.HTTPS_WEB_BUNDLE}>
                         HTTPS Web Bundle
@@ -427,50 +427,7 @@ export const IdentitySpiffeAuthForm = ({
                 />
               </>
             )}
-            <Controller
-              control={control}
-              defaultValue="2592000"
-              name="accessTokenTTL"
-              render={({ field, fieldState: { error } }) => (
-                <Field>
-                  <FieldLabel htmlFor="accessTokenTTL">Access Token TTL (seconds)</FieldLabel>
-                  <Input
-                    {...field}
-                    id="accessTokenTTL"
-                    placeholder="2592000"
-                    type="number"
-                    min="1"
-                    step="1"
-                    isError={Boolean(error)}
-                  />
-                  <FieldDescription>{maxDaysHelper}</FieldDescription>
-                  <FieldError>{error?.message}</FieldError>
-                </Field>
-              )}
-            />
-            <Controller
-              control={control}
-              defaultValue="2592000"
-              name="accessTokenMaxTTL"
-              render={({ field, fieldState: { error } }) => (
-                <Field>
-                  <FieldLabel htmlFor="accessTokenMaxTTL">
-                    Access Token Max TTL (seconds)
-                  </FieldLabel>
-                  <Input
-                    {...field}
-                    id="accessTokenMaxTTL"
-                    placeholder="2592000"
-                    type="number"
-                    min="1"
-                    step="1"
-                    isError={Boolean(error)}
-                  />
-                  <FieldDescription>{maxDaysHelper}</FieldDescription>
-                  <FieldError>{error?.message}</FieldError>
-                </Field>
-              )}
-            />
+            <AccessTokenTtlFields control={control} maxAccessTokenTTL={maxAccessTokenTTL} />
             <Controller
               control={control}
               defaultValue="0"
@@ -486,7 +443,7 @@ export const IdentitySpiffeAuthForm = ({
                       <TooltipTrigger asChild>
                         <InfoIcon className="size-3.5 text-muted" />
                       </TooltipTrigger>
-                      <TooltipContent>
+                      <TooltipContent className="max-w-md">
                         The maximum number of times that an access token can be used; leave blank
                         for unlimited uses.
                       </TooltipContent>

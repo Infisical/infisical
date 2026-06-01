@@ -10,7 +10,6 @@ import { BashGlobPatternTooltip } from "@app/components/permissions";
 import {
   Button,
   Field,
-  FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
@@ -26,11 +25,11 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { useOrganization, useSubscription } from "@app/context";
-import { SECONDS_PER_DAY } from "@app/helpers/datetime";
 import {
   accessTokenTtlSchema,
   DEFAULT_TRUSTED_IPS,
   mapTrustedIpsFromServer,
+  superRefineAccessTokenTtl,
   trustedIpsSchema
 } from "@app/helpers/identityAuthSchemas";
 import { useScopeVariant } from "@app/hooks";
@@ -38,44 +37,47 @@ import { useAddIdentityOidcAuth, useUpdateIdentityOidcAuth } from "@app/hooks/ap
 import { useGetIdentityOidcAuth } from "@app/hooks/api/identities/queries";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
+import { AccessTokenTtlFields } from "./shared/AccessTokenTtlFields";
 import { TrustedIpsField } from "./shared/TrustedIpsField";
 import { IDENTITY_AUTH_FORM_ID, IdentityFormTab } from "./types";
 
 const buildSchema = (maxAccessTokenTTL: number) =>
-  z.object({
-    accessTokenTrustedIps: trustedIpsSchema,
-    accessTokenTTL: accessTokenTtlSchema(maxAccessTokenTTL, "Access Token TTL"),
-    accessTokenMaxTTL: accessTokenTtlSchema(maxAccessTokenTTL, "Access Token Max TTL"),
-    accessTokenNumUsesLimit: z.string(),
-    oidcDiscoveryUrl: z
-      .string()
-      .url()
-      .min(1)
-      .refine(
-        (el) => !el.endsWith("/.well-known/openid-configuration"),
-        "Please remove /.well-known/openid-configuration."
-      ),
-    caCert: z.string().trim().default(""),
-    boundIssuer: z.string().min(1),
-    boundAudiences: z.string().optional().default(""),
-    boundClaims: z
-      .array(
-        z.object({
-          key: z.string(),
-          value: z.string()
-        })
-      )
-      .default([]),
-    claimMetadataMapping: z
-      .array(
-        z.object({
-          key: z.string(),
-          value: z.string()
-        })
-      )
-      .default([]),
-    boundSubject: z.string().optional().default("")
-  });
+  z
+    .object({
+      accessTokenTrustedIps: trustedIpsSchema,
+      accessTokenTTL: accessTokenTtlSchema(maxAccessTokenTTL, "Access Token TTL"),
+      accessTokenMaxTTL: accessTokenTtlSchema(maxAccessTokenTTL, "Access Token Max TTL"),
+      accessTokenNumUsesLimit: z.string(),
+      oidcDiscoveryUrl: z
+        .string()
+        .url()
+        .min(1)
+        .refine(
+          (el) => !el.endsWith("/.well-known/openid-configuration"),
+          "Please remove /.well-known/openid-configuration."
+        ),
+      caCert: z.string().trim().default(""),
+      boundIssuer: z.string().min(1),
+      boundAudiences: z.string().optional().default(""),
+      boundClaims: z
+        .array(
+          z.object({
+            key: z.string(),
+            value: z.string()
+          })
+        )
+        .default([]),
+      claimMetadataMapping: z
+        .array(
+          z.object({
+            key: z.string(),
+            value: z.string()
+          })
+        )
+        .default([]),
+      boundSubject: z.string().optional().default("")
+    })
+    .superRefine(superRefineAccessTokenTtl);
 
 export type FormData = z.infer<ReturnType<typeof buildSchema>>;
 
@@ -263,8 +265,6 @@ export const IdentityOidcAuthForm = ({
     reset();
   };
 
-  const maxDaysHelper = `Max: ${Math.floor(maxAccessTokenTTL / SECONDS_PER_DAY)} days`;
-
   return (
     <form
       id={IDENTITY_AUTH_FORM_ID}
@@ -330,7 +330,7 @@ export const IdentityOidcAuthForm = ({
                       <TooltipTrigger asChild>
                         <HelpCircleIcon className="size-3.5 text-muted" />
                       </TooltipTrigger>
-                      <TooltipContent>
+                      <TooltipContent className="max-w-md">
                         <BashGlobPatternTooltip />
                       </TooltipContent>
                     </Tooltip>
@@ -351,7 +351,7 @@ export const IdentityOidcAuthForm = ({
                       <TooltipTrigger asChild>
                         <HelpCircleIcon className="size-3.5 text-muted" />
                       </TooltipTrigger>
-                      <TooltipContent>
+                      <TooltipContent className="max-w-md">
                         <BashGlobPatternTooltip />
                       </TooltipContent>
                     </Tooltip>
@@ -385,7 +385,7 @@ export const IdentityOidcAuthForm = ({
                               <TooltipTrigger asChild>
                                 <HelpCircleIcon className="size-3.5 text-muted" />
                               </TooltipTrigger>
-                              <TooltipContent>
+                              <TooltipContent className="max-w-md">
                                 <BashGlobPatternTooltip />
                               </TooltipContent>
                             </Tooltip>
@@ -452,50 +452,7 @@ export const IdentityOidcAuthForm = ({
               </Button>
             </div>
 
-            <Controller
-              control={control}
-              defaultValue="2592000"
-              name="accessTokenTTL"
-              render={({ field, fieldState: { error } }) => (
-                <Field>
-                  <FieldLabel htmlFor="accessTokenTTL">Access Token TTL (seconds)</FieldLabel>
-                  <Input
-                    {...field}
-                    id="accessTokenTTL"
-                    placeholder="2592000"
-                    type="number"
-                    min="1"
-                    step="1"
-                    isError={Boolean(error)}
-                  />
-                  <FieldDescription>{maxDaysHelper}</FieldDescription>
-                  <FieldError>{error?.message}</FieldError>
-                </Field>
-              )}
-            />
-            <Controller
-              control={control}
-              defaultValue="2592000"
-              name="accessTokenMaxTTL"
-              render={({ field, fieldState: { error } }) => (
-                <Field>
-                  <FieldLabel htmlFor="accessTokenMaxTTL">
-                    Access Token Max TTL (seconds)
-                  </FieldLabel>
-                  <Input
-                    {...field}
-                    id="accessTokenMaxTTL"
-                    placeholder="2592000"
-                    type="number"
-                    min="1"
-                    step="1"
-                    isError={Boolean(error)}
-                  />
-                  <FieldDescription>{maxDaysHelper}</FieldDescription>
-                  <FieldError>{error?.message}</FieldError>
-                </Field>
-              )}
-            />
+            <AccessTokenTtlFields control={control} maxAccessTokenTTL={maxAccessTokenTTL} />
             <Controller
               control={control}
               defaultValue="0"
@@ -511,7 +468,7 @@ export const IdentityOidcAuthForm = ({
                       <TooltipTrigger asChild>
                         <InfoIcon className="size-3.5 text-muted" />
                       </TooltipTrigger>
-                      <TooltipContent>
+                      <TooltipContent className="max-w-md">
                         The maximum number of times that an access token can be used; leave blank
                         for unlimited uses.
                       </TooltipContent>
@@ -569,7 +526,7 @@ export const IdentityOidcAuthForm = ({
                               <TooltipTrigger asChild>
                                 <HelpCircleIcon className="size-3.5 text-muted" />
                               </TooltipTrigger>
-                              <TooltipContent className="text-center">
+                              <TooltipContent className="max-w-md text-center">
                                 <div className="w-[180px]">
                                   <p>Map OIDC token claims to metadata fields</p>
                                   <p className="mt-2 text-sm">Example:</p>

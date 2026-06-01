@@ -23,11 +23,12 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { useOrganization, useSubscription } from "@app/context";
-import { getObjectFromSeconds, SECONDS_PER_DAY } from "@app/helpers/datetime";
+import { getObjectFromSeconds } from "@app/helpers/datetime";
 import {
   accessTokenTtlSchema,
   DEFAULT_TRUSTED_IPS,
   mapTrustedIpsFromServer,
+  superRefineAccessTokenTtl,
   trustedIpsSchema
 } from "@app/helpers/identityAuthSchemas";
 import { useScopeVariant } from "@app/hooks";
@@ -40,6 +41,7 @@ import { UsePopUpState } from "@app/hooks/usePopUp";
 
 import { LockoutTab } from "./lockout/LockoutTab";
 import { superRefineLockout } from "./lockout/super-refine";
+import { AccessTokenTtlFields } from "./shared/AccessTokenTtlFields";
 import { TrustedIpsField } from "./shared/TrustedIpsField";
 import { IDENTITY_AUTH_FORM_ID, IdentityFormTab } from "./types";
 
@@ -69,7 +71,8 @@ const buildSchema = (maxAccessTokenTTL: number) =>
       })
     })
     .required()
-    .superRefine(superRefineLockout);
+    .superRefine(superRefineLockout)
+    .superRefine(superRefineAccessTokenTtl);
 
 export type FormData = z.infer<ReturnType<typeof buildSchema>>;
 
@@ -253,8 +256,6 @@ export const IdentityUniversalAuthForm = ({
     reset();
   };
 
-  const maxDaysHelper = `Max: ${Math.floor(maxAccessTokenTTL / SECONDS_PER_DAY)} days`;
-
   return (
     <form
       id={IDENTITY_AUTH_FORM_ID}
@@ -293,52 +294,7 @@ export const IdentityUniversalAuthForm = ({
                 When Access Token Period is set, TTL and Max TTL are ignored.
               </div>
             ) : (
-              <>
-                <Controller
-                  control={control}
-                  defaultValue="2592000"
-                  name="accessTokenTTL"
-                  render={({ field, fieldState: { error } }) => (
-                    <Field>
-                      <FieldLabel htmlFor="accessTokenTTL">Access Token TTL (seconds)</FieldLabel>
-                      <Input
-                        {...field}
-                        id="accessTokenTTL"
-                        placeholder="2592000"
-                        type="number"
-                        min="1"
-                        step="1"
-                        isError={Boolean(error)}
-                      />
-                      <FieldDescription>{maxDaysHelper}</FieldDescription>
-                      <FieldError>{error?.message}</FieldError>
-                    </Field>
-                  )}
-                />
-                <Controller
-                  control={control}
-                  defaultValue="2592000"
-                  name="accessTokenMaxTTL"
-                  render={({ field, fieldState: { error } }) => (
-                    <Field>
-                      <FieldLabel htmlFor="accessTokenMaxTTL">
-                        Access Token Max TTL (seconds)
-                      </FieldLabel>
-                      <Input
-                        {...field}
-                        id="accessTokenMaxTTL"
-                        placeholder="2592000"
-                        type="number"
-                        min="1"
-                        step="1"
-                        isError={Boolean(error)}
-                      />
-                      <FieldDescription>{maxDaysHelper}</FieldDescription>
-                      <FieldError>{error?.message}</FieldError>
-                    </Field>
-                  )}
-                />
-              </>
+              <AccessTokenTtlFields control={control} maxAccessTokenTTL={maxAccessTokenTTL} />
             )}
             <Controller
               control={control}
@@ -355,7 +311,7 @@ export const IdentityUniversalAuthForm = ({
                       <TooltipTrigger asChild>
                         <InfoIcon className="size-3.5 text-muted" />
                       </TooltipTrigger>
-                      <TooltipContent>
+                      <TooltipContent className="max-w-md">
                         The maximum number of times that an access token can be used; leave blank
                         for unlimited uses.
                       </TooltipContent>

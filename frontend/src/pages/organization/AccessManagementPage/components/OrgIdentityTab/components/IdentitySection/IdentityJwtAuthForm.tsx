@@ -10,7 +10,6 @@ import { BashGlobPatternTooltip } from "@app/components/permissions";
 import {
   Button,
   Field,
-  FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
@@ -31,11 +30,11 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { useOrganization, useSubscription } from "@app/context";
-import { SECONDS_PER_DAY } from "@app/helpers/datetime";
 import {
   accessTokenTtlSchema,
   DEFAULT_TRUSTED_IPS,
   mapTrustedIpsFromServer,
+  superRefineAccessTokenTtl,
   trustedIpsSchema
 } from "@app/helpers/identityAuthSchemas";
 import { useScopeVariant } from "@app/hooks";
@@ -44,6 +43,7 @@ import { IdentityJwtConfigurationType } from "@app/hooks/api/identities/enums";
 import { useGetIdentityJwtAuth } from "@app/hooks/api/identities/queries";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
+import { AccessTokenTtlFields } from "./shared/AccessTokenTtlFields";
 import { TrustedIpsField } from "./shared/TrustedIpsField";
 import { IDENTITY_AUTH_FORM_ID, IdentityFormTab } from "./types";
 
@@ -64,34 +64,36 @@ const buildSchema = (maxAccessTokenTTL: number) => {
     boundSubject: z.string().optional().default("")
   });
 
-  return z.discriminatedUnion("configurationType", [
-    z
-      .object({
-        configurationType: z.literal(IdentityJwtConfigurationType.JWKS),
-        jwksUrl: z.string().trim().url(),
-        jwksCaCert: z.string().trim().default(""),
-        publicKeys: z
-          .object({
-            value: z.string()
-          })
-          .array()
-          .optional()
-      })
-      .merge(common),
-    z
-      .object({
-        configurationType: z.literal(IdentityJwtConfigurationType.STATIC),
-        jwksUrl: z.string().trim().optional(),
-        jwksCaCert: z.string().trim().optional().default(""),
-        publicKeys: z
-          .object({
-            value: z.string().min(1)
-          })
-          .array()
-          .min(1)
-      })
-      .merge(common)
-  ]);
+  return z
+    .discriminatedUnion("configurationType", [
+      z
+        .object({
+          configurationType: z.literal(IdentityJwtConfigurationType.JWKS),
+          jwksUrl: z.string().trim().url(),
+          jwksCaCert: z.string().trim().default(""),
+          publicKeys: z
+            .object({
+              value: z.string()
+            })
+            .array()
+            .optional()
+        })
+        .merge(common),
+      z
+        .object({
+          configurationType: z.literal(IdentityJwtConfigurationType.STATIC),
+          jwksUrl: z.string().trim().optional(),
+          jwksCaCert: z.string().trim().optional().default(""),
+          publicKeys: z
+            .object({
+              value: z.string().min(1)
+            })
+            .array()
+            .min(1)
+        })
+        .merge(common)
+    ])
+    .superRefine(superRefineAccessTokenTtl);
 };
 
 export type FormData = z.infer<ReturnType<typeof buildSchema>>;
@@ -281,8 +283,6 @@ export const IdentityJwtAuthForm = ({
     reset();
   };
 
-  const maxDaysHelper = `Max: ${Math.floor(maxAccessTokenTTL / SECONDS_PER_DAY)} days`;
-
   return (
     <form
       id={IDENTITY_AUTH_FORM_ID}
@@ -331,7 +331,7 @@ export const IdentityJwtAuthForm = ({
                     >
                       <SelectValue placeholder="Select configuration type" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent position="popper">
                       <SelectItem value={IdentityJwtConfigurationType.JWKS} key="jwks">
                         JWKS
                       </SelectItem>
@@ -393,7 +393,7 @@ export const IdentityJwtAuthForm = ({
                               <TooltipTrigger asChild>
                                 <HelpCircleIcon className="size-3.5 text-muted" />
                               </TooltipTrigger>
-                              <TooltipContent className="text-center">
+                              <TooltipContent className="max-w-md text-center">
                                 This field only accepts PEM-formatted public keys
                               </TooltipContent>
                             </Tooltip>
@@ -467,7 +467,7 @@ export const IdentityJwtAuthForm = ({
                       <TooltipTrigger asChild>
                         <HelpCircleIcon className="size-3.5 text-muted" />
                       </TooltipTrigger>
-                      <TooltipContent>
+                      <TooltipContent className="max-w-md">
                         <BashGlobPatternTooltip />
                       </TooltipContent>
                     </Tooltip>
@@ -488,7 +488,7 @@ export const IdentityJwtAuthForm = ({
                       <TooltipTrigger asChild>
                         <HelpCircleIcon className="size-3.5 text-muted" />
                       </TooltipTrigger>
-                      <TooltipContent>
+                      <TooltipContent className="max-w-md">
                         <BashGlobPatternTooltip />
                       </TooltipContent>
                     </Tooltip>
@@ -522,7 +522,7 @@ export const IdentityJwtAuthForm = ({
                               <TooltipTrigger asChild>
                                 <HelpCircleIcon className="size-3.5 text-muted" />
                               </TooltipTrigger>
-                              <TooltipContent>
+                              <TooltipContent className="max-w-md">
                                 <BashGlobPatternTooltip />
                               </TooltipContent>
                             </Tooltip>
@@ -588,50 +588,7 @@ export const IdentityJwtAuthForm = ({
                 Add Claims
               </Button>
             </div>
-            <Controller
-              control={control}
-              defaultValue="2592000"
-              name="accessTokenTTL"
-              render={({ field, fieldState: { error } }) => (
-                <Field>
-                  <FieldLabel htmlFor="accessTokenTTL">Access Token TTL (seconds)</FieldLabel>
-                  <Input
-                    {...field}
-                    id="accessTokenTTL"
-                    placeholder="2592000"
-                    type="number"
-                    min="1"
-                    step="1"
-                    isError={Boolean(error)}
-                  />
-                  <FieldDescription>{maxDaysHelper}</FieldDescription>
-                  <FieldError>{error?.message}</FieldError>
-                </Field>
-              )}
-            />
-            <Controller
-              control={control}
-              defaultValue="2592000"
-              name="accessTokenMaxTTL"
-              render={({ field, fieldState: { error } }) => (
-                <Field>
-                  <FieldLabel htmlFor="accessTokenMaxTTL">
-                    Access Token Max TTL (seconds)
-                  </FieldLabel>
-                  <Input
-                    {...field}
-                    id="accessTokenMaxTTL"
-                    placeholder="2592000"
-                    type="number"
-                    min="1"
-                    step="1"
-                    isError={Boolean(error)}
-                  />
-                  <FieldDescription>{maxDaysHelper}</FieldDescription>
-                  <FieldError>{error?.message}</FieldError>
-                </Field>
-              )}
-            />
+            <AccessTokenTtlFields control={control} maxAccessTokenTTL={maxAccessTokenTTL} />
             <Controller
               control={control}
               defaultValue="0"
@@ -647,7 +604,7 @@ export const IdentityJwtAuthForm = ({
                       <TooltipTrigger asChild>
                         <InfoIcon className="size-3.5 text-muted" />
                       </TooltipTrigger>
-                      <TooltipContent>
+                      <TooltipContent className="max-w-md">
                         The maximum number of times that an access token can be used; leave blank
                         for unlimited uses.
                       </TooltipContent>

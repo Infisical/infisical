@@ -76,7 +76,7 @@ export const TrustedIpsField = ({
                         <TooltipTrigger asChild>
                           <InfoIcon className="size-3.5 text-muted" />
                         </TooltipTrigger>
-                        <TooltipContent>{tooltip}</TooltipContent>
+                        <TooltipContent className="max-w-md">{tooltip}</TooltipContent>
                       </Tooltip>
                     )}
                   </FieldLabel>
@@ -108,7 +108,7 @@ export const TrustedIpsField = ({
                 </IconButton>
               </span>
             </TooltipTrigger>
-            {isLast && <TooltipContent>At least one IP is required</TooltipContent>}
+            {isLast && <TooltipContent className="max-w-md">At least one IP is required</TooltipContent>}
           </Tooltip>
         </div>
       ))}

@@ -8,7 +8,6 @@ import { z } from "zod";
 import { createNotification } from "@app/components/notifications";
 import {
   Field,
-  FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
@@ -27,11 +26,11 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { useOrganization, useSubscription } from "@app/context";
-import { SECONDS_PER_DAY } from "@app/helpers/datetime";
 import {
   accessTokenTtlSchema,
   DEFAULT_TRUSTED_IPS,
   mapTrustedIpsFromServer,
+  superRefineAccessTokenTtl,
   trustedIpsSchema
 } from "@app/helpers/identityAuthSchemas";
 import { useScopeVariant } from "@app/hooks";
@@ -42,6 +41,7 @@ import {
 } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
+import { AccessTokenTtlFields } from "./shared/AccessTokenTtlFields";
 import { TrustedIpsField } from "./shared/TrustedIpsField";
 import { IDENTITY_AUTH_FORM_ID, IdentityFormTab } from "./types";
 
@@ -57,7 +57,8 @@ const buildSchema = (maxAccessTokenTTL: number) =>
       accessTokenNumUsesLimit: z.string(),
       accessTokenTrustedIps: trustedIpsSchema
     })
-    .required();
+    .required()
+    .superRefine(superRefineAccessTokenTtl);
 
 export type FormData = z.infer<ReturnType<typeof buildSchema>>;
 
@@ -204,8 +205,6 @@ export const IdentityGcpAuthForm = ({
     reset();
   };
 
-  const maxDaysHelper = `Max: ${Math.floor(maxAccessTokenTTL / SECONDS_PER_DAY)} days`;
-
   return (
     <form
       id={IDENTITY_AUTH_FORM_ID}
@@ -234,7 +233,7 @@ export const IdentityGcpAuthForm = ({
                     <SelectTrigger id="gcp-auth-type" className="w-full" isError={Boolean(error)}>
                       <SelectValue placeholder="Select type" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent position="popper">
                       <SelectItem value="gce" key="gce">
                         GCP ID Token Auth (Recommended)
                       </SelectItem>
@@ -303,50 +302,7 @@ export const IdentityGcpAuthForm = ({
                 )}
               />
             )}
-            <Controller
-              control={control}
-              defaultValue="2592000"
-              name="accessTokenTTL"
-              render={({ field, fieldState: { error } }) => (
-                <Field>
-                  <FieldLabel htmlFor="accessTokenTTL">Access Token TTL (seconds)</FieldLabel>
-                  <Input
-                    {...field}
-                    id="accessTokenTTL"
-                    placeholder="2592000"
-                    type="number"
-                    min="1"
-                    step="1"
-                    isError={Boolean(error)}
-                  />
-                  <FieldDescription>{maxDaysHelper}</FieldDescription>
-                  <FieldError>{error?.message}</FieldError>
-                </Field>
-              )}
-            />
-            <Controller
-              control={control}
-              defaultValue="2592000"
-              name="accessTokenMaxTTL"
-              render={({ field, fieldState: { error } }) => (
-                <Field>
-                  <FieldLabel htmlFor="accessTokenMaxTTL">
-                    Access Token Max TTL (seconds)
-                  </FieldLabel>
-                  <Input
-                    {...field}
-                    id="accessTokenMaxTTL"
-                    placeholder="2592000"
-                    type="number"
-                    min="1"
-                    step="1"
-                    isError={Boolean(error)}
-                  />
-                  <FieldDescription>{maxDaysHelper}</FieldDescription>
-                  <FieldError>{error?.message}</FieldError>
-                </Field>
-              )}
-            />
+            <AccessTokenTtlFields control={control} maxAccessTokenTTL={maxAccessTokenTTL} />
             <Controller
               control={control}
               defaultValue="0"
@@ -362,7 +318,7 @@ export const IdentityGcpAuthForm = ({
                       <TooltipTrigger asChild>
                         <InfoIcon className="size-3.5 text-muted" />
                       </TooltipTrigger>
-                      <TooltipContent>
+                      <TooltipContent className="max-w-md">
                         The maximum number of times that an access token can be used; leave blank
                         for unlimited uses.
                       </TooltipContent>

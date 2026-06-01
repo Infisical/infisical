@@ -10,7 +10,6 @@ import { OrgPermissionCan } from "@app/components/permissions";
 import {
   Button,
   Field,
-  FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
@@ -36,11 +35,11 @@ import {
   OrgGatewayPermissionActions,
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
-import { SECONDS_PER_DAY } from "@app/helpers/datetime";
 import {
   accessTokenTtlSchema,
   DEFAULT_TRUSTED_IPS,
   mapTrustedIpsFromServer,
+  superRefineAccessTokenTtl,
   trustedIpsSchema
 } from "@app/helpers/identityAuthSchemas";
 import { useScopeVariant } from "@app/hooks";
@@ -59,6 +58,7 @@ import { VaultKubernetesAuthRole } from "@app/hooks/api/migration/types";
 import { useCanUseOrgAppConnectionImport } from "@app/hooks/useCanUseAppConnectionImport";
 import { usePopUp, UsePopUpState } from "@app/hooks/usePopUp";
 
+import { AccessTokenTtlFields } from "./shared/AccessTokenTtlFields";
 import { TrustedIpsField } from "./shared/TrustedIpsField";
 import { IDENTITY_AUTH_FORM_ID, IdentityFormTab } from "./types";
 import { VaultKubernetesAuthImportModal } from "./VaultKubernetesAuthImportModal";
@@ -132,7 +132,8 @@ const buildSchema = (maxAccessTokenTTL: number) =>
             "TLS certificate verification cannot be disabled while a CA certificate is provided. Either remove the CA certificate or enable verification."
         });
       }
-    });
+    })
+    .superRefine(superRefineAccessTokenTtl);
 
 export type FormData = z.infer<ReturnType<typeof buildSchema>>;
 
@@ -429,7 +430,6 @@ export const IdentityKubernetesAuthForm = ({
   };
 
   const tokenReviewMode = watch("tokenReviewMode");
-  const maxDaysHelper = `Max: ${Math.floor(maxAccessTokenTTL / SECONDS_PER_DAY)} days`;
 
   return (
     <form
@@ -484,7 +484,7 @@ export const IdentityKubernetesAuthForm = ({
                     </span>
                   </TooltipTrigger>
                   {!canUseAppConnectionImport && (
-                    <TooltipContent>
+                    <TooltipContent className="max-w-md">
                       You don&apos;t have permission to import configurations from HashiCorp Vault
                     </TooltipContent>
                   )}
@@ -532,7 +532,7 @@ export const IdentityKubernetesAuthForm = ({
                             </div>
                           </TooltipTrigger>
                           {!isAllowed && (
-                            <TooltipContent>
+                            <TooltipContent className="max-w-md">
                               Restricted access. You don&apos;t have permission to attach gateways
                               to resources.
                             </TooltipContent>
@@ -572,7 +572,7 @@ export const IdentityKubernetesAuthForm = ({
                     <SelectTrigger id="tokenReviewMode" isError={Boolean(error)}>
                       <SelectValue placeholder="Select review mode" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent position="popper">
                       <SelectItem value="gateway">Gateway as Reviewer</SelectItem>
                       <SelectItem value="api">Manual Token Reviewer JWT (API)</SelectItem>
                     </SelectContent>
@@ -597,7 +597,7 @@ export const IdentityKubernetesAuthForm = ({
                         <TooltipTrigger asChild>
                           <InfoIcon className="size-3.5 text-muted" />
                         </TooltipTrigger>
-                        <TooltipContent>
+                        <TooltipContent className="max-w-md">
                           The host string, host:port pair, or URL to the base of the Kubernetes API
                           server. This can usually be obtained by running &apos;kubectl
                           cluster-info&apos;
@@ -671,7 +671,7 @@ export const IdentityKubernetesAuthForm = ({
                       <TooltipTrigger asChild>
                         <InfoIcon className="size-3.5 text-muted" />
                       </TooltipTrigger>
-                      <TooltipContent>
+                      <TooltipContent className="max-w-md">
                         <div className="flex flex-col gap-1">
                           <p>
                             A comma-separated list of trusted namespaces that service accounts must
@@ -714,7 +714,7 @@ export const IdentityKubernetesAuthForm = ({
                       <TooltipTrigger asChild>
                         <InfoIcon className="size-3.5 text-muted" />
                       </TooltipTrigger>
-                      <TooltipContent>
+                      <TooltipContent className="max-w-md">
                         <div className="flex flex-col gap-1">
                           <p>
                             An optional comma-separated list of trusted service account names that
@@ -745,73 +745,7 @@ export const IdentityKubernetesAuthForm = ({
                 </Field>
               )}
             />
-            <Controller
-              control={control}
-              defaultValue="2592000"
-              name="accessTokenTTL"
-              render={({ field, fieldState: { error } }) => (
-                <Field>
-                  <FieldLabel htmlFor="accessTokenTTL" className="inline-flex items-center gap-1.5">
-                    Access Token TTL (seconds)
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <InfoIcon className="size-3.5 text-muted" />
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        The lifetime for an acccess token in seconds. This value will be referenced
-                        at renewal time.
-                      </TooltipContent>
-                    </Tooltip>
-                  </FieldLabel>
-                  <Input
-                    {...field}
-                    id="accessTokenTTL"
-                    placeholder="2592000"
-                    type="number"
-                    min="1"
-                    step="1"
-                    isError={Boolean(error)}
-                  />
-                  <FieldDescription>{maxDaysHelper}</FieldDescription>
-                  <FieldError>{error?.message}</FieldError>
-                </Field>
-              )}
-            />
-            <Controller
-              control={control}
-              defaultValue="2592000"
-              name="accessTokenMaxTTL"
-              render={({ field, fieldState: { error } }) => (
-                <Field>
-                  <FieldLabel
-                    htmlFor="accessTokenMaxTTL"
-                    className="inline-flex items-center gap-1.5"
-                  >
-                    Access Token Max TTL (seconds)
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <InfoIcon className="size-3.5 text-muted" />
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        The maximum lifetime for an access token in seconds. This value will be
-                        referenced at renewal time.
-                      </TooltipContent>
-                    </Tooltip>
-                  </FieldLabel>
-                  <Input
-                    {...field}
-                    id="accessTokenMaxTTL"
-                    placeholder="2592000"
-                    type="number"
-                    min="1"
-                    step="1"
-                    isError={Boolean(error)}
-                  />
-                  <FieldDescription>{maxDaysHelper}</FieldDescription>
-                  <FieldError>{error?.message}</FieldError>
-                </Field>
-              )}
-            />
+            <AccessTokenTtlFields control={control} maxAccessTokenTTL={maxAccessTokenTTL} />
             <Controller
               control={control}
               defaultValue="0"
@@ -827,7 +761,7 @@ export const IdentityKubernetesAuthForm = ({
                       <TooltipTrigger asChild>
                         <InfoIcon className="size-3.5 text-muted" />
                       </TooltipTrigger>
-                      <TooltipContent>
+                      <TooltipContent className="max-w-md">
                         The maximum number of times that an access token can be used; leave blank
                         for unlimited uses.
                       </TooltipContent>
@@ -865,7 +799,7 @@ export const IdentityKubernetesAuthForm = ({
                       <TooltipTrigger asChild>
                         <InfoIcon className="size-3.5 text-muted" />
                       </TooltipTrigger>
-                      <TooltipContent>
+                      <TooltipContent className="max-w-md">
                         An optional audience claim that the service account JWT token must have to
                         authenticate with Infisical. Leave empty to allow any audience claim.
                       </TooltipContent>

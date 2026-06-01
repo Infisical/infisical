@@ -82,7 +82,7 @@ export const LockoutTab = ({
                     <TooltipTrigger asChild>
                       <InfoIcon className="size-3.5 text-muted" />
                     </TooltipTrigger>
-                    <TooltipContent>
+                    <TooltipContent className="max-w-md">
                       The amount of times login must fail before locking the identity auth method
                     </TooltipContent>
                   </Tooltip>
@@ -116,7 +116,7 @@ export const LockoutTab = ({
                       <TooltipTrigger asChild>
                         <InfoIcon className="size-3.5 text-muted" />
                       </TooltipTrigger>
-                      <TooltipContent>
+                      <TooltipContent className="max-w-md">
                         How long an identity auth method lockout lasts
                       </TooltipContent>
                     </Tooltip>
@@ -150,7 +150,7 @@ export const LockoutTab = ({
                   <SelectTrigger id="lockoutDurationUnit" isError={Boolean(error)}>
                     <SelectValue placeholder="Select unit" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent position="popper">
                     <SelectItem value="s">Seconds</SelectItem>
                     <SelectItem value="m">Minutes</SelectItem>
                     <SelectItem value="h">Hours</SelectItem>
@@ -178,7 +178,7 @@ export const LockoutTab = ({
                       <TooltipTrigger asChild>
                         <InfoIcon className="size-3.5 text-muted" />
                       </TooltipTrigger>
-                      <TooltipContent>
+                      <TooltipContent className="max-w-md">
                         How long to wait from the most recent failed login until resetting the
                         lockout counter
                       </TooltipContent>
@@ -217,7 +217,7 @@ export const LockoutTab = ({
                   >
                     <SelectValue placeholder="Select unit" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent position="popper">
                     <SelectItem value="s">Seconds</SelectItem>
                     <SelectItem value="m">Minutes</SelectItem>
                     <SelectItem value="h">Hours</SelectItem>

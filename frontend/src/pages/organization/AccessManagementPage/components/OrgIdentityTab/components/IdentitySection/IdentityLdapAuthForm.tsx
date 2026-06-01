@@ -10,7 +10,6 @@ import { createNotification } from "@app/components/notifications";
 import {
   Button,
   Field,
-  FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
@@ -35,11 +34,12 @@ import {
   OrgPermissionMachineIdentityAuthTemplateActions,
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
-import { getObjectFromSeconds, SECONDS_PER_DAY } from "@app/helpers/datetime";
+import { getObjectFromSeconds } from "@app/helpers/datetime";
 import {
   accessTokenTtlSchema,
   DEFAULT_TRUSTED_IPS,
   mapTrustedIpsFromServer,
+  superRefineAccessTokenTtl,
   trustedIpsSchema
 } from "@app/helpers/identityAuthSchemas";
 import { useScopeVariant } from "@app/hooks";
@@ -54,6 +54,7 @@ import { UsePopUpState } from "@app/hooks/usePopUp";
 
 import { LockoutTab } from "./lockout/LockoutTab";
 import { superRefineLockout } from "./lockout/super-refine";
+import { AccessTokenTtlFields } from "./shared/AccessTokenTtlFields";
 import { TrustedIpsField } from "./shared/TrustedIpsField";
 import { IDENTITY_AUTH_FORM_ID, IdentityFormTab } from "./types";
 
@@ -149,7 +150,8 @@ const buildSchema = (maxAccessTokenTTL: number) =>
           });
         }
       }
-    });
+    })
+    .superRefine(superRefineAccessTokenTtl);
 
 export type FormData = z.infer<ReturnType<typeof buildSchema>>;
 
@@ -401,7 +403,6 @@ export const IdentityLdapAuthForm = ({
   const templateTooltipText =
     scope === "template" ? "This field cannot be modified when using a template" : null;
   const templateDisabledClass = scope === "template" ? "opacity-55" : "";
-  const maxDaysHelper = `Max: ${Math.floor(maxAccessTokenTTL / SECONDS_PER_DAY)} days`;
 
   return (
     <form
@@ -472,7 +473,7 @@ export const IdentityLdapAuthForm = ({
                       <SelectTrigger id="ldap-scope" className="w-full" isError={Boolean(error)}>
                         <SelectValue placeholder="Select configuration type" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent position="popper">
                         <SelectItem value="template">Use Template</SelectItem>
                         <SelectItem value="custom">Custom Configuration</SelectItem>
                       </SelectContent>
@@ -506,7 +507,7 @@ export const IdentityLdapAuthForm = ({
                       <SelectTrigger id="ldap-template" className="w-full" isError={Boolean(error)}>
                         <SelectValue placeholder="Select a template" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent position="popper">
                         {templates?.map((template) => {
                           return (
                             <SelectItem value={template.id} key={template.id}>
@@ -534,7 +535,7 @@ export const IdentityLdapAuthForm = ({
                         <TooltipTrigger asChild>
                           <InfoIcon className="size-3.5 text-muted" />
                         </TooltipTrigger>
-                        <TooltipContent>{templateTooltipText}</TooltipContent>
+                        <TooltipContent className="max-w-md">{templateTooltipText}</TooltipContent>
                       </Tooltip>
                     )}
                   </FieldLabel>
@@ -562,7 +563,7 @@ export const IdentityLdapAuthForm = ({
                         <TooltipTrigger asChild>
                           <InfoIcon className="size-3.5 text-muted" />
                         </TooltipTrigger>
-                        <TooltipContent>{templateTooltipText}</TooltipContent>
+                        <TooltipContent className="max-w-md">{templateTooltipText}</TooltipContent>
                       </Tooltip>
                     )}
                   </FieldLabel>
@@ -589,7 +590,7 @@ export const IdentityLdapAuthForm = ({
                         <TooltipTrigger asChild>
                           <InfoIcon className="size-3.5 text-muted" />
                         </TooltipTrigger>
-                        <TooltipContent>{templateTooltipText}</TooltipContent>
+                        <TooltipContent className="max-w-md">{templateTooltipText}</TooltipContent>
                       </Tooltip>
                     )}
                   </FieldLabel>
@@ -617,7 +618,7 @@ export const IdentityLdapAuthForm = ({
                         <TooltipTrigger asChild>
                           <InfoIcon className="size-3.5 text-muted" />
                         </TooltipTrigger>
-                        <TooltipContent>{templateTooltipText}</TooltipContent>
+                        <TooltipContent className="max-w-md">{templateTooltipText}</TooltipContent>
                       </Tooltip>
                     )}
                   </FieldLabel>
@@ -668,7 +669,7 @@ export const IdentityLdapAuthForm = ({
                               <TooltipTrigger asChild>
                                 <HelpCircleIcon className="size-3.5 text-muted" />
                               </TooltipTrigger>
-                              <TooltipContent className="max-w-[420px]">
+                              <TooltipContent className="max-w-md">
                                 <div className="max-h-[300px] space-y-4 overflow-y-auto text-sm">
                                   <p>
                                     Specify the fields that the user must contain in their LDAP
@@ -759,71 +760,7 @@ export const IdentityLdapAuthForm = ({
               </Button>
             </div>
 
-            <Controller
-              control={control}
-              name="accessTokenTTL"
-              render={({ field, fieldState: { error } }) => (
-                <Field>
-                  <FieldLabel htmlFor="accessTokenTTL" className="inline-flex items-center gap-1.5">
-                    Access Token TTL (seconds)
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <InfoIcon className="size-3.5 text-muted" />
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        The lifetime for an acccess token in seconds. This value will be referenced
-                        at renewal time.
-                      </TooltipContent>
-                    </Tooltip>
-                  </FieldLabel>
-                  <Input
-                    {...field}
-                    id="accessTokenTTL"
-                    placeholder="2592000"
-                    type="number"
-                    min="1"
-                    step="1"
-                    isError={Boolean(error)}
-                  />
-                  <FieldDescription>{maxDaysHelper}</FieldDescription>
-                  <FieldError>{error?.message}</FieldError>
-                </Field>
-              )}
-            />
-            <Controller
-              control={control}
-              name="accessTokenMaxTTL"
-              render={({ field, fieldState: { error } }) => (
-                <Field>
-                  <FieldLabel
-                    htmlFor="accessTokenMaxTTL"
-                    className="inline-flex items-center gap-1.5"
-                  >
-                    Access Token Max TTL (seconds)
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <InfoIcon className="size-3.5 text-muted" />
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        The maximum lifetime for an access token in seconds. This value will be
-                        referenced at renewal time.
-                      </TooltipContent>
-                    </Tooltip>
-                  </FieldLabel>
-                  <Input
-                    {...field}
-                    id="accessTokenMaxTTL"
-                    placeholder="2592000"
-                    type="number"
-                    min="1"
-                    step="1"
-                    isError={Boolean(error)}
-                  />
-                  <FieldDescription>{maxDaysHelper}</FieldDescription>
-                  <FieldError>{error?.message}</FieldError>
-                </Field>
-              )}
-            />
+            <AccessTokenTtlFields control={control} maxAccessTokenTTL={maxAccessTokenTTL} />
             <Controller
               control={control}
               name="accessTokenNumUsesLimit"
@@ -838,7 +775,7 @@ export const IdentityLdapAuthForm = ({
                       <TooltipTrigger asChild>
                         <InfoIcon className="size-3.5 text-muted" />
                       </TooltipTrigger>
-                      <TooltipContent>
+                      <TooltipContent className="max-w-md">
                         The maximum number of times that an access token can be used; leave blank
                         for unlimited uses.
                       </TooltipContent>
@@ -884,7 +821,7 @@ export const IdentityLdapAuthForm = ({
                       <TooltipTrigger asChild>
                         <InfoIcon className="size-3.5 text-muted" />
                       </TooltipTrigger>
-                      <TooltipContent>
+                      <TooltipContent className="max-w-md">
                         {templateTooltipText ||
                           "An optional PEM-encoded CA cert for the LDAP server. This is used by the TLS client for secure communication with the LDAP server."}
                       </TooltipContent>

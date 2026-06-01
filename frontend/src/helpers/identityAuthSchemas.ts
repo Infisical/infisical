@@ -17,6 +17,24 @@ export const accessTokenTtlSchema = (maxTTL: number, label: string) =>
     message: `${label} cannot exceed ${Math.floor(maxTTL / SECONDS_PER_DAY)} days`
   });
 
+// Cross-field check mirroring the backend rule: a max TTL of 0 means "no maximum",
+// so the TTL is only constrained when a positive max TTL is set.
+export const superRefineAccessTokenTtl = (
+  data: { accessTokenTTL?: string; accessTokenMaxTTL?: string },
+  ctx: z.RefinementCtx
+) => {
+  const ttl = Number(data.accessTokenTTL);
+  const maxTtl = Number(data.accessTokenMaxTTL);
+
+  if (!Number.isNaN(ttl) && !Number.isNaN(maxTtl) && maxTtl > 0 && ttl > maxTtl) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Access Token TTL cannot be greater than Access Token Max TTL",
+      path: ["accessTokenTTL"]
+    });
+  }
+};
+
 // Trusted-IP constraint fields shared by every identity auth method form
 // (access token trusted IPs, plus client secret trusted IPs for Universal Auth).
 export const trustedIpsSchema = z
