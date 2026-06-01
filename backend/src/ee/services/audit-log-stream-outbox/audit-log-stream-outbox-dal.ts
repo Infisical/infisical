@@ -125,7 +125,7 @@ export const auditLogStreamOutboxDALFactory = (db: TDbClient) => {
           streamId: row.streamId,
           orgId: row.orgId,
           payload: JSON.stringify(row.payload),
-          attempts: row.attempts,
+          attempts: row.attempts + 1,
           lastError: errorMessage,
           originalCreatedAt: row.createdAt
         }));

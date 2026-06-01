@@ -47,9 +47,17 @@ export const CustomProviderAuditLogStreamForm = ({ auditLogStream, onSubmit }: P
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
-    defaultValues: auditLogStream ?? {
-      provider: LogProvider.Custom
-    }
+    defaultValues: auditLogStream
+      ? {
+          ...auditLogStream,
+          // Any payload missing streamMode (legacy stream, partial cache) resolves to
+          // Batch — the system default — so the switch reflects the true mode rather
+          // than rendering unchecked.
+          streamMode: auditLogStream.streamMode ?? StreamMode.Batch
+        }
+      : {
+          provider: LogProvider.Custom
+        }
   });
 
   const {
