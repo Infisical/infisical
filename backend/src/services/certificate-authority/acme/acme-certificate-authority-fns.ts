@@ -59,6 +59,8 @@ import { azureDnsDeleteTxtRecord, azureDnsInsertTxtRecord } from "./dns-provider
 import { cloudflareDeleteTxtRecord, cloudflareInsertTxtRecord } from "./dns-providers/cloudflare";
 import { dnsMadeEasyDeleteTxtRecord, dnsMadeEasyInsertTxtRecord } from "./dns-providers/dns-made-easy";
 
+const UNCHANGED_CREDENTIAL_SENTINEL = "__INFISICAL_UNCHANGED__";
+
 const validateDnsResolver = (resolver: string): void => {
   const appCfg = getConfig();
 
@@ -134,7 +136,7 @@ type TAcmeCertificateAuthorityFnsDeps = {
     TCertificateAuthorityDALFactory,
     "create" | "transaction" | "findByIdWithAssociatedCa" | "updateById" | "findWithAssociatedCa" | "findById"
   >;
-  externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "create" | "update">;
+  externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "create" | "update" | "findOne">;
   certificateDAL: Pick<TCertificateDALFactory, "create" | "transaction" | "updateById">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
@@ -837,6 +839,15 @@ export const AcmeCertificateAuthorityFns = ({
           actor
         );
 
+        let resolvedEabHmacKey = eabHmacKey;
+        if (eabHmacKey === UNCHANGED_CREDENTIAL_SENTINEL || eabHmacKey === undefined) {
+          const existingExternalCa = await externalCertificateAuthorityDAL.findOne({ caId: id, type: CaType.ACME }, tx);
+          const existingConfig = existingExternalCa?.configuration as DBConfigurationColumn | undefined;
+          resolvedEabHmacKey = existingConfig?.eabHmacKey;
+        } else if (eabHmacKey === "") {
+          resolvedEabHmacKey = undefined;
+        }
+
         await externalCertificateAuthorityDAL.update(
           {
             caId: id,
@@ -850,7 +861,7 @@ export const AcmeCertificateAuthorityFns = ({
               dnsProvider: dnsProviderConfig.provider,
               hostedZoneId: dnsProviderConfig.hostedZoneId,
               eabKid,
-              eabHmacKey,
+              eabHmacKey: resolvedEabHmacKey,
               dnsResolver
             }
           },

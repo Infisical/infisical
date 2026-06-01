@@ -2,9 +2,15 @@ package license
 
 import (
 	"context"
+	"crypto"
+	"crypto/rsa"
+	"crypto/sha256"
+	"crypto/x509"
 	"database/sql"
+	_ "embed"
 	"encoding/base64"
 	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -16,6 +22,9 @@ import (
 	"github.com/infisical/api/internal/config"
 	"github.com/infisical/api/internal/database/pg"
 )
+
+//go:embed keys/license_public_key.pem
+var licensePublicKeyPEM []byte
 
 const (
 	cloudLoginPath  = "/api/auth/v1/license-server-login"
@@ -176,19 +185,82 @@ func isOfflineKey(key string) bool {
 	return contents.Signature != "" && len(contents.License) > 0
 }
 
-// loadOfflineLicense decodes a base64 offline license, checks expiration, and loads features.
+// verifySignatureWithKey verifies an RSA-SHA256 signature using the provided public key.
+func verifySignatureWithKey(data []byte, signatureBase64 string, pubKey *rsa.PublicKey) error {
+	signature, err := base64.StdEncoding.DecodeString(signatureBase64)
+	if err != nil {
+		return fmt.Errorf("decoding signature: %w", err)
+	}
+
+	hash := sha256.Sum256(data)
+
+	if err := rsa.VerifyPKCS1v15(pubKey, crypto.SHA256, hash[:], signature); err != nil {
+		return fmt.Errorf("signature verification failed: %w", err)
+	}
+
+	return nil
+}
+
+var (
+	cachedLicensePubKey     *rsa.PublicKey
+	cachedLicensePubKeyOnce sync.Once
+	errCachedLicensePubKey  error
+)
+
+// parseLicensePublicKey parses the embedded license public key.
+func parseLicensePublicKey() (*rsa.PublicKey, error) {
+	block, _ := pem.Decode(licensePublicKeyPEM)
+	if block == nil {
+		return nil, errors.New("failed to parse PEM block containing public key")
+	}
+
+	pubKey, err := x509.ParsePKCS1PublicKey(block.Bytes)
+	if err != nil {
+		return nil, fmt.Errorf("parsing public key: %w", err)
+	}
+
+	return pubKey, nil
+}
+
+// verifyOfflineLicenseSignature verifies the RSA-SHA256 signature of the license.
+// This matches the Node.js implementation in backend/src/lib/crypto/signing.ts.
+func verifyOfflineLicenseSignature(licenseJSON []byte, signatureBase64 string) error {
+	cachedLicensePubKeyOnce.Do(func() {
+		cachedLicensePubKey, errCachedLicensePubKey = parseLicensePublicKey()
+	})
+	if errCachedLicensePubKey != nil {
+		return errCachedLicensePubKey
+	}
+
+	return verifySignatureWithKey(licenseJSON, signatureBase64, cachedLicensePubKey)
+}
+
+// loadOfflineLicense decodes a base64 offline license, verifies signature, checks expiration, and loads features.
 func (s *Service) loadOfflineLicense(key string) error {
 	decoded, err := base64.StdEncoding.DecodeString(key)
 	if err != nil {
 		return fmt.Errorf("decoding offline license: %w", err)
 	}
 
-	var contents OfflineLicenseContents
-	if err := json.Unmarshal(decoded, &contents); err != nil {
+	// Parse to get raw license JSON for signature verification.
+	var rawContents struct {
+		License   json.RawMessage `json:"license"`
+		Signature string          `json:"signature"`
+	}
+	if err := json.Unmarshal(decoded, &rawContents); err != nil {
 		return fmt.Errorf("parsing offline license: %w", err)
 	}
 
-	// TODO: verify RSA signature against embedded public key.
+	// Verify RSA-SHA256 signature (matches Node.js verifyOfflineLicense).
+	if err := verifyOfflineLicenseSignature(rawContents.License, rawContents.Signature); err != nil {
+		return fmt.Errorf("offline license verification failed: %w", err)
+	}
+
+	// Parse the license contents.
+	var contents OfflineLicenseContents
+	if err := json.Unmarshal(decoded, &contents); err != nil {
+		return fmt.Errorf("parsing offline license contents: %w", err)
+	}
 
 	// Check termination date.
 	if contents.License.TerminatesAt != nil {

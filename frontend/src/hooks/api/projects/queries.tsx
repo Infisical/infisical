@@ -37,6 +37,7 @@ import {
   TGetIdentityPermissionAuditResponse,
   TGetMembershipPermissionAuditResponse,
   TGetUpgradeProjectStatusDTO,
+  TMyPendingProjectAccessRequestsResponse,
   TProjectSshConfig,
   TSearchProjectsDTO,
   TUpdateWorkspaceUserRoleDTO,
@@ -150,6 +151,18 @@ export const useSearchProjects = ({ options, ...dto }: TSearchProjectsDTO) =>
       }>("/api/v1/projects/search", dto);
 
       return data;
+    },
+    ...options
+  });
+
+export const useGetMyPendingProjectAccessRequests = (options?: { enabled?: boolean }) =>
+  useQuery({
+    queryKey: projectKeys.getMyPendingProjectAccessRequests(),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<TMyPendingProjectAccessRequestsResponse>(
+        "/api/v1/projects/me/project-access-requests"
+      );
+      return new Map(data.requests.map((r) => [r.projectId, new Date(r.createdAt)]));
     },
     ...options
   });

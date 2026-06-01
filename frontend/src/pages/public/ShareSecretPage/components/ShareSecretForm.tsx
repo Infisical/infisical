@@ -268,7 +268,7 @@ export const ShareSecretForm = ({
             render={({ field: { onChange, ...field }, fieldState: { error } }) => (
               <Field orientation="horizontal">
                 <Switch
-                  variant="project"
+                  variant="org"
                   checked={
                     field.value === SecretSharingAccessType.Organization ||
                     !allowSecretSharingOutsideOrganization
@@ -444,7 +444,7 @@ export const ShareSecretForm = ({
                     }) => (
                       <Field orientation="horizontal">
                         <Switch
-                          variant="project"
+                          variant="org"
                           checked={isOrgAccess ? false : (isChecked ?? false)}
                           onCheckedChange={onChange}
                           disabled={isOrgAccess}

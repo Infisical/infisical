@@ -57,6 +57,8 @@ import {
 import { UsePopUpState } from "@app/hooks/usePopUp";
 import { slugSchema } from "@app/lib/schemas";
 
+const UNCHANGED_CREDENTIAL_SENTINEL = "__INFISICAL_UNCHANGED__";
+
 const REQUIRED_EAB_DIRECTORIES = [
   "https://acme.digicert.com/v2/acme/directory",
   "https://acme.zerossl.com/v2/DV90",
@@ -103,13 +105,6 @@ const acmeConfigurationSchema = z
           code: z.ZodIssueCode.custom,
           message: "EAB Key Identifier (KID) is required for this directory URL",
           path: ["eabKid"]
-        });
-      }
-      if (!data.eabHmacKey || data.eabHmacKey.trim() === "") {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "EAB HMAC Key is required for this directory URL",
-          path: ["eabHmacKey"]
         });
       }
     }
@@ -463,7 +458,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
             directoryUrl: ca.configuration.directoryUrl,
             accountEmail: ca.configuration.accountEmail,
             eabKid: ca.configuration.eabKid,
-            eabHmacKey: ca.configuration.eabHmacKey,
+            eabHmacKey: UNCHANGED_CREDENTIAL_SENTINEL,
             dnsResolver: ca.configuration.dnsResolver || ""
           }
         });
@@ -929,12 +924,17 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
                     label="EAB HMAC Key"
                     isError={Boolean(error)}
                     errorText={error?.message}
-                    isOptional={!REQUIRED_EAB_DIRECTORIES.includes(directoryUrl || "")}
-                    isRequired={REQUIRED_EAB_DIRECTORIES.includes(directoryUrl || "")}
+                    isOptional
                   >
                     <Input
+                      type="password"
+                      autoComplete="new-password"
                       {...field}
-                      placeholder="dGhpc2lzYW5leGFtcGxlaG1hY2tleWZvcmRpZ2ljZXJ0YWNtZXRlc3RpbmcxMjM0NTY3ODkw"
+                      placeholder={
+                        ca
+                          ? undefined
+                          : "dGhpc2lzYW5leGFtcGxlaG1hY2tleWZvcmRpZ2ljZXJ0YWNtZXRlc3RpbmcxMjM0NTY3ODkw"
+                      }
                     />
                   </FormControl>
                 )}

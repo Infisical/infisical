@@ -76,7 +76,7 @@ func run(cfg *config.Config, logger *slog.Logger) error {
 	queueSvc := queue.NewService(ctx, logger, redisClient)
 	defer errutil.DeferErr(ctx, queueSvc.Close, "closing queue")
 
-	registry, cleanup, err := api.NewRegistry(ctx, &api.Infra{
+	services, cleanup, err := api.NewServices(ctx, &api.Infra{
 		Logger:   logger,
 		Config:   cfg,
 		DB:       db,
@@ -91,7 +91,7 @@ func run(cfg *config.Config, logger *slog.Logger) error {
 	defer cleanup()
 
 	// Create server.
-	srv := server.NewServer(registry, logger)
+	srv := server.NewServer(services, logger)
 
 	// Create error channel for signal handling and server errors.
 	// Buffered to prevent blocking if multiple senders (signal, queue, HTTP) fire after first receive.

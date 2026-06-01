@@ -1,3 +1,5 @@
+//go:generate go tool oapi-codegen -config cfg.yaml openapi.yml
+
 package secret
 
 import (
@@ -7,13 +9,16 @@ import (
 
 	"github.com/google/uuid"
 
-	gensecrets "github.com/infisical/api/internal/server/gen/secrets"
+	"github.com/infisical/api/internal/libs/errutil"
 	"github.com/infisical/api/internal/services/auditlog"
 	"github.com/infisical/api/internal/services/auth"
 	"github.com/infisical/api/internal/services/auth/apiauth"
 	"github.com/infisical/api/internal/services/permission"
 	secretsvc "github.com/infisical/api/internal/services/secretmanager/secret"
 )
+
+// Compile-time check that Handler implements ServiceInterface.
+var _ ServiceInterface = (*Handler)(nil)
 
 // --- Service Interfaces (consumer-defined) ---
 
@@ -36,11 +41,14 @@ type AuditLogService interface {
 type SecretsService interface {
 	ListSecrets(ctx context.Context, opts *secretsvc.ListSecretsOpts) (*secretsvc.ListSecretsResult, error)
 	GetSecretByName(ctx context.Context, opts *secretsvc.GetSecretByNameOpts) (*secretsvc.GetSecretByNameResult, error)
+	FetchAbsoluteSecrets(ctx context.Context, refs []secretsvc.AbsoluteSecretRef, opts secretsvc.AbsoluteFetchOpts) []*secretsvc.ProcessedSecret
+	LoadProjectImports(ctx context.Context, projectID string) (*secretsvc.ImportLookup, error)
+	FindByFolderIds(ctx context.Context, folderIDs []uuid.UUID, userID *uuid.UUID, filters *secretsvc.FindByFolderIdsFilter) ([]secretsvc.Secret, error)
 }
 
 // --- Handler ---
 
-// Handler implements the Goa secrets service interface.
+// Handler provides HTTP handlers for secrets endpoints.
 type Handler struct {
 	apiauth.Authenticator
 	logger     *slog.Logger
@@ -131,143 +139,11 @@ func parseMetadataFilter(metadataFilterStr *string) []secretsvc.MetadataFilter {
 	return result
 }
 
-// buildSecretRaw converts a ProcessedSecret to the API response type.
-func (h *Handler) buildSecretRaw(ps *secretsvc.ProcessedSecret, projectID string) *gensecrets.SecretRaw {
-	sec := ps.Secret
-
-	tags := make([]*gensecrets.SecretTag, 0, len(sec.Tags))
-	for _, tag := range sec.Tags {
-		tags = append(tags, &gensecrets.SecretTag{
-			ID:   tag.ID.String(),
-			Slug: tag.Slug,
-		})
-	}
-
-	metadata := make([]*gensecrets.ResourceMetadata, 0, len(ps.Metadata))
-	for _, m := range ps.Metadata {
-		metadata = append(metadata, &gensecrets.ResourceMetadata{
-			Key:         m.Key,
-			Value:       m.Value,
-			IsEncrypted: m.IsEncrypted,
-		})
-	}
-
-	isRotated := sec.IsRotatedSecret()
-	var rotationID *string
-	if isRotated {
-		rid := sec.GetRotationID().String()
-		rotationID = &rid
-	}
-
-	var skipMultilineEncoding *bool
-	if sec.SkipMultilineEncoding.Valid {
-		skipMultilineEncoding = &sec.SkipMultilineEncoding.V
-	}
-
-	secretPath := ps.SecretPath
-	return &gensecrets.SecretRaw{
-		ID:                    sec.ID.String(),
-		LegacyID:              sec.ID.String(),
-		Workspace:             projectID,
-		Environment:           ps.Environment,
-		Version:               int(sec.Version),
-		Type:                  sec.Type,
-		SecretKey:             sec.Key,
-		SecretValue:           ps.Value,
-		SecretComment:         ps.Comment,
-		SecretPath:            &secretPath,
-		CreatedAt:             sec.CreatedAt.Format("2006-01-02T15:04:05.000Z"),
-		UpdatedAt:             sec.UpdatedAt.Format("2006-01-02T15:04:05.000Z"),
-		SecretValueHidden:     ps.ValueHidden,
-		SkipMultilineEncoding: skipMultilineEncoding,
-		Tags:                  tags,
-		SecretMetadata:        metadata,
-		IsRotatedSecret:       &isRotated,
-		RotationID:            rotationID,
-	}
-}
-
-// buildImportSecretRaw converts a ProcessedSecret to the import API response type.
-func (h *Handler) buildImportSecretRaw(ps *secretsvc.ProcessedSecret, projectID string) *gensecrets.ImportSecretRaw {
-	sec := ps.Secret
-
-	metadata := make([]*gensecrets.ResourceMetadata, 0, len(ps.Metadata))
-	for _, m := range ps.Metadata {
-		metadata = append(metadata, &gensecrets.ResourceMetadata{
-			Key:         m.Key,
-			Value:       m.Value,
-			IsEncrypted: m.IsEncrypted,
-		})
-	}
-
-	isRotated := sec.IsRotatedSecret()
-	var rotationID *string
-	if isRotated {
-		rid := sec.GetRotationID().String()
-		rotationID = &rid
-	}
-
-	var skipMultilineEncoding *bool
-	if sec.SkipMultilineEncoding.Valid {
-		skipMultilineEncoding = &sec.SkipMultilineEncoding.V
-	}
-
-	return &gensecrets.ImportSecretRaw{
-		ID:                    sec.ID.String(),
-		LegacyID:              sec.ID.String(),
-		Workspace:             projectID,
-		Environment:           ps.Environment,
-		Version:               int(sec.Version),
-		Type:                  sec.Type,
-		SecretKey:             sec.Key,
-		SecretValue:           ps.Value,
-		SecretComment:         ps.Comment,
-		SecretValueHidden:     ps.ValueHidden,
-		SkipMultilineEncoding: skipMultilineEncoding,
-		SecretMetadata:        metadata,
-		IsRotatedSecret:       &isRotated,
-		RotationID:            rotationID,
-	}
-}
-
-// buildImportsResponse builds the imports array for the API response.
-func (h *Handler) buildImportsResponse(
-	result *secretsvc.ListSecretsResult,
-	projectID string,
-) []*gensecrets.SecretImport {
-	secretsByImport := make(map[string][]secretsvc.ProcessedSecret)
-	for i := range result.ImportedSecrets {
-		sec := &result.ImportedSecrets[i]
-		key := sec.ImportEnvironment + ":" + sec.ImportPath
-		secretsByImport[key] = append(secretsByImport[key], *sec)
-	}
-
-	imports := make([]*gensecrets.SecretImport, 0, len(result.Imports))
-	for i := range result.Imports {
-		imp := &result.Imports[i]
-		envSlug, _ := result.FolderLookup.GetEnvSlug(imp.EnvID)
-		key := envSlug + ":" + imp.Path
-		impSecrets := secretsByImport[key]
-
-		importSecrets := make([]*gensecrets.ImportSecretRaw, 0, len(impSecrets))
-		for j := range impSecrets {
-			importSecrets = append(importSecrets, h.buildImportSecretRaw(&impSecrets[j], projectID))
-		}
-
-		folderID := imp.FolderID.String()
-		imports = append(imports, &gensecrets.SecretImport{
-			SecretPath:  imp.Path,
-			Environment: envSlug,
-			FolderID:    &folderID,
-			Secrets:     importSecrets,
-		})
-	}
-
-	return imports
-}
-
 // getUserID extracts user ID from identity if actor is a user.
 func getUserID(identity *auth.Identity) *uuid.UUID {
+	if identity == nil {
+		return nil
+	}
 	if identity.Actor == auth.ActorTypeUser {
 		return &identity.ActorID
 	}
@@ -279,10 +155,47 @@ func getSecretType(identity *auth.Identity, requestedType string) string {
 	if requestedType == "" {
 		return "shared"
 	}
+	if identity == nil {
+		return "shared"
+	}
 	switch identity.Actor {
 	case auth.ActorTypeIdentity, auth.ActorTypeService:
 		return "shared"
 	default:
 		return requestedType
 	}
+}
+
+// createGetSecretsAuditLog creates an audit log entry for listing secrets.
+func (h *Handler) createGetSecretsAuditLog(ctx context.Context, projectID, env, secretPath string, numberOfSecrets int) error {
+	identity, _ := auth.IdentityFromContext(ctx)
+	if identity == nil {
+		return nil
+	}
+
+	info := auditlog.BuildAuditLogInfo(identity)
+	if info == nil {
+		return nil
+	}
+
+	dto := &auditlog.CreateAuditLogDTO{
+		Event: auditlog.Event{
+			Metadata: auditlog.GetSecretsEventMetadata{
+				Environment:     env,
+				SecretPath:      secretPath,
+				NumberOfSecrets: numberOfSecrets,
+			},
+		},
+		Actor:         info.Actor,
+		ProjectID:     &projectID,
+		IPAddress:     info.IPAddress,
+		UserAgent:     info.UserAgent,
+		UserAgentType: info.UserAgentType,
+	}
+
+	if err := h.auditLog.CreateAuditLog(ctx, dto); err != nil {
+		return errutil.InternalServer("Failed to create audit log").WithErrf("createGetSecretsAuditLog: %w", err)
+	}
+
+	return nil
 }

@@ -52,23 +52,7 @@ export const handlePostgresSession = async (
     database: connectionDetails.database
   };
 
-  // Early reachability check — fail fast before sending ready, preserving the
-  // early "Connection error" UX the FE relies on.
-  try {
-    await verifyReachabilityOneShot(oneShotOpts);
-  } catch (err) {
-    logger.error(err, `Postgres reachability check failed [sessionId=${sessionId}]`);
-    sendSessionEnd(SessionEndReason.SetupFailed);
-    onCleanup();
-    try {
-      socket.close();
-    } catch {
-      // ignore
-    }
-    return {
-      cleanup: async () => {}
-    };
-  }
+  await verifyReachabilityOneShot(oneShotOpts);
 
   sendMessage({
     type: TerminalServerMessageType.Ready,
@@ -87,11 +71,9 @@ export const handlePostgresSession = async (
     }
   };
 
-  const controllers = new Map<string, TPostgresConnectionController>();
-  // Reserved slots for in-flight opens — counted against the cap so a burst of
-  // open-connection messages can't all pass the check before any of them
-  // finishes inserting into `controllers`.
-  let pendingOpens = 0;
+  // Null = slot reserved for an in-flight open; cleanup clears the map so
+  // the open's post-await .has() check fails and it self-disposes.
+  const controllers = new Map<string, TPostgresConnectionController | null>();
 
   // Metadata requests (get-schemas / get-tables) are processed outside any
   // controller queue so sidebar refreshes don't block tab work.
@@ -100,7 +82,7 @@ export const handlePostgresSession = async (
   // --- Per-message handlers ---
 
   const openTabConnection = async (requestId: string) => {
-    if (controllers.size + pendingOpens >= MAX_CONNECTIONS_PER_WS) {
+    if (controllers.size >= MAX_CONNECTIONS_PER_WS) {
       sendResponse({
         type: PostgresServerMessageType.ConnectionOpenFailed,
         id: requestId,
@@ -109,8 +91,8 @@ export const handlePostgresSession = async (
       return;
     }
 
-    pendingOpens += 1;
     const connectionId = crypto.randomUUID();
+    controllers.set(connectionId, null);
     try {
       const controller = await createPostgresConnectionController({
         relayPort,
@@ -129,6 +111,10 @@ export const handlePostgresSession = async (
           });
         }
       });
+      if (!controllers.has(connectionId)) {
+        controller.dispose();
+        return;
+      }
       controllers.set(connectionId, controller);
       sendResponse({
         type: PostgresServerMessageType.ConnectionOpened,
@@ -137,6 +123,7 @@ export const handlePostgresSession = async (
         backendPid: controller.backendPid
       });
     } catch (err) {
+      controllers.delete(connectionId);
       const msg = err instanceof Error ? err.message : "Failed to open connection";
       logger.error(err, `Failed to open tab connection [sessionId=${sessionId}]`);
       sendResponse({
@@ -144,8 +131,6 @@ export const handlePostgresSession = async (
         id: requestId,
         error: msg
       });
-    } finally {
-      pendingOpens -= 1;
     }
   };
 
@@ -266,14 +251,15 @@ export const handlePostgresSession = async (
 
   return {
     cleanup: async () => {
-      // dispose() is synchronous and fire-and-forget — no await needed.
       const snapshot = Array.from(controllers.values());
       controllers.clear();
       for (const controller of snapshot) {
-        try {
-          controller.dispose();
-        } catch (err) {
-          logger.debug(err, `Error disposing controller [sessionId=${sessionId}]`);
+        if (controller) {
+          try {
+            controller.dispose();
+          } catch (err) {
+            logger.debug(err, `Error disposing controller [sessionId=${sessionId}]`);
+          }
         }
       }
     }

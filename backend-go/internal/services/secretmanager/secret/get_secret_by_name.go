@@ -8,29 +8,33 @@ import (
 
 	"github.com/infisical/api/internal/libs/errutil"
 	"github.com/infisical/api/internal/services/kms"
+	"github.com/infisical/api/internal/services/secretmanager/secretfolder"
 	"github.com/infisical/api/internal/services/secretmanager/secretimport"
 )
 
 // GetSecretByNameOpts contains options for getting a single secret.
+// The service is permission-agnostic - all permission logic happens in the handler.
 type GetSecretByNameOpts struct {
-	ProjectID              string
-	Environment            string
-	SecretPath             string
-	SecretName             string
-	SecretType             string
-	UserID                 *uuid.UUID
-	ViewSecretValue        bool
-	ExpandSecretReferences bool
-	IncludeImports         bool
-	Access                 AccessControl
+	ProjectID      string
+	Environment    string
+	SecretPath     string
+	SecretName     string
+	SecretType     string
+	UserID         *uuid.UUID
+	IncludeImports bool
 }
 
 // GetSecretByNameResult contains the result of getting a secret by name.
 type GetSecretByNameResult struct {
-	Secret *ProcessedSecret
+	Secret       *ProcessedSecret
+	FolderLookup *secretfolder.FolderLookup    // For handler expansion
+	CipherPair   *kms.CipherPair               // For handler expansion
+	Imports      []secretimport.ResolvedImport // Context for handler expansion
+	FolderID     uuid.UUID                     // The folder where the secret was requested
 }
 
-// GetSecretByName retrieves a single secret by name with full processing.
+// GetSecretByName retrieves a single secret by name.
+// This is permission-agnostic - returns the secret if found. Handler filters by permission.
 func (s *Service) GetSecretByName(ctx context.Context, opts *GetSecretByNameOpts) (*GetSecretByNameResult, error) {
 	folderLookup, err := s.secretFolderService.LoadFolders(ctx, opts.ProjectID, nil)
 	if err != nil {
@@ -68,16 +72,14 @@ func (s *Service) GetSecretByName(ctx context.Context, opts *GetSecretByNameOpts
 	secretEnv := opts.Environment
 	secretPath := opts.SecretPath
 
-	var importLookup *secretimport.ImportLookup
 	var allImports []secretimport.ResolvedImport
 
 	if foundSecret == nil && opts.IncludeImports {
-		importLookup, err = s.secretImportService.LoadProjectImports(ctx, opts.ProjectID)
+		importLookup, err := s.secretImportService.LoadProjectImports(ctx, opts.ProjectID)
 		if err != nil {
 			return nil, errutil.DatabaseErr("Failed to load imports").WithErrf("GetSecretByName: %w", err)
 		}
 
-		// Resolve import chain
 		resolveFolder := func(envID uuid.UUID, path string) (uuid.UUID, bool) {
 			node, ok := folderLookup.GetByPath(envID, path)
 			if !ok {
@@ -115,23 +117,7 @@ func (s *Service) GetSecretByName(ctx context.Context, opts *GetSecretByNameOpts
 		}
 	}
 
-	tagSlugs := make([]string, len(foundSecret.Tags))
-	for i, tag := range foundSecret.Tags {
-		tagSlugs[i] = tag.Slug
-	}
-
-	if !opts.Access.CanDescribe(secretEnv, secretPath, foundSecret.Key, tagSlugs) {
-		return nil, errutil.Forbidden("permission denied to access this secret")
-	}
-
-	canReadValue := opts.Access.CanReadValue(secretEnv, secretPath, foundSecret.Key, tagSlugs)
-	if opts.ViewSecretValue && !canReadValue {
-		return nil, errutil.Forbidden("Read value denied")
-	}
-
-	valueHidden := !opts.ViewSecretValue || !canReadValue
-
-	rawValue, displayValue, secretComment, metadata, decryptErrs := decryptSecretFields(foundSecret, cipherPair, valueHidden)
+	rawValue, displayValue, secretComment, metadata, decryptErrs := DecryptSecretFields(foundSecret, cipherPair, false)
 	if decryptErrs.ValueErr != nil {
 		return nil, errutil.InternalServer("Failed to decrypt secret value").WithErrf("GetSecretByName(secretId=%s): %w", foundSecret.ID, decryptErrs.ValueErr)
 	}
@@ -142,109 +128,20 @@ func (s *Service) GetSecretByName(ctx context.Context, opts *GetSecretByNameOpts
 			slog.Any("metadataErr", decryptErrs.MetadataErr))
 	}
 
-	// Build the result secret
-	resultSecret := &ProcessedSecret{
-		Secret:      foundSecret,
-		SecretPath:  secretPath,
-		Environment: secretEnv,
-		RawValue:    rawValue,
-		Value:       displayValue,
-		Comment:     secretComment,
-		Metadata:    metadata,
-		ValueHidden: valueHidden,
-	}
-
-	if opts.ExpandSecretReferences && !valueHidden && rawValue != "" {
-		// Load imports if not already loaded
-		if importLookup == nil {
-			importLookup, err = s.secretImportService.LoadProjectImports(ctx, opts.ProjectID)
-			if err != nil {
-				return nil, errutil.InternalServer("Failed to load imports for expansion").WithErrf("GetSecretByName: %w", err)
-			}
-
-			resolveFolder := func(envID uuid.UUID, path string) (uuid.UUID, bool) {
-				node, ok := folderLookup.GetByPath(envID, path)
-				if !ok {
-					return uuid.Nil, false
-				}
-				return node.ID, true
-			}
-			allImports = importLookup.ResolveChain(folderNode.ID, resolveFolder)
-		}
-
-		// Fetch context secrets from same folder + imported folders
-		allFolderIDs := []uuid.UUID{folderNode.ID}
-		for _, imp := range allImports {
-			allFolderIDs = append(allFolderIDs, imp.FolderID)
-		}
-
-		// Build list of secrets for expansion: main secret + context secrets
-		allSecrets := []*ProcessedSecret{resultSecret}
-
-		contextSecrets, err := s.FindByFolderIds(ctx, allFolderIDs, opts.UserID, nil)
-		if err != nil {
-			return nil, errutil.InternalServer("Failed to fetch context secrets for expansion").WithErrf("GetSecretByName: %w", err)
-		}
-
-		for i := range contextSecrets {
-			sec := &contextSecrets[i]
-			if sec.ID == foundSecret.ID {
-				continue // Skip the main secret, already added
-			}
-
-			// Determine environment and path for this context secret
-			ctxEnvSlug := secretEnv
-			ctxPath := secretPath
-			if sec.FolderID != folderNode.ID {
-				// This is from an imported folder
-				for j := range allImports {
-					if allImports[j].FolderID == sec.FolderID {
-						ctxEnvSlug, _ = folderLookup.GetEnvSlug(allImports[j].EnvID)
-						ctxPath = allImports[j].Path
-						break
-					}
-				}
-			}
-
-			ctxRawValue, ctxDisplayValue, ctxComment, ctxMetadata, ctxDecryptErrs := decryptSecretFields(sec, cipherPair, false)
-			if ctxDecryptErrs.HasErrors() {
-				s.logger.WarnContext(ctx, "context secret decryption errors (fail-open)",
-					slog.String("secretId", sec.ID.String()),
-					slog.Any("valueErr", ctxDecryptErrs.ValueErr))
-			}
-			allSecrets = append(allSecrets, &ProcessedSecret{
-				Secret:      sec,
-				SecretPath:  ctxPath,
-				Environment: ctxEnvSlug,
-				RawValue:    ctxRawValue,
-				Value:       ctxDisplayValue,
-				Comment:     ctxComment,
-				Metadata:    ctxMetadata,
-				ValueHidden: false,
-			})
-		}
-
-		expander := NewSecretExpander(allSecrets, ExpandOpts{
-			CanAccessAbsolute: func(ref AbsoluteSecretRef) bool {
-				return opts.Access.CanReadValue(ref.Env, ref.Path, ref.Key, nil)
-			},
-			FetchAbsoluteSecrets: func(refs []AbsoluteSecretRef) []*ProcessedSecret {
-				return s.fetchAbsoluteSecrets(ctx, refs, absoluteFetchOpts{
-					projectID:    opts.ProjectID,
-					folderLookup: folderLookup,
-					cipherPair:   cipherPair,
-					userID:       opts.UserID,
-				})
-			},
-		})
-		expander.Expand()
-
-		if expander.HasDeniedRefs() {
-			return nil, errutil.Forbidden("Permission denied for secret reference expansion").WithErrf("GetSecretByName: denied refs: %v", expander.DeniedRefs())
-		}
-	}
-
 	return &GetSecretByNameResult{
-		Secret: resultSecret,
+		Secret: &ProcessedSecret{
+			Secret:      foundSecret,
+			SecretPath:  secretPath,
+			Environment: secretEnv,
+			RawValue:    rawValue,
+			Value:       displayValue,
+			Comment:     secretComment,
+			Metadata:    metadata,
+			ValueHidden: false,
+		},
+		FolderLookup: folderLookup,
+		CipherPair:   cipherPair,
+		Imports:      allImports,
+		FolderID:     folderNode.ID,
 	}, nil
 }
