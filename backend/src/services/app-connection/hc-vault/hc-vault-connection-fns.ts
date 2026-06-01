@@ -692,12 +692,12 @@ export const listHCVaultMounts = async (
   let data: THCVaultMountResponse;
   try {
     ({ data } = await fetchMounts(targetNamespace));
-  } catch (error: unknown) {
+  } catch (error) {
     // vault 1.0.0 does not support namespace root or /, so we need to handle this case
     // if the error is 301 and the namespace is root or /, try to fetch mounts without the namespace header
     if (
       ((error instanceof AxiosError && error.response?.status === 301) || isGateway301Error(error)) &&
-      (targetNamespace === "/" || targetNamespace === "root")
+      (targetNamespace === "/" || targetNamespace === "root" || targetNamespace === undefined || targetNamespace === "")
     ) {
       ({ data } = await fetchMounts());
     } else {
