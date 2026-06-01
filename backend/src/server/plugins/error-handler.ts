@@ -59,11 +59,11 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
     unit: "{error}"
   });
 
-  server.setErrorHandler((error, req, res) => {
+  server.setErrorHandler((error: Error, req, res) => {
     req.log.error(error);
     if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
       const { method } = req;
-      const route = req.routerPath;
+      const route = req.routeOptions.url;
       const errorType =
         error instanceof jwt.JsonWebTokenError ? "TokenError" : error.constructor.name || "UnknownError";
 
@@ -82,7 +82,7 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
 
       const attributes: Record<string, string | number> = {
         "http.request.method": method,
-        "http.route": route,
+        "http.route": route ?? "",
         "error.type": errorType,
         "error.name": error.name
       };

@@ -171,7 +171,7 @@ export const extractAuth = async (req: FastifyRequest, jwtSecret: string) => {
 // ! Important: You can only 100% count on the `req.permission.orgId` field being present when the auth method is Identity Access Token (Machine Identity).
 export const injectIdentity = fp(
   async (server: FastifyZodProvider, opt: { shouldForwardWritesToPrimaryInstance?: boolean }) => {
-    server.decorateRequest("auth", null);
+    server.decorateRequest("auth");
     server.decorateRequest("shouldForwardWritesToPrimaryInstance", Boolean(opt.shouldForwardWritesToPrimaryInstance));
 
     // Hoisted outside onRequest hook to avoid per-request function allocation on this hot path

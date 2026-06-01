@@ -9,7 +9,7 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 
 export const registerKmipSpecRouter = async (server: FastifyZodProvider) => {
-  server.decorateRequest("kmipUser", null);
+  server.decorateRequest("kmipUser");
 
   server.addHook("onRequest", async (req) => {
     const clientId = req.headers["x-kmip-client-id"] as string;

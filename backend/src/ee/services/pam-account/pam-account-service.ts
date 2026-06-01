@@ -69,6 +69,7 @@ import { PamDomainType } from "../pam-domain/pam-domain-enums";
 import { PAM_DOMAIN_FACTORY_MAP } from "../pam-domain/pam-domain-factory";
 import { TPamProjectRecordingConfigDALFactory } from "../pam-project-recording-config/pam-project-recording-config-dal";
 import { TPamProjectRecordingConfigServiceFactory } from "../pam-project-recording-config/pam-project-recording-config-service";
+import { MsSqlAuthMethod } from "../pam-resource/mssql/mssql-resource-enums";
 import { TPamResourceDALFactory } from "../pam-resource/pam-resource-dal";
 import { PamResource } from "../pam-resource/pam-resource-enums";
 import { TPamResourceRotationRulesDALFactory } from "../pam-resource/pam-resource-rotation-rules-dal";
@@ -1499,11 +1500,18 @@ export const pamAccountServiceFactory = ({
       };
     }
 
+    const credentials: Record<string, unknown> = {
+      ...decryptedResource.connectionDetails,
+      ...decryptedAccount.credentials
+    };
+
+    // Old MSSQL accounts pre-date the authMethod field — default to sql-login
+    if (decryptedResource.resourceType === PamResource.MsSQL && !("authMethod" in credentials)) {
+      credentials.authMethod = MsSqlAuthMethod.SqlLogin;
+    }
+
     return {
-      credentials: {
-        ...decryptedResource.connectionDetails,
-        ...decryptedAccount.credentials
-      },
+      credentials,
       policyRules,
       projectId: project.id,
       account,

@@ -51,7 +51,7 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
   await server.register(fastifySession, { secret: appCfg.COOKIE_SECRET_SIGN_KEY });
   await server.register(passport.initialize());
   await server.register(passport.secureSession());
-  server.decorateRequest("ssoConfig", null);
+  server.decorateRequest("ssoConfig");
   passport.use(
     new MultiSamlStrategy(
       {
@@ -251,18 +251,20 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
         callback_port: z.string().optional()
       })
     },
-    preValidation: (req, res) =>
-      (
+    preValidation: (req, res) => {
+      const query = req.query as { callback_port?: string };
+      return (
         passport.authenticate("saml", {
           failureRedirect: "/",
           additionalParams: {
             RelayState: JSON.stringify({
               spInitiated: true,
-              callbackPort: req.query.callback_port ?? ""
+              callbackPort: query.callback_port ?? ""
             })
           }
         } as AuthenticateOptions) as any
-      )(req, res),
+      )(req, res);
+    },
     handler: () => {}
   });
 
@@ -280,18 +282,20 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
         callback_port: z.string().optional()
       })
     },
-    preValidation: (req, res) =>
-      (
+    preValidation: (req, res) => {
+      const query = req.query as { callback_port?: string };
+      return (
         passport.authenticate("saml", {
           failureRedirect: "/",
           additionalParams: {
             RelayState: JSON.stringify({
               spInitiated: true,
-              callbackPort: req.query.callback_port ?? ""
+              callbackPort: query.callback_port ?? ""
             })
           }
         } as AuthenticateOptions) as any
-      )(req, res),
+      )(req, res);
+    },
     handler: () => {}
   });
 
@@ -309,18 +313,20 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
         callback_port: z.string().optional()
       })
     },
-    preValidation: (req, res) =>
-      (
+    preValidation: (req, res) => {
+      const query = req.query as { callback_port?: string };
+      return (
         passport.authenticate("saml", {
           failureRedirect: "/",
           additionalParams: {
             RelayState: JSON.stringify({
               spInitiated: true,
-              callbackPort: req.query.callback_port ?? ""
+              callbackPort: query.callback_port ?? ""
             })
           }
         } as AuthenticateOptions) as any
-      )(req, res),
+      )(req, res);
+    },
     handler: () => {}
   });
 

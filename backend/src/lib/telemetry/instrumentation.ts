@@ -4,13 +4,14 @@ import { PrometheusExporter } from "@opentelemetry/exporter-prometheus";
 import { registerInstrumentations } from "@opentelemetry/instrumentation";
 import { HttpInstrumentation } from "@opentelemetry/instrumentation-http";
 import { RuntimeNodeInstrumentation } from "@opentelemetry/instrumentation-runtime-node";
-import { Resource } from "@opentelemetry/resources";
+import { defaultResource, resourceFromAttributes } from "@opentelemetry/resources";
 import {
-  Aggregation,
   AggregationTemporality,
+  AggregationType,
+  createAllowListAttributesProcessor,
   MeterProvider,
   PeriodicExportingMetricReader,
-  View
+  type ViewOptions
 } from "@opentelemetry/sdk-metrics";
 import { ATTR_SERVICE_NAME, ATTR_SERVICE_VERSION } from "@opentelemetry/semantic-conventions";
 import tracer from "dd-trace";
@@ -85,8 +86,8 @@ const initTelemetryInstrumentation = ({
 
   const serviceVersion = process.env.INFISICAL_PLATFORM_VERSION || "unknown";
 
-  const resource = Resource.default().merge(
-    new Resource({
+  const resource = defaultResource().merge(
+    resourceFromAttributes({
       [ATTR_SERVICE_NAME]: "infisical-core",
       [ATTR_SERVICE_VERSION]: serviceVersion,
       "git.commit.sha": process.env.DD_GIT_COMMIT_SHA || "unknown"
@@ -120,16 +121,16 @@ const initTelemetryInstrumentation = ({
       throw new Error("Invalid OTEL export type");
   }
 
-  const views: View[] = [
-    new View({
+  const views: ViewOptions[] = [
+    {
       meterName: "InfisicalCore",
-      attributeKeys: INFISICAL_CORE_METER_ATTRIBUTES
-    })
+      attributesProcessors: [createAllowListAttributesProcessor(INFISICAL_CORE_METER_ATTRIBUTES)]
+    }
   ];
 
   if (dropHighCardinalityMeters) {
     HIGH_CARDINALITY_METER_NAMES.forEach((meterName) => {
-      views.push(new View({ meterName, aggregation: Aggregation.Drop() }));
+      views.push({ meterName, aggregation: { type: AggregationType.DROP } });
     });
   }
 

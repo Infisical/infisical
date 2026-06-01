@@ -1133,6 +1133,8 @@ export const registerRoutes = async (
     secretV2BridgeDAL
   });
 
+  const certificatePolicyDAL = certificatePolicyDALFactory(db);
+
   const orgService = orgServiceFactory({
     userAliasDAL,
     identityMetadataDAL,
@@ -1162,7 +1164,8 @@ export const registerRoutes = async (
     membershipDAL,
     roleDAL,
     userGroupMembershipDAL,
-    additionalPrivilegeDAL
+    additionalPrivilegeDAL,
+    certificatePolicyDAL
   });
 
   const subOrgService = subOrgServiceFactory({
@@ -1171,7 +1174,8 @@ export const registerRoutes = async (
     membershipRoleDAL,
     orgDAL,
     projectDAL,
-    permissionService
+    permissionService,
+    certificatePolicyDAL
   });
 
   const signupService = authSignupServiceFactory({
@@ -1311,7 +1315,6 @@ export const registerRoutes = async (
   const certificateAuthorityCrlDAL = certificateAuthorityCrlDALFactory(db);
   const certificateTemplateDAL = certificateTemplateDALFactory(db);
   const certificateTemplateEstConfigDAL = certificateTemplateEstConfigDALFactory(db);
-  const certificatePolicyDAL = certificatePolicyDALFactory(db);
   const certificateProfileDAL = certificateProfileDALFactory(db);
   const pkiApplicationDAL = pkiApplicationDALFactory(db);
   const pkiApplicationProfileDAL = pkiApplicationProfileDALFactory(db);

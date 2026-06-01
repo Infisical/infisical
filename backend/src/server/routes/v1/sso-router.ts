@@ -402,7 +402,15 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
     },
     preValidation: [
       async (req, res) => {
-        const { callback_port: callbackPort, is_admin_login: isAdminLogin, org_slug: orgSlug } = req.query;
+        const {
+          callback_port: callbackPort,
+          is_admin_login: isAdminLogin,
+          org_slug: orgSlug
+        } = req.query as {
+          callback_port?: string;
+          is_admin_login?: boolean;
+          org_slug?: string;
+        };
         // ensure fresh session state per login attempt
         await req.session.regenerate();
         if (callbackPort) {
@@ -487,7 +495,10 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
     },
     preValidation: [
       async (req, res) => {
-        const { callback_port: callbackPort, is_admin_login: isAdminLogin } = req.query;
+        const { callback_port: callbackPort, is_admin_login: isAdminLogin } = req.query as {
+          callback_port?: string;
+          is_admin_login?: boolean;
+        };
         // ensure fresh session state per login attempt
         await req.session.regenerate();
         if (callbackPort) {
@@ -587,7 +598,10 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
     },
     preValidation: [
       async (req, res) => {
-        const { callback_port: callbackPort, is_admin_login: isAdminLogin } = req.query;
+        const { callback_port: callbackPort, is_admin_login: isAdminLogin } = req.query as {
+          callback_port?: string;
+          is_admin_login?: boolean;
+        };
         // ensure fresh session state per login attempt
         await req.session.regenerate();
         if (callbackPort) {
