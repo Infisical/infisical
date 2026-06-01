@@ -2,9 +2,9 @@ import { createFileRoute, linkOptions } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
 
-import { CertAuthDetailsByIDPage } from "./CertAuthDetailsByIDPage";
+import { CertificatePolicyDetailsByIDPage } from "./CertificatePolicyDetailsByIDPage";
 
-const caDetailsSearchSchema = z.object({
+const policyDetailsSearchSchema = z.object({
   from: z.enum(["settings", "profile"]).optional(),
   profileId: z.string().optional(),
   profileFrom: z.enum(["settings", "application"]).optional(),
@@ -12,22 +12,23 @@ const caDetailsSearchSchema = z.object({
 });
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/ca/$caId"
+  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/certificate-policies/$policyId"
 )({
-  component: CertAuthDetailsByIDPage,
-  validateSearch: zodValidator(caDetailsSearchSchema),
+  component: CertificatePolicyDetailsByIDPage,
+  validateSearch: zodValidator(policyDetailsSearchSchema),
   beforeLoad: ({ context, params }) => {
     return {
       breadcrumbs: [
         ...context.breadcrumbs,
         {
-          label: "Certificate Authorities",
+          label: "Certificate Policies",
           link: linkOptions({
-            to: "/organizations/$orgId/projects/cert-manager/$projectId/certificate-authorities",
+            to: "/organizations/$orgId/projects/cert-manager/$projectId/settings",
             params: {
               orgId: params.orgId,
               projectId: params.projectId
-            }
+            },
+            search: { selectedTab: "certificate-policies" }
           })
         }
       ]
