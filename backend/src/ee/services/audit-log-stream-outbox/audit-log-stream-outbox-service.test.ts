@@ -64,8 +64,6 @@ const buildRow = (overrides: Partial<TAuditLogStreamOutboxRow> = {}): TAuditLogS
 });
 
 const createService = () => {
-  const onStreamFailure = vi.fn(async () => undefined);
-
   const auditLogStreamOutboxDAL = {
     batchInsert: vi.fn(async () => undefined),
     claimBatchForStream: vi.fn<(...args: unknown[]) => Promise<TAuditLogStreamOutboxRow[]>>(async () => []),
@@ -92,36 +90,27 @@ const createService = () => {
     auditLogStreamDAL: auditLogStreamDAL as never,
     kmsService: {} as never,
     keyStore: {} as never,
-    queueService: {} as never,
-    onStreamFailure
+    queueService: {} as never
   });
 
-  return { service, onStreamFailure, auditLogStreamOutboxDAL, auditLogStreamDAL };
+  return { service, auditLogStreamOutboxDAL, auditLogStreamDAL };
 };
 
-describe("audit-log-stream-outbox-service drainStream failure wiring", () => {
+describe("audit-log-stream-outbox-service drainStream failure handling", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     // Reset to the generous default; tests that need chunking override per-call.
     getProviderBatchLimit.mockReturnValue({ maxLogs: 1_000, maxBytes: 4 * 1024 * 1024 });
   });
 
-  test("invokes onStreamFailure with the truncated error message when the provider rejects", async () => {
-    const { service, onStreamFailure, auditLogStreamOutboxDAL } = createService();
+  test("retries the failed row when the provider rejects the batch", async () => {
+    const { service, auditLogStreamOutboxDAL } = createService();
 
     auditLogStreamOutboxDAL.claimBatchForStream.mockResolvedValueOnce([buildRow()]).mockResolvedValueOnce([]);
     batchStreamLog.mockRejectedValueOnce(new Error(FAILURE_MESSAGE));
 
     await service.drainStream({ streamId: STREAM_ID, orgId: ORG_ID, provider: PROVIDER });
 
-    expect(onStreamFailure).toHaveBeenCalledTimes(1);
-    expect(onStreamFailure).toHaveBeenCalledWith({
-      orgId: ORG_ID,
-      streamId: STREAM_ID,
-      provider: PROVIDER,
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- asymmetric matcher is typed `any`
-      errorMessage: expect.stringContaining(FAILURE_MESSAGE)
-    });
     expect(auditLogStreamOutboxDAL.commitDeliveryResult).toHaveBeenCalledTimes(1);
     const call = auditLogStreamOutboxDAL.commitDeliveryResult.mock.calls[0][0] as {
       successIds: number[];
@@ -134,7 +123,7 @@ describe("audit-log-stream-outbox-service drainStream failure wiring", () => {
   });
 
   test("routes rows that hit MAX_ATTEMPTS to DLQ instead of retry", async () => {
-    const { service, onStreamFailure, auditLogStreamOutboxDAL } = createService();
+    const { service, auditLogStreamOutboxDAL } = createService();
 
     // attempts=4 → attempts+1=5 hits MAX_ATTEMPTS so the row must go to DLQ.
     auditLogStreamOutboxDAL.claimBatchForStream
@@ -144,7 +133,6 @@ describe("audit-log-stream-outbox-service drainStream failure wiring", () => {
 
     await service.drainStream({ streamId: STREAM_ID, orgId: ORG_ID, provider: PROVIDER });
 
-    expect(onStreamFailure).toHaveBeenCalledTimes(1);
     expect(auditLogStreamOutboxDAL.commitDeliveryResult).toHaveBeenCalledTimes(1);
     const call = auditLogStreamOutboxDAL.commitDeliveryResult.mock.calls[0][0] as {
       successIds: number[];
@@ -157,15 +145,14 @@ describe("audit-log-stream-outbox-service drainStream failure wiring", () => {
     expect(call.exhausted[0].errorMessage).toEqual(expect.stringContaining(FAILURE_MESSAGE));
   });
 
-  test("does not invoke onStreamFailure on the success path", async () => {
-    const { service, onStreamFailure, auditLogStreamOutboxDAL } = createService();
+  test("commits delivered rows on the success path", async () => {
+    const { service, auditLogStreamOutboxDAL } = createService();
 
     auditLogStreamOutboxDAL.claimBatchForStream.mockResolvedValueOnce([buildRow()]).mockResolvedValueOnce([]);
     batchStreamLog.mockResolvedValueOnce(undefined);
 
     await service.drainStream({ streamId: STREAM_ID, orgId: ORG_ID, provider: PROVIDER });
 
-    expect(onStreamFailure).not.toHaveBeenCalled();
     expect(auditLogStreamOutboxDAL.commitDeliveryResult).toHaveBeenCalledTimes(1);
     const call = auditLogStreamOutboxDAL.commitDeliveryResult.mock.calls[0][0] as {
       successIds: number[];
@@ -289,7 +276,7 @@ describe("audit-log-stream-outbox-service drainStream single mode", () => {
   });
 
   test("retries only the row whose single-event send failed", async () => {
-    const { service, onStreamFailure, auditLogStreamOutboxDAL, auditLogStreamDAL } = createService();
+    const { service, auditLogStreamOutboxDAL, auditLogStreamDAL } = createService();
 
     auditLogStreamDAL.findById.mockResolvedValue({
       id: STREAM_ID,
@@ -307,7 +294,6 @@ describe("audit-log-stream-outbox-service drainStream single mode", () => {
 
     await service.drainStream({ streamId: STREAM_ID, orgId: ORG_ID, provider: LogProvider.Custom });
 
-    expect(onStreamFailure).toHaveBeenCalledTimes(1);
     const call = auditLogStreamOutboxDAL.commitDeliveryResult.mock.calls[0][0] as {
       successIds: number[];
       retriable: { groups: { ids: number[]; nextRetryDelayMs: number }[] } | null;

@@ -1,5 +1,3 @@
-import { isAxiosError } from "axios";
-
 import { TAuditLogs } from "@app/db/schemas";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { logger } from "@app/lib/logger";
@@ -56,25 +54,11 @@ const PROVIDER_QUEUE_MAP: Record<LogProvider, QueueName> = {
   [LogProvider.Splunk]: QueueName.AuditLogStreamSplunk
 };
 
-const LAST_ERROR_MAX_LENGTH = 1_000;
-
 const computeBackoffMs = (attemptsAfterIncrement: number): number => {
   const exponent = Math.min(attemptsAfterIncrement - 1, 10);
   const base = Math.min(BACKOFF_BASE_MS * 2 ** exponent, BACKOFF_MAX_MS);
   const jitter = Math.floor(Math.random() * Math.min(base / 2, 30_000));
   return base + jitter;
-};
-
-const formatErrorMessage = (error: unknown): string => {
-  if (isAxiosError(error)) {
-    return `${error.message ?? "Request failed"} — ${JSON.stringify(error.response?.data ?? null)}`;
-  }
-  return (error as Error)?.message ?? "Unknown error";
-};
-
-const truncateError = (error: unknown): string => {
-  const message = formatErrorMessage(error);
-  return message.length > LAST_ERROR_MAX_LENGTH ? `${message.slice(0, LAST_ERROR_MAX_LENGTH)}...` : message;
 };
 
 export type TAuditLogStreamOutboxServiceFactoryDep = {
@@ -83,12 +67,6 @@ export type TAuditLogStreamOutboxServiceFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX">;
   queueService: TQueueServiceFactory;
-  onStreamFailure?: (input: {
-    orgId: string;
-    streamId: string;
-    provider: LogProvider;
-    errorMessage: string;
-  }) => Promise<void> | void;
 };
 
 export type TAuditLogStreamOutboxServiceFactory = {
@@ -104,8 +82,7 @@ export const auditLogStreamOutboxServiceFactory = ({
   auditLogStreamDAL,
   kmsService,
   keyStore,
-  queueService,
-  onStreamFailure
+  queueService
 }: TAuditLogStreamOutboxServiceFactoryDep): TAuditLogStreamOutboxServiceFactory => {
   // Try to win the 5s SETNX debounce for a stream and, on win, enqueue a delayed
   // flush job on the matching per-provider queue. Returning false means another
@@ -247,7 +224,7 @@ export const auditLogStreamOutboxServiceFactory = ({
           }
           streamSuccess.push(...chunk);
         } catch (error) {
-          const errorMessage = truncateError(error);
+          const errorMessage = (error as Error)?.message ?? "Unknown error";
           logger.error(
             error,
             `audit-log-stream-outbox: batch delivery failed [streamId=${streamId}] [orgId=${orgId}] [provider=${provider}] [chunkSize=${chunk.length}]: ${errorMessage}`
@@ -289,13 +266,9 @@ export const auditLogStreamOutboxServiceFactory = ({
       });
 
       if (streamFail.length > 0) {
-        if (onStreamFailure) {
-          const representativeError = streamFail.at(-1)?.errorMessage ?? "Unknown error";
-          // eslint-disable-next-line no-await-in-loop
-          await Promise.resolve(onStreamFailure({ orgId, streamId, provider, errorMessage: representativeError }));
-        }
-
-        // Bail when this claim saw any failure. The inner loop already attempted
+        // Each failed chunk is already logged with its error above; the rows are
+        // committed to 'retry'/DLQ by commitDeliveryResult. Bail when this claim
+        // saw any failure. The inner loop already attempted
         // every chunk independently (so partial-success rows are committed
         // above), but hopping straight to the next claim risks compounding load
         // on a degraded endpoint — let backoff on the retriable rows govern
