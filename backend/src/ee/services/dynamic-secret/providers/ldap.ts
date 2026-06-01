@@ -11,6 +11,7 @@ import { sanitizeString } from "@app/lib/fn";
 import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
 
 import { ActorIdentityAttributes } from "../../dynamic-secret-lease/dynamic-secret-lease-types";
+import { verifyHostInputValidity } from "../dynamic-secret-fns";
 import { LdapCredentialType, LdapSchema, TDynamicProviderFns } from "./models";
 import { generateUsername } from "./templateUtils";
 
@@ -73,6 +74,24 @@ export const LdapProvider = (): TDynamicProviderFns => {
   };
 
   const $getClient = async (providerInputs: z.infer<typeof LdapSchema>): Promise<ldapjs.Client> => {
+    // SSRF guard — every other dynamic-secret provider (redis, mongo, sql,
+    // azure-sql, elastic-search, clickhouse, vertica, sap-ase, …) calls
+    // verifyHostInputValidity before opening the network connection so that
+    // operators with permission to configure a dynamic secret can't point
+    // Infisical at an internal LDAP server. Mirror that here.
+    let ldapHost: string;
+    try {
+      ldapHost = new URL(providerInputs.url).hostname;
+    } catch {
+      throw new BadRequestError({
+        message: "Invalid LDAP URL. Expected ldap:// or ldaps:// with a parseable host."
+      });
+    }
+    if (!ldapHost) {
+      throw new BadRequestError({ message: "Invalid LDAP URL. Missing host." });
+    }
+    await verifyHostInputValidity({ host: ldapHost, isDynamicSecret: true });
+
     return new Promise((resolve, reject) => {
       const client = ldapjs.createClient({
         url: providerInputs.url,
