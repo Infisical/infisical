@@ -55,6 +55,10 @@ export const authSignupServiceFactory = ({
       throw new Error("Provided a disposable email");
     }
 
+    // Acquire cooldown before any operation to avoid reliable enumeration oracle and to throttle the
+    // unauthenticated DB queries below (e.g. the SSO-enforced domain lookup).
+    const { emailHash, cooldownSeconds } = await tokenService.acquireEmailSignupCooldown(sanitizedEmail);
+
     // Block email/password signup for domains owned by an org that enforces SSO. The org's verified
     // domain + IdP are authoritative, so allowing a competing password account would reopen an
     // account-takeover vector. Domain ownership isn't secret, so surfacing this is acceptable.
@@ -71,9 +75,6 @@ export const authSignupServiceFactory = ({
         }
       }
     }
-
-    // Acquire cooldown before any operation to avoid reliable enumeration oracle
-    const { emailHash, cooldownSeconds } = await tokenService.acquireEmailSignupCooldown(sanitizedEmail);
 
     // Case sensitive email resolution
     const existingUser = await userDAL.findOne({ username: sanitizedEmail });

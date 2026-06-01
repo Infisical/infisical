@@ -8,6 +8,7 @@ import { ProviderAuthResult } from "@app/services/auth/auth-type";
 
 import { TTestSmtpService } from "../../mocks/smtp";
 import { cleanupEmailDomains, seedVerifiedEmailDomain } from "../../testUtils/email-domains";
+import { cleanupSamlConfig, seedSamlConfig } from "../../testUtils/saml-config";
 
 const getDb = () => (globalThis as unknown as { testDb: Knex }).testDb;
 const smtp = () => (globalThis as unknown as { testSmtp: TTestSmtpService }).testSmtp;
@@ -22,6 +23,8 @@ describe("Auth SSO Signup V3 (SSO enforced)", () => {
 
   beforeAll(async () => {
     await seedVerifiedEmailDomain(TEST_ORG_ID, TEST_DOMAIN, getDb());
+    // samlLogin reads the org's SAML config, so seed one to keep this spec self-contained.
+    await seedSamlConfig(TEST_ORG_ID, getDb(), { authProvider: "okta-saml" });
     // When SSO is enforced, the verified domain + IdP are authoritative.
     await getDb()(TableName.Organization).where({ id: TEST_ORG_ID }).update({ authEnforced: true });
   });
@@ -35,6 +38,7 @@ describe("Auth SSO Signup V3 (SSO enforced)", () => {
       await db(TableName.Membership).whereIn("actorUserId", createdUserIds).del();
       await db(TableName.Users).whereIn("id", createdUserIds).where("id", "!=", seedData1.id).del();
     }
+    await cleanupSamlConfig(TEST_ORG_ID, db);
     await cleanupEmailDomains(TEST_ORG_ID, db);
   });
 
