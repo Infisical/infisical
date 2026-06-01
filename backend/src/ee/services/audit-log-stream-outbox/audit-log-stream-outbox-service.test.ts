@@ -405,9 +405,10 @@ describe("audit-log-stream-outbox-service pruneDeliveredRows", () => {
 
     expect(auditLogStreamOutboxDAL.deleteDeliveredOlderThan).toHaveBeenCalledTimes(1);
     const [retentionMs] = auditLogStreamOutboxDAL.deleteDeliveredOlderThan.mock.calls[0];
-    // Retention must be positive and at least an hour — guards against accidental
-    // tightening that would defeat the dedup-window purpose of keeping delivered rows.
-    expect(retentionMs).toBeGreaterThanOrEqual(60 * 60_000);
+    // Retention must comfortably outlive the ~5s ingest-stream trim window so the
+    // delivered rows still serve their dedup-guard purpose — guards against accidental
+    // tightening down toward that window.
+    expect(retentionMs).toBeGreaterThanOrEqual(5 * 60_000);
   });
 });
 
@@ -420,7 +421,8 @@ describe("audit-log-stream-outbox-service pruneDlqEntries", () => {
 
     expect(auditLogStreamOutboxDAL.deleteDlqOlderThan).toHaveBeenCalledTimes(1);
     const [retentionMs] = auditLogStreamOutboxDAL.deleteDlqOlderThan.mock.calls[0];
-    // DLQ retention should give operators at least a day to triage.
-    expect(retentionMs).toBeGreaterThanOrEqual(24 * 60 * 60_000);
+    // DLQ retention should give operators a meaningful window (at least several hours)
+    // to notice and triage a wedged provider.
+    expect(retentionMs).toBeGreaterThanOrEqual(12 * 60 * 60_000);
   });
 });

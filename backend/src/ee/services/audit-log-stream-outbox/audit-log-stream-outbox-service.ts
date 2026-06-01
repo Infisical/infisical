@@ -30,9 +30,10 @@ const MAX_ATTEMPTS = 5;
 // POSTs. Dispatch them in parallel waves of this size instead — bounded so we don't
 // open BATCH_SIZE concurrent connections to a legacy webhook receiver at once.
 const SINGLE_MODE_SEND_CONCURRENCY = 5;
-// Exponential backoff with jitter, capped — keeps a wedged provider from hot-looping.
+// Exponential backoff with jitter — keeps a wedged provider from hot-looping. The
+// exponent is clamped (see computeBackoffMs) so the base can't run away if MAX_ATTEMPTS
+// is ever raised; with the current MAX_ATTEMPTS the schedule tops out at ~240s.
 const BACKOFF_BASE_MS = 30_000;
-const BACKOFF_MAX_MS = 15 * 60_000;
 
 // Stale-claim sweeper threshold: a single flush job's worst-case legitimate
 // hold time is MAX_BATCHES_PER_JOB × AUDIT_LOG_STREAM_BATCH_TIMEOUT ≈ 5 min.
@@ -42,14 +43,16 @@ export const STALE_CLAIM_THRESHOLD_MS = 10 * 60_000;
 // Retention for 'delivered' outbox rows. The row is the dedup guard against a
 // re-fanout from the ingest consumer (e.g. after a Redis streamTrim failure),
 // so the retention only needs to outlive how long an ingest-stream entry can
-// stay un-trimmed in practice. 1h is comfortably above that for any realistic
-// Redis/DB blip; the cleanup cron runs hourly so rows live ~1–2h in steady state.
-export const DELIVERED_RETENTION_MS = 60 * 60_000;
+// stay un-trimmed in practice. The ingest stream trims every ~5s, so 15m is
+// already 100×+ that window; the unique (streamId, auditLogId) constraint is the
+// hard dedup guarantee, this is just the belt-and-suspenders margin. Kept short
+// so the 'delivered' rows (the table's hottest section) don't pile up.
+export const DELIVERED_RETENTION_MS = 15 * 60_000;
 
 // Retention for DLQ entries. Long enough for an operator to notice + triage a
 // wedged provider via dashboard, short enough that the table doesn't grow
 // without bound. Same cron prunes these alongside delivered rows.
-export const DLQ_RETENTION_MS = 24 * 60 * 60_000;
+export const DLQ_RETENTION_MS = 12 * 60 * 60_000;
 
 const PROVIDER_QUEUE_MAP: Record<LogProvider, QueueName> = {
   [LogProvider.Azure]: QueueName.AuditLogStreamAzure,
@@ -61,7 +64,7 @@ const PROVIDER_QUEUE_MAP: Record<LogProvider, QueueName> = {
 
 const computeBackoffMs = (attemptsAfterIncrement: number): number => {
   const exponent = Math.min(attemptsAfterIncrement - 1, 10);
-  const base = Math.min(BACKOFF_BASE_MS * 2 ** exponent, BACKOFF_MAX_MS);
+  const base = BACKOFF_BASE_MS * 2 ** exponent;
   const jitter = Math.floor(Math.random() * Math.min(base / 2, 30_000));
   return base + jitter;
 };

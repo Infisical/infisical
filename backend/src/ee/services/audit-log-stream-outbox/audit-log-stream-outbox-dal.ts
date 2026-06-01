@@ -4,6 +4,7 @@ import { TDbClient } from "@app/db";
 import { TableName, TAuditLogs } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { chunkArray } from "@app/lib/fn";
+import { logger } from "@app/lib/logger";
 
 import {
   AuditLogStreamOutboxStatus,
@@ -280,6 +281,11 @@ export const auditLogStreamOutboxDALFactory = (db: TDbClient) => {
 
         total += deleted;
         if (deleted < batchSize) break;
+        if (i === maxBatches - 1) {
+          logger.warn(
+            `audit-log-stream-outbox: deleteDeliveredOlderThan hit the batch ceiling [maxBatches=${maxBatches}] [batchSize=${batchSize}] [deleted=${total}] — eligible rows remain; cleanup is not keeping up with delivered-row inflow`
+          );
+        }
       }
       return total;
     } catch (error) {
@@ -303,6 +309,11 @@ export const auditLogStreamOutboxDALFactory = (db: TDbClient) => {
 
         total += deleted;
         if (deleted < batchSize) break;
+        if (i === maxBatches - 1) {
+          logger.warn(
+            `audit-log-stream-outbox: deleteDlqOlderThan hit the batch ceiling [maxBatches=${maxBatches}] [batchSize=${batchSize}] [deleted=${total}] — expired DLQ entries remain unpruned`
+          );
+        }
       }
       return total;
     } catch (error) {
