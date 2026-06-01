@@ -1,5 +1,6 @@
 import { TAuditLogs } from "@app/db/schemas";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
+import { chunkArray } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -25,6 +26,10 @@ const FLUSH_DEBOUNCE_SECONDS = Math.ceil(FLUSH_DEBOUNCE_MS / 1_000);
 const BATCH_SIZE = 500;
 const MAX_BATCHES_PER_JOB = 10; // hard cap so one job can't monopolize the worker
 const MAX_ATTEMPTS = 5;
+// Single mode sends one request per row, so a full claim is up to BATCH_SIZE serial
+// POSTs. Dispatch them in parallel waves of this size instead — bounded so we don't
+// open BATCH_SIZE concurrent connections to a legacy webhook receiver at once.
+const SINGLE_MODE_SEND_CONCURRENCY = 5;
 // Exponential backoff with jitter, capped — keeps a wedged provider from hot-looping.
 const BACKOFF_BASE_MS = 30_000;
 const BACKOFF_MAX_MS = 15 * 60_000;
@@ -210,27 +215,35 @@ export const auditLogStreamOutboxServiceFactory = ({
         : chunkAuditLogsByBatchLimit(claimed, providerImpl.getProviderBatchLimit());
       const streamSuccess: TAuditLogStreamOutboxRow[] = [];
       const streamFail: TFailedStreamRow[] = [];
-      for (const chunk of chunks) {
-        try {
-          if (isSingleMode) {
-            if (!providerImpl.streamLog) {
-              throw new Error(`provider '${provider}' does not support single stream mode`);
-            }
-            // eslint-disable-next-line no-await-in-loop
-            await providerImpl.streamLog({ credentials, auditLog: chunk[0].payload });
-          } else {
-            // eslint-disable-next-line no-await-in-loop
-            await providerImpl.batchStreamLog({ credentials, auditLogs: chunk.map((row) => row.payload) });
+
+      const sendChunk = async (chunk: TAuditLogStreamOutboxRow[]) => {
+        if (isSingleMode) {
+          if (!providerImpl.streamLog) {
+            throw new Error(`provider '${provider}' does not support single stream mode`);
           }
-          streamSuccess.push(...chunk);
-        } catch (error) {
-          const errorMessage = (error as Error)?.message ?? "Unknown error";
-          logger.error(
-            error,
-            `audit-log-stream-outbox: batch delivery failed [streamId=${streamId}] [orgId=${orgId}] [provider=${provider}] [chunkSize=${chunk.length}]: ${errorMessage}`
-          );
-          streamFail.push(...chunk.map((row) => ({ row, errorMessage })));
+          await providerImpl.streamLog({ credentials, auditLog: chunk[0].payload });
+        } else {
+          await providerImpl.batchStreamLog({ credentials, auditLogs: chunk.map((row) => row.payload) });
         }
+      };
+
+      const sendWaveSize = isSingleMode ? SINGLE_MODE_SEND_CONCURRENCY : 1;
+      for (const wave of chunkArray(chunks, sendWaveSize)) {
+        // eslint-disable-next-line no-await-in-loop
+        const results = await Promise.allSettled(wave.map(sendChunk));
+        results.forEach((result, idx) => {
+          const chunk = wave[idx];
+          if (result.status === "fulfilled") {
+            streamSuccess.push(...chunk);
+          } else {
+            const errorMessage = (result.reason as Error)?.message ?? "Unknown error";
+            logger.error(
+              result.reason,
+              `audit-log-stream-outbox: batch delivery failed [streamId=${streamId}] [orgId=${orgId}] [provider=${provider}] [chunkSize=${chunk.length}]: ${errorMessage}`
+            );
+            streamFail.push(...chunk.map((row) => ({ row, errorMessage })));
+          }
+        });
       }
 
       const exhausted: TFailedStreamRow[] = [];
