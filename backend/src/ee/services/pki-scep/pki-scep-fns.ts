@@ -165,7 +165,8 @@ export const normalizeSubjectAltNames = (ext: x509.SubjectAlternativeNameExtensi
   const pairs: string[] = [];
   for (const item of ext.names.items) {
     const type = String(item.type).toLowerCase();
-    const value = String(item.value).normalize("NFC").trim().toLowerCase();
+    const raw = String(item.value).normalize("NFC").trim();
+    const value = type === "dns" ? raw.toLowerCase() : raw;
     pairs.push(`${type}:${value}`);
   }
   return pairs.sort().join(",");
