@@ -327,7 +327,13 @@ export const signerMembershipServiceFactory = ({
   }: TListSignerMembersDTO): Promise<TSignerMember[]> => {
     await $loadSignerOrThrow(signerId, projectId);
 
-    await $loadResourcePermission(signerId, projectId, { actor, actorId, actorAuthMethod, actorOrgId });
+    const { permission } = await $loadResourcePermission(signerId, projectId, {
+      actor,
+      actorId,
+      actorAuthMethod,
+      actorOrgId
+    });
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Read, ResourcePermissionSub.Member);
 
     const memberships = await membershipDAL.find({
       scope: RESOURCE_SCOPE,
@@ -417,7 +423,13 @@ export const signerMembershipServiceFactory = ({
     actorOrgId
   }: TListEffectiveSignerMembersDTO): Promise<TEffectiveSignerMember[]> => {
     await $loadSignerOrThrow(signerId, projectId);
-    await $loadResourcePermission(signerId, projectId, { actor, actorId, actorAuthMethod, actorOrgId });
+    const { permission } = await $loadResourcePermission(signerId, projectId, {
+      actor,
+      actorId,
+      actorAuthMethod,
+      actorOrgId
+    });
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Read, ResourcePermissionSub.Member);
 
     const allMemberships = await membershipDAL.find({
       scope: RESOURCE_SCOPE,

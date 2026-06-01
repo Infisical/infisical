@@ -10,7 +10,7 @@ import { TSignerServiceFactory } from "./signer-service";
 type TSignerAutoRenewalQueueFactoryDep = {
   queueService: TQueueServiceFactory;
   cronJob: TCronJobFactory;
-  signerDAL: Pick<TSignerDALFactory, "find" | "findByIdWithCertificate">;
+  signerDAL: Pick<TSignerDALFactory, "findByStatusWithCertificate">;
   signerService: Pick<TSignerServiceFactory, "autoRenewCertificate">;
 };
 
@@ -28,7 +28,7 @@ export const signerAutoRenewalQueueFactory = ({
     if (job.name !== QueueJobs.SignerDailyAutoRenewal) return;
 
     const now = Date.now();
-    const candidates = await signerDAL.find({ status: SignerStatus.Active });
+    const candidates = await signerDAL.findByStatusWithCertificate(SignerStatus.Active);
 
     let scanned = 0;
     let needsRenewal = 0;
@@ -50,8 +50,7 @@ export const signerAutoRenewalQueueFactory = ({
         continue;
       }
 
-      const withCert = await signerDAL.findByIdWithCertificate(signer.id);
-      if (!withCert?.certificateNotAfter) {
+      if (!signer.certificateNotAfter) {
         needsRenewal += 1;
         try {
           await signerService.autoRenewCertificate(signer.id);
@@ -63,7 +62,7 @@ export const signerAutoRenewalQueueFactory = ({
         continue;
       }
 
-      const msUntilExpiry = new Date(withCert.certificateNotAfter).getTime() - now;
+      const msUntilExpiry = new Date(signer.certificateNotAfter).getTime() - now;
       const daysUntilExpiry = msUntilExpiry / MS_PER_DAY;
       const isDue = daysUntilExpiry <= signer.renewBeforeDays;
       if (!isDue) continue;

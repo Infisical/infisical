@@ -157,10 +157,10 @@ export const signerPolicyServiceFactory = ({
     return { name: "", email: "" };
   };
 
-  const $assertRequestWithinPolicyLimits = (
+  const $resolveRequestEffectiveLimits = (
     policyConstraints: unknown,
     dto: { requestedSignings?: number; requestedWindowStart?: string; requestedWindowEnd?: string }
-  ) => {
+  ): { effectiveSignings?: number; effectiveWindowStart?: string; effectiveWindowEnd?: string } => {
     const blob = (policyConstraints as TConstraintsBlob) ?? {};
     const maxSignings = blob.constraints?.maxSignings ?? null;
     const maxWindowDuration = blob.constraints?.maxWindowDuration ?? null;
@@ -174,6 +174,8 @@ export const signerPolicyServiceFactory = ({
       });
     }
 
+    let effectiveWindowStart: string | undefined;
+    let effectiveWindowEnd: string | undefined;
     if (dto.requestedWindowEnd) {
       const end = new Date(dto.requestedWindowEnd).getTime();
       if (Number.isNaN(end)) {
@@ -194,15 +196,36 @@ export const signerPolicyServiceFactory = ({
         try {
           allowedMs = ms(maxWindowDuration);
         } catch {
-          return;
+          allowedMs = Number.POSITIVE_INFINITY;
         }
-        if (end - startTime > allowedMs) {
+        if (Number.isFinite(allowedMs) && end - startTime > allowedMs) {
           throw new BadRequestError({
             message: `Requested signing window exceeds the policy maximum of ${maxWindowDuration}.`
           });
         }
       }
+      effectiveWindowStart = dto.requestedWindowStart;
+      effectiveWindowEnd = dto.requestedWindowEnd;
+    } else if (maxWindowDuration) {
+      let allowedMs: number;
+      try {
+        allowedMs = ms(maxWindowDuration);
+      } catch {
+        allowedMs = 0;
+      }
+      if (allowedMs > 0) {
+        const start = new Date();
+        effectiveWindowStart = dto.requestedWindowStart ?? start.toISOString();
+        effectiveWindowEnd = new Date(start.getTime() + allowedMs).toISOString();
+      }
     }
+
+    let effectiveSignings = dto.requestedSignings;
+    if (effectiveSignings === undefined && maxSignings !== null) {
+      effectiveSignings = maxSignings;
+    }
+
+    return { effectiveSignings, effectiveWindowStart, effectiveWindowEnd };
   };
 
   const $resolveGranteeEffectiveRoles = async ({
@@ -530,11 +553,14 @@ export const signerPolicyServiceFactory = ({
       throw new NotFoundError({ message: `Policy for signer '${signer.name}' has been removed.` });
     }
 
-    $assertRequestWithinPolicyLimits(policy.constraints, {
-      requestedSignings: dto.requestedSignings,
-      requestedWindowStart: dto.requestedWindowStart,
-      requestedWindowEnd: dto.requestedWindowEnd
-    });
+    const { effectiveSignings, effectiveWindowStart, effectiveWindowEnd } = $resolveRequestEffectiveLimits(
+      policy.constraints,
+      {
+        requestedSignings: dto.requestedSignings,
+        requestedWindowStart: dto.requestedWindowStart,
+        requestedWindowEnd: dto.requestedWindowEnd
+      }
+    );
 
     const requester = await $resolveActorDisplay({
       userId: dto.actor === ActorType.USER ? dto.actorId : null,
@@ -555,9 +581,9 @@ export const signerPolicyServiceFactory = ({
           signerName: signer.name,
           approvalPolicyId: policy.id,
           justification: dto.justification,
-          requestedSignings: dto.requestedSignings,
-          requestedWindowStart: dto.requestedWindowStart,
-          requestedWindowEnd: dto.requestedWindowEnd
+          requestedSignings: effectiveSignings,
+          requestedWindowStart: effectiveWindowStart,
+          requestedWindowEnd: effectiveWindowEnd
         },
         justification: dto.justification,
         requesterUserId: dto.actor === ActorType.USER ? dto.actorId : null,
@@ -600,11 +626,14 @@ export const signerPolicyServiceFactory = ({
     if (!policy) {
       throw new NotFoundError({ message: `Policy for signer '${signer.name}' has been removed.` });
     }
-    $assertRequestWithinPolicyLimits(policy.constraints, {
-      requestedSignings: dto.requestedSignings,
-      requestedWindowStart: dto.requestedWindowStart,
-      requestedWindowEnd: dto.requestedWindowEnd
-    });
+    const { effectiveSignings, effectiveWindowStart, effectiveWindowEnd } = $resolveRequestEffectiveLimits(
+      policy.constraints,
+      {
+        requestedSignings: dto.requestedSignings,
+        requestedWindowStart: dto.requestedWindowStart,
+        requestedWindowEnd: dto.requestedWindowEnd
+      }
+    );
 
     const granteeRoles = await $resolveGranteeEffectiveRoles({
       projectId: signer.projectId,
@@ -649,9 +678,9 @@ export const signerPolicyServiceFactory = ({
               signerName: signer.name,
               approvalPolicyId: signer.approvalPolicyId,
               justification: dto.justification,
-              requestedSignings: dto.requestedSignings,
-              requestedWindowStart: dto.requestedWindowStart,
-              requestedWindowEnd: dto.requestedWindowEnd
+              requestedSignings: effectiveSignings,
+              requestedWindowStart: effectiveWindowStart,
+              requestedWindowEnd: effectiveWindowEnd
             }
           }
         },
@@ -669,10 +698,10 @@ export const signerPolicyServiceFactory = ({
           attributes: {
             signerId: signer.id,
             signerName: signer.name,
-            maxSignings: dto.requestedSignings,
-            windowStart: dto.requestedWindowStart
+            maxSignings: effectiveSignings,
+            windowStart: effectiveWindowStart
           },
-          expiresAt: dto.requestedWindowEnd ? new Date(dto.requestedWindowEnd) : null,
+          expiresAt: effectiveWindowEnd ? new Date(effectiveWindowEnd) : null,
           grantedByUserId: dto.actor === ActorType.USER ? dto.actorId : null
         },
         tx

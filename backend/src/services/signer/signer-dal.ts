@@ -143,5 +143,33 @@ export const signerDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, findByIdWithCertificate, findByProjectId, countByProjectId };
+  const findByStatusWithCertificate = async (status: string, tx?: Knex): Promise<TSignerWithCertificate[]> => {
+    try {
+      const result = await (tx || db.replicaNode())(TableName.PkiSigners)
+        .leftJoin(TableName.Certificate, `${TableName.PkiSigners}.certificateId`, `${TableName.Certificate}.id`)
+        .leftJoin(
+          TableName.ApprovalPolicies,
+          `${TableName.PkiSigners}.approvalPolicyId`,
+          `${TableName.ApprovalPolicies}.id`
+        )
+        .select(selectAllTableCols(TableName.PkiSigners))
+        .select(
+          db.ref("commonName").withSchema(TableName.Certificate).as("certificateCommonName"),
+          db.ref("serialNumber").withSchema(TableName.Certificate).as("certificateSerialNumber"),
+          db.ref("notAfter").withSchema(TableName.Certificate).as("certificateNotAfter"),
+          db.ref("notBefore").withSchema(TableName.Certificate).as("certificateNotBefore"),
+          db.ref("keyAlgorithm").withSchema(TableName.Certificate).as("certificateKeyAlgorithm"),
+          db.ref("status").withSchema(TableName.Certificate).as("certificateStatus"),
+          db.ref("caId").withSchema(TableName.Certificate).as("certificateCaId"),
+          db.ref("name").withSchema(TableName.ApprovalPolicies).as("approvalPolicyName")
+        )
+        .where(`${TableName.PkiSigners}.status`, status);
+
+      return result as TSignerWithCertificate[];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindSignersByStatusWithCertificate" });
+    }
+  };
+
+  return { ...orm, findByIdWithCertificate, findByStatusWithCertificate, findByProjectId, countByProjectId };
 };
