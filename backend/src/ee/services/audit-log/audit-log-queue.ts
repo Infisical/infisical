@@ -91,9 +91,11 @@ export const auditLogQueueServiceFactory = async ({
     try {
       await appendToIngestStream(data);
     } catch (error) {
+      // At-most-once on the request path: the produced event is now lost (not retried). Log it
+      // as an explicit drop so it's searchable as audit-log data loss, not a generic push failure.
       logger.error(
         error,
-        `audit-log-queue: Failed to push audit log to ingest stream [event=${data.event?.type}] [orgId=${data.orgId}] [projectId=${data.projectId}]`
+        `audit-log-queue: Dropped audit log — failed to push to ingest stream (at-most-once on request path) [event=${data.event?.type}] [orgId=${data.orgId}] [projectId=${data.projectId}]`
       );
     }
   };
@@ -133,6 +135,17 @@ export const auditLogQueueServiceFactory = async ({
     );
 
     if (entries.length === 0 || !lastId) return;
+
+    // We filled the entire collection window, so the ingest stream is draining slower than
+    // it's filling — typically a sustained insert outage holding back the trim. The stream is
+    // capped at a MAXLEN ceiling (see keyStore.streamAdd), so a persistent backlog means Redis
+    // will start dropping the OLDEST (still-undelivered) audit logs. Surface it loudly so the
+    // backlog is visible before that silent loss happens.
+    if (entries.length >= AUDIT_LOG_STREAM_MAX_ENTRIES) {
+      logger.warn(
+        `audit-log-queue: ingest stream backlog hit the collection ceiling [collected=${entries.length}] [maxEntries=${AUDIT_LOG_STREAM_MAX_ENTRIES}] — stream is backing up; oldest entries risk being dropped by the Redis MAXLEN cap`
+      );
+    }
 
     // Parse — a single corrupt entry is skipped, not allowed to abort the whole batch.
     const parsed: TAuditLogStreamEntry[] = [];
