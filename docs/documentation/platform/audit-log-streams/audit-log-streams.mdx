@@ -47,6 +47,10 @@ This prevents audit logs from being written to PostgreSQL while still streaming 
 
 		    ![custom provider](/images/platform/audit-log-streams/custom-provider.png)
 
+				<Info>
+				    Custom endpoints receive audit logs as a **JSON array of events** per request (batch delivery). Make sure your receiver accepts an array. See [Delivery Format](#delivery-format) for details.
+				</Info>
+
 				Once you're finished, click **Create Log Stream**.
 		</Step>
 		<Step title="Log Stream Created">
@@ -334,7 +338,28 @@ This prevents audit logs from being written to PostgreSQL while still streaming 
     </Accordion>
 </AccordionGroup>
 
+## Delivery Format
+
+Infisical streams audit logs to your destination in **batches**. Rather than sending one HTTP request per event, Infisical accumulates events and delivers them together, which improves throughput and reduces load on your receiver.
+
+For **Custom** streams, each request is an HTTP `POST` with a body containing a **JSON array** of audit log events:
+
+```json
+[
+  { "id": "...", "eventType": "create-secret", "...": "..." },
+  { "id": "...", "eventType": "get-secrets", "...": "..." }
+]
+```
+
+Your endpoint must be able to accept a JSON array. Batches are bounded — your receiver should be prepared to handle up to **500 events** or **1 MB** per request. The managed providers (Azure, Cribl, Datadog, Splunk) are batched automatically using each provider's native bulk-ingestion format.
+
+<Note>
+    **Legacy single-event delivery.** Custom streams created before batch delivery was introduced continue to receive **one event per request** as a single JSON object (not an array), so existing receivers keep working unchanged. You can upgrade such a stream to batch delivery by editing it and enabling **Batch delivery** in the form. This switch is **one-way** — once a stream is on batch delivery it cannot be reverted to single-event delivery, so confirm your endpoint accepts a JSON array before enabling it.
+</Note>
+
 ### Example Log Entry
+
+The example below shows a single audit log event. For Custom streams using batch delivery, this object appears as an element inside the JSON array described above.
 
 ```created-secret.json
 {

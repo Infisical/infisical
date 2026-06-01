@@ -59,3 +59,7 @@ The following Fluent Bit configuration sets up an HTTP listener on port `8888` a
 
 Once Fluent Bit is set up and configured, you can point the Infisical [audit log stream](/documentation/platform/audit-log-streams/audit-log-streams) to Fluent Bit's HTTP listener, which will then forward the logs to your chosen provider. 
 Using this pattern, you are able to send Infisical Audit logs to various providers that do not support HTTP based log ingestion by default. 
+
+<Info>
+    Infisical delivers events to Custom endpoints (including Fluent Bit) as a [JSON array of events](/documentation/platform/audit-log-streams/audit-log-streams#delivery-format) per request. Fluent Bit's `http` input accepts JSON arrays and emits each element as a separate record, so no extra configuration is required.
+</Info>
