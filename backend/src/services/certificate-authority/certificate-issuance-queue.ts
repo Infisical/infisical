@@ -441,7 +441,7 @@ export const certificateIssuanceQueueFactory = ({
           }
 
           const csrObj = await x509.Pkcs10CertificateRequestGenerator.create({
-            name: commonName ? `CN=${commonName}` : "",
+            name: commonName ? [{ CN: [commonName] }] : [],
             keys: leafKeys,
             signingAlgorithm: keyAlg,
             extensions: csrExtensions
