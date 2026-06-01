@@ -103,9 +103,9 @@ jobs:
                   IMAGE_SHORT_SHA: ${{ steps.commit.outputs.short }}
               run: |
                   docker buildx imagetools create \
-                    --tag "public.ecr.aws/infisical/infisical:latest" \
-                    --tag "public.ecr.aws/infisical/infisical:${IMAGE_SHORT_SHA}" \
-                    --tag "public.ecr.aws/infisical/infisical:${IMAGE_VERSION}" \
+                    --tag "public.ecr.aws/p5f0g7h8/infisical:latest" \
+                    --tag "public.ecr.aws/p5f0g7h8/infisical:${IMAGE_SHORT_SHA}" \
+                    --tag "public.ecr.aws/p5f0g7h8/infisical:${IMAGE_VERSION}" \
                     "docker.io/infisical/infisical:${IMAGE_VERSION}"
             - name: Snyk to check Docker image for vulnerabilities
               continue-on-error: true 
