@@ -70,12 +70,155 @@ export const ProfileDefaultsSection = ({ profile }: Props) => {
     );
   }
 
-  let isFirstSection = true;
-  const sectionClassName = () => {
-    const className = isFirstSection ? "" : "mt-6 border-t border-border pt-6";
-    isFirstSection = false;
-    return className;
-  };
+  const sections: Array<{ id: string; node: React.ReactNode }> = [];
+
+  if (hasCryptoDefaults) {
+    sections.push({
+      id: "cryptography",
+      node: (
+        <>
+          <SectionHeader icon={<KeyRoundIcon />} title="Cryptography" />
+          <div className="grid grid-cols-2 gap-x-8 gap-y-4">
+            {defaults.ttlDays !== undefined && defaults.ttlDays !== null && (
+              <Detail>
+                <DetailLabel>TTL</DetailLabel>
+                <DetailValue>{defaults.ttlDays} days</DetailValue>
+              </Detail>
+            )}
+            {defaults.keyAlgorithm && (
+              <Detail>
+                <DetailLabel>Key Algorithm</DetailLabel>
+                <DetailValue>
+                  <Badge variant="neutral">{defaults.keyAlgorithm}</Badge>
+                </DetailValue>
+              </Detail>
+            )}
+            {defaults.signatureAlgorithm && (
+              <Detail>
+                <DetailLabel>Signature Algorithm</DetailLabel>
+                <DetailValue>
+                  <Badge variant="neutral">{defaults.signatureAlgorithm}</Badge>
+                </DetailValue>
+              </Detail>
+            )}
+          </div>
+        </>
+      )
+    });
+  }
+
+  if (hasKeyUsages) {
+    sections.push({
+      id: "key-usages",
+      node: (
+        <>
+          <SectionHeader icon={<ShieldCheckIcon />} title="Key Usages" />
+          <div className="grid grid-cols-2 gap-x-8 gap-y-4">
+            {defaults.keyUsages && defaults.keyUsages.length > 0 && (
+              <Detail>
+                <DetailLabel>Key Usages</DetailLabel>
+                <DetailValue className="flex flex-wrap gap-1">
+                  {defaults.keyUsages.map((usage) => (
+                    <Badge key={usage} variant="neutral">
+                      {formatKeyUsage(usage as CertKeyUsageType)}
+                    </Badge>
+                  ))}
+                </DetailValue>
+              </Detail>
+            )}
+            {defaults.extendedKeyUsages && defaults.extendedKeyUsages.length > 0 && (
+              <Detail>
+                <DetailLabel>Extended Key Usages</DetailLabel>
+                <DetailValue className="flex flex-wrap gap-1">
+                  {defaults.extendedKeyUsages.map((usage) => (
+                    <Badge key={usage} variant="neutral">
+                      {formatExtendedKeyUsage(usage as CertExtendedKeyUsageType)}
+                    </Badge>
+                  ))}
+                </DetailValue>
+              </Detail>
+            )}
+          </div>
+        </>
+      )
+    });
+  }
+
+  if (hasBasicConstraints && defaults.basicConstraints) {
+    sections.push({
+      id: "basic-constraints",
+      node: (
+        <>
+          <SectionHeader icon={<ScrollTextIcon />} title="Basic Constraints" />
+          <div className="grid grid-cols-2 gap-x-8 gap-y-4">
+            <Detail>
+              <DetailLabel>Is CA</DetailLabel>
+              <DetailValue>
+                <Badge variant={defaults.basicConstraints.isCA ? "success" : "neutral"}>
+                  {defaults.basicConstraints.isCA ? "Yes" : "No"}
+                </Badge>
+              </DetailValue>
+            </Detail>
+            {defaults.basicConstraints.pathLength !== undefined && (
+              <Detail>
+                <DetailLabel>Max Path Length</DetailLabel>
+                <DetailValue>{defaults.basicConstraints.pathLength}</DetailValue>
+              </Detail>
+            )}
+          </div>
+        </>
+      )
+    });
+  }
+
+  if (hasSubjectDefaults) {
+    sections.push({
+      id: "subject",
+      node: (
+        <>
+          <SectionHeader icon={<UserIcon />} title="Subject" />
+          <div className="grid grid-cols-2 gap-x-8 gap-y-4">
+            {defaults.commonName && (
+              <Detail>
+                <DetailLabel>Common Name (CN)</DetailLabel>
+                <DetailValue>{defaults.commonName}</DetailValue>
+              </Detail>
+            )}
+            {defaults.organization && (
+              <Detail>
+                <DetailLabel>Organization (O)</DetailLabel>
+                <DetailValue>{defaults.organization}</DetailValue>
+              </Detail>
+            )}
+            {defaults.organizationalUnit && (
+              <Detail>
+                <DetailLabel>Organizational Unit (OU)</DetailLabel>
+                <DetailValue>{defaults.organizationalUnit}</DetailValue>
+              </Detail>
+            )}
+            {defaults.country && (
+              <Detail>
+                <DetailLabel>Country (C)</DetailLabel>
+                <DetailValue>{defaults.country}</DetailValue>
+              </Detail>
+            )}
+            {defaults.state && (
+              <Detail>
+                <DetailLabel>State/Province (ST)</DetailLabel>
+                <DetailValue>{defaults.state}</DetailValue>
+              </Detail>
+            )}
+            {defaults.locality && (
+              <Detail>
+                <DetailLabel>Locality (L)</DetailLabel>
+                <DetailValue>{defaults.locality}</DetailValue>
+              </Detail>
+            )}
+          </div>
+        </>
+      )
+    });
+  }
 
   return (
     <Card className="w-full">
@@ -84,133 +227,11 @@ export const ProfileDefaultsSection = ({ profile }: Props) => {
         <CardDescription>Values applied when issuing certificates</CardDescription>
       </CardHeader>
       <CardContent>
-        {hasCryptoDefaults && (
-          <div className={sectionClassName()}>
-            <SectionHeader icon={<KeyRoundIcon />} title="Cryptography" />
-            <div className="grid grid-cols-2 gap-x-8 gap-y-4">
-              {defaults.ttlDays !== undefined && defaults.ttlDays !== null && (
-                <Detail>
-                  <DetailLabel>TTL</DetailLabel>
-                  <DetailValue>{defaults.ttlDays} days</DetailValue>
-                </Detail>
-              )}
-              {defaults.keyAlgorithm && (
-                <Detail>
-                  <DetailLabel>Key Algorithm</DetailLabel>
-                  <DetailValue>
-                    <Badge variant="neutral">{defaults.keyAlgorithm}</Badge>
-                  </DetailValue>
-                </Detail>
-              )}
-              {defaults.signatureAlgorithm && (
-                <Detail>
-                  <DetailLabel>Signature Algorithm</DetailLabel>
-                  <DetailValue>
-                    <Badge variant="neutral">{defaults.signatureAlgorithm}</Badge>
-                  </DetailValue>
-                </Detail>
-              )}
-            </div>
+        {sections.map((section, idx) => (
+          <div key={section.id} className={idx === 0 ? "" : "mt-6 border-t border-border pt-6"}>
+            {section.node}
           </div>
-        )}
-
-        {hasKeyUsages && (
-          <div className={sectionClassName()}>
-            <SectionHeader icon={<ShieldCheckIcon />} title="Key Usages" />
-            <div className="grid grid-cols-2 gap-x-8 gap-y-4">
-              {defaults.keyUsages && defaults.keyUsages.length > 0 && (
-                <Detail>
-                  <DetailLabel>Key Usages</DetailLabel>
-                  <DetailValue className="flex flex-wrap gap-1">
-                    {defaults.keyUsages.map((usage) => (
-                      <Badge key={usage} variant="neutral">
-                        {formatKeyUsage(usage as CertKeyUsageType)}
-                      </Badge>
-                    ))}
-                  </DetailValue>
-                </Detail>
-              )}
-              {defaults.extendedKeyUsages && defaults.extendedKeyUsages.length > 0 && (
-                <Detail>
-                  <DetailLabel>Extended Key Usages</DetailLabel>
-                  <DetailValue className="flex flex-wrap gap-1">
-                    {defaults.extendedKeyUsages.map((usage) => (
-                      <Badge key={usage} variant="neutral">
-                        {formatExtendedKeyUsage(usage as CertExtendedKeyUsageType)}
-                      </Badge>
-                    ))}
-                  </DetailValue>
-                </Detail>
-              )}
-            </div>
-          </div>
-        )}
-
-        {hasBasicConstraints && defaults.basicConstraints && (
-          <div className={sectionClassName()}>
-            <SectionHeader icon={<ScrollTextIcon />} title="Basic Constraints" />
-            <div className="grid grid-cols-2 gap-x-8 gap-y-4">
-              <Detail>
-                <DetailLabel>Is CA</DetailLabel>
-                <DetailValue>
-                  <Badge variant={defaults.basicConstraints.isCA ? "success" : "neutral"}>
-                    {defaults.basicConstraints.isCA ? "Yes" : "No"}
-                  </Badge>
-                </DetailValue>
-              </Detail>
-              {defaults.basicConstraints.pathLength !== undefined && (
-                <Detail>
-                  <DetailLabel>Max Path Length</DetailLabel>
-                  <DetailValue>{defaults.basicConstraints.pathLength}</DetailValue>
-                </Detail>
-              )}
-            </div>
-          </div>
-        )}
-
-        {hasSubjectDefaults && (
-          <div className={sectionClassName()}>
-            <SectionHeader icon={<UserIcon />} title="Subject" />
-            <div className="grid grid-cols-2 gap-x-8 gap-y-4">
-              {defaults.commonName && (
-                <Detail>
-                  <DetailLabel>Common Name (CN)</DetailLabel>
-                  <DetailValue>{defaults.commonName}</DetailValue>
-                </Detail>
-              )}
-              {defaults.organization && (
-                <Detail>
-                  <DetailLabel>Organization (O)</DetailLabel>
-                  <DetailValue>{defaults.organization}</DetailValue>
-                </Detail>
-              )}
-              {defaults.organizationalUnit && (
-                <Detail>
-                  <DetailLabel>Organizational Unit (OU)</DetailLabel>
-                  <DetailValue>{defaults.organizationalUnit}</DetailValue>
-                </Detail>
-              )}
-              {defaults.country && (
-                <Detail>
-                  <DetailLabel>Country (C)</DetailLabel>
-                  <DetailValue>{defaults.country}</DetailValue>
-                </Detail>
-              )}
-              {defaults.state && (
-                <Detail>
-                  <DetailLabel>State/Province (ST)</DetailLabel>
-                  <DetailValue>{defaults.state}</DetailValue>
-                </Detail>
-              )}
-              {defaults.locality && (
-                <Detail>
-                  <DetailLabel>Locality (L)</DetailLabel>
-                  <DetailValue>{defaults.locality}</DetailValue>
-                </Detail>
-              )}
-            </div>
-          </div>
-        )}
+        ))}
       </CardContent>
     </Card>
   );

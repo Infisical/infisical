@@ -65,22 +65,29 @@ const Page = () => {
   const handleDeleteConfirm = async () => {
     if (!policy) return;
 
-    await deletePolicy({ policyId: policy.id });
+    try {
+      await deletePolicy({ policyId: policy.id });
 
-    createNotification({
-      text: `Certificate policy "${policy.name}" deleted successfully`,
-      type: "success"
-    });
+      createNotification({
+        text: `Certificate policy "${policy.name}" deleted successfully`,
+        type: "success"
+      });
 
-    setIsDeleteModalOpen(false);
-    navigate({
-      to: "/organizations/$orgId/projects/cert-manager/$projectId/settings",
-      params: {
-        orgId: currentOrg.id,
-        projectId
-      },
-      search: { selectedTab: "certificate-policies" }
-    });
+      setIsDeleteModalOpen(false);
+      navigate({
+        to: "/organizations/$orgId/projects/cert-manager/$projectId/settings",
+        params: {
+          orgId: currentOrg.id,
+          projectId
+        },
+        search: { selectedTab: "certificate-policies" }
+      });
+    } catch (error) {
+      createNotification({
+        text: `Failed to delete certificate policy: ${(error as Error)?.message || "Unknown error"}`,
+        type: "error"
+      });
+    }
   };
 
   return (

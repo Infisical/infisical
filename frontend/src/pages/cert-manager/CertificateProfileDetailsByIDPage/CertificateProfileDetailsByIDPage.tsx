@@ -71,15 +71,22 @@ const Page = () => {
   const handleDeleteConfirm = async () => {
     if (!profile) return;
 
-    await deleteProfile({ profileId: profile.id });
+    try {
+      await deleteProfile({ profileId: profile.id });
 
-    createNotification({
-      text: `Certificate profile "${profile.slug}" deleted successfully`,
-      type: "success"
-    });
+      createNotification({
+        text: `Certificate profile "${profile.slug}" deleted successfully`,
+        type: "success"
+      });
 
-    setIsDeleteModalOpen(false);
-    navigateBack();
+      setIsDeleteModalOpen(false);
+      navigateBack();
+    } catch (error) {
+      createNotification({
+        text: `Failed to delete certificate profile: ${(error as Error)?.message || "Unknown error"}`,
+        type: "error"
+      });
+    }
   };
 
   return (

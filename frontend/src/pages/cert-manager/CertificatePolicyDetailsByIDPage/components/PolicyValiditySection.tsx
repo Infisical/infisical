@@ -38,7 +38,7 @@ const policyStateVariant = (state: CertPolicyState): "success" | "info" | "dange
 
 export const PolicyValiditySection = ({ policy }: Props) => {
   const maxValidity = policy.validity?.max;
-  const basicConstraints = policy.basicConstraints;
+  const { basicConstraints } = policy;
 
   if (!maxValidity && !basicConstraints) {
     return null;

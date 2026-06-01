@@ -30,9 +30,6 @@ export const Route = createFileRoute(
             },
             search: { selectedTab: "certificate-policies" }
           })
-        },
-        {
-          label: params.policyId
         }
       ]
     };

@@ -28,9 +28,6 @@ export const Route = createFileRoute(
             },
             search: { selectedTab: "certificate-profiles" }
           })
-        },
-        {
-          label: params.profileId
         }
       ]
     };
