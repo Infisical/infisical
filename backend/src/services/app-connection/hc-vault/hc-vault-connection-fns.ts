@@ -729,6 +729,10 @@ export const listHCVaultSecretPaths = async (
   const instanceUrl = await getHCVaultInstanceUrl(connection);
   const accessToken = await getHCVaultAccessToken(connection, gatewayService, gatewayV2Service);
 
+  // vault 1.0.0 does not support namespace root or /, responding with a 301 when the namespace header is sent.
+  // Once we detect this, all subsequent requests should skip the namespace header to avoid the wasted 301 round-trip.
+  let skipNamespaceHeader = false;
+
   const getPaths = async (mountPath: string, secretPath: string, kvVersion: "1" | "2"): Promise<string[] | null> => {
     let path: string;
     if (kvVersion === "2") {
@@ -759,6 +763,19 @@ export const listHCVaultSecretPaths = async (
         gatewayDetails
       );
 
+    // Once we've detected the namespace header must be dropped, skip it upfront to avoid the wasted 301 round-trip.
+    if (skipNamespaceHeader) {
+      try {
+        const { data } = await fetchPaths();
+        return data.data.keys;
+      } catch (error) {
+        if ((error instanceof AxiosError && error.response?.status === 404) || isGateway404Error(error)) {
+          return null;
+        }
+        throw error;
+      }
+    }
+
     try {
       const { data } = await fetchPaths(namespace);
       return data.data.keys;
@@ -773,8 +790,20 @@ export const listHCVaultSecretPaths = async (
         ((error instanceof AxiosError && error.response?.status === 301) || isGateway301Error(error)) &&
         (!namespace || namespace === "/" || namespace === "root")
       ) {
-        const { data } = await fetchPaths();
-        return data.data.keys;
+        try {
+          const { data } = await fetchPaths();
+          // Remember so subsequent requests skip the namespace header entirely.
+          skipNamespaceHeader = true;
+          return data.data.keys;
+        } catch (fetchError) {
+          if (
+            (fetchError instanceof AxiosError && fetchError.response?.status === 404) ||
+            isGateway404Error(fetchError)
+          ) {
+            return null;
+          }
+          throw fetchError;
+        }
       }
 
       throw error;
