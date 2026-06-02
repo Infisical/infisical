@@ -718,6 +718,15 @@ export const listHCVaultMounts = async (
   return mounts;
 };
 
+// vault 1.0.0 does not support namespace root or /, responding with a 301 when the namespace header is sent.
+// This sentinel signals the caller to retry the request without the X-Vault-Namespace header.
+class NamespaceHeaderNotSupportedError extends Error {
+  constructor() {
+    super("HashiCorp Vault rejected the namespace header");
+    this.name = "NamespaceHeaderNotSupportedError";
+  }
+}
+
 export const listHCVaultSecretPaths = async (
   namespace: string,
   connection: THCVaultConnection,
@@ -729,17 +738,22 @@ export const listHCVaultSecretPaths = async (
   const instanceUrl = await getHCVaultInstanceUrl(connection);
   const accessToken = await getHCVaultAccessToken(connection, gatewayService, gatewayV2Service);
 
-  const getPaths = async (mountPath: string, secretPath: string, kvVersion: "1" | "2"): Promise<string[] | null> => {
-    try {
-      let path: string;
-      if (kvVersion === "2") {
-        // For KV v2: /v1/{mount}/metadata/{path}?list=true
-        path = secretPath ? `${mountPath}/metadata/${secretPath}` : `${mountPath}/metadata`;
-      } else {
-        // For KV v1: /v1/{mount}/{path}?list=true
-        path = secretPath ? `${mountPath}/${secretPath}` : mountPath;
-      }
+  const getPaths = async (
+    mountPath: string,
+    secretPath: string,
+    kvVersion: "1" | "2",
+    skipNamespaceHeader: boolean = false
+  ): Promise<string[] | null> => {
+    let path: string;
+    if (kvVersion === "2") {
+      // For KV v2: /v1/{mount}/metadata/{path}?list=true
+      path = secretPath ? `${mountPath}/metadata/${secretPath}` : `${mountPath}/metadata`;
+    } else {
+      // For KV v1: /v1/{mount}/{path}?list=true
+      path = secretPath ? `${mountPath}/${secretPath}` : mountPath;
+    }
 
+    try {
       const { data } = await requestWithHCVaultGateway<{
         data: {
           keys: string[];
@@ -753,16 +767,25 @@ export const listHCVaultSecretPaths = async (
           method: "GET",
           headers: {
             "X-Vault-Token": accessToken,
-            "X-Vault-Namespace": namespace
+            ...(skipNamespaceHeader ? {} : { "X-Vault-Namespace": namespace })
           }
         },
         gatewayDetails
       );
-
       return data.data.keys;
     } catch (error) {
       if ((error instanceof AxiosError && error.response?.status === 404) || isGateway404Error(error)) {
         return null;
+      }
+
+      // vault 1.0.0 does not support namespace root or /, responding with a 301 when the namespace header is sent.
+      // Signal the caller to retry the whole mount without the namespace header.
+      if (
+        !skipNamespaceHeader &&
+        ((error instanceof AxiosError && error.response?.status === 301) || isGateway301Error(error)) &&
+        (namespace === "/" || namespace === "root" || !namespace)
+      ) {
+        throw new NamespaceHeaderNotSupportedError();
       }
 
       throw error;
@@ -774,9 +797,10 @@ export const listHCVaultSecretPaths = async (
     mountPath: string,
     kvVersion: "1" | "2",
     limiter: ReturnType<typeof createConcurrencyLimiter>,
-    currentPath: string = ""
+    currentPath: string = "",
+    skipNamespaceHeader: boolean = false
   ): Promise<string[]> => {
-    const paths = await limiter(() => getPaths(mountPath, currentPath, kvVersion));
+    const paths = await limiter(() => getPaths(mountPath, currentPath, kvVersion, skipNamespaceHeader));
 
     if (paths === null || paths.length === 0) {
       return [];
@@ -790,7 +814,7 @@ export const listHCVaultSecretPaths = async (
 
         if (path.endsWith("/")) {
           // it's a folder so we recurse into it
-          return recursivelyGetAllPaths(mountPath, kvVersion, limiter, fullItemPath);
+          return recursivelyGetAllPaths(mountPath, kvVersion, limiter, fullItemPath, skipNamespaceHeader);
         }
         // it's a secret so we return it
         return [`${mountPath}/${fullItemPath}`];
@@ -821,7 +845,15 @@ export const listHCVaultSecretPaths = async (
     kvMounts.map(async (mount) => {
       const kvVersion = mount.version === "2" ? "2" : "1";
       const cleanMountPath = mount.path.replace(/\/$/, ""); // Remove trailing slash
-      return recursivelyGetAllPaths(cleanMountPath, kvVersion, limiter);
+      try {
+        return await recursivelyGetAllPaths(cleanMountPath, kvVersion, limiter);
+      } catch (error) {
+        // Vault rejected the namespace header (301 on root/"/"), retry the mount without it.
+        if (error instanceof NamespaceHeaderNotSupportedError) {
+          return recursivelyGetAllPaths(cleanMountPath, kvVersion, limiter, "", true);
+        }
+        throw error;
+      }
     })
   );
 
