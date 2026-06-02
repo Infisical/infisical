@@ -2,7 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import slugify from "@sindresorhus/slugify";
 
 import { AccessScope, OrganizationActionScope, OrgMembershipRole, OrgMembershipStatus } from "@app/db/schemas";
-import { BadRequestError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
 import { bootstrapCertManagerProject } from "@app/services/cert-manager-instance/cert-manager-project-bootstrap";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
@@ -27,7 +27,7 @@ type TSubOrgServiceFactoryDep = {
   membershipDAL: Pick<TMembershipDALFactory, "create" | "findOne">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create">;
   projectDAL: Pick<TProjectDALFactory, "create" | "findOne">;
-  roleDAL: Pick<TRoleDALFactory, "insertMany">;
+  roleDAL: Pick<TRoleDALFactory, "insertMany" | "findOne">;
 };
 
 export type TSubOrgServiceFactory = ReturnType<typeof subOrgServiceFactory>;
@@ -260,6 +260,15 @@ export const subOrgServiceFactory = ({
     }
 
     await orgDAL.transaction(async (tx) => {
+      const memberRole = await roleDAL.findOne({
+        orgId: subOrgId,
+        slug: OrgMembershipRole.Member,
+        isBuiltIn: true
+      });
+      if (!memberRole) {
+        throw new NotFoundError({ message: `'member' role not found for organization ${subOrgId}` });
+      }
+
       const membership = await membershipDAL.create(
         {
           scope: AccessScope.Organization,
@@ -273,7 +282,8 @@ export const subOrgServiceFactory = ({
       await membershipRoleDAL.create(
         {
           membershipId: membership.id,
-          role: OrgMembershipRole.Member
+          role: OrgMembershipRole.Custom,
+          customRoleId: memberRole.id
         },
         tx
       );

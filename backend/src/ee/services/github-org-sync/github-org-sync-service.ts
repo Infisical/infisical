@@ -16,6 +16,7 @@ import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
 import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
+import { TRoleDALFactory } from "@app/services/role/role-dal";
 
 import { TGroupDALFactory } from "../group/group-dal";
 import { TUserGroupMembershipDALFactory } from "../group/user-group-membership-dal";
@@ -83,6 +84,7 @@ type TGithubOrgSyncServiceFactoryDep = {
   membershipGroupDAL: Pick<TMembershipGroupDALFactory, "insertMany">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   orgMembershipDAL: Pick<TOrgMembershipDALFactory, "findOrgMembershipById" | "findOrgMembershipsWithUsersByOrgId">;
+  roleDAL: Pick<TRoleDALFactory, "findOne">;
 };
 
 export type TGithubOrgSyncServiceFactory = ReturnType<typeof githubOrgSyncServiceFactory>;
@@ -96,7 +98,8 @@ export const githubOrgSyncServiceFactory = ({
   licenseService,
   orgMembershipDAL,
   membershipRoleDAL,
-  membershipGroupDAL
+  membershipGroupDAL,
+  roleDAL
 }: TGithubOrgSyncServiceFactoryDep) => {
   const createGithubOrgSync = async ({
     githubOrgName,
@@ -366,6 +369,11 @@ export const githubOrgSyncServiceFactory = ({
     if (newTeams.length || updateTeams.length || removeFromTeams.length) {
       if (newTeams.length) {
         await groupDAL.transaction(async (tx) => {
+          const memberRole = await roleDAL.findOne({ orgId, slug: OrgMembershipRole.Member, isBuiltIn: true });
+          if (!memberRole) {
+            throw new NotFoundError({ message: `'member' role not found for organization ${orgId}` });
+          }
+
           const newGroups = await groupDAL.insertMany(
             newTeams.map((newGroupName) => ({
               name: newGroupName,
@@ -387,7 +395,8 @@ export const githubOrgSyncServiceFactory = ({
           await membershipRoleDAL.insertMany(
             memberships.map((el) => ({
               membershipId: el.id,
-              role: OrgMembershipRole.Member
+              role: OrgMembershipRole.Custom,
+              customRoleId: memberRole.id
             })),
             tx
           );
@@ -710,6 +719,17 @@ export const githubOrgSyncServiceFactory = ({
 
     await groupDAL.transaction(async (tx) => {
       if (teamsToCreate.length > 0) {
+        const memberRole = await roleDAL.findOne({
+          orgId: orgPermission.orgId,
+          slug: OrgMembershipRole.Member,
+          isBuiltIn: true
+        });
+        if (!memberRole) {
+          throw new NotFoundError({
+            message: `'member' role not found for organization ${orgPermission.orgId}`
+          });
+        }
+
         const newGroups = await groupDAL.insertMany(
           teamsToCreate.map((teamName) => ({
             name: teamName,
@@ -732,7 +752,8 @@ export const githubOrgSyncServiceFactory = ({
         await membershipRoleDAL.insertMany(
           memberships.map((el) => ({
             membershipId: el.id,
-            role: OrgMembershipRole.Member
+            role: OrgMembershipRole.Custom,
+            customRoleId: memberRole.id
           })),
           tx
         );

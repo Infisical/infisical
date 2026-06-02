@@ -197,7 +197,7 @@ export const membershipUserServiceFactory = ({
         );
         const role = await roleDAL.findOne(
           isBuiltInSlug
-            ? { slug: orgDetails.defaultMembershipRole, orgId: dto.permission.orgId }
+            ? { slug: orgDetails.defaultMembershipRole, orgId: dto.permission.orgId, isBuiltIn: true }
             : { id: orgDetails.defaultMembershipRole, orgId: dto.permission.orgId }
         );
         if (!role) throw new NotFoundError({ message: "Default org role not found" });

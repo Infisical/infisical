@@ -27,6 +27,7 @@ import { NotificationType } from "../notification/notification-types";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectKeyDALFactory } from "../project-key/project-key-dal";
 import { TSecretReminderRecipientsDALFactory } from "../secret-reminder-recipients/secret-reminder-recipients-dal";
+import { TRoleDALFactory } from "../role/role-dal";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
 import { TUserDALFactory } from "../user/user-dal";
 import { TProjectMembershipDALFactory } from "./project-membership-dal";
@@ -57,6 +58,7 @@ type TProjectMembershipServiceFactoryDep = {
   secretReminderRecipientsDAL: Pick<TSecretReminderRecipientsDALFactory, "delete">;
   groupProjectDAL: TGroupProjectDALFactory;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
+  roleDAL: Pick<TRoleDALFactory, "findOne">;
 };
 
 export type TProjectMembershipServiceFactory = ReturnType<typeof projectMembershipServiceFactory>;
@@ -78,7 +80,8 @@ export const projectMembershipServiceFactory = ({
   secretApprovalPolicyDAL,
   membershipUserDAL,
   userDAL,
-  membershipRoleDAL
+  membershipRoleDAL,
+  roleDAL
 }: TProjectMembershipServiceFactoryDep) => {
   const checkUserApproverPolicies = async (
     userIds: string[],
@@ -240,6 +243,11 @@ export const projectMembershipServiceFactory = ({
     );
 
     await membershipUserDAL.transaction(async (tx) => {
+      const memberRole = await roleDAL.findOne({ projectId, slug: ProjectMembershipRole.Member, isBuiltIn: true });
+      if (!memberRole) {
+        throw new NotFoundError({ message: `'member' role not found for project ${projectId}` });
+      }
+
       const projectMemberships = await membershipUserDAL.insertMany(
         orgMembers.map(({ actorUserId }) => ({
           scopeProjectId: projectId,
@@ -250,7 +258,11 @@ export const projectMembershipServiceFactory = ({
         tx
       );
       await membershipRoleDAL.insertMany(
-        projectMemberships.map(({ id }) => ({ membershipId: id, role: ProjectMembershipRole.Member })),
+        projectMemberships.map(({ id }) => ({
+          membershipId: id,
+          role: ProjectMembershipRole.Custom,
+          customRoleId: memberRole.id
+        })),
         tx
       );
       const encKeyGroupByOrgMembId = groupBy(members, (i) => i.orgMembershipId);

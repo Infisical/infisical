@@ -1015,7 +1015,8 @@ export const registerRoutes = async (
     userGroupMembershipDAL,
     orgMembershipDAL,
     membershipRoleDAL,
-    membershipGroupDAL
+    membershipGroupDAL,
+    roleDAL
   });
 
   // ldapService is created after loginService (below) due to dependency on processProviderCallback
@@ -1282,7 +1283,8 @@ export const registerRoutes = async (
     accessApprovalPolicyDAL,
     secretApprovalPolicyApproverDAL: sapApproverDAL,
     secretApprovalPolicyDAL,
-    membershipRoleDAL
+    membershipRoleDAL,
+    roleDAL
   });
 
   const projectKeyService = projectKeyServiceFactory({
@@ -1488,7 +1490,8 @@ export const registerRoutes = async (
     userDAL,
     identityDAL,
     groupDAL,
-    approvalPolicyDAL
+    approvalPolicyDAL,
+    roleDAL
   });
 
   const certManagerProjectResolver = certManagerProjectResolverFactory({
@@ -2039,7 +2042,8 @@ export const registerRoutes = async (
     identityMembershipV2DAL,
     identityAccessTokenService,
     keyStore,
-    projectDAL
+    projectDAL,
+    roleDAL
   });
 
   const identityProjectService = identityProjectServiceFactory({

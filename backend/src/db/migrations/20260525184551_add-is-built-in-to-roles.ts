@@ -198,7 +198,8 @@ export async function up(knex: Knex): Promise<void> {
     // org-scoped
     await backfillTrx.raw(`
       UPDATE "${TableName.MembershipRole}" mr
-      SET "customRoleId" = r.id
+      SET "customRoleId" = r.id,
+          role = 'custom'
       FROM "${TableName.Membership}" m,
            "${TableName.Role}" r
       WHERE mr."membershipId" = m.id
@@ -213,7 +214,8 @@ export async function up(knex: Knex): Promise<void> {
     // project-scoped
     await backfillTrx.raw(`
       UPDATE "${TableName.MembershipRole}" mr
-      SET "customRoleId" = r.id
+      SET "customRoleId" = r.id,
+          role = 'custom'
       FROM "${TableName.Membership}" m,
            "${TableName.Role}" r
       WHERE mr."membershipId" = m.id
@@ -278,13 +280,21 @@ export async function down(knex: Knex): Promise<void> {
     UPDATE "${TableName.Organization}" o
     SET "defaultMembershipRole" = r.slug
     FROM "${TableName.Role}" r
-    WHERE r.id = o."defaultMembershipRole"
+    WHERE r.id::text = o."defaultMembershipRole"
       AND r."orgId" = o.id
       AND r."projectId" IS NULL
       AND r.slug IN (${orgBuiltInSlugs.map(() => "?").join(", ")})
   `,
     orgBuiltInSlugs
   );
+
+  // Clean up FK references to built-in roles before deleting them.
+  await knex(TableName.ExternalGroupOrgRoleMapping)
+    .whereIn(
+      "roleId",
+      knex(TableName.Role).select("id").whereNotNull("orgId").whereNull("projectId").whereIn("slug", orgBuiltInSlugs)
+    )
+    .delete();
 
   await knex(TableName.Role).whereNotNull("orgId").whereNull("projectId").whereIn("slug", orgBuiltInSlugs).delete();
   await knex(TableName.Role).whereNull("orgId").whereNotNull("projectId").whereIn("slug", projectBuiltInSlugs).delete();

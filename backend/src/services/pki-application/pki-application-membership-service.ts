@@ -24,6 +24,7 @@ import { ApprovalPolicyScope } from "../approval-policy/approval-policy-enums";
 import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TMembershipDALFactory } from "../membership/membership-dal";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
+import { TRoleDALFactory } from "../role/role-dal";
 import { TUserDALFactory } from "../user/user-dal";
 import { TPkiApplicationDALFactory } from "./pki-application-dal";
 import {
@@ -59,6 +60,7 @@ type TPkiApplicationMembershipServiceFactoryDep = {
     TApprovalPolicyDALFactory,
     "findPoliciesWhereSubjectIsApprover" | "deleteStepApproversBySubject"
   >;
+  roleDAL: Pick<TRoleDALFactory, "findOne">;
 };
 
 export type TPkiApplicationMembershipServiceFactory = ReturnType<typeof pkiApplicationMembershipServiceFactory>;
@@ -81,7 +83,8 @@ export const pkiApplicationMembershipServiceFactory = ({
   userDAL,
   identityDAL,
   groupDAL,
-  approvalPolicyDAL
+  approvalPolicyDAL,
+  roleDAL
 }: TPkiApplicationMembershipServiceFactoryDep) => {
   const $loadApplicationOrThrow = async (applicationId: string, projectId: string) => {
     const application = await pkiApplicationDAL.findById(applicationId);
@@ -244,6 +247,12 @@ export const pkiApplicationMembershipServiceFactory = ({
         if (!canCreateProjectMember) {
           throw new ForbiddenRequestError({ message: "You don't have access to perform this action." });
         }
+
+        const memberRole = await roleDAL.findOne({ projectId, slug: ProjectMembershipRole.Member, isBuiltIn: true });
+        if (!memberRole) {
+          throw new NotFoundError({ message: `'member' role not found for project ${projectId}` });
+        }
+
         const projectMembership = await membershipDAL.create(
           {
             scope: AccessScope.Project,
@@ -256,7 +265,10 @@ export const pkiApplicationMembershipServiceFactory = ({
           },
           tx
         );
-        await membershipRoleDAL.create({ membershipId: projectMembership.id, role: ProjectMembershipRole.Member }, tx);
+        await membershipRoleDAL.create(
+          { membershipId: projectMembership.id, role: ProjectMembershipRole.Custom, customRoleId: memberRole.id },
+          tx
+        );
       }
 
       const newMembership = await membershipDAL.create(

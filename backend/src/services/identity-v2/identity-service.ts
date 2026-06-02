@@ -10,6 +10,7 @@ import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
+import { TRoleDALFactory } from "@app/services/role/role-dal";
 
 import { ActorType } from "../auth/auth-type";
 import { getIdentityActiveLockoutAuthMethods } from "../identity/identity-fns";
@@ -44,6 +45,7 @@ type TScopedIdentityV2ServiceFactoryDep = {
   identityAccessTokenService: Pick<TIdentityAccessTokenServiceFactory, "revokeAllTokensForIdentity">;
   keyStore: Pick<TKeyStoreFactory, "getKeysByPattern" | "getItem">;
   projectDAL: Pick<TProjectDALFactory, "findActorAccessibleProjectIds" | "findOrgProjectIds">;
+  roleDAL: Pick<TRoleDALFactory, "findOne">;
 };
 
 export type TScopedIdentityV2ServiceFactory = ReturnType<typeof identityV2ServiceFactory>;
@@ -58,7 +60,8 @@ export const identityV2ServiceFactory = ({
   identityMetadataDAL,
   identityAccessTokenService,
   keyStore,
-  projectDAL
+  projectDAL,
+  roleDAL
 }: TScopedIdentityV2ServiceFactoryDep) => {
   const orgFactory = newOrgIdentityFactory({
     permissionService
@@ -121,10 +124,20 @@ export const identityV2ServiceFactory = ({
         newMembershipIds.push(projectMembership.id);
       }
 
+      const noAccessRole = await roleDAL.findOne({
+        orgId: dto.permission.orgId,
+        slug: OrgMembershipRole.NoAccess,
+        isBuiltIn: true
+      });
+      if (!noAccessRole) {
+        throw new NotFoundError({ message: `'no-access' role not found for organization ${dto.permission.orgId}` });
+      }
+
       await membershipRoleDAL.insertMany(
         newMembershipIds.map((membershipId) => ({
           membershipId,
-          role: OrgMembershipRole.NoAccess
+          role: OrgMembershipRole.Custom,
+          customRoleId: noAccessRole.id
         })),
         tx
       );
