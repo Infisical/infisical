@@ -104,10 +104,18 @@ export type AuditLogInfo = Pick<TCreateAuditLogDTO, "userAgent" | "userAgentType
 // What `pushToLog` writes to the Redis ingest stream. We pin `id` and `createdAt` at
 // push time so a consumer retry (reprocessing the same batch after a failed insert)
 // re-inserts byte-identical rows instead of regenerating ids and creating duplicates.
-// `createdAt` is an ISO string for JSON round-tripping through the stream.
+// `createdAt`/`expiresAt` are ISO strings for JSON round-tripping through the stream.
+//
+// org/plan/retention are also resolved at push time and travel with the entry, so the
+// consumer persists it with no further DB lookups: `orgId` is the resolved org (never
+// undefined for a streamed entry), `expiresAt` is the precomputed TTL boundary, and
+// `projectName` is captured for project-scoped events (Postgres-only at insert time).
 export type TAuditLogStreamEntry = TCreateAuditLogDTO & {
   id: string;
   createdAt: string;
+  orgId: string;
+  expiresAt: string;
+  projectName?: string;
 };
 
 export type TAuditLogServiceFactory = {

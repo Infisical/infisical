@@ -24,10 +24,22 @@ vi.mock("@app/lib/logger", () => ({
 }));
 
 const STREAM_KEY = "audit-log-stream";
+const MS_IN_DAY = 24 * 60 * 60 * 1000;
 
+// A push-time DTO (what pushToLog / the legacy shim receive — no resolved metadata yet).
+const dto = (overrides: Record<string, unknown> = {}) => ({
+  event: { type: "test-event", metadata: { k: "v" } },
+  actor: { type: "platform", metadata: {} },
+  orgId: "org-1",
+  ...overrides
+});
+
+// A fully-resolved stream entry (what the consumer reads — org/expiresAt/projectName pinned at
+// push time). createdAt/expiresAt default 30 days apart to mirror a resolved retention window.
 const streamEntry = (overrides: Record<string, unknown> = {}) => ({
   id: "log-1",
   createdAt: new Date("2026-05-27T00:00:00.000Z").toISOString(),
+  expiresAt: new Date("2026-06-26T00:00:00.000Z").toISOString(),
   event: { type: "test-event", metadata: { k: "v" } },
   actor: { type: "platform", metadata: {} },
   orgId: "org-1",
@@ -74,7 +86,7 @@ const createHarness = async ({ clickhouse = false, streamsEnabled = false } = {}
 
   const auditLogDAL = { batchCreate: vi.fn<(logs: Record<string, unknown>[]) => Promise<void>>(async () => undefined) };
   const projectDAL = {
-    find: vi.fn<(filter: { $in: { id: string[] } }) => Promise<Record<string, unknown>[]>>(async () => [])
+    findById: vi.fn<(id: string) => Promise<Record<string, unknown> | undefined>>(async () => undefined)
   };
   const licenseService = {
     getPlan: vi.fn<(orgId: string) => Promise<{ auditLogsRetentionDays: number }>>(async () => ({
@@ -117,47 +129,101 @@ const createHarness = async ({ clickhouse = false, streamsEnabled = false } = {}
   };
 };
 
+// Read the single stream entry that was pushed via streamAdd.
+const pushedEntry = (keyStore: { streamAdd: { mock: { calls: unknown[][] } } }) =>
+  JSON.parse((keyStore.streamAdd.mock.calls[0][2] as { data: string }).data) as Record<string, unknown>;
+
 beforeEach(() => {
   vi.clearAllMocks();
 });
 
 describe("audit-log-queue pushToLog", () => {
-  test("appends a stream entry with a pinned id and an ISO createdAt", async () => {
+  test("resolves the entry and appends it with a pinned id, ISO timestamps, and orgId", async () => {
     const { service, keyStore } = await createHarness();
 
-    await service.pushToLog({
-      event: { type: "e", metadata: {} },
-      actor: { type: "platform", metadata: {} },
-      orgId: "org-1"
-    } as never);
+    await service.pushToLog(dto({ orgId: "org-1" }) as never);
 
     expect(keyStore.streamAdd).toHaveBeenCalledTimes(1);
     const [key, id, fields] = keyStore.streamAdd.mock.calls[0];
     expect(key).toBe(STREAM_KEY);
     expect(id).toBe("*");
-    const parsed = JSON.parse(fields.data) as { id: string; createdAt: string };
+    const parsed = JSON.parse(fields.data) as { id: string; createdAt: string; expiresAt: string; orgId: string };
     expect(typeof parsed.id).toBe("string");
     expect(parsed.id).toHaveLength(36);
     expect(new Date(parsed.createdAt).toISOString()).toBe(parsed.createdAt);
+    expect(new Date(parsed.expiresAt).toISOString()).toBe(parsed.expiresAt);
+    expect(parsed.orgId).toBe("org-1");
+  });
+
+  test("resolves orgId + projectName via the project for an org-less (project-scoped) event", async () => {
+    const { service, keyStore, projectDAL } = await createHarness();
+    projectDAL.findById.mockResolvedValueOnce({ id: "p1", orgId: "org-1", name: "proj", auditLogsRetentionDays: null });
+
+    await service.pushToLog(dto({ orgId: undefined, projectId: "p1" }) as never);
+
+    expect(projectDAL.findById).toHaveBeenCalledWith("p1");
+    const parsed = pushedEntry(keyStore);
+    expect(parsed.orgId).toBe("org-1");
+    expect(parsed.projectName).toBe("proj");
+  });
+
+  test("caps the TTL at the project-level retention when it is lower than the plan", async () => {
+    const { service, keyStore, projectDAL, licenseService } = await createHarness();
+    projectDAL.findById.mockResolvedValueOnce({ id: "p1", orgId: "org-1", name: "proj", auditLogsRetentionDays: 5 });
+    licenseService.getPlan.mockResolvedValueOnce({ auditLogsRetentionDays: 30 });
+
+    await service.pushToLog(dto({ orgId: undefined, projectId: "p1" }) as never);
+
+    const parsed = pushedEntry(keyStore);
+    const ttl = new Date(parsed.expiresAt as string).getTime() - new Date(parsed.createdAt as string).getTime();
+    expect(ttl).toBe(5 * MS_IN_DAY);
+  });
+
+  test("drops (no streamAdd) an entry with neither orgId nor projectId", async () => {
+    const { service, keyStore } = await createHarness();
+
+    await service.pushToLog(dto({ orgId: undefined, projectId: undefined }) as never);
+
+    expect(keyStore.streamAdd).not.toHaveBeenCalled();
+  });
+
+  test("drops (no streamAdd) when the project was deleted", async () => {
+    const { service, keyStore, projectDAL } = await createHarness();
+    projectDAL.findById.mockResolvedValueOnce(undefined);
+
+    await service.pushToLog(dto({ orgId: undefined, projectId: "gone" }) as never);
+
+    expect(keyStore.streamAdd).not.toHaveBeenCalled();
+  });
+
+  test("drops (no streamAdd) when audit log retention is 0/unset", async () => {
+    const { service, keyStore, licenseService } = await createHarness();
+    licenseService.getPlan.mockResolvedValueOnce({ auditLogsRetentionDays: 0 });
+
+    await service.pushToLog(dto({ orgId: "org-zero" }) as never);
+
+    expect(keyStore.streamAdd).not.toHaveBeenCalled();
   });
 
   test("never throws when streamAdd fails", async () => {
     const { service, keyStore } = await createHarness();
     keyStore.streamAdd.mockRejectedValueOnce(new Error("redis down"));
 
-    await expect(
-      service.pushToLog({
-        event: { type: "e", metadata: {} },
-        actor: { type: "platform", metadata: {} },
-        orgId: "o"
-      } as never)
-    ).resolves.toBeUndefined();
+    await expect(service.pushToLog(dto({ orgId: "o" }) as never)).resolves.toBeUndefined();
+  });
+
+  test("never throws when a resolution lookup fails", async () => {
+    const { service, keyStore, licenseService } = await createHarness();
+    licenseService.getPlan.mockRejectedValueOnce(new Error("license service down"));
+
+    await expect(service.pushToLog(dto({ orgId: "o" }) as never)).resolves.toBeUndefined();
+    expect(keyStore.streamAdd).not.toHaveBeenCalled();
   });
 
   test("compatibility shim re-routes legacy jobs into the stream", async () => {
     const { shim, keyStore } = await createHarness();
 
-    await shim({ data: { event: { type: "e", metadata: {} }, actor: { type: "platform", metadata: {} }, orgId: "o" } });
+    await shim({ data: dto({ orgId: "o" }) });
 
     expect(keyStore.streamAdd).toHaveBeenCalledTimes(1);
   });
@@ -166,9 +232,7 @@ describe("audit-log-queue pushToLog", () => {
     const { shim, keyStore } = await createHarness();
     keyStore.streamAdd.mockRejectedValueOnce(new Error("redis down"));
 
-    await expect(
-      shim({ data: { event: { type: "e", metadata: {} }, actor: { type: "platform", metadata: {} }, orgId: "o" } })
-    ).rejects.toThrow("redis down");
+    await expect(shim({ data: dto({ orgId: "o" }) })).rejects.toThrow("redis down");
   });
 });
 
@@ -183,11 +247,20 @@ describe("audit-log-queue unified consumer", () => {
     expect(keyStore.streamTrim).not.toHaveBeenCalled();
   });
 
-  test("postgres branch batch-inserts with null-normalized empties + projectName, then trims", async () => {
-    const { consumer, auditLogDAL, projectDAL, keyStore } = await createHarness();
-    projectDAL.find.mockResolvedValue([{ id: "p1", orgId: "org-1", name: "proj", auditLogsRetentionDays: null }]);
+  test("does not perform any DB lookups while draining", async () => {
+    const { consumer, projectDAL, licenseService, keyStore } = await createHarness();
+    keyStore.streamCollect.mockResolvedValueOnce(collectResult([streamEntry({ projectId: "p1" })]));
+
+    await consumer();
+
+    expect(projectDAL.findById).not.toHaveBeenCalled();
+    expect(licenseService.getPlan).not.toHaveBeenCalled();
+  });
+
+  test("postgres branch inserts the resolved entry (null-normalized empties + projectName), then trims", async () => {
+    const { consumer, auditLogDAL, keyStore } = await createHarness();
     keyStore.streamCollect.mockResolvedValueOnce(
-      collectResult([streamEntry({ orgId: undefined, projectId: "p1", ipAddress: undefined })])
+      collectResult([streamEntry({ orgId: "org-1", projectId: "p1", projectName: "proj", ipAddress: undefined })])
     );
 
     await consumer();
@@ -214,18 +287,13 @@ describe("audit-log-queue unified consumer", () => {
     expect(args.values[0]).not.toHaveProperty("projectName");
   });
 
-  test("drops entries failing skip rules and inserts only survivors", async () => {
-    const { consumer, auditLogDAL, projectDAL, licenseService, keyStore } = await createHarness();
-    projectDAL.find.mockResolvedValue([{ id: "pD", orgId: "orgD", name: "d" }]); // pB absent → treated as deleted
-    licenseService.getPlan.mockImplementation(async (orgId: string) => ({
-      auditLogsRetentionDays: orgId === "orgZero" ? 0 : 30
-    }));
+  test("drops entries missing resolved metadata and inserts only survivors", async () => {
+    const { consumer, auditLogDAL, keyStore } = await createHarness();
     keyStore.streamCollect.mockResolvedValueOnce(
       collectResult([
-        streamEntry({ id: "A", orgId: undefined, projectId: undefined }), // neither → drop
-        streamEntry({ id: "B", orgId: undefined, projectId: "pB" }), // project deleted → drop
-        streamEntry({ id: "C", orgId: "orgZero" }), // retention 0 → drop
-        streamEntry({ id: "D", orgId: undefined, projectId: "pD" }) // valid
+        streamEntry({ id: "A", orgId: undefined }), // missing resolved orgId → drop
+        streamEntry({ id: "B", expiresAt: undefined }), // missing resolved expiresAt → drop
+        streamEntry({ id: "C" }) // valid
       ])
     );
 
@@ -233,28 +301,8 @@ describe("audit-log-queue unified consumer", () => {
 
     const rows = auditLogDAL.batchCreate.mock.calls[0][0];
     expect(rows).toHaveLength(1);
-    expect(rows[0].id).toBe("D");
+    expect(rows[0].id).toBe("C");
     expect(keyStore.streamTrim).toHaveBeenCalledTimes(1);
-  });
-
-  test("dedups project and plan lookups across the batch", async () => {
-    const { consumer, projectDAL, licenseService, keyStore } = await createHarness();
-    projectDAL.find.mockImplementation(async ({ $in }) =>
-      $in.id.map((id) => ({ id, orgId: id === "p1" ? "orgA" : "orgB", name: id }))
-    );
-    keyStore.streamCollect.mockResolvedValueOnce(
-      collectResult([
-        streamEntry({ id: "1", orgId: undefined, projectId: "p1" }),
-        streamEntry({ id: "2", orgId: undefined, projectId: "p1" }),
-        streamEntry({ id: "3", orgId: undefined, projectId: "p2" }),
-        streamEntry({ id: "4", orgId: "orgA" })
-      ])
-    );
-
-    await consumer();
-
-    expect(projectDAL.find).toHaveBeenCalledTimes(1); // single batched lookup for p1, p2
-    expect(licenseService.getPlan).toHaveBeenCalledTimes(2); // orgA, orgB
   });
 
   test("insert failure skips both the outbox and the trim", async () => {
@@ -305,9 +353,10 @@ describe("audit-log-queue unified consumer", () => {
   });
 
   test("an all-dropped batch still trims without inserting", async () => {
-    const { consumer, auditLogDAL, licenseService, keyStore } = await createHarness();
-    licenseService.getPlan.mockResolvedValue({ auditLogsRetentionDays: 0 });
-    keyStore.streamCollect.mockResolvedValueOnce(collectResult([streamEntry(), streamEntry({ id: "log-2" })]));
+    const { consumer, auditLogDAL, keyStore } = await createHarness();
+    keyStore.streamCollect.mockResolvedValueOnce(
+      collectResult([streamEntry({ orgId: undefined }), streamEntry({ id: "log-2", orgId: undefined })])
+    );
 
     await consumer();
 

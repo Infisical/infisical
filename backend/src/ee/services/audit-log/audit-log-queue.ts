@@ -2,11 +2,13 @@ import type { ClickHouseClient } from "@clickhouse/client";
 import { randomUUID } from "crypto";
 import { v7 as uuidv7 } from "uuid";
 
-import type { TAuditLogs, TProjects } from "@app/db/schemas";
+import type { TAuditLogs } from "@app/db/schemas";
 import { TAuditLogStreamOutboxServiceFactory } from "@app/ee/services/audit-log-stream-outbox/audit-log-stream-outbox-service";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
+import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
+import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { JOB_SCHEDULER_PREFIX, QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
@@ -18,7 +20,7 @@ type TAuditLogQueueServiceFactoryDep = {
   auditLogDAL: TAuditLogDALFactory;
   auditLogStreamOutboxService: Pick<TAuditLogStreamOutboxServiceFactory, "enqueueForLogs">;
   queueService: TQueueServiceFactory;
-  projectDAL: Pick<TProjectDALFactory, "find">;
+  projectDAL: Pick<TProjectDALFactory, "findById">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   clickhouseClient: ClickHouseClient | null;
   keyStore: Pick<TKeyStoreFactory, "streamAdd" | "streamCollect" | "streamTrim" | "acquireLock">;
@@ -74,19 +76,60 @@ export const auditLogQueueServiceFactory = async ({
 
   const isClickHouseBatchEnabled = Boolean(clickhouseClient && CLICKHOUSE_AUDIT_LOG_ENABLED);
 
-  // Append the log to the Redis ingest stream. We pin `id` and `createdAt` here so a consumer
-  // retry (reprocessing the same batch after a failed insert) re-inserts byte-identical rows
-  // instead of regenerating ids. UUIDv7 embeds the timestamp for ClickHouse's time-sorted id;
-  // UUIDv4 keeps the existing Postgres schema expectation.
-  const appendToIngestStream = async (data: TCreateAuditLogDTO) => {
+  const buildStreamEntry = async (data: TCreateAuditLogDTO): Promise<TAuditLogStreamEntry | null> => {
+    const { projectId } = data;
+
+    if (!data.orgId && !projectId) {
+      logger.error(`audit-log-queue: Skipping entry with neither orgId nor projectId [event=${data.event?.type}]`);
+      return null;
+    }
+
+    const project =
+      !data.orgId && projectId
+        ? await requestMemoize(requestMemoKeys.projectFindById(projectId), () => projectDAL.findById(projectId))
+        : undefined;
+    if (!data.orgId && projectId && !project) {
+      logger.error(
+        `audit-log-queue: Skipping entry, project was deleted [projectId=${projectId}] [event=${data.event?.type}]`
+      );
+      return null;
+    }
+
+    const orgId = data.orgId ?? project?.orgId;
+    if (!orgId) return null;
+
+    const plan = await licenseService.getPlan(orgId);
+    if (!plan?.auditLogsRetentionDays) return null;
+
+    const ttlInDays =
+      project?.auditLogsRetentionDays && project.auditLogsRetentionDays < plan.auditLogsRetentionDays
+        ? project.auditLogsRetentionDays
+        : plan.auditLogsRetentionDays;
+    const ttl = ttlInDays * MS_IN_DAY;
+
     const createdAt = new Date();
     const id = isClickHouseBatchEnabled ? uuidv7({ msecs: createdAt.getTime() }) : randomUUID();
-    const entry: TAuditLogStreamEntry = { ...data, id, createdAt: createdAt.toISOString() };
+
+    return {
+      ...data,
+      id,
+      orgId,
+      createdAt: createdAt.toISOString(),
+      expiresAt: new Date(createdAt.getTime() + ttl).toISOString(),
+      projectName: project?.name
+    };
+  };
+
+  // Append the resolved log to the Redis ingest stream. A dropped (null) entry is a no-op.
+  const appendToIngestStream = async (data: TCreateAuditLogDTO) => {
+    const entry = await buildStreamEntry(data);
+    if (!entry) return;
     await keyStore.streamAdd(AUDIT_LOG_STREAM_KEY, "*", { data: JSON.stringify(entry) });
   };
 
-  // Request-path push: a transient Redis failure must not fail the request that produced
-  // the audit event, so errors are logged and swallowed (at-most-once on this path).
+  // Request-path push: a transient Redis/DB failure must not fail the request that produced
+  // the audit event, so errors (resolution lookups included) are logged and swallowed
+  // (at-most-once on this path).
   const pushToLog = async (data: TCreateAuditLogDTO) => {
     try {
       await appendToIngestStream(data);
@@ -123,8 +166,9 @@ export const auditLogQueueServiceFactory = async ({
     }
   };
 
-  // Unified consumer: drain a batch from the ingest stream, enrich each entry, batch-insert
-  // into the active backend, fan out to the stream outbox, and trim. Trim happens only after a
+  // Unified consumer: drain a batch from the ingest stream, map each (already-resolved) entry to
+  // an audit-log row, batch-insert into the active backend, fan out to the stream outbox, and
+  // trim. No DB lookups happen here — org/plan/retention were resolved at push time. Trim happens only after a
   // successful insert so a failed batch is retried on the next tick (re-inserts are idempotent:
   // ClickHouse ReplacingMergeTree dedups on id, Postgres uses ON CONFLICT (id) DO NOTHING).
   const drainAuditLogStream = async () => {
@@ -157,69 +201,17 @@ export const auditLogQueueServiceFactory = async ({
       }
     }
 
-    // Resolve projects for entries that arrived without an orgId (deduped by projectId). A
-    // lookup that returns nothing means the project was deleted → drop that entry; a lookup
-    // that throws bubbles up to fail the tick (no trim → retry) so a transient DB error
-    // doesn't silently lose logs.
-    const projectCache = new Map<string, TProjects | undefined>();
-    const distinctProjectIds = [
-      ...new Set(parsed.filter((entry) => !entry.orgId && entry.projectId).map((entry) => entry.projectId as string))
-    ];
-    if (distinctProjectIds.length > 0) {
-      const projects = await projectDAL.find({ $in: { id: distinctProjectIds } });
-      for (const project of projects) {
-        projectCache.set(project.id, project);
-      }
-    }
-
-    const resolveOrgId = (entry: TAuditLogStreamEntry): string | undefined =>
-      entry.orgId ?? (entry.projectId ? projectCache.get(entry.projectId)?.orgId : undefined);
-
-    // Resolve license plans (deduped by orgId) — drives the audit-log retention check + TTL.
-    const planCache = new Map<string, Awaited<ReturnType<typeof licenseService.getPlan>>>();
-    const distinctOrgIds = new Set<string>();
-    for (const entry of parsed) {
-      const orgId = resolveOrgId(entry);
-      if (orgId) distinctOrgIds.add(orgId);
-    }
-    for (const orgId of distinctOrgIds) {
-      // eslint-disable-next-line no-await-in-loop
-      planCache.set(orgId, await licenseService.getPlan(orgId));
-    }
-
-    // Enrich one entry into a persistable audit log, or return null to drop it (skip rules
-    // mirror the prior per-log worker). Only org-less (project-scoped) entries carry project
-    // context — a directly-supplied orgId skips the project lookup entirely, as before.
+    // Map a resolved stream entry into a persistable audit log. org/plan/TTL/projectName were all
+    // resolved at push time (see buildStreamEntry), so this is a pure shape transform with no DB
+    // lookups. Entries that predate push-time resolution (in-flight during a rolling deploy) lack
+    // `orgId`/`expiresAt`; drop them rather than persist a row with a missing org or expiry.
     const enrichEntry = (entry: TAuditLogStreamEntry): TAuditLogs | null => {
-      const { projectId } = entry;
-
-      if (!entry.orgId && !projectId) {
-        logger.error(`audit-log-queue: Skipping entry with neither orgId nor projectId [event=${entry.event?.type}]`);
-        return null;
-      }
-
-      const project = !entry.orgId && projectId ? projectCache.get(projectId) : undefined;
-      if (!entry.orgId && projectId && !project) {
+      if (!entry.orgId || !entry.expiresAt) {
         logger.error(
-          `audit-log-queue: Skipping entry, project was deleted [projectId=${projectId}] [event=${entry.event?.type}]`
+          `audit-log-queue: Skipping entry missing resolved metadata [event=${entry.event?.type}] [orgId=${entry.orgId}]`
         );
         return null;
       }
-
-      const orgId = entry.orgId ?? project?.orgId;
-      if (!orgId) return null;
-
-      const plan = planCache.get(orgId);
-      // Skip inserting if audit log retention is 0/unset, meaning it's not supported.
-      if (!plan?.auditLogsRetentionDays) return null;
-
-      // For project actions, cap TTL at the project-level retention so the plan's retention
-      // days cannot be bypassed upward.
-      const ttlInDays =
-        project?.auditLogsRetentionDays && project.auditLogsRetentionDays < plan.auditLogsRetentionDays
-          ? project.auditLogsRetentionDays
-          : plan.auditLogsRetentionDays;
-      const ttl = ttlInDays * MS_IN_DAY;
 
       const createdAt = new Date(entry.createdAt);
       return {
@@ -231,13 +223,13 @@ export const auditLogQueueServiceFactory = async ({
         eventMetadata: normalizeJsonPayload(entry.event.metadata),
         userAgent: normalizeEmptyValue(entry.userAgent, isClickHouseBatchEnabled),
         userAgentType: normalizeEmptyValue(entry.userAgentType, isClickHouseBatchEnabled),
-        projectId: normalizeEmptyValue(projectId, isClickHouseBatchEnabled),
-        orgId,
-        expiresAt: new Date(createdAt.getTime() + ttl),
+        projectId: normalizeEmptyValue(entry.projectId, isClickHouseBatchEnabled),
+        orgId: entry.orgId,
+        expiresAt: new Date(entry.expiresAt),
         createdAt,
         updatedAt: createdAt,
         // project name is only stored for non-ClickHouse insertion
-        ...(!isClickHouseBatchEnabled ? { projectName: project?.name } : {})
+        ...(!isClickHouseBatchEnabled ? { projectName: entry.projectName } : {})
       };
     };
 
