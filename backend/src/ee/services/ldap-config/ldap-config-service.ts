@@ -13,9 +13,19 @@ import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { addUsersToGroupByUserIds, removeUsersFromGroupByUserIds } from "@app/ee/services/group/group-fns";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { throwOnPlanSeatLimitReached } from "@app/ee/services/license/license-fns";
+import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
+import {
+  AuthAttemptAuthMethod,
+  AuthAttemptAuthResult,
+  authAttemptCounter,
+  recordAuthAttemptMetric,
+  recordSsoConfigChangeMetric,
+  SsoConfigAction,
+  SsoProvider
+} from "@app/lib/telemetry/metrics";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { sanitizeEmail, validateEmail } from "@app/lib/validator/validate-email";
 import { TAuthLoginFactory } from "@app/services/auth/auth-login-service";
@@ -218,6 +228,8 @@ export const ldapConfigServiceFactory = ({
         : null
     });
 
+    recordSsoConfigChangeMetric({ provider: SsoProvider.Ldap, action: SsoConfigAction.Create, orgId });
+
     return ldapConfig;
   };
 
@@ -393,6 +405,8 @@ export const ldapConfigServiceFactory = ({
       return updatedLdapCfg;
     });
 
+    recordSsoConfigChangeMetric({ provider: SsoProvider.Ldap, action: SsoConfigAction.Update, orgId });
+
     return config;
   };
 
@@ -447,7 +461,7 @@ export const ldapConfigServiceFactory = ({
     return { opts, ldapConfig };
   };
 
-  const ldapLogin = async ({
+  const ldapLoginInner = async ({
     ldapConfigId,
     externalId,
     firstName,
@@ -719,6 +733,55 @@ export const ldapConfigServiceFactory = ({
     });
 
     return callbackResult;
+  };
+
+  const ldapLogin = async (dto: TLdapLoginDTO) => {
+    const authMetricStartTime = performance.now();
+    const appCfg = getConfig();
+    try {
+      const callbackResult = await ldapLoginInner(dto);
+
+      if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
+        authAttemptCounter.add(1, {
+          "infisical.user.email": dto.email,
+          "infisical.organization.id": dto.orgId,
+          "infisical.auth.method": AuthAttemptAuthMethod.LDAP,
+          "infisical.auth.result": AuthAttemptAuthResult.SUCCESS,
+          "client.address": dto.ip,
+          "user_agent.original": dto.userAgent
+        });
+      }
+
+      recordAuthAttemptMetric({
+        startTime: authMetricStartTime,
+        method: AuthAttemptAuthMethod.LDAP,
+        result: AuthAttemptAuthResult.SUCCESS,
+        orgId: dto.orgId
+      });
+
+      return callbackResult;
+    } catch (error) {
+      if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
+        authAttemptCounter.add(1, {
+          "infisical.user.email": dto.email,
+          "infisical.organization.id": dto.orgId,
+          "infisical.auth.method": AuthAttemptAuthMethod.LDAP,
+          "infisical.auth.result": AuthAttemptAuthResult.FAILURE,
+          "client.address": dto.ip,
+          "user_agent.original": dto.userAgent
+        });
+      }
+
+      recordAuthAttemptMetric({
+        startTime: authMetricStartTime,
+        method: AuthAttemptAuthMethod.LDAP,
+        result: AuthAttemptAuthResult.FAILURE,
+        orgId: dto.orgId,
+        error
+      });
+
+      throw error;
+    }
   };
 
   const getLdapGroupMaps = async ({

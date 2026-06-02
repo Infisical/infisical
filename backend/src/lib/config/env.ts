@@ -339,6 +339,7 @@ const envSchema = z
     OTEL_COLLECTOR_BASIC_AUTH_USERNAME: zpStr(z.string().optional()),
     OTEL_COLLECTOR_BASIC_AUTH_PASSWORD: zpStr(z.string().optional()),
     OTEL_EXPORT_TYPE: z.enum(["prometheus", "otlp"]).optional(),
+    OTEL_DROP_HIGH_CARDINALITY_METERS: zodStrBool.default("false"),
 
     PYLON_API_KEY: zpStr(z.string().optional()),
     DISABLE_AUDIT_LOG_GENERATION: zodStrBool.default("false"),
@@ -642,6 +643,7 @@ export const getTelemetryConfig = () => {
   return {
     useOtel: parsedEnv.data.OTEL_TELEMETRY_COLLECTION_ENABLED,
     useDataDogTracer: parsedEnv.data.SHOULD_USE_DATADOG_TRACER,
+    dropHighCardinalityMeters: parsedEnv.data.OTEL_DROP_HIGH_CARDINALITY_METERS,
     OTEL: {
       otlpURL: parsedEnv.data.OTEL_EXPORT_OTLP_ENDPOINT,
       otlpUser: parsedEnv.data.OTEL_COLLECTOR_BASIC_AUTH_USERNAME,

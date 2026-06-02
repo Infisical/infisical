@@ -20,7 +20,12 @@ import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
-import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
+import {
+  AuthAttemptAuthMethod,
+  AuthAttemptAuthResult,
+  authAttemptCounter,
+  recordAuthAttemptMetric
+} from "@app/lib/telemetry/metrics";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { addAuthOriginDomainCookie } from "@app/server/lib/cookie";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
@@ -118,6 +123,7 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
       },
       // eslint-disable-next-line
       async (req, profile, cb) => {
+        const authMetricStartTime = performance.now();
         if (!profile) throw new BadRequestError({ message: "Missing profile" });
 
         const email =
@@ -184,6 +190,8 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
             metadata: userMetadata
           });
 
+          cb(null, loginResult);
+
           if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
             authAttemptCounter.add(1, {
               "infisical.user.email": email.toLowerCase(),
@@ -197,7 +205,12 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
             });
           }
 
-          cb(null, loginResult);
+          recordAuthAttemptMetric({
+            startTime: authMetricStartTime,
+            method: AuthAttemptAuthMethod.SAML,
+            result: AuthAttemptAuthResult.SUCCESS,
+            orgId: loginResult.orgId
+          });
         } catch (error) {
           if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
             authAttemptCounter.add(1, {
@@ -208,6 +221,13 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
               "user_agent.original": requestContext.get(RequestContextKey.UserAgent)
             });
           }
+
+          recordAuthAttemptMetric({
+            startTime: authMetricStartTime,
+            method: AuthAttemptAuthMethod.SAML,
+            result: AuthAttemptAuthResult.FAILURE,
+            error
+          });
 
           logger.error(error);
           cb(error as Error);
