@@ -2637,7 +2637,7 @@ const OverviewPageContent = () => {
           </CardHeader>
           <CardContent>
             {pendingApprovalsCount > 0 && (
-              <Alert variant="info" className="mb-6 py-1.5">
+              <Alert variant="info" className="-mt-2 mb-3 py-1.5">
                 <AlertTitle className="flex items-center gap-3">
                   <InfoIcon className="size-4 shrink-0 text-info" />
                   <span>
