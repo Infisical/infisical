@@ -1,5 +1,6 @@
 import { UserPlusIcon } from "lucide-react";
 
+import { AssumePrivilegesModal } from "@app/components/assume-privileges";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { DeleteActionModal } from "@app/components/v2";
@@ -21,6 +22,7 @@ import {
 } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useDeleteUserFromWorkspace } from "@app/hooks/api";
+import { ActorType } from "@app/hooks/api/auditLogs/enums";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { AddMemberModal } from "./AddMemberModal";
@@ -36,7 +38,8 @@ export const MembersSection = () => {
 
   const { handlePopUpToggle, popUp, handlePopUpOpen, handlePopUpClose } = usePopUp([
     "addMember",
-    "removeMember"
+    "removeMember",
+    "assumePrivileges"
   ] as const);
 
   const handleRemoveUser = async () => {
@@ -97,6 +100,12 @@ export const MembersSection = () => {
         title={`Do you want to remove this user from the ${productLabel.toLowerCase()}?`}
         onChange={(isOpen) => handlePopUpToggle("removeMember", isOpen)}
         onDeleteApproved={handleRemoveUser}
+      />
+      <AssumePrivilegesModal
+        isOpen={popUp.assumePrivileges.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("assumePrivileges", isOpen)}
+        actorType={ActorType.USER}
+        actorId={(popUp.assumePrivileges.data as { userId: string })?.userId}
       />
     </>
   );
