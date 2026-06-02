@@ -17,12 +17,10 @@ import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TGitHubAppDALFactory } from "./github-app-dal";
 import {
   TDeleteGitHubAppDTO,
-  TExchangeGitHubManifestCodeDTO,
   TGitHubAppManifestResponse,
   TGitHubManifestStatePayload,
   TInitiateGitHubManifestDTO,
   TListGitHubAppsDTO,
-  TRegisterGitHubAppDTO,
   TSanitizedGitHubApp
 } from "./github-app-types";
 
@@ -41,80 +39,6 @@ export const gitHubAppServiceFactory = ({
   permissionService,
   kmsService
 }: TGitHubAppServiceFactoryDep) => {
-  const exchangeManifestCode = async ({
-    name,
-    code,
-    orgPermission
-  }: TExchangeGitHubManifestCodeDTO): Promise<TSanitizedGitHubApp> => {
-    const { permission } = await permissionService.getOrgPermission({
-      actor: orgPermission.type,
-      actorId: orgPermission.id,
-      orgId: orgPermission.orgId,
-      actorAuthMethod: orgPermission.authMethod,
-      actorOrgId: orgPermission.orgId,
-      scope: OrganizationActionScope.ParentOrganization
-    });
-
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Settings);
-
-    const existing = await gitHubAppDAL.findOne({ orgId: orgPermission.orgId, name });
-    if (existing) {
-      throw new BadRequestError({
-        message: `A GitHub App with name "${name}" already exists in this organization.`
-      });
-    }
-
-    let manifestResponse: TGitHubAppManifestResponse;
-    try {
-      const { data } = await request.post<TGitHubAppManifestResponse>(
-        `https://api.github.com/app-manifests/${encodeURIComponent(code)}/conversions`,
-        {},
-        {
-          headers: {
-            Accept: "application/vnd.github+json",
-            "X-GitHub-Api-Version": "2022-11-28"
-          }
-        }
-      );
-      manifestResponse = data;
-    } catch (err) {
-      throw new BadRequestError({
-        message:
-          "Failed to exchange GitHub App manifest code. The code may be expired or invalid. Please try registering the GitHub App again."
-      });
-    }
-
-    const { encryptor } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.Organization,
-      orgId: orgPermission.orgId
-    });
-
-    const owner = manifestResponse.owner?.login ?? null;
-
-    const created = await gitHubAppDAL.create({
-      orgId: orgPermission.orgId,
-      name,
-      appId: String(manifestResponse.id),
-      clientId: manifestResponse.client_id,
-      encryptedClientSecret: encryptor({ plainText: Buffer.from(manifestResponse.client_secret) }).cipherTextBlob,
-      encryptedPrivateKey: encryptor({ plainText: Buffer.from(manifestResponse.pem) }).cipherTextBlob,
-      slug: manifestResponse.slug,
-      owner
-    });
-
-    return {
-      id: created.id,
-      orgId: created.orgId,
-      name: created.name,
-      appId: String(manifestResponse.id),
-      slug: manifestResponse.slug,
-      owner,
-      connectionCount: 0,
-      createdAt: created.createdAt,
-      updatedAt: created.updatedAt
-    };
-  };
-
   const listGitHubApps = async ({ orgPermission }: TListGitHubAppsDTO): Promise<TSanitizedGitHubApp[]> => {
     const { permission } = await permissionService.getOrgPermission({
       actor: orgPermission.type,
@@ -208,61 +132,6 @@ export const gitHubAppServiceFactory = ({
     await gitHubAppDAL.deleteById(existing.id);
 
     return sanitized;
-  };
-
-  const registerGitHubApp = async ({
-    name,
-    appId,
-    slug,
-    clientId,
-    clientSecret,
-    privateKey,
-    orgPermission
-  }: TRegisterGitHubAppDTO): Promise<TSanitizedGitHubApp> => {
-    const { permission } = await permissionService.getOrgPermission({
-      actor: orgPermission.type,
-      actorId: orgPermission.id,
-      orgId: orgPermission.orgId,
-      actorAuthMethod: orgPermission.authMethod,
-      actorOrgId: orgPermission.orgId,
-      scope: OrganizationActionScope.ParentOrganization
-    });
-
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Settings);
-
-    const existing = await gitHubAppDAL.findOne({ orgId: orgPermission.orgId, name });
-    if (existing) {
-      throw new BadRequestError({
-        message: `A GitHub App with name "${name}" already exists in this organization.`
-      });
-    }
-
-    const { encryptor } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.Organization,
-      orgId: orgPermission.orgId
-    });
-
-    const created = await gitHubAppDAL.create({
-      orgId: orgPermission.orgId,
-      name,
-      appId,
-      clientId,
-      encryptedClientSecret: encryptor({ plainText: Buffer.from(clientSecret) }).cipherTextBlob,
-      encryptedPrivateKey: encryptor({ plainText: Buffer.from(privateKey) }).cipherTextBlob,
-      slug
-    });
-
-    return {
-      id: created.id,
-      orgId: created.orgId,
-      name: created.name,
-      appId,
-      slug,
-      owner: null,
-      connectionCount: 0,
-      createdAt: created.createdAt,
-      updatedAt: created.updatedAt
-    };
   };
 
   const initiateManifestCreation = async ({
@@ -445,11 +314,9 @@ export const gitHubAppServiceFactory = ({
   };
 
   return {
-    exchangeManifestCode,
     initiateManifestCreation,
     handleManifestCallback,
     listGitHubApps,
-    deleteGitHubApp,
-    registerGitHubApp
+    deleteGitHubApp
   };
 };

@@ -17,8 +17,7 @@ export async function up(knex: Knex): Promise<void> {
       t.string("slug").notNullable();
       t.string("owner").nullable();
       t.timestamps(true, true, true);
-      // GitHub app names are globally unique, so enforce uniqueness across all orgs
-      t.unique(["name"]);
+      t.unique(["orgId", "name"]);
     });
 
     await createOnUpdateTrigger(knex, TableName.GitHubApp);

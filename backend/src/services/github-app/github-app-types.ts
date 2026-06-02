@@ -1,11 +1,5 @@
 import { OrgServiceActor } from "@app/lib/types";
 
-export type TExchangeGitHubManifestCodeDTO = {
-  name: string;
-  code: string;
-  orgPermission: OrgServiceActor;
-};
-
 export type TInitiateGitHubManifestDTO = {
   name: string;
   instanceType: "cloud" | "server";
@@ -33,16 +27,6 @@ export type TListGitHubAppsDTO = {
 
 export type TDeleteGitHubAppDTO = {
   id: string;
-  orgPermission: OrgServiceActor;
-};
-
-export type TRegisterGitHubAppDTO = {
-  name: string;
-  appId: string;
-  slug: string;
-  clientId: string;
-  clientSecret: string;
-  privateKey: string;
   orgPermission: OrgServiceActor;
 };
 

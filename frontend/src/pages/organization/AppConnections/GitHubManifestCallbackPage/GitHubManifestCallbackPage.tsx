@@ -35,6 +35,17 @@ export const GitHubManifestCallbackPage = () => {
       return;
     }
 
+    // Confirm this callback corresponds to a flow this browser initiated. The install state is
+    // round-tripped through the signed manifest token and echoed back here; it must match the CSRF
+    // token stored when the user kicked off app creation. This blocks a crafted callback URL from
+    // pre-seeding the connection form with an attacker-chosen app id.
+    if (installState !== localStorage.getItem("latestCSRFToken")) {
+      createNotification({ type: "error", text: "Invalid GitHub manifest callback state." });
+      navigate({ to: "/organizations/$orgId/app-connections", params: { orgId } });
+      return;
+    }
+    localStorage.removeItem("latestCSRFToken");
+
     // The GitHub App is already created at this point. Mark the in-progress connection form so it
     // resumes with the new app selected, then send the user back to it to finish the connection.
     try {
