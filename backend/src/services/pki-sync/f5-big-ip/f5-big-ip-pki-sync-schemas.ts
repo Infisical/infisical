@@ -42,22 +42,15 @@ export const F5BigIpPkiSyncConfigSchema = z
       .max(511, "Parent profile cannot exceed 511 characters")
       .optional()
   })
+  .transform((value) =>
+    hasProfileBinding(value.profileType)
+      ? value
+      : { ...value, profileName: undefined, createProfileIfMissing: false, parentProfile: undefined }
+  )
+  .transform((value) => (value.createProfileIfMissing ? value : { ...value, parentProfile: undefined }))
   .refine((value) => !hasProfileBinding(value.profileType) || Boolean(value.profileName), {
     message: "Profile name is required when a profile type is selected",
     path: ["profileName"]
-  })
-  .refine((value) => hasProfileBinding(value.profileType) || !value.createProfileIfMissing, {
-    message:
-      "Auto-create profile can only be enabled when binding to a Client SSL or Server SSL profile",
-    path: ["createProfileIfMissing"]
-  })
-  .refine((value) => hasProfileBinding(value.profileType) || !value.parentProfile, {
-    message: "Parent profile can only be set when binding to a Client SSL or Server SSL profile",
-    path: ["parentProfile"]
-  })
-  .refine((value) => Boolean(value.createProfileIfMissing) || !value.parentProfile, {
-    message: "Parent profile can only be set when 'Create profile if missing' is enabled",
-    path: ["parentProfile"]
   });
 
 export const F5BigIpPkiSyncOptionsSchema = z.object({

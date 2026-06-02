@@ -53,9 +53,7 @@ export const SanitizedF5BigIpConnectionSchema = z.discriminatedUnion("method", [
 
 export const ValidateF5BigIpConnectionCredentialsSchema = z.discriminatedUnion("method", [
   z.object({
-    method: z
-      .literal(F5BigIpConnectionMethod.BasicAuth)
-      .describe(AppConnections.CREATE(AppConnection.F5BigIp).method),
+    method: z.literal(F5BigIpConnectionMethod.BasicAuth).describe(AppConnections.CREATE(AppConnection.F5BigIp).method),
     credentials: F5BigIpConnectionBasicAuthCredentialsSchema.describe(
       AppConnections.CREATE(AppConnection.F5BigIp).credentials
     )

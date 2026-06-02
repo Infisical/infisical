@@ -710,7 +710,7 @@ export const f5BigIpPkiSyncFactory = ({
     const config = pkiSync.destinationConfig as TF5BigIpPkiSyncConfig;
     const partition = config.partition ?? F5_BIG_IP_DEFAULT_PARTITION;
     const profileType = config.profileType ?? F5BigIpProfileType.None;
-    const profileName = config.profileName;
+    const { profileName } = config;
     const syncOptions = pkiSync.syncOptions as
       | { certificateNameSchema?: string; canRemoveCertificates?: boolean; preserveItemOnRenewal?: boolean }
       | undefined;
@@ -1013,9 +1013,7 @@ export const f5BigIpPkiSyncFactory = ({
 
             for (const chainName of chainNamesToRemove) {
               try {
-                await unbindCertPathsFromAllProfiles(session, partition, [
-                  buildPartitionedPath(partition, chainName)
-                ]);
+                await unbindCertPathsFromAllProfiles(session, partition, [buildPartitionedPath(partition, chainName)]);
                 await deleteSslCertObject(session, partition, chainName);
 
                 removed += 1;

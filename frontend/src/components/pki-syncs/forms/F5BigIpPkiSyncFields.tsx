@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Controller, useFormContext } from "react-hook-form";
 import { faQuestionCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -16,10 +17,26 @@ const PROFILE_TYPE_OPTIONS: { value: F5BigIpProfileType; label: string }[] = [
 ];
 
 export const F5BigIpPkiSyncFields = () => {
-  const { control, watch } = useFormContext<TPkiSyncForm & { destination: PkiSync.F5BigIp }>();
+  const { control, watch, setValue } = useFormContext<
+    TPkiSyncForm & { destination: PkiSync.F5BigIp }
+  >();
   const profileType = watch("destinationConfig.profileType");
   const createProfileIfMissing = watch("destinationConfig.createProfileIfMissing");
   const requiresProfile = profileType !== undefined && profileType !== F5BigIpProfileType.None;
+
+  useEffect(() => {
+    if (!requiresProfile) {
+      setValue("destinationConfig.profileName", undefined, { shouldValidate: false });
+      setValue("destinationConfig.createProfileIfMissing", false, { shouldValidate: false });
+      setValue("destinationConfig.parentProfile", undefined, { shouldValidate: false });
+    }
+  }, [requiresProfile, setValue]);
+
+  useEffect(() => {
+    if (!createProfileIfMissing) {
+      setValue("destinationConfig.parentProfile", undefined, { shouldValidate: false });
+    }
+  }, [createProfileIfMissing, setValue]);
 
   return (
     <>

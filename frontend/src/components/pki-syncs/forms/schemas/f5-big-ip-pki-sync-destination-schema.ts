@@ -73,29 +73,32 @@ const F5BigIpDestinationConfigSchema = z
         z.literal("")
       ])
       .optional()
-      .transform((value) => (value ? value : undefined)),
+      .transform((value) => value || undefined),
     createProfileIfMissing: z.boolean().optional(),
     parentProfile: z
-      .union([z.string().trim().max(511, "Parent profile cannot exceed 511 characters"), z.literal("")])
+      .union([
+        z.string().trim().max(511, "Parent profile cannot exceed 511 characters"),
+        z.literal("")
+      ])
       .optional()
-      .transform((value) => (value ? value : undefined))
+      .transform((value) => value || undefined)
   })
+  .transform((value) =>
+    hasProfileBinding(value.profileType)
+      ? value
+      : {
+          ...value,
+          profileName: undefined,
+          createProfileIfMissing: false,
+          parentProfile: undefined
+        }
+  )
+  .transform((value) =>
+    value.createProfileIfMissing ? value : { ...value, parentProfile: undefined }
+  )
   .refine((value) => !hasProfileBinding(value.profileType) || Boolean(value.profileName), {
     message: "Profile name is required when a profile type is selected",
     path: ["profileName"]
-  })
-  .refine((value) => hasProfileBinding(value.profileType) || !value.createProfileIfMissing, {
-    message:
-      "Auto-create profile can only be enabled when binding to a Client SSL or Server SSL profile",
-    path: ["createProfileIfMissing"]
-  })
-  .refine((value) => hasProfileBinding(value.profileType) || !value.parentProfile, {
-    message: "Parent profile can only be set when binding to a Client SSL or Server SSL profile",
-    path: ["parentProfile"]
-  })
-  .refine((value) => Boolean(value.createProfileIfMissing) || !value.parentProfile, {
-    message: "Parent profile can only be set when 'Create profile if missing' is enabled",
-    path: ["parentProfile"]
   });
 
 export const F5BigIpPkiSyncDestinationSchema = BasePkiSyncSchema(F5BigIpSyncOptionsSchema).merge(
@@ -105,20 +108,21 @@ export const F5BigIpPkiSyncDestinationSchema = BasePkiSyncSchema(F5BigIpSyncOpti
   })
 );
 
-export const UpdateF5BigIpPkiSyncDestinationSchema = F5BigIpPkiSyncDestinationSchema.partial().merge(
-  z.object({
-    name: z
-      .string()
-      .trim()
-      .min(1, "Name is required")
-      .max(255, "Name must be less than 255 characters"),
-    destination: z.literal(PkiSync.F5BigIp),
-    connection: z.object({
-      id: z.string().uuid("Invalid connection ID format"),
+export const UpdateF5BigIpPkiSyncDestinationSchema =
+  F5BigIpPkiSyncDestinationSchema.partial().merge(
+    z.object({
       name: z
         .string()
-        .min(1, "Connection name is required")
-        .max(255, "Connection name must be less than 255 characters")
+        .trim()
+        .min(1, "Name is required")
+        .max(255, "Name must be less than 255 characters"),
+      destination: z.literal(PkiSync.F5BigIp),
+      connection: z.object({
+        id: z.string().uuid("Invalid connection ID format"),
+        name: z
+          .string()
+          .min(1, "Connection name is required")
+          .max(255, "Connection name must be less than 255 characters")
+      })
     })
-  })
-);
+  );
