@@ -54,14 +54,6 @@ export const DELIVERED_RETENTION_MS = 15 * 60_000;
 // without bound. Same cron prunes these alongside delivered rows.
 export const DLQ_RETENTION_MS = 12 * 60 * 60_000;
 
-const PROVIDER_QUEUE_MAP: Record<LogProvider, QueueName> = {
-  [LogProvider.Azure]: QueueName.AuditLogStreamAzure,
-  [LogProvider.Cribl]: QueueName.AuditLogStreamCribl,
-  [LogProvider.Custom]: QueueName.AuditLogStreamCustom,
-  [LogProvider.Datadog]: QueueName.AuditLogStreamDatadog,
-  [LogProvider.Splunk]: QueueName.AuditLogStreamSplunk
-};
-
 const computeBackoffMs = (attemptsAfterIncrement: number): number => {
   const exponent = Math.min(attemptsAfterIncrement - 1, 10);
   const base = BACKOFF_BASE_MS * 2 ** exponent;
@@ -93,24 +85,17 @@ export const auditLogStreamOutboxServiceFactory = ({
   queueService
 }: TAuditLogStreamOutboxServiceFactoryDep): TAuditLogStreamOutboxServiceFactory => {
   // Try to win the 5s SETNX debounce for a stream and, on win, enqueue a delayed
-  // flush job on the matching per-provider queue. Returning false means another
-  // writer already covered the window — there's nothing for the caller to do.
+  // flush job on the shared outbox queue (provider is carried in the payload and read
+  // back by the worker). Returning false means another writer already covered the
+  // window — there's nothing for the caller to do.
   const debounceAndEnqueueFlush = async (streamId: string, orgId: string, provider: LogProvider): Promise<boolean> => {
-    const queueName = PROVIDER_QUEUE_MAP[provider];
-    if (!queueName) {
-      logger.warn(
-        `audit-log-stream-outbox: unknown provider, skipping flush enqueue [provider=${provider}] [streamId=${streamId}]`
-      );
-      return false;
-    }
-
     const debounceKey = KeyStorePrefixes.AuditLogStreamFlushDebounce(streamId);
     const acquired = await keyStore.setItemWithExpiryNX(debounceKey, FLUSH_DEBOUNCE_SECONDS, "1");
     if (!acquired) return false;
 
     try {
       await queueService.queue(
-        queueName,
+        QueueName.AuditLogStreamOutbox,
         QueueJobs.AuditLogStreamFlush,
         { streamId, orgId, provider },
         {
@@ -123,7 +108,7 @@ export const auditLogStreamOutboxServiceFactory = ({
     } catch (error) {
       logger.error(
         error,
-        `audit-log-stream-outbox: failed to enqueue flush job [provider=${provider}] [queue=${queueName}] [streamId=${streamId}] [orgId=${orgId}]`
+        `audit-log-stream-outbox: failed to enqueue flush job [provider=${provider}] [streamId=${streamId}] [orgId=${orgId}]`
       );
       return false;
     }

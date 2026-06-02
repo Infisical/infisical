@@ -109,13 +109,7 @@ export enum QueueName {
   AppConnectionCredentialRotation = "app-connection-credential-rotation",
   AppConnectionCredentialRotationRotate = "app-connection-credential-rotation-rotate",
   AuditLogClickHouseBatch = "audit-log-clickhouse-batch",
-  // One queue per provider so a slow Splunk endpoint can't starve fast Datadog flushes (and vice versa).
-  // BullMQ disallows ':' in queue names, so use '-' as the separator.
-  AuditLogStreamAzure = "audit-stream-azure",
-  AuditLogStreamCribl = "audit-stream-cribl",
-  AuditLogStreamCustom = "audit-stream-custom",
-  AuditLogStreamDatadog = "audit-stream-datadog",
-  AuditLogStreamSplunk = "audit-stream-splunk",
+  AuditLogStreamOutbox = "audit-log-stream-outbox",
   PamDiscoveryScan = "pam-discovery-scan",
   CaAutoRenewal = "ca-auto-renewal",
   ProjectHardDelete = "project-hard-delete",
@@ -487,23 +481,7 @@ export type TQueueJobTypes = {
     name: QueueJobs.AuditLogClickHouseBatch;
     payload: undefined;
   };
-  [QueueName.AuditLogStreamAzure]: {
-    name: QueueJobs.AuditLogStreamFlush;
-    payload: TAuditLogStreamFlushJobData;
-  };
-  [QueueName.AuditLogStreamCribl]: {
-    name: QueueJobs.AuditLogStreamFlush;
-    payload: TAuditLogStreamFlushJobData;
-  };
-  [QueueName.AuditLogStreamCustom]: {
-    name: QueueJobs.AuditLogStreamFlush;
-    payload: TAuditLogStreamFlushJobData;
-  };
-  [QueueName.AuditLogStreamDatadog]: {
-    name: QueueJobs.AuditLogStreamFlush;
-    payload: TAuditLogStreamFlushJobData;
-  };
-  [QueueName.AuditLogStreamSplunk]: {
+  [QueueName.AuditLogStreamOutbox]: {
     name: QueueJobs.AuditLogStreamFlush;
     payload: TAuditLogStreamFlushJobData;
   };

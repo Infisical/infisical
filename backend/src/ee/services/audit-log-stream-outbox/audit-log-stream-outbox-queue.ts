@@ -5,6 +5,8 @@ import { QueueName, TQueueServiceFactory } from "@app/queue";
 import { LogProvider } from "../audit-log-stream/audit-log-stream-enums";
 import { TAuditLogStreamOutboxServiceFactory } from "./audit-log-stream-outbox-service";
 
+const OUTBOX_WORKER_CONCURRENCY = 5;
+
 // Sweeper cadence. Runs every 5 min — comfortably tighter than the 10-minute
 // stale-claim threshold so a stuck worker is recovered within ~15 min worst case.
 const STALE_CLAIM_SWEEPER_CRON = "*/5 * * * *";
@@ -29,16 +31,15 @@ export type TAuditLogStreamOutboxQueueDep = {
   >;
 };
 
-// Boots one BullMQ worker per provider so a slow upstream (e.g. a wedged
-// Splunk HEC) can't block deliveries to a healthy one (e.g. Datadog).
 export const auditLogStreamOutboxQueueFactory = ({
   queueService,
   cronJob,
   auditLogStreamOutboxService
 }: TAuditLogStreamOutboxQueueDep) => {
-  const registerWorker = <T extends QueueName>(queueName: T, provider: LogProvider) => {
-    queueService.start(queueName, async (job) => {
-      const { streamId, orgId } = job.data as { streamId: string; orgId: string };
+  queueService.start(
+    QueueName.AuditLogStreamOutbox,
+    async (job) => {
+      const { streamId, orgId, provider } = job.data as { streamId: string; orgId: string; provider: LogProvider };
       try {
         await auditLogStreamOutboxService.drainStream({ streamId, orgId, provider });
       } catch (error) {
@@ -48,14 +49,9 @@ export const auditLogStreamOutboxQueueFactory = ({
         );
         throw error;
       }
-    });
-  };
-
-  registerWorker(QueueName.AuditLogStreamAzure, LogProvider.Azure);
-  registerWorker(QueueName.AuditLogStreamCribl, LogProvider.Cribl);
-  registerWorker(QueueName.AuditLogStreamCustom, LogProvider.Custom);
-  registerWorker(QueueName.AuditLogStreamDatadog, LogProvider.Datadog);
-  registerWorker(QueueName.AuditLogStreamSplunk, LogProvider.Splunk);
+    },
+    { concurrency: OUTBOX_WORKER_CONCURRENCY }
+  );
 
   const init = () => {
     cronJob.register({
