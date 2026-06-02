@@ -39,56 +39,67 @@ export async function up(knex: Knex): Promise<void> {
   }
 
   // ── Seed built-in roles ────
+  // Process in chunks to keep memory bounded on large deployments (100K+ projects/orgs).
+  const CHUNK_SIZE = 2000;
+
   await knex.transaction(async (trx) => {
-    // Check per-(orgId, slug) pair so a partial crash followed by a re-run seeds
-    // only the missing rows instead of skipping the entire org.
     const orgBuiltInSlugs = ["member", "no-access"];
-    const alreadySeededOrgRows = await trx(TableName.Role)
-      .whereNotNull("orgId")
-      .whereNull("projectId")
-      .whereIn("slug", orgBuiltInSlugs)
-      .select("orgId", "slug");
-    const alreadySeededOrgSet = new Set(alreadySeededOrgRows.map((r) => `${String(r.orgId)}:${r.slug}`));
+    const orgCount = (await trx(TableName.Organization).count("id as cnt").first()) as { cnt: string } | undefined;
+    const totalOrgs = Number(orgCount?.cnt ?? 0);
 
-    const orgs = await trx(TableName.Organization).select("id");
-    const orgRolesToInsert = orgs.flatMap(({ id: orgId }) => {
-      const rows = [];
-      if (!alreadySeededOrgSet.has(`${orgId}:member`)) {
-        rows.push({
-          id: uuidv4(),
-          orgId,
-          projectId: null,
-          name: "Member",
-          slug: "member",
-          description: "Members can read and create projects inside the organization.",
-          permissions: packedOrgMember,
-          isBuiltIn: true,
-          createdAt: now,
-          updatedAt: now
-        });
-      }
-      if (!alreadySeededOrgSet.has(`${orgId}:no-access`)) {
-        rows.push({
-          id: uuidv4(),
-          orgId,
-          projectId: null,
-          name: "No Access",
-          slug: "no-access",
-          description: "No access to organization resources.",
-          permissions: packedOrgNoAccess,
-          isBuiltIn: true,
-          createdAt: now,
-          updatedAt: now
-        });
-      }
-      return rows;
-    });
+    // eslint-disable-next-line no-await-in-loop
+    for (let offset = 0; offset < totalOrgs; offset += CHUNK_SIZE) {
+      // eslint-disable-next-line no-await-in-loop
+      const orgChunk = await trx(TableName.Organization).select("id").offset(offset).limit(CHUNK_SIZE);
+      const orgIds = orgChunk.map((o) => o.id);
 
-    if (orgRolesToInsert.length > 0) {
-      await knex.batchInsert(TableName.Role, orgRolesToInsert, BATCH_SIZE).transacting(trx);
+      // eslint-disable-next-line no-await-in-loop
+      const alreadySeededOrgRows = await trx(TableName.Role)
+        .whereIn("orgId", orgIds)
+        .whereNull("projectId")
+        .whereIn("slug", orgBuiltInSlugs)
+        .select("orgId", "slug");
+      const alreadySeededOrgSet = new Set(alreadySeededOrgRows.map((r) => `${String(r.orgId)}:${r.slug}`));
+
+      const orgRolesToInsert = orgChunk.flatMap(({ id: orgId }) => {
+        const rows = [];
+        if (!alreadySeededOrgSet.has(`${orgId}:member`)) {
+          rows.push({
+            id: uuidv4(),
+            orgId,
+            projectId: null,
+            name: "Member",
+            slug: "member",
+            description: "Members can read and create projects inside the organization.",
+            permissions: packedOrgMember,
+            isBuiltIn: true,
+            createdAt: now,
+            updatedAt: now
+          });
+        }
+        if (!alreadySeededOrgSet.has(`${orgId}:no-access`)) {
+          rows.push({
+            id: uuidv4(),
+            orgId,
+            projectId: null,
+            name: "No Access",
+            slug: "no-access",
+            description: "No access to organization resources.",
+            permissions: packedOrgNoAccess,
+            isBuiltIn: true,
+            createdAt: now,
+            updatedAt: now
+          });
+        }
+        return rows;
+      });
+
+      if (orgRolesToInsert.length > 0) {
+        // eslint-disable-next-line no-await-in-loop
+        await knex.batchInsert(TableName.Role, orgRolesToInsert, BATCH_SIZE).transacting(trx);
+      }
     }
 
-    // Check per-(projectId, slug) pair for the same reason.
     const projectBuiltInSlugsToCheck = [
       "member",
       "viewer",
@@ -96,97 +107,108 @@ export async function up(knex: Knex): Promise<void> {
       "ssh-host-bootstrapper",
       "cryptographic-operator"
     ];
-    const alreadySeededProjectRows = await trx(TableName.Role)
-      .whereNull("orgId")
-      .whereNotNull("projectId")
-      .whereIn("slug", projectBuiltInSlugsToCheck)
-      .select("projectId", "slug");
-    const alreadySeededProjectSet = new Set(alreadySeededProjectRows.map((r) => `${String(r.projectId)}:${r.slug}`));
+    const projectCount = (await trx(TableName.Project).count("id as cnt").first()) as { cnt: string } | undefined;
+    const totalProjects = Number(projectCount?.cnt ?? 0);
 
-    const projects = await trx(TableName.Project).select("id", "type");
-    const projectRolesToInsert = projects.flatMap(({ id: projectId, type }) => {
-      const rows = [];
+    // eslint-disable-next-line no-await-in-loop
+    for (let offset = 0; offset < totalProjects; offset += CHUNK_SIZE) {
+      // eslint-disable-next-line no-await-in-loop
+      const projectChunk = await trx(TableName.Project).select("id", "type").offset(offset).limit(CHUNK_SIZE);
+      const projectIds = projectChunk.map((p) => p.id);
 
-      if (!alreadySeededProjectSet.has(`${projectId}:member`)) {
-        rows.push({
-          id: uuidv4(),
-          orgId: null,
-          projectId,
-          name: "Member",
-          slug: "member",
-          description: "Members can read and modify project resources.",
-          permissions: packedProjectMember,
-          isBuiltIn: true,
-          createdAt: now,
-          updatedAt: now
-        });
+      // eslint-disable-next-line no-await-in-loop
+      const alreadySeededProjectRows = await trx(TableName.Role)
+        .whereIn("projectId", projectIds)
+        .whereNull("orgId")
+        .whereIn("slug", projectBuiltInSlugsToCheck)
+        .select("projectId", "slug");
+      const alreadySeededProjectSet = new Set(alreadySeededProjectRows.map((r) => `${String(r.projectId)}:${r.slug}`));
+
+      const projectRolesToInsert = projectChunk.flatMap(({ id: projectId, type }) => {
+        const rows = [];
+
+        if (!alreadySeededProjectSet.has(`${projectId}:member`)) {
+          rows.push({
+            id: uuidv4(),
+            orgId: null,
+            projectId,
+            name: "Member",
+            slug: "member",
+            description: "Members can read and modify project resources.",
+            permissions: packedProjectMember,
+            isBuiltIn: true,
+            createdAt: now,
+            updatedAt: now
+          });
+        }
+
+        if (!alreadySeededProjectSet.has(`${projectId}:viewer`)) {
+          rows.push({
+            id: uuidv4(),
+            orgId: null,
+            projectId,
+            name: "Viewer",
+            slug: "viewer",
+            description: "Viewers can only read project resources.",
+            permissions: packedProjectViewer,
+            isBuiltIn: true,
+            createdAt: now,
+            updatedAt: now
+          });
+        }
+
+        if (!alreadySeededProjectSet.has(`${projectId}:no-access`)) {
+          rows.push({
+            id: uuidv4(),
+            orgId: null,
+            projectId,
+            name: "No Access",
+            slug: "no-access",
+            description: "No access to project resources.",
+            permissions: packedProjectNoAccess,
+            isBuiltIn: true,
+            createdAt: now,
+            updatedAt: now
+          });
+        }
+
+        if (type === ProjectType.SSH && !alreadySeededProjectSet.has(`${projectId}:ssh-host-bootstrapper`)) {
+          rows.push({
+            id: uuidv4(),
+            orgId: null,
+            projectId,
+            name: "SSH Host Bootstrapper",
+            slug: "ssh-host-bootstrapper",
+            description: "Allows bootstrapping SSH hosts.",
+            permissions: packedSshBootstrap,
+            isBuiltIn: true,
+            createdAt: now,
+            updatedAt: now
+          });
+        }
+
+        if (type === ProjectType.KMS && !alreadySeededProjectSet.has(`${projectId}:cryptographic-operator`)) {
+          rows.push({
+            id: uuidv4(),
+            orgId: null,
+            projectId,
+            name: "Cryptographic Operator",
+            slug: "cryptographic-operator",
+            description: "Can perform cryptographic operations.",
+            permissions: packedCryptoOperator,
+            isBuiltIn: true,
+            createdAt: now,
+            updatedAt: now
+          });
+        }
+
+        return rows;
+      });
+
+      if (projectRolesToInsert.length > 0) {
+        // eslint-disable-next-line no-await-in-loop
+        await knex.batchInsert(TableName.Role, projectRolesToInsert, BATCH_SIZE).transacting(trx);
       }
-
-      if (!alreadySeededProjectSet.has(`${projectId}:viewer`)) {
-        rows.push({
-          id: uuidv4(),
-          orgId: null,
-          projectId,
-          name: "Viewer",
-          slug: "viewer",
-          description: "Viewers can only read project resources.",
-          permissions: packedProjectViewer,
-          isBuiltIn: true,
-          createdAt: now,
-          updatedAt: now
-        });
-      }
-
-      if (!alreadySeededProjectSet.has(`${projectId}:no-access`)) {
-        rows.push({
-          id: uuidv4(),
-          orgId: null,
-          projectId,
-          name: "No Access",
-          slug: "no-access",
-          description: "No access to project resources.",
-          permissions: packedProjectNoAccess,
-          isBuiltIn: true,
-          createdAt: now,
-          updatedAt: now
-        });
-      }
-
-      if (type === ProjectType.SSH && !alreadySeededProjectSet.has(`${projectId}:ssh-host-bootstrapper`)) {
-        rows.push({
-          id: uuidv4(),
-          orgId: null,
-          projectId,
-          name: "SSH Host Bootstrapper",
-          slug: "ssh-host-bootstrapper",
-          description: "Allows bootstrapping SSH hosts.",
-          permissions: packedSshBootstrap,
-          isBuiltIn: true,
-          createdAt: now,
-          updatedAt: now
-        });
-      }
-
-      if (type === ProjectType.KMS && !alreadySeededProjectSet.has(`${projectId}:cryptographic-operator`)) {
-        rows.push({
-          id: uuidv4(),
-          orgId: null,
-          projectId,
-          name: "Cryptographic Operator",
-          slug: "cryptographic-operator",
-          description: "Can perform cryptographic operations.",
-          permissions: packedCryptoOperator,
-          isBuiltIn: true,
-          createdAt: now,
-          updatedAt: now
-        });
-      }
-
-      return rows;
-    });
-
-    if (projectRolesToInsert.length > 0) {
-      await knex.batchInsert(TableName.Role, projectRolesToInsert, BATCH_SIZE).transacting(trx);
     }
   });
 
