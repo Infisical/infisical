@@ -414,8 +414,6 @@ func (a *Authenticator) ValidateServiceToken(ctx context.Context, token string) 
 		return nil, errutil.Unauthorized("Invalid service token").WithErrf("validateServiceToken(tokenId=%s): secret hash mismatch", serviceToken.ID)
 	}
 
-	// TODO(go): accessTokenQueue.updateServiceTokenStatus — update lastUsed timestamp
-
 	// 6. Find org.
 	org, err := a.findOrgByID(ctx, project.OrgID)
 	if err != nil {

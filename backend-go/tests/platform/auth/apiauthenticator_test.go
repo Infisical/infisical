@@ -780,3 +780,483 @@ func TestValidateJWT_MalformedTokens(t *testing.T) {
 		})
 	}
 }
+
+// =============================================================================
+// ValidateJWTToken (Unified Entry Point) Tests
+// =============================================================================
+
+func TestValidateJWTToken_RoutesToUserToken(t *testing.T) {
+	token := stack.NodeJS().UserToken()
+
+	identity, authMode, err := authenticator.ValidateJWTToken(context.Background(), token, "")
+
+	require.NoError(t, err)
+	assert.Equal(t, auth.AuthModeJWT, authMode)
+	assert.Equal(t, auth.ActorTypeUser, identity.Actor)
+}
+
+func TestValidateJWTToken_RoutesToIdentityToken(t *testing.T) {
+	token := stack.NodeJS().IdentityToken()
+
+	identity, authMode, err := authenticator.ValidateJWTToken(context.Background(), token, "")
+
+	require.NoError(t, err)
+	assert.Equal(t, auth.AuthModeIdentityAccessToken, authMode)
+	assert.Equal(t, auth.ActorTypeIdentity, identity.Actor)
+}
+
+func TestValidateJWTToken_UnsupportedTokenType(t *testing.T) {
+	token := signUserJWT(t, infra.AuthSecret, func(c *apiauth.UserJWTClaims) {
+		c.AuthTokenType = "unsupported-type"
+	})
+
+	_, _, err := authenticator.ValidateJWTToken(context.Background(), token, "")
+
+	assertUnauthorized(t, err)
+	assert.Contains(t, err.Error(), "Unsupported token type")
+}
+
+// =============================================================================
+// User Org Membership Tests
+// =============================================================================
+
+func TestValidateJWT_UserToken_NotMemberOfOrg(t *testing.T) {
+	// Create a new user that is NOT a member of the org in the JWT claims
+	newUserID := uuid.New()
+	testEmail := "notmember-" + uuid.New().String() + "@test.com"
+	_, err := stack.DB().Primary().Exec(context.Background(), `
+		INSERT INTO users (id, email, username, "isAccepted", "createdAt", "updatedAt")
+		VALUES (@userID, @email, @username, true, NOW(), NOW())
+	`, pgx.NamedArgs{"userID": newUserID, "email": testEmail, "username": testEmail})
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		_, _ = stack.DB().Primary().Exec(context.Background(),
+			`DELETE FROM users WHERE id = @userID`,
+			pgx.NamedArgs{"userID": newUserID})
+	})
+
+	sessionID := uuid.New()
+	_, err = stack.DB().Primary().Exec(context.Background(), `
+		INSERT INTO auth_token_sessions (id, "userId", "accessVersion", "refreshVersion", ip, "userAgent", "lastUsed", "createdAt", "updatedAt")
+		VALUES (@sessionID, @userID, 1, 1, '127.0.0.1', 'test', NOW(), NOW(), NOW())
+	`, pgx.NamedArgs{"sessionID": sessionID, "userID": newUserID})
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		_, _ = stack.DB().Primary().Exec(context.Background(),
+			`DELETE FROM auth_token_sessions WHERE id = @sessionID`,
+			pgx.NamedArgs{"sessionID": sessionID})
+	})
+
+	// Create token with an org the user is not a member of
+	token := signUserJWT(t, infra.AuthSecret, func(c *apiauth.UserJWTClaims) {
+		c.UserID = newUserID
+		c.TokenVersionID = sessionID
+		c.AccessVersion = 1
+		c.OrganizationID = uuid.MustParse(stack.NodeJS().OrgID()) // user is not a member
+	})
+
+	_, err = authenticator.ValidateJWT(context.Background(), token)
+
+	require.Error(t, err)
+	var appErr *errutil.Error
+	require.ErrorAs(t, err, &appErr)
+	assert.Equal(t, 403, appErr.Status)
+	assert.Contains(t, err.Error(), "not member")
+}
+
+func TestValidateJWT_UserToken_OrgMembershipInactive(t *testing.T) {
+	// Create a user directly in DB with isAccepted=true
+	userID := uuid.New()
+	testEmail := "inactive-member-" + uuid.New().String()[:8] + "@test.com"
+	_, err := stack.DB().Primary().Exec(context.Background(), `
+		INSERT INTO users (id, email, username, "isAccepted", "createdAt", "updatedAt")
+		VALUES (@userID, @email, @username, true, NOW(), NOW())
+	`, pgx.NamedArgs{"userID": userID, "email": testEmail, "username": testEmail})
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		_, _ = stack.DB().Primary().Exec(context.Background(),
+			`DELETE FROM users WHERE id = @userID`,
+			pgx.NamedArgs{"userID": userID})
+	})
+
+	// Create org membership with isActive=false
+	orgID := uuid.MustParse(stack.NodeJS().OrgID())
+	membershipID := uuid.New()
+	_, err = stack.DB().Primary().Exec(context.Background(), `
+		INSERT INTO memberships (id, "actorUserId", scope, "scopeOrgId", "isActive", status, "createdAt", "updatedAt")
+		VALUES (@membershipID, @userID, 'organization', @orgID, false, 'accepted', NOW(), NOW())
+	`, pgx.NamedArgs{"membershipID": membershipID, "userID": userID, "orgID": orgID})
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		_, _ = stack.DB().Primary().Exec(context.Background(),
+			`DELETE FROM memberships WHERE id = @membershipID`,
+			pgx.NamedArgs{"membershipID": membershipID})
+	})
+
+	// Create session
+	sessionID := uuid.New()
+	_, err = stack.DB().Primary().Exec(context.Background(), `
+		INSERT INTO auth_token_sessions (id, "userId", "accessVersion", "refreshVersion", ip, "userAgent", "lastUsed", "createdAt", "updatedAt")
+		VALUES (@sessionID, @userID, 1, 1, '127.0.0.1', 'test', NOW(), NOW(), NOW())
+	`, pgx.NamedArgs{"sessionID": sessionID, "userID": userID})
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		_, _ = stack.DB().Primary().Exec(context.Background(),
+			`DELETE FROM auth_token_sessions WHERE id = @sessionID`,
+			pgx.NamedArgs{"sessionID": sessionID})
+	})
+
+	token := signUserJWT(t, infra.AuthSecret, func(c *apiauth.UserJWTClaims) {
+		c.UserID = userID
+		c.TokenVersionID = sessionID
+		c.AccessVersion = 1
+		c.OrganizationID = orgID
+	})
+
+	_, err = authenticator.ValidateJWT(context.Background(), token)
+
+	require.Error(t, err)
+	var appErr *errutil.Error
+	require.ErrorAs(t, err, &appErr)
+	assert.Equal(t, 403, appErr.Status)
+	assert.Contains(t, err.Error(), "inactive")
+}
+
+// =============================================================================
+// Identity Org Membership Tests
+// =============================================================================
+
+func TestValidateIdentityAccessToken_NotMemberOfOrg(t *testing.T) {
+	nodejs := stack.NodeJS()
+
+	// Create an identity but do NOT add it to any project
+	identity := nodejs.CreateIdentity(t, "orphan-identity-"+uuid.New().String()[:8])
+
+	// Get a token for this identity (this creates universal auth)
+	token := nodejs.GetIdentityAccessToken(t, identity.ID)
+
+	// Remove the identity from the org membership
+	_, err := stack.DB().Primary().Exec(context.Background(), `
+		DELETE FROM memberships
+		WHERE "actorIdentityId" = @identityID
+	`, pgx.NamedArgs{"identityID": uuid.MustParse(identity.ID)})
+	require.NoError(t, err)
+
+	_, err = authenticator.ValidateIdentityAccessToken(context.Background(), token, "")
+
+	assertUnauthorized(t, err)
+	assert.Contains(t, err.Error(), "not a member")
+}
+
+func TestValidateIdentityAccessToken_OrgMembershipInactive(t *testing.T) {
+	nodejs := stack.NodeJS()
+
+	projName := "test-inactive-" + uuid.New().String()[:8]
+	proj := nodejs.CreateProject(t, projName)
+	t.Cleanup(func() {
+		nodejs.DeleteProject(t, proj.ID)
+	})
+
+	identity := nodejs.CreateIdentity(t, "inactive-identity-"+uuid.New().String()[:8])
+	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
+
+	token := nodejs.GetIdentityAccessToken(t, identity.ID)
+
+	// Deactivate the org membership
+	_, err := stack.DB().Primary().Exec(context.Background(), `
+		UPDATE memberships
+		SET "isActive" = false
+		WHERE "actorIdentityId" = @identityID AND scope = 'organization'
+	`, pgx.NamedArgs{"identityID": uuid.MustParse(identity.ID)})
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		_, _ = stack.DB().Primary().Exec(context.Background(),
+			`UPDATE memberships SET "isActive" = true WHERE "actorIdentityId" = @identityID`,
+			pgx.NamedArgs{"identityID": uuid.MustParse(identity.ID)})
+	})
+
+	_, err = authenticator.ValidateIdentityAccessToken(context.Background(), token, "")
+
+	assertUnauthorized(t, err)
+	assert.Contains(t, err.Error(), "inactive")
+}
+
+// =============================================================================
+// Identity IP Blocklist Tests
+// =============================================================================
+
+func TestValidateIdentityAccessToken_IPBlocked(t *testing.T) {
+	nodejs := stack.NodeJS()
+
+	projName := "test-ipblock-" + uuid.New().String()[:8]
+	proj := nodejs.CreateProject(t, projName)
+	t.Cleanup(func() {
+		nodejs.DeleteProject(t, proj.ID)
+	})
+
+	identity := nodejs.CreateIdentity(t, "ipblock-identity-"+uuid.New().String()[:8])
+	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
+
+	// Get an access token (this creates universal auth with 0.0.0.0/0)
+	token := nodejs.GetIdentityAccessToken(t, identity.ID)
+
+	// Update the trusted IPs to only allow a specific IP (not 192.168.1.1)
+	// Use proper JSON format matching what Infisical stores
+	_, err := stack.DB().Primary().Exec(context.Background(), `
+		UPDATE identity_universal_auths
+		SET "accessTokenTrustedIps" = '[{"ipAddress":"10.0.0.1","type":"ipv4","prefix":0}]'::jsonb
+		WHERE "identityId" = @identityID
+	`, pgx.NamedArgs{"identityID": uuid.MustParse(identity.ID)})
+	require.NoError(t, err)
+
+	// Verify the update took effect
+	var storedIPs string
+	err = stack.DB().Primary().QueryRow(context.Background(), `
+		SELECT "accessTokenTrustedIps"::text FROM identity_universal_auths WHERE "identityId" = @identityID
+	`, pgx.NamedArgs{"identityID": uuid.MustParse(identity.ID)}).Scan(&storedIPs)
+	require.NoError(t, err)
+	require.Contains(t, storedIPs, "10.0.0.1", "DB should have the updated IP")
+
+	// Try to validate with an IP not in the allowlist
+	_, err = authenticator.ValidateIdentityAccessToken(context.Background(), token, "192.168.1.1")
+
+	require.Error(t, err)
+	var appErr *errutil.Error
+	require.ErrorAs(t, err, &appErr)
+	assert.Equal(t, 403, appErr.Status)
+	assert.Contains(t, err.Error(), "IP address")
+}
+
+func TestValidateIdentityAccessToken_IPAllowed(t *testing.T) {
+	nodejs := stack.NodeJS()
+
+	projName := "test-ipallow-" + uuid.New().String()[:8]
+	proj := nodejs.CreateProject(t, projName)
+	t.Cleanup(func() {
+		nodejs.DeleteProject(t, proj.ID)
+	})
+
+	identity := nodejs.CreateIdentity(t, "ipallow-identity-"+uuid.New().String()[:8])
+	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
+
+	token := nodejs.GetIdentityAccessToken(t, identity.ID)
+
+	// Update the trusted IPs to allow a specific CIDR
+	_, err := stack.DB().Primary().Exec(context.Background(), `
+		UPDATE identity_universal_auths
+		SET "accessTokenTrustedIps" = '[{"ipAddress":"192.168.0.0","prefix":16}]'
+		WHERE "identityId" = @identityID
+	`, pgx.NamedArgs{"identityID": uuid.MustParse(identity.ID)})
+	require.NoError(t, err)
+
+	// Validate with an IP within the CIDR
+	authIdentity, err := authenticator.ValidateIdentityAccessToken(context.Background(), token, "192.168.1.100")
+
+	require.NoError(t, err)
+	assert.Equal(t, uuid.MustParse(identity.ID), authIdentity.ActorID)
+}
+
+func TestValidateIdentityAccessToken_NoIPCheckWhenEmpty(t *testing.T) {
+	nodejs := stack.NodeJS()
+
+	projName := "test-noipcheck-" + uuid.New().String()[:8]
+	proj := nodejs.CreateProject(t, projName)
+	t.Cleanup(func() {
+		nodejs.DeleteProject(t, proj.ID)
+	})
+
+	identity := nodejs.CreateIdentity(t, "noipcheck-identity-"+uuid.New().String()[:8])
+	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
+
+	token := nodejs.GetIdentityAccessToken(t, identity.ID)
+
+	// The default is 0.0.0.0/0 which allows all - validate works with any IP
+	authIdentity, err := authenticator.ValidateIdentityAccessToken(context.Background(), token, "8.8.8.8")
+
+	require.NoError(t, err)
+	assert.Equal(t, uuid.MustParse(identity.ID), authIdentity.ActorID)
+}
+
+// =============================================================================
+// Service Token Edge Cases
+// =============================================================================
+
+func TestValidateServiceToken_ProjectNotFound(t *testing.T) {
+	nodejs := stack.NodeJS()
+
+	projName := "test-st-projdel-" + uuid.New().String()[:8]
+	proj := nodejs.CreateProject(t, projName)
+
+	st := nodejs.CreateServiceToken(t, proj.ID, "dev", nil)
+
+	// Delete the project (this should cascade delete the service token too,
+	// but let's manually delete just the project row to simulate orphaned token)
+	_, err := stack.DB().Primary().Exec(context.Background(), `
+		DELETE FROM projects WHERE id = @projectID
+	`, pgx.NamedArgs{"projectID": proj.ID})
+	require.NoError(t, err)
+
+	_, err = authenticator.ValidateServiceToken(context.Background(), st.Token)
+
+	// Either not found (token cascade deleted) or project not found
+	require.Error(t, err)
+}
+
+// =============================================================================
+// Legacy Identity Token Constraints (Integration)
+// =============================================================================
+
+func TestValidateIdentityAccessToken_LegacyTTLExpired(t *testing.T) {
+	nodejs := stack.NodeJS()
+
+	projName := "test-legacy-ttl-" + uuid.New().String()[:8]
+	proj := nodejs.CreateProject(t, projName)
+	t.Cleanup(func() {
+		nodejs.DeleteProject(t, proj.ID)
+	})
+
+	identity := nodejs.CreateIdentity(t, "legacy-ttl-"+uuid.New().String()[:8])
+	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
+
+	tokenID := uuid.New()
+	identityID := uuid.MustParse(identity.ID)
+
+	// Insert a legacy token with expired TTL (created 2 hours ago, TTL 1 hour)
+	_, err := stack.DB().Primary().Exec(context.Background(), `
+		INSERT INTO identity_access_tokens (
+			id, "identityId", "isAccessTokenRevoked", "accessTokenTTL", "accessTokenMaxTTL",
+			"accessTokenNumUses", "accessTokenNumUsesLimit", "accessTokenLastRenewedAt",
+			"authMethod", "createdAt", "updatedAt"
+		) VALUES (
+			@tokenID, @identityID, false, 3600, 0, 0, 0, @lastRenewed,
+			'universal-auth', @createdAt, NOW()
+		)
+	`, pgx.NamedArgs{
+		"tokenID":     tokenID,
+		"identityID":  identityID,
+		"lastRenewed": time.Now().Add(-2 * time.Hour),
+		"createdAt":   time.Now().Add(-2 * time.Hour),
+	})
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		_, _ = stack.DB().Primary().Exec(context.Background(),
+			`DELETE FROM identity_access_tokens WHERE id = @tokenID`,
+			pgx.NamedArgs{"tokenID": tokenID})
+	})
+
+	// Create a legacy token (without full renew claims)
+	legacyToken := signIdentityJWT(t, infra.AuthSecret, func(c *apiauth.IdentityJWTClaims) {
+		c.IdentityID = identityID
+		c.IdentityAccessTokenID = tokenID.String()
+		// No OrgID, AuthMethod, etc. - makes it a legacy token
+		c.OrgID = uuid.Nil
+		c.AuthMethod = ""
+		c.AccessTokenTTL = 0
+	})
+
+	_, err = authenticator.ValidateIdentityAccessToken(context.Background(), legacyToken, "")
+
+	assertUnauthorized(t, err)
+	assert.Contains(t, err.Error(), "TTL expired")
+}
+
+func TestValidateIdentityAccessToken_LegacyMaxTTLExpired(t *testing.T) {
+	nodejs := stack.NodeJS()
+
+	projName := "test-legacy-maxttl-" + uuid.New().String()[:8]
+	proj := nodejs.CreateProject(t, projName)
+	t.Cleanup(func() {
+		nodejs.DeleteProject(t, proj.ID)
+	})
+
+	identity := nodejs.CreateIdentity(t, "legacy-maxttl-"+uuid.New().String()[:8])
+	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
+
+	tokenID := uuid.New()
+	identityID := uuid.MustParse(identity.ID)
+
+	// Insert a legacy token with expired maxTTL (created 3 hours ago, maxTTL 2 hours)
+	_, err := stack.DB().Primary().Exec(context.Background(), `
+		INSERT INTO identity_access_tokens (
+			id, "identityId", "isAccessTokenRevoked", "accessTokenTTL", "accessTokenMaxTTL",
+			"accessTokenNumUses", "accessTokenNumUsesLimit", "accessTokenLastRenewedAt",
+			"authMethod", "createdAt", "updatedAt"
+		) VALUES (
+			@tokenID, @identityID, false, 86400, 7200, 0, 0, @lastRenewed,
+			'universal-auth', @createdAt, NOW()
+		)
+	`, pgx.NamedArgs{
+		"tokenID":     tokenID,
+		"identityID":  identityID,
+		"lastRenewed": time.Now().Add(-1 * time.Minute), // recently renewed (TTL ok)
+		"createdAt":   time.Now().Add(-3 * time.Hour),   // but created too long ago (maxTTL expired)
+	})
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		_, _ = stack.DB().Primary().Exec(context.Background(),
+			`DELETE FROM identity_access_tokens WHERE id = @tokenID`,
+			pgx.NamedArgs{"tokenID": tokenID})
+	})
+
+	legacyToken := signIdentityJWT(t, infra.AuthSecret, func(c *apiauth.IdentityJWTClaims) {
+		c.IdentityID = identityID
+		c.IdentityAccessTokenID = tokenID.String()
+		c.OrgID = uuid.Nil
+		c.AuthMethod = ""
+		c.AccessTokenTTL = 0
+	})
+
+	_, err = authenticator.ValidateIdentityAccessToken(context.Background(), legacyToken, "")
+
+	assertUnauthorized(t, err)
+	assert.Contains(t, err.Error(), "max TTL expired")
+}
+
+func TestValidateIdentityAccessToken_LegacyUsageLimitReached(t *testing.T) {
+	nodejs := stack.NodeJS()
+
+	projName := "test-legacy-usage-" + uuid.New().String()[:8]
+	proj := nodejs.CreateProject(t, projName)
+	t.Cleanup(func() {
+		nodejs.DeleteProject(t, proj.ID)
+	})
+
+	identity := nodejs.CreateIdentity(t, "legacy-usage-"+uuid.New().String()[:8])
+	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
+
+	tokenID := uuid.New()
+	identityID := uuid.MustParse(identity.ID)
+
+	// Insert a legacy token with usage limit reached
+	_, err := stack.DB().Primary().Exec(context.Background(), `
+		INSERT INTO identity_access_tokens (
+			id, "identityId", "isAccessTokenRevoked", "accessTokenTTL", "accessTokenMaxTTL",
+			"accessTokenNumUses", "accessTokenNumUsesLimit", "authMethod", "createdAt", "updatedAt"
+		) VALUES (
+			@tokenID, @identityID, false, 0, 0, 5, 5,
+			'universal-auth', NOW(), NOW()
+		)
+	`, pgx.NamedArgs{
+		"tokenID":    tokenID,
+		"identityID": identityID,
+	})
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		_, _ = stack.DB().Primary().Exec(context.Background(),
+			`DELETE FROM identity_access_tokens WHERE id = @tokenID`,
+			pgx.NamedArgs{"tokenID": tokenID})
+	})
+
+	legacyToken := signIdentityJWT(t, infra.AuthSecret, func(c *apiauth.IdentityJWTClaims) {
+		c.IdentityID = identityID
+		c.IdentityAccessTokenID = tokenID.String()
+		c.OrgID = uuid.Nil
+		c.AuthMethod = ""
+		c.AccessTokenTTL = 0
+	})
+
+	_, err = authenticator.ValidateIdentityAccessToken(context.Background(), legacyToken, "")
+
+	assertUnauthorized(t, err)
+	assert.Contains(t, err.Error(), "usage limit")
+}

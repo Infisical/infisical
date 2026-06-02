@@ -13,7 +13,6 @@ import (
 	"github.com/go-resty/resty/v2"
 	"github.com/google/uuid"
 
-	// TODO(go): move this to prod build
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 
@@ -749,6 +748,22 @@ func (n *NodeJSService) CreateEnvironment(t *testing.T, projectID, slug, name st
 		ID:   resp.Environment.ID,
 		Slug: slug,
 		Name: name,
+	}
+}
+
+// SoftDeleteEnvironment soft-deletes an environment in a project via the Node.js API.
+// The environment is marked for deletion but not immediately removed, allowing for restore.
+func (n *NodeJSService) SoftDeleteEnvironment(t *testing.T, projectID, envID string) {
+	t.Helper()
+
+	r, err := n.client.R().
+		SetAuthToken(n.identityToken).
+		Delete(fmt.Sprintf("/api/v1/projects/%s/environments/%s", projectID, envID))
+	if err != nil {
+		t.Fatalf("infra.SoftDeleteEnvironment: request failed: %v", err)
+	}
+	if r.IsError() {
+		t.Fatalf("infra.SoftDeleteEnvironment: returned %d: %s", r.StatusCode(), r.String())
 	}
 }
 

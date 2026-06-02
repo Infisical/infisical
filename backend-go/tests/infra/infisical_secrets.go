@@ -113,7 +113,7 @@ func authenticate(ctx context.Context, client *http.Client, apiURL, clientID, cl
 	if err != nil {
 		return "", fmt.Errorf("login request failed: %w", err)
 	}
-	defer func() { _ = resp.Body.Close() }()
+	defer resp.Body.Close() //nolint:errcheck // response body close errors are not actionable
 
 	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("login returned status %d", resp.StatusCode)
@@ -148,7 +148,7 @@ func (c *infisicalClient) listSecrets(ctx context.Context, secretPath string) (m
 	if err != nil {
 		return nil, fmt.Errorf("secrets request failed: %w", err)
 	}
-	defer func() { _ = resp.Body.Close() }()
+	defer resp.Body.Close() //nolint:errcheck // response body close errors are not actionable
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("secrets request returned status %d", resp.StatusCode)

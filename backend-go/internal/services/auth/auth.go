@@ -27,19 +27,19 @@ type ActorAuthMethod string
 type IdentityAuthMethod string
 
 const (
-	IdentityAuthMethodUniversal  IdentityAuthMethod = "universal_auth"
-	IdentityAuthMethodKubernetes IdentityAuthMethod = "kubernetes_auth"
-	IdentityAuthMethodGCP        IdentityAuthMethod = "gcp_auth"
-	IdentityAuthMethodAliCloud   IdentityAuthMethod = "alicloud_auth"
-	IdentityAuthMethodAWS        IdentityAuthMethod = "aws_auth"
-	IdentityAuthMethodAzure      IdentityAuthMethod = "azure_auth"
-	IdentityAuthMethodToken      IdentityAuthMethod = "token_auth"
-	IdentityAuthMethodTLSCert    IdentityAuthMethod = "tls_cert_auth"
-	IdentityAuthMethodOCI        IdentityAuthMethod = "oci_auth"
-	IdentityAuthMethodOIDC       IdentityAuthMethod = "oidc_auth"
-	IdentityAuthMethodJWT        IdentityAuthMethod = "jwt_auth"
-	IdentityAuthMethodLDAP       IdentityAuthMethod = "ldap_auth"
-	IdentityAuthMethodSPIFFE     IdentityAuthMethod = "spiffe_auth"
+	IdentityAuthMethodUniversal  IdentityAuthMethod = "universal-auth"
+	IdentityAuthMethodKubernetes IdentityAuthMethod = "kubernetes-auth"
+	IdentityAuthMethodGCP        IdentityAuthMethod = "gcp-auth"
+	IdentityAuthMethodAliCloud   IdentityAuthMethod = "alicloud-auth"
+	IdentityAuthMethodAWS        IdentityAuthMethod = "aws-auth"
+	IdentityAuthMethodAzure      IdentityAuthMethod = "azure-auth"
+	IdentityAuthMethodToken      IdentityAuthMethod = "token-auth"
+	IdentityAuthMethodTLSCert    IdentityAuthMethod = "tls-cert-auth"
+	IdentityAuthMethodOCI        IdentityAuthMethod = "oci-auth"
+	IdentityAuthMethodOIDC       IdentityAuthMethod = "oidc-auth"
+	IdentityAuthMethodJWT        IdentityAuthMethod = "jwt-auth"
+	IdentityAuthMethodLDAP       IdentityAuthMethod = "ldap-auth"
+	IdentityAuthMethodSPIFFE     IdentityAuthMethod = "spiffe-auth"
 )
 
 // AuthOIDC holds OIDC-specific claims from the identity JWT payload.

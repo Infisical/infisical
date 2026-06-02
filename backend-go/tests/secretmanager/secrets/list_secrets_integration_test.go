@@ -893,3 +893,57 @@ func TestListSecretsV4_HTTP(t *testing.T) {
 		assert.NotEmpty(t, resp.Message)
 	})
 }
+
+func TestListSecrets_SoftDeletedEnvironment(t *testing.T) {
+	nodejs := stack.NodeJS()
+
+	proj := nodejs.CreateProject(t, "soft-delete-env-test")
+
+	customEnv := nodejs.CreateEnvironment(t, proj.ID, "custom-env", "Custom Environment")
+
+	nodejs.CreateSecret(t, proj.ID, "custom-env", "/", "CUSTOM_SECRET", "custom-value", nil)
+	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "DEV_SECRET", "dev-value", nil)
+
+	identity := nodejs.CreateIdentity(t, "soft-delete-env-test-identity")
+	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
+
+	t.Run("secrets accessible before soft delete", func(t *testing.T) {
+		result, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &ListSecretsV4Params{
+			ProjectID:       proj.ID,
+			Environment:     "custom-env",
+			SecretPath:      new("/"),
+			ViewSecretValue: new(true),
+		})
+
+		require.NoError(t, err)
+		require.Len(t, result.Secrets, 1)
+		assert.Equal(t, "CUSTOM_SECRET", result.Secrets[0].SecretKey)
+	})
+
+	nodejs.SoftDeleteEnvironment(t, proj.ID, customEnv.ID)
+
+	t.Run("soft deleted environment returns not found", func(t *testing.T) {
+		_, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &ListSecretsV4Params{
+			ProjectID:       proj.ID,
+			Environment:     "custom-env",
+			SecretPath:      new("/"),
+			ViewSecretValue: new(true),
+		})
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "not found")
+	})
+
+	t.Run("other environments still work after soft delete", func(t *testing.T) {
+		result, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &ListSecretsV4Params{
+			ProjectID:       proj.ID,
+			Environment:     proj.EnvSlug,
+			SecretPath:      new("/"),
+			ViewSecretValue: new(true),
+		})
+
+		require.NoError(t, err)
+		require.Len(t, result.Secrets, 1)
+		assert.Equal(t, "DEV_SECRET", result.Secrets[0].SecretKey)
+	})
+}
