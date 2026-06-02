@@ -2,6 +2,7 @@ import { TAuditLogs } from "@app/db/schemas";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { chunkArray } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
+import { auditLogStreamDeliveryDurationHistogram } from "@app/lib/telemetry/metrics";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
@@ -205,13 +206,30 @@ export const auditLogStreamOutboxServiceFactory = ({
       const streamFail: TFailedStreamRow[] = [];
 
       const sendChunk = async (chunk: TAuditLogStreamOutboxRow[]) => {
-        if (isSingleMode) {
-          if (!providerImpl.streamLog) {
-            throw new Error(`provider '${provider}' does not support single stream mode`);
+        const deliveryStart = Date.now();
+        const metricAttrs = {
+          "audit_log_stream.provider": provider,
+          "infisical.organization.id": orgId
+        };
+        try {
+          if (isSingleMode) {
+            if (!providerImpl.streamLog) {
+              throw new Error(`provider '${provider}' does not support single stream mode`);
+            }
+            await providerImpl.streamLog({ credentials, auditLog: chunk[0].payload });
+          } else {
+            await providerImpl.batchStreamLog({ credentials, auditLogs: chunk.map((row) => row.payload) });
           }
-          await providerImpl.streamLog({ credentials, auditLog: chunk[0].payload });
-        } else {
-          await providerImpl.batchStreamLog({ credentials, auditLogs: chunk.map((row) => row.payload) });
+          auditLogStreamDeliveryDurationHistogram.record((Date.now() - deliveryStart) / 1000, {
+            ...metricAttrs,
+            outcome: "success"
+          });
+        } catch (error) {
+          auditLogStreamDeliveryDurationHistogram.record((Date.now() - deliveryStart) / 1000, {
+            ...metricAttrs,
+            outcome: "failure"
+          });
+          throw error;
         }
       };
 

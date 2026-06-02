@@ -9,6 +9,11 @@ import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
+import {
+  auditLogDroppedCounter,
+  auditLogEnqueuedCounter,
+  auditLogPersistDurationHistogram
+} from "@app/lib/telemetry/metrics";
 import { JOB_SCHEDULER_PREFIX, QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
@@ -125,6 +130,11 @@ export const auditLogQueueServiceFactory = async ({
     const entry = await buildStreamEntry(data);
     if (!entry) return;
     await keyStore.streamAdd(AUDIT_LOG_STREAM_KEY, "*", { data: JSON.stringify(entry) });
+    auditLogEnqueuedCounter.add(1, {
+      "audit_log.event_type": entry.event?.type ?? "unknown",
+      "audit_log.actor_type": entry.actor?.type ?? "unknown",
+      "infisical.organization.id": entry.orgId
+    });
   };
 
   // Request-path push: a transient Redis/DB failure must not fail the request that produced
@@ -140,6 +150,12 @@ export const auditLogQueueServiceFactory = async ({
         error,
         `audit-log-queue: Dropped audit log — failed to push to ingest stream (at-most-once on request path) [event=${data.event?.type}] [orgId=${data.orgId}] [projectId=${data.projectId}]`
       );
+      auditLogDroppedCounter.add(1, {
+        "audit_log.event_type": data.event?.type ?? "unknown",
+        "audit_log.actor_type": data.actor?.type ?? "unknown",
+        "audit_log.drop_reason": "ingest_stream_push_failed",
+        ...(data.orgId ? { "infisical.organization.id": data.orgId } : {})
+      });
     }
   };
 
@@ -275,19 +291,28 @@ export const auditLogQueueServiceFactory = async ({
       }
     }
 
+    const backend = isClickHouseBatchEnabled ? "clickhouse" : "postgres";
+
     if (enriched.length > 0) {
+      const persistStart = Date.now();
       try {
         await insertBatch(enriched);
       } catch (error) {
+        auditLogPersistDurationHistogram.record((Date.now() - persistStart) / 1000, {
+          "audit_log.backend": backend,
+          outcome: "failure"
+        });
         logger.error(
           error,
-          `audit-log-queue: Failed to batch insert ${enriched.length} audit logs [backend=${
-            isClickHouseBatchEnabled ? "clickhouse" : "postgres"
-          }]`
+          `audit-log-queue: Failed to batch insert ${enriched.length} audit logs [backend=${backend}]`
         );
         // Do not trim — the same entries are reprocessed next tick (re-insert is idempotent).
         return;
       }
+      auditLogPersistDurationHistogram.record((Date.now() - persistStart) / 1000, {
+        "audit_log.backend": backend,
+        outcome: "success"
+      });
 
       if (getConfig().AUDIT_LOG_STREAMS_ENABLED) {
         try {
@@ -305,7 +330,7 @@ export const auditLogQueueServiceFactory = async ({
         {
           inserted: enriched.length,
           dropped: parsed.length - enriched.length,
-          backend: isClickHouseBatchEnabled ? "clickhouse" : "postgres"
+          backend
         },
         "audit-log-queue: Batch processed audit logs"
       );
