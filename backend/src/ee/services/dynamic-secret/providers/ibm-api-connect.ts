@@ -1,11 +1,10 @@
 import { request } from "@app/lib/config/request";
-import { logger } from "@app/lib/logger";
 
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator/validate-url";
 
 import { DynamicSecretIbmApiConnectSchema, TDynamicProviderFns } from "./models";
 
-export type TIbmApiConnectBaseCredentials {
+export type TIbmApiConnectBaseCredentials = {
   clientId: string;
   clientSecret: string;
   instanceUrl: string;
@@ -19,7 +18,7 @@ type TIbmApiConnectProviderInputs = TIbmApiConnectBaseCredentials & {
   appId: string;
 }
 
-export type TApiConnectResource {
+export type TApiConnectResource = {
   name: string;
   title: string;
   id: string;
@@ -29,7 +28,7 @@ export type TApiConnectApp = TApiConnectResource & {
   consumerOrgId: string;
 }
 
-type TIbmApiConnectApplicationCredential {
+type TIbmApiConnectApplicationCredential = {
   id: string;
   clientId: string;
   clientSecret: string;
