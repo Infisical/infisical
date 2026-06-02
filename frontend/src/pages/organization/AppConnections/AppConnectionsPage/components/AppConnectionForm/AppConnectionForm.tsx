@@ -40,6 +40,7 @@ import { DigitalOceanConnectionForm } from "./DigitalOceanConnectionForm";
 import { DNSMadeEasyConnectionForm } from "./DNSMadeEasyConnectionForm";
 import { DopplerConnectionForm } from "./DopplerConnectionForm";
 import { ExternalInfisicalConnectionForm } from "./ExternalInfisicalConnectionForm";
+import { F5BigIpConnectionForm } from "./F5BigIpConnectionForm";
 import { FlyioConnectionForm } from "./FlyioConnectionForm";
 import { GcpConnectionForm } from "./GcpConnectionForm";
 import { GitHubConnectionForm } from "./GitHubConnectionForm";
@@ -307,6 +308,8 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
         return <SnowflakeConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Datadog:
         return <DatadogConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.F5BigIp:
+        return <F5BigIpConnectionForm onSubmit={onSubmit} />;
       default:
         throw new Error(`Unhandled App ${app}`);
     }
@@ -536,6 +539,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         return <SnowflakeConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Datadog:
         return <DatadogConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.F5BigIp:
+        return <F5BigIpConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Venafi:
         return <VenafiConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.VenafiTpp:

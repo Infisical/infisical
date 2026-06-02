@@ -269,12 +269,17 @@ export type TTravisCIConnectionOption = TAppConnectionOptionBase & {
 export type TSalesforceConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Salesforce;
 };
+
 export type TSnowflakeConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Snowflake;
 };
 
 export type TDatadogConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Datadog;
+};
+
+export type TF5BigIpConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.F5BigIp;
 };
 
 export type TAppConnectionOption =
@@ -343,7 +348,8 @@ export type TAppConnectionOption =
   | TTravisCIConnectionOption
   | TSalesforceConnectionOption
   | TSnowflakeConnectionOption
-  | TDatadogConnectionOption;
+  | TDatadogConnectionOption
+  | TF5BigIpConnectionOption;
 
 export type TAppConnectionOptionMap = {
   [AppConnection.AWS]: TAwsConnectionOption;
@@ -412,4 +418,5 @@ export type TAppConnectionOptionMap = {
   [AppConnection.Salesforce]: TSalesforceConnectionOption;
   [AppConnection.Snowflake]: TSnowflakeConnectionOption;
   [AppConnection.Datadog]: TDatadogConnectionOption;
+  [AppConnection.F5BigIp]: TF5BigIpConnectionOption;
 };

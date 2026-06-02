@@ -99,6 +99,10 @@ import {
   ExternalInfisicalConnectionListItemSchema,
   SanitizedExternalInfisicalConnectionSchema
 } from "@app/services/app-connection/external-infisical";
+import {
+  F5BigIpConnectionListItemSchema,
+  SanitizedF5BigIpConnectionSchema
+} from "@app/services/app-connection/f5-big-ip";
 import { FlyioConnectionListItemSchema, SanitizedFlyioConnectionSchema } from "@app/services/app-connection/flyio";
 import { GcpConnectionListItemSchema, SanitizedGcpConnectionSchema } from "@app/services/app-connection/gcp";
 import { GitHubConnectionListItemSchema, SanitizedGitHubConnectionSchema } from "@app/services/app-connection/github";
@@ -269,7 +273,8 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedTravisCIConnectionSchema.options,
   ...SanitizedSalesforceConnectionSchema.options,
   ...SanitizedSnowflakeConnectionSchema.options,
-  ...SanitizedDatadogConnectionSchema.options
+  ...SanitizedDatadogConnectionSchema.options,
+  ...SanitizedF5BigIpConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -338,7 +343,8 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   TravisCIConnectionListItemSchema,
   SalesforceConnectionListItemSchema,
   SnowflakeConnectionListItemSchema,
-  DatadogConnectionListItemSchema
+  DatadogConnectionListItemSchema,
+  F5BigIpConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

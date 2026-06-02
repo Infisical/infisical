@@ -66,7 +66,8 @@ export const APP_CONNECTION_NAME_MAP: Record<AppConnection, string> = {
   [AppConnection.TravisCI]: "Travis CI",
   [AppConnection.Salesforce]: "Salesforce",
   [AppConnection.Snowflake]: "Snowflake",
-  [AppConnection.Datadog]: "Datadog"
+  [AppConnection.Datadog]: "Datadog",
+  [AppConnection.F5BigIp]: "F5 BIG-IP"
 };
 
 export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanType> = {
@@ -135,5 +136,6 @@ export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanTyp
   [AppConnection.TravisCI]: AppConnectionPlanType.Regular,
   [AppConnection.Salesforce]: AppConnectionPlanType.Regular,
   [AppConnection.Snowflake]: AppConnectionPlanType.Regular,
-  [AppConnection.Datadog]: AppConnectionPlanType.Regular
+  [AppConnection.Datadog]: AppConnectionPlanType.Regular,
+  [AppConnection.F5BigIp]: AppConnectionPlanType.Regular
 };

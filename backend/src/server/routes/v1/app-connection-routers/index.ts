@@ -28,6 +28,7 @@ import { registerDigitalOceanConnectionRouter } from "./digital-ocean-connection
 import { registerDNSMadeEasyConnectionRouter } from "./dns-made-easy-connection-router";
 import { registerDopplerConnectionRouter } from "./doppler-connection-router";
 import { registerExternalInfisicalConnectionRouter } from "./external-infisical-connection-router";
+import { registerF5BigIpConnectionRouter } from "./f5-big-ip-connection-router";
 import { registerFlyioConnectionRouter } from "./flyio-connection-router";
 import { registerGcpConnectionRouter } from "./gcp-connection-router";
 import { registerGitHubConnectionRouter } from "./github-connection-router";
@@ -136,5 +137,6 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.TravisCI]: registerTravisCIConnectionRouter,
     [AppConnection.Salesforce]: registerSalesforceConnectionRouter,
     [AppConnection.Snowflake]: registerSnowflakeConnectionRouter,
-    [AppConnection.Datadog]: registerDatadogConnectionRouter
+    [AppConnection.Datadog]: registerDatadogConnectionRouter,
+    [AppConnection.F5BigIp]: registerF5BigIpConnectionRouter
   };

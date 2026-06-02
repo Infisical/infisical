@@ -130,6 +130,7 @@
                       "integrations/app-connections/digital-ocean",
                       "integrations/app-connections/doppler",
                       "integrations/app-connections/dns-made-easy",
+                      "integrations/app-connections/f5-big-ip",
                       "integrations/app-connections/flyio",
                       "integrations/app-connections/gcp",
                       "integrations/app-connections/github",
@@ -830,6 +831,7 @@
                           "documentation/platform/pki/applications/certificate-syncs/azure-key-vault",
                           "documentation/platform/pki/applications/certificate-syncs/chef",
                           "documentation/platform/pki/applications/certificate-syncs/cloudflare-custom-certificate",
+                          "documentation/platform/pki/applications/certificate-syncs/f5-big-ip",
                           "documentation/platform/pki/applications/certificate-syncs/netscaler"
                         ]
                       }
@@ -1569,6 +1571,18 @@
                       "api-reference/endpoints/app-connections/doppler/create",
                       "api-reference/endpoints/app-connections/doppler/update",
                       "api-reference/endpoints/app-connections/doppler/delete"
+                    ]
+                  },
+                  {
+                    "group": "F5 BIG-IP",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/f5-big-ip/list",
+                      "api-reference/endpoints/app-connections/f5-big-ip/available",
+                      "api-reference/endpoints/app-connections/f5-big-ip/get-by-id",
+                      "api-reference/endpoints/app-connections/f5-big-ip/get-by-name",
+                      "api-reference/endpoints/app-connections/f5-big-ip/create",
+                      "api-reference/endpoints/app-connections/f5-big-ip/update",
+                      "api-reference/endpoints/app-connections/f5-big-ip/delete"
                     ]
                   },
                   {
@@ -3173,6 +3187,18 @@
                           "api-reference/endpoints/pki/syncs/cloudflare-custom-certificate/delete",
                           "api-reference/endpoints/pki/syncs/cloudflare-custom-certificate/sync-certificates",
                           "api-reference/endpoints/pki/syncs/cloudflare-custom-certificate/remove-certificates"
+                        ]
+                      },
+                      {
+                        "group": "F5 BIG-IP",
+                        "pages": [
+                          "api-reference/endpoints/pki/syncs/f5-big-ip/list",
+                          "api-reference/endpoints/pki/syncs/f5-big-ip/get-by-id",
+                          "api-reference/endpoints/pki/syncs/f5-big-ip/create",
+                          "api-reference/endpoints/pki/syncs/f5-big-ip/update",
+                          "api-reference/endpoints/pki/syncs/f5-big-ip/delete",
+                          "api-reference/endpoints/pki/syncs/f5-big-ip/sync-certificates",
+                          "api-reference/endpoints/pki/syncs/f5-big-ip/remove-certificates"
                         ]
                       },
                       {

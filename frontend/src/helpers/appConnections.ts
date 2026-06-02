@@ -62,6 +62,7 @@ import { DigitalOceanConnectionMethod } from "@app/hooks/api/appConnections/type
 import { DNSMadeEasyConnectionMethod } from "@app/hooks/api/appConnections/types/dns-made-easy-connection";
 import { DopplerConnectionMethod } from "@app/hooks/api/appConnections/types/doppler-connection";
 import { ExternalInfisicalConnectionMethod } from "@app/hooks/api/appConnections/types/external-infisical-connection";
+import { F5BigIpConnectionMethod } from "@app/hooks/api/appConnections/types/f5-big-ip-connection";
 import { HerokuConnectionMethod } from "@app/hooks/api/appConnections/types/heroku-connection";
 import { LaravelForgeConnectionMethod } from "@app/hooks/api/appConnections/types/laravel-forge-connection";
 import { NetlifyConnectionMethod } from "@app/hooks/api/appConnections/types/netlify-connection";
@@ -181,7 +182,8 @@ export const APP_CONNECTION_MAP: Record<
   [AppConnection.TravisCI]: { name: "Travis CI", image: "Travis CI.png" },
   [AppConnection.Salesforce]: { name: "Salesforce", image: "Salesforce.png" },
   [AppConnection.Snowflake]: { name: "Snowflake", image: "Snowflake.png" },
-  [AppConnection.Datadog]: { name: "Datadog", image: "DatadogWhite.png" }
+  [AppConnection.Datadog]: { name: "Datadog", image: "DatadogWhite.png" },
+  [AppConnection.F5BigIp]: { name: "F5 BIG-IP", image: "F5 BIG-IP.png" }
 };
 
 export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) => {
@@ -300,6 +302,8 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
       return { name: "Basic Auth", icon: faLock };
     case OVHConnectionMethod.Certificate:
       return { name: "Certificate", icon: faCertificate };
+    case F5BigIpConnectionMethod.BasicAuth:
+      return { name: "Basic Auth", icon: faLock };
     default:
       throw new Error(`Unhandled App Connection Method: ${method}`);
   }
