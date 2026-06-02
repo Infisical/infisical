@@ -52,7 +52,9 @@ export const EditSignerModal = ({ isOpen, onOpenChange, signer }: Props) => {
       .filter((ca) => ca.status === CaStatus.ACTIVE)
       .filter(
         (ca) =>
-          ca.type === CaType.INTERNAL || ca.type === CaType.AWS_PCA || ca.type === CaType.AZURE_AD_CS
+          ca.type === CaType.INTERNAL ||
+          ca.type === CaType.AWS_PCA ||
+          ca.type === CaType.AZURE_AD_CS
       )
       .map((ca) => ({
         id: ca.id,
