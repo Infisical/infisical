@@ -242,9 +242,11 @@ export const auditLogStreamOutboxServiceFactory = ({
           if (result.status === "fulfilled") {
             streamSuccess.push(...chunk);
           } else {
-            const errorMessage = (result.reason as Error)?.message ?? "Unknown error";
+            const error = result.reason as Error;
+            const errorMessage = error?.message ?? "Unknown error";
+            const errorType = error?.name ?? "UnknownError";
             logger.error(
-              result.reason,
+              { errorType },
               `audit-log-stream-outbox: batch delivery failed [streamId=${streamId}] [orgId=${orgId}] [provider=${provider}] [chunkSize=${chunk.length}]: ${errorMessage}`
             );
             streamFail.push(...chunk.map((row) => ({ row, errorMessage })));
