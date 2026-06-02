@@ -25,6 +25,7 @@ import {
 } from "@app/components/v3";
 import {
   PamResourceType,
+  SSHAuthMethod,
   TPamResource,
   TPamRotationRule,
   useUpdatePamResource
@@ -212,7 +213,13 @@ export const PamRotationPolicyModal = ({ isOpen, onOpenChange, resource }: Props
       if (isCredDirty) {
         updatePayload.rotationAccountCredentials = clearingCredentials
           ? null
-          : { username: credData.username, password: credData.password };
+          : {
+              ...(resource.resourceType === PamResourceType.SSH && {
+                authMethod: SSHAuthMethod.Password
+              }),
+              username: credData.username,
+              password: credData.password
+            };
         await updateResource.mutateAsync(
           updatePayload as Parameters<typeof updateResource.mutateAsync>[0]
         );

@@ -165,7 +165,7 @@ export type TUpdatePamResourceDTO = Partial<Pick<TPamResource, "name" | "connect
   gatewayPoolId?: string;
   domainId?: string | null;
   metadata?: { key: string; value: string }[];
-  rotationAccountCredentials?: { username: string; password: string } | null;
+  rotationAccountCredentials?: { authMethod?: string; username: string; password: string } | null;
   sessionSummaryConfig?: TSessionSummaryConfig;
 };
 
