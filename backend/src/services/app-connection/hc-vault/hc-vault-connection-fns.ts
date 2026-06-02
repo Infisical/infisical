@@ -730,17 +730,17 @@ export const listHCVaultSecretPaths = async (
   const accessToken = await getHCVaultAccessToken(connection, gatewayService, gatewayV2Service);
 
   const getPaths = async (mountPath: string, secretPath: string, kvVersion: "1" | "2"): Promise<string[] | null> => {
-    try {
-      let path: string;
-      if (kvVersion === "2") {
-        // For KV v2: /v1/{mount}/metadata/{path}?list=true
-        path = secretPath ? `${mountPath}/metadata/${secretPath}` : `${mountPath}/metadata`;
-      } else {
-        // For KV v1: /v1/{mount}/{path}?list=true
-        path = secretPath ? `${mountPath}/${secretPath}` : mountPath;
-      }
+    let path: string;
+    if (kvVersion === "2") {
+      // For KV v2: /v1/{mount}/metadata/{path}?list=true
+      path = secretPath ? `${mountPath}/metadata/${secretPath}` : `${mountPath}/metadata`;
+    } else {
+      // For KV v1: /v1/{mount}/{path}?list=true
+      path = secretPath ? `${mountPath}/${secretPath}` : mountPath;
+    }
 
-      const { data } = await requestWithHCVaultGateway<{
+    const fetchPaths = (namespaceHeader?: string) =>
+      requestWithHCVaultGateway<{
         data: {
           keys: string[];
         };
@@ -753,16 +753,28 @@ export const listHCVaultSecretPaths = async (
           method: "GET",
           headers: {
             "X-Vault-Token": accessToken,
-            "X-Vault-Namespace": namespace
+            ...(namespaceHeader ? { "X-Vault-Namespace": namespaceHeader } : {})
           }
         },
         gatewayDetails
       );
 
+    try {
+      const { data } = await fetchPaths(namespace);
       return data.data.keys;
     } catch (error) {
       if ((error instanceof AxiosError && error.response?.status === 404) || isGateway404Error(error)) {
         return null;
+      }
+
+      // vault 1.0.0 does not support namespace root or /, so we need to handle this case
+      // if the error is 301 and the namespace is root or /, try to fetch paths without the namespace header
+      if (
+        ((error instanceof AxiosError && error.response?.status === 301) || isGateway301Error(error)) &&
+        (!namespace || namespace === "/" || namespace === "root")
+      ) {
+        const { data } = await fetchPaths();
+        return data.data.keys;
       }
 
       throw error;
