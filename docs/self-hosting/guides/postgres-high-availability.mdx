@@ -250,7 +250,7 @@ For planned maintenance (e.g., OS patching, hardware upgrades), perform a contro
   <Tab title="Patroni">
     ```bash
     # Perform a controlled switchover to a specific replica
-    patronictl switchover --master postgresql1 --candidate postgresql2
+    patronictl switchover --primary postgresql1 --candidate postgresql2
 
     # Verify the new cluster state
     patronictl list
@@ -415,7 +415,7 @@ Monitor the health of your PostgreSQL HA deployment with these key metrics:
 ```sql
 -- Check replication status on primary
 SELECT client_addr, state, sent_lsn, write_lsn, flush_lsn, replay_lsn,
-       (extract(epoch from now()) - extract(epoch from replay_lag))::int AS lag_seconds
+       extract(epoch from replay_lag)::int AS lag_seconds
 FROM pg_stat_replication;
 
 -- Check replica status on a replica
