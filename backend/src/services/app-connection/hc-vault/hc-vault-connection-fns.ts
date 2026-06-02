@@ -988,47 +988,55 @@ export const getHCVaultSecretsForPaths = async (
   const mounts = await listHCVaultMounts(connection, gatewayService, gatewayV2Service, namespace);
   const limiter = createConcurrencyLimiter(HC_VAULT_CONCURRENCY_LIMIT);
 
-  // Shared ref: concurrent limiter callbacks read .value at fetch time so one 301 discovery applies to peers.
-  const skipNamespaceHeaderRef = { value: false };
-  return Promise.all(
-    secretPaths.map((vaultSecretPath) =>
-      limiter(async () => {
-        try {
-          const secrets = await fetchVaultSecretAtPath({
-            namespace,
-            secretPath: vaultSecretPath,
-            mounts,
-            instanceUrl,
-            accessToken,
-            connection,
-            gatewayService,
-            gatewayV2Service,
-            skipNamespaceHeader: skipNamespaceHeaderRef.value
-          });
-          return { vaultSecretPath, secrets };
-        } catch (error) {
-          if (error instanceof NamespaceHeaderNotSupportedError) {
-            // vault 1.0.0 does not support namespace root or /, responding with a 301 when the namespace header is sent.
-            // all subsequent requests should skip the namespace header to avoid the wasted 301 round-trip.
-            skipNamespaceHeaderRef.value = true;
-            const secrets = await fetchVaultSecretAtPath({
-              namespace,
-              secretPath: vaultSecretPath,
-              mounts,
-              instanceUrl,
-              accessToken,
-              connection,
-              gatewayService,
-              gatewayV2Service,
-              skipNamespaceHeader: skipNamespaceHeaderRef.value
-            });
-            return { vaultSecretPath, secrets };
-          }
-          throw error;
-        }
-      })
-    )
+  if (secretPaths.length === 0) {
+    return [];
+  }
+
+  const fetchParams = {
+    namespace,
+    mounts,
+    instanceUrl,
+    accessToken,
+    connection,
+    gatewayService,
+    gatewayV2Service
+  };
+
+  const fetchOne = async (vaultSecretPath: string, skipNamespaceHeader: boolean) => ({
+    vaultSecretPath,
+    secrets: await fetchVaultSecretAtPath({
+      ...fetchParams,
+      secretPath: vaultSecretPath,
+      skipNamespaceHeader
+    })
+  });
+
+  const [firstPath, ...restPaths] = secretPaths;
+
+  // Probe with the first path: Vault 1.0.0 returns 301 for root/"/" when the namespace header is sent.
+  // so we need to remove the namespace header and retry the request.
+  let skipNamespaceHeader = false;
+  let firstResult: { vaultSecretPath: string; secrets: Record<string, JsonValue> };
+  try {
+    firstResult = await fetchOne(firstPath, false);
+  } catch (error) {
+    if (error instanceof NamespaceHeaderNotSupportedError) {
+      skipNamespaceHeader = true;
+      firstResult = await fetchOne(firstPath, true);
+    } else {
+      throw error;
+    }
+  }
+
+  if (restPaths.length === 0) {
+    return [firstResult];
+  }
+
+  const restResults = await Promise.all(
+    restPaths.map((vaultSecretPath) => limiter(() => fetchOne(vaultSecretPath, skipNamespaceHeader)))
   );
+
+  return [firstResult, ...restResults];
 };
 
 export const getHCVaultAuthMounts = async (
