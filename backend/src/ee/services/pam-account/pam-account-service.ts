@@ -4,6 +4,7 @@ import picomatch from "picomatch";
 import { ActionProjectType, OrganizationActionScope, TableName, TPamAccounts, TPamResources } from "@app/db/schemas";
 import { decryptDomainConnectionDetails } from "@app/ee/services/pam-domain/pam-domain-fns";
 import {
+  AWS_STS_MIN_DURATION_SECONDS,
   exchangeCredentialsForConsoleUrl,
   extractAwsAccountIdFromArn,
   generateAwsIamSessionCredentials,
@@ -823,10 +824,10 @@ export const pamAccountServiceFactory = ({
       accountName: accountIdentity
     };
 
-    const canAccess = await fac.canAccess(approvalRequestGrantsDAL, resource.projectId, actor.id, inputs);
+    const activeGrant = await fac.canAccess(approvalRequestGrantsDAL, resource.projectId, actor.id, inputs);
 
     // Grant does not exist, check policy and fallback to permission check
-    if (!canAccess) {
+    if (!activeGrant) {
       const policy = await fac.matchPolicy(approvalPolicyDAL, resource.projectId, inputs);
 
       if (policy) {
@@ -874,6 +875,16 @@ export const pamAccountServiceFactory = ({
           metadata: accountMeta[account.id] || []
         })
       );
+    }
+
+    // Cap the requested duration to the grant's remaining lifetime
+    let effectiveDuration = duration;
+    if (activeGrant?.expiresAt) {
+      const grantRemainingMs = activeGrant.expiresAt.getTime() - Date.now();
+      if (grantRemainingMs <= 0) {
+        throw new ForbiddenRequestError({ message: "Approval grant has expired" });
+      }
+      effectiveDuration = Math.min(duration, grantRemainingMs);
     }
 
     // Reason check is intentionally placed after the approval/permission gates so
@@ -988,12 +999,24 @@ export const pamAccountServiceFactory = ({
         projectId: account.projectId
       })) as TAwsIamAccountCredentials;
 
+      let sessionDuration = awsCredentials.defaultSessionDuration;
+      if (activeGrant?.expiresAt) {
+        const grantRemainingSeconds = Math.floor((activeGrant.expiresAt.getTime() - Date.now()) / 1000);
+        // STS rejects DurationSeconds below the floor, so a grant shorter than that can't be honored
+        if (grantRemainingSeconds < AWS_STS_MIN_DURATION_SECONDS) {
+          throw new ForbiddenRequestError({
+            message: "Approval grant has insufficient remaining time for an AWS IAM session"
+          });
+        }
+        sessionDuration = Math.min(sessionDuration, grantRemainingSeconds);
+      }
+
       const credentials = await generateAwsIamSessionCredentials({
         connectionDetails,
         targetRoleArn: awsCredentials.targetRoleArn,
         roleSessionName: actorEmail,
         projectId: account.projectId, // Use project ID as External ID for security
-        sessionDuration: awsCredentials.defaultSessionDuration
+        sessionDuration
       });
 
       const session = await pamSessionDAL.create({
@@ -1061,7 +1084,7 @@ export const pamAccountServiceFactory = ({
       selectedResourceId: isDomainAccount ? resource.id : null,
       userId: actor.id,
       gatewayId,
-      expiresAt: new Date(Date.now() + duration),
+      expiresAt: new Date(Date.now() + effectiveDuration),
       reason: trimmedReason
     });
 
@@ -1087,7 +1110,7 @@ export const pamAccountServiceFactory = ({
 
     const gatewayConnectionDetails = await gatewayV2Service.getPAMConnectionDetails({
       gatewayId,
-      duration,
+      duration: effectiveDuration,
       sessionId: session.id,
       resourceType: resource.resourceType as PamResource,
       host,
