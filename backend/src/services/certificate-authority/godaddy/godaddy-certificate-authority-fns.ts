@@ -17,15 +17,7 @@ import { TGoDaddyConnection } from "@app/services/app-connection/godaddy/godaddy
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
-import {
-  CertExtendedKeyUsage,
-  CertExtendedKeyUsageOIDToName,
-  CertKeyAlgorithm,
-  CertKeyUsage,
-  CertStatus,
-  CrlReason,
-  TAltNameType
-} from "@app/services/certificate/certificate-types";
+import { CertKeyAlgorithm, CertStatus, CrlReason } from "@app/services/certificate/certificate-types";
 import {
   GoDaddyExternalMetadataSchema,
   TGoDaddyExternalMetadata
@@ -36,7 +28,7 @@ import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns
 
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaStatus, CaType } from "../certificate-authority-enums";
-import { extractDnParts, keyAlgorithmToAlgCfg } from "../certificate-authority-fns";
+import { extractIssuedCertificateFields, keyAlgorithmToAlgCfg } from "../certificate-authority-fns";
 import { TExternalCertificateAuthorityDALFactory } from "../external-certificate-authority-dal";
 import { createGoDaddyApiClient } from "./godaddy-api-client";
 import { GoDaddyProductType } from "./godaddy-certificate-authority-enums";
@@ -122,49 +114,6 @@ const parseTtlToYears = (ttl: string): number => {
       throw new BadRequestError({ message: `Invalid TTL unit: ${unit}` });
   }
   return Math.max(1, Math.ceil(days / TTL_DAYS_PER_YEAR));
-};
-
-const extractIssuedCertificateFields = (certObj: x509.X509Certificate) => {
-  const subject = extractDnParts(certObj.subjectName);
-  const commonName = subject.commonName ?? "";
-
-  const sanExt = certObj.getExtension("2.5.29.17");
-  const altNames: string[] = [];
-  if (sanExt) {
-    const sanNames = new x509.GeneralNames(sanExt.value);
-    for (const item of sanNames.items) {
-      if (
-        item.type === TAltNameType.DNS ||
-        item.type === TAltNameType.IP ||
-        item.type === TAltNameType.EMAIL ||
-        item.type === TAltNameType.URL
-      ) {
-        altNames.push(item.value);
-      }
-    }
-  }
-
-  const keyUsages: CertKeyUsage[] = [];
-  const keyUsagesExt = certObj.getExtension(x509.KeyUsagesExtension);
-  if (keyUsagesExt) {
-    for (const keyUsage of Object.values(CertKeyUsage)) {
-      // eslint-disable-next-line no-bitwise
-      if ((x509.KeyUsageFlags[keyUsage] & keyUsagesExt.usages) !== 0) {
-        keyUsages.push(keyUsage);
-      }
-    }
-  }
-
-  const extendedKeyUsages: CertExtendedKeyUsage[] = [];
-  const ekuExt = certObj.getExtension(x509.ExtendedKeyUsageExtension);
-  if (ekuExt) {
-    for (const oid of ekuExt.usages) {
-      const mapped = CertExtendedKeyUsageOIDToName[oid as string];
-      if (mapped) extendedKeyUsages.push(mapped);
-    }
-  }
-
-  return { commonName, altNames, keyUsages, extendedKeyUsages };
 };
 
 export const castDbEntryToGoDaddyCertificateAuthority = (
