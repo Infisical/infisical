@@ -495,7 +495,8 @@ export const certificateServiceFactory = ({
     if (
       ca.externalCa?.type === CaType.AWS_PCA ||
       ca.externalCa?.type === CaType.AWS_ACM_PUBLIC_CA ||
-      ca.externalCa?.type === CaType.DIGICERT
+      ca.externalCa?.type === CaType.DIGICERT ||
+      ca.externalCa?.type === CaType.GODADDY
     ) {
       await certificateAuthorityService.revokeCertificate({
         caId: ca.id,

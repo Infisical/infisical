@@ -1,6 +1,5 @@
 /* eslint-disable no-await-in-loop */
 import * as x509 from "@peculiar/x509";
-import RE2 from "re2";
 
 import { TableName } from "@app/db/schemas";
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -12,8 +11,9 @@ import { TAppConnectionDALFactory } from "@app/services/app-connection/app-conne
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { decryptAppConnectionCredentials } from "@app/services/app-connection/app-connection-fns";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
-import { getDigiCertApiBaseUrl } from "@app/services/app-connection/digicert/digicert-connection-fns";
-import { TDigiCertConnection } from "@app/services/app-connection/digicert/digicert-connection-types";
+import { buildGoDaddySsoKeyHeader } from "@app/services/app-connection/godaddy/godaddy-connection-constants";
+import { getGoDaddyApiBaseUrl } from "@app/services/app-connection/godaddy/godaddy-connection-fns";
+import { TGoDaddyConnection } from "@app/services/app-connection/godaddy/godaddy-connection-types";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
@@ -27,8 +27,8 @@ import {
   TAltNameType
 } from "@app/services/certificate/certificate-types";
 import {
-  DigiCertExternalMetadataSchema,
-  TDigiCertExternalMetadata
+  GoDaddyExternalMetadataSchema,
+  TGoDaddyExternalMetadata
 } from "@app/services/certificate-common/external-metadata-schemas";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -38,15 +38,17 @@ import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaStatus, CaType } from "../certificate-authority-enums";
 import { extractDnParts, keyAlgorithmToAlgCfg } from "../certificate-authority-fns";
 import { TExternalCertificateAuthorityDALFactory } from "../external-certificate-authority-dal";
-import { createDigiCertApiClient } from "./digicert-api-client";
+import { createGoDaddyApiClient } from "./godaddy-api-client";
+import { GoDaddyProductType } from "./godaddy-certificate-authority-enums";
 import {
-  TCreateDigiCertCertificateAuthorityDTO,
-  TDigiCertCertificateAuthority,
-  TDigiCertCertificateRequestMetadata,
-  TUpdateDigiCertCertificateAuthorityDTO
-} from "./digicert-certificate-authority-types";
+  TCreateGoDaddyCertificateAuthorityDTO,
+  TGoDaddyCertificateAuthority,
+  TGoDaddyCertificateRequestMetadata,
+  TUpdateGoDaddyCertificateAuthorityDTO
+} from "./godaddy-certificate-authority-types";
+import { validateGoDaddyIssuanceInputs } from "./godaddy-certificate-authority-validators";
 
-type TDigiCertCertificateAuthorityFnsDeps = {
+type TGoDaddyCertificateAuthorityFnsDeps = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
   certificateAuthorityDAL: Pick<
@@ -64,77 +66,29 @@ type TDigiCertCertificateAuthorityFnsDeps = {
   projectDAL: Pick<TProjectDALFactory, "findById" | "findOne" | "updateById" | "transaction">;
 };
 
-export const castDbEntryToDigiCertCertificateAuthority = (
-  ca: Awaited<ReturnType<TCertificateAuthorityDALFactory["findByIdWithAssociatedCa"]>>
-): TDigiCertCertificateAuthority & { credentials: Buffer | null | undefined } => {
-  if (!ca.externalCa?.id) {
-    throw new BadRequestError({ message: "Malformed DigiCert certificate authority" });
+const GODADDY_ROOT_TYPE = "GODADDY_SHA_2";
+
+// GoDaddy revoke reasons accepted by POST /v1/certificates/{id}/revoke
+const mapCrlReasonToGoDaddyReason = (reason: CrlReason): string => {
+  switch (reason) {
+    case CrlReason.KEY_COMPROMISE:
+      return "KEY_COMPROMISE";
+    case CrlReason.AFFILIATION_CHANGED:
+      return "AFFILIATION_CHANGED";
+    case CrlReason.SUPERSEDED:
+      return "SUPERSEDED";
+    case CrlReason.CESSATION_OF_OPERATION:
+      return "CESSATION_OF_OPERATION";
+    case CrlReason.PRIVILEGE_WITHDRAWN:
+      return "PRIVILEGE_WITHDRAWN";
+    default:
+      return "CESSATION_OF_OPERATION";
   }
-
-  if (!ca.externalCa.appConnectionId) {
-    throw new BadRequestError({
-      message: "DigiCert app connection ID is missing from certificate authority configuration"
-    });
-  }
-
-  const config = (ca.externalCa.configuration ?? {}) as {
-    organizationId?: number;
-    productNameId?: string;
-  };
-
-  if (typeof config.organizationId !== "number" || !config.productNameId) {
-    throw new BadRequestError({
-      message: "DigiCert certificate authority configuration is missing organization ID or product"
-    });
-  }
-
-  return {
-    id: ca.id,
-    type: CaType.DIGICERT,
-    enableDirectIssuance: ca.enableDirectIssuance,
-    name: ca.name,
-    projectId: ca.projectId,
-    credentials: ca.externalCa.credentials,
-    configuration: {
-      appConnectionId: ca.externalCa.appConnectionId,
-      organizationId: config.organizationId,
-      productNameId: config.productNameId
-    },
-    status: ca.status as CaStatus
-  };
 };
 
-export const getDigiCertClientCredentials = async (
-  appConnectionId: string,
-  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">,
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">
-): Promise<{ apiKey: string; baseUrl: string }> => {
-  const appConnection = await appConnectionDAL.findById(appConnectionId);
-  if (!appConnection) {
-    throw new NotFoundError({ message: `DigiCert app connection with ID '${appConnectionId}' not found` });
-  }
-  if (appConnection.app !== AppConnection.DigiCert) {
-    throw new BadRequestError({ message: `App connection with ID '${appConnectionId}' is not a DigiCert connection` });
-  }
-
-  const credentials = (await decryptAppConnectionCredentials({
-    orgId: appConnection.orgId,
-    projectId: appConnection.projectId,
-    encryptedCredentials: appConnection.encryptedCredentials,
-    kmsService
-  })) as TDigiCertConnection["credentials"];
-
-  return {
-    apiKey: credentials.apiKey,
-    baseUrl: getDigiCertApiBaseUrl(credentials.region)
-  };
-};
-
-const PEM_CERTIFICATE_RE2 = new RE2("-----BEGIN CERTIFICATE-----[\\s\\S]*?-----END CERTIFICATE-----", "g");
-
-const TTL_RE2 = new RE2("^(\\d+)([dhm])$");
-const parseTtlToDays = (ttl: string): number => {
-  const match = ttl.match(TTL_RE2);
+const TTL_DAYS_PER_YEAR = 365;
+const parseTtlToYears = (ttl: string): number => {
+  const match = ttl.match(/^(\d+)([dhm])$/);
   if (!match) {
     throw new BadRequestError({ message: `Invalid TTL format: ${ttl}` });
   }
@@ -143,16 +97,21 @@ const parseTtlToDays = (ttl: string): number => {
   if (!Number.isFinite(num) || num <= 0) {
     throw new BadRequestError({ message: `Invalid TTL value: ${ttl}` });
   }
+  let days: number;
   switch (unit) {
     case "d":
-      return num;
+      days = num;
+      break;
     case "h":
-      return Math.max(1, Math.ceil(num / 24));
+      days = num / 24;
+      break;
     case "m":
-      return Math.max(1, Math.ceil(num / (24 * 60)));
+      days = num / (24 * 60);
+      break;
     default:
       throw new BadRequestError({ message: `Invalid TTL unit: ${unit}` });
   }
+  return Math.max(1, Math.ceil(days / TTL_DAYS_PER_YEAR));
 };
 
 const extractIssuedCertificateFields = (certObj: x509.X509Certificate) => {
@@ -198,41 +157,71 @@ const extractIssuedCertificateFields = (certObj: x509.X509Certificate) => {
   return { commonName, altNames, keyUsages, extendedKeyUsages };
 };
 
-const extractLeafAndChain = (pemBundle: string): { leaf: string; chain: string } => {
-  const matches = pemBundle.match(PEM_CERTIFICATE_RE2);
-  if (!matches || matches.length === 0) {
-    throw new BadRequestError({ message: "DigiCert returned an empty certificate bundle" });
+export const castDbEntryToGoDaddyCertificateAuthority = (
+  ca: Awaited<ReturnType<TCertificateAuthorityDALFactory["findByIdWithAssociatedCa"]>>
+): TGoDaddyCertificateAuthority & { credentials: Buffer | null | undefined } => {
+  if (!ca.externalCa?.id) {
+    throw new BadRequestError({ message: "Malformed GoDaddy certificate authority" });
   }
 
-  if (matches.length < 2) {
+  if (!ca.externalCa.appConnectionId) {
     throw new BadRequestError({
-      message: `DigiCert returned an incomplete certificate bundle (${matches.length} entry, expected leaf + chain)`
+      message: "GoDaddy app connection ID is missing from certificate authority configuration"
     });
   }
 
-  let leafIndex = -1;
-  matches.forEach((pem, index) => {
-    if (leafIndex !== -1) return;
-    try {
-      const cert = new x509.X509Certificate(pem);
-      const basicConstraints = cert.getExtension(x509.BasicConstraintsExtension);
-      if (!basicConstraints?.ca) leafIndex = index;
-    } catch {
-      // skip unparseable entries
-    }
-  });
+  const config = (ca.externalCa.configuration ?? {}) as {
+    productType?: GoDaddyProductType;
+  };
 
-  if (leafIndex === -1) leafIndex = 0;
+  if (!config.productType) {
+    throw new BadRequestError({
+      message: "GoDaddy certificate authority configuration is missing the product type"
+    });
+  }
 
-  const leaf = matches[leafIndex].trim();
-  const chain = matches
-    .filter((_, index) => index !== leafIndex)
-    .map((cert) => cert.trim())
-    .join("\n");
-  return { leaf, chain };
+  return {
+    id: ca.id,
+    type: CaType.GODADDY,
+    enableDirectIssuance: ca.enableDirectIssuance,
+    name: ca.name,
+    projectId: ca.projectId,
+    credentials: ca.externalCa.credentials,
+    configuration: {
+      appConnectionId: ca.externalCa.appConnectionId,
+      productType: config.productType
+    },
+    status: ca.status as CaStatus
+  };
 };
 
-export const DigiCertCertificateAuthorityFns = ({
+export const getGoDaddyClientCredentials = async (
+  appConnectionId: string,
+  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">,
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">
+): Promise<{ authHeader: string; baseUrl: string }> => {
+  const appConnection = await appConnectionDAL.findById(appConnectionId);
+  if (!appConnection) {
+    throw new NotFoundError({ message: `GoDaddy app connection with ID '${appConnectionId}' not found` });
+  }
+  if (appConnection.app !== AppConnection.GoDaddy) {
+    throw new BadRequestError({ message: `App connection with ID '${appConnectionId}' is not a GoDaddy connection` });
+  }
+
+  const credentials = (await decryptAppConnectionCredentials({
+    orgId: appConnection.orgId,
+    projectId: appConnection.projectId,
+    encryptedCredentials: appConnection.encryptedCredentials,
+    kmsService
+  })) as TGoDaddyConnection["credentials"];
+
+  return {
+    authHeader: buildGoDaddySsoKeyHeader(credentials.apiKey, credentials.apiSecret),
+    baseUrl: getGoDaddyApiBaseUrl()
+  };
+};
+
+export const GoDaddyCertificateAuthorityFns = ({
   appConnectionDAL,
   appConnectionService,
   certificateAuthorityDAL,
@@ -242,7 +231,7 @@ export const DigiCertCertificateAuthorityFns = ({
   certificateSecretDAL,
   kmsService,
   projectDAL
-}: TDigiCertCertificateAuthorityFnsDeps) => {
+}: TGoDaddyCertificateAuthorityFnsDeps) => {
   const createCertificateAuthority = async ({
     name,
     projectId,
@@ -253,18 +242,18 @@ export const DigiCertCertificateAuthorityFns = ({
     status: CaStatus;
     name: string;
     projectId: string;
-    configuration: TCreateDigiCertCertificateAuthorityDTO["configuration"];
+    configuration: TCreateGoDaddyCertificateAuthorityDTO["configuration"];
     actor: OrgServiceActor;
   }) => {
-    const { appConnectionId, organizationId, productNameId } = configuration;
+    const { appConnectionId, productType } = configuration;
 
     const appConnection = await appConnectionDAL.findById(appConnectionId);
     if (!appConnection) {
-      throw new NotFoundError({ message: `DigiCert app connection with ID '${appConnectionId}' not found` });
+      throw new NotFoundError({ message: `GoDaddy app connection with ID '${appConnectionId}' not found` });
     }
-    if (appConnection.app !== AppConnection.DigiCert) {
+    if (appConnection.app !== AppConnection.GoDaddy) {
       throw new BadRequestError({
-        message: `App connection with ID '${appConnectionId}' is not a DigiCert connection`
+        message: `App connection with ID '${appConnectionId}' is not a GoDaddy connection`
       });
     }
 
@@ -290,10 +279,9 @@ export const DigiCertCertificateAuthorityFns = ({
           {
             caId: ca.id,
             appConnectionId,
-            type: CaType.DIGICERT,
+            type: CaType.GODADDY,
             configuration: {
-              organizationId,
-              productNameId
+              productType
             }
           },
           tx
@@ -316,7 +304,7 @@ export const DigiCertCertificateAuthorityFns = ({
       throw new BadRequestError({ message: "Failed to create external certificate authority" });
     }
 
-    return castDbEntryToDigiCertCertificateAuthority(caEntity);
+    return castDbEntryToGoDaddyCertificateAuthority(caEntity);
   };
 
   const updateCertificateAuthority = async ({
@@ -328,20 +316,20 @@ export const DigiCertCertificateAuthorityFns = ({
   }: {
     id: string;
     status?: CaStatus;
-    configuration?: TUpdateDigiCertCertificateAuthorityDTO["configuration"];
+    configuration?: TUpdateGoDaddyCertificateAuthorityDTO["configuration"];
     actor: OrgServiceActor;
     name?: string;
   }) => {
     const updatedCa = await certificateAuthorityDAL.transaction(async (tx) => {
       if (configuration) {
-        const { appConnectionId, organizationId, productNameId } = configuration;
+        const { appConnectionId, productType } = configuration;
         const appConnection = await appConnectionDAL.findById(appConnectionId);
         if (!appConnection) {
-          throw new NotFoundError({ message: `DigiCert app connection with ID '${appConnectionId}' not found` });
+          throw new NotFoundError({ message: `GoDaddy app connection with ID '${appConnectionId}' not found` });
         }
-        if (appConnection.app !== AppConnection.DigiCert) {
+        if (appConnection.app !== AppConnection.GoDaddy) {
           throw new BadRequestError({
-            message: `App connection with ID '${appConnectionId}' is not a DigiCert connection`
+            message: `App connection with ID '${appConnectionId}' is not a GoDaddy connection`
           });
         }
 
@@ -359,13 +347,12 @@ export const DigiCertCertificateAuthorityFns = ({
         await externalCertificateAuthorityDAL.update(
           {
             caId: id,
-            type: CaType.DIGICERT
+            type: CaType.GODADDY
           },
           {
             appConnectionId,
             configuration: {
-              organizationId,
-              productNameId
+              productType
             }
           },
           tx
@@ -383,7 +370,7 @@ export const DigiCertCertificateAuthorityFns = ({
       throw new BadRequestError({ message: "Failed to update external certificate authority" });
     }
 
-    return castDbEntryToDigiCertCertificateAuthority(updatedCa);
+    return castDbEntryToGoDaddyCertificateAuthority(updatedCa);
   };
 
   const listCertificateAuthorities = async ({
@@ -396,24 +383,22 @@ export const DigiCertCertificateAuthorityFns = ({
     const cas = await certificateAuthorityDAL.findWithAssociatedCa(
       {
         [`${TableName.CertificateAuthority}.projectId` as "projectId"]: projectId,
-        [`${TableName.ExternalCertificateAuthority}.type` as "type"]: CaType.DIGICERT
+        [`${TableName.ExternalCertificateAuthority}.type` as "type"]: CaType.GODADDY
       },
       {},
       permissionFilters
     );
 
-    return cas.map(castDbEntryToDigiCertCertificateAuthority);
+    return cas.map(castDbEntryToGoDaddyCertificateAuthority);
   };
 
   const orderCertificateFromProfile = async ({
     caId,
     commonName,
     altNames = [],
-    signatureAlgorithm,
     keyAlgorithm = CertKeyAlgorithm.RSA_2048,
     csr,
-    ttl,
-    renewalOfOrderId
+    ttl
   }: {
     caId: string;
     commonName: string;
@@ -422,29 +407,29 @@ export const DigiCertCertificateAuthorityFns = ({
     keyAlgorithm?: CertKeyAlgorithm;
     csr?: string;
     ttl: string;
-    renewalOfOrderId?: number;
   }): Promise<{
-    metadata: TDigiCertCertificateRequestMetadata;
+    metadata: TGoDaddyCertificateRequestMetadata;
     privateKey: string;
-    immediateCertificateId?: number;
-    orderId: number;
+    certificateId: string;
   }> => {
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
-    if (!ca.externalCa || ca.externalCa.type !== CaType.DIGICERT) {
-      throw new BadRequestError({ message: "CA is not a DigiCert certificate authority" });
+    if (!ca.externalCa || ca.externalCa.type !== CaType.GODADDY) {
+      throw new BadRequestError({ message: "CA is not a GoDaddy certificate authority" });
     }
 
-    const digicertCa = castDbEntryToDigiCertCertificateAuthority(ca);
-    if (digicertCa.status !== CaStatus.ACTIVE) {
-      throw new BadRequestError({ message: `DigiCert CA is disabled [caId=${caId}]` });
+    const godaddyCa = castDbEntryToGoDaddyCertificateAuthority(ca);
+    if (godaddyCa.status !== CaStatus.ACTIVE) {
+      throw new BadRequestError({ message: `GoDaddy CA is disabled [caId=${caId}]` });
     }
 
-    const { productNameId } = digicertCa.configuration;
+    validateGoDaddyIssuanceInputs({ keyAlgorithm });
+
+    const { productType } = godaddyCa.configuration;
 
     const effectiveCommonName = commonName?.trim() || altNames.find((value) => value.trim().length > 0)?.trim() || "";
     if (!effectiveCommonName) {
       throw new BadRequestError({
-        message: `DigiCert requires a common name or at least one DNS SAN [caId=${caId}]`
+        message: `GoDaddy requires a common name or at least one DNS SAN [caId=${caId}]`
       });
     }
 
@@ -473,83 +458,47 @@ export const DigiCertCertificateAuthorityFns = ({
       csrPem = csrObj.toString("pem");
     }
 
-    const { apiKey, baseUrl } = await getDigiCertClientCredentials(
-      digicertCa.configuration.appConnectionId,
+    const { authHeader, baseUrl } = await getGoDaddyClientCredentials(
+      godaddyCa.configuration.appConnectionId,
       appConnectionDAL,
       kmsService
     );
-    const client = createDigiCertApiClient(apiKey, baseUrl);
+    const client = createGoDaddyApiClient(authHeader, baseUrl);
 
+    // GoDaddy DV products are single-domain (CN only); additional SANs aren't supported and would be
+    // rejected upstream. Callers validate this earlier — guard here too so we never silently drop SANs.
     const extraSans = altNames.filter((value) => value.toLowerCase() !== effectiveCommonName.toLowerCase());
-
-    const normalizedSignature = signatureAlgorithm?.toLowerCase() ?? "";
-    let signatureHash: "sha256" | "sha384" | "sha512" = "sha256";
-    if (normalizedSignature.includes("sha512")) signatureHash = "sha512";
-    else if (normalizedSignature.includes("sha384")) signatureHash = "sha384";
-
-    const validityDays = parseTtlToDays(ttl);
-
-    const baseOrderPayload = {
-      certificate: {
-        common_name: effectiveCommonName,
-        ...(extraSans.length > 0 ? { dns_names: extraSans } : {}),
-        csr: csrPem,
-        signature_hash: signatureHash
-      },
-      organization: { id: digicertCa.configuration.organizationId },
-      order_validity: { days: validityDays },
-      dcv_method: "dns-txt-token" as const,
-      skip_approval: true
-    };
-
-    const renewalIneligibleCodes = [
-      "order_not_eligible_for_renewal",
-      "order_not_renewable",
-      "renewal_window_closed",
-      "cannot_renew_expired_order",
-      "product_not_eligible_for_renewal"
-    ];
-    let orderResponse: Awaited<ReturnType<typeof client.placeOrder>>;
-    try {
-      orderResponse = await client.placeOrder(productNameId, {
-        ...baseOrderPayload,
-        ...(renewalOfOrderId ? { renewal_of_order_id: renewalOfOrderId } : {})
+    if (extraSans.length > 0) {
+      throw new BadRequestError({
+        message: "GoDaddy DV certificates are single-domain and don't support additional SANs"
       });
-    } catch (err) {
-      const message = (err as Error)?.message ?? "";
-      const isRenewalIneligible =
-        renewalOfOrderId !== undefined && renewalIneligibleCodes.some((code) => message.includes(code));
-      if (isRenewalIneligible) {
-        logger.warn(
-          `DigiCert rejected renewal linkage (renewal_of_order_id=${renewalOfOrderId}) as not eligible; retrying as a fresh order [caId=${caId}]`
-        );
-        orderResponse = await client.placeOrder(productNameId, baseOrderPayload);
-      } else {
-        throw err;
-      }
     }
+
+    const orderResponse = await client.createCertificate({
+      commonName: effectiveCommonName,
+      csr: csrPem,
+      period: parseTtlToYears(ttl),
+      productType,
+      rootType: GODADDY_ROOT_TYPE
+    });
 
     return {
       metadata: {
-        digicert: {
-          orderId: orderResponse.id,
-          certificateId: orderResponse.certificate_id,
-          productNameId,
-          organizationId: digicertCa.configuration.organizationId,
+        godaddy: {
+          certificateId: orderResponse.certificateId,
+          productType,
           orderPlacedAt: new Date().toISOString()
         }
       },
       privateKey: privateKeyPem,
-      immediateCertificateId: orderResponse.certificate_id,
-      orderId: orderResponse.id
+      certificateId: orderResponse.certificateId
     };
   };
 
   const fetchAndAttachIssuedCertificate = async ({
     caId,
     certificateRequest,
-    digicertCertificateId,
-    digicertOrderId,
+    godaddyCertificateId,
     encryptedPrivateKey,
     isRenewal,
     originalCertificateId,
@@ -566,28 +515,34 @@ export const DigiCertCertificateAuthorityFns = ({
       keyAlgorithm?: string | null;
       signatureAlgorithm?: string | null;
     };
-    digicertCertificateId: number;
-    digicertOrderId: number;
+    godaddyCertificateId: string;
     encryptedPrivateKey?: Buffer;
     isRenewal?: boolean;
     originalCertificateId?: string;
     applicationId?: string | null;
   }): Promise<{ certificateId: string; certificatePem: string }> => {
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
-    if (!ca.externalCa || ca.externalCa.type !== CaType.DIGICERT) {
-      throw new BadRequestError({ message: "CA is not a DigiCert certificate authority" });
+    if (!ca.externalCa || ca.externalCa.type !== CaType.GODADDY) {
+      throw new BadRequestError({ message: "CA is not a GoDaddy certificate authority" });
     }
-    const digicertCa = castDbEntryToDigiCertCertificateAuthority(ca);
+    const godaddyCa = castDbEntryToGoDaddyCertificateAuthority(ca);
 
-    const { apiKey, baseUrl } = await getDigiCertClientCredentials(
-      digicertCa.configuration.appConnectionId,
+    const { authHeader, baseUrl } = await getGoDaddyClientCredentials(
+      godaddyCa.configuration.appConnectionId,
       appConnectionDAL,
       kmsService
     );
-    const client = createDigiCertApiClient(apiKey, baseUrl);
+    const client = createGoDaddyApiClient(authHeader, baseUrl);
 
-    const pemBundle = await client.downloadCertificatePem(digicertCertificateId);
-    const { leaf, chain } = extractLeafAndChain(pemBundle);
+    const bundle = await client.downloadCertificate(godaddyCertificateId);
+    const leaf = bundle.pems.certificate?.trim();
+    if (!leaf) {
+      throw new BadRequestError({ message: "GoDaddy returned an empty certificate bundle" });
+    }
+    const chain = [bundle.pems.intermediate, bundle.pems.cross, bundle.pems.root]
+      .map((pem) => pem?.trim())
+      .filter((pem): pem is string => Boolean(pem))
+      .join("\n");
 
     const certObj = new x509.X509Certificate(leaf);
     const issued = extractIssuedCertificateFields(certObj);
@@ -625,9 +580,9 @@ export const DigiCertCertificateAuthorityFns = ({
           signatureAlgorithm: certificateRequest.signatureAlgorithm ?? undefined,
           projectId: ca.projectId,
           externalMetadata: {
-            type: CaType.DIGICERT,
-            orderId: digicertOrderId
-          } satisfies TDigiCertExternalMetadata,
+            type: CaType.GODADDY,
+            certificateId: godaddyCertificateId
+          } satisfies TGoDaddyExternalMetadata,
           renewedFromCertificateId: isRenewal && originalCertificateId ? originalCertificateId : null
         },
         tx
@@ -672,8 +627,8 @@ export const DigiCertCertificateAuthorityFns = ({
     reason: CrlReason;
   }) => {
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
-    if (!ca.externalCa || ca.externalCa.type !== CaType.DIGICERT) {
-      throw new BadRequestError({ message: `CA is not a DigiCert certificate authority [caId=${caId}]` });
+    if (!ca.externalCa || ca.externalCa.type !== CaType.GODADDY) {
+      throw new BadRequestError({ message: `CA is not a GoDaddy certificate authority [caId=${caId}]` });
     }
 
     const cert = await certificateDAL.findOne({ caId, serialNumber });
@@ -682,37 +637,26 @@ export const DigiCertCertificateAuthorityFns = ({
         message: `Certificate not found for revocation [caId=${caId}] [serialNumber=${serialNumber}]`
       });
     }
-    const parsedMetadata = DigiCertExternalMetadataSchema.safeParse(cert.externalMetadata);
+    const parsedMetadata = GoDaddyExternalMetadataSchema.safeParse(cert.externalMetadata);
     if (!parsedMetadata.success) {
       throw new BadRequestError({
-        message: `Certificate has no DigiCert order reference in externalMetadata — cannot revoke on DigiCert [certificateId=${cert.id}]`
+        message: `Certificate has no GoDaddy reference in externalMetadata — cannot revoke on GoDaddy [certificateId=${cert.id}]`
       });
     }
-    const { orderId } = parsedMetadata.data;
+    const { certificateId } = parsedMetadata.data;
 
-    const digicertCa = castDbEntryToDigiCertCertificateAuthority(ca);
-    const { apiKey, baseUrl } = await getDigiCertClientCredentials(
-      digicertCa.configuration.appConnectionId,
+    const godaddyCa = castDbEntryToGoDaddyCertificateAuthority(ca);
+    const { authHeader, baseUrl } = await getGoDaddyClientCredentials(
+      godaddyCa.configuration.appConnectionId,
       appConnectionDAL,
       kmsService
     );
-    const client = createDigiCertApiClient(apiKey, baseUrl);
+    const client = createGoDaddyApiClient(authHeader, baseUrl);
 
-    try {
-      await client.revokeOrder(orderId, `Revoked via Infisical — reason: ${reason}`);
-    } catch (err) {
-      const message = (err as Error)?.message ?? "";
-      if (message.includes("order_already_revoked") || message.includes("order_is_revoked")) {
-        logger.info(
-          `DigiCert order already revoked upstream — treating as success [caId=${caId}] [certificateId=${cert.id}] [orderId=${orderId}]`
-        );
-      } else {
-        throw err;
-      }
-    }
+    await client.revokeCertificate(certificateId, mapCrlReasonToGoDaddyReason(reason));
 
     logger.info(
-      `DigiCert order revocation submitted [caId=${caId}] [certificateId=${cert.id}] [orderId=${orderId}] [reason=${reason}]`
+      `GoDaddy certificate revocation submitted [caId=${caId}] [certificateId=${cert.id}] [godaddyCertificateId=${certificateId}] [reason=${reason}]`
     );
   };
 
@@ -726,4 +670,4 @@ export const DigiCertCertificateAuthorityFns = ({
   };
 };
 
-export type TDigiCertCertificateAuthorityFns = ReturnType<typeof DigiCertCertificateAuthorityFns>;
+export type TGoDaddyCertificateAuthorityFns = ReturnType<typeof GoDaddyCertificateAuthorityFns>;

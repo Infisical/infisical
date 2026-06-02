@@ -1,0 +1,127 @@
+---
+title: "GoDaddy"
+description: "Issue Domain Validated (DV) certificates from GoDaddy using the GoDaddy Certificates API."
+---
+
+## Concept
+
+Infisical can issue Domain Validated (DV) TLS certificates directly from [GoDaddy](https://www.godaddy.com/) using the [GoDaddy Certificates API](https://developer.godaddy.com/doc/endpoint/certificates). It supports single-domain (`DV_SSL`) and wildcard (`DV_WILDCARD_SSL`) products.
+
+## Prerequisites
+
+- A [GoDaddy App Connection](/integrations/app-connections/godaddy) with validated production API credentials.
+- **An available certificate product in your GoDaddy account.** GoDaddy's API does not purchase certificates — it consumes a product you already own. Buy a **DV SSL** certificate (single-domain or wildcard, matching the CA's product type) from GoDaddy's SSL storefront and leave it un-set-up so the API can claim it.
+- A **custom certificate policy** allowing an **RSA** key with **DNS-name** SANs (see below — the built-in *TLS Server* preset is ECDSA-only and won't work).
+
+<Warning>
+  **GoDaddy is RSA-only and single-domain.** Two policy requirements trip people up:
+
+  - **RSA keys only.** An ECDSA or post-quantum key fails with `This CSR was created with an invalid algorithm`. The built-in **TLS Server Certificate** preset is **ECDSA-only**, so it won't work for GoDaddy — create a **custom policy** with an RSA key (e.g. RSA 2048), an `RSA-SHA256` signature, **DNS Name** SANs, and the **Server Authentication** EKU.
+  - **Single DNS name only.** GoDaddy DV products cover one domain (the Common Name). Additional SANs — and non-DNS SAN types (email, IP, URI) — are rejected; put the domain in the Common Name.
+</Warning>
+
+## Set up the certificate policy
+
+GoDaddy needs a **server-certificate policy that uses RSA**. Because the built-in `TLS Server Certificate` preset is ECDSA-only, create a custom one in **Settings → Certificate Policies → Create Policy**:
+
+- **Key algorithm:** RSA 2048 (RSA 3072/4096 also work) — *not ECDSA*
+- **Signature algorithm:** RSA-SHA256
+- **SAN types:** DNS Name
+- **Extended Key Usage:** Server Authentication
+- **Max validity (TTL):** ≤ 1 year (~398 days)
+
+Then create a [certificate profile](/documentation/platform/pki/settings/profiles) that references your GoDaddy CA and this policy.
+
+## Create a GoDaddy Certificate Authority
+
+<Tabs>
+  <Tab title="Infisical UI">
+    <Steps>
+      <Step title="Create a GoDaddy App Connection">
+        Follow the [GoDaddy App Connection guide](/integrations/app-connections/godaddy) to store your GoDaddy API key and secret in Infisical.
+      </Step>
+      <Step title="Create the External CA">
+        In **Certificate Manager**, go to **Settings → Certificate Authorities**, click **Create CA** in the External Certificate Authorities section, choose **GoDaddy** as the type, and fill out the form:
+
+        - **App Connection** — the GoDaddy connection you created
+        - **Product** — `DV SSL` for a single domain, or `DV Wildcard SSL` for `*.example.com`
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="API">
+    To create a GoDaddy Certificate Authority, make an API request to the [Create GoDaddy CA](/api-reference/endpoints/certificate-authorities/godaddy/create) API endpoint.
+
+    ```bash Create a GoDaddy CA
+    curl --request POST \
+      --url https://app.infisical.com/api/v1/pki/ca/godaddy \
+      --header 'Content-Type: application/json' \
+      --data '{
+        "name": "godaddy-dv",
+        "status": "active",
+        "configuration": {
+          "appConnectionId": "<godaddy-app-connection-id>",
+          "productType": "DV_SSL"
+        }
+      }'
+    ```
+  </Tab>
+</Tabs>
+
+## GoDaddy Validation Workflow
+
+When you request a certificate through a GoDaddy CA, the request moves through these states:
+
+| State | Description |
+|-------|-------------|
+| **Pending Validation** | GoDaddy has accepted the order and returned a certificate id. Complete domain control validation (DCV) on the GoDaddy side. |
+| **Issued** | Infisical polls GoDaddy and downloads the certificate once validation completes. Use **Trigger Validation** to force an immediate check. |
+| **Failed** | If GoDaddy does not issue within 24 hours. Complete validation and submit a new request. |
+
+<Note>
+  Domain control validation is completed on GoDaddy's side (DNS record, approver email, or HTTP
+  file). For a DNS TXT validation, add the record GoDaddy specifies to the domain's DNS zone; once
+  GoDaddy verifies it, the certificate is issued and Infisical downloads it.
+</Note>
+
+## FAQ
+
+<AccordionGroup>
+  <Accordion title='Why does issuance fail with "You do not have an available product"?'>
+    GoDaddy's Certificates API consumes a certificate product you already own — it does not purchase
+    one. Buy a DV SSL certificate matching the CA's product type from GoDaddy's SSL storefront and
+    leave it un-set-up; the next request will claim it. A pending order holds the product, so cancel
+    an unwanted pending order (via GoDaddy's API) to return the credit to available.
+  </Accordion>
+  <Accordion title='Why does issuance fail with "This CSR was created with an invalid algorithm"?'>
+    GoDaddy only accepts RSA CSRs. The built-in `TLS Server Certificate` policy preset is ECDSA-only,
+    so create a custom policy with an RSA key algorithm (e.g. RSA 2048 / RSA-SHA256) and request again.
+  </Accordion>
+  <Accordion title="Can a GoDaddy certificate include additional or email/IP SANs?">
+    No. The supported GoDaddy DV products are single-domain — they cover only the Common Name (one DNS
+    name). Additional SANs, and non-DNS SAN types (email, IP, URI), are rejected. For multiple domains
+    use a multi-domain CA; for email/identity SANs use a private (S/MIME) CA.
+  </Accordion>
+  <Accordion title="What happens when I revoke a GoDaddy-issued certificate in Infisical?">
+    Revoking the certificate in Infisical marks it `Revoked` in the local inventory **and** submits
+    a revocation request to GoDaddy against the underlying certificate.
+  </Accordion>
+</AccordionGroup>
+
+## What's Next
+
+Now that your GoDaddy CA is configured, set up the infrastructure to issue certificates:
+
+<CardGroup cols={2}>
+  <Card title="Certificate Profiles" icon="file-certificate" href="/documentation/platform/pki/settings/profiles">
+    Create a profile that references your GoDaddy CA (with an RSA-capable policy).
+  </Card>
+  <Card title="Applications" icon="grid-2" href="/documentation/platform/pki/applications/overview">
+    Create an Application, attach a profile, and configure enrollment.
+  </Card>
+  <Card title="Enrollment Methods" icon="arrow-right-to-arc" href="/documentation/platform/pki/applications/enrollment-methods/overview">
+    Choose how certificates are requested — API, ACME, EST, or SCEP.
+  </Card>
+  <Card title="Quick Start" icon="rocket" href="/documentation/platform/pki/quick-starts/issue-first-certificate">
+    Issue your first certificate end-to-end.
+  </Card>
+</CardGroup>

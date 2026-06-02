@@ -103,6 +103,8 @@ export enum IntegrationUrls {
   DIGICERT_SERVICES_API_URL = "https://www.digicert.com/services/v2",
   DIGICERT_SERVICES_API_URL_EU = "https://api-eu.digicert.com/services/v2",
 
+  GODADDY_API_URL = "https://api.godaddy.com",
+
   GCP_SECRET_MANAGER_SERVICE_NAME = "secretmanager.googleapis.com",
   GCP_SECRET_MANAGER_URL = `https://${GCP_SECRET_MANAGER_SERVICE_NAME}`,
   GCP_SERVICE_USAGE_URL = "https://serviceusage.googleapis.com",

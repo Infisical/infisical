@@ -19,6 +19,7 @@ import { TCertificateAuthorityDALFactory } from "@app/services/certificate-autho
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { assertCaInProfileProject } from "@app/services/certificate-authority/certificate-authority-fns";
 import { TCertificateIssuanceQueueFactory } from "@app/services/certificate-authority/certificate-issuance-queue";
+import { validateGoDaddyIssuanceInputs } from "@app/services/certificate-authority/godaddy/godaddy-certificate-authority-validators";
 import { TInternalCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-service";
 import { TCertificatePolicyServiceFactory } from "@app/services/certificate-policy/certificate-policy-service";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
@@ -470,7 +471,8 @@ export const certificateApprovalServiceFactory = (
       caType !== CaType.AZURE_AD_CS &&
       caType !== CaType.AWS_PCA &&
       caType !== CaType.AWS_ACM_PUBLIC_CA &&
-      caType !== CaType.VENAFI_TPP
+      caType !== CaType.VENAFI_TPP &&
+      caType !== CaType.GODADDY
     ) {
       return null;
     }
@@ -488,6 +490,13 @@ export const certificateApprovalServiceFactory = (
         country: certRequest.country || undefined,
         state: certRequest.state || undefined,
         locality: certRequest.locality || undefined
+      });
+    }
+
+    if (caType === CaType.GODADDY) {
+      validateGoDaddyIssuanceInputs({
+        keyAlgorithm: certRequest.keyAlgorithm || undefined,
+        altNames: altNames ?? undefined
       });
     }
 

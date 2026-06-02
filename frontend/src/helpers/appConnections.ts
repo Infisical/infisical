@@ -62,6 +62,7 @@ import { DigitalOceanConnectionMethod } from "@app/hooks/api/appConnections/type
 import { DNSMadeEasyConnectionMethod } from "@app/hooks/api/appConnections/types/dns-made-easy-connection";
 import { DopplerConnectionMethod } from "@app/hooks/api/appConnections/types/doppler-connection";
 import { ExternalInfisicalConnectionMethod } from "@app/hooks/api/appConnections/types/external-infisical-connection";
+import { GoDaddyConnectionMethod } from "@app/hooks/api/appConnections/types/godaddy-connection";
 import { HerokuConnectionMethod } from "@app/hooks/api/appConnections/types/heroku-connection";
 import { LaravelForgeConnectionMethod } from "@app/hooks/api/appConnections/types/laravel-forge-connection";
 import { NetlifyConnectionMethod } from "@app/hooks/api/appConnections/types/netlify-connection";
@@ -178,6 +179,7 @@ export const APP_CONNECTION_MAP: Record<
   [AppConnection.Devin]: { name: "Devin", image: "Devin.png", size: 55 },
   [AppConnection.Ona]: { name: "Ona", image: "Ona.png", aliases: ["gitpod"] },
   [AppConnection.DigiCert]: { name: "DigiCert", image: "DigiCert.png" },
+  [AppConnection.GoDaddy]: { name: "GoDaddy", image: "GoDaddy.png" },
   [AppConnection.TravisCI]: { name: "Travis CI", image: "Travis CI.png" },
   [AppConnection.Salesforce]: { name: "Salesforce", image: "Salesforce.png" },
   [AppConnection.Snowflake]: { name: "Snowflake", image: "Snowflake.png" },
@@ -269,6 +271,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case AnthropicConnectionMethod.ApiKey:
     case DevinConnectionMethod.ApiKey:
     case DigiCertConnectionMethod.ApiKey:
+    case GoDaddyConnectionMethod.ApiKey:
       return { name: "API Key", icon: faKey };
     case ChefConnectionMethod.UserKey:
       return { name: "User Key", icon: faKey };
