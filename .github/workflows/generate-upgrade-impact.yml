@@ -7,9 +7,12 @@ on:
         description: "Stable release tag to analyze, for example v0.159.23"
         required: true
         type: string
-  push:
-    tags:
-      - "v*.*.*"
+  workflow_call:
+    inputs:
+      tag:
+        description: "Stable release tag to analyze, for example v0.159.23"
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -34,7 +37,7 @@ jobs:
 
       - name: Checkout main
         if: steps.release.outputs.stable == 'true'
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4 Nov 14, 2025
         with:
           ref: main
           fetch-depth: 0
@@ -42,7 +45,7 @@ jobs:
 
       - name: Setup Node
         if: steps.release.outputs.stable == 'true'
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22
           cache: npm
@@ -53,12 +56,22 @@ jobs:
         run: npm ci
         working-directory: upgrade-impact
 
+      - name: Type check
+        if: steps.release.outputs.stable == 'true'
+        run: npm run type:check
+        working-directory: upgrade-impact
+
+      - name: Test upgrade impact tooling
+        if: steps.release.outputs.stable == 'true'
+        run: npm test
+        working-directory: upgrade-impact
+
       - name: Generate upgrade impact data
         if: steps.release.outputs.stable == 'true'
         run: npm run generate -- --tag "${{ steps.release.outputs.tag }}"
         working-directory: upgrade-impact
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          UPGRADE_TOOL_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 
       - name: Validate upgrade impact data
@@ -69,7 +82,7 @@ jobs:
       - name: Open upgrade impact PR
         if: steps.release.outputs.stable == 'true'
         env:
-          GH_TOKEN: ${{ secrets.UPGRADE_IMPACT_PR_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG_NAME: ${{ steps.release.outputs.tag }}
         run: |
           BRANCH_NAME="chore/upgrade-impact-${TAG_NAME}"
@@ -89,10 +102,23 @@ jobs:
           git commit -m "$PR_TITLE"
           git push --set-upstream origin "$BRANCH_NAME"
 
+          # Request review from whoever cut this GitHub release so a real
+          # human with context on the changes gets pinged rather than only the
+          # github-actions bot.
+          REVIEWER_FLAG=()
+          RELEASE_AUTHOR="$(gh release view "$TAG_NAME" --json author --jq .author.login 2>/dev/null || true)"
+          if [ -n "$RELEASE_AUTHOR" ]; then
+            REVIEWER_FLAG=(--reviewer "$RELEASE_AUTHOR")
+            echo "Requesting review from release author: $RELEASE_AUTHOR"
+          else
+            echo "Skipping reviewer assignment (could not resolve release author)."
+          fi
+
           gh pr create \
             --base main \
             --head "$BRANCH_NAME" \
             --title "$PR_TITLE" \
+            "${REVIEWER_FLAG[@]}" \
             --body "Generated self-hosted upgrade impact data for \`${TAG_NAME}\`.
 
           Review the generated YAML for self-hosted upgrade accuracy before merging."

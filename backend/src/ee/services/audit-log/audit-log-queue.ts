@@ -7,6 +7,11 @@ import { TAuditLogStreamServiceFactory } from "@app/ee/services/audit-log-stream
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
+import {
+  auditLogDroppedCounter,
+  auditLogEnqueuedCounter,
+  auditLogPersistDurationHistogram
+} from "@app/lib/telemetry/metrics";
 import { JOB_SCHEDULER_PREFIX, QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
@@ -35,7 +40,7 @@ const normalizeJsonPayload = (payload: unknown) => {
   if (typeof payload === "object" && payload !== null) {
     return payload;
   }
-  logger.error({ payload }, "Unexpected audit log payload type, expected object or array");
+  logger.error({ payload }, "audit-log-queue: Unexpected audit log payload type, expected object or array");
   return {};
 };
 
@@ -76,6 +81,11 @@ export const auditLogQueueServiceFactory = async ({
       removeOnComplete: true,
       jobId: randomUUID()
     });
+    auditLogEnqueuedCounter.add(1, {
+      "audit_log.event_type": data.event?.type ?? "unknown",
+      "audit_log.actor_type": data.actor?.type ?? "unknown",
+      ...(data.orgId ? { "infisical.organization.id": data.orgId } : {})
+    });
   };
 
   queueService.start(QueueName.AuditLog, async (job) => {
@@ -91,8 +101,7 @@ export const auditLogQueueServiceFactory = async ({
 
       if (!orgId && !projectId) {
         logger.error(
-          { jobId: job.id, data: job.data },
-          "audit-log-queue: Received job with neither orgId nor projectId, skipping"
+          `audit-log-queue: Received job with neither orgId nor projectId, skipping [jobId=${job.id}] [event=${job.data.event?.type}]`
         );
         return;
       }
@@ -100,6 +109,12 @@ export const auditLogQueueServiceFactory = async ({
       if (!orgId) {
         // TODO(akhilmhdh): use caching here in dal to avoid db calls
         project = await projectDAL.findById(projectId!);
+        if (!project) {
+          logger.error(
+            `audit-log-queue: projecet was deleted, skipping [jobId=${job.id}] [projectId=${projectId}] [event=${job.data.event?.type}]`
+          );
+          return;
+        }
         orgId = project.orgId;
       }
 
@@ -142,17 +157,30 @@ export const auditLogQueueServiceFactory = async ({
         };
 
         // Push to Redis stream for ClickHouse batch processing
+        const persistStart = Date.now();
+        const backend = isClickHouseBatchEnabled ? "clickhouse" : "postgres";
+        let persistOutcome: "success" | "failure" = "success";
         if (isClickHouseBatchEnabled) {
           try {
             await keyStore.streamAdd(AUDIT_LOG_CLICKHOUSE_STREAM_KEY, "*", {
               data: JSON.stringify(auditLog)
             });
           } catch (error) {
-            logger.error(error, "Failed to push audit log to Redis stream for ClickHouse batch");
+            persistOutcome = "failure";
+            logger.error(
+              error,
+              `audit-log-queue: Failed to push audit log to Redis stream for ClickHouse batch [jobId=${job.id}] [event=${job.data.event?.type}] [orgId=${job.data.orgId}] [projectId=${job.data.projectId}]`
+            );
           }
         } else {
           await auditLogDAL.create(auditLog);
         }
+        auditLogPersistDurationHistogram.record((Date.now() - persistStart) / 1000, {
+          "audit_log.backend": backend,
+          "audit_log.event_type": event.type,
+          "infisical.organization.id": orgId,
+          outcome: persistOutcome
+        });
 
         if (getConfig().AUDIT_LOG_STREAMS_ENABLED) {
           await auditLogStreamService.streamLog(orgId, auditLog);
@@ -165,6 +193,18 @@ export const auditLogQueueServiceFactory = async ({
       );
       throw error;
     }
+  });
+
+  // Track audit log events that were ultimately dropped after exhausting BullMQ's retry budget.
+  queueService.listen(QueueName.AuditLog, "failed", (job) => {
+    if (!job) return;
+    const attemptsRemaining = (job.opts.attempts ?? 1) - (job.attemptsMade ?? 0);
+    if (attemptsRemaining > 0) return;
+    auditLogDroppedCounter.add(1, {
+      "audit_log.event_type": job.data?.event?.type ?? "unknown",
+      "audit_log.drop_reason": "max_retries",
+      ...(job.data?.orgId ? { "infisical.organization.id": job.data.orgId } : {})
+    });
   });
 
   // Batch consumer: reads from Redis stream and inserts into ClickHouse every 5 seconds
@@ -191,9 +231,9 @@ export const auditLogQueueServiceFactory = async ({
         // Only trim after successful insert
         await keyStore.streamTrim(AUDIT_LOG_CLICKHOUSE_STREAM_KEY, lastId, true);
 
-        logger.info({ count: values.length }, "Batch inserted audit logs into ClickHouse");
+        logger.info({ count: values.length }, "audit-log-queue: Batch inserted audit logs into ClickHouse");
       } catch (error) {
-        logger.error(error, `Failed to batch insert ${values.length} audit logs into ClickHouse`);
+        logger.error(error, `audit-log-queue: Failed to batch insert ${values.length} audit logs into ClickHouse`);
       }
     });
 

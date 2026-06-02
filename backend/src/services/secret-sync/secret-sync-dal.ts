@@ -14,7 +14,11 @@ type SecretSyncFindFilter = Parameters<typeof buildFindFilter<TSecretSyncs>>[0];
 const baseSecretSyncQuery = ({ filter, db, tx }: { db: TDbClient; filter?: SecretSyncFindFilter; tx?: Knex }) => {
   const query = (tx || db.replicaNode())(TableName.SecretSync)
     .leftJoin(TableName.SecretFolder, `${TableName.SecretSync}.folderId`, `${TableName.SecretFolder}.id`)
-    .leftJoin(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+    .leftJoin(TableName.Environment, function joinActiveEnvForFolder() {
+      this.on(`${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`).andOnNull(
+        `${TableName.Environment}.deleteAfter`
+      );
+    })
     .join(TableName.AppConnection, `${TableName.SecretSync}.connectionId`, `${TableName.AppConnection}.id`)
     .select(selectAllTableCols(TableName.SecretSync))
     .select(
@@ -31,6 +35,7 @@ const baseSecretSyncQuery = ({ filter, db, tx }: { db: TDbClient; filter?: Secre
       db.ref("description").withSchema(TableName.AppConnection).as("connectionDescription"),
       db.ref("version").withSchema(TableName.AppConnection).as("connectionVersion"),
       db.ref("gatewayId").withSchema(TableName.AppConnection).as("connectionGatewayId"),
+      db.ref("gatewayPoolId").withSchema(TableName.AppConnection).as("connectionGatewayPoolId"),
       db.ref("projectId").withSchema(TableName.AppConnection).as("connectionProjectId"),
       db.ref("isAutoRotationEnabled").withSchema(TableName.AppConnection).as("connectionIsAutoRotationEnabled"),
       db.ref("createdAt").withSchema(TableName.AppConnection).as("connectionCreatedAt"),
@@ -69,6 +74,7 @@ const expandSecretSync = (
     connectionVersion,
     connectionIsPlatformManagedCredentials,
     connectionGatewayId,
+    connectionGatewayPoolId,
     connectionProjectId,
     connectionIsAutoRotationEnabled,
     ...el
@@ -91,6 +97,7 @@ const expandSecretSync = (
       version: connectionVersion,
       isPlatformManagedCredentials: connectionIsPlatformManagedCredentials,
       gatewayId: connectionGatewayId,
+      gatewayPoolId: connectionGatewayPoolId,
       projectId: connectionProjectId,
       isAutoRotationEnabled: connectionIsAutoRotationEnabled
     },

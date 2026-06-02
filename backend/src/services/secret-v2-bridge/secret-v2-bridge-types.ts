@@ -185,6 +185,7 @@ export type TFnSecretBulkInsert = {
       references: TSecretReference[];
       secretMetadata?: { key: string; value?: string | null; encryptedValue?: Buffer | null }[];
       parentSecretVersionId?: string;
+      secretValueBlindIndex?: string | null;
     }
   >;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany">;
@@ -203,10 +204,12 @@ type TRequireReferenceIfValue =
   | (Omit<TSecretsV2Update, "encryptedValue" | "metadata"> & {
       encryptedValue: Buffer | null;
       references: TSecretReference[];
+      secretValueBlindIndex?: string | null;
     })
   | (Omit<TSecretsV2Update, "encryptedValue" | "metadata"> & {
       encryptedValue?: never;
       references?: never;
+      secretValueBlindIndex?: never;
     });
 
 export type TFnSecretBulkUpdate = {
@@ -349,6 +352,25 @@ export type TMoveSecretsDTO = {
   destinationSecretPath: string;
   secretIds: string[];
   shouldOverwrite: boolean;
+} & Omit<TProjectPermission, "projectId">;
+
+export type TDuplicateSecretAttributes = {
+  value?: boolean;
+  comment?: boolean;
+  tags?: boolean;
+  metadata?: boolean;
+  skipMultilineEncoding?: boolean;
+};
+
+export type TDuplicateSecretDTO = {
+  projectId: string;
+  sourceEnvironment: string;
+  sourceSecretPath: string;
+  destinationEnvironment: string;
+  destinationSecretPath: string;
+  secretIds: string[];
+  shouldOverwrite: boolean;
+  attributesToCopy: TDuplicateSecretAttributes;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TAttachSecretTagsDTO = {

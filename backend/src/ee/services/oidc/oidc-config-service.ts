@@ -18,7 +18,15 @@ import { BadRequestError, ForbiddenRequestError, NotFoundError, OidcAuthError } 
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
-import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
+import {
+  AuthAttemptAuthMethod,
+  AuthAttemptAuthResult,
+  authAttemptCounter,
+  recordAuthAttemptMetric,
+  recordSsoConfigChangeMetric,
+  SsoConfigAction,
+  SsoProvider
+} from "@app/lib/telemetry/metrics";
 import { OrgServiceActor } from "@app/lib/types";
 import {
   blockLocalAndPrivateIpAddresses,
@@ -42,6 +50,8 @@ import { TProjectKeyDALFactory } from "@app/services/project-key/project-key-dal
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 import { LoginMethod } from "@app/services/super-admin/super-admin-types";
+import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 import { UserAliasType } from "@app/services/user-alias/user-alias-types";
@@ -98,6 +108,7 @@ type TOidcConfigServiceFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   loginService: Pick<TAuthLoginFactory, "processProviderCallback">;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "findOne">;
+  telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
 };
 
 export type TOidcConfigServiceFactory = ReturnType<typeof oidcConfigServiceFactory>;
@@ -121,7 +132,8 @@ export const oidcConfigServiceFactory = ({
   auditLogService,
   kmsService,
   loginService,
-  emailDomainDAL
+  emailDomainDAL,
+  telemetryService
 }: TOidcConfigServiceFactoryDep) => {
   const getOidc = async (dto: TGetOidcCfgDTO) => {
     const oidcCfg = await oidcConfigDAL.findOne({
@@ -251,11 +263,14 @@ export const oidcConfigServiceFactory = ({
             },
             tx
           );
+        } else if (!orgMembership.isActive) {
+          throw new ForbiddenRequestError({ message: "User organization membership is inactive" });
         }
 
         return foundUser;
       });
     } else {
+      let isNewUser = false;
       user = await userDAL.transaction(async (tx) => {
         let newUser: TUsers | undefined;
         // we prioritize getting the most complete user to create the new alias under
@@ -278,6 +293,7 @@ export const oidcConfigServiceFactory = ({
             },
             tx
           );
+          isNewUser = true;
         }
 
         userAlias = await userAliasDAL.create(
@@ -328,6 +344,19 @@ export const oidcConfigServiceFactory = ({
 
         return newUser;
       });
+
+      if (isNewUser) {
+        void telemetryService.sendPostHogEvents({
+          event: PostHogEventTypes.UserSignedUp,
+          distinctId: user.username ?? "",
+          organizationId: orgId,
+          properties: {
+            username: user.username,
+            email: user.email ?? "",
+            signupMethod: "oidc"
+          }
+        });
+      }
     }
 
     if (manageGroupMemberships) {
@@ -553,6 +582,7 @@ export const oidcConfigServiceFactory = ({
 
     const [ssoConfig] = await oidcConfigDAL.update({ orgId: org.id }, updateQuery);
     await orgDAL.updateById(org.id, { authEnforced: false, scimEnabled: false });
+    recordSsoConfigChangeMetric({ provider: SsoProvider.Oidc, action: SsoConfigAction.Update, orgId: org.id });
     return ssoConfig;
   };
 
@@ -641,6 +671,8 @@ export const oidcConfigServiceFactory = ({
       encryptedOidcClientId: encryptor({ plainText: Buffer.from(clientId) }).cipherTextBlob,
       encryptedOidcClientSecret: encryptor({ plainText: Buffer.from(clientSecret) }).cipherTextBlob
     });
+
+    recordSsoConfigChangeMetric({ provider: SsoProvider.Oidc, action: SsoConfigAction.Create, orgId: org.id });
 
     return oidcCfg;
   };
@@ -733,6 +765,7 @@ export const oidcConfigServiceFactory = ({
       },
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (_req: any, tokenSet: TokenSet, cb: any) => {
+        const authMetricStartTime = performance.now();
         const claims = tokenSet.claims();
         if (!claims.email) {
           throw new BadRequestError({
@@ -768,6 +801,8 @@ export const oidcConfigServiceFactory = ({
           manageGroupMemberships: oidcCfg.manageGroupMemberships
         })
           .then((loginResult) => {
+            cb(null, loginResult);
+
             if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
               authAttemptCounter.add(1, {
                 "infisical.user.email": claims?.email?.toLowerCase(),
@@ -781,9 +816,14 @@ export const oidcConfigServiceFactory = ({
               });
             }
 
-            cb(null, loginResult);
+            recordAuthAttemptMetric({
+              startTime: authMetricStartTime,
+              method: AuthAttemptAuthMethod.OIDC,
+              result: AuthAttemptAuthResult.SUCCESS,
+              orgId: org.id
+            });
           })
-          .catch((error) => {
+          .catch((error: unknown) => {
             if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
               authAttemptCounter.add(1, {
                 "infisical.user.email": claims?.email?.toLowerCase(),
@@ -795,6 +835,14 @@ export const oidcConfigServiceFactory = ({
                 "user_agent.original": requestContext.get(RequestContextKey.UserAgent)
               });
             }
+
+            recordAuthAttemptMetric({
+              startTime: authMetricStartTime,
+              method: AuthAttemptAuthMethod.OIDC,
+              result: AuthAttemptAuthResult.FAILURE,
+              orgId: org.id,
+              error
+            });
 
             cb(error);
           });

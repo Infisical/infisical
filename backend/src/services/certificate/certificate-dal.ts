@@ -65,6 +65,24 @@ export const certificateDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findActiveDigiCertCertsByOrderIds = async (caId: string, orderIds: number[]) => {
+    if (orderIds.length === 0) return [];
+    try {
+      const stringIds = orderIds.map(String);
+      const placeholders = stringIds.map(() => "?").join(", ");
+      const certs = await db
+        .replicaNode()(TableName.Certificate)
+        .where({ caId, status: CertStatus.ACTIVE })
+        .whereRaw(`"externalMetadata"->>'type' = ?`, ["digicert"])
+        .whereRaw(`("externalMetadata"->>'orderId') IN (${placeholders})`, stringIds)
+        .select("id", "commonName", "serialNumber", "projectId", "applicationId");
+
+      return certs;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find active DigiCert certs by order IDs" });
+    }
+  };
+
   type TInventoryFilterParams = {
     friendlyName?: string;
     commonName?: string;
@@ -85,6 +103,8 @@ export const certificateDALFactory = (db: TDbClient) => {
     notAfterTo?: Date;
     notBeforeFrom?: Date;
     notBeforeTo?: Date;
+    applicationId?: string;
+    applicationIds?: string[];
   };
 
   const applyInventoryFilters = (
@@ -187,8 +207,33 @@ export const certificateDALFactory = (db: TDbClient) => {
       q = q.whereIn(`${TableName.Certificate}.caId`, filters.caIds);
     }
 
-    if (filters.enrollmentTypes && hasProfileJoin) {
-      q = q.whereIn(`${TableName.PkiCertificateProfile}.enrollmentType`, filters.enrollmentTypes);
+    if (filters.enrollmentTypes && filters.enrollmentTypes.length > 0 && hasProfileJoin) {
+      // Mirror the COALESCE expression used in the SELECT: the actual enrollment recorded
+      // on the originating certificate_requests row takes precedence over the profile's
+      // enrollmentType. Under the application/junction flow every profile defaults to 'api',
+      // so filtering on the profile column alone would either match everything (API) or
+      // nothing (other methods).
+      const placeholders = filters.enrollmentTypes.map(() => "?").join(", ");
+      q = q.whereRaw(
+        `COALESCE(
+          (SELECT ??.?? FROM ?? WHERE ??.?? = ??.?? ORDER BY ??.?? ASC LIMIT 1),
+          ??.??
+        ) IN (${placeholders})`,
+        [
+          TableName.CertificateRequests,
+          "enrollmentType",
+          TableName.CertificateRequests,
+          TableName.CertificateRequests,
+          "certificateId",
+          TableName.Certificate,
+          "id",
+          TableName.CertificateRequests,
+          "createdAt",
+          TableName.PkiCertificateProfile,
+          "enrollmentType",
+          ...filters.enrollmentTypes
+        ]
+      );
     }
 
     if (filters.source) {
@@ -220,6 +265,14 @@ export const certificateDALFactory = (db: TDbClient) => {
 
     if (filters.notBeforeTo) {
       q = q.andWhere(`${TableName.Certificate}.notBefore`, "<=", filters.notBeforeTo);
+    }
+
+    if (filters.applicationId) {
+      q = q.andWhere(`${TableName.Certificate}.applicationId`, filters.applicationId);
+    }
+
+    if (filters.applicationIds && filters.applicationIds.length > 0) {
+      q = q.whereIn(`${TableName.Certificate}.applicationId`, filters.applicationIds);
     }
 
     return q;
@@ -343,13 +396,18 @@ export const certificateDALFactory = (db: TDbClient) => {
         .whereNull("renewedByCertificateId");
 
       Object.entries(filter).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) {
-          if (key === "friendlyName" || key === "commonName") {
-            const sanitizedValue = sanitizeSqlLikeString(String(value));
-            query = query.andWhere(`${TableName.Certificate}.${key}`, "like", `%${sanitizedValue}%`);
-          } else {
-            query = query.andWhere(`${TableName.Certificate}.${key}`, value);
+        if (value === undefined || value === null) return;
+        if (key === "applicationIds") {
+          if (Array.isArray(value) && value.length > 0) {
+            query = query.whereIn(`${TableName.Certificate}.applicationId`, value as string[]);
           }
+          return;
+        }
+        if (key === "friendlyName" || key === "commonName") {
+          const sanitizedValue = sanitizeSqlLikeString(String(value));
+          query = query.andWhere(`${TableName.Certificate}.${key}`, "like", `%${sanitizedValue}%`);
+        } else {
+          query = query.andWhere(`${TableName.Certificate}.${key}`, value);
         }
       });
 
@@ -377,11 +435,15 @@ export const certificateDALFactory = (db: TDbClient) => {
   const countActiveCertificatesForSync = async ({
     projectId,
     friendlyName,
-    commonName
+    commonName,
+    applicationId,
+    applicationIds
   }: {
     projectId: string;
     friendlyName?: string;
     commonName?: string;
+    applicationId?: string;
+    applicationIds?: string[];
   }) => {
     try {
       interface CountResult {
@@ -405,6 +467,13 @@ export const certificateDALFactory = (db: TDbClient) => {
       if (commonName) {
         const sanitizedValue = sanitizeSqlLikeString(commonName);
         query = query.andWhere(`${TableName.Certificate}.commonName`, "like", `%${sanitizedValue}%`);
+      }
+
+      if (applicationId) {
+        query = query.andWhere(`${TableName.Certificate}.applicationId`, applicationId);
+      }
+      if (applicationIds && applicationIds.length > 0) {
+        query = query.whereIn(`${TableName.Certificate}.applicationId`, applicationIds);
       }
 
       const count = await query.count("*").first();
@@ -464,6 +533,7 @@ export const certificateDALFactory = (db: TDbClient) => {
     caName?: string | null;
     profileName?: string | null;
     enrollmentType?: string | null;
+    applicationName?: string | null;
   };
 
   const findWithPrivateKeyInfo = async (
@@ -485,11 +555,34 @@ export const certificateDALFactory = (db: TDbClient) => {
           `${TableName.Certificate}.profileId`,
           `${TableName.PkiCertificateProfile}.id`
         )
+        .leftJoin(TableName.PkiApplication, `${TableName.Certificate}.applicationId`, `${TableName.PkiApplication}.id`)
         .select(selectAllTableCols(TableName.Certificate))
         .select(db.ref(`${TableName.CertificateSecret}.certId`).as("privateKeyRef"))
         .select(db.ref("name").withSchema(TableName.CertificateAuthority).as("caName"))
         .select(db.ref("slug").withSchema(TableName.PkiCertificateProfile).as("profileName"))
-        .select(db.ref("enrollmentType").withSchema(TableName.PkiCertificateProfile).as("enrollmentType"));
+        .select(
+          db.raw(
+            `COALESCE(
+              (SELECT ??.?? FROM ?? WHERE ??.?? = ??.?? ORDER BY ??.?? ASC LIMIT 1),
+              ??.??
+            ) as ??`,
+            [
+              TableName.CertificateRequests,
+              "enrollmentType",
+              TableName.CertificateRequests,
+              TableName.CertificateRequests,
+              "certificateId",
+              TableName.Certificate,
+              "id",
+              TableName.CertificateRequests,
+              "createdAt",
+              TableName.PkiCertificateProfile,
+              "enrollmentType",
+              "enrollmentType"
+            ]
+          )
+        )
+        .select(db.ref("name").withSchema(TableName.PkiApplication).as("applicationName"));
 
       const {
         friendlyName,
@@ -511,6 +604,7 @@ export const certificateDALFactory = (db: TDbClient) => {
         notAfterTo,
         notBeforeFrom,
         notBeforeTo,
+        applicationIds,
         ...regularFilters
       } = filter;
 
@@ -541,7 +635,8 @@ export const certificateDALFactory = (db: TDbClient) => {
           notAfterFrom,
           notAfterTo,
           notBeforeFrom,
-          notBeforeTo
+          notBeforeTo,
+          applicationIds
         },
         true
       ) as typeof query;
@@ -575,6 +670,7 @@ export const certificateDALFactory = (db: TDbClient) => {
   type TCertificateWithRequestDetails = TCertificates & {
     caName?: string | null;
     profileName?: string | null;
+    applicationName?: string | null;
     caType?: "internal" | "external" | null;
   };
 
@@ -601,9 +697,11 @@ export const certificateDALFactory = (db: TDbClient) => {
           `${TableName.CertificateAuthority}.id`,
           `${TableName.InternalCertificateAuthority}.caId`
         )
+        .leftJoin(TableName.PkiApplication, `${TableName.Certificate}.applicationId`, `${TableName.PkiApplication}.id`)
         .select(selectAllTableCols(TableName.Certificate))
         .select(db.ref("name").withSchema(TableName.CertificateAuthority).as("caName"))
         .select(db.ref("slug").withSchema(TableName.PkiCertificateProfile).as("profileName"))
+        .select(db.ref("name").withSchema(TableName.PkiApplication).as("applicationName"))
         .select(db.ref("id").withSchema(TableName.InternalCertificateAuthority).as("internalCaId"));
 
       if (filter.id) {
@@ -727,7 +825,28 @@ export const certificateDALFactory = (db: TDbClient) => {
           `${TableName.PkiCertificateProfile}.id`
         )
         .where(`${TableName.CertificateAuthority}.projectId`, projectId)
-        .select(db.raw(`COALESCE("${TableName.PkiCertificateProfile}"."enrollmentType", 'API') as label`))
+        .select(
+          db.raw(
+            `COALESCE(
+              (SELECT ??.?? FROM ?? WHERE ??.?? = ??.?? ORDER BY ??.?? ASC LIMIT 1),
+              ??.??,
+              'api'
+            ) as label`,
+            [
+              TableName.CertificateRequests,
+              "enrollmentType",
+              TableName.CertificateRequests,
+              TableName.CertificateRequests,
+              "certificateId",
+              TableName.Certificate,
+              "id",
+              TableName.CertificateRequests,
+              "createdAt",
+              TableName.PkiCertificateProfile,
+              "enrollmentType"
+            ]
+          )
+        )
         .count("* as count")
         .groupBy("label");
 
@@ -1012,6 +1131,7 @@ export const certificateDALFactory = (db: TDbClient) => {
     countCertificatesForPkiSubscriber,
     findLatestActiveCertForSubscriber,
     findAllActiveCertsForSubscriber,
+    findActiveDigiCertCertsByOrderIds,
     findExpiredSyncedCertificates,
     findActiveCertificatesByIds,
     findActiveCertificatesForSync,

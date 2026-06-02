@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { subject } from "@casl/ability";
-import { FolderInputIcon, TagsIcon, TrashIcon } from "lucide-react";
+import { CopyPlus, FolderInputIcon, TagsIcon, TrashIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
@@ -16,6 +16,7 @@ import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionCo
 import { usePopUp } from "@app/hooks";
 import { useDeleteSecretBatch } from "@app/hooks/api";
 import { ProjectSecretsImportedBy, UsedBySecretSyncs } from "@app/hooks/api/dashboard/types";
+import { TDashboardHoneyToken } from "@app/hooks/api/honeyTokens/types";
 import { ProjectEnv } from "@app/hooks/api/projects/types";
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
 import { TSecretRotationV2 } from "@app/hooks/api/secretRotationsV2";
@@ -26,6 +27,7 @@ import {
   TDeleteSecretBatchDTO,
   TSecretFolder
 } from "@app/hooks/api/types";
+import { DuplicateSecretModal } from "@app/pages/secret-manager/OverviewPage/components/SecretTableRow/DuplicateSecretModal";
 import {
   BulkDeleteDialog,
   BulkTagDialog,
@@ -35,7 +37,8 @@ import {
 export enum EntryType {
   FOLDER = "folder",
   SECRET = "secret",
-  SECRET_ROTATION = "secretRotation"
+  SECRET_ROTATION = "secretRotation",
+  HONEY_TOKEN = "honeyToken"
 }
 
 type Props = {
@@ -45,6 +48,7 @@ type Props = {
     [EntryType.FOLDER]: Record<string, Record<string, TSecretFolder>>;
     [EntryType.SECRET]: Record<string, Record<string, SecretV3RawSanitized>>;
     [EntryType.SECRET_ROTATION]: Record<string, Record<string, TSecretRotationV2>>;
+    [EntryType.HONEY_TOKEN]: Record<string, Record<string, TDashboardHoneyToken>>;
   };
   importedBy?: ProjectSecretsImportedBy[] | null;
   usedBySecretSyncs?: UsedBySecretSyncs[];
@@ -67,16 +71,23 @@ export const SelectionPanel = ({
   const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
     "bulkDeleteEntries",
     "bulkMoveSecrets",
-    "bulkTagSecrets"
+    "bulkTagSecrets",
+    "bulkDuplicateSecrets"
   ] as const);
 
   const selectedFolderCount = Object.keys(selectedEntries.folder).length;
   const selectedKeysCount = Object.keys(selectedEntries.secret).length;
   const selectedRotationCount = Object.keys(selectedEntries.secretRotation).length;
-  const isRotatedSecretSelected = Object.values(selectedEntries.secret).some((record) =>
-    Object.values(record).some((secret) => secret.isRotatedSecret)
+  const selectedHoneyTokenCount = Object.keys(selectedEntries.honeyToken).length;
+  const isManagedSecretSelected = Object.values(selectedEntries.secret).some((record) =>
+    Object.values(record).some((secret) => secret.isRotatedSecret || secret.isHoneyTokenSecret)
   );
-  const selectedCount = selectedFolderCount + selectedKeysCount + selectedRotationCount;
+  const isHoneyTokenSelected = Object.values(selectedEntries.secret).some((record) =>
+    Object.values(record).some((secret) => secret.isHoneyTokenSecret)
+  );
+
+  const selectedCount =
+    selectedFolderCount + selectedKeysCount + selectedRotationCount + selectedHoneyTokenCount;
 
   const { currentProject, projectId } = useProject();
   const userAvailableEnvs = currentProject?.environments || [];
@@ -196,7 +207,7 @@ export const SelectionPanel = ({
             })
           );
 
-          if (entry && canDeleteSecret && !entry.isRotatedSecret) {
+          if (entry && canDeleteSecret && !entry.isRotatedSecret && !entry.isHoneyTokenSecret) {
             return [
               ...accum,
               {
@@ -291,18 +302,61 @@ export const SelectionPanel = ({
   const areFoldersSelected = Boolean(Object.keys(selectedEntries[EntryType.FOLDER]).length);
   const areRotationsSelected = selectedRotationCount > 0;
 
-  const isMoveDisabled = areFoldersSelected || isRotatedSecretSelected;
+  const isMoveDisabled =
+    areFoldersSelected || isHoneyTokenSelected || Boolean(selectedHoneyTokenCount);
   let moveDisabledReason = "Moving folders is not supported";
-  if (!areFoldersSelected && isRotatedSecretSelected) {
-    moveDisabledReason = "Moving rotated secrets is not supported";
+  if ((!areFoldersSelected && isHoneyTokenSelected) || Boolean(selectedHoneyTokenCount)) {
+    moveDisabledReason = "Moving honey tokens is not supported";
   }
 
-  const isDeleteDisabled = areRotationsSelected || isRotatedSecretSelected;
-  let deleteDisabledReason = "Rotated secrets cannot be deleted via multi-select";
+  const isDeleteDisabled = areRotationsSelected || isManagedSecretSelected;
+  let deleteDisabledReason = "Rotated or honey token secrets cannot be deleted via multi-select";
   if (areRotationsSelected) {
     deleteDisabledReason =
       "Rotations cannot be deleted from this view. Use the delete action on the rotation row instead.";
   }
+
+  const selectedSecretEntries = Object.values(selectedEntries[EntryType.SECRET]).flatMap((perEnv) =>
+    Object.entries(perEnv)
+  );
+  const duplicateSourceEnvSlugs = new Set(selectedSecretEntries.map(([envSlug]) => envSlug));
+
+  const isDuplicateDisabled =
+    areFoldersSelected ||
+    isHoneyTokenSelected ||
+    Boolean(selectedHoneyTokenCount) ||
+    areRotationsSelected ||
+    isManagedSecretSelected ||
+    duplicateSourceEnvSlugs.size > 1;
+
+  let duplicateDisabledReason = "Folders cannot be duplicated";
+  if (isHoneyTokenSelected || Boolean(selectedHoneyTokenCount)) {
+    duplicateDisabledReason = "Honey token secrets cannot be duplicated";
+  } else if (areRotationsSelected || isManagedSecretSelected) {
+    duplicateDisabledReason = "Rotated secrets cannot be duplicated";
+  } else if (duplicateSourceEnvSlugs.size > 1) {
+    duplicateDisabledReason = "Selected secrets must all be from the same source environment";
+  }
+
+  const duplicateSourceEnv =
+    duplicateSourceEnvSlugs.size === 1
+      ? userAvailableEnvs.find((env) => env.slug === selectedSecretEntries[0][0])
+      : undefined;
+  const duplicateSecrets = selectedSecretEntries.map(([, secret]) => ({
+    id: secret.id,
+    name: secret.key
+  }));
+  const canCopySecretValues = selectedSecretEntries.every(
+    ([, secret]) => !secret.secretValueHidden
+  );
+
+  const duplicateSourceEnvSlugForPermission =
+    selectedKeysCount > 0 && duplicateSourceEnvSlugs.size === 1
+      ? selectedSecretEntries[0]?.[0]
+      : undefined;
+  const canCreateInDuplicateSourceEnv = Boolean(duplicateSourceEnvSlugForPermission);
+  const shouldShowBulkDuplicate =
+    selectedKeysCount > 0 && (duplicateSourceEnvSlugs.size !== 1 || canCreateInDuplicateSourceEnv);
 
   return (
     <>
@@ -339,38 +393,55 @@ export const SelectionPanel = ({
             </Tooltip>
           )}
           {shouldShowDelete && (
-            <>
-              <Tooltip open={isMoveDisabled ? undefined : false}>
-                <TooltipTrigger>
-                  <Button
-                    isDisabled={isMoveDisabled}
-                    variant="project"
-                    className="ml-2"
-                    onClick={() => handlePopUpOpen("bulkMoveSecrets")}
-                    size="xs"
-                  >
-                    <FolderInputIcon />
-                    Move
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>{moveDisabledReason}</TooltipContent>
-              </Tooltip>
-              <Tooltip open={isDeleteDisabled ? undefined : false}>
-                <TooltipTrigger>
-                  <Button
-                    isDisabled={isDeleteDisabled}
-                    variant="danger"
-                    className="ml-2"
-                    onClick={() => handlePopUpOpen("bulkDeleteEntries")}
-                    size="xs"
-                  >
-                    <TrashIcon />
-                    Delete
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>{deleteDisabledReason}</TooltipContent>
-              </Tooltip>
-            </>
+            <Tooltip open={isMoveDisabled ? undefined : false}>
+              <TooltipTrigger>
+                <Button
+                  isDisabled={isMoveDisabled}
+                  variant="project"
+                  className="ml-2"
+                  onClick={() => handlePopUpOpen("bulkMoveSecrets")}
+                  size="xs"
+                >
+                  <FolderInputIcon />
+                  Move
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{moveDisabledReason}</TooltipContent>
+            </Tooltip>
+          )}
+          {shouldShowBulkDuplicate && (
+            <Tooltip open={isDuplicateDisabled ? undefined : false}>
+              <TooltipTrigger>
+                <Button
+                  isDisabled={isDuplicateDisabled}
+                  variant="project"
+                  className="ml-2"
+                  onClick={() => handlePopUpOpen("bulkDuplicateSecrets")}
+                  size="xs"
+                >
+                  <CopyPlus />
+                  Duplicate
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{duplicateDisabledReason}</TooltipContent>
+            </Tooltip>
+          )}
+          {shouldShowDelete && (
+            <Tooltip open={isDeleteDisabled ? undefined : false}>
+              <TooltipTrigger>
+                <Button
+                  isDisabled={isDeleteDisabled}
+                  variant="danger"
+                  className="ml-2"
+                  onClick={() => handlePopUpOpen("bulkDeleteEntries")}
+                  size="xs"
+                >
+                  <TrashIcon />
+                  Delete
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{deleteDisabledReason}</TooltipContent>
+            </Tooltip>
           )}
         </div>
       </div>
@@ -408,6 +479,21 @@ export const SelectionPanel = ({
         secretsToDeleteKeys={secretsToDeleteKeys}
         usedBySecretSyncsFiltered={usedBySecretSyncsFiltered}
       />
+      {duplicateSourceEnv && (
+        <DuplicateSecretModal
+          isOpen={popUp.bulkDuplicateSecrets.isOpen}
+          onOpenChange={(isOpen) => {
+            handlePopUpToggle("bulkDuplicateSecrets", isOpen);
+            if (!isOpen) {
+              resetSelectedEntries();
+            }
+          }}
+          secrets={duplicateSecrets}
+          secretPath={secretPath}
+          sourceEnvironment={{ slug: duplicateSourceEnv.slug, name: duplicateSourceEnv.name }}
+          canCopySecretValue={canCopySecretValues}
+        />
+      )}
     </>
   );
 };

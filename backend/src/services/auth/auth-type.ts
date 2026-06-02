@@ -23,6 +23,7 @@ export enum AuthTokenType {
   IDENTITY_ACCESS_TOKEN = "identityAccessToken",
   SCIM_TOKEN = "scimToken",
   GATEWAY_ACCESS_TOKEN = "gatewayAccessToken",
+  RELAY_ACCESS_TOKEN = "relayAccessToken",
   ACCOUNT_RECOVERY_TOKEN = "accountRecoveryToken"
 }
 
@@ -41,7 +42,8 @@ export enum AuthMode {
   IDENTITY_ACCESS_TOKEN = "identityAccessToken",
   SCIM_TOKEN = "scimToken",
   MCP_JWT = "mcpJwt",
-  GATEWAY_ACCESS_TOKEN = "gatewayAccessToken"
+  GATEWAY_ACCESS_TOKEN = "gatewayAccessToken",
+  RELAY_ACCESS_TOKEN = "relayAccessToken"
 }
 
 export enum ActorType { // would extend to AWS, Azure, ...
@@ -56,12 +58,20 @@ export enum ActorType { // would extend to AWS, Azure, ...
   EST_ACCOUNT = "estAccount",
   SCEP_ACCOUNT = "scepAccount",
   UNKNOWN_USER = "unknownUser",
-  GATEWAY = "gateway"
+  GATEWAY = "gateway",
+  RELAY = "relay"
 }
 
 export type TGatewayAccessTokenJwtPayload = {
   authTokenType: AuthTokenType.GATEWAY_ACCESS_TOKEN;
   gatewayId: string;
+  orgId: string;
+  tokenVersion: number;
+};
+
+export type TRelayAccessTokenJwtPayload = {
+  authTokenType: AuthTokenType.RELAY_ACCESS_TOKEN;
+  relayId: string;
   orgId: string;
   tokenVersion: number;
 };
@@ -122,6 +132,8 @@ export type AuthModeSignUpTokenPayload = {
 export type AuthModeAccountRecoveryTokenPayload = {
   authTokenType: AuthTokenType.ACCOUNT_RECOVERY_TOKEN;
   userId: string;
+  jti: string;
+  exp: number;
 };
 
 export enum MfaMethod {

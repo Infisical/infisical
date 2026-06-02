@@ -1,6 +1,7 @@
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
+import { TDashboardHoneyToken } from "@app/hooks/api/honeyTokens/types";
 import { TSecretFolder } from "@app/hooks/api/secretFolders/types";
 import { TSecretImport } from "@app/hooks/api/secretImports/types";
 import { TSecretRotationV2 } from "@app/hooks/api/secretRotationsV2";
@@ -19,6 +20,8 @@ export type DashboardProjectSecretsOverviewResponse = {
     secrets: (SecretV3Raw | null)[];
   })[];
   totalSecretRotationCount?: number;
+  honeyTokens?: TDashboardHoneyToken[];
+  totalHoneyTokenCount?: number;
   totalCount: number;
   totalUniqueSecretsInPage: number;
   totalUniqueDynamicSecretsInPage: number;
@@ -45,11 +48,13 @@ export type DashboardProjectSecretsDetailsResponse = {
   secretRotations?: (TSecretRotationV2 & {
     secrets: (SecretV3Raw | null)[];
   })[];
+  honeyTokens?: TDashboardHoneyToken[];
   totalImportCount?: number;
   totalFolderCount?: number;
   totalDynamicSecretCount?: number;
   totalSecretCount?: number;
   totalSecretRotationCount?: number;
+  totalHoneyTokenCount?: number;
   totalCount: number;
   importedBy?: ProjectSecretsImportedBy[];
   usedBySecretSyncs?: UsedBySecretSyncs[];
@@ -76,6 +81,7 @@ export type DashboardProjectSecretsOverview = Omit<
   secretRotations?: (TSecretRotationV2 & {
     secrets: (SecretV3RawSanitized | null)[];
   })[];
+  honeyTokens?: TDashboardHoneyToken[];
 };
 
 export type DashboardProjectSecretsDetails = Omit<
@@ -86,6 +92,7 @@ export type DashboardProjectSecretsDetails = Omit<
   secretRotations?: (TSecretRotationV2 & {
     secrets: (SecretV3RawSanitized | null)[];
   })[];
+  honeyTokens?: TDashboardHoneyToken[];
 };
 
 export enum DashboardSecretsOrderBy {
@@ -106,6 +113,7 @@ export type TGetDashboardProjectSecretsOverviewDTO = {
   includeDynamicSecrets?: boolean;
   includeImports?: boolean;
   includeSecretRotations?: boolean;
+  includeHoneyTokens?: boolean;
   environments: string[];
 };
 

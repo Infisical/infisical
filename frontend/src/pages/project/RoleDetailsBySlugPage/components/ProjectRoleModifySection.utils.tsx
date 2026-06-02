@@ -20,6 +20,7 @@ import {
   ProjectPermissionCommitsActions,
   ProjectPermissionDynamicSecretActions,
   ProjectPermissionGroupActions,
+  ProjectPermissionHoneyTokenActions,
   ProjectPermissionIdentityActions,
   ProjectPermissionInsightsActions,
   ProjectPermissionKmipActions,
@@ -63,6 +64,15 @@ const AuditLogsPolicyActionSchema = z.object({
 
 const InsightsPolicyActionSchema = z.object({
   [ProjectPermissionInsightsActions.Read]: z.boolean().optional()
+});
+
+const HoneyTokenPolicyActionSchema = z.object({
+  [ProjectPermissionHoneyTokenActions.Read]: z.boolean().optional(),
+  [ProjectPermissionHoneyTokenActions.ReadCredentials]: z.boolean().optional(),
+  [ProjectPermissionHoneyTokenActions.Create]: z.boolean().optional(),
+  [ProjectPermissionHoneyTokenActions.Edit]: z.boolean().optional(),
+  [ProjectPermissionHoneyTokenActions.Reset]: z.boolean().optional(),
+  [ProjectPermissionHoneyTokenActions.Revoke]: z.boolean().optional()
 });
 
 const CertificatePolicyActionSchema = z.object({
@@ -221,7 +231,8 @@ const CertificateProfilePolicyActionSchema = z.object({
   [ProjectPermissionCertificateProfileActions.Delete]: z.boolean().optional(),
   [ProjectPermissionCertificateProfileActions.IssueCert]: z.boolean().optional(),
   [ProjectPermissionCertificateProfileActions.RevealAcmeEabSecret]: z.boolean().optional(),
-  [ProjectPermissionCertificateProfileActions.RotateAcmeEabSecret]: z.boolean().optional()
+  [ProjectPermissionCertificateProfileActions.RotateAcmeEabSecret]: z.boolean().optional(),
+  [ProjectPermissionCertificateProfileActions.ManageApplicationAttachments]: z.boolean().optional()
 });
 
 const CertificatePolicyPolicyActionSchema = z.object({
@@ -689,13 +700,19 @@ export const projectRoleFormSchema = z.object({
         .array()
         .default([]),
 
-      [ProjectPermissionSub.Commits]: CommitPolicyActionSchema.array().default([]),
+      [ProjectPermissionSub.Commits]: CommitPolicyActionSchema.extend({
+        inverted: z.boolean().optional(),
+        conditions: ConditionSchema
+      })
+        .array()
+        .default([]),
       [ProjectPermissionSub.Member]: MemberPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.Groups]: GroupPolicyActionSchemaWithConditions.array().default([]),
       [ProjectPermissionSub.Role]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.Integrations]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.Webhooks]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.ServiceTokens]: GeneralPolicyActionSchema.array().default([]),
+      [ProjectPermissionSub.HoneyTokens]: HoneyTokenPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.Settings]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.Environments]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.AuditLogs]: AuditLogsPolicyActionSchema.array().default([]),
@@ -898,7 +915,8 @@ type TConditionalFields =
   | ProjectPermissionSub.PamDomains
   | ProjectPermissionSub.McpEndpoints
   | ProjectPermissionSub.Member
-  | ProjectPermissionSub.Groups;
+  | ProjectPermissionSub.Groups
+  | ProjectPermissionSub.Commits;
 
 export const isConditionalSubjects = (
   subject: ProjectPermissionSub
@@ -925,7 +943,8 @@ export const isConditionalSubjects = (
   subject === ProjectPermissionSub.PamDomains ||
   subject === ProjectPermissionSub.McpEndpoints ||
   subject === ProjectPermissionSub.Member ||
-  subject === ProjectPermissionSub.Groups;
+  subject === ProjectPermissionSub.Groups ||
+  subject === ProjectPermissionSub.Commits;
 
 const CONDITION_DISPLAY_ORDER = [
   "userEmail",
@@ -1044,6 +1063,7 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
         ProjectPermissionSub.Integrations,
         ProjectPermissionSub.Webhooks,
         ProjectPermissionSub.ServiceTokens,
+        ProjectPermissionSub.HoneyTokens,
         ProjectPermissionSub.Settings,
         ProjectPermissionSub.Environments,
         ProjectPermissionSub.AuditLogs,
@@ -1421,6 +1441,28 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
         return;
       }
 
+      if (subject === ProjectPermissionSub.HoneyTokens) {
+        const canRead = action.includes(ProjectPermissionHoneyTokenActions.Read);
+        const canReadCredentials = action.includes(
+          ProjectPermissionHoneyTokenActions.ReadCredentials
+        );
+        const canCreate = action.includes(ProjectPermissionHoneyTokenActions.Create);
+        const canEdit = action.includes(ProjectPermissionHoneyTokenActions.Edit);
+        const canReset = action.includes(ProjectPermissionHoneyTokenActions.Reset);
+        const canRevoke = action.includes(ProjectPermissionHoneyTokenActions.Revoke);
+
+        if (!formVal[subject]) formVal[subject] = [{}];
+
+        if (canRead) formVal[subject]![0][ProjectPermissionHoneyTokenActions.Read] = true;
+        if (canReadCredentials)
+          formVal[subject]![0][ProjectPermissionHoneyTokenActions.ReadCredentials] = true;
+        if (canCreate) formVal[subject]![0][ProjectPermissionHoneyTokenActions.Create] = true;
+        if (canEdit) formVal[subject]![0][ProjectPermissionHoneyTokenActions.Edit] = true;
+        if (canReset) formVal[subject]![0][ProjectPermissionHoneyTokenActions.Reset] = true;
+        if (canRevoke) formVal[subject]![0][ProjectPermissionHoneyTokenActions.Revoke] = true;
+        return;
+      }
+
       const canRead = action.includes(ProjectPermissionActions.Read);
       const canEdit = action.includes(ProjectPermissionActions.Edit);
       const canDelete = action.includes(ProjectPermissionActions.Delete);
@@ -1691,10 +1733,35 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
       const canRead = action.includes(ProjectPermissionCommitsActions.Read);
       const canPerformRollback = action.includes(ProjectPermissionCommitsActions.PerformRollback);
 
+      if (!formVal[subject]) formVal[subject] = [];
+      formVal[subject]!.push({
+        [ProjectPermissionCommitsActions.Read]: canRead,
+        [ProjectPermissionCommitsActions.PerformRollback]: canPerformRollback,
+        conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
+        inverted
+      });
+      return;
+    }
+
+    if (subject === ProjectPermissionSub.HoneyTokens) {
+      const canRead = action.includes(ProjectPermissionHoneyTokenActions.Read);
+      const canReadCredentials = action.includes(
+        ProjectPermissionHoneyTokenActions.ReadCredentials
+      );
+      const canCreate = action.includes(ProjectPermissionHoneyTokenActions.Create);
+      const canEdit = action.includes(ProjectPermissionHoneyTokenActions.Edit);
+      const canReset = action.includes(ProjectPermissionHoneyTokenActions.Reset);
+      const canRevoke = action.includes(ProjectPermissionHoneyTokenActions.Revoke);
+
       if (!formVal[subject]) formVal[subject] = [{}];
-      if (canRead) formVal[subject]![0][ProjectPermissionCommitsActions.Read] = true;
-      if (canPerformRollback)
-        formVal[subject]![0][ProjectPermissionCommitsActions.PerformRollback] = true;
+
+      if (canRead) formVal[subject]![0][ProjectPermissionHoneyTokenActions.Read] = true;
+      if (canReadCredentials)
+        formVal[subject]![0][ProjectPermissionHoneyTokenActions.ReadCredentials] = true;
+      if (canCreate) formVal[subject]![0][ProjectPermissionHoneyTokenActions.Create] = true;
+      if (canEdit) formVal[subject]![0][ProjectPermissionHoneyTokenActions.Edit] = true;
+      if (canReset) formVal[subject]![0][ProjectPermissionHoneyTokenActions.Reset] = true;
+      if (canRevoke) formVal[subject]![0][ProjectPermissionHoneyTokenActions.Revoke] = true;
       return;
     }
 
@@ -2430,6 +2497,42 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       },
       { label: "Modify", value: "edit", description: "Update service token configuration" },
       { label: "Remove", value: "delete", description: "Revoke service tokens" }
+    ]
+  },
+  [ProjectPermissionSub.HoneyTokens]: {
+    title: "Honey Tokens",
+    description: "Create and manage honey tokens and triggered events",
+    actions: [
+      {
+        label: "Read",
+        value: ProjectPermissionHoneyTokenActions.Read,
+        description: "View honey tokens and events"
+      },
+      {
+        label: "Read Credentials",
+        value: ProjectPermissionHoneyTokenActions.ReadCredentials,
+        description: "Reveal honey token credentials"
+      },
+      {
+        label: "Create",
+        value: ProjectPermissionHoneyTokenActions.Create,
+        description: "Create honey tokens"
+      },
+      {
+        label: "Modify",
+        value: ProjectPermissionHoneyTokenActions.Edit,
+        description: "Update honey token metadata and mappings"
+      },
+      {
+        label: "Reset",
+        value: ProjectPermissionHoneyTokenActions.Reset,
+        description: "Reset triggered honey tokens"
+      },
+      {
+        label: "Revoke",
+        value: ProjectPermissionHoneyTokenActions.Revoke,
+        description: "Revoke honey tokens and credentials"
+      }
     ]
   },
   [ProjectPermissionSub.Settings]: {
@@ -3467,6 +3570,7 @@ const SecretsManagerPermissionSubjects = (enabled = false) => ({
   [ProjectPermissionSub.SecretRollback]: enabled,
   [ProjectPermissionSub.SecretRotation]: enabled,
   [ProjectPermissionSub.ServiceTokens]: enabled,
+  [ProjectPermissionSub.HoneyTokens]: enabled,
   [ProjectPermissionSub.Commits]: enabled,
   [ProjectPermissionSub.Insights]: enabled,
   [ProjectPermissionSub.SecretEventSubscriptions]: enabled,
@@ -3948,6 +4052,10 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
         {
           subject: ProjectPermissionSub.Commits,
           actions: [ProjectPermissionCommitsActions.Read]
+        },
+        {
+          subject: ProjectPermissionSub.HoneyTokens,
+          actions: [ProjectPermissionHoneyTokenActions.Read]
         }
       ]
     },
@@ -4009,6 +4117,10 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
         {
           subject: ProjectPermissionSub.Commits,
           actions: Object.values(ProjectPermissionCommitsActions)
+        },
+        {
+          subject: ProjectPermissionSub.HoneyTokens,
+          actions: Object.values(ProjectPermissionHoneyTokenActions)
         }
       ]
     },
@@ -4028,6 +4140,10 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
       {
         subject: ProjectPermissionSub.ServiceTokens,
         actions: Object.values(ProjectPermissionActions)
+      },
+      {
+        subject: ProjectPermissionSub.HoneyTokens,
+        actions: Object.values(ProjectPermissionHoneyTokenActions)
       },
       {
         subject: ProjectPermissionSub.Webhooks,

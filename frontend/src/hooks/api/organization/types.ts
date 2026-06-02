@@ -171,10 +171,39 @@ export type TOrgIdentitiesList = {
 
 export enum OrgIdentityOrderBy {
   Name = "name",
-  Role = "role"
+  Role = "role",
+  LastLogin = "lastLogin"
 }
 
 export enum OrgMembershipStatus {
   Invited = "invited",
   Accepted = "accepted"
 }
+
+export type TOrgProductStats = {
+  secretManager: {
+    secretsCount: number;
+    environmentsCount: number;
+    projectsCount: number;
+  };
+  certificateManager: {
+    certificatesCount: number;
+    certificateAuthoritiesCount: number;
+    signersCount: number;
+  };
+  kms: {
+    keysCount: number;
+    clientsCount: number;
+    projectsCount: number;
+  };
+  secretScanning: {
+    dataSourcesCount: number;
+    resourcesCount: number;
+    projectsCount: number;
+  };
+  pam: {
+    accountsCount: number;
+    resourcesCount: number;
+    projectsCount: number;
+  };
+};

@@ -12,6 +12,7 @@ import { delay } from "@app/lib/delay";
 import { BadRequestError, CryptographyError, NotFoundError } from "@app/lib/errors";
 import { isPrivateIp } from "@app/lib/ip/ipRange";
 import { ProcessedPermissionRules } from "@app/lib/knex/permission-filter-utils";
+import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
@@ -31,6 +32,7 @@ import {
   CertKeyUsage,
   CertStatus
 } from "@app/services/certificate/certificate-types";
+import { CertificateRequestCancelledError } from "@app/services/certificate-common/certificate-request-errors";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TPkiSubscriberDALFactory } from "@app/services/pki-subscriber/pki-subscriber-dal";
@@ -56,6 +58,8 @@ import {
 import { azureDnsDeleteTxtRecord, azureDnsInsertTxtRecord } from "./dns-providers/azure-dns";
 import { cloudflareDeleteTxtRecord, cloudflareInsertTxtRecord } from "./dns-providers/cloudflare";
 import { dnsMadeEasyDeleteTxtRecord, dnsMadeEasyInsertTxtRecord } from "./dns-providers/dns-made-easy";
+
+const UNCHANGED_CREDENTIAL_SENTINEL = "__INFISICAL_UNCHANGED__";
 
 const validateDnsResolver = (resolver: string): void => {
   const appCfg = getConfig();
@@ -132,7 +136,7 @@ type TAcmeCertificateAuthorityFnsDeps = {
     TCertificateAuthorityDALFactory,
     "create" | "transaction" | "findByIdWithAssociatedCa" | "updateById" | "findWithAssociatedCa" | "findById"
   >;
-  externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "create" | "update">;
+  externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "create" | "update" | "findOne">;
   certificateDAL: Pick<TCertificateDALFactory, "create" | "transaction" | "updateById">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
@@ -297,6 +301,8 @@ export const orderCertificate = async (
     keyAlgorithm,
     isRenewal,
     originalCertificateId,
+    onProgress,
+    isCancelled,
     abortSignal
   }: {
     caId: string;
@@ -313,11 +319,21 @@ export const orderCertificate = async (
     keyAlgorithm?: string;
     isRenewal?: boolean;
     originalCertificateId?: string;
+    onProgress?: (message: string) => Promise<void> | void;
+    isCancelled?: () => Promise<boolean>;
     abortSignal?: AbortSignal;
   },
   deps: TOrderCertificateDeps,
   tx?: Knex
 ) => {
+  const reportProgress = async (message: string) => {
+    if (!onProgress) return;
+    try {
+      await onProgress(message);
+    } catch (err) {
+      logger.warn(err, `ACME orderCertificate onProgress callback failed [caId=${caId}]`);
+    }
+  };
   const {
     appConnectionDAL,
     certificateAuthorityDAL,
@@ -403,6 +419,8 @@ export const orderCertificate = async (
   const appConnection = await appConnectionDAL.findById(acmeCa.configuration.dnsAppConnectionId);
   const connection = await decryptAppConnection(appConnection, kmsService);
 
+  await reportProgress("Submitting order to the certificate authority");
+
   const pem = await acmeClient.auto({
     csr,
     email: acmeCa.configuration.accountEmail,
@@ -416,6 +434,8 @@ export const orderCertificate = async (
       if (challenge.type !== "dns-01") {
         throw new Error("Unsupported challenge type");
       }
+
+      await reportProgress(`Setting up DNS verification for ${authz.identifier.value}`);
 
       const { recordName, recordValue } = await getAcmeChallengeRecord(
         acmeCa.configuration.dnsProviderConfig.provider,
@@ -471,9 +491,12 @@ export const orderCertificate = async (
         acmeCa.configuration.dnsProviderConfig.provider === AcmeDnsProvider.AzureDNS
           ? recordName
           : `_acme-challenge.${authz.identifier.value}`;
+      await reportProgress(`Waiting for DNS records to propagate for ${authz.identifier.value}`);
       await waitForDnsPropagation(lookupName, recordValue, acmeCa.configuration.dnsResolver);
+      await reportProgress(`The certificate authority is validating ${authz.identifier.value}`);
     },
     challengeRemoveFn: async (authz, challenge, keyAuthorization) => {
+      await reportProgress(`The certificate authority is issuing the certificate for ${authz.identifier.value}`);
       const { recordName, recordValue } = await getAcmeChallengeRecord(
         acmeCa.configuration.dnsProviderConfig.provider,
         authz.identifier.value,
@@ -525,6 +548,9 @@ export const orderCertificate = async (
     }
   });
 
+  if (isCancelled && (await isCancelled())) {
+    throw new CertificateRequestCancelledError();
+  }
   throwIfAcmeOrderAborted(abortSignal);
 
   const [leafCert, parentCert] = acme.crypto.splitPemChain(pem);
@@ -813,6 +839,15 @@ export const AcmeCertificateAuthorityFns = ({
           actor
         );
 
+        let resolvedEabHmacKey = eabHmacKey;
+        if (eabHmacKey === UNCHANGED_CREDENTIAL_SENTINEL || eabHmacKey === undefined) {
+          const existingExternalCa = await externalCertificateAuthorityDAL.findOne({ caId: id, type: CaType.ACME }, tx);
+          const existingConfig = existingExternalCa?.configuration as DBConfigurationColumn | undefined;
+          resolvedEabHmacKey = existingConfig?.eabHmacKey;
+        } else if (eabHmacKey === "") {
+          resolvedEabHmacKey = undefined;
+        }
+
         await externalCertificateAuthorityDAL.update(
           {
             caId: id,
@@ -826,7 +861,7 @@ export const AcmeCertificateAuthorityFns = ({
               dnsProvider: dnsProviderConfig.provider,
               hostedZoneId: dnsProviderConfig.hostedZoneId,
               eabKid,
-              eabHmacKey,
+              eabHmacKey: resolvedEabHmacKey,
               dnsResolver
             }
           },
@@ -932,6 +967,8 @@ export const AcmeCertificateAuthorityFns = ({
     keyAlgorithm,
     isRenewal,
     originalCertificateId,
+    onProgress,
+    isCancelled,
     abortSignal
   }: {
     caId: string;
@@ -947,6 +984,8 @@ export const AcmeCertificateAuthorityFns = ({
     keyAlgorithm?: string;
     isRenewal?: boolean;
     originalCertificateId?: string;
+    onProgress?: (message: string) => Promise<void> | void;
+    isCancelled?: () => Promise<boolean>;
     abortSignal?: AbortSignal;
   }) => {
     return orderCertificate(
@@ -965,6 +1004,8 @@ export const AcmeCertificateAuthorityFns = ({
         keyAlgorithm,
         isRenewal,
         originalCertificateId,
+        onProgress,
+        isCancelled,
         abortSignal
       },
       {

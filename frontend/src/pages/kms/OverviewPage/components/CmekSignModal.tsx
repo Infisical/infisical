@@ -17,6 +17,7 @@ import {
   TextArea,
   Tooltip
 } from "@app/components/v2";
+import { getDefaultSigningAlgorithm } from "@app/helpers/kms";
 import { useTimedReset } from "@app/hooks";
 import { SigningAlgorithm, TCmek, useCmekSign } from "@app/hooks/api/cmeks";
 
@@ -47,9 +48,7 @@ const SignForm = ({ cmek }: FormProps) => {
   } = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      signingAlgorithm: cmek?.encryptionAlgorithm?.startsWith("RSA")
-        ? SigningAlgorithm.RSASSA_PSS_SHA_512
-        : SigningAlgorithm.ECDSA_SHA_256,
+      signingAlgorithm: getDefaultSigningAlgorithm(cmek),
       isBase64Encoded: false
     }
   });
@@ -74,11 +73,12 @@ const SignForm = ({ cmek }: FormProps) => {
     setCopySignature("Copied to Clipboard");
   };
 
-  const allowedSigningAlgorithms = Object.values(SigningAlgorithm).filter((a) =>
-    cmek?.encryptionAlgorithm?.startsWith("RSA")
-      ? a.toLowerCase().startsWith("rsa")
-      : a.toLowerCase().startsWith("ecdsa")
-  );
+  const allowedSigningAlgorithms = Object.values(SigningAlgorithm).filter((a) => {
+    if (cmek?.encryptionAlgorithm?.startsWith("ML_DSA"))
+      return (a as string) === (cmek.encryptionAlgorithm as string);
+    if (cmek?.encryptionAlgorithm?.startsWith("RSA")) return a.toLowerCase().startsWith("rsa");
+    return a.toLowerCase().startsWith("ecdsa");
+  });
 
   return (
     <form onSubmit={handleSubmit(handleSignData)}>

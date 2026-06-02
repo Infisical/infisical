@@ -1,0 +1,133 @@
+---
+title: "Milvus"
+description: "Learn how to dynamically generate Milvus user credentials with custom privileges."
+---
+
+import DynamicSecretUsernameTemplateParamField from "/snippets/documentation/platform/dynamic-secrets/dynamic-secret-username-template-field.mdx";
+
+The Infisical Milvus dynamic secret allows you to generate Milvus credentials on demand, with configurable privileges scoped to the lease.
+
+## Prerequisites
+
+1. Ensure that authentication and RBAC are enabled on your Milvus instance by setting `common.security.authorizationEnabled=true`.
+2. Have an admin user (defaults to `root` / `Milvus`) available to manage users, roles, and privileges via the [Milvus REST API](https://milvus.io/api-reference/restful/v2.5.x/About.md).
+
+## Set up Dynamic Secrets with Milvus
+
+<Steps>
+  <Step title="Open Secret Overview Dashboard">
+    Open the Secret Overview dashboard and select the environment in which you would like to add a dynamic secret.
+  </Step>
+  <Step title="Click on the 'Add Dynamic Secret' button">
+    ![Add Dynamic Secret Button](../../../images/platform/dynamic-secrets/add-dynamic-secret-button.png)
+  </Step>
+  <Step title="Select Milvus">
+    Choose Milvus from the list of available dynamic secret providers.
+    ![Milvus Option](../../../images/platform/dynamic-secrets/milvus/milvus_option.png)
+  </Step>
+  <Step title="Provide the inputs for dynamic secret parameters">
+    ![Milvus form](../../../images/platform/dynamic-secrets/milvus/milvus_form.png)
+    <ParamField path="Secret Name" type="string" required>
+      Name by which you want the secret to be referenced
+    </ParamField>
+
+    <ParamField path="Default TTL" type="string" required>
+      Default time-to-live for a generated secret (it is possible to modify this value after a secret is generated)
+    </ParamField>
+
+    <ParamField path="Max TTL" type="string" required>
+      Maximum time-to-live for a generated secret.
+    </ParamField>
+
+    <ParamField path="Host" type="string" required>
+      Your Milvus endpoint. Include the URL scheme (`http://` or `https://`). _Example: `http://localhost`._ If the scheme is omitted, `http://` is assumed.
+    </ParamField>
+
+    <ParamField path="Port" type="number" required>
+      The port your Milvus REST API listens on. Defaults to `19530`.
+    </ParamField>
+
+    <ParamField path="Admin Username" type="string" required>
+      The admin username used to manage users, roles, and privileges (e.g. `root`).
+    </ParamField>
+
+    <ParamField path="Admin Password" type="string" required>
+      The password for the admin user.
+    </ParamField>
+
+    <ParamField path="Default Database" type="string" required>
+      Default Milvus database used as the `dbName` for granted privileges when not explicitly overridden per privilege. Defaults to `default`.
+    </ParamField>
+
+    <ParamField path="Privileges" type="array">
+      Privileges granted to an ephemeral role bound to the lease user. Leave empty to create a user with only the built-in `public` role.
+
+      Each privilege entry has:
+      - `Object Type` — Milvus object type (`Collection`, `Database`, `Global`, `Cluster`, or `User`).
+      - `Object Name` — Name of the target object (e.g. a collection name) or `*` to apply to all.
+      - `Privilege` — Milvus privilege name or built-in privilege group (e.g. `Search`, `Query`, `COLL_RO`, `DB_Admin`). See the [Milvus privilege reference](https://milvus.io/docs/grant_privileges.md) for the full list.
+      - `DB Name` — Optional override for the target database. Falls back to the provider's Default Database when blank.
+
+      **Examples:**
+      - Read-only on all collections: `{ Object Type: Collection, Object Name: *, Privilege: COLL_RO }`
+      - Full database admin: `{ Object Type: Database, Object Name: *, Privilege: DB_Admin }`
+      - Search on a specific collection: `{ Object Type: Collection, Object Name: my_collection, Privilege: Search }`
+    </ParamField>
+
+    <DynamicSecretUsernameTemplateParamField />
+
+    <ParamField path="Gateway" type="string">
+      A gateway may be required if your Milvus instance is not publicly accessible (e.g. in a private VPC). Select a configured gateway to route traffic through it.
+    </ParamField>
+
+    <ParamField path="CA Certificate" type="string">
+      Optional PEM-encoded CA certificate for verifying the Milvus server's TLS certificate. Required when Milvus uses a self-signed or private CA. Providing a CA also enables HTTPS automatically.
+    </ParamField>
+
+    <ParamField path="SSL Reject Unauthorized" type="boolean" default="true">
+      If enabled, the server certificate will be verified against the list of supplied CAs. Disable this option if you are using a self-signed certificate.
+    </ParamField>
+
+  </Step>
+  <Step title="Click `Submit`">
+    After submitting the form, you will see the Milvus dynamic secret created in the dashboard.
+
+    <Note>
+      Infisical validates the connection by calling the Milvus `/v2/vectordb/users/describe` endpoint. If validation fails, double-check the host, port, and admin credentials.
+    </Note>
+
+  </Step>
+  <Step title="Generate dynamic secrets">
+    Once configured, click `Generate` (or `New Lease`) on the dynamic secret to issue an on-demand credential.
+
+    Each lease creates a Milvus user with a random username and password. When you configure privileges, Infisical also creates an ephemeral role per lease, grants the configured privileges to it, and assigns the role to the user. On revoke, the user and role are deleted together.
+
+    ![Provision Lease](/images/platform/dynamic-secrets/provision-lease.png)
+
+    <Tip>
+      Ensure that the TTL for the lease falls within the maximum TTL defined when configuring the dynamic secret.
+    </Tip>
+
+    Once you click the `Submit` button, a new secret lease will be generated and the credentials from it will be shown to you.
+
+    ![Provision Lease](/images/platform/dynamic-secrets/lease-values.png)
+
+  </Step>
+</Steps>
+
+## Audit or Revoke Leases
+
+Once you have created one or more leases, you can access them by clicking on the dynamic secret item on the dashboard. From there you can view the expiration time or revoke a lease early.
+
+![Provision Lease](/images/platform/dynamic-secrets/lease-data.png)
+
+## Renew Leases
+
+To extend the life of a generated lease, click the **Renew** button.
+
+![Provision Lease](/images/platform/dynamic-secrets/dynamic-secret-lease-renew.png)
+
+<Warning>
+  Lease renewals cannot exceed the maximum TTL set when configuring the dynamic
+  secret.
+</Warning>

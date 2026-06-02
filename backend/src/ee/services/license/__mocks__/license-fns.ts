@@ -37,6 +37,8 @@ export const getDefaultOnPremFeatures = () => {
     machineIdentityAuthTemplates: false,
     pkiLegacyTemplates: false,
     emailDomainVerification: true,
+    honeyTokens: false,
+    honeyTokenLimit: 0,
     gatewayPool: false,
     fips: true
   };

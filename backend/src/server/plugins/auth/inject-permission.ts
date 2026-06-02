@@ -5,7 +5,7 @@ import { ActorType } from "@app/services/auth/auth-type";
 
 // inject permission type needed based on auth extracted
 export const injectPermission = fp(async (server) => {
-  server.decorateRequest("permission", null);
+  server.decorateRequest("permission");
   server.addHook("onRequest", async (req) => {
     if (!req.auth) return;
 
@@ -73,6 +73,19 @@ export const injectPermission = fp(async (server) => {
 
       logger.info(
         `injectPermission: Injecting permissions for [permissionsForGateway=${req.auth.gatewayId}] [type=${ActorType.GATEWAY}]`
+      );
+    } else if (req.auth.actor === ActorType.RELAY) {
+      req.permission = {
+        type: ActorType.RELAY,
+        id: req.auth.relayId,
+        orgId: req.auth.orgId,
+        rootOrgId: req.auth.rootOrgId,
+        parentOrgId: req.auth.parentOrgId,
+        authMethod: null
+      };
+
+      logger.info(
+        `injectPermission: Injecting permissions for [permissionsForRelay=${req.auth.relayId}] [type=${ActorType.RELAY}]`
       );
     }
   });

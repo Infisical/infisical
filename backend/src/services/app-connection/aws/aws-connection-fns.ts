@@ -7,6 +7,7 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { AppConnection, AWSRegion } from "@app/services/app-connection/app-connection-enums";
+import { TAppConnectionRaw } from "@app/services/app-connection/app-connection-types";
 
 import { AwsConnectionMethod } from "./aws-connection-enums";
 import { TAwsConnectionConfig } from "./aws-connection-types";
@@ -29,7 +30,7 @@ export const getAwsConnectionConfig = async (appConnection: TAwsConnectionConfig
   let secretAccessKey: string;
   let sessionToken: undefined | string;
 
-  const { method, credentials, orgId } = appConnection;
+  const { method, credentials, orgId, projectId, version } = appConnection;
 
   switch (method) {
     case AwsConnectionMethod.AssumeRole: {
@@ -46,11 +47,14 @@ export const getAwsConnectionConfig = async (appConnection: TAwsConnectionConfig
             : undefined // if hosting on AWS
       });
 
+      // v1 (legacy) always used orgId; v2+ uses projectId when available, orgId otherwise.
+      const externalId = (version ?? 1) >= 2 ? (projectId ?? orgId) : orgId;
+
       const command = new AssumeRoleCommand({
         RoleArn: credentials.roleArn,
         RoleSessionName: `infisical-app-connection-${crypto.nativeCrypto.randomUUID()}`,
         DurationSeconds: 900, // 15 mins
-        ExternalId: orgId
+        ExternalId: externalId
       });
 
       const assumeRes = await client.send(command);
@@ -83,6 +87,19 @@ export const getAwsConnectionConfig = async (appConnection: TAwsConnectionConfig
     }
   };
 };
+
+export const buildAwsConnectionConfig = (
+  connection: Pick<TAppConnectionRaw, "orgId" | "projectId" | "version" | "method">,
+  credentials: TAwsConnectionConfig["credentials"]
+): TAwsConnectionConfig =>
+  ({
+    app: AppConnection.AWS,
+    method: connection.method as AwsConnectionMethod,
+    credentials,
+    orgId: connection.orgId,
+    projectId: connection.projectId,
+    version: connection.version
+  }) as TAwsConnectionConfig;
 
 export const validateAwsConnectionCredentials = async (appConnection: TAwsConnectionConfig) => {
   try {

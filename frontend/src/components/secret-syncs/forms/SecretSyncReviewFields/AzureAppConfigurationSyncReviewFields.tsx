@@ -1,7 +1,7 @@
 import { useFormContext } from "react-hook-form";
 
-import { GenericFieldLabel } from "@app/components/secret-syncs";
 import { TSecretSyncForm } from "@app/components/secret-syncs/forms/schemas";
+import { Detail, DetailLabel, DetailValue } from "@app/components/v3";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
 export const AzureAppConfigurationSyncReviewFields = () => {
@@ -13,8 +13,14 @@ export const AzureAppConfigurationSyncReviewFields = () => {
 
   return (
     <>
-      <GenericFieldLabel label="Configuration URL">{vaultBaseUrl}</GenericFieldLabel>
-      <GenericFieldLabel label="Label">{label}</GenericFieldLabel>
+      <Detail>
+        <DetailLabel>Configuration URL</DetailLabel>
+        <DetailValue>{vaultBaseUrl}</DetailValue>
+      </Detail>
+      <Detail>
+        <DetailLabel>Label</DetailLabel>
+        <DetailValue>{label}</DetailValue>
+      </Detail>
     </>
   );
 };

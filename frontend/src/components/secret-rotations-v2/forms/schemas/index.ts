@@ -15,12 +15,14 @@ import { LdapPasswordRotationMethod } from "@app/hooks/api/secretRotationsV2/typ
 import { UnixLinuxLocalAccountRotationMethod } from "@app/hooks/api/secretRotationsV2/types/unix-linux-local-account-rotation";
 import { WindowsLocalAccountRotationMethod } from "@app/hooks/api/secretRotationsV2/types/windows-local-account-rotation";
 
+import { DatadogApplicationKeySecretRotationSchema } from "./datadog-application-key-secret-rotation-schema";
 import { DbtServiceTokenRotationSchema } from "./dbt-service-token-rotation-schema";
 import { HpIloRotationSchema } from "./hp-ilo-rotation-schema";
 import { OktaClientSecretRotationSchema } from "./okta-client-secret-rotation-schema";
 import { OpenRouterApiKeyRotationSchema } from "./open-router-api-key-rotation-schema";
 import { OracleDBCredentialsRotationSchema } from "./oracledb-credentials-rotation-schema";
 import { RedisCredentialsRotationSchema } from "./redis-credentials-rotation-schema";
+import { SalesforceOauthCredentialsRotationSchema } from "./salesforce-oauth-credentials-rotation-schema";
 import { SupabaseApiKeyRotationSchema } from "./supabase-api-key-rotation-schema";
 import { UnixLinuxLocalAccountRotationSchema } from "./unix-linux-local-account-rotation-schema";
 import { WindowsLocalAccountRotationSchema } from "./windows-local-account-rotation-schema";
@@ -46,7 +48,9 @@ export const SecretRotationV2FormSchema = (isUpdate: boolean) =>
         WindowsLocalAccountRotationSchema,
         OpenRouterApiKeyRotationSchema,
         HpIloRotationSchema,
-        SupabaseApiKeyRotationSchema
+        SupabaseApiKeyRotationSchema,
+        SalesforceOauthCredentialsRotationSchema,
+        DatadogApplicationKeySecretRotationSchema
       ]),
       z.object({ id: z.string().optional() })
     )

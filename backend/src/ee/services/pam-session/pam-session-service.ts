@@ -139,9 +139,7 @@ export const pamSessionServiceFactory = ({
 
     const sessions = await pamSessionDAL.findByProjectId(projectId);
 
-    return {
-      sessions: await Promise.all(sessions.map((session) => decryptSession(session, projectId, kmsService)))
-    };
+    return { sessions };
   };
 
   const updateLogsById = async ({ sessionId, logs }: TUpdateSessionLogsDTO, actor: OrgServiceActor) => {
@@ -249,14 +247,16 @@ export const pamSessionServiceFactory = ({
     }
 
     const updatedSession = await pamSessionDAL.endSessionById(sessionId);
-    if (!updatedSession) {
-      if (session.status !== PamSessionStatus.Ended && session.status !== PamSessionStatus.Terminated) {
-        throw new BadRequestError({ message: "Cannot end sessions that are not active or starting" });
-      }
-      return { session, projectId: session.projectId, alreadyEnded: true };
+
+    if (
+      !updatedSession &&
+      session.status !== PamSessionStatus.Ended &&
+      session.status !== PamSessionStatus.Terminated
+    ) {
+      throw new BadRequestError({ message: "Cannot end sessions that are not active or starting" });
     }
 
-    // Fire-and-forget AI summarization
+    // Always queue — the gateway calling end means logs are uploaded.
     void (async () => {
       try {
         await pamSessionAiSummaryService.queueAiSummary(sessionId, session.projectId);
@@ -265,7 +265,7 @@ export const pamSessionServiceFactory = ({
       }
     })();
 
-    return { session: updatedSession, projectId: session.projectId, alreadyEnded: false };
+    return { session: updatedSession ?? session, projectId: session.projectId, alreadyEnded: !updatedSession };
   };
 
   const terminateSessionById = async (sessionId: string, actor: OrgServiceActor) => {
@@ -308,7 +308,7 @@ export const pamSessionServiceFactory = ({
       void (async () => {
         let relayConn: net.Socket | null = null;
         try {
-          const user = await userDAL.findById(actor.id);
+          const user = await requestMemoize(requestMemoKeys.userFindById(actor.id), () => userDAL.findById(actor.id));
           const certs = await gatewayV2Service.getPAMConnectionDetails({
             gatewayId: session.gatewayId,
             sessionId,

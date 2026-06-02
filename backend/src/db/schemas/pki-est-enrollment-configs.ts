@@ -15,7 +15,8 @@ export const PkiEstEnrollmentConfigsSchema = z.object({
   hashedPassphrase: z.string(),
   encryptedCaChain: zodBuffer.nullable().optional(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  applicationProfileId: z.string().uuid().nullable().optional()
 });
 
 export type TPkiEstEnrollmentConfigs = z.infer<typeof PkiEstEnrollmentConfigsSchema>;

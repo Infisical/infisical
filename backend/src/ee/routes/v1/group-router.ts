@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { GroupsSchema, IdentitiesSchema, OrgMembershipRole, ProjectsSchema } from "@app/db/schemas";
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import {
   FilterMemberType,
   FilterReturnedMachineIdentities,
@@ -14,9 +15,11 @@ import { OrderByDirection } from "@app/lib/types";
 import { CharacterType, characterValidator } from "@app/lib/validator/validate-string";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { SanitizedUserSchema } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const GroupIdentityResponseSchema = IdentitiesSchema.pick({
   id: true,
@@ -41,8 +44,8 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
       operationId: "createGroup",
       tags: [ApiDocsTags.Groups],
       body: z.object({
-        name: z.string().trim().min(1).max(50).describe(GROUPS.CREATE.name),
-        slug: slugSchema({ min: 5, max: 36 }).optional().describe(GROUPS.CREATE.slug),
+        name: z.string().trim().min(1).max(255).describe(GROUPS.CREATE.name),
+        slug: slugSchema({ min: 5, max: 255 }).optional().describe(GROUPS.CREATE.slug),
         role: z.string().trim().min(1).default(OrgMembershipRole.NoAccess).describe(GROUPS.CREATE.role)
       }),
       response: {
@@ -57,6 +60,32 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId,
         ...req.body
       });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.CREATE_GROUP,
+          metadata: {
+            groupId: group.id,
+            name: group.name,
+            slug: group.slug,
+            role: req.body.role
+          }
+        }
+      });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.GroupCreated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            groupId: group.id,
+            name: group.name
+          }
+        })
+        .catch(() => {});
 
       return group;
     }
@@ -139,8 +168,8 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
       }),
       body: z
         .object({
-          name: z.string().trim().min(1).describe(GROUPS.UPDATE.name),
-          slug: slugSchema({ min: 5, max: 36 }).describe(GROUPS.UPDATE.slug),
+          name: z.string().trim().min(1).max(255).describe(GROUPS.UPDATE.name),
+          slug: slugSchema({ min: 5, max: 255 }).describe(GROUPS.UPDATE.slug),
           role: z.string().trim().min(1).describe(GROUPS.UPDATE.role)
         })
         .partial(),
@@ -157,6 +186,32 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId,
         ...req.body
       });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.UPDATE_GROUP,
+          metadata: {
+            groupId: group.id,
+            name: req.body.name,
+            slug: req.body.slug,
+            role: req.body.role
+          }
+        }
+      });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.GroupUpdated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            groupId: group.id,
+            name: group.name
+          }
+        })
+        .catch(() => {});
 
       return group;
     }
@@ -181,13 +236,50 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const group = await server.services.group.deleteGroup({
+      const { group, isUnlinked } = await server.services.group.deleteGroup({
         id: req.params.id,
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId
       });
+
+      if (group) {
+        await server.services.auditLog.createAuditLog({
+          ...req.auditLogInfo,
+          orgId: req.permission.orgId,
+          event: isUnlinked
+            ? {
+                type: EventType.UNLINK_GROUP_FROM_SUB_ORG,
+                metadata: {
+                  groupId: group.id,
+                  groupName: group.name
+                }
+              }
+            : {
+                type: EventType.DELETE_GROUP,
+                metadata: {
+                  groupId: group.id,
+                  name: group.name,
+                  slug: group.slug
+                }
+              }
+        });
+
+        if (!isUnlinked) {
+          void server.services.telemetry
+            .sendPostHogEvents({
+              event: PostHogEventTypes.GroupDeleted,
+              distinctId: getTelemetryDistinctId(req),
+              organizationId: req.permission.orgId,
+              properties: {
+                groupId: group.id,
+                name: group.name
+              }
+            })
+            .catch(() => {});
+        }
+      }
 
       return group;
     }
@@ -499,7 +591,7 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const user = await server.services.group.addUserToGroup({
+      const { user, group } = await server.services.group.addUserToGroup({
         id: req.params.id,
         username: req.params.username,
         actor: req.permission.type,
@@ -507,6 +599,29 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId
       });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.ADD_USER_TO_GROUP,
+          metadata: {
+            groupId: group.id,
+            groupName: group.name,
+            userId: user.id,
+            username: user.username
+          }
+        }
+      });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.GroupMemberAdded,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: { groupId: group.id, memberType: "user" }
+        })
+        .catch(() => {});
 
       return user;
     }
@@ -534,7 +649,7 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const machineIdentity = await server.services.group.addMachineIdentityToGroup({
+      const { identity, group } = await server.services.group.addMachineIdentityToGroup({
         id: req.params.id,
         identityId: req.params.machineIdentityId,
         actor: req.permission.type,
@@ -543,7 +658,29 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId
       });
 
-      return machineIdentity;
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.ADD_IDENTITY_TO_GROUP,
+          metadata: {
+            groupId: group.id,
+            groupName: group.name,
+            identityId: identity.id
+          }
+        }
+      });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.GroupMemberAdded,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: { groupId: group.id, memberType: "identity" }
+        })
+        .catch(() => {});
+
+      return identity;
     }
   });
 
@@ -573,7 +710,7 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const user = await server.services.group.removeUserFromGroup({
+      const { user, group } = await server.services.group.removeUserFromGroup({
         id: req.params.id,
         username: req.params.username,
         actor: req.permission.type,
@@ -581,6 +718,32 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId
       });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.REMOVE_USER_FROM_GROUP,
+          metadata: {
+            groupId: group.id,
+            groupName: group.name,
+            userId: user.id,
+            username: user.username
+          }
+        }
+      });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.GroupMemberRemoved,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            groupId: group.id,
+            memberType: "user"
+          }
+        })
+        .catch(() => {});
 
       return user;
     }
@@ -608,7 +771,7 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const machineIdentity = await server.services.group.removeMachineIdentityFromGroup({
+      const { identity, group } = await server.services.group.removeMachineIdentityFromGroup({
         id: req.params.id,
         identityId: req.params.machineIdentityId,
         actor: req.permission.type,
@@ -617,7 +780,32 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId
       });
 
-      return machineIdentity;
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.REMOVE_IDENTITY_FROM_GROUP,
+          metadata: {
+            groupId: group.id,
+            groupName: group.name,
+            identityId: identity.id
+          }
+        }
+      });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.GroupMemberRemoved,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            groupId: group.id,
+            memberType: "identity"
+          }
+        })
+        .catch(() => {});
+
+      return identity;
     }
   });
 };

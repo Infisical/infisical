@@ -65,7 +65,8 @@ vi.mock("@app/services/certificate-authority/certificate-authority-fns", () => (
         certificateChain: "mock-chain"
       }
     ])
-  )
+  ),
+  assertCaInProfileProject: vi.fn()
 }));
 
 vi.mock("@app/services/project/project-fns", () => ({

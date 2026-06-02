@@ -62,7 +62,8 @@ export const ActiveDirectoryDomainForm = ({ domain, onSubmit, closeSheet }: Prop
     defaultValues: domain
       ? {
           name: domain.name,
-          gateway: domain.gatewayId ? { id: domain.gatewayId, name: "" } : undefined,
+          gatewayId: domain.gatewayId ?? null,
+          gatewayPoolId: domain.gatewayPoolId ?? null,
           connectionDetails: {
             ...domain.connectionDetails,
             useLdaps: domain.connectionDetails.useLdaps ?? false,
@@ -72,7 +73,8 @@ export const ActiveDirectoryDomainForm = ({ domain, onSubmit, closeSheet }: Prop
           }
         }
       : {
-          gateway: undefined,
+          gatewayId: null,
+          gatewayPoolId: null,
           connectionDetails: {
             domain: "",
             dcAddress: "",

@@ -5,6 +5,7 @@ import { ChevronLeft } from "lucide-react";
 
 import { SidebarGroup, SidebarGroupLabel } from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
+import { hasIntermediateProjectsView, projectTypeToUrlSlug } from "@app/helpers/project";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { AINav } from "./AINav";
@@ -17,12 +18,11 @@ import { SshNav } from "./SshNav";
 import {
   CERT_APPROVALS_SUBMENU,
   CERT_CERTIFICATES_SUBMENU,
-  CERT_DISCOVERY_SUBMENU,
   CERT_INTEGRATIONS_SUBMENU,
-  CERT_SETTINGS_SUBMENU,
   INTEGRATIONS_SUBMENU,
   MCP_SUBMENU,
   PAM_APPROVALS_SUBMENU,
+  PAM_SETTINGS_SUBMENU,
   PROJECT_ACCESS_CONTROL_SUBMENU,
   SECRET_MANAGER_ACCESS_CONTROL_SUBMENU,
   SECRET_SCANNING_SETTINGS_SUBMENU,
@@ -51,11 +51,20 @@ const PROJECT_NAV_COMPONENT: Record<
 export const ProjectNav = () => {
   const { currentProject } = useProject();
   const { currentOrg, isSubOrganization } = useOrganization();
-  const { pathname } = useLocation();
+  const { pathname, search: locationSearch } = useLocation();
   const navigate = useNavigate();
+  const isLegacyView = (locationSearch as { legacy?: string })?.legacy === "true";
+  const hasApplicationContext = Boolean(
+    (locationSearch as { applicationName?: string })?.applicationName
+  );
+  const isFromRootRequests = (locationSearch as { from?: string })?.from === "root-requests";
   const { submenu: smApprovalsSubmenu, pendingRequestsCount: smPendingCount } =
     useApprovalSubmenu();
-  const projectLabel = isSubOrganization ? "Sub-Organization" : "Organization";
+  const intermediateAvailable = hasIntermediateProjectsView(currentProject.type);
+  let projectLabel: string;
+  if (intermediateAvailable) projectLabel = "Projects";
+  else if (isSubOrganization) projectLabel = "Sub-Organization";
+  else projectLabel = "Organization";
   const NavComponent = PROJECT_NAV_COMPONENT[currentProject.type];
 
   // scott: we currently have to use this flaky inclusion for routes/nested routes because we haven't
@@ -70,29 +79,30 @@ export const ProjectNav = () => {
   const isOnMcpOverview = currentProject.type === ProjectType.AI && pathname.includes("/overview");
   const isCertManager = currentProject.type === ProjectType.CertificateManager;
   const isOnCertPolicies = isCertManager && pathname.includes("/policies");
-  const isOnCertDiscovery = isCertManager && pathname.includes("/discovery");
   const isOnCertApprovals = isCertManager && pathname.includes("/approvals");
 
   const getInitialProjectSubmenu = (): Submenu | null => {
-    if (isOnAccessControl)
-      return currentProject.type === ProjectType.SecretManager
-        ? SECRET_MANAGER_ACCESS_CONTROL_SUBMENU
-        : PROJECT_ACCESS_CONTROL_SUBMENU;
+    if (isLegacyView || hasApplicationContext || isFromRootRequests) return null;
+    if (isCertManager && (isOnAccessControl || pathname.includes("/discovery"))) return null;
+    if (isOnAccessControl) {
+      if (currentProject.type === ProjectType.SecretManager)
+        return SECRET_MANAGER_ACCESS_CONTROL_SUBMENU;
+      return PROJECT_ACCESS_CONTROL_SUBMENU;
+    }
     if (isOnIntegrations && currentProject.type === ProjectType.SecretManager)
       return INTEGRATIONS_SUBMENU;
     if (isOnIntegrations && isCertManager) return CERT_INTEGRATIONS_SUBMENU;
     if (isOnProjectSettings && currentProject.type === ProjectType.SecretManager)
       return SM_SETTINGS_SUBMENU;
-    if (isOnProjectSettings && isCertManager) return CERT_SETTINGS_SUBMENU;
     if (isOnProjectSettings && currentProject.type === ProjectType.SecretScanning)
       return SECRET_SCANNING_SETTINGS_SUBMENU;
+    if (isOnProjectSettings && currentProject.type === ProjectType.PAM) return PAM_SETTINGS_SUBMENU;
     if (isOnMcpOverview) return MCP_SUBMENU;
     if (isOnCertPolicies) return CERT_CERTIFICATES_SUBMENU;
-    if (isOnCertDiscovery) return CERT_DISCOVERY_SUBMENU;
     if (isOnCertApprovals) return CERT_APPROVALS_SUBMENU;
     if (currentProject.type === ProjectType.PAM && pathname.includes("/approvals"))
       return PAM_APPROVALS_SUBMENU;
-    if (isOnApproval) return smApprovalsSubmenu;
+    if (isOnApproval && !isCertManager) return smApprovalsSubmenu;
     return null;
   };
 
@@ -150,14 +160,24 @@ export const ProjectNav = () => {
               <button
                 className="cursor-pointer hover:bg-foreground/[0.025]"
                 type="button"
-                onClick={() =>
+                onClick={() => {
+                  if (intermediateAvailable) {
+                    navigate({
+                      to: "/organizations/$orgId/projects/$type",
+                      params: {
+                        orgId: currentOrg.id,
+                        type: projectTypeToUrlSlug(currentProject.type)
+                      }
+                    });
+                    return;
+                  }
                   navigate({
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     to: "/organizations/$orgId/projects" as any,
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     params: { orgId: currentOrg.id } as any
-                  })
-                }
+                  });
+                }}
               >
                 <ChevronLeft />
                 <span>{projectLabel}</span>

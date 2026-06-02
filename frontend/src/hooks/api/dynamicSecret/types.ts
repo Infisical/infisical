@@ -24,6 +24,7 @@ export enum DynamicSecretProviders {
   AwsIam = "aws-iam",
   Redis = "redis",
   AwsElastiCache = "aws-elasticache",
+  AwsMemoryDb = "aws-memorydb",
   MongoAtlas = "mongo-db-atlas",
   ElasticSearch = "elastic-search",
   MongoDB = "mongo-db",
@@ -41,6 +42,7 @@ export enum DynamicSecretProviders {
   Github = "github",
   Couchbase = "couchbase",
   Clickhouse = "clickhouse",
+  Milvus = "milvus",
   Ssh = "ssh"
 }
 
@@ -62,10 +64,23 @@ export enum DynamicSecretAwsIamAuth {
   IRSA = "irsa"
 }
 
+// currently the only option, but we may want to extend this later to ACL-based auth
+export enum AwsMemoryDbAuthType {
+  IAM = "iam"
+}
+
 export enum DynamicSecretAwsIamCredentialType {
   IamUser = "iam-user",
   TemporaryCredentials = "temporary-credentials"
 }
+
+export const MILVUS_OBJECT_TYPES = [
+  { label: "Collection", value: "Collection" },
+  { label: "Database", value: "Database" },
+  { label: "Global", value: "Global" },
+  { label: "Cluster", value: "Cluster" },
+  { label: "User", value: "User" }
+] as const;
 
 export type TDynamicSecretProvider =
   | {
@@ -157,6 +172,20 @@ export type TDynamicSecretProvider =
         creationStatement: string;
         revocationStatement: string;
         ca?: string | undefined;
+      };
+    }
+  | {
+      type: DynamicSecretProviders.AwsMemoryDb;
+      inputs: {
+        clusterName: string;
+        region: string;
+        auth: {
+          type: AwsMemoryDbAuthType.IAM;
+          accessKeyId: string;
+          secretAccessKey: string;
+        };
+        creationStatement: string;
+        revocationStatement: string;
       };
     }
   | {
@@ -449,6 +478,26 @@ export type TDynamicSecretProvider =
           };
           allowedSymbols?: string;
         };
+      };
+    }
+  | {
+      type: DynamicSecretProviders.Milvus;
+      inputs: {
+        host: string;
+        port: number;
+        username: string;
+        password: string;
+        database?: string;
+        privileges: Array<{
+          objectType: string;
+          objectName: string;
+          privilege: string;
+          dbName?: string;
+        }>;
+        ca?: string;
+        sslRejectUnauthorized?: boolean;
+        gatewayId?: string | null;
+        gatewayPoolId?: string | null;
       };
     }
   | {

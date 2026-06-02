@@ -12,7 +12,7 @@ const arnRegex = new RE2(
 export const validateAccountIds = z
   .string()
   .trim()
-  .max(2048)
+  .max(4096)
   .default("")
   // Custom validation to ensure each part is a 12-digit number
   .refine(
@@ -51,7 +51,11 @@ export const validatePrincipalArns = z
       const arns = data.split(",");
       // Return true only if every item matches one of the allowed ARN formats
       // and checks whether the provided regex is safe
-      return arns.map((el) => el.trim()).every((arn) => safe(`^${arn.replaceAll("*", ".*")}$`) && arnRegex.test(arn));
+      return arns
+        .map((el) => el.trim())
+        .every(
+          (arn) => safe(`^${arn.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replaceAll("*", ".*")}$`) && arnRegex.test(arn)
+        );
     },
     {
       message:

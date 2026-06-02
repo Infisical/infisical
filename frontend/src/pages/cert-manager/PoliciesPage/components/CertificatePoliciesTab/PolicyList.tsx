@@ -1,14 +1,14 @@
 import { useCallback } from "react";
 import { subject } from "@casl/ability";
+import { Link } from "@tanstack/react-router";
 import {
-  faCheck,
-  faCircleInfo,
-  faCopy,
-  faEdit,
-  faEllipsis,
-  faTrash
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+  CheckIcon,
+  CopyIcon,
+  InfoIcon,
+  MoreHorizontalIcon,
+  PencilIcon,
+  Trash2Icon
+} from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
@@ -17,18 +17,23 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  EmptyState,
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+  IconButton,
+  Skeleton,
   Table,
-  TableContainer,
-  TableSkeleton,
-  TBody,
-  Td,
-  Th,
-  THead,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
   Tooltip,
-  Tr
-} from "@app/components/v2";
-import { useProject } from "@app/context";
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
+import { useOrganization, useProject } from "@app/context";
 import {
   ProjectPermissionCertificatePolicyActions,
   ProjectPermissionSub
@@ -43,10 +48,10 @@ interface Props {
 
 export const PolicyList = ({ onEditPolicy, onDeletePolicy }: Props) => {
   const { currentProject } = useProject();
+  const { currentOrg } = useOrganization();
   const [isIdCopied, setIsIdCopied] = useToggle(false);
 
   const { data, isLoading } = useListCertificatePolicies({
-    projectId: currentProject?.id || "",
     limit: 100,
     offset: 0
   });
@@ -72,116 +77,133 @@ export const PolicyList = ({ onEditPolicy, onDeletePolicy }: Props) => {
     return null;
   }
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString();
-  };
+  const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString();
 
-  const hasPolicies = !isLoading && policies && policies.length > 0;
+  if (isLoading) {
+    return (
+      <div className="space-y-2">
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-10 w-full" />
+      </div>
+    );
+  }
+
+  if (!policies || policies.length === 0) {
+    return (
+      <Empty className="border">
+        <EmptyHeader>
+          <EmptyTitle>No existing certificate policies</EmptyTitle>
+          <EmptyDescription>
+            Create a policy to set the rules your certificates must follow when issued.
+          </EmptyDescription>
+        </EmptyHeader>
+      </Empty>
+    );
+  }
 
   return (
-    <TableContainer>
-      <Table>
-        <THead>
-          <Tr>
-            <Th>Name</Th>
-            <Th>Created</Th>
-            <Th className="w-5" />
-          </Tr>
-        </THead>
-        <TBody>
-          {isLoading && <TableSkeleton columns={3} innerKey="certificate-policies" />}
-          {!isLoading && (!policies || policies.length === 0) && (
-            <Tr>
-              <Td colSpan={3}>
-                <EmptyState title="No Certificate Policies" />
-              </Td>
-            </Tr>
-          )}
-          {hasPolicies &&
-            policies.map((policy) => (
-              <Tr
-                key={policy.id}
-                className="h-10 transition-colors duration-100 hover:bg-mineshaft-700"
-              >
-                <Td>
-                  <div className="flex items-center gap-2">
-                    <div className="text-mineshaft-300">{policy.name}</div>
-                    {policy.description && (
-                      <Tooltip content={policy.description}>
-                        <FontAwesomeIcon icon={faCircleInfo} className="text-mineshaft-400" />
-                      </Tooltip>
-                    )}
-                  </div>
-                </Td>
-                <Td>
-                  <span className="text-sm text-bunker-300">{formatDate(policy.createdAt)}</span>
-                </Td>
-                <Td className="text-right">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild className="rounded-lg">
-                      <div className="hover:text-primary-400 data-[state=open]:text-primary-400">
-                        <Tooltip content="More options">
-                          <FontAwesomeIcon size="lg" icon={faEllipsis} />
-                        </Tooltip>
-                      </div>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" className="p-1">
-                      <DropdownMenuItem
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleCopyId(policy.id);
-                        }}
-                        icon={<FontAwesomeIcon icon={isIdCopied ? faCheck : faCopy} />}
-                      >
-                        Copy Policy ID
-                      </DropdownMenuItem>
-                      <ProjectPermissionCan
-                        I={ProjectPermissionCertificatePolicyActions.Edit}
-                        a={subject(ProjectPermissionSub.CertificatePolicies, {
-                          name: policy.name
-                        })}
-                      >
-                        {(isAllowed) =>
-                          isAllowed && (
-                            <DropdownMenuItem
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onEditPolicy(policy);
-                              }}
-                              icon={<FontAwesomeIcon icon={faEdit} />}
-                            >
-                              Edit Policy
-                            </DropdownMenuItem>
-                          )
-                        }
-                      </ProjectPermissionCan>
-                      <ProjectPermissionCan
-                        I={ProjectPermissionCertificatePolicyActions.Delete}
-                        a={subject(ProjectPermissionSub.CertificatePolicies, {
-                          name: policy.name
-                        })}
-                      >
-                        {(isAllowed) =>
-                          isAllowed && (
-                            <DropdownMenuItem
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onDeletePolicy(policy);
-                              }}
-                              icon={<FontAwesomeIcon icon={faTrash} />}
-                            >
-                              Delete Policy
-                            </DropdownMenuItem>
-                          )
-                        }
-                      </ProjectPermissionCan>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </Td>
-              </Tr>
-            ))}
-        </TBody>
-      </Table>
-    </TableContainer>
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Name</TableHead>
+          <TableHead>Created</TableHead>
+          <TableHead className="w-5" />
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {policies.map((policy) => (
+          <TableRow key={policy.id}>
+            <TableCell>
+              <div className="flex items-center gap-2">
+                <Link
+                  to="/organizations/$orgId/projects/cert-manager/$projectId/certificate-policies/$policyId"
+                  params={{
+                    orgId: currentOrg.id,
+                    projectId: currentProject.id,
+                    policyId: policy.id
+                  }}
+                  className="hover:underline"
+                >
+                  {policy.name}
+                </Link>
+                {policy.description && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <InfoIcon className="size-3.5 text-muted" />
+                    </TooltipTrigger>
+                    <TooltipContent>{policy.description}</TooltipContent>
+                  </Tooltip>
+                )}
+              </div>
+            </TableCell>
+            <TableCell>
+              <span className="text-sm">{formatDate(policy.createdAt)}</span>
+            </TableCell>
+            <TableCell className="text-right">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <IconButton variant="ghost" size="xs" aria-label="Policy actions">
+                    <MoreHorizontalIcon />
+                  </IconButton>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="min-w-40" align="end" sideOffset={2}>
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleCopyId(policy.id);
+                    }}
+                  >
+                    {isIdCopied ? <CheckIcon /> : <CopyIcon />}
+                    Copy Policy ID
+                  </DropdownMenuItem>
+                  <ProjectPermissionCan
+                    I={ProjectPermissionCertificatePolicyActions.Edit}
+                    a={subject(ProjectPermissionSub.CertificatePolicies, {
+                      name: policy.name
+                    })}
+                  >
+                    {(isAllowed) =>
+                      isAllowed && (
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onEditPolicy(policy);
+                          }}
+                        >
+                          <PencilIcon />
+                          Edit Policy
+                        </DropdownMenuItem>
+                      )
+                    }
+                  </ProjectPermissionCan>
+                  <ProjectPermissionCan
+                    I={ProjectPermissionCertificatePolicyActions.Delete}
+                    a={subject(ProjectPermissionSub.CertificatePolicies, {
+                      name: policy.name
+                    })}
+                  >
+                    {(isAllowed) =>
+                      isAllowed && (
+                        <DropdownMenuItem
+                          variant="danger"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDeletePolicy(policy);
+                          }}
+                        >
+                          <Trash2Icon />
+                          Delete Policy
+                        </DropdownMenuItem>
+                      )
+                    }
+                  </ProjectPermissionCan>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
   );
 };

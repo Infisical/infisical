@@ -6,7 +6,9 @@ import { z } from "zod";
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { FormControl, Select, SelectItem, Tooltip } from "@app/components/v2";
 import { Badge } from "@app/components/v3";
+import { MAX_IDENTITY_ACCESS_TOKEN_TTL_FALLBACK } from "@app/helpers/identityAuthSchemas";
 import { IdentityAuthMethod } from "@app/hooks/api/identities";
+import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 import { IdentityAliCloudAuthForm } from "./IdentityAliCloudAuthForm";
@@ -103,6 +105,10 @@ export const IdentityAuthMethodModalContent = ({
 
   const watchedAuthMethod = watch("authMethod");
 
+  const { data: serverStatus } = useFetchServerStatus();
+  const maxAccessTokenTTL =
+    serverStatus?.maxIdentityAccessTokenTTL ?? MAX_IDENTITY_ACCESS_TOKEN_TTL_FALLBACK;
+
   const identityAuthMethodData = {
     identityId: identity.id,
     name: identity.name,
@@ -125,6 +131,7 @@ export const IdentityAuthMethodModalContent = ({
           identityId={identityAuthMethodData.identityId}
           handlePopUpOpen={handlePopUpOpen}
           handlePopUpToggle={handlePopUpToggle}
+          maxAccessTokenTTL={maxAccessTokenTTL}
         />
       )
     },
@@ -134,6 +141,7 @@ export const IdentityAuthMethodModalContent = ({
           identityId={identityAuthMethodData.identityId}
           handlePopUpOpen={handlePopUpOpen}
           handlePopUpToggle={handlePopUpToggle}
+          maxAccessTokenTTL={maxAccessTokenTTL}
         />
       )
     },
@@ -144,6 +152,7 @@ export const IdentityAuthMethodModalContent = ({
           identityId={identityAuthMethodData.identityId}
           handlePopUpOpen={handlePopUpOpen}
           handlePopUpToggle={handlePopUpToggle}
+          maxAccessTokenTTL={maxAccessTokenTTL}
         />
       )
     },
@@ -154,6 +163,7 @@ export const IdentityAuthMethodModalContent = ({
           identityId={identityAuthMethodData.identityId}
           handlePopUpOpen={handlePopUpOpen}
           handlePopUpToggle={handlePopUpToggle}
+          maxAccessTokenTTL={maxAccessTokenTTL}
         />
       )
     },
@@ -164,6 +174,7 @@ export const IdentityAuthMethodModalContent = ({
           identityId={identityAuthMethodData.identityId}
           handlePopUpOpen={handlePopUpOpen}
           handlePopUpToggle={handlePopUpToggle}
+          maxAccessTokenTTL={maxAccessTokenTTL}
         />
       )
     },
@@ -174,6 +185,7 @@ export const IdentityAuthMethodModalContent = ({
           identityId={identityAuthMethodData.identityId}
           handlePopUpOpen={handlePopUpOpen}
           handlePopUpToggle={handlePopUpToggle}
+          maxAccessTokenTTL={maxAccessTokenTTL}
         />
       )
     },
@@ -184,6 +196,7 @@ export const IdentityAuthMethodModalContent = ({
           identityId={identityAuthMethodData.identityId}
           handlePopUpOpen={handlePopUpOpen}
           handlePopUpToggle={handlePopUpToggle}
+          maxAccessTokenTTL={maxAccessTokenTTL}
         />
       )
     },
@@ -194,6 +207,7 @@ export const IdentityAuthMethodModalContent = ({
           identityId={identityAuthMethodData.identityId}
           handlePopUpOpen={handlePopUpOpen}
           handlePopUpToggle={handlePopUpToggle}
+          maxAccessTokenTTL={maxAccessTokenTTL}
         />
       )
     },
@@ -204,6 +218,7 @@ export const IdentityAuthMethodModalContent = ({
           identityId={identityAuthMethodData.identityId}
           handlePopUpOpen={handlePopUpOpen}
           handlePopUpToggle={handlePopUpToggle}
+          maxAccessTokenTTL={maxAccessTokenTTL}
         />
       )
     },
@@ -214,6 +229,7 @@ export const IdentityAuthMethodModalContent = ({
           identityId={identityAuthMethodData.identityId}
           handlePopUpOpen={handlePopUpOpen}
           handlePopUpToggle={handlePopUpToggle}
+          maxAccessTokenTTL={maxAccessTokenTTL}
         />
       )
     },
@@ -224,6 +240,7 @@ export const IdentityAuthMethodModalContent = ({
           identityId={identityAuthMethodData.identityId}
           handlePopUpOpen={handlePopUpOpen}
           handlePopUpToggle={handlePopUpToggle}
+          maxAccessTokenTTL={maxAccessTokenTTL}
         />
       )
     },
@@ -234,6 +251,7 @@ export const IdentityAuthMethodModalContent = ({
           identityId={identityAuthMethodData.identityId}
           handlePopUpOpen={handlePopUpOpen}
           handlePopUpToggle={handlePopUpToggle}
+          maxAccessTokenTTL={maxAccessTokenTTL}
         />
       )
     },
@@ -244,6 +262,7 @@ export const IdentityAuthMethodModalContent = ({
           identityId={identityAuthMethodData.identityId}
           handlePopUpOpen={handlePopUpOpen}
           handlePopUpToggle={handlePopUpToggle}
+          maxAccessTokenTTL={maxAccessTokenTTL}
         />
       )
     }

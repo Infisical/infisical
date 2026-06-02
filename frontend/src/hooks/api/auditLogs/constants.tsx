@@ -51,6 +51,8 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.DELETE_ENVIRONMENT]: "Delete environment",
   [EventType.ADD_PROJECT_MEMBER]: "Add member",
   [EventType.REMOVE_PROJECT_MEMBER]: "Remove member",
+  [EventType.GET_PROJECT_MEMBER_PERMISSION_AUDIT]: "View member permission audit",
+  [EventType.GET_PROJECT_IDENTITY_PERMISSION_AUDIT]: "View machine identity permission audit",
   [EventType.CREATE_FOLDER]: "Create folder",
   [EventType.UPDATE_FOLDER]: "Update folder",
   [EventType.DELETE_FOLDER]: "Delete folder",
@@ -64,6 +66,9 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.DELETE_SECRET_IMPORT]: "Delete secret import",
   [EventType.UPDATE_USER_PROJECT_DENIED_PERMISSIONS]: "Update denied permissions",
   [EventType.UPDATE_USER_PROJECT_ROLE]: "Update user role",
+  [EventType.ADD_PROJECT_GROUP]: "Add project group",
+  [EventType.UPDATE_PROJECT_GROUP]: "Update project group",
+  [EventType.REMOVE_PROJECT_GROUP]: "Remove project group",
   [EventType.CREATE_CA]: "Create CA",
   [EventType.GET_CA]: "Get CA",
   [EventType.UPDATE_CA]: "Update CA",
@@ -78,6 +83,31 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.GET_CERT]: "Get certificate",
   [EventType.DELETE_CERT]: "Delete certificate",
   [EventType.REVOKE_CERT]: "Revoke certificate",
+  [EventType.ASSIGN_CERT_TO_APPLICATION]: "Assign certificate to Application",
+  [EventType.CREATE_PKI_APPLICATION]: "Create Application",
+  [EventType.UPDATE_PKI_APPLICATION]: "Update Application",
+  [EventType.DELETE_PKI_APPLICATION]: "Delete Application",
+  [EventType.GET_PKI_APPLICATION]: "Get Application",
+  [EventType.LIST_PKI_APPLICATIONS]: "List Applications",
+  [EventType.ATTACH_PKI_APPLICATION_PROFILES]: "Attach profiles to Application",
+  [EventType.DETACH_PKI_APPLICATION_PROFILE]: "Detach profile from Application",
+  [EventType.ADD_PKI_APPLICATION_MEMBER]: "Add Application member",
+  [EventType.UPDATE_PKI_APPLICATION_MEMBER_ROLE]: "Update Application member role",
+  [EventType.REMOVE_PKI_APPLICATION_MEMBER]: "Remove Application member",
+  [EventType.LIST_PKI_APPLICATION_MEMBERS]: "List Application members",
+  [EventType.GET_PKI_APPLICATION_ENROLLMENT]: "Get Application enrollment",
+  [EventType.SET_PKI_APPLICATION_API_ENROLLMENT]: "Set API enrollment on Application",
+  [EventType.CLEAR_PKI_APPLICATION_API_ENROLLMENT]: "Clear API enrollment on Application",
+  [EventType.SET_PKI_APPLICATION_EST_ENROLLMENT]: "Set EST enrollment on Application",
+  [EventType.CLEAR_PKI_APPLICATION_EST_ENROLLMENT]: "Clear EST enrollment on Application",
+  [EventType.SET_PKI_APPLICATION_ACME_ENROLLMENT]: "Set ACME enrollment on Application",
+  [EventType.CLEAR_PKI_APPLICATION_ACME_ENROLLMENT]: "Clear ACME enrollment on Application",
+  [EventType.REVEAL_PKI_APPLICATION_ACME_EAB_SECRET]: "Reveal ACME EAB secret on Application",
+  [EventType.ROTATE_PKI_APPLICATION_ACME_EAB_SECRET]: "Rotate ACME EAB secret on Application",
+  [EventType.SET_PKI_APPLICATION_SCEP_ENROLLMENT]: "Set SCEP enrollment on Application",
+  [EventType.CLEAR_PKI_APPLICATION_SCEP_ENROLLMENT]: "Clear SCEP enrollment on Application",
+  [EventType.GET_CERT_MANAGER_INSTANCE_STATE]: "Get Certificate Manager instance state",
+  [EventType.SET_CERT_MANAGER_ACTIVE_PROJECT]: "Set active Certificate Manager project",
   [EventType.GET_CERT_BODY]: "Get certificate body",
   [EventType.GET_CERT_PRIVATE_KEY]: "Get certificate private key",
   [EventType.GET_CERT_BUNDLE]: "Get certificate bundle",
@@ -257,6 +287,8 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.CREATE_PROJECT_ROLE]: "Create Project Role",
   [EventType.UPDATE_PROJECT_ROLE]: "Update Project Role",
   [EventType.DELETE_PROJECT_ROLE]: "Delete Project Role",
+  [EventType.LIST_PROJECT_ROLES]: "List Project Roles",
+  [EventType.GET_PROJECT_ROLE]: "Get Project Role",
 
   [EventType.CREATE_ORG_ROLE]: "Create Org Role",
   [EventType.UPDATE_ORG_ROLE]: "Update Org Role",
@@ -295,6 +327,12 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.PAM_ACCOUNT_POLICY_GET]: "Get PAM Account Policy",
   [EventType.PAM_ACCOUNT_READ_CREDENTIALS]: "Read PAM Account Credentials",
   [EventType.PAM_WEB_ACCESS_SESSION_TICKET_CREATED]: "Create PAM Web Access Session Ticket",
+  [EventType.PAM_SESSION_CHUNK_UPLOAD]: "PAM Session Chunk Upload",
+  [EventType.PAM_SESSION_UPLOAD_TOKEN_INVALID]: "PAM Session Upload Token Invalid",
+  [EventType.PAM_RECORDING_CONFIG_UPDATE]: "Update PAM Recording Config",
+  [EventType.PAM_RECORDING_CONFIG_DELETE]: "Delete PAM Recording Config",
+  [EventType.PAM_RECORDING_BUCKET_CONNECTION_TEST_FAILED]:
+    "PAM Recording Bucket Connection Test Failed",
   [EventType.PAM_RESOURCE_LIST]: "List PAM Resources",
   [EventType.PAM_RESOURCE_GET]: "Get PAM Resource",
   [EventType.PAM_RESOURCE_CREATE]: "Create PAM Resource",
@@ -333,6 +371,7 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.GET_CERTIFICATE_FROM_REQUEST]: "Get Certificate From Request",
   [EventType.LIST_CERTIFICATE_REQUESTS]: "List Certificate Requests",
   [EventType.TRIGGER_CERTIFICATE_REQUEST_VALIDATION]: "Trigger Certificate Request Validation",
+  [EventType.CANCEL_CERTIFICATE_REQUEST]: "Cancel Certificate Request",
 
   [EventType.SCEP_ENROLLMENT]: "SCEP Certificate Enrollment",
   [EventType.SCEP_RENEWAL]: "SCEP Certificate Renewal",
@@ -352,6 +391,7 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.APPROVAL_REQUEST_GRANT_LIST]: "List Approval Request Grants",
   [EventType.APPROVAL_REQUEST_GRANT_GET]: "Get Approval Request Grant",
   [EventType.APPROVAL_REQUEST_GRANT_REVOKE]: "Revoke Approval Request Grant",
+  [EventType.PAM_ACCESS_POLICY_BYPASSED]: "PAM Access Policy Bypassed",
 
   // MCP Endpoints
   [EventType.MCP_ENDPOINT_CREATE]: "Create MCP Endpoint",
@@ -398,7 +438,18 @@ export const eventToNameMap: { [K in EventType]: string } = {
   // External Migration
   [EventType.EXTERNAL_MIGRATION_CREATE]: "Create External Migration",
   [EventType.EXTERNAL_MIGRATION_UPDATE]: "Update External Migration",
-  [EventType.EXTERNAL_MIGRATION_DELETE]: "Delete External Migration"
+  [EventType.EXTERNAL_MIGRATION_DELETE]: "Delete External Migration",
+  [EventType.GATEWAY_CREATE]: "Create gateway",
+  [EventType.GATEWAY_ENROLL]: "Enroll gateway (legacy)",
+  [EventType.GATEWAY_ENROLLMENT_TOKEN_CREATE]: "Generate gateway enrollment token",
+  [EventType.RESOURCE_AUTH_METHOD_LOGIN]: "Resource login",
+  [EventType.RESOURCE_AUTH_METHOD_LOGIN_FAILED]: "Resource login failed",
+  [EventType.RESOURCE_AUTH_METHOD_UPDATE]: "Update resource auth method",
+  [EventType.RESOURCE_AUTH_METHOD_REVOKE]: "Revoke resource access",
+  [EventType.RELAY_CREATE]: "Create relay",
+  [EventType.RELAY_UPDATE]: "Update relay",
+  [EventType.RELAY_DELETE]: "Delete relay",
+  [EventType.RELAY_ENROLLMENT_TOKEN_CREATE]: "Generate relay enrollment token"
 };
 
 export const userAgentTypeToNameMap: { [K in UserAgentType]: string } = {
@@ -414,9 +465,13 @@ export const userAgentTypeToNameMap: { [K in UserAgentType]: string } = {
 const sharedProjectEvents = [
   EventType.ADD_PROJECT_MEMBER,
   EventType.REMOVE_PROJECT_MEMBER,
+  EventType.GET_PROJECT_MEMBER_PERMISSION_AUDIT,
+  EventType.GET_PROJECT_IDENTITY_PERMISSION_AUDIT,
   EventType.CREATE_PROJECT_ROLE,
   EventType.UPDATE_PROJECT_ROLE,
   EventType.DELETE_PROJECT_ROLE,
+  EventType.LIST_PROJECT_ROLES,
+  EventType.GET_PROJECT_ROLE,
   EventType.APPROVAL_POLICY_CREATE,
   EventType.APPROVAL_POLICY_UPDATE,
   EventType.APPROVAL_POLICY_DELETE,
@@ -430,7 +485,8 @@ const sharedProjectEvents = [
   EventType.APPROVAL_REQUEST_CANCEL,
   EventType.APPROVAL_REQUEST_GRANT_LIST,
   EventType.APPROVAL_REQUEST_GRANT_GET,
-  EventType.APPROVAL_REQUEST_GRANT_REVOKE
+  EventType.APPROVAL_REQUEST_GRANT_REVOKE,
+  EventType.PAM_ACCESS_POLICY_BYPASSED
 ];
 
 export const projectToEventsMap: Partial<Record<ProjectType, EventType[]>> = {
@@ -477,7 +533,12 @@ export const projectToEventsMap: Partial<Record<ProjectType, EventType[]>> = {
     EventType.PAM_RESOURCE_ROTATION_RULE_CREATE,
     EventType.PAM_RESOURCE_ROTATION_RULE_UPDATE,
     EventType.PAM_RESOURCE_ROTATION_RULE_DELETE,
-    EventType.PAM_RESOURCE_ROTATION_RULE_REORDER
+    EventType.PAM_RESOURCE_ROTATION_RULE_REORDER,
+    EventType.PAM_SESSION_CHUNK_UPLOAD,
+    EventType.PAM_SESSION_UPLOAD_TOKEN_INVALID,
+    EventType.PAM_RECORDING_CONFIG_UPDATE,
+    EventType.PAM_RECORDING_CONFIG_DELETE,
+    EventType.PAM_RECORDING_BUCKET_CONNECTION_TEST_FAILED
   ],
   [ProjectType.AI]: [
     ...sharedProjectEvents,

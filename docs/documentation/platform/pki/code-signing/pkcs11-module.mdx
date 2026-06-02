@@ -4,7 +4,40 @@ sidebarTitle: "PKCS#11 Module"
 description: "Install and configure the Infisical PKCS#11 module for use with standard signing tools."
 ---
 
-The Infisical PKCS#11 module implements the PKCS#11 v2.40 standard, allowing tools like `jarsigner`, `openssl`, `cosign`, `osslsigncode`, `apksigner`, and `gpg` to use Infisical signers without code changes.
+<Tip>
+  New to Code Signing? Start with [Sign Your First Artifact](/documentation/platform/pki/quick-starts/sign-first-code).
+</Tip>
+
+The Infisical PKCS#11 module implements the PKCS#11 v2.40 standard, allowing tools like `jarsigner`, `openssl`, `cosign`, `osslsigncode`, `apksigner`, and `gpg` to use Infisical [Signers](/documentation/platform/pki/code-signing/signers) without code changes.
+
+<Info>
+  Before using the PKCS#11 module, ensure your Product Admin has created a [Signer](/documentation/platform/pki/code-signing/signers) and assigned you to it. If a [signing policy](/documentation/platform/pki/code-signing/signing-policies) is attached, you'll also need an approved [grant](/documentation/platform/pki/code-signing/grants).
+</Info>
+
+## Tool-Specific Guides
+
+For complete step-by-step guides on using the PKCS#11 module with specific signing tools:
+
+<CardGroup cols={3}>
+  <Card title="jarsigner" href="/documentation/platform/pki/guides/code-signing/jarsigner">
+    Sign Java JARs
+  </Card>
+  <Card title="apksigner" href="/documentation/platform/pki/guides/code-signing/apksigner">
+    Sign Android APKs
+  </Card>
+  <Card title="osslsigncode" href="/documentation/platform/pki/guides/code-signing/osslsigncode">
+    Sign Windows executables
+  </Card>
+  <Card title="Cosign" href="/documentation/platform/pki/guides/code-signing/cosign">
+    Sign container images
+  </Card>
+  <Card title="OpenSSL" href="/documentation/platform/pki/guides/code-signing/openssl">
+    Sign with OpenSSL
+  </Card>
+  <Card title="GPG" href="/documentation/platform/pki/guides/code-signing/gpg">
+    Sign with GPG
+  </Card>
+</CardGroup>
 
 ## Installation
 
@@ -176,6 +209,20 @@ For any issue, start by enabling debug logging in your config file to get detail
     Verify that your credentials and `project_id` are correct, and that the machine identity has been added to the project with the appropriate permissions.
   </Accordion>
   <Accordion title="CKR_GENERAL_ERROR when signing">
-    This typically means the signing request was denied by the server. Check that you have an active signing grant for the signer. You can verify this in the Infisical UI under **Code Signing > Approvals > Grants**.
+    This typically means the signing request was denied by the server. Check that you have an active signing grant for the signer. You can verify this in **Certificate Manager → Code Signing → Grants**.
   </Accordion>
 </AccordionGroup>
+
+## What's Next?
+
+<CardGroup cols={3}>
+  <Card title="Sign JARs" icon="java" href="/documentation/platform/pki/guides/code-signing/jarsigner">
+    Sign Java artifacts with jarsigner
+  </Card>
+  <Card title="Sign Containers" icon="docker" href="/documentation/platform/pki/guides/code-signing/cosign">
+    Sign container images with Cosign
+  </Card>
+  <Card title="Sign with GPG" icon="key" href="/documentation/platform/pki/guides/code-signing/gpg">
+    Use GPG with the PKCS#11 module
+  </Card>
+</CardGroup>

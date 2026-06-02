@@ -63,8 +63,7 @@ export const PamTopActors = () => {
               onClick={() =>
                 navigate({
                   to: sessionsRoute,
-                  params: { orgId: currentOrg.id, projectId },
-                  search: { search: actor.actorEmail || actor.actorName || undefined }
+                  params: { orgId: currentOrg.id, projectId }
                 })
               }
             >

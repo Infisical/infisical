@@ -8,6 +8,7 @@ import handlebars from "handlebars";
 
 import { TCertificates } from "@app/db/schemas";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
+import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
@@ -19,6 +20,8 @@ import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
+import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
 import { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal";
@@ -68,6 +71,8 @@ type TPkiSyncQueueFactoryDep = {
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "findById">;
   certificateSyncDAL: TCertificateSyncDALFactory;
   gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
+  gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
+  telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
 };
 
 type PkiSyncActionJob = Job<
@@ -100,7 +105,9 @@ export const pkiSyncQueueFactory = ({
   certificateAuthorityDAL,
   certificateAuthorityCertDAL,
   certificateSyncDAL,
-  gatewayV2Service
+  gatewayV2Service,
+  gatewayPoolService,
+  telemetryService
 }: TPkiSyncQueueFactoryDep) => {
   const appCfg = getConfig();
 
@@ -461,7 +468,8 @@ export const pkiSyncQueueFactory = ({
         kmsService,
         certificateDAL,
         certificateSyncDAL,
-        gatewayV2Service
+        gatewayV2Service,
+        gatewayPoolService
       });
 
       logger.info(
@@ -584,6 +592,17 @@ export const pkiSyncQueueFactory = ({
           lastSyncJobId: job.id,
           lastSyncMessage: syncMessage,
           lastSyncedAt: isSynced ? ranAt : undefined
+        });
+
+        await telemetryService.sendPostHogEvents({
+          event: PostHogEventTypes.PkiSyncExecuted,
+          distinctId: `platform/${pkiSync.projectId}`,
+          organizationId: pkiSync.connection.orgId,
+          properties: {
+            orgId: pkiSync.connection.orgId,
+            destination: pkiSync.destination,
+            success: isSynced
+          }
         });
       }
     }
@@ -727,7 +746,8 @@ export const pkiSyncQueueFactory = ({
           certificateSyncDAL,
           certificateDAL,
           certificateMap,
-          gatewayV2Service
+          gatewayV2Service,
+          gatewayPoolService
         }
       );
 

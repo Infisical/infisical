@@ -1,10 +1,21 @@
 import { useMemo } from "react";
 import { Controller, useFormContext, useWatch } from "react-hook-form";
 import { SingleValue } from "react-select";
+import { Info } from "lucide-react";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
-import { FilterableSelect, FormControl } from "@app/components/v2";
-import { SecretPathInput } from "@app/components/v2/SecretPathInput";
+import {
+  Field,
+  FieldContent,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+  FilterableSelect,
+  SecretPathInput,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import {
   TRemoteInfisicalEnvironmentFolderTree,
   TRemoteInfisicalProject,
@@ -63,7 +74,7 @@ export const ExternalInfisicalSyncFields = () => {
   }, [folderTree, environmentSlug, currentSecretPath]);
 
   return (
-    <>
+    <FieldGroup>
       <SecretSyncConnectionField
         onChange={() => {
           setValue("destinationConfig.projectId", "");
@@ -75,55 +86,72 @@ export const ExternalInfisicalSyncFields = () => {
         name="destinationConfig.projectId"
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl
-            errorText={error?.message}
-            isError={Boolean(error?.message)}
-            label="Project"
-            tooltipText="The project on the remote Infisical instance to sync secrets to. Ensure the machine identity used by this connection has access to the project."
-          >
-            <FilterableSelect
-              isLoading={isProjectsLoading && Boolean(connectionId)}
-              isDisabled={!connectionId}
-              value={projects.find((p) => p.id === value) ?? null}
-              onChange={(option) => {
-                const v = option as SingleValue<TRemoteInfisicalProject>;
-                onChange(v?.id ?? "");
-                setValue("destinationConfig.environment", "");
-                setValue("destinationConfig.secretPath", "/");
-              }}
-              options={projects}
-              placeholder="Select a project..."
-              getOptionLabel={(option) => option.name}
-              getOptionValue={(option) => option.id}
-            />
-          </FormControl>
+          <Field>
+            <FieldLabel>
+              Project
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info />
+                </TooltipTrigger>
+                <TooltipContent>
+                  The project on the remote Infisical instance to sync secrets to. Ensure the
+                  machine identity used by this connection has access to the project.
+                </TooltipContent>
+              </Tooltip>
+            </FieldLabel>
+            <FieldContent>
+              <FilterableSelect
+                isLoading={isProjectsLoading && Boolean(connectionId)}
+                isDisabled={!connectionId}
+                value={projects.find((p) => p.id === value) ?? null}
+                onChange={(option) => {
+                  const v = option as SingleValue<TRemoteInfisicalProject>;
+                  onChange(v?.id ?? "");
+                  setValue("destinationConfig.environment", "");
+                  setValue("destinationConfig.secretPath", "/");
+                }}
+                options={projects}
+                placeholder="Select a project..."
+                getOptionLabel={(option) => option.name}
+                getOptionValue={(option) => option.id}
+              />
+              <FieldError errors={[error]} />
+            </FieldContent>
+          </Field>
         )}
       />
       <Controller
         name="destinationConfig.environment"
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl
-            errorText={error?.message}
-            isError={Boolean(error?.message)}
-            label="Environment"
-            tooltipText="The environment on the remote Infisical instance"
-          >
-            <FilterableSelect
-              isLoading={isProjectsLoading && Boolean(connectionId)}
-              isDisabled={!connectionId || !projectId}
-              value={environments.find((e) => e.slug === value) ?? null}
-              onChange={(option) => {
-                const v = option as SingleValue<{ id: string; name: string; slug: string }>;
-                onChange(v?.slug ?? "");
-                setValue("destinationConfig.secretPath", "/");
-              }}
-              options={environments}
-              placeholder="Select an environment..."
-              getOptionLabel={(option) => option.name}
-              getOptionValue={(option) => option.slug}
-            />
-          </FormControl>
+          <Field>
+            <FieldLabel>
+              Environment
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info />
+                </TooltipTrigger>
+                <TooltipContent>The environment on the remote Infisical instance.</TooltipContent>
+              </Tooltip>
+            </FieldLabel>
+            <FieldContent>
+              <FilterableSelect
+                isLoading={isProjectsLoading && Boolean(connectionId)}
+                isDisabled={!connectionId || !projectId}
+                value={environments.find((e) => e.slug === value) ?? null}
+                onChange={(option) => {
+                  const v = option as SingleValue<{ id: string; name: string; slug: string }>;
+                  onChange(v?.slug ?? "");
+                  setValue("destinationConfig.secretPath", "/");
+                }}
+                options={environments}
+                placeholder="Select an environment..."
+                getOptionLabel={(option) => option.name}
+                getOptionValue={(option) => option.slug}
+              />
+              <FieldError errors={[error]} />
+            </FieldContent>
+          </Field>
         )}
       />
       <Controller
@@ -131,21 +159,30 @@ export const ExternalInfisicalSyncFields = () => {
         control={control}
         defaultValue="/"
         render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl
-            errorText={error?.message}
-            isError={Boolean(error?.message)}
-            label="Secret path"
-            tooltipText="The folder path on the remote Infisical instance to sync secrets to"
-          >
-            <SecretPathInput
-              isDisabled={!connectionId || !projectId || !environmentSlug}
-              value={value}
-              onChange={onChange}
-              folderNames={childFolderNamesAtPath}
-            />
-          </FormControl>
+          <Field>
+            <FieldLabel>
+              Secret path
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info />
+                </TooltipTrigger>
+                <TooltipContent>
+                  The folder path on the remote Infisical instance to sync secrets to.
+                </TooltipContent>
+              </Tooltip>
+            </FieldLabel>
+            <FieldContent>
+              <SecretPathInput
+                disabled={!connectionId || !projectId || !environmentSlug}
+                value={value}
+                onChange={onChange}
+                folderNames={childFolderNamesAtPath}
+              />
+              <FieldError errors={[error]} />
+            </FieldContent>
+          </Field>
         )}
       />
-    </>
+    </FieldGroup>
   );
 };

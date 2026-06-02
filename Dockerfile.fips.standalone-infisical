@@ -107,6 +107,19 @@ COPY --chown=non-root-user:nodejs standalone-entrypoint.sh standalone-entrypoint
 RUN npm i -g tsconfig-paths
 RUN npm run build
 
+# Bake in-app announcements + their images at build time so self-hosted / air-gapped
+# instances don't make any outbound calls to Contentful at runtime. No-ops silently
+# if Contentful secrets are not supplied (cloud / dev builds). Secrets are passed
+# via BuildKit --mount=type=secret so they never enter any image layer or SLSA
+# provenance attestation.
+RUN --mount=type=secret,id=contentful_space_id,required=false \
+    --mount=type=secret,id=contentful_delivery_token,required=false \
+    --mount=type=secret,id=contentful_environment,required=false \
+    CONTENTFUL_SPACE_ID="$(cat /run/secrets/contentful_space_id 2>/dev/null || true)" \
+    CONTENTFUL_DELIVERY_TOKEN="$(cat /run/secrets/contentful_delivery_token 2>/dev/null || true)" \
+    CONTENTFUL_ENVIRONMENT="$(cat /run/secrets/contentful_environment 2>/dev/null || true)" \
+    npm run bake:announcements
+
 # Production stage
 FROM base AS backend-runner
 
@@ -163,6 +176,17 @@ RUN apt-get update && apt-get install -y \
     openssh-client \
     && curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash \
     && apt-get update && apt-get install -y infisical=0.43.79 \
+    # Patch CVEs in base image packages (pinned versions for reproducibility)
+    && apt-get install -y --only-upgrade \
+    libgnutls30t64=3.8.9-3+deb13u4 \
+    libc6=2.41-12+deb13u3 \
+    libc-bin=2.41-12+deb13u3 \
+    libssl3t64=3.5.6-1~deb13u1 \
+    dpkg=1.22.22 \
+    libcap2 \
+    libnghttp2-14=1.64.0-1.1+deb13u1 \
+    libngtcp2-16=1.11.0-1+deb13u1 \
+    libngtcp2-crypto-gnutls8=1.11.0-1+deb13u1 \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy Oracle Instant Client from parallel stage

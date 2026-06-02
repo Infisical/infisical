@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { faPlus, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -18,6 +18,8 @@ import {
   Tabs
 } from "@app/components/v2";
 import { useOrganization, useSubscription } from "@app/context";
+import { SECONDS_PER_DAY } from "@app/helpers/datetime";
+import { accessTokenTtlSchema } from "@app/helpers/identityAuthSchemas";
 import {
   useAddIdentityOciAuth,
   useGetIdentityOciAuth,
@@ -28,40 +30,31 @@ import { UsePopUpState } from "@app/hooks/usePopUp";
 
 import { IdentityFormTab } from "./types";
 
-const schema = z
-  .object({
-    tenancyOcid: z
-      .string()
-      .trim()
-      .min(1, "Tenancy OCID cannot be empty.")
-      .refine(
-        (val) => /^ocid1\.tenancy\.oc1\..+$/.test(val),
-        "Invalid Tenancy OCID format. Must start with ocid1.tenancy.oc1."
-      ),
-    allowedUsernames: z.string().optional(),
-    accessTokenTTL: z
-      .string()
-      .refine(
-        (value) => Number(value) <= 315360000,
-        "Access Token TTL cannot be greater than 315360000"
-      ),
-    accessTokenMaxTTL: z
-      .string()
-      .refine(
-        (value) => Number(value) <= 315360000,
-        "Access Token Max TTL cannot be greater than 315360000"
-      ),
-    accessTokenNumUsesLimit: z.string(),
-    accessTokenTrustedIps: z
-      .object({
-        ipAddress: z.string().max(50)
-      })
-      .array()
-      .min(1)
-  })
-  .required();
+const buildSchema = (maxAccessTokenTTL: number) =>
+  z
+    .object({
+      tenancyOcid: z
+        .string()
+        .trim()
+        .min(1, "Tenancy OCID cannot be empty.")
+        .refine(
+          (val) => /^ocid1\.tenancy\.oc1\..+$/.test(val),
+          "Invalid Tenancy OCID format. Must start with ocid1.tenancy.oc1."
+        ),
+      allowedUsernames: z.string().optional(),
+      accessTokenTTL: accessTokenTtlSchema(maxAccessTokenTTL, "Access Token TTL"),
+      accessTokenMaxTTL: accessTokenTtlSchema(maxAccessTokenTTL, "Access Token Max TTL"),
+      accessTokenNumUsesLimit: z.string(),
+      accessTokenTrustedIps: z
+        .object({
+          ipAddress: z.string().max(50)
+        })
+        .array()
+        .min(1)
+    })
+    .required();
 
-export type FormData = z.infer<typeof schema>;
+export type FormData = z.infer<ReturnType<typeof buildSchema>>;
 
 type Props = {
   handlePopUpOpen: (
@@ -74,13 +67,15 @@ type Props = {
   ) => void;
   identityId?: string;
   isUpdate?: boolean;
+  maxAccessTokenTTL: number;
 };
 
 export const IdentityOciAuthForm = ({
   handlePopUpOpen,
   handlePopUpToggle,
   identityId,
-  isUpdate
+  isUpdate,
+  maxAccessTokenTTL
 }: Props) => {
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
@@ -96,13 +91,15 @@ export const IdentityOciAuthForm = ({
     enabled: isUpdate
   });
 
+  const resolver = useMemo(() => zodResolver(buildSchema(maxAccessTokenTTL)), [maxAccessTokenTTL]);
+
   const {
     control,
     handleSubmit,
     reset,
     formState: { isSubmitting }
   } = useForm<FormData>({
-    resolver: zodResolver(schema),
+    resolver,
     defaultValues: {
       tenancyOcid: "",
       allowedUsernames: "",
@@ -240,8 +237,9 @@ export const IdentityOciAuthForm = ({
                 label="Access Token TTL (seconds)"
                 isError={Boolean(error)}
                 errorText={error?.message}
+                helperText={`Max: ${Math.floor(maxAccessTokenTTL / SECONDS_PER_DAY)} days`}
               >
-                <Input {...field} placeholder="2592000" type="number" min="0" step="1" />
+                <Input {...field} placeholder="2592000" type="number" min="1" step="1" />
               </FormControl>
             )}
           />
@@ -254,8 +252,9 @@ export const IdentityOciAuthForm = ({
                 label="Access Token Max TTL (seconds)"
                 isError={Boolean(error)}
                 errorText={error?.message}
+                helperText={`Max: ${Math.floor(maxAccessTokenTTL / SECONDS_PER_DAY)} days`}
               >
-                <Input {...field} placeholder="2592000" type="number" min="0" step="1" />
+                <Input {...field} placeholder="2592000" type="number" min="1" step="1" />
               </FormControl>
             )}
           />

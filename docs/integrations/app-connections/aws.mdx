@@ -61,14 +61,24 @@ Infisical supports two methods for connecting to AWS.
                 <Note>
                   **For Dedicated Instances**: Your AWS account ID differs from the one provided above. Please reach out to Infisical support to obtain your AWS account ID.
                 </Note>
-                4. (Recommended) <strong>Enable "Require external ID"</strong> and input your **Organization ID** to strengthen security and mitigate the [confused deputy problem](https://docs.aws.amazon.com/IAM/latest/UserGuide/confused-deputy.html).
+                4. (Recommended) <strong>Enable "Require external ID"</strong> and input the appropriate ID to strengthen security and mitigate the [confused deputy problem](https://docs.aws.amazon.com/IAM/latest/UserGuide/confused-deputy.html):
+                   - **Project-scoped connections** — use your **Project ID** as the External ID.
+                   - **Organization-scoped connections** — use your **Organization ID** as the External ID.
 
                 <Warning type="warning" title="Security Best Practice: Use External ID to Prevent Confused Deputy Attacks">
-                    When configuring an IAM Role that Infisical will assume, it’s highly recommended to enable the **"Require external ID"** option and specify your **Organization ID**.
+                    When configuring an IAM Role that Infisical will assume, it’s highly recommended to enable the **"Require external ID"** option.
 
                     This precaution helps protect your AWS account against the [confused deputy problem](https://docs.aws.amazon.com/IAM/latest/UserGuide/confused-deputy.html), a potential security vulnerability where Infisical could be tricked into performing actions on your behalf by an unauthorized actor.
 
-                    <strong>Always enable "Require external ID" and use your Organization ID when setting up the IAM Role.</strong>
+                    Infisical automatically sends the correct External ID based on the connection’s scope:
+                    - **Project-scoped connections** use the **Project ID** as the External ID, restricting role access to a single project.
+                    - **Organization-scoped connections** use the **Organization ID** as the External ID.
+
+                    <strong>Always enable "Require external ID" when setting up the IAM Role, and use the ID that matches your connection’s scope.</strong>
+
+                    <Note>
+                        **Upgrading existing project-scoped connections:** Connections created before **May 26, 2026** (cloud) or release **v0.160.7** (self-hosted) use the Organization ID as the External ID (legacy behavior). To adopt the stronger project-scoped External ID, delete and recreate the connection, then update your IAM role’s trust policy to use your Project ID instead.
+                    </Note>
                 </Warning>
             </Step>
 
@@ -391,6 +401,88 @@ Infisical supports two methods for connecting to AWS.
                                     - **GetHostedZone**: Validates the hosted zone during CA setup
                                     - **ChangeResourceRecordSets**: Writes the ACM DNS validation CNAME records
                                 </Note>
+                            </Accordion>
+                        </AccordionGroup>
+                    </Tab>
+                    <Tab title="PAM Session Recording">
+                        <AccordionGroup>
+                            <Accordion title="AWS S3 Bucket">
+                                Use the following custom policy to grant the minimum permissions required by Infisical to store and play back PAM session recordings in your S3 bucket. Replace `your-pam-recordings-bucket` with the bucket name you configure in **Project Settings → Session Recording**.
+
+                                ```json
+                                {
+                                    "Version": "2012-10-17",
+                                    "Statement": [
+                                        {
+                                            "Sid": "AllowPamRecordingBucketAccess",
+                                            "Effect": "Allow",
+                                            "Action": [
+                                                "s3:PutObject",
+                                                "s3:GetObject"
+                                            ],
+                                            "Resource": "arn:aws:s3:::your-pam-recordings-bucket/*"
+                                        },
+                                        {
+                                            "Sid": "AllowPamRecordingBucketTest",
+                                            "Effect": "Allow",
+                                            "Action": [
+                                                "s3:ListBucket"
+                                            ],
+                                            "Resource": "arn:aws:s3:::your-pam-recordings-bucket"
+                                        },
+                                        {
+                                            "Sid": "AllowPamRecordingConnectionTestCleanup",
+                                            "Effect": "Allow",
+                                            "Action": [
+                                                "s3:DeleteObject"
+                                            ],
+                                            "Resource": "arn:aws:s3:::your-pam-recordings-bucket/.test/*"
+                                        }
+                                    ]
+                                }
+                                ```
+
+                                If you scoped the recording config to a key prefix (for example `pam/prod`), update all three `Resource` ARNs to include the prefix:
+
+                                ```json
+                                "Resource": "arn:aws:s3:::your-pam-recordings-bucket/pam/prod/*"
+                                ```
+
+                                ```json
+                                "Resource": "arn:aws:s3:::your-pam-recordings-bucket/pam/prod/.test/*"
+                                ```
+
+                                <Note>
+                                    **S3 Permissions:**
+                                    - **PutObject**: Lets the gateway upload encrypted recording chunks via presigned PUT URLs. Also used by the connection test to write a probe object under `{prefix}/.test/{uuid}`.
+                                    - **GetObject**: Lets the browser fetch encrypted chunks during playback via presigned GET URLs. Decryption happens locally in the browser; Infisical only ever sees ciphertext.
+                                    - **ListBucket**: Required by `HeadBucket`, which Infisical calls during the connection test to confirm the bucket exists and the credentials can reach it.
+                                    - **DeleteObject** (scoped to `.test/*`): Used **only** to clean up the probe object after the connection test. Infisical never deletes recording chunks. Your bucket lifecycle policy owns retention. When using a key prefix, the test object is written under `{prefix}/.test/`, so the `DeleteObject` resource must include the prefix.
+                                </Note>
+
+                                <Note>
+                                    Recording chunks are encrypted with a per-session AES-256-GCM key on the gateway before they leave your network, and the session key is wrapped with Infisical's KMS using session-bound AAD. Even if the bucket policy is wider than the principle of least privilege suggests, the ciphertext is not readable without an authenticated session-key unwrap.
+                                </Note>
+
+                                #### Bucket CORS Configuration
+
+                                During playback the browser fetches encrypted chunks directly from S3 using presigned GET URLs. For this to work the bucket needs a CORS policy that allows requests from your Infisical domain.
+
+                                Open the bucket in the AWS console, go to **Permissions → Cross-origin resource sharing (CORS)**, and add:
+
+                                ```json
+                                [
+                                    {
+                                        "AllowedHeaders": ["*"],
+                                        "AllowedMethods": ["GET"],
+                                        "AllowedOrigins": ["https://app.infisical.com"],
+                                        "ExposeHeaders": [],
+                                        "MaxAgeSeconds": 3600
+                                    }
+                                ]
+                                ```
+
+                                Replace `https://app.infisical.com` with the origin where your Infisical dashboard is served (for example `https://eu.infisical.com` or `http://localhost:8080` during development). You can list multiple origins if needed.
                             </Accordion>
                         </AccordionGroup>
                     </Tab>
@@ -783,6 +875,88 @@ Infisical supports two methods for connecting to AWS.
                                     - **GetHostedZone**: Validates the hosted zone during CA setup
                                     - **ChangeResourceRecordSets**: Writes the ACM DNS validation CNAME records
                                 </Note>
+                            </Accordion>
+                        </AccordionGroup>
+                    </Tab>
+                    <Tab title="PAM Session Recording">
+                        <AccordionGroup>
+                            <Accordion title="AWS S3 Bucket">
+                                Use the following custom policy to grant the minimum permissions required by Infisical to store and play back PAM session recordings in your S3 bucket. Replace `your-pam-recordings-bucket` with the bucket name you configure in **Project Settings → Session Recording**.
+
+                                ```json
+                                {
+                                    "Version": "2012-10-17",
+                                    "Statement": [
+                                        {
+                                            "Sid": "AllowPamRecordingBucketAccess",
+                                            "Effect": "Allow",
+                                            "Action": [
+                                                "s3:PutObject",
+                                                "s3:GetObject"
+                                            ],
+                                            "Resource": "arn:aws:s3:::your-pam-recordings-bucket/*"
+                                        },
+                                        {
+                                            "Sid": "AllowPamRecordingBucketTest",
+                                            "Effect": "Allow",
+                                            "Action": [
+                                                "s3:ListBucket"
+                                            ],
+                                            "Resource": "arn:aws:s3:::your-pam-recordings-bucket"
+                                        },
+                                        {
+                                            "Sid": "AllowPamRecordingConnectionTestCleanup",
+                                            "Effect": "Allow",
+                                            "Action": [
+                                                "s3:DeleteObject"
+                                            ],
+                                            "Resource": "arn:aws:s3:::your-pam-recordings-bucket/.test/*"
+                                        }
+                                    ]
+                                }
+                                ```
+
+                                If you scoped the recording config to a key prefix (for example `pam/prod`), update all three `Resource` ARNs to include the prefix:
+
+                                ```json
+                                "Resource": "arn:aws:s3:::your-pam-recordings-bucket/pam/prod/*"
+                                ```
+
+                                ```json
+                                "Resource": "arn:aws:s3:::your-pam-recordings-bucket/pam/prod/.test/*"
+                                ```
+
+                                <Note>
+                                    **S3 Permissions:**
+                                    - **PutObject**: Lets the gateway upload encrypted recording chunks via presigned PUT URLs. Also used by the connection test to write a probe object under `{prefix}/.test/{uuid}`.
+                                    - **GetObject**: Lets the browser fetch encrypted chunks during playback via presigned GET URLs. Decryption happens locally in the browser; Infisical only ever sees ciphertext.
+                                    - **ListBucket**: Required by `HeadBucket`, which Infisical calls during the connection test to confirm the bucket exists and the credentials can reach it.
+                                    - **DeleteObject** (scoped to `.test/*`): Used **only** to clean up the probe object after the connection test. Infisical never deletes recording chunks. Your bucket lifecycle policy owns retention. When using a key prefix, the test object is written under `{prefix}/.test/`, so the `DeleteObject` resource must include the prefix.
+                                </Note>
+
+                                <Note>
+                                    Recording chunks are encrypted with a per-session AES-256-GCM key on the gateway before they leave your network, and the session key is wrapped with Infisical's KMS using session-bound AAD. Even if the bucket policy is wider than the principle of least privilege suggests, the ciphertext is not readable without an authenticated session-key unwrap.
+                                </Note>
+
+                                #### Bucket CORS Configuration
+
+                                During playback the browser fetches encrypted chunks directly from S3 using presigned GET URLs. For this to work the bucket needs a CORS policy that allows requests from your Infisical domain.
+
+                                Open the bucket in the AWS console, go to **Permissions → Cross-origin resource sharing (CORS)**, and add:
+
+                                ```json
+                                [
+                                    {
+                                        "AllowedHeaders": ["*"],
+                                        "AllowedMethods": ["GET"],
+                                        "AllowedOrigins": ["https://app.infisical.com"],
+                                        "ExposeHeaders": [],
+                                        "MaxAgeSeconds": 3600
+                                    }
+                                ]
+                                ```
+
+                                Replace `https://app.infisical.com` with the origin where your Infisical dashboard is served (for example `https://eu.infisical.com` or `http://localhost:8080` during development). You can list multiple origins if needed.
                             </Accordion>
                         </AccordionGroup>
                     </Tab>

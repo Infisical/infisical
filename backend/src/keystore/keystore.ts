@@ -36,7 +36,10 @@ export const PgSqlLock = {
   KmsOrgKeyCreation: (orgId: string) => pgAdvisoryLockHashText(`kms-org-key:${orgId}`),
   KmsOrgDataKeyCreation: (orgId: string) => pgAdvisoryLockHashText(`kms-org-data-key:${orgId}`),
   KmsProjectKeyCreation: (projectId: string) => pgAdvisoryLockHashText(`kms-project-key:${projectId}`),
-  KmsProjectDataKeyCreation: (projectId: string) => pgAdvisoryLockHashText(`kms-project-data-key:${projectId}`)
+  KmsProjectDataKeyCreation: (projectId: string) => pgAdvisoryLockHashText(`kms-project-data-key:${projectId}`),
+  ScimGroupUpdate: (groupId: string) => pgAdvisoryLockHashText(`scim-group-update:${groupId}`),
+  LastAdminGuard: (scope: "org" | "project", scopeId: string) =>
+    pgAdvisoryLockHashText(`last-admin-guard:${scope}:${scopeId}`)
 } as const;
 
 // all the key prefixes used must be set here to avoid conflict
@@ -63,12 +66,15 @@ export const KeyStorePrefixes = {
   SecretSyncLastRunTimestamp: (syncId: string) => `secret-sync-last-run-${syncId}` as const,
   IdentityAccessTokenStatusUpdate: (identityAccessTokenId: string) =>
     `identity-access-token-status:${identityAccessTokenId}`,
+  IdentityTokenUsesRemaining: (identityId: string, jti: string) =>
+    `identity-token-uses-remaining:${identityId}:${jti}` as const,
   ServiceTokenStatusUpdate: (serviceTokenId: string) => `service-token-status:${serviceTokenId}`,
   GatewayIdentityCredential: (identityId: string) => `gateway-credentials:${identityId}`,
   ActiveSSEConnectionsSet: (projectId: string, identityId: string) =>
     `sse-connections:${projectId}:${identityId}` as const,
   ActiveSSEConnections: (projectId: string, identityId: string, connectionId: string) =>
     `sse-connections:${projectId}:${identityId}:${connectionId}` as const,
+  RecentAnnouncements: "announcements:recent" as const,
 
   ProjectPermissionMarker: (projectId: string, actorType: string, actorId: string, actionProjectType: string) =>
     `project-permission-marker:${projectId}:${actorType}:${actorId}:${actionProjectType}` as const,
@@ -81,6 +87,7 @@ export const KeyStorePrefixes = {
   UserMfaLockoutLock: (userId: string) => `user-mfa-lockout-lock:${userId}` as const,
   UserMfaUnlockEmailSent: (userId: string) => `user-mfa-unlock-email-sent:${userId}` as const,
   UsedTotpCode: (userId: string, code: string) => `used-totp-code:${userId}:${code}` as const,
+  UsedAccountRecoveryToken: (userId: string, jti: string) => `used-account-recovery-token:${userId}:${jti}` as const,
 
   AiMcpServerOAuth: (sessionId: string) => `ai-mcp-server-oauth:${sessionId}` as const,
 
@@ -99,7 +106,7 @@ export const KeyStorePrefixes = {
   TelemetryIdentifyIdentity: (dedupKey: string) => `telemetry-identify-identity:${dedupKey}` as const,
   TelemetryGroupIdentify: (orgId: string) => `telemetry-group-identify:${orgId}` as const,
   TelemetryIdentify: (distinctId: string) => `telemetry-identify:${distinctId}` as const,
-  SecretEtag: (projectId: string) => `secret-etag:${projectId}` as const,
+  SecretEtag: (projectId: string, dayStamp: string) => `secret-etag:${projectId}:${dayStamp}` as const,
 
   PamAwsIamAccessKeyId: (sessionId: string) => `pam-aws-iam-access-key-id:${sessionId}` as const,
 
@@ -107,6 +114,9 @@ export const KeyStorePrefixes = {
   CertActivityTrend: (projectId: string, range: string) => `cert-activity-trend:${projectId}:${range}` as const,
   CertPqcTrend: (projectId: string, range: string) => `cert-pqc-trend:${projectId}:${range}` as const,
   RefreshTokenGrace: (sessionId: string) => `refresh-token-grace:${sessionId}` as const,
+  EmailSignupOtpHash: (hash: string) => `email-signup-otp:${hash}:hash` as const,
+  EmailSignupOtpLock: (hash: string) => `email-signup-otp:${hash}:lock` as const,
+  EmailSignupResendCooldown: (hash: string) => `email-signup-otp:${hash}:cd` as const,
   InsightsCache: (projectId: string, endpoint: string) => `insights-cache:${projectId}:${endpoint}` as const,
 
   AdminConfig: "infisical-admin-cfg",
@@ -137,6 +147,8 @@ export const KeyStoreTtls = {
   ProjectSSEConnectionTtlSeconds: 180, // Must be > heartbeat interval (60s) * 2
   TelemetryIdentifyIdentityInSeconds: 86400, // 24 hours
   RefreshTokenGraceInSeconds: 10,
+  EmailSignupOtpInSeconds: 300, // 5 minutes
+  EmailSignupResendCooldownInSeconds: 60, // 1 minute
   InsightsCacheInSeconds: 300, // 5 minutes
   AdminConfigInSeconds: 60,
   InvalidatingCacheInSeconds: 1800, // 30 minutes max lock for cache invalidation job
@@ -176,6 +188,7 @@ export type TKeyStoreFactory = {
   getItem: (key: string, prefix?: string) => Promise<string | null>;
   getItems: (keys: string[], prefix?: string) => Promise<(string | null)[]>;
   setExpiry: (key: string, expiryInSeconds: number) => Promise<number>;
+  ttl: (key: string) => Promise<number>;
   setItemWithExpiry: (
     key: string,
     expiryInSeconds: number | string,
@@ -192,6 +205,9 @@ export type TKeyStoreFactory = {
   deleteItemsByKeyIn: (keys: string[]) => Promise<number>;
   deleteItems: (arg: TDeleteItems) => Promise<number>;
   incrementBy: (key: string, value: number) => Promise<number>;
+  incrementByAndRefreshExpiryIfUnderLimit: (key: string, limit: number, expiryInSeconds: number) => Promise<number>;
+  decrementByOrDelete: (key: string) => Promise<number>;
+  incrementByWithExpiry: (key: string, value: number, expiryInSeconds: number) => Promise<number>;
   getKeysByPattern: (pattern: string, limit?: number) => Promise<string[]>;
   // list operations
   listPush: (key: string, value: string) => Promise<number>;
@@ -316,7 +332,67 @@ export const keyStoreFactory = (
 
   const incrementBy = async (key: string, value: number) => primaryRedis.incrby(key, value);
 
+  // Atomic admit: INCR by 1; if the post-INCR count is over the cap, DECR back and
+  // signal rejection without touching EXPIRE — so failed probes against an orphaned
+  // counter cannot keep refreshing its TTL. Otherwise refresh the TTL alongside the
+  // successful admit. Returns -1 for rejection, otherwise the post-INCR count.
+  const INCREMENT_AND_REFRESH_EXPIRY_IF_UNDER_LIMIT_SCRIPT = `
+    local count = redis.call("INCR", KEYS[1])
+    if count > tonumber(ARGV[1]) then
+      redis.call("DECR", KEYS[1])
+      return -1
+    end
+    redis.call("EXPIRE", KEYS[1], ARGV[2])
+    return count
+  `;
+
+  // Atomic release: DECR but never below 0, and never leave a no-TTL key behind. If
+  // the counter is missing or already ≤ 1, DEL so the next admit creates a fresh
+  // key with a fresh TTL. Does NOT touch EXPIRE — the slot is being released.
+  const DECREMENT_OR_DELETE_SCRIPT = `
+    local current = redis.call("GET", KEYS[1])
+    if not current or tonumber(current) <= 1 then
+      redis.call("DEL", KEYS[1])
+      return 0
+    end
+    return redis.call("DECR", KEYS[1])
+  `;
+
+  const incrementByAndRefreshExpiryIfUnderLimit = async (
+    key: string,
+    limit: number,
+    expiryInSeconds: number
+  ): Promise<number> => {
+    const result = await primaryRedis.eval(
+      INCREMENT_AND_REFRESH_EXPIRY_IF_UNDER_LIMIT_SCRIPT,
+      1,
+      key,
+      limit,
+      expiryInSeconds
+    );
+    return Number(result);
+  };
+
+  const decrementByOrDelete = async (key: string): Promise<number> => {
+    const result = await primaryRedis.eval(DECREMENT_OR_DELETE_SCRIPT, 1, key);
+    return Number(result);
+  };
+
+  const INCREMENT_WITH_EXPIRY = `
+    local v = redis.call('INCRBY', KEYS[1], ARGV[1])
+    redis.call('EXPIRE', KEYS[1], ARGV[2])
+    return v
+  `;
+
+  // Atomically increment key and (re)set TTL on every call so the expiry rolls forward with each write.
+  const incrementByWithExpiry = async (key: string, value: number, expiryInSeconds: number): Promise<number> => {
+    const result = await primaryRedis.eval(INCREMENT_WITH_EXPIRY, 1, key, String(value), String(expiryInSeconds));
+    return result as number;
+  };
+
   const setExpiry = async (key: string, expiryInSeconds: number) => primaryRedis.expire(key, expiryInSeconds);
+
+  const ttl = async (key: string) => primaryRedis.ttl(key);
 
   const getKeysByPattern = async (pattern: string, limit?: number) => {
     let cursor = "0";
@@ -437,11 +513,15 @@ export const keyStoreFactory = (
     setItem,
     getItem,
     setExpiry,
+    ttl,
     setItemWithExpiry,
     setItemWithExpiryNX,
     deleteItem,
     deleteItems,
     incrementBy,
+    incrementByAndRefreshExpiryIfUnderLimit,
+    decrementByOrDelete,
+    incrementByWithExpiry,
     acquireLock(resources: string[], duration: number, settings?: Partial<Settings>) {
       return redisLock.acquire(resources, duration, settings);
     },

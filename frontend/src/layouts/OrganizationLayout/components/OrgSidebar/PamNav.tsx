@@ -12,7 +12,11 @@ import {
 } from "lucide-react";
 
 import { ProjectNavList } from "./ProjectNavLink";
-import { PAM_APPROVALS_SUBMENU, PROJECT_ACCESS_CONTROL_SUBMENU } from "./submenus";
+import {
+  PAM_APPROVALS_SUBMENU,
+  PAM_SETTINGS_SUBMENU,
+  PROJECT_ACCESS_CONTROL_SUBMENU
+} from "./submenus";
 import type { NavItem, Submenu } from "./types";
 
 export const PamNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Submenu) => void }) => {
@@ -38,7 +42,12 @@ export const PamNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Submenu) =>
     },
     { label: "Insights", icon: ActivityIcon, pathSuffix: "insights" },
     { label: "Audit Logs", icon: FileText, pathSuffix: "audit-logs" },
-    { label: "Settings", icon: Settings, pathSuffix: "settings" }
+    {
+      label: "Settings",
+      icon: Settings,
+      pathSuffix: "settings",
+      submenu: PAM_SETTINGS_SUBMENU
+    }
   ];
   return <ProjectNavList items={items} onSubmenuOpen={onSubmenuOpen} />;
 };

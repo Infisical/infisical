@@ -3,7 +3,7 @@ import { logger } from "@app/lib/logger";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
-import { TPamSanitizedSession, TPamSessionCommandLog, TTerminalEvent } from "./pam-session-types";
+import { TPamSanitizedSession, TPamSessionCommandLog, TSessionEvent } from "./pam-session-types";
 
 export const decryptSessionCommandLogs = async ({
   projectId,
@@ -23,7 +23,7 @@ export const decryptSessionCommandLogs = async ({
     cipherTextBlob: encryptedLogs
   });
 
-  return JSON.parse(decryptedPlainTextBlob.toString()) as (TPamSessionCommandLog | TTerminalEvent)[];
+  return JSON.parse(decryptedPlainTextBlob.toString()) as (TPamSessionCommandLog | TSessionEvent)[];
 };
 
 export const decryptBatches = async (
@@ -36,10 +36,10 @@ export const decryptBatches = async (
     projectId
   });
 
-  const events: (TPamSessionCommandLog | TTerminalEvent)[] = [];
+  const events: (TPamSessionCommandLog | TSessionEvent)[] = [];
   for (const batch of batches) {
     const plain = decryptor({ cipherTextBlob: batch.encryptedEventsBlob });
-    const batchEvents = JSON.parse(plain.toString()) as (TPamSessionCommandLog | TTerminalEvent)[];
+    const batchEvents = JSON.parse(plain.toString()) as (TPamSessionCommandLog | TSessionEvent)[];
     events.push(...batchEvents);
   }
   return events;

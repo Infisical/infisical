@@ -65,6 +65,7 @@ export const useGetPamDomainById = (
       return data.domain;
     },
     enabled: !!domainId && !!domainType,
+    retry: 5,
     ...options
   });
 };

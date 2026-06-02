@@ -1,15 +1,19 @@
 import { ReactNode } from "react";
-import { faEdit } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { ProjectPermissionCan } from "@app/components/permissions";
-import { GenericFieldLabel } from "@app/components/secret-syncs";
-import { IconButton } from "@app/components/v2";
-import { Badge } from "@app/components/v3";
-import { ProjectPermissionSecretSyncActions } from "@app/context/ProjectPermissionContext/types";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+  Badge,
+  Detail,
+  DetailGroup,
+  DetailLabel,
+  DetailValue,
+  Separator
+} from "@app/components/v3";
 import { SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP } from "@app/helpers/secretSyncs";
 import { SecretSync, TSecretSync } from "@app/hooks/api/secretSyncs";
-import { getSecretSyncPermissionSubject } from "@app/lib/fn/permission";
 
 import { AwsParameterStoreSyncOptionsSection } from "./AwsParameterStoreSyncOptionsSection";
 import { AwsSecretsManagerSyncOptionsSection } from "./AwsSecretsManagerSyncOptionsSection";
@@ -18,17 +22,15 @@ import { RenderSyncOptionsSection } from "./RenderSyncOptionsSection";
 
 type Props = {
   secretSync: TSecretSync;
-  onEditOptions: VoidFunction;
 };
 
-export const SecretSyncOptionsSection = ({ secretSync, onEditOptions }: Props) => {
+export const SecretSyncOptionsSection = ({ secretSync }: Props) => {
   const {
     destination,
     syncOptions: { initialSyncBehavior, disableSecretDeletion, keySchema }
   } = secretSync;
 
   let AdditionalSyncOptionsComponent: ReactNode;
-  let allowEdits: boolean;
 
   switch (destination) {
     case SecretSync.AWSParameterStore:
@@ -80,60 +82,52 @@ export const SecretSyncOptionsSection = ({ secretSync, onEditOptions }: Props) =
     case SecretSync.CircleCI:
     case SecretSync.AzureEntraIdScim:
     case SecretSync.ExternalInfisical:
+    case SecretSync.OVH:
+    case SecretSync.Devin:
     case SecretSync.Ona:
     case SecretSync.TravisCI:
+    case SecretSync.Snowflake:
       AdditionalSyncOptionsComponent = null;
       break;
     default:
       throw new Error(`Unhandled Destination Review Fields: ${destination}`);
   }
 
-  switch (destination) {
-    case SecretSync.AzureEntraIdScim:
-      allowEdits = false;
-      break;
-    default:
-      allowEdits = true;
-  }
-
-  const permissionSubject = getSecretSyncPermissionSubject(secretSync);
-
   return (
-    <div>
-      <div className="flex w-full flex-col gap-3 rounded-lg border border-mineshaft-600 bg-mineshaft-900 px-4 py-3">
-        <div className="flex items-center justify-between border-b border-mineshaft-400 pb-2">
-          <h3 className="font-medium text-mineshaft-100">Sync Options</h3>
-          {allowEdits && (
-            <ProjectPermissionCan I={ProjectPermissionSecretSyncActions.Edit} a={permissionSubject}>
-              {(isAllowed) => (
-                <IconButton
-                  variant="plain"
-                  colorSchema="secondary"
-                  isDisabled={!isAllowed}
-                  ariaLabel="Edit sync options"
-                  onClick={onEditOptions}
-                >
-                  <FontAwesomeIcon icon={faEdit} />
-                </IconButton>
+    <>
+      <Separator className="mt-4" />
+      <Accordion type="multiple" variant="ghost">
+        <AccordionItem value="sync-options">
+          <AccordionTrigger>Sync Options</AccordionTrigger>
+          <AccordionContent>
+            <DetailGroup>
+              <Detail>
+                <DetailLabel>Initial Sync Behavior</DetailLabel>
+                <DetailValue>
+                  {SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP[initialSyncBehavior](destination).name}
+                </DetailValue>
+              </Detail>
+              <Detail>
+                <DetailLabel>Key Schema</DetailLabel>
+                {keySchema ? (
+                  <DetailValue>{keySchema}</DetailValue>
+                ) : (
+                  <DetailValue className="text-muted">—</DetailValue>
+                )}
+              </Detail>
+              {AdditionalSyncOptionsComponent}
+              {disableSecretDeletion && (
+                <Detail>
+                  <DetailLabel>Secret Deletion</DetailLabel>
+                  <DetailValue>
+                    <Badge variant="neutral">Disabled</Badge>
+                  </DetailValue>
+                </Detail>
               )}
-            </ProjectPermissionCan>
-          )}
-        </div>
-        <div>
-          <div className="space-y-3">
-            <GenericFieldLabel label="Initial Sync Behavior">
-              {SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP[initialSyncBehavior](destination).name}
-            </GenericFieldLabel>
-            <GenericFieldLabel label="Key Schema">{keySchema}</GenericFieldLabel>
-            {AdditionalSyncOptionsComponent}
-            {disableSecretDeletion && (
-              <GenericFieldLabel label="Secret Deletion">
-                <Badge variant="neutral">Disabled</Badge>
-              </GenericFieldLabel>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
+            </DetailGroup>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
+    </>
   );
 };

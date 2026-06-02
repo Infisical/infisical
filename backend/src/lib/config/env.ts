@@ -10,6 +10,7 @@ import { TSuperAdminDALFactory } from "@app/services/super-admin/super-admin-dal
 import { BadRequestError } from "../errors";
 import { removeTrailingSlash } from "../fn";
 import { CustomLogger } from "../logger/logger";
+import { ms } from "../ms";
 import { zpStr } from "../zod";
 
 export const GITLAB_URL = "https://gitlab.com";
@@ -53,6 +54,7 @@ const envSchema = z
       .enum(["true", "false"])
       .default("false")
       .transform((el) => el === "true"),
+    DISABLE_PUBLIC_SECRET_SHARING: zodStrBool.default("false"),
     REDIS_URL: zpStr(z.string().optional()),
     REDIS_USERNAME: zpStr(z.string().optional()),
     REDIS_PASSWORD: zpStr(z.string().optional()),
@@ -228,6 +230,12 @@ const envSchema = z
     // HubSpot Forms API for capturing signups
     HUBSPOT_PORTAL_ID: zpStr(z.string().optional()),
     HUBSPOT_SIGNUP_FORM_ID: zpStr(z.string().optional()),
+    // In-app announcements (Contentful). Public read-only delivery token; safe to bake in defaults.
+    // Self-hosted admins can disable outbound calls with ANNOUNCEMENTS_ENABLED=false.
+    ANNOUNCEMENTS_ENABLED: zodStrBool.default("true"),
+    CONTENTFUL_SPACE_ID: zpStr(z.string().optional()),
+    CONTENTFUL_DELIVERY_TOKEN: zpStr(z.string().optional()),
+    CONTENTFUL_ENVIRONMENT: zpStr(z.string().optional().default("master")),
     // GitHub API token for upgrade path tool
     GITHUB_API_TOKEN: zpStr(z.string().optional()),
     // jwt options
@@ -238,6 +246,15 @@ const envSchema = z
     JWT_INVITE_LIFETIME: zpStr(z.string().default("1d")),
     JWT_MFA_LIFETIME: zpStr(z.string().default("5m")),
     JWT_PROVIDER_AUTH_LIFETIME: zpStr(z.string().default("15m")),
+    MAX_MACHINE_IDENTITY_TOKEN_AGE: zpStr(
+      z
+        .string()
+        .default("90d")
+        .transform((val) => Math.floor(ms(val) / 1000))
+    ),
+    LEGACY_IDENTITY_ACCESS_TOKEN_EXPIRATION_ENFORCED_AT: zpStr(
+      z.coerce.date().default(new Date("2026-05-04T00:00:00.000Z"))
+    ),
     // Oauth
     CLIENT_ID_GOOGLE_LOGIN: zpStr(z.string().optional()),
     CLIENT_SECRET_GOOGLE_LOGIN: zpStr(z.string().optional()),
@@ -322,6 +339,7 @@ const envSchema = z
     OTEL_COLLECTOR_BASIC_AUTH_USERNAME: zpStr(z.string().optional()),
     OTEL_COLLECTOR_BASIC_AUTH_PASSWORD: zpStr(z.string().optional()),
     OTEL_EXPORT_TYPE: z.enum(["prometheus", "otlp"]).optional(),
+    OTEL_DROP_HIGH_CARDINALITY_METERS: zodStrBool.default("false"),
 
     PYLON_API_KEY: zpStr(z.string().optional()),
     DISABLE_AUDIT_LOG_GENERATION: zodStrBool.default("false"),
@@ -476,6 +494,9 @@ const envSchema = z
     /* OracleDB ----------------------------------------------------------------------------- */
     TNS_ADMIN: zpStr(z.string().optional()),
 
+    /* Go Sidecar ----------------------------------------------------------------------------- */
+    GOLANG_SIDECAR_URL: zpStr(z.string().optional()),
+
     /* INTERNAL ----------------------------------------------------------------------------- */
     INTERNAL_REGION: zpStr(z.enum(["us", "eu"]).optional())
   })
@@ -622,6 +643,7 @@ export const getTelemetryConfig = () => {
   return {
     useOtel: parsedEnv.data.OTEL_TELEMETRY_COLLECTION_ENABLED,
     useDataDogTracer: parsedEnv.data.SHOULD_USE_DATADOG_TRACER,
+    dropHighCardinalityMeters: parsedEnv.data.OTEL_DROP_HIGH_CARDINALITY_METERS,
     OTEL: {
       otlpURL: parsedEnv.data.OTEL_EXPORT_OTLP_ENDPOINT,
       otlpUser: parsedEnv.data.OTEL_COLLECTOR_BASIC_AUTH_USERNAME,
@@ -901,6 +923,16 @@ export const overwriteSchema: {
       {
         key: "INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_SECRET",
         description: "The Client Secret of your Heroku application."
+      }
+    ]
+  },
+  secretSharing: {
+    name: "Secret Sharing",
+    fields: [
+      {
+        key: "DISABLE_PUBLIC_SECRET_SHARING",
+        description:
+          "Disable creation of unauthenticated public secret shares (the /share-secret page). Set to 'true' to block public sharing."
       }
     ]
   }

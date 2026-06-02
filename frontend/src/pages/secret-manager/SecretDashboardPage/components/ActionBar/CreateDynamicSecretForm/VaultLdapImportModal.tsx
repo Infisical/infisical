@@ -2,6 +2,10 @@ import { useEffect, useState } from "react";
 import { faInfoCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
+import {
+  defaultVaultConnectionId,
+  VaultConnectionAndNamespaceFields
+} from "@app/components/external-migrations";
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
@@ -11,53 +15,71 @@ import {
   ModalClose,
   ModalContent
 } from "@app/components/v2";
-import {
-  useGetVaultLdapRoles,
-  useGetVaultMounts,
-  useGetVaultNamespaces
-} from "@app/hooks/api/migration/queries";
+import { TAvailableAppConnection } from "@app/hooks/api/appConnections/types";
+import { useGetVaultLdapRoles, useGetVaultMounts } from "@app/hooks/api/migration/queries";
 import { VaultLdapRole } from "@app/hooks/api/migration/types";
 
 type Props = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
+  appConnections: TAvailableAppConnection[];
   onImport: (role: VaultLdapRole) => void;
 };
 
 type ContentProps = {
   onClose: () => void;
+  appConnections: TAvailableAppConnection[];
   onImport: (role: VaultLdapRole) => void;
 };
 
-const Content = ({ onClose, onImport }: ContentProps) => {
+const Content = ({ onClose, appConnections, onImport }: ContentProps) => {
+  const hasAppConnections = appConnections.length > 0;
+  const [selectedConnectionId, setSelectedConnectionId] = useState<string | null>(
+    defaultVaultConnectionId(appConnections)
+  );
   const [selectedNamespace, setSelectedNamespace] = useState<string | null>(null);
   const [selectedMountPath, setSelectedMountPath] = useState<string | null>(null);
   const [selectedRole, setSelectedRole] = useState<VaultLdapRole | null>(null);
   const [shouldFetchRoles, setShouldFetchRoles] = useState(false);
   const [shouldFetchMounts, setShouldFetchMounts] = useState(false);
 
-  const { data: namespaces, isLoading: isLoadingNamespaces } = useGetVaultNamespaces();
+  const activeConnectionId = hasAppConnections ? (selectedConnectionId ?? undefined) : undefined;
+
   const { data: roles, isLoading: isLoadingRoles } = useGetVaultLdapRoles(
     shouldFetchRoles,
     selectedNamespace ?? undefined,
-    selectedMountPath ?? undefined
+    selectedMountPath ?? undefined,
+    activeConnectionId
   );
   const { data: mounts, isLoading: isLoadingMounts } = useGetVaultMounts(
     shouldFetchMounts,
-    selectedNamespace ?? undefined
+    selectedNamespace ?? undefined,
+    activeConnectionId
   );
 
-  // Filter to only show LDAP mounts
   const ldapMounts = mounts?.filter((mount) => mount.type === "ldap");
 
-  // Enable fetching mounts when namespace is selected
+  const handleConnectionChange = (id: string) => {
+    setSelectedConnectionId(id);
+    setSelectedNamespace(null);
+    setSelectedMountPath(null);
+    setSelectedRole(null);
+    setShouldFetchMounts(false);
+    setShouldFetchRoles(false);
+  };
+
+  const handleNamespaceChange = (ns: string) => {
+    setSelectedNamespace(ns);
+    setSelectedMountPath(null);
+    setSelectedRole(null);
+  };
+
   useEffect(() => {
     if (selectedNamespace) {
       setShouldFetchMounts(true);
     }
   }, [selectedNamespace]);
 
-  // Enable fetching roles when both namespace and mount path are selected
   useEffect(() => {
     if (selectedNamespace && selectedMountPath) {
       setShouldFetchRoles(true);
@@ -77,6 +99,11 @@ const Content = ({ onClose, onImport }: ContentProps) => {
 
     if (!selectedNamespace) {
       createNotification({ type: "error", text: "Please select a namespace" });
+      return;
+    }
+
+    if (hasAppConnections && !selectedConnectionId) {
+      createNotification({ type: "error", text: "Please select an app connection" });
       return;
     }
 
@@ -106,34 +133,15 @@ const Content = ({ onClose, onImport }: ContentProps) => {
         </div>
       </div>
 
-      <FormControl
-        label="Namespace"
-        className="mb-4"
-        tooltipText="Select the Vault namespace containing the LDAP secrets engine."
-      >
-        <>
-          <FilterableSelect
-            value={namespaces?.find((ns) => ns.name === selectedNamespace)}
-            onChange={(value) => {
-              if (value && !Array.isArray(value)) {
-                const namespace = value as { id: string; name: string };
-                setSelectedNamespace(namespace.name);
-                setSelectedMountPath(null);
-                setSelectedRole(null);
-              }
-            }}
-            options={namespaces || []}
-            getOptionValue={(option) => option.name}
-            getOptionLabel={(option) => (option.name === "/" ? "root" : option.name)}
-            isDisabled={isLoadingNamespaces}
-            placeholder="Select namespace..."
-            className="w-full"
-          />
-          <p className="mt-1 text-xs text-mineshaft-400">
-            Select the Vault namespace to fetch available LDAP secrets engines
-          </p>
-        </>
-      </FormControl>
+      <VaultConnectionAndNamespaceFields
+        appConnections={appConnections}
+        connectionId={selectedConnectionId}
+        onConnectionIdChange={handleConnectionChange}
+        namespace={selectedNamespace}
+        onNamespaceChange={handleNamespaceChange}
+        namespaceTooltip="Select the Vault namespace containing the LDAP secrets engine."
+        namespaceHelpText="Select the Vault namespace to fetch available LDAP secrets engines"
+      />
 
       <FormControl
         label="LDAP Secrets Engine"
@@ -146,7 +154,7 @@ const Content = ({ onClose, onImport }: ContentProps) => {
             onChange={(value) => {
               if (value && !Array.isArray(value)) {
                 const mount = value as { path: string; type: string; version: string | null };
-                setSelectedMountPath(mount.path.replace(/\/$/, "")); // Remove trailing slash
+                setSelectedMountPath(mount.path.replace(/\/$/, ""));
                 setSelectedRole(null);
               }
             }}
@@ -207,7 +215,7 @@ const Content = ({ onClose, onImport }: ContentProps) => {
   );
 };
 
-export const VaultLdapImportModal = ({ isOpen, onOpenChange, onImport }: Props) => {
+export const VaultLdapImportModal = ({ isOpen, onOpenChange, appConnections, onImport }: Props) => {
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
       <ModalContent
@@ -216,7 +224,11 @@ export const VaultLdapImportModal = ({ isOpen, onOpenChange, onImport }: Props) 
         subTitle="Select an LDAP secrets engine role to load its configuration."
         className="max-w-2xl"
       >
-        <Content onClose={() => onOpenChange(false)} onImport={onImport} />
+        <Content
+          onClose={() => onOpenChange(false)}
+          appConnections={appConnections}
+          onImport={onImport}
+        />
       </ModalContent>
     </Modal>
   );

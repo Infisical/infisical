@@ -7,6 +7,7 @@ import {
   ClipboardCheckIcon,
   CodeXmlIcon,
   CopyIcon,
+  CopyPlus,
   EditIcon,
   EllipsisIcon,
   EyeOffIcon,
@@ -32,15 +33,28 @@ import {
   ResolvedSecretValuePopover,
   SecretReferenceTree
 } from "@app/components/secrets/SecretReferenceDetails";
-import { DeleteActionModal, Input, Modal, ModalContent } from "@app/components/v2";
+import { Input, Modal, ModalContent } from "@app/components/v2";
 import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogMedia,
+  AlertDialogTitle,
   Badge,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  Field,
+  FieldContent,
+  FieldLabel,
   IconButton,
+  Input as V3Input,
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -75,6 +89,7 @@ import { CollapsibleSecretImports } from "@app/pages/secret-manager/SecretDashbo
 import { HIDDEN_SECRET_VALUE } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/SecretItem";
 import { useBatchStoreApi } from "@app/pages/secret-manager/SecretDashboardPage/SecretMainPage.store";
 
+import { DuplicateSecretModal } from "./DuplicateSecretModal";
 import { SecretAccessInsights } from "./SecretAccessInsights";
 import { SecretCommentForm } from "./SecretCommentForm";
 import { SecretMetadataForm } from "./SecretMetadataForm";
@@ -117,6 +132,7 @@ type Props = {
   onSecretDelete: (env: string, key: string, secretId?: string, type?: SecretType) => Promise<void>;
   onAddOverride?: () => void;
   isRotatedSecret?: boolean;
+  isHoneyTokenSecret?: boolean;
   isEmpty?: boolean;
   importedSecret?:
     | {
@@ -162,6 +178,7 @@ export const SecretEditTableRow = ({
   isVisible,
   secretId,
   isRotatedSecret,
+  isHoneyTokenSecret,
   importedBy,
   importedSecret,
   isEmpty,
@@ -184,12 +201,15 @@ export const SecretEditTableRow = ({
   const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
     "editSecret",
     "accessInsightsUpgrade",
-    "createSharedSecret"
+    "createSharedSecret",
+    "duplicateSecret"
   ] as const);
 
   const { currentProject } = useProject();
   const { subscription } = useSubscription();
   const batchStore = useBatchStoreApi();
+
+  const isManagedSecret = isRotatedSecret || isHoneyTokenSecret;
 
   const [isFieldFocused, setIsFieldFocused] = useToggle();
   const [isResolvedValueOpen, setIsResolvedValueOpen] = useToggle();
@@ -291,7 +311,10 @@ export const SecretEditTableRow = ({
   const { mutateAsync: updateSecretV3, isPending: isUpdatingMultiline } = useUpdateSecretV3();
 
   const [isDeleting, setIsDeleting] = useToggle();
+  const [isEditing, setIsEditing] = useToggle();
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [deleteConfirmation, setDeleteConfirmation] = useState("");
+  const [editConfirmation, setEditConfirmation] = useState("");
   const [isCommentOpen, setIsCommentOpen] = useState(false);
   const [isTagOpen, setIsTagOpen] = useState(false);
   const [isMetadataOpen, setIsMetadataOpen] = useState(false);
@@ -304,6 +327,14 @@ export const SecretEditTableRow = ({
   const toggleModal = useCallback(() => {
     setIsModalOpen((prev) => !prev);
   }, []);
+
+  useEffect(() => {
+    if (!isModalOpen) setDeleteConfirmation("");
+  }, [isModalOpen]);
+
+  useEffect(() => {
+    if (!popUp.editSecret.isOpen) setEditConfirmation("");
+  }, [popUp.editSecret.isOpen]);
 
   const originalCommentRef = useRef(comment ?? "");
   const originalTagsRef = useRef(tags?.map((t) => ({ id: t.id, slug: t.slug })) ?? []);
@@ -769,23 +800,29 @@ export const SecretEditTableRow = ({
     secretValue: string;
     newKey?: string;
   }) => {
-    await onSecretUpdate({
-      env: environment,
-      key: secretName,
-      value: secretValue,
-      secretValueHidden,
-      type: SecretType.Shared,
-      secretId,
-      newSecretName: newKey
-    });
-    if (!secretValueHidden) {
-      originalValueRef.current = secretValue;
+    if (isEditing) return;
+    setIsEditing.on();
+    try {
+      await onSecretUpdate({
+        env: environment,
+        key: secretName,
+        value: secretValue,
+        secretValueHidden,
+        type: SecretType.Shared,
+        secretId,
+        newSecretName: newKey
+      });
+      if (!secretValueHidden) {
+        originalValueRef.current = secretValue;
+      }
+      reset({
+        value: secretValue,
+        ...(isSingleEnvView ? { key: newKey || secretName } : {})
+      });
+      handlePopUpClose("editSecret");
+    } finally {
+      setIsEditing.off();
     }
-    reset({
-      value: secretValue,
-      ...(isSingleEnvView ? { key: newKey || secretName } : {})
-    });
-    handlePopUpClose("editSecret");
   };
 
   const canReadSecretValue = hasSecretReadValueOrDescribePermission(
@@ -804,16 +841,16 @@ export const SecretEditTableRow = ({
   );
 
   const handleDeleteSecret = useCallback(async () => {
+    if (isDeleting) return;
     setIsDeleting.on();
-    setIsModalOpen(false);
-
     try {
       await onSecretDelete(environment, secretName, secretId);
       reset({ value: null });
+      setIsModalOpen(false);
     } finally {
       setIsDeleting.off();
     }
-  }, [onSecretDelete, environment, secretName, secretId, reset, setIsDeleting]);
+  }, [isDeleting, onSecretDelete, environment, secretName, secretId, reset, setIsDeleting]);
 
   const canReadTags = permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Tags);
   const canCreate = permission.can(
@@ -829,7 +866,7 @@ export const SecretEditTableRow = ({
   const isReadOnly =
     isPendingDelete ||
     isImportedSecret ||
-    isRotatedSecret ||
+    isManagedSecret ||
     isFetchingSharedValue ||
     isErrorFetchingSharedValue ||
     (isCreatable ? !canCreate : !canEditSecretValue);
@@ -863,7 +900,7 @@ export const SecretEditTableRow = ({
       render={({ field, fieldState: { error } }) => (
         <Input
           autoComplete="off"
-          isReadOnly={isPendingDelete || isImportedSecret || isRotatedSecret || !canEditSecretValue}
+          isReadOnly={isPendingDelete || isImportedSecret || isManagedSecret || !canEditSecretValue}
           autoCapitalization={currentProject?.autoCapitalization}
           variant="plain"
           placeholder={error?.message || "Secret name"}
@@ -890,13 +927,53 @@ export const SecretEditTableRow = ({
 
   const valueContent = (
     <>
-      <DeleteActionModal
-        isOpen={isModalOpen}
-        onClose={toggleModal}
-        title="Do you want to delete the selected secret?"
-        deleteKey={secretName}
-        onDeleteApproved={handleDeleteSecret}
-      />
+      <AlertDialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogMedia>
+              <TrashIcon />
+            </AlertDialogMedia>
+            <AlertDialogTitle>Are you sure you want to delete {secretName}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently remove the secret from this environment. This action cannot be
+              undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (deleteConfirmation === secretName) handleDeleteSecret();
+            }}
+          >
+            <Field>
+              <FieldLabel>
+                Type <span className="font-bold">{secretName}</span> to confirm
+              </FieldLabel>
+              <FieldContent>
+                <V3Input
+                  value={deleteConfirmation}
+                  onChange={(e) => setDeleteConfirmation(e.target.value)}
+                  placeholder={`Type ${secretName} here`}
+                  autoComplete="off"
+                />
+              </FieldContent>
+            </Field>
+          </form>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="danger"
+              onClick={(e) => {
+                e.preventDefault();
+                handleDeleteSecret();
+              }}
+              disabled={deleteConfirmation !== secretName || isDeleting}
+            >
+              Delete Secret
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <div className="flex w-full cursor-text items-center space-x-2">
         {secretValueHidden && (
@@ -906,7 +983,7 @@ export const SecretEditTableRow = ({
             </TooltipTrigger>
             <TooltipContent>
               You do not have access to view the current value
-              {canEditSecretValue && !isRotatedSecret ? ", but you can set a new one" : "."}
+              {canEditSecretValue && !isManagedSecret ? ", but you can set a new one" : "."}
             </TooltipContent>
           </Tooltip>
         )}
@@ -949,7 +1026,7 @@ export const SecretEditTableRow = ({
                 environment={environment}
                 isImport={isImportedSecret}
                 defaultValue={secretValueHidden ? "" : undefined}
-                canEditButNotView={secretValueHidden}
+                canEditButNotView={secretValueHidden && !isManagedSecret}
                 onFocus={() => setIsFieldFocused.on()}
                 containerClassName={secretHasReference && isFieldActive ? "pl-6" : ""}
                 onBlur={() => {
@@ -1116,7 +1193,7 @@ export const SecretEditTableRow = ({
                 isDisabled={
                   isPendingDelete ||
                   isImportedSecret ||
-                  isRotatedSecret ||
+                  isManagedSecret ||
                   (isCreatable ? !canCreate : !canEditSecretValue)
                 }
                 onClick={() => {
@@ -1135,11 +1212,13 @@ export const SecretEditTableRow = ({
             <TooltipContent>
               {isImportedSecret
                 ? "Cannot Edit Imported Secret"
-                : isRotatedSecret
-                  ? "Cannot Edit Rotated Secret"
-                  : (isCreatable ? !canCreate : !canEditSecretValue)
-                    ? "Access Denied"
-                    : `${isCreatable ? "Add" : "Edit"} Value`}
+                : isHoneyTokenSecret
+                  ? "Cannot Edit Honey Token Secret"
+                  : isRotatedSecret
+                    ? "Cannot Edit Rotated Secret"
+                    : (isCreatable ? !canCreate : !canEditSecretValue)
+                      ? "Access Denied"
+                      : `${isCreatable ? "Add" : "Edit"} Value`}
             </TooltipContent>
           </Tooltip>
           <Tooltip disableHoverableContent>
@@ -1579,6 +1658,29 @@ export const SecretEditTableRow = ({
                       : "Create Secret to View Access"}
                   </TooltipContent>
                 </Tooltip>
+                <Tooltip
+                  open={isManagedSecret || isCreatable ? undefined : false}
+                  disableHoverableContent
+                >
+                  <TooltipTrigger className="block w-full">
+                    <DropdownMenuItem
+                      onClick={() => handlePopUpOpen("duplicateSecret")}
+                      isDisabled={isManagedSecret || isCreatable || !secretId}
+                    >
+                      <CopyPlus />
+                      Duplicate Secret
+                    </DropdownMenuItem>
+                  </TooltipTrigger>
+                  <TooltipContent side="left">
+                    {isCreatable
+                      ? "Create Secret First"
+                      : isHoneyTokenSecret
+                        ? "Cannot Duplicate Honey Token Secret"
+                        : isRotatedSecret
+                          ? "Cannot Duplicate Rotated Secret"
+                          : "Duplicate Secret"}
+                  </TooltipContent>
+                </Tooltip>
                 <ProjectPermissionCan
                   I={ProjectPermissionActions.Delete}
                   a={subject(ProjectPermissionSub.Secrets, {
@@ -1590,7 +1692,7 @@ export const SecretEditTableRow = ({
                 >
                   {(isAllowed) => (
                     <Tooltip
-                      open={isRotatedSecret || isImportedSecret || isCreatable ? undefined : false}
+                      open={isManagedSecret || isImportedSecret || isCreatable ? undefined : false}
                       disableHoverableContent
                     >
                       <TooltipTrigger className="block w-full">
@@ -1600,7 +1702,7 @@ export const SecretEditTableRow = ({
                             isCreatable ||
                             isDeleting ||
                             !isAllowed ||
-                            isRotatedSecret ||
+                            isManagedSecret ||
                             isImportedSecret
                           }
                           variant="danger"
@@ -1610,13 +1712,15 @@ export const SecretEditTableRow = ({
                         </DropdownMenuItem>
                       </TooltipTrigger>
                       <TooltipContent side="left">
-                        {isRotatedSecret
-                          ? "Cannot Delete Rotated Secret"
-                          : isImportedSecret
-                            ? "Cannot Delete Imported Secret"
-                            : isCreatable
-                              ? "No Secret to Delete"
-                              : "Delete"}
+                        {isHoneyTokenSecret
+                          ? "Cannot Delete Honey Token Secret"
+                          : isRotatedSecret
+                            ? "Cannot Delete Rotated Secret"
+                            : isImportedSecret
+                              ? "Cannot Delete Imported Secret"
+                              : isCreatable
+                                ? "No Secret to Delete"
+                                : "Delete"}
                       </TooltipContent>
                     </Tooltip>
                   )}
@@ -1661,7 +1765,7 @@ export const SecretEditTableRow = ({
               secretKey={secretName}
               environment={environment}
               secretPath={secretPath}
-              isRotatedSecret={isRotatedSecret ?? false}
+              isRotatedSecret={isManagedSecret ?? false}
               canReadValue={canReadSecretValue}
             />
           )}
@@ -1702,27 +1806,72 @@ export const SecretEditTableRow = ({
         text="Secret access insights can be unlocked if you upgrade to Infisical Pro plan."
       />
 
-      <DeleteActionModal
-        isOpen={popUp.editSecret.isOpen}
-        deleteKey="confirm"
-        buttonColorSchema="secondary"
-        buttonText="Save"
-        subTitle=""
-        title="Do you want to edit this secret?"
-        onChange={(isOpen) => handlePopUpToggle("editSecret", isOpen)}
-        onDeleteApproved={() => handleEditSecret(popUp?.editSecret?.data)}
-        formContent={
-          importedBy &&
-          importedBy.length > 0 && (
+      <AlertDialog
+        open={popUp.editSecret.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("editSecret", isOpen)}
+      >
+        <AlertDialogContent className="sm:max-w-4xl!">
+          <AlertDialogHeader>
+            <AlertDialogMedia>
+              <SaveIcon />
+            </AlertDialogMedia>
+            <AlertDialogTitle>Update this secret?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This secret is referenced by other secrets in your project. Saving these changes will
+              update everywhere it&apos;s referenced.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {importedBy && importedBy.length > 0 && (
             <CollapsibleSecretImports
               importedBy={importedBy}
               secretsToDelete={[secretName]}
               onlyReferences
             />
-          )
-        }
-      />
+          )}
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (editConfirmation === "confirm") handleEditSecret(popUp?.editSecret?.data);
+            }}
+          >
+            <Field>
+              <FieldLabel>
+                Type <span className="font-bold">confirm</span> to proceed
+              </FieldLabel>
+              <FieldContent>
+                <V3Input
+                  value={editConfirmation}
+                  onChange={(e) => setEditConfirmation(e.target.value)}
+                  placeholder="Type confirm here"
+                  autoComplete="off"
+                />
+              </FieldContent>
+            </Field>
+          </form>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="project"
+              onClick={(e) => {
+                e.preventDefault();
+                handleEditSecret(popUp?.editSecret?.data);
+              }}
+              disabled={editConfirmation !== "confirm" || isEditing}
+            >
+              Save Changes
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <AddShareSecretModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
+      <DuplicateSecretModal
+        isOpen={popUp.duplicateSecret.isOpen}
+        onOpenChange={(open) => handlePopUpToggle("duplicateSecret", open)}
+        secrets={secretId ? [{ id: secretId, name: secretName }] : []}
+        secretPath={secretPath}
+        sourceEnvironment={{ slug: environment, name: environmentName }}
+        canCopySecretValue={!secretValueHidden}
+      />
     </>
   );
 

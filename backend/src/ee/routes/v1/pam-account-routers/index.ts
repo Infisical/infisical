@@ -23,6 +23,11 @@ import {
   SanitizedMySQLAccountWithResourceSchema,
   UpdateMySQLAccountSchema
 } from "@app/ee/services/pam-resource/mysql/mysql-resource-schemas";
+import {
+  CreateOracleAccountSchema,
+  SanitizedOracleAccountWithResourceSchema,
+  UpdateOracleAccountSchema
+} from "@app/ee/services/pam-resource/oracle/oracle-resource-schemas";
 import { PamResource } from "@app/ee/services/pam-resource/pam-resource-enums";
 import {
   CreatePostgresAccountSchema,
@@ -127,6 +132,15 @@ export const PAM_ACCOUNT_REGISTER_ROUTER_MAP: Record<PamResource, (server: Fasti
       accountResponseSchema: SanitizedWindowsAccountWithResourceSchema,
       createAccountSchema: CreateWindowsAccountSchema,
       updateAccountSchema: UpdateWindowsAccountSchema
+    });
+  },
+  [PamResource.OracleDB]: async (server: FastifyZodProvider) => {
+    registerPamAccountEndpoints({
+      server,
+      parentType: PamResource.OracleDB,
+      accountResponseSchema: SanitizedOracleAccountWithResourceSchema,
+      createAccountSchema: CreateOracleAccountSchema,
+      updateAccountSchema: UpdateOracleAccountSchema
     });
   }
 };

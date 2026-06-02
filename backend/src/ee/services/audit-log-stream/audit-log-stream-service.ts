@@ -1,5 +1,5 @@
 import { ForbiddenError } from "@casl/ability";
-import { AxiosError } from "axios";
+import { isAxiosError } from "axios";
 
 import { OrganizationActionScope, TAuditLogs } from "@app/db/schemas";
 import {
@@ -9,7 +9,9 @@ import {
   listProviderOptions
 } from "@app/ee/services/audit-log-stream/audit-log-stream-fns";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { classifyError } from "@app/lib/errors/classify";
 import { logger } from "@app/lib/logger";
+import { auditLogStreamDeliveryDurationHistogram } from "@app/lib/telemetry/metrics";
 import { OrgServiceActor } from "@app/lib/types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
@@ -228,7 +230,8 @@ export const auditLogStreamServiceFactory = ({
   const streamLog = async (orgId: string, auditLog: TAuditLogs) => {
     const logStreams = await auditLogStreamDAL.find({ orgId });
     await Promise.allSettled(
-      logStreams.map(async ({ provider, encryptedCredentials }) => {
+      logStreams.map(async (logStream) => {
+        const { provider, encryptedCredentials } = logStream;
         const credentials = await decryptLogStreamCredentials({
           encryptedCredentials,
           orgId,
@@ -237,17 +240,34 @@ export const auditLogStreamServiceFactory = ({
 
         const factory = LOG_STREAM_FACTORY_MAP[provider as LogProvider]();
 
+        const deliveryStart = Date.now();
+        const metricBaseAttrs = {
+          "audit_log_stream.provider": provider,
+          "infisical.organization.id": orgId
+        };
+
         try {
-          await factory.streamLog({
-            credentials,
-            auditLog
-          });
+          await factory.streamLog({ credentials, auditLog });
+          const durationS = (Date.now() - deliveryStart) / 1000;
+          auditLogStreamDeliveryDurationHistogram.record(durationS, { ...metricBaseAttrs, outcome: "success" });
         } catch (error) {
-          logger.error(
-            error,
-            `Failed to stream audit log [auditLogId=${auditLog.id}] [provider=${provider}] [orgId=${orgId}]${error instanceof AxiosError ? `: ${error.message}` : ""}`
-          );
-          throw error;
+          const durationS = (Date.now() - deliveryStart) / 1000;
+          const errorType = classifyError(error);
+          auditLogStreamDeliveryDurationHistogram.record(durationS, {
+            ...metricBaseAttrs,
+            outcome: "failure",
+            "error.type": errorType
+          });
+          if (isAxiosError(error)) {
+            logger.error(
+              `audit-log-queue: Failed to stream audit log due to request error [auditLogId=${auditLog.id}] [event=${auditLog.eventType}] [provider=${provider}] [orgId=${orgId}] [projectId=${auditLog.projectId}] [message=${error?.message}] [response=${JSON.stringify(error?.response?.data)}]`
+            );
+          } else {
+            logger.error(
+              error,
+              `audit-log-queue: Failed to stream audit log [auditLogId=${auditLog.id}] [event=${auditLog.eventType}] [provider=${provider}] [orgId=${orgId}] [projectId=${auditLog.projectId}]: ${(error as Error)?.message}`
+            );
+          }
         }
       })
     );

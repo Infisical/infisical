@@ -23,7 +23,12 @@ import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 import { fetchGithubEmails, fetchGithubUser } from "@app/lib/requests/github";
-import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
+import {
+  AuthAttemptAuthMethod,
+  AuthAttemptAuthResult,
+  authAttemptCounter,
+  recordAuthAttemptMetric
+} from "@app/lib/telemetry/metrics";
 import { authRateLimit } from "@app/server/config/rateLimiter";
 import { addAuthOriginDomainCookie } from "@app/server/lib/cookie";
 import { AuthMethod, ProviderAuthResult } from "@app/services/auth/auth-type";
@@ -54,6 +59,7 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
         },
         // eslint-disable-next-line
         async (req, _accessToken, _refreshToken, profile, cb) => {
+          const authMetricStartTime = performance.now();
           // @ts-expect-error this is because this is express type and not fastify
           const callbackPort = req.session.get("callbackPort");
           // @ts-expect-error this is because this is express type and not fastify
@@ -94,6 +100,8 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
               );
             }
 
+            cb(null, loginResult);
+
             if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
               authAttemptCounter.add(1, {
                 "infisical.user.email": email,
@@ -107,7 +115,12 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
               });
             }
 
-            cb(null, loginResult);
+            recordAuthAttemptMetric({
+              startTime: authMetricStartTime,
+              method: AuthAttemptAuthMethod.GOOGLE,
+              result: AuthAttemptAuthResult.SUCCESS,
+              orgId: loginResult.orgId
+            });
           } catch (error) {
             logger.error(error);
             if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
@@ -119,6 +132,12 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
                 "user_agent.original": requestContext.get(RequestContextKey.UserAgent)
               });
             }
+            recordAuthAttemptMetric({
+              startTime: authMetricStartTime,
+              method: AuthAttemptAuthMethod.GOOGLE,
+              result: AuthAttemptAuthResult.FAILURE,
+              error
+            });
             cb(error as Error, false);
           }
         }
@@ -145,6 +164,7 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
         },
         // eslint-disable-next-line
         async (req: any, accessToken: string, _refreshToken: string, _profile: any, done: Function) => {
+          const authMetricStartTime = performance.now();
           const ghEmails = await fetchGithubEmails(accessToken);
           const { email } = ghEmails.filter((gitHubEmail) => gitHubEmail.primary && gitHubEmail.verified)[0];
 
@@ -182,6 +202,8 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
               );
             }
 
+            done(null, { ...loginResult, externalProviderAccessToken: accessToken });
+
             if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
               authAttemptCounter.add(1, {
                 "infisical.user.email": email,
@@ -195,7 +217,12 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
               });
             }
 
-            done(null, { ...loginResult, externalProviderAccessToken: accessToken });
+            recordAuthAttemptMetric({
+              startTime: authMetricStartTime,
+              method: AuthAttemptAuthMethod.GITHUB,
+              result: AuthAttemptAuthResult.SUCCESS,
+              orgId: loginResult.orgId
+            });
           } catch (err) {
             if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
               authAttemptCounter.add(1, {
@@ -206,6 +233,12 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
                 "user_agent.original": requestContext.get(RequestContextKey.UserAgent)
               });
             }
+            recordAuthAttemptMetric({
+              startTime: authMetricStartTime,
+              method: AuthAttemptAuthMethod.GITHUB,
+              result: AuthAttemptAuthResult.FAILURE,
+              error: err
+            });
             logger.error(err);
             done(err as Error, false);
           }
@@ -231,6 +264,7 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
           pkce: true
         },
         async (req: any, _accessToken: string, _refreshToken: string, profile: any, cb: any) => {
+          const authMetricStartTime = performance.now();
           const email = profile.emails[0].value;
 
           try {
@@ -262,6 +296,8 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
               );
             }
 
+            cb(null, loginResult);
+
             if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
               authAttemptCounter.add(1, {
                 "infisical.user.email": email,
@@ -275,7 +311,12 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
               });
             }
 
-            return cb(null, loginResult);
+            recordAuthAttemptMetric({
+              startTime: authMetricStartTime,
+              method: AuthAttemptAuthMethod.GITLAB,
+              result: AuthAttemptAuthResult.SUCCESS,
+              orgId: loginResult.orgId
+            });
           } catch (error) {
             if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
               authAttemptCounter.add(1, {
@@ -286,6 +327,13 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
                 "user_agent.original": requestContext.get(RequestContextKey.UserAgent)
               });
             }
+
+            recordAuthAttemptMetric({
+              startTime: authMetricStartTime,
+              method: AuthAttemptAuthMethod.GITLAB,
+              result: AuthAttemptAuthResult.FAILURE,
+              error
+            });
 
             logger.error(error);
             cb(error as Error, false);
@@ -354,7 +402,15 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
     },
     preValidation: [
       async (req, res) => {
-        const { callback_port: callbackPort, is_admin_login: isAdminLogin, org_slug: orgSlug } = req.query;
+        const {
+          callback_port: callbackPort,
+          is_admin_login: isAdminLogin,
+          org_slug: orgSlug
+        } = req.query as {
+          callback_port?: string;
+          is_admin_login?: boolean;
+          org_slug?: string;
+        };
         // ensure fresh session state per login attempt
         await req.session.regenerate();
         if (callbackPort) {
@@ -439,7 +495,10 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
     },
     preValidation: [
       async (req, res) => {
-        const { callback_port: callbackPort, is_admin_login: isAdminLogin } = req.query;
+        const { callback_port: callbackPort, is_admin_login: isAdminLogin } = req.query as {
+          callback_port?: string;
+          is_admin_login?: boolean;
+        };
         // ensure fresh session state per login attempt
         await req.session.regenerate();
         if (callbackPort) {
@@ -539,7 +598,10 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
     },
     preValidation: [
       async (req, res) => {
-        const { callback_port: callbackPort, is_admin_login: isAdminLogin } = req.query;
+        const { callback_port: callbackPort, is_admin_login: isAdminLogin } = req.query as {
+          callback_port?: string;
+          is_admin_login?: boolean;
+        };
         // ensure fresh session state per login attempt
         await req.session.regenerate();
         if (callbackPort) {

@@ -1,4 +1,4 @@
-import { GenericFieldLabel } from "@app/components/secret-syncs";
+import { Detail, DetailLabel, DetailValue } from "@app/components/v3";
 import { TOnaSync } from "@app/hooks/api/secretSyncs/types/ona-sync";
 
 type Props = {
@@ -9,8 +9,9 @@ export const OnaSyncDestinationSection = ({ secretSync }: Props) => {
   const { destinationConfig } = secretSync;
 
   return (
-    <GenericFieldLabel label="Ona Project">
-      {destinationConfig.projectName || destinationConfig.projectId}
-    </GenericFieldLabel>
+    <Detail>
+      <DetailLabel>Ona Project</DetailLabel>
+      <DetailValue>{destinationConfig.projectName || destinationConfig.projectId}</DetailValue>
+    </Detail>
   );
 };

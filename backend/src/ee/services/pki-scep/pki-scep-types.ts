@@ -1,5 +1,11 @@
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 
+export enum ScepOperation {
+  GetCACaps = "GetCACaps",
+  GetCACert = "GetCACert",
+  PKIOperation = "PKIOperation"
+}
+
 export enum ScepMessageType {
   CertRep = "3",
   RenewalReq = "17",
@@ -54,20 +60,24 @@ export interface TParsedScepMessage {
 
 export type TGetCaCapsDTO = {
   profileId: string;
+  applicationId?: string;
 };
 
 export type TGetCaCertDTO = {
   profileId: string;
+  applicationId?: string;
 };
 
 export type THandlePkiOperationDTO = {
   profileId: string;
   message: Buffer;
   clientIp: string;
+  applicationId?: string;
 };
 
 export type TGenerateDynamicChallengeDTO = {
   profileId: string;
+  applicationId?: string;
   actor: ActorType;
   actorId: string;
   actorAuthMethod: ActorAuthMethod;

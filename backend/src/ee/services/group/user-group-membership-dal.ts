@@ -184,18 +184,18 @@ export const userGroupMembershipDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findGroupMembershipsByGroupIdInOrg = async (groupId: string, orgId: string) => {
+  const findGroupMembershipsByGroupIdInOrg = async (groupId: string, orgId: string, tx?: Knex) => {
     try {
+      const queryDb = tx || db.replicaNode();
+
       // Group visible in org = has Membership with scopeOrgId = orgId (native or inherited)
-      const groupIdsVisibleInOrg = db
-        .replicaNode()(TableName.Membership)
+      const groupIdsVisibleInOrg = queryDb(TableName.Membership)
         .where(`${TableName.Membership}.scope`, AccessScope.Organization)
         .where(`${TableName.Membership}.scopeOrgId`, orgId)
         .whereNotNull(`${TableName.Membership}.actorGroupId`)
         .select(`${TableName.Membership}.actorGroupId`);
 
-      const docs = await db
-        .replicaNode()(TableName.UserGroupMembership)
+      const docs = await queryDb(TableName.UserGroupMembership)
         .join(TableName.Groups, `${TableName.UserGroupMembership}.groupId`, `${TableName.Groups}.id`)
         .join(TableName.Membership, `${TableName.UserGroupMembership}.userId`, `${TableName.Membership}.actorUserId`)
         .join(TableName.Users, `${TableName.UserGroupMembership}.userId`, `${TableName.Users}.id`)

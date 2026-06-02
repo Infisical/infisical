@@ -57,7 +57,7 @@ export const AuditLogStreamRow = ({ logStream, onDelete, onEditCredentials }: Pr
         </div>
       </Td>
       <Td className="max-w-0 min-w-32!">
-        <div className="flex w-full items-center">
+        <div className="flex w-full items-center gap-2">
           <p className="truncate">{url}</p>
         </div>
       </Td>

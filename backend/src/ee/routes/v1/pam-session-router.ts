@@ -5,16 +5,20 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { PolicyRulesResponseSchema } from "@app/ee/services/pam-account-policy";
 import { KubernetesSessionCredentialsSchema } from "@app/ee/services/pam-resource/kubernetes/kubernetes-resource-schemas";
 import { MongoDBSessionCredentialsSchema } from "@app/ee/services/pam-resource/mongodb/mongodb-resource-schemas";
+import { MsSQLSessionCredentialsSchema } from "@app/ee/services/pam-resource/mssql/mssql-resource-schemas";
 import { MySQLSessionCredentialsSchema } from "@app/ee/services/pam-resource/mysql/mysql-resource-schemas";
+import { OracleSessionCredentialsSchema } from "@app/ee/services/pam-resource/oracle/oracle-resource-schemas";
 import { PostgresSessionCredentialsSchema } from "@app/ee/services/pam-resource/postgres/postgres-resource-schemas";
 import { RedisSessionCredentialsSchema } from "@app/ee/services/pam-resource/redis/redis-resource-schemas";
 import { SSHSessionCredentialsSchema } from "@app/ee/services/pam-resource/ssh/ssh-resource-schemas";
+import { WindowsSessionCredentialsSchema } from "@app/ee/services/pam-resource/windows-server/windows-server-resource-schemas";
 import {
   HttpEventSchema,
   PamSessionCommandLogSchema,
+  SanitizedSessionListItemSchema,
   SanitizedSessionSchema,
-  SessionLogsPageSchema,
-  TerminalEventSchema
+  SessionEventSchema,
+  SessionLogsPageSchema
 } from "@app/ee/services/pam-session/pam-session-schemas";
 import { BadRequestError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -23,12 +27,16 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
+// Schemas with distinguishing fields must precede simpler ones — Zod strips unrecognized keys on first match.
 const SessionCredentialsSchema = z.union([
+  MsSQLSessionCredentialsSchema,
   SSHSessionCredentialsSchema,
+  WindowsSessionCredentialsSchema,
+  KubernetesSessionCredentialsSchema,
+  MongoDBSessionCredentialsSchema,
   PostgresSessionCredentialsSchema,
   MySQLSessionCredentialsSchema,
-  MongoDBSessionCredentialsSchema,
-  KubernetesSessionCredentialsSchema,
+  OracleSessionCredentialsSchema,
   RedisSessionCredentialsSchema
 ]);
 
@@ -52,13 +60,23 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           credentials: SessionCredentialsSchema,
-          policyRules: PolicyRulesResponseSchema
+          policyRules: PolicyRulesResponseSchema,
+          recording: z
+            .object({
+              sessionKey: z.string(),
+              uploadToken: z.string(),
+              storageBackend: z.string(),
+              projectId: z.string(),
+              sessionId: z.string()
+            })
+            .nullable()
+            .optional()
         })
       }
     },
     onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.GATEWAY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { credentials, policyRules, projectId, account, sessionStarted } =
+      const { credentials, policyRules, projectId, account, sessionStarted, recording } =
         await server.services.pamAccount.getSessionCredentials(req.params.sessionId, req.permission);
 
       await server.services.auditLog.createAuditLog({
@@ -102,7 +120,16 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
 
       return {
         credentials: credentials as z.infer<typeof SessionCredentialsSchema>,
-        policyRules
+        policyRules,
+        recording: recording
+          ? {
+              sessionKey: recording.sessionKeyBase64,
+              uploadToken: recording.uploadTokenBase64,
+              storageBackend: recording.storageBackend,
+              projectId,
+              sessionId: req.params.sessionId
+            }
+          : null
       };
     }
   });
@@ -120,7 +147,7 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
         sessionId: z.string().uuid()
       }),
       body: z.object({
-        logs: z.array(z.union([PamSessionCommandLogSchema, TerminalEventSchema, HttpEventSchema]))
+        logs: z.array(z.union([PamSessionCommandLogSchema, SessionEventSchema, HttpEventSchema]))
       }),
       response: {
         200: z.object({
@@ -242,19 +269,24 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
             }
           }
         });
-      }
 
-      await server.services.telemetry
-        .sendPostHogEvents({
-          event: PostHogEventTypes.PamSessionEnded,
-          distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
-          properties: {
-            resourceType: session.resourceType,
-            projectId
-          }
-        })
-        .catch(() => {});
+        const durationMs =
+          session.startedAt && session.endedAt
+            ? new Date(session.endedAt).getTime() - new Date(session.startedAt).getTime()
+            : undefined;
+        void server.services.telemetry
+          .sendPostHogEvents({
+            event: PostHogEventTypes.PamSessionEnded,
+            distinctId: getTelemetryDistinctId(req),
+            organizationId: req.permission.orgId,
+            properties: {
+              resourceType: session.resourceType,
+              projectId,
+              durationMs
+            }
+          })
+          .catch(() => {});
+      }
 
       return { session };
     }
@@ -340,7 +372,7 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          sessions: SanitizedSessionSchema.array()
+          sessions: SanitizedSessionListItemSchema.array()
         })
       }
     },
@@ -386,7 +418,7 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.GATEWAY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const EventBatchSchema = z.array(z.union([PamSessionCommandLogSchema, TerminalEventSchema, HttpEventSchema]));
+      const EventBatchSchema = z.array(z.union([PamSessionCommandLogSchema, SessionEventSchema, HttpEventSchema]));
       try {
         EventBatchSchema.parse(JSON.parse(req.body.toString()));
       } catch (e) {

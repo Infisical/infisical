@@ -4,7 +4,6 @@ import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas";
 import { ormify, TOrmify } from "@app/lib/knex";
 import { logger } from "@app/lib/logger";
-import { QueueName } from "@app/queue";
 
 export interface TKeyValueStoreDALFactory extends TOrmify<TableName.KeyValueStore> {
   incrementBy: (key: string, dto: { incr?: number; tx?: Knex; expiresAt?: Date }) => Promise<number>;
@@ -50,7 +49,7 @@ export const keyValueStoreDALFactory = (db: TDbClient): TKeyValueStoreDALFactory
     let numberOfRetryOnFailure = 0;
     let isRetrying = false;
 
-    logger.info(`${QueueName.DailyResourceCleanUp}: db key value store clean up started`);
+    logger.info(`daily-resource-cleanup: db key value store clean up started`);
     do {
       try {
         // eslint-disable-next-line no-await-in-loop
@@ -84,7 +83,7 @@ export const keyValueStoreDALFactory = (db: TDbClient): TKeyValueStoreDALFactory
       }
       isRetrying = numberOfRetryOnFailure > 0;
     } while (deletedIds.length > 0 || (isRetrying && numberOfRetryOnFailure < MAX_RETRY_ON_FAILURE));
-    logger.info(`${QueueName.DailyResourceCleanUp}: db key value store clean up completed`);
+    logger.info(`daily-resource-cleanup: db key value store clean up completed`);
   };
 
   return { ...keyValueStoreOrm, incrementBy, findOneInt, pruneExpiredKeys };

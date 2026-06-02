@@ -440,6 +440,7 @@ export const SecretDetailSidebar = ({
                             isReadOnly ||
                             !isAllowed ||
                             secret?.isRotatedSecret ||
+                            secret?.isHoneyTokenSecret ||
                             isLoadingSecretValue ||
                             isErrorFetchingSecretValue
                           }

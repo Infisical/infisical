@@ -1,6 +1,6 @@
 import { ReactNode, useMemo } from "react";
 
-import { GenericFieldLabel } from "@app/components/secret-syncs";
+import { Detail, DetailLabel, DetailValue } from "@app/components/v3";
 import { useVercelConnectionListOrganizations } from "@app/hooks/api/appConnections/vercel";
 import {
   TVercelSync,
@@ -40,24 +40,36 @@ export const VercelSyncDestinationSection = ({ secretSync }: Props) => {
   if (destinationConfig.scope === VercelSyncScope.Team) {
     return (
       <>
-        <GenericFieldLabel label="Scope">Team</GenericFieldLabel>
-        <GenericFieldLabel label="Vercel Team">{selectedTeam?.name}</GenericFieldLabel>
-        <GenericFieldLabel label="Target Environments">
-          {destinationConfig.targetEnvironments?.length
-            ? destinationConfig.targetEnvironments
-                .map((env) => env.charAt(0).toUpperCase() + env.slice(1))
-                .join(", ")
-            : "None"}
-        </GenericFieldLabel>
-        <GenericFieldLabel label="All Custom Environments">
-          {destinationConfig.applyToAllCustomEnvironments ? "Yes" : "No"}
-        </GenericFieldLabel>
-        <GenericFieldLabel label="Target Projects">
-          {selectedProjects?.map((project) => project?.name).join(", ")}
-        </GenericFieldLabel>
-        <GenericFieldLabel label="Sensitive">
-          {destinationConfig.sensitive ? "Yes" : "No"}
-        </GenericFieldLabel>
+        <Detail>
+          <DetailLabel>Scope</DetailLabel>
+          <DetailValue>Team</DetailValue>
+        </Detail>
+        <Detail>
+          <DetailLabel>Vercel Team</DetailLabel>
+          <DetailValue>{selectedTeam?.name}</DetailValue>
+        </Detail>
+        <Detail>
+          <DetailLabel>Target Environments</DetailLabel>
+          <DetailValue>
+            {destinationConfig.targetEnvironments?.length
+              ? destinationConfig.targetEnvironments
+                  .map((env) => env.charAt(0).toUpperCase() + env.slice(1))
+                  .join(", ")
+              : "None"}
+          </DetailValue>
+        </Detail>
+        <Detail>
+          <DetailLabel>All Custom Environments</DetailLabel>
+          <DetailValue>{destinationConfig.applyToAllCustomEnvironments ? "Yes" : "No"}</DetailValue>
+        </Detail>
+        <Detail>
+          <DetailLabel>Target Projects</DetailLabel>
+          <DetailValue>{selectedProjects?.map((project) => project?.name).join(", ")}</DetailValue>
+        </Detail>
+        <Detail>
+          <DetailLabel>Sensitive</DetailLabel>
+          <DetailValue>{destinationConfig.sensitive ? "Yes" : "No"}</DetailValue>
+        </Detail>
       </>
     );
   }
@@ -66,28 +78,47 @@ export const VercelSyncDestinationSection = ({ secretSync }: Props) => {
   if (destinationConfig.env === VercelEnvironmentType.Preview && destinationConfig.branch) {
     Components = (
       <>
-        <GenericFieldLabel label="Scope">Project</GenericFieldLabel>
-        <GenericFieldLabel label="Vercel Project">
-          {destinationConfig.appName || destinationConfig.app}
-        </GenericFieldLabel>
-        <GenericFieldLabel label="Environment">{destinationConfig.env}</GenericFieldLabel>
-        <GenericFieldLabel label="Preview Branch">{destinationConfig.branch}</GenericFieldLabel>
-        <GenericFieldLabel label="Sensitive">
-          {destinationConfig.sensitive ? "Yes" : "No"}
-        </GenericFieldLabel>
+        <Detail>
+          <DetailLabel>Scope</DetailLabel>
+          <DetailValue>Project</DetailValue>
+        </Detail>
+        <Detail>
+          <DetailLabel>Vercel Project</DetailLabel>
+          <DetailValue>{destinationConfig.appName || destinationConfig.app}</DetailValue>
+        </Detail>
+        <Detail>
+          <DetailLabel>Environment</DetailLabel>
+          <DetailValue>{destinationConfig.env}</DetailValue>
+        </Detail>
+        <Detail>
+          <DetailLabel>Preview Branch</DetailLabel>
+          <DetailValue>{destinationConfig.branch}</DetailValue>
+        </Detail>
+        <Detail>
+          <DetailLabel>Sensitive</DetailLabel>
+          <DetailValue>{destinationConfig.sensitive ? "Yes" : "No"}</DetailValue>
+        </Detail>
       </>
     );
   } else {
     Components = (
       <>
-        <GenericFieldLabel label="Scope">Project</GenericFieldLabel>
-        <GenericFieldLabel label="Vercel Project">
-          {destinationConfig.appName || destinationConfig.app}
-        </GenericFieldLabel>
-        <GenericFieldLabel label="Environment">{destinationConfig.env}</GenericFieldLabel>
-        <GenericFieldLabel label="Sensitive">
-          {destinationConfig.sensitive ? "Yes" : "No"}
-        </GenericFieldLabel>
+        <Detail>
+          <DetailLabel>Scope</DetailLabel>
+          <DetailValue>Project</DetailValue>
+        </Detail>
+        <Detail>
+          <DetailLabel>Vercel Project</DetailLabel>
+          <DetailValue>{destinationConfig.appName || destinationConfig.app}</DetailValue>
+        </Detail>
+        <Detail>
+          <DetailLabel>Environment</DetailLabel>
+          <DetailValue>{destinationConfig.env}</DetailValue>
+        </Detail>
+        <Detail>
+          <DetailLabel>Sensitive</DetailLabel>
+          <DetailValue>{destinationConfig.sensitive ? "Yes" : "No"}</DetailValue>
+        </Detail>
       </>
     );
   }

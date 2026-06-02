@@ -1,4 +1,4 @@
-import { GenericFieldLabel } from "@app/components/secret-syncs";
+import { Detail, DetailLabel, DetailValue } from "@app/components/v3";
 import { TLaravelForgeSync } from "@app/hooks/api/secretSyncs/types/laravel-forge-sync";
 
 type Props = {
@@ -10,15 +10,18 @@ export const LaravelForgeSyncDestinationSection = ({ secretSync }: Props) => {
 
   return (
     <>
-      <GenericFieldLabel label="Account">
-        {destinationConfig.orgName || destinationConfig.orgSlug}
-      </GenericFieldLabel>
-      <GenericFieldLabel label="Server">
-        {destinationConfig.serverName || destinationConfig.serverId}
-      </GenericFieldLabel>
-      <GenericFieldLabel label="Site">
-        {destinationConfig.siteName || destinationConfig.siteId}
-      </GenericFieldLabel>
+      <Detail>
+        <DetailLabel>Account</DetailLabel>
+        <DetailValue>{destinationConfig.orgName || destinationConfig.orgSlug}</DetailValue>
+      </Detail>
+      <Detail>
+        <DetailLabel>Server</DetailLabel>
+        <DetailValue>{destinationConfig.serverName || destinationConfig.serverId}</DetailValue>
+      </Detail>
+      <Detail>
+        <DetailLabel>Site</DetailLabel>
+        <DetailValue>{destinationConfig.siteName || destinationConfig.siteId}</DetailValue>
+      </Detail>
     </>
   );
 };

@@ -18,6 +18,7 @@ export const AppConnectionsBrowser = () => {
     "DevOps Tools",
     "Security",
     "Networking & DNS",
+    "SaaS",
   ];
 
   const connections = [
@@ -370,6 +371,14 @@ export const AppConnectionsBrowser = () => {
       category: "Identity & Auth",
     },
     {
+      name: "Salesforce",
+      slug: "salesforce",
+      path: "/integrations/app-connections/salesforce",
+      description:
+        "Learn how to connect your Salesforce to pull secrets from Infisical.",
+      category: "SaaS",
+    },
+    {
       name: "OpenRouter",
       slug: "openrouter",
       path: "/integrations/app-connections/openrouter",
@@ -455,12 +464,36 @@ export const AppConnectionsBrowser = () => {
       category: "DevOps Tools",
     }, 
     {
+      name: "OVH",
+      slug: "ovh",
+      path: "/integrations/app-connections/ovh",
+      description:
+        "Learn how to connect OVH Cloud to pull secrets from OVH Secret Manager to Infisical.",
+      category: "Cloud Providers",
+    },
+    {
       name: "Travis CI",
       slug: "travis-ci",
       path: "/integrations/app-connections/travis-ci",
       description:
         "Learn how to connect Travis CI to pull secrets from Infisical.",
       category: "CI/CD",
+    },
+    {
+      name: "Snowflake",
+      slug: "snowflake",
+      path: "/integrations/app-connections/snowflake",
+      description:
+        "Learn how to connect Snowflake to pull secrets from Infisical.",
+      category: "Databases",
+    },
+    {
+      name: "Datadog",
+      slug: "datadog",
+      path: "/integrations/app-connections/datadog",
+      description:
+        "Learn how to connect Datadog to pull secrets from Infisical.",
+      category: "Monitoring",
     }
   ].sort(function (a, b) {
     return a.name.toLowerCase().localeCompare(b.name.toLowerCase());

@@ -11,7 +11,9 @@ export type TSubjectAlternativeName = {
 };
 
 export type TCreateCertificateRequestDTO = TProjectPermission & {
+  internal?: boolean;
   profileId?: string;
+  applicationId?: string;
   caId?: string;
   csr?: string;
   commonName?: string;
@@ -66,6 +68,7 @@ export type TListCertificateRequestsDTO = TProjectPermission & {
   fromDate?: Date;
   toDate?: Date;
   profileIds?: string[];
+  applicationId?: string;
   sortBy?: string;
   sortOrder?: "asc" | "desc";
   metadataFilter?: Array<{ key: string; value?: string }>;

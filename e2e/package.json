@@ -1,0 +1,20 @@
+{
+  "name": "@infisical/e2e",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Playwright e2e suite that runs against a deployed Infisical environment (gamma) between deploy and prod promotion.",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:ui": "playwright test --ui",
+    "report": "playwright show-report",
+    "install:browsers": "playwright install --with-deps chromium",
+    "type:check": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.55.1",
+    "@types/node": "20.17.10",
+    "dotenv": "16.4.7",
+    "typescript": "5.6.3"
+  }
+}

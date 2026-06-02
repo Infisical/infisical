@@ -27,7 +27,12 @@ import { getMinExpiresIn, removeTrailingSlash } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
-import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
+import {
+  AuthAttemptAuthMethod,
+  AuthAttemptAuthResult,
+  authAttemptCounter,
+  recordAuthAttemptMetric
+} from "@app/lib/telemetry/metrics";
 import { sanitizeEmail, validateEmail } from "@app/lib/validator";
 import { getUserAgentType } from "@app/server/plugins/audit-log";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
@@ -528,6 +533,7 @@ export const authLoginServiceFactory = ({
     userAgent: string;
     captchaToken?: string;
   }) => {
+    const authMetricStartTime = performance.now();
     const appCfg = getConfig();
     const email = sanitizeEmail(unsanitizedEmail);
 
@@ -541,6 +547,14 @@ export const authLoginServiceFactory = ({
       if (!user.authMethods?.includes(AuthMethod.EMAIL) || !user.hashedPassword || !user.isEmailVerified) {
         logger.error(`User doesn't have email auth enabled ${email}`);
         throw new BadRequestError({ message: "Invalid credentials" });
+      }
+
+      const serverCfg = await getServerCfg();
+      if (serverCfg.enabledLoginMethods && !serverCfg.enabledLoginMethods.includes(LoginMethod.EMAIL)) {
+        const userOrgs = await orgDAL.findAllOrgsByUserId(user.id);
+        if (!userOrgs.some((org) => org.userRole === OrgMembershipRole.Admin)) {
+          throw new BadRequestError({ message: "Invalid credentials" });
+        }
       }
 
       await verifyCaptcha(user.consecutiveFailedPasswordAttempts, captchaToken);
@@ -579,6 +593,12 @@ export const authLoginServiceFactory = ({
         });
       }
 
+      recordAuthAttemptMetric({
+        startTime: authMetricStartTime,
+        method: AuthAttemptAuthMethod.EMAIL,
+        result: AuthAttemptAuthResult.SUCCESS
+      });
+
       return {
         tokens: {
           accessToken: token.access,
@@ -596,6 +616,13 @@ export const authLoginServiceFactory = ({
           "user_agent.original": userAgent
         });
       }
+
+      recordAuthAttemptMetric({
+        startTime: authMetricStartTime,
+        method: AuthAttemptAuthMethod.EMAIL,
+        result: AuthAttemptAuthResult.FAILURE,
+        error
+      });
 
       throw error;
     }
@@ -1177,6 +1204,10 @@ export const authLoginServiceFactory = ({
 
     const isSubOrganization = Boolean(selectedOrg.rootOrgId && selectedOrg.id !== selectedOrg.rootOrgId);
 
+    if (!orgMembership.isActive) {
+      throw new ForbiddenRequestError({ message: "User organization membership is inactive" });
+    }
+
     let rootOrg = selectedOrg;
 
     if (isSubOrganization) {
@@ -1206,6 +1237,10 @@ export const authLoginServiceFactory = ({
         throw new ForbiddenRequestError({
           message: "User does not have access to the root organization"
         });
+      }
+
+      if (!rootOrgMembership.isActive) {
+        throw new ForbiddenRequestError({ message: "User organization membership is inactive" });
       }
     }
 

@@ -22,9 +22,10 @@ Below is a comprehensive list of all available organization-level subjects and t
 
 #### Subject: `project` (formerly workspace)
 
-| Action   | Description        |
-| -------- | ------------------ |
-| `create` | Create new project |
+| Action            | Description                           |
+| ----------------- | ------------------------------------- |
+| `create`          | Create new project                    |
+| `request-access`  | Request access to projects            |
 
 #### Subject: `sub-organization`
 
@@ -66,9 +67,11 @@ Below is a comprehensive list of all available organization-level subjects and t
 | `create`           | Create new groups in the organization            |
 | `edit`             | Modify existing groups                           |
 | `delete`           | Remove groups from the organization              |
-| `grant-privileges` | Change permission levels for organization groups |
-| `add-members`      | Add members to groups                            |
-| `remove-members`   | Remove members from groups                       |
+| `grant-privileges`  | Change permission levels for organization groups |
+| `add-identities`    | Add identities to groups                         |
+| `add-members`       | Add members to groups                            |
+| `remove-members`    | Remove members from groups                       |
+| `remove-identities` | Remove identities from groups                    |
 
 #### Subject: `identity`
 
@@ -119,6 +122,15 @@ Below is a comprehensive list of all available organization-level subjects and t
 | ------ | ---------------------------- |
 | `read` | View organization audit logs |
 
+#### Subject: `email-domains`
+
+| Action          | Description                              |
+| --------------- | ---------------------------------------- |
+| `read`          | View configured email domains            |
+| `create`        | Add new email domains to the organization |
+| `verify-domain` | Verify ownership of an email domain      |
+| `delete`        | Remove email domains                     |
+
 ### Identity Provider Integration
 
 #### Subject: `sso`
@@ -149,6 +161,15 @@ Below is a comprehensive list of all available organization-level subjects and t
 | `edit`   | Modify existing LDAP settings |
 | `delete` | Remove LDAP configurations    |
 
+#### Subject: `github-org-sync`
+
+| Action   | Description                                |
+| -------- | ------------------------------------------ |
+| `read`   | View GitHub organization sync settings     |
+| `create` | Set up GitHub organization sync            |
+| `edit`   | Modify GitHub organization sync settings   |
+| `delete` | Remove GitHub organization sync            |
+
 ### Billing & Subscriptions
 
 #### Subject: `billing`
@@ -177,11 +198,12 @@ Supports conditions and permission inversion
 
 | Action    | Description                        |
 | --------- | ---------------------------------- |
-| `read`    | View app connection configurations |
-| `create`  | Create new app connections         |
-| `edit`    | Modify existing app connections    |
-| `delete`  | Remove app connections             |
-| `connect` | Use app connections                |
+| `read`               | View app connection configurations |
+| `create`             | Create new app connections         |
+| `edit`               | Modify existing app connections    |
+| `delete`             | Remove app connections             |
+| `connect`            | Use app connections                |
+| `rotate-credentials` | Rotate app connection credentials  |
 
 ### Key Management
 
@@ -198,8 +220,15 @@ Supports conditions and permission inversion
 
 | Action  | Description                        |
 | ------- | ---------------------------------- |
-| `setup` | Configure KMIP server settings     |
 | `proxy` | Act as a proxy for KMIP operations |
+
+### Honey Tokens
+
+#### Subject: `honey-tokens`
+
+| Action  | Description                  |
+| ------- | ---------------------------- |
+| `setup` | Set up and configure honey tokens |
 
 ### Admin Tools
 
@@ -221,13 +250,14 @@ Supports conditions and permission inversion
 
 #### Subject: `gateway`
 
-| Action            | Description                       |
-| ----------------- | --------------------------------- |
-| `list-gateways`   | View all organization gateways    |
-| `create-gateways` | Add new gateways to organization  |
-| `edit-gateways`   | Modify existing gateway settings  |
-| `delete-gateways` | Remove gateways from organization |
-| `attach-gateways` | Attach gateways to resources      |
+| Action                  | Description                                                   |
+| ----------------------- | ------------------------------------------------------------- |
+| `list-gateways`         | View all organization gateways                                |
+| `create-gateways`       | Add new gateways to organization                              |
+| `edit-gateways`         | Modify existing gateway settings                              |
+| `delete-gateways`       | Remove gateways from organization                             |
+| `attach-gateways`       | Attach gateways to resources                                  |
+| `revoke-gateway-access` | Disconnect a running gateway and invalidate enrollment tokens |
 
 #### Subject: `gateway-pool`
 
@@ -243,10 +273,11 @@ Supports conditions and permission inversion
 
 | Action          | Description                     |
 | --------------- | ------------------------------- |
-| `list-relays`   | View all organization relays    |
-| `create-relays` | Add new relays to organization  |
-| `edit-relays`   | Modify existing relay settings  |
-| `delete-relays` | Remove relays from organization |
+| `list-relays`          | View all organization relays         |
+| `create-relays`        | Add new relays to organization       |
+| `edit-relays`          | Modify existing relay settings       |
+| `delete-relays`        | Remove relays from organization      |
+| `revoke-relay-access`  | Revoke relay access and invalidate tokens |
 
 #### Subject: `machine-identity-auth-template`
 

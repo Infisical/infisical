@@ -49,11 +49,11 @@ export const reminderDALFactory = (db: TDbClient) => {
         `${TableName.SecretV2}.folderId`,
         `${TableName.SecretFolder}.id`
       )
-      .leftJoin<TProjectEnvironments>(
-        TableName.Environment,
-        `${TableName.SecretFolder}.envId`,
-        `${TableName.Environment}.id`
-      )
+      .leftJoin<TProjectEnvironments>(TableName.Environment, function joinActiveEnvForFolder() {
+        this.on(`${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`).andOnNull(
+          `${TableName.Environment}.deleteAfter`
+        );
+      })
       .leftJoin<TProjects>(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
       .leftJoin<TOrganizations>(TableName.Organization, `${TableName.Project}.orgId`, `${TableName.Organization}.id`)
       .select(selectAllTableCols(TableName.Reminder))
@@ -170,6 +170,7 @@ export const reminderDALFactory = (db: TDbClient) => {
         `${TableName.SecretFolder}.envId`,
         `${TableName.Environment}.id`
       )
+      .whereNull(`${TableName.Environment}.deleteAfter`)
       .where(`${TableName.Environment}.projectId`, projectId);
 
     const rawReminders = await query

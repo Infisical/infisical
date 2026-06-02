@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { faInfoCircle, faPlus, faQuestionCircle, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -24,112 +24,112 @@ import {
   Tooltip
 } from "@app/components/v2";
 import { GatewayPicker } from "@app/components/v3";
-import { useOrganization, useOrgPermission, useSubscription } from "@app/context";
+import { useOrganization, useSubscription } from "@app/context";
 import {
   OrgGatewayPermissionActions,
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
-import { OrgMembershipRole } from "@app/helpers/roles";
+import { SECONDS_PER_DAY } from "@app/helpers/datetime";
+import { accessTokenTtlSchema } from "@app/helpers/identityAuthSchemas";
 import {
   useAddIdentityKubernetesAuth,
   useGetIdentityKubernetesAuth,
   useUpdateIdentityKubernetesAuth
 } from "@app/hooks/api";
+import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import {
+  useListAppConnections,
+  useListAvailableAppConnections
+} from "@app/hooks/api/appConnections/queries";
 import {
   IdentityKubernetesAuthTokenReviewMode,
   IdentityTrustedIp
 } from "@app/hooks/api/identities/types";
-import { useGetExternalMigrationConfigs } from "@app/hooks/api/migration/queries";
-import {
-  ExternalMigrationProviders,
-  VaultKubernetesAuthRole
-} from "@app/hooks/api/migration/types";
+import { VaultKubernetesAuthRole } from "@app/hooks/api/migration/types";
+import { useCanUseOrgAppConnectionImport } from "@app/hooks/useCanUseAppConnectionImport";
 import { usePopUp, UsePopUpState } from "@app/hooks/usePopUp";
 
 import { IdentityFormTab } from "./types";
 import { VaultKubernetesAuthImportModal } from "./VaultKubernetesAuthImportModal";
 
-const schema = z
-  .object({
-    tokenReviewMode: z
-      .nativeEnum(IdentityKubernetesAuthTokenReviewMode)
-      .default(IdentityKubernetesAuthTokenReviewMode.Api),
-    kubernetesHost: z.string().optional().nullable(),
-    tokenReviewerJwt: z.string().optional(),
-    gatewayId: z.string().optional().nullable(),
-    gatewayPoolId: z.string().optional().nullable(),
-    allowedNames: z.string(),
-    allowedNamespaces: z.string(),
-    allowedAudience: z.string(),
-    caCert: z.string().optional(),
-    verifyTlsCertificate: z.boolean().default(true),
-    accessTokenTTL: z.string().refine((val) => Number(val) <= 315360000, {
-      message: "Access Token TTL cannot be greater than 315360000"
-    }),
-    accessTokenMaxTTL: z.string().refine((val) => Number(val) <= 315360000, {
-      message: "Access Token Max TTL cannot be greater than 315360000"
-    }),
-    accessTokenNumUsesLimit: z.string(),
-    accessTokenTrustedIps: z
-      .array(
-        z.object({
-          ipAddress: z.string().max(50)
-        })
-      )
-      .min(1)
-  })
-  .superRefine((data, ctx) => {
-    if (
-      data.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api &&
-      !data.kubernetesHost?.length
-    ) {
-      ctx.addIssue({
-        path: ["kubernetesHost"],
-        code: z.ZodIssueCode.custom,
-        message: "When token review mode is set to API, a Kubernetes host must be provided"
-      });
-    }
+const buildSchema = (maxAccessTokenTTL: number) =>
+  z
+    .object({
+      tokenReviewMode: z
+        .nativeEnum(IdentityKubernetesAuthTokenReviewMode)
+        .default(IdentityKubernetesAuthTokenReviewMode.Api),
+      kubernetesHost: z.string().optional().nullable(),
+      tokenReviewerJwt: z.string().optional(),
+      gatewayId: z.string().optional().nullable(),
+      gatewayPoolId: z.string().optional().nullable(),
+      allowedNames: z.string(),
+      allowedNamespaces: z.string(),
+      allowedAudience: z.string(),
+      caCert: z.string().optional(),
+      verifyTlsCertificate: z.boolean().default(true),
+      accessTokenTTL: accessTokenTtlSchema(maxAccessTokenTTL, "Access Token TTL"),
+      accessTokenMaxTTL: accessTokenTtlSchema(maxAccessTokenTTL, "Access Token Max TTL"),
+      accessTokenNumUsesLimit: z.string(),
+      accessTokenTrustedIps: z
+        .array(
+          z.object({
+            ipAddress: z.string().max(50)
+          })
+        )
+        .min(1)
+    })
+    .superRefine((data, ctx) => {
+      if (
+        data.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api &&
+        !data.kubernetesHost?.length
+      ) {
+        ctx.addIssue({
+          path: ["kubernetesHost"],
+          code: z.ZodIssueCode.custom,
+          message: "When token review mode is set to API, a Kubernetes host must be provided"
+        });
+      }
 
-    if (
-      data.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Gateway &&
-      !data.gatewayId &&
-      !data.gatewayPoolId
-    ) {
-      ctx.addIssue({
-        path: ["gatewayId"],
-        code: z.ZodIssueCode.custom,
-        message:
-          "When token review mode is set to Gateway, a gateway or gateway pool must be selected"
-      });
-    }
+      if (
+        data.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Gateway &&
+        !data.gatewayId &&
+        !data.gatewayPoolId
+      ) {
+        ctx.addIssue({
+          path: ["gatewayId"],
+          code: z.ZodIssueCode.custom,
+          message:
+            "When token review mode is set to Gateway, a gateway or gateway pool must be selected"
+        });
+      }
 
-    if (
-      data.verifyTlsCertificate &&
-      data.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api &&
-      !data.caCert?.length
-    ) {
-      ctx.addIssue({
-        path: ["caCert"],
-        code: z.ZodIssueCode.custom,
-        message: "A CA certificate is required when TLS certificate verification is enabled."
-      });
-    }
+      if (
+        data.verifyTlsCertificate &&
+        data.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api &&
+        !data.caCert?.length
+      ) {
+        ctx.addIssue({
+          path: ["caCert"],
+          code: z.ZodIssueCode.custom,
+          message: "A CA certificate is required when TLS certificate verification is enabled."
+        });
+      }
 
-    if (
-      data.verifyTlsCertificate === false &&
-      data.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api &&
-      data.caCert?.length
-    ) {
-      ctx.addIssue({
-        path: ["verifyTlsCertificate"],
-        code: z.ZodIssueCode.custom,
-        message:
-          "TLS certificate verification cannot be disabled while a CA certificate is provided. Either remove the CA certificate or enable verification."
-      });
-    }
-  });
+      if (
+        data.verifyTlsCertificate === false &&
+        data.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api &&
+        data.caCert?.length
+      ) {
+        ctx.addIssue({
+          path: ["verifyTlsCertificate"],
+          code: z.ZodIssueCode.custom,
+          message:
+            "TLS certificate verification cannot be disabled while a CA certificate is provided. Either remove the CA certificate or enable verification."
+        });
+      }
+    });
 
-export type FormData = z.infer<typeof schema>;
+export type FormData = z.infer<ReturnType<typeof buildSchema>>;
 
 type Props = {
   handlePopUpOpen: (
@@ -142,13 +142,15 @@ type Props = {
   ) => void;
   identityId?: string;
   isUpdate?: boolean;
+  maxAccessTokenTTL: number;
 };
 
 export const IdentityKubernetesAuthForm = ({
   handlePopUpOpen,
   handlePopUpToggle,
   identityId,
-  isUpdate
+  isUpdate,
+  maxAccessTokenTTL
 }: Props) => {
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
@@ -167,12 +169,22 @@ export const IdentityKubernetesAuthForm = ({
   const { popUp, handlePopUpToggle: handleImportPopUpToggle } = usePopUp([
     "importFromVault"
   ] as const);
-  const { data: vaultConfigs = [] } = useGetExternalMigrationConfigs(
-    ExternalMigrationProviders.Vault
+  const { data: projectVaultAppConnections = [] } = useListAvailableAppConnections(
+    AppConnection.HCVault,
+    projectId ?? "",
+    { enabled: Boolean(projectId) }
   );
-  const hasVaultConnection = vaultConfigs.some((config) => config.connectionId);
-  const { hasOrgRole } = useOrgPermission();
-  const isOrgAdmin = hasOrgRole(OrgMembershipRole.Admin);
+  const { data: orgAppConnections = [] } = useListAppConnections(undefined, {
+    enabled: !projectId
+  });
+  const vaultAppConnections = useMemo(() => {
+    if (projectId) return projectVaultAppConnections;
+    return orgAppConnections.filter((c) => c.app === AppConnection.HCVault && !c.projectId);
+  }, [projectId, projectVaultAppConnections, orgAppConnections]);
+  const canUseAppConnectionImport = useCanUseOrgAppConnectionImport();
+  const hasVaultConnection = vaultAppConnections.length > 0;
+
+  const resolver = useMemo(() => zodResolver(buildSchema(maxAccessTokenTTL)), [maxAccessTokenTTL]);
 
   const {
     control,
@@ -183,7 +195,7 @@ export const IdentityKubernetesAuthForm = ({
 
     formState: { isSubmitting }
   } = useForm<FormData>({
-    resolver: zodResolver(schema),
+    resolver,
     defaultValues: {
       tokenReviewMode: IdentityKubernetesAuthTokenReviewMode.Api,
       kubernetesHost: "",
@@ -444,7 +456,7 @@ export const IdentityKubernetesAuthForm = ({
           <Tab value={IdentityFormTab.Advanced}>Advanced</Tab>
         </TabList>
         <TabPanel value={IdentityFormTab.Configuration}>
-          {hasVaultConnection && !isUpdate && (
+          {hasVaultConnection && canUseAppConnectionImport && !isUpdate && (
             <div className="mb-4 flex items-center justify-between rounded-md border border-primary/30 bg-primary/10 p-3">
               <div className="flex items-start gap-2 text-sm">
                 <FontAwesomeIcon icon={faInfoCircle} className="mt-0.5 text-primary" />
@@ -452,8 +464,8 @@ export const IdentityKubernetesAuthForm = ({
               </div>
               <Tooltip
                 content={
-                  !isOrgAdmin
-                    ? "Only organization admins can import configurations from HashiCorp Vault"
+                  !canUseAppConnectionImport
+                    ? "You don't have permission to import configurations from HashiCorp Vault"
                     : undefined
                 }
               >
@@ -468,7 +480,7 @@ export const IdentityKubernetesAuthForm = ({
                     />
                   }
                   onClick={() => handleImportPopUpToggle("importFromVault", true)}
-                  isDisabled={!isOrgAdmin}
+                  isDisabled={!canUseAppConnectionImport}
                 >
                   Load from Vault
                 </Button>
@@ -672,8 +684,9 @@ export const IdentityKubernetesAuthForm = ({
                 tooltipText="The lifetime for an acccess token in seconds. This value will be referenced at renewal time."
                 isError={Boolean(error)}
                 errorText={error?.message}
+                helperText={`Max: ${Math.floor(maxAccessTokenTTL / SECONDS_PER_DAY)} days`}
               >
-                <Input {...field} placeholder="2592000" type="number" min="0" step="1" />
+                <Input {...field} placeholder="2592000" type="number" min="1" step="1" />
               </FormControl>
             )}
           />
@@ -687,8 +700,9 @@ export const IdentityKubernetesAuthForm = ({
                 isError={Boolean(error)}
                 errorText={error?.message}
                 tooltipText="The maximum lifetime for an access token in seconds. This value will be referenced at renewal time."
+                helperText={`Max: ${Math.floor(maxAccessTokenTTL / SECONDS_PER_DAY)} days`}
               >
-                <Input {...field} placeholder="2592000" type="number" min="0" step="1" />
+                <Input {...field} placeholder="2592000" type="number" min="1" step="1" />
               </FormControl>
             )}
           />
@@ -924,6 +938,7 @@ export const IdentityKubernetesAuthForm = ({
       <VaultKubernetesAuthImportModal
         isOpen={popUp.importFromVault.isOpen}
         onOpenChange={(isOpen) => handleImportPopUpToggle("importFromVault", isOpen)}
+        appConnections={vaultAppConnections}
         onImport={handleImportFromVault}
       />
     </form>

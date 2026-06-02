@@ -32,7 +32,7 @@ export type NavItem = {
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   pathSuffix: string;
-  activeMatch?: RegExp;
+  activeMatch?: RegExp | ((pathname: string, search: Record<string, unknown>) => boolean);
   badgeCount?: number;
   hidden?: boolean;
   submenu?: Submenu;

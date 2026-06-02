@@ -145,9 +145,9 @@ export const PamSessionRecordingModal = ({ isOpen, onOpenChange, config, onSave 
                 control={control}
                 render={({ field }) => (
                   <Switch
+                    variant="success"
                     checked={field.value}
                     onCheckedChange={field.onChange}
-                    variant="success"
                   />
                 )}
               />

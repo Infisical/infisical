@@ -1,5 +1,6 @@
 /* eslint-disable no-await-in-loop */
 import { ForbiddenError } from "@casl/ability";
+import { Knex } from "knex";
 
 import { AccessScope, ActionProjectType, ProjectMembershipRole, ProjectVersion, TableName } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
@@ -21,6 +22,7 @@ import { ActorType } from "../auth/auth-type";
 import { TGroupProjectDALFactory } from "../group-project/group-project-dal";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
+import { assertWillRetainAdmin } from "../membership-user/membership-user-fns";
 import { TNotificationServiceFactory } from "../notification/notification-service";
 import { NotificationType } from "../notification/notification-types";
 import { TProjectDALFactory } from "../project/project-dal";
@@ -292,15 +294,10 @@ export const projectMembershipServiceFactory = ({
     return orgMembers;
   };
 
-  const deleteProjectMemberships = async ({
-    actorId,
-    actor,
-    actorOrgId,
-    actorAuthMethod,
-    projectId,
-    emails,
-    usernames
-  }: TDeleteProjectMembershipsDTO) => {
+  const deleteProjectMemberships = async (
+    { actorId, actor, actorOrgId, actorAuthMethod, projectId, emails, usernames }: TDeleteProjectMembershipsDTO,
+    externalTx?: Knex
+  ) => {
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
@@ -331,6 +328,8 @@ export const projectMembershipServiceFactory = ({
       });
     }
 
+    const project = await projectDAL.findById(projectId);
+
     await checkUserApproverPolicies(
       projectMembers.map((m) => m.user.id),
       projectId
@@ -340,7 +339,16 @@ export const projectMembershipServiceFactory = ({
       await userGroupMembershipDAL.findUserGroupMembershipsInProject(usernamesAndEmails, projectId)
     );
 
-    const memberships = await membershipUserDAL.transaction(async (tx) => {
+    const performDelete = async (tx: Knex) => {
+      await assertWillRetainAdmin({
+        scope: AccessScope.Project,
+        scopeOrgId: project.orgId,
+        scopeProjectId: projectId,
+        excludeMembershipIds: projectMembers.map(({ id }) => id),
+        dal: membershipUserDAL,
+        tx
+      });
+
       await additionalPrivilegeDAL.delete(
         {
           projectId,
@@ -387,7 +395,11 @@ export const projectMembershipServiceFactory = ({
       );
 
       return deletedMemberships;
-    });
+    };
+
+    const memberships = externalTx
+      ? await performDelete(externalTx)
+      : await membershipUserDAL.transaction(performDelete);
 
     return memberships;
   };
@@ -418,13 +430,9 @@ export const projectMembershipServiceFactory = ({
       throw new BadRequestError({ message: "You cannot leave the project as you are the only member" });
     }
 
-    const adminMembers = projectMembers.filter(
-      (member) => member.roles.map((r) => r.role).includes("admin") && member.userId !== actorId
-    );
-    if (!adminMembers.length) {
-      throw new BadRequestError({
-        message: "You cannot leave the project as you are the only admin. Promote another user to admin before leaving."
-      });
+    const actorMembership = projectMembers.find((member) => member.userId === actorId);
+    if (!actorMembership) {
+      throw new BadRequestError({ message: "You are not a member of this project" });
     }
 
     await checkUserApproverPolicies(
@@ -434,6 +442,15 @@ export const projectMembershipServiceFactory = ({
     );
 
     const deletedMembership = await membershipUserDAL.transaction(async (tx) => {
+      await assertWillRetainAdmin({
+        scope: AccessScope.Project,
+        scopeOrgId: project.orgId,
+        scopeProjectId: project.id,
+        excludeMembershipIds: [actorMembership.id],
+        dal: membershipUserDAL,
+        tx
+      });
+
       await additionalPrivilegeDAL.delete(
         {
           projectId: project.id,

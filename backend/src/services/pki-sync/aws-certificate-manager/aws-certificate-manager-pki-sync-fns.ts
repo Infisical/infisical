@@ -25,7 +25,7 @@ import { TAppConnectionDALFactory } from "@app/services/app-connection/app-conne
 import { AppConnection, AWSRegion } from "@app/services/app-connection/app-connection-enums";
 import { decryptAppConnectionCredentials } from "@app/services/app-connection/app-connection-fns";
 import { AwsConnectionMethod } from "@app/services/app-connection/aws/aws-connection-enums";
-import { getAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-fns";
+import { buildAwsConnectionConfig, getAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-fns";
 import {
   AwsConnectionAccessTokenCredentialsSchema,
   AwsConnectionAssumeRoleCredentialsSchema
@@ -204,20 +204,10 @@ const getAwsAcmClient = async (
   let awsConnectionConfig: TAwsConnectionConfig;
   switch (appConnection.method) {
     case AwsConnectionMethod.AssumeRole:
-      awsConnectionConfig = {
-        app: AppConnection.AWS,
-        method: AwsConnectionMethod.AssumeRole,
-        credentials: decryptedCredentials as TAwsAssumeRoleCredentials,
-        orgId: appConnection.orgId
-      };
+      awsConnectionConfig = buildAwsConnectionConfig(appConnection, decryptedCredentials as TAwsAssumeRoleCredentials);
       break;
     case AwsConnectionMethod.AccessKey:
-      awsConnectionConfig = {
-        app: AppConnection.AWS,
-        method: AwsConnectionMethod.AccessKey,
-        credentials: decryptedCredentials as TAwsAccessKeyCredentials,
-        orgId: appConnection.orgId
-      };
+      awsConnectionConfig = buildAwsConnectionConfig(appConnection, decryptedCredentials as TAwsAccessKeyCredentials);
       break;
     default:
       throw new BadRequestError({

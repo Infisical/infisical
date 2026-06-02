@@ -34,6 +34,7 @@ export type Project = {
   updatedAt: string;
   autoCapitalization: boolean;
   environments: ProjectEnv[];
+  deletedEnvironments: ProjectDeletedEnv[];
   pitVersionLimit: number;
   auditLogsRetentionDays: number;
   slug: string;
@@ -50,6 +51,23 @@ export type ProjectEnv = {
   id: string;
   name: string;
   slug: string;
+};
+
+export type ProjectDeletedEnvActor =
+  | {
+      type: "user";
+      id: string;
+      email: string | null;
+      username: string | null;
+      firstName: string | null;
+      lastName: string | null;
+    }
+  | { type: "identity"; id: string; name: string };
+
+export type ProjectDeletedEnv = ProjectEnv & {
+  deleteAfter: string;
+  softDeletedAt: string;
+  deletedBy: ProjectDeletedEnvActor | null;
 };
 
 export type ProjectTag = { id: string; name: string; slug: string };
@@ -121,11 +139,14 @@ export type UpdateEnvironmentDTO = {
   position?: number;
 };
 
-export type DeleteEnvironmentDTO = { projectId: string; id: string };
+export type DeleteEnvironmentDTO = { projectId: string; id: string; hardDelete?: boolean };
+
+export type RestoreEnvironmentDTO = { projectId: string; id: string };
 
 export type TUpdateWorkspaceUserRoleDTO = {
   membershipId: string;
   projectId: string;
+  projectType?: string;
   roles: (
     | {
         role: string;
@@ -144,6 +165,7 @@ export type TUpdateWorkspaceUserRoleDTO = {
 export type TUpdateWorkspaceGroupRoleDTO = {
   groupId: string;
   projectId: string;
+  projectType?: string;
   roles: (
     | {
         role: string;
@@ -161,6 +183,7 @@ export type TUpdateWorkspaceGroupRoleDTO = {
 
 export type TListProjectIdentitiesDTO = {
   projectId: string;
+  projectType?: string;
   offset?: number;
   limit?: number;
   orderBy?: ProjectIdentityOrderBy;
@@ -196,4 +219,31 @@ export type TUpdateProjectSshConfigDTO = {
   projectId: string;
   defaultUserSshCaId?: string;
   defaultHostSshCaId?: string;
+};
+
+export type TPermissionAuditSourceType = "role" | "group_role" | "additional_privilege";
+
+export type TPermissionAuditSource = {
+  id: string;
+  type: TPermissionAuditSourceType;
+  name: string;
+  slug?: string;
+  groupId?: string;
+  groupName?: string;
+  isTemporary: boolean;
+  temporaryAccessStartTime?: string;
+  temporaryAccessEndTime?: string;
+  permissions: unknown[];
+};
+
+export type TGetMembershipPermissionAuditResponse = {
+  sources: TPermissionAuditSource[];
+};
+
+export type TGetIdentityPermissionAuditResponse = {
+  sources: TPermissionAuditSource[];
+};
+
+export type TMyPendingProjectAccessRequestsResponse = {
+  requests: { projectId: string; createdAt: string }[];
 };

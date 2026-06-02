@@ -2,7 +2,14 @@ import { Controller, useFormContext, useWatch } from "react-hook-form";
 import { SingleValue } from "react-select";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
-import { FilterableSelect, FormControl } from "@app/components/v2";
+import {
+  Field,
+  FieldContent,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+  FilterableSelect
+} from "@app/components/v3";
 import { TFlyioApp, useFlyioConnectionListApps } from "@app/hooks/api/appConnections/flyio";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
@@ -20,7 +27,7 @@ export const FlyioSyncFields = () => {
   });
 
   return (
-    <>
+    <FieldGroup>
       <SecretSyncConnectionField
         onChange={() => {
           setValue("destinationConfig.appId", "");
@@ -31,24 +38,27 @@ export const FlyioSyncFields = () => {
         name="destinationConfig.appId"
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl isError={Boolean(error)} errorText={error?.message} label="App">
-            <FilterableSelect
-              menuPlacement="top"
-              isLoading={isAppsLoading && Boolean(connectionId)}
-              isDisabled={!connectionId}
-              value={apps?.find((v) => v.id === value) ?? null}
-              onChange={(option) => {
-                const selected = option as SingleValue<TFlyioApp>;
-                onChange(selected?.id ?? null);
-              }}
-              options={apps}
-              placeholder="Select an app..."
-              getOptionLabel={(option) => option.name}
-              getOptionValue={(option) => option.id}
-            />
-          </FormControl>
+          <Field>
+            <FieldLabel>App</FieldLabel>
+            <FieldContent>
+              <FilterableSelect
+                isLoading={isAppsLoading && Boolean(connectionId)}
+                isDisabled={!connectionId}
+                value={apps?.find((v) => v.id === value) ?? null}
+                onChange={(option) => {
+                  const selected = option as SingleValue<TFlyioApp>;
+                  onChange(selected?.id ?? null);
+                }}
+                options={apps}
+                placeholder="Select an app..."
+                getOptionLabel={(option) => option.name}
+                getOptionValue={(option) => option.id}
+              />
+              <FieldError errors={[error]} />
+            </FieldContent>
+          </Field>
         )}
       />
-    </>
+    </FieldGroup>
   );
 };

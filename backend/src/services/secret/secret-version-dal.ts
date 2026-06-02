@@ -5,7 +5,6 @@ import { SecretVersionsSchema, TableName, TSecretVersions, TSecretVersionsUpdate
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { ormify, selectAllTableCols, sqlNestRelationships, TFindOpt } from "@app/lib/knex";
 import { logger } from "@app/lib/logger";
-import { QueueName } from "@app/queue";
 
 export type TSecretVersionDALFactory = ReturnType<typeof secretVersionDALFactory>;
 
@@ -158,7 +157,7 @@ export const secretVersionDALFactory = (db: TDbClient) => {
   };
 
   const pruneExcessVersions = async () => {
-    logger.info(`${QueueName.DailyResourceCleanUp}: pruning secret version v1 started`);
+    logger.info(`daily-resource-cleanup: pruning secret version v1 started`);
     try {
       await db(TableName.SecretVersion)
         .with("version_cte", (qb) => {
@@ -173,10 +172,11 @@ export const secretVersionDALFactory = (db: TDbClient) => {
             );
         })
         .join(TableName.SecretFolder, `${TableName.SecretFolder}.id`, `${TableName.SecretVersion}.folderId`)
-        .join(TableName.Environment, `${TableName.Environment}.id`, `${TableName.SecretFolder}.envId`)
+        .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
         .join(TableName.Project, `${TableName.Project}.id`, `${TableName.Environment}.projectId`)
         .join("version_cte", "version_cte.id", `${TableName.SecretVersion}.id`)
         .whereRaw(`version_cte.row_num > ${TableName.Project}."pitVersionLimit"`)
+        .whereNull(`${TableName.Environment}.deleteAfter`)
         .delete();
     } catch (error) {
       throw new DatabaseError({
@@ -184,7 +184,7 @@ export const secretVersionDALFactory = (db: TDbClient) => {
         name: "Secret Version Prune"
       });
     }
-    logger.info(`${QueueName.DailyResourceCleanUp}: pruning secret version v1 completed`);
+    logger.info(`daily-resource-cleanup: pruning secret version v1 completed`);
   };
 
   return {

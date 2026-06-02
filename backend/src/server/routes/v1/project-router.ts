@@ -52,11 +52,64 @@ import { sanitizedServiceTokenSchema } from "../v2/service-token-router";
 const projectWithEnv = SanitizedProjectSchema.merge(
   z.object({
     _id: z.string(),
-    environments: z.object({ name: z.string(), slug: z.string(), id: z.string() }).array()
+    environments: z.object({ name: z.string(), slug: z.string(), id: z.string() }).array(),
+    deletedEnvironments: z
+      .object({
+        id: z.string(),
+        name: z.string(),
+        slug: z.string(),
+        deleteAfter: z.date(),
+        softDeletedAt: z.date(),
+        deletedBy: z
+          .discriminatedUnion("type", [
+            z.object({
+              type: z.literal("user"),
+              id: z.string(),
+              email: z.string().nullable(),
+              username: z.string().nullable(),
+              firstName: z.string().nullable(),
+              lastName: z.string().nullable()
+            }),
+            z.object({
+              type: z.literal("identity"),
+              id: z.string(),
+              name: z.string()
+            })
+          ])
+          .nullable()
+      })
+      .array()
   })
 );
 
 export const registerProjectRouter = async (server: FastifyZodProvider) => {
+  server.route({
+    method: "GET",
+    url: "/me/project-access-requests",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      operationId: "getMyPendingProjectAccessRequests",
+      response: {
+        200: z.object({
+          requests: z
+            .object({
+              projectId: z.string(),
+              createdAt: z.date()
+            })
+            .array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      return server.services.project.getMyPendingProjectAccessRequests({
+        permission: req.permission
+      });
+    }
+  });
+
   server.route({
     method: "GET",
     url: "/:projectId/users",
@@ -153,8 +206,17 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         }
       ],
       body: z.object({
-        projectName: z.string().trim().describe(PROJECTS.CREATE.projectName),
-        projectDescription: z.string().trim().optional().describe(PROJECTS.CREATE.projectDescription),
+        projectName: z
+          .string()
+          .trim()
+          .max(64, { message: "Name must be 64 or fewer characters" })
+          .describe(PROJECTS.CREATE.projectName),
+        projectDescription: z
+          .string()
+          .trim()
+          .max(1024, { message: "Description must be 1024 or fewer characters" })
+          .optional()
+          .describe(PROJECTS.CREATE.projectDescription),
         slug: slugSchema({ min: 5, max: 36 }).optional().describe(PROJECTS.CREATE.slug),
         kmsKeyId: z.string().optional(),
         template: slugSchema({ field: "Template Name", max: 64 })
@@ -195,6 +257,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         properties: {
           orgId: project.orgId,
           name: project.name,
+          projectType: req.body.type,
           ...req.auditLogInfo
         }
       });
@@ -426,7 +489,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         description: z
           .string()
           .trim()
-          .max(256, { message: "Description must be 256 or fewer characters" })
+          .max(1024, { message: "Description must be 1024 or fewer characters" })
           .optional()
           .describe(PROJECTS.UPDATE.projectDescription),
         autoCapitalization: z.boolean().optional().describe(PROJECTS.UPDATE.autoCapitalization),
@@ -1323,6 +1386,15 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         notAfterTo: z.coerce.date().optional().describe(PROJECTS.SEARCH_CERTIFICATES.notAfterTo),
         notBeforeFrom: z.coerce.date().optional().describe(PROJECTS.SEARCH_CERTIFICATES.notBeforeFrom),
         notBeforeTo: z.coerce.date().optional().describe(PROJECTS.SEARCH_CERTIFICATES.notBeforeTo),
+        applicationId: z
+          .string()
+          .uuid()
+          .optional()
+          .describe("Filter to certificates issued through a specific Application."),
+        applicationIds: z
+          .array(z.string().uuid())
+          .optional()
+          .describe("Filter to certificates issued through any of the supplied Applications."),
         sortBy: z
           .enum(["notAfter", "notBefore", "createdAt", "commonName", "keyAlgorithm", "status"])
           .optional()
@@ -1336,7 +1408,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
               hasPrivateKey: z.boolean(),
               caName: z.string().nullable().optional(),
               profileName: z.string().nullable().optional(),
-              enrollmentType: z.string().nullable().optional()
+              enrollmentType: z.string().nullable().optional(),
+              applicationName: z.string().nullable().optional()
             })
           ),
           totalCount: z.number()

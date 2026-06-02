@@ -7,11 +7,15 @@ export enum OrgGroupsOrderBy {
   Role = "role"
 }
 
-export interface TMembershipGroupScopeFactory {
-  onCreateMembershipGroupGuard: (arg: TCreateMembershipGroupDTO) => Promise<void>;
+export type TMembershipGroupGuardReturn = {
+  group: { id: string; name: string };
+};
 
-  onUpdateMembershipGroupGuard: (arg: TUpdateMembershipGroupDTO) => Promise<void>;
-  onDeleteMembershipGroupGuard: (arg: TDeleteMembershipGroupDTO) => Promise<void>;
+export interface TMembershipGroupScopeFactory {
+  onCreateMembershipGroupGuard: (arg: TCreateMembershipGroupDTO) => Promise<TMembershipGroupGuardReturn>;
+
+  onUpdateMembershipGroupGuard: (arg: TUpdateMembershipGroupDTO) => Promise<TMembershipGroupGuardReturn>;
+  onDeleteMembershipGroupGuard: (arg: TDeleteMembershipGroupDTO) => Promise<TMembershipGroupGuardReturn>;
   onListMembershipGroupGuard: (arg: TListMembershipGroupDTO) => Promise<void>;
   onGetMembershipGroupByGroupIdGuard: (arg: TGetMembershipGroupByGroupIdDTO) => Promise<void>;
   getScopeField: (scope: AccessScopeData) => { key: "orgId" | "projectId"; value: string };

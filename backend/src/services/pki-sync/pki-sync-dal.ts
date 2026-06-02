@@ -30,6 +30,7 @@ const basePkiSyncQuery = ({ filter, db, tx }: { db: TDbClient; filter?: PkiSyncF
       db.ref("description").withSchema(TableName.AppConnection).as("appConnectionDescription"),
       db.ref("version").withSchema(TableName.AppConnection).as("appConnectionVersion"),
       db.ref("gatewayId").withSchema(TableName.AppConnection).as("appConnectionGatewayId"),
+      db.ref("gatewayPoolId").withSchema(TableName.AppConnection).as("appConnectionGatewayPoolId"),
       db.ref("createdAt").withSchema(TableName.AppConnection).as("appConnectionCreatedAt"),
       db.ref("updatedAt").withSchema(TableName.AppConnection).as("appConnectionUpdatedAt"),
       db
@@ -72,6 +73,7 @@ const basePkiSyncWithSubscriberQuery = ({
       db.ref("description").withSchema(TableName.AppConnection).as("appConnectionDescription"),
       db.ref("version").withSchema(TableName.AppConnection).as("appConnectionVersion"),
       db.ref("gatewayId").withSchema(TableName.AppConnection).as("appConnectionGatewayId"),
+      db.ref("gatewayPoolId").withSchema(TableName.AppConnection).as("appConnectionGatewayPoolId"),
       db.ref("createdAt").withSchema(TableName.AppConnection).as("appConnectionCreatedAt"),
       db.ref("updatedAt").withSchema(TableName.AppConnection).as("appConnectionUpdatedAt"),
       db
@@ -106,6 +108,7 @@ const expandPkiSync = (pkiSync: Awaited<ReturnType<typeof basePkiSyncQuery>>[num
     appConnectionDescription,
     appConnectionVersion,
     appConnectionGatewayId,
+    appConnectionGatewayPoolId,
     appConnectionCreatedAt,
     appConnectionUpdatedAt,
     appConnectionIsPlatformManagedCredentials,
@@ -130,6 +133,7 @@ const expandPkiSync = (pkiSync: Awaited<ReturnType<typeof basePkiSyncQuery>>[num
       description: appConnectionDescription,
       version: appConnectionVersion,
       gatewayId: appConnectionGatewayId,
+      gatewayPoolId: appConnectionGatewayPoolId,
       createdAt: appConnectionCreatedAt,
       updatedAt: appConnectionUpdatedAt,
       isPlatformManagedCredentials: appConnectionIsPlatformManagedCredentials
@@ -148,6 +152,7 @@ const expandPkiSyncWithSubscriber = (pkiSync: Awaited<ReturnType<typeof basePkiS
     appConnectionDescription,
     appConnectionVersion,
     appConnectionGatewayId,
+    appConnectionGatewayPoolId,
     appConnectionCreatedAt,
     appConnectionUpdatedAt,
     appConnectionIsPlatformManagedCredentials,
@@ -174,6 +179,7 @@ const expandPkiSyncWithSubscriber = (pkiSync: Awaited<ReturnType<typeof basePkiS
       description: appConnectionDescription,
       version: appConnectionVersion,
       gatewayId: appConnectionGatewayId,
+      gatewayPoolId: appConnectionGatewayPoolId,
       createdAt: appConnectionCreatedAt,
       updatedAt: appConnectionUpdatedAt,
       isPlatformManagedCredentials: appConnectionIsPlatformManagedCredentials
@@ -197,11 +203,16 @@ export const pkiSyncDALFactory = (db: TDbClient) => {
   const findByProjectIdWithSubscribers = async (
     projectId: string,
     processedRules?: ProcessedPermissionRules,
-    tx?: Knex
+    tx?: Knex,
+    options?: { applicationId?: string | null }
   ) => {
     try {
+      const filter: PkiSyncFindFilter = { projectId };
+      if (options?.applicationId !== undefined) {
+        (filter as Record<string, unknown>).applicationId = options.applicationId;
+      }
       const pkiSyncs = await basePkiSyncWithSubscriberQuery({
-        filter: { projectId },
+        filter,
         db,
         tx,
         processedRules

@@ -1,17 +1,10 @@
 import { useState } from "react";
 import { InfoIcon, PlusIcon } from "lucide-react";
-import { twMerge } from "tailwind-merge";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import {
-  Button as ButtonV2,
-  DeleteActionModal,
-  Modal,
-  ModalContent,
-  Tooltip
-} from "@app/components/v2";
+import { DeleteActionModal } from "@app/components/v2";
 import {
   Button,
   Card,
@@ -20,7 +13,18 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  DocumentationLinkBadge
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DocumentationLinkBadge,
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import {
   OrgPermissionIdentityActions,
@@ -113,11 +117,13 @@ export const IdentitySection = withPermission(
           <Card>
             <CardHeader>
               <CardTitle>
-                {isSubOrganization ? "Sub-" : ""}Organization Machine Identities
+                {isSubOrganization ? "Sub-Organization " : ""}Machine Identities
                 <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/identities/machine-identities" />
               </CardTitle>
               <CardDescription>
-                Create and manage {isSubOrganization ? "sub-" : ""}organization machine identities
+                All machine identities across your{" "}
+                {isSubOrganization ? "sub-organization" : "organization"}, including those scoped to
+                individual projects.
               </CardDescription>
               <CardAction>
                 <OrgPermissionCan
@@ -212,8 +218,8 @@ export const IdentitySection = withPermission(
           }
         />
         <IdentityTokenAuthTokenModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-        <Modal
-          isOpen={popUp.identity.isOpen}
+        <Dialog
+          open={popUp.identity.isOpen}
           onOpenChange={(open) => {
             handlePopUpToggle("identity", open);
             if (!open) {
@@ -221,88 +227,61 @@ export const IdentitySection = withPermission(
             }
           }}
         >
-          <ModalContent
-            bodyClassName="overflow-visible"
-            title={
-              isSubOrganization
-                ? "Add Machine Identity to Sub-Organization"
-                : "Create Organization Machine Identity"
-            }
-            subTitle={
-              isSubOrganization
-                ? "Create a new machine identity or assign an existing one"
-                : undefined
-            }
-          >
+          <DialogContent className="max-w-xl overflow-visible">
+            <DialogHeader>
+              <DialogTitle>
+                {isSubOrganization
+                  ? "Add Machine Identity to Sub-Organization"
+                  : "Create Organization Machine Identity"}
+              </DialogTitle>
+              <DialogDescription>
+                {isSubOrganization
+                  ? "Create a new machine identity or assign an existing one"
+                  : "Create a new machine identity in the organization"}
+              </DialogDescription>
+            </DialogHeader>
             {isSubOrganization && (
-              <div className="mb-4 flex items-center justify-center gap-x-2">
-                <div className="flex w-3/4 gap-x-0.5 rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1">
-                  <ButtonV2
-                    variant="outline_bg"
-                    onClick={() => {
-                      setWizardStep(IdentityWizardSteps.CreateIdentity);
-                    }}
-                    size="xs"
-                    className={twMerge(
-                      "min-w-[2.4rem] flex-1 rounded border-none hover:bg-mineshaft-600",
-                      wizardStep === IdentityWizardSteps.CreateIdentity
-                        ? "bg-mineshaft-500"
-                        : "bg-transparent"
-                    )}
-                  >
-                    Create New
-                  </ButtonV2>
-                  <ButtonV2
-                    variant="outline_bg"
-                    onClick={() => {
-                      setWizardStep(IdentityWizardSteps.LinkIdentity);
-                    }}
-                    size="xs"
-                    className={twMerge(
-                      "min-w-[2.4rem] flex-1 rounded border-none hover:bg-mineshaft-600",
-                      wizardStep === IdentityWizardSteps.LinkIdentity
-                        ? "bg-mineshaft-500"
-                        : "bg-transparent"
-                    )}
-                  >
-                    Assign Existing
-                  </ButtonV2>
-                </div>
-                <Tooltip
-                  className="max-w-sm"
-                  position="right"
-                  align="start"
-                  content={
-                    <>
-                      <p className="mb-2 text-mineshaft-300">
-                        You can add machine identities to your sub-organization in one of two ways:
-                      </p>
-                      <ul className="ml-3.5 flex list-disc flex-col gap-y-4">
-                        <li className="text-mineshaft-200">
-                          <strong className="font-medium text-mineshaft-100">Create New</strong> -
-                          Create a new machine identity specifically for this sub-organization. This
-                          machine identity will be managed at the sub-organization level.
-                          <p className="mt-2">
-                            This method is recommended for autonomous teams that need to manage
-                            machine identity authentication.
-                          </p>
-                        </li>
-                        <li>
-                          <strong className="font-medium text-mineshaft-100">
-                            Assign Existing
-                          </strong>{" "}
-                          Assign an existing machine identity from your parent organization. The
-                          machine identity will continue to be managed at its original scope.
-                          <p className="mt-2">
-                            This method is recommended for organizations that need to maintain
-                            centralized control.
-                          </p>
-                        </li>
-                      </ul>
-                    </>
-                  }
+              <div className="mx-auto flex items-center gap-2">
+                <Tabs
+                  value={wizardStep}
+                  onValueChange={(value) => setWizardStep(value as IdentityWizardSteps)}
                 >
-                  <InfoIcon size={16} className="text-mineshaft-400" />
+                  <TabsList className="w-fit">
+                    <TabsTrigger value={IdentityWizardSteps.CreateIdentity}>Create New</TabsTrigger>
+                    <TabsTrigger value={IdentityWizardSteps.LinkIdentity}>
+                      Assign Existing
+                    </TabsTrigger>
+                  </TabsList>
+                </Tabs>
+                <Tooltip>
+                  <TooltipTrigger>
+                    <InfoIcon size={16} className="text-mineshaft-400" />
+                  </TooltipTrigger>
+                  <TooltipContent side="right" align="start" className="max-w-sm">
+                    <p className="mb-2 text-mineshaft-300">
+                      You can add machine identities to your sub-organization in one of two ways:
+                    </p>
+                    <ul className="ml-3.5 flex list-disc flex-col gap-y-4">
+                      <li className="text-mineshaft-200">
+                        <strong className="font-medium text-mineshaft-100">Create New</strong> -
+                        Create a new machine identity specifically for this sub-organization. This
+                        machine identity will be managed at the sub-organization level.
+                        <p className="mt-2">
+                          This method is recommended for autonomous teams that need to manage
+                          machine identity authentication.
+                        </p>
+                      </li>
+                      <li>
+                        <strong className="font-medium text-mineshaft-100">Assign Existing</strong>{" "}
+                        Assign an existing machine identity from your parent organization. The
+                        machine identity will continue to be managed at its original scope.
+                        <p className="mt-2">
+                          This method is recommended for organizations that need to maintain
+                          centralized control.
+                        </p>
+                      </li>
+                    </ul>
+                  </TooltipContent>
                 </Tooltip>
               </div>
             )}
@@ -312,8 +291,8 @@ export const IdentitySection = withPermission(
             {wizardStep === IdentityWizardSteps.LinkIdentity && (
               <OrgIdentityLinkForm onClose={() => handlePopUpClose("identity")} />
             )}
-          </ModalContent>
-        </Modal>
+          </DialogContent>
+        </Dialog>
         <DeleteActionModal
           isOpen={popUp.deleteIdentity.isOpen}
           title={`Are you sure you want to delete ${

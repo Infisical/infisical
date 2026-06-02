@@ -25,7 +25,14 @@ export const ProjectNavLink = ({
   const basePath = `/organizations/${currentOrg.id}/projects/${typePath}/${currentProject.id}`;
   const fullPath = `${basePath}/${item.pathSuffix}`;
 
-  const pathMatch = pathname.startsWith(fullPath) || Boolean(item.activeMatch?.test(pathname));
+  const activeMatchResult = (() => {
+    if (!item.activeMatch) return false;
+    if (typeof item.activeMatch === "function") {
+      return item.activeMatch(pathname, (locationSearch as Record<string, unknown>) ?? {});
+    }
+    return item.activeMatch.test(pathname);
+  })();
+  const pathMatch = pathname.startsWith(fullPath) || activeMatchResult;
   const isActive = item.search
     ? pathMatch &&
       Object.entries(item.search).every(([key, value]) => {
@@ -70,13 +77,13 @@ export const ProjectNavLink = ({
         >
           <item.icon className="size-4" />
           <span>{item.label}</span>
+          {Boolean(item.badgeCount) && (
+            <Badge variant="warning" isSquare className="ml-auto">
+              {item.badgeCount}
+            </Badge>
+          )}
         </Link>
       </SidebarMenuButton>
-      {Boolean(item.badgeCount) && (
-        <Badge variant="warning" className="absolute top-[10.5px] right-4">
-          {item.badgeCount}
-        </Badge>
-      )}
     </SidebarMenuItem>
   );
 };

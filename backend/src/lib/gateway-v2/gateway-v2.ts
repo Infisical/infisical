@@ -20,16 +20,20 @@ interface IGatewayRelayServer {
   getRelayError: () => string;
 }
 
+const DEFAULT_RELAY_CONNECTION_TIMEOUT_MS = 100000;
+
 export const createRelayConnection = async ({
   relayHost,
   clientCertificate,
   clientPrivateKey,
-  serverCertificateChain
+  serverCertificateChain,
+  timeoutMs = DEFAULT_RELAY_CONNECTION_TIMEOUT_MS
 }: {
   relayHost: string;
   clientCertificate: string;
   clientPrivateKey: string;
   serverCertificateChain: string;
+  timeoutMs?: number;
 }): Promise<net.Socket> => {
   const [targetHost] = await verifyHostInputValidity({ host: relayHost, isDynamicSecret: false });
   const [, portStr] = relayHost.split(":");
@@ -65,12 +69,12 @@ export const createRelayConnection = async ({
       });
 
       socket.on("timeout", () => {
-        logger.error(`TLS connection timeout after 120 seconds`);
+        logger.error(`TLS connection timeout after ${timeoutMs / 1000}s`);
         socket.destroy();
         reject(new Error("TLS connection timeout"));
       });
 
-      socket.setTimeout(100000);
+      socket.setTimeout(timeoutMs);
     } catch (error: unknown) {
       reject(new Error(`Failed to create TLS connection: ${error instanceof Error ? error.message : String(error)}`));
     }
@@ -84,12 +88,14 @@ export const createGatewayConnection = async (
 ): Promise<net.Socket> => {
   const appCfg = getConfig();
 
-  const protocolToAlpn = {
-    [GatewayProxyProtocol.Http]: "infisical-http-proxy",
-    [GatewayProxyProtocol.Tcp]: "infisical-tcp-proxy",
-    [GatewayProxyProtocol.Ping]: "infisical-ping",
-    [GatewayProxyProtocol.Pam]: "infisical-pam-proxy",
-    [GatewayProxyProtocol.PamSessionCancellation]: "infisical-pam-session-cancellation"
+  const protocolToAlpn: Record<string, string[]> = {
+    [GatewayProxyProtocol.Http]: ["infisical-http-proxy"],
+    [GatewayProxyProtocol.Tcp]: ["infisical-tcp-proxy"],
+    [GatewayProxyProtocol.Ping]: ["infisical-ping"],
+    [GatewayProxyProtocol.Health]: ["infisical-health", "infisical-ping"],
+    [GatewayProxyProtocol.Pam]: ["infisical-pam-proxy"],
+    [GatewayProxyProtocol.PamRdpBrowser]: ["infisical-pam-rdp-browser"],
+    [GatewayProxyProtocol.PamSessionCancellation]: ["infisical-pam-session-cancellation"]
   };
 
   const tlsOptions: tls.ConnectionOptions = {
@@ -100,7 +106,7 @@ export const createGatewayConnection = async (
     minVersion: "TLSv1.2",
     maxVersion: "TLSv1.3",
     rejectUnauthorized: true,
-    ALPNProtocols: [protocolToAlpn[protocol]],
+    ALPNProtocols: protocolToAlpn[protocol],
     checkServerIdentity: appCfg.isDevelopmentMode ? () => undefined : tls.checkServerIdentity
   };
 
@@ -205,25 +211,23 @@ export const setupRelayServer = async ({
             }
           }
 
+          const destroyAll = () => {
+            clientConn.destroy();
+            relayConn.destroy();
+            gatewayConn.destroy();
+          };
+
+          clientConn.on("error", () => destroyAll());
+          relayConn.on("error", () => destroyAll());
+          gatewayConn.on("error", () => destroyAll());
+
           // Bidirectional data forwarding
           clientConn.pipe(gatewayConn);
           gatewayConn.pipe(clientConn);
 
-          // Handle connection closure
-          clientConn.on("close", () => {
-            relayConn.destroy();
-            gatewayConn.destroy();
-          });
-
-          relayConn.on("close", () => {
-            clientConn.destroy();
-            gatewayConn.destroy();
-          });
-
-          gatewayConn.on("close", () => {
-            clientConn.destroy();
-            relayConn.destroy();
-          });
+          clientConn.on("close", destroyAll);
+          relayConn.on("close", destroyAll);
+          gatewayConn.on("close", destroyAll);
         } catch (err) {
           const errorMsg = err instanceof Error ? err.message : String(err);
           relayErrorMsg.push(errorMsg);

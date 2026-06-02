@@ -104,6 +104,7 @@ export const appConnectionDALFactory = (db: TDbClient) => {
       .where(`${TableName.SecretRotationV2}.connectionId`, connectionId)
       .join(TableName.SecretFolder, `${TableName.SecretRotationV2}.folderId`, `${TableName.SecretFolder}.id`)
       .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+      .whereNull(`${TableName.Environment}.deleteAfter`)
       .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
       .select(
         db.ref("name").withSchema(TableName.SecretRotationV2),
@@ -178,5 +179,37 @@ export const appConnectionDALFactory = (db: TDbClient) => {
     return parseInt(String(result?.count || "0"), 10);
   };
 
-  return { ...appConnectionOrm, findAppConnectionUsageById, findWithProjectDetails, findByGatewayId, countByGatewayId };
+  const findByGatewayPoolId = async (gatewayPoolId: string, tx?: Knex) => {
+    const docs = await (tx || db.replicaNode())(TableName.AppConnection)
+      .leftJoin(TableName.Project, `${TableName.AppConnection}.projectId`, `${TableName.Project}.id`)
+      .where(`${TableName.AppConnection}.gatewayPoolId`, gatewayPoolId)
+      .select(
+        db.ref("id").withSchema(TableName.AppConnection),
+        db.ref("name").withSchema(TableName.AppConnection),
+        db.ref("app").withSchema(TableName.AppConnection),
+        db.ref("projectId").withSchema(TableName.AppConnection),
+        db.ref("name").withSchema(TableName.Project).as("projectName")
+      );
+
+    return docs;
+  };
+
+  const countByGatewayPoolId = async (gatewayPoolId: string, tx?: Knex) => {
+    const result = await (tx || db.replicaNode())(TableName.AppConnection)
+      .where(`${TableName.AppConnection}.gatewayPoolId`, gatewayPoolId)
+      .count("id")
+      .first();
+
+    return parseInt(String(result?.count || "0"), 10);
+  };
+
+  return {
+    ...appConnectionOrm,
+    findAppConnectionUsageById,
+    findWithProjectDetails,
+    findByGatewayId,
+    countByGatewayId,
+    findByGatewayPoolId,
+    countByGatewayPoolId
+  };
 };

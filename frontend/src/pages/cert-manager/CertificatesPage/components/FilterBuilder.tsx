@@ -27,6 +27,7 @@ type Props = {
   onClearAll: () => void;
   onSaveView?: () => void;
   dynamicFieldOptions?: Record<string, { value: string; label: string }[]>;
+  hiddenFieldKeys?: string[];
 };
 
 const getFieldDef = (
@@ -87,19 +88,28 @@ const DatePickerInput = ({
 const isRuleEmpty = (rule: FilterRule): boolean => {
   if (rule.value === null || rule.value === undefined || rule.value === "") return true;
   if (Array.isArray(rule.value) && rule.value.length === 0) return true;
+  if (rule.field === "metadata" && Array.isArray(rule.value) && !rule.value[0]) return true;
   return false;
+};
+
+const getDefaultValue = (vt: FilterFieldDefinition["valueType"]): FilterRule["value"] => {
+  if (vt === "multi-select") return [];
+  if (vt === "metadata-kv") return ["", ""];
+  return null;
 };
 
 const FilterRow = ({
   rule,
   onUpdate,
   onRemove,
-  dynamicFieldOptions: dynOpts
+  dynamicFieldOptions: dynOpts,
+  availableFields
 }: {
   rule: FilterRule;
   onUpdate: (updated: FilterRule) => void;
   onRemove: () => void;
   dynamicFieldOptions?: Record<string, { value: string; label: string }[]>;
+  availableFields: FilterFieldDefinition[];
 }) => {
   const fieldDef = getFieldDef(rule.field, dynOpts);
 
@@ -109,7 +119,7 @@ const FilterRow = ({
       ...rule,
       field: newField,
       operator: newDef.operators[0]?.value || "is",
-      value: newDef.valueType === "multi-select" ? [] : null
+      value: getDefaultValue(newDef.valueType)
     });
   };
 
@@ -117,6 +127,25 @@ const FilterRow = ({
     const options = fieldDef.options || [];
 
     switch (fieldDef.valueType) {
+      case "metadata-kv": {
+        const kvPair = Array.isArray(rule.value) ? rule.value : ["", ""];
+        return (
+          <div className="flex gap-1.5">
+            <Input
+              value={kvPair[0] || ""}
+              onChange={(e) => onUpdate({ ...rule, value: [e.target.value, kvPair[1] || ""] })}
+              placeholder="Key"
+              className="flex-1"
+            />
+            <Input
+              value={kvPair[1] || ""}
+              onChange={(e) => onUpdate({ ...rule, value: [kvPair[0] || "", e.target.value] })}
+              placeholder="Value (optional)"
+              className="flex-1"
+            />
+          </div>
+        );
+      }
       case "multi-select": {
         const currentValues = Array.isArray(rule.value) ? rule.value : [];
         const selectedOptions = currentValues
@@ -199,7 +228,7 @@ const FilterRow = ({
           <SelectValue />
         </SelectTrigger>
         <SelectContent position="popper" align="start">
-          {FILTER_FIELDS.map((f) => (
+          {availableFields.map((f) => (
             <SelectItem key={f.key} value={f.key}>
               {f.label}
             </SelectItem>
@@ -207,21 +236,23 @@ const FilterRow = ({
         </SelectContent>
       </Select>
 
-      <Select
-        value={rule.operator}
-        onValueChange={(newOp: string) => onUpdate({ ...rule, operator: newOp })}
-      >
-        <SelectTrigger className="w-[100px] shrink-0">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent position="popper" align="start">
-          {fieldDef.operators.map((op) => (
-            <SelectItem key={op.value} value={op.value}>
-              {op.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      {fieldDef.valueType !== "metadata-kv" && (
+        <Select
+          value={rule.operator}
+          onValueChange={(newOp: string) => onUpdate({ ...rule, operator: newOp })}
+        >
+          <SelectTrigger className="w-[100px] shrink-0">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent position="popper" align="start">
+            {fieldDef.operators.map((op) => (
+              <SelectItem key={op.value} value={op.value}>
+                {op.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )}
 
       <div className="min-w-0 flex-1">{renderValueInput()}</div>
 
@@ -245,8 +276,12 @@ export const FilterBuilder = ({
   onCancel,
   onClearAll,
   onSaveView,
-  dynamicFieldOptions
+  dynamicFieldOptions,
+  hiddenFieldKeys
 }: Props) => {
+  const availableFields = hiddenFieldKeys?.length
+    ? FILTER_FIELDS.filter((f) => !hiddenFieldKeys.includes(f.key))
+    : FILTER_FIELDS;
   const hasEmptyRules = rules.some(isRuleEmpty);
 
   const handleApplyWithValidation = () => {
@@ -260,14 +295,14 @@ export const FilterBuilder = ({
   };
 
   const handleAddRule = () => {
-    const defaultField = FILTER_FIELDS[0];
+    const defaultField = availableFields[0] ?? FILTER_FIELDS[0];
     onChange([
       ...rules,
       {
         id: crypto.randomUUID(),
         field: defaultField.key,
         operator: defaultField.operators[0]?.value || "is",
-        value: defaultField.valueType === "multi-select" ? [] : null
+        value: getDefaultValue(defaultField.valueType)
       }
     ]);
   };
@@ -309,6 +344,7 @@ export const FilterBuilder = ({
                 onUpdate={(updated) => handleUpdateRule(index, updated)}
                 onRemove={() => handleRemoveRule(index)}
                 dynamicFieldOptions={dynamicFieldOptions}
+                availableFields={availableFields}
               />
             </div>
           ))}

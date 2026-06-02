@@ -98,7 +98,7 @@ const StatCard = ({
                   {viewLabel}
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-[480px] p-0" align="end">
+              <PopoverContent className="w-[560px] p-0" align="end">
                 {popoverContent}
               </PopoverContent>
             </Popover>
@@ -165,7 +165,7 @@ const RotationTable = ({
               })
             }
           >
-            <TableCell className="max-w-[120px] truncate font-medium" title={item.name}>
+            <TableCell className="max-w-[200px] truncate font-medium" title={item.name}>
               {item.name}
             </TableCell>
             <TableCell className="text-muted" title={item.environment}>
@@ -252,7 +252,7 @@ const ReminderTable = ({
               })
             }
           >
-            <TableCell className="max-w-[120px] truncate font-medium" title={item.secretKey}>
+            <TableCell className="max-w-[200px] truncate font-medium" title={item.secretKey}>
               {item.secretKey}
             </TableCell>
             <TableCell className="text-muted" title={item.environment}>
@@ -326,7 +326,7 @@ const StaleSecretsTable = ({
                 })
               }
             >
-              <TableCell className="max-w-[120px] truncate font-medium" title={item.key}>
+              <TableCell className="max-w-[200px] truncate font-medium" title={item.key}>
                 {item.key}
               </TableCell>
               <TableCell className="text-muted" title={item.environment}>

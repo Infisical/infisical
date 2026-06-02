@@ -15,9 +15,11 @@ import { THsmServiceFactory } from "@app/ee/services/hsm/hsm-service";
 import { THsmStatus } from "@app/ee/services/hsm/hsm-types";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { TEnvConfig } from "@app/lib/config/env";
+import { generateSecretValueBlindIndexFromKmsKey } from "@app/lib/crypto/blind-index";
 import { symmetricCipherService, SymmetricKeyAlgorithm } from "@app/lib/crypto/cipher";
 import { crypto } from "@app/lib/crypto/cryptography";
-import { AsymmetricKeyAlgorithm, signingService } from "@app/lib/crypto/sign";
+import { detectPqcVariantFromDer } from "@app/lib/crypto/pqc/pqc-crypto";
+import { AsymmetricKeyAlgorithm, isPqcKeyAlgorithm, KMS_TO_OPENSSL_NAME, signingService } from "@app/lib/crypto/sign";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
@@ -70,6 +72,9 @@ export type TKmsServiceFactory = ReturnType<typeof kmsServiceFactory>;
 const KMS_VERSION = "v01";
 const KMS_VERSION_BLOB_LENGTH = 3;
 const KmsSanitizedSchema = KmsKeysSchema.extend({ isExternal: z.boolean() });
+const OPENSSL_TO_KMS: Record<string, string> = Object.fromEntries(
+  Object.entries(KMS_TO_OPENSSL_NAME).map(([k, v]) => [v, k])
+);
 
 export const kmsServiceFactory = ({
   envConfig,
@@ -112,7 +117,7 @@ export const kmsServiceFactory = ({
       kmsKeyMaterial = await generateAsymmetricPrivateKey();
 
       // daniel: safety check to ensure we're able to extract the public key from the private key before we proceed to key creation
-      getPublicKeyFromPrivateKey(kmsKeyMaterial);
+      await getPublicKeyFromPrivateKey(kmsKeyMaterial);
     }
 
     if (!kmsKeyMaterial) {
@@ -404,8 +409,60 @@ export const kmsServiceFactory = ({
     { key, algorithm, name, isReserved, projectId, orgId, keyUsage, kmipMetadata }: TImportKeyMaterialDTO,
     tx?: Knex
   ) => {
-    // daniel: currently we only support imports for encrypt/decrypt keys
-    verifyKeyTypeAndAlgorithm(keyUsage, algorithm, { forceType: KmsKeyUsage.ENCRYPT_DECRYPT });
+    verifyKeyTypeAndAlgorithm(keyUsage, algorithm);
+
+    if (keyUsage === KmsKeyUsage.ENCRYPT_DECRYPT) {
+      const expectedLength = getByteLengthForSymmetricEncryptionAlgorithm(algorithm as SymmetricKeyAlgorithm);
+      if (key.length !== expectedLength) {
+        throw new BadRequestError({
+          message: `Invalid key material length for ${algorithm}. Expected ${expectedLength} bytes, got ${key.length}.`
+        });
+      }
+    }
+
+    if (keyUsage === KmsKeyUsage.SIGN_VERIFY) {
+      const { getPublicKeyFromPrivateKey } = signingService(algorithm as AsymmetricKeyAlgorithm);
+      try {
+        await getPublicKeyFromPrivateKey(key);
+      } catch {
+        const expectedFormat = isPqcKeyAlgorithm(algorithm as string) ? "PKCS8 DER-encoded" : "PKCS8 PEM-encoded";
+        throw new BadRequestError({
+          message: `Invalid private key material. Expected a ${expectedFormat} private key.`
+        });
+      }
+
+      if (isPqcKeyAlgorithm(algorithm as string)) {
+        const detectedVariant = detectPqcVariantFromDer(key);
+        const expectedVariant = KMS_TO_OPENSSL_NAME[algorithm as AsymmetricKeyAlgorithm];
+        if (detectedVariant && expectedVariant && detectedVariant !== expectedVariant) {
+          throw new BadRequestError({
+            message: `Key material does not match the declared algorithm. Expected ${algorithm as string} but the key is ${OPENSSL_TO_KMS[detectedVariant] || detectedVariant}.`
+          });
+        }
+      } else {
+        const keyObj = crypto.nativeCrypto.createPrivateKey({
+          key,
+          format: "pem",
+          type: "pkcs8"
+        });
+        const keyType = keyObj.asymmetricKeyType;
+        const keyDetails = keyObj.asymmetricKeyDetails;
+
+        if (algorithm === AsymmetricKeyAlgorithm.RSA_4096) {
+          if (keyType !== "rsa" || keyDetails?.modulusLength !== 4096) {
+            throw new BadRequestError({
+              message: `Key material does not match the declared algorithm. Expected an RSA 4096-bit key.`
+            });
+          }
+        } else if (algorithm === AsymmetricKeyAlgorithm.ECC_NIST_P256) {
+          if (keyType !== "ec" || keyDetails?.namedCurve !== "prime256v1") {
+            throw new BadRequestError({
+              message: `Key material does not match the declared algorithm. Expected an EC P-256 key.`
+            });
+          }
+        }
+      }
+    }
 
     const cipher = symmetricCipherService(SymmetricKeyAlgorithm.AES_GCM_256);
 
@@ -415,7 +472,7 @@ export const kmsServiceFactory = ({
       const kmsDoc = await kmsDAL.create(
         {
           name: sanitizedName,
-          keyUsage: KmsKeyUsage.ENCRYPT_DECRYPT,
+          keyUsage,
           orgId,
           isReserved,
           projectId,
@@ -502,7 +559,7 @@ export const kmsServiceFactory = ({
     return async ({ data, signature, isDigest }: Pick<TVerifyWithKmsDTO, "data" | "signature" | "isDigest">) => {
       const kmsKey = keyCipher.decrypt(kmsDoc.internalKms?.encryptedKey as Buffer, ROOT_ENCRYPTION_KEY);
 
-      const publicKey = getPublicKeyFromPrivateKey(kmsKey);
+      const publicKey = await getPublicKeyFromPrivateKey(kmsKey);
       const signatureValid = await verify(data, signature, publicKey, signingAlgorithm, isDigest);
       return Promise.resolve({ signatureValid, algorithm: signingAlgorithm });
     };
@@ -579,8 +636,9 @@ export const kmsServiceFactory = ({
     // internal KMS
     const keyCipher = symmetricCipherService(SymmetricKeyAlgorithm.AES_GCM_256);
     const dataCipher = symmetricCipherService(encryptionAlgorithm);
+    const kmsKey = keyCipher.decrypt(kmsDoc.internalKms?.encryptedKey as Buffer, ROOT_ENCRYPTION_KEY);
+
     return ({ plainText }: Pick<TEncryptWithKmsDTO, "plainText">) => {
-      const kmsKey = keyCipher.decrypt(kmsDoc.internalKms?.encryptedKey as Buffer, ROOT_ENCRYPTION_KEY);
       const encryptedPlainTextBlob = dataCipher.encrypt(plainText, kmsKey);
 
       // Buffer#1 encrypted text + Buffer#2 version number
@@ -852,7 +910,8 @@ export const kmsServiceFactory = ({
         const cipherTextBlob = versionedCipherTextBlob.subarray(0, -KMS_VERSION_BLOB_LENGTH);
         const decryptedBlob = cipher.decrypt(cipherTextBlob, dataKey);
         return decryptedBlob;
-      }
+      },
+      generateSecretBlindIndex: (secretValue: Buffer) => generateSecretValueBlindIndexFromKmsKey(secretValue, dataKey)
     };
   };
 

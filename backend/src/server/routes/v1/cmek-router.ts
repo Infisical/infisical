@@ -9,10 +9,12 @@ import { AsymmetricKeyAlgorithm, SigningAlgorithm } from "@app/lib/crypto/sign";
 import { OrderByDirection } from "@app/lib/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { CmekOrderBy, TCmekKeyEncryptionAlgorithm } from "@app/services/cmek/cmek-types";
 import { KmsKeyUsage } from "@app/services/kms/kms-types";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const keyNameSchema = slugSchema({ min: 1, max: 32, field: "Name" });
 const keyDescriptionSchema = z.string().trim().max(500).optional();
@@ -33,6 +35,22 @@ const base64Schema = z.string().superRefine((val, ctx) => {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       message: "data cannot exceed 4096 bytes"
+    });
+  }
+});
+
+const signatureBase64Schema = z.string().superRefine((val, ctx) => {
+  if (!isBase64(val)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "signature must be base64 encoded"
+    });
+  }
+
+  if (getBase64SizeInBytes(val) > 8192) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "signature cannot exceed 8192 bytes"
     });
   }
 });
@@ -128,6 +146,20 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
           }
         }
       });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.CmekCreated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: permission.orgId,
+          properties: {
+            keyId: cmek.id,
+            projectId,
+            encryptionAlgorithm,
+            keyUsage
+          }
+        })
+        .catch(() => {});
 
       return { key: cmek };
     }
@@ -422,6 +454,15 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
         }
       });
 
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.CmekEncrypt,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: permission.orgId,
+          properties: { keyId, projectId }
+        })
+        .catch(() => {});
+
       return { ciphertext };
     }
   });
@@ -515,6 +556,101 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
       });
 
       return { privateKey };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/keys/bulk-import",
+    config: { rateLimit: writeLimit },
+    schema: {
+      hide: false,
+      operationId: "bulkImportKmsKeys",
+      tags: [ApiDocsTags.KmsKeys],
+      description: "Bulk import KMS keys with provided key material into a project.",
+      body: z.object({
+        projectId: z.string().uuid(),
+        keys: z
+          .array(
+            z
+              .object({
+                name: keyNameSchema,
+                keyUsage: z.nativeEnum(KmsKeyUsage),
+                encryptionAlgorithm: z.enum(AllowedEncryptionKeyAlgorithms),
+                keyMaterial: z.string().min(1)
+              })
+              .superRefine((data, ctx) => {
+                if (
+                  data.keyUsage === KmsKeyUsage.ENCRYPT_DECRYPT &&
+                  !Object.values(SymmetricKeyAlgorithm).includes(data.encryptionAlgorithm as SymmetricKeyAlgorithm)
+                ) {
+                  ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    message: `encryptionAlgorithm must be a symmetric algorithm for encrypt-decrypt keys`
+                  });
+                }
+                if (
+                  data.keyUsage === KmsKeyUsage.SIGN_VERIFY &&
+                  !Object.values(AsymmetricKeyAlgorithm).includes(data.encryptionAlgorithm as AsymmetricKeyAlgorithm)
+                ) {
+                  ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    message: `encryptionAlgorithm must be an asymmetric algorithm for sign-verify keys`
+                  });
+                }
+                if (!isBase64(data.keyMaterial)) {
+                  ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    path: ["keyMaterial"],
+                    message: "keyMaterial must be base64 encoded"
+                  });
+                }
+              })
+          )
+          .min(1)
+          .max(100)
+      }),
+      response: {
+        200: z.object({
+          keys: z.array(z.object({ id: z.string(), name: z.string() })),
+          errors: z.array(z.object({ name: z.string(), message: z.string() }))
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const {
+        body: { projectId, keys },
+        permission
+      } = req;
+
+      const { keys: importedKeys, errors } = await server.services.cmek.bulkImportKeys(
+        {
+          projectId,
+          keys: keys.map((k) => ({
+            name: k.name,
+            algorithm: k.encryptionAlgorithm as TCmekKeyEncryptionAlgorithm,
+            keyUsage: k.keyUsage,
+            keyMaterial: k.keyMaterial
+          }))
+        },
+        permission
+      );
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId,
+        event: {
+          type: EventType.CMEK_BULK_IMPORT_KEYS,
+          metadata: {
+            keyNames: importedKeys.map((k) => k.name),
+            failedKeyNames: errors.map((e) => e.name),
+            projectId
+          }
+        }
+      });
+
+      return { keys: importedKeys, errors };
     }
   });
 
@@ -689,7 +825,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
       body: z.object({
         isDigest: z.boolean().optional().default(false).describe(KMS.VERIFY.isDigest),
         data: base64Schema.describe(KMS.VERIFY.data),
-        signature: base64Schema.describe(KMS.VERIFY.signature),
+        signature: signatureBase64Schema.describe(KMS.VERIFY.signature),
         signingAlgorithm: z.nativeEnum(SigningAlgorithm)
       }),
       response: {
@@ -774,6 +910,15 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
           }
         }
       });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.CmekDecrypt,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: permission.orgId,
+          properties: { keyId, projectId }
+        })
+        .catch(() => {});
 
       return { plaintext };
     }

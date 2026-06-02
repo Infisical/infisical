@@ -25,7 +25,7 @@ const requestDurationHistogram = infisicalMeter.createHistogram("infisical.http.
 export const apiMetrics = fp(async (fastify) => {
   fastify.addHook("onResponse", async (request, reply) => {
     const { method } = request;
-    const route = request.routerPath;
+    const route = request.routeOptions.url;
     const { statusCode } = reply;
 
     latencyHistogram.record(reply.elapsedTime, {
@@ -44,7 +44,7 @@ export const apiMetrics = fp(async (fastify) => {
 
     const attributes: Record<string, string | number> = {
       "http.request.method": method,
-      "http.route": route,
+      "http.route": route ?? "",
       "http.response.status_code": statusCode
     };
 

@@ -142,6 +142,36 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
+    method: "POST",
+    url: "/me/email-change/verify-current",
+    config: {
+      rateLimit: smtpRateLimit({
+        keyGenerator: (req) => req.permission.id
+      })
+    },
+    schema: {
+      operationId: "verifyCurrentEmailOtp",
+      body: z.object({
+        otpCode: z.string().trim().length(6)
+      }),
+      response: {
+        200: z.object({
+          success: z.boolean(),
+          newEmail: z.string()
+        })
+      }
+    },
+    preHandler: verifyAuth([AuthMode.JWT], { requireOrg: false }),
+    handler: async (req) => {
+      const result = await server.services.user.verifyCurrentEmailOTP({
+        userId: req.permission.id,
+        otpCode: req.body.otpCode
+      });
+      return result;
+    }
+  });
+
+  server.route({
     method: "PATCH",
     url: "/me/email",
     config: {

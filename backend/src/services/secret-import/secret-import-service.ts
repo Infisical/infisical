@@ -175,6 +175,7 @@ export const secretImportServiceFactory = ({
         orgId: actorOrgId,
         projectId,
         environmentSlug: importEnv.slug,
+        environmentName: importEnv.name,
         pickOnlyImportIds: [secImport.id],
         actorId,
         actor
@@ -185,6 +186,7 @@ export const secretImportServiceFactory = ({
         orgId: actorOrgId,
         projectId,
         environmentSlug: environment,
+        environmentName: folder.environment.name,
         actorId,
         actor,
         events: [
@@ -416,6 +418,7 @@ export const secretImportServiceFactory = ({
       orgId: actorOrgId,
       projectId,
       environmentSlug: environment,
+      environmentName: folder.environment.name,
       actor,
       actorId,
       events: [
@@ -500,6 +503,7 @@ export const secretImportServiceFactory = ({
         secretPath: secretImportDoc.importPath,
         projectId,
         environmentSlug: secretImportDoc.importEnv.slug,
+        environmentName: secretImportDoc.importEnv.name,
         pickOnlyImportIds: [secretImportDoc.id],
         actorId,
         actor

@@ -11,7 +11,6 @@ import { ProjectGeneralTab } from "@app/pages/project/SettingsPage/components/Pr
 
 import { EncryptionTab } from "./components/EncryptionTab";
 import { SecretSettingsTab } from "./components/ProjectGeneralTab";
-import { SecretValidationRulesTab } from "./components/SecretValidationRulesTab";
 import { WebhooksTab } from "./components/WebhooksTab";
 import { WorkflowIntegrationTab } from "./components/WorkflowIntegrationSection";
 
@@ -27,10 +26,6 @@ export const SettingsPage = () => {
   const tabs = [
     { key: "tab-project-general", Component: ProjectGeneralTab },
     { key: "tab-secret-general", Component: SecretSettingsTab },
-    {
-      key: "tab-secret-validation-rules",
-      Component: SecretValidationRulesTab
-    },
     {
       key: "tab-project-encryption",
       isHidden: currentProject?.version !== ProjectVersion.V3,

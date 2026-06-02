@@ -1,0 +1,171 @@
+---
+title: "Datadog Connection"
+description: "Learn how to configure a Datadog Connection for Infisical."
+---
+
+Infisical supports the use of a Datadog [API Key](https://docs.datadoghq.com/account_management/api-app-keys/) paired with a Service Account [Application Key](https://docs.datadoghq.com/account_management/org_settings/service_accounts/) to authenticate with Datadog.
+
+<Note>
+    We recommend issuing the Application Key on a dedicated Service Account so the credentials Infisical uses can be rotated and revoked independently of any individual user.
+</Note>
+
+## Create Datadog Credentials
+
+<Steps>
+    <Step title="Open Organization Settings">
+        From your Datadog dashboard, hover the bottom left where it says  **Integrations**. This will open a window with **Organization Settings**
+
+        ![Open Organization Settings](/images/app-connections/datadog/open-settings.png)
+    </Step>
+    <Step title="Navigate to API Keys">
+        In the left sidebar, select **API Keys**.
+
+        ![API Keys Option](/images/app-connections/datadog/api-key-option.png)
+    </Step>
+    <Step title="Create a New API Key">
+        Click the **New Key** button in the top-right corner.
+
+        ![New API Key Button](/images/app-connections/datadog/new-key-button.png)
+    </Step>
+    <Step title="Name the API Key">
+        Provide a descriptive name for the API Key (e.g. `infisical-connection`) and click **Create Key**.
+
+        ![Name API Key](/images/app-connections/datadog/api-key-name-modal.png)
+    </Step>
+    <Step title="Copy the API Key Value">
+        Copy the generated **API Key** value and store it somewhere safe. You will need it when creating the Infisical connection.
+
+        ![Copy API Key](/images/app-connections/datadog/api-key-copy-value.png)
+    </Step>
+    <Step title="Navigate to Service Accounts">
+        Back in **Organization Settings**, open the **Service Accounts** section from the left sidebar.
+
+        ![Service Accounts Option](/images/app-connections/datadog/service-account-option.png)
+    </Step>
+    <Step title="View Service Accounts">
+        On the **Service Accounts** page, click **New Service Account**.
+
+        ![Service Accounts Page](/images/app-connections/datadog/service-account-page.png)
+    </Step>
+    <Step title="Create the Service Account">
+        Provide a name, email, and select a role for the Service Account, then click **Create Service Account**.
+
+        <Note>
+            The Service Account's role determines which resources Infisical can access. Make sure it has access to the resources you want Infisical to manage. For secret rotation, it is required to have the `Datadog Admin Role` as a base so the **Application Key can be scoped** 
+        </Note>
+
+        ![Create Service Account](/images/app-connections/datadog/create-service-account.png)
+    </Step>
+    <Step title="Open the New Service Account">
+        Once created, click on created the Service Account from the list to manage its Application Keys.
+
+        ![Service Account Created](/images/app-connections/datadog/service-account-created.png)
+    </Step>
+    <Step title="Create an Application Key">
+        Under the **Application Keys** section of the Service Account, click **New Key**.
+
+        ![Create Application Key](/images/app-connections/datadog/create-new-key.png)
+    </Step>
+
+    <Step title="Define a name for the Application Key ">
+        Define a name for the application key
+
+        ![Application Key Name](/images/app-connections/datadog/application-key-name.png)
+    </Step>
+
+    <Step title="Configure Application Key Scopes">
+        Assign the scopes required for your use case. On **Scope** click on **Edit**, so you can define the scopes you want. If this is left empty, the scope of this key will be the same as the service account.
+        
+        At minimum, the Application Key needs scopes to read users and manage Service Account Application Keys if you plan to use [Datadog Application Key Secret Rotation](/documentation/platform/secret-rotation/datadog-application-key-secret). For this use case, 
+        you need to set `user_app_keys` under **API and Application Keys** and `service_account_write`, `user_access_manage` and `user_access_read` under **Access Management**
+
+        ![Application Key button](/images/app-connections/datadog/scope-button.png)
+
+        ![Application Key Scopes](/images/app-connections/datadog/scopes-key.png)
+    </Step>
+    <Step title="Copy the Application Key Value">
+        Copy the **Application Key** value and store it somewhere safe. You will need it when creating the Infisical connection.
+
+        ![Application Key Scopes](/images/app-connections/datadog/copy-service-account-key.png)
+
+    </Step>
+</Steps>
+
+## Create Datadog Connection in Infisical
+
+<Tabs>
+    <Tab title="Infisical UI">
+        <Steps>
+            <Step title="Navigate to App Connections">
+                In your Infisical dashboard, navigate to the **Integrations** tab in the desired project, then select **App Connections**.
+
+                ![App Connections Tab](/images/app-connections/general/add-connection.png)
+            </Step>
+            <Step title="Select Datadog Connection">
+                Click the ** Add Connection** button and select **Datadog** from the list of available connections.
+
+                ![Datadog Connection form](/images/app-connections/datadog/datadog-add-connection.png)
+            </Step>
+            <Step title="Fill out the Datadog Connection Modal">
+                Complete the Datadog Connection form by entering:
+                - A descriptive name for the connection
+                - An optional description for future reference
+                - The Datadog **URL** for your region (e.g. `https://api.datadoghq.com`, `https://api.us5.datadoghq.com`, or `https://api.ddog-gov.com`)
+                - The **API Key** from earlier steps
+                - The Service Account **Application Key** from earlier steps
+
+                ![Datadog Connection form](/images/app-connections/datadog/datadog-form.png)
+            </Step>
+            <Step title="Connection Created">
+                After clicking Create, your **Datadog Connection** is established and ready to use with your Infisical project.
+
+                ![Datadog Connection form](/images/app-connections/datadog/datadog-app-connection.png)
+            </Step>
+        </Steps>
+    </Tab>
+    <Tab title="API">
+        To create a Datadog Connection, make an API request to the [Create Datadog Connection](/api-reference/endpoints/app-connections/datadog/create) API endpoint.
+
+        ### Sample request
+
+        ```bash Request
+        curl    --request POST \
+                --url https://app.infisical.com/api/v1/app-connections/datadog \
+                --header 'Content-Type: application/json' \
+                --data '{
+                    "name": "my-datadog-connection",
+                    "method": "api-key",
+                    "projectId": "7ffbb072-2575-495a-b5b0-127f88caef78",
+                    "credentials": {
+                        "url": "https://api.datadoghq.com",
+                        "apiKey": "<YOUR-API-KEY>",
+                        "applicationKey": "<YOUR-APPLICATION-KEY>"
+                    }
+                }'
+        ```
+
+        ### Sample response
+
+        ```bash Response
+        {
+          "appConnection": {
+              "id": "e5d18aca-86f7-4026-a95e-efb8aeb0d8e6",
+              "name": "my-datadog-connection",
+              "projectId": "7ffbb072-2575-495a-b5b0-127f88caef78",
+              "description": null,
+              "version": 1,
+              "orgId": "6f03caa1-a5de-43ce-b127-95a145d3464c",
+              "createdAt": "2025-04-23T19:46:34.831Z",
+              "updatedAt": "2025-04-23T19:46:34.831Z",
+              "isPlatformManagedCredentials": false,
+              "credentialsHash": "7c2d371dec195f82a6a0d5b41c970a229cfcaf88e894a5b6395e2dbd0280661f",
+              "app": "datadog",
+              "method": "api-key",
+              "credentials": {
+                  "url": "https://api.datadoghq.com"
+              }
+          }
+        }
+        ```
+    </Tab>
+</Tabs>

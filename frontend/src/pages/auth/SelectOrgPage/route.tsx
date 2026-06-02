@@ -100,6 +100,7 @@ export const Route = createFileRoute("/_restrict-login-signup/login/select-organ
 
         setAuthToken(result.token);
         createNotification({ text: "Successfully logged in", type: "success" });
+
         throw redirect({
           to: "/organizations/$orgId/projects",
           params: { orgId }
