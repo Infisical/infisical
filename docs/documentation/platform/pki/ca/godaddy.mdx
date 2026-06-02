@@ -98,10 +98,18 @@ When you request a certificate through a GoDaddy CA, the request moves through t
     use a private (S/MIME) CA.
   </Accordion>
   <Accordion title="What happens when I revoke a GoDaddy-issued certificate in Infisical?">
-    Revoking the certificate in Infisical marks it `Revoked` in the local inventory **and** submits
-    a revocation request to GoDaddy against the underlying certificate. This is one-way: revoking a
-    certificate directly on GoDaddy's side is not synced back, so its status in Infisical will not
-    update automatically.
+    Revoking in Infisical marks the certificate `Revoked` in the local inventory **and** submits a
+    revocation request to GoDaddy, so the certificate is revoked on GoDaddy's side too. Syncing is
+    one-directional, though: a certificate revoked **directly on GoDaddy** is not reflected back into
+    Infisical automatically.
+
+    <Warning>
+      Revoking is irreversible and burns the GoDaddy product. On revocation GoDaddy cancels the SSL
+      credit and does not allow re-keying or reissuing, so that product cannot be reused for a new
+      order, and a new request fails with "no available product" until you buy another. If you revoke
+      within 30 days of purchase, contact GoDaddy support to ask about in-store credit. Only revoke
+      when you are certain.
+    </Warning>
   </Accordion>
   <Accordion title="How does renewal work for GoDaddy certificates?">
     Renewing in Infisical calls GoDaddy's native renew endpoint against the existing certificate
