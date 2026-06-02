@@ -278,6 +278,9 @@ export const signerPolicyServiceFactory = ({
       ResourcePermissionSignerActions.Read
     );
 
+    if (!signer.approvalPolicyId) {
+      throw new NotFoundError({ message: `Signer '${signer.name}' has no approval policy.` });
+    }
     const policy = await approvalPolicyDAL.findById(signer.approvalPolicyId);
     if (!policy) {
       throw new NotFoundError({ message: `Policy for signer '${signer.name}' has been removed.` });
@@ -417,9 +420,12 @@ export const signerPolicyServiceFactory = ({
       }
     }
 
-    await membershipDAL.transaction(async (tx) => {
-      const policyId = signer.approvalPolicyId;
+    if (!signer.approvalPolicyId) {
+      throw new NotFoundError({ message: `Signer '${signer.name}' has no approval policy.` });
+    }
+    const policyId = signer.approvalPolicyId;
 
+    await membershipDAL.transaction(async (tx) => {
       const existingSteps = await approvalPolicyStepsDAL.find({ policyId }, { tx });
       if (existingSteps.length > 0) {
         await approvalPolicyStepApproversDAL.delete({ $in: { policyStepId: existingSteps.map((s) => s.id) } }, tx);
@@ -528,6 +534,11 @@ export const signerPolicyServiceFactory = ({
       ResourcePermissionSignerActions.RequestSign
     );
 
+    if (!signer.approvalPolicyId) {
+      throw new BadRequestError({
+        message: "This signer does not require approval."
+      });
+    }
     const steps = await approvalPolicyDAL.findStepsByPolicyId(signer.approvalPolicyId);
     if (steps.length === 0) {
       throw new BadRequestError({
@@ -613,6 +624,11 @@ export const signerPolicyServiceFactory = ({
       throw new BadRequestError({ message: "Provide at least one of requestedSignings or requestedWindowEnd." });
     }
 
+    if (!signer.approvalPolicyId) {
+      throw new BadRequestError({
+        message: `Signer '${signer.name}' has no approval policy.`
+      });
+    }
     const policy = await approvalPolicyDAL.findById(signer.approvalPolicyId);
     if (!policy) {
       throw new NotFoundError({ message: `Policy for signer '${signer.name}' has been removed.` });
