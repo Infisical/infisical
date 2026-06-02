@@ -953,21 +953,9 @@ const buildApplicationAdminPermissionRules = () => {
   );
 
   can(
-    [
-      ProjectPermissionActions.Read,
-      ProjectPermissionActions.Create,
-      ProjectPermissionActions.Edit,
-      ProjectPermissionActions.Delete
-    ],
-    ResourcePermissionSub.Role
-  );
-
-  can(
     [ProjectPermissionCertificateProfileActions.Read, ProjectPermissionCertificateProfileActions.IssueCert],
     ProjectPermissionSub.CertificateProfiles
   );
-
-  can([ProjectPermissionAuditLogsActions.Read], ProjectPermissionSub.AuditLogs);
 
   return rules;
 };
@@ -1024,13 +1012,11 @@ const buildApplicationOperatorPermissionRules = () => {
   can([ProjectPermissionApprovalRequestGrantActions.Read], ResourcePermissionSub.ApprovalRequestGrants);
 
   can([ProjectPermissionMemberActions.Read], ResourcePermissionSub.Member);
-  can([ProjectPermissionActions.Read], ResourcePermissionSub.Role);
 
   can(
     [ProjectPermissionCertificateProfileActions.Read, ProjectPermissionCertificateProfileActions.IssueCert],
     ProjectPermissionSub.CertificateProfiles
   );
-  can([ProjectPermissionAuditLogsActions.Read], ProjectPermissionSub.AuditLogs);
 
   return rules;
 };
@@ -1051,14 +1037,12 @@ const buildApplicationAuditorPermissionRules = () => {
   can([ProjectPermissionApprovalRequestActions.Read], ResourcePermissionSub.ApprovalRequests);
   can([ProjectPermissionApprovalRequestGrantActions.Read], ResourcePermissionSub.ApprovalRequestGrants);
   can([ProjectPermissionMemberActions.Read], ResourcePermissionSub.Member);
-  can([ProjectPermissionActions.Read], ResourcePermissionSub.Role);
   can([ProjectPermissionCertificateProfileActions.Read], ProjectPermissionSub.CertificateProfiles);
-  can([ProjectPermissionAuditLogsActions.Read], ProjectPermissionSub.AuditLogs);
 
   return rules;
 };
 
-const buildApplicationProjectAdminFallbackRules = () => {
+const buildProjectAdminApplicationFallbackRules = () => {
   const { can, rules } = new AbilityBuilder<MongoAbility<ResourcePermissionSet>>(createMongoAbility);
 
   can(
@@ -1078,8 +1062,6 @@ const buildApplicationProjectAdminFallbackRules = () => {
     ResourcePermissionSub.Member
   );
 
-  can([ProjectPermissionActions.Read], ResourcePermissionSub.Role);
-
   can(
     [ResourcePermissionCertificateActions.Read, ResourcePermissionCertificateActions.List],
     ResourcePermissionSub.Certificates
@@ -1091,7 +1073,7 @@ const buildApplicationProjectAdminFallbackRules = () => {
 export const applicationAdminPermissions = buildApplicationAdminPermissionRules();
 export const applicationOperatorPermissions = buildApplicationOperatorPermissionRules();
 export const applicationAuditorPermissions = buildApplicationAuditorPermissionRules();
-export const applicationProjectAdminFallbackPermissions = buildApplicationProjectAdminFallbackRules();
+export const projectAdminApplicationFallbackPermissions = buildProjectAdminApplicationFallbackRules();
 
 const buildSignerAdminPermissionRules = () => {
   const { can, rules } = new AbilityBuilder<MongoAbility<ResourcePermissionSet>>(createMongoAbility);
@@ -1101,7 +1083,7 @@ const buildSignerAdminPermissionRules = () => {
       ResourcePermissionSignerActions.Read,
       ResourcePermissionSignerActions.Edit,
       ResourcePermissionSignerActions.Delete,
-      ResourcePermissionSignerActions.EnableDisable,
+      ResourcePermissionSignerActions.ManageStatus,
       ResourcePermissionSignerActions.ManageMembers,
       ResourcePermissionSignerActions.ManagePolicy,
       ResourcePermissionSignerActions.Sign,
@@ -1113,18 +1095,6 @@ const buildSignerAdminPermissionRules = () => {
     ],
     ResourcePermissionSub.Signer
   );
-
-  can(
-    [
-      ProjectPermissionMemberActions.Read,
-      ProjectPermissionMemberActions.Create,
-      ProjectPermissionMemberActions.Edit,
-      ProjectPermissionMemberActions.Delete
-    ],
-    ResourcePermissionSub.Member
-  );
-
-  can([ProjectPermissionAuditLogsActions.Read], ProjectPermissionSub.AuditLogs);
 
   return rules;
 };
@@ -1142,9 +1112,6 @@ const buildSignerOperatorPermissionRules = () => {
     ResourcePermissionSub.Signer
   );
 
-  can([ProjectPermissionMemberActions.Read], ResourcePermissionSub.Member);
-  can([ProjectPermissionAuditLogsActions.Read], ProjectPermissionSub.AuditLogs);
-
   return rules;
 };
 
@@ -1156,25 +1123,15 @@ const buildSignerAuditorPermissionRules = () => {
     ResourcePermissionSub.Signer
   );
 
-  can([ProjectPermissionMemberActions.Read], ResourcePermissionSub.Member);
-  can([ProjectPermissionAuditLogsActions.Read], ProjectPermissionSub.AuditLogs);
-
   return rules;
 };
 
-const buildSignerProjectAdminFallbackRules = () => {
+const buildProjectAdminSignerFallbackRules = () => {
   const { can, rules } = new AbilityBuilder<MongoAbility<ResourcePermissionSet>>(createMongoAbility);
 
-  can([ResourcePermissionSignerActions.Read], ResourcePermissionSub.Signer);
-
   can(
-    [
-      ProjectPermissionMemberActions.Read,
-      ProjectPermissionMemberActions.Create,
-      ProjectPermissionMemberActions.Edit,
-      ProjectPermissionMemberActions.Delete
-    ],
-    ResourcePermissionSub.Member
+    [ResourcePermissionSignerActions.Read, ResourcePermissionSignerActions.ManageMembers],
+    ResourcePermissionSub.Signer
   );
 
   return rules;
@@ -1183,4 +1140,4 @@ const buildSignerProjectAdminFallbackRules = () => {
 export const signerAdminPermissions = buildSignerAdminPermissionRules();
 export const signerOperatorPermissions = buildSignerOperatorPermissionRules();
 export const signerAuditorPermissions = buildSignerAuditorPermissionRules();
-export const signerProjectAdminFallbackPermissions = buildSignerProjectAdminFallbackRules();
+export const projectAdminSignerFallbackPermissions = buildProjectAdminSignerFallbackRules();

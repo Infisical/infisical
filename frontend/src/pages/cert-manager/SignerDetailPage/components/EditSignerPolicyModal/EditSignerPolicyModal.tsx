@@ -53,7 +53,7 @@ export const EditSignerPolicyModal = ({
   const [step, setStep] = useState(0);
   const [steps, setSteps] = useState<StepDraft[]>([]);
   const [maxSignings, setMaxSignings] = useState<number | null>(null);
-  const [maxWindow, setMaxWindow] = useState<string | null>("24h");
+  const [maxWindow, setMaxWindow] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const approverOptions = useMemo<ApproverOption[]>(() => {
@@ -100,10 +100,10 @@ export const EditSignerPolicyModal = ({
         }))
       );
       setMaxSignings(existingPolicy.constraints.maxSignings ?? null);
-      setMaxWindow(existingPolicy.constraints.maxWindowDuration ?? "24h");
+      setMaxWindow(existingPolicy.constraints.maxWindowDuration ?? null);
     } else {
       setSteps([]);
-      setMaxSignings(1);
+      setMaxSignings(null);
       setMaxWindow(null);
     }
   }, [isOpen, existingPolicy]);
@@ -139,6 +139,14 @@ export const EditSignerPolicyModal = ({
   const totalApprovers = steps.reduce((sum, s) => sum + s.approvers.length, 0);
   const firstEmptyStepIndex = steps.findIndex((s) => s.approvers.length === 0);
   const hasEmptyStep = firstEmptyStepIndex >= 0;
+  const firstOverCommittedStepIndex = steps.findIndex((s) => {
+    if (s.approvers.length === 0) return false;
+    const userCount = s.approvers.filter((a) => a.kind === "user").length;
+    const groupCount = s.approvers.length - userCount;
+    return groupCount === 0 && s.requiredApprovals > userCount;
+  });
+  const hasOverCommittedStep = firstOverCommittedStepIndex >= 0;
+  const stepOneInvalid = hasEmptyStep || hasOverCommittedStep;
 
   const WIZARD_STEPS = steps.length > 0 ? [APPROVERS_STEP, LIMITS_STEP] : [APPROVERS_STEP];
   const safeStep = Math.min(step, WIZARD_STEPS.length - 1);
@@ -288,11 +296,15 @@ export const EditSignerPolicyModal = ({
               {/* eslint-disable-next-line no-nested-ternary */}
               {hasEmptyStep
                 ? `Step ${firstEmptyStepIndex + 1} needs at least one approver, or remove it.`
-                : steps.length === 0
-                  ? "Approval is off"
-                  : `${steps.length} step${steps.length === 1 ? "" : "s"} · ${totalApprovers} approver${
-                      totalApprovers === 1 ? "" : "s"
-                    }`}
+                : // eslint-disable-next-line no-nested-ternary
+                  hasOverCommittedStep
+                  ? `Step ${firstOverCommittedStepIndex + 1}: required approvals can't exceed the number of approvers. Add a group to allow more.`
+                  : // eslint-disable-next-line no-nested-ternary
+                    steps.length === 0
+                    ? "Approval is not configured"
+                    : `${steps.length} step${steps.length === 1 ? "" : "s"} · ${totalApprovers} approver${
+                        totalApprovers === 1 ? "" : "s"
+                      }`}
             </span>
             <div className="flex items-center gap-3">
               <span className="text-xs text-muted">
@@ -307,7 +319,7 @@ export const EditSignerPolicyModal = ({
                 <Button
                   variant="project"
                   onClick={() => setStep((s) => s + 1)}
-                  isDisabled={hasEmptyStep}
+                  isDisabled={stepOneInvalid}
                 >
                   Continue
                 </Button>
@@ -316,7 +328,7 @@ export const EditSignerPolicyModal = ({
                   variant="project"
                   onClick={onSave}
                   isPending={submitting}
-                  isDisabled={hasEmptyStep}
+                  isDisabled={stepOneInvalid}
                 >
                   Save policy
                 </Button>

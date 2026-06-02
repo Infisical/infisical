@@ -293,7 +293,7 @@ export enum TableName {
 
   // Code Signing
   PkiSigners = "pki_signers",
-  PkiSignerIssuanceJobs = "pki_signer_issuance_jobs",
+  PkiSignerCertificateIssuanceJobs = "pki_signer_certificate_issuance_jobs",
   PkiSigningOperations = "pki_signing_operations",
 
   CaSigningConfig = "ca_signing_configs",
@@ -355,7 +355,7 @@ export enum ProjectMembershipRole {
   KmsCryptographicOperator = "cryptographic-operator"
 }
 
-export enum ApplicationMembershipRole {
+export enum ResourceMembershipRole {
   Admin = "admin",
   Operator = "operator",
   Auditor = "auditor",
@@ -364,7 +364,7 @@ export enum ApplicationMembershipRole {
 
 export enum ResourceType {
   CertificateApplication = "certificate-application",
-  Signer = "signer"
+  Signer = "pki-signer"
 }
 
 export enum SecretEncryptionAlgo {

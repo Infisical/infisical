@@ -1,6 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import ms from "ms";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -25,6 +26,7 @@ import {
 import {
   SignerMemberRole,
   TEffectiveSignerMember,
+  useGetSignerPolicy,
   useListEffectiveSignerMembers,
   usePreApproveSigning
 } from "@app/hooks/api/signers";
@@ -61,14 +63,28 @@ const schema = z
 
 type FormData = z.infer<typeof schema>;
 
-const isoNow = () => new Date().toISOString().slice(0, 16);
-const isoIn24h = () => new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 16);
+const HOURS_24_MS = 24 * 60 * 60 * 1000;
+const isoLocal = (epochMs: number) => new Date(epochMs).toISOString().slice(0, 16);
+
+const parseWindowMs = (s?: string | null): number | null => {
+  if (!s) return null;
+  try {
+    const n = ms(s);
+    return typeof n === "number" && n > 0 ? n : null;
+  } catch {
+    return null;
+  }
+};
 
 export const PreApproveSigningModal = ({ isOpen, onOpenChange, signerId }: Props) => {
   const users = useListEffectiveSignerMembers({ signerId, kind: "user" });
   const identities = useListEffectiveSignerMembers({ signerId, kind: "identity" });
+  const { data: policy } = useGetSignerPolicy(signerId);
   const preApprove = usePreApproveSigning();
   const [submitting, setSubmitting] = useState(false);
+
+  const maxSignings = policy?.constraints?.maxSignings ?? null;
+  const maxWindowDuration = policy?.constraints?.maxWindowDuration ?? null;
 
   const memberOptions: MemberOption[] = useMemo(() => {
     const opts: MemberOption[] = [];
@@ -93,19 +109,30 @@ export const PreApproveSigningModal = ({ isOpen, onOpenChange, signerId }: Props
     return opts;
   }, [users.data, identities.data]);
 
+  const buildDefaults = (): FormData => {
+    const now = Date.now();
+    const allowedMs = parseWindowMs(maxWindowDuration);
+    return {
+      granteeKey: "",
+      requestedSignings: maxSignings ?? null,
+      requestedWindowStart: isoLocal(now),
+      requestedWindowEnd: isoLocal(now + (allowedMs ?? HOURS_24_MS)),
+      justification: ""
+    };
+  };
+
   const { control, handleSubmit, reset } = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: {
-      granteeKey: "",
-      requestedSignings: 3,
-      requestedWindowStart: isoNow(),
-      requestedWindowEnd: isoIn24h(),
-      justification: ""
-    }
+    defaultValues: buildDefaults()
   });
 
+  useEffect(() => {
+    if (!isOpen) reset(buildDefaults());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [maxSignings, maxWindowDuration]);
+
   const handleClose = (open: boolean) => {
-    if (!open) reset();
+    if (!open) reset(buildDefaults());
     onOpenChange(open);
   };
 
@@ -181,15 +208,24 @@ export const PreApproveSigningModal = ({ isOpen, onOpenChange, signerId }: Props
                     <Input
                       type="number"
                       min={1}
+                      max={maxSignings ?? undefined}
                       value={field.value ?? ""}
                       onChange={(e) => {
                         const raw = e.target.value;
                         field.onChange(raw === "" ? null : Number(raw));
                       }}
-                      placeholder="Leave empty to rely on the time window"
+                      placeholder={
+                        maxSignings
+                          ? `Up to ${maxSignings}`
+                          : "Leave empty to rely on the time window"
+                      }
                       isError={Boolean(error)}
                     />
-                    <FieldDescription>Leave empty to rely on the time window.</FieldDescription>
+                    <FieldDescription>
+                      {maxSignings
+                        ? `Policy caps each approval at ${maxSignings} signature${maxSignings === 1 ? "" : "s"}.`
+                        : "Leave empty to rely on the time window."}
+                    </FieldDescription>
                     <FieldError errors={[error]} />
                   </FieldContent>
                 </Field>

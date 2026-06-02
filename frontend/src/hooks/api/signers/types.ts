@@ -72,7 +72,7 @@ export type TSigner = {
   caId?: string | null;
   commonName?: string | null;
   certificateTtlDays?: number | null;
-  renewBeforeDays?: number | null;
+  certificateRenewBeforeDays?: number | null;
   keyAlgorithm?: SignerKeyAlgorithm | string | null;
   lastSignedAt?: string | null;
   createdAt: string;
@@ -81,7 +81,7 @@ export type TSigner = {
   certificateSerialNumber?: string | null;
   certificateNotAfter?: string | null;
   approvalPolicyName?: string | null;
-  failureReason?: string | null;
+  certificateFailureReason?: string | null;
 };
 
 export enum SigningActorType {
@@ -190,7 +190,6 @@ export type TSignerRequest = {
   expiresAt?: string | null;
   scopeType?: string | null;
   scopeId?: string | null;
-  grantedByUserId?: string | null;
   maxSignings?: number | null;
   usedSignings?: number;
   grantStatus?: string | null;
@@ -234,7 +233,7 @@ export type TCreateSignerDTO = {
   caId?: string;
   commonName?: string;
   certificateTtlDays?: number;
-  renewBeforeDays?: number | null;
+  certificateRenewBeforeDays?: number | null;
   keyAlgorithm?: SignerKeyAlgorithm;
   certificateId?: string;
   approvalPolicyId?: string;
@@ -246,7 +245,7 @@ export type TUpdateSignerDTO = {
   signerId: string;
   name?: string;
   description?: string | null;
-  renewBeforeDays?: number | null;
+  certificateRenewBeforeDays?: number | null;
 };
 
 export type TDeleteSignerDTO = {

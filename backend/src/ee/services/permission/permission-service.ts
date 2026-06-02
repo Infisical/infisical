@@ -6,10 +6,10 @@ import handlebars from "handlebars";
 import {
   AccessScope,
   ActionProjectType,
-  ApplicationMembershipRole,
   OrganizationActionScope,
   OrgMembershipRole,
   ProjectMembershipRole,
+  ResourceMembershipRole,
   ResourceType,
   ServiceTokenScopes,
   TProjects
@@ -19,16 +19,16 @@ import {
   applicationAdminPermissions,
   applicationAuditorPermissions,
   applicationOperatorPermissions,
-  applicationProjectAdminFallbackPermissions,
   cryptographicOperatorPermissions,
+  projectAdminApplicationFallbackPermissions,
   projectAdminPermissions,
+  projectAdminSignerFallbackPermissions,
   projectMemberPermissions,
   projectNoAccessPermissions,
   projectViewerPermission,
   signerAdminPermissions,
   signerAuditorPermissions,
   signerOperatorPermissions,
-  signerProjectAdminFallbackPermissions,
   sshHostBootstrapPermissions
 } from "@app/ee/services/permission/default-roles";
 import { ResourcePermissionSet } from "@app/ee/services/permission/resource-permission";
@@ -134,13 +134,13 @@ const buildProjectPermissionRules = (projectUserRoles: TBuildProjectPermissionDT
 const resolveResourceRoleRules = (resourceType: ResourceType, role: string) => {
   if (resourceType === ResourceType.Signer) {
     switch (role) {
-      case ApplicationMembershipRole.Admin:
+      case ResourceMembershipRole.Admin:
         return signerAdminPermissions;
-      case ApplicationMembershipRole.Operator:
+      case ResourceMembershipRole.Operator:
         return signerOperatorPermissions;
-      case ApplicationMembershipRole.Auditor:
+      case ResourceMembershipRole.Auditor:
         return signerAuditorPermissions;
-      case ApplicationMembershipRole.Custom:
+      case ResourceMembershipRole.Custom:
         throw new BadRequestError({ message: "Custom resource-level roles are not supported yet" });
       default:
         throw new NotFoundError({ name: "SignerRoleInvalid", message: `Signer role '${role}' not found` });
@@ -148,13 +148,13 @@ const resolveResourceRoleRules = (resourceType: ResourceType, role: string) => {
   }
 
   switch (role) {
-    case ApplicationMembershipRole.Admin:
+    case ResourceMembershipRole.Admin:
       return applicationAdminPermissions;
-    case ApplicationMembershipRole.Operator:
+    case ResourceMembershipRole.Operator:
       return applicationOperatorPermissions;
-    case ApplicationMembershipRole.Auditor:
+    case ResourceMembershipRole.Auditor:
       return applicationAuditorPermissions;
-    case ApplicationMembershipRole.Custom:
+    case ResourceMembershipRole.Custom:
       throw new BadRequestError({ message: "Custom resource-level roles are not supported yet" });
     default:
       throw new NotFoundError({
@@ -174,8 +174,8 @@ const buildResourcePermissionRules = (appUserRoles: TBuildProjectPermissionDTO, 
 };
 
 const resolveResourceProjectAdminFallback = (resourceType: ResourceType) => {
-  if (resourceType === ResourceType.Signer) return signerProjectAdminFallbackPermissions;
-  return applicationProjectAdminFallbackPermissions;
+  if (resourceType === ResourceType.Signer) return projectAdminSignerFallbackPermissions;
+  return projectAdminApplicationFallbackPermissions;
 };
 
 type MembershipWithRoles = {
@@ -726,7 +726,7 @@ export const permissionServiceFactory = ({
       if (resourceMemberships?.length) {
         const permissionFromRoles = flattenActiveRolesFromMemberships(
           resourceMemberships,
-          ApplicationMembershipRole.Custom
+          ResourceMembershipRole.Custom
         );
         const resourceRules = buildResourcePermissionRules(permissionFromRoles, resourceType);
         const mergedRules = isProjectAdmin ? [...resourceRules, ...fallbackRules] : resourceRules;

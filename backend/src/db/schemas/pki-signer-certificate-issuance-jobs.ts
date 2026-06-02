@@ -9,7 +9,7 @@ import { zodBuffer } from "@app/lib/zod";
 
 import { TImmutableDBKeys } from "./models";
 
-export const PkiSignerIssuanceJobsSchema = z.object({
+export const PkiSignerCertificateIssuanceJobsSchema = z.object({
   id: z.string().uuid(),
   signerId: z.string().uuid(),
   caId: z.string().uuid(),
@@ -31,6 +31,11 @@ export const PkiSignerIssuanceJobsSchema = z.object({
   updatedAt: z.date()
 });
 
-export type TPkiSignerIssuanceJobs = z.infer<typeof PkiSignerIssuanceJobsSchema>;
-export type TPkiSignerIssuanceJobsInsert = Omit<z.input<typeof PkiSignerIssuanceJobsSchema>, TImmutableDBKeys>;
-export type TPkiSignerIssuanceJobsUpdate = Partial<Omit<z.input<typeof PkiSignerIssuanceJobsSchema>, TImmutableDBKeys>>;
+export type TPkiSignerCertificateIssuanceJobs = z.infer<typeof PkiSignerCertificateIssuanceJobsSchema>;
+export type TPkiSignerCertificateIssuanceJobsInsert = Omit<
+  z.input<typeof PkiSignerCertificateIssuanceJobsSchema>,
+  TImmutableDBKeys
+>;
+export type TPkiSignerCertificateIssuanceJobsUpdate = Partial<
+  Omit<z.input<typeof PkiSignerCertificateIssuanceJobsSchema>, TImmutableDBKeys>
+>;

@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import ms from "ms";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -21,7 +22,7 @@ import {
   Input,
   TextArea
 } from "@app/components/v3";
-import { useRequestToSign } from "@app/hooks/api/signers";
+import { useGetSignerPolicy, useRequestToSign } from "@app/hooks/api/signers";
 
 type Props = {
   isOpen: boolean;
@@ -52,25 +53,50 @@ const schema = z
 
 type FormData = z.infer<typeof schema>;
 
-const isoNow = () => new Date().toISOString().slice(0, 16);
-const isoIn24h = () => new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 16);
+const HOURS_24_MS = 24 * 60 * 60 * 1000;
+const isoLocal = (epochMs: number) => new Date(epochMs).toISOString().slice(0, 16);
+
+const parseWindowMs = (s?: string | null): number | null => {
+  if (!s) return null;
+  try {
+    const n = ms(s);
+    return typeof n === "number" && n > 0 ? n : null;
+  } catch {
+    return null;
+  }
+};
 
 export const RequestToSignModal = ({ isOpen, onOpenChange, signerId }: Props) => {
   const requestToSign = useRequestToSign();
+  const { data: policy } = useGetSignerPolicy(signerId);
   const [submitting, setSubmitting] = useState(false);
+
+  const maxSignings = policy?.constraints?.maxSignings ?? null;
+  const maxWindowDuration = policy?.constraints?.maxWindowDuration ?? null;
+
+  const buildDefaults = (): FormData => {
+    const now = Date.now();
+    const allowedMs = parseWindowMs(maxWindowDuration);
+    return {
+      requestedSignings: maxSignings ?? null,
+      requestedWindowStart: isoLocal(now),
+      requestedWindowEnd: isoLocal(now + (allowedMs ?? HOURS_24_MS)),
+      justification: ""
+    };
+  };
 
   const { control, handleSubmit, reset } = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: {
-      requestedSignings: 3,
-      requestedWindowStart: isoNow(),
-      requestedWindowEnd: isoIn24h(),
-      justification: ""
-    }
+    defaultValues: buildDefaults()
   });
 
+  useEffect(() => {
+    if (!isOpen) reset(buildDefaults());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [maxSignings, maxWindowDuration]);
+
   const handleClose = (open: boolean) => {
-    if (!open) reset();
+    if (!open) reset(buildDefaults());
     onOpenChange(open);
   };
 
@@ -121,16 +147,23 @@ export const RequestToSignModal = ({ isOpen, onOpenChange, signerId }: Props) =>
                     <Input
                       type="number"
                       min={1}
+                      max={maxSignings ?? undefined}
                       value={field.value ?? ""}
                       onChange={(e) => {
                         const raw = e.target.value;
                         field.onChange(raw === "" ? null : Number(raw));
                       }}
-                      placeholder="Leave empty to rely on the time window"
+                      placeholder={
+                        maxSignings
+                          ? `Up to ${maxSignings}`
+                          : "Leave empty to rely on the time window"
+                      }
                       isError={Boolean(error)}
                     />
                     <FieldDescription>
-                      Leave empty to rely on the time window instead.
+                      {maxSignings
+                        ? `Policy caps each approval at ${maxSignings} signature${maxSignings === 1 ? "" : "s"}.`
+                        : "Leave empty to rely on the time window instead."}
                     </FieldDescription>
                     <FieldError errors={[error]} />
                   </FieldContent>

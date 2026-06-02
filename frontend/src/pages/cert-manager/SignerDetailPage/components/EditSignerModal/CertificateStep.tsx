@@ -159,7 +159,7 @@ export const CertificateStep = ({
     </Field>
 
     <Controller
-      name="renewBeforeDays"
+      name="certificateRenewBeforeDays"
       control={form.control}
       render={({ field, fieldState: { error } }) => (
         <Field>

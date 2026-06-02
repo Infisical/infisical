@@ -169,7 +169,7 @@ export const SignerApprovalPolicyTab = ({ signerId }: Props) => {
             <p className="mt-1 text-sm text-accent">
               {hasSteps
                 ? "Control when approval is required before signing."
-                : "Approval is off. Members can sign directly."}
+                : "Approval is not configured. Members can sign directly."}
             </p>
           </div>
           <Tooltip>

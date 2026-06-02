@@ -43,7 +43,12 @@ export type TListSignerMembersDTO = {
   kind?: TSignerMemberKind;
 } & TActorPermission;
 
-export type TEffectiveSignerMemberKind = "user" | "identity";
+export enum EffectiveSignerMemberKind {
+  User = "user",
+  Identity = "identity"
+}
+
+export type TEffectiveSignerMemberKind = `${EffectiveSignerMemberKind}`;
 
 export type TListEffectiveSignerMembersDTO = {
   signerId: string;

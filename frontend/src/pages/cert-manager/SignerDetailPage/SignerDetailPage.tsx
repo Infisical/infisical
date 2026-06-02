@@ -142,7 +142,7 @@ export const SignerDetailPage = () => {
                 <span className="inline-flex items-center gap-x-2 align-middle">
                   {signer.name}
                   <DocumentationLinkBadge href={PkiDocsUrls.codeSigning.signers.overview} />
-                  {signer.status === SignerStatus.Failed && signer.failureReason ? (
+                  {signer.status === SignerStatus.Failed && signer.certificateFailureReason ? (
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -153,7 +153,7 @@ export const SignerDetailPage = () => {
                           </span>
                         </TooltipTrigger>
                         <TooltipContent className="max-w-[260px] text-pretty break-words">
-                          {signer.failureReason}
+                          {signer.certificateFailureReason}
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
@@ -196,7 +196,7 @@ export const SignerDetailPage = () => {
                   {signer.status === SignerStatus.Active ? (
                     <DropdownMenuItem
                       onClick={() => disableSigner.mutate({ signerId: signer.id })}
-                      isDisabled={myPerms?.canEnableDisable === false}
+                      isDisabled={myPerms?.canManageStatus === false}
                     >
                       <BanIcon />
                       Disable signer
@@ -204,7 +204,7 @@ export const SignerDetailPage = () => {
                   ) : signer.status === SignerStatus.Disabled ? (
                     <DropdownMenuItem
                       onClick={() => enableSigner.mutate({ signerId: signer.id })}
-                      isDisabled={myPerms?.canEnableDisable === false}
+                      isDisabled={myPerms?.canManageStatus === false}
                     >
                       <CheckCircleIcon />
                       Enable signer

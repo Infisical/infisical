@@ -39,7 +39,11 @@ import { CaStatus, CaType } from "../certificate-authority-enums";
 import { extractDnParts, keyAlgorithmToAlgCfg } from "../certificate-authority-fns";
 import { TExternalCertificateAuthorityDALFactory } from "../external-certificate-authority-dal";
 import { createDigiCertApiClient } from "./digicert-api-client";
-import { DIGICERT_FINAL_ISSUED_STATUSES, DigiCertOrderStatus } from "./digicert-certificate-authority-enums";
+import {
+  DIGICERT_FINAL_ISSUED_STATUSES,
+  DigiCertOrderStatus,
+  DigiCertPollOutcome
+} from "./digicert-certificate-authority-enums";
 import {
   TCreateDigiCertCertificateAuthorityDTO,
   TDigiCertCertificateAuthority,
@@ -667,9 +671,9 @@ export const DigiCertCertificateAuthorityFns = ({
     caId: string;
     orderId: number;
   }): Promise<
-    | { status: "issued"; certificateId: number }
-    | { status: "pending"; orderStatus: string }
-    | { status: "failed"; orderStatus: string; reason: string }
+    | { status: DigiCertPollOutcome.Issued; certificateId: number }
+    | { status: DigiCertPollOutcome.Pending; orderStatus: string }
+    | { status: DigiCertPollOutcome.Failed; orderStatus: string; reason: string }
   > => {
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
     if (!ca.externalCa || ca.externalCa.type !== CaType.DIGICERT) {
@@ -696,7 +700,7 @@ export const DigiCertCertificateAuthorityFns = ({
 
     const isFinalisable = DIGICERT_FINAL_ISSUED_STATUSES.some((status) => status === orderStatus);
     if (isFinalisable && certificateId) {
-      return { status: "issued", certificateId };
+      return { status: DigiCertPollOutcome.Issued, certificateId };
     }
 
     if (
@@ -705,10 +709,10 @@ export const DigiCertCertificateAuthorityFns = ({
       orderStatus === DigiCertOrderStatus.Expired ||
       orderStatus === DigiCertOrderStatus.Revoked
     ) {
-      return { status: "failed", orderStatus, reason: `DigiCert order ${orderStatus}` };
+      return { status: DigiCertPollOutcome.Failed, orderStatus, reason: `DigiCert order ${orderStatus}` };
     }
 
-    return { status: "pending", orderStatus };
+    return { status: DigiCertPollOutcome.Pending, orderStatus };
   };
 
   const revokeCertificate = async ({

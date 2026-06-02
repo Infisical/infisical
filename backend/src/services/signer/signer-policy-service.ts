@@ -1,6 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { ApplicationMembershipRole, RESOURCE_SCOPE, ResourceType } from "@app/db/schemas";
+import { RESOURCE_SCOPE, ResourceMembershipRole, ResourceType } from "@app/db/schemas";
 import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -35,6 +35,7 @@ import { TMembershipDALFactory } from "../membership/membership-dal";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TUserDALFactory } from "../user/user-dal";
 import { TSignerDALFactory } from "./signer-dal";
+import { TSignerRequestDALFactory } from "./signer-request-dal";
 import {
   TGetSignerPolicyDTO,
   TListSignerRequestsDTO,
@@ -50,16 +51,8 @@ type TSignerPolicyServiceFactoryDep = {
   approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findById" | "updateById" | "findStepsByPolicyId">;
   approvalPolicyStepsDAL: Pick<TApprovalPolicyStepsDALFactory, "create" | "delete" | "find">;
   approvalPolicyStepApproversDAL: Pick<TApprovalPolicyStepApproversDALFactory, "create" | "delete">;
-  approvalRequestDAL: Pick<
-    TApprovalRequestDALFactory,
-    | "create"
-    | "find"
-    | "findById"
-    | "updateById"
-    | "transaction"
-    | "listSignerRequestsPaginated"
-    | "countSignerRequests"
-  >;
+  approvalRequestDAL: Pick<TApprovalRequestDALFactory, "create" | "find" | "findById" | "updateById" | "transaction">;
+  signerRequestDAL: TSignerRequestDALFactory;
   approvalRequestStepsDAL: Pick<TApprovalRequestStepsDALFactory, "create">;
   approvalRequestStepEligibleApproversDAL: Pick<TApprovalRequestStepEligibleApproversDALFactory, "create">;
   approvalRequestGrantsDAL: Pick<TApprovalRequestGrantsDALFactory, "create" | "find" | "updateById">;
@@ -100,6 +93,7 @@ export const signerPolicyServiceFactory = ({
   approvalPolicyStepsDAL,
   approvalPolicyStepApproversDAL,
   approvalRequestDAL,
+  signerRequestDAL,
   approvalRequestStepsDAL,
   approvalRequestStepEligibleApproversDAL,
   approvalRequestGrantsDAL,
@@ -326,7 +320,7 @@ export const signerPolicyServiceFactory = ({
     const roles = await membershipRoleDAL.find({ $in: { membershipId: membershipIds } });
     const auditorIds = new Set<string>();
     for (const r of roles) {
-      if (r.role === ApplicationMembershipRole.Auditor) {
+      if (r.role === ResourceMembershipRole.Auditor) {
         const m = memberships.find((mem) => mem.id === r.membershipId);
         if (m?.actorUserId) auditorIds.add(m.actorUserId);
       }
@@ -361,7 +355,7 @@ export const signerPolicyServiceFactory = ({
     const roles = await membershipRoleDAL.find({ $in: { membershipId: membershipIds } });
     const auditorGroupIds = new Set<string>();
     for (const r of roles) {
-      if (r.role === ApplicationMembershipRole.Auditor) {
+      if (r.role === ResourceMembershipRole.Auditor) {
         const m = memberships.find((mem) => mem.id === r.membershipId);
         if (m?.actorGroupId) auditorGroupIds.add(m.actorGroupId);
       }
@@ -385,10 +379,7 @@ export const signerPolicyServiceFactory = ({
       ResourcePermissionSignerActions.ManagePolicy
     );
 
-    const effectiveConstraints =
-      dto.steps.length > 0 && !dto.constraints?.maxSignings && !dto.constraints?.maxWindowDuration
-        ? { ...(dto.constraints ?? {}), maxSignings: 1, maxWindowDuration: null }
-        : (dto.constraints ?? {});
+    const effectiveConstraints = dto.constraints ?? {};
 
     if (dto.steps.length > 0) {
       if (effectiveConstraints.maxWindowDuration) {
@@ -499,7 +490,7 @@ export const signerPolicyServiceFactory = ({
     const limit = dto.limit ?? 25;
 
     const [requests, totalCount] = await Promise.all([
-      approvalRequestDAL.listSignerRequestsPaginated({
+      signerRequestDAL.listSignerRequestsPaginated({
         signerId: signer.id,
         projectId: signer.projectId,
         type: ApprovalPolicyType.CertCodeSigning,
@@ -507,7 +498,7 @@ export const signerPolicyServiceFactory = ({
         offset,
         limit
       }),
-      approvalRequestDAL.countSignerRequests({
+      signerRequestDAL.countSignerRequests({
         signerId: signer.id,
         projectId: signer.projectId,
         type: ApprovalPolicyType.CertCodeSigning,
@@ -644,7 +635,7 @@ export const signerPolicyServiceFactory = ({
     if (granteeRoles.length === 0) {
       throw new BadRequestError({ message: "Grantee is not a member of this signer." });
     }
-    const hasGrantableRole = granteeRoles.some((r) => r !== ApplicationMembershipRole.Auditor);
+    const hasGrantableRole = granteeRoles.some((r) => r !== ResourceMembershipRole.Auditor);
     if (!hasGrantableRole) {
       throw new BadRequestError({ message: "Grantee must be an Administrator or Operator on this signer." });
     }
@@ -701,8 +692,7 @@ export const signerPolicyServiceFactory = ({
             maxSignings: effectiveSignings,
             windowStart: effectiveWindowStart
           },
-          expiresAt: effectiveWindowEnd ? new Date(effectiveWindowEnd) : null,
-          grantedByUserId: dto.actor === ActorType.USER ? dto.actorId : null
+          expiresAt: effectiveWindowEnd ? new Date(effectiveWindowEnd) : null
         },
         tx
       );

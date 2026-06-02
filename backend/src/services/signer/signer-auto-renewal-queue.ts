@@ -39,7 +39,7 @@ export const signerAutoRenewalQueueFactory = ({
     for (const signer of candidates) {
       scanned += 1;
 
-      if (!signer.renewBeforeDays || signer.renewBeforeDays < 1) continue;
+      if (!signer.certificateRenewBeforeDays || signer.certificateRenewBeforeDays < 1) continue;
 
       if (!signer.caId) {
         unrenewable += 1;
@@ -64,7 +64,7 @@ export const signerAutoRenewalQueueFactory = ({
 
       const msUntilExpiry = new Date(signer.certificateNotAfter).getTime() - now;
       const daysUntilExpiry = msUntilExpiry / MS_PER_DAY;
-      const isDue = daysUntilExpiry <= signer.renewBeforeDays;
+      const isDue = daysUntilExpiry <= signer.certificateRenewBeforeDays;
       if (!isDue) continue;
 
       needsRenewal += 1;

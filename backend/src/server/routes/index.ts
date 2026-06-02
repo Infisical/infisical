@@ -471,7 +471,12 @@ import { secretValidationRuleDALFactory } from "@app/services/secret-validation-
 import { secretValidationRuleServiceFactory } from "@app/services/secret-validation-rule/secret-validation-rule-service";
 import { serviceTokenDALFactory } from "@app/services/service-token/service-token-dal";
 import { serviceTokenServiceFactory } from "@app/services/service-token/service-token-service";
-import { signerDALFactory, signerServiceFactory, signingOperationDALFactory } from "@app/services/signer";
+import {
+  signerDALFactory,
+  signerRequestDALFactory,
+  signerServiceFactory,
+  signingOperationDALFactory
+} from "@app/services/signer";
 import { signerAutoRenewalQueueFactory } from "@app/services/signer/signer-auto-renewal-queue";
 import { signerIssuanceJobDALFactory } from "@app/services/signer/signer-issuance-job-dal";
 import { signerIssuanceServiceFactory } from "@app/services/signer/signer-issuance-service";
@@ -1352,6 +1357,7 @@ export const registerRoutes = async (
   const pkiDiscoveryScanHistoryDAL = pkiDiscoveryScanHistoryDALFactory(db);
 
   const signerDAL = signerDALFactory(db);
+  const signerRequestDAL = signerRequestDALFactory(db);
   const signingOperationDAL = signingOperationDALFactory(db);
   const signerIssuanceJobDAL = signerIssuanceJobDALFactory(db);
 
@@ -3109,6 +3115,7 @@ export const registerRoutes = async (
     approvalPolicyStepsDAL,
     approvalPolicyStepApproversDAL,
     approvalRequestDAL,
+    signerRequestDAL,
     approvalRequestStepsDAL,
     approvalRequestStepEligibleApproversDAL,
     approvalRequestGrantsDAL,

@@ -39,7 +39,7 @@ export type WizardState = {
   caId: string;
   commonName: string;
   certificateTtlDays: number;
-  renewBeforeDays: number | null;
+  certificateRenewBeforeDays: number | null;
   keyAlgorithm: SignerKeyAlgorithm;
   pendingMembers: PendingMember[];
   policySteps: PolicyStep[];
@@ -53,11 +53,11 @@ export const INITIAL_WIZARD_STATE: WizardState = {
   caId: "",
   commonName: "",
   certificateTtlDays: 365,
-  renewBeforeDays: null,
+  certificateRenewBeforeDays: null,
   keyAlgorithm: SignerKeyAlgorithm.RSA_2048,
   pendingMembers: [],
   policySteps: [],
-  maxSignings: 1,
+  maxSignings: null,
   maxWindowDuration: null
 };
 

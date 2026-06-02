@@ -84,8 +84,9 @@ export const useEnableSigner = () => {
 
   return useMutation<TSigner, object, TEnableSignerDTO>({
     mutationFn: async ({ signerId }) => {
-      const { data } = await apiRequest.post<TSigner>(
-        `/api/v1/cert-manager/signers/${signerId}/enable`
+      const { data } = await apiRequest.patch<TSigner>(
+        `/api/v1/cert-manager/signers/${signerId}/status`,
+        { status: "active" }
       );
       return data;
     },
@@ -102,8 +103,9 @@ export const useDisableSigner = () => {
 
   return useMutation<TSigner, object, TDisableSignerDTO>({
     mutationFn: async ({ signerId }) => {
-      const { data } = await apiRequest.post<TSigner>(
-        `/api/v1/cert-manager/signers/${signerId}/disable`
+      const { data } = await apiRequest.patch<TSigner>(
+        `/api/v1/cert-manager/signers/${signerId}/status`,
+        { status: "disabled" }
       );
       return data;
     },
@@ -315,7 +317,7 @@ export const useUpdateSignerPolicy = () => {
 
   return useMutation<TSignerPolicy, object, TUpdateSignerPolicyDTO>({
     mutationFn: async ({ signerId, ...body }) => {
-      const { data } = await apiRequest.patch<TSignerPolicy>(
+      const { data } = await apiRequest.put<TSignerPolicy>(
         `/api/v1/cert-manager/signers/${signerId}/approval-policy`,
         body
       );

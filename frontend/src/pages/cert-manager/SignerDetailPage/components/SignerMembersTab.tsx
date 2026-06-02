@@ -2,6 +2,14 @@ import { useMemo, useState } from "react";
 import { MoreHorizontalIcon, Trash2Icon, UserPlusIcon } from "lucide-react";
 
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
   Badge,
   Button,
   Card,
@@ -88,6 +96,9 @@ export const SignerMembersTab = ({ signerId }: Props) => {
   const updateGroupRole = useUpdateSignerGroupRole();
   const removeGroupMember = useRemoveSignerGroupMember();
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [memberToRemove, setMemberToRemove] = useState<TSignerMember | null>(null);
+  const isRemoving =
+    removeUserMember.isPending || removeIdentityMember.isPending || removeGroupMember.isPending;
 
   const all: TSignerMember[] = useMemo(
     () => [
@@ -113,14 +124,21 @@ export const SignerMembersTab = ({ signerId }: Props) => {
     }
   };
 
-  const handleRemove = (m: TSignerMember) => {
+  const confirmRemove = async () => {
+    const m = memberToRemove;
+    if (!m) return;
     const kind = kindOf(m);
-    if (kind === "user" && m.actorUserId) {
-      removeUserMember.mutate({ signerId, userId: m.actorUserId });
-    } else if (kind === "identity" && m.actorIdentityId) {
-      removeIdentityMember.mutate({ signerId, identityId: m.actorIdentityId });
-    } else if (kind === "group" && m.actorGroupId) {
-      removeGroupMember.mutate({ signerId, groupId: m.actorGroupId });
+    try {
+      if (kind === "user" && m.actorUserId) {
+        await removeUserMember.mutateAsync({ signerId, userId: m.actorUserId });
+      } else if (kind === "identity" && m.actorIdentityId) {
+        await removeIdentityMember.mutateAsync({ signerId, identityId: m.actorIdentityId });
+      } else if (kind === "group" && m.actorGroupId) {
+        await removeGroupMember.mutateAsync({ signerId, groupId: m.actorGroupId });
+      }
+      setMemberToRemove(null);
+    } catch {
+      // mutation onError surfaces the notification
     }
   };
 
@@ -213,7 +231,7 @@ export const SignerMembersTab = ({ signerId }: Props) => {
                             <DropdownMenuItem
                               variant="danger"
                               isDisabled={!canManageMembers}
-                              onClick={() => handleRemove(m)}
+                              onClick={() => setMemberToRemove(m)}
                             >
                               <Trash2Icon />
                               Remove Member
@@ -236,6 +254,30 @@ export const SignerMembersTab = ({ signerId }: Props) => {
         signerId={signerId}
         existingMembers={all}
       />
+
+      <AlertDialog
+        open={memberToRemove !== null}
+        onOpenChange={(open) => {
+          if (!open && !isRemoving) setMemberToRemove(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove this member?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {memberToRemove
+                ? `${labelOf(memberToRemove)} will lose all access to this signer.`
+                : ""}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel isDisabled={isRemoving}>Cancel</AlertDialogCancel>
+            <AlertDialogAction variant="danger" isDisabled={isRemoving} onClick={confirmRemove}>
+              Remove member
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 };

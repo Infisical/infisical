@@ -59,64 +59,6 @@ import { azureDnsDeleteTxtRecord, azureDnsInsertTxtRecord } from "./dns-provider
 import { cloudflareDeleteTxtRecord, cloudflareInsertTxtRecord } from "./dns-providers/cloudflare";
 import { dnsMadeEasyDeleteTxtRecord, dnsMadeEasyInsertTxtRecord } from "./dns-providers/dns-made-easy";
 
-const ACME_INTERCEPTOR_FLAG = Symbol.for("infisical.acme.responseInterceptor.v1");
-const looksLikeClassName = new RE2("^[A-Z][a-zA-Z0-9]*(Error|Exception)$");
-
-type TAcmeProblemBody = {
-  error?: unknown;
-  detail?: unknown;
-  type?: unknown;
-  status?: unknown;
-  subproblems?: unknown;
-};
-
-(() => {
-  // eslint-disable-next-line @typescript-eslint/ban-types
-  const ax = (acme as unknown as { axios?: { interceptors?: { response?: { use?: Function } }; [s: symbol]: unknown } })
-    .axios;
-  if (!ax || !ax.interceptors?.response?.use) return;
-  if ((ax as { [s: symbol]: unknown })[ACME_INTERCEPTOR_FLAG]) return;
-
-  (
-    ax.interceptors.response.use as (
-      fulfilled: (r: {
-        status: number;
-        statusText?: string;
-        data?: unknown;
-        config?: { url?: string; method?: string };
-      }) => unknown
-    ) => void
-  )((response) => {
-    if (response.status >= 200 && response.status < 300) return response;
-
-    const body = response.data as TAcmeProblemBody | undefined;
-    if (body && typeof body === "object") {
-      logger.error(
-        {
-          acmeRequestUrl: response.config?.url,
-          acmeRequestMethod: response.config?.method,
-          acmeStatus: response.status,
-          acmeStatusText: response.statusText,
-          acmeResponseBody: body
-        },
-        `ACME response error from upstream CA [status=${response.status}] [url=${response.config?.url ?? "?"}]`
-      );
-
-      if (
-        typeof body.error === "string" &&
-        looksLikeClassName.test(body.error.trim()) &&
-        typeof body.detail === "string" &&
-        body.detail.trim().length > 0
-      ) {
-        body.error = body.detail;
-      }
-    }
-
-    return response;
-  });
-
-  (ax as { [s: symbol]: unknown })[ACME_INTERCEPTOR_FLAG] = true;
-})();
 const UNCHANGED_CREDENTIAL_SENTINEL = "__INFISICAL_UNCHANGED__";
 
 const validateDnsResolver = (resolver: string): void => {
@@ -473,19 +415,6 @@ export const orderCertificate = async (
   }
 
   const acmeClient = new acme.Client(acmeClientOptions);
-
-  const accountPayload: { termsOfServiceAgreed: boolean; contact?: string[] } = {
-    termsOfServiceAgreed: true
-  };
-  if (acmeCa.configuration.accountEmail) {
-    accountPayload.contact = [`mailto:${acmeCa.configuration.accountEmail}`];
-  }
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-    await (acmeClient as any).api.createAccount(accountPayload);
-  } catch (err) {
-    logger.error(err, `ACME pre-register account failed [caId=${caId}] — falling back to auto() registration`);
-  }
 
   const appConnection = await appConnectionDAL.findById(acmeCa.configuration.dnsAppConnectionId);
   const connection = await decryptAppConnection(appConnection, kmsService);

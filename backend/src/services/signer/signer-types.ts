@@ -23,7 +23,7 @@ export type TCreateSignerDTO = {
   caId?: string;
   commonName?: string;
   certificateTtlDays?: number;
-  renewBeforeDays?: number | null;
+  certificateRenewBeforeDays?: number | null;
   keyAlgorithm?: CertKeyAlgorithm;
   certificateId?: string;
   approvalPolicyId?: string;
@@ -35,7 +35,7 @@ export type TUpdateSignerDTO = {
   signerId: string;
   name?: string;
   description?: string | null;
-  renewBeforeDays?: number | null;
+  certificateRenewBeforeDays?: number | null;
 } & TActorPermission;
 
 export type TDeleteSignerDTO = {

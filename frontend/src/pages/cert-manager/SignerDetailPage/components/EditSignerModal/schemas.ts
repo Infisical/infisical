@@ -11,7 +11,7 @@ export type BasicsForm = z.infer<typeof basicsSchema>;
 export const certificateSchema = z
   .object({
     caId: z.string().uuid("Certificate Authority is required"),
-    renewBeforeDays: z
+    certificateRenewBeforeDays: z
       .preprocess(
         (v) => {
           if (v === "" || v === null || v === undefined) return null;
@@ -33,12 +33,12 @@ export const certificateSchema = z
   })
   .refine(
     (data) =>
-      data.renewBeforeDays == null ||
+      data.certificateRenewBeforeDays == null ||
       data.certificateTtlDays == null ||
-      data.renewBeforeDays < data.certificateTtlDays,
+      data.certificateRenewBeforeDays < data.certificateTtlDays,
     {
       message: "Renew before must be less than the certificate validity (days).",
-      path: ["renewBeforeDays"]
+      path: ["certificateRenewBeforeDays"]
     }
   );
 export type CertificateForm = z.infer<typeof certificateSchema>;

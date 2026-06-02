@@ -112,6 +112,54 @@ const collectMessageChain = (err: unknown): string | null => {
   return deduped.join(" — ");
 };
 
+export const isTerminalIssuanceError = (err: unknown): boolean => {
+  if (err == null) return false;
+
+  if (err instanceof AcmeError) {
+    const transient = new Set(["AcmeRateLimitedError", "AcmeServerInternalError", "AcmeBadNonceError"]);
+    return !transient.has(err.name);
+  }
+
+  if (
+    err instanceof BadRequestError ||
+    err instanceof NotFoundError ||
+    err instanceof ForbiddenRequestError ||
+    err instanceof CryptographyError
+  ) {
+    return true;
+  }
+
+  if (err instanceof AxiosError) {
+    const status = err.response?.status;
+    if (status && status >= 400 && status < 500 && status !== 408 && status !== 429) {
+      return true;
+    }
+    // No HTTP response
+    return false;
+  }
+
+  if (err instanceof Error && err.message) {
+    const msg = err.message;
+    const TERMINAL_PHRASES = [
+      "exceeds the maximum",
+      "InvalidArgsException",
+      "InvalidArnException",
+      "MalformedCSRException",
+      "LimitExceededException",
+      "ValidationException",
+      "AccessDeniedException",
+      "ResourceNotFoundException",
+      "the requested certificate validity exceeds",
+      "Invalid CSR",
+      "Malformed",
+      "is not supported"
+    ];
+    if (TERMINAL_PHRASES.some((p) => msg.includes(p))) return true;
+  }
+
+  return false;
+};
+
 export const formatSignerIssuanceErrorReason = (err: unknown, fallbackContext?: string): string => {
   const fallback = fallbackContext
     ? `${fallbackContext}. Check audit logs for the full error.`

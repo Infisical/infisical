@@ -95,9 +95,7 @@ export const issueSignerCertificate = async (
   }
   if (!ca.internalCa?.id) {
     throw new BadRequestError({
-      message:
-        "Issuing a signer certificate directly from an external Certificate Authority is not yet supported. " +
-        "Issue a code-signing certificate through Certificate Manager first and attach it to the signer by ID."
+      message: "Internal CA record is missing its internal-CA association; cannot issue a signer certificate from it."
     });
   }
 

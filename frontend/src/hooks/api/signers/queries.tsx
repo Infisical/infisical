@@ -51,7 +51,7 @@ export type TSignerMyPermissions = {
   canRead: boolean;
   canEdit: boolean;
   canDelete: boolean;
-  canEnableDisable: boolean;
+  canManageStatus: boolean;
   canManageMembers: boolean;
   canManagePolicy: boolean;
   canSign: boolean;

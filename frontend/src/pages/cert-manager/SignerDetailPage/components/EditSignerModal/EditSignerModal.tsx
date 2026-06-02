@@ -69,7 +69,7 @@ export const EditSignerModal = ({ isOpen, onOpenChange, signer }: Props) => {
     resolver: zodResolver(certificateSchema),
     values: {
       caId: signer.caId ?? "",
-      renewBeforeDays: signer.renewBeforeDays ?? null,
+      certificateRenewBeforeDays: signer.certificateRenewBeforeDays ?? null,
       commonName: signer.commonName ?? "",
       certificateTtlDays: signer.certificateTtlDays ?? 365
     }
@@ -92,7 +92,7 @@ export const EditSignerModal = ({ isOpen, onOpenChange, signer }: Props) => {
       basicsForm.reset({ name: signer.name, description: signer.description ?? "" });
       certificateForm.reset({
         caId: signer.caId ?? "",
-        renewBeforeDays: signer.renewBeforeDays ?? null,
+        certificateRenewBeforeDays: signer.certificateRenewBeforeDays ?? null,
         commonName: signer.commonName ?? "",
         certificateTtlDays: signer.certificateTtlDays ?? 365
       });
@@ -108,8 +108,8 @@ export const EditSignerModal = ({ isOpen, onOpenChange, signer }: Props) => {
 
       const nameChanged = basics.name !== signer.name;
       const descChanged = (basics.description || "") !== (signer.description ?? "");
-      const currentRenew = signer.renewBeforeDays ?? null;
-      const nextRenew = cert.renewBeforeDays ?? null;
+      const currentRenew = signer.certificateRenewBeforeDays ?? null;
+      const nextRenew = cert.certificateRenewBeforeDays ?? null;
       const renewChanged = nextRenew !== currentRenew;
 
       if (shouldReissue) {
@@ -126,7 +126,7 @@ export const EditSignerModal = ({ isOpen, onOpenChange, signer }: Props) => {
           signerId: signer.id,
           name: nameChanged ? basics.name : undefined,
           description: descChanged ? basics.description || null : undefined,
-          renewBeforeDays: renewChanged ? nextRenew : undefined
+          certificateRenewBeforeDays: renewChanged ? nextRenew : undefined
         });
       }
 

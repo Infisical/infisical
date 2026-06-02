@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { format } from "date-fns";
-import { PlusIcon, SearchIcon } from "lucide-react";
+import { AlertTriangleIcon, PlusIcon, SearchIcon } from "lucide-react";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
@@ -30,7 +30,6 @@ import {
   TableRow,
   Tooltip,
   TooltipContent,
-  TooltipProvider,
   TooltipTrigger
 } from "@app/components/v3";
 import {
@@ -138,22 +137,37 @@ export const SignersTable = ({ projectId, onCreateSigner }: Props) => {
                   }
                 >
                   <TableCell>{signer.name}</TableCell>
-                  <TableCell>
-                    {signer.status === SignerStatus.Failed && signer.failureReason ? (
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <span className="cursor-help">
-                              <Badge variant={getSignerStatusBadgeVariant(signer.status)}>
-                                {signerStatusLabels[signer.status] ?? signer.status}
-                              </Badge>
+                  <TableCell onClick={(e) => e.stopPropagation()} className="cursor-default">
+                    {signer.certificateFailureReason &&
+                    (signer.status === SignerStatus.Failed ||
+                      signer.status === SignerStatus.Pending) ? (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="inline-flex cursor-help items-center gap-1.5">
+                            <Badge variant={getSignerStatusBadgeVariant(signer.status)}>
+                              {signerStatusLabels[signer.status] ?? signer.status}
+                            </Badge>
+                            {signer.status === SignerStatus.Pending && (
+                              <AlertTriangleIcon
+                                className="size-3.5 shrink-0 text-warning"
+                                aria-hidden
+                              />
+                            )}
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent
+                          side="top"
+                          align="start"
+                          className="max-w-[320px] text-pretty break-words"
+                        >
+                          {signer.status === SignerStatus.Pending && (
+                            <span className="mb-0.5 block text-[10px] tracking-wide text-muted uppercase">
+                              Last attempt failed, retrying
                             </span>
-                          </TooltipTrigger>
-                          <TooltipContent className="max-w-[260px] text-pretty break-words">
-                            {signer.failureReason}
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
+                          )}
+                          {signer.certificateFailureReason}
+                        </TooltipContent>
+                      </Tooltip>
                     ) : (
                       <Badge variant={getSignerStatusBadgeVariant(signer.status)}>
                         {signerStatusLabels[signer.status] ?? signer.status}

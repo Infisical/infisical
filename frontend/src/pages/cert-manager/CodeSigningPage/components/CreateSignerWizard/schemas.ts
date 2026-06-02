@@ -14,7 +14,7 @@ export const certificateSchema = z
     caId: z.string().uuid("Certificate Authority is required"),
     commonName: z.string().trim().min(1, "Common Name is required").max(256),
     certificateTtlDays: z.coerce.number().int().min(1).max(3650).default(365),
-    renewBeforeDays: z
+    certificateRenewBeforeDays: z
       .preprocess(
         (v) => {
           if (v === "" || v === null || v === undefined) return null;
@@ -34,10 +34,12 @@ export const certificateSchema = z
     keyAlgorithm: z.nativeEnum(SignerKeyAlgorithm).default(SignerKeyAlgorithm.RSA_2048)
   })
   .refine(
-    (data) => data.renewBeforeDays == null || data.renewBeforeDays < data.certificateTtlDays,
+    (data) =>
+      data.certificateRenewBeforeDays == null ||
+      data.certificateRenewBeforeDays < data.certificateTtlDays,
     {
       message: "Renew before must be less than the certificate validity (days).",
-      path: ["renewBeforeDays"]
+      path: ["certificateRenewBeforeDays"]
     }
   );
 export type CertificateForm = z.infer<typeof certificateSchema>;

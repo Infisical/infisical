@@ -1,22 +1,16 @@
 import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
-import {
-  AccessScope,
-  ActionProjectType,
-  ApplicationMembershipRole,
-  ProjectMembershipRole,
-  RESOURCE_SCOPE,
-  ResourceType
-} from "@app/db/schemas";
+import { AccessScope, RESOURCE_SCOPE, ResourceMembershipRole, ResourceType } from "@app/db/schemas";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { ProjectPermissionMemberActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { ResourcePermissionSub } from "@app/ee/services/permission/resource-permission";
-import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
-import { logger } from "@app/lib/logger";
+import {
+  ResourcePermissionSignerActions,
+  ResourcePermissionSub
+} from "@app/ee/services/permission/resource-permission";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
 
 import { TApprovalPolicyDALFactory } from "../approval-policy/approval-policy-dal";
@@ -27,6 +21,7 @@ import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TSignerDALFactory } from "../signer/signer-dal";
 import { TUserDALFactory } from "../user/user-dal";
 import {
+  EffectiveSignerMemberKind,
   SignerMemberKind,
   TAddSignerMemberDTO,
   TAddSignerUserMembersDTO,
@@ -53,7 +48,7 @@ type TSignerMembershipServiceFactoryDep = {
     | "findResourceMembershipsForGroup"
   >;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "find" | "delete" | "update">;
-  permissionService: Pick<TPermissionServiceFactory, "getResourcePermission" | "getProjectPermission">;
+  permissionService: Pick<TPermissionServiceFactory, "getResourcePermission">;
   userDAL: Pick<TUserDALFactory, "find" | "findByEmailsOrUsernames">;
   identityDAL: Pick<TIdentityDALFactory, "find">;
   groupDAL: Pick<TGroupDALFactory, "find">;
@@ -64,23 +59,30 @@ type TSignerMembershipServiceFactoryDep = {
 
 export type TSignerMembershipServiceFactory = ReturnType<typeof signerMembershipServiceFactory>;
 
-export const BUILTIN_SIGNER_ROLES = Object.values(ApplicationMembershipRole).filter(
-  (r) => r !== ApplicationMembershipRole.Custom
+export const BUILTIN_SIGNER_ROLES = Object.values(ResourceMembershipRole).filter(
+  (r) => r !== ResourceMembershipRole.Custom
 );
 
-export const isBuiltInSignerRole = (role: string): role is ApplicationMembershipRole =>
+export const isBuiltInSignerRole = (role: string): role is ResourceMembershipRole =>
   (BUILTIN_SIGNER_ROLES as string[]).includes(role);
 
 export const unknownSignerRoleMessage = (role: string) =>
   `Unknown signer role '${role}'. Expected one of: ${BUILTIN_SIGNER_ROLES.join(", ")}.`;
 
-const ROLE_RANK: Record<string, number> = {
-  [ApplicationMembershipRole.Admin]: 3,
-  [ApplicationMembershipRole.Operator]: 2,
-  [ApplicationMembershipRole.Auditor]: 1
+const BUILTIN_ROLE_RANK: Record<string, number> = {
+  [ResourceMembershipRole.Admin]: 3,
+  [ResourceMembershipRole.Operator]: 2,
+  [ResourceMembershipRole.Auditor]: 1
 };
 
-const pickHigherRole = (a: string, b: string) => ((ROLE_RANK[b] ?? 0) > (ROLE_RANK[a] ?? 0) ? b : a);
+const pickGroupRoleForDisplay = (a: string, b: string): string => {
+  const aRank = BUILTIN_ROLE_RANK[a];
+  const bRank = BUILTIN_ROLE_RANK[b];
+  if (aRank !== undefined && bRank !== undefined) return bRank > aRank ? b : a;
+  if (aRank !== undefined) return a;
+  if (bRank !== undefined) return b;
+  return a < b ? a : b;
+};
 
 export const signerMembershipServiceFactory = ({
   signerDAL,
@@ -195,39 +197,16 @@ export const signerMembershipServiceFactory = ({
       actorOrgId
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Create, ResourcePermissionSub.Member);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ResourcePermissionSignerActions.ManageMembers,
+      ResourcePermissionSub.Signer
+    );
 
     if (!isBuiltInSignerRole(role)) {
       throw new BadRequestError({ message: unknownSignerRoleMessage(role) });
     }
 
     const orgMembership = await $assertActorPresentInOrg(actorOrgId, { userId, identityId, groupId });
-
-    let canCreateProjectMember = false;
-    try {
-      const { permission: projectPermission } = await permissionService.getProjectPermission({
-        actor,
-        actorId,
-        projectId,
-        actorAuthMethod,
-        actorOrgId,
-        actionProjectType: ActionProjectType.CertificateManager
-      });
-      canCreateProjectMember = projectPermission.can(
-        ProjectPermissionMemberActions.Create,
-        ProjectPermissionSub.Member
-      );
-    } catch (err) {
-      if (err instanceof ForbiddenError || err instanceof ForbiddenRequestError) {
-        canCreateProjectMember = false;
-      } else {
-        logger.warn(
-          err,
-          `signer-membership: project permission lookup failed, treating actor as non-admin [projectId=${projectId}] [actorId=${actorId}]`
-        );
-        canCreateProjectMember = false;
-      }
-    }
 
     const membership = await membershipDAL.transaction(async (tx) => {
       const existingSignerMembershipFilter: Record<string, unknown> = {
@@ -258,22 +237,11 @@ export const signerMembershipServiceFactory = ({
       const existingProjectMembership = await membershipDAL.find(projectMembershipFilter, { tx });
 
       if (existingProjectMembership.length === 0) {
-        if (!canCreateProjectMember) {
-          throw new ForbiddenRequestError({ message: "You don't have access to perform this action." });
-        }
-        const projectMembership = await membershipDAL.create(
-          {
-            scope: AccessScope.Project,
-            scopeOrgId: orgMembership.scopeOrgId,
-            scopeProjectId: projectId,
-            actorUserId: userId ?? null,
-            actorIdentityId: identityId ?? null,
-            actorGroupId: groupId ?? null,
-            isActive: true
-          },
-          tx
-        );
-        await membershipRoleDAL.create({ membershipId: projectMembership.id, role: ProjectMembershipRole.Member }, tx);
+        // eslint-disable-next-line no-nested-ternary
+        const subjectLabel = userId ? "user" : identityId ? "machine identity" : "group";
+        throw new BadRequestError({
+          message: `This ${subjectLabel} is not a member of this project. Add them to the project first, then assign them to the signer.`
+        });
       }
 
       const newMembership = await membershipDAL.create(
@@ -333,7 +301,7 @@ export const signerMembershipServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Read, ResourcePermissionSub.Member);
+    ForbiddenError.from(permission).throwUnlessCan(ResourcePermissionSignerActions.Read, ResourcePermissionSub.Signer);
 
     const memberships = await membershipDAL.find({
       scope: RESOURCE_SCOPE,
@@ -429,7 +397,7 @@ export const signerMembershipServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Read, ResourcePermissionSub.Member);
+    ForbiddenError.from(permission).throwUnlessCan(ResourcePermissionSignerActions.Read, ResourcePermissionSub.Signer);
 
     const allMemberships = await membershipDAL.find({
       scope: RESOURCE_SCOPE,
@@ -446,7 +414,7 @@ export const signerMembershipServiceFactory = ({
     const idToEntry = new Map<string, EffectiveEntry>();
 
     for (const m of allMemberships) {
-      const directActorId = kind === "user" ? m.actorUserId : m.actorIdentityId;
+      const directActorId = kind === EffectiveSignerMemberKind.User ? m.actorUserId : m.actorIdentityId;
       const role = directActorId ? (roleByMembership.get(m.id) ?? "") : "";
       if (directActorId && role) {
         idToEntry.set(directActorId, { role, isDirect: true, viaGroupIds: new Set() });
@@ -457,7 +425,7 @@ export const signerMembershipServiceFactory = ({
     const groupIds = groupMemberships.map((m) => m.actorGroupId as string);
     if (groupIds.length > 0) {
       const expansions =
-        kind === "user"
+        kind === EffectiveSignerMemberKind.User
           ? await userGroupMembershipDAL.find({ $in: { groupId: groupIds } })
           : await identityGroupMembershipDAL.find({ $in: { groupId: groupIds } });
 
@@ -473,11 +441,13 @@ export const signerMembershipServiceFactory = ({
         const groupRole = roleByGroupId.get(groupId);
         if (groupRole) {
           const existing = idToEntry.get(memberId);
-          if (existing) {
-            existing.role = pickHigherRole(existing.role, groupRole);
-            existing.viaGroupIds.add(groupId);
-          } else {
+          if (!existing) {
             idToEntry.set(memberId, { role: groupRole, isDirect: false, viaGroupIds: new Set([groupId]) });
+          } else {
+            existing.viaGroupIds.add(groupId);
+            if (!existing.isDirect) {
+              existing.role = pickGroupRoleForDisplay(existing.role, groupRole);
+            }
           }
         }
       }
@@ -486,7 +456,7 @@ export const signerMembershipServiceFactory = ({
     const ids = Array.from(idToEntry.keys());
     if (ids.length === 0) return [];
 
-    if (kind === "user") {
+    if (kind === EffectiveSignerMemberKind.User) {
       const users = await userDAL.find({ $in: { id: ids } });
       return users
         .map((u): TEffectiveSignerMember | null => {
@@ -568,7 +538,10 @@ export const signerMembershipServiceFactory = ({
       actorOrgId
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Edit, ResourcePermissionSub.Member);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ResourcePermissionSignerActions.ManageMembers,
+      ResourcePermissionSub.Signer
+    );
 
     if (!isBuiltInSignerRole(role)) {
       throw new BadRequestError({ message: unknownSignerRoleMessage(role) });
@@ -584,7 +557,7 @@ export const signerMembershipServiceFactory = ({
       );
       const r = updatedRoles[0];
 
-      if (role === ApplicationMembershipRole.Auditor && kind !== SignerMemberKind.Identity) {
+      if (role === ResourceMembershipRole.Auditor && kind !== SignerMemberKind.Identity) {
         await approvalPolicyDAL.deleteStepApproversBySubject(
           {
             projectId,
@@ -641,7 +614,10 @@ export const signerMembershipServiceFactory = ({
       actorOrgId
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Delete, ResourcePermissionSub.Member);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ResourcePermissionSignerActions.ManageMembers,
+      ResourcePermissionSub.Signer
+    );
 
     const membership = await $findMembershipByMember(signerId, projectId, kind, memberId);
     const details = await $buildMemberDetails(membership);
@@ -702,7 +678,10 @@ export const signerMembershipServiceFactory = ({
       actorOrgId
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Create, ResourcePermissionSub.Member);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ResourcePermissionSignerActions.ManageMembers,
+      ResourcePermissionSub.Signer
+    );
 
     const usersByEmail = emails.length ? await userDAL.find({ $in: { username: emails } }) : [];
     const userByEmail = new Map<string, (typeof usersByEmail)[number]>();
@@ -717,20 +696,37 @@ export const signerMembershipServiceFactory = ({
     });
     const alreadyAttached = new Set<string>(existing.map((m) => m.actorUserId).filter((v): v is string => Boolean(v)));
 
-    const targets: { userId: string; label: string }[] = [];
+    const candidates: { userId: string; label: string }[] = [];
     const seen = new Set<string>();
     userIds.forEach((id) => {
       if (!seen.has(id)) {
         seen.add(id);
-        targets.push({ userId: id, label: id });
+        candidates.push({ userId: id, label: id });
       }
     });
     emails.forEach((email) => {
       const user = userByEmail.get(email);
       if (user && !seen.has(user.id)) {
         seen.add(user.id);
-        targets.push({ userId: user.id, label: email });
+        candidates.push({ userId: user.id, label: email });
       }
+    });
+
+    const candidateIds = candidates.map((t) => t.userId);
+    const projectMemberRows = candidateIds.length
+      ? await membershipDAL.find({
+          scope: AccessScope.Project,
+          scopeProjectId: projectId,
+          $in: { actorUserId: candidateIds }
+        })
+      : [];
+    const projectMemberIds = new Set(
+      projectMemberRows.map((m) => m.actorUserId).filter((v): v is string => Boolean(v))
+    );
+    const targets = candidates.filter((t) => {
+      if (projectMemberIds.has(t.userId)) return true;
+      unresolved.push(t.label);
+      return false;
     });
 
     const memberships: TSignerMember[] = [];
@@ -876,42 +872,6 @@ export const signerMembershipServiceFactory = ({
     return { signers: signersTouched, approvalPolicies: approvalPoliciesTouched };
   };
 
-  const resolveMembership = async ({
-    signerId,
-    membershipId,
-    projectId
-  }: {
-    signerId: string;
-    membershipId: string;
-    projectId: string;
-  }): Promise<{ kind: TSignerMemberKind; memberId: string }> => {
-    const matches = await membershipDAL.find({
-      id: membershipId,
-      scope: RESOURCE_SCOPE,
-      scopeProjectId: projectId,
-      scopeResourceType: ResourceType.Signer,
-      scopeResourceId: signerId
-    });
-    const membership = matches[0];
-    if (!membership) {
-      throw new NotFoundError({
-        message: `No signer membership '${membershipId}' on signer '${signerId}'.`
-      });
-    }
-    if (membership.actorUserId) {
-      return { kind: SignerMemberKind.User, memberId: membership.actorUserId };
-    }
-    if (membership.actorIdentityId) {
-      return { kind: SignerMemberKind.Identity, memberId: membership.actorIdentityId };
-    }
-    if (membership.actorGroupId) {
-      return { kind: SignerMemberKind.Group, memberId: membership.actorGroupId };
-    }
-    throw new BadRequestError({
-      message: `Membership '${membershipId}' has no actor recorded; data is inconsistent.`
-    });
-  };
-
   return {
     addMember,
     addUserMembers,
@@ -920,7 +880,6 @@ export const signerMembershipServiceFactory = ({
     updateMemberRole,
     removeMember,
     listSignersForActor,
-    removeActorFromSignerMemberships,
-    resolveMembership
+    removeActorFromSignerMemberships
   };
 };

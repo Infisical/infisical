@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
-import { FilterIcon, XIcon } from "lucide-react";
+import { FilterIcon, MessageSquareTextIcon, XIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import {
@@ -252,16 +252,28 @@ export const SignerRequestsTab = ({ signerId, canPreApprove, canRequestSign }: P
                           <div className="min-w-0 flex-1">
                             <div className="truncate text-foreground">{member.label}</div>
                             {req.justification && (
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <div className="mt-0.5 truncate text-xs text-muted">
+                              <div className="mt-0.5 max-w-full text-xs text-muted">
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span
+                                      className="inline-flex max-w-full items-center gap-1 align-middle"
+                                      aria-label={`Reason: ${req.justification}`}
+                                    >
+                                      <MessageSquareTextIcon
+                                        className="size-3 shrink-0"
+                                        aria-hidden
+                                      />
+                                      <span className="truncate">{req.justification}</span>
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent className="max-w-md break-words whitespace-pre-wrap">
+                                    <span className="block text-[10px] tracking-wide text-muted uppercase">
+                                      Reason
+                                    </span>
                                     {req.justification}
-                                  </div>
-                                </TooltipTrigger>
-                                <TooltipContent className="max-w-md break-words whitespace-pre-wrap">
-                                  {req.justification}
-                                </TooltipContent>
-                              </Tooltip>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </div>
                             )}
                           </div>
                         </div>

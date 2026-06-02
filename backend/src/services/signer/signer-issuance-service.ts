@@ -1,7 +1,7 @@
 /* eslint-disable no-await-in-loop, @typescript-eslint/no-use-before-define, @typescript-eslint/no-unsafe-argument */
 import * as x509 from "@peculiar/x509";
 
-import { TPkiSignerIssuanceJobs } from "@app/db/schemas";
+import { TPkiSignerCertificateIssuanceJobs } from "@app/db/schemas";
 import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
@@ -14,12 +14,13 @@ import { TCertificateAuthorityDALFactory } from "../certificate-authority/certif
 import { CaStatus, CaType } from "../certificate-authority/certificate-authority-enums";
 import { keyAlgorithmToAlgCfg } from "../certificate-authority/certificate-authority-fns";
 import { TCertificateIssuanceQueueFactory } from "../certificate-authority/certificate-issuance-queue";
+import { DigiCertPollOutcome } from "../certificate-authority/digicert/digicert-certificate-authority-enums";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { TProjectDALFactory } from "../project/project-dal";
 import { getProjectKmsCertificateKeyId } from "../project/project-fns";
 import { TSignerDALFactory } from "./signer-dal";
 import { SignerIssuanceJobStatus, SignerStatus } from "./signer-enums";
-import { formatSignerIssuanceErrorReason } from "./signer-issuance-errors";
+import { formatSignerIssuanceErrorReason, isTerminalIssuanceError } from "./signer-issuance-errors";
 import { verifyCodeSigningEku } from "./signer-issuance-fns";
 import { TSignerIssuanceJobDALFactory } from "./signer-issuance-job-dal";
 
@@ -33,7 +34,7 @@ export type TSignerIssuanceServiceFactory = ReturnType<typeof signerIssuanceServ
 
 type TSignerIssuanceServiceDeps = {
   signerIssuanceJobDAL: TSignerIssuanceJobDALFactory;
-  signerDAL: Pick<TSignerDALFactory, "updateById">;
+  signerDAL: Pick<TSignerDALFactory, "updateById" | "transaction">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "findOne" | "create" | "updateById">;
@@ -112,7 +113,7 @@ export const signerIssuanceServiceFactory = ({
     return decryptor({ cipherTextBlob: cipher });
   };
 
-  const requestIssuance = async (input: TRequestIssuanceInput): Promise<TPkiSignerIssuanceJobs> => {
+  const requestIssuance = async (input: TRequestIssuanceInput): Promise<TPkiSignerCertificateIssuanceJobs> => {
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(input.caId);
     if (!ca || ca.projectId !== input.projectId) {
       throw new BadRequestError({
@@ -216,16 +217,16 @@ export const signerIssuanceServiceFactory = ({
           await stepDigiCert(job);
           break;
         case CaType.ACME:
-          await stepSyncWithCsr(job, "acme");
+          await stepSyncWithCsr(job, CaType.ACME);
           break;
         case CaType.AZURE_AD_CS:
-          await stepSyncWithCsr(job, "azure");
+          await stepSyncWithCsr(job, CaType.AZURE_AD_CS);
           break;
         case CaType.AWS_PCA:
-          await stepSyncWithCsr(job, "aws-pca");
+          await stepSyncWithCsr(job, CaType.AWS_PCA);
           break;
         case CaType.VENAFI_TPP:
-          await stepSyncWithCsr(job, "venafi");
+          await stepSyncWithCsr(job, CaType.VENAFI_TPP);
           break;
         case CaType.AWS_ACM_PUBLIC_CA:
           await markJobFailed(
@@ -241,6 +242,14 @@ export const signerIssuanceServiceFactory = ({
         err,
         "External Certificate Authority refused to issue the signer certificate"
       );
+      if (isTerminalIssuanceError(err)) {
+        await markJobFailed(job, reason);
+        logger.error(
+          err,
+          `signer issuance: terminal failure, not retrying [jobId=${job.id}] [signerId=${job.signerId}]`
+        );
+        return;
+      }
       const rows = await signerIssuanceJobDAL.update(
         { id: job.id, status: SignerIssuanceJobStatus.Pending },
         {
@@ -251,7 +260,7 @@ export const signerIssuanceServiceFactory = ({
       if (rows.length > 0) {
         await signerDAL.updateById(job.signerId, {
           status: SignerStatus.Pending,
-          failureReason: reason
+          certificateFailureReason: reason
         });
       }
       logger.error(
@@ -261,21 +270,21 @@ export const signerIssuanceServiceFactory = ({
     }
   };
 
-  const markJobFailed = async (job: TPkiSignerIssuanceJobs, reason: string) => {
+  const markJobFailed = async (job: TPkiSignerCertificateIssuanceJobs, reason: string) => {
     await signerIssuanceJobDAL.updateById(job.id, {
       status: SignerIssuanceJobStatus.Failed,
       failureReason: reason.slice(0, 1000)
     });
     await signerDAL.updateById(job.signerId, {
       status: SignerStatus.Failed,
-      failureReason: reason.slice(0, 1000)
+      certificateFailureReason: reason.slice(0, 1000)
     });
     logger.info(
       `signer issuance: job marked Failed [jobId=${job.id}] [signerId=${job.signerId}] [reason=${reason.slice(0, 200)}]`
     );
   };
 
-  const markJobFailedIfStillPending = async (job: TPkiSignerIssuanceJobs, reason: string) => {
+  const markJobFailedIfStillPending = async (job: TPkiSignerCertificateIssuanceJobs, reason: string) => {
     const trimmed = reason.slice(0, 1000);
     const rows = await signerIssuanceJobDAL.update(
       { id: job.id, status: SignerIssuanceJobStatus.Pending },
@@ -284,7 +293,7 @@ export const signerIssuanceServiceFactory = ({
     if (rows.length === 0) return;
     await signerDAL.updateById(job.signerId, {
       status: SignerStatus.Failed,
-      failureReason: trimmed
+      certificateFailureReason: trimmed
     });
     logger.info(
       `signer issuance: job marked Failed [jobId=${job.id}] [signerId=${job.signerId}] [reason=${trimmed.slice(0, 200)}]`
@@ -292,7 +301,7 @@ export const signerIssuanceServiceFactory = ({
   };
 
   const attachIssuedCertToSigner = async (
-    job: TPkiSignerIssuanceJobs,
+    job: TPkiSignerCertificateIssuanceJobs,
     certificateId: string,
     projectId: string
   ): Promise<void> => {
@@ -304,22 +313,32 @@ export const signerIssuanceServiceFactory = ({
       return;
     }
 
-    await signerDAL.updateById(job.signerId, {
-      certificateId,
-      status: SignerStatus.Active,
-      failureReason: null
-    });
-    await signerIssuanceJobDAL.updateById(job.id, {
-      status: SignerIssuanceJobStatus.Completed,
-      certificateId,
-      failureReason: null
+    await signerDAL.transaction(async (tx) => {
+      await signerDAL.updateById(
+        job.signerId,
+        {
+          certificateId,
+          status: SignerStatus.Active,
+          certificateFailureReason: null
+        },
+        tx
+      );
+      await signerIssuanceJobDAL.updateById(
+        job.id,
+        {
+          status: SignerIssuanceJobStatus.Completed,
+          certificateId,
+          failureReason: null
+        },
+        tx
+      );
     });
     logger.info(
       `signer issuance: signer attached [jobId=${job.id}] [signerId=${job.signerId}] [certificateId=${certificateId}]`
     );
   };
 
-  const stepDigiCert = async (job: TPkiSignerIssuanceJobs) => {
+  const stepDigiCert = async (job: TPkiSignerCertificateIssuanceJobs) => {
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(job.caId);
     if (!ca) {
       await markJobFailed(job, "Certificate authority is no longer available.");
@@ -381,7 +400,7 @@ export const signerIssuanceServiceFactory = ({
     const ref = existingRef as { type: CaType.DIGICERT; orderId: number };
 
     const poll = await digicertFns.pollOrderForCertificate({ caId: job.caId, orderId: ref.orderId });
-    if (poll.status === "pending") {
+    if (poll.status === DigiCertPollOutcome.Pending) {
       await signerIssuanceJobDAL.updateById(job.id, {
         nextPollAt: new Date(Date.now() + PENDING_VALIDATION_POLL_INTERVAL_MS)
       });
@@ -390,7 +409,7 @@ export const signerIssuanceServiceFactory = ({
       );
       return;
     }
-    if (poll.status === "failed") {
+    if (poll.status === DigiCertPollOutcome.Failed) {
       await markJobFailed(job, poll.reason);
       return;
     }
@@ -414,7 +433,10 @@ export const signerIssuanceServiceFactory = ({
     await attachIssuedCertToSigner(job, certificateId, projectId);
   };
 
-  const stepSyncWithCsr = async (job: TPkiSignerIssuanceJobs, kind: "acme" | "azure" | "aws-pca" | "venafi") => {
+  const stepSyncWithCsr = async (
+    job: TPkiSignerCertificateIssuanceJobs,
+    kind: CaType.ACME | CaType.AZURE_AD_CS | CaType.AWS_PCA | CaType.VENAFI_TPP
+  ) => {
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(job.caId);
     if (!ca) {
       await markJobFailed(job, "Certificate authority is no longer available.");
@@ -425,7 +447,7 @@ export const signerIssuanceServiceFactory = ({
 
     let certificateId: string;
 
-    if (kind === "acme") {
+    if (kind === CaType.ACME) {
       const acmeResult = await acmeFns.orderCertificateFromProfile({
         caId: job.caId,
         profileId: undefined as unknown as string,
@@ -447,7 +469,7 @@ export const signerIssuanceServiceFactory = ({
         throw new BadRequestError({ message: "ACME order returned without a certificate id." });
       }
       certificateId = acmeResult.id;
-    } else if (kind === "azure") {
+    } else if (kind === CaType.AZURE_AD_CS) {
       const azureResult = await azureAdCsFns.orderCertificateFromProfile({
         caId: job.caId,
         profileId: undefined as unknown as string,
@@ -467,7 +489,7 @@ export const signerIssuanceServiceFactory = ({
         throw new BadRequestError({ message: "Azure AD CS order returned without a certificate id." });
       }
       certificateId = azureResult.certificateId;
-    } else if (kind === "aws-pca") {
+    } else if (kind === CaType.AWS_PCA) {
       const awsResult = await awsPcaFns.orderCertificateFromProfile({
         caId: job.caId,
         profileId: undefined as unknown as string,
@@ -516,7 +538,7 @@ export const signerIssuanceServiceFactory = ({
   const persistCertificatePrivateKey = async (
     certificateId: string,
     projectId: string,
-    job: TPkiSignerIssuanceJobs
+    job: TPkiSignerCertificateIssuanceJobs
   ) => {
     if (!job.encryptedPrivateKey) return;
     const existing = await certificateSecretDAL.findOne({ certId: certificateId });

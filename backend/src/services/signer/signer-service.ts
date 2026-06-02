@@ -3,16 +3,16 @@ import * as x509 from "@peculiar/x509";
 import { KeyObject } from "crypto";
 
 import {
+  AccessScope,
   ActionProjectType,
-  ApplicationMembershipRole,
   ProjectMembershipRole,
   RESOURCE_SCOPE,
+  ResourceMembershipRole,
   ResourceType
 } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCodeSigningActions,
-  ProjectPermissionMemberActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import {
@@ -221,11 +221,11 @@ export const signerServiceFactory = ({
       });
     }
 
-    if (usingCa && dto.renewBeforeDays != null) {
+    if (usingCa && dto.certificateRenewBeforeDays != null) {
       const ttl = dto.certificateTtlDays ?? DEFAULT_CERTIFICATE_TTL_DAYS;
-      if (dto.renewBeforeDays >= ttl) {
+      if (dto.certificateRenewBeforeDays >= ttl) {
         throw new BadRequestError({
-          message: `Renew before (${dto.renewBeforeDays}d) must be less than the certificate validity (${ttl}d).`
+          message: `Renew before (${dto.certificateRenewBeforeDays}d) must be less than the certificate validity (${ttl}d).`
         });
       }
     }
@@ -329,11 +329,11 @@ export const signerServiceFactory = ({
             caId: resolvedCaId,
             commonName: usingCa ? dto.commonName : null,
             certificateTtlDays: usingCa ? (dto.certificateTtlDays ?? DEFAULT_CERTIFICATE_TTL_DAYS) : null,
-            renewBeforeDays: usingCa ? (dto.renewBeforeDays ?? null) : null,
+            certificateRenewBeforeDays: usingCa ? (dto.certificateRenewBeforeDays ?? null) : null,
             keyAlgorithm,
             status: initialStatus,
             approvalPolicyId: policy.id,
-            failureReason: null
+            certificateFailureReason: null
           },
           tx
         );
@@ -360,7 +360,7 @@ export const signerServiceFactory = ({
             },
             tx
           );
-          await membershipRoleDAL.create({ membershipId: newMembership.id, role: ApplicationMembershipRole.Admin }, tx);
+          await membershipRoleDAL.create({ membershipId: newMembership.id, role: ResourceMembershipRole.Admin }, tx);
         }
 
         const pendingMembers = (dto.members ?? []).filter(
@@ -371,6 +371,64 @@ export const signerServiceFactory = ({
             message: "Cannot add members during signer creation without an organization context."
           });
         }
+
+        if (pendingMembers.length > 0) {
+          const pendingUserIds = pendingMembers.filter((m) => m.kind === "user").map((m) => m.id);
+          const pendingIdentityIds = pendingMembers.filter((m) => m.kind === "identity").map((m) => m.id);
+          const pendingGroupIds = pendingMembers.filter((m) => m.kind === "group").map((m) => m.id);
+
+          const [userRows, identityRows, groupRows] = await Promise.all([
+            pendingUserIds.length
+              ? membershipDAL.find(
+                  {
+                    scope: AccessScope.Project,
+                    scopeProjectId: dto.projectId,
+                    $in: { actorUserId: pendingUserIds }
+                  },
+                  { tx }
+                )
+              : Promise.resolve([] as Awaited<ReturnType<typeof membershipDAL.find>>),
+            pendingIdentityIds.length
+              ? membershipDAL.find(
+                  {
+                    scope: AccessScope.Project,
+                    scopeProjectId: dto.projectId,
+                    $in: { actorIdentityId: pendingIdentityIds }
+                  },
+                  { tx }
+                )
+              : Promise.resolve([] as Awaited<ReturnType<typeof membershipDAL.find>>),
+            pendingGroupIds.length
+              ? membershipDAL.find(
+                  {
+                    scope: AccessScope.Project,
+                    scopeProjectId: dto.projectId,
+                    $in: { actorGroupId: pendingGroupIds }
+                  },
+                  { tx }
+                )
+              : Promise.resolve([] as Awaited<ReturnType<typeof membershipDAL.find>>)
+          ]);
+          const validUserIds = new Set(userRows.map((m) => m.actorUserId).filter((v): v is string => Boolean(v)));
+          const validIdentityIds = new Set(
+            identityRows.map((m) => m.actorIdentityId).filter((v): v is string => Boolean(v))
+          );
+          const validGroupIds = new Set(groupRows.map((m) => m.actorGroupId).filter((v): v is string => Boolean(v)));
+          for (const m of pendingMembers) {
+            const ok =
+              (m.kind === "user" && validUserIds.has(m.id)) ||
+              (m.kind === "identity" && validIdentityIds.has(m.id)) ||
+              (m.kind === "group" && validGroupIds.has(m.id));
+            if (!ok) {
+              // eslint-disable-next-line no-nested-ternary
+              const subjectLabel = m.kind === "user" ? "user" : m.kind === "identity" ? "machine identity" : "group";
+              throw new BadRequestError({
+                message: `Cannot add ${subjectLabel} ${m.id} to the signer: they are not a member of this project. Add them to the project first.`
+              });
+            }
+          }
+        }
+
         for (const member of pendingMembers) {
           if (!isBuiltInSignerRole(member.role)) {
             throw new BadRequestError({ message: unknownSignerRoleMessage(member.role) });
@@ -394,16 +452,13 @@ export const signerServiceFactory = ({
 
         const { approvalPolicy } = dto;
         if (approvalPolicy && approvalPolicy.steps.length > 0) {
-          const effectiveConstraints =
-            !approvalPolicy.constraints?.maxSignings && !approvalPolicy.constraints?.maxWindowDuration
-              ? { ...(approvalPolicy.constraints ?? {}), maxSignings: 1, maxWindowDuration: null }
-              : (approvalPolicy.constraints ?? {});
+          const effectiveConstraints = approvalPolicy.constraints ?? {};
 
           const allowedApproverIds = new Set<string>();
           if (dto.actor === ActorType.USER) allowedApproverIds.add(dto.actorId);
           const allowedGroupApproverIds = new Set<string>();
           for (const m of pendingMembers) {
-            if (m.role !== ApplicationMembershipRole.Auditor) {
+            if (m.role !== ResourceMembershipRole.Auditor) {
               if (m.kind === "user") allowedApproverIds.add(m.id);
               else if (m.kind === "group") allowedGroupApproverIds.add(m.id);
             }
@@ -496,7 +551,7 @@ export const signerServiceFactory = ({
           );
           await signerDAL.updateById(result.id, {
             status: SignerStatus.Failed,
-            failureReason: formatSignerIssuanceErrorReason(
+            certificateFailureReason: formatSignerIssuanceErrorReason(
               queueErr,
               "Could not schedule issuance from the external Certificate Authority"
             )
@@ -597,16 +652,12 @@ export const signerServiceFactory = ({
 
     const allows = (action: ResourcePermissionSignerActions) => permission.can(action, ResourcePermissionSub.Signer);
 
-    const canManageMembers =
-      allows(ResourcePermissionSignerActions.ManageMembers) ||
-      permission.can(ProjectPermissionMemberActions.Create, ResourcePermissionSub.Member);
-
     return {
       canRead: allows(ResourcePermissionSignerActions.Read),
       canEdit: allows(ResourcePermissionSignerActions.Edit),
       canDelete: allows(ResourcePermissionSignerActions.Delete),
-      canEnableDisable: allows(ResourcePermissionSignerActions.EnableDisable),
-      canManageMembers,
+      canManageStatus: allows(ResourcePermissionSignerActions.ManageStatus),
+      canManageMembers: allows(ResourcePermissionSignerActions.ManageMembers),
       canManagePolicy: allows(ResourcePermissionSignerActions.ManagePolicy),
       canSign: allows(ResourcePermissionSignerActions.Sign),
       canRequestSign: allows(ResourcePermissionSignerActions.RequestSign),
@@ -638,19 +689,22 @@ export const signerServiceFactory = ({
     const patch: Record<string, unknown> = {};
     if (dto.name !== undefined) patch.name = dto.name;
     if (dto.description !== undefined) patch.description = dto.description;
-    if (dto.renewBeforeDays !== undefined) {
-      if (dto.renewBeforeDays === null) {
-        patch.renewBeforeDays = null;
+    if (dto.certificateRenewBeforeDays !== undefined) {
+      if (dto.certificateRenewBeforeDays === null) {
+        patch.certificateRenewBeforeDays = null;
       } else {
-        if (dto.renewBeforeDays < 1 || dto.renewBeforeDays > 30) {
+        if (dto.certificateRenewBeforeDays < 1 || dto.certificateRenewBeforeDays > 30) {
           throw new BadRequestError({ message: "Renew before must be between 1 and 30 days." });
         }
-        if (existingSigner.certificateTtlDays != null && dto.renewBeforeDays >= existingSigner.certificateTtlDays) {
+        if (
+          existingSigner.certificateTtlDays != null &&
+          dto.certificateRenewBeforeDays >= existingSigner.certificateTtlDays
+        ) {
           throw new BadRequestError({
-            message: `Renew before (${dto.renewBeforeDays}d) must be less than the certificate validity (${existingSigner.certificateTtlDays}d).`
+            message: `Renew before (${dto.certificateRenewBeforeDays}d) must be less than the certificate validity (${existingSigner.certificateTtlDays}d).`
           });
         }
-        patch.renewBeforeDays = dto.renewBeforeDays;
+        patch.certificateRenewBeforeDays = dto.certificateRenewBeforeDays;
       }
     }
 
@@ -719,7 +773,7 @@ export const signerServiceFactory = ({
       dto.actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(
-      ResourcePermissionSignerActions.EnableDisable,
+      ResourcePermissionSignerActions.ManageStatus,
       ResourcePermissionSub.Signer
     );
 
@@ -749,7 +803,7 @@ export const signerServiceFactory = ({
       dto.actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(
-      ResourcePermissionSignerActions.EnableDisable,
+      ResourcePermissionSignerActions.ManageStatus,
       ResourcePermissionSub.Signer
     );
 
@@ -804,9 +858,9 @@ export const signerServiceFactory = ({
     }
 
     const effectiveTtl = nextTtl ?? DEFAULT_CERTIFICATE_TTL_DAYS;
-    if (signer.renewBeforeDays != null && signer.renewBeforeDays >= effectiveTtl) {
+    if (signer.certificateRenewBeforeDays != null && signer.certificateRenewBeforeDays >= effectiveTtl) {
       throw new BadRequestError({
-        message: `Certificate validity (${effectiveTtl}d) must be greater than the configured renew before (${signer.renewBeforeDays}d). Update the renew-before window before reissuing with a shorter validity.`
+        message: `Certificate validity (${effectiveTtl}d) must be greater than the configured renew before (${signer.certificateRenewBeforeDays}d). Update the renew-before window before reissuing with a shorter validity.`
       });
     }
 
@@ -822,7 +876,7 @@ export const signerServiceFactory = ({
     if (reissueIsExternal) {
       await signerDAL.updateById(dto.signerId, {
         status: SignerStatus.Pending,
-        failureReason: null
+        certificateFailureReason: null
       });
       try {
         await signerIssuanceService.requestIssuance({
@@ -837,7 +891,7 @@ export const signerServiceFactory = ({
       } catch (queueErr) {
         await signerDAL.updateById(dto.signerId, {
           status: SignerStatus.Failed,
-          failureReason: formatSignerIssuanceErrorReason(
+          certificateFailureReason: formatSignerIssuanceErrorReason(
             queueErr,
             "Could not schedule re-issuance from the external Certificate Authority"
           )
@@ -868,7 +922,7 @@ export const signerServiceFactory = ({
       return await signerDAL.updateById(dto.signerId, {
         certificateId,
         status: SignerStatus.Active,
-        failureReason: null
+        certificateFailureReason: null
       });
     } catch (issueErr) {
       logger.error(
@@ -877,7 +931,7 @@ export const signerServiceFactory = ({
       );
       await signerDAL.updateById(dto.signerId, {
         status: SignerStatus.Failed,
-        failureReason: formatSignerIssuanceErrorReason(issueErr, "Internal CA certificate issuance failed")
+        certificateFailureReason: formatSignerIssuanceErrorReason(issueErr, "Internal CA certificate issuance failed")
       });
       throw issueErr;
     }
@@ -1236,7 +1290,11 @@ export const signerServiceFactory = ({
     certificateId: string,
     tx?: Parameters<TSignerDALFactory["updateById"]>[2]
   ) => {
-    return signerDAL.updateById(signerId, { certificateId, status: SignerStatus.Active, failureReason: null }, tx);
+    return signerDAL.updateById(
+      signerId,
+      { certificateId, status: SignerStatus.Active, certificateFailureReason: null },
+      tx
+    );
   };
 
   const markIssuanceFailed = async (
@@ -1246,7 +1304,7 @@ export const signerServiceFactory = ({
   ) => {
     return signerDAL.updateById(
       signerId,
-      { status: SignerStatus.Failed, failureReason: reason ? reason.slice(0, 1000) : null },
+      { status: SignerStatus.Failed, certificateFailureReason: reason ? reason.slice(0, 1000) : null },
       tx
     );
   };
@@ -1274,7 +1332,7 @@ export const signerServiceFactory = ({
       logger.warn(`signer auto-renewal: ${reason} [signerId=${signer.id}]`);
       await signerDAL.updateById(signer.id, {
         status: SignerStatus.Failed,
-        failureReason: reason.slice(0, 1000)
+        certificateFailureReason: reason.slice(0, 1000)
       });
       return;
     }
@@ -1282,7 +1340,7 @@ export const signerServiceFactory = ({
       const reason = `Certificate authority '${ca.name}' is not active.`;
       await signerDAL.updateById(signer.id, {
         status: SignerStatus.Failed,
-        failureReason: reason.slice(0, 1000)
+        certificateFailureReason: reason.slice(0, 1000)
       });
       return;
     }
@@ -1294,7 +1352,7 @@ export const signerServiceFactory = ({
     if (isExternal) {
       await signerDAL.updateById(signer.id, {
         status: SignerStatus.Pending,
-        failureReason: null
+        certificateFailureReason: null
       });
       try {
         await signerIssuanceService.requestIssuance({
@@ -1308,7 +1366,7 @@ export const signerServiceFactory = ({
       } catch (err) {
         await signerDAL.updateById(signer.id, {
           status: SignerStatus.Failed,
-          failureReason: formatSignerIssuanceErrorReason(
+          certificateFailureReason: formatSignerIssuanceErrorReason(
             err,
             "Could not schedule auto-renewal from the external Certificate Authority"
           )
@@ -1339,7 +1397,7 @@ export const signerServiceFactory = ({
       await signerDAL.updateById(signer.id, {
         certificateId,
         status: SignerStatus.Active,
-        failureReason: null
+        certificateFailureReason: null
       });
       logger.info(
         `signer auto-renewal: renewed signer '${signer.name}' [signerId=${signer.id}] [newCertificateId=${certificateId}]`
@@ -1347,10 +1405,16 @@ export const signerServiceFactory = ({
     } catch (err) {
       await signerDAL.updateById(signer.id, {
         status: SignerStatus.Failed,
-        failureReason: formatSignerIssuanceErrorReason(err, "Internal CA auto-renewal failed")
+        certificateFailureReason: formatSignerIssuanceErrorReason(err, "Internal CA auto-renewal failed")
       });
       logger.error(err, `signer auto-renewal: internal CA issuance failed [signerId=${signer.id}]`);
     }
+  };
+
+  const getProjectIdForSigner = async (signerId: string): Promise<string> => {
+    const signer = await signerDAL.findById(signerId);
+    if (!signer) throw new NotFoundError({ message: `Signer '${signerId}' not found.` });
+    return signer.projectId;
   };
 
   return {
@@ -1358,6 +1422,7 @@ export const signerServiceFactory = ({
     list,
     getById,
     getMyPermissions,
+    getProjectIdForSigner,
     update,
     delete: deleteSigner,
     enable,

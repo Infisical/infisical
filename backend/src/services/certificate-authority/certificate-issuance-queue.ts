@@ -1,4 +1,4 @@
-import * as x509 from "@peculiar/x509";
+import acme from "acme-client";
 import { UnrecoverableError } from "bullmq";
 
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
@@ -411,42 +411,14 @@ export const certificateIssuanceQueueFactory = ({
           const skLeafObj = crypto.nativeCrypto.KeyObject.from(leafKeys.privateKey);
           skLeaf = skLeafObj.export({ format: "pem", type: "pkcs8" }) as string;
 
-          const csrExtensions: x509.Extension[] = [];
-          if (altNames && altNames.length > 0) {
-            csrExtensions.push(
-              new x509.SubjectAlternativeNameExtension(
-                altNames.map((san) => ({
-                  type: (san.type === "ip" ? "ip" : "dns") as "ip" | "dns",
-                  value: san.value
-                }))
-              )
-            );
-          }
-          if (keyUsages && keyUsages.length > 0) {
-            // eslint-disable-next-line no-bitwise
-            const bits = (keyUsages as CertKeyUsage[]).reduce(
-              // eslint-disable-next-line no-bitwise
-              (acc, ku) => acc | x509.KeyUsageFlags[ku],
-              0
-            );
-            if (bits) csrExtensions.push(new x509.KeyUsagesExtension(bits, true));
-          }
-          if (extendedKeyUsages && extendedKeyUsages.length > 0) {
-            csrExtensions.push(
-              new x509.ExtendedKeyUsageExtension(
-                (extendedKeyUsages as CertExtendedKeyUsage[]).map((eku) => x509.ExtendedKeyUsage[eku]),
-                true
-              )
-            );
-          }
-
-          const csrObj = await x509.Pkcs10CertificateRequestGenerator.create({
-            name: commonName ? [{ CN: [commonName] }] : [],
-            keys: leafKeys,
-            signingAlgorithm: keyAlg,
-            extensions: csrExtensions
-          });
-          certificateCsr = csrObj.toString("pem");
+          const [, generatedCsr] = await acme.crypto.createCsr(
+            {
+              altNames: altNames ? altNames.map((san) => san.value) : [],
+              commonName: commonName || ""
+            },
+            skLeaf
+          );
+          certificateCsr = generatedCsr.toString();
         }
 
         if (await isCancelled()) {

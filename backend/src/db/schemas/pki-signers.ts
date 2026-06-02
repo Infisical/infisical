@@ -21,8 +21,8 @@ export const PkiSignersSchema = z.object({
   caId: z.string().uuid().nullable().optional(),
   commonName: z.string().nullable().optional(),
   certificateTtlDays: z.number().nullable().optional(),
-  renewBeforeDays: z.number().nullable().optional(),
-  failureReason: z.string().nullable().optional(),
+  certificateRenewBeforeDays: z.number().nullable().optional(),
+  certificateFailureReason: z.string().nullable().optional(),
   keyAlgorithm: z.string().default("RSA_2048")
 });
 

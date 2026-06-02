@@ -130,7 +130,7 @@ export const CertificateStep = ({ form, caOptions, isCasLoading }: CertificateSt
       )}
     />
     <Controller
-      name="renewBeforeDays"
+      name="certificateRenewBeforeDays"
       control={form.control}
       render={({ field, fieldState: { error } }) => (
         <Field>

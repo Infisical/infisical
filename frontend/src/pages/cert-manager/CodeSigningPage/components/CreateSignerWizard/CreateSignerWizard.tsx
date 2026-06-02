@@ -105,7 +105,7 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
       caId: state.caId,
       commonName: state.commonName,
       certificateTtlDays: state.certificateTtlDays,
-      renewBeforeDays: state.renewBeforeDays,
+      certificateRenewBeforeDays: state.certificateRenewBeforeDays,
       keyAlgorithm: state.keyAlgorithm
     }
   });
@@ -118,7 +118,7 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
       caId: "",
       commonName: "",
       certificateTtlDays: 365,
-      renewBeforeDays: null,
+      certificateRenewBeforeDays: null,
       keyAlgorithm: SignerKeyAlgorithm.RSA_2048
     });
   };
@@ -155,7 +155,7 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
         caId: state.caId,
         commonName: state.commonName,
         certificateTtlDays: state.certificateTtlDays,
-        renewBeforeDays: state.renewBeforeDays,
+        certificateRenewBeforeDays: state.certificateRenewBeforeDays,
         keyAlgorithm: state.keyAlgorithm,
         members: state.pendingMembers.map((m) => ({
           kind: m.kind,
@@ -194,7 +194,7 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
         caId: values.caId,
         commonName: values.commonName,
         certificateTtlDays: values.certificateTtlDays,
-        renewBeforeDays: values.renewBeforeDays,
+        certificateRenewBeforeDays: values.certificateRenewBeforeDays,
         keyAlgorithm: values.keyAlgorithm
       }));
       setStep(2);
@@ -227,7 +227,9 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
     (s) => s.approverUserIds.length + s.approverGroupIds.length === 0
   );
   const hasEmptyPolicyStep = firstEmptyPolicyStepIndex >= 0;
-  const ctaDisabled = isLast && hasEmptyPolicyStep;
+  const missingConstraints =
+    state.policySteps.length > 0 && !state.maxSignings && !state.maxWindowDuration;
+  const ctaDisabled = isLast && (hasEmptyPolicyStep || missingConstraints);
 
   return (
     <Sheet open={isOpen} onOpenChange={handleClose}>
@@ -343,11 +345,14 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
           <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border px-6 py-4">
             <span className="text-xs text-muted">
               {/* eslint-disable-next-line no-nested-ternary */}
-              {ctaDisabled
+              {hasEmptyPolicyStep
                 ? `Step ${firstEmptyPolicyStepIndex + 1} needs at least one approver, or remove it.`
-                : dirty
-                  ? "Unsaved changes"
-                  : ""}
+                : // eslint-disable-next-line no-nested-ternary
+                  missingConstraints
+                  ? "Set at least one of 'signatures per approval' or 'signing window'."
+                  : dirty
+                    ? "Unsaved changes"
+                    : ""}
             </span>
             <div className="flex items-center gap-3">
               <span className="text-xs text-muted">
