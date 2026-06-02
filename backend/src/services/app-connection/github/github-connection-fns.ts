@@ -43,9 +43,6 @@ export const getGitHubInstanceApiUrl = async (config: {
   if (config.credentials.instanceType === "server") {
     apiBase = `${host}/api/v3`;
   } else {
-    // The cloud API lives on a separate subdomain (api.${host}) that resolves
-    // independently from the root host, so it must be validated too — otherwise a
-    // split-DNS host (root public, api.* internal) bypasses the SSRF guard.
     await blockLocalAndPrivateIpAddresses(`https://api.${host}`);
     apiBase = `api.${host}`;
   }
