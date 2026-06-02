@@ -954,8 +954,8 @@ const fetchVaultSecretAtPath = async ({
     // vault 1.0.0 does not support namespace root or /, responding with a 301 when the namespace header is sent.
     // Signal the caller to retry the request without the namespace header.
     if (
-      (error instanceof AxiosError && error.response?.status === 301) ||
-      (isGateway301Error(error) && (namespace === "/" || namespace === "root" || !namespace))
+      ((error instanceof AxiosError && error.response?.status === 301) || isGateway301Error(error)) &&
+      (namespace === "/" || namespace === "root" || !namespace)
     ) {
       throw new NamespaceHeaderNotSupportedError();
     }
@@ -988,7 +988,8 @@ export const getHCVaultSecretsForPaths = async (
   const mounts = await listHCVaultMounts(connection, gatewayService, gatewayV2Service, namespace);
   const limiter = createConcurrencyLimiter(HC_VAULT_CONCURRENCY_LIMIT);
 
-  let skipNamespaceHeader = false;
+  // Shared ref: concurrent limiter callbacks read .value at fetch time so one 301 discovery applies to peers.
+  const skipNamespaceHeaderRef = { value: false };
   return Promise.all(
     secretPaths.map((vaultSecretPath) =>
       limiter(async () => {
@@ -1002,14 +1003,14 @@ export const getHCVaultSecretsForPaths = async (
             connection,
             gatewayService,
             gatewayV2Service,
-            skipNamespaceHeader
+            skipNamespaceHeader: skipNamespaceHeaderRef.value
           });
           return { vaultSecretPath, secrets };
         } catch (error) {
           if (error instanceof NamespaceHeaderNotSupportedError) {
             // vault 1.0.0 does not support namespace root or /, responding with a 301 when the namespace header is sent.
             // all subsequent requests should skip the namespace header to avoid the wasted 301 round-trip.
-            skipNamespaceHeader = true;
+            skipNamespaceHeaderRef.value = true;
             const secrets = await fetchVaultSecretAtPath({
               namespace,
               secretPath: vaultSecretPath,
@@ -1019,7 +1020,7 @@ export const getHCVaultSecretsForPaths = async (
               connection,
               gatewayService,
               gatewayV2Service,
-              skipNamespaceHeader
+              skipNamespaceHeader: skipNamespaceHeaderRef.value
             });
             return { vaultSecretPath, secrets };
           }
