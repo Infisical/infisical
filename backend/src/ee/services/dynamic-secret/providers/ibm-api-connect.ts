@@ -1,5 +1,4 @@
 import { request } from "@app/lib/config/request";
-
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator/validate-url";
 
 import { DynamicSecretIbmApiConnectSchema, TDynamicProviderFns } from "./models";
@@ -9,30 +8,30 @@ export type TIbmApiConnectBaseCredentials = {
   clientSecret: string;
   instanceUrl: string;
   apiKey: string;
-}
+};
 
 type TIbmApiConnectProviderInputs = TIbmApiConnectBaseCredentials & {
   orgId: string;
   catalogId: string;
   consumerOrgId: string;
   appId: string;
-}
+};
 
 export type TApiConnectResource = {
   name: string;
   title: string;
   id: string;
-}
+};
 
 export type TApiConnectApp = TApiConnectResource & {
   consumerOrgId: string;
-}
+};
 
 type TIbmApiConnectApplicationCredential = {
   id: string;
   clientId: string;
   clientSecret: string;
-}
+};
 
 const $getAccessToken = async (credentials: TIbmApiConnectBaseCredentials): Promise<string> => {
   const response = await request.post<{ access_token: string }>(
@@ -53,9 +52,7 @@ const $getAccessToken = async (credentials: TIbmApiConnectBaseCredentials): Prom
   return response.data.access_token;
 };
 
-const $fetchOrganizations = async (
-  credentials: TIbmApiConnectBaseCredentials
-): Promise<TApiConnectResource[]> => {
+const $fetchOrganizations = async (credentials: TIbmApiConnectBaseCredentials): Promise<TApiConnectResource[]> => {
   const accessToken = await $getAccessToken(credentials);
   const url = `${credentials.instanceUrl}/api/orgs`;
   const response = await request.get<{

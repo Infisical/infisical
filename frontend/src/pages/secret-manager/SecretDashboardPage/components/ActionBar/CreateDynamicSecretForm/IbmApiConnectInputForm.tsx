@@ -1,4 +1,5 @@
 import { Controller, useForm } from "react-hook-form";
+import { SingleValue } from "react-select";
 import {
   faCheckCircle,
   faCircleNotch,
@@ -11,8 +12,6 @@ import { z } from "zod";
 
 import { TtlFormLabel } from "@app/components/features";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { SingleValue } from "react-select";
-
 import { Button, FilterableSelect, FormControl, Input, SecretInput } from "@app/components/v2";
 import { Tooltip } from "@app/components/v2/Tooltip";
 import { GatewayPicker } from "@app/components/v3/platform/GatewayPicker";

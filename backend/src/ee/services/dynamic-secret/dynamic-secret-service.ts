@@ -956,10 +956,7 @@ export const dynamicSecretServiceFactory = ({
     clientSecret,
     orgId
   }) => {
-    return IbmApiConnectProvider().fetchOrganizationCatalogs(
-      { instanceUrl, apiKey, clientId, clientSecret },
-      orgId
-    );
+    return IbmApiConnectProvider().fetchOrganizationCatalogs({ instanceUrl, apiKey, clientId, clientSecret }, orgId);
   };
 
   const fetchIbmApiConnectOrgApps: TDynamicSecretServiceFactory["fetchIbmApiConnectOrgApps"] = async ({
