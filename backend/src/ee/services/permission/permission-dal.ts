@@ -1012,7 +1012,11 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
         })
         .select(
           db.ref("id").withSchema(TableName.Membership).as("mId"),
-          db.ref("updatedAt").withSchema(TableName.Membership).as("mUp"),
+          // Track isActive/status rather than updatedAt: every login bumps Membership.updatedAt
+          // (lastLoginTime/lastLoginAuthMethod), which would needlessly bust the fingerprint/ETag on
+          // every auth. isActive/status are the membership columns that actually gate permissions.
+          db.ref("isActive").withSchema(TableName.Membership).as("mActive"),
+          db.ref("status").withSchema(TableName.Membership).as("mStatus"),
           db.ref("id").withSchema(TableName.MembershipRole).as("rId"),
           db.ref("updatedAt").withSchema(TableName.MembershipRole).as("rUp"),
           db.ref("updatedAt").withSchema(TableName.Role).as("crUp"),
