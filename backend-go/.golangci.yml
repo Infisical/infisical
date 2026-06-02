@@ -34,9 +34,6 @@ linters:
       rules:
         - name: dot-imports
           severity: error
-          arguments:
-            - allowedPackages:
-                - "goa.design/goa/v3/dsl"
 
     gocritic:
       enable-all: true

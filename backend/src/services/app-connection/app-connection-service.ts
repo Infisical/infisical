@@ -758,6 +758,8 @@ export const appConnectionServiceFactory = ({
         {
           app,
           orgId: actor.orgId,
+          projectId: appConnection.projectId,
+          version: appConnection.version,
           credentials,
           method,
           gatewayId: validationGatewayId

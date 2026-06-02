@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
+import { AssumePrivilegesModal } from "@app/components/assume-privileges";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { DeleteActionModal, Spinner } from "@app/components/v2";
@@ -67,6 +68,7 @@ import {
 } from "@app/components/v3";
 import {
   ProjectPermissionActions,
+  ProjectPermissionIdentityActions,
   ProjectPermissionSub,
   useOrganization,
   useProject
@@ -85,6 +87,7 @@ import {
   useGetProjectRoles,
   useListProjectIdentityMemberships
 } from "@app/hooks/api";
+import { ActorType } from "@app/hooks/api/auditLogs/enums";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { ProjectIdentityOrderBy, ProjectType } from "@app/hooks/api/projects/types";
 import { usePopUp } from "@app/hooks/usePopUp";
@@ -178,7 +181,8 @@ export const IdentityTab = withProjectPermission(
       "createIdentity",
       "deleteIdentity",
       "upgradePlan",
-      "addOptions"
+      "addOptions",
+      "assumePrivileges"
     ] as const);
 
     const onRemoveIdentitySubmit = async (identityId: string, isProjectIdentity: boolean) => {
@@ -452,6 +456,38 @@ export const IdentityTab = withProjectPermission(
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent sideOffset={2} align="end">
                                     <ProjectPermissionCan
+                                      I={ProjectPermissionIdentityActions.AssumePrivileges}
+                                      a={subject(ProjectPermissionSub.Identity, {
+                                        identityId: id
+                                      })}
+                                    >
+                                      {(isAllowed) => (
+                                        <Tooltip>
+                                          <TooltipTrigger className="block w-full">
+                                            <DropdownMenuItem
+                                              isDisabled={!isAllowed}
+                                              onClick={(evt) => {
+                                                evt.stopPropagation();
+                                                evt.preventDefault();
+                                                handlePopUpOpen("assumePrivileges", {
+                                                  identityId: id
+                                                });
+                                              }}
+                                            >
+                                              Assume Privileges
+                                              {isAllowed && <InfoIcon className="text-muted" />}
+                                            </DropdownMenuItem>
+                                          </TooltipTrigger>
+                                          {isAllowed && (
+                                            <TooltipContent className="max-w-80" side="left">
+                                              Assume the privileges of this machine identity,
+                                              allowing you to replicate their access behavior.
+                                            </TooltipContent>
+                                          )}
+                                        </Tooltip>
+                                      )}
+                                    </ProjectPermissionCan>
+                                    <ProjectPermissionCan
                                       I={ProjectPermissionActions.Delete}
                                       a={subject(ProjectPermissionSub.Identity, {
                                         identityId: id
@@ -599,6 +635,12 @@ export const IdentityTab = withProjectPermission(
               popUp?.deleteIdentity?.data?.isProjectIdentity
             )
           }
+        />
+        <AssumePrivilegesModal
+          isOpen={popUp.assumePrivileges.isOpen}
+          onOpenChange={(isOpen) => handlePopUpToggle("assumePrivileges", isOpen)}
+          actorType={ActorType.IDENTITY}
+          actorId={(popUp.assumePrivileges.data as { identityId: string })?.identityId}
         />
       </>
     );

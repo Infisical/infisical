@@ -22,8 +22,7 @@ export enum NotificationType {
   APPROVAL_REQUIRED = "approval-required",
   PKI_ALERT_CHANNEL_FAILED = "pki-alert-channel-failed",
   CREDENTIAL_ROTATION_FAILED = "credential-rotation-failed",
-  AUDIT_LOG_MIGRATION_RECOMMENDED = "audit-log-migration-recommended",
-  AUDIT_LOG_STREAM_FAILED = "audit-log-stream-failed"
+  AUDIT_LOG_MIGRATION_RECOMMENDED = "audit-log-migration-recommended"
 }
 
 export interface TCreateUserNotificationDTO {

@@ -7,14 +7,16 @@ import { TGitLabGroup, TGitLabProject } from "./types";
 
 const gitlabConnectionKeys = {
   all: [...appConnectionKeys.all, "gitlab"] as const,
-  listProjects: (connectionId: string) =>
-    [...gitlabConnectionKeys.all, "projects", connectionId] as const,
-  listGroups: (connectionId: string) =>
-    [...gitlabConnectionKeys.all, "groups", connectionId] as const
+  listProjects: (connectionId: string, search?: string, limit?: number) =>
+    [...gitlabConnectionKeys.all, "projects", connectionId, search ?? "", limit ?? ""] as const,
+  listGroups: (connectionId: string, search?: string, limit?: number) =>
+    [...gitlabConnectionKeys.all, "groups", connectionId, search ?? "", limit ?? ""] as const
 };
 
 export const useGitLabConnectionListProjects = (
   connectionId: string,
+  search?: string,
+  limit?: number,
   options?: Omit<
     UseQueryOptions<
       TGitLabProject[],
@@ -26,10 +28,16 @@ export const useGitLabConnectionListProjects = (
   >
 ) => {
   return useQuery({
-    queryKey: gitlabConnectionKeys.listProjects(connectionId),
+    queryKey: gitlabConnectionKeys.listProjects(connectionId, search, limit),
     queryFn: async () => {
       const { data } = await apiRequest.get<TGitLabProject[]>(
-        `/api/v1/app-connections/gitlab/${connectionId}/projects`
+        `/api/v1/app-connections/gitlab/${connectionId}/projects`,
+        {
+          params: {
+            ...(search ? { search } : {}),
+            ...(limit !== undefined ? { limit } : {})
+          }
+        }
       );
 
       return data;
@@ -40,6 +48,8 @@ export const useGitLabConnectionListProjects = (
 
 export const useGitLabConnectionListGroups = (
   connectionId: string,
+  search?: string,
+  limit?: number,
   options?: Omit<
     UseQueryOptions<
       TGitLabGroup[],
@@ -51,10 +61,16 @@ export const useGitLabConnectionListGroups = (
   >
 ) => {
   return useQuery({
-    queryKey: gitlabConnectionKeys.listGroups(connectionId),
+    queryKey: gitlabConnectionKeys.listGroups(connectionId, search, limit),
     queryFn: async () => {
       const { data } = await apiRequest.get<TGitLabGroup[]>(
-        `/api/v1/app-connections/gitlab/${connectionId}/groups`
+        `/api/v1/app-connections/gitlab/${connectionId}/groups`,
+        {
+          params: {
+            ...(search ? { search } : {}),
+            ...(limit !== undefined ? { limit } : {})
+          }
+        }
       );
 
       return data;

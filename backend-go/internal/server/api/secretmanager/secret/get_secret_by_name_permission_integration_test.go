@@ -8,7 +8,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	gensecrets "github.com/infisical/api/internal/server/gen/secrets"
 	"github.com/infisical/api/internal/services/auth"
 	"github.com/infisical/api/internal/testutil/infra"
 )
@@ -45,13 +44,12 @@ func TestGetSecretByName_ImportPermissions(t *testing.T) {
 	nodejs.AddIdentityToProject(t, proj.ID, adminIdentity.ID, infra.Role("admin"))
 
 	t.Run("direct secret allowed with env-scoped permission", func(t *testing.T) {
-		result, err := getSecretByName(t, auth.ActorTypeIdentity, devOnlyIdentity.ID, nodejs.OrgID(), &gensecrets.GetSecretByNameV4Payload{
-			SecretName:      "DEV_DIRECT",
+		result, err := getSecretByName(t, auth.ActorTypeIdentity, devOnlyIdentity.ID, nodejs.OrgID(), "DEV_DIRECT", &GetSecretByNameV4Params{
 			ProjectID:       proj.ID,
 			Environment:     "dev",
-			SecretPath:      "/",
-			ViewSecretValue: true,
-			IncludeImports:  false,
+			SecretPath:      new("/"),
+			ViewSecretValue: new(true),
+			IncludeImports:  new(false),
 		})
 
 		require.NoError(t, err)
@@ -60,27 +58,25 @@ func TestGetSecretByName_ImportPermissions(t *testing.T) {
 	})
 
 	t.Run("imported secret denied without source env permission", func(t *testing.T) {
-		_, err := getSecretByName(t, auth.ActorTypeIdentity, devOnlyIdentity.ID, nodejs.OrgID(), &gensecrets.GetSecretByNameV4Payload{
-			SecretName:      "STAGING_SECRET",
+		_, err := getSecretByName(t, auth.ActorTypeIdentity, devOnlyIdentity.ID, nodejs.OrgID(), "STAGING_SECRET", &GetSecretByNameV4Params{
 			ProjectID:       proj.ID,
 			Environment:     "dev",
-			SecretPath:      "/",
-			ViewSecretValue: true,
-			IncludeImports:  true,
+			SecretPath:      new("/"),
+			ViewSecretValue: new(true),
+			IncludeImports:  new(true),
 		})
 
 		require.Error(t, err, "should deny access to imported secret when lacking source env permission")
-		assert.Contains(t, err.Error(), "permission")
+		assert.Contains(t, err.Error(), "Permission")
 	})
 
 	t.Run("imported secret allowed with admin permission", func(t *testing.T) {
-		result, err := getSecretByName(t, auth.ActorTypeIdentity, adminIdentity.ID, nodejs.OrgID(), &gensecrets.GetSecretByNameV4Payload{
-			SecretName:      "STAGING_SECRET",
+		result, err := getSecretByName(t, auth.ActorTypeIdentity, adminIdentity.ID, nodejs.OrgID(), "STAGING_SECRET", &GetSecretByNameV4Params{
 			ProjectID:       proj.ID,
 			Environment:     "dev",
-			SecretPath:      "/",
-			ViewSecretValue: true,
-			IncludeImports:  true,
+			SecretPath:      new("/"),
+			ViewSecretValue: new(true),
+			IncludeImports:  new(true),
 		})
 
 		require.NoError(t, err)
@@ -90,13 +86,12 @@ func TestGetSecretByName_ImportPermissions(t *testing.T) {
 	})
 
 	t.Run("imported secret not found when includeImports is false", func(t *testing.T) {
-		_, err := getSecretByName(t, auth.ActorTypeIdentity, adminIdentity.ID, nodejs.OrgID(), &gensecrets.GetSecretByNameV4Payload{
-			SecretName:      "STAGING_SECRET",
+		_, err := getSecretByName(t, auth.ActorTypeIdentity, adminIdentity.ID, nodejs.OrgID(), "STAGING_SECRET", &GetSecretByNameV4Params{
 			ProjectID:       proj.ID,
 			Environment:     "dev",
-			SecretPath:      "/",
-			ViewSecretValue: true,
-			IncludeImports:  false,
+			SecretPath:      new("/"),
+			ViewSecretValue: new(true),
+			IncludeImports:  new(false),
 		})
 
 		require.Error(t, err)

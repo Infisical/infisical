@@ -1026,7 +1026,15 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
           db.raw(
             `CASE WHEN "${TableName.AdditionalPrivilege}"."isTemporary" AND NOW() >= "${TableName.AdditionalPrivilege}"."temporaryAccessEndTime" THEN true ELSE false END AS "pExp"`
           )
-        );
+        )
+        // deterministic row order — Postgres doesn't guarantee ordering without it, and an unstable
+        // order would flip the hashed fingerprint between calls, silently breaking ETag/cache hits.
+        .orderBy([
+          { column: `${TableName.Membership}.id` },
+          { column: `${TableName.MembershipRole}.id` },
+          { column: `${TableName.AdditionalPrivilege}.id` },
+          { column: `${TableName.IdentityMetadata}.id` }
+        ]);
 
       return generateCacheKeyFromData(rows);
     } catch (error) {

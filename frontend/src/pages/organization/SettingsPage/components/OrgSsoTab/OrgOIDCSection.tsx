@@ -167,7 +167,7 @@ export const OrgOIDCSection = ({ onSwitchProvider }: Props): JSX.Element => {
                       <div>
                         <Switch
                           id="enable-oidc-sso"
-                          variant="project"
+                          variant="org"
                           checked={data.isActive}
                           onCheckedChange={(value) => handleOIDCToggle(value)}
                           disabled={!isAllowed || isGoogleOAuthEnabled}
@@ -223,7 +223,7 @@ export const OrgOIDCSection = ({ onSwitchProvider }: Props): JSX.Element => {
                 {(isAllowed) => (
                   <Switch
                     id="enforce-org-auth"
-                    variant="project"
+                    variant="org"
                     checked={data?.manageGroupMemberships ?? false}
                     onCheckedChange={(value) => handleOIDCGroupManagement(value)}
                     disabled={!isAllowed}

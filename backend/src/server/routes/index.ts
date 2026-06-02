@@ -421,6 +421,7 @@ import { pkiSyncQueueFactory } from "@app/services/pki-sync/pki-sync-queue";
 import { pkiSyncServiceFactory } from "@app/services/pki-sync/pki-sync-service";
 import { pkiTemplatesDALFactory } from "@app/services/pki-templates/pki-templates-dal";
 import { pkiTemplatesServiceFactory } from "@app/services/pki-templates/pki-templates-service";
+import { projectAccessRequestDALFactory } from "@app/services/project/project-access-request-dal";
 import { projectDALFactory } from "@app/services/project/project-dal";
 import { projectQueueFactory } from "@app/services/project/project-queue";
 import { projectServiceFactory } from "@app/services/project/project-service";
@@ -559,6 +560,7 @@ export const registerRoutes = async (
   const rateLimitDAL = rateLimitDALFactory(db);
 
   const projectDAL = projectDALFactory(db);
+  const projectAccessRequestDAL = projectAccessRequestDALFactory(db);
   const projectSshConfigDAL = projectSshConfigDALFactory(db);
   const projectMembershipDAL = projectMembershipDALFactory(db);
   const projectEnvDAL = projectEnvDALFactory(db);
@@ -781,7 +783,8 @@ export const registerRoutes = async (
     tokenService,
     userAliasDAL,
     userGroupMembershipDAL,
-    additionalPrivilegeDAL
+    additionalPrivilegeDAL,
+    projectAccessRequestDAL
   });
 
   const membershipIdentityService = membershipIdentityServiceFactory({
@@ -863,11 +866,7 @@ export const registerRoutes = async (
     licenseService,
     permissionService,
     auditLogStreamDAL,
-    kmsService,
-    keyStore,
-    notificationService,
-    smtpService,
-    orgDAL
+    kmsService
   });
 
   const auditLogQueue = await auditLogQueueServiceFactory({
@@ -1134,6 +1133,8 @@ export const registerRoutes = async (
     secretV2BridgeDAL
   });
 
+  const certificatePolicyDAL = certificatePolicyDALFactory(db);
+
   const orgService = orgServiceFactory({
     userAliasDAL,
     identityMetadataDAL,
@@ -1163,7 +1164,8 @@ export const registerRoutes = async (
     membershipDAL,
     roleDAL,
     userGroupMembershipDAL,
-    additionalPrivilegeDAL
+    additionalPrivilegeDAL,
+    certificatePolicyDAL
   });
 
   const subOrgService = subOrgServiceFactory({
@@ -1172,7 +1174,8 @@ export const registerRoutes = async (
     membershipRoleDAL,
     orgDAL,
     projectDAL,
-    permissionService
+    permissionService,
+    certificatePolicyDAL
   });
 
   const signupService = authSignupServiceFactory({
@@ -1312,7 +1315,6 @@ export const registerRoutes = async (
   const certificateAuthorityCrlDAL = certificateAuthorityCrlDALFactory(db);
   const certificateTemplateDAL = certificateTemplateDALFactory(db);
   const certificateTemplateEstConfigDAL = certificateTemplateEstConfigDALFactory(db);
-  const certificatePolicyDAL = certificatePolicyDALFactory(db);
   const certificateProfileDAL = certificateProfileDALFactory(db);
   const pkiApplicationDAL = pkiApplicationDALFactory(db);
   const pkiApplicationProfileDAL = pkiApplicationProfileDALFactory(db);
@@ -1729,7 +1731,8 @@ export const registerRoutes = async (
     membershipRoleDAL,
     membershipUserDAL,
     roleDAL,
-    groupDAL
+    groupDAL,
+    projectAccessRequestDAL
   });
 
   const projectEnvQueue = projectEnvQueueFactory({

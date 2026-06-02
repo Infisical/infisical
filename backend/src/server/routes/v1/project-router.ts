@@ -85,6 +85,33 @@ const projectWithEnv = SanitizedProjectSchema.merge(
 export const registerProjectRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
+    url: "/me/project-access-requests",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      operationId: "getMyPendingProjectAccessRequests",
+      response: {
+        200: z.object({
+          requests: z
+            .object({
+              projectId: z.string(),
+              createdAt: z.date()
+            })
+            .array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      return server.services.project.getMyPendingProjectAccessRequests({
+        permission: req.permission
+      });
+    }
+  });
+
+  server.route({
+    method: "GET",
     url: "/:projectId/users",
     config: {
       rateLimit: readLimit

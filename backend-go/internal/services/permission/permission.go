@@ -106,12 +106,16 @@ func (p *Service) GetProjectPermission(ctx context.Context, args *GetProjectPerm
 		return p.getServiceTokenProjectPermission(ctx, args.ActorID.String(), args.ProjectID, args.ActorOrgID, args.ActionProjectType)
 	}
 
-	// 2. TODO(go): assumed privilege check — allows users to assume another actor's privileges
-	// (identity impersonation). Port of permission-service.ts:427-436.
-	// Implementation requires:
-	// - Request context key for AssumedPrivilegeDetails
-	// - Check if current user is assuming another identity's privileges
-	// - Swap actor/actorId if assumption is valid
+	// 2. Assumed privilege check — allows users to assume another actor's privileges.
+	// Port of permission-service.ts:482-492.
+	if assumed := auth.AssumedPrivilegeFromContext(ctx); assumed != nil {
+		if args.Actor == auth.ActorTypeUser &&
+			args.ActorID == assumed.RequesterID &&
+			args.ProjectID == assumed.ProjectID {
+			args.Actor = assumed.ActorType
+			args.ActorID = assumed.ActorID
+		}
+	}
 
 	// 3. Validate actor type
 	if args.Actor != auth.ActorTypeUser && args.Actor != auth.ActorTypeIdentity {
@@ -400,15 +404,16 @@ func checkProjectEnforcement(projectDetails *projectDetail) func(string) bool {
 	}
 }
 
-// buildIdentityAuthMap extracts identity auth info (OIDC/Kubernetes/AWS claims) from request context
+// buildIdentityAuthMap extracts identity auth info (OIDC/Kubernetes/AWS claims) from Identity
 // for use in permission template variable interpolation.
 // Port of permission-service.ts:528-532.
 func buildIdentityAuthMap(ctx context.Context, actorID uuid.UUID) map[string]any {
-	authInfo := auth.AuthInfoFromContext(ctx)
-	if authInfo == nil {
+	identity, err := auth.IdentityFromContext(ctx)
+	if err != nil || identity.IdentityAuthInfo == nil {
 		return map[string]any{}
 	}
 
+	authInfo := identity.IdentityAuthInfo
 	if authInfo.IdentityID != actorID {
 		return map[string]any{}
 	}

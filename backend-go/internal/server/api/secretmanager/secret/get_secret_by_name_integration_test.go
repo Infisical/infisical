@@ -3,17 +3,51 @@
 package secret_test
 
 import (
-	"context"
+	"encoding/json"
+	"fmt"
+	"net/http/httptest"
+	"net/url"
+	"strconv"
 	"testing"
 
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	gensecrets "github.com/infisical/api/internal/server/gen/secrets"
+	"github.com/infisical/api/internal/server/api/secretmanager/secret"
+	"github.com/infisical/api/internal/server/api/shared"
 	"github.com/infisical/api/internal/services/auth"
 	"github.com/infisical/api/internal/testutil/infra"
 )
+
+// httpGetSecretV4 makes a direct HTTP GET request to /api/v4/secrets/{secretName}
+func httpGetSecretV4(t *testing.T, srv *httptest.Server, secretName string, params *GetSecretByNameV4Params) (body []byte, statusCode int) {
+	t.Helper()
+
+	urlParams := url.Values{}
+	urlParams.Set("projectId", params.ProjectID)
+	urlParams.Set("environment", params.Environment)
+	if params.SecretPath != nil {
+		urlParams.Set("secretPath", *params.SecretPath)
+	}
+	if params.Version != nil {
+		urlParams.Set("version", strconv.Itoa(*params.Version))
+	}
+	if params.Type != nil {
+		urlParams.Set("type", *params.Type)
+	}
+	if params.ViewSecretValue != nil {
+		urlParams.Set("viewSecretValue", strconv.FormatBool(*params.ViewSecretValue))
+	}
+	if params.ExpandSecretReferences != nil {
+		urlParams.Set("expandSecretReferences", strconv.FormatBool(*params.ExpandSecretReferences))
+	}
+	if params.IncludeImports != nil {
+		urlParams.Set("includeImports", strconv.FormatBool(*params.IncludeImports))
+	}
+
+	path := fmt.Sprintf("/api/v4/secrets/%s?%s", url.PathEscape(secretName), urlParams.Encode())
+	return doGet(t, srv, path)
+}
 
 // =============================================================================
 // Basic GetSecretByName Tests
@@ -28,21 +62,11 @@ func TestGetSecretByName_ReturnsSecret(t *testing.T) {
 	identity := nodejs.CreateIdentity(t, "get-basic-identity")
 	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
 
-	svc := newSecretsHandler(t)
-	ctx := auth.WithIdentity(context.Background(), &auth.Identity{
-		AuthMode:   auth.AuthModeIdentityAccessToken,
-		Actor:      auth.ActorTypeIdentity,
-		ActorID:    uuid.MustParse(identity.ID),
-		OrgID:      uuid.MustParse(nodejs.OrgID()),
-		AuthMethod: "",
-	})
-
-	result, err := svc.GetSecretByNameV4(ctx, &gensecrets.GetSecretByNameV4Payload{
-		SecretName:      "PLAIN_SECRET",
+	result, err := getSecretByName(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), "PLAIN_SECRET", &GetSecretByNameV4Params{
 		ProjectID:       proj.ID,
 		Environment:     proj.EnvSlug,
-		SecretPath:      "/",
-		ViewSecretValue: true,
+		SecretPath:      new("/"),
+		ViewSecretValue: new(true),
 	})
 
 	require.NoError(t, err)
@@ -61,22 +85,12 @@ func TestGetSecretByName_WithExpansion(t *testing.T) {
 	identity := nodejs.CreateIdentity(t, "get-expansion-identity")
 	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
 
-	svc := newSecretsHandler(t)
-	ctx := auth.WithIdentity(context.Background(), &auth.Identity{
-		AuthMode:   auth.AuthModeIdentityAccessToken,
-		Actor:      auth.ActorTypeIdentity,
-		ActorID:    uuid.MustParse(identity.ID),
-		OrgID:      uuid.MustParse(nodejs.OrgID()),
-		AuthMethod: "",
-	})
-
-	result, err := svc.GetSecretByNameV4(ctx, &gensecrets.GetSecretByNameV4Payload{
-		SecretName:             "ENDPOINT",
+	result, err := getSecretByName(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), "ENDPOINT", &GetSecretByNameV4Params{
 		ProjectID:              proj.ID,
 		Environment:            proj.EnvSlug,
-		SecretPath:             "/",
-		ViewSecretValue:        true,
-		ExpandSecretReferences: true,
+		SecretPath:             new("/"),
+		ViewSecretValue:        new(true),
+		ExpandSecretReferences: new(true),
 	})
 
 	require.NoError(t, err)
@@ -94,22 +108,12 @@ func TestGetSecretByName_WithoutExpansion(t *testing.T) {
 	identity := nodejs.CreateIdentity(t, "get-no-expansion-identity")
 	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
 
-	svc := newSecretsHandler(t)
-	ctx := auth.WithIdentity(context.Background(), &auth.Identity{
-		AuthMode:   auth.AuthModeIdentityAccessToken,
-		Actor:      auth.ActorTypeIdentity,
-		ActorID:    uuid.MustParse(identity.ID),
-		OrgID:      uuid.MustParse(nodejs.OrgID()),
-		AuthMethod: "",
-	})
-
-	result, err := svc.GetSecretByNameV4(ctx, &gensecrets.GetSecretByNameV4Payload{
-		SecretName:             "ENDPOINT",
+	result, err := getSecretByName(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), "ENDPOINT", &GetSecretByNameV4Params{
 		ProjectID:              proj.ID,
 		Environment:            proj.EnvSlug,
-		SecretPath:             "/",
-		ViewSecretValue:        true,
-		ExpandSecretReferences: false,
+		SecretPath:             new("/"),
+		ViewSecretValue:        new(true),
+		ExpandSecretReferences: new(false),
 	})
 
 	require.NoError(t, err)
@@ -125,21 +129,11 @@ func TestGetSecretByName_NotFound(t *testing.T) {
 	identity := nodejs.CreateIdentity(t, "get-not-found-identity")
 	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
 
-	svc := newSecretsHandler(t)
-	ctx := auth.WithIdentity(context.Background(), &auth.Identity{
-		AuthMode:   auth.AuthModeIdentityAccessToken,
-		Actor:      auth.ActorTypeIdentity,
-		ActorID:    uuid.MustParse(identity.ID),
-		OrgID:      uuid.MustParse(nodejs.OrgID()),
-		AuthMethod: "",
-	})
-
-	_, err := svc.GetSecretByNameV4(ctx, &gensecrets.GetSecretByNameV4Payload{
-		SecretName:      "NON_EXISTENT_SECRET",
+	_, err := getSecretByName(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), "NON_EXISTENT_SECRET", &GetSecretByNameV4Params{
 		ProjectID:       proj.ID,
 		Environment:     proj.EnvSlug,
-		SecretPath:      "/",
-		ViewSecretValue: true,
+		SecretPath:      new("/"),
+		ViewSecretValue: new(true),
 	})
 
 	require.Error(t, err)
@@ -157,21 +151,11 @@ func TestGetSecretByName_WithComment(t *testing.T) {
 	identity := nodejs.CreateIdentity(t, "get-comment-identity")
 	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
 
-	svc := newSecretsHandler(t)
-	ctx := auth.WithIdentity(context.Background(), &auth.Identity{
-		AuthMode:   auth.AuthModeIdentityAccessToken,
-		Actor:      auth.ActorTypeIdentity,
-		ActorID:    uuid.MustParse(identity.ID),
-		OrgID:      uuid.MustParse(nodejs.OrgID()),
-		AuthMethod: "",
-	})
-
-	result, err := svc.GetSecretByNameV4(ctx, &gensecrets.GetSecretByNameV4Payload{
-		SecretName:      "COMMENTED_SECRET",
+	result, err := getSecretByName(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), "COMMENTED_SECRET", &GetSecretByNameV4Params{
 		ProjectID:       proj.ID,
 		Environment:     proj.EnvSlug,
-		SecretPath:      "/",
-		ViewSecretValue: true,
+		SecretPath:      new("/"),
+		ViewSecretValue: new(true),
 	})
 
 	require.NoError(t, err)
@@ -193,21 +177,11 @@ func TestGetSecretByName_WithMetadata(t *testing.T) {
 	identity := nodejs.CreateIdentity(t, "get-metadata-identity")
 	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
 
-	svc := newSecretsHandler(t)
-	ctx := auth.WithIdentity(context.Background(), &auth.Identity{
-		AuthMode:   auth.AuthModeIdentityAccessToken,
-		Actor:      auth.ActorTypeIdentity,
-		ActorID:    uuid.MustParse(identity.ID),
-		OrgID:      uuid.MustParse(nodejs.OrgID()),
-		AuthMethod: "",
-	})
-
-	result, err := svc.GetSecretByNameV4(ctx, &gensecrets.GetSecretByNameV4Payload{
-		SecretName:      "METADATA_SECRET",
+	result, err := getSecretByName(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), "METADATA_SECRET", &GetSecretByNameV4Params{
 		ProjectID:       proj.ID,
 		Environment:     proj.EnvSlug,
-		SecretPath:      "/",
-		ViewSecretValue: true,
+		SecretPath:      new("/"),
+		ViewSecretValue: new(true),
 	})
 
 	require.NoError(t, err)
@@ -237,22 +211,12 @@ func TestGetSecretByName_ExpandsSameFolderRefsWithoutImports(t *testing.T) {
 	identity := nodejs.CreateIdentity(t, "no-imports-expansion-identity")
 	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
 
-	svc := newSecretsHandler(t)
-	ctx := auth.WithIdentity(context.Background(), &auth.Identity{
-		AuthMode:   auth.AuthModeIdentityAccessToken,
-		Actor:      auth.ActorTypeIdentity,
-		ActorID:    uuid.MustParse(identity.ID),
-		OrgID:      uuid.MustParse(nodejs.OrgID()),
-		AuthMethod: "",
-	})
-
-	result, err := svc.GetSecretByNameV4(ctx, &gensecrets.GetSecretByNameV4Payload{
-		SecretName:             "ENDPOINT",
+	result, err := getSecretByName(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), "ENDPOINT", &GetSecretByNameV4Params{
 		ProjectID:              proj.ID,
 		Environment:            "dev",
-		SecretPath:             "/",
-		ViewSecretValue:        true,
-		ExpandSecretReferences: true,
+		SecretPath:             new("/"),
+		ViewSecretValue:        new(true),
+		ExpandSecretReferences: new(true),
 	})
 
 	require.NoError(t, err)
@@ -274,22 +238,12 @@ func TestGetSecretByName_ExpandsNestedRefsWithoutImports(t *testing.T) {
 	identity := nodejs.CreateIdentity(t, "nested-no-imports-identity")
 	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
 
-	svc := newSecretsHandler(t)
-	ctx := auth.WithIdentity(context.Background(), &auth.Identity{
-		AuthMode:   auth.AuthModeIdentityAccessToken,
-		Actor:      auth.ActorTypeIdentity,
-		ActorID:    uuid.MustParse(identity.ID),
-		OrgID:      uuid.MustParse(nodejs.OrgID()),
-		AuthMethod: "",
-	})
-
-	result, err := svc.GetSecretByNameV4(ctx, &gensecrets.GetSecretByNameV4Payload{
-		SecretName:             "FULL_DSN",
+	result, err := getSecretByName(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), "FULL_DSN", &GetSecretByNameV4Params{
 		ProjectID:              proj.ID,
 		Environment:            "dev",
-		SecretPath:             "/",
-		ViewSecretValue:        true,
-		ExpandSecretReferences: true,
+		SecretPath:             new("/"),
+		ViewSecretValue:        new(true),
+		ExpandSecretReferences: new(true),
 	})
 
 	require.NoError(t, err)
@@ -308,22 +262,11 @@ func TestGetSecretByNameRawV3_WithWorkspaceSlug(t *testing.T) {
 	proj := nodejs.CreateProject(t, "v3-get-slug-test")
 	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "V3_SECRET", "v3-value", nil)
 
-	svc := newSecretsHandler(t)
-	ctx := auth.WithIdentity(context.Background(), &auth.Identity{
-		AuthMode:   auth.AuthModeJWT,
-		Actor:      auth.ActorTypeUser,
-		ActorID:    uuid.MustParse(nodejs.UserID()),
-		OrgID:      uuid.MustParse(nodejs.OrgID()),
-		AuthMethod: "",
-	})
-
-	env := proj.EnvSlug
-	result, err := svc.GetSecretByNameRawV3(ctx, &gensecrets.GetSecretByNameRawV3Payload{
-		SecretName:      "V3_SECRET",
-		WorkspaceSlug:   &proj.Slug,
-		Environment:     &env,
-		SecretPath:      "/",
-		ViewSecretValue: true,
+	result, err := getSecretByNameRawV3AsUser(t, nodejs.UserID(), nodejs.OrgID(), "V3_SECRET", &GetSecretByNameV3Params{
+		WorkspaceSlug:   new(proj.Slug),
+		Environment:     new(proj.EnvSlug),
+		SecretPath:      new("/"),
+		ViewSecretValue: new(true),
 	})
 
 	require.NoError(t, err)
@@ -337,22 +280,11 @@ func TestGetSecretByNameRawV3_WithWorkspaceId(t *testing.T) {
 	proj := nodejs.CreateProject(t, "v3-get-id-test")
 	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "V3_ID_SECRET", "v3-id-value", nil)
 
-	svc := newSecretsHandler(t)
-	ctx := auth.WithIdentity(context.Background(), &auth.Identity{
-		AuthMode:   auth.AuthModeJWT,
-		Actor:      auth.ActorTypeUser,
-		ActorID:    uuid.MustParse(nodejs.UserID()),
-		OrgID:      uuid.MustParse(nodejs.OrgID()),
-		AuthMethod: "",
-	})
-
-	env := proj.EnvSlug
-	result, err := svc.GetSecretByNameRawV3(ctx, &gensecrets.GetSecretByNameRawV3Payload{
-		SecretName:      "V3_ID_SECRET",
-		WorkspaceID:     &proj.ID,
-		Environment:     &env,
-		SecretPath:      "/",
-		ViewSecretValue: true,
+	result, err := getSecretByNameRawV3AsUser(t, nodejs.UserID(), nodejs.OrgID(), "V3_ID_SECRET", &GetSecretByNameV3Params{
+		WorkspaceID:     new(proj.ID),
+		Environment:     new(proj.EnvSlug),
+		SecretPath:      new("/"),
+		ViewSecretValue: new(true),
 	})
 
 	require.NoError(t, err)
@@ -375,22 +307,12 @@ func TestGetSecretByName_FromImport(t *testing.T) {
 	identity := nodejs.CreateIdentity(t, "get-import-identity")
 	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
 
-	svc := newSecretsHandler(t)
-	ctx := auth.WithIdentity(context.Background(), &auth.Identity{
-		AuthMode:   auth.AuthModeIdentityAccessToken,
-		Actor:      auth.ActorTypeIdentity,
-		ActorID:    uuid.MustParse(identity.ID),
-		OrgID:      uuid.MustParse(nodejs.OrgID()),
-		AuthMethod: "",
-	})
-
-	result, err := svc.GetSecretByNameV4(ctx, &gensecrets.GetSecretByNameV4Payload{
-		SecretName:      "STAGING_SECRET",
+	result, err := getSecretByName(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), "STAGING_SECRET", &GetSecretByNameV4Params{
 		ProjectID:       proj.ID,
 		Environment:     "dev",
-		SecretPath:      "/",
-		ViewSecretValue: true,
-		IncludeImports:  true,
+		SecretPath:      new("/"),
+		ViewSecretValue: new(true),
+		IncludeImports:  new(true),
 	})
 
 	require.NoError(t, err)
@@ -410,24 +332,95 @@ func TestGetSecretByName_ImportNotFoundWhenExcluded(t *testing.T) {
 	identity := nodejs.CreateIdentity(t, "get-import-excluded-identity")
 	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
 
-	svc := newSecretsHandler(t)
-	ctx := auth.WithIdentity(context.Background(), &auth.Identity{
-		AuthMode:   auth.AuthModeIdentityAccessToken,
-		Actor:      auth.ActorTypeIdentity,
-		ActorID:    uuid.MustParse(identity.ID),
-		OrgID:      uuid.MustParse(nodejs.OrgID()),
-		AuthMethod: "",
-	})
-
-	_, err := svc.GetSecretByNameV4(ctx, &gensecrets.GetSecretByNameV4Payload{
-		SecretName:      "STAGING_ONLY",
+	_, err := getSecretByName(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), "STAGING_ONLY", &GetSecretByNameV4Params{
 		ProjectID:       proj.ID,
 		Environment:     "dev",
-		SecretPath:      "/",
-		ViewSecretValue: true,
-		IncludeImports:  false,
+		SecretPath:      new("/"),
+		ViewSecretValue: new(true),
+		IncludeImports:  new(false),
 	})
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "not found")
+}
+
+// =============================================================================
+// HTTP Tests - Verify request parsing and response serialization
+// =============================================================================
+
+func TestGetSecretByNameV4_HTTP(t *testing.T) {
+	nodejs := stack.NodeJS()
+
+	proj := nodejs.CreateProject(t, "http-get-test")
+	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "HTTP_GET_SECRET", "http-get-value", nil)
+	nodejs.CreateFolder(t, proj.ID, proj.EnvSlug, "/", "nested")
+	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/nested", "NESTED_GET_SECRET", "nested-get-value", nil)
+
+	identity := nodejs.CreateIdentity(t, "http-get-identity")
+	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
+
+	handler := newSecretsHandler(t)
+	srv := newTestServer(t, handler, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID())
+	defer srv.Close()
+
+	t.Run("success with path param and query params", func(t *testing.T) {
+		body, status := httpGetSecretV4(t, srv, "HTTP_GET_SECRET", &GetSecretByNameV4Params{
+			ProjectID:   proj.ID,
+			Environment: proj.EnvSlug,
+		})
+
+		assert.Equal(t, 200, status)
+		var resp secret.GetSecretByNameV4Response
+		require.NoError(t, json.Unmarshal(body, &resp))
+		assert.Equal(t, "HTTP_GET_SECRET", resp.Secret.SecretKey)
+		assert.Equal(t, "http-get-value", resp.Secret.SecretValue)
+	})
+
+	t.Run("secretPath query param filters correctly", func(t *testing.T) {
+		body, status := httpGetSecretV4(t, srv, "NESTED_GET_SECRET", &GetSecretByNameV4Params{
+			ProjectID:   proj.ID,
+			Environment: proj.EnvSlug,
+			SecretPath:  new("/nested"),
+		})
+
+		assert.Equal(t, 200, status)
+		var resp secret.GetSecretByNameV4Response
+		require.NoError(t, json.Unmarshal(body, &resp))
+		assert.Equal(t, "NESTED_GET_SECRET", resp.Secret.SecretKey)
+		assert.Equal(t, "nested-get-value", resp.Secret.SecretValue)
+	})
+
+	t.Run("missing projectId returns 400", func(t *testing.T) {
+		body, status := httpGetSecretV4(t, srv, "HTTP_GET_SECRET", &GetSecretByNameV4Params{
+			Environment: proj.EnvSlug,
+		})
+
+		assert.Equal(t, 400, status)
+		var resp shared.Error
+		require.NoError(t, json.Unmarshal(body, &resp))
+		assert.NotEmpty(t, resp.Message)
+	})
+
+	t.Run("missing environment returns 400", func(t *testing.T) {
+		body, status := httpGetSecretV4(t, srv, "HTTP_GET_SECRET", &GetSecretByNameV4Params{
+			ProjectID: proj.ID,
+		})
+
+		assert.Equal(t, 400, status)
+		var resp shared.Error
+		require.NoError(t, json.Unmarshal(body, &resp))
+		assert.NotEmpty(t, resp.Message)
+	})
+
+	t.Run("secret not found returns 404", func(t *testing.T) {
+		body, status := httpGetSecretV4(t, srv, "NON_EXISTENT", &GetSecretByNameV4Params{
+			ProjectID:   proj.ID,
+			Environment: proj.EnvSlug,
+		})
+
+		assert.Equal(t, 404, status)
+		var resp shared.Error
+		require.NoError(t, json.Unmarshal(body, &resp))
+		assert.Contains(t, resp.Message, "not found")
+	})
 }

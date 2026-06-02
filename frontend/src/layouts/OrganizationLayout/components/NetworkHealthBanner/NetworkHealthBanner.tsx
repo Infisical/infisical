@@ -14,15 +14,11 @@ import { apiRequest } from "@app/config/request";
 import { useOrganization, useOrgPermission } from "@app/context";
 import {
   OrgGatewayPermissionActions,
-  OrgPermissionActions,
   OrgPermissionSubjects,
   OrgRelayPermissionActions
 } from "@app/context/OrgPermissionContext/types";
 import { gatewaysQueryKeys } from "@app/hooks/api/gateways/queries";
 import { isGatewayHealthy } from "@app/hooks/api/gateways-v2/utils";
-import { useUpdateNotification } from "@app/hooks/api/notifications/mutations";
-import { useGetMyNotifications } from "@app/hooks/api/notifications/queries";
-import { NotificationType } from "@app/hooks/api/notifications/types";
 import { relayQueryKeys } from "@app/hooks/api/relays/queries";
 import { TRelay } from "@app/hooks/api/relays/types";
 
@@ -85,7 +81,6 @@ const SingleAlertRow = ({ alert, isChild }: SingleAlertRowProps) => (
 export const NetworkHealthBanner = () => {
   const [isExpanded, setIsExpanded] = useState(true);
   const [networkDismissed, setNetworkDismissed] = useState(() => wasDismissedWithinLastDay());
-  const [dismissedAlertIds, setDismissedAlertIds] = useState<Set<string>>(() => new Set());
 
   const { currentOrg } = useOrganization();
   const { permission } = useOrgPermission();
@@ -98,7 +93,6 @@ export const NetworkHealthBanner = () => {
     OrgRelayPermissionActions.ListRelays,
     OrgPermissionSubjects.Relay
   );
-  const canReadSettings = permission.can(OrgPermissionActions.Read, OrgPermissionSubjects.Settings);
 
   const { data: gateways } = useQuery({
     ...gatewaysQueryKeys.list(),
@@ -112,8 +106,6 @@ export const NetworkHealthBanner = () => {
     },
     enabled: canListRelays
   });
-  const { data: notifications } = useGetMyNotifications();
-  const { mutate: updateNotification } = useUpdateNotification();
 
   const unreachableGatewayCount = useMemo(
     () =>
@@ -129,16 +121,6 @@ export const NetworkHealthBanner = () => {
       relays?.filter((r) => r.orgId && r.heartbeat && isRelayHeartbeatStale(r.heartbeat)).length ??
       0,
     [relays]
-  );
-
-  const failedStreamNotifications = useMemo(
-    () =>
-      canReadSettings
-        ? (notifications?.filter(
-            (n) => n.type === NotificationType.AUDIT_LOG_STREAM_FAILED && !n.isRead
-          ) ?? [])
-        : [],
-    [notifications, canReadSettings]
   );
 
   const alerts = useMemo<AlertItem[]>(() => {
@@ -165,35 +147,10 @@ export const NetworkHealthBanner = () => {
       });
     }
 
-    const visibleStreamNotifications = failedStreamNotifications.filter(
-      (n) => !dismissedAlertIds.has(n.id)
-    );
-    if (visibleStreamNotifications.length > 0) {
-      const ids = visibleStreamNotifications.map((n) => n.id);
-      items.push({
-        id: "audit-log-stream-failed",
-        message: "Unable to stream audit logs.",
-        linkLabel: "Click to view stream configuration.",
-        linkTo: visibleStreamNotifications[0].link ?? undefined,
-        onDismiss: () => {
-          ids.forEach((id) => updateNotification({ notificationId: id, isRead: true }));
-          setDismissedAlertIds((prev) => new Set([...prev, ...ids]));
-        }
-      });
-    }
-
     return items;
-  }, [
-    networkDismissed,
-    unreachableGatewayCount,
-    unreachableRelayCount,
-    failedStreamNotifications,
-    dismissedAlertIds,
-    currentOrg.id,
-    updateNotification
-  ]);
+  }, [networkDismissed, unreachableGatewayCount, unreachableRelayCount, currentOrg.id]);
 
-  if (!canListGateways && !canListRelays && !canReadSettings) return null;
+  if (!canListGateways && !canListRelays) return null;
   if (alerts.length === 0) return null;
 
   if (alerts.length === 1) {

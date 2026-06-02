@@ -27,7 +27,12 @@ import { getMinExpiresIn, removeTrailingSlash } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
-import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
+import {
+  AuthAttemptAuthMethod,
+  AuthAttemptAuthResult,
+  authAttemptCounter,
+  recordAuthAttemptMetric
+} from "@app/lib/telemetry/metrics";
 import { sanitizeEmail, validateEmail } from "@app/lib/validator";
 import { getUserAgentType } from "@app/server/plugins/audit-log";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
@@ -528,6 +533,7 @@ export const authLoginServiceFactory = ({
     userAgent: string;
     captchaToken?: string;
   }) => {
+    const authMetricStartTime = performance.now();
     const appCfg = getConfig();
     const email = sanitizeEmail(unsanitizedEmail);
 
@@ -587,6 +593,12 @@ export const authLoginServiceFactory = ({
         });
       }
 
+      recordAuthAttemptMetric({
+        startTime: authMetricStartTime,
+        method: AuthAttemptAuthMethod.EMAIL,
+        result: AuthAttemptAuthResult.SUCCESS
+      });
+
       return {
         tokens: {
           accessToken: token.access,
@@ -604,6 +616,13 @@ export const authLoginServiceFactory = ({
           "user_agent.original": userAgent
         });
       }
+
+      recordAuthAttemptMetric({
+        startTime: authMetricStartTime,
+        method: AuthAttemptAuthMethod.EMAIL,
+        result: AuthAttemptAuthResult.FAILURE,
+        error
+      });
 
       throw error;
     }
