@@ -3,75 +3,123 @@ title: "Hardware requirements"
 description: "Find out the minimal requirements for operating Infisical."
 ---
 
-This page details the minimum requirements necessary for installing and using Infisical. 
+This page details the minimum requirements necessary for installing and using Infisical.
 The actual resource requirements will vary in direct proportion to the operations performed by Infisical and the level of utilization by the end users.
-
-
 
 ## Deployment Sizes
 
-**Small** suitable for most initial production setups, as well as development and testing scenarios.
+| **Size** | **Users** | **Machine Identities** | **Secrets** | **Typical Use Case** |
+|----------|-----------|----------------------|-------------|----------------------|
+| **Small** | Up to 100 | Up to 200 | Up to 10,000 | Initial production rollouts, development and testing |
+| **Medium** | 100–1,000 | 200–2,000 | 10,000–100,000 | Mid-size engineering orgs, multiple teams onboarded |
+| **Large** | 1,000–5,000+ | 2,000–10,000+ | 100,000+ | Enterprise-wide deployments with high transaction volume |
 
-**Large** suitable for high-demand production environments, characterized by either a high volume of transactions, large number of secrets, or both.
+<Info>
+  Machine identities (service accounts, CI/CD pipelines, Kubernetes operators, etc.) often outnumber human users and can generate significantly more secret read operations. Factor them into your sizing estimates.
+</Info>
 
-
-## Hardware Requirements
+## Infisical Application Layer
 
 ### Storage
 
-Infisical doesn’t require file storage as all persisted data is saved in the database. 
-However, its logs and metrics are saved to disk for later viewing. As a result, we recommend provisioning 1-2 GB of storage.
+Infisical doesn't require file storage as all persisted data is saved in the database.
+However, its logs and metrics are saved to disk for later viewing. We recommend provisioning **1–2 GB** of storage per instance.
 
 ### CPU and Memory (Per Container/Instance)
 
-Infisical is stateless and scales horizontally by running across multiple containers/instances. Each instance typically does **not** need more than **2–4 CPU cores** and **4–8 GB** of memory. 
+Infisical is stateless and scales horizontally by running across multiple containers/instances. Each instance typically does **not** need more than **2–4 CPU cores** and **4–8 GB** of memory.
 If you need additional capacity, simply increase the **number** of containers/instances running in parallel.
 
 | **Deployment Size** | **CPU (Cores, per container)** | **Memory (GB, per container)** | **Recommended Number of Containers** |
 |---------------------|--------------------------------|--------------------------------|--------------------------------------|
 | **Small**           | 2                              | 4                              | 2+                                   |
-| **Medium**          | 2–4                            | 4–8                            | 5+                                   |
+| **Medium**          | 2–4                            | 4–8                            | 3–5+                                 |
 | **Large**           | 2–4                            | 4–8                            | 10+                                  |
 
-> **Note:**  
-> - Adding more containers (horizontal scaling) is generally the best way to handle spikes in secret operations.  
+> **Note:**
+> - Adding more containers (horizontal scaling) is generally the best way to handle spikes in secret operations.
 > - If you prefer, you can increase CPU/memory on a single container (vertical scaling), but horizontal scaling is more flexible and resilient.
+> - For Kubernetes deployments, configure **Horizontal Pod Autoscaler (HPA)** to automatically scale based on CPU/memory utilization.
 
-## Database & caching layer
+### Sizing Example: 800–1,000 Users
 
-### Postgres
+A **medium** deployment is the recommended starting point for organizations with 800–1,000 human users. Below is a concrete example:
 
-PostgreSQL is the only database supported by Infisical. Infisical has been extensively tested with Postgres version 16. We recommend using versions 14 and up for optimal compatibility.
-The compute required for Postgres is largely dependent on the number of secret operations (reads and writes) you expect. The more frequently you read and write secrets, the more compute you will need.
-You'll notice that storage requirements are high and this is because audit logs are by default stored in the database.
+| **Component** | **Specification** |
+|---------------|-------------------|
+| Infisical containers | 3–5 instances, each with 2 vCPU / 8 GB RAM |
+| PostgreSQL | 4 vCPU / 16 GB RAM / 200 GB SSD (primary) + 1 read replica |
+| Redis | 2 vCPU / 4 GB RAM / 30 GB SSD |
 
+This configuration comfortably handles:
+- Up to ~2,000 machine identities alongside the 800–1,000 human users
+- Sustained secret read throughput for CI/CD pipelines and Kubernetes operators
+- Audit log retention for compliance requirements
 
-Recommended resource allocation based on deployment size. You may require more resources if you have a large number of secrets or high transaction volume:
-- **small:** 2 vCPU / 8 GB RAM / 100 GB Disk
-- **medium:** 4vCPU / 16 GB RAM / 200 GB Disk
-- **large:** 8vCPU / 32 GB RAM / 500 GB Disk
+<Tip>
+  Start with the **medium** tier and monitor resource utilization. Infisical's stateless architecture makes it straightforward to scale up — add more application containers or increase database resources as usage grows.
+</Tip>
+
+## Database & Caching Layer
+
+### PostgreSQL
+
+PostgreSQL is the only database supported by Infisical. Infisical has been extensively tested with PostgreSQL 16. We recommend using **versions 14 and up** for optimal compatibility.
+
+The compute required for PostgreSQL is largely dependent on the number of secret operations (reads and writes) you expect. The more frequently you read and write secrets, the more compute you will need.
+Storage requirements are high because audit logs are stored in the database by default.
+
+| **Deployment Size** | **vCPU** | **RAM** | **Disk (SSD)** | **Max Connections** |
+|---------------------|----------|---------|-----------------|---------------------|
+| **Small**           | 2        | 8 GB    | 100 GB          | 200                 |
+| **Medium**          | 4        | 16 GB   | 200 GB          | 500                 |
+| **Large**           | 8        | 32 GB   | 500 GB+         | 1,000               |
+
+**Key considerations:**
+- **Disk I/O**: Use SSDs (NVMe preferred) for both the data directory and WAL. Disk throughput directly impacts write performance and replication lag.
+- **Connection pooling**: For deployments with many Infisical instances, consider a connection pooler such as [PgBouncer](https://www.pgbouncer.org/) to avoid exhausting PostgreSQL connection limits.
+- **Audit log growth**: Audit logs can grow rapidly. Monitor disk usage and configure [audit log retention](/documentation/platform/audit-logs) or stream audit logs externally to manage storage.
+- **High availability**: For production deployments, configure PostgreSQL with streaming replication and automatic failover. See [PostgreSQL High Availability & Failover](/self-hosting/guides/postgres-high-availability) for detailed guidance.
 
 ### Redis
 
-Redis is utilized for session management and background tasks in Infisical.
+Redis is utilized for session management, caching, and background task queues in Infisical.
 
 <Info>
-**Active-passive** setup is recommended for Redis. **Active-active** setup for Redis has not been tested.
+  **Active-passive** setup is recommended for Redis. **Active-active** setup for Redis has not been tested.
 </Info>
 
-Redis requirements:
+| **Deployment Size** | **vCPU** | **RAM** | **Disk (SSD)** |
+|---------------------|----------|---------|-----------------|
+| **Small**           | 2        | 4 GB    | 30 GB           |
+| **Medium**          | 2        | 4 GB    | 30 GB           |
+| **Large**           | 4        | 8 GB    | 50 GB           |
 
+Redis requirements:
 - Use Redis versions 6.x or 7.x. We advise upgrading to at least Redis 6.2.
-- Redis Cluster mode is currently not supported; use Redis Standalone, with or without High Availability (HA).
-- Redis storage needs are minimal: a setup with 2 vCPU, 4 GB RAM, and 30GB SSD will be sufficient for small deployments.
+- Redis Cluster mode is **not** supported; use Redis Standalone, with or without High Availability (HA) via [Redis Sentinel](https://redis.io/docs/management/sentinel/).
 - Set cache eviction policy to `noeviction`.
+- For HA deployments, use Redis Sentinel with 3 Sentinel nodes for automatic failover.
+
+## Network Requirements
+
+| **Traffic Path** | **Bandwidth** | **Latency** |
+|-----------------|---------------|-------------|
+| Clients → Infisical | 100 Mbps+ | < 50 ms recommended |
+| Infisical → PostgreSQL | 1 Gbps+ | < 5 ms recommended |
+| Infisical → Redis | 1 Gbps+ | < 2 ms recommended |
+| PostgreSQL primary → replica | 1 Gbps+ | < 10 ms for low replication lag |
+
+<Note>
+  For multi-datacenter or disaster recovery deployments, ensure sufficient bandwidth between sites for PostgreSQL WAL streaming. A 1 Gbps link is recommended for active replication.
+</Note>
 
 ## Supported Web Browsers
 
 Infisical supports a range of web browsers. However, features such as browser-based CLI login only work on Google Chrome and Firefox at the moment.
 
 - [Mozilla Firefox](https://www.mozilla.org/en-US/firefox/new/)
-- [Google Chrome](https://www.google.com/chrome/) 
+- [Google Chrome](https://www.google.com/chrome/)
 - [Chromium](https://www.chromium.org/getting-involved/dev-channel/)
 - [Apple Safari](https://www.apple.com/safari/)
 - [Microsoft Edge](https://www.microsoft.com/en-us/edge?form=MA13FJ)
