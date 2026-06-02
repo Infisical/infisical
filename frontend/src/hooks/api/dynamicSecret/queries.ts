@@ -143,7 +143,14 @@ export const useGetIbmApiConnectOrgCatalogs = ({
   enabled: boolean;
 }) => {
   return useQuery({
-    queryKey: ["ibm-api-connect-org-catalogs", instanceUrl, apiKey, clientId, clientSecret, orgName],
+    queryKey: [
+      "ibm-api-connect-org-catalogs",
+      instanceUrl,
+      apiKey,
+      clientId,
+      clientSecret,
+      orgName
+    ],
     queryFn: async () => {
       const { data } = await apiRequest.post<{ name: string; title: string; id: string }[]>(
         `/api/v1/dynamic-secrets/ibm-api-connect/orgs/${orgName}/catalogs`,
@@ -185,10 +192,12 @@ export const useGetIbmApiConnectOrgApps = ({
     queryFn: async () => {
       const { data } = await apiRequest.post<
         { name: string; title: string; id: string; consumerOrgId: string }[]
-      >(
-        `/api/v1/dynamic-secrets/ibm-api-connect/orgs/${orgName}/catalogs/${catalogName}/apps`,
-        { instanceUrl, apiKey, clientId, clientSecret }
-      );
+      >(`/api/v1/dynamic-secrets/ibm-api-connect/orgs/${orgName}/catalogs/${catalogName}/apps`, {
+        instanceUrl,
+        apiKey,
+        clientId,
+        clientSecret
+      });
       return data;
     },
     enabled

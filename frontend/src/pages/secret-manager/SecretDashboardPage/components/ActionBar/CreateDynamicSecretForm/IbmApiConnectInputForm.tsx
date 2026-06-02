@@ -11,6 +11,8 @@ import { z } from "zod";
 
 import { TtlFormLabel } from "@app/components/features";
 import { OrgPermissionCan } from "@app/components/permissions";
+import { SingleValue } from "react-select";
+
 import { Button, FilterableSelect, FormControl, Input, SecretInput } from "@app/components/v2";
 import { Tooltip } from "@app/components/v2/Tooltip";
 import { GatewayPicker } from "@app/components/v3/platform/GatewayPicker";
@@ -403,7 +405,8 @@ export const IbmApiConnectInputForm = ({
                         isLoading={isOrgsFetching}
                         options={orgs ?? []}
                         value={orgs?.find((o) => o.id === value) ?? null}
-                        onChange={(option) => {
+                        onChange={(opt) => {
+                          const option = opt as SingleValue<NonNullable<typeof orgs>[number]>;
                           onChange(option?.id ?? "");
                           setValue("provider.catalogId", "");
                           setValue("provider.consumerOrgId", "");
@@ -445,7 +448,8 @@ export const IbmApiConnectInputForm = ({
                         isLoading={isCatalogsFetching}
                         options={catalogs ?? []}
                         value={catalogs?.find((c) => c.id === value) ?? null}
-                        onChange={(option) => {
+                        onChange={(opt) => {
+                          const option = opt as SingleValue<NonNullable<typeof catalogs>[number]>;
                           onChange(option?.id ?? "");
                           setValue("provider.consumerOrgId", "");
                           setValue("provider.appId", "");
@@ -486,7 +490,8 @@ export const IbmApiConnectInputForm = ({
                         isLoading={isAppsFetching}
                         options={apps ?? []}
                         value={apps?.find((a) => a.id === value) ?? null}
-                        onChange={(option) => {
+                        onChange={(opt) => {
+                          const option = opt as SingleValue<NonNullable<typeof apps>[number]>;
                           onChange(option?.id ?? "");
                           setValue("provider.consumerOrgId", option?.consumerOrgId ?? "");
                         }}

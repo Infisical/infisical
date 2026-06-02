@@ -1,4 +1,5 @@
 import { Controller, useForm } from "react-hook-form";
+import { SingleValue } from "react-select";
 import {
   faCheckCircle,
   faCircleNotch,
@@ -393,7 +394,8 @@ export const EditDynamicSecretIbmApiConnectForm = ({
                         isLoading={isOrgsFetching}
                         options={orgs ?? []}
                         value={orgs?.find((o) => o.id === value) ?? null}
-                        onChange={(option) => {
+                        onChange={(opt) => {
+                          const option = opt as SingleValue<NonNullable<typeof orgs>[number]>;
                           onChange(option?.id ?? "");
                           setValue("inputs.catalogId", "");
                           setValue("inputs.consumerOrgId", "");
@@ -434,7 +436,8 @@ export const EditDynamicSecretIbmApiConnectForm = ({
                         isLoading={isCatalogsFetching}
                         options={catalogs ?? []}
                         value={catalogs?.find((c) => c.id === value) ?? null}
-                        onChange={(option) => {
+                        onChange={(opt) => {
+                          const option = opt as SingleValue<NonNullable<typeof catalogs>[number]>;
                           onChange(option?.id ?? "");
                           setValue("inputs.consumerOrgId", "");
                           setValue("inputs.appId", "");
@@ -474,7 +477,8 @@ export const EditDynamicSecretIbmApiConnectForm = ({
                         isLoading={isAppsFetching}
                         options={apps ?? []}
                         value={apps?.find((a) => a.id === value) ?? null}
-                        onChange={(option) => {
+                        onChange={(opt) => {
+                          const option = opt as SingleValue<NonNullable<typeof apps>[number]>;
                           onChange(option?.id ?? "");
                           setValue("inputs.consumerOrgId", option?.consumerOrgId ?? "");
                         }}
