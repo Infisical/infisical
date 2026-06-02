@@ -23,6 +23,8 @@ const CmekSchema = KmsKeysSchema.merge(InternalKmsSchema.pick({ version: true, e
   isReserved: true
 });
 
+const KMS_DATA_MAX_BYTES = 262_144; // 256 KiB
+
 const base64Schema = z.string().superRefine((val, ctx) => {
   if (!isBase64(val)) {
     ctx.addIssue({
@@ -31,10 +33,10 @@ const base64Schema = z.string().superRefine((val, ctx) => {
     });
   }
 
-  if (getBase64SizeInBytes(val) > 4096) {
+  if (getBase64SizeInBytes(val) > KMS_DATA_MAX_BYTES) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      message: "data cannot exceed 4096 bytes"
+      message: `data cannot exceed ${KMS_DATA_MAX_BYTES} bytes`
     });
   }
 });
