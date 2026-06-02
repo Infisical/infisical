@@ -66,6 +66,10 @@ import {
   SanitizedCircleCIConnectionSchema
 } from "@app/services/app-connection/circleci";
 import {
+  ConvexConnectionListItemSchema,
+  SanitizedConvexConnectionSchema
+} from "@app/services/app-connection/convex";
+import {
   CloudflareConnectionListItemSchema,
   SanitizedCloudflareConnectionSchema
 } from "@app/services/app-connection/cloudflare/cloudflare-connection-schema";
@@ -279,7 +283,8 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedSalesforceConnectionSchema.options,
   ...SanitizedSnowflakeConnectionSchema.options,
   ...SanitizedDatadogConnectionSchema.options,
-  ...SanitizedF5BigIpConnectionSchema.options
+  ...SanitizedF5BigIpConnectionSchema.options,
+  ...SanitizedConvexConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -350,7 +355,8 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   SalesforceConnectionListItemSchema,
   SnowflakeConnectionListItemSchema,
   DatadogConnectionListItemSchema,
-  F5BigIpConnectionListItemSchema
+  F5BigIpConnectionListItemSchema,
+  ConvexConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

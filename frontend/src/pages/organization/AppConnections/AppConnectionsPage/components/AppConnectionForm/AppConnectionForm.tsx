@@ -31,6 +31,7 @@ import { ChecklyConnectionForm } from "./ChecklyConnectionForm";
 import { ChefConnectionForm } from "./ChefConnectionForm";
 import { CircleCIConnectionForm } from "./CircleCIConnectionForm";
 import { CloudflareConnectionForm } from "./CloudflareConnectionForm";
+import { ConvexConnectionForm } from "./ConvexConnectionForm";
 import { DatabricksConnectionForm } from "./DatabricksConnectionForm";
 import { DatadogConnectionForm } from "./DatadogConnectionForm";
 import { DbtConnectionForm } from "./DbtConnectionForm";
@@ -312,7 +313,9 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
       case AppConnection.Datadog:
         return <DatadogConnectionForm onSubmit={onSubmit} />;
       case AppConnection.F5BigIp:
-        return <F5BigIpConnectionForm onSubmit={onSubmit} />;
+        return <F5BigIpConnectionForm onSubmit={onSubmit} />;,
+      case AppConnection.Convex:
+        return <ConvexConnectionForm onSubmit={onSubmit} />;
       default:
         throw new Error(`Unhandled App ${app}`);
     }
@@ -545,7 +548,9 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
       case AppConnection.Datadog:
         return <DatadogConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.F5BigIp:
-        return <F5BigIpConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+        return <F5BigIpConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;,
+      case AppConnection.Convex:
+        return <ConvexConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Venafi:
         return <VenafiConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.VenafiTpp:
