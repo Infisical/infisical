@@ -132,14 +132,14 @@ export const useGetIbmApiConnectOrgCatalogs = ({
   apiKey,
   clientId,
   clientSecret,
-  orgName,
+  orgId,
   enabled
 }: {
   instanceUrl: string;
   apiKey: string;
   clientId: string;
   clientSecret: string;
-  orgName: string;
+  orgId: string;
   enabled: boolean;
 }) => {
   return useQuery({
@@ -149,11 +149,11 @@ export const useGetIbmApiConnectOrgCatalogs = ({
       apiKey,
       clientId,
       clientSecret,
-      orgName
+      orgId
     ],
     queryFn: async () => {
       const { data } = await apiRequest.post<{ name: string; title: string; id: string }[]>(
-        `/api/v1/dynamic-secrets/ibm-api-connect/orgs/${orgName}/catalogs`,
+        `/api/v1/dynamic-secrets/ibm-api-connect/orgs/${orgId}/catalogs`,
         { instanceUrl, apiKey, clientId, clientSecret }
       );
       return data;
@@ -167,16 +167,16 @@ export const useGetIbmApiConnectOrgApps = ({
   apiKey,
   clientId,
   clientSecret,
-  orgName,
-  catalogName,
+  orgId,
+  catalogId,
   enabled
 }: {
   instanceUrl: string;
   apiKey: string;
   clientId: string;
   clientSecret: string;
-  orgName: string;
-  catalogName: string;
+  orgId: string;
+  catalogId: string;
   enabled: boolean;
 }) => {
   return useQuery({
@@ -186,13 +186,13 @@ export const useGetIbmApiConnectOrgApps = ({
       apiKey,
       clientId,
       clientSecret,
-      orgName,
-      catalogName
+      orgId,
+      catalogId
     ],
     queryFn: async () => {
       const { data } = await apiRequest.post<
         { name: string; title: string; id: string; consumerOrgId: string }[]
-      >(`/api/v1/dynamic-secrets/ibm-api-connect/orgs/${orgName}/catalogs/${catalogName}/apps`, {
+      >(`/api/v1/dynamic-secrets/ibm-api-connect/orgs/${orgId}/catalogs/${catalogId}/apps`, {
         instanceUrl,
         apiKey,
         clientId,

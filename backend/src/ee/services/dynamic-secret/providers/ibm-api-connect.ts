@@ -74,12 +74,12 @@ const $fetchOrganizations = async (credentials: TIbmApiConnectBaseCredentials): 
 
 const $fetchOrganizationCatalogs = async (
   credentials: TIbmApiConnectBaseCredentials,
-  orgName: string
+  orgId: string
 ): Promise<TApiConnectResource[]> => {
   const accessToken = await $getAccessToken(credentials);
   const response = await request.get<{
     results: TApiConnectResource[];
-  }>(`${credentials.instanceUrl}/api/orgs/${orgName}/catalogs`, {
+  }>(`${credentials.instanceUrl}/api/orgs/${orgId}/catalogs`, {
     params: { limit: 100 },
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -96,13 +96,13 @@ const $fetchOrganizationCatalogs = async (
 
 const $fetchOrganizationApps = async (
   credentials: TIbmApiConnectBaseCredentials,
-  orgName: string,
-  catalogName: string
+  orgId: string,
+  catalogId: string
 ): Promise<TApiConnectApp[]> => {
   const accessToken = await $getAccessToken(credentials);
   const response = await request.get<{
     results: (TApiConnectResource & { consumer_org_url: string })[];
-  }>(`${credentials.instanceUrl}/api/catalogs/${orgName}/${catalogName}/apps`, {
+  }>(`${credentials.instanceUrl}/api/catalogs/${orgId}/${catalogId}/apps`, {
     params: { limit: 100 },
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -113,7 +113,7 @@ const $fetchOrganizationApps = async (
   return response.data.results.map((app) => {
     // consumer_org_url is composed of:
     // https://endpoint/api/consumer-orgs/{orgId}/{catalog}/{consumer_org}
-    const consumerOrgId = app.consumer_org_url.split("/").pop() ?? "";
+    const consumerOrgId = app.consumer_org_url.split("/").filter(Boolean).pop() ?? "";
     return {
       name: app.name,
       title: app.title,
@@ -171,11 +171,11 @@ const $revokeApplicationCredential = async (
 
 export const IbmApiConnectProvider = (): TDynamicProviderFns & {
   fetchOrganizations: (inputs: TIbmApiConnectBaseCredentials) => Promise<TApiConnectResource[]>;
-  fetchOrganizationCatalogs: (inputs: TIbmApiConnectBaseCredentials, orgName: string) => Promise<TApiConnectResource[]>;
+  fetchOrganizationCatalogs: (inputs: TIbmApiConnectBaseCredentials, orgId: string) => Promise<TApiConnectResource[]>;
   fetchOrganizationApps: (
     inputs: TIbmApiConnectBaseCredentials,
-    orgName: string,
-    catalogName: string
+    orgId: string,
+    catalogId: string
   ) => Promise<TApiConnectApp[]>;
 } => {
   const validateProviderInputs = async (inputs: unknown) => {
@@ -221,14 +221,14 @@ export const IbmApiConnectProvider = (): TDynamicProviderFns & {
     return $fetchOrganizations(inputs);
   };
 
-  const fetchOrganizationCatalogs = async (inputs: TIbmApiConnectBaseCredentials, orgName: string) => {
+  const fetchOrganizationCatalogs = async (inputs: TIbmApiConnectBaseCredentials, orgId: string) => {
     await blockLocalAndPrivateIpAddresses(inputs.instanceUrl);
-    return $fetchOrganizationCatalogs(inputs, orgName);
+    return $fetchOrganizationCatalogs(inputs, orgId);
   };
 
-  const fetchOrganizationApps = async (inputs: TIbmApiConnectBaseCredentials, orgName: string, catalogName: string) => {
+  const fetchOrganizationApps = async (inputs: TIbmApiConnectBaseCredentials, orgId: string, catalogId: string) => {
     await blockLocalAndPrivateIpAddresses(inputs.instanceUrl);
-    return $fetchOrganizationApps(inputs, orgName, catalogName);
+    return $fetchOrganizationApps(inputs, orgId, catalogId);
   };
 
   return {
