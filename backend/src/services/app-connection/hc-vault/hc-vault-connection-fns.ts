@@ -954,6 +954,7 @@ const fetchVaultSecretAtPath = async ({
     // vault 1.0.0 does not support namespace root or /, responding with a 301 when the namespace header is sent.
     // Signal the caller to retry the request without the namespace header.
     if (
+      !skipNamespaceHeader &&
       ((error instanceof AxiosError && error.response?.status === 301) || isGateway301Error(error)) &&
       (namespace === "/" || namespace === "root" || !namespace)
     ) {
