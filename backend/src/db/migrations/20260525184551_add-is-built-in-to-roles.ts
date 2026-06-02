@@ -1,6 +1,5 @@
 import { packRules } from "@casl/ability/extra";
 import { Knex } from "knex";
-import { v4 as uuidv4 } from "uuid";
 
 import {
   cryptographicOperatorPermissions,
@@ -65,7 +64,6 @@ export async function up(knex: Knex): Promise<void> {
         const rows = [];
         if (!alreadySeededOrgSet.has(`${orgId}:member`)) {
           rows.push({
-            id: uuidv4(),
             orgId,
             projectId: null,
             name: "Member",
@@ -79,7 +77,6 @@ export async function up(knex: Knex): Promise<void> {
         }
         if (!alreadySeededOrgSet.has(`${orgId}:no-access`)) {
           rows.push({
-            id: uuidv4(),
             orgId,
             projectId: null,
             name: "No Access",
@@ -129,7 +126,6 @@ export async function up(knex: Knex): Promise<void> {
 
         if (!alreadySeededProjectSet.has(`${projectId}:member`)) {
           rows.push({
-            id: uuidv4(),
             orgId: null,
             projectId,
             name: "Member",
@@ -144,7 +140,6 @@ export async function up(knex: Knex): Promise<void> {
 
         if (!alreadySeededProjectSet.has(`${projectId}:viewer`)) {
           rows.push({
-            id: uuidv4(),
             orgId: null,
             projectId,
             name: "Viewer",
@@ -159,7 +154,6 @@ export async function up(knex: Knex): Promise<void> {
 
         if (!alreadySeededProjectSet.has(`${projectId}:no-access`)) {
           rows.push({
-            id: uuidv4(),
             orgId: null,
             projectId,
             name: "No Access",
@@ -174,7 +168,6 @@ export async function up(knex: Knex): Promise<void> {
 
         if (type === ProjectType.SSH && !alreadySeededProjectSet.has(`${projectId}:ssh-host-bootstrapper`)) {
           rows.push({
-            id: uuidv4(),
             orgId: null,
             projectId,
             name: "SSH Host Bootstrapper",
@@ -189,7 +182,6 @@ export async function up(knex: Knex): Promise<void> {
 
         if (type === ProjectType.KMS && !alreadySeededProjectSet.has(`${projectId}:cryptographic-operator`)) {
           rows.push({
-            id: uuidv4(),
             orgId: null,
             projectId,
             name: "Cryptographic Operator",
