@@ -124,6 +124,27 @@ export type TDynamicSecretServiceFactory = {
       email: string;
     }[]
   >;
+  fetchIbmApiConnectOrgs: (arg: {
+    instanceUrl: string;
+    apiKey: string;
+    clientId: string;
+    clientSecret: string;
+  }) => Promise<{ name: string; title: string; id: string }[]>;
+  fetchIbmApiConnectOrgCatalogs: (arg: {
+    instanceUrl: string;
+    apiKey: string;
+    clientId: string;
+    clientSecret: string;
+    orgId: string;
+  }) => Promise<{ name: string; title: string; id: string }[]>;
+  fetchIbmApiConnectOrgApps: (arg: {
+    instanceUrl: string;
+    apiKey: string;
+    clientId: string;
+    clientSecret: string;
+    orgId: string;
+    catalogId: string;
+  }) => Promise<{ name: string; title: string; id: string; consumerOrgId: string }[]>;
   listDynamicSecretsByFolderIds: (
     arg: TListDynamicSecretsByFolderMappingsDTO,
     actor: OrgServiceActor

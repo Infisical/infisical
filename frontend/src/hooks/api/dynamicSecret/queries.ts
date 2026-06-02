@@ -101,6 +101,100 @@ export const useGetDynamicSecretProviderData = ({
   });
 };
 
+export const useGetIbmApiConnectOrgs = ({
+  instanceUrl,
+  apiKey,
+  clientId,
+  clientSecret,
+  enabled
+}: {
+  instanceUrl: string;
+  apiKey: string;
+  clientId: string;
+  clientSecret: string;
+  enabled: boolean;
+}) => {
+  return useQuery({
+    queryKey: ["ibm-api-connect-orgs", instanceUrl, apiKey, clientId, clientSecret],
+    queryFn: async () => {
+      const { data } = await apiRequest.post<{ name: string; title: string; id: string }[]>(
+        "/api/v1/dynamic-secrets/ibm-api-connect/orgs",
+        { instanceUrl, apiKey, clientId, clientSecret }
+      );
+      return data;
+    },
+    enabled
+  });
+};
+
+export const useGetIbmApiConnectOrgCatalogs = ({
+  instanceUrl,
+  apiKey,
+  clientId,
+  clientSecret,
+  orgName,
+  enabled
+}: {
+  instanceUrl: string;
+  apiKey: string;
+  clientId: string;
+  clientSecret: string;
+  orgName: string;
+  enabled: boolean;
+}) => {
+  return useQuery({
+    queryKey: ["ibm-api-connect-org-catalogs", instanceUrl, apiKey, clientId, clientSecret, orgName],
+    queryFn: async () => {
+      const { data } = await apiRequest.post<{ name: string; title: string; id: string }[]>(
+        `/api/v1/dynamic-secrets/ibm-api-connect/orgs/${orgName}/catalogs`,
+        { instanceUrl, apiKey, clientId, clientSecret }
+      );
+      return data;
+    },
+    enabled
+  });
+};
+
+export const useGetIbmApiConnectOrgApps = ({
+  instanceUrl,
+  apiKey,
+  clientId,
+  clientSecret,
+  orgName,
+  catalogName,
+  enabled
+}: {
+  instanceUrl: string;
+  apiKey: string;
+  clientId: string;
+  clientSecret: string;
+  orgName: string;
+  catalogName: string;
+  enabled: boolean;
+}) => {
+  return useQuery({
+    queryKey: [
+      "ibm-api-connect-org-apps",
+      instanceUrl,
+      apiKey,
+      clientId,
+      clientSecret,
+      orgName,
+      catalogName
+    ],
+    queryFn: async () => {
+      const { data } = await apiRequest.post<
+        { name: string; title: string; id: string; consumerOrgId: string }[]
+      >(
+        `/api/v1/dynamic-secrets/ibm-api-connect/orgs/${orgName}/catalogs/${catalogName}/apps`,
+        { instanceUrl, apiKey, clientId, clientSecret }
+      );
+      return data;
+    },
+    enabled
+  });
+};
+
 export const useGetDynamicSecretsOfAllEnv = ({
   path,
   projectSlug,

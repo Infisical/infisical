@@ -783,8 +783,22 @@ export enum DynamicSecretProviders {
   Github = "github",
   Couchbase = "couchbase",
   Milvus = "milvus",
-  Ssh = "ssh"
+  Ssh = "ssh",
+  IbmApiConnect = "ibm-api-connect"
 }
+
+export const DynamicSecretIbmApiConnectSchema = z.object({
+  clientId: z.string().trim().min(1, "Client ID is required"),
+  clientSecret: z.string().trim().min(1, "Client Secret is required"),
+  instanceUrl: z.string().url("Must be a valid URL").trim().min(1, "Instance URL is required"),
+  apiKey: z.string().trim().min(1, "API Key is required"),
+  orgId: z.string().trim().min(1, "Organization is required"),
+  catalogId: z.string().trim().min(1, "Catalog is required"),
+  consumerOrgId: z.string().trim().min(1, "Consumer Organization is required"),
+  appId: z.string().trim().min(1, "Application is required"),
+  gatewayId: z.string().nullable().optional(),
+  gatewayPoolId: z.string().nullable().optional()
+});
 
 export const DynamicSecretSshSchema = z.object({
   principals: z.array(z.string().trim().min(1)).min(1),
@@ -823,7 +837,11 @@ export const DynamicSecretProviderSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal(DynamicSecretProviders.Github), inputs: DynamicSecretGithubSchema }),
   z.object({ type: z.literal(DynamicSecretProviders.Couchbase), inputs: DynamicSecretCouchbaseSchema }),
   z.object({ type: z.literal(DynamicSecretProviders.Milvus), inputs: DynamicSecretMilvusSchema }),
-  z.object({ type: z.literal(DynamicSecretProviders.Ssh), inputs: DynamicSecretSshSchema })
+  z.object({ type: z.literal(DynamicSecretProviders.Ssh), inputs: DynamicSecretSshSchema }),
+  z.object({
+    type: z.literal(DynamicSecretProviders.IbmApiConnect),
+    inputs: DynamicSecretIbmApiConnectSchema
+  })
 ]);
 
 export type TDynamicProviderFns = {
