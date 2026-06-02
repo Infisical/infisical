@@ -16,7 +16,7 @@ import { TMySQLAccount, TMySQLResource } from "./mysql-resource";
 import { TOracleDBAccount, TOracleDBResource } from "./oracledb-resource";
 import { TPostgresAccount, TPostgresResource } from "./postgres-resource";
 import { TRedisAccount, TRedisResource } from "./redis-resource";
-import { TSSHAccount, TSSHResource } from "./ssh-resource";
+import { SSHAuthMethod, TSSHAccount, TSSHResource } from "./ssh-resource";
 import { TWindowsAccount, TWindowsResource } from "./windows-server-resource";
 
 export * from "./aws-iam-resource";
@@ -165,7 +165,11 @@ export type TUpdatePamResourceDTO = Partial<Pick<TPamResource, "name" | "connect
   gatewayPoolId?: string;
   domainId?: string | null;
   metadata?: { key: string; value: string }[];
-  rotationAccountCredentials?: { authMethod?: string; username: string; password: string } | null;
+  rotationAccountCredentials?: {
+    authMethod?: SSHAuthMethod;
+    username: string;
+    password: string;
+  } | null;
   sessionSummaryConfig?: TSessionSummaryConfig;
 };
 
