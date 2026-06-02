@@ -1,11 +1,9 @@
-import { MongoAbility } from "@casl/ability";
 import { Knex } from "knex";
 import { validate as uuidValidate } from "uuid";
 
 import { TDbClient } from "@app/db";
 import { ProjectType, SecretsV2Schema, SecretType, TableName, TSecretsV2, TSecretsV2Update } from "@app/db/schemas";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
-import { generateCacheKeyFromData } from "@app/lib/crypto/cache";
 import { applyJitter, utcDayStamp } from "@app/lib/dates";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import {
@@ -18,10 +16,7 @@ import {
 } from "@app/lib/knex";
 import { OrderByDirection } from "@app/lib/types";
 import { SecretsOrderBy } from "@app/services/secret/secret-types";
-import type {
-  TFindSecretsByFolderIdsFilter,
-  TGetSecretsDTO
-} from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
+import type { TFindSecretsByFolderIdsFilter } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
 
 export const SecretServiceCacheKeys = {
   get productKey() {
@@ -30,14 +25,16 @@ export const SecretServiceCacheKeys = {
   getSecretDalVersion: (projectId: string) => {
     return `${SecretServiceCacheKeys.productKey}:${projectId}:${TableName.SecretV2}-dal-version`;
   },
-  getSecretsOfServiceLayer: (
-    projectId: string,
-    version: number,
-    dto: TGetSecretsDTO & { permissionRules: MongoAbility["rules"] }
-  ) => {
-    return `${SecretServiceCacheKeys.productKey}:${projectId}:${
-      TableName.SecretV2
-    }-dal:v${version}:get-secrets-service-layer:${dto.actorId}-${generateCacheKeyFromData(dto)}`;
+  getSecretsOfServiceLayer: (arg: {
+    projectId: string;
+    version: number;
+    actorId: string;
+    permissionFingerprint: string;
+    permissionHash: string;
+    requestParamsHash: string;
+  }) => {
+    const { projectId, version, actorId, permissionFingerprint, permissionHash, requestParamsHash } = arg;
+    return `${SecretServiceCacheKeys.productKey}:${projectId}:${TableName.SecretV2}-dal:v${version}:get-secrets-service-layer:${actorId}-${permissionFingerprint}-${permissionHash}-${requestParamsHash}`;
   }
 };
 

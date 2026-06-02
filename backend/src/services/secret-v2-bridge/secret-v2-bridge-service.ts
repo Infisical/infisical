@@ -1206,7 +1206,11 @@ export const secretV2BridgeServiceFactory = ({
     }
 
     const etagRedisKey = KeyStorePrefixes.SecretEtag(projectId, utcDayStamp());
-    const etagField = `${actorId}:${permissionFingerprint}:${generateCacheKeyFromData({
+    // Hash of only the request inputs that change the response body, shared by the ETag field and the
+    // cache key. Transport-only inputs like ifNoneMatch are excluded so a client's stale ETag can't fork
+    // a fresh entry, and throwOnMissingReadValuePermission is included because it flips partial-permission
+    // reads between masking values and throwing. The actor's permission identity is keyed separately.
+    const requestParamsHash = generateCacheKeyFromData({
       environment,
       path,
       recursive,
@@ -1216,8 +1220,10 @@ export const secretV2BridgeServiceFactory = ({
       personalOverridesBehavior,
       secretImportReferencesBehavior,
       viewSecretValue,
+      throwOnMissingReadValuePermission,
       ...params
-    })}`;
+    });
+    const etagField = `${actorId}:${permissionFingerprint}:${requestParamsHash}`;
 
     if (ifNoneMatch) {
       const storedEtag = await keyStore.hashGet(etagRedisKey, etagField);
@@ -1244,9 +1250,18 @@ export const secretV2BridgeServiceFactory = ({
 
     const cachedSecretDalVersion = await keyStore.pgGetIntItem(SecretServiceCacheKeys.getSecretDalVersion(projectId));
     const secretDalVersion = Number(cachedSecretDalVersion || 0);
-    const cacheKey = SecretServiceCacheKeys.getSecretsOfServiceLayer(projectId, secretDalVersion, {
-      ...dto,
-      permissionRules: permission.rules
+    // The ETag field keys on permissionFingerprint alone — the ETag value is a content hash of the
+    // payload, so a shared field across auth contexts can at worst miss a 304, never serve stale content.
+    // The cache blob is returned without re-filtering, so its key additionally folds in the interpolated
+    // permission.rules: those carry request-time identity.auth context that the fingerprint (membership
+    // rows only) does not, and two auth contexts for the same identity must not share a cached payload.
+    const cacheKey = SecretServiceCacheKeys.getSecretsOfServiceLayer({
+      projectId,
+      version: secretDalVersion,
+      actorId,
+      permissionFingerprint,
+      permissionHash: generateCacheKeyFromData(permission.rules),
+      requestParamsHash
     });
 
     const { decryptor: secretManagerDecryptor, encryptor: secretManagerEncryptor } =
