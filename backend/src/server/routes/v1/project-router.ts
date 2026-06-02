@@ -25,6 +25,7 @@ import { loginMappingSchema, sanitizedSshHost } from "@app/ee/services/ssh-host/
 import { LoginMappingSource } from "@app/ee/services/ssh-host/ssh-host-types";
 import { sanitizedSshHostGroup } from "@app/ee/services/ssh-host-group/ssh-host-group-schema";
 import { ApiDocsTags, PROJECTS } from "@app/lib/api-docs";
+import { BadRequestError } from "@app/lib/errors";
 import { CharacterType, characterValidator } from "@app/lib/validator/validate-string";
 import { re2Validator } from "@app/lib/zod";
 import { projectCreationLimit, readLimit, requestAccessLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -434,29 +435,10 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
-    handler: async (req) => {
-      const project = await server.services.project.deleteProject({
-        filter: {
-          type: ProjectFilterType.ID,
-          projectId: req.params.projectId
-        },
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId
+    handler: async () => {
+      throw new BadRequestError({
+        message: "Project deletion is temporarily disabled. Please try again later."
       });
-
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        orgId: req.permission.orgId,
-        projectId: req.params.projectId,
-        event: {
-          type: EventType.DELETE_PROJECT,
-          metadata: project
-        }
-      });
-
-      return { project };
     }
   });
 
