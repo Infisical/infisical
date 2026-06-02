@@ -8,6 +8,7 @@ import { AUDIT_LOG_STREAM_BATCH_TIMEOUT, AUDIT_LOG_STREAM_TIMEOUT } from "../../
 import {
   TLogStreamFactoryBatchStreamLog,
   TLogStreamFactoryGetProviderBatchLimit,
+  TLogStreamFactoryStreamLog,
   TLogStreamFactoryValidateCredentials
 } from "../audit-log-stream-types";
 import { TCriblProviderCredentials } from "./cribl-provider-types";
@@ -61,6 +62,22 @@ export const CriblProviderFactory = () => {
     });
   };
 
+  const streamLog: TLogStreamFactoryStreamLog<TCriblProviderCredentials> = async ({ credentials, auditLog }) => {
+    const { url, token } = credentials;
+
+    await blockLocalAndPrivateIpAddresses(url);
+
+    const streamHeaders: RawAxiosRequestHeaders = {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`
+    };
+
+    await request.post(url, JSON.stringify(auditLog), {
+      headers: streamHeaders,
+      timeout: AUDIT_LOG_STREAM_TIMEOUT
+    });
+  };
+
   const getProviderBatchLimit: TLogStreamFactoryGetProviderBatchLimit = () => ({
     maxLogs: 900,
     maxBytes: 4 * 1024 * 1024
@@ -69,6 +86,7 @@ export const CriblProviderFactory = () => {
   return {
     validateCredentials,
     batchStreamLog,
+    streamLog,
     getProviderBatchLimit
   };
 };

@@ -45,7 +45,6 @@ export const CustomProviderFactory = () => {
     return credentials;
   };
 
-  // Custom webhook receivers get a JSON array of events per batch POST.
   const batchStreamLog: TLogStreamFactoryBatchStreamLog<TCustomProviderCredentials> = async ({
     credentials,
     auditLogs
@@ -70,8 +69,6 @@ export const CustomProviderFactory = () => {
     });
   };
 
-  // Legacy single-event delivery: each log is POSTed individually as a JSON object.
-  // Streams migrated to "single" mode keep this shape so their receivers don't break.
   const streamLog: TLogStreamFactoryStreamLog<TCustomProviderCredentials> = async ({ credentials, auditLog }) => {
     const { url, headers } = credentials;
 

@@ -49,7 +49,6 @@ export const DatadogProviderFactory = () => {
     return credentials;
   };
 
-  // Datadog v2 logs intake accepts a JSON array of events in a single POST.
   const batchStreamLog: TLogStreamFactoryBatchStreamLog<TDatadogProviderCredentials> = async ({
     credentials,
     auditLogs

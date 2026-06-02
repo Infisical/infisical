@@ -180,11 +180,6 @@ export const auditLogQueueServiceFactory = async ({
 
     if (entries.length === 0 || !lastId) return;
 
-    // We filled the entire collection window, so the ingest stream is draining slower than
-    // it's filling — typically a sustained insert outage holding back the trim. The stream is
-    // capped at a MAXLEN ceiling (see keyStore.streamAdd), so a persistent backlog means Redis
-    // will start dropping the OLDEST (still-undelivered) audit logs. Surface it loudly so the
-    // backlog is visible before that silent loss happens.
     if (entries.length >= AUDIT_LOG_STREAM_MAX_ENTRIES) {
       logger.warn(
         `audit-log-queue: ingest stream backlog hit the collection ceiling [collected=${entries.length}] [maxEntries=${AUDIT_LOG_STREAM_MAX_ENTRIES}] — stream is backing up; oldest entries risk being dropped by the Redis MAXLEN cap`
@@ -192,20 +187,55 @@ export const auditLogQueueServiceFactory = async ({
     }
 
     // Parse — a single corrupt entry is skipped, not allowed to abort the whole batch.
-    const parsed: TAuditLogStreamEntry[] = [];
+    const parsed: unknown[] = [];
     for (const [, fields] of entries) {
       try {
-        parsed.push(JSON.parse(fields[1]) as TAuditLogStreamEntry);
+        parsed.push(JSON.parse(fields[1]));
       } catch (error) {
         logger.error(error, "audit-log-queue: Skipping unparseable audit log stream entry");
       }
     }
 
-    // Map a resolved stream entry into a persistable audit log. org/plan/TTL/projectName were all
+    // A pre-rollout pod (before this stream format shipped) wrote the already-mapped
+    // audit-log row to the ingest stream, not the resolved DTO. Those legacy entries are
+    // flat (`actor`/`eventType` are strings, there is no nested `event` object)
+    type TLegacyAuditLogStreamEntry = Omit<TAuditLogs, "createdAt" | "expiresAt" | "updatedAt"> & {
+      createdAt: string;
+      expiresAt: string;
+    };
+    const isCurrentShape = (raw: Record<string, unknown>): boolean =>
+      typeof raw.event === "object" && raw.event !== null;
+
+    // Map a stream entry into a persistable audit log. org/plan/TTL/projectName were all
     // resolved at push time (see buildStreamEntry), so this is a pure shape transform with no DB
     // lookups. Entries that predate push-time resolution (in-flight during a rolling deploy) lack
     // `orgId`/`expiresAt`; drop them rather than persist a row with a missing org or expiry.
-    const enrichEntry = (entry: TAuditLogStreamEntry): TAuditLogs | null => {
+    const enrichEntry = (raw: unknown): TAuditLogs | null => {
+      if (typeof raw !== "object" || raw === null) {
+        logger.error("audit-log-queue: Skipping non-object audit log stream entry");
+        return null;
+      }
+
+      // Legacy flat entry: it is already in the persisted shape (mapped + normalized by the
+      // old pod), so only the timestamps need re-hydrating from their JSON ISO strings.
+      if (!isCurrentShape(raw as Record<string, unknown>)) {
+        const legacy = raw as TLegacyAuditLogStreamEntry;
+        if (!legacy.orgId || !legacy.expiresAt) {
+          logger.error(
+            `audit-log-queue: Skipping legacy entry missing resolved metadata [eventType=${legacy.eventType}] [orgId=${legacy.orgId}]`
+          );
+          return null;
+        }
+        const legacyCreatedAt = new Date(legacy.createdAt);
+        return {
+          ...legacy,
+          expiresAt: new Date(legacy.expiresAt),
+          createdAt: legacyCreatedAt,
+          updatedAt: legacyCreatedAt
+        };
+      }
+
+      const entry = raw as TAuditLogStreamEntry;
       if (!entry.orgId || !entry.expiresAt) {
         logger.error(
           `audit-log-queue: Skipping entry missing resolved metadata [event=${entry.event?.type}] [orgId=${entry.orgId}]`
@@ -233,7 +263,17 @@ export const auditLogQueueServiceFactory = async ({
       };
     };
 
-    const enriched = parsed.map(enrichEntry).filter((log): log is TAuditLogs => log !== null);
+    // Per-entry guard: a single unmappable entry (corrupt or unexpected shape) is skipped,
+    // never allowed to throw out of the map and abort the whole batch
+    const enriched: TAuditLogs[] = [];
+    for (const raw of parsed) {
+      try {
+        const log = enrichEntry(raw);
+        if (log) enriched.push(log);
+      } catch (error) {
+        logger.error(error, "audit-log-queue: Skipping unmappable audit log stream entry");
+      }
+    }
 
     if (enriched.length > 0) {
       try {

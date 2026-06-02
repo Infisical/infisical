@@ -75,7 +75,7 @@ export const auditLogStreamServiceFactory = ({
       provider,
       encryptedCredentials,
       // All new streams use batch delivery. "single" is reachable only by existing
-      // custom streams that were migrated, and only as a one-way upgrade away from it.
+      // custom/cribl streams that were migrated, and only as a one-way upgrade away from it.
       streamMode: StreamMode.Batch
     });
 

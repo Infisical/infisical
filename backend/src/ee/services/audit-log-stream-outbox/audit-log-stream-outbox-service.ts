@@ -189,7 +189,7 @@ export const auditLogStreamOutboxServiceFactory = ({
 
     const providerImpl = factory();
 
-    // "single" streams (legacy custom webhooks) get one event per request; everything
+    // "single" streams (legacy custom/cribl receivers) get one event per request; everything
     // else gets a JSON array per request. Single mode treats each row as its own chunk.
     const isSingleMode = stream.streamMode === StreamMode.Single;
 

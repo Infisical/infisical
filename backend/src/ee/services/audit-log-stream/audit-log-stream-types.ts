@@ -39,7 +39,7 @@ export type TLogStreamFactoryBatchStreamLog<C extends TAuditLogStreamCredentials
 }) => Promise<void>;
 
 // Single-event delivery: one log POSTed per request. Only providers that support
-// the legacy "single" stream mode (custom) implement this.
+// the legacy "single" stream mode (custom, cribl) implement this.
 export type TLogStreamFactoryStreamLog<C extends TAuditLogStreamCredentials> = (input: {
   credentials: C;
   auditLog: TAuditLogs;
@@ -56,6 +56,6 @@ export type TLogStreamFactory<C extends TAuditLogStreamCredentials> = () => {
   validateCredentials: TLogStreamFactoryValidateCredentials<C>;
   batchStreamLog: TLogStreamFactoryBatchStreamLog<C>;
   getProviderBatchLimit: TLogStreamFactoryGetProviderBatchLimit;
-  // Present only for providers that support "single" stream mode (custom).
+  // Present only for providers that support "single" stream mode (custom, cribl).
   streamLog?: TLogStreamFactoryStreamLog<C>;
 };

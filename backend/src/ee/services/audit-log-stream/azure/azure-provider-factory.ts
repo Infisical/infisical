@@ -73,7 +73,6 @@ export const AzureProviderFactory = () => {
     return credentials;
   };
 
-  // Azure Logs Ingestion API natively accepts a JSON array of events per request.
   const batchStreamLog: TLogStreamFactoryBatchStreamLog<TAzureProviderCredentials> = async ({
     credentials,
     auditLogs

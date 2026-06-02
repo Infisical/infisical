@@ -63,7 +63,6 @@ export const SplunkProviderFactory = () => {
     return credentials;
   };
 
-  // Splunk HEC accepts multiple events in a single POST as concatenated JSON objects (no separator required).
   const batchStreamLog: TLogStreamFactoryBatchStreamLog<TSplunkProviderCredentials> = async ({
     credentials,
     auditLogs
