@@ -2,8 +2,8 @@ import { Controller, FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
-import { Button, FormControl, Input, ModalClose, SecretInput } from "@app/components/v2";
-import { LogProvider } from "@app/hooks/api/auditLogStreams/enums";
+import { Button, FormControl, Input, ModalClose, SecretInput, Switch } from "@app/components/v2";
+import { LogProvider, StreamMode } from "@app/hooks/api/auditLogStreams/enums";
 import { TCriblProviderLogStream } from "@app/hooks/api/auditLogStreams/types/providers/cribl-provider";
 
 type Props = {
@@ -16,19 +16,30 @@ const formSchema = z.object({
   credentials: z.object({
     url: z.string().url().trim().min(1).max(255),
     token: z.string().trim().min(21).max(255)
-  })
+  }),
+  streamMode: z.nativeEnum(StreamMode).optional()
 });
 
 type FormData = z.infer<typeof formSchema>;
 
 export const CriblProviderAuditLogStreamForm = ({ auditLogStream, onSubmit }: Props) => {
   const isUpdate = Boolean(auditLogStream);
+  // Only streams already on "single" (legacy) can change mode — and only to "batch".
+  const isSingleStream = auditLogStream?.streamMode === StreamMode.Single;
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
-    defaultValues: auditLogStream ?? {
-      provider: LogProvider.Cribl
-    }
+    defaultValues: auditLogStream
+      ? {
+          ...auditLogStream,
+          // Any payload missing streamMode (legacy stream, partial cache) resolves to
+          // Batch — the system default — so the switch reflects the true mode rather
+          // than rendering unchecked.
+          streamMode: auditLogStream.streamMode ?? StreamMode.Batch
+        }
+      : {
+          provider: LogProvider.Cribl
+        }
   });
 
   const {
@@ -85,6 +96,45 @@ export const CriblProviderAuditLogStreamForm = ({ auditLogStream, onSubmit }: Pr
             </FormControl>
           )}
         />
+        {isUpdate && (
+          <div className="mt-6 rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4">
+            <Controller
+              control={control}
+              name="streamMode"
+              render={({ field }) => {
+                const isBatch = field.value === StreamMode.Batch;
+                return (
+                  <div>
+                    <Switch
+                      id="stream-batch-mode"
+                      isChecked={isBatch}
+                      isDisabled={!isSingleStream}
+                      onCheckedChange={(checked) =>
+                        field.onChange(checked ? StreamMode.Batch : StreamMode.Single)
+                      }
+                    >
+                      <span className="text-sm">Batch delivery (send events as a JSON array)</span>
+                    </Switch>
+                    {isSingleStream &&
+                      (isBatch ? (
+                        <p className="mt-2 text-xs text-yellow">
+                          Switching from single to batch delivery cannot be undone. Make sure your
+                          Cribl source accepts newline-delimited JSON (NDJSON) batches.
+                        </p>
+                      ) : (
+                        <p className="mt-2 text-xs text-mineshaft-400">
+                          This stream uses legacy single-event delivery (one event per request).
+                          Enable batch delivery to send events as a newline-delimited JSON (NDJSON)
+                          batch.
+                        </p>
+                      ))}
+                  </div>
+                );
+              }}
+            />
+          </div>
+        )}
+
         <div className="mt-8 flex items-center">
           <Button
             className="mr-4"
