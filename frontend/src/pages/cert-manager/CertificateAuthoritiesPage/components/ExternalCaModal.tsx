@@ -1359,7 +1359,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
                     isError={Boolean(error)}
                     errorText={error?.message}
                     isRequired
-                    tooltipText="Domain Validated SSL product to use for issuance (single domain)."
+                    tooltipText="Domain Validated SSL product to use for issuance."
                   >
                     <Select
                       value={value}
@@ -1368,9 +1368,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
                       position="popper"
                       dropdownContainerClassName="max-w-none"
                     >
-                      <SelectItem value={GoDaddyProductType.DV_SSL}>
-                        DV SSL (single domain)
-                      </SelectItem>
+                      <SelectItem value={GoDaddyProductType.DV_SSL}>DV SSL</SelectItem>
                     </Select>
                   </FormControl>
                 )}
