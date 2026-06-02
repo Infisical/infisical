@@ -6,11 +6,14 @@ import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
+import { getProjectBuiltInRoles } from "@app/services/role/project/project-role-fns";
+import { TRoleDALFactory } from "@app/services/role/role-dal";
 
 type TBootstrapDeps = {
   projectDAL: Pick<TProjectDALFactory, "create" | "findOne">;
   membershipDAL: Pick<TMembershipDALFactory, "create">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create">;
+  roleDAL: Pick<TRoleDALFactory, "insertMany">;
 };
 
 type TBootstrapInput = {
@@ -21,7 +24,7 @@ type TBootstrapInput = {
 
 export const bootstrapCertManagerProject = async (
   { orgId, adminUserIds = [], adminIdentityIds = [] }: TBootstrapInput,
-  { projectDAL, membershipDAL, membershipRoleDAL }: TBootstrapDeps,
+  { projectDAL, membershipDAL, membershipRoleDAL, roleDAL }: TBootstrapDeps,
   tx: Knex
 ): Promise<{ project: TProjects; created: boolean }> => {
   const existing = await projectDAL.findOne({ orgId, type: ProjectType.CertificateManager }, tx);
@@ -42,6 +45,8 @@ export const bootstrapCertManagerProject = async (
     },
     tx
   );
+
+  await roleDAL.insertMany(getProjectBuiltInRoles(project.id, ProjectType.CertificateManager), tx);
 
   for (const userId of adminUserIds) {
     // eslint-disable-next-line no-await-in-loop

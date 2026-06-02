@@ -1,13 +1,7 @@
-import { packRules } from "@casl/ability/extra";
 import { Knex } from "knex";
 
 import { initializeHsmModule } from "@app/ee/services/hsm/hsm-fns";
 import { hsmServiceFactory } from "@app/ee/services/hsm/hsm-service";
-import {
-  projectMemberPermissions,
-  projectNoAccessPermissions,
-  projectViewerPermission
-} from "@app/ee/services/permission/default-roles";
 import { getHsmConfig, initEnvConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { generateUserSrpKeys } from "@app/lib/crypto/srp";
@@ -19,6 +13,7 @@ import { membershipRoleDALFactory } from "@app/services/membership/membership-ro
 import { membershipUserDALFactory } from "@app/services/membership-user/membership-user-dal";
 import { assignWorkspaceKeysToMembers, createProjectKey } from "@app/services/project/project-fns";
 import { projectKeyDALFactory } from "@app/services/project-key/project-key-dal";
+import { getProjectBuiltInRoles } from "@app/services/role/project/project-role-fns";
 import { superAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 import { userDALFactory } from "@app/services/user/user-dal";
 
@@ -192,36 +187,9 @@ const createUserWithGhostUser = async (
   };
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const packPermissions = (rules: unknown) => JSON.stringify((packRules as (r: any) => unknown[])(rules));
-
 // Built-in project roles (excluding Admin, which is resolved in-code) seeded as DB rows
-export const getSecretManagerBuiltInProjectRoles = (projectId: string) => [
-  {
-    projectId,
-    name: "Member",
-    slug: ProjectMembershipRole.Member,
-    description: "Limited read/write role in a project",
-    permissions: packPermissions(projectMemberPermissions),
-    isBuiltIn: true
-  },
-  {
-    projectId,
-    name: "Viewer",
-    slug: ProjectMembershipRole.Viewer,
-    description: "Only read role in a project",
-    permissions: packPermissions(projectViewerPermission),
-    isBuiltIn: true
-  },
-  {
-    projectId,
-    name: "No Access",
-    slug: ProjectMembershipRole.NoAccess,
-    description: "No access to any resources in the project",
-    permissions: packPermissions(projectNoAccessPermissions),
-    isBuiltIn: true
-  }
-];
+export const getSecretManagerBuiltInProjectRoles = (projectId: string) =>
+  getProjectBuiltInRoles(projectId, ProjectType.SecretManager);
 
 export async function seed(knex: Knex): Promise<void> {
   // Deletes ALL existing entries

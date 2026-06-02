@@ -1000,9 +1000,7 @@ export const permissionServiceFactory = ({
       const activeRoles = (membership.roles ?? []).filter(isActiveRole);
       activeRoles.forEach((role) => {
         const isCustom = role.role === ProjectMembershipRole.Custom;
-        const builtRules = buildProjectPermissionRules([
-          { role: role.role, permissions: isCustom ? role.permissions : [] }
-        ]);
+        const builtRules = buildProjectPermissionRules([{ role: role.role, permissions: role.permissions }]);
         const packedPermissions = packRules(builtRules) as PackRule<RawRuleOf<MongoAbility<ProjectPermissionSet>>>[];
 
         sources.push({
@@ -1107,9 +1105,12 @@ export const permissionServiceFactory = ({
       const activeRoles = (membership.roles ?? []).filter(isActiveRole);
       activeRoles.forEach((role) => {
         const isCustom = role.role === ProjectMembershipRole.Custom;
-        const builtRules = buildProjectPermissionRules([
-          { role: role.role, permissions: isCustom ? role.permissions : [] }
-        ]);
+        // Built-in non-admin roles (Member, Viewer, No Access, etc.) are DB-backed now —
+        // their permissions live on the joined role row, not in an in-code slug mapping.
+        // Migrated platform roles keep their original slug as `role.role` (e.g. "member"),
+        // so always pass the role's own permissions and let buildProjectPermissionRules
+        // special-case the in-code Admin role (which has no DB row).
+        const builtRules = buildProjectPermissionRules([{ role: role.role, permissions: role.permissions }]);
         const packedPermissions = packRules(builtRules) as PackRule<RawRuleOf<MongoAbility<ProjectPermissionSet>>>[];
 
         sources.push({

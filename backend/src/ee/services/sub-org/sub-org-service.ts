@@ -105,7 +105,7 @@ export const subOrgServiceFactory = ({
           adminUserIds: permission.type === ActorType.USER ? [permission.id] : [],
           adminIdentityIds: permission.type === ActorType.IDENTITY ? [permission.id] : []
         },
-        { projectDAL, membershipDAL, membershipRoleDAL },
+        { projectDAL, membershipDAL, membershipRoleDAL, roleDAL },
         tx
       );
 

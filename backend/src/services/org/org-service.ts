@@ -693,7 +693,7 @@ export const orgServiceFactory = ({
           orgId: org.id,
           adminUserIds: userId ? [userId] : []
         },
-        { projectDAL, membershipDAL, membershipRoleDAL },
+        { projectDAL, membershipDAL, membershipRoleDAL, roleDAL },
         tx
       );
 

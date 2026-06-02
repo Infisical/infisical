@@ -1,5 +1,5 @@
 import { createMongoAbility, ForbiddenError, MongoAbility, RawRuleOf, subject } from "@casl/ability";
-import { PackRule, packRules as caslPackRules, unpackRules } from "@casl/ability/extra";
+import { PackRule, unpackRules } from "@casl/ability/extra";
 import slugify from "@sindresorhus/slugify";
 
 import {
@@ -16,13 +16,6 @@ import {
   TProjects
 } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
-import {
-  cryptographicOperatorPermissions,
-  projectMemberPermissions,
-  projectNoAccessPermissions,
-  projectViewerPermission,
-  sshHostBootstrapPermissions
-} from "@app/ee/services/permission/default-roles";
 import {
   OrgPermissionActions,
   OrgPermissionProjectActions,
@@ -92,6 +85,7 @@ import { TPkiAlertDALFactory } from "../pki-alert/pki-alert-dal";
 import { TPkiCollectionDALFactory } from "../pki-collection/pki-collection-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
+import { getProjectBuiltInRoles } from "../role/project/project-role-fns";
 import { TRoleDALFactory } from "../role/role-dal";
 import { ROOT_FOLDER_NAME, TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TProjectSlackConfigDALFactory } from "../slack/project-slack-config-dal";
@@ -263,50 +257,6 @@ export const projectServiceFactory = ({
   groupDAL,
   projectAccessRequestDAL
 }: TProjectServiceFactoryDep) => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const packRules = (rules: unknown) => JSON.stringify((caslPackRules as (r: any) => unknown[])(rules));
-
-  const getProjectBuiltInRoles = (projectType: ProjectType) => [
-    {
-      slug: ProjectMembershipRole.Member,
-      name: "Member",
-      description: "Limited read/write role in a project",
-      permissions: packRules(projectMemberPermissions)
-    },
-    {
-      slug: ProjectMembershipRole.Viewer,
-      name: "Viewer",
-      description: "Only read role in a project",
-      permissions: packRules(projectViewerPermission)
-    },
-    {
-      slug: ProjectMembershipRole.NoAccess,
-      name: "No Access",
-      description: "No access to any resources in the project",
-      permissions: packRules(projectNoAccessPermissions)
-    },
-    ...(projectType === ProjectType.SSH
-      ? [
-          {
-            slug: ProjectMembershipRole.SshHostBootstrapper,
-            name: "SSH Host Bootstrapper",
-            description: "Create and issue SSH Hosts in a project",
-            permissions: packRules(sshHostBootstrapPermissions)
-          }
-        ]
-      : []),
-    ...(projectType === ProjectType.KMS
-      ? [
-          {
-            slug: ProjectMembershipRole.KmsCryptographicOperator,
-            name: "Cryptographic Operator",
-            description: "Perform cryptographic operations, such as encryption and signing, in a project",
-            permissions: packRules(cryptographicOperatorPermissions)
-          }
-        ]
-      : [])
-  ];
-
   /*
    * Create workspace. Make user the admin
    * */
@@ -462,14 +412,11 @@ export const projectServiceFactory = ({
         );
 
         const templateRoleSlugs = new Set(templateRolesToInsert.map((r) => r.slug));
-        const builtInRolesForTemplate = getProjectBuiltInRoles(project.type as ProjectType).filter(
+        const builtInRolesForTemplate = getProjectBuiltInRoles(project.id, project.type as ProjectType).filter(
           (r) => !templateRoleSlugs.has(r.slug)
         );
         if (builtInRolesForTemplate.length > 0) {
-          await roleDAL.insertMany(
-            builtInRolesForTemplate.map((r) => ({ ...r, projectId: project.id, isBuiltIn: true })),
-            tx
-          );
+          await roleDAL.insertMany(builtInRolesForTemplate, tx);
         }
 
         // Add template users to the project
@@ -755,14 +702,7 @@ export const projectServiceFactory = ({
       }
 
       if (!projectTemplate) {
-        await roleDAL.insertMany(
-          getProjectBuiltInRoles(project.type as ProjectType).map((r) => ({
-            ...r,
-            projectId: project.id,
-            isBuiltIn: true
-          })),
-          tx
-        );
+        await roleDAL.insertMany(getProjectBuiltInRoles(project.id, project.type as ProjectType), tx);
       }
 
       // If the project is being created by a user, add the user to the project as an admin
