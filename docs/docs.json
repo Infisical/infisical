@@ -3741,15 +3741,15 @@
     },
     {
       "source": "/documentation/platform/pki/certificates",
-      "destination": "/documentation/platform/pki/certificates/certificates"
+      "destination": "/documentation/platform/pki/applications/certificates"
     },
     {
       "source": "/documentation/platform/pki/est",
-      "destination": "/documentation/platform/pki/enrollment-methods/est"
+      "destination": "/documentation/platform/pki/applications/enrollment-methods/est"
     },
     {
       "source": "/documentation/platform/pki/alerting",
-      "destination": "/documentation/platform/pki/alerting/overview"
+      "destination": "/documentation/platform/pki/applications/alerting/overview"
     },
     {
       "source": "/api-reference/endpoints/integrations/create-auth",
