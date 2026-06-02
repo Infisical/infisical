@@ -497,19 +497,19 @@ export const IdentityOidcAuthForm = ({
                               <TooltipContent className="max-w-md">
                                 <div className="flex flex-col gap-2">
                                   <p>Map OIDC token claims to identity metadata fields.</p>
-                                  <div className="flex flex-col gap-2 border-t border-foreground/10 pt-2">
+                                  <div className="flex flex-col gap-2 border-t border-muted/50 pt-2">
                                     <div className="flex flex-wrap items-center gap-1.5">
-                                      <span className="text-muted">Example:</span>
+                                      <span className="text-accent">Example:</span>
                                       <code className="rounded bg-foreground/10 px-1.5 py-0.5 font-mono text-xs">
                                         role
                                       </code>
-                                      <span className="text-muted">→</span>
+                                      <span className="text-accent">→</span>
                                       <code className="rounded bg-foreground/10 px-1.5 py-0.5 font-mono text-xs">
                                         token.groups
                                       </code>
                                     </div>
                                     <div className="flex flex-wrap items-center gap-1.5">
-                                      <span className="text-muted">Becomes:</span>
+                                      <span className="text-accent">Becomes:</span>
                                       <code className="rounded bg-foreground/10 px-1.5 py-0.5 font-mono text-xs">
                                         identity.metadata.oidc.claims.role
                                       </code>

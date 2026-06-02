@@ -335,7 +335,7 @@ export const IdentitySpiffeAuthForm = ({
                         <div className="flex flex-col gap-2">
                           <p>Comma-separated list of SPIFFE IDs allowed to authenticate.</p>
                           <div className="flex flex-col gap-2 border-t border-foreground/10 pt-2">
-                            <p className="text-muted">Glob patterns supported:</p>
+                            <p className="text-accent">Glob patterns supported:</p>
                             <div className="flex items-center gap-1.5">
                               <code className="rounded bg-foreground/10 px-1.5 py-0.5 font-mono text-xs">
                                 *
