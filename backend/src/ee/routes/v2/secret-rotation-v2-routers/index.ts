@@ -1,6 +1,7 @@
 import { SecretRotation } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-enums";
 
 import { registerAuth0ClientSecretRotationRouter } from "./auth0-client-secret-rotation-router";
+import { registerConvexAccessKeyRotationRouter } from "./convex-access-key-rotation-router";
 import { registerAwsIamUserSecretRotationRouter } from "./aws-iam-user-secret-rotation-router";
 import { registerAzureClientSecretRotationRouter } from "./azure-client-secret-rotation-router";
 import { registerDatabricksServicePrincipalSecretRotationRouter } from "./databricks-service-principal-secret-rotation-router";
@@ -46,5 +47,6 @@ export const SECRET_ROTATION_REGISTER_ROUTER_MAP: Record<
   [SecretRotation.HpIloLocalAccount]: registerHpIloRotationRouter,
   [SecretRotation.SupabaseApiKey]: registerSupabaseApiKeyRotationRouter,
   [SecretRotation.SalesforceOauthCredentials]: registerSalesforceOauthCredentialsRotationRouter,
-  [SecretRotation.DatadogApplicationKeySecret]: registerDatadogApplicationKeySecretRotationRouter
+  [SecretRotation.DatadogApplicationKeySecret]: registerDatadogApplicationKeySecretRotationRouter,
+  [SecretRotation.ConvexAccessKey]: registerConvexAccessKeyRotationRouter
 };

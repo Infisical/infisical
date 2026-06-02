@@ -7,6 +7,7 @@ import { getRotateAtLocal } from "@app/helpers/secretRotationsV2";
 import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
 
 import { Auth0ClientSecretRotationReviewFields } from "./Auth0ClientSecretRotationReviewFields";
+import { ConvexAccessKeyRotationReviewFields } from "./ConvexAccessKeyRotationReviewFields";
 import { AwsIamUserSecretRotationReviewFields } from "./AwsIamUserSecretRotationReviewFields";
 import { AzureClientSecretRotationReviewFields } from "./AzureClientSecretRotationReviewFields";
 import { DatabricksServicePrincipalSecretRotationReviewFields } from "./DatabricksServicePrincipalSecretRotationReviewFields";
@@ -44,7 +45,8 @@ const COMPONENT_MAP: Record<SecretRotation, React.FC> = {
   [SecretRotation.HpIloLocalAccount]: HpIloRotationReviewFields,
   [SecretRotation.SupabaseApiKey]: SupabaseApiKeyRotationReviewFields,
   [SecretRotation.SalesforceOauthCredentials]: SalesforceOauthCredentialsRotationReviewFields,
-  [SecretRotation.DatadogApplicationKeySecret]: DatadogApplicationKeySecretRotationReviewFields
+  [SecretRotation.DatadogApplicationKeySecret]: DatadogApplicationKeySecretRotationReviewFields,
+  [SecretRotation.ConvexAccessKey]: ConvexAccessKeyRotationReviewFields
 };
 
 export const SecretRotationV2ReviewFields = () => {

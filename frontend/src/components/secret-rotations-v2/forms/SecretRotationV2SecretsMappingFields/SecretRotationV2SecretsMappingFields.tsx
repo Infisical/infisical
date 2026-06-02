@@ -4,6 +4,7 @@ import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
 
 import { TSecretRotationV2Form } from "../schemas";
 import { Auth0ClientSecretRotationSecretsMappingFields } from "./Auth0ClientSecretRotationSecretsMappingFields";
+import { ConvexAccessKeyRotationSecretsMappingFields } from "./ConvexAccessKeyRotationSecretsMappingFields";
 import { AwsIamUserSecretRotationSecretsMappingFields } from "./AwsIamUserSecretRotationSecretsMappingFields";
 import { AzureClientSecretRotationSecretsMappingFields } from "./AzureClientSecretRotationSecretsMappingFields";
 import { DatabricksServicePrincipalSecretRotationSecretsMappingFields } from "./DatabricksServicePrincipalSecretRotationSecretsMappingFields";
@@ -43,7 +44,8 @@ const COMPONENT_MAP: Record<SecretRotation, React.FC> = {
   [SecretRotation.SalesforceOauthCredentials]:
     SalesforceOauthCredentialsRotationSecretsMappingFields,
   [SecretRotation.DatadogApplicationKeySecret]:
-    DatadogApplicationKeySecretRotationSecretsMappingFields
+    DatadogApplicationKeySecretRotationSecretsMappingFields,
+  [SecretRotation.ConvexAccessKey]: ConvexAccessKeyRotationSecretsMappingFields
 };
 
 export const SecretRotationV2SecretsMappingFields = () => {

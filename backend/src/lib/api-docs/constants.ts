@@ -3393,6 +3393,9 @@ export const SecretRotations = {
     },
     DATADOG_APPLICATION_KEY_SECRET: {
       serviceAccountId: "The ID of the Datadog service account to rotate the application key for."
+    },
+    CONVEX_ACCESS_KEY: {
+      namePrefix: "A prefix to use when naming the generated Convex access key."
     }
   },
   SECRETS_MAPPING: {
@@ -3464,6 +3467,9 @@ export const SecretRotations = {
     DATADOG_APPLICATION_KEY_SECRET: {
       applicationKeyId: "The name of the secret that the rotated Datadog application key ID will be mapped to.",
       applicationKey: "The name of the secret that the rotated Datadog application key value will be mapped to."
+    },
+    CONVEX_ACCESS_KEY: {
+      accessKey: "The name of the secret that the rotated Convex access key will be mapped to."
     }
   }
 };

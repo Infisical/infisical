@@ -1,10 +1,11 @@
 import { request } from "@app/lib/config/request";
 import { UnauthorizedError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 import { ConvexConnectionMethod } from "./convex-connection-enums";
 import { TConvexConnectionConfig } from "./convex-connection-types";
-import { logger } from "@app/lib/logger";
 
 export const CONVEX_API_BASE_URL = "https://api.convex.dev";
 
@@ -19,6 +20,8 @@ export const getConvexConnectionListItem = () => {
 export const validateConvexConnectionCredentials = async (config: TConvexConnectionConfig) => {
   const { accessToken, instanceUrl } = config.credentials;
   const baseUrl = instanceUrl || CONVEX_API_BASE_URL;
+
+  await blockLocalAndPrivateIpAddresses(baseUrl);
 
   try {
     await request.get(`${baseUrl}/v1/list_personal_access_tokens`, {

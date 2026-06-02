@@ -139,6 +139,13 @@ import {
   TUnixLinuxLocalAccountRotationWithConnection
 } from "./unix-linux-local-account-rotation";
 import {
+  TConvexAccessKeyRotation,
+  TConvexAccessKeyRotationGeneratedCredentials,
+  TConvexAccessKeyRotationInput,
+  TConvexAccessKeyRotationListItem,
+  TConvexAccessKeyRotationWithConnection
+} from "./convex-access-key";
+import {
   TWindowsLocalAccountRotation,
   TWindowsLocalAccountRotationGeneratedCredentials,
   TWindowsLocalAccountRotationInput,
@@ -166,7 +173,8 @@ export type TSecretRotationV2 =
   | THpIloRotation
   | TSupabaseApiKeyRotation
   | TSalesforceOauthCredentialsRotation
-  | TDatadogApplicationKeySecretRotation;
+  | TDatadogApplicationKeySecretRotation
+  | TConvexAccessKeyRotation;
 
 export type TSecretRotationV2WithConnection =
   | TPostgresCredentialsRotationWithConnection
@@ -188,7 +196,8 @@ export type TSecretRotationV2WithConnection =
   | THpIloRotationWithConnection
   | TSupabaseApiKeyRotationWithConnection
   | TSalesforceOauthCredentialsRotationWithConnection
-  | TDatadogApplicationKeySecretRotationWithConnection;
+  | TDatadogApplicationKeySecretRotationWithConnection
+  | TConvexAccessKeyRotationWithConnection;
 
 export type TSecretRotationV2GeneratedCredentials =
   | TSqlCredentialsRotationGeneratedCredentials
@@ -206,7 +215,8 @@ export type TSecretRotationV2GeneratedCredentials =
   | THpIloRotationGeneratedCredentials
   | TSupabaseApiKeyRotationGeneratedCredentials
   | TSalesforceOauthCredentialsRotationGeneratedCredentials
-  | TDatadogApplicationKeySecretRotationGeneratedCredentials;
+  | TDatadogApplicationKeySecretRotationGeneratedCredentials
+  | TConvexAccessKeyRotationGeneratedCredentials;
 
 export type TSecretRotationV2Input =
   | TPostgresCredentialsRotationInput
@@ -228,7 +238,8 @@ export type TSecretRotationV2Input =
   | THpIloRotationInput
   | TSupabaseApiKeyRotationInput
   | TSalesforceOauthCredentialsRotationInput
-  | TDatadogApplicationKeySecretRotationInput;
+  | TDatadogApplicationKeySecretRotationInput
+  | TConvexAccessKeyRotationInput;
 
 export type TSecretRotationV2ListItem =
   | TPostgresCredentialsRotationListItem
@@ -250,7 +261,8 @@ export type TSecretRotationV2ListItem =
   | THpIloRotationListItem
   | TSupabaseApiKeyRotationListItem
   | TSalesforceOauthCredentialsRotationListItem
-  | TDatadogApplicationKeySecretRotationListItem;
+  | TDatadogApplicationKeySecretRotationListItem
+  | TConvexAccessKeyRotationListItem;
 
 export type TSecretRotationV2TemporaryParameters =
   | TLdapPasswordRotationInput["temporaryParameters"]
