@@ -195,7 +195,27 @@ export const GitHubConnectionForm = ({ appConnection, projectId, onSubmit }: Pro
       throw new Error(`Unhandled GitHub Connection method: ${selectedMethod}`);
   }
 
+  const customHost = watch("credentials.host")?.trim().toLowerCase();
+  const isCloudCustomHostUnsupported =
+    isInfisicalCloud() &&
+    selectedMethod !== GitHubConnectionMethod.Pat &&
+    !!customHost &&
+    customHost !== "github.com";
+
   const methodDetails = getAppConnectionMethodDetails(selectedMethod);
+
+  const getMethodErrorText = (fieldError?: { message?: string }) => {
+    if (!isLoading && isMissingConfig) {
+      const configHint = isInfisicalCloud()
+        ? "Please contact Infisical."
+        : `See Docs to configure ${methodDetails.name.startsWith("GitHub") ? methodDetails.name : `GitHub ${methodDetails.name}`} Connections.`;
+      return `Credentials have not been configured. ${configHint}`;
+    }
+    if (isCloudCustomHostUnsupported) {
+      return "GitHub App/OAuth with a custom host is only supported on self-hosted Infisical.";
+    }
+    return fieldError?.message;
+  };
 
   const getButtonText = () => {
     if (selectedMethod === GitHubConnectionMethod.Pat) {
@@ -217,16 +237,8 @@ export const GitHubConnectionForm = ({ appConnection, projectId, onSubmit }: Pro
               tooltipText={`The method you would like to use to connect with ${
                 APP_CONNECTION_MAP[AppConnection.GitHub].name
               }. This field cannot be changed after creation.`}
-              errorText={
-                !isLoading && isMissingConfig
-                  ? `Credentials have not been configured. ${
-                      isInfisicalCloud()
-                        ? "Please contact Infisical."
-                        : `See Docs to configure ${methodDetails.name.startsWith("GitHub") ? methodDetails.name : `GitHub ${methodDetails.name}`} Connections.`
-                    }`
-                  : error?.message
-              }
-              isError={Boolean(error?.message) || isMissingConfig}
+              errorText={getMethodErrorText(error)}
+              isError={Boolean(error?.message) || isMissingConfig || isCloudCustomHostUnsupported}
               label="Method"
             >
               <Select
@@ -356,7 +368,13 @@ export const GitHubConnectionForm = ({ appConnection, projectId, onSubmit }: Pro
             type="submit"
             colorSchema="secondary"
             isLoading={isSubmitting || isRedirecting}
-            isDisabled={isSubmitting || (!isUpdate && !isDirty) || isMissingConfig || isRedirecting}
+            isDisabled={
+              isSubmitting ||
+              (!isUpdate && !isDirty) ||
+              isMissingConfig ||
+              isRedirecting ||
+              isCloudCustomHostUnsupported
+            }
           >
             {getButtonText()}
           </Button>
