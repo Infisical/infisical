@@ -1,4 +1,6 @@
 import { request } from "@app/lib/config/request";
+import { BadRequestError } from "@app/lib/errors";
+import { sanitizeString } from "@app/lib/fn";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator/validate-url";
 
 import { DynamicSecretIbmApiConnectSchema, TDynamicProviderFns } from "./models";
@@ -33,43 +35,70 @@ type TIbmApiConnectApplicationCredential = {
   clientSecret: string;
 };
 
-const $getAccessToken = async (credentials: TIbmApiConnectBaseCredentials): Promise<string> => {
-  const response = await request.post<{ access_token: string }>(
-    `${credentials.instanceUrl}/api/token`,
-    {
-      api_key: credentials.apiKey,
-      grant_type: "api_key",
-      client_id: credentials.clientId,
-      client_secret: credentials.clientSecret
-    },
-    {
-      headers: {
-        "Content-Type": "application/json"
-      }
-    }
-  );
+const $getSanitizationTokens = (credentials: TIbmApiConnectBaseCredentials, accessToken?: string): string[] => {
+  const tokens = [credentials.apiKey, credentials.clientSecret, credentials.clientId];
+  if (accessToken) tokens.push(accessToken);
+  return tokens;
+};
 
-  return response.data.access_token;
+const $getAccessToken = async (credentials: TIbmApiConnectBaseCredentials): Promise<string> => {
+  try {
+    const response = await request.post<{ access_token: string }>(
+      `${credentials.instanceUrl}/api/token`,
+      {
+        api_key: credentials.apiKey,
+        grant_type: "api_key",
+        client_id: credentials.clientId,
+        client_secret: credentials.clientSecret
+      },
+      {
+        headers: {
+          "Content-Type": "application/json"
+        }
+      }
+    );
+
+    return response.data.access_token;
+  } catch (err) {
+    const sanitizedErrorMessage = sanitizeString({
+      unsanitizedString: (err as Error)?.message,
+      tokens: $getSanitizationTokens(credentials)
+    });
+    throw new BadRequestError({
+      message: `Failed to authenticate with IBM API Connect: ${sanitizedErrorMessage}`
+    });
+  }
 };
 
 const $fetchOrganizations = async (credentials: TIbmApiConnectBaseCredentials): Promise<TApiConnectResource[]> => {
   const accessToken = await $getAccessToken(credentials);
-  const url = `${credentials.instanceUrl}/api/orgs`;
-  const response = await request.get<{
-    results: TApiConnectResource[];
-  }>(url, {
-    params: { limit: 100 },
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      Accept: "application/json"
-    }
-  });
 
-  return response.data.results.map((org) => ({
-    name: org.name,
-    title: org.title,
-    id: org.id
-  }));
+  try {
+    const url = `${credentials.instanceUrl}/api/orgs`;
+    const response = await request.get<{
+      results: TApiConnectResource[];
+    }>(url, {
+      params: { limit: 100 },
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: "application/json"
+      }
+    });
+
+    return response.data.results.map((org) => ({
+      name: org.name,
+      title: org.title,
+      id: org.id
+    }));
+  } catch (err) {
+    const sanitizedErrorMessage = sanitizeString({
+      unsanitizedString: (err as Error)?.message,
+      tokens: $getSanitizationTokens(credentials, accessToken)
+    });
+    throw new BadRequestError({
+      message: `Failed to fetch IBM API Connect organizations: ${sanitizedErrorMessage}`
+    });
+  }
 };
 
 const $fetchOrganizationCatalogs = async (
@@ -77,21 +106,32 @@ const $fetchOrganizationCatalogs = async (
   orgId: string
 ): Promise<TApiConnectResource[]> => {
   const accessToken = await $getAccessToken(credentials);
-  const response = await request.get<{
-    results: TApiConnectResource[];
-  }>(`${credentials.instanceUrl}/api/orgs/${orgId}/catalogs`, {
-    params: { limit: 100 },
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      Accept: "application/json"
-    }
-  });
 
-  return response.data.results.map((catalog) => ({
-    name: catalog.name,
-    title: catalog.title,
-    id: catalog.id
-  }));
+  try {
+    const response = await request.get<{
+      results: TApiConnectResource[];
+    }>(`${credentials.instanceUrl}/api/orgs/${orgId}/catalogs`, {
+      params: { limit: 100 },
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: "application/json"
+      }
+    });
+
+    return response.data.results.map((catalog) => ({
+      name: catalog.name,
+      title: catalog.title,
+      id: catalog.id
+    }));
+  } catch (err) {
+    const sanitizedErrorMessage = sanitizeString({
+      unsanitizedString: (err as Error)?.message,
+      tokens: $getSanitizationTokens(credentials, accessToken)
+    });
+    throw new BadRequestError({
+      message: `Failed to fetch IBM API Connect catalogs: ${sanitizedErrorMessage}`
+    });
+  }
 };
 
 const $fetchOrganizationApps = async (
@@ -100,27 +140,38 @@ const $fetchOrganizationApps = async (
   catalogId: string
 ): Promise<TApiConnectApp[]> => {
   const accessToken = await $getAccessToken(credentials);
-  const response = await request.get<{
-    results: (TApiConnectResource & { consumer_org_url: string })[];
-  }>(`${credentials.instanceUrl}/api/catalogs/${orgId}/${catalogId}/apps`, {
-    params: { limit: 100 },
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      Accept: "application/json"
-    }
-  });
 
-  return response.data.results.map((app) => {
-    // consumer_org_url is composed of:
-    // https://endpoint/api/consumer-orgs/{orgId}/{catalog}/{consumer_org}
-    const consumerOrgId = app.consumer_org_url.split("/").filter(Boolean).pop() ?? "";
-    return {
-      name: app.name,
-      title: app.title,
-      id: app.id,
-      consumerOrgId
-    };
-  });
+  try {
+    const response = await request.get<{
+      results: (TApiConnectResource & { consumer_org_url: string })[];
+    }>(`${credentials.instanceUrl}/api/catalogs/${orgId}/${catalogId}/apps`, {
+      params: { limit: 100 },
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: "application/json"
+      }
+    });
+
+    return response.data.results.map((app) => {
+      // consumer_org_url is composed of:
+      // https://endpoint/api/consumer-orgs/{orgId}/{catalog}/{consumer_org}
+      const consumerOrgId = app.consumer_org_url.split("/").filter(Boolean).pop() ?? "";
+      return {
+        name: app.name,
+        title: app.title,
+        id: app.id,
+        consumerOrgId
+      };
+    });
+  } catch (err) {
+    const sanitizedErrorMessage = sanitizeString({
+      unsanitizedString: (err as Error)?.message,
+      tokens: $getSanitizationTokens(credentials, accessToken)
+    });
+    throw new BadRequestError({
+      message: `Failed to fetch IBM API Connect apps: ${sanitizedErrorMessage}`
+    });
+  }
 };
 
 const $createApplicationCredential = async (
@@ -130,27 +181,37 @@ const $createApplicationCredential = async (
   const { instanceUrl, orgId, catalogId, consumerOrgId, appId } = credentials;
   const url = `${instanceUrl}/api/apps/${orgId}/${catalogId}/${consumerOrgId}/${appId}/credentials`;
 
-  const response = await request.post<{
-    id: string;
-    client_id: string;
-    client_secret: string;
-  }>(
-    url,
-    { title: `infisical-${Date.now()}` },
-    {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-        Accept: "application/json"
+  try {
+    const response = await request.post<{
+      id: string;
+      client_id: string;
+      client_secret: string;
+    }>(
+      url,
+      { title: `infisical-${Date.now()}` },
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+          Accept: "application/json"
+        }
       }
-    }
-  );
+    );
 
-  return {
-    id: response.data.id,
-    clientId: response.data.client_id,
-    clientSecret: response.data.client_secret
-  };
+    return {
+      id: response.data.id,
+      clientId: response.data.client_id,
+      clientSecret: response.data.client_secret
+    };
+  } catch (err) {
+    const sanitizedErrorMessage = sanitizeString({
+      unsanitizedString: (err as Error)?.message,
+      tokens: $getSanitizationTokens(credentials, accessToken)
+    });
+    throw new BadRequestError({
+      message: `Failed to create IBM API Connect credential: ${sanitizedErrorMessage}`
+    });
+  }
 };
 
 const $revokeApplicationCredential = async (
@@ -161,12 +222,22 @@ const $revokeApplicationCredential = async (
   const { instanceUrl, orgId, catalogId, consumerOrgId, appId } = credentials;
   const url = `${instanceUrl}/api/apps/${orgId}/${catalogId}/${consumerOrgId}/${appId}/credentials/${entityId}`;
 
-  await request.delete(url, {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      Accept: "application/json"
-    }
-  });
+  try {
+    await request.delete(url, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: "application/json"
+      }
+    });
+  } catch (err) {
+    const sanitizedErrorMessage = sanitizeString({
+      unsanitizedString: (err as Error)?.message,
+      tokens: $getSanitizationTokens(credentials, accessToken)
+    });
+    throw new BadRequestError({
+      message: `Failed to revoke IBM API Connect credential: ${sanitizedErrorMessage}`
+    });
+  }
 };
 
 export const IbmApiConnectProvider = (): TDynamicProviderFns & {
