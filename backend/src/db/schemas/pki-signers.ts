@@ -14,7 +14,7 @@ export const PkiSignersSchema = z.object({
   description: z.string().nullable().optional(),
   status: z.string().default("active"),
   certificateId: z.string().uuid().nullable().optional(),
-  approvalPolicyId: z.string().uuid(),
+  approvalPolicyId: z.string().uuid().nullable().optional(),
   lastSignedAt: z.date().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
