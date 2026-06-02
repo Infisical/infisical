@@ -140,7 +140,7 @@ export const OrgGeneralAuthSection = ({
       }
 
       if (value) {
-        setBypassEnabledInModal(currentOrg?.bypassOrgAuthEnabled ?? false);
+        setBypassEnabledInModal(true);
         setEnforcementTypeInModal(EnforceAuthType.SAML);
         handlePopUpOpen("enforceSamlSsoConfirmation");
         return;
@@ -165,7 +165,7 @@ export const OrgGeneralAuthSection = ({
       }
 
       if (value) {
-        setBypassEnabledInModal(currentOrg?.bypassOrgAuthEnabled ?? false);
+        setBypassEnabledInModal(true);
         setEnforcementTypeInModal(EnforceAuthType.GOOGLE);
         handlePopUpOpen("enforceSamlSsoConfirmation");
         return;
