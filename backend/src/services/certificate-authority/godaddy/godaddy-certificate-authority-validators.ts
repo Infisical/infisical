@@ -14,7 +14,10 @@ export const isGoDaddyCoveredSan = (value: string, commonName?: string | null): 
   const san = value.trim().toLowerCase();
   const cn = (commonName ?? "").trim().toLowerCase();
   if (!cn || !san) return false;
-  return san === cn || san === `www.${cn}` || cn === `www.${san}`;
+  if (san === cn) return true;
+  // GoDaddy pairs a bare CN with its `www.` host and a `www.` CN with its bare host. Gate each
+  // direction so a `www.` CN can't also match `www.www.<cn>`.
+  return cn.startsWith("www.") ? cn === `www.${san}` : san === `www.${cn}`;
 };
 
 export const validateGoDaddyIssuanceInputs = ({
