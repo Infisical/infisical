@@ -28,7 +28,10 @@ import {
   resolveEffectiveApiConfig
 } from "../certificate-common/certificate-issuance-utils";
 import { CertificateRequestCancelledError } from "../certificate-common/certificate-request-errors";
-import { DigiCertExternalMetadataSchema } from "../certificate-common/external-metadata-schemas";
+import {
+  DigiCertExternalMetadataSchema,
+  GoDaddyExternalMetadataSchema
+} from "../certificate-common/external-metadata-schemas";
 import { TCertificateRequestDALFactory } from "../certificate-request/certificate-request-dal";
 import { TCertificateRequestServiceFactory } from "../certificate-request/certificate-request-service";
 import { CertificateRequestStatus } from "../certificate-request/certificate-request-types";
@@ -864,6 +867,19 @@ export const certificateIssuanceQueueFactory = ({
 
         await setPending("Submitting the request to GoDaddy");
 
+        let renewalOfCertificateId: string | undefined;
+        if (isRenewal && originalCertificateId) {
+          const originalCert = await certificateDAL.findById(originalCertificateId);
+          const parsedMetadata = GoDaddyExternalMetadataSchema.safeParse(originalCert?.externalMetadata);
+          if (parsedMetadata.success) {
+            renewalOfCertificateId = parsedMetadata.data.certificateId;
+          } else {
+            logger.warn(
+              `GoDaddy renewal requested but previous certificate has no GoDaddy reference in externalMetadata — falling back to a new order [originalCertificateId=${originalCertificateId}]`
+            );
+          }
+        }
+
         if (await isCancelled()) {
           logger.info(`Cancelled before GoDaddy order [certificateRequestId=${certificateRequestId}]`);
           return;
@@ -876,7 +892,8 @@ export const certificateIssuanceQueueFactory = ({
           signatureAlgorithm,
           keyAlgorithm: keyAlgorithm as CertKeyAlgorithm,
           ttl,
-          ...(csr && { csr })
+          ...(csr && { csr }),
+          ...(renewalOfCertificateId && { renewalOfCertificateId })
         });
 
         if (await isCancelled()) {

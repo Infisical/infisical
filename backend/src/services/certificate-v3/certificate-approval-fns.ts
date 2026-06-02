@@ -496,7 +496,8 @@ export const certificateApprovalServiceFactory = (
     if (caType === CaType.GODADDY) {
       validateGoDaddyIssuanceInputs({
         keyAlgorithm: certRequest.keyAlgorithm || undefined,
-        altNames: altNames ?? undefined
+        altNames: altNames ?? undefined,
+        commonName: certRequest.commonName || undefined
       });
     }
 

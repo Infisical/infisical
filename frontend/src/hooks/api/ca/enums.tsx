@@ -51,6 +51,5 @@ export enum CaSigningConfigType {
 }
 
 export enum GoDaddyProductType {
-  DV_SSL = "DV_SSL",
-  DV_WILDCARD_SSL = "DV_WILDCARD_SSL"
+  DV_SSL = "DV_SSL"
 }

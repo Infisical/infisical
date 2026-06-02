@@ -1359,7 +1359,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
                     isError={Boolean(error)}
                     errorText={error?.message}
                     isRequired
-                    tooltipText="Domain Validated SSL product to use for issuance. Wildcard issues certificates for *.example.com."
+                    tooltipText="Domain Validated SSL product to use for issuance (single domain)."
                   >
                     <Select
                       value={value}
@@ -1370,9 +1370,6 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
                     >
                       <SelectItem value={GoDaddyProductType.DV_SSL}>
                         DV SSL (single domain)
-                      </SelectItem>
-                      <SelectItem value={GoDaddyProductType.DV_WILDCARD_SSL}>
-                        DV Wildcard SSL
                       </SelectItem>
                     </Select>
                   </FormControl>

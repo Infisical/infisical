@@ -8,12 +8,23 @@ const GODADDY_ALLOWED_KEY_ALGORITHMS = new Set<string>([
   CertKeyAlgorithm.RSA_4096
 ]);
 
+// GoDaddy DV products cover the common name plus its `www.` host — GoDaddy adds the www SAN to the
+// issued certificate automatically — so both are permitted. Any other domain is out of scope.
+export const isGoDaddyCoveredSan = (value: string, commonName?: string | null): boolean => {
+  const san = value.trim().toLowerCase();
+  const cn = (commonName ?? "").trim().toLowerCase();
+  if (!cn || !san) return false;
+  return san === cn || san === `www.${cn}` || cn === `www.${san}`;
+};
+
 export const validateGoDaddyIssuanceInputs = ({
   keyAlgorithm,
-  altNames
+  altNames,
+  commonName
 }: {
   keyAlgorithm?: string | null;
   altNames?: { type: CertSubjectAlternativeNameType; value: string }[];
+  commonName?: string | null;
 }) => {
   // GoDaddy's Certificates API only accepts RSA CSRs — ECDSA/PQC keys are rejected upstream
   // with a cryptic "This CSR was created with an invalid algorithm." Surface a clear error first.
@@ -23,8 +34,8 @@ export const validateGoDaddyIssuanceInputs = ({
     });
   }
 
-  // The GoDaddy DV products we support (single-domain, wildcard) cover a single DNS identity — they
-  // accept neither additional SANs nor non-DNS SAN types (email/IP/URI), which GoDaddy would reject.
+  // The GoDaddy DV SSL product we support is single-domain: it accepts only DNS-name identities and
+  // covers the common name plus its `www.` host. Reject non-DNS SAN types and any other domain.
   if (altNames && altNames.length > 0) {
     const nonDnsSan = altNames.find((san) => san.type !== CertSubjectAlternativeNameType.DNS_NAME);
     if (nonDnsSan) {
@@ -32,9 +43,11 @@ export const validateGoDaddyIssuanceInputs = ({
         message: `GoDaddy only supports DNS-name SANs; received a ${nonDnsSan.type} SAN ("${nonDnsSan.value}"). Use a private CA for email/IP/URI identities.`
       });
     }
-    throw new BadRequestError({
-      message:
-        "GoDaddy DV certificates are single-domain and don't support additional SANs. Put the domain in the Common Name, or use a multi-domain CA."
-    });
+    const extraSan = altNames.find((san) => !isGoDaddyCoveredSan(san.value, commonName));
+    if (extraSan) {
+      throw new BadRequestError({
+        message: `GoDaddy DV certificates cover only the common name and its www subdomain; additional domain "${extraSan.value}" is not supported. Use a multi-domain CA.`
+      });
+    }
   }
 };

@@ -17,6 +17,14 @@ type TCreateCertificateResponse = {
   certificateId: string;
 };
 
+type TRenewCertificateRequest = {
+  commonName?: string;
+  csr?: string;
+  period?: number;
+  rootType?: string;
+  subjectAlternativeNames?: string[];
+};
+
 type TGetCertificateResponse = {
   certificateId: string;
   status: string;
@@ -79,6 +87,14 @@ export const createGoDaddyApiClient = (authHeader: string, baseURL: string) => {
       return data;
     }, `certificate download for ${certificateId}`);
 
+  // GoDaddy renewal operates on the existing certificate id (POST .../renew → 202, no body),
+  // so the renewed certificate keeps the same GoDaddy id. Only available 60 days before to 30 days
+  // after the previous certificate's expiry — outside that window GoDaddy rejects the request.
+  const renewCertificate = async (certificateId: string, body: TRenewCertificateRequest) =>
+    wrap(async () => {
+      await request.post(`${baseURL}/v1/certificates/${certificateId}/renew`, body, { headers });
+    }, `certificate renewal for ${certificateId}`);
+
   const revokeCertificate = async (certificateId: string, reason: string) =>
     wrap(async () => {
       await request.post(`${baseURL}/v1/certificates/${certificateId}/revoke`, { reason }, { headers });
@@ -93,6 +109,7 @@ export const createGoDaddyApiClient = (authHeader: string, baseURL: string) => {
     createCertificate,
     getCertificate,
     downloadCertificate,
+    renewCertificate,
     revokeCertificate,
     cancelCertificate
   };

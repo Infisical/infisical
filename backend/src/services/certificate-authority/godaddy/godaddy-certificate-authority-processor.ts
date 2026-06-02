@@ -25,6 +25,7 @@ import {
 } from "./godaddy-certificate-authority-enums";
 import {
   castDbEntryToGoDaddyCertificateAuthority,
+  GoDaddyRenewalNotReadyError,
   TGoDaddyCertificateAuthorityFns
 } from "./godaddy-certificate-authority-fns";
 import { GoDaddyCertificateRequestMetadataSchema } from "./godaddy-certificate-authority-schemas";
@@ -143,37 +144,48 @@ export const processGoDaddyPendingValidationRequest = async (
 
   const isFinalisable = GODADDY_FINAL_ISSUED_STATUSES.some((status) => status === orderStatus);
   if (isFinalisable) {
-    const { certificateId } = await deps.godaddyFns.fetchAndAttachIssuedCertificate({
-      caId: request.caId,
-      certificateRequest: {
-        id: request.id,
-        profileId: request.profileId,
-        commonName: request.commonName,
-        altNames: (request.altNames as string | null) ?? null,
-        keyUsages: request.keyUsages,
-        extendedKeyUsages: request.extendedKeyUsages,
-        keyAlgorithm: request.keyAlgorithm,
-        signatureAlgorithm: request.signatureAlgorithm
-      },
-      godaddyCertificateId: parsed.godaddy.certificateId,
-      encryptedPrivateKey: request.encryptedPrivateKey ?? undefined,
-      isRenewal: parsed.godaddy.isRenewal,
-      originalCertificateId: parsed.godaddy.originalCertificateId,
-      applicationId: request.applicationId
-    });
+    try {
+      const { certificateId } = await deps.godaddyFns.fetchAndAttachIssuedCertificate({
+        caId: request.caId,
+        certificateRequest: {
+          id: request.id,
+          profileId: request.profileId,
+          commonName: request.commonName,
+          altNames: (request.altNames as string | null) ?? null,
+          keyUsages: request.keyUsages,
+          extendedKeyUsages: request.extendedKeyUsages,
+          keyAlgorithm: request.keyAlgorithm,
+          signatureAlgorithm: request.signatureAlgorithm
+        },
+        godaddyCertificateId: parsed.godaddy.certificateId,
+        encryptedPrivateKey: request.encryptedPrivateKey ?? undefined,
+        isRenewal: parsed.godaddy.isRenewal,
+        originalCertificateId: parsed.godaddy.originalCertificateId,
+        applicationId: request.applicationId
+      });
 
-    await deps.certificateRequestService.attachCertificateToRequest({
-      certificateRequestId: request.id,
-      certificateId
-    });
-    await copyMetadataFromRequestToCertificate(deps.resourceMetadataDAL, {
-      certificateRequestId: request.id,
-      certificateId
-    });
-    logger.info(
-      `GoDaddy certificate issued, attached certificate [certificateRequestId=${request.id}] [certificateId=${certificateId}]`
-    );
-    return { status: CertificateRequestStatus.ISSUED, certificateId, orderStatus };
+      await deps.certificateRequestService.attachCertificateToRequest({
+        certificateRequestId: request.id,
+        certificateId
+      });
+      await copyMetadataFromRequestToCertificate(deps.resourceMetadataDAL, {
+        certificateRequestId: request.id,
+        certificateId
+      });
+      logger.info(
+        `GoDaddy certificate issued, attached certificate [certificateRequestId=${request.id}] [certificateId=${certificateId}]`
+      );
+      return { status: CertificateRequestStatus.ISSUED, certificateId, orderStatus };
+    } catch (error) {
+      // A renewal can report ISSUED/CURRENT while GoDaddy is still serving the previous certificate
+      // (it only re-issues with a new serial near expiry). Stay pending rather than failing.
+      if (!(error instanceof GoDaddyRenewalNotReadyError)) {
+        throw error;
+      }
+      logger.info(
+        `GoDaddy renewal accepted but not yet re-issued, staying pending [certificateRequestId=${request.id}]`
+      );
+    }
   }
 
   if (GODADDY_TERMINAL_FAILURE_STATUSES.some((status) => status === orderStatus)) {

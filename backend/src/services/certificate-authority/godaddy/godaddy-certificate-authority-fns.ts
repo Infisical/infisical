@@ -46,7 +46,7 @@ import {
   TGoDaddyCertificateRequestMetadata,
   TUpdateGoDaddyCertificateAuthorityDTO
 } from "./godaddy-certificate-authority-types";
-import { validateGoDaddyIssuanceInputs } from "./godaddy-certificate-authority-validators";
+import { isGoDaddyCoveredSan, validateGoDaddyIssuanceInputs } from "./godaddy-certificate-authority-validators";
 
 type TGoDaddyCertificateAuthorityFnsDeps = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
@@ -65,6 +65,16 @@ type TGoDaddyCertificateAuthorityFnsDeps = {
   >;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findOne" | "updateById" | "transaction">;
 };
+
+// GoDaddy renewal reuses the same certificate id and only issues a genuinely renewed certificate
+// (new serial) near expiry; until then GET/download return the still-current certificate. This signals
+// that case so the poller keeps the request pending instead of trying to attach a duplicate serial.
+export class GoDaddyRenewalNotReadyError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "GoDaddyRenewalNotReadyError";
+  }
+}
 
 const GODADDY_ROOT_TYPE = "GODADDY_SHA_2";
 
@@ -398,7 +408,8 @@ export const GoDaddyCertificateAuthorityFns = ({
     altNames = [],
     keyAlgorithm = CertKeyAlgorithm.RSA_2048,
     csr,
-    ttl
+    ttl,
+    renewalOfCertificateId
   }: {
     caId: string;
     commonName: string;
@@ -407,6 +418,7 @@ export const GoDaddyCertificateAuthorityFns = ({
     keyAlgorithm?: CertKeyAlgorithm;
     csr?: string;
     ttl: string;
+    renewalOfCertificateId?: string;
   }): Promise<{
     metadata: TGoDaddyCertificateRequestMetadata;
     privateKey: string;
@@ -433,6 +445,17 @@ export const GoDaddyCertificateAuthorityFns = ({
       });
     }
 
+    // GoDaddy DV products cover the common name and its `www.` host (GoDaddy adds the www SAN itself);
+    // any other domain isn't supported. Callers validate this earlier — guard here too so we never
+    // silently issue against an unexpected domain.
+    const extraSans = altNames.filter((value) => !isGoDaddyCoveredSan(value, effectiveCommonName));
+    if (extraSans.length > 0) {
+      throw new BadRequestError({
+        message:
+          "GoDaddy DV certificates cover only the common name and its www subdomain; additional domains aren't supported"
+      });
+    }
+
     let csrPem = csr?.trim();
     let privateKeyPem = "";
 
@@ -442,18 +465,13 @@ export const GoDaddyCertificateAuthorityFns = ({
       const skLeafObj = crypto.nativeCrypto.KeyObject.from(leafKeys.privateKey);
       privateKeyPem = skLeafObj.export({ format: "pem", type: "pkcs8" }) as string;
 
+      // CN only: GoDaddy DV coverage is product-driven (CN + auto-added www), so we don't put SANs in
+      // the CSR. This matches the original order and keeps renewals (which reconstruct the issued
+      // cert's www SAN) from sending a CSR GoDaddy didn't get on first issuance.
       const csrObj = await x509.Pkcs10CertificateRequestGenerator.create({
         name: `CN=${effectiveCommonName}`,
         keys: leafKeys,
-        signingAlgorithm: alg,
-        ...(altNames.length > 0 && {
-          extensions: [
-            new x509.SubjectAlternativeNameExtension(
-              altNames.map((value) => ({ type: "dns" as TAltNameType, value })),
-              false
-            )
-          ]
-        })
+        signingAlgorithm: alg
       });
       csrPem = csrObj.toString("pem");
     }
@@ -465,33 +483,40 @@ export const GoDaddyCertificateAuthorityFns = ({
     );
     const client = createGoDaddyApiClient(authHeader, baseUrl);
 
-    // GoDaddy DV products are single-domain (CN only); additional SANs aren't supported and would be
-    // rejected upstream. Callers validate this earlier — guard here too so we never silently drop SANs.
-    const extraSans = altNames.filter((value) => value.toLowerCase() !== effectiveCommonName.toLowerCase());
-    if (extraSans.length > 0) {
-      throw new BadRequestError({
-        message: "GoDaddy DV certificates are single-domain and don't support additional SANs"
-      });
-    }
+    const period = parseTtlToYears(ttl);
 
-    const orderResponse = await client.createCertificate({
-      commonName: effectiveCommonName,
-      csr: csrPem,
-      period: parseTtlToYears(ttl),
-      productType,
-      rootType: GODADDY_ROOT_TYPE
-    });
+    let certificateId: string;
+    if (renewalOfCertificateId) {
+      // Renewal reuses the existing GoDaddy certificate id; we still generate a fresh CSR/key so the
+      // renewed certificate is re-keyed and we capture its private key locally.
+      await client.renewCertificate(renewalOfCertificateId, {
+        commonName: effectiveCommonName,
+        csr: csrPem,
+        period,
+        rootType: GODADDY_ROOT_TYPE
+      });
+      certificateId = renewalOfCertificateId;
+    } else {
+      const orderResponse = await client.createCertificate({
+        commonName: effectiveCommonName,
+        csr: csrPem,
+        period,
+        productType,
+        rootType: GODADDY_ROOT_TYPE
+      });
+      certificateId = orderResponse.certificateId;
+    }
 
     return {
       metadata: {
         godaddy: {
-          certificateId: orderResponse.certificateId,
+          certificateId,
           productType,
           orderPlacedAt: new Date().toISOString()
         }
       },
       privateKey: privateKeyPem,
-      certificateId: orderResponse.certificateId
+      certificateId
     };
   };
 
@@ -546,6 +571,15 @@ export const GoDaddyCertificateAuthorityFns = ({
 
     const certObj = new x509.X509Certificate(leaf);
     const issued = extractIssuedCertificateFields(certObj);
+
+    if (isRenewal && originalCertificateId) {
+      const original = await certificateDAL.findOne({ id: originalCertificateId });
+      if (original?.serialNumber && original.serialNumber === certObj.serialNumber) {
+        throw new GoDaddyRenewalNotReadyError(
+          `GoDaddy has not issued a renewed certificate yet — still serving serial ${certObj.serialNumber} [originalCertificateId=${originalCertificateId}]`
+        );
+      }
+    }
 
     const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
       projectId: ca.projectId,

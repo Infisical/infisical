@@ -2188,7 +2188,8 @@ export const certificateV3ServiceFactory = ({
       if (caType === CaType.GODADDY) {
         validateGoDaddyIssuanceInputs({
           keyAlgorithm: certificateOrder.keyAlgorithm,
-          altNames: certificateOrder.altNames
+          altNames: certificateOrder.altNames,
+          commonName: certificateOrder.commonName
         });
       }
 

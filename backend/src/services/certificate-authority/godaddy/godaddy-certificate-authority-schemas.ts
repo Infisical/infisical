@@ -12,7 +12,7 @@ export const GoDaddyCertificateAuthorityConfigurationSchema = z.object({
   appConnectionId: z.string().uuid().trim().describe("GoDaddy App Connection ID"),
   productType: z
     .nativeEnum(GoDaddyProductType)
-    .describe("The GoDaddy DV product used for issuance (DV_SSL for single domain, DV_WILDCARD_SSL for wildcard)")
+    .describe("The GoDaddy DV product used for issuance (DV_SSL for a single domain)")
 });
 
 export const GoDaddyCertificateAuthoritySchema = BaseCertificateAuthoritySchema.extend({
