@@ -134,6 +134,7 @@
                       "integrations/app-connections/dns-made-easy",
                       "integrations/app-connections/f5-big-ip",
                       "integrations/app-connections/flyio",
+                      "integrations/app-connections/trigger-dev",
                       "integrations/app-connections/gcp",
                       "integrations/app-connections/github",
                       "integrations/app-connections/github-radar",
@@ -639,6 +640,7 @@
                       "integrations/secret-syncs/devin",
                       "integrations/secret-syncs/digital-ocean-app-platform",
                       "integrations/secret-syncs/flyio",
+                      "integrations/secret-syncs/trigger-dev",
                       "integrations/secret-syncs/gcp-secret-manager",
                       "integrations/secret-syncs/github",
                       "integrations/secret-syncs/gitlab",
@@ -1606,6 +1608,18 @@
                       "api-reference/endpoints/app-connections/flyio/create",
                       "api-reference/endpoints/app-connections/flyio/update",
                       "api-reference/endpoints/app-connections/flyio/delete"
+                    ]
+                  },
+                  {
+                    "group": "Trigger.dev",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/trigger-dev/list",
+                      "api-reference/endpoints/app-connections/trigger-dev/available",
+                      "api-reference/endpoints/app-connections/trigger-dev/get-by-id",
+                      "api-reference/endpoints/app-connections/trigger-dev/get-by-name",
+                      "api-reference/endpoints/app-connections/trigger-dev/create",
+                      "api-reference/endpoints/app-connections/trigger-dev/update",
+                      "api-reference/endpoints/app-connections/trigger-dev/delete"
                     ]
                   },
                   {
@@ -2794,6 +2808,19 @@
                       "api-reference/endpoints/secret-syncs/flyio/delete",
                       "api-reference/endpoints/secret-syncs/flyio/sync-secrets",
                       "api-reference/endpoints/secret-syncs/flyio/remove-secrets"
+                    ]
+                  },
+                  {
+                    "group": "Trigger.dev",
+                    "pages": [
+                      "api-reference/endpoints/secret-syncs/trigger-dev/list",
+                      "api-reference/endpoints/secret-syncs/trigger-dev/get-by-id",
+                      "api-reference/endpoints/secret-syncs/trigger-dev/get-by-name",
+                      "api-reference/endpoints/secret-syncs/trigger-dev/create",
+                      "api-reference/endpoints/secret-syncs/trigger-dev/update",
+                      "api-reference/endpoints/secret-syncs/trigger-dev/delete",
+                      "api-reference/endpoints/secret-syncs/trigger-dev/sync-secrets",
+                      "api-reference/endpoints/secret-syncs/trigger-dev/remove-secrets"
                     ]
                   },
                   {

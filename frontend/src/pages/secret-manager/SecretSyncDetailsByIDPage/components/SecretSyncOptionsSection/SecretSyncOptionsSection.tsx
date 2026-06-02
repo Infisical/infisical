@@ -19,6 +19,7 @@ import { AwsParameterStoreSyncOptionsSection } from "./AwsParameterStoreSyncOpti
 import { AwsSecretsManagerSyncOptionsSection } from "./AwsSecretsManagerSyncOptionsSection";
 import { FlyioSyncOptionsSection } from "./FlyioSyncOptionsSection";
 import { RenderSyncOptionsSection } from "./RenderSyncOptionsSection";
+import { TriggerDevSyncOptionsSection } from "./TriggerDevSyncOptionsSection";
 
 type Props = {
   secretSync: TSecretSync;
@@ -48,6 +49,9 @@ export const SecretSyncOptionsSection = ({ secretSync }: Props) => {
       break;
     case SecretSync.Flyio:
       AdditionalSyncOptionsComponent = <FlyioSyncOptionsSection secretSync={secretSync} />;
+      break;
+    case SecretSync.TriggerDev:
+      AdditionalSyncOptionsComponent = <TriggerDevSyncOptionsSection secretSync={secretSync} />;
       break;
     case SecretSync.GitHub:
     case SecretSync.GCPSecretManager:

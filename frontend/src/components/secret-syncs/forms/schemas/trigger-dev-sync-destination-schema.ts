@@ -1,0 +1,19 @@
+import { z } from "zod";
+
+import { BaseSecretSyncSchema } from "@app/components/secret-syncs/forms/schemas/base-secret-sync-schema";
+import { SecretSync } from "@app/hooks/api/secretSyncs";
+import { TriggerDevSyncEnvironment } from "@app/hooks/api/secretSyncs/types/trigger-dev-sync";
+
+export const TriggerDevSyncDestinationSchema = BaseSecretSyncSchema(
+  z.object({
+    secret: z.boolean().optional().default(true)
+  })
+).merge(
+  z.object({
+    destination: z.literal(SecretSync.TriggerDev),
+    destinationConfig: z.object({
+      projectRef: z.string().trim().min(1, "Project required"),
+      environment: z.nativeEnum(TriggerDevSyncEnvironment)
+    })
+  })
+);

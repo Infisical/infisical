@@ -2794,6 +2794,10 @@ export const AppConnections = {
     FLYIO: {
       accessToken: "The Access Token used to access fly.io."
     },
+    TRIGGER_DEV: {
+      apiKey: "The Personal Access Token (tr_pat_...) used to authenticate with Trigger.dev.",
+      instanceUrl: "The URL of the Trigger.dev instance to connect to. Defaults to https://api.trigger.dev."
+    },
     DEVIN: {
       apiKey: "The Devin service-user API key used to authenticate against the Devin v3 API."
     },
@@ -3003,6 +3007,9 @@ export const SecretSyncs = {
     FLYIO: {
       autoRedeploy: "Whether Infisical should automatically redeploy the configured Fly.io app upon secret changes."
     },
+    TRIGGER_DEV: {
+      secret: "Whether synced variables should be marked as secret (redacted) environment variables in Trigger.dev."
+    },
     AZURE_KEY_VAULT: {
       disableCertificateImport:
         "Whether Infisical should skip importing certificate objects from Azure Key Vault when syncing secrets."
@@ -3147,6 +3154,10 @@ export const SecretSyncs = {
     },
     FLYIO: {
       appId: "The ID of the Fly.io app to sync secrets to."
+    },
+    TRIGGER_DEV: {
+      projectRef: "The reference of the Trigger.dev project to sync secrets to.",
+      environment: "The Trigger.dev environment to sync secrets to."
     },
     DEVIN: {
       orgId: "The Devin organization ID to sync secrets to."

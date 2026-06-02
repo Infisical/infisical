@@ -20,6 +20,7 @@ import { registerDevinSyncRouter } from "./devin-sync-router";
 import { registerDigitalOceanAppPlatformSyncRouter } from "./digital-ocean-app-platform-sync-router";
 import { registerExternalInfisicalSyncRouter } from "./external-infisical-sync-router";
 import { registerFlyioSyncRouter } from "./flyio-sync-router";
+import { registerTriggerDevSyncRouter } from "./trigger-dev-sync-router";
 import { registerGcpSyncRouter } from "./gcp-sync-router";
 import { registerGitHubSyncRouter } from "./github-sync-router";
 import { registerGitLabSyncRouter } from "./gitlab-sync-router";
@@ -66,6 +67,7 @@ export const SECRET_SYNC_REGISTER_ROUTER_MAP: Record<SecretSync, (server: Fastif
   [SecretSync.Heroku]: registerHerokuSyncRouter,
   [SecretSync.Render]: registerRenderSyncRouter,
   [SecretSync.Flyio]: registerFlyioSyncRouter,
+  [SecretSync.TriggerDev]: registerTriggerDevSyncRouter,
   [SecretSync.GitLab]: registerGitLabSyncRouter,
   [SecretSync.CloudflarePages]: registerCloudflarePagesSyncRouter,
   [SecretSync.CloudflareWorkers]: registerCloudflareWorkersSyncRouter,

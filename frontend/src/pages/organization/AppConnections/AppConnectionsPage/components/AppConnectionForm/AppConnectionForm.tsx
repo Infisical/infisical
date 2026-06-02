@@ -43,6 +43,7 @@ import { DopplerConnectionForm } from "./DopplerConnectionForm";
 import { ExternalInfisicalConnectionForm } from "./ExternalInfisicalConnectionForm";
 import { F5BigIpConnectionForm } from "./F5BigIpConnectionForm";
 import { FlyioConnectionForm } from "./FlyioConnectionForm";
+import { TriggerDevConnectionForm } from "./TriggerDevConnectionForm";
 import { GcpConnectionForm } from "./GcpConnectionForm";
 import { GitHubConnectionForm } from "./GitHubConnectionForm";
 import { GitHubRadarConnectionForm } from "./GitHubRadarConnectionForm";
@@ -236,6 +237,8 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
         return <LaravelForgeConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Flyio:
         return <FlyioConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.TriggerDev:
+        return <TriggerDevConnectionForm onSubmit={onSubmit} />;
       case AppConnection.GitLab:
         return <GitLabConnectionForm onSubmit={onSubmit} projectId={projectId} />;
       case AppConnection.Cloudflare:
@@ -471,6 +474,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         return <LaravelForgeConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Flyio:
         return <FlyioConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.TriggerDev:
+        return <TriggerDevConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.GitLab:
         return (
           <GitLabConnectionForm

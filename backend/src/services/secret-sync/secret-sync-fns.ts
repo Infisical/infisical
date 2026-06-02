@@ -62,6 +62,7 @@ import {
 } from "./digital-ocean-app-platform";
 import { EXTERNAL_INFISICAL_SYNC_LIST_OPTION, ExternalInfisicalSyncFns } from "./external-infisical";
 import { FLYIO_SYNC_LIST_OPTION, FlyioSyncFns } from "./flyio";
+import { TRIGGER_DEV_SYNC_LIST_OPTION, TriggerDevSyncFns } from "./trigger-dev";
 import { GCP_SYNC_LIST_OPTION } from "./gcp";
 import { GcpSyncFns } from "./gcp/gcp-sync-fns";
 import { GITLAB_SYNC_LIST_OPTION, GitLabSyncFns } from "./gitlab";
@@ -109,6 +110,7 @@ const SECRET_SYNC_LIST_OPTIONS: Record<SecretSync, TSecretSyncListItem> = {
   [SecretSync.Heroku]: HEROKU_SYNC_LIST_OPTION,
   [SecretSync.Render]: RENDER_SYNC_LIST_OPTION,
   [SecretSync.Flyio]: FLYIO_SYNC_LIST_OPTION,
+  [SecretSync.TriggerDev]: TRIGGER_DEV_SYNC_LIST_OPTION,
   [SecretSync.GitLab]: GITLAB_SYNC_LIST_OPTION,
   [SecretSync.CloudflarePages]: CLOUDFLARE_PAGES_SYNC_LIST_OPTION,
   [SecretSync.CloudflareWorkers]: CLOUDFLARE_WORKERS_SYNC_LIST_OPTION,
@@ -382,6 +384,8 @@ export const SecretSyncFns = {
         return RenderSyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.Flyio:
         return FlyioSyncFns.syncSecrets(secretSync, schemaSecretMap);
+      case SecretSync.TriggerDev:
+        return TriggerDevSyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.GitLab:
         return GitLabSyncFns.syncSecrets(secretSync, schemaSecretMap, { appConnectionDAL, kmsService });
       case SecretSync.CloudflarePages:
@@ -519,6 +523,9 @@ export const SecretSyncFns = {
         break;
       case SecretSync.Flyio:
         secretMap = await FlyioSyncFns.getSecrets(secretSync);
+        break;
+      case SecretSync.TriggerDev:
+        secretMap = await TriggerDevSyncFns.getSecrets(secretSync);
         break;
       case SecretSync.GitLab:
         secretMap = await GitLabSyncFns.getSecrets(secretSync);
@@ -682,6 +689,8 @@ export const SecretSyncFns = {
         return RenderSyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.Flyio:
         return FlyioSyncFns.removeSecrets(secretSync, schemaSecretMap);
+      case SecretSync.TriggerDev:
+        return TriggerDevSyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.GitLab:
         return GitLabSyncFns.removeSecrets(secretSync, schemaSecretMap, { appConnectionDAL, kmsService });
       case SecretSync.CloudflarePages:
