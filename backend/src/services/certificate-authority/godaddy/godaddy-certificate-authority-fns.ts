@@ -90,7 +90,7 @@ const mapCrlReasonToGoDaddyReason = (reason: CrlReason): string => {
 
 const TTL_DAYS_PER_YEAR = 365;
 const parseTtlToYears = (ttl: string): number => {
-  const match = ttl.match(/^(\d+)([dhm])$/);
+  const match = ttl.match(/^(\d+)([dhmy])$/);
   if (!match) {
     throw new BadRequestError({ message: `Invalid TTL format: ${ttl}` });
   }
@@ -101,6 +101,9 @@ const parseTtlToYears = (ttl: string): number => {
   }
   let days: number;
   switch (unit) {
+    case "y":
+      days = num * TTL_DAYS_PER_YEAR;
+      break;
     case "d":
       days = num;
       break;
