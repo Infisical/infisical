@@ -41,11 +41,15 @@ import {
   TableRow
 } from "@app/components/v3";
 import {
+  SignerPermissionActions,
+  SignerPermissionSub,
+  useSignerPermission
+} from "@app/context/SignerPermissionContext";
+import {
   SignerMemberRole,
   signerMemberRoleDescriptions,
   signerMemberRoleLabels,
   TSignerMember,
-  useGetSignerMyPermissions,
   useListSignerMembers,
   useRemoveSignerGroupMember,
   useRemoveSignerIdentityMember,
@@ -84,8 +88,11 @@ const labelOf = (m: TSignerMember): string => {
 };
 
 export const SignerMembersTab = ({ signerId }: Props) => {
-  const { data: myPerms } = useGetSignerMyPermissions(signerId);
-  const canManageMembers = myPerms?.canManageMembers !== false;
+  const { permission } = useSignerPermission();
+  const canManageMembers = permission.can(
+    SignerPermissionActions.ManageMembers,
+    SignerPermissionSub.Signer
+  );
   const users = useListSignerMembers({ signerId, kind: "user" });
   const identities = useListSignerMembers({ signerId, kind: "identity" });
   const groups = useListSignerMembers({ signerId, kind: "group" });

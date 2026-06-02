@@ -1011,8 +1011,6 @@ const buildApplicationOperatorPermissionRules = () => {
   );
   can([ProjectPermissionApprovalRequestGrantActions.Read], ResourcePermissionSub.ApprovalRequestGrants);
 
-  can([ProjectPermissionMemberActions.Read], ResourcePermissionSub.Member);
-
   can(
     [ProjectPermissionCertificateProfileActions.Read, ProjectPermissionCertificateProfileActions.IssueCert],
     ProjectPermissionSub.CertificateProfiles
@@ -1036,7 +1034,6 @@ const buildApplicationAuditorPermissionRules = () => {
   can([ProjectPermissionActions.Read], ResourcePermissionSub.PkiAlerts);
   can([ProjectPermissionApprovalRequestActions.Read], ResourcePermissionSub.ApprovalRequests);
   can([ProjectPermissionApprovalRequestGrantActions.Read], ResourcePermissionSub.ApprovalRequestGrants);
-  can([ProjectPermissionMemberActions.Read], ResourcePermissionSub.Member);
   can([ProjectPermissionCertificateProfileActions.Read], ProjectPermissionSub.CertificateProfiles);
 
   return rules;

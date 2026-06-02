@@ -15,11 +15,11 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import {
-  TSignerMember,
-  useGetSignerMyPermissions,
-  useGetSignerPolicy,
-  useListSignerMembers
-} from "@app/hooks/api/signers";
+  SignerPermissionActions,
+  SignerPermissionSub,
+  useSignerPermission
+} from "@app/context/SignerPermissionContext";
+import { TSignerMember, useGetSignerPolicy, useListSignerMembers } from "@app/hooks/api/signers";
 
 import { EditSignerPolicyModal } from "./EditSignerPolicyModal";
 
@@ -115,7 +115,11 @@ const ApproverStack = ({ approvers }: { approvers: ApproverDisplay[] }) => {
 
 export const SignerApprovalPolicyTab = ({ signerId }: Props) => {
   const { data: policy, isLoading } = useGetSignerPolicy(signerId);
-  const { data: myPerms } = useGetSignerMyPermissions(signerId);
+  const { permission } = useSignerPermission();
+  const canManagePolicy = permission.can(
+    SignerPermissionActions.ManagePolicy,
+    SignerPermissionSub.Signer
+  );
   const users = useListSignerMembers({ signerId, kind: "user" });
   const groups = useListSignerMembers({ signerId, kind: "group" });
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -178,7 +182,7 @@ export const SignerApprovalPolicyTab = ({ signerId }: Props) => {
                 aria-label="Edit policy"
                 variant="ghost"
                 onClick={() => setIsEditOpen(true)}
-                isDisabled={myPerms?.canManagePolicy === false}
+                isDisabled={!canManagePolicy}
               >
                 <PencilIcon />
               </IconButton>

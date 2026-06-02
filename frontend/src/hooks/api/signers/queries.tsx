@@ -1,10 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
+import { SignerPermissionSet } from "@app/context/SignerPermissionContext/types";
+import { ResourcePermissionResponse } from "@app/helpers/resourcePermissions";
 
 import {
   SignerStatus,
   TGetPublicKeyResponse,
+  TGetUserSignerPermissionDTO,
   TListEffectiveSignerMembersDTO,
   TListEffectiveSignerMembersResponse,
   TListSignerMembersDTO,
@@ -44,34 +47,16 @@ export const signerKeys = {
   requestsWithOpts: (filters: TListSignerRequestsDTO) =>
     [...signerKeys.requests(filters.signerId), filters] as const,
   certificate: (signerId: string) => [...signerKeys.all, "certificate", signerId] as const,
-  myPermissions: (signerId: string) => [...signerKeys.all, "my-permissions", signerId] as const
+  getUserSignerPermissions: ({ signerId }: TGetUserSignerPermissionDTO) =>
+    ["user-signer-permissions", { signerId }] as const
 };
 
-export type TSignerMyPermissions = {
-  canRead: boolean;
-  canEdit: boolean;
-  canDelete: boolean;
-  canManageStatus: boolean;
-  canManageMembers: boolean;
-  canManagePolicy: boolean;
-  canSign: boolean;
-  canRequestSign: boolean;
-  canPreApprove: boolean;
-  canReissueCertificate: boolean;
-  canExportCertificate: boolean;
-};
+export const fetchUserSignerPermissions = async ({ signerId }: TGetUserSignerPermissionDTO) => {
+  const { data } = await apiRequest.get<{
+    data: ResourcePermissionResponse<SignerPermissionSet>;
+  }>(`/api/v1/cert-manager/signers/${signerId}/permissions`);
 
-export const useGetSignerMyPermissions = (signerId: string) => {
-  return useQuery({
-    queryKey: signerKeys.myPermissions(signerId),
-    queryFn: async () => {
-      const { data } = await apiRequest.get<TSignerMyPermissions>(
-        `/api/v1/cert-manager/signers/${signerId}/my-permissions`
-      );
-      return data;
-    },
-    enabled: Boolean(signerId)
-  });
+  return data.data;
 };
 
 export const useListSigners = (dto: TListSignersDTO) => {

@@ -195,39 +195,41 @@ export const registerSignerLifecycleRouter = async (server: FastifyZodProvider) 
 
   server.route({
     method: "GET",
-    url: "/:signerId/my-permissions",
+    url: "/:signerId/permissions",
     config: { rateLimit: readLimit },
     schema: {
       hide: false,
-      operationId: "getSignerMyPermissions",
+      operationId: "getSignerPermissions",
       tags: [ApiDocsTags.PkiSigners],
-      description: "Get the caller's effective per-signer capabilities",
+      description: "Get the actor's effective resource permissions on this signer.",
       params: SignerIdParamsSchema,
       response: {
         200: z.object({
-          canRead: z.boolean(),
-          canEdit: z.boolean(),
-          canDelete: z.boolean(),
-          canManageStatus: z.boolean(),
-          canManageMembers: z.boolean(),
-          canManagePolicy: z.boolean(),
-          canSign: z.boolean(),
-          canRequestSign: z.boolean(),
-          canPreApprove: z.boolean(),
-          canReissueCertificate: z.boolean(),
-          canExportCertificate: z.boolean()
+          data: z.object({
+            permissions: z.any().array(),
+            memberships: z
+              .object({
+                id: z.string(),
+                actorUserId: z.string().nullish(),
+                actorIdentityId: z.string().nullish(),
+                actorGroupId: z.string().nullish(),
+                roles: z.object({ role: z.string(), customRoleSlug: z.string().nullish() }).array()
+              })
+              .array()
+          })
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      return server.services.pkiSigner.getMyPermissions({
+      const data = await server.services.pkiSigner.getMyPermissions({
         signerId: req.params.signerId,
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId
       });
+      return { data };
     }
   });
 

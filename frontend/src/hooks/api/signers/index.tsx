@@ -20,12 +20,10 @@ export {
   useUpdateSignerPolicy,
   useUpdateSignerUserRole
 } from "./mutations";
-export type { TSignerMyPermissions } from "./queries";
 export {
   signerKeys,
   useExportSignerCertificate,
   useGetSigner,
-  useGetSignerMyPermissions,
   useGetSignerPolicy,
   useGetSignerPublicKey,
   useListEffectiveSignerMembers,

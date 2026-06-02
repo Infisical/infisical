@@ -1,4 +1,5 @@
 import { ForbiddenError } from "@casl/ability";
+import { packRules } from "@casl/ability/extra";
 import * as x509 from "@peculiar/x509";
 import { KeyObject } from "crypto";
 
@@ -75,6 +76,18 @@ import { TSigningOperationDALFactory } from "./signing-operation-dal";
 
 const MAX_DATA_BYTES = 128;
 const DEFAULT_CERTIFICATE_TTL_DAYS = 365;
+
+const CODE_SIGNING_SUPPORTED_EXTERNAL_CA_TYPES = new Set<CaType>([CaType.AWS_PCA, CaType.AZURE_AD_CS]);
+
+const assertCaTypeSupportsCodeSigning = (caType: CaType): void => {
+  if (caType === CaType.INTERNAL) return;
+  if (!CODE_SIGNING_SUPPORTED_EXTERNAL_CA_TYPES.has(caType)) {
+    throw new BadRequestError({
+      message:
+        "Code signing is only supported on Internal CAs, AWS Private CA, and Azure AD CS. Pick a different certificate authority."
+    });
+  }
+};
 
 const computeEffectiveStatus = (signer: {
   status: string;
@@ -270,6 +283,8 @@ export const signerServiceFactory = ({
       resolvedCaId = ca.id;
       resolvedCaType = (ca.externalCa?.type as CaType | undefined) ?? CaType.INTERNAL;
     }
+
+    if (resolvedCaType) assertCaTypeSupportsCodeSigning(resolvedCaType);
 
     const isExternalCa = resolvedCaType !== null && resolvedCaType !== CaType.INTERNAL;
 
@@ -641,7 +656,7 @@ export const signerServiceFactory = ({
       throw new NotFoundError({ message: `Signer with ID '${dto.signerId}' not found` });
     }
 
-    const { permission } = await $loadSignerResourcePermission(
+    const { permission, memberships } = await $loadSignerResourcePermission(
       signer.id,
       signer.projectId,
       dto.actor,
@@ -650,20 +665,9 @@ export const signerServiceFactory = ({
       dto.actorOrgId
     );
 
-    const allows = (action: ResourcePermissionSignerActions) => permission.can(action, ResourcePermissionSub.Signer);
-
     return {
-      canRead: allows(ResourcePermissionSignerActions.Read),
-      canEdit: allows(ResourcePermissionSignerActions.Edit),
-      canDelete: allows(ResourcePermissionSignerActions.Delete),
-      canManageStatus: allows(ResourcePermissionSignerActions.ManageStatus),
-      canManageMembers: allows(ResourcePermissionSignerActions.ManageMembers),
-      canManagePolicy: allows(ResourcePermissionSignerActions.ManagePolicy),
-      canSign: allows(ResourcePermissionSignerActions.Sign),
-      canRequestSign: allows(ResourcePermissionSignerActions.RequestSign),
-      canPreApprove: allows(ResourcePermissionSignerActions.PreApprove),
-      canReissueCertificate: allows(ResourcePermissionSignerActions.ReissueCertificate),
-      canExportCertificate: allows(ResourcePermissionSignerActions.ExportCertificate)
+      permissions: packRules(permission.rules),
+      memberships
     };
   };
 
@@ -837,6 +841,7 @@ export const signerServiceFactory = ({
     }
 
     const reissueCaType: CaType = (ca.externalCa?.type as CaType | undefined) ?? CaType.INTERNAL;
+    assertCaTypeSupportsCodeSigning(reissueCaType);
     const reissueIsExternal = reissueCaType !== CaType.INTERNAL;
 
     const allowsResubject = signer.status === SignerStatus.Pending || signer.status === SignerStatus.Failed;
@@ -1345,7 +1350,20 @@ export const signerServiceFactory = ({
       return;
     }
 
-    const isExternal = Boolean(ca.externalCa?.type) && ca.externalCa?.type !== CaType.INTERNAL;
+    const renewalCaType: CaType = (ca.externalCa?.type as CaType | undefined) ?? CaType.INTERNAL;
+    try {
+      assertCaTypeSupportsCodeSigning(renewalCaType);
+    } catch (err) {
+      const reason = err instanceof Error ? err.message : "CA is not supported for code signing.";
+      await signerDAL.updateById(signer.id, {
+        status: SignerStatus.Failed,
+        certificateFailureReason: reason.slice(0, 1000)
+      });
+      logger.warn(`signer auto-renewal: ${reason} [signerId=${signer.id}]`);
+      return;
+    }
+
+    const isExternal = renewalCaType !== CaType.INTERNAL;
     const ttlDays = signer.certificateTtlDays ?? DEFAULT_CERTIFICATE_TTL_DAYS;
     const renewKeyAlgorithm: CertKeyAlgorithm = (signer.keyAlgorithm as CertKeyAlgorithm) ?? CertKeyAlgorithm.RSA_2048;
 

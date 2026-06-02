@@ -1,6 +1,5 @@
 import { AxiosError } from "axios";
 
-import { AcmeError } from "@app/ee/services/pki-acme/pki-acme-errors";
 import {
   BadRequestError,
   CryptographyError,
@@ -71,15 +70,6 @@ const formatAxiosError = (err: AxiosError): string | null => {
   return null;
 };
 
-const formatAcmeError = (err: AcmeError): string => {
-  const subproblems = err.subproblems?.map((sp) => sp.detail || sp.type).filter((s): s is string => Boolean(s));
-  const base = !isEmptyish(err.message) ? err.message : err.type || err.name;
-  if (subproblems && subproblems.length > 0) {
-    return `${base}: ${subproblems.join("; ")}`;
-  }
-  return base;
-};
-
 const collectMessageChain = (err: unknown): string | null => {
   const seen = new Set<unknown>();
   const parts: string[] = [];
@@ -89,8 +79,6 @@ const collectMessageChain = (err: unknown): string | null => {
     if (current instanceof AxiosError) {
       const formatted = formatAxiosError(current);
       if (formatted) parts.push(formatted);
-    } else if (current instanceof AcmeError) {
-      parts.push(formatAcmeError(current));
     } else if (current instanceof Error) {
       if (!isEmptyish(current.message)) {
         parts.push(current.message);
@@ -114,11 +102,6 @@ const collectMessageChain = (err: unknown): string | null => {
 
 export const isTerminalIssuanceError = (err: unknown): boolean => {
   if (err == null) return false;
-
-  if (err instanceof AcmeError) {
-    const transient = new Set(["AcmeRateLimitedError", "AcmeServerInternalError", "AcmeBadNonceError"]);
-    return !transient.has(err.name);
-  }
 
   if (
     err instanceof BadRequestError ||

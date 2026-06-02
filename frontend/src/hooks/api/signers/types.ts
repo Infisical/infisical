@@ -1,3 +1,7 @@
+export type TGetUserSignerPermissionDTO = {
+  signerId: string;
+};
+
 export enum SignerStatus {
   Pending = "pending",
   Active = "active",

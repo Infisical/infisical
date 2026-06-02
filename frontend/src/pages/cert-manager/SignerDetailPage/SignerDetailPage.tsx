@@ -50,6 +50,11 @@ import {
 } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useProject } from "@app/context";
+import {
+  SignerPermissionActions,
+  SignerPermissionSub,
+  useSignerPermission
+} from "@app/context/SignerPermissionContext";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import {
   getSignerStatusBadgeVariant,
@@ -59,7 +64,6 @@ import {
   useDisableSigner,
   useEnableSigner,
   useGetSigner,
-  useGetSignerMyPermissions,
   useReissueSignerCertificate
 } from "@app/hooks/api/signers";
 
@@ -93,7 +97,9 @@ export const SignerDetailPage = () => {
   const [isExportOpen, setIsExportOpen] = useState(false);
 
   const { data: signer, isLoading } = useGetSigner(signerId);
-  const { data: myPerms } = useGetSignerMyPermissions(signerId);
+  const { permission } = useSignerPermission();
+  const can = (action: SignerPermissionActions) =>
+    permission.can(action, SignerPermissionSub.Signer);
   const enableSigner = useEnableSigner();
   const disableSigner = useDisableSigner();
   const deleteSigner = useDeleteSigner();
@@ -180,14 +186,16 @@ export const SignerDetailPage = () => {
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={onOpenExport}
-                    isDisabled={!signer.certificateId || myPerms?.canExportCertificate === false}
+                    isDisabled={
+                      !signer.certificateId || !can(SignerPermissionActions.ExportCertificate)
+                    }
                   >
                     <DownloadIcon />
                     Export certificate
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={() => setIsEditOpen(true)}
-                    isDisabled={myPerms?.canEdit === false}
+                    isDisabled={!can(SignerPermissionActions.Edit)}
                   >
                     <PencilIcon />
                     Edit settings
@@ -196,7 +204,7 @@ export const SignerDetailPage = () => {
                   {signer.status === SignerStatus.Active ? (
                     <DropdownMenuItem
                       onClick={() => disableSigner.mutate({ signerId: signer.id })}
-                      isDisabled={myPerms?.canManageStatus === false}
+                      isDisabled={!can(SignerPermissionActions.ManageStatus)}
                     >
                       <BanIcon />
                       Disable signer
@@ -204,7 +212,7 @@ export const SignerDetailPage = () => {
                   ) : signer.status === SignerStatus.Disabled ? (
                     <DropdownMenuItem
                       onClick={() => enableSigner.mutate({ signerId: signer.id })}
-                      isDisabled={myPerms?.canManageStatus === false}
+                      isDisabled={!can(SignerPermissionActions.ManageStatus)}
                     >
                       <CheckCircleIcon />
                       Enable signer
@@ -215,7 +223,7 @@ export const SignerDetailPage = () => {
                       onClick={() =>
                         reissueSigner.mutate({ signerId: signer.id, caId: signer.caId! })
                       }
-                      isDisabled={myPerms?.canReissueCertificate === false}
+                      isDisabled={!can(SignerPermissionActions.ReissueCertificate)}
                     >
                       <RotateCwIcon />
                       Retry issuance
@@ -224,7 +232,7 @@ export const SignerDetailPage = () => {
                   <DropdownMenuItem
                     variant="danger"
                     onClick={() => setIsDeleteOpen(true)}
-                    isDisabled={myPerms?.canDelete === false}
+                    isDisabled={!can(SignerPermissionActions.Delete)}
                   >
                     <Trash2Icon />
                     Delete signer
@@ -270,8 +278,15 @@ export const SignerDetailPage = () => {
                   <SignerApprovalPolicyTab signerId={signerId} />
                   <SignerRequestsTab
                     signerId={signerId}
-                    canPreApprove={myPerms?.canPreApprove ?? false}
-                    canRequestSign={myPerms?.canRequestSign ?? false}
+                    canPreApprove={Boolean(
+                      permission.can(SignerPermissionActions.PreApprove, SignerPermissionSub.Signer)
+                    )}
+                    canRequestSign={Boolean(
+                      permission.can(
+                        SignerPermissionActions.RequestSign,
+                        SignerPermissionSub.Signer
+                      )
+                    )}
                   />
                 </div>
               </TabsContent>

@@ -17,7 +17,7 @@ import {
 } from "@app/components/v3";
 import { useOrganization, useUser } from "@app/context";
 import { useListCasByProjectId } from "@app/hooks/api/ca";
-import { CaStatus } from "@app/hooks/api/ca/enums";
+import { CaStatus, CaType } from "@app/hooks/api/ca/enums";
 import {
   useGetIdentityMembershipOrgs,
   useGetOrganizationGroups
@@ -65,10 +65,14 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
     const list = cas.data ?? [];
     return list
       .filter((ca) => ca.status === CaStatus.ACTIVE)
+      .filter(
+        (ca) =>
+          ca.type === CaType.INTERNAL || ca.type === CaType.AWS_PCA || ca.type === CaType.AZURE_AD_CS
+      )
       .map((ca) => ({
         id: ca.id,
         name: ca.name,
-        groupType: ca.type === "internal" ? "internal" : "external"
+        groupType: ca.type === CaType.INTERNAL ? "internal" : "external"
       }));
   }, [cas.data]);
 

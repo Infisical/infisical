@@ -14,7 +14,6 @@ import { TCertificateAuthorityDALFactory } from "../certificate-authority/certif
 import { CaStatus, CaType } from "../certificate-authority/certificate-authority-enums";
 import { keyAlgorithmToAlgCfg } from "../certificate-authority/certificate-authority-fns";
 import { TCertificateIssuanceQueueFactory } from "../certificate-authority/certificate-issuance-queue";
-import { DigiCertPollOutcome } from "../certificate-authority/digicert/digicert-certificate-authority-enums";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { TProjectDALFactory } from "../project/project-dal";
 import { getProjectKmsCertificateKeyId } from "../project/project-fns";
@@ -27,7 +26,6 @@ import { TSignerIssuanceJobDALFactory } from "./signer-issuance-job-dal";
 const POLL_INTERVAL_PATTERN = "*/15 * * * *"; // every 15 minutes
 const POLL_BATCH = 25;
 const RETRY_BACKOFF_MS = 15 * 60_000;
-const PENDING_VALIDATION_POLL_INTERVAL_MS = 15 * 60_000;
 const MAX_ISSUANCE_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 export type TSignerIssuanceServiceFactory = ReturnType<typeof signerIssuanceServiceFactory>;
@@ -40,10 +38,7 @@ type TSignerIssuanceServiceDeps = {
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "findOne" | "create" | "updateById">;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
   kmsService: Pick<TKmsServiceFactory, "encryptWithKmsKey" | "decryptWithKmsKey" | "generateKmsKey">;
-  certificateIssuanceQueue: Pick<
-    TCertificateIssuanceQueueFactory,
-    "acmeFns" | "azureAdCsFns" | "awsPcaFns" | "digicertFns" | "venafiTppFns"
-  >;
+  certificateIssuanceQueue: Pick<TCertificateIssuanceQueueFactory, "azureAdCsFns" | "awsPcaFns">;
   cronJob: TCronJobFactory;
 };
 
@@ -56,10 +51,7 @@ type TRequestIssuanceInput = {
   keyAlgorithm?: CertKeyAlgorithm;
 };
 
-type TExternalOrderRef =
-  | { type: CaType.DIGICERT; orderId: number }
-  | { type: CaType.ACME; orderUrl?: string }
-  | Record<string, unknown>;
+type TExternalOrderRef = Record<string, unknown>;
 
 export const signerIssuanceServiceFactory = ({
   signerIssuanceJobDAL,
@@ -72,7 +64,7 @@ export const signerIssuanceServiceFactory = ({
   certificateIssuanceQueue,
   cronJob
 }: TSignerIssuanceServiceDeps) => {
-  const { acmeFns, azureAdCsFns, awsPcaFns, digicertFns, venafiTppFns } = certificateIssuanceQueue;
+  const { azureAdCsFns, awsPcaFns } = certificateIssuanceQueue;
 
   const buildCsrForSigner = async (
     commonName: string,
@@ -213,29 +205,17 @@ export const signerIssuanceServiceFactory = ({
 
     try {
       switch (job.caType as CaType) {
-        case CaType.DIGICERT:
-          await stepDigiCert(job);
-          break;
-        case CaType.ACME:
-          await stepSyncWithCsr(job, CaType.ACME);
-          break;
         case CaType.AZURE_AD_CS:
           await stepSyncWithCsr(job, CaType.AZURE_AD_CS);
           break;
         case CaType.AWS_PCA:
           await stepSyncWithCsr(job, CaType.AWS_PCA);
           break;
-        case CaType.VENAFI_TPP:
-          await stepSyncWithCsr(job, CaType.VENAFI_TPP);
-          break;
-        case CaType.AWS_ACM_PUBLIC_CA:
+        default:
           await markJobFailed(
             job,
-            "AWS ACM Public CA does not issue code-signing certificates. Choose a different CA."
+            `CA type '${job.caType}' is not supported for code signing. Choose Internal CA, AWS Private CA, or Azure AD CS.`
           );
-          return;
-        default:
-          await markJobFailed(job, `CA type '${job.caType}' is not supported for signer issuance.`);
       }
     } catch (err) {
       const reason = formatSignerIssuanceErrorReason(
@@ -338,105 +318,7 @@ export const signerIssuanceServiceFactory = ({
     );
   };
 
-  const stepDigiCert = async (job: TPkiSignerCertificateIssuanceJobs) => {
-    const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(job.caId);
-    if (!ca) {
-      await markJobFailed(job, "Certificate authority is no longer available.");
-      return;
-    }
-    const { projectId } = ca;
-    const existingRef = job.externalOrderRef as TExternalOrderRef | null | undefined;
-
-    if (!existingRef || (existingRef as { type?: CaType }).type !== CaType.DIGICERT) {
-      const csr = (await decryptForProject(projectId, Buffer.from(job.encryptedCsr as Buffer))).toString();
-
-      const orderResult = await digicertFns.orderCertificateFromProfile({
-        caId: job.caId,
-        commonName: job.commonName,
-        altNames: [],
-        signatureAlgorithm: undefined,
-        keyAlgorithm: job.keyAlgorithm as CertKeyAlgorithm,
-        ttl: `${job.certificateTtlDays}d`,
-        csr
-      });
-
-      const orderRef: TExternalOrderRef = {
-        type: CaType.DIGICERT,
-        orderId: orderResult.orderId
-      };
-
-      if (orderResult.immediateCertificateId) {
-        const { certificateId } = await digicertFns.fetchAndAttachIssuedCertificate({
-          caId: job.caId,
-          certificateRequest: {
-            id: `signer:${job.signerId}`,
-            profileId: undefined,
-            commonName: job.commonName,
-            altNames: null,
-            keyUsages: [CertKeyUsage.DIGITAL_SIGNATURE, CertKeyUsage.KEY_ENCIPHERMENT],
-            extendedKeyUsages: [CertExtendedKeyUsage.CODE_SIGNING],
-            keyAlgorithm: job.keyAlgorithm,
-            signatureAlgorithm: null
-          },
-          digicertCertificateId: orderResult.immediateCertificateId,
-          digicertOrderId: orderResult.orderId
-        });
-
-        await persistCertificatePrivateKey(certificateId, projectId, job);
-        await attachIssuedCertToSigner(job, certificateId, projectId);
-        return;
-      }
-
-      await signerIssuanceJobDAL.updateById(job.id, {
-        externalOrderRef: orderRef,
-        nextPollAt: new Date(Date.now() + PENDING_VALIDATION_POLL_INTERVAL_MS)
-      });
-      logger.info(
-        `signer issuance: DigiCert order ${orderResult.orderId} placed, awaiting validation [jobId=${job.id}]`
-      );
-      return;
-    }
-
-    const ref = existingRef as { type: CaType.DIGICERT; orderId: number };
-
-    const poll = await digicertFns.pollOrderForCertificate({ caId: job.caId, orderId: ref.orderId });
-    if (poll.status === DigiCertPollOutcome.Pending) {
-      await signerIssuanceJobDAL.updateById(job.id, {
-        nextPollAt: new Date(Date.now() + PENDING_VALIDATION_POLL_INTERVAL_MS)
-      });
-      logger.info(
-        `signer issuance: DigiCert order ${ref.orderId} still pending (status=${poll.orderStatus}) [jobId=${job.id}]`
-      );
-      return;
-    }
-    if (poll.status === DigiCertPollOutcome.Failed) {
-      await markJobFailed(job, poll.reason);
-      return;
-    }
-
-    const { certificateId } = await digicertFns.fetchAndAttachIssuedCertificate({
-      caId: job.caId,
-      certificateRequest: {
-        id: `signer:${job.signerId}`,
-        profileId: undefined,
-        commonName: job.commonName,
-        altNames: null,
-        keyUsages: [CertKeyUsage.DIGITAL_SIGNATURE, CertKeyUsage.KEY_ENCIPHERMENT],
-        extendedKeyUsages: [CertExtendedKeyUsage.CODE_SIGNING],
-        keyAlgorithm: job.keyAlgorithm,
-        signatureAlgorithm: null
-      },
-      digicertCertificateId: poll.certificateId,
-      digicertOrderId: ref.orderId
-    });
-    await persistCertificatePrivateKey(certificateId, projectId, job);
-    await attachIssuedCertToSigner(job, certificateId, projectId);
-  };
-
-  const stepSyncWithCsr = async (
-    job: TPkiSignerCertificateIssuanceJobs,
-    kind: CaType.ACME | CaType.AZURE_AD_CS | CaType.AWS_PCA | CaType.VENAFI_TPP
-  ) => {
+  const stepSyncWithCsr = async (job: TPkiSignerCertificateIssuanceJobs, kind: CaType.AZURE_AD_CS | CaType.AWS_PCA) => {
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(job.caId);
     if (!ca) {
       await markJobFailed(job, "Certificate authority is no longer available.");
@@ -447,29 +329,7 @@ export const signerIssuanceServiceFactory = ({
 
     let certificateId: string;
 
-    if (kind === CaType.ACME) {
-      const acmeResult = await acmeFns.orderCertificateFromProfile({
-        caId: job.caId,
-        profileId: undefined as unknown as string,
-        commonName: job.commonName,
-        altNames: [],
-        csr: Buffer.from(csr),
-        csrPrivateKey: (await decryptForProject(projectId, Buffer.from(job.encryptedPrivateKey as Buffer))).toString(),
-        keyUsages: [CertKeyUsage.DIGITAL_SIGNATURE, CertKeyUsage.KEY_ENCIPHERMENT],
-        extendedKeyUsages: [CertExtendedKeyUsage.CODE_SIGNING],
-        ttl: `${job.certificateTtlDays}d`,
-        signatureAlgorithm: undefined,
-        keyAlgorithm: job.keyAlgorithm,
-        isRenewal: false,
-        originalCertificateId: undefined,
-        onProgress: async () => {},
-        isCancelled: async () => false
-      });
-      if (!acmeResult?.id) {
-        throw new BadRequestError({ message: "ACME order returned without a certificate id." });
-      }
-      certificateId = acmeResult.id;
-    } else if (kind === CaType.AZURE_AD_CS) {
+    if (kind === CaType.AZURE_AD_CS) {
       const azureResult = await azureAdCsFns.orderCertificateFromProfile({
         caId: job.caId,
         profileId: undefined as unknown as string,
@@ -489,7 +349,7 @@ export const signerIssuanceServiceFactory = ({
         throw new BadRequestError({ message: "Azure AD CS order returned without a certificate id." });
       }
       certificateId = azureResult.certificateId;
-    } else if (kind === CaType.AWS_PCA) {
+    } else {
       const awsResult = await awsPcaFns.orderCertificateFromProfile({
         caId: job.caId,
         profileId: undefined as unknown as string,
@@ -509,26 +369,6 @@ export const signerIssuanceServiceFactory = ({
         throw new BadRequestError({ message: "AWS PCA order returned without a certificate id." });
       }
       certificateId = awsResult.certificateId;
-    } else {
-      const venafiResult = await venafiTppFns.orderCertificateFromProfile({
-        caId: job.caId,
-        profileId: undefined as unknown as string,
-        commonName: job.commonName,
-        altNames: [],
-        keyUsages: [CertKeyUsage.DIGITAL_SIGNATURE, CertKeyUsage.KEY_ENCIPHERMENT],
-        extendedKeyUsages: [CertExtendedKeyUsage.CODE_SIGNING],
-        validity: { ttl: `${job.certificateTtlDays}d` },
-        signatureAlgorithm: undefined,
-        keyAlgorithm: job.keyAlgorithm as CertKeyAlgorithm,
-        isRenewal: false,
-        originalCertificateId: undefined,
-        csr,
-        isCancelled: async () => false
-      });
-      if (!venafiResult?.certificateId) {
-        throw new BadRequestError({ message: "Venafi TPP order returned without a certificate id." });
-      }
-      certificateId = venafiResult.certificateId;
     }
 
     await persistCertificatePrivateKey(certificateId, projectId, job);
