@@ -13,11 +13,12 @@ export const GithubAppsSchema = z.object({
   id: z.string().uuid(),
   orgId: z.string().uuid(),
   name: z.string(),
-  encryptedAppId: zodBuffer,
-  encryptedClientId: zodBuffer,
+  appId: z.string(),
+  clientId: z.string(),
   encryptedClientSecret: zodBuffer,
   encryptedPrivateKey: zodBuffer,
-  encryptedSlug: zodBuffer,
+  slug: z.string(),
+  owner: z.string().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date()
 });

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   faArrowDown,
   faArrowUp,
@@ -10,6 +10,7 @@ import {
   faSearch
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
@@ -96,6 +97,23 @@ export const AppConnectionsTable = ({ projectId, projectType }: Props) => {
     "editCredentials",
     "editDetails"
   ] as const);
+
+  // When returning from the "Create new GitHub App" flow, reopen the Add Connection modal straight
+  // into that app's form (the param is set by the GitHub manifest callback).
+  const routeSearch = useSearch({ strict: false }) as { addConnectionApp?: AppConnection };
+  const navigate = useNavigate();
+  const [presetApp, setPresetApp] = useState<AppConnection | undefined>();
+
+  useEffect(() => {
+    if (!routeSearch.addConnectionApp) return;
+    setPresetApp(routeSearch.addConnectionApp);
+    handlePopUpOpen("addConnection");
+    navigate({
+      from: "/organizations/$orgId/app-connections/",
+      search: (prev) => ({ ...prev, addConnectionApp: undefined }),
+      replace: true
+    });
+  }, [routeSearch.addConnectionApp]);
 
   const [view, setView] = useState<View>(() => {
     const storedView = localStorage.getItem(APP_CONNECTION_VIEW_STORAGE_KEY) as View | null;
@@ -510,7 +528,11 @@ export const AppConnectionsTable = ({ projectId, projectType }: Props) => {
       />
       <AddAppConnectionModal
         isOpen={popUp.addConnection.isOpen}
-        onOpenChange={(isOpen) => handlePopUpToggle("addConnection", isOpen)}
+        onOpenChange={(isOpen) => {
+          handlePopUpToggle("addConnection", isOpen);
+          if (!isOpen) setPresetApp(undefined);
+        }}
+        app={presetApp}
         projectId={projectId}
         projectType={projectType}
       />

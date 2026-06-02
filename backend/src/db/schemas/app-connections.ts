@@ -25,7 +25,8 @@ export const AppConnectionsSchema = z.object({
   projectId: z.string().nullable().optional(),
   isAutoRotationEnabled: z.boolean().default(false),
   gatewayPoolId: z.string().uuid().nullable().optional(),
-  encryptedConfiguration: zodBuffer.nullable().optional()
+  encryptedConfiguration: zodBuffer.nullable().optional(),
+  gitHubAppId: z.string().uuid().nullable().optional()
 });
 
 export type TAppConnections = z.infer<typeof AppConnectionsSchema>;

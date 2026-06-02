@@ -53,6 +53,9 @@ export type TGitHubAppManifestResponse = {
   client_secret: string;
   pem: string;
   html_url: string;
+  owner?: {
+    login?: string;
+  } | null;
 };
 
 export type TSanitizedGitHubApp = {
@@ -61,6 +64,8 @@ export type TSanitizedGitHubApp = {
   name: string;
   appId: string;
   slug: string;
+  owner: string | null;
+  connectionCount: number;
   createdAt: Date | null;
   updatedAt: Date | null;
 };

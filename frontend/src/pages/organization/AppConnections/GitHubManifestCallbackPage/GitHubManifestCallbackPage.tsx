@@ -4,6 +4,7 @@ import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { createNotification } from "@app/components/notifications";
 import { ContentLoader } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
+import { AppConnection } from "@app/hooks/api/appConnections/enums";
 
 const GITHUB_CONNECTION_FORM_KEY = "githubConnectionFormData";
 
@@ -19,48 +20,47 @@ export const GitHubManifestCallbackPage = () => {
     if (hasRunRef.current) return;
     hasRunRef.current = true;
 
-    const { gitHubAppId, slug, installState, instanceType, host } = search;
+    const { gitHubAppId, slug, installState } = search;
 
-    const fallback = () =>
+    const returnToForm = () =>
       navigate({
         to: "/organizations/$orgId/app-connections",
-        params: { orgId }
+        params: { orgId },
+        search: { addConnectionApp: AppConnection.GitHub }
       });
 
     if (!gitHubAppId || !slug || !installState) {
       createNotification({ type: "error", text: "Invalid GitHub manifest callback parameters." });
-      fallback();
+      navigate({ to: "/organizations/$orgId/app-connections", params: { orgId } });
       return;
     }
 
-    const connectionFormRaw = localStorage.getItem(GITHUB_CONNECTION_FORM_KEY);
-    if (!connectionFormRaw) {
-      createNotification({ type: "error", text: "Missing GitHub connection form state." });
-      fallback();
-      return;
-    }
-
+    // The GitHub App is already created at this point. Mark the in-progress connection form so it
+    // resumes with the new app selected, then send the user back to it to finish the connection.
     try {
-      const connectionForm = JSON.parse(connectionFormRaw) as {
-        credentials?: Record<string, unknown>;
-      };
+      const connectionFormRaw = localStorage.getItem(GITHUB_CONNECTION_FORM_KEY);
+      const connectionForm = connectionFormRaw
+        ? (JSON.parse(connectionFormRaw) as {
+            credentials?: Record<string, unknown>;
+            resumeWithGitHubAppId?: string;
+          })
+        : {};
       connectionForm.credentials = {
         ...(connectionForm.credentials ?? {}),
         gitHubAppId
       };
+      connectionForm.resumeWithGitHubAppId = gitHubAppId;
       localStorage.setItem(GITHUB_CONNECTION_FORM_KEY, JSON.stringify(connectionForm));
     } catch {
-      createNotification({ type: "error", text: "Corrupt GitHub connection form state." });
-      fallback();
-      return;
+      // A corrupt form just means we can't restore the other fields; the app was still created.
+      localStorage.removeItem(GITHUB_CONNECTION_FORM_KEY);
     }
 
-    const githubHost = host && host.length > 0 ? `https://${host}` : "https://github.com";
-    const appPathSegment = instanceType === "server" ? "github-apps" : "apps";
-
-    window.location.assign(
-      `${githubHost}/${appPathSegment}/${slug}/installations/new?state=${installState}`
-    );
+    createNotification({
+      type: "success",
+      text: "GitHub App created. Select it and finish setting up your connection."
+    });
+    returnToForm();
   }, []);
 
   return (

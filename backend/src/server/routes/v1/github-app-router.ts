@@ -10,6 +10,8 @@ const SanitizedGitHubAppSchema = z.object({
   name: z.string(),
   appId: z.string(),
   slug: z.string(),
+  owner: z.string().nullable(),
+  connectionCount: z.number(),
   createdAt: z.date().nullable(),
   updatedAt: z.date().nullable()
 });

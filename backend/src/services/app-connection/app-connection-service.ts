@@ -266,6 +266,17 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.F5BigIp]: ValidateF5BigIpConnectionCredentialsSchema
 };
 
+// Extracts the GitHub App reference to persist in the queryable app_connections.gitHubAppId column.
+// Only GitHub App method connections reference a custom app; null means the instance-default (shared) app.
+const resolveGitHubAppIdColumn = (
+  app: AppConnection,
+  method: string,
+  credentials: TAppConnection["credentials"] | undefined
+): string | null => {
+  if (app !== AppConnection.GitHub || method !== GitHubConnectionMethod.App) return null;
+  return (credentials as { gitHubAppId?: string | null } | undefined)?.gitHubAppId ?? null;
+};
+
 export const appConnectionServiceFactory = ({
   appConnectionDAL,
   permissionService,
@@ -549,6 +560,10 @@ export const appConnectionServiceFactory = ({
       { identityUaDAL, gitHubAppDAL, kmsService }
     );
 
+    // For GitHub App connections we mirror the referenced GitHub App into a queryable FK column so
+    // we can count/enforce reuse without decrypting credentials. Null = instance-default (shared) app.
+    const gitHubAppId = resolveGitHubAppIdColumn(app, method, validatedCredentials);
+
     try {
       const createConnection = async (connectionCredentials: TAppConnection["credentials"]) => {
         return appConnectionDAL.transaction(async (tx) => {
@@ -573,6 +588,7 @@ export const appConnectionServiceFactory = ({
               encryptedConfiguration,
               method,
               app,
+              gitHubAppId,
               gatewayId: gatewayPoolId ? null : gatewayId,
               gatewayPoolId: gatewayPoolId ?? null,
               projectId,
@@ -806,11 +822,17 @@ export const appConnectionServiceFactory = ({
               })
             : undefined;
 
+        // Keep the queryable GitHub App FK in sync whenever credentials are re-validated on update.
+        const gitHubAppIdUpdate = updatedCredentials
+          ? { gitHubAppId: resolveGitHubAppIdColumn(app, method, updatedCredentials) }
+          : {};
+
         return appConnectionDAL.updateById(
           connectionId,
           {
             orgId: actor.orgId,
             encryptedCredentials,
+            ...gitHubAppIdUpdate,
             ...(encryptedConfiguration !== undefined && { encryptedConfiguration }),
             ...(gatewayIdValue !== undefined && { gatewayId: gatewayIdValue }),
             ...(gatewayPoolIdValue !== undefined && { gatewayPoolId: gatewayPoolIdValue }),
@@ -966,13 +988,12 @@ export const appConnectionServiceFactory = ({
 
     // TODO (scott): add option to delete all dependencies
 
-    let dedicatedGitHubAppId: string | null = null;
-
     if (app === AppConnection.GitHub) {
       const decrypted = await decryptAppConnection(appConnection, kmsService);
       if (decrypted.method === GitHubConnectionMethod.App) {
-        // Best-effort uninstall on GitHub. Failures don't block local deletion — the user can
-        // always remove the installation manually if our cleanup couldn't reach GitHub.
+        // Best-effort uninstall of THIS connection's installation on GitHub. Failures don't block
+        // local deletion — the user can always remove the installation manually. The underlying
+        // GitHub App is reusable and intentionally left intact; it's managed separately.
         try {
           await uninstallGitHubAppInstallation(decrypted, gatewayService, gatewayV2Service, gatewayPoolService, {
             gitHubAppDAL,
@@ -984,25 +1005,11 @@ export const appConnectionServiceFactory = ({
             `Failed to uninstall GitHub App for connection [connectionId=${connectionId}]`
           );
         }
-        dedicatedGitHubAppId = decrypted.credentials.gitHubAppId ?? null;
       }
     }
 
     try {
       const deletedAppConnection = await appConnectionDAL.deleteById(connectionId);
-
-      // For dedicated GitHub Apps, drop the encrypted app record now that no connection refers
-      // to it. Best-effort: the connection is already deleted, and an orphaned row is recoverable.
-      if (dedicatedGitHubAppId) {
-        try {
-          await gitHubAppDAL.deleteById(dedicatedGitHubAppId);
-        } catch (err) {
-          logger.warn(
-            { err, gitHubAppId: dedicatedGitHubAppId, connectionId },
-            `Failed to delete dedicated GitHub App row [gitHubAppId=${dedicatedGitHubAppId}]`
-          );
-        }
-      }
 
       return await decryptAppConnection(deletedAppConnection, kmsService);
     } catch (err) {

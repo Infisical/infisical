@@ -60,9 +60,9 @@ export const resolveGitHubAppCredentials = async (
     });
 
     return {
-      appId: decryptor({ cipherTextBlob: app.encryptedAppId }).toString(),
-      slug: decryptor({ cipherTextBlob: app.encryptedSlug }).toString(),
-      clientId: decryptor({ cipherTextBlob: app.encryptedClientId }).toString(),
+      appId: app.appId,
+      slug: app.slug,
+      clientId: app.clientId,
       clientSecret: decryptor({ cipherTextBlob: app.encryptedClientSecret }).toString(),
       privateKey: decryptor({ cipherTextBlob: app.encryptedPrivateKey }).toString()
     };

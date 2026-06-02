@@ -9,6 +9,7 @@ import { request } from "@app/lib/config/request";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
+import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
@@ -27,6 +28,7 @@ import {
 
 type TGitHubAppServiceFactoryDep = {
   gitHubAppDAL: TGitHubAppDALFactory;
+  appConnectionDAL: Pick<TAppConnectionDALFactory, "countByGitHubApp">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 };
@@ -35,6 +37,7 @@ export type TGitHubAppServiceFactory = ReturnType<typeof gitHubAppServiceFactory
 
 export const gitHubAppServiceFactory = ({
   gitHubAppDAL,
+  appConnectionDAL,
   permissionService,
   kmsService
 }: TGitHubAppServiceFactoryDep) => {
@@ -86,14 +89,17 @@ export const gitHubAppServiceFactory = ({
       orgId: orgPermission.orgId
     });
 
+    const owner = manifestResponse.owner?.login ?? null;
+
     const created = await gitHubAppDAL.create({
       orgId: orgPermission.orgId,
       name,
-      encryptedAppId: encryptor({ plainText: Buffer.from(String(manifestResponse.id)) }).cipherTextBlob,
-      encryptedClientId: encryptor({ plainText: Buffer.from(manifestResponse.client_id) }).cipherTextBlob,
+      appId: String(manifestResponse.id),
+      clientId: manifestResponse.client_id,
       encryptedClientSecret: encryptor({ plainText: Buffer.from(manifestResponse.client_secret) }).cipherTextBlob,
       encryptedPrivateKey: encryptor({ plainText: Buffer.from(manifestResponse.pem) }).cipherTextBlob,
-      encryptedSlug: encryptor({ plainText: Buffer.from(manifestResponse.slug) }).cipherTextBlob
+      slug: manifestResponse.slug,
+      owner
     });
 
     return {
@@ -102,6 +108,8 @@ export const gitHubAppServiceFactory = ({
       name: created.name,
       appId: String(manifestResponse.id),
       slug: manifestResponse.slug,
+      owner,
+      connectionCount: 0,
       createdAt: created.createdAt,
       updatedAt: created.updatedAt
     };
@@ -121,25 +129,20 @@ export const gitHubAppServiceFactory = ({
 
     const apps = await gitHubAppDAL.find({ orgId: orgPermission.orgId });
 
-    const dbApps: TSanitizedGitHubApp[] = [];
-    if (apps.length > 0) {
-      const { decryptor } = await kmsService.createCipherPairWithDataKey({
-        type: KmsDataKey.Organization,
-        orgId: orgPermission.orgId
-      });
+    const connectionCounts = await appConnectionDAL.countByGitHubApp(orgPermission.orgId);
+    const countByAppId = new Map(connectionCounts.map(({ gitHubAppId, count }) => [gitHubAppId, count]));
 
-      for (const app of apps) {
-        dbApps.push({
-          id: app.id,
-          orgId: app.orgId,
-          name: app.name,
-          appId: decryptor({ cipherTextBlob: app.encryptedAppId }).toString(),
-          slug: decryptor({ cipherTextBlob: app.encryptedSlug }).toString(),
-          createdAt: app.createdAt,
-          updatedAt: app.updatedAt
-        });
-      }
-    }
+    const dbApps: TSanitizedGitHubApp[] = apps.map((app) => ({
+      id: app.id,
+      orgId: app.orgId,
+      name: app.name,
+      appId: app.appId,
+      slug: app.slug,
+      owner: app.owner ?? null,
+      connectionCount: countByAppId.get(app.id) ?? 0,
+      createdAt: app.createdAt,
+      updatedAt: app.updatedAt
+    }));
 
     const { INF_APP_CONNECTION_GITHUB_APP_ID, INF_APP_CONNECTION_GITHUB_APP_SLUG } = getConfig();
 
@@ -151,6 +154,9 @@ export const gitHubAppServiceFactory = ({
             name: INF_APP_CONNECTION_GITHUB_APP_SLUG,
             appId: INF_APP_CONNECTION_GITHUB_APP_ID,
             slug: INF_APP_CONNECTION_GITHUB_APP_SLUG,
+            owner: null,
+            // connections referencing the instance-default app store a null gitHubAppId
+            connectionCount: countByAppId.get(null) ?? 0,
             createdAt: null,
             updatedAt: null
           }
@@ -176,17 +182,25 @@ export const gitHubAppServiceFactory = ({
       throw new NotFoundError({ message: `GitHub App with id ${id} not found in this organization.` });
     }
 
-    const { decryptor } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.Organization,
-      orgId: orgPermission.orgId
-    });
+    const connectionCounts = await appConnectionDAL.countByGitHubApp(orgPermission.orgId);
+    const connectionCount = connectionCounts.find(({ gitHubAppId }) => gitHubAppId === existing.id)?.count ?? 0;
+
+    if (connectionCount > 0) {
+      throw new BadRequestError({
+        message: `Cannot delete GitHub App "${existing.name}" while it is in use by ${connectionCount} connection${
+          connectionCount === 1 ? "" : "s"
+        }. Remove those connections first.`
+      });
+    }
 
     const sanitized: TSanitizedGitHubApp = {
       id: existing.id,
       orgId: existing.orgId,
       name: existing.name,
-      appId: decryptor({ cipherTextBlob: existing.encryptedAppId }).toString(),
-      slug: decryptor({ cipherTextBlob: existing.encryptedSlug }).toString(),
+      appId: existing.appId,
+      slug: existing.slug,
+      owner: existing.owner ?? null,
+      connectionCount: 0,
       createdAt: existing.createdAt,
       updatedAt: existing.updatedAt
     };
@@ -231,11 +245,11 @@ export const gitHubAppServiceFactory = ({
     const created = await gitHubAppDAL.create({
       orgId: orgPermission.orgId,
       name,
-      encryptedAppId: encryptor({ plainText: Buffer.from(appId) }).cipherTextBlob,
-      encryptedClientId: encryptor({ plainText: Buffer.from(clientId) }).cipherTextBlob,
+      appId,
+      clientId,
       encryptedClientSecret: encryptor({ plainText: Buffer.from(clientSecret) }).cipherTextBlob,
       encryptedPrivateKey: encryptor({ plainText: Buffer.from(privateKey) }).cipherTextBlob,
-      encryptedSlug: encryptor({ plainText: Buffer.from(slug) }).cipherTextBlob
+      slug
     });
 
     return {
@@ -244,6 +258,8 @@ export const gitHubAppServiceFactory = ({
       name: created.name,
       appId,
       slug,
+      owner: null,
+      connectionCount: 0,
       createdAt: created.createdAt,
       updatedAt: created.updatedAt
     };
@@ -342,7 +358,8 @@ export const gitHubAppServiceFactory = ({
       throw new BadRequestError({ message: "Invalid or expired GitHub manifest state. Please try again." });
     }
 
-    const { orgId, actorId, actorType, authMethod, name, instanceType, githubHost, installState } = statePayload;
+    const { orgId, actorId, actorType, authMethod, name, instanceType, githubOrg, githubHost, installState } =
+      statePayload;
 
     const { permission } = await permissionService.getOrgPermission({
       actor: actorType as ActorType,
@@ -392,16 +409,19 @@ export const gitHubAppServiceFactory = ({
       orgId
     });
 
+    const owner = manifestResponse.owner?.login ?? (githubOrg || null);
+
     let created: Awaited<ReturnType<typeof gitHubAppDAL.create>>;
     try {
       created = await gitHubAppDAL.create({
         orgId,
         name,
-        encryptedAppId: encryptor({ plainText: Buffer.from(String(manifestResponse.id)) }).cipherTextBlob,
-        encryptedClientId: encryptor({ plainText: Buffer.from(manifestResponse.client_id) }).cipherTextBlob,
+        appId: String(manifestResponse.id),
+        clientId: manifestResponse.client_id,
         encryptedClientSecret: encryptor({ plainText: Buffer.from(manifestResponse.client_secret) }).cipherTextBlob,
         encryptedPrivateKey: encryptor({ plainText: Buffer.from(manifestResponse.pem) }).cipherTextBlob,
-        encryptedSlug: encryptor({ plainText: Buffer.from(manifestResponse.slug) }).cipherTextBlob
+        slug: manifestResponse.slug,
+        owner
       });
     } catch (err) {
       if (err instanceof DatabaseError && (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation) {

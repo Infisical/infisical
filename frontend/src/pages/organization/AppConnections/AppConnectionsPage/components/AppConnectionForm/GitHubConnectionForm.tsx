@@ -1,11 +1,9 @@
 import { useEffect, useState } from "react";
 import { Controller, FormProvider, useForm } from "react-hook-form";
-import { faGithub } from "@fortawesome/free-brands-svg-icons";
-import { faCheck, faPlus } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
+import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
   Accordion,
@@ -21,10 +19,9 @@ import {
   SelectItem,
   Tooltip
 } from "@app/components/v2";
-import { Badge } from "@app/components/v3/generic/Badge";
 import { GatewayPicker } from "@app/components/v3/platform/GatewayPicker";
 import { apiRequest } from "@app/config/request";
-import { useSubscription } from "@app/context";
+import { useOrganization, useSubscription } from "@app/context";
 import {
   OrgGatewayPermissionActions,
   OrgPermissionSubjects
@@ -41,20 +38,20 @@ import {
   useGetAppConnectionOption
 } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { TGitHubApp, useListGitHubApps } from "@app/hooks/api/gitHubApps";
 
 import { GitHubFormData } from "../../../OauthCallbackPage/OauthCallbackPage.types";
 import {
   genericAppConnectionFieldsSchema,
   GenericAppConnectionsFields
 } from "./GenericAppConnectionFields";
+import { GitHubAppSelector } from "./GitHubAppSelector";
 
 type Props = {
   appConnection?: TGitHubConnection;
   projectId: string | undefined | null;
   onSubmit: (formData: PatSchemaForm) => Promise<void>;
 };
-
-type GitHubAppSource = "shared" | "dedicated";
 
 const rootSchema = genericAppConnectionFieldsSchema.extend({
   app: z.literal(AppConnection.GitHub),
@@ -98,69 +95,28 @@ const patSchema = rootSchema.extend({
   ])
 });
 
+const GITHUB_CONNECTION_FORM_KEY = "githubConnectionFormData";
+
 type PatSchemaForm = z.infer<typeof patSchema>;
 
 const formSchema = z.discriminatedUnion("method", [appSchema, oauthSchema, patSchema]);
 
 type FormData = z.infer<typeof formSchema>;
 
-const slugifyConnectionName = (name: string) =>
-  name
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, "-")
-    .replace(/[^a-z0-9-]/g, "")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "");
-
-const buildDedicatedAppSlug = (connectionName: string) => {
-  const slug = slugifyConnectionName(connectionName || "");
-  return `infisical-${slug}`;
-};
-
-type AppSourceCardProps = {
-  title: string;
-  description: string;
-  icon: React.ReactNode;
-  selected: boolean;
-  onClick: () => void;
-};
-
-const AppSourceCard = ({ title, description, icon, selected, onClick }: AppSourceCardProps) => (
-  <button
-    type="button"
-    onClick={onClick}
-    className={`relative flex h-full flex-col items-start gap-2 rounded-md border p-3 text-left transition-all ${
-      selected
-        ? "border-primary/60 bg-primary/10"
-        : "border-mineshaft-500 bg-mineshaft-700/30 hover:border-mineshaft-400 hover:bg-mineshaft-700/60"
-    }`}
-  >
-    {selected && (
-      <div className="absolute top-2 right-2 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-mineshaft-900">
-        <FontAwesomeIcon icon={faCheck} className="text-[8px]" />
-      </div>
-    )}
-    <div className="flex items-center gap-2">
-      <div className="flex h-7 w-7 items-center justify-center rounded-sm bg-mineshaft-600 text-mineshaft-100">
-        {icon}
-      </div>
-      <div className="flex flex-wrap items-center gap-1.5">
-        <span className="text-sm font-medium text-mineshaft-100">{title}</span>
-      </div>
-    </div>
-    <p className="text-xs leading-relaxed text-mineshaft-300">{description}</p>
-  </button>
-);
-
 export const GitHubConnectionForm = ({ appConnection, projectId, onSubmit }: Props) => {
   const isUpdate = Boolean(appConnection);
   const [isRedirecting, setIsRedirecting] = useState(false);
+
+  const { currentOrg } = useOrganization();
 
   const {
     option: { oauthClientId, appClientSlug },
     isLoading
   } = useGetAppConnectionOption(AppConnection.GitHub);
+
+  const { data: gitHubApps = [], isPending: isGitHubAppsLoading } = useListGitHubApps(
+    currentOrg?.id
+  );
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -189,20 +145,156 @@ export const GitHubConnectionForm = ({ appConnection, projectId, onSubmit }: Pro
   const instanceType = watch("credentials.instanceType");
   const gatewayId = watch("gatewayId");
   const gatewayPoolId = watch("gatewayPoolId");
-  const connectionName = watch("name") ?? "";
-
-  // Dedicated is the recommended default for new connections; update flow is reconnect-only
-  // and uses the instance-default app since the dedicated app slug lives in the DB.
-  const [appSource, setAppSource] = useState<GitHubAppSource>(isUpdate ? "shared" : "dedicated");
-  const [dedicatedAppOrg, setDedicatedAppOrg] = useState("");
-
-  useEffect(() => {
-    if (isUpdate) setAppSource("shared");
-  }, [isUpdate]);
 
   const returnUrl = useGetAppConnectionOauthReturnUrl();
 
-  const dedicatedAppSlug = buildDedicatedAppSlug(connectionName);
+  const sharedApp = gitHubApps.find((app) => app.id === null) ?? null;
+
+  // For new App-method connections the user picks which GitHub App to install. Default to the
+  // instance-default (shared) app when one is configured.
+  const [selectedGitHubApp, setSelectedGitHubApp] = useState<TGitHubApp | null>(null);
+  // After returning from the "Create new GitHub App" flow, the app to auto-select once it loads.
+  const [pendingGitHubAppId, setPendingGitHubAppId] = useState<string | null>(null);
+  // The form is restored (not edited) after resuming, so `isDirty` stays false — track this to keep
+  // the Connect button enabled.
+  const [isResumed, setIsResumed] = useState(false);
+
+  // When we come back from creating a new GitHub App, restore the in-progress form and remember the
+  // new app so we can select it. The connection itself is created later when the user hits Connect.
+  useEffect(() => {
+    if (isUpdate) return;
+    try {
+      const raw = localStorage.getItem(GITHUB_CONNECTION_FORM_KEY);
+      if (!raw) return;
+      const stored = JSON.parse(raw) as {
+        method?: GitHubConnectionMethod;
+        name?: string;
+        description?: string | null;
+        gatewayId?: string | null;
+        gatewayPoolId?: string | null;
+        credentials?: { instanceType?: "cloud" | "server"; host?: string };
+        resumeWithGitHubAppId?: string;
+      };
+      if (!stored.resumeWithGitHubAppId) return;
+
+      form.reset({
+        app: AppConnection.GitHub,
+        method: stored.method ?? GitHubConnectionMethod.App,
+        gatewayId: stored.gatewayId ?? null,
+        gatewayPoolId: stored.gatewayPoolId ?? null,
+        name: stored.name ?? "",
+        description: stored.description ?? null,
+        credentials: {
+          instanceType: stored.credentials?.instanceType ?? "cloud",
+          ...(stored.credentials?.host ? { host: stored.credentials.host } : {})
+        }
+      } as FormData);
+      setPendingGitHubAppId(stored.resumeWithGitHubAppId);
+      setIsResumed(true);
+    } catch {
+      // ignore malformed state
+    } finally {
+      localStorage.removeItem(GITHUB_CONNECTION_FORM_KEY);
+    }
+    // run once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Resolve the pending (newly created) app to the loaded list, then select it.
+  useEffect(() => {
+    if (!pendingGitHubAppId) return;
+    const match = gitHubApps.find((app) => app.id === pendingGitHubAppId);
+    if (match) {
+      setSelectedGitHubApp(match);
+      setPendingGitHubAppId(null);
+    }
+  }, [pendingGitHubAppId, gitHubApps]);
+
+  useEffect(() => {
+    if (isUpdate || selectedGitHubApp || pendingGitHubAppId || !sharedApp) return;
+    setSelectedGitHubApp(sharedApp);
+  }, [isUpdate, selectedGitHubApp, pendingGitHubAppId, sharedApp]);
+
+  // On reconnect, reuse the GitHub App the connection was originally created with.
+  const existingGitHubAppId =
+    (appConnection?.credentials as { gitHubAppId?: string | null } | undefined)?.gitHubAppId ??
+    null;
+  const reconnectApp = isUpdate
+    ? (gitHubApps.find((app) => (app.id ?? null) === existingGitHubAppId) ?? null)
+    : null;
+
+  const buildGithubHost = (host?: string) =>
+    host && host.length > 0 ? `https://${host}` : "https://github.com";
+
+  const generateInstallState = () =>
+    Array.from(crypto.getRandomValues(new Uint8Array(16)))
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+
+  const storeConnectionFormData = (
+    formData: FormData,
+    installState: string,
+    gitHubAppId?: string | null
+  ) => {
+    localStorage.setItem("latestCSRFToken", installState);
+    localStorage.setItem(
+      GITHUB_CONNECTION_FORM_KEY,
+      JSON.stringify({
+        ...formData,
+        credentials: {
+          ...(formData.credentials as TGitHubConnection["credentials"]),
+          ...(gitHubAppId ? { gitHubAppId } : {})
+        },
+        connectionId: appConnection?.id,
+        projectId,
+        returnUrl
+      } as GitHubFormData)
+    );
+  };
+
+  // Kicks off GitHub App manifest creation, then redirects to GitHub to create + install the app.
+  // This only creates the GitHub App — when the user returns they land back on this form with the
+  // new app selected and complete the connection separately, so the connection fields aren't
+  // required here (only the GitHub App name, which the selector validates).
+  const handleCreateApp = async ({ name, githubOrg }: { name: string; githubOrg: string }) => {
+    const formData = form.getValues();
+    setIsRedirecting(true);
+    const installState = generateInstallState();
+    storeConnectionFormData(formData, installState);
+
+    try {
+      const { data } = await apiRequest.post<{
+        state: string;
+        manifest: Record<string, unknown>;
+        githubActionUrl: string;
+      }>("/api/v1/github-apps/manifest/initiate", {
+        name,
+        instanceType: formData.credentials?.instanceType ?? "cloud",
+        githubOrg: githubOrg || undefined,
+        githubHost: formData.credentials?.host || undefined,
+        installState
+      });
+
+      const formEl = document.createElement("form");
+      formEl.method = "post";
+      formEl.action = `${data.githubActionUrl}?state=${encodeURIComponent(data.state)}`;
+      const input = document.createElement("input");
+      input.type = "hidden";
+      input.name = "manifest";
+      input.value = JSON.stringify(data.manifest);
+      formEl.appendChild(input);
+      document.body.appendChild(formEl);
+      formEl.submit();
+      return true;
+    } catch (err) {
+      setIsRedirecting(false);
+      createNotification({
+        type: "error",
+        text: err instanceof Error ? err.message : "Failed to start GitHub App creation."
+      });
+      return false;
+    }
+  };
 
   const submitHandler = async (formData: FormData) => {
     if (formData.method === GitHubConnectionMethod.Pat) {
@@ -213,63 +305,23 @@ export const GitHubConnectionForm = ({ appConnection, projectId, onSubmit }: Pro
     setIsRedirecting(true);
 
     // generate install state here so the OAuth callback can validate it
-    const installState = Array.from(crypto.getRandomValues(new Uint8Array(16)))
-      .map((b) => b.toString(16).padStart(2, "0"))
-      .join("");
-
-    localStorage.setItem("latestCSRFToken", installState);
-    localStorage.setItem(
-      "githubConnectionFormData",
-      JSON.stringify({
-        ...formData,
-        credentials: formData.credentials as TGitHubConnection["credentials"],
-        connectionId: appConnection?.id,
-        projectId,
-        returnUrl
-      } as GitHubFormData)
-    );
-
-    const githubHost =
-      formData.credentials?.host && formData.credentials.host.length > 0
-        ? `https://${formData.credentials.host}`
-        : "https://github.com";
+    const installState = generateInstallState();
+    const githubHost = buildGithubHost(formData.credentials?.host);
 
     switch (formData.method) {
       case GitHubConnectionMethod.App: {
-        if (appSource === "dedicated") {
-          const { data } = await apiRequest.post<{
-            state: string;
-            manifest: Record<string, unknown>;
-            githubActionUrl: string;
-          }>("/api/v1/github-apps/manifest/initiate", {
-            name: dedicatedAppSlug,
-            instanceType: formData.credentials?.instanceType ?? "cloud",
-            githubOrg: dedicatedAppOrg.trim() || undefined,
-            githubHost: formData.credentials?.host || undefined,
-            installState
-          });
-
-          const formEl = document.createElement("form");
-          formEl.method = "post";
-          formEl.action = `${data.githubActionUrl}?state=${encodeURIComponent(data.state)}`;
-
-          const input = document.createElement("input");
-          input.type = "hidden";
-          input.name = "manifest";
-          input.value = JSON.stringify(data.manifest);
-          formEl.appendChild(input);
-
-          document.body.appendChild(formEl);
-          formEl.submit();
-          return;
-        }
-
+        const targetApp = isUpdate ? reconnectApp : selectedGitHubApp;
+        const slug = targetApp?.slug ?? appClientSlug;
+        // Custom apps carry an id we persist into credentials; the shared app (id null) resolves
+        // to the instance-default app on the backend.
+        storeConnectionFormData(formData, installState, targetApp?.id ?? undefined);
         window.location.assign(
-          `${githubHost}/${formData.credentials?.instanceType === "server" ? "github-apps" : "apps"}/${appClientSlug}/installations/new?state=${installState}`
+          `${githubHost}/${formData.credentials?.instanceType === "server" ? "github-apps" : "apps"}/${slug}/installations/new?state=${installState}`
         );
         break;
       }
       case GitHubConnectionMethod.OAuth:
+        storeConnectionFormData(formData, installState);
         window.location.assign(
           `${githubHost}/login/oauth/authorize?client_id=${oauthClientId}&response_type=code&scope=repo,admin:org&redirect_uri=${window.location.origin}/organization/app-connections/github/oauth/callback&state=${installState}`
         );
@@ -286,7 +338,9 @@ export const GitHubConnectionForm = ({ appConnection, projectId, onSubmit }: Pro
       isMissingConfig = !oauthClientId;
       break;
     case GitHubConnectionMethod.App:
-      isMissingConfig = (isUpdate || appSource === "shared") && !appClientSlug;
+      // On reconnect we need the original app to still resolve. For new connections the selector
+      // always lets the user pick or create an app, so there's no missing-config state.
+      isMissingConfig = isUpdate && !reconnectApp && !appClientSlug;
       break;
     case GitHubConnectionMethod.Pat:
       isMissingConfig = false;
@@ -317,13 +371,12 @@ export const GitHubConnectionForm = ({ appConnection, projectId, onSubmit }: Pro
     return fieldError?.message;
   };
 
+  const isAppMethodMissingSelection =
+    selectedMethod === GitHubConnectionMethod.App && !isUpdate && !selectedGitHubApp;
+
   const getButtonText = () => {
     if (selectedMethod === GitHubConnectionMethod.Pat) {
       return isUpdate ? "Update Connection" : "Create Connection";
-    }
-
-    if (selectedMethod === GitHubConnectionMethod.App && appSource === "dedicated" && !isUpdate) {
-      return "Create app & connect";
     }
 
     return isUpdate ? "Reconnect to GitHub" : "Connect to GitHub";
@@ -349,6 +402,7 @@ export const GitHubConnectionForm = ({ appConnection, projectId, onSubmit }: Pro
                 isDisabled={isUpdate}
                 value={value}
                 onValueChange={(val) => onChange(val)}
+                containerClassName="w-full"
                 className="w-full border border-mineshaft-500"
                 position="popper"
                 dropdownContainerClassName="max-w-none"
@@ -367,74 +421,19 @@ export const GitHubConnectionForm = ({ appConnection, projectId, onSubmit }: Pro
         />
         {selectedMethod === GitHubConnectionMethod.App && !isUpdate && (
           <FormControl
-            label="GitHub App setup"
-            tooltipText="Reuse the shared instance-default GitHub App or create a new private app dedicated to this connection."
+            label="GitHub App"
+            tooltipText="Reuse an existing GitHub App in your organization or create a new one. Apps can be shared across multiple connections."
           >
-            <div className="flex flex-col gap-3">
-              {appClientSlug && (
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <AppSourceCard
-                    title="Use shared app"
-                    description="Reuse the instance-default GitHub App. Best for teams managing many connections."
-                    icon={<FontAwesomeIcon icon={faGithub} className="text-base" />}
-                    selected={appSource === "shared"}
-                    onClick={() => setAppSource("shared")}
-                  />
-                  <AppSourceCard
-                    title="Create dedicated app"
-                    description="One app per connection. Maximum isolation, no admin handoff."
-                    icon={<FontAwesomeIcon icon={faPlus} className="text-base" />}
-                    selected={appSource === "dedicated"}
-                    onClick={() => setAppSource("dedicated")}
-                  />
-                </div>
-              )}
-              {appSource === "dedicated" && (
-                <>
-                  <div className="flex items-start gap-3 rounded-md border border-mineshaft-500 bg-mineshaft-700/40 px-3 py-2.5">
-                    <div className="mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-sm bg-primary/15 text-primary">
-                      <FontAwesomeIcon icon={faPlus} className="text-xs" />
-                    </div>
-                    <div className="text-xs leading-relaxed text-mineshaft-300">
-                      Will create and install{" "}
-                      <span className="font-mono text-mineshaft-100">{dedicatedAppSlug}</span>{" "}
-                      <Badge variant="info" className="ml-1">
-                        New
-                      </Badge>
-                      <div className="mt-0.5 text-mineshaft-400">
-                        Private · scoped to this connection
-                      </div>
-                    </div>
-                  </div>
-                  <FormControl
-                    label="GitHub Organization"
-                    isOptional
-                    helperText="Leave blank to register under your personal account."
-                    className="mb-0"
-                  >
-                    <Input
-                      value={dedicatedAppOrg}
-                      onChange={(e) => setDedicatedAppOrg(e.target.value)}
-                      placeholder="my-github-org"
-                    />
-                  </FormControl>
-                </>
-              )}
-              {appSource === "shared" && appClientSlug && (
-                <div className="flex items-start gap-3 rounded-md border border-mineshaft-500 bg-mineshaft-700/40 px-3 py-2.5">
-                  <div className="mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-sm bg-mineshaft-600 text-mineshaft-200">
-                    <FontAwesomeIcon icon={faGithub} className="text-xs" />
-                  </div>
-                  <div className="text-xs leading-relaxed text-mineshaft-300">
-                    Will install{" "}
-                    <span className="font-mono text-mineshaft-100">{appClientSlug}</span>
-                    <div className="mt-0.5 text-mineshaft-400">
-                      Public · shared across all connections
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
+            <GitHubAppSelector
+              apps={gitHubApps}
+              isLoading={isGitHubAppsLoading}
+              value={selectedGitHubApp}
+              onChange={setSelectedGitHubApp}
+              host={instanceType === "server" ? watch("credentials.host") : undefined}
+              instanceType={instanceType}
+              onCreateApp={handleCreateApp}
+              isCreating={isRedirecting}
+            />
           </FormControl>
         )}
         {selectedMethod === GitHubConnectionMethod.Pat && (
@@ -477,6 +476,7 @@ export const GitHubConnectionForm = ({ appConnection, projectId, onSubmit }: Pro
                           setValue("gatewayPoolId", null);
                         }
                       }}
+                      containerClassName="w-full"
                       className="w-full border border-mineshaft-500"
                       dropdownContainerClassName="max-w-none"
                       placeholder="Enterprise Cloud"
@@ -545,11 +545,12 @@ export const GitHubConnectionForm = ({ appConnection, projectId, onSubmit }: Pro
             colorSchema="secondary"
             isLoading={isSubmitting || isRedirecting}
             isDisabled={
+              (!isUpdate && !isDirty && !isResumed) ||
               isSubmitting ||
-              (!isUpdate && !isDirty) ||
               isMissingConfig ||
               isRedirecting ||
-              isCloudCustomHostUnsupported
+              isCloudCustomHostUnsupported ||
+              isAppMethodMissingSelection
             }
           >
             {getButtonText()}

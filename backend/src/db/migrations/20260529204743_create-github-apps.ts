@@ -10,20 +10,38 @@ export async function up(knex: Knex): Promise<void> {
       t.uuid("orgId").notNullable();
       t.foreign("orgId").references("id").inTable(TableName.Organization).onDelete("CASCADE");
       t.string("name").notNullable();
-      t.binary("encryptedAppId").notNullable();
-      t.binary("encryptedClientId").notNullable();
+      t.string("appId").notNullable();
+      t.string("clientId").notNullable();
       t.binary("encryptedClientSecret").notNullable();
       t.binary("encryptedPrivateKey").notNullable();
-      t.binary("encryptedSlug").notNullable();
+      t.string("slug").notNullable();
+      t.string("owner").nullable();
       t.timestamps(true, true, true);
-      t.unique(["orgId", "name"]);
+      // GitHub app names are globally unique, so enforce uniqueness across all orgs
+      t.unique(["name"]);
     });
 
     await createOnUpdateTrigger(knex, TableName.GitHubApp);
   }
+
+  if (!(await knex.schema.hasColumn(TableName.AppConnection, "gitHubAppId"))) {
+    await knex.schema.alterTable(TableName.AppConnection, (t) => {
+      t.uuid("gitHubAppId").nullable();
+      t.foreign("gitHubAppId").references("id").inTable(TableName.GitHubApp).onDelete("SET NULL");
+      t.index("gitHubAppId");
+    });
+  }
 }
 
 export async function down(knex: Knex): Promise<void> {
+  if (await knex.schema.hasColumn(TableName.AppConnection, "gitHubAppId")) {
+    await knex.schema.alterTable(TableName.AppConnection, (t) => {
+      t.dropForeign(["gitHubAppId"]);
+      t.dropIndex("gitHubAppId");
+      t.dropColumn("gitHubAppId");
+    });
+  }
+
   await knex.schema.dropTableIfExists(TableName.GitHubApp);
   await dropOnUpdateTrigger(knex, TableName.GitHubApp);
 }
