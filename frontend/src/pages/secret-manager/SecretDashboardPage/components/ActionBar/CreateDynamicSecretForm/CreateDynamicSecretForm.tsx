@@ -194,7 +194,7 @@ const DYNAMIC_SECRET_LIST = [
   {
     icon: <FontAwesomeIcon icon={faGlobe} size="lg" />,
     provider: DynamicSecretProviders.IbmApiConnect,
-    title: "IBM API\nConnect"
+    title: "IBM API Connect"
   }
 ];
 

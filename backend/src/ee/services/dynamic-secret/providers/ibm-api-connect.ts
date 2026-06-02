@@ -5,31 +5,31 @@ import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator/validate-url
 
 import { DynamicSecretIbmApiConnectSchema, TDynamicProviderFns } from "./models";
 
-interface TIbmApiConnectBaseCredentials {
+export type TIbmApiConnectBaseCredentials {
   clientId: string;
   clientSecret: string;
   instanceUrl: string;
   apiKey: string;
 }
 
-interface TIbmApiConnectProviderInputs extends TIbmApiConnectBaseCredentials {
+type TIbmApiConnectProviderInputs = TIbmApiConnectBaseCredentials & {
   orgId: string;
   catalogId: string;
   consumerOrgId: string;
   appId: string;
 }
 
-interface TApiConnectResource {
+export type TApiConnectResource {
   name: string;
   title: string;
   id: string;
 }
 
-interface TApiConnectApp extends TApiConnectResource {
+export type TApiConnectApp = TApiConnectResource & {
   consumerOrgId: string;
 }
 
-interface TIbmApiConnectApplicationCredential {
+type TIbmApiConnectApplicationCredential {
   id: string;
   clientId: string;
   clientSecret: string;
@@ -72,7 +72,7 @@ const $fetchOrganizations = async (
   return response.data.results.map((org) => ({
     name: org.name,
     title: org.title,
-    id: String(org.id)
+    id: org.id
   }));
 };
 
@@ -94,7 +94,7 @@ const $fetchOrganizationCatalogs = async (
   return response.data.results.map((catalog) => ({
     name: catalog.name,
     title: catalog.title,
-    id: String(catalog.id)
+    id: catalog.id
   }));
 };
 
@@ -115,11 +115,13 @@ const $fetchOrganizationApps = async (
   });
 
   return response.data.results.map((app) => {
+    // consumer_org_url is composed of:
+    // https://endpoint/api/consumer-orgs/{orgId}/{catalog}/{consumer_org}
     const consumerOrgId = app.consumer_org_url.split("/").pop() ?? "";
     return {
       name: app.name,
       title: app.title,
-      id: String(app.id),
+      id: app.id,
       consumerOrgId
     };
   });
@@ -149,7 +151,7 @@ const $createApplicationCredential = async (
   );
 
   return {
-    id: String(response.data.id),
+    id: response.data.id,
     clientId: response.data.client_id,
     clientSecret: response.data.client_secret
   };
