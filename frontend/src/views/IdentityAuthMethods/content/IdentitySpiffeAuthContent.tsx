@@ -14,7 +14,7 @@ import {
 import { useGetIdentitySpiffeAuth } from "@app/hooks/api";
 import { SpiffeTrustBundleProfile } from "@app/hooks/api/identities/enums";
 
-import { IdentityAuthFieldDisplay } from "../helpers";
+import { IdentityAuthAccessTokenFields, IdentityAuthFieldDisplay } from "../helpers";
 import { ViewAuthMethodProps } from "../types";
 
 const PROFILE_DISPLAY_MAP: Record<string, string> = {
@@ -112,18 +112,12 @@ export const IdentitySpiffeAuthContent = ({ identityId }: ViewAuthMethodProps) =
           </IdentityAuthFieldDisplay>
         </>
       )}
-      <IdentityAuthFieldDisplay label="Access Token TTL (seconds)">
-        {data.accessTokenTTL}
-      </IdentityAuthFieldDisplay>
-      <IdentityAuthFieldDisplay label="Access Token Max TTL (seconds)">
-        {data.accessTokenMaxTTL}
-      </IdentityAuthFieldDisplay>
-      <IdentityAuthFieldDisplay label="Access Token Max Number of Uses">
-        {data.accessTokenNumUsesLimit}
-      </IdentityAuthFieldDisplay>
-      <IdentityAuthFieldDisplay label="Access Token Trusted IPs">
-        {data.accessTokenTrustedIps.map((ip) => ip.ipAddress).join(", ")}
-      </IdentityAuthFieldDisplay>
+      <IdentityAuthAccessTokenFields
+        accessTokenTTL={data.accessTokenTTL}
+        accessTokenMaxTTL={data.accessTokenMaxTTL}
+        accessTokenNumUsesLimit={data.accessTokenNumUsesLimit}
+        accessTokenTrustedIps={data.accessTokenTrustedIps}
+      />
     </div>
   );
 };

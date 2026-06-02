@@ -7,6 +7,7 @@ import { z } from "zod";
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
+  ButtonGroup,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -175,25 +176,19 @@ export const IdentityClientSecretModal = ({ popUp, handlePopUpToggle }: Props) =
           </form>
         ) : (
           <>
-            <div className="relative flex items-center justify-between rounded-md border border-border bg-container p-2 pr-5 pl-3 text-base text-label">
-              <p className="mr-4 break-all">{token}</p>
+            <ButtonGroup className="w-full">
+              <Input value={token} readOnly aria-label="Client secret" className="font-mono" />
               <IconButton
-                aria-label="copy icon"
-                variant="ghost-muted"
-                size="sm"
-                className="absolute top-1 right-1"
+                variant="outline"
+                aria-label="Copy to clipboard"
                 onClick={() => {
                   navigator.clipboard.writeText(token);
                   setCopyTextToken("Copied");
                 }}
               >
-                {isCopyingToken ? (
-                  <ClipboardCheck className="size-4" />
-                ) : (
-                  <Copy className="size-4" />
-                )}
+                {isCopyingToken ? <ClipboardCheck /> : <Copy />}
               </IconButton>
-            </div>
+            </ButtonGroup>
             <DialogFooter>
               <Button type="button" variant="ghost" onClick={() => handleOpenChange(false)}>
                 Close

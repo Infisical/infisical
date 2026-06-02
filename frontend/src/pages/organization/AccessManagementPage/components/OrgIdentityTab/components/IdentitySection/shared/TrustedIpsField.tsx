@@ -108,7 +108,9 @@ export const TrustedIpsField = ({
                 </IconButton>
               </span>
             </TooltipTrigger>
-            {isLast && <TooltipContent className="max-w-md">At least one IP is required</TooltipContent>}
+            {isLast && (
+              <TooltipContent className="max-w-md">At least one IP is required</TooltipContent>
+            )}
           </Tooltip>
         </div>
       ))}

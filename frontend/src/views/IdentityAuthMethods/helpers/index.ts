@@ -1,3 +1,4 @@
+export { IdentityAuthAccessTokenFields } from "./IdentityAuthAccessTokenFields";
 export { IdentityAuthFieldDisplay } from "./IdentityAuthFieldDisplay";
 export { IdentityAuthLockoutFields } from "./IdentityAuthLockoutFields";
 export { IdentityAuthRevokeDialog } from "./IdentityAuthRevokeDialog";

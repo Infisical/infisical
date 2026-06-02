@@ -19,6 +19,7 @@ import {
 } from "@app/hooks/api";
 
 import {
+  IdentityAuthAccessTokenFields,
   IdentityAuthFieldDisplay,
   IdentityAuthLockoutFields,
   IdentityUniversalAuthClientSecretsTable
@@ -57,26 +58,13 @@ export const IdentityUniversalAuthContent = ({
 
   return (
     <div className="grid grid-cols-2 gap-3">
-      {Number(data.accessTokenPeriod) > 0 ? (
-        <IdentityAuthFieldDisplay label="Access Token Period (seconds)">
-          {data.accessTokenPeriod}
-        </IdentityAuthFieldDisplay>
-      ) : (
-        <>
-          <IdentityAuthFieldDisplay label="Access Token TTL (seconds)">
-            {data.accessTokenTTL}
-          </IdentityAuthFieldDisplay>
-          <IdentityAuthFieldDisplay label="Access Token Max TTL (seconds)">
-            {data.accessTokenMaxTTL}
-          </IdentityAuthFieldDisplay>
-        </>
-      )}
-      <IdentityAuthFieldDisplay label="Access Token Max Number of Uses">
-        {data.accessTokenNumUsesLimit}
-      </IdentityAuthFieldDisplay>
-      <IdentityAuthFieldDisplay label="Access Token Trusted IPs">
-        {data.accessTokenTrustedIps.map((ip) => ip.ipAddress).join(", ")}
-      </IdentityAuthFieldDisplay>
+      <IdentityAuthAccessTokenFields
+        accessTokenPeriod={data.accessTokenPeriod}
+        accessTokenTTL={data.accessTokenTTL}
+        accessTokenMaxTTL={data.accessTokenMaxTTL}
+        accessTokenNumUsesLimit={data.accessTokenNumUsesLimit}
+        accessTokenTrustedIps={data.accessTokenTrustedIps}
+      />
       <IdentityAuthFieldDisplay label="Client Secret Trusted IPs">
         {data.clientSecretTrustedIps.map((ip) => ip.ipAddress).join(", ")}
       </IdentityAuthFieldDisplay>

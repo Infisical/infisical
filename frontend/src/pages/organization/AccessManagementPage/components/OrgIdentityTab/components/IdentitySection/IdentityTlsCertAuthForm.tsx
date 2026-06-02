@@ -37,6 +37,7 @@ import {
 } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
+import { AccessTokenNumUsesLimitField } from "./shared/AccessTokenNumUsesLimitField";
 import { AccessTokenTtlFields } from "./shared/AccessTokenTtlFields";
 import { TrustedIpsField } from "./shared/TrustedIpsField";
 import { IDENTITY_AUTH_FORM_ID, IdentityFormTab } from "./types";
@@ -245,40 +246,7 @@ export const IdentityTlsCertAuthForm = ({
               )}
             />
             <AccessTokenTtlFields control={control} maxAccessTokenTTL={maxAccessTokenTTL} />
-            <Controller
-              control={control}
-              defaultValue="0"
-              name="accessTokenNumUsesLimit"
-              render={({ field, fieldState: { error } }) => (
-                <Field>
-                  <FieldLabel
-                    htmlFor="accessTokenNumUsesLimit"
-                    className="inline-flex items-center gap-1.5"
-                  >
-                    Access Token Max Number of Uses
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <InfoIcon className="size-3.5 text-muted" />
-                      </TooltipTrigger>
-                      <TooltipContent className="max-w-md">
-                        The maximum number of times that an access token can be used; leave blank
-                        for unlimited uses.
-                      </TooltipContent>
-                    </Tooltip>
-                  </FieldLabel>
-                  <Input
-                    {...field}
-                    id="accessTokenNumUsesLimit"
-                    placeholder="Unlimited uses"
-                    type="number"
-                    min="0"
-                    step="1"
-                    isError={Boolean(error)}
-                  />
-                  <FieldError>{error?.message}</FieldError>
-                </Field>
-              )}
-            />
+            <AccessTokenNumUsesLimitField control={control} />
           </FieldGroup>
         </TabsContent>
         <TabsContent value={IdentityFormTab.Advanced}>

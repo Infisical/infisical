@@ -13,7 +13,11 @@ import {
 } from "@app/components/v3";
 import { IdentityAuthMethod, useGetIdentityLdapAuth } from "@app/hooks/api";
 
-import { IdentityAuthFieldDisplay, IdentityAuthLockoutFields } from "../helpers";
+import {
+  IdentityAuthAccessTokenFields,
+  IdentityAuthFieldDisplay,
+  IdentityAuthLockoutFields
+} from "../helpers";
 import { ViewAuthMethodProps } from "../types";
 
 export const IdentityLdapAuthContent = ({
@@ -42,18 +46,12 @@ export const IdentityLdapAuthContent = ({
 
   return (
     <div className="grid grid-cols-2 gap-3">
-      <IdentityAuthFieldDisplay label="Access Token TTL (seconds)">
-        {data.accessTokenTTL}
-      </IdentityAuthFieldDisplay>
-      <IdentityAuthFieldDisplay label="Access Token Max TTL (seconds)">
-        {data.accessTokenMaxTTL}
-      </IdentityAuthFieldDisplay>
-      <IdentityAuthFieldDisplay label="Access Token Max Number of Uses">
-        {data.accessTokenNumUsesLimit}
-      </IdentityAuthFieldDisplay>
-      <IdentityAuthFieldDisplay label="Access Token Trusted IPs">
-        {data.accessTokenTrustedIps.map((ip) => ip.ipAddress).join(", ")}
-      </IdentityAuthFieldDisplay>
+      <IdentityAuthAccessTokenFields
+        accessTokenTTL={data.accessTokenTTL}
+        accessTokenMaxTTL={data.accessTokenMaxTTL}
+        accessTokenNumUsesLimit={data.accessTokenNumUsesLimit}
+        accessTokenTrustedIps={data.accessTokenTrustedIps}
+      />
       <IdentityAuthFieldDisplay label="LDAP URL">{data.url}</IdentityAuthFieldDisplay>
       <IdentityAuthFieldDisplay label="Bind DN">{data.bindDN}</IdentityAuthFieldDisplay>
       <IdentityAuthFieldDisplay label="Bind Pass">

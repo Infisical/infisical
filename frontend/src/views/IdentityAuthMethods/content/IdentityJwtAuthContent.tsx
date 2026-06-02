@@ -14,7 +14,7 @@ import {
 import { useGetIdentityJwtAuth } from "@app/hooks/api";
 import { IdentityJwtConfigurationType } from "@app/hooks/api/identities/enums";
 
-import { IdentityAuthFieldDisplay } from "../helpers";
+import { IdentityAuthAccessTokenFields, IdentityAuthFieldDisplay } from "../helpers";
 import { ViewAuthMethodProps } from "../types";
 
 export const IdentityJwtAuthContent = ({ identityId }: ViewAuthMethodProps) => {
@@ -39,18 +39,12 @@ export const IdentityJwtAuthContent = ({ identityId }: ViewAuthMethodProps) => {
 
   return (
     <div className="grid grid-cols-2 gap-3">
-      <IdentityAuthFieldDisplay label="Access Token TTL (seconds)">
-        {data.accessTokenTTL}
-      </IdentityAuthFieldDisplay>
-      <IdentityAuthFieldDisplay label="Access Token Max TTL (seconds)">
-        {data.accessTokenMaxTTL}
-      </IdentityAuthFieldDisplay>
-      <IdentityAuthFieldDisplay label="Access Token Max Number of Uses">
-        {data.accessTokenNumUsesLimit}
-      </IdentityAuthFieldDisplay>
-      <IdentityAuthFieldDisplay label="Access Token Trusted IPs">
-        {data.accessTokenTrustedIps.map((ip) => ip.ipAddress).join(", ")}
-      </IdentityAuthFieldDisplay>
+      <IdentityAuthAccessTokenFields
+        accessTokenTTL={data.accessTokenTTL}
+        accessTokenMaxTTL={data.accessTokenMaxTTL}
+        accessTokenNumUsesLimit={data.accessTokenNumUsesLimit}
+        accessTokenTrustedIps={data.accessTokenTrustedIps}
+      />
       <IdentityAuthFieldDisplay label="Configuration Type">
         {data.configurationType === IdentityJwtConfigurationType.JWKS ? "JWKS" : "Static"}
       </IdentityAuthFieldDisplay>

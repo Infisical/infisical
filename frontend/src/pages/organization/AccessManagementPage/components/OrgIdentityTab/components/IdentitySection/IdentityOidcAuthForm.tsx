@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useParams } from "@tanstack/react-router";
-import { HelpCircleIcon, InfoIcon, PlusIcon, XIcon } from "lucide-react";
+import { HelpCircleIcon, PlusIcon, XIcon } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -37,6 +37,7 @@ import { useAddIdentityOidcAuth, useUpdateIdentityOidcAuth } from "@app/hooks/ap
 import { useGetIdentityOidcAuth } from "@app/hooks/api/identities/queries";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
+import { AccessTokenNumUsesLimitField } from "./shared/AccessTokenNumUsesLimitField";
 import { AccessTokenTtlFields } from "./shared/AccessTokenTtlFields";
 import { TrustedIpsField } from "./shared/TrustedIpsField";
 import { IDENTITY_AUTH_FORM_ID, IdentityFormTab } from "./types";
@@ -325,7 +326,7 @@ export const IdentityOidcAuthForm = ({
               render={({ field, fieldState: { error } }) => (
                 <Field>
                   <FieldLabel htmlFor="boundSubject" className="inline-flex items-center gap-1.5">
-                    Subject
+                    Subject (optional)
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <HelpCircleIcon className="size-3.5 text-muted" />
@@ -346,7 +347,7 @@ export const IdentityOidcAuthForm = ({
               render={({ field, fieldState: { error } }) => (
                 <Field>
                   <FieldLabel htmlFor="boundAudiences" className="inline-flex items-center gap-1.5">
-                    Audiences
+                    Audiences (optional)
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <HelpCircleIcon className="size-3.5 text-muted" />
@@ -453,40 +454,7 @@ export const IdentityOidcAuthForm = ({
             </div>
 
             <AccessTokenTtlFields control={control} maxAccessTokenTTL={maxAccessTokenTTL} />
-            <Controller
-              control={control}
-              defaultValue="0"
-              name="accessTokenNumUsesLimit"
-              render={({ field, fieldState: { error } }) => (
-                <Field>
-                  <FieldLabel
-                    htmlFor="accessTokenNumUsesLimit"
-                    className="inline-flex items-center gap-1.5"
-                  >
-                    Access Token Max Number of Uses
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <InfoIcon className="size-3.5 text-muted" />
-                      </TooltipTrigger>
-                      <TooltipContent className="max-w-md">
-                        The maximum number of times that an access token can be used; leave blank
-                        for unlimited uses.
-                      </TooltipContent>
-                    </Tooltip>
-                  </FieldLabel>
-                  <Input
-                    {...field}
-                    id="accessTokenNumUsesLimit"
-                    placeholder="Unlimited uses"
-                    type="number"
-                    min="0"
-                    step="1"
-                    isError={Boolean(error)}
-                  />
-                  <FieldError>{error?.message}</FieldError>
-                </Field>
-              )}
-            />
+            <AccessTokenNumUsesLimitField control={control} />
           </FieldGroup>
         </TabsContent>
         <TabsContent value={IdentityFormTab.Advanced}>
@@ -496,7 +464,7 @@ export const IdentityOidcAuthForm = ({
               name="caCert"
               render={({ field, fieldState: { error } }) => (
                 <Field>
-                  <FieldLabel htmlFor="caCert">CA Certificate</FieldLabel>
+                  <FieldLabel htmlFor="caCert">CA Certificate (optional)</FieldLabel>
                   <TextArea
                     {...field}
                     id="caCert"
@@ -526,16 +494,27 @@ export const IdentityOidcAuthForm = ({
                               <TooltipTrigger asChild>
                                 <HelpCircleIcon className="size-3.5 text-muted" />
                               </TooltipTrigger>
-                              <TooltipContent className="max-w-md text-center">
-                                <div className="w-[180px]">
-                                  <p>Map OIDC token claims to metadata fields</p>
-                                  <p className="mt-2 text-sm">Example:</p>
-                                  <p className="mt-1 text-sm">
-                                    &apos;role&apos; → &apos;token.groups&apos;
-                                  </p>
-                                  <p className="mt-1 text-xs text-muted">
-                                    Becomes: identity.metadata.oidc.claims.role
-                                  </p>
+                              <TooltipContent className="max-w-md">
+                                <div className="flex flex-col gap-2">
+                                  <p>Map OIDC token claims to identity metadata fields.</p>
+                                  <div className="flex flex-col gap-2 border-t border-foreground/10 pt-2">
+                                    <div className="flex flex-wrap items-center gap-1.5">
+                                      <span className="text-muted">Example:</span>
+                                      <code className="rounded bg-foreground/10 px-1.5 py-0.5 font-mono text-xs">
+                                        role
+                                      </code>
+                                      <span className="text-muted">→</span>
+                                      <code className="rounded bg-foreground/10 px-1.5 py-0.5 font-mono text-xs">
+                                        token.groups
+                                      </code>
+                                    </div>
+                                    <div className="flex flex-wrap items-center gap-1.5">
+                                      <span className="text-muted">Becomes:</span>
+                                      <code className="rounded bg-foreground/10 px-1.5 py-0.5 font-mono text-xs">
+                                        identity.metadata.oidc.claims.role
+                                      </code>
+                                    </div>
+                                  </div>
                                 </div>
                               </TooltipContent>
                             </Tooltip>

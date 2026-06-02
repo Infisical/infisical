@@ -40,6 +40,7 @@ import { SpiffeTrustBundleProfile } from "@app/hooks/api/identities/enums";
 import { useGetIdentitySpiffeAuth } from "@app/hooks/api/identities/queries";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
+import { AccessTokenNumUsesLimitField } from "./shared/AccessTokenNumUsesLimitField";
 import { AccessTokenTtlFields } from "./shared/AccessTokenTtlFields";
 import { TrustedIpsField } from "./shared/TrustedIpsField";
 import { IDENTITY_AUTH_FORM_ID, IdentityFormTab } from "./types";
@@ -321,11 +322,41 @@ export const IdentitySpiffeAuthForm = ({
               name="allowedSpiffeIds"
               render={({ field, fieldState: { error } }) => (
                 <Field>
-                  <FieldLabel htmlFor="allowedSpiffeIds">Allowed SPIFFE IDs</FieldLabel>
+                  <FieldLabel
+                    htmlFor="allowedSpiffeIds"
+                    className="inline-flex items-center gap-1.5"
+                  >
+                    Allowed SPIFFE IDs
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <InfoIcon className="size-3.5 text-muted" />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-md">
+                        <div className="flex flex-col gap-2">
+                          <p>Comma-separated list of SPIFFE IDs allowed to authenticate.</p>
+                          <div className="flex flex-col gap-2 border-t border-foreground/10 pt-2">
+                            <p className="text-muted">Glob patterns supported:</p>
+                            <div className="flex items-center gap-1.5">
+                              <code className="rounded bg-foreground/10 px-1.5 py-0.5 font-mono text-xs">
+                                *
+                              </code>
+                              <span>matches a single path segment</span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <code className="rounded bg-foreground/10 px-1.5 py-0.5 font-mono text-xs">
+                                **
+                              </code>
+                              <span>matches across multiple segments</span>
+                            </div>
+                          </div>
+                        </div>
+                      </TooltipContent>
+                    </Tooltip>
+                  </FieldLabel>
                   <TextArea
                     {...field}
                     id="allowedSpiffeIds"
-                    placeholder="Comma-separated list of SPIFFE IDs allowed to authenticate. Glob patterns supported: * matches a single path segment, ** matches across multiple segments (e.g. spiffe://example.org/ns/*/sa/admin, spiffe://example.org/workloads/**)"
+                    placeholder="spiffe://example.org/ns/*/sa/admin, spiffe://example.org/workloads/**"
                     isError={Boolean(error)}
                   />
                   <FieldError>{error?.message}</FieldError>
@@ -428,40 +459,7 @@ export const IdentitySpiffeAuthForm = ({
               </>
             )}
             <AccessTokenTtlFields control={control} maxAccessTokenTTL={maxAccessTokenTTL} />
-            <Controller
-              control={control}
-              defaultValue="0"
-              name="accessTokenNumUsesLimit"
-              render={({ field, fieldState: { error } }) => (
-                <Field>
-                  <FieldLabel
-                    htmlFor="accessTokenNumUsesLimit"
-                    className="inline-flex items-center gap-1.5"
-                  >
-                    Access Token Max Number of Uses
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <InfoIcon className="size-3.5 text-muted" />
-                      </TooltipTrigger>
-                      <TooltipContent className="max-w-md">
-                        The maximum number of times that an access token can be used; leave blank
-                        for unlimited uses.
-                      </TooltipContent>
-                    </Tooltip>
-                  </FieldLabel>
-                  <Input
-                    {...field}
-                    id="accessTokenNumUsesLimit"
-                    placeholder="Unlimited uses"
-                    type="number"
-                    min="0"
-                    step="1"
-                    isError={Boolean(error)}
-                  />
-                  <FieldError>{error?.message}</FieldError>
-                </Field>
-              )}
-            />
+            <AccessTokenNumUsesLimitField control={control} />
           </FieldGroup>
         </TabsContent>
         <TabsContent value={IdentityFormTab.Advanced}>

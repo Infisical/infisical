@@ -58,6 +58,7 @@ import { VaultKubernetesAuthRole } from "@app/hooks/api/migration/types";
 import { useCanUseOrgAppConnectionImport } from "@app/hooks/useCanUseAppConnectionImport";
 import { usePopUp, UsePopUpState } from "@app/hooks/usePopUp";
 
+import { AccessTokenNumUsesLimitField } from "./shared/AccessTokenNumUsesLimitField";
 import { AccessTokenTtlFields } from "./shared/AccessTokenTtlFields";
 import { TrustedIpsField } from "./shared/TrustedIpsField";
 import { IDENTITY_AUTH_FORM_ID, IdentityFormTab } from "./types";
@@ -629,7 +630,7 @@ export const IdentityKubernetesAuthForm = ({
                       htmlFor="tokenReviewerJwt"
                       className="inline-flex items-center gap-1.5"
                     >
-                      Token Reviewer JWT
+                      Token Reviewer JWT (optional)
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <InfoIcon className="size-3.5 text-muted" />
@@ -666,7 +667,7 @@ export const IdentityKubernetesAuthForm = ({
                     htmlFor="allowedNamespaces"
                     className="inline-flex items-center gap-1.5"
                   >
-                    Allowed Namespaces
+                    Allowed Namespaces (optional)
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <InfoIcon className="size-3.5 text-muted" />
@@ -709,7 +710,7 @@ export const IdentityKubernetesAuthForm = ({
               render={({ field, fieldState: { error } }) => (
                 <Field>
                   <FieldLabel htmlFor="allowedNames" className="inline-flex items-center gap-1.5">
-                    Allowed Service Account Names
+                    Allowed Service Account Names (optional)
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <InfoIcon className="size-3.5 text-muted" />
@@ -746,40 +747,7 @@ export const IdentityKubernetesAuthForm = ({
               )}
             />
             <AccessTokenTtlFields control={control} maxAccessTokenTTL={maxAccessTokenTTL} />
-            <Controller
-              control={control}
-              defaultValue="0"
-              name="accessTokenNumUsesLimit"
-              render={({ field, fieldState: { error } }) => (
-                <Field>
-                  <FieldLabel
-                    htmlFor="accessTokenNumUsesLimit"
-                    className="inline-flex items-center gap-1.5"
-                  >
-                    Access Token Max Number of Uses
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <InfoIcon className="size-3.5 text-muted" />
-                      </TooltipTrigger>
-                      <TooltipContent className="max-w-md">
-                        The maximum number of times that an access token can be used; leave blank
-                        for unlimited uses.
-                      </TooltipContent>
-                    </Tooltip>
-                  </FieldLabel>
-                  <Input
-                    {...field}
-                    id="accessTokenNumUsesLimit"
-                    placeholder="Unlimited uses"
-                    type="number"
-                    min="0"
-                    step="1"
-                    isError={Boolean(error)}
-                  />
-                  <FieldError>{error?.message}</FieldError>
-                </Field>
-              )}
-            />
+            <AccessTokenNumUsesLimitField control={control} />
           </FieldGroup>
         </TabsContent>
         <TabsContent value={IdentityFormTab.Advanced}>
@@ -794,7 +762,7 @@ export const IdentityKubernetesAuthForm = ({
                     htmlFor="allowedAudience"
                     className="inline-flex items-center gap-1.5"
                   >
-                    Allowed Audience
+                    Allowed Audience (optional)
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <InfoIcon className="size-3.5 text-muted" />

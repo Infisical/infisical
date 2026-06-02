@@ -3,7 +3,7 @@ import { BanIcon } from "lucide-react";
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, PageLoader } from "@app/components/v3";
 import { useGetIdentityTokenAuth, useGetIdentityTokensTokenAuth } from "@app/hooks/api";
 
-import { IdentityAuthFieldDisplay, IdentityTokenAuthTokensTable } from "../helpers";
+import { IdentityAuthAccessTokenFields, IdentityTokenAuthTokensTable } from "../helpers";
 import { ViewAuthMethodProps } from "../types";
 
 export const IdentityTokenAuthContent = ({ identityId }: ViewAuthMethodProps) => {
@@ -29,18 +29,12 @@ export const IdentityTokenAuthContent = ({ identityId }: ViewAuthMethodProps) =>
 
   return (
     <div className="grid grid-cols-2 gap-3">
-      <IdentityAuthFieldDisplay label="Access Token TTL (seconds)">
-        {data.accessTokenTTL}
-      </IdentityAuthFieldDisplay>
-      <IdentityAuthFieldDisplay label="Access Token Max TTL (seconds)">
-        {data.accessTokenMaxTTL}
-      </IdentityAuthFieldDisplay>
-      <IdentityAuthFieldDisplay label="Access Token Max Number of Uses">
-        {data.accessTokenNumUsesLimit}
-      </IdentityAuthFieldDisplay>
-      <IdentityAuthFieldDisplay label="Access Token Trusted IPs">
-        {data.accessTokenTrustedIps.map((ip) => ip.ipAddress).join(", ")}
-      </IdentityAuthFieldDisplay>
+      <IdentityAuthAccessTokenFields
+        accessTokenTTL={data.accessTokenTTL}
+        accessTokenMaxTTL={data.accessTokenMaxTTL}
+        accessTokenNumUsesLimit={data.accessTokenNumUsesLimit}
+        accessTokenTrustedIps={data.accessTokenTrustedIps}
+      />
       <IdentityTokenAuthTokensTable tokens={tokens} identityId={identityId} />
     </div>
   );

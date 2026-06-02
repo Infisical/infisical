@@ -15,7 +15,7 @@ import {
 } from "@app/components/v3";
 import { gatewaysQueryKeys, useGetIdentityKubernetesAuth } from "@app/hooks/api";
 
-import { IdentityAuthFieldDisplay } from "../helpers";
+import { IdentityAuthAccessTokenFields, IdentityAuthFieldDisplay } from "../helpers";
 import { ViewAuthMethodProps } from "../types";
 
 export const IdentityKubernetesAuthContent = ({ identityId }: ViewAuthMethodProps) => {
@@ -46,18 +46,12 @@ export const IdentityKubernetesAuthContent = ({ identityId }: ViewAuthMethodProp
 
   return (
     <div className="grid grid-cols-2 gap-3">
-      <IdentityAuthFieldDisplay label="Access Token TTL (seconds)">
-        {data.accessTokenTTL}
-      </IdentityAuthFieldDisplay>
-      <IdentityAuthFieldDisplay label="Access Token Max TTL (seconds)">
-        {data.accessTokenMaxTTL}
-      </IdentityAuthFieldDisplay>
-      <IdentityAuthFieldDisplay label="Access Token Max Number of Uses">
-        {data.accessTokenNumUsesLimit}
-      </IdentityAuthFieldDisplay>
-      <IdentityAuthFieldDisplay label="Access Token Trusted IPs">
-        {data.accessTokenTrustedIps.map((ip) => ip.ipAddress).join(", ")}
-      </IdentityAuthFieldDisplay>
+      <IdentityAuthAccessTokenFields
+        accessTokenTTL={data.accessTokenTTL}
+        accessTokenMaxTTL={data.accessTokenMaxTTL}
+        accessTokenNumUsesLimit={data.accessTokenNumUsesLimit}
+        accessTokenTrustedIps={data.accessTokenTrustedIps}
+      />
       <IdentityAuthFieldDisplay
         className="col-span-2"
         label="Kubernetes Host / Base Kubernetes API URL"
