@@ -106,7 +106,8 @@ export const ProjectTemplateRolesSection = ({ projectTemplate, isInfisicalTempla
           role={editRole}
           isDisabled={
             permission.cannot(OrgPermissionActions.Edit, OrgPermissionSubjects.ProjectTemplates) ||
-            editRole?.slug === "admin"
+            editRole?.slug === "admin" ||
+            (isInfisicalTemplate && !isCustomProjectRole(editRole?.slug ?? ""))
           }
           isBuiltInRole={editRole ? !isCustomProjectRole(editRole.slug) : false}
         />
