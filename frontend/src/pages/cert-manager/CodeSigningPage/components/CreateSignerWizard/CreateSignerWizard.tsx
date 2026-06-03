@@ -18,10 +18,9 @@ import {
 import { useOrganization, useUser } from "@app/context";
 import { useListCasByProjectId } from "@app/hooks/api/ca";
 import { CaStatus, CaType } from "@app/hooks/api/ca/enums";
-import {
-  useGetIdentityMembershipOrgs,
-  useGetOrganizationGroups
-} from "@app/hooks/api/organization";
+import { useGetOrganizationGroups } from "@app/hooks/api/organization";
+import { useListProjectIdentityMemberships } from "@app/hooks/api/projectIdentityMembership";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { SignerKeyAlgorithm, SignerMemberRole, useCreateSigner } from "@app/hooks/api/signers";
 import { useGetOrgUsers } from "@app/hooks/api/users";
 
@@ -56,7 +55,11 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
 
   const cas = useListCasByProjectId();
   const usersQuery = useGetOrgUsers(orgId);
-  const identitiesQuery = useGetIdentityMembershipOrgs({ organizationId: orgId, limit: 100 });
+  const identitiesQuery = useListProjectIdentityMemberships({
+    projectId,
+    projectType: ProjectType.CertificateManager,
+    limit: 1000
+  });
   const groupsQuery = useGetOrganizationGroups(orgId);
 
   const createSigner = useCreateSigner();

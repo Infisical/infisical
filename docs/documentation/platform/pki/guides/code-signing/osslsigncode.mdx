@@ -18,7 +18,37 @@ Sign Windows Authenticode artifacts using `osslsigncode` with the Infisical PKCS
 - The Infisical [PKCS#11 module](/documentation/platform/pki/code-signing/pkcs11-module) installed and configured
 - `osslsigncode` 2.5 or later (includes native PKCS#11 support)
 
-## Step 1: Install osslsigncode and Dependencies
+## Step 1: Set Up Authentication
+
+Configure the Infisical PKCS#11 module with your machine identity credentials. Without this, the signing commands below fail with an auth error.
+
+Create `/etc/infisical/pkcs11.conf` (or set `INFISICAL_PKCS11_CONFIG` to point elsewhere):
+
+```yaml
+auth:
+  method: universal-auth
+  universal_auth:
+    client_id: "<machine-identity-client-id>"
+    client_secret: "<machine-identity-client-secret>"
+
+signer:
+  id: "<signer-id>"
+```
+
+You can also pass the credentials via environment variables:
+
+```bash
+export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID="<machine-identity-client-id>"
+export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET="<machine-identity-client-secret>"
+```
+
+<Note>
+  Environment variables override values from the config file.
+</Note>
+
+For the full set of options, see the [PKCS#11 module configuration reference](/documentation/platform/pki/code-signing/pkcs11-module#configuration).
+
+## Step 2: Install osslsigncode and Dependencies
 
 <Tabs>
   <Tab title="Ubuntu / Debian">
@@ -44,7 +74,7 @@ Sign Windows Authenticode artifacts using `osslsigncode` with the Infisical PKCS
   </Tab>
 </Tabs>
 
-## Step 2: Identify Your Signer
+## Step 3: Identify Your Signer
 
 Use `pkcs11-tool` to list available signers and note the token label:
 
@@ -59,7 +89,7 @@ Slot 0 (0x0): release-signer
   token manufacturer : Infisical
 ```
 
-## Step 3: Sign a Windows Executable
+## Step 4: Sign a Windows Executable
 
 Use `osslsigncode` with the PKCS#11 module to sign your binary:
 
@@ -97,7 +127,7 @@ osslsigncode can sign the following Windows artifact types:
 | Scripts | `.ps1`, `.vbs` |
 | Catalogs | `.cat` |
 
-## Step 4: Verify the Signature
+## Step 5: Verify the Signature
 
 Verify the signed binary:
 

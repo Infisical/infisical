@@ -10,29 +10,6 @@ The Infisical **PKCS#11 module** is a small native library (`.so`, `.dylib`, or 
   Before installing the module, ensure a Product Admin has created a [Signer](/documentation/platform/pki/code-signing/signers) and added the machine identity (or user) you plan to authenticate as. If the Signer has an [approval policy](/documentation/platform/pki/code-signing/approvals), you'll also need [active access](/documentation/platform/pki/code-signing/approvals#access-lifecycle).
 </Info>
 
-## Tool Guides
-
-<CardGroup cols={3}>
-  <Card title="jarsigner" href="/documentation/platform/pki/guides/code-signing/jarsigner">
-    Sign Java JARs.
-  </Card>
-  <Card title="apksigner" href="/documentation/platform/pki/guides/code-signing/apksigner">
-    Sign Android APKs.
-  </Card>
-  <Card title="osslsigncode" href="/documentation/platform/pki/guides/code-signing/osslsigncode">
-    Sign Windows executables.
-  </Card>
-  <Card title="Cosign" href="/documentation/platform/pki/guides/code-signing/cosign">
-    Sign container images.
-  </Card>
-  <Card title="OpenSSL" href="/documentation/platform/pki/guides/code-signing/openssl">
-    Sign with OpenSSL.
-  </Card>
-  <Card title="GPG" href="/documentation/platform/pki/guides/code-signing/gpg">
-    Sign with GPG.
-  </Card>
-</CardGroup>
-
 ## Installation
 
 Grab the pre-built binary for your platform from the [releases page](https://github.com/Infisical/infisical-pkcs-11/releases):
@@ -240,7 +217,7 @@ Turn on debug logging in the config first. It'll usually tell you exactly what w
     The module rejects any other scheme (`file://`, `gopher://`, etc.) to prevent credentials being sent to unintended targets. Make sure your `server_url` starts with `http://` or `https://`.
   </Accordion>
   <Accordion title="The PKCS#11 module sees the slot but says 'signer X has no certificate'">
-    The Signer is in **Pending** or **Failed** status; no certificate has been issued yet. Check the Signer's status in the UI; for external CAs (ACME, DigiCert), issuance can take minutes. Once the Signer becomes Active, the cert is fetched automatically.
+    The Signer is in **Pending** or **Failed** status; no certificate has been issued yet. Check the Signer's status in the UI; for external CAs (AWS Private CA, Azure AD CS), issuance can take minutes. Once the Signer becomes Active, the cert is fetched automatically.
   </Accordion>
 </AccordionGroup>
 

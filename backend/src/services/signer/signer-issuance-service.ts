@@ -51,8 +51,6 @@ type TRequestIssuanceInput = {
   keyAlgorithm?: CertKeyAlgorithm;
 };
 
-type TExternalOrderRef = Record<string, unknown>;
-
 export const signerIssuanceServiceFactory = ({
   signerIssuanceJobDAL,
   signerDAL,

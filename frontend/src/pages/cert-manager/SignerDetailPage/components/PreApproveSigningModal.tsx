@@ -64,7 +64,11 @@ const schema = z
 type FormData = z.infer<typeof schema>;
 
 const HOURS_24_MS = 24 * 60 * 60 * 1000;
-const isoLocal = (epochMs: number) => new Date(epochMs).toISOString().slice(0, 16);
+const isoLocal = (epochMs: number) => {
+  const d = new Date(epochMs);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+};
 
 const parseWindowMs = (s?: string | null): number | null => {
   if (!s) return null;

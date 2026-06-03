@@ -2,6 +2,7 @@ import {
   Field,
   FieldContent,
   FieldDescription,
+  FieldError,
   FieldGroup,
   FieldLabel,
   Input,
@@ -19,9 +20,16 @@ type Props = {
   setMaxSignings: (v: number | null) => void;
   maxWindow: string | null;
   setMaxWindow: (v: string | null) => void;
+  showError?: boolean;
 };
 
-export const LimitsStep = ({ maxSignings, setMaxSignings, maxWindow, setMaxWindow }: Props) => (
+export const LimitsStep = ({
+  maxSignings,
+  setMaxSignings,
+  maxWindow,
+  setMaxWindow,
+  showError = false
+}: Props) => (
   <>
     <h2 className="text-xl font-semibold text-mineshaft-100">What an approval allows</h2>
     <p className="mt-1 mb-4 text-sm text-mineshaft-300">
@@ -38,10 +46,16 @@ export const LimitsStep = ({ maxSignings, setMaxSignings, maxWindow, setMaxWindo
             value={maxSignings ?? ""}
             onChange={(e) => setMaxSignings(e.target.value ? Number(e.target.value) : null)}
             placeholder="10"
+            isError={showError}
           />
           <FieldDescription>
             How many times one approval can be used to sign. Leave empty for unlimited.
           </FieldDescription>
+          {showError && (
+            <FieldError
+              errors={[{ message: "Set a limit here or pick a signing window below." }]}
+            />
+          )}
         </FieldContent>
       </Field>
 
@@ -52,7 +66,7 @@ export const LimitsStep = ({ maxSignings, setMaxSignings, maxWindow, setMaxWindo
             value={maxWindow ?? NO_WINDOW_LIMIT}
             onValueChange={(v) => setMaxWindow(v === NO_WINDOW_LIMIT ? null : v)}
           >
-            <SelectTrigger className="w-full">
+            <SelectTrigger className="w-full" isError={showError}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -66,6 +80,11 @@ export const LimitsStep = ({ maxSignings, setMaxSignings, maxWindow, setMaxWindo
           <FieldDescription>
             After approval is granted, how long signing is allowed before it expires.
           </FieldDescription>
+          {showError && (
+            <FieldError
+              errors={[{ message: "Pick a window here or set signatures per approval." }]}
+            />
+          )}
         </FieldContent>
       </Field>
     </FieldGroup>

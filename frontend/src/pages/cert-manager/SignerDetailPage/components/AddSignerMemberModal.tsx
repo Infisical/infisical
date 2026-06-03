@@ -23,10 +23,7 @@ import {
   SelectValue
 } from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
-import {
-  useGetIdentityMembershipOrgs,
-  useGetOrganizationGroups
-} from "@app/hooks/api/organization";
+import { useGetOrganizationGroups } from "@app/hooks/api/organization";
 import { useListProjectIdentityMemberships } from "@app/hooks/api/projectIdentityMembership";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import {
@@ -70,7 +67,6 @@ export const AddSignerMemberModal = ({
   const [submitting, setSubmitting] = useState(false);
 
   const usersQuery = useGetOrgUsers(orgId);
-  const orgIdentitiesQuery = useGetIdentityMembershipOrgs({ organizationId: orgId, limit: 100 });
   const projectIdentitiesQuery = useListProjectIdentityMemberships({
     projectId,
     projectType: ProjectType.CertificateManager,
@@ -106,20 +102,11 @@ export const AddSignerMemberModal = ({
   }, [usersQuery.data, taken]);
 
   const identityOptions: Option[] = useMemo(() => {
-    const seen = new Set<string>();
-    const collect = (id: string, name: string) => {
-      if (seen.has(id) || taken.has(`identity:${id}`)) return null;
-      seen.add(id);
-      return { value: id, label: name };
-    };
-    const fromOrg = (orgIdentitiesQuery.data?.identityMemberships ?? [])
-      .map((im) => collect(im.identity.id, im.identity.name))
-      .filter((opt): opt is Option => opt !== null);
-    const fromProject = (projectIdentitiesQuery.data?.identityMemberships ?? [])
-      .map((im) => collect(im.identity.id, im.identity.name))
-      .filter((opt): opt is Option => opt !== null);
-    return [...fromOrg, ...fromProject].sort((a, b) => a.label.localeCompare(b.label));
-  }, [orgIdentitiesQuery.data, projectIdentitiesQuery.data, taken]);
+    return (projectIdentitiesQuery.data?.identityMemberships ?? [])
+      .filter((im) => !taken.has(`identity:${im.identity.id}`))
+      .map((im) => ({ value: im.identity.id, label: im.identity.name }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [projectIdentitiesQuery.data, taken]);
 
   const groupOptions: Option[] = useMemo(() => {
     return (groupsQuery.data ?? [])

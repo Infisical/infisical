@@ -19,7 +19,37 @@ Use GnuPG with the Infisical PKCS#11 module via `gnupg-pkcs11-scd` to sign git c
 - GnuPG 2.2 or later
 - `gnupg-pkcs11-scd` (the PKCS#11 smart card daemon bridge)
 
-## Step 1: Install gnupg-pkcs11-scd
+## Step 1: Set Up Authentication
+
+Configure the Infisical PKCS#11 module with your machine identity credentials. Without this, the signing commands below fail with an auth error.
+
+Create `/etc/infisical/pkcs11.conf` (or set `INFISICAL_PKCS11_CONFIG` to point elsewhere):
+
+```yaml
+auth:
+  method: universal-auth
+  universal_auth:
+    client_id: "<machine-identity-client-id>"
+    client_secret: "<machine-identity-client-secret>"
+
+signer:
+  id: "<signer-id>"
+```
+
+You can also pass the credentials via environment variables:
+
+```bash
+export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID="<machine-identity-client-id>"
+export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET="<machine-identity-client-secret>"
+```
+
+<Note>
+  Environment variables override values from the config file.
+</Note>
+
+For the full set of options, see the [PKCS#11 module configuration reference](/documentation/platform/pki/code-signing/pkcs11-module#configuration).
+
+## Step 2: Install gnupg-pkcs11-scd
 
 <Tabs>
   <Tab title="Ubuntu / Debian">
@@ -40,7 +70,7 @@ Use GnuPG with the Infisical PKCS#11 module via `gnupg-pkcs11-scd` to sign git c
   </Tab>
 </Tabs>
 
-## Step 2: Configure gnupg-pkcs11-scd
+## Step 3: Configure gnupg-pkcs11-scd
 
 Create `~/.gnupg/gnupg-pkcs11-scd.conf`:
 
@@ -69,7 +99,7 @@ Restart the GPG agent to apply the changes:
 gpgconf --kill gpg-agent
 ```
 
-## Step 3: Import the PKCS#11 Key into GPG
+## Step 4: Import the PKCS#11 Key into GPG
 
 List the available keys from the PKCS#11 token:
 
@@ -119,7 +149,7 @@ gpg --batch --gen-key /tmp/gpg-keygen.txt
 
 Note the key ID from the output (shown as a 40-character hex string). You'll use it for signing.
 
-## Step 4: Sign Git Commits
+## Step 5: Sign Git Commits
 
 Configure git to use your GPG key:
 
@@ -154,7 +184,7 @@ git log --show-signature -1
 git tag -v v1.0.0
 ```
 
-## Step 5: Sign Arbitrary Files
+## Step 6: Sign Arbitrary Files
 
 Use GPG to create detached signatures for any file:
 

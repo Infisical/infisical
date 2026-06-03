@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { FilterIcon, MessageSquareTextIcon, XIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
@@ -35,6 +36,8 @@ import {
   TooltipProvider,
   TooltipTrigger
 } from "@app/components/v3";
+import { useOrganization, useProject } from "@app/context";
+import { ApprovalPolicyType } from "@app/hooks/api/approvalPolicies";
 import {
   SIGNER_TABLE_PAGE_SIZE,
   SignerRequestStatus,
@@ -67,6 +70,9 @@ type Props = {
 };
 
 export const SignerRequestsTab = ({ signerId, canPreApprove, canRequestSign }: Props) => {
+  const navigate = useNavigate();
+  const { currentOrg } = useOrganization();
+  const { currentProject } = useProject();
   const [statusFilters, setStatusFilters] = useState<Set<FilterStatus>>(new Set());
   const [isRequestOpen, setIsRequestOpen] = useState(false);
   const [isPreApproveOpen, setIsPreApproveOpen] = useState(false);
@@ -243,7 +249,24 @@ export const SignerRequestsTab = ({ signerId, canPreApprove, canRequestSign }: P
                     req.status === SignerRequestStatus.Approved;
                   const created = new Date(req.createdAt);
                   return (
-                    <TableRow key={req.id} className="group [&>td]:py-3">
+                    <TableRow
+                      key={req.id}
+                      className="group cursor-pointer transition-colors hover:bg-mineshaft-700 [&>td]:py-3"
+                      onClick={() =>
+                        navigate({
+                          to: "/organizations/$orgId/projects/cert-manager/$projectId/approvals/$approvalRequestId",
+                          params: {
+                            orgId: currentOrg.id,
+                            projectId: currentProject.id,
+                            approvalRequestId: req.id
+                          },
+                          search: {
+                            policyType: ApprovalPolicyType.CertCodeSigning,
+                            signerId
+                          }
+                        })
+                      }
+                    >
                       <TableCell isTruncatable>
                         <div className="flex items-start gap-2">
                           <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-border bg-mineshaft-800">
@@ -294,7 +317,7 @@ export const SignerRequestsTab = ({ signerId, canPreApprove, canRequestSign }: P
                       <TableCell className="text-accent">
                         <ExpiresCell req={req} />
                       </TableCell>
-                      <TableCell>
+                      <TableCell onClick={(e) => e.stopPropagation()}>
                         {isRevocable && canPreApprove && (
                           <Tooltip>
                             <TooltipTrigger asChild>

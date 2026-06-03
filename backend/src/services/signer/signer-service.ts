@@ -438,7 +438,7 @@ export const signerServiceFactory = ({
               // eslint-disable-next-line no-nested-ternary
               const subjectLabel = m.kind === "user" ? "user" : m.kind === "identity" ? "machine identity" : "group";
               throw new BadRequestError({
-                message: `Cannot add ${subjectLabel} ${m.id} to the signer: they are not a member of this project. Add them to the project first.`
+                message: `Cannot add ${subjectLabel} ${m.id} to the signer: grant them access under Access Control first.`
               });
             }
           }

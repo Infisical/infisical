@@ -55,6 +55,7 @@ export const EditSignerPolicyModal = ({
   const [maxSignings, setMaxSignings] = useState<number | null>(null);
   const [maxWindow, setMaxWindow] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [showLimitsError, setShowLimitsError] = useState(false);
 
   const approverOptions = useMemo<ApproverOption[]>(() => {
     const userOpts: ApproverOption[] = (users.data?.memberships ?? [])
@@ -106,7 +107,12 @@ export const EditSignerPolicyModal = ({
       setMaxSignings(null);
       setMaxWindow(null);
     }
+    setShowLimitsError(false);
   }, [isOpen, existingPolicy]);
+
+  useEffect(() => {
+    if (maxSignings != null || maxWindow != null) setShowLimitsError(false);
+  }, [maxSignings, maxWindow]);
 
   useEffect(() => {
     if (!isOpen || approverOptions.length === 0) return;
@@ -151,7 +157,14 @@ export const EditSignerPolicyModal = ({
   const WIZARD_STEPS = steps.length > 0 ? [APPROVERS_STEP, LIMITS_STEP] : [APPROVERS_STEP];
   const safeStep = Math.min(step, WIZARD_STEPS.length - 1);
 
+  const limitsInvalid = steps.length > 0 && maxSignings == null && maxWindow == null;
+
   const onSave = async () => {
+    if (limitsInvalid) {
+      setShowLimitsError(true);
+      if (safeStep !== 1) setStep(1);
+      return;
+    }
     const invalidStepIndex = steps.findIndex((s) => {
       if (s.approvers.length === 0) return true;
       if (s.requiredApprovals < 1) return true;
@@ -269,6 +282,7 @@ export const EditSignerPolicyModal = ({
                   setMaxSignings={setMaxSignings}
                   maxWindow={maxWindow}
                   setMaxWindow={setMaxWindow}
+                  showError={showLimitsError && limitsInvalid}
                 />
               )}
             </div>

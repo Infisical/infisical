@@ -240,7 +240,7 @@ export const signerMembershipServiceFactory = ({
         // eslint-disable-next-line no-nested-ternary
         const subjectLabel = userId ? "user" : identityId ? "machine identity" : "group";
         throw new BadRequestError({
-          message: `This ${subjectLabel} is not a member of this project. Add them to the project first, then assign them to the signer.`
+          message: `This ${subjectLabel} can't be added here yet. Grant them access under Access Control first, then assign them to the signer.`
         });
       }
 

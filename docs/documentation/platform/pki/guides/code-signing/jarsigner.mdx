@@ -18,7 +18,37 @@ Sign Java JAR files using `jarsigner` with the Infisical PKCS#11 module. The mod
 - The Infisical [PKCS#11 module](/documentation/platform/pki/code-signing/pkcs11-module) installed and configured
 - Java JDK 9 or later (for the `-addprovider` flag)
 
-## Step 1: Create the SunPKCS11 Provider Configuration
+## Step 1: Set Up Authentication
+
+Configure the Infisical PKCS#11 module with your machine identity credentials. Without this, the signing commands below fail with an auth error.
+
+Create `/etc/infisical/pkcs11.conf` (or set `INFISICAL_PKCS11_CONFIG` to point elsewhere):
+
+```yaml
+auth:
+  method: universal-auth
+  universal_auth:
+    client_id: "<machine-identity-client-id>"
+    client_secret: "<machine-identity-client-secret>"
+
+signer:
+  id: "<signer-id>"
+```
+
+You can also pass the credentials via environment variables:
+
+```bash
+export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID="<machine-identity-client-id>"
+export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET="<machine-identity-client-secret>"
+```
+
+<Note>
+  Environment variables override values from the config file.
+</Note>
+
+For the full set of options, see the [PKCS#11 module configuration reference](/documentation/platform/pki/code-signing/pkcs11-module#configuration).
+
+## Step 2: Create the SunPKCS11 Provider Configuration
 
 Create a configuration file for Java's SunPKCS11 provider. Save it as `infisical-pkcs11.cfg`:
 
@@ -39,7 +69,7 @@ library = /usr/local/lib/libinfisical-pkcs11.so
 slot = 0
 ```
 
-## Step 2: Sign a JAR
+## Step 3: Sign a JAR
 
 Use `jarsigner` with the PKCS#11 provider to sign your JAR file:
 

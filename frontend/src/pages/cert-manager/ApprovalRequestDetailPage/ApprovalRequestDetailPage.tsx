@@ -96,7 +96,7 @@ const CodeSigningDetailsSection = ({
 
 const PageContent = () => {
   const { approvalRequestId } = useParams({ from: ROUTE_ID });
-  const { policyType, applicationName, from } = useSearch({ from: ROUTE_ID });
+  const { policyType, applicationName, signerId, from } = useSearch({ from: ROUTE_ID });
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const { user: currentUser } = useUser();
@@ -148,6 +148,18 @@ const PageContent = () => {
             navigate({
               to: "/organizations/$orgId/projects/cert-manager/$projectId/requests",
               params: { orgId: currentProject.orgId, projectId: currentProject.id }
+            });
+            return;
+          }
+          if (signerId) {
+            navigate({
+              to: "/organizations/$orgId/projects/cert-manager/$projectId/code-signing/$signerId",
+              params: {
+                orgId: currentOrg.id,
+                projectId: currentProject.id,
+                signerId
+              },
+              search: { selectedTab: "approvals" }
             });
             return;
           }
@@ -312,6 +324,24 @@ const PageContent = () => {
         >
           <FontAwesomeIcon icon={faChevronLeft} />
           Requests
+        </Link>
+      );
+    }
+
+    if (signerId) {
+      return (
+        <Link
+          to="/organizations/$orgId/projects/cert-manager/$projectId/code-signing/$signerId"
+          params={{
+            orgId: currentOrg.id,
+            projectId: currentProject.id,
+            signerId
+          }}
+          search={{ selectedTab: "approvals" }}
+          className={linkClass}
+        >
+          <FontAwesomeIcon icon={faChevronLeft} />
+          Back to Signer
         </Link>
       );
     }

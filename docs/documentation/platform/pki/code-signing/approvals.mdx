@@ -45,9 +45,9 @@ flowchart LR
     C -.->|Step 2 rejected| X
 ```
 
-Each step runs in order. Once the **last** step's required approvals are reached, Infisical issues an **active access record** bounded by the policy's per-approval limits. The Operator can then sign through the [PKCS#11 module](/documentation/platform/pki/code-signing/pkcs11-module) or the [Sign API](/api-reference/endpoints/code-signing/signers/sign).
+Each step runs in order. Once the last step's required approvals are reached, Infisical issues an **active access record** bounded by the policy's per-approval limits. The Operator can then sign through the [PKCS#11 module](/documentation/platform/pki/code-signing/pkcs11-module) or the [Sign API](/api-reference/endpoints/code-signing/signers/sign).
 
-If the Administrator doesn't want to wait, they can [pre-approve signing](#pre-approve-signing) directly. Same outcome, no review workflow.
+Administrators can also [pre-approve signing](#pre-approve-signing) directly when the approval flow isn't a fit, for example during an incident response where waiting on approvers would block recovery.
 
 ## Configure the approval policy
 
@@ -87,9 +87,23 @@ Open the Signer's **Approvals** tab and click the pencil icon on the **Approval 
 
 Press **Save policy**. The new policy applies to **new** requests; existing active access keeps its original terms until it expires or is revoked.
 
+### Access lifecycle
+
+Every approved request becomes an **active access record**. On the Approvals tab it's a row in the Requests table with its own status, expiry, and signature counter.
+
+#### Statuses you'll see
+
+| Status | Meaning |
+|--------|---------|
+| **Pending** | Approval workflow is in progress. Waiting on the current step's approvers. |
+| **Active** | All steps approved, access issued, still within window and signatures remaining. |
+| **Expired** | Window has passed, or the signature count was exhausted. |
+| **Revoked** | An Administrator revoked the access (or the requester cancelled the request). |
+| **Rejected** | An approver rejected one of the steps. |
+
 ## Approval paths
 
-There are two ways someone gets active access on a Signer. Pick the tab that matches who you are.
+There are two ways someone gets active access on a Signer: Administrators **pre-approve signing** directly for someone else, or members open a **request to sign** that runs through the approval policy.
 
 <Tabs>
   <Tab title="Pre-approve signing">
@@ -97,7 +111,7 @@ There are two ways someone gets active access on a Signer. Pick the tab that mat
 
     <Steps>
       <Step title="Click Pre-approve signing">
-        From the Signer's **Approvals** tab, click **Pre-approve signing**. (Hidden if the Signer has no approval policy. Without a policy, the concept doesn't apply.)
+        From the Signer's **Approvals** tab, click **Pre-approve signing**.
       </Step>
       <Step title="Pick the recipient">
         Select the user or machine identity that should receive access. The list includes every Signer member except Auditors (including users reachable via a group).
@@ -161,29 +175,13 @@ If you're an eligible approver for the **current** step of a pending request, an
     Click the row on the Signer's **Approvals** tab. Full details: requester, recipient, justification, requested signings, requested window, and which step is currently pending.
   </Step>
   <Step title="Review">
-    Verify who's asking, for how many signings, for how long, why, and that you're the intended approver.
+    Verify who's asking, for how many signings, for how long, and why.
   </Step>
   <Step title="Decide">
-    - **Approve** counts toward the current step's required approvals. When the **last** step's count is reached, the access record is created.
+    - **Approve** counts toward the current step's required approvals. When the last step's count is reached, the access record is created.
     - **Reject** terminates the workflow. No access is created. The requester can submit a new request.
   </Step>
 </Steps>
-
-## Access lifecycle
-
-Every approved request becomes an **active access record**. On the Approvals tab it's a row in the Requests table with its own status, expiry, and signature counter.
-
-### Statuses you'll see
-
-| Status | Meaning |
-|--------|---------|
-| **Pending** | Approval workflow is in progress. Waiting on the current step's approvers. |
-| **Approved / Active** | All steps approved, access issued, still within window and signatures remaining. |
-| **Expired** | Window has passed, or the signature count was exhausted. |
-| **Revoked** | An Administrator revoked the access (or the requester cancelled the request). |
-| **Rejected** | An approver rejected one of the steps. |
-
-The **Expires** column shows a live countdown for Active rows ("Expires in 42 minutes") plus the remaining signature count ("7 of 10 signings left"). Pending rows show "Awaiting approval".
 
 ## Revoking access
 
@@ -198,7 +196,7 @@ In-flight sign calls already in progress complete normally; revocation is checke
 
 <AccordionGroup>
   <Accordion title="I approved a request but nothing happened.">
-    The policy has more than one step and yours wasn't the final step. Open the request to see which step is currently pending; the access record is issued only after the **last** step's required approvals are reached.
+    The policy has more than one step and yours wasn't the final step. Open the request to see which step is currently pending; the access record is issued only after the last step's required approvals are reached.
   </Accordion>
   <Accordion title="I'm an Operator but I don't see Request to sign.">
     Three possibilities:

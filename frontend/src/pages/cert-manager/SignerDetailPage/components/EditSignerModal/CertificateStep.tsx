@@ -63,7 +63,7 @@ export const CertificateStep = ({
                   : undefined
               }
               placeholder="Select a Certificate Authority..."
-              noOptionsMessage={() => "No active CAs found in this project."}
+              noOptionsMessage={() => "No active CAs available."}
               isError={Boolean(error)}
             />
             <FieldDescription>
@@ -155,6 +155,10 @@ export const CertificateStep = ({
       <FieldLabel>Key algorithm</FieldLabel>
       <FieldContent>
         <Input value={keyAlgorithmLabel} readOnly disabled />
+        <FieldDescription>
+          Algorithm of the signer&apos;s private key. Fixed at creation; create a new signer to use
+          a different one.
+        </FieldDescription>
       </FieldContent>
     </Field>
 
