@@ -316,7 +316,11 @@ export const azureKeyVaultSyncFactory = ({ kmsService, appConnectionDAL }: TAzur
           unknown
         >;
 
-        return Object.fromEntries(Object.entries(parsedValue).map(([key, value]) => [key, { value: String(value) }]));
+        return Object.fromEntries(
+          Object.entries(parsedValue)
+            .filter(([, value]) => value !== null && typeof value !== "object")
+            .map(([key, value]) => [key, { value: String(value) }])
+        );
       } catch {
         throw new SecretSyncError({
           message:
