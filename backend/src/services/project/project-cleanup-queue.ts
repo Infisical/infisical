@@ -245,7 +245,7 @@ export const projectCleanupQueueFactory = ({
               {
                 jobId: `project-hard-delete-${project.id}`,
                 removeOnComplete: true,
-                removeOnFail: { count: 50 },
+                removeOnFail: true,
                 attempts: 3,
                 backoff: { type: "exponential", delay: 5000 }
               }

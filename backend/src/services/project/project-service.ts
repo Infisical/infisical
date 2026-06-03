@@ -827,9 +827,8 @@ export const projectServiceFactory = ({
       // hard-delete worker. deleteAfter = now marks it immediately eligible for the next worker tick
       // (no grace period). The slug is freed so a same-named project can be recreated right away.
       const now = new Date();
-      const deleteAfter = now;
       const softDeletedProject = await projectDAL.softDeleteById(project.id, {
-        deleteAfter,
+        deleteAfter: now,
         softDeletedAt: now,
         deletedByUserId: actor === ActorType.USER ? actorId : null,
         deletedByIdentityId: actor === ActorType.IDENTITY ? actorId : null,
@@ -843,7 +842,7 @@ export const projectServiceFactory = ({
       // refresh the cached plan so the freed workspace slot is reflected immediately
       // (countOfOrgProjects now excludes soft-deleted projects)
       await keyStore.deleteItem(KeyStorePrefixes.LicenseCloudPlan(actorOrgId));
-      return softDeletedProject;
+      return { ...softDeletedProject, slug: project.slug };
     } finally {
       await lock.release();
     }

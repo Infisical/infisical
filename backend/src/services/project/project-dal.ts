@@ -55,12 +55,21 @@ export const projectDALFactory = (db: TDbClient) => {
     }
   };
 
-  const find = (async (filter: TFindFilter<TProjects>, { offset, limit, sort, tx }: TFindOpt<TProjects> = {}) => {
+  const find = (async (
+    filter: TFindFilter<TProjects>,
+    { offset, limit, sort, count, tx, countDistinct }: TFindOpt<TProjects, boolean, keyof TProjects | undefined> = {}
+  ) => {
     try {
       const query = (tx || db.replicaNode())(TableName.Project)
         // eslint-disable-next-line @typescript-eslint/no-misused-promises
         .where(buildFindFilter(filter))
         .whereNull("deleteAfter");
+      if (countDistinct) {
+        void query.countDistinct(countDistinct);
+      } else if (count) {
+        void query.select(db.raw("COUNT(*) OVER() AS count"));
+        void query.select("*");
+      }
       if (limit) void query.limit(limit);
       if (offset) void query.offset(offset);
       if (sort) {
@@ -535,9 +544,9 @@ export const projectDALFactory = (db: TDbClient) => {
   };
 
   const checkProjectUpgradeStatus = async (projectId: string) => {
-    const project = await projectOrm.findById(projectId);
+    const project = await findById(projectId);
     const upgradeInProgress =
-      project.upgradeStatus === ProjectUpgradeStatus.InProgress && project.version === ProjectVersion.V1;
+      project?.upgradeStatus === ProjectUpgradeStatus.InProgress && project?.version === ProjectVersion.V1;
 
     if (upgradeInProgress) {
       throw new BadRequestError({
