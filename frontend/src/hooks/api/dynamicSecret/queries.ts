@@ -143,14 +143,7 @@ export const useGetIbmApiConnectOrgCatalogs = ({
   enabled: boolean;
 }) => {
   return useQuery({
-    queryKey: [
-      "ibm-api-connect-org-catalogs",
-      instanceUrl,
-      apiKey,
-      clientId,
-      clientSecret,
-      orgId
-    ],
+    queryKey: ["ibm-api-connect-org-catalogs", instanceUrl, apiKey, clientId, clientSecret, orgId],
     queryFn: async () => {
       const { data } = await apiRequest.post<{ name: string; title: string; id: string }[]>(
         `/api/v1/dynamic-secrets/ibm-api-connect/orgs/${orgId}/catalogs`,
