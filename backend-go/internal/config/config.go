@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"net"
 	"os"
 	"strings"
 )
@@ -330,6 +331,9 @@ type Config struct {
 	PITCheckpointWindow     string
 	PITTreeCheckpointWindow string
 
+	// Reverse Proxy
+	TrustedProxyCIDRs string
+
 	// CORS
 	CORSAllowedOrigins string
 	CORSAllowedHeaders string
@@ -352,6 +356,7 @@ type Config struct {
 	DNSMadeEasySandboxEnabled                   bool
 
 	// Derived (not from env)
+	ParsedTrustedProxyCIDRs      []net.IPNet
 	IsCloud                      bool
 	IsSmtpConfigured             bool
 	IsRedisConfigured            bool
@@ -693,6 +698,9 @@ func LoadConfig() (*Config, error) {
 		Optional(&cfg.PITCheckpointWindow, "PIT_CHECKPOINT_WINDOW", "100").
 		Optional(&cfg.PITTreeCheckpointWindow, "PIT_TREE_CHECKPOINT_WINDOW", "200").
 
+		// Reverse Proxy
+		Optional(&cfg.TrustedProxyCIDRs, "TRUSTED_PROXY_CIDRS", "").
+
 		// CORS
 		Optional(&cfg.CORSAllowedOrigins, "CORS_ALLOWED_ORIGINS", "").
 		Optional(&cfg.CORSAllowedHeaders, "CORS_ALLOWED_HEADERS", "").
@@ -809,6 +817,21 @@ func LoadConfig() (*Config, error) {
 		cfg.ParsedRedisReadReplicas, issues = parseHostPortList(cfg.RedisReadReplicas, "REDIS_READ_REPLICAS")
 		parseIssues = append(parseIssues, issues...)
 	}
+	if cfg.TrustedProxyCIDRs != "" {
+		for entry := range strings.SplitSeq(cfg.TrustedProxyCIDRs, ",") {
+			entry = strings.TrimSpace(entry)
+			if entry == "" {
+				continue
+			}
+			_, ipNet, err := net.ParseCIDR(entry)
+			if err != nil {
+				parseIssues = append(parseIssues, fmt.Sprintf("TRUSTED_PROXY_CIDRS: invalid CIDR %q: %v", entry, err))
+				continue
+			}
+			cfg.ParsedTrustedProxyCIDRs = append(cfg.ParsedTrustedProxyCIDRs, *ipNet)
+		}
+	}
+
 	if len(parseIssues) > 0 {
 		return nil, &ValidationError{Issues: parseIssues}
 	}

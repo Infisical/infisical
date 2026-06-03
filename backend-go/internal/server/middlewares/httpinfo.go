@@ -11,40 +11,105 @@ import (
 
 // HTTPInfoMiddleware extracts HTTP request information and stores it in context.
 // This must run before the auth handler so Identity can be populated with this info.
-func HTTPInfoMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		userAgent := r.Header.Get("User-Agent")
-		info := &auth.HTTPInfo{
-			IPAddress:     getRealIP(r),
-			UserAgent:     userAgent,
-			UserAgentType: auditlog.GetUserAgentType(userAgent),
-		}
-		ctx := auth.WithHTTPInfo(r.Context(), info)
-		next.ServeHTTP(w, r.WithContext(ctx))
-	})
+//
+// trustedCIDRs controls how the client IP is resolved:
+//   - When non-empty, X-Forwarded-For / X-Real-IP headers are only trusted if the
+//     request's direct source (RemoteAddr) falls within one of the listed CIDRs.
+//   - When empty, headers are trusted unconditionally (legacy behavior, preserved
+//     for backwards compatibility with existing self-hosted deployments).
+func HTTPInfoMiddleware(trustedCIDRs []net.IPNet) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			userAgent := r.Header.Get("User-Agent")
+			info := &auth.HTTPInfo{
+				IPAddress:     getRealIP(r, trustedCIDRs),
+				UserAgent:     userAgent,
+				UserAgentType: auditlog.GetUserAgentType(userAgent),
+			}
+			ctx := auth.WithHTTPInfo(r.Context(), info)
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	}
 }
 
 // getRealIP extracts the real client IP address from the request.
-// It checks X-Forwarded-For and X-Real-IP headers before falling back to RemoteAddr.
-func getRealIP(r *http.Request) string {
-	// Check X-Forwarded-For header (may contain multiple IPs)
+//
+// When trustedCIDRs is non-empty (strict mode), forwarded headers are only
+// used if RemoteAddr belongs to a trusted proxy. The X-Forwarded-For header
+// is walked right-to-left, skipping trusted proxy IPs, and the first
+// non-trusted IP is returned — this prevents attackers from injecting a fake
+// IP at the front of the header before the proxy appends the real client IP.
+//
+// When trustedCIDRs is empty (legacy mode), headers are trusted
+// unconditionally for backwards compatibility.
+func getRealIP(r *http.Request, trustedCIDRs []net.IPNet) string {
+	remoteIP := extractIP(r.RemoteAddr)
+
+	// Strict mode: only trust headers from known proxies.
+	if len(trustedCIDRs) > 0 {
+		if !isIPTrusted(remoteIP, trustedCIDRs) {
+			return remoteIP
+		}
+
+		// Walk X-Forwarded-For right-to-left, skipping trusted proxy IPs.
+		// Proxies append the real client IP, so attacker-controlled values
+		// are at the front. The rightmost non-trusted IP is the real client.
+		if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+			parts := strings.Split(xff, ",")
+			for i := len(parts) - 1; i >= 0; i-- {
+				ip := strings.TrimSpace(parts[i])
+				if ip == "" {
+					continue
+				}
+				if !isIPTrusted(ip, trustedCIDRs) {
+					return ip
+				}
+			}
+		}
+
+		if xri := r.Header.Get("X-Real-IP"); xri != "" {
+			return strings.TrimSpace(xri)
+		}
+
+		return remoteIP
+	}
+
+	// Legacy mode: trust forwarded headers unconditionally.
 	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
-		// Take the first IP (original client)
 		if before, _, ok := strings.Cut(xff, ","); ok {
 			return strings.TrimSpace(before)
 		}
 		return strings.TrimSpace(xff)
 	}
 
-	// Check X-Real-IP header
 	if xri := r.Header.Get("X-Real-IP"); xri != "" {
 		return strings.TrimSpace(xri)
 	}
 
-	// Fall back to RemoteAddr
-	ip, _, err := net.SplitHostPort(r.RemoteAddr)
+	return remoteIP
+}
+
+// extractIP extracts the IP address from an address string, stripping the port
+// if present (e.g. "1.2.3.4:8080" → "1.2.3.4").
+func extractIP(addr string) string {
+	ip, _, err := net.SplitHostPort(addr)
 	if err != nil {
-		return r.RemoteAddr
+		return addr
 	}
 	return ip
+}
+
+// isIPTrusted checks whether the given IP string falls within any of the
+// trusted CIDR ranges.
+func isIPTrusted(ipStr string, trustedCIDRs []net.IPNet) bool {
+	ip := net.ParseIP(ipStr)
+	if ip == nil {
+		return false
+	}
+	for i := range trustedCIDRs {
+		if trustedCIDRs[i].Contains(ip) {
+			return true
+		}
+	}
+	return false
 }
