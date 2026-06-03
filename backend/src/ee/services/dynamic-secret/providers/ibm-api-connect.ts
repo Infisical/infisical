@@ -43,6 +43,7 @@ const $getSanitizationTokens = (credentials: TIbmApiConnectBaseCredentials, acce
 
 const $getAccessToken = async (credentials: TIbmApiConnectBaseCredentials): Promise<string> => {
   try {
+    await blockLocalAndPrivateIpAddresses(credentials.instanceUrl);
     const response = await request.post<{ access_token: string }>(
       `${credentials.instanceUrl}/api/token`,
       {
@@ -75,6 +76,7 @@ const $fetchOrganizations = async (credentials: TIbmApiConnectBaseCredentials): 
 
   try {
     const url = `${credentials.instanceUrl}/api/orgs`;
+    await blockLocalAndPrivateIpAddresses(url);
     const response = await request.get<{
       results: TApiConnectResource[];
     }>(url, {
@@ -108,9 +110,11 @@ const $fetchOrganizationCatalogs = async (
   const accessToken = await $getAccessToken(credentials);
 
   try {
+    const url = `${credentials.instanceUrl}/api/orgs/${orgId}/catalogs`;
+    await blockLocalAndPrivateIpAddresses(url);
     const response = await request.get<{
       results: TApiConnectResource[];
-    }>(`${credentials.instanceUrl}/api/orgs/${orgId}/catalogs`, {
+    }>(url, {
       params: { limit: 100 },
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -142,9 +146,11 @@ const $fetchOrganizationApps = async (
   const accessToken = await $getAccessToken(credentials);
 
   try {
+    const url = `${credentials.instanceUrl}/api/catalogs/${orgId}/${catalogId}/apps`;
+    await blockLocalAndPrivateIpAddresses(url);
     const response = await request.get<{
       results: (TApiConnectResource & { consumer_org_url: string })[];
-    }>(`${credentials.instanceUrl}/api/catalogs/${orgId}/${catalogId}/apps`, {
+    }>(url, {
       params: { limit: 100 },
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -182,6 +188,7 @@ const $createApplicationCredential = async (
   const url = `${instanceUrl}/api/apps/${orgId}/${catalogId}/${consumerOrgId}/${appId}/credentials`;
 
   try {
+    await blockLocalAndPrivateIpAddresses(url);
     const response = await request.post<{
       id: string;
       client_id: string;
@@ -223,6 +230,7 @@ const $revokeApplicationCredential = async (
   const url = `${instanceUrl}/api/apps/${orgId}/${catalogId}/${consumerOrgId}/${appId}/credentials/${entityId}`;
 
   try {
+    await blockLocalAndPrivateIpAddresses(url);
     await request.delete(url, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
