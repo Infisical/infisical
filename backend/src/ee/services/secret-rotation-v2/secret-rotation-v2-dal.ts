@@ -567,6 +567,11 @@ export const secretRotationV2DALFactory = (
       .where(`${TableName.SecretRotationV2}.isAutoRotationEnabled`, true)
       .whereNotNull(`${TableName.SecretRotationV2}.nextRotationAt`)
       .andWhereRaw(`"nextRotationAt" <= ?`, [rotateBy])
+      .join(TableName.SecretFolder, `${TableName.SecretRotationV2}.folderId`, `${TableName.SecretFolder}.id`)
+      .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+      .whereNull(`${TableName.Environment}.deleteAfter`)
+      .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
+      .whereNull(`${TableName.Project}.deleteAfter`)
       .select(selectAllTableCols(TableName.SecretRotationV2));
 
     return secretRotations;
