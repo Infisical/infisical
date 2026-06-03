@@ -21,6 +21,7 @@ export const ConvexConnectionAccessTokenCredentialsSchema = z.object({
     .string()
     .trim()
     .url("Invalid Instance URL")
+    .refine((url) => url.startsWith("https://"), "Instance URL must use HTTPS")
     .optional()
     .describe(AppConnections.CREDENTIALS.CONVEX.instanceUrl)
 });
