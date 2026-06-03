@@ -37,6 +37,8 @@ const baseSecretRotationV2Query = ({
     .join(TableName.SecretFolder, `${TableName.SecretRotationV2}.folderId`, `${TableName.SecretFolder}.id`)
     .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
     .whereNull(`${TableName.Environment}.deleteAfter`)
+    .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
+    .whereNull(`${TableName.Project}.deleteAfter`)
     .join(TableName.AppConnection, `${TableName.SecretRotationV2}.connectionId`, `${TableName.AppConnection}.id`)
     .select(selectAllTableCols(TableName.SecretRotationV2))
     .select(

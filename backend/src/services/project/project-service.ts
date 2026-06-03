@@ -830,8 +830,8 @@ export const projectServiceFactory = ({
       const softDeletedProject = await projectDAL.softDeleteById(project.id, {
         deleteAfter: now,
         softDeletedAt: now,
-        deletedByUserId: actor === ActorType.USER ? actorId : null,
-        deletedByIdentityId: actor === ActorType.IDENTITY ? actorId : null,
+        deletedByActorType: actor,
+        deletedByActorId: actorId,
         slug: `del-${alphaNumericNanoId(20)}`
       });
 

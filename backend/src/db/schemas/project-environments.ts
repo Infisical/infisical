@@ -17,8 +17,8 @@ export const ProjectEnvironmentsSchema = z.object({
   updatedAt: z.date(),
   deleteAfter: z.date().nullable().optional(),
   softDeletedAt: z.date().nullable().optional(),
-  deletedByUserId: z.string().uuid().nullable().optional(),
-  deletedByIdentityId: z.string().uuid().nullable().optional()
+  deletedByActorType: z.string().nullable().optional(),
+  deletedByActorId: z.string().uuid().nullable().optional()
 });
 
 export type TProjectEnvironments = z.infer<typeof ProjectEnvironmentsSchema>;

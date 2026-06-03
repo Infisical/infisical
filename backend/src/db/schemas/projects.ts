@@ -35,8 +35,8 @@ export const ProjectsSchema = z.object({
   enforceEncryptedSecretManagerSecretMetadata: z.boolean().nullable().optional(),
   deleteAfter: z.date().nullable().optional(),
   softDeletedAt: z.date().nullable().optional(),
-  deletedByUserId: z.string().uuid().nullable().optional(),
-  deletedByIdentityId: z.string().uuid().nullable().optional()
+  deletedByActorType: z.string().nullable().optional(),
+  deletedByActorId: z.string().uuid().nullable().optional()
 });
 
 export type TProjects = z.infer<typeof ProjectsSchema>;
