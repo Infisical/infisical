@@ -407,6 +407,9 @@ import {
   TPkiScepTransactions,
   TPkiScepTransactionsInsert,
   TPkiScepTransactionsUpdate,
+  TPkiSignerCertificateIssuanceJobs,
+  TPkiSignerCertificateIssuanceJobsInsert,
+  TPkiSignerCertificateIssuanceJobsUpdate,
   TPkiSigners,
   TPkiSignersInsert,
   TPkiSignersUpdate,
@@ -1048,6 +1051,11 @@ declare module "knex/types/tables" {
       TPkiDiscoveryScanHistoryUpdate
     >;
     [TableName.PkiSigners]: KnexOriginal.CompositeTableType<TPkiSigners, TPkiSignersInsert, TPkiSignersUpdate>;
+    [TableName.PkiSignerCertificateIssuanceJobs]: KnexOriginal.CompositeTableType<
+      TPkiSignerCertificateIssuanceJobs,
+      TPkiSignerCertificateIssuanceJobsInsert,
+      TPkiSignerCertificateIssuanceJobsUpdate
+    >;
     [TableName.PkiSigningOperations]: KnexOriginal.CompositeTableType<
       TPkiSigningOperations,
       TPkiSigningOperationsInsert,

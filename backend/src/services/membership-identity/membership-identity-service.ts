@@ -1,6 +1,12 @@
 import { Knex } from "knex";
 
-import { AccessScope, ProjectMembershipRole, TemporaryPermissionMode, TMembershipRolesInsert } from "@app/db/schemas";
+import {
+  AccessScope,
+  ProjectMembershipRole,
+  RESOURCE_SCOPE,
+  TemporaryPermissionMode,
+  TMembershipRolesInsert
+} from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -322,6 +328,21 @@ export const membershipIdentityServiceFactory = ({
       );
       await membershipRoleDAL.delete({ membershipId: existingMembership.id }, tx);
       const doc = await membershipIdentityDAL.deleteById(existingMembership.id, tx);
+
+      if (scopeData.scope === AccessScope.Project) {
+        const projectScopeFields = scopeDatabaseFields as { scopeProjectId?: string };
+        if (projectScopeFields.scopeProjectId) {
+          await membershipIdentityDAL.delete(
+            {
+              scope: RESOURCE_SCOPE,
+              scopeProjectId: projectScopeFields.scopeProjectId,
+              actorIdentityId: dto.selector.identityId
+            },
+            tx
+          );
+        }
+      }
+
       return doc;
     };
 

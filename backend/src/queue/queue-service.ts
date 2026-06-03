@@ -110,7 +110,8 @@ export enum QueueName {
   AuditLogClickHouseBatch = "audit-log-clickhouse-batch",
   PamDiscoveryScan = "pam-discovery-scan",
   CaAutoRenewal = "ca-auto-renewal",
-  ProjectHardDelete = "project-hard-delete"
+  ProjectHardDelete = "project-hard-delete",
+  SignerAutoRenewal = "signer-auto-renewal"
 }
 
 export enum QueueJobs {
@@ -183,7 +184,8 @@ export enum QueueJobs {
   CertificateCleanup = "certificate-cleanup-job",
   DailySecretSyncRetry = "daily-secret-sync-retry-job",
   DigiCertOrderPolling = "digicert-order-polling-job",
-  ProjectHardDelete = "project-hard-delete-job"
+  ProjectHardDelete = "project-hard-delete-job",
+  SignerDailyAutoRenewal = "signer-daily-auto-renewal"
 }
 
 export type TQueueOptions = {
@@ -500,6 +502,10 @@ export type TQueueJobTypes = {
   [QueueName.ProjectHardDelete]: {
     name: QueueJobs.ProjectHardDelete;
     payload: { projectId: string };
+  };
+  [QueueName.SignerAutoRenewal]: {
+    name: QueueJobs.SignerDailyAutoRenewal;
+    payload: undefined;
   };
 };
 

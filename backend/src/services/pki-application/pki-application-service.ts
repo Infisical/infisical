@@ -3,9 +3,9 @@ import { packRules } from "@casl/ability/extra";
 
 import {
   ActionProjectType,
-  ApplicationMembershipRole,
   ProjectMembershipRole,
   RESOURCE_SCOPE,
+  ResourceMembershipRole,
   ResourceType
 } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -176,7 +176,7 @@ export const pkiApplicationServiceFactory = ({
             },
             tx
           );
-          await membershipRoleDAL.create({ membershipId: newMembership.id, role: ApplicationMembershipRole.Admin }, tx);
+          await membershipRoleDAL.create({ membershipId: newMembership.id, role: ResourceMembershipRole.Admin }, tx);
         }
 
         return application;
