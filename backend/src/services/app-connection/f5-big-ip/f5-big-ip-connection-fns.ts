@@ -7,7 +7,7 @@ import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { GatewayProxyProtocol } from "@app/lib/gateway";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
-import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
+import { blockLocalAndPrivateIpAddresses, buildSsrfSafeAgent } from "@app/lib/validator";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 import { F5BigIpConnectionMethod } from "./f5-big-ip-connection-enums";
@@ -15,16 +15,6 @@ import { TF5BigIpConnectionConfig } from "./f5-big-ip-connection-types";
 
 export const F5_BIG_IP_DEFAULT_PORT = 443;
 export const F5_BIG_IP_LOGIN_PROVIDER = "tmos";
-
-export const createF5BigIpHttpsAgent = (credentials: {
-  sslRejectUnauthorized?: boolean;
-  sslCertificate?: string;
-}): https.Agent => {
-  return new https.Agent({
-    rejectUnauthorized: credentials.sslRejectUnauthorized,
-    ca: credentials.sslCertificate ? [credentials.sslCertificate] : undefined
-  });
-};
 
 export const getF5BigIpConnectionListItem = () => {
   return {
@@ -87,9 +77,11 @@ const requestWithF5BigIpGateway = async <T>(
     );
   }
 
-  await blockLocalAndPrivateIpAddresses(`https://${hostname}`, false);
-
-  const httpsAgent = createF5BigIpHttpsAgent(credentials);
+  const httpsAgent = await buildSsrfSafeAgent(`https://${hostname}:${port}`, {
+    ca: credentials.sslCertificate,
+    rejectUnauthorized: credentials.sslRejectUnauthorized,
+    servername: hostname
+  });
   const resp = await request.request<T>({
     ...requestConfig,
     httpsAgent
@@ -230,9 +222,11 @@ export const executeF5BigIpOperationWithGateway = async <T>(
     );
   }
 
-  await blockLocalAndPrivateIpAddresses(`https://${hostname}`, false);
-
-  const httpsAgent = createF5BigIpHttpsAgent(credentials);
+  const httpsAgent = await buildSsrfSafeAgent(`https://${hostname}:${port}`, {
+    ca: credentials.sslCertificate,
+    rejectUnauthorized: credentials.sslRejectUnauthorized,
+    servername: hostname
+  });
 
   const makeRequest = async <R>(requestCfg: AxiosRequestConfig): Promise<R> => {
     const resp = await request.request<R>({
