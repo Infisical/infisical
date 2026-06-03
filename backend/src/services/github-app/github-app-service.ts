@@ -13,6 +13,7 @@ import { logger } from "@app/lib/logger";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import {
+  assertPlatformGitHubHostAllowed,
   getGitHubInstanceApiUrl,
   resolveGitHubAppCredentials
 } from "@app/services/app-connection/github/github-connection-fns";
@@ -108,37 +109,39 @@ export const gitHubAppServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.Settings);
 
-    const existing = await gitHubAppDAL.findOne({ id, orgId: orgPermission.orgId });
-    if (!existing) {
-      throw new NotFoundError({ message: `GitHub App with id ${id} not found in this organization.` });
-    }
+    return gitHubAppDAL.transaction(async (tx) => {
+      const existing = await gitHubAppDAL.findByIdWithLock(id, orgPermission.orgId, tx);
+      if (!existing) {
+        throw new NotFoundError({ message: `GitHub App with id ${id} not found in this organization.` });
+      }
 
-    const connectionCounts = await appConnectionDAL.countByGitHubApp(orgPermission.orgId);
-    const connectionCount = connectionCounts.find(({ gitHubAppId }) => gitHubAppId === existing.id)?.count ?? 0;
+      const connectionCounts = await appConnectionDAL.countByGitHubApp(orgPermission.orgId, tx);
+      const connectionCount = connectionCounts.find(({ gitHubAppId }) => gitHubAppId === existing.id)?.count ?? 0;
 
-    if (connectionCount > 0) {
-      throw new BadRequestError({
-        message: `Cannot delete GitHub App "${existing.name}" while it is in use by ${connectionCount} connection${
-          connectionCount === 1 ? "" : "s"
-        }. Remove those connections first.`
-      });
-    }
+      if (connectionCount > 0) {
+        throw new BadRequestError({
+          message: `Cannot delete GitHub App "${existing.name}" while it is in use by ${connectionCount} connection${
+            connectionCount === 1 ? "" : "s"
+          }. Remove those connections first.`
+        });
+      }
 
-    const sanitized: TSanitizedGitHubApp = {
-      id: existing.id,
-      orgId: existing.orgId,
-      name: existing.name,
-      appId: existing.appId,
-      slug: existing.slug,
-      owner: existing.owner ?? null,
-      connectionCount: 0,
-      createdAt: existing.createdAt,
-      updatedAt: existing.updatedAt
-    };
+      const sanitized: TSanitizedGitHubApp = {
+        id: existing.id,
+        orgId: existing.orgId,
+        name: existing.name,
+        appId: existing.appId,
+        slug: existing.slug,
+        owner: existing.owner ?? null,
+        connectionCount: 0,
+        createdAt: existing.createdAt,
+        updatedAt: existing.updatedAt
+      };
 
-    await gitHubAppDAL.deleteById(existing.id);
+      await gitHubAppDAL.deleteById(existing.id, tx);
 
-    return sanitized;
+      return sanitized;
+    });
   };
 
   const initiateManifestCreation = async ({
@@ -159,6 +162,8 @@ export const gitHubAppServiceFactory = ({
     });
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Settings);
+
+    assertPlatformGitHubHostAllowed(githubHost);
 
     const existing = await gitHubAppDAL.findOne({ orgId: orgPermission.orgId, name });
     if (existing) {
@@ -255,6 +260,8 @@ export const gitHubAppServiceFactory = ({
       });
     }
 
+    assertPlatformGitHubHostAllowed(githubHost);
+
     if (githubHost) {
       await blockLocalAndPrivateIpAddresses(`https://${githubHost}`);
     }
@@ -340,6 +347,8 @@ export const gitHubAppServiceFactory = ({
     });
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Settings);
+
+    assertPlatformGitHubHostAllowed(host);
 
     const { appId, clientId, privateKey } = await resolveGitHubAppCredentials(
       { gitHubAppId: gitHubAppId ?? null, orgId: orgPermission.orgId },
