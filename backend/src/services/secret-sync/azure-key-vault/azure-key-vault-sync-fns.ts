@@ -165,12 +165,12 @@ export const azureKeyVaultSyncFactory = ({ kmsService, appConnectionDAL }: TAzur
   const syncSecrets = async (
     secretSync: TAzureKeyVaultSyncWithCredentials,
     secretMap: TSecretMap,
-    unmodifiedSecretMap?: TSecretMap
+    unmodifiedSecretMap: TSecretMap
   ) => {
     const { accessToken } = await getAzureConnectionAccessToken(secretSync.connection.id, appConnectionDAL, kmsService);
     const { destinationConfig } = secretSync;
 
-    if (destinationConfig.mappingBehavior === AzureKeyVaultSyncMappingBehavior.ManyToOne && unmodifiedSecretMap) {
+    if (destinationConfig.mappingBehavior === AzureKeyVaultSyncMappingBehavior.ManyToOne) {
       const secretValue = JSON.stringify(
         Object.fromEntries(Object.entries(unmodifiedSecretMap).map(([key, secretData]) => [key, secretData.value]))
       );
@@ -256,14 +256,21 @@ export const azureKeyVaultSyncFactory = ({ kmsService, appConnectionDAL }: TAzur
     const { destinationConfig } = secretSync;
 
     if (destinationConfig.mappingBehavior === AzureKeyVaultSyncMappingBehavior.ManyToOne) {
-      await request.delete(
-        `${destinationConfig.vaultBaseUrl}/secrets/${destinationConfig.secretName}?api-version=7.3`,
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`
+      try {
+        await request.delete(
+          `${destinationConfig.vaultBaseUrl}/secrets/${destinationConfig.secretName}?api-version=7.3`,
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`
+            }
           }
+        );
+      } catch (err) {
+        if (err instanceof AxiosError && err.response?.status === 404) {
+          return;
         }
-      );
+        throw err;
+      }
       return;
     }
 
@@ -306,10 +313,12 @@ export const azureKeyVaultSyncFactory = ({ kmsService, appConnectionDAL }: TAzur
       try {
         const parsedValue = (secretValueEntry.value ? JSON.parse(secretValueEntry.value) : {}) as Record<
           string,
-          string
+          unknown
         >;
 
-        return Object.fromEntries(Object.entries(parsedValue).map(([key, value]) => [key, { value }]));
+        return Object.fromEntries(
+          Object.entries(parsedValue).map(([key, value]) => [key, { value: String(value) }])
+        );
       } catch {
         throw new SecretSyncError({
           message:
