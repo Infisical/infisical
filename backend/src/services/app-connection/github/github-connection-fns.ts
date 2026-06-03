@@ -818,6 +818,8 @@ export const validateGitHubConnectionCredentials = async (
     });
   }
 
+  let resolvedInstallationId: string | undefined;
+
   if (method === GitHubConnectionMethod.App) {
     if (!tokenResp.data.access_token) {
       throw new InternalServerError({ message: `Missing access token: ${tokenResp.data.error}` });
@@ -847,21 +849,46 @@ export const validateGitHubConnectionCredentials = async (
       gatewayConnectionDetails
     );
 
-    const matchingInstallation = installationsResp.data.installations.find(
-      (installation) => installation.id === +credentials.installationId
-    );
+    // installations are scoped to this GitHub App since the token is a user-to-server token
+    const { installations } = installationsResp.data;
 
-    if (!matchingInstallation) {
-      throw new ForbiddenRequestError({
-        message: "User does not have access to the provided installation"
-      });
+    if (credentials.installationId) {
+      const { installationId } = credentials;
+      const matchingInstallation = installations.find((installation) => installation.id === +installationId);
+
+      if (!matchingInstallation) {
+        throw new ForbiddenRequestError({
+          message: "User does not have access to the provided installation"
+        });
+      }
+
+      resolvedInstallationId = credentials.installationId;
+    } else {
+      // already-installed app flow: GitHub doesn't redirect back through the install page, so the
+      // user only re-authorized via OAuth and the installation must be resolved from their access
+      if (installations.length === 0) {
+        throw new BadRequestError({
+          message:
+            "The GitHub App has no installations accessible to your GitHub account. Install the app on a GitHub account or organization you have access to, then try again."
+        });
+      }
+
+      if (installations.length > 1) {
+        throw new BadRequestError({
+          message: `The GitHub App is installed on multiple GitHub accounts accessible to you (${installations
+            .map((installation) => installation.account.login)
+            .join(", ")}). Unable to determine which installation to use.`
+        });
+      }
+
+      resolvedInstallationId = String(installations[0].id);
     }
   }
 
   switch (method) {
     case GitHubConnectionMethod.App:
       return {
-        installationId: credentials.installationId,
+        installationId: resolvedInstallationId as string,
         gitHubAppId: credentials.gitHubAppId ?? null,
         instanceType: credentials.instanceType,
         host: credentials.host

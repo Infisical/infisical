@@ -6,10 +6,16 @@ import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/pe
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
+import { crypto } from "@app/lib/crypto";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
+import {
+  getGitHubInstanceApiUrl,
+  resolveGitHubAppCredentials
+} from "@app/services/app-connection/github/github-connection-fns";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
@@ -17,6 +23,7 @@ import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TGitHubAppDALFactory } from "./github-app-dal";
 import {
   TDeleteGitHubAppDTO,
+  TGetGitHubAppInstallationStatusDTO,
   TGitHubAppManifestResponse,
   TGitHubManifestStatePayload,
   TInitiateGitHubManifestDTO,
@@ -313,10 +320,69 @@ export const gitHubAppServiceFactory = ({
     return { redirectUrl: callbackUrl.toString() };
   };
 
+  // Checks whether a GitHub App already has installations. GitHub never redirects back from the
+  // install page when the app is already installed, so the frontend uses this to route those
+  // connections through the OAuth authorize flow instead. Also returns the app's (public) OAuth
+  // client id needed to build the authorize URL.
+  const getInstallationStatus = async ({
+    gitHubAppId,
+    host,
+    instanceType,
+    orgPermission
+  }: TGetGitHubAppInstallationStatusDTO): Promise<{ installed: boolean; clientId: string }> => {
+    const { permission } = await permissionService.getOrgPermission({
+      actor: orgPermission.type,
+      actorId: orgPermission.id,
+      orgId: orgPermission.orgId,
+      actorAuthMethod: orgPermission.authMethod,
+      actorOrgId: orgPermission.orgId,
+      scope: OrganizationActionScope.Any
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Settings);
+
+    const { appId, clientId, privateKey } = await resolveGitHubAppCredentials(
+      { gitHubAppId: gitHubAppId ?? null, orgId: orgPermission.orgId },
+      { gitHubAppDAL, kmsService }
+    );
+
+    // validates the host against local/private addresses internally
+    const apiBaseUrl = await getGitHubInstanceApiUrl({ credentials: { host, instanceType } });
+
+    const appPrivateKey = privateKey
+      .split("\n")
+      .map((line) => line.trim())
+      .join("\n");
+
+    const now = Math.floor(Date.now() / 1000);
+    const appJwt = crypto.jwt().sign({ iat: now, exp: now + 5 * 60, iss: appId }, appPrivateKey, {
+      algorithm: "RS256"
+    });
+
+    try {
+      const { data } = await request.get<{ id: number }[]>(`https://${apiBaseUrl}/app/installations`, {
+        params: { per_page: 1 },
+        headers: {
+          Accept: "application/vnd.github+json",
+          Authorization: `Bearer ${appJwt}`,
+          "X-GitHub-Api-Version": "2022-11-28"
+        }
+      });
+
+      return { installed: data.length > 0, clientId };
+    } catch (err) {
+      logger.error(err, `Failed to check GitHub App installation status [gitHubAppId=${gitHubAppId ?? "shared"}]`);
+      throw new BadRequestError({
+        message: "Unable to check GitHub App installation status. Verify the app still exists on GitHub."
+      });
+    }
+  };
+
   return {
     initiateManifestCreation,
     handleManifestCallback,
     listGitHubApps,
-    deleteGitHubApp
+    deleteGitHubApp,
+    getInstallationStatus
   };
 };

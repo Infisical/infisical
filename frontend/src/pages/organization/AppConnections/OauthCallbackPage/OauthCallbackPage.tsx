@@ -365,30 +365,31 @@ export const OAuthCallbackPage = () => {
 
     try {
       const gitHubAppId = (credentials as { gitHubAppId?: string | null } | undefined)?.gitHubAppId;
+      // Fresh installs return from GitHub with an installation_id. Already-installed apps come
+      // back through the OAuth authorize flow without one — the stored method tells us it's still
+      // an App connection (the backend resolves the installation from the user's access).
+      const isAppMethod = formData.method === GitHubConnectionMethod.App || Boolean(installationId);
+
+      const appCredentials = {
+        code: code as string,
+        ...(installationId && { installationId: installationId as string }),
+        ...(gitHubAppId !== undefined && { gitHubAppId }),
+        ...(credentials?.instanceType && { instanceType: credentials.instanceType }),
+        ...(credentials?.host && { host: credentials.host })
+      };
+
+      const oauthCredentials = {
+        code: code as string,
+        ...(credentials?.instanceType && { instanceType: credentials.instanceType }),
+        ...(credentials?.host && { host: credentials.host })
+      };
+
       if (connectionId) {
         connection = await updateAppConnection.mutateAsync({
           app: AppConnection.GitHub,
-          ...(installationId
-            ? {
-                connectionId,
-                credentials: {
-                  code: code as string,
-                  installationId: installationId as string,
-                  ...(gitHubAppId !== undefined && { gitHubAppId }),
-                  ...(credentials?.instanceType && { instanceType: credentials.instanceType }),
-                  ...(credentials?.host && { host: credentials.host })
-                },
-                gatewayId
-              }
-            : {
-                connectionId,
-                credentials: {
-                  code: code as string,
-                  ...(credentials?.instanceType && { instanceType: credentials.instanceType }),
-                  ...(credentials?.host && { host: credentials.host })
-                },
-                gatewayId
-              })
+          connectionId,
+          credentials: isAppMethod ? appCredentials : oauthCredentials,
+          gatewayId
         });
       } else {
         connection = await createAppConnection.mutateAsync({
@@ -396,30 +397,28 @@ export const OAuthCallbackPage = () => {
           name,
           description,
           projectId,
-          ...(installationId
+          ...(isAppMethod
             ? {
                 method: GitHubConnectionMethod.App,
-                credentials: {
-                  code: code as string,
-                  ...(credentials?.instanceType && { instanceType: credentials.instanceType }),
-                  installationId: installationId as string,
-                  ...(gitHubAppId !== undefined && { gitHubAppId }),
-                  ...(credentials?.host && { host: credentials.host })
-                },
+                credentials: appCredentials,
                 gatewayId
               }
             : {
                 method: GitHubConnectionMethod.OAuth,
-                credentials: {
-                  code: code as string,
-                  ...(credentials?.instanceType && { instanceType: credentials.instanceType }),
-                  ...(credentials?.host && { host: credentials.host })
-                },
+                credentials: oauthCredentials,
                 gatewayId
               })
         });
       }
-    } catch {
+    } catch (err) {
+      // surface the failure reason — e.g. the backend couldn't resolve which installation of an
+      // already-installed app to use
+      createNotification({
+        type: "error",
+        text:
+          (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+          `Failed to ${connectionId ? "update" : "create"} GitHub Connection`
+      });
       navigate({
         to: returnUrl,
         params: {

@@ -100,6 +100,38 @@ export const registerGitHubAppRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
+    method: "GET",
+    url: "/installation-status",
+    config: {
+      rateLimit: readLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    schema: {
+      querystring: z.object({
+        gitHubAppId: z.string().uuid().optional(),
+        host: z.string().trim().optional(),
+        instanceType: z.enum(["cloud", "server"]).default("cloud")
+      }),
+      response: {
+        200: z.object({
+          installed: z.boolean(),
+          clientId: z.string()
+        })
+      }
+    },
+    handler: async (req) => {
+      const result = await server.services.gitHubApp.getInstallationStatus({
+        orgPermission: req.permission,
+        gitHubAppId: req.query.gitHubAppId,
+        host: req.query.host,
+        instanceType: req.query.instanceType
+      });
+
+      return result;
+    }
+  });
+
+  server.route({
     method: "DELETE",
     url: "/:id",
     config: {

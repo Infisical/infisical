@@ -27,14 +27,16 @@ export const GitHubConnectionOAuthInputCredentialsSchema = z.union([
 export const GitHubConnectionAppInputCredentialsSchema = z.union([
   z.object({
     code: z.string().trim().min(1, "GitHub App code required"),
-    installationId: z.string().min(1, "GitHub App Installation ID required"),
+    // optional: when omitted (already-installed app flow) the installation is resolved from the
+    // installations accessible to the authorizing user
+    installationId: z.string().min(1, "GitHub App Installation ID required").optional(),
     gitHubAppId: z.string().uuid().nullish(),
     instanceType: z.literal("server"),
     host: z.string().trim().min(1, "Host is required for server instance type")
   }),
   z.object({
     code: z.string().trim().min(1, "GitHub App code required"),
-    installationId: z.string().min(1, "GitHub App Installation ID required"),
+    installationId: z.string().min(1, "GitHub App Installation ID required").optional(),
     gitHubAppId: z.string().uuid().nullish(),
     instanceType: z.literal("cloud").optional(),
     host: z.string().trim().optional()

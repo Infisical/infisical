@@ -4,10 +4,8 @@ import {
   faArrowUpRightFromSquare,
   faChevronLeft,
   faCircleInfo,
-  faLock,
   faPlus,
-  faTrash,
-  faTriangleExclamation
+  faTrash
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import slugify from "@sindresorhus/slugify";
@@ -21,6 +19,7 @@ import {
   CommandItem,
   CommandList
 } from "@app/components/v3/generic/Command";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3/generic/Tooltip";
 import { TGitHubApp, useDeleteGitHubApp } from "@app/hooks/api/gitHubApps";
 
 const SHARED_KEY = "__shared__";
@@ -127,36 +126,6 @@ export const GitHubAppSelector = ({
     const isInUse = app.connectionCount > 0;
 
     if (deleteTargetId === app.id) {
-      if (isInUse) {
-        return (
-          <div
-            key={app.id}
-            className="m-1 rounded-md border border-yellow-500/40 bg-yellow-500/5 p-3"
-          >
-            <div className="flex items-center gap-2 text-sm font-medium text-mineshaft-100">
-              <FontAwesomeIcon icon={faTriangleExclamation} className="text-yellow-500" />
-              <span>
-                Can&apos;t delete <span className="font-mono">{app.name}</span>
-              </span>
-            </div>
-            <p className="mt-1 text-xs leading-relaxed text-mineshaft-300">
-              In use by {app.connectionCount} connection{app.connectionCount === 1 ? "" : "s"}.
-              Remove the connection{app.connectionCount === 1 ? "" : "s"} before deleting this app.
-            </p>
-            <div className="mt-3 flex items-center justify-end gap-2">
-              <Button
-                variant="plain"
-                colorSchema="secondary"
-                size="xs"
-                onClick={() => setDeleteTargetId(null)}
-              >
-                Cancel
-              </Button>
-            </div>
-          </div>
-        );
-      }
-
       return (
         <div key={app.id} className="m-1 rounded-md border border-red-500/40 bg-red-500/5 p-3">
           <div className="flex items-center gap-2 text-sm font-medium text-mineshaft-100">
@@ -223,17 +192,39 @@ export const GitHubAppSelector = ({
           >
             <FontAwesomeIcon icon={faArrowUpRightFromSquare} className="text-xs" />
           </button>
-          <button
-            type="button"
-            title="Delete"
-            className="rounded p-1 text-mineshaft-300 hover:bg-mineshaft-600 hover:text-red-400"
-            onClick={(e) => {
-              e.stopPropagation();
-              setDeleteTargetId(app.id);
-            }}
-          >
-            <FontAwesomeIcon icon={faTrash} className="text-xs" />
-          </button>
+          {isInUse ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                {/* Native disabled buttons don't fire pointer events, so the tooltip
+                    needs a focusable wrapper to open on hover/focus. */}
+                {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex */}
+                <span tabIndex={0}>
+                  <button
+                    type="button"
+                    disabled
+                    className="cursor-not-allowed rounded p-1 text-mineshaft-500"
+                  >
+                    <FontAwesomeIcon icon={faTrash} className="text-xs" />
+                  </button>
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>
+                Remove the connection{app.connectionCount === 1 ? "" : "s"} before deleting this app.
+              </TooltipContent>
+            </Tooltip>
+          ) : (
+            <button
+              type="button"
+              title="Delete"
+              className="rounded p-1 text-mineshaft-300 hover:bg-mineshaft-600 hover:text-red-400"
+              onClick={(e) => {
+                e.stopPropagation();
+                setDeleteTargetId(app.id);
+              }}
+            >
+              <FontAwesomeIcon icon={faTrash} className="text-xs" />
+            </button>
+          )}
         </div>
       </CommandItem>
     );
@@ -321,15 +312,16 @@ export const GitHubAppSelector = ({
                         "bg-primary/5 ring-1 ring-primary/40 ring-inset data-[selected=true]:bg-primary/10"
                     )}
                   >
-                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-sm bg-blue-500/15 text-blue-400">
-                      <FontAwesomeIcon icon={faLock} />
+                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-sm bg-mineshaft-600 text-mineshaft-100">
+                      <FontAwesomeIcon icon={faGithub} />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-mineshaft-100">
-                        Instance default
+                      <p className="truncate font-mono text-sm text-mineshaft-100">
+                        {sharedApp.name}
                       </p>
                       <p className="truncate text-xs text-mineshaft-400">
-                        Configured by instance admin
+                        Instance default · {sharedApp.connectionCount} connection
+                        {sharedApp.connectionCount === 1 ? "" : "s"}
                       </p>
                     </div>
                     <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 data-[selected=true]:opacity-100">
