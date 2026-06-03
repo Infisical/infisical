@@ -545,8 +545,11 @@ export const projectDALFactory = (db: TDbClient) => {
 
   const checkProjectUpgradeStatus = async (projectId: string) => {
     const project = await findById(projectId);
+    if (!project) {
+      throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
+    }
     const upgradeInProgress =
-      project?.upgradeStatus === ProjectUpgradeStatus.InProgress && project?.version === ProjectVersion.V1;
+      project.upgradeStatus === ProjectUpgradeStatus.InProgress && project.version === ProjectVersion.V1;
 
     if (upgradeInProgress) {
       throw new BadRequestError({
