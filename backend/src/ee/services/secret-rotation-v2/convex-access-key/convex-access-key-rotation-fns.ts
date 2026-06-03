@@ -31,22 +31,29 @@ const $createAccessKey = async (
   const baseUrl = await getConvexApiBaseUrl(connection);
   const name = `${namePrefix}-${Date.now()}`;
 
-  const { data } = await request.post<{ accessToken: string }>(
-    `${baseUrl}/v1/create_personal_access_token`,
-    { name },
-    {
-      headers: {
-        Authorization: `Bearer ${connection.credentials.accessToken}`,
-        "Content-Type": "application/json"
+  try {
+    const { data } = await request.post<{ accessToken: string }>(
+      `${baseUrl}/v1/create_personal_access_token`,
+      { name },
+      {
+        headers: {
+          Authorization: `Bearer ${connection.credentials.accessToken}`,
+          "Content-Type": "application/json"
+        }
       }
+    );
+
+    if (!data?.accessToken) {
+      throw new BadRequestError({ message: "Convex access key response missing 'accessToken'" });
     }
-  );
 
-  if (!data?.accessToken) {
-    throw new BadRequestError({ message: "Convex access key response missing 'accessToken'" });
+    return { accessKeyId: name, accessKey: data.accessToken };
+  } catch (error: unknown) {
+    if (error instanceof BadRequestError) throw error;
+    throw new BadRequestError({
+      message: `Failed to create Convex access key: ${error instanceof AxiosError ? error.message : "Unknown error"}`
+    });
   }
-
-  return { accessKeyId: name, accessKey: data.accessToken };
 };
 
 const $deleteAccessKey = async (connection: TConvexConnection, accessKeyId: string): Promise<void> => {
