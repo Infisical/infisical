@@ -38,7 +38,7 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  await knex.raw(`DROP INDEX IF EXISTS "${INDEX_NAME}"`);
+  await knex.raw(`DROP INDEX CONCURRENTLY IF EXISTS "${INDEX_NAME}"`);
 }
 
 const config = { transaction: false };
