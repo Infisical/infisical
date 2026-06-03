@@ -39,9 +39,7 @@ export const CertManagerNav = ({
   const { hasProjectRole } = useProjectPermission();
   const { currentProject } = useProject();
   const { search: locationSearch } = useLocation();
-  const hasSignerContext = Boolean(
-    (locationSearch as { signerId?: string })?.signerId
-  );
+  const hasSignerContext = Boolean((locationSearch as { signerId?: string })?.signerId);
   const isCertManagerAdmin = hasProjectRole("admin");
   const projectId = currentProject?.id ?? "";
   const { data: certManagerInstance } = useCertManagerInstanceState();
@@ -122,9 +120,7 @@ export const CertManagerNav = ({
       label: "Signers",
       icon: PenTool,
       pathSuffix: "code-signing",
-      activeMatch: hasSignerContext
-        ? /\/code-signing|\/approvals\/[^/]+/
-        : /\/code-signing/
+      activeMatch: hasSignerContext ? /\/code-signing|\/approvals\/[^/]+/ : /\/code-signing/
     }
   ];
 
