@@ -11,9 +11,11 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, PROJECT_IDENTITIES, PROJECT_IDENTITY_MEMBERSHIP } from "@app/lib/api-docs";
 import { BadRequestError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
+import { OrderByDirection } from "@app/lib/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { IdentityMembershipOrderBy } from "@app/services/membership-identity/membership-identity-types";
 
 export const registerIdentityProjectMembershipRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -306,6 +308,16 @@ export const registerIdentityProjectMembershipRouter = async (server: FastifyZod
           .string()
           .transform((val) => val.split(",").map((role) => role.trim()))
           .describe(PROJECT_IDENTITY_MEMBERSHIP.LIST_IDENTITY_MEMBERSHIPS.roles)
+          .optional(),
+        orderBy: z
+          .nativeEnum(IdentityMembershipOrderBy)
+          .default(IdentityMembershipOrderBy.Name)
+          .describe(PROJECT_IDENTITY_MEMBERSHIP.LIST_IDENTITY_MEMBERSHIPS.orderBy)
+          .optional(),
+        orderDirection: z
+          .nativeEnum(OrderByDirection)
+          .default(OrderByDirection.ASC)
+          .describe(PROJECT_IDENTITY_MEMBERSHIP.LIST_IDENTITY_MEMBERSHIPS.orderDirection)
           .optional()
       }),
       response: {
@@ -349,7 +361,9 @@ export const registerIdentityProjectMembershipRouter = async (server: FastifyZod
           offset: req.query.offset,
           limit: req.query.limit,
           identityName: req.query.identityName,
-          roles: req.query.roles
+          roles: req.query.roles,
+          orderBy: req.query.orderBy,
+          orderDirection: req.query.orderDirection
         }
       });
 
