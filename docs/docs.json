@@ -483,6 +483,7 @@
                       "documentation/platform/secret-rotation/auth0-client-secret",
                       "documentation/platform/secret-rotation/aws-iam-user-secret",
                       "documentation/platform/secret-rotation/azure-client-secret",
+                      "documentation/platform/secret-rotation/convex-access-key",
                       "documentation/platform/secret-rotation/databricks-service-principal-secret",
                       "documentation/platform/secret-rotation/datadog-application-key-secret",
                       "documentation/platform/secret-rotation/dbt-service-token",
