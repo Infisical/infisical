@@ -135,7 +135,8 @@ export const GitHubAppSelector = ({
             </span>
           </div>
           <p className="mt-1 text-xs leading-relaxed text-mineshaft-300">
-            Removes it from Infisical. The app still exists on GitHub until you uninstall it there.
+            Removes it from Infisical and uninstalls it from GitHub. The app registration itself
+            remains on GitHub until you delete it there.
           </p>
           <div className="mt-3 flex items-center justify-end gap-2">
             <Button

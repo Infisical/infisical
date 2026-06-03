@@ -16,9 +16,6 @@ export async function up(knex: Knex): Promise<void> {
       t.binary("encryptedPrivateKey").notNullable();
       t.string("slug").notNullable();
       t.string("owner").nullable();
-      // Host + instance type the app was registered against. These are bound to the app so that
-      // credential operations (signing app JWTs, using the client secret) always target the host
-      // the app belongs to, never a host supplied by the caller at request time.
       t.string("host").nullable();
       t.string("instanceType").notNullable().defaultTo("cloud");
       t.timestamps(true, true, true);

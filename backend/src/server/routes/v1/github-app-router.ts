@@ -108,9 +108,7 @@ export const registerGitHubAppRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       querystring: z.object({
-        gitHubAppId: z.string().uuid().optional(),
-        host: z.string().trim().optional(),
-        instanceType: z.enum(["cloud", "server"]).default("cloud")
+        gitHubAppId: z.string().uuid().optional()
       }),
       response: {
         200: z.object({
@@ -122,9 +120,7 @@ export const registerGitHubAppRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const result = await server.services.gitHubApp.getInstallationStatus({
         orgPermission: req.permission,
-        gitHubAppId: req.query.gitHubAppId,
-        host: req.query.host,
-        instanceType: req.query.instanceType
+        gitHubAppId: req.query.gitHubAppId
       });
 
       return result;

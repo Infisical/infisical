@@ -16,11 +16,7 @@ const fetchGitHubApps = async () => {
 
 // Imperative check used when connecting: already-installed apps must skip GitHub's install page
 // (it never redirects back to Infisical) and go through the OAuth authorize flow instead.
-export const fetchGitHubAppInstallationStatus = async (params: {
-  gitHubAppId?: string;
-  host?: string;
-  instanceType?: "cloud" | "server";
-}) => {
+export const fetchGitHubAppInstallationStatus = async (params: { gitHubAppId?: string }) => {
   const { data } = await apiRequest.get<{ installed: boolean; clientId: string }>(
     "/api/v1/github-apps/installation-status",
     { params }

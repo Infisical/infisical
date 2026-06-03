@@ -34,9 +34,6 @@ type TResolvedGitHubAppCredentials = {
   clientId: string;
   clientSecret: string;
   privateKey: string;
-  // Host/instance the app is bound to. Populated for org-managed apps (resolved by id) so callers
-  // can target the app's own host instead of a caller-supplied one. Null for the instance-default
-  // app configured via env vars, where callers fall back to their own host handling.
   host: string | null;
   instanceType: "cloud" | "server" | null;
 };
@@ -101,7 +98,6 @@ export const resolveGitHubAppCredentials = async (
     clientId: INF_APP_CONNECTION_GITHUB_APP_CLIENT_ID,
     clientSecret: INF_APP_CONNECTION_GITHUB_APP_CLIENT_SECRET,
     privateKey: INF_APP_CONNECTION_GITHUB_APP_PRIVATE_KEY,
-    // The instance-default app isn't host-bound here; callers keep their existing host handling.
     host: null,
     instanceType: null
   };
@@ -273,86 +269,6 @@ export const requestWithGitHubGateway = async <T>(
       targetPort: 443
     }
   );
-};
-
-export const uninstallGitHubAppInstallation = async (
-  appConnection: TGitHubConnection,
-  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
-  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
-  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">,
-  deps: TGitHubAppCredentialResolverDeps
-) => {
-  if (appConnection.method !== GitHubConnectionMethod.App) {
-    throw new InternalServerError({ message: "Cannot uninstall a non-app GitHub connection" });
-  }
-
-  const {
-    appId,
-    privateKey,
-    host: appHost,
-    instanceType: appInstanceType
-  } = await resolveGitHubAppCredentials(
-    { gitHubAppId: appConnection.credentials.gitHubAppId, orgId: appConnection.orgId },
-    deps
-  );
-
-  // Bind the signed app JWT to the app's own host, never the host recorded on the connection.
-  const effectiveCredentials = appConnection.credentials.gitHubAppId
-    ? { host: appHost ?? undefined, instanceType: appInstanceType ?? "cloud" }
-    : { host: appConnection.credentials.host, instanceType: appConnection.credentials.instanceType };
-
-  assertPlatformGitHubHostAllowed(effectiveCredentials.host);
-
-  const appPrivateKey = privateKey
-    .split("\n")
-    .map((line) => line.trim())
-    .join("\n");
-
-  const now = Math.floor(Date.now() / 1000);
-  const appJwt = crypto.jwt().sign({ iat: now, exp: now + 5 * 60, iss: appId }, appPrivateKey, {
-    algorithm: "RS256"
-  });
-
-  const apiBaseUrl = await getGitHubInstanceApiUrl({ credentials: effectiveCredentials });
-  const { installationId } = appConnection.credentials;
-
-  const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
-    gatewayId: appConnection.gatewayId,
-    gatewayPoolId: appConnection.gatewayPoolId
-  });
-
-  const gatewayConnectionDetails = effectiveGatewayId
-    ? await getGitHubGatewayConnectionDetails(effectiveGatewayId, apiBaseUrl, gatewayV2Service)
-    : undefined;
-
-  try {
-    await requestWithGitHubGateway(
-      { gatewayId: effectiveGatewayId },
-      gatewayService,
-      gatewayV2Service,
-      {
-        url: `https://${apiBaseUrl}/app/installations/${installationId}`,
-        method: "DELETE",
-        headers: {
-          Accept: "application/vnd.github+json",
-          Authorization: `Bearer ${appJwt}`,
-          "X-GitHub-Api-Version": "2022-11-28"
-        }
-      },
-      gatewayConnectionDetails
-    );
-  } catch (err) {
-    // 404 means the installation is already gone (e.g. the user removed it on GitHub before
-    // deleting the connection in Infisical). That's a no-op success — anything else is logged
-    // but doesn't block local cleanup.
-    const status = (err as AxiosError)?.response?.status;
-    if (status !== 404) {
-      logger.warn(
-        { err, installationId, gitHubAppId: appConnection.credentials.gitHubAppId },
-        `Failed to uninstall GitHub App installation [installationId=${installationId}]`
-      );
-    }
-  }
 };
 
 export const getGitHubAppAuthToken = async (

@@ -26,7 +26,6 @@ import {
 import { crypto } from "@app/lib/crypto/cryptography";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
-import { logger } from "@app/lib/logger";
 import { DiscriminativePick, OrgServiceActor } from "@app/lib/types";
 import {
   decryptAppConnection,
@@ -108,11 +107,7 @@ import { ValidateFlyioConnectionCredentialsSchema } from "./flyio";
 import { flyioConnectionService } from "./flyio/flyio-connection-service";
 import { ValidateGcpConnectionCredentialsSchema } from "./gcp";
 import { gcpConnectionService } from "./gcp/gcp-connection-service";
-import {
-  GitHubConnectionMethod,
-  uninstallGitHubAppInstallation,
-  ValidateGitHubConnectionCredentialsSchema
-} from "./github";
+import { GitHubConnectionMethod, ValidateGitHubConnectionCredentialsSchema } from "./github";
 import { githubConnectionService } from "./github/github-connection-service";
 import { ValidateGitHubRadarConnectionCredentialsSchema } from "./github-radar";
 import { githubRadarConnectionService } from "./github-radar/github-radar-connection-service";
@@ -190,7 +185,7 @@ export type TAppConnectionServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findProjectById">;
   appConnectionCredentialRotationService: TAppConnectionCredentialRotationServiceFactory;
   identityUaDAL: Pick<TIdentityUaDALFactory, "findOne">;
-  gitHubAppDAL: Pick<TGitHubAppDALFactory, "findOne" | "deleteById">;
+  gitHubAppDAL: Pick<TGitHubAppDALFactory, "findOne">;
 };
 
 export type TAppConnectionServiceFactory = ReturnType<typeof appConnectionServiceFactory>;
@@ -988,25 +983,9 @@ export const appConnectionServiceFactory = ({
 
     // TODO (scott): add option to delete all dependencies
 
-    if (app === AppConnection.GitHub) {
-      const decrypted = await decryptAppConnection(appConnection, kmsService);
-      if (decrypted.method === GitHubConnectionMethod.App) {
-        // Best-effort uninstall of THIS connection's installation on GitHub. Failures don't block
-        // local deletion — the user can always remove the installation manually. The underlying
-        // GitHub App is reusable and intentionally left intact; it's managed separately.
-        try {
-          await uninstallGitHubAppInstallation(decrypted, gatewayService, gatewayV2Service, gatewayPoolService, {
-            gitHubAppDAL,
-            kmsService
-          });
-        } catch (err) {
-          logger.warn(
-            { err, connectionId },
-            `Failed to uninstall GitHub App for connection [connectionId=${connectionId}]`
-          );
-        }
-      }
-    }
+    // Note: for GitHub App connections we intentionally do NOT uninstall the app installation on
+    // GitHub or delete the underlying GitHub App — both are reusable across connections and are
+    // managed separately (the app via the GitHub Apps settings page, the installation on GitHub).
 
     try {
       const deletedAppConnection = await appConnectionDAL.deleteById(connectionId);

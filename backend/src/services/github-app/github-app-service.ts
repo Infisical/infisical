@@ -1,4 +1,5 @@
 import { ForbiddenError } from "@casl/ability";
+import { AxiosError } from "axios";
 import jwt from "jsonwebtoken";
 
 import { OrganizationActionScope } from "@app/db/schemas";
@@ -96,6 +97,75 @@ export const gitHubAppServiceFactory = ({
     return sharedApp ? [sharedApp, ...dbApps] : dbApps;
   };
 
+  // Best-effort removal of every installation of the app on GitHub. Called after the local record
+  // is deleted — at that point the app's private key is gone from Infisical, so any installation
+  // left behind on GitHub could never be used again anyway. Failures are logged, never surfaced:
+  // the user can always uninstall manually from GitHub.
+  const uninstallAllGitHubAppInstallations = async (
+    credentials: Awaited<ReturnType<typeof resolveGitHubAppCredentials>>,
+    gitHubAppId: string
+  ) => {
+    const { appId, privateKey, host, instanceType } = credentials;
+
+    // The host comes from the stored app record, never the caller — same binding as every other
+    // credential operation on the app.
+    assertPlatformGitHubHostAllowed(host ?? undefined);
+
+    const apiBaseUrl = await getGitHubInstanceApiUrl({
+      credentials: { host: host ?? undefined, instanceType: instanceType ?? "cloud" }
+    });
+
+    const appPrivateKey = privateKey
+      .split("\n")
+      .map((line) => line.trim())
+      .join("\n");
+
+    const now = Math.floor(Date.now() / 1000);
+    const appJwt = crypto.jwt().sign({ iat: now, exp: now + 5 * 60, iss: appId }, appPrivateKey, {
+      algorithm: "RS256"
+    });
+
+    const headers = {
+      Accept: "application/vnd.github+json",
+      Authorization: `Bearer ${appJwt}`,
+      "X-GitHub-Api-Version": "2022-11-28"
+    };
+
+    const installationIds: number[] = [];
+    let page = 1;
+    for (;;) {
+      // safeRequest validates + DNS-pins the target and disables redirects (SSRF). Pages must be
+      // fetched sequentially — we don't know the total count up front.
+      // eslint-disable-next-line no-await-in-loop
+      const { data } = await safeRequest.get<{ id: number }[]>(`https://${apiBaseUrl}/app/installations`, {
+        params: { per_page: 100, page },
+        headers
+      });
+      installationIds.push(...data.map((installation) => installation.id));
+      if (data.length < 100) break;
+      page += 1;
+    }
+
+    const results = await Promise.allSettled(
+      installationIds.map((installationId) =>
+        safeRequest.delete(`https://${apiBaseUrl}/app/installations/${installationId}`, { headers })
+      )
+    );
+
+    results.forEach((result, idx) => {
+      if (result.status === "rejected") {
+        // 404 means the installation is already gone — that's the desired end state.
+        const reason = result.reason as AxiosError;
+        if (reason?.response?.status !== 404) {
+          logger.warn(
+            { err: reason, installationId: installationIds[idx], gitHubAppId },
+            `Failed to uninstall GitHub App installation [installationId=${installationIds[idx]}] [gitHubAppId=${gitHubAppId}]`
+          );
+        }
+      }
+    });
+  };
+
   const deleteGitHubApp = async ({ id, orgPermission }: TDeleteGitHubAppDTO): Promise<TSanitizedGitHubApp> => {
     const { permission } = await permissionService.getOrgPermission({
       actor: orgPermission.type,
@@ -108,7 +178,20 @@ export const gitHubAppServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.Settings);
 
-    return gitHubAppDAL.transaction(async (tx) => {
+    // Resolve credentials up front — once the row is deleted the private key is gone and we can no
+    // longer sign the app JWT needed to uninstall the app's installations on GitHub.
+    let credentials: Awaited<ReturnType<typeof resolveGitHubAppCredentials>> | null = null;
+    try {
+      credentials = await resolveGitHubAppCredentials(
+        { gitHubAppId: id, orgId: orgPermission.orgId },
+        { gitHubAppDAL, kmsService }
+      );
+    } catch {
+      // App missing or credentials unreadable — the transaction below still performs (or rejects)
+      // the local deletion; only the GitHub-side uninstall is skipped.
+    }
+
+    const sanitized = await gitHubAppDAL.transaction(async (tx) => {
       const existing = await gitHubAppDAL.findByIdWithLock(id, orgPermission.orgId, tx);
       if (!existing) {
         throw new NotFoundError({ message: `GitHub App with id ${id} not found in this organization.` });
@@ -125,7 +208,7 @@ export const gitHubAppServiceFactory = ({
         });
       }
 
-      const sanitized: TSanitizedGitHubApp = {
+      const result: TSanitizedGitHubApp = {
         id: existing.id,
         orgId: existing.orgId,
         name: existing.name,
@@ -139,8 +222,18 @@ export const gitHubAppServiceFactory = ({
 
       await gitHubAppDAL.deleteById(existing.id, tx);
 
-      return sanitized;
+      return result;
     });
+
+    if (credentials) {
+      try {
+        await uninstallAllGitHubAppInstallations(credentials, id);
+      } catch (err) {
+        logger.warn(err, `Failed to uninstall GitHub App installations [gitHubAppId=${id}]`);
+      }
+    }
+
+    return sanitized;
   };
 
   const initiateManifestCreation = async ({
@@ -336,8 +429,6 @@ export const gitHubAppServiceFactory = ({
   // client id needed to build the authorize URL.
   const getInstallationStatus = async ({
     gitHubAppId,
-    host,
-    instanceType,
     orgPermission
   }: TGetGitHubAppInstallationStatusDTO): Promise<{ installed: boolean; clientId: string }> => {
     const { permission } = await permissionService.getOrgPermission({
@@ -362,11 +453,13 @@ export const gitHubAppServiceFactory = ({
       { gitHubAppDAL, kmsService }
     );
 
-    // For an org-managed app, the request only identifies which app to use — its host/instance are
-    // bound to the stored app record. Ignoring the caller-supplied host here is what prevents a
-    // settings reader from pointing the app's signed JWT at a host they control to exfiltrate it.
-    const effectiveHost = gitHubAppId ? (appHost ?? undefined) : host;
-    const effectiveInstanceType = gitHubAppId ? (appInstanceType ?? "cloud") : instanceType;
+    // The host/instance is never taken from the caller. For an org-managed app it is bound to the
+    // stored app record; for the instance-default (shared) app there is no host env var to bind it
+    // elsewhere, so it is only ever registered against the platform default host (github.com). This
+    // is what prevents a settings reader from pointing the app's signed JWT at a host they control
+    // to exfiltrate it.
+    const effectiveHost = gitHubAppId ? (appHost ?? undefined) : undefined;
+    const effectiveInstanceType = gitHubAppId ? (appInstanceType ?? "cloud") : "cloud";
 
     assertPlatformGitHubHostAllowed(effectiveHost);
 

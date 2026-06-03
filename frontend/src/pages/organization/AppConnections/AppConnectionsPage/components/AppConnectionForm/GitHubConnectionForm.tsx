@@ -328,9 +328,7 @@ export const GitHubConnectionForm = ({ appConnection, projectId, onSubmit }: Pro
         if (targetApp?.id || !isInfisicalCloud()) {
           try {
             const { installed, clientId } = await fetchGitHubAppInstallationStatus({
-              gitHubAppId: targetApp?.id ?? undefined,
-              host: formData.credentials?.host || undefined,
-              instanceType: formData.credentials?.instanceType ?? "cloud"
+              gitHubAppId: targetApp?.id ?? undefined
             });
 
             if (installed) {

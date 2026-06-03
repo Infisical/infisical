@@ -32,8 +32,6 @@ export type TDeleteGitHubAppDTO = {
 
 export type TGetGitHubAppInstallationStatusDTO = {
   gitHubAppId?: string;
-  host?: string;
-  instanceType?: "cloud" | "server";
   orgPermission: OrgServiceActor;
 };
 
