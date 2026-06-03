@@ -73,19 +73,23 @@ export const projectDALFactory = (db: TDbClient) => {
     }
   }) as typeof projectOrm.find;
 
-  // Bypasses the soft-delete read filter — restore + hard-delete worker only.
+  // Bypasses the soft-delete read filter — hard-delete worker only. Primary-backed by default
+  // (NOT the replica): staleness here is dangerous (a just-restored/already-reaped project could
+  // look wrong), so we read the primary unless the caller explicitly threads a transaction.
   const findByIdIncludingExpired = async (id: string, tx?: Knex) => {
     try {
-      const result = await (tx || db.replicaNode())(TableName.Project).where({ id }).first("*");
+      const result = await (tx || db)(TableName.Project).where({ id }).first("*");
       return result as TProjects | undefined;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find by id including expired" });
     }
   };
 
-  // Raw find that includes soft-deleted rows. Used by the hard-delete worker's KMS shared-key
-  // check so a *second* pending-deletion project sharing a key still counts as a referencer.
-  const findIncludingExpired = projectOrm.find;
+  // Raw find that includes soft-deleted rows, primary-backed by default (same staleness concern as
+  // above). Used by the hard-delete worker's KMS shared-key check so a *second* pending-deletion
+  // project sharing a key still counts as a referencer.
+  const findIncludingExpired: typeof projectOrm.find = ((filter, opts) =>
+    projectOrm.find(filter, { ...(opts ?? {}), tx: opts?.tx ?? db })) as typeof projectOrm.find;
 
   const softDeleteById = async (
     id: string,
