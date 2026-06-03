@@ -209,7 +209,8 @@ export const GitHubAppSelector = ({
                 </span>
               </TooltipTrigger>
               <TooltipContent>
-                Remove the connection{app.connectionCount === 1 ? "" : "s"} before deleting this app.
+                Remove the connection{app.connectionCount === 1 ? "" : "s"} before deleting this
+                app.
               </TooltipContent>
             </Tooltip>
           ) : (
