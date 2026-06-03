@@ -36,12 +36,12 @@ func main() {
 	if err != nil {
 		var validationErr *config.ValidationError
 		if errors.As(err, &validationErr) {
-			slog.ErrorContext(context.Background(), "invalid environment variables")
+			logger.ErrorContext(context.Background(), "invalid environment variables")
 			for _, issue := range validationErr.Issues {
-				slog.ErrorContext(context.Background(), "  "+issue)
+				logger.ErrorContext(context.Background(), "  "+issue)
 			}
 		} else {
-			slog.ErrorContext(context.Background(), "failed to load config", slog.Any("error", err))
+			logger.ErrorContext(context.Background(), "failed to load config", slog.Any("error", err))
 		}
 		os.Exit(1)
 	}

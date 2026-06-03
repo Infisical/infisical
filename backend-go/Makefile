@@ -1,10 +1,20 @@
-.PHONY: lint lint-fix test test-unit test-integration dev build generate test-hsm-image test-hsm
+.PHONY: lint lint-fix test test-unit test-integration dev build generate test-hsm-image test-hsm ensure-golangci-lint
+
+# golangci-lint version - keep in sync with .github/workflows/run-backend-go-tests.yml
+GOLANGCI_LINT_VERSION := v2.12.2
+
+# Ensure correct golangci-lint version is installed
+ensure-golangci-lint:
+	@if ! command -v golangci-lint >/dev/null 2>&1 || ! golangci-lint version 2>/dev/null | grep -q "$(GOLANGCI_LINT_VERSION:v%=%)"; then \
+		echo "Installing golangci-lint $(GOLANGCI_LINT_VERSION)..."; \
+		curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s -- -b $$(go env GOPATH)/bin $(GOLANGCI_LINT_VERSION); \
+	fi
 
 # Run linters
-lint:
+lint: ensure-golangci-lint
 	golangci-lint run --build-tags integration
 
-lint-fix:
+lint-fix: ensure-golangci-lint
 	go fix ./... && golangci-lint run --build-tags integration --fix
 
 # Run unit tests only (no testcontainers)
