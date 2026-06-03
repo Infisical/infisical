@@ -1,15 +1,17 @@
-package middlewares
+package apiauth
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"net"
 	"net/http"
 	"strings"
 
 	"github.com/infisical/api/internal/libs/errutil"
 	"github.com/infisical/api/internal/services/assumeprivilege"
+	"github.com/infisical/api/internal/services/auditlog"
 	"github.com/infisical/api/internal/services/auth"
-	"github.com/infisical/api/internal/services/auth/apiauth"
 )
 
 // AuthMode identifies which authentication mechanisms are allowed for a route.
@@ -20,14 +22,6 @@ const (
 	IdentityAccessTokenAuth
 	ServiceTokenAuth
 )
-
-// Authenticator defines the methods needed for token validation.
-type Authenticator interface {
-	// ValidateJWTToken validates any JWT (user or identity) and returns the identity and actual auth mode.
-	ValidateJWTToken(ctx context.Context, token, ipAddress string) (*auth.Identity, auth.AuthMode, error)
-	ValidateServiceToken(ctx context.Context, token string) (*auth.Identity, error)
-	AssumePrivilege() apiauth.AssumePrivilegeVerifier
-}
 
 const assumePrivilegeCookieName = "infisical-project-assume-privileges"
 
@@ -63,11 +57,11 @@ func WithAssumePrivilege(enabled bool) AuthOption {
 //
 // Usage:
 //
-//	RequireAuth(authenticator,
-//	    WithAuthModes(JWTAuth, IdentityAccessTokenAuth),
-//	    WithAssumePrivilege(false),
+//	authenticator.RequireAuth(
+//	    apiauth.WithAuthModes(apiauth.JWTAuth, apiauth.IdentityAccessTokenAuth),
+//	    apiauth.WithAssumePrivilege(false),
 //	)
-func RequireAuth(authenticator Authenticator, opts ...AuthOption) func(http.Handler) http.Handler {
+func (a *ApiAuthenticator) RequireAuth(opts ...AuthOption) func(http.Handler) http.Handler {
 	cfg := &authConfig{
 		allowedModes:    make(map[AuthMode]bool),
 		assumePrivilege: true,
@@ -78,33 +72,43 @@ func RequireAuth(authenticator Authenticator, opts ...AuthOption) func(http.Hand
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Extract HTTP info (IP, user-agent) first
+			userAgent := r.Header.Get("User-Agent")
+			httpInfo := &auth.HTTPInfo{
+				IPAddress:     getRealIP(r),
+				UserAgent:     userAgent,
+				UserAgentType: auditlog.GetUserAgentType(userAgent),
+			}
+			ctx := auth.WithHTTPInfo(r.Context(), httpInfo)
+
 			token := extractBearerToken(r)
 			if token == "" {
 				writeUnauthorized(w, "Missing authorization header")
 				return
 			}
 
-			ctx := r.Context()
 			var identity *auth.Identity
 			var actualMode AuthMode
 			var err error
 
 			// Classify and validate token
-			classifiedMode := apiauth.ClassifyToken(token)
+			classifiedMode := ClassifyToken(token)
 			switch classifiedMode {
 			case auth.AuthModeServiceToken:
-				identity, err = authenticator.ValidateServiceToken(ctx, token)
+				if !cfg.allowedModes[ServiceTokenAuth] {
+					writeUnauthorized(w, "Authentication method not allowed for this endpoint")
+					return
+				}
+				identity, err = a.ValidateServiceToken(ctx, token)
 				actualMode = ServiceTokenAuth
 
 			case auth.AuthModeJWT:
-				// JWT tokens are validated and typed in one call
-				ipAddress := ""
-				if httpInfo := auth.HTTPInfoFromContext(ctx); httpInfo != nil {
-					ipAddress = httpInfo.IPAddress
+				if !cfg.allowedModes[JWTAuth] && !cfg.allowedModes[IdentityAccessTokenAuth] {
+					writeUnauthorized(w, "Authentication method not allowed for this endpoint")
+					return
 				}
 				var authMode auth.AuthMode
-				identity, authMode, err = authenticator.ValidateJWTToken(ctx, token, ipAddress)
-				// Map the actual auth mode from validation
+				identity, authMode, err = a.ValidateJWTToken(ctx, token, httpInfo.IPAddress)
 				actualMode, _ = mapClassifiedMode(authMode)
 
 			default:
@@ -127,19 +131,22 @@ func RequireAuth(authenticator Authenticator, opts ...AuthOption) func(http.Hand
 				return
 			}
 
-			// Check if the actual token type is allowed for this endpoint
 			if !cfg.allowedModes[actualMode] {
 				writeUnauthorized(w, "Authentication method not allowed for this endpoint")
 				return
 			}
 
-			populateHTTPInfo(ctx, identity)
+			// Populate HTTP info on identity
+			identity.IPAddress = httpInfo.IPAddress
+			identity.UserAgent = httpInfo.UserAgent
+			identity.UserAgentType = httpInfo.UserAgentType
+
 			ctx = auth.WithIdentity(ctx, identity)
 
 			// Handle assume privilege for JWT auth
 			if cfg.assumePrivilege && identity.AuthMode == auth.AuthModeJWT {
-				if verifier := authenticator.AssumePrivilege(); verifier != nil {
-					ctx = injectAssumePrivilege(ctx, w, r, identity, verifier)
+				if a.assumePrivilege != nil {
+					ctx = injectAssumePrivilege(ctx, w, r, identity, a.assumePrivilege)
 				}
 			}
 
@@ -148,9 +155,35 @@ func RequireAuth(authenticator Authenticator, opts ...AuthOption) func(http.Hand
 	}
 }
 
+// getRealIP extracts the real client IP address from the request.
+// TODO: When Go becomes standalone, implement proper trusted proxy validation
+// similar to Node.js backend/src/server/plugins/ip.ts. For now, trust X-Real-IP
+// set by the Node.js proxy after its validation.
+func getRealIP(r *http.Request) string {
+	// X-Real-IP is set by Node.js proxy with the validated client IP
+	if xri := r.Header.Get("X-Real-IP"); xri != "" {
+		return strings.TrimSpace(xri)
+	}
+
+	// Check X-Forwarded-For header (may contain multiple IPs)
+	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+		// Take the first IP (original client)
+		if before, _, ok := strings.Cut(xff, ","); ok {
+			return strings.TrimSpace(before)
+		}
+		return strings.TrimSpace(xff)
+	}
+
+	// Fall back to RemoteAddr
+	ip, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		return r.RemoteAddr
+	}
+	return ip
+}
+
 // injectAssumePrivilege checks for assume privilege cookie and injects details into context.
-// Port of inject-assume-privilege.ts.
-func injectAssumePrivilege(ctx context.Context, w http.ResponseWriter, r *http.Request, identity *auth.Identity, verifier apiauth.AssumePrivilegeVerifier) context.Context {
+func injectAssumePrivilege(ctx context.Context, w http.ResponseWriter, r *http.Request, identity *auth.Identity, verifier AssumePrivilegeVerifier) context.Context {
 	cookie, err := r.Cookie(assumePrivilegeCookieName)
 	if err != nil || cookie.Value == "" {
 		return ctx
@@ -198,7 +231,7 @@ func extractBearerToken(r *http.Request) string {
 	return strings.TrimSpace(parts[1])
 }
 
-// mapClassifiedMode maps auth.AuthMode to middlewares.AuthMode.
+// mapClassifiedMode maps auth.AuthMode to apiauth.AuthMode.
 func mapClassifiedMode(mode auth.AuthMode) (AuthMode, bool) {
 	switch mode {
 	case auth.AuthModeJWT:
@@ -216,14 +249,8 @@ func mapClassifiedMode(mode auth.AuthMode) (AuthMode, bool) {
 func writeUnauthorized(w http.ResponseWriter, message string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusUnauthorized)
-	_, _ = w.Write([]byte(`{"code":"UnauthorizedError","message":"` + message + `"}`))
-}
-
-// populateHTTPInfo populates HTTP layer fields on the identity from context.
-func populateHTTPInfo(ctx context.Context, identity *auth.Identity) {
-	if httpInfo := auth.HTTPInfoFromContext(ctx); httpInfo != nil {
-		identity.IPAddress = httpInfo.IPAddress
-		identity.UserAgent = httpInfo.UserAgent
-		identity.UserAgentType = httpInfo.UserAgentType
-	}
+	_ = json.NewEncoder(w).Encode(map[string]string{
+		"code":    "UnauthorizedError",
+		"message": message,
+	})
 }

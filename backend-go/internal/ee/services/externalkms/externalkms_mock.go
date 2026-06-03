@@ -12,7 +12,7 @@ import (
 type MockProvider struct {
 	EncryptCalls int
 	DecryptCalls int
-	LastProvider string
+	LastProvider ProviderType
 	LastConfig   []byte
 	ShouldFail   bool
 	FailMessage  string
@@ -24,7 +24,7 @@ func NewMockProvider() *MockProvider {
 }
 
 // Encrypt implements the service interface using XOR "encryption".
-func (m *MockProvider) Encrypt(_ context.Context, provider string, config, plaintext []byte) ([]byte, error) {
+func (m *MockProvider) Encrypt(_ context.Context, provider ProviderType, config, plaintext []byte) ([]byte, error) {
 	m.EncryptCalls++
 	m.LastProvider = provider
 	m.LastConfig = config
@@ -46,7 +46,7 @@ func (m *MockProvider) Encrypt(_ context.Context, provider string, config, plain
 }
 
 // Decrypt implements the service interface using XOR "decryption".
-func (m *MockProvider) Decrypt(_ context.Context, provider string, config, ciphertext []byte) ([]byte, error) {
+func (m *MockProvider) Decrypt(_ context.Context, provider ProviderType, config, ciphertext []byte) ([]byte, error) {
 	m.DecryptCalls++
 	m.LastProvider = provider
 	m.LastConfig = config
@@ -71,7 +71,7 @@ func (m *MockProvider) Decrypt(_ context.Context, provider string, config, ciphe
 func (m *MockProvider) Reset() {
 	m.EncryptCalls = 0
 	m.DecryptCalls = 0
-	m.LastProvider = ""
+	m.LastProvider = ProviderType("")
 	m.LastConfig = nil
 	m.ShouldFail = false
 	m.FailMessage = ""

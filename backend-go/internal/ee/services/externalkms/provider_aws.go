@@ -12,10 +12,13 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 )
 
+// AwsCredentialType identifies the AWS credential type.
+type AwsCredentialType string
+
 // AWS credential types matching Node.js constants.
 const (
-	AwsCredentialTypeAccessKey  = "access-key"
-	AwsCredentialTypeAssumeRole = "assume-role"
+	AwsCredentialTypeAccessKey  AwsCredentialType = "access-key"
+	AwsCredentialTypeAssumeRole AwsCredentialType = "assume-role"
 )
 
 // AwsConfig holds the configuration for AWS KMS provider.
@@ -28,7 +31,7 @@ type AwsConfig struct {
 
 // AwsCredential represents AWS authentication credentials.
 type AwsCredential struct {
-	Type string
+	Type AwsCredentialType
 	Data AwsCredentialData
 }
 

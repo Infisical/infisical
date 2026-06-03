@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/url"
+	"strings"
 
 	kms "cloud.google.com/go/kms/apiv1"
 	"cloud.google.com/go/kms/apiv1/kmspb"
@@ -41,6 +43,10 @@ type gcpProvider struct {
 }
 
 func newGcpProvider(ctx context.Context, cfg *GcpConfig) (*gcpProvider, error) {
+	if err := validateGcpCredentialURLs(&cfg.Credential); err != nil {
+		return nil, err
+	}
+
 	credentialJSON, err := json.Marshal(cfg.Credential)
 	if err != nil {
 		return nil, fmt.Errorf("marshaling GCP credential: %w", err)
@@ -55,6 +61,44 @@ func newGcpProvider(ctx context.Context, cfg *GcpConfig) (*gcpProvider, error) {
 		client:  client,
 		keyName: cfg.KeyName,
 	}, nil
+}
+
+// validateGcpCredentialURLs validates that credential URLs point to Google domains.
+func validateGcpCredentialURLs(cred *GcpCredential) error {
+	urlsToValidate := map[string]string{
+		"auth_uri":  cred.AuthURI,
+		"token_uri": cred.TokenURI,
+	}
+
+	for field, rawURL := range urlsToValidate {
+		if rawURL == "" {
+			continue
+		}
+		if err := validateGoogleURL(rawURL); err != nil {
+			return fmt.Errorf("invalid %s: %w", field, err)
+		}
+	}
+	return nil
+}
+
+// validateGoogleURL checks that a URL points to a Google domain.
+func validateGoogleURL(rawURL string) error {
+	parsed, err := url.Parse(rawURL)
+	if err != nil {
+		return fmt.Errorf("invalid URL: %w", err)
+	}
+
+	if parsed.Scheme != "https" {
+		return fmt.Errorf("URL must use HTTPS")
+	}
+
+	host := strings.ToLower(parsed.Hostname())
+	if host == "google.com" || host == "googleapis.com" ||
+		strings.HasSuffix(host, ".google.com") || strings.HasSuffix(host, ".googleapis.com") {
+		return nil
+	}
+
+	return fmt.Errorf("URL host must be a Google domain (google.com or googleapis.com)")
 }
 
 func (p *gcpProvider) Encrypt(ctx context.Context, plaintext []byte) ([]byte, error) {

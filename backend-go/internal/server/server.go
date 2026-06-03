@@ -48,7 +48,6 @@ func (s *Server) Listen(ctx context.Context, addr string, wg *sync.WaitGroup, er
 	// Middleware stack (applied in reverse order - last wraps first)
 	// Inner middlewares (closest to handler) first, outer middlewares last
 	handler = requestLogger(handler, s.logger)
-	handler = middlewares.HTTPInfoMiddleware(handler)
 	handler = chimw.StripSlashes(handler)
 	handler = middlewares.Timeout(100 * time.Second)(handler) // Match Node.js connectionTimeout
 	handler = middlewares.CORS(s.buildCORSConfig())(handler)

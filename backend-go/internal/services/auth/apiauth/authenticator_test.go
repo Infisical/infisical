@@ -130,20 +130,20 @@ func TestCheckIPAgainstBlocklist(t *testing.T) {
 		{
 			name:       "CIDR match allows (Prefix field set)",
 			ipAddress:  "10.0.5.100",
-			trustedIPs: []TrustedIP{{IPAddress: "10.0.0.0", Prefix: 8}},
+			trustedIPs: []TrustedIP{{IPAddress: "10.0.0.0", Prefix: new(8)}},
 			wantErr:    false,
 		},
 		{
 			name:       "CIDR mismatch denies",
 			ipAddress:  "192.168.1.1",
-			trustedIPs: []TrustedIP{{IPAddress: "10.0.0.0", Prefix: 8}},
+			trustedIPs: []TrustedIP{{IPAddress: "10.0.0.0", Prefix: new(8)}},
 			wantErr:    true,
 		},
 		{
 			name:      "multiple entries - matches any",
 			ipAddress: "192.168.1.1",
 			trustedIPs: []TrustedIP{
-				{IPAddress: "10.0.0.0", Prefix: 8},
+				{IPAddress: "10.0.0.0", Prefix: new(8)},
 				{IPAddress: "192.168.1.1"},
 			},
 			wantErr: false,
@@ -151,19 +151,19 @@ func TestCheckIPAgainstBlocklist(t *testing.T) {
 		{
 			name:       "wildcard 0.0.0.0/0 allows any IPv4",
 			ipAddress:  "192.168.1.1",
-			trustedIPs: []TrustedIP{{IPAddress: "0.0.0.0", Prefix: 0}},
-			wantErr:    true, // Prefix 0 is not > 0, so it falls to exact match which fails
+			trustedIPs: []TrustedIP{{IPAddress: "0.0.0.0", Prefix: new(0)}},
+			wantErr:    false,
 		},
 		{
 			name:       "wildcard with Prefix 1 covers half of IPv4",
 			ipAddress:  "192.168.1.1",
-			trustedIPs: []TrustedIP{{IPAddress: "128.0.0.0", Prefix: 1}},
+			trustedIPs: []TrustedIP{{IPAddress: "128.0.0.0", Prefix: new(1)}},
 			wantErr:    false,
 		},
 		{
 			name:       "invalid incoming IP denies",
 			ipAddress:  "not-an-ip",
-			trustedIPs: []TrustedIP{{IPAddress: "0.0.0.0", Prefix: 1}},
+			trustedIPs: []TrustedIP{{IPAddress: "0.0.0.0", Prefix: new(1)}},
 			wantErr:    true,
 		},
 		{
@@ -175,13 +175,13 @@ func TestCheckIPAgainstBlocklist(t *testing.T) {
 		{
 			name:       "IPv6 address with IPv4 CIDR denies",
 			ipAddress:  "2001:db8::1",
-			trustedIPs: []TrustedIP{{IPAddress: "192.168.0.0", Prefix: 16}},
+			trustedIPs: []TrustedIP{{IPAddress: "192.168.0.0", Prefix: new(16)}},
 			wantErr:    true,
 		},
 		{
 			name:       "IPv4 address with IPv6 CIDR denies",
 			ipAddress:  "192.168.1.1",
-			trustedIPs: []TrustedIP{{IPAddress: "2001:db8::", Prefix: 32}},
+			trustedIPs: []TrustedIP{{IPAddress: "2001:db8::", Prefix: new(32)}},
 			wantErr:    true,
 		},
 		{
@@ -193,7 +193,7 @@ func TestCheckIPAgainstBlocklist(t *testing.T) {
 		{
 			name:       "IPv6 CIDR match allows",
 			ipAddress:  "2001:db8::1",
-			trustedIPs: []TrustedIP{{IPAddress: "2001:db8::", Prefix: 32}},
+			trustedIPs: []TrustedIP{{IPAddress: "2001:db8::", Prefix: new(32)}},
 			wantErr:    false,
 		},
 	}

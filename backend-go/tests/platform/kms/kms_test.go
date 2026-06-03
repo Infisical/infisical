@@ -371,7 +371,7 @@ func TestExternalKms_DecryptFlowCallsProvider(t *testing.T) {
 
 	// Verify the config was decrypted and passed to provider
 	require.JSONEq(t, string(expectedConfig), string(mock.LastConfig))
-	require.Equal(t, "aws", mock.LastProvider)
+	require.Equal(t, externalkms.ProviderAWS, mock.LastProvider)
 
 	// Local encrypt/decrypt uses the decrypted data key (no more external KMS calls)
 	plaintext := []byte("external kms test data")

@@ -17,14 +17,14 @@ import (
 
 // PlatformServices holds platform-level services shared across handlers.
 type PlatformServices struct {
-	Authenticator   *apiauth.Authenticator
-	Permission      *permission.Service
-	KMS             *kms.Service
-	License         *license.Service
-	Project         *project.Service
-	AuditLog        *auditlog.Service
-	AssumePrivilege *assumeprivilege.Service
-	RateLimit       *ratelimit.Service
+	ApiAuthenticator *apiauth.ApiAuthenticator
+	Permission       *permission.Service
+	KMS              *kms.Service
+	License          *license.Service
+	Project          *project.Service
+	AuditLog         *auditlog.Service
+	AssumePrivilege  *assumeprivilege.Service
+	RateLimit        *ratelimit.Service
 }
 
 func newPlatformServices(ctx context.Context, infra *Infra) (*PlatformServices, error) {
@@ -57,7 +57,7 @@ func newPlatformServices(ctx context.Context, infra *Infra) (*PlatformServices, 
 		PermissionService: permissionSvc,
 	})
 
-	authenticator := apiauth.NewAuthenticator(infra.Logger, infra.DB, infra.Config.AuthSecret, infra.KeyStore, assumePrivilegeSvc)
+	apiAuthenticator := apiauth.NewApiAuthenticator(infra.Logger, infra.DB, infra.Config.AuthSecret, infra.KeyStore, assumePrivilegeSvc)
 
 	auditLogSvc := auditlog.NewService(ctx, infra.Logger, &auditlog.Deps{
 		Queue:  infra.Queue,
@@ -81,14 +81,14 @@ func newPlatformServices(ctx context.Context, infra *Infra) (*PlatformServices, 
 	})
 
 	svc := &PlatformServices{
-		Authenticator:   authenticator,
-		Permission:      permissionSvc,
-		KMS:             kmsSvc,
-		License:         infra.License,
-		Project:         projectSvc,
-		AuditLog:        auditLogSvc,
-		AssumePrivilege: assumePrivilegeSvc,
-		RateLimit:       rateLimitSvc,
+		ApiAuthenticator: apiAuthenticator,
+		Permission:       permissionSvc,
+		KMS:              kmsSvc,
+		License:          infra.License,
+		Project:          projectSvc,
+		AuditLog:         auditLogSvc,
+		AssumePrivilege:  assumePrivilegeSvc,
+		RateLimit:        rateLimitSvc,
 	}
 
 	return svc, nil

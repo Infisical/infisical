@@ -8,7 +8,7 @@ import (
 	"github.com/infisical/api/internal/ee/services/ratelimit"
 	"github.com/infisical/api/internal/server/api/secretmanager/secret"
 	"github.com/infisical/api/internal/server/api/shared"
-	"github.com/infisical/api/internal/server/middlewares"
+	"github.com/infisical/api/internal/services/auth/apiauth"
 )
 
 // RegisterSecretManagerRoutes initializes secret manager handlers and registers their routes.
@@ -28,9 +28,8 @@ func RegisterSecretManagerRoutes(router chi.Router, logger *slog.Logger, platfor
 
 	// Secrets routes - all require authentication
 	router.Group(func(r chi.Router) {
-		r.Use(middlewares.RequireAuth(
-			platform.Authenticator,
-			middlewares.WithAuthModes(middlewares.JWTAuth, middlewares.IdentityAccessTokenAuth, middlewares.ServiceTokenAuth),
+		r.Use(platform.ApiAuthenticator.RequireAuth(
+			apiauth.WithAuthModes(apiauth.JWTAuth, apiauth.IdentityAccessTokenAuth, apiauth.ServiceTokenAuth),
 		))
 		r.Use(platform.RateLimit.Middleware(ratelimit.PresetSecrets))
 

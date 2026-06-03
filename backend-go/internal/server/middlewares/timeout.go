@@ -34,10 +34,11 @@ func Timeout(duration time.Duration) func(http.Handler) http.Handler {
 					tw.mu.Lock()
 					defer tw.mu.Unlock()
 
-					if !tw.written {
+					if !tw.wroteHeader {
+						tw.timedOut = true
 						reqID := requestid.FromContext(r.Context())
-						w.Header().Set("Content-Type", "application/json")
-						w.WriteHeader(http.StatusGatewayTimeout)
+						tw.ResponseWriter.Header().Set("Content-Type", "application/json")
+						tw.ResponseWriter.WriteHeader(http.StatusGatewayTimeout)
 
 						resp := errorResponse{
 							ReqID:      reqID,
@@ -45,7 +46,7 @@ func Timeout(duration time.Duration) func(http.Handler) http.Handler {
 							ErrorData:  "GatewayTimeoutError",
 							Message:    "Request timed out",
 						}
-						_ = json.NewEncoder(w).Encode(resp)
+						_ = json.NewEncoder(tw.ResponseWriter).Encode(resp)
 					}
 				}
 			}
@@ -54,26 +55,36 @@ func Timeout(duration time.Duration) func(http.Handler) http.Handler {
 }
 
 // timeoutWriter wraps http.ResponseWriter to track if headers were written.
+// It prevents the timeout path from overwriting a handler's response, and
+// prevents the handler from writing after the timeout has responded.
 type timeoutWriter struct {
 	http.ResponseWriter
-	mu      sync.Mutex
-	written bool
+	mu          sync.Mutex
+	timedOut    bool // true if timeout path has taken over the response
+	wroteHeader bool // true if any WriteHeader call succeeded
 }
 
 func (tw *timeoutWriter) WriteHeader(code int) {
 	tw.mu.Lock()
 	defer tw.mu.Unlock()
-	if !tw.written {
-		tw.written = true
-		tw.ResponseWriter.WriteHeader(code)
+	if tw.timedOut || tw.wroteHeader {
+		return
 	}
+	tw.wroteHeader = true
+	tw.ResponseWriter.WriteHeader(code)
 }
 
 func (tw *timeoutWriter) Write(b []byte) (int, error) {
 	tw.mu.Lock()
 	defer tw.mu.Unlock()
-	if !tw.written {
-		tw.written = true
+	if tw.timedOut {
+		// Timeout already wrote response, discard handler's late writes
+		return len(b), nil
+	}
+	if !tw.wroteHeader {
+		// Implicit WriteHeader(200) per http.ResponseWriter contract
+		tw.wroteHeader = true
+		tw.ResponseWriter.WriteHeader(http.StatusOK)
 	}
 	return tw.ResponseWriter.Write(b)
 }

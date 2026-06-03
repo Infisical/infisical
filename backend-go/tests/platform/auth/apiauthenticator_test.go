@@ -27,7 +27,7 @@ import (
 
 var (
 	stack         *infra.Stack
-	authenticator *apiauth.Authenticator
+	authenticator *apiauth.ApiAuthenticator
 	memKeyStore   *keystore.MemoryKeyStore
 )
 
@@ -39,7 +39,7 @@ func TestMain(m *testing.M) {
 		MustStart()
 
 	memKeyStore = keystore.NewMemoryKeyStore()
-	authenticator = apiauth.NewAuthenticator(slog.Default(), stack.DB(), infra.AuthSecret, memKeyStore, nil)
+	authenticator = apiauth.NewApiAuthenticator(slog.Default(), stack.DB(), infra.AuthSecret, memKeyStore, nil)
 
 	code := m.Run()
 	stack.Stop()
@@ -1001,10 +1001,11 @@ func TestValidateIdentityAccessToken_IPBlocked(t *testing.T) {
 	token := nodejs.GetIdentityAccessToken(t, identity.ID)
 
 	// Update the trusted IPs to only allow a specific IP (not 192.168.1.1)
-	// Use proper JSON format matching what Infisical stores
+	// Use proper JSON format matching what Infisical stores.
+	// No "prefix" field means exact IP match; "prefix":0 would mean /0 (all IPs).
 	_, err := stack.DB().Primary().Exec(context.Background(), `
 		UPDATE identity_universal_auths
-		SET "accessTokenTrustedIps" = '[{"ipAddress":"10.0.0.1","type":"ipv4","prefix":0}]'::jsonb
+		SET "accessTokenTrustedIps" = '[{"ipAddress":"10.0.0.1","type":"ipv4"}]'::jsonb
 		WHERE "identityId" = @identityID
 	`, pgx.NamedArgs{"identityID": uuid.MustParse(identity.ID)})
 	require.NoError(t, err)

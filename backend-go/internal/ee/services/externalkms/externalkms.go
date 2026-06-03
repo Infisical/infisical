@@ -5,12 +5,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+
+	"github.com/infisical/api/internal/libs/errutil"
 )
 
-// Provider identifies the external KMS provider type.
+// ProviderType identifies the external KMS provider type.
+type ProviderType string
+
 const (
-	ProviderAWS = "aws"
-	ProviderGCP = "gcp"
+	ProviderAWS ProviderType = "aws"
+	ProviderGCP ProviderType = "gcp"
 )
 
 // Service provides encryption/decryption via external KMS providers (AWS, GCP).
@@ -31,24 +35,24 @@ func NewService(_ context.Context, logger *slog.Logger, _ *Deps) (*Service, erro
 
 // Encrypt encrypts plaintext using the specified external KMS provider.
 // The config parameter contains the decrypted provider configuration JSON.
-func (s *Service) Encrypt(ctx context.Context, provider string, config, plaintext []byte) ([]byte, error) {
+func (s *Service) Encrypt(ctx context.Context, provider ProviderType, config, plaintext []byte) ([]byte, error) {
 	p, err := s.createProvider(ctx, provider, config)
 	if err != nil {
 		return nil, err
 	}
-	defer p.Close() //nolint:errcheck // best-effort cleanup
+	defer errutil.DeferErr(ctx, p.Close, "closing external KMS provider")
 
 	return p.Encrypt(ctx, plaintext)
 }
 
 // Decrypt decrypts ciphertext using the specified external KMS provider.
 // The config parameter contains the decrypted provider configuration JSON.
-func (s *Service) Decrypt(ctx context.Context, provider string, config, ciphertext []byte) ([]byte, error) {
+func (s *Service) Decrypt(ctx context.Context, provider ProviderType, config, ciphertext []byte) ([]byte, error) {
 	p, err := s.createProvider(ctx, provider, config)
 	if err != nil {
 		return nil, err
 	}
-	defer p.Close() //nolint:errcheck // best-effort cleanup
+	defer errutil.DeferErr(ctx, p.Close, "closing external KMS provider")
 
 	return p.Decrypt(ctx, ciphertext)
 }
@@ -60,7 +64,7 @@ type provider interface {
 	Close() error
 }
 
-func (s *Service) createProvider(ctx context.Context, providerType string, config []byte) (provider, error) {
+func (s *Service) createProvider(ctx context.Context, providerType ProviderType, config []byte) (provider, error) {
 	switch providerType {
 	case ProviderAWS:
 		var cfg AwsConfig

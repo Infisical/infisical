@@ -22,6 +22,7 @@ type RedisCounter struct {
 	fallbackCounter   httprate.LimitCounter
 	fallbackTimeout   time.Duration
 	logger            *slog.Logger
+	done              chan struct{}
 }
 
 var _ httprate.LimitCounter = (*RedisCounter)(nil)
@@ -51,6 +52,17 @@ func NewRedisCounter(cfg *RedisCounterConfig) *RedisCounter {
 		prefixKey:       prefixKey,
 		fallbackTimeout: fallbackTimeout,
 		logger:          cfg.Logger,
+		done:            make(chan struct{}),
+	}
+}
+
+// Close stops the reconnect goroutine if running.
+func (c *RedisCounter) Close() {
+	select {
+	case <-c.done:
+		// Already closed
+	default:
+		close(c.done)
 	}
 }
 
@@ -170,19 +182,25 @@ func (c *RedisCounter) shouldFallback(err error) bool {
 }
 
 func (c *RedisCounter) reconnect() {
+	ticker := time.NewTicker(200 * time.Millisecond)
+	defer ticker.Stop()
+
 	for {
-		time.Sleep(200 * time.Millisecond)
-
-		ctx, cancel := context.WithTimeout(context.Background(), c.fallbackTimeout)
-		err := c.client.Ping(ctx).Err()
-		cancel()
-
-		if err == nil {
-			c.fallbackActivated.Store(false)
-			if c.logger != nil {
-				c.logger.InfoContext(context.Background(), "rate limit redis reconnected")
-			}
+		select {
+		case <-c.done:
 			return
+		case <-ticker.C:
+			ctx, cancel := context.WithTimeout(context.Background(), c.fallbackTimeout)
+			err := c.client.Ping(ctx).Err()
+			cancel()
+
+			if err == nil {
+				c.fallbackActivated.Store(false)
+				if c.logger != nil {
+					c.logger.InfoContext(context.Background(), "rate limit redis reconnected")
+				}
+				return
+			}
 		}
 	}
 }

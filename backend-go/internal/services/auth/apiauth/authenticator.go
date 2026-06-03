@@ -31,9 +31,9 @@ type AssumePrivilegeVerifier interface {
 	VerifyAssumePrivilegeToken(ctx context.Context, opts *assumeprivilege.VerifyTokenOpts) (*auth.AssumedPrivilegeDetails, error)
 }
 
-// Authenticator performs token validation for various auth methods.
+// ApiAuthenticator performs token validation for various auth methods.
 // It's an exact port of the Node.js inject-identity logic.
-type Authenticator struct {
+type ApiAuthenticator struct {
 	logger          *slog.Logger
 	db              pg.DB
 	keyStore        keystore.KeyStore
@@ -41,22 +41,22 @@ type Authenticator struct {
 	assumePrivilege AssumePrivilegeVerifier
 }
 
-// NewAuthenticator creates an Authenticator with real validation backed by pg.DB.
+// NewApiAuthenticator creates an ApiAuthenticator with real validation backed by pg.DB.
 // keyStore can be nil for tests that don't need Redis-backed features.
 // assumePrivilege can be nil if assume privilege feature is not needed.
-func NewAuthenticator(logger *slog.Logger, db pg.DB, authSecret string, keyStore keystore.KeyStore, assumePrivilege AssumePrivilegeVerifier) *Authenticator {
-	return &Authenticator{logger: logger, db: db, authSecret: []byte(authSecret), keyStore: keyStore, assumePrivilege: assumePrivilege}
+func NewApiAuthenticator(logger *slog.Logger, db pg.DB, authSecret string, keyStore keystore.KeyStore, assumePrivilege AssumePrivilegeVerifier) *ApiAuthenticator {
+	return &ApiAuthenticator{logger: logger, db: db, authSecret: []byte(authSecret), keyStore: keyStore, assumePrivilege: assumePrivilege}
 }
 
 // AssumePrivilege returns the assume privilege verifier.
-func (a *Authenticator) AssumePrivilege() AssumePrivilegeVerifier {
+func (a *ApiAuthenticator) AssumePrivilege() AssumePrivilegeVerifier {
 	return a.assumePrivilege
 }
 
 // ValidateJWTToken parses a JWT once, routes based on authTokenType, and validates.
 // This is the unified entry point for all JWT validation.
 // Returns (identity, authMode, error) where authMode indicates the actual token type.
-func (a *Authenticator) ValidateJWTToken(ctx context.Context, token, ipAddress string) (*auth.Identity, auth.AuthMode, error) {
+func (a *ApiAuthenticator) ValidateJWTToken(ctx context.Context, token, ipAddress string) (*auth.Identity, auth.AuthMode, error) {
 	claims, err := parseJWT(token, a.authSecret)
 	if err != nil {
 		return nil, "", errutil.Unauthorized("Invalid JWT token").WithErrf("validateJWTToken: %w", err)
@@ -78,7 +78,7 @@ func (a *Authenticator) ValidateJWTToken(ctx context.Context, token, ipAddress s
 
 // ValidateJWT validates a user JWT token.
 // For unified JWT handling that auto-routes based on token type, use ValidateJWTToken.
-func (a *Authenticator) ValidateJWT(ctx context.Context, token string) (*auth.Identity, error) {
+func (a *ApiAuthenticator) ValidateJWT(ctx context.Context, token string) (*auth.Identity, error) {
 	claims, err := parseJWT(token, a.authSecret)
 	if err != nil {
 		return nil, errutil.Unauthorized("Invalid JWT token").WithErrf("validateJWT: %w", err)
@@ -92,7 +92,7 @@ func (a *Authenticator) ValidateJWT(ctx context.Context, token string) (*auth.Id
 }
 
 // validateUserTokenClaims validates pre-parsed user JWT claims.
-func (a *Authenticator) validateUserTokenClaims(ctx context.Context, claims *UserJWTClaims) (*auth.Identity, error) {
+func (a *ApiAuthenticator) validateUserTokenClaims(ctx context.Context, claims *UserJWTClaims) (*auth.Identity, error) {
 	// 1. Find session by tokenVersionId + userId.
 	session, err := a.findSessionByIDAndUserID(ctx, claims.TokenVersionID, claims.UserID)
 	if err != nil {
@@ -225,7 +225,7 @@ func (a *Authenticator) validateUserTokenClaims(ctx context.Context, claims *Use
 
 // ValidateIdentityAccessToken validates an identity access token.
 // For unified JWT handling that auto-routes based on token type, use ValidateJWTToken.
-func (a *Authenticator) ValidateIdentityAccessToken(ctx context.Context, token, ipAddress string) (*auth.Identity, error) {
+func (a *ApiAuthenticator) ValidateIdentityAccessToken(ctx context.Context, token, ipAddress string) (*auth.Identity, error) {
 	claims, err := parseJWT(token, a.authSecret)
 	if err != nil {
 		return nil, errutil.Unauthorized("You are not allowed to access this resource").WithErrf("validateIdentityAccessToken: JWT parse failed: %w", err)
@@ -239,7 +239,7 @@ func (a *Authenticator) ValidateIdentityAccessToken(ctx context.Context, token, 
 }
 
 // validateIdentityTokenClaims validates pre-parsed identity JWT claims.
-func (a *Authenticator) validateIdentityTokenClaims(ctx context.Context, claims *IdentityJWTClaims, ipAddress string) (*auth.Identity, error) {
+func (a *ApiAuthenticator) validateIdentityTokenClaims(ctx context.Context, claims *IdentityJWTClaims, ipAddress string) (*auth.Identity, error) {
 	// 1. Resolve token source - new format uses JWT claims, legacy falls back to DB.
 	var (
 		identityID   = claims.IdentityID
@@ -374,7 +374,7 @@ func (a *Authenticator) validateIdentityTokenClaims(ctx context.Context, claims 
 
 // ValidateServiceToken performs real service token validation.
 // Exact port of fnValidateServiceToken in service-token-service.ts:172-199.
-func (a *Authenticator) ValidateServiceToken(ctx context.Context, token string) (*auth.Identity, error) {
+func (a *ApiAuthenticator) ValidateServiceToken(ctx context.Context, token string) (*auth.Identity, error) {
 	// 1. Split token: "st.<tokenID>.<tokenSecret>"
 	parts := strings.SplitN(token, ".", 3)
 	if len(parts) != 3 || parts[0] != "st" {
@@ -519,7 +519,7 @@ type membershipRow struct {
 // --- Query methods ---
 
 // findSessionByIDAndUserID returns the session matching id + userId, or nil if not found.
-func (a *Authenticator) findSessionByIDAndUserID(ctx context.Context, sessionID, userID uuid.UUID) (*sessionRow, error) {
+func (a *ApiAuthenticator) findSessionByIDAndUserID(ctx context.Context, sessionID, userID uuid.UUID) (*sessionRow, error) {
 	query := `
 		SELECT "accessVersion", "userId"
 		FROM auth_token_sessions
@@ -540,7 +540,7 @@ func (a *Authenticator) findSessionByIDAndUserID(ctx context.Context, sessionID,
 }
 
 // findUserByID returns the user matching id, or nil if not found.
-func (a *Authenticator) findUserByID(ctx context.Context, id uuid.UUID) (*userRow, error) {
+func (a *ApiAuthenticator) findUserByID(ctx context.Context, id uuid.UUID) (*userRow, error) {
 	query := `
 		SELECT id, email, username, "isAccepted", "superAdmin", "isLocked", "temporaryLockDateEnd"
 		FROM users
@@ -561,7 +561,7 @@ func (a *Authenticator) findUserByID(ctx context.Context, id uuid.UUID) (*userRo
 }
 
 // findOrgByID returns the organization matching id, or nil if not found.
-func (a *Authenticator) findOrgByID(ctx context.Context, id uuid.UUID) (*orgRow, error) {
+func (a *ApiAuthenticator) findOrgByID(ctx context.Context, id uuid.UUID) (*orgRow, error) {
 	query := `
 		SELECT id, name, "rootOrgId", "parentOrgId"
 		FROM organizations
@@ -582,7 +582,7 @@ func (a *Authenticator) findOrgByID(ctx context.Context, id uuid.UUID) (*orgRow,
 }
 
 // findProjectByID returns the project matching id, or nil if not found.
-func (a *Authenticator) findProjectByID(ctx context.Context, id string) (*projectRow, error) {
+func (a *ApiAuthenticator) findProjectByID(ctx context.Context, id string) (*projectRow, error) {
 	query := `
 		SELECT "orgId"
 		FROM projects
@@ -603,7 +603,7 @@ func (a *Authenticator) findProjectByID(ctx context.Context, id string) (*projec
 }
 
 // findIdentityAccessTokenByID returns the token (joined with identity), or nil if not found.
-func (a *Authenticator) findIdentityAccessTokenByID(ctx context.Context, id string) (*identityAccessTokenRow, error) {
+func (a *ApiAuthenticator) findIdentityAccessTokenByID(ctx context.Context, id string) (*identityAccessTokenRow, error) {
 	query := `
 		SELECT
 			token.id,
@@ -654,7 +654,7 @@ func (a *Authenticator) findIdentityAccessTokenByID(ctx context.Context, id stri
 }
 
 // findServiceTokenByID returns the service token matching id, or nil.
-func (a *Authenticator) findServiceTokenByID(ctx context.Context, id string) (*serviceTokenRow, error) {
+func (a *ApiAuthenticator) findServiceTokenByID(ctx context.Context, id string) (*serviceTokenRow, error) {
 	query := `
 		SELECT id, name, "projectId", "expiresAt", "secretHash"
 		FROM service_tokens
@@ -675,7 +675,7 @@ func (a *Authenticator) findServiceTokenByID(ctx context.Context, id string) (*s
 }
 
 // deleteServiceTokenByID deletes the service token on primary. Used for expired tokens.
-func (a *Authenticator) deleteServiceTokenByID(ctx context.Context, id uuid.UUID) error {
+func (a *ApiAuthenticator) deleteServiceTokenByID(ctx context.Context, id uuid.UUID) error {
 	query := `DELETE FROM service_tokens WHERE id = @id`
 	args := pgx.NamedArgs{"id": id}
 	_, err := a.db.Primary().Exec(ctx, query, args)
@@ -685,7 +685,7 @@ func (a *Authenticator) deleteServiceTokenByID(ctx context.Context, id uuid.UUID
 // findEffectiveOrgMembership returns the first effective org membership for an actor (user or identity),
 // including direct membership and membership via groups.
 // Exact port of Node.js orgDAL.findEffectiveOrgMembership.
-func (a *Authenticator) findEffectiveOrgMembership(ctx context.Context, actorType auth.ActorType, actorID, orgID uuid.UUID, filterStatus string) (*membershipRow, error) {
+func (a *ApiAuthenticator) findEffectiveOrgMembership(ctx context.Context, actorType auth.ActorType, actorID, orgID uuid.UUID, filterStatus string) (*membershipRow, error) {
 	var actorCondition string
 	if actorType == auth.ActorTypeUser {
 		actorCondition = `(
@@ -742,7 +742,7 @@ func (a *Authenticator) findEffectiveOrgMembership(ctx context.Context, actorTyp
 
 // findTrustedIPsByAuthMethod returns the parsed trusted IPs for an identity's auth method.
 // Exact port of Node.js identityDAL.getTrustedIpsByAuthMethod.
-func (a *Authenticator) findTrustedIPsByAuthMethod(ctx context.Context, identityID uuid.UUID, authMethod auth.IdentityAuthMethod) ([]TrustedIP, error) {
+func (a *ApiAuthenticator) findTrustedIPsByAuthMethod(ctx context.Context, identityID uuid.UUID, authMethod auth.IdentityAuthMethod) ([]TrustedIP, error) {
 	var tableName string
 	switch authMethod {
 	case auth.IdentityAuthMethodUniversal:
@@ -808,7 +808,7 @@ type revocationRow struct {
 
 // assertTokenIsNotRevoked checks if the token or identity has been revoked.
 // Port of assertTokenIsNotRevoked in identity-access-token-service.ts:92-120.
-func (a *Authenticator) assertTokenIsNotRevoked(ctx context.Context, tokenID string, identityID uuid.UUID, issuedAtMs int64) error {
+func (a *ApiAuthenticator) assertTokenIsNotRevoked(ctx context.Context, tokenID string, identityID uuid.UUID, issuedAtMs int64) error {
 	revocations, err := a.findActiveRevocationsForToken(ctx, tokenID, identityID)
 	if err != nil {
 		return errutil.DatabaseErr("Failed to check token revocation").WithErrf("assertTokenIsNotRevoked(tokenId=%s, identityId=%s): %w", tokenID, identityID, err)
@@ -837,7 +837,7 @@ func (a *Authenticator) assertTokenIsNotRevoked(ctx context.Context, tokenID str
 
 // findActiveRevocationsForToken returns active revocations for the token or identity.
 // Port of findActiveRevocationsForToken in identity-access-token-revocation-dal.ts:36-56.
-func (a *Authenticator) findActiveRevocationsForToken(ctx context.Context, tokenID string, identityID uuid.UUID) ([]revocationRow, error) {
+func (a *ApiAuthenticator) findActiveRevocationsForToken(ctx context.Context, tokenID string, identityID uuid.UUID) ([]revocationRow, error) {
 	query := `
 		SELECT id, "revokedAt", "createdAt"
 		FROM identity_access_token_revocations
@@ -870,7 +870,7 @@ func (a *Authenticator) findActiveRevocationsForToken(ctx context.Context, token
 
 // checkAndDecrementUsesRemaining checks and decrements the usage counter for the token.
 // Port of usage tracking logic in fnValidateIdentityAccessTokenFast.
-func (a *Authenticator) checkAndDecrementUsesRemaining(ctx context.Context, identityID uuid.UUID, tokenID string, numUsesLimit int64) error {
+func (a *ApiAuthenticator) checkAndDecrementUsesRemaining(ctx context.Context, identityID uuid.UUID, tokenID string, numUsesLimit int64) error {
 	key := identityTokenUsesRemainingKey(identityID.String(), tokenID)
 
 	// Get current usage counter

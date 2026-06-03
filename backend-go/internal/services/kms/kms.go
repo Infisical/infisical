@@ -15,6 +15,7 @@ import (
 
 	"github.com/infisical/api/internal/config"
 	"github.com/infisical/api/internal/database/pg"
+	"github.com/infisical/api/internal/ee/services/externalkms"
 	"github.com/infisical/api/internal/libs/crypto/cipher"
 	"github.com/infisical/api/internal/libs/errutil"
 )
@@ -78,8 +79,8 @@ type HsmService interface {
 // ExternalKmsService defines external KMS operations (AWS, GCP).
 // Pass nil when external KMS is not configured.
 type ExternalKmsService interface {
-	Encrypt(ctx context.Context, provider string, config, plaintext []byte) ([]byte, error)
-	Decrypt(ctx context.Context, provider string, config, ciphertext []byte) ([]byte, error)
+	Encrypt(ctx context.Context, provider externalkms.ProviderType, config, plaintext []byte) ([]byte, error)
+	Decrypt(ctx context.Context, provider externalkms.ProviderType, config, ciphertext []byte) ([]byte, error)
 }
 
 // Service manages the KMS key hierarchy:
@@ -353,7 +354,7 @@ func (s *Service) decryptWithKmsKey(ctx context.Context, kmsKeyID uuid.UUID, cip
 			return nil, fmt.Errorf("KMS: decrypting external KMS config: %w", err)
 		}
 
-		return s.externalKms.Decrypt(ctx, externalProvider.V, decryptedConfig, ciphertext)
+		return s.externalKms.Decrypt(ctx, externalkms.ProviderType(externalProvider.V), decryptedConfig, ciphertext)
 	}
 
 	// Internal KMS: decrypt key material, then decrypt ciphertext locally
