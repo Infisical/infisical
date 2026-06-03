@@ -3,13 +3,16 @@
 package secrets_test
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http/httptest"
 	"net/url"
 	"strconv"
 	"testing"
+	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -921,6 +924,16 @@ func TestListSecrets_SoftDeletedEnvironment(t *testing.T) {
 	})
 
 	nodejs.SoftDeleteEnvironment(t, proj.ID, customEnv.ID)
+
+	t.Run("environment row still exists in DB with softDeletedAt set", func(t *testing.T) {
+		var softDeletedAt *time.Time
+		err := stack.DB().Replica().QueryRow(context.Background(), `
+			SELECT "softDeletedAt" FROM project_environments WHERE id = @envID
+		`, pgx.NamedArgs{"envID": customEnv.ID}).Scan(&softDeletedAt)
+
+		require.NoError(t, err, "environment row should still exist in database")
+		require.NotNil(t, softDeletedAt, "softDeletedAt should be set (not NULL)")
+	})
 
 	t.Run("soft deleted environment returns not found", func(t *testing.T) {
 		_, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &ListSecretsV4Params{
