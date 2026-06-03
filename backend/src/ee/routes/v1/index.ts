@@ -19,6 +19,7 @@ import { registerEmailDomainRouter } from "./email-domain-router";
 import { registerExternalKmsRouter } from "./external-kms-router";
 import { EXTERNAL_KMS_REGISTER_ROUTER_MAP } from "./external-kms-routers";
 import { registerGatewayPoolRouter } from "./gateway-pool-router";
+import { registerGatewayRouter } from "./gateway-router";
 import { registerGithubOrgSyncRouter } from "./github-org-sync-router";
 import { registerGroupRouter } from "./group-router";
 import { registerHoneyTokenRouter } from "./honey-token-router";
@@ -119,6 +120,7 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
     { prefix: "/dynamic-secrets" }
   );
 
+  await server.register(registerGatewayRouter, { prefix: "/gateways" });
   await server.register(registerGatewayPoolRouter, { prefix: "/gateway-pools" });
   await server.register(registerRelayRouter, { prefix: "/relays" });
   await server.register(registerGithubOrgSyncRouter, { prefix: "/github-org-sync-config" });
