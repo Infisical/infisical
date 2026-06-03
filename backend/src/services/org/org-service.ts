@@ -16,6 +16,7 @@ import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-grou
 import { TLdapConfigDALFactory } from "@app/ee/services/ldap-config/ldap-config-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TOidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
+import { bootstrapPamProject } from "@app/ee/services/pam-instance/pam-project-bootstrap";
 import {
   OrgPermissionActions,
   OrgPermissionGroupActions,
@@ -690,6 +691,15 @@ export const orgServiceFactory = ({
           adminUserIds: userId ? [userId] : []
         },
         { projectDAL, membershipDAL, membershipRoleDAL, certificatePolicyDAL },
+        tx
+      );
+
+      await bootstrapPamProject(
+        {
+          orgId: org.id,
+          adminUserIds: userId ? [userId] : []
+        },
+        { projectDAL, membershipDAL, membershipRoleDAL },
         tx
       );
 

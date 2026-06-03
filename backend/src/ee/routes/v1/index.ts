@@ -1,5 +1,6 @@
 import { registerProjectTemplateRouter } from "@app/ee/routes/v1/project-template-router";
 import { injectCertManagerProjectId } from "@app/server/plugins/inject-cert-manager-project-id";
+import { injectPamProjectId } from "@app/server/plugins/inject-pam-project-id";
 
 import { registerAccessApprovalPolicyRouter } from "./access-approval-policy-router";
 import { registerAccessApprovalRequestRouter } from "./access-approval-request-router";
@@ -216,6 +217,7 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
 
   await server.register(
     async (pamRouter) => {
+      await pamRouter.register(injectPamProjectId);
       await pamRouter.register(registerPamFolderRouter, { prefix: "/folders" });
       await pamRouter.register(
         async (sessionRouter) => {

@@ -112,6 +112,7 @@ import { pamDomainServiceFactory } from "@app/ee/services/pam-domain/pam-domain-
 import { pamFolderDALFactory } from "@app/ee/services/pam-folder/pam-folder-dal";
 import { pamFolderServiceFactory } from "@app/ee/services/pam-folder/pam-folder-service";
 import { pamInsightsServiceFactory } from "@app/ee/services/pam-insights/pam-insights-service";
+import { pamProjectResolverFactory } from "@app/ee/services/pam-instance/pam-project-resolver";
 import { pamProjectRecordingConfigDALFactory } from "@app/ee/services/pam-project-recording-config/pam-project-recording-config-dal";
 import { pamProjectRecordingConfigServiceFactory } from "@app/ee/services/pam-project-recording-config/pam-project-recording-config-service";
 import { pamResourceDALFactory } from "@app/ee/services/pam-resource/pam-resource-dal";
@@ -1516,6 +1517,10 @@ export const registerRoutes = async (
   const certManagerProjectResolver = certManagerProjectResolverFactory({
     orgDAL,
     projectDAL
+  });
+
+  const pamProjectResolver = pamProjectResolverFactory({
+    orgDAL
   });
 
   const certManagerInstanceService = certManagerInstanceServiceFactory({
@@ -3609,6 +3614,7 @@ export const registerRoutes = async (
     signerPolicy: signerPolicyService,
     pkiApplicationEnrollment: pkiApplicationEnrollmentService,
     certManagerProjectResolver,
+    pamProjectResolver,
     certManagerInstance: certManagerInstanceService,
     certManagerExport: certManagerExportService,
     certificateAuthorityCrl: certificateAuthorityCrlService,

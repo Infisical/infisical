@@ -9,8 +9,7 @@ import { TImmutableDBKeys } from "./models";
 
 export const PamFoldersSchema = z.object({
   id: z.string().uuid(),
-  projectId: z.string(),
-  parentId: z.string().uuid().nullable().optional(),
+  orgId: z.string().uuid(),
   name: z.string(),
   description: z.string().nullable().optional(),
   createdAt: z.date(),
