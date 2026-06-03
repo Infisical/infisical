@@ -114,7 +114,7 @@ export const ExternalGroupOrgRoleMappings = () => {
                   control={control}
                   name={`mappings.${i}.groupName`}
                   render={({ field, fieldState: { error } }) => (
-                    <Field className="al flex-1">
+                    <Field className="flex-1">
                       {i === 0 && (
                         <FieldLabel
                           htmlFor={`mappings.${i}.groupName`}

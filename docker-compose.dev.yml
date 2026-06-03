@@ -115,7 +115,7 @@ services:
       - TELEMETRY_ENABLED=false
       # Dev-only: lets the backend accept PingFederate's self-signed cert when testing
       # OIDC locally via `make up-dev-pingfed`. NEVER set this in production.
-      # NODE_TLS_REJECT_UNAUTHORIZED=0
+      # - NODE_TLS_REJECT_UNAUTHORIZED=0
     volumes:
       - ./backend/src:/app/src
       - softhsm_tokens:/etc/softhsm2/tokens # SoftHSM tokens are stored in a volume to persist across container restarts
