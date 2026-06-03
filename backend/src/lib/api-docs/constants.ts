@@ -3021,6 +3021,9 @@ export const SecretSyncs = {
     },
     AZURE_KEY_VAULT: {
       vaultBaseUrl: "The base URL of the Azure Key Vault to sync secrets to. Example: https://example.vault.azure.net/",
+      mappingBehavior:
+        "How Infisical should map secrets to Azure Key Vault. 'one-to-one' maps each secret individually; 'many-to-one' consolidates all secrets into a single JSON-valued Azure Key Vault secret.",
+      secretName: "The name of the Azure Key Vault secret to sync to when using many-to-one mapping behavior.",
       tenantId: "The Tenant ID to use to connect with Azure Client Secrets.",
       clientId: "The Client ID to use to connect with Azure Client Secrets.",
       clientSecret: "The Client Secret to use to connect with Azure Client Secrets."

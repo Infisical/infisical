@@ -9,6 +9,7 @@ import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
 import { SecretSyncError } from "../secret-sync-errors";
+import { AzureKeyVaultSyncMappingBehavior } from "./azure-key-vault-sync-enums";
 import { GetAzureKeyVaultSecret, TAzureKeyVaultSyncWithCredentials } from "./azure-key-vault-sync-types";
 
 type TAzureKeyVaultSyncFactoryDeps = {
@@ -17,6 +18,68 @@ type TAzureKeyVaultSyncFactoryDeps = {
 };
 
 const AZURE_KEY_VAULT_CERTIFICATE_CONTENT_TYPES = ["application/x-pkcs12", "application/x-pem-file"];
+
+const setSecretAzureKeyVault = async (
+  accessToken: string,
+  secretSync: TAzureKeyVaultSyncWithCredentials,
+  disabledAzureKeyVaultSecretKeys: string[],
+  { key, value }: { key: string; value: string }
+) => {
+  let isSecretSet = false;
+  let syncError: Error | null = null;
+  let maxTries = 6;
+  if (disabledAzureKeyVaultSecretKeys.includes(key)) return;
+
+  while (!isSecretSet && maxTries > 0) {
+    try {
+      await request.put(
+        `${secretSync.destinationConfig.vaultBaseUrl}/secrets/${key}?api-version=7.3`,
+        {
+          value
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`
+          }
+        }
+      );
+
+      isSecretSet = true;
+    } catch (err) {
+      syncError = err as Error;
+      if (err instanceof AxiosError) {
+        // eslint-disable-next-line
+        if (err.response?.data?.error?.innererror?.code === "ObjectIsDeletedButRecoverable") {
+          await request.post(
+            `${secretSync.destinationConfig.vaultBaseUrl}/deletedsecrets/${key}/recover?api-version=7.3`,
+            {},
+            {
+              headers: {
+                Authorization: `Bearer ${accessToken}`
+              }
+            }
+          );
+
+          await new Promise((resolve) => {
+            setTimeout(resolve, 10_000);
+          });
+        } else {
+          await new Promise((resolve) => {
+            setTimeout(resolve, 10_000);
+          });
+          maxTries -= 1;
+        }
+      }
+    }
+  }
+
+  if (!isSecretSet) {
+    throw new SecretSyncError({
+      error: syncError,
+      secretKey: key
+    });
+  }
+};
 
 export const azureKeyVaultSyncFactory = ({ kmsService, appConnectionDAL }: TAzureKeyVaultSyncFactoryDeps) => {
   const $getAzureKeyVaultSecrets = async (
@@ -99,9 +162,37 @@ export const azureKeyVaultSyncFactory = ({ kmsService, appConnectionDAL }: TAzur
     };
   };
 
-  const syncSecrets = async (secretSync: TAzureKeyVaultSyncWithCredentials, secretMap: TSecretMap) => {
+  const syncSecrets = async (
+    secretSync: TAzureKeyVaultSyncWithCredentials,
+    secretMap: TSecretMap,
+    unmodifiedSecretMap?: TSecretMap
+  ) => {
     const { accessToken } = await getAzureConnectionAccessToken(secretSync.connection.id, appConnectionDAL, kmsService);
+    const { destinationConfig } = secretSync;
 
+    if (destinationConfig.mappingBehavior === AzureKeyVaultSyncMappingBehavior.ManyToOne && unmodifiedSecretMap) {
+      const secretValue = JSON.stringify(
+        Object.fromEntries(Object.entries(unmodifiedSecretMap).map(([key, secretData]) => [key, secretData.value]))
+      );
+
+      const { vaultSecrets } = await $getAzureKeyVaultSecrets(accessToken, destinationConfig.vaultBaseUrl, {
+        disableCertificateImport: secretSync.syncOptions.disableCertificateImport
+      });
+
+      const secretExists = destinationConfig.secretName in vaultSecrets;
+      const hasValueChanged = !secretExists || vaultSecrets[destinationConfig.secretName].value !== secretValue;
+
+      if (hasValueChanged) {
+        await setSecretAzureKeyVault(accessToken, secretSync, [], {
+          key: destinationConfig.secretName,
+          value: secretValue
+        });
+      }
+
+      return;
+    }
+
+    // One-to-One mapping (default)
     const { vaultSecrets, disabledAzureKeyVaultSecretKeys } = await $getAzureKeyVaultSecrets(
       accessToken,
       secretSync.destinationConfig.vaultBaseUrl,
@@ -118,13 +209,11 @@ export const azureKeyVaultSyncFactory = ({ kmsService, appConnectionDAL }: TAzur
     Object.keys(secretMap).forEach((infisicalKey) => {
       const hyphenatedKey = infisicalKey.replaceAll("_", "-");
       if (!(hyphenatedKey in vaultSecrets)) {
-        // case: secret has been created
         setSecrets.push({
           key: hyphenatedKey,
           value: secretMap[infisicalKey].value
         });
       } else if (secretMap[infisicalKey].value !== vaultSecrets[hyphenatedKey].value) {
-        // case: secret has been updated
         setSecrets.push({
           key: hyphenatedKey,
           value: secretMap[infisicalKey].value
@@ -139,67 +228,9 @@ export const azureKeyVaultSyncFactory = ({ kmsService, appConnectionDAL }: TAzur
       }
     });
 
-    const setSecretAzureKeyVault = async ({ key, value }: { key: string; value: string }) => {
-      let isSecretSet = false;
-      let syncError: Error | null = null;
-      let maxTries = 6;
-      if (disabledAzureKeyVaultSecretKeys.includes(key)) return;
-
-      while (!isSecretSet && maxTries > 0) {
-        // try to set secret
-        try {
-          await request.put(
-            `${secretSync.destinationConfig.vaultBaseUrl}/secrets/${key}?api-version=7.3`,
-            {
-              value
-            },
-            {
-              headers: {
-                Authorization: `Bearer ${accessToken}`
-              }
-            }
-          );
-
-          isSecretSet = true;
-        } catch (err) {
-          syncError = err as Error;
-          if (err instanceof AxiosError) {
-            // eslint-disable-next-line
-            if (err.response?.data?.error?.innererror?.code === "ObjectIsDeletedButRecoverable") {
-              await request.post(
-                `${secretSync.destinationConfig.vaultBaseUrl}/deletedsecrets/${key}/recover?api-version=7.3`,
-                {},
-                {
-                  headers: {
-                    Authorization: `Bearer ${accessToken}`
-                  }
-                }
-              );
-
-              await new Promise((resolve) => {
-                setTimeout(resolve, 10_000);
-              });
-            } else {
-              await new Promise((resolve) => {
-                setTimeout(resolve, 10_000);
-              });
-              maxTries -= 1;
-            }
-          }
-        }
-      }
-
-      if (!isSecretSet) {
-        throw new SecretSyncError({
-          error: syncError,
-          secretKey: key
-        });
-      }
-    };
-
     for await (const setSecret of setSecrets) {
       const { key, value } = setSecret;
-      await setSecretAzureKeyVault({
+      await setSecretAzureKeyVault(accessToken, secretSync, disabledAzureKeyVaultSecretKeys, {
         key,
         value
       });
@@ -222,6 +253,19 @@ export const azureKeyVaultSyncFactory = ({ kmsService, appConnectionDAL }: TAzur
 
   const removeSecrets = async (secretSync: TAzureKeyVaultSyncWithCredentials, secretMap: TSecretMap) => {
     const { accessToken } = await getAzureConnectionAccessToken(secretSync.connection.id, appConnectionDAL, kmsService);
+    const { destinationConfig } = secretSync;
+
+    if (destinationConfig.mappingBehavior === AzureKeyVaultSyncMappingBehavior.ManyToOne) {
+      await request.delete(
+        `${destinationConfig.vaultBaseUrl}/secrets/${destinationConfig.secretName}?api-version=7.3`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`
+          }
+        }
+      );
+      return;
+    }
 
     const { vaultSecrets, disabledAzureKeyVaultSecretKeys } = await $getAzureKeyVaultSecrets(
       accessToken,
@@ -246,12 +290,34 @@ export const azureKeyVaultSyncFactory = ({ kmsService, appConnectionDAL }: TAzur
 
   const getSecrets = async (secretSync: TAzureKeyVaultSyncWithCredentials) => {
     const { accessToken } = await getAzureConnectionAccessToken(secretSync.connection.id, appConnectionDAL, kmsService);
+    const { destinationConfig } = secretSync;
 
     const { vaultSecrets, disabledAzureKeyVaultSecretKeys } = await $getAzureKeyVaultSecrets(
       accessToken,
-      secretSync.destinationConfig.vaultBaseUrl,
+      destinationConfig.vaultBaseUrl,
       { disableCertificateImport: secretSync.syncOptions.disableCertificateImport }
     );
+
+    if (destinationConfig.mappingBehavior === AzureKeyVaultSyncMappingBehavior.ManyToOne) {
+      const secretValueEntry = vaultSecrets[destinationConfig.secretName];
+
+      if (!secretValueEntry) return {};
+
+      try {
+        const parsedValue = (secretValueEntry.value ? JSON.parse(secretValueEntry.value) : {}) as Record<
+          string,
+          string
+        >;
+
+        return Object.fromEntries(Object.entries(parsedValue).map(([key, value]) => [key, { value }]));
+      } catch {
+        throw new SecretSyncError({
+          message:
+            "Failed to import secrets. Invalid format for Many-to-One mapping behavior: requires key/value JSON configuration.",
+          shouldRetry: false
+        });
+      }
+    }
 
     const secretMap: TSecretMap = {};
 

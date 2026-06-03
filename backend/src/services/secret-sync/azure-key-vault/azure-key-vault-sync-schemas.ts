@@ -11,14 +11,36 @@ import {
 import { TSyncOptionsConfig } from "@app/services/secret-sync/secret-sync-types";
 
 import { SECRET_SYNC_NAME_MAP } from "../secret-sync-maps";
+import { AzureKeyVaultSyncMappingBehavior } from "./azure-key-vault-sync-enums";
 
-const AzureKeyVaultSyncDestinationConfigSchema = z.object({
-  vaultBaseUrl: z
-    .string()
-    .url("Invalid vault base URL format")
-    .min(1, "Vault base URL required")
-    .describe(SecretSyncs.DESTINATION_CONFIG.AZURE_KEY_VAULT.vaultBaseUrl)
-});
+const AzureKeyVaultSyncDestinationConfigSchema = z
+  .discriminatedUnion("mappingBehavior", [
+    z.object({
+      mappingBehavior: z
+        .literal(AzureKeyVaultSyncMappingBehavior.OneToOne)
+        .describe(SecretSyncs.DESTINATION_CONFIG.AZURE_KEY_VAULT.mappingBehavior)
+    }),
+    z.object({
+      mappingBehavior: z
+        .literal(AzureKeyVaultSyncMappingBehavior.ManyToOne)
+        .describe(SecretSyncs.DESTINATION_CONFIG.AZURE_KEY_VAULT.mappingBehavior),
+      secretName: z
+        .string()
+        .min(1, "Secret name is required")
+        .max(127, "Secret name cannot exceed 127 characters")
+        .regex(/^[a-zA-Z0-9-]+$/, "Secret name must contain only alphanumeric characters and hyphens")
+        .describe(SecretSyncs.DESTINATION_CONFIG.AZURE_KEY_VAULT.secretName)
+    })
+  ])
+  .and(
+    z.object({
+      vaultBaseUrl: z
+        .string()
+        .url("Invalid vault base URL format")
+        .min(1, "Vault base URL required")
+        .describe(SecretSyncs.DESTINATION_CONFIG.AZURE_KEY_VAULT.vaultBaseUrl)
+    })
+  );
 
 const AzureKeyVaultSyncOptionsSchema = z.object({
   disableCertificateImport: z
