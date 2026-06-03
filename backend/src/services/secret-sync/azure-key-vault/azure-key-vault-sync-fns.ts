@@ -175,15 +175,19 @@ export const azureKeyVaultSyncFactory = ({ kmsService, appConnectionDAL }: TAzur
         Object.fromEntries(Object.entries(unmodifiedSecretMap).map(([key, secretData]) => [key, secretData.value]))
       );
 
-      const { vaultSecrets } = await $getAzureKeyVaultSecrets(accessToken, destinationConfig.vaultBaseUrl, {
-        disableCertificateImport: secretSync.syncOptions.disableCertificateImport
-      });
+      const { vaultSecrets, disabledAzureKeyVaultSecretKeys } = await $getAzureKeyVaultSecrets(
+        accessToken,
+        destinationConfig.vaultBaseUrl,
+        {
+          disableCertificateImport: secretSync.syncOptions.disableCertificateImport
+        }
+      );
 
       const secretExists = destinationConfig.secretName in vaultSecrets;
       const hasValueChanged = !secretExists || vaultSecrets[destinationConfig.secretName].value !== secretValue;
 
       if (hasValueChanged) {
-        await setSecretAzureKeyVault(accessToken, secretSync, [], {
+        await setSecretAzureKeyVault(accessToken, secretSync, disabledAzureKeyVaultSecretKeys, {
           key: destinationConfig.secretName,
           value: secretValue
         });

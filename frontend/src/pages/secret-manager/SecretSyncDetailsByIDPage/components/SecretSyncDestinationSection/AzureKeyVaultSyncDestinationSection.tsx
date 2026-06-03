@@ -19,7 +19,9 @@ export const AzureKeyVaultSyncDestinationSection = ({ secretSync }: Props) => {
       </Detail>
       <Detail className="capitalize">
         <DetailLabel>Mapping Behavior</DetailLabel>
-        <DetailValue>{destinationConfig.mappingBehavior}</DetailValue>
+        <DetailValue>
+          {destinationConfig.mappingBehavior ?? AzureKeyVaultSyncMappingBehavior.OneToOne}
+        </DetailValue>
       </Detail>
       {destinationConfig.mappingBehavior === AzureKeyVaultSyncMappingBehavior.ManyToOne && (
         <Detail>

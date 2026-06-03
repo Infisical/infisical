@@ -13,7 +13,7 @@ import { TSyncOptionsConfig } from "@app/services/secret-sync/secret-sync-types"
 import { SECRET_SYNC_NAME_MAP } from "../secret-sync-maps";
 import { AzureKeyVaultSyncMappingBehavior } from "./azure-key-vault-sync-enums";
 
-const AzureKeyVaultSyncDestinationConfigSchema = z
+const AzureKeyVaultSyncDestinationConfigInputSchema = z
   .discriminatedUnion("mappingBehavior", [
     z.object({
       mappingBehavior: z
@@ -42,6 +42,16 @@ const AzureKeyVaultSyncDestinationConfigSchema = z
     })
   );
 
+// Backward-compatible schema for response serialization: existing AKV sync records
+// created before Many-to-One support won't have mappingBehavior in their destinationConfig.
+// Default to OneToOne so Fastify serialization doesn't fail with a 500 error.
+const AzureKeyVaultSyncDestinationConfigSchema = z.preprocess((data) => {
+  if (typeof data === "object" && data !== null && !("mappingBehavior" in (data as Record<string, unknown>))) {
+    return { ...(data as Record<string, unknown>), mappingBehavior: AzureKeyVaultSyncMappingBehavior.OneToOne };
+  }
+  return data;
+}, AzureKeyVaultSyncDestinationConfigInputSchema);
+
 const AzureKeyVaultSyncOptionsSchema = z.object({
   disableCertificateImport: z
     .boolean()
@@ -67,7 +77,7 @@ export const CreateAzureKeyVaultSyncSchema = GenericCreateSecretSyncFieldsSchema
   AzureKeyVaultSyncOptionsConfig,
   AzureKeyVaultSyncOptionsSchema
 ).extend({
-  destinationConfig: AzureKeyVaultSyncDestinationConfigSchema
+  destinationConfig: AzureKeyVaultSyncDestinationConfigInputSchema
 });
 
 export const UpdateAzureKeyVaultSyncSchema = GenericUpdateSecretSyncFieldsSchema(
@@ -75,7 +85,7 @@ export const UpdateAzureKeyVaultSyncSchema = GenericUpdateSecretSyncFieldsSchema
   AzureKeyVaultSyncOptionsConfig,
   AzureKeyVaultSyncOptionsSchema
 ).extend({
-  destinationConfig: AzureKeyVaultSyncDestinationConfigSchema.optional()
+  destinationConfig: AzureKeyVaultSyncDestinationConfigInputSchema.optional()
 });
 
 export const AzureKeyVaultSyncListItemSchema = z
