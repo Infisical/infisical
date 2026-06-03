@@ -30,6 +30,7 @@ export const CronJobName = {
   TelemetryAggregatedEvents: "telemetry-aggregated-events",
   DigiCertOrderPolling: "digicert-order-polling",
   ProjectEnvHardDelete: "project-env-hard-delete",
+  ProjectHardDelete: "project-hard-delete",
   DigiCertRevocationSync: "digicert-revocation-sync",
   CaCrlRotation: "ca-crl-rotation"
 } as const;

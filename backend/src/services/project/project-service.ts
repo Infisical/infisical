@@ -822,47 +822,28 @@ export const projectServiceFactory = ({
     }
 
     try {
-      const deletedProject = await projectDAL.transaction(async (tx) => {
-        // delete these so that project custom roles can be deleted in cascade effect
-        // direct deletion of project without these will cause fk error
-        // this will clean up all memberships
-        await membershipUserDAL.delete(
-          { scopeOrgId: project.orgId, scopeProjectId: project.id, scope: AccessScope.Project },
-          tx
-        );
-        const delProject = await projectDAL.deleteById(project.id, tx);
-        const projectGhostUser = await projectMembershipDAL.findProjectGhostUser(project.id, tx).catch(() => null);
-        // akhilmhdh: before removing those kms checking any other project uses it
-        // happened due to project split
-        if (delProject.kmsCertificateKeyId) {
-          const projectsLinkedToForiegnKey = await projectDAL.find(
-            { kmsCertificateKeyId: delProject.kmsCertificateKeyId },
-            { tx }
-          );
-          if (!projectsLinkedToForiegnKey.length) {
-            await kmsService.deleteInternalKms(delProject.kmsCertificateKeyId, delProject.orgId, tx);
-          }
-        }
-
-        if (delProject.kmsSecretManagerKeyId) {
-          const projectsLinkedToForiegnKey = await projectDAL.find(
-            { kmsSecretManagerKeyId: delProject.kmsSecretManagerKeyId },
-            { tx }
-          );
-          if (!projectsLinkedToForiegnKey.length) {
-            await kmsService.deleteInternalKms(delProject.kmsSecretManagerKeyId, delProject.orgId, tx);
-          }
-        }
-        // Delete the org membership for the ghost user if it's found.
-        if (projectGhostUser) {
-          await userDAL.deleteById(projectGhostUser.id, tx);
-        }
-
-        return delProject;
+      // "Real delete" from the caller's perspective: this returns immediately (one UPDATE) and the
+      // project disappears from every read, but the expensive cascade runs asynchronously in the
+      // hard-delete worker. deleteAfter = now marks it immediately eligible for the next worker tick
+      // (no grace period). The slug is freed so a same-named project can be recreated right away.
+      const now = new Date();
+      const deleteAfter = now;
+      const softDeletedProject = await projectDAL.softDeleteById(project.id, {
+        deleteAfter,
+        softDeletedAt: now,
+        deletedByUserId: actor === ActorType.USER ? actorId : null,
+        deletedByIdentityId: actor === ActorType.IDENTITY ? actorId : null,
+        slug: `del-${alphaNumericNanoId(20)}`
       });
 
+      if (!softDeletedProject) {
+        throw new NotFoundError({ message: `Project with ID '${project.id}' not found` });
+      }
+
+      // refresh the cached plan so the freed workspace slot is reflected immediately
+      // (countOfOrgProjects now excludes soft-deleted projects)
       await keyStore.deleteItem(KeyStorePrefixes.LicenseCloudPlan(actorOrgId));
-      return deletedProject;
+      return softDeletedProject;
     } finally {
       await lock.release();
     }

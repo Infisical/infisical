@@ -422,6 +422,7 @@ import { pkiSyncServiceFactory } from "@app/services/pki-sync/pki-sync-service";
 import { pkiTemplatesDALFactory } from "@app/services/pki-templates/pki-templates-dal";
 import { pkiTemplatesServiceFactory } from "@app/services/pki-templates/pki-templates-service";
 import { projectAccessRequestDALFactory } from "@app/services/project/project-access-request-dal";
+import { projectCleanupQueueFactory } from "@app/services/project/project-cleanup-queue";
 import { projectDALFactory } from "@app/services/project/project-dal";
 import { projectQueueFactory } from "@app/services/project/project-queue";
 import { projectServiceFactory } from "@app/services/project/project-service";
@@ -1739,6 +1740,17 @@ export const registerRoutes = async (
   const projectEnvQueue = projectEnvQueueFactory({
     cronJob,
     projectEnvDAL,
+    keyStore,
+    auditLogService
+  });
+
+  const projectCleanupQueue = projectCleanupQueueFactory({
+    cronJob,
+    queueService,
+    projectDAL,
+    membershipUserDAL,
+    userDAL,
+    kmsService,
     keyStore,
     auditLogService
   });
@@ -3417,6 +3429,7 @@ export const registerRoutes = async (
   telemetryQueue.startAggregatedEventsJob();
   dailyResourceCleanUp.init();
   projectEnvQueue.init();
+  projectCleanupQueue.init();
   healthAlert.init();
   pkiSyncCleanup.init();
   pkiDiscoveryQueue.startPkiDiscoveryScanQueue();

@@ -109,7 +109,8 @@ export enum QueueName {
   AppConnectionCredentialRotationRotate = "app-connection-credential-rotation-rotate",
   AuditLogClickHouseBatch = "audit-log-clickhouse-batch",
   PamDiscoveryScan = "pam-discovery-scan",
-  CaAutoRenewal = "ca-auto-renewal"
+  CaAutoRenewal = "ca-auto-renewal",
+  ProjectHardDelete = "project-hard-delete"
 }
 
 export enum QueueJobs {
@@ -181,7 +182,8 @@ export enum QueueJobs {
   CaAdcsInstall = "ca-adcs-install-job",
   CertificateCleanup = "certificate-cleanup-job",
   DailySecretSyncRetry = "daily-secret-sync-retry-job",
-  DigiCertOrderPolling = "digicert-order-polling-job"
+  DigiCertOrderPolling = "digicert-order-polling-job",
+  ProjectHardDelete = "project-hard-delete-job"
 }
 
 export type TQueueOptions = {
@@ -495,6 +497,10 @@ export type TQueueJobTypes = {
         name: QueueJobs.CaAdcsInstall;
         payload: { caId: string; maxPathLength?: number };
       };
+  [QueueName.ProjectHardDelete]: {
+    name: QueueJobs.ProjectHardDelete;
+    payload: { projectId: string };
+  };
 };
 
 const SECRET_SCANNING_QUEUES = [
@@ -527,7 +533,7 @@ export type TQueueServiceFactory = {
       token?: string,
       signal?: AbortSignal
     ) => Promise<void>,
-    queueSettings?: Omit<QueueOptions, "connection"> & Pick<WorkerOptions, "concurrency">
+    queueSettings?: Omit<QueueOptions, "connection"> & Pick<WorkerOptions, "concurrency" | "limiter">
   ) => void;
   listen: <
     T extends QueueName,
