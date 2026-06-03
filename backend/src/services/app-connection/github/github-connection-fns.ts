@@ -34,6 +34,11 @@ type TResolvedGitHubAppCredentials = {
   clientId: string;
   clientSecret: string;
   privateKey: string;
+  // Host/instance the app is bound to. Populated for org-managed apps (resolved by id) so callers
+  // can target the app's own host instead of a caller-supplied one. Null for the instance-default
+  // app configured via env vars, where callers fall back to their own host handling.
+  host: string | null;
+  instanceType: "cloud" | "server" | null;
 };
 
 export const resolveGitHubAppCredentials = async (
@@ -64,7 +69,9 @@ export const resolveGitHubAppCredentials = async (
       slug: app.slug,
       clientId: app.clientId,
       clientSecret: decryptor({ cipherTextBlob: app.encryptedClientSecret }).toString(),
-      privateKey: decryptor({ cipherTextBlob: app.encryptedPrivateKey }).toString()
+      privateKey: decryptor({ cipherTextBlob: app.encryptedPrivateKey }).toString(),
+      host: app.host ?? null,
+      instanceType: (app.instanceType as "cloud" | "server" | undefined) ?? "cloud"
     };
   }
 
@@ -93,7 +100,10 @@ export const resolveGitHubAppCredentials = async (
     slug: INF_APP_CONNECTION_GITHUB_APP_SLUG,
     clientId: INF_APP_CONNECTION_GITHUB_APP_CLIENT_ID,
     clientSecret: INF_APP_CONNECTION_GITHUB_APP_CLIENT_SECRET,
-    privateKey: INF_APP_CONNECTION_GITHUB_APP_PRIVATE_KEY
+    privateKey: INF_APP_CONNECTION_GITHUB_APP_PRIVATE_KEY,
+    // The instance-default app isn't host-bound here; callers keep their existing host handling.
+    host: null,
+    instanceType: null
   };
 };
 
@@ -276,10 +286,22 @@ export const uninstallGitHubAppInstallation = async (
     throw new InternalServerError({ message: "Cannot uninstall a non-app GitHub connection" });
   }
 
-  const { appId, privateKey } = await resolveGitHubAppCredentials(
+  const {
+    appId,
+    privateKey,
+    host: appHost,
+    instanceType: appInstanceType
+  } = await resolveGitHubAppCredentials(
     { gitHubAppId: appConnection.credentials.gitHubAppId, orgId: appConnection.orgId },
     deps
   );
+
+  // Bind the signed app JWT to the app's own host, never the host recorded on the connection.
+  const effectiveCredentials = appConnection.credentials.gitHubAppId
+    ? { host: appHost ?? undefined, instanceType: appInstanceType ?? "cloud" }
+    : { host: appConnection.credentials.host, instanceType: appConnection.credentials.instanceType };
+
+  assertPlatformGitHubHostAllowed(effectiveCredentials.host);
 
   const appPrivateKey = privateKey
     .split("\n")
@@ -291,7 +313,7 @@ export const uninstallGitHubAppInstallation = async (
     algorithm: "RS256"
   });
 
-  const apiBaseUrl = await getGitHubInstanceApiUrl(appConnection);
+  const apiBaseUrl = await getGitHubInstanceApiUrl({ credentials: effectiveCredentials });
   const { installationId } = appConnection.credentials;
 
   const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
@@ -344,12 +366,23 @@ export const getGitHubAppAuthToken = async (
     throw new InternalServerError({ message: "Cannot generate GitHub App token for non-app connection" });
   }
 
-  assertPlatformGitHubHostAllowed(appConnection.credentials.host);
-
-  const { appId, privateKey } = await resolveGitHubAppCredentials(
+  const {
+    appId,
+    privateKey,
+    host: appHost,
+    instanceType: appInstanceType
+  } = await resolveGitHubAppCredentials(
     { gitHubAppId: appConnection.credentials.gitHubAppId, orgId: appConnection.orgId },
     deps
   );
+
+  // For an org-managed app, target the host the app is bound to rather than the host stored on the
+  // connection — the signed app JWT must never leave for a host that isn't the app's own.
+  const effectiveCredentials = appConnection.credentials.gitHubAppId
+    ? { host: appHost ?? undefined, instanceType: appInstanceType ?? "cloud" }
+    : { host: appConnection.credentials.host, instanceType: appConnection.credentials.instanceType };
+
+  assertPlatformGitHubHostAllowed(effectiveCredentials.host);
 
   const appPrivateKey = privateKey
     .split("\n")
@@ -365,7 +398,7 @@ export const getGitHubAppAuthToken = async (
 
   const appJwt = crypto.jwt().sign(payload, appPrivateKey, { algorithm: "RS256" });
 
-  const apiBaseUrl = await getGitHubInstanceApiUrl(appConnection);
+  const apiBaseUrl = await getGitHubInstanceApiUrl({ credentials: effectiveCredentials });
   const { installationId } = appConnection.credentials;
 
   const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
@@ -697,6 +730,24 @@ export const validateGitHubConnectionCredentials = async (
 ) => {
   const { credentials, method } = config;
 
+  // For org-managed GitHub App connections, bind the connection to the host/instance the app was
+  // registered against BEFORE any credential is used or any request host is derived. Without this,
+  // a user could create an app-method connection that references an existing app but supplies a
+  // custom host they control, causing the app's client secret / signed JWT to be sent there.
+  let resolvedAppCredentials: TResolvedGitHubAppCredentials | undefined;
+  if (method === GitHubConnectionMethod.App) {
+    resolvedAppCredentials = await resolveGitHubAppCredentials(
+      { gitHubAppId: credentials.gitHubAppId, orgId: config.orgId },
+      deps
+    );
+
+    if (credentials.gitHubAppId) {
+      const mutableCredentials = credentials as { host?: string; instanceType: "cloud" | "server" };
+      mutableCredentials.host = resolvedAppCredentials.host ?? undefined;
+      mutableCredentials.instanceType = resolvedAppCredentials.instanceType ?? "cloud";
+    }
+  }
+
   const apiBaseUrl = await getGitHubInstanceApiUrl(config);
   const gatewayConnectionDetails = config.gatewayId
     ? await getGitHubGatewayConnectionDetails(config.gatewayId, apiBaseUrl, gatewayV2Service)
@@ -744,12 +795,9 @@ export const validateGitHubConnectionCredentials = async (
   let clientSecret: string | undefined;
 
   if (method === GitHubConnectionMethod.App) {
-    const resolved = await resolveGitHubAppCredentials(
-      { gitHubAppId: credentials.gitHubAppId, orgId: config.orgId },
-      deps
-    );
-    clientId = resolved.clientId;
-    clientSecret = resolved.clientSecret;
+    // Resolved above so the host could be bound before any credential use.
+    clientId = resolvedAppCredentials!.clientId;
+    clientSecret = resolvedAppCredentials!.clientSecret;
   } else {
     clientId = INF_APP_CONNECTION_GITHUB_OAUTH_CLIENT_ID;
     clientSecret = INF_APP_CONNECTION_GITHUB_OAUTH_CLIENT_SECRET;

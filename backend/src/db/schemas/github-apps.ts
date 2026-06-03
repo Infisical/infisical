@@ -19,6 +19,8 @@ export const GithubAppsSchema = z.object({
   encryptedPrivateKey: zodBuffer,
   slug: z.string(),
   owner: z.string().nullable().optional(),
+  host: z.string().nullable().optional(),
+  instanceType: z.string().default("cloud"),
   createdAt: z.date(),
   updatedAt: z.date()
 });

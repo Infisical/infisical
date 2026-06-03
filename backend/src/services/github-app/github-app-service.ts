@@ -5,12 +5,11 @@ import { OrganizationActionScope } from "@app/db/schemas";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { getConfig } from "@app/lib/config/env";
-import { request } from "@app/lib/config/request";
 import { crypto } from "@app/lib/crypto";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
+import { safeRequest } from "@app/lib/validator/safe-request";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import {
   assertPlatformGitHubHostAllowed,
@@ -262,14 +261,12 @@ export const gitHubAppServiceFactory = ({
 
     assertPlatformGitHubHostAllowed(githubHost);
 
-    if (githubHost) {
-      await blockLocalAndPrivateIpAddresses(`https://${githubHost}`);
-    }
-
     let manifestResponse: TGitHubAppManifestResponse;
     try {
       const resolvedApiHost = githubHost ? `https://${githubHost}/api/v3` : "https://api.github.com";
-      const { data } = await request.post<TGitHubAppManifestResponse>(
+      // safeRequest validates + DNS-pins the target and disables redirects, so a public host
+      // cannot redirect this exchange to an internal service (SSRF).
+      const { data } = await safeRequest.post<TGitHubAppManifestResponse>(
         `${resolvedApiHost}/app-manifests/${encodeURIComponent(code)}/conversions`,
         {},
         {
@@ -304,7 +301,13 @@ export const gitHubAppServiceFactory = ({
         encryptedClientSecret: encryptor({ plainText: Buffer.from(manifestResponse.client_secret) }).cipherTextBlob,
         encryptedPrivateKey: encryptor({ plainText: Buffer.from(manifestResponse.pem) }).cipherTextBlob,
         slug: manifestResponse.slug,
-        owner
+        owner,
+        // Bind the app to the host/instance it was registered against. Every later credential
+        // operation derives its target host from these stored values rather than from a
+        // caller-supplied host, so a signed app JWT or the client secret can never be sent to an
+        // arbitrary host an attacker controls.
+        host: githubHost || null,
+        instanceType
       });
     } catch (err) {
       if (err instanceof DatabaseError && (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation) {
@@ -348,15 +351,29 @@ export const gitHubAppServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Settings);
 
-    assertPlatformGitHubHostAllowed(host);
-
-    const { appId, clientId, privateKey } = await resolveGitHubAppCredentials(
+    const {
+      appId,
+      clientId,
+      privateKey,
+      host: appHost,
+      instanceType: appInstanceType
+    } = await resolveGitHubAppCredentials(
       { gitHubAppId: gitHubAppId ?? null, orgId: orgPermission.orgId },
       { gitHubAppDAL, kmsService }
     );
 
+    // For an org-managed app, the request only identifies which app to use — its host/instance are
+    // bound to the stored app record. Ignoring the caller-supplied host here is what prevents a
+    // settings reader from pointing the app's signed JWT at a host they control to exfiltrate it.
+    const effectiveHost = gitHubAppId ? (appHost ?? undefined) : host;
+    const effectiveInstanceType = gitHubAppId ? (appInstanceType ?? "cloud") : instanceType;
+
+    assertPlatformGitHubHostAllowed(effectiveHost);
+
     // validates the host against local/private addresses internally
-    const apiBaseUrl = await getGitHubInstanceApiUrl({ credentials: { host, instanceType } });
+    const apiBaseUrl = await getGitHubInstanceApiUrl({
+      credentials: { host: effectiveHost, instanceType: effectiveInstanceType }
+    });
 
     const appPrivateKey = privateKey
       .split("\n")
@@ -369,7 +386,9 @@ export const gitHubAppServiceFactory = ({
     });
 
     try {
-      const { data } = await request.get<{ id: number }[]>(`https://${apiBaseUrl}/app/installations`, {
+      // safeRequest validates + DNS-pins the target and disables redirects, so a public host
+      // cannot redirect this request to an internal service (SSRF).
+      const { data } = await safeRequest.get<{ id: number }[]>(`https://${apiBaseUrl}/app/installations`, {
         params: { per_page: 1 },
         headers: {
           Accept: "application/vnd.github+json",
