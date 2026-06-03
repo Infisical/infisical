@@ -163,7 +163,9 @@ import { TSecretSyncServiceFactory } from "@app/services/secret-sync/secret-sync
 import { TSecretTagServiceFactory } from "@app/services/secret-tag/secret-tag-service";
 import { TSecretValidationRuleServiceFactory } from "@app/services/secret-validation-rule/secret-validation-rule-service";
 import { TServiceTokenServiceFactory } from "@app/services/service-token/service-token-service";
+import { TSignerPolicyServiceFactory } from "@app/services/signer/signer-policy-service";
 import { TSignerServiceFactory } from "@app/services/signer/signer-service";
+import { TSignerMembershipServiceFactory } from "@app/services/signer-membership";
 import { TSlackServiceFactory } from "@app/services/slack/slack-service";
 import { TSuperAdminServiceFactory } from "@app/services/super-admin/super-admin-service";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
@@ -335,6 +337,8 @@ declare module "fastify" {
       certificateProfile: TCertificateProfileServiceFactory;
       pkiApplication: TPkiApplicationServiceFactory;
       pkiApplicationMembership: TPkiApplicationMembershipServiceFactory;
+      signerMembership: TSignerMembershipServiceFactory;
+      signerPolicy: TSignerPolicyServiceFactory;
       pkiApplicationEnrollment: TPkiApplicationEnrollmentServiceFactory;
       certManagerProjectResolver: TCertManagerProjectResolverFactory;
       certManagerInstance: TCertManagerInstanceServiceFactory;

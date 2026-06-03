@@ -92,7 +92,7 @@ const ensureCsrPemFormat = (csr: string): string => {
 
 export type TIssueCertificateFromProfileJobData = {
   certificateId: string;
-  profileId: string;
+  profileId?: string;
   caId: string;
   caType?: CaType;
   commonName?: string;
@@ -326,7 +326,8 @@ export const certificateIssuanceQueueFactory = ({
       }
     }
 
-    await queueService.queue(QueueName.CertificateIssuance, QueueJobs.CaIssueCertificateFromProfile, jobData, {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
+    await queueService.queue(QueueName.CertificateIssuance, QueueJobs.CaIssueCertificateFromProfile, jobData as any, {
       jobId: `certificate-issuance-${jobIdSeed}`,
       ...queueOpts
     });
@@ -502,7 +503,7 @@ export const certificateIssuanceQueueFactory = ({
       } else if (ca.externalCa?.type === CaType.AZURE_AD_CS) {
         await setPending("Submitting the request to Azure AD CS");
         let template: string | undefined;
-        if (certificateProfileDAL) {
+        if (certificateProfileDAL && profileId) {
           try {
             const profile = await certificateProfileDAL.findById(profileId);
             if (
@@ -544,7 +545,9 @@ export const certificateIssuanceQueueFactory = ({
           return;
         }
 
-        const azureResult = await azureAdCsFns.orderCertificateFromProfile(azureParams);
+        const azureResult = await azureAdCsFns.orderCertificateFromProfile(
+          azureParams as Parameters<typeof azureAdCsFns.orderCertificateFromProfile>[0]
+        );
 
         if (await isCancelled()) {
           logger.info(`Cancelled after Azure AD CS order [certificateRequestId=${certificateRequestId}]`);
@@ -612,7 +615,9 @@ export const certificateIssuanceQueueFactory = ({
           return;
         }
 
-        const acmResult = await awsAcmPublicCaFns.orderCertificateFromProfile(acmParams);
+        const acmResult = await awsAcmPublicCaFns.orderCertificateFromProfile(
+          acmParams as Parameters<typeof awsAcmPublicCaFns.orderCertificateFromProfile>[0]
+        );
 
         if (await isCancelled()) {
           logger.info(`Cancelled after AWS ACM Public CA order [certificateRequestId=${certificateRequestId}]`);
@@ -679,7 +684,9 @@ export const certificateIssuanceQueueFactory = ({
           return;
         }
 
-        const awsPcaResult = await awsPcaFns.orderCertificateFromProfile(awsPcaParams);
+        const awsPcaResult = await awsPcaFns.orderCertificateFromProfile(
+          awsPcaParams as Parameters<typeof awsPcaFns.orderCertificateFromProfile>[0]
+        );
 
         if (await isCancelled()) {
           logger.info(`Cancelled after AWS Private CA order [certificateRequestId=${certificateRequestId}]`);
@@ -870,7 +877,9 @@ export const certificateIssuanceQueueFactory = ({
           return;
         }
 
-        const venafiTppResult = await venafiTppFns.orderCertificateFromProfile(venafiTppParams);
+        const venafiTppResult = await venafiTppFns.orderCertificateFromProfile(
+          venafiTppParams as Parameters<typeof venafiTppFns.orderCertificateFromProfile>[0]
+        );
 
         if (await isCancelled()) {
           logger.info(`Cancelled after Venafi TPP order [certificateRequestId=${certificateRequestId}]`);
@@ -1100,6 +1109,12 @@ export const certificateIssuanceQueueFactory = ({
 
   return {
     queueCertificateIssuance,
-    processCertificateIssuanceJobs
+    processCertificateIssuanceJobs,
+    acmeFns,
+    azureAdCsFns,
+    awsPcaFns,
+    awsAcmPublicCaFns,
+    digicertFns,
+    venafiTppFns
   };
 };

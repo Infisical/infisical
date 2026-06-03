@@ -2,7 +2,14 @@
 import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
-import { AccessScope, ActionProjectType, ProjectMembershipRole, ProjectVersion, TableName } from "@app/db/schemas";
+import {
+  AccessScope,
+  ActionProjectType,
+  ProjectMembershipRole,
+  ProjectVersion,
+  RESOURCE_SCOPE,
+  TableName
+} from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionMemberActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
@@ -370,6 +377,17 @@ export const projectMembershipServiceFactory = ({
         tx
       );
 
+      await membershipUserDAL.delete(
+        {
+          scope: RESOURCE_SCOPE,
+          scopeProjectId: projectId,
+          $in: {
+            actorUserId: projectMembers.map(({ user }) => user.id)
+          }
+        },
+        tx
+      );
+
       await secretReminderRecipientsDAL.delete(
         {
           projectId,
@@ -477,6 +495,16 @@ export const projectMembershipServiceFactory = ({
           tx
         )
       )?.[0];
+
+      await membershipUserDAL.delete(
+        {
+          scope: RESOURCE_SCOPE,
+          scopeProjectId: project.id,
+          actorUserId: actorId
+        },
+        tx
+      );
+
       return membership;
     });
 

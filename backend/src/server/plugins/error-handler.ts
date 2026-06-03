@@ -275,7 +275,6 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
           status: error.status,
           type: `urn:ietf:params:acme:error:${error.type}`,
           detail: error.message
-          // TODO: add subproblems if they exist
         });
     } else if (error instanceof PolicyViolationError) {
       void res.status(HttpStatusCodes.Forbidden).send({

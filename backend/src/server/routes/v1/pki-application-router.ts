@@ -209,11 +209,11 @@ export const registerPkiApplicationRouter = async (server: FastifyZodProvider) =
 
   server.route({
     method: "GET",
-    url: "/:applicationId/my-permissions",
+    url: "/:applicationId/permissions",
     config: { rateLimit: readLimit },
     schema: {
       hide: false,
-      operationId: "getPkiApplicationMyPermissions",
+      operationId: "getPkiApplicationPermissions",
       description: "Get the actor's effective resource permissions on this application.",
       tags: [ApiDocsTags.PkiApplications],
       params: ApplicationIdParamsSchema,

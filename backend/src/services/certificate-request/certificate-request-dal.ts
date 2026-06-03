@@ -9,6 +9,7 @@ import {
   applyProcessedPermissionRulesToQuery,
   type ProcessedPermissionRules
 } from "@app/lib/knex/permission-filter-utils";
+import { ApprovalRequestStatus } from "@app/services/approval-policy/approval-policy-enums";
 import { CaStatus } from "@app/services/certificate-authority/certificate-authority-enums";
 import { applyMetadataFilter } from "@app/services/resource-metadata/resource-metadata-fns";
 
@@ -453,15 +454,14 @@ export const certificateRequestDALFactory = (db: TDbClient) => {
     }
   };
 
-  const markExpiredApprovalRequests = async (expiredApprovalRequestIds: string[]): Promise<number> => {
+  const markExpiredApprovalRequests = async (): Promise<number> => {
     try {
-      if (expiredApprovalRequestIds.length === 0) {
-        return 0;
-      }
-
       const result = await db(TableName.CertificateRequests)
-        .whereIn("approvalRequestId", expiredApprovalRequestIds)
         .where("status", CertificateRequestStatus.PENDING_APPROVAL)
+        .whereIn(
+          "approvalRequestId",
+          db.select("id").from(TableName.ApprovalRequests).where("status", ApprovalRequestStatus.Expired)
+        )
         .update({ status: CertificateRequestStatus.REJECTED, errorMessage: "Approval request expired" });
 
       return result;
