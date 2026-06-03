@@ -303,7 +303,7 @@ export const projectServiceFactory = ({
       // We count directly from the database to get the accurate count, not the cached plan value
       const plan = await licenseService.getPlan(organization.id);
       if (plan.workspaceLimit !== null && type === ProjectType.SecretManager) {
-        const currentProjectCount = await projectDAL.countOfOrgProjects(organization.id, tx);
+        const currentProjectCount = await projectDAL.countOfBillableOrgProjects(organization.id, tx);
         if (currentProjectCount >= plan.workspaceLimit) {
           throw new BadRequestError({
             message: "Failed to create workspace due to plan limit reached. Upgrade plan to add more workspaces."
