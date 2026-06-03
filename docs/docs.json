@@ -251,6 +251,7 @@
                           },
                           "documentation/platform/sso/auth0-oidc",
                           "documentation/platform/sso/pingone-oidc",
+                          "documentation/platform/sso/pingfederate-oidc",
                           {
                             "group": "General OIDC",
                             "pages": [
@@ -279,6 +280,7 @@
                       "documentation/platform/scim/azure",
                       "documentation/platform/scim/jumpcloud",
                       "documentation/platform/scim/pingone",
+                      "documentation/platform/scim/pingfederate",
                       "documentation/platform/scim/group-mappings"
                     ]
                   },

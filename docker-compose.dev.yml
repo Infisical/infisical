@@ -113,11 +113,15 @@ services:
       - NODE_ENV=development
       - DB_CONNECTION_URI=postgres://infisical:infisical@db/infisical?sslmode=disable
       - TELEMETRY_ENABLED=false
+      # Dev-only: lets the backend accept PingFederate's self-signed cert when testing
+      # OIDC locally via `make up-dev-pingfed`. NEVER set this in production.
+      # NODE_TLS_REJECT_UNAUTHORIZED=0
     volumes:
       - ./backend/src:/app/src
       - softhsm_tokens:/etc/softhsm2/tokens # SoftHSM tokens are stored in a volume to persist across container restarts
     extra_hosts:
       - "host.docker.internal:host-gateway"
+      - "pf.local:host-gateway" # PingFederate dev container — resolves the same on host and inside compose
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:4000/api/status"]
       interval: 30s
@@ -261,6 +265,62 @@ services:
       - 8088:8080
     profiles: [sso]
 
+  pingfederate:
+    # Requires free Ping Identity DevOps credentials — register at
+    # https://devops.pingidentity.com/how-to/devopsRegistration/
+    # then set PING_IDENTITY_DEVOPS_USER and PING_IDENTITY_DEVOPS_KEY in your .env.
+    # Alternatively, leave both unset to run in Trial Product mode using the
+    # bundled license from pingidentity-server-profiles (expires periodically).
+    # Admin console: https://localhost:9999/pingfederate (administrator / 2FederateM0re)
+    # Runtime endpoint (SAML/OIDC/SCIM): https://localhost:9031
+    image: pingidentity/pingfederate:2604
+    restart: always
+    environment:
+      - PING_IDENTITY_ACCEPT_EULA=YES
+      - PING_IDENTITY_DEVOPS_USER=${PING_IDENTITY_DEVOPS_USER}
+      - PING_IDENTITY_DEVOPS_KEY=${PING_IDENTITY_DEVOPS_KEY}
+      - SERVER_PROFILE_URL=https://github.com/pingidentity/pingidentity-server-profiles.git
+      - SERVER_PROFILE_PATH=getting-started/pingfederate
+      # Enable Outbound Provisioning runtime for SCIM testing.
+      # Maps to pf.provisioner.mode in run.properties. STANDALONE = single node.
+      - PF_PROVISIONER_MODE=STANDALONE
+    ports:
+      - 9999:9999 # admin console
+      - 9031:9031 # runtime (SAML/OIDC/SCIM)
+    volumes:
+      - pingfederate_data:/opt/out
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    profiles: [pingfed]
+
+  samba-ad:
+    # Samba 4 Active Directory Domain Controller for SCIM/SSO testing.
+    # Bootstraps an ACME.LOCAL domain on first start (~60s).
+    # Admin: Administrator / value of SAMBA_ADMIN_PASSWORD (defaults to Passw0rd!).
+    # Reachable from compose network at samba-ad:389; from host at localhost:1389.
+    image: nowsci/samba-domain:latest
+    container_name: infisical-dev-samba-ad
+    hostname: dc1
+    cap_add:
+      - SYS_ADMIN
+    privileged: true
+    environment:
+      - DOMAIN=ACME.LOCAL
+      - DOMAIN_DC=dc=acme,dc=local
+      - DOMAINPASS=${SAMBA_ADMIN_PASSWORD:-Passw0rd!}
+      - DNSFORWARDER=8.8.8.8
+      - HOSTIP=0.0.0.0
+      - INSECURELDAP=true # dev only — allows ldap:// without TLS
+    ports:
+      - 1389:389 # ldap (mapped off 389 to coexist with the openldap profile)
+      - 1636:636 # ldaps
+      - 88:88 # kerberos
+      - 88:88/udp
+    volumes:
+      - samba_data:/var/lib/samba
+      - samba_etc:/etc/samba/external
+    profiles: [ad]
+
 volumes:
   postgres-data:
     driver: local
@@ -272,6 +332,9 @@ volumes:
     driver: local
   ldap_data:
   ldap_config:
+  pingfederate_data:
+  samba_data:
+  samba_etc:
   grafana_storage:
   softhsm_tokens:
     driver: local
