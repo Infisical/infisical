@@ -609,14 +609,15 @@ const unbindCertPathsFromAllProfiles = async (
 
     if (data?.items) {
       for (const profile of data.items) {
-        if (profile.partition !== partition) continue;
-        const refsCert = profile.certKeyChain?.some(
-          (entry) =>
-            (entry.cert !== undefined && pathSet.has(entry.cert)) ||
-            (entry.chain !== undefined && pathSet.has(entry.chain))
-        );
-        if (refsCert) {
-          await unbindFromClientSslProfile(session, partition, profile.name, certPaths);
+        if (profile.partition === partition) {
+          const refsCert = profile.certKeyChain?.some(
+            (entry) =>
+              (entry.cert !== undefined && pathSet.has(entry.cert)) ||
+              (entry.chain !== undefined && pathSet.has(entry.chain))
+          );
+          if (refsCert) {
+            await unbindFromClientSslProfile(session, partition, profile.name, certPaths);
+          }
         }
       }
     }
@@ -638,12 +639,13 @@ const unbindCertPathsFromAllProfiles = async (
 
     if (data?.items) {
       for (const profile of data.items) {
-        if (profile.partition !== partition) continue;
-        const refsCert =
-          (profile.cert !== undefined && pathSet.has(profile.cert)) ||
-          (profile.chain !== undefined && pathSet.has(profile.chain));
-        if (refsCert) {
-          await unbindFromServerSslProfile(session, partition, profile.name);
+        if (profile.partition === partition) {
+          const refsCert =
+            (profile.cert !== undefined && pathSet.has(profile.cert)) ||
+            (profile.chain !== undefined && pathSet.has(profile.chain));
+          if (refsCert) {
+            await unbindFromServerSslProfile(session, partition, profile.name);
+          }
         }
       }
     }
@@ -977,12 +979,15 @@ export const f5BigIpPkiSyncFactory = ({
 
             const chainNamesToRemove = new Set<string>();
             for (const certName of existingCertNames) {
-              if (!certName.endsWith(F5_BIG_IP_CHAIN_SUFFIX)) continue;
-              const leafName = certName.slice(0, -F5_BIG_IP_CHAIN_SUFFIX.length);
-              if (existingCertNames.has(leafName)) continue;
-              if (activeExternalIdentifiers.has(certName)) continue;
-              if (!managedCertNamePattern.test(certName) && !managedCertNamePattern.test(leafName)) continue;
-              chainNamesToRemove.add(certName);
+              if (certName.endsWith(F5_BIG_IP_CHAIN_SUFFIX)) {
+                const leafName = certName.slice(0, -F5_BIG_IP_CHAIN_SUFFIX.length);
+                const isOrphan = !existingCertNames.has(leafName) && !activeExternalIdentifiers.has(certName);
+                const matchesManagedPattern =
+                  managedCertNamePattern.test(certName) || managedCertNamePattern.test(leafName);
+                if (isOrphan && matchesManagedPattern) {
+                  chainNamesToRemove.add(certName);
+                }
+              }
             }
 
             for (const certName of certNamesToRemove) {

@@ -87,7 +87,7 @@ export const F5BigIpConnectionForm = ({ appConnection, onSubmit }: Props) => {
       gatewayId: null,
       gatewayPoolId: null,
       credentials: {
-        sslRejectUnauthorized: false,
+        sslRejectUnauthorized: true,
         sslCertificate: undefined
       }
     }

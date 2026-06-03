@@ -17,9 +17,13 @@ export const F5BigIpConnectionBasicAuthCredentialsSchema = z.object({
     .trim()
     .min(1, "Hostname is required")
     .max(512, "Hostname cannot exceed 512 characters")
-    .refine((val) => !val.includes("/") && !val.includes("@") && !val.includes("?"), {
-      message: "Hostname must not contain /, @, or ? characters"
-    }),
+    .refine(
+      (val) =>
+        !val.includes("/") && !val.includes("@") && !val.includes("?") && !val.includes(":") && !val.includes("#"),
+      {
+        message: "Hostname must not contain /, @, ?, :, or # characters"
+      }
+    ),
   port: z.number().int().min(1).max(65535).optional(),
   username: z.string().trim().min(1, "Username is required").max(256, "Username cannot exceed 256 characters"),
   password: z.string().trim().min(1, "Password is required").max(512, "Password cannot exceed 512 characters"),
