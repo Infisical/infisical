@@ -637,7 +637,7 @@ echo ""
           .array()
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const data = await server.services.dynamicSecret.fetchIbmApiConnectOrgs({
         instanceUrl: req.body.instanceUrl,
@@ -675,7 +675,7 @@ echo ""
           .array()
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const data = await server.services.dynamicSecret.fetchIbmApiConnectOrgCatalogs({
         instanceUrl: req.body.instanceUrl,
@@ -716,7 +716,7 @@ echo ""
           .array()
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const data = await server.services.dynamicSecret.fetchIbmApiConnectOrgApps({
         instanceUrl: req.body.instanceUrl,
