@@ -111,18 +111,24 @@ export const ProjectTemplateUsersSection = ({ projectTemplate }: Props) => {
 
   // Available roles from template (predefined + custom)
   const availableRoles = useMemo(() => {
-    const predefinedRoles = [
-      { slug: "admin", name: "Admin" },
-      { slug: "member", name: "Member" },
-      { slug: "viewer", name: "Viewer" },
-      { slug: "no-access", name: "No Access" }
-    ];
+    const builtInSlugs = ["admin", "member", "viewer", "no-access"];
+
+    const builtInRoles = builtInSlugs.map((slug) => {
+      const templateRole = projectTemplate.roles.find((r) => r.slug === slug);
+      const defaultNames: Record<string, string> = {
+        admin: "Admin",
+        member: "Member",
+        viewer: "Viewer",
+        "no-access": "No Access"
+      };
+      return { slug, name: templateRole?.name ?? defaultNames[slug] };
+    });
 
     const customRoles = projectTemplate.roles
       .filter((role) => !["admin", "member", "viewer", "no-access", "custom"].includes(role.slug))
       .map((role) => ({ slug: role.slug, name: role.name }));
 
-    return [...predefinedRoles, ...customRoles];
+    return [...builtInRoles, ...customRoles];
   }, [projectTemplate.roles]);
 
   // Org users for dropdown, excluding already added users
