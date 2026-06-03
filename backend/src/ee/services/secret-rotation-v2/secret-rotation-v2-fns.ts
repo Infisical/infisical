@@ -7,9 +7,9 @@ import { TQueueOptions } from "@app/queue/queue-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
 import { AUTH0_CLIENT_SECRET_ROTATION_LIST_OPTION } from "./auth0-client-secret";
-import { CONVEX_ACCESS_KEY_ROTATION_LIST_OPTION } from "./convex-access-key";
 import { AWS_IAM_USER_SECRET_ROTATION_LIST_OPTION } from "./aws-iam-user-secret";
 import { AZURE_CLIENT_SECRET_ROTATION_LIST_OPTION } from "./azure-client-secret";
+import { CONVEX_ACCESS_KEY_ROTATION_LIST_OPTION } from "./convex-access-key";
 import { DATABRICKS_SERVICE_PRINCIPAL_SECRET_ROTATION_LIST_OPTION } from "./databricks-service-principal-secret";
 import {
   DATADOG_APPLICATION_KEY_SECRET_ROTATION_LIST_OPTION,

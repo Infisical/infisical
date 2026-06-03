@@ -44,7 +44,9 @@ export const SanitizedConvexConnectionSchema = z.discriminatedUnion("method", [
 
 export const ValidateConvexConnectionCredentialsSchema = z.discriminatedUnion("method", [
   z.object({
-    method: z.literal(ConvexConnectionMethod.PersonalAccessToken).describe(AppConnections.CREATE(AppConnection.Convex).method),
+    method: z
+      .literal(ConvexConnectionMethod.PersonalAccessToken)
+      .describe(AppConnections.CREATE(AppConnection.Convex).method),
     credentials: ConvexConnectionAccessTokenCredentialsSchema.describe(
       AppConnections.CREATE(AppConnection.Convex).credentials
     )

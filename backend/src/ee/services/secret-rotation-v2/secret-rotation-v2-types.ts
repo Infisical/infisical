@@ -30,6 +30,13 @@ import {
   TAzureClientSecretRotationWithConnection
 } from "./azure-client-secret";
 import {
+  TConvexAccessKeyRotation,
+  TConvexAccessKeyRotationGeneratedCredentials,
+  TConvexAccessKeyRotationInput,
+  TConvexAccessKeyRotationListItem,
+  TConvexAccessKeyRotationWithConnection
+} from "./convex-access-key";
+import {
   TDatabricksServicePrincipalSecretRotation,
   TDatabricksServicePrincipalSecretRotationGeneratedCredentials,
   TDatabricksServicePrincipalSecretRotationInput,
@@ -138,13 +145,6 @@ import {
   TUnixLinuxLocalAccountRotationListItem,
   TUnixLinuxLocalAccountRotationWithConnection
 } from "./unix-linux-local-account-rotation";
-import {
-  TConvexAccessKeyRotation,
-  TConvexAccessKeyRotationGeneratedCredentials,
-  TConvexAccessKeyRotationInput,
-  TConvexAccessKeyRotationListItem,
-  TConvexAccessKeyRotationWithConnection
-} from "./convex-access-key";
 import {
   TWindowsLocalAccountRotation,
   TWindowsLocalAccountRotationGeneratedCredentials,

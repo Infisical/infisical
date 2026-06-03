@@ -66,13 +66,10 @@ import {
   SanitizedCircleCIConnectionSchema
 } from "@app/services/app-connection/circleci";
 import {
-  ConvexConnectionListItemSchema,
-  SanitizedConvexConnectionSchema
-} from "@app/services/app-connection/convex";
-import {
   CloudflareConnectionListItemSchema,
   SanitizedCloudflareConnectionSchema
 } from "@app/services/app-connection/cloudflare/cloudflare-connection-schema";
+import { ConvexConnectionListItemSchema, SanitizedConvexConnectionSchema } from "@app/services/app-connection/convex";
 import {
   DatabricksConnectionListItemSchema,
   SanitizedDatabricksConnectionSchema
