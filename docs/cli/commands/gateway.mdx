@@ -22,13 +22,6 @@ The Infisical gateway provides secure access to private resources using modern T
 
 The gateway system uses SSH reverse tunnels over TCP, eliminating firewall complexity and providing excellent performance for enterprise environments.
 
-<Warning>
-**Deprecation and Migration Notice:** The legacy `infisical gateway` command (v1) will be removed in a future release. Please migrate to `infisical gateway start` (Gateway v2).
-
-If you are moving from Gateway v1 to Gateway v2, this is NOT a drop-in switch. Gateway v2 creates new gateway instances with new gateway IDs. You must update any existing resources that reference gateway IDs (for example: dynamic secret configs, app connections, or other gateway-bound resources) to point to the new Gateway v2 gateway resource. Until you update those references, traffic will continue to target the old v1 gateway.
-
-</Warning>
-
 ## Subcommands & flags
 
 <AccordionGroup>
@@ -201,88 +194,7 @@ sudo systemctl disable my-gateway  # Disable auto-start on boot
 sudo infisical gateway systemd uninstall my-gateway
 ```
 
-The gateway name is provided as a positional argument. If no service matching the gateway name is found, it will fall back to removing a legacy `infisical-gateway` service if one exists.
-
-</Accordion>
-</AccordionGroup>
-
-## Legacy Gateway Commands
-
-<AccordionGroup>
-<Accordion title="infisical gateway (deprecated)">
-  <Warning>
-  **This command is deprecated and will be removed in a future release.**
-
-  Please migrate to `infisical gateway start` for the new TCP-based SSH tunnel architecture.
-
-**Migration required:** If you are currently using Gateway v1 (via `infisical gateway`), moving to Gateway v2 is not in-place. Gateway v2 provisions new gateway instances with new gateway IDs. Update any resources that reference a gateway ID (for example: dynamic secret configs, app connections, or other gateway-bound resources) to use the new Gateway v2 gateway ID. Until you update those references, traffic will continue to target the old v1 gateway.
-
-  </Warning>
-
-Run the legacy Infisical gateway in the foreground. The gateway will connect to the relay service and maintain a persistent connection.
-
-```bash
-infisical gateway --domain=<domain> --auth-method=<auth-method>
-```
-
-### Other Flags
-
-  <AccordionGroup>
-  <Accordion title="--domain">
-    Domain of your self-hosted Infisical instance.
-
-    ```bash
-    # Example
-    infisical gateway --domain=https://app.your-domain.com
-    ```
-
-  </Accordion>
-  </AccordionGroup>
-</Accordion>
-
-<Accordion title="infisical gateway install (deprecated)">
-  <Warning>
-  **This command is deprecated and will be removed in a future release.**
-
-  Please migrate to `infisical gateway systemd install` for the new TCP-based SSH tunnel architecture with enhanced security and better performance.
-
-**Migration required:** If you previously installed Gateway v1 via `infisical gateway install`, moving to Gateway v2 is not in-place. Gateway v2 provisions new gateway instances with new gateway IDs. Update any resources that reference a gateway ID (for example: dynamic secret configs, app connections, or other gateway-bound resources) to use the new Gateway v2 gateway ID. Until you update those references, traffic will continue to target the old v1 gateway.
-
-  </Warning>
-
-Install and enable the legacy gateway as a systemd service. This command must be run with sudo on Linux.
-
-```bash
-sudo infisical gateway install --token=<token> --domain=<domain>
-```
-
-### Requirements
-
-- Must be run on Linux
-- Must be run with root/sudo privileges
-- Requires systemd
-
-### Service Details
-
-The systemd service is installed with secure defaults:
-
-- Service file: `/etc/systemd/system/infisical-gateway.service`
-- Config file: `/etc/infisical/gateway.conf`
-- Runs with restricted privileges:
-  - InaccessibleDirectories=/home
-  - PrivateTmp=yes
-  - Resource limits configured for stability
-- Automatically restarts on failure
-- Enabled to start on boot
-
-After installation, manage the service with standard systemd commands:
-
-```bash
-sudo systemctl start infisical-gateway    # Start the service
-sudo systemctl stop infisical-gateway     # Stop the service
-sudo systemctl status infisical-gateway   # Check service status
-sudo systemctl disable infisical-gateway  # Disable auto-start on boot
-```
+The gateway name is provided as a positional argument.
 
 </Accordion>
 </AccordionGroup>
