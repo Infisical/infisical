@@ -70,6 +70,8 @@ When adding new queries, consider whether the default 60s staleTime is appropria
 
 CASL-based (`@casl/ability`). Contexts: `OrgPermissionContext` and `ProjectPermissionContext` in `src/context/`. Access via `useOrgPermission()` / `useProjectPermission()` hooks. HOC gates: `src/hoc/withPermission/` and `withProjectPermission/`.
 
+**⚠️ Never auto-rewrite legacy permission actions in the role form round-trip.** In `ProjectRoleModifySection.utils.tsx`, `rolePermission2Form` must preserve legacy actions as-is (secrets `read` / `DescribeAndReadValue`, and `grant-privileges` on Member/Identity/Group) rather than folding them into the new granular actions (`describeSecret`+`readValue`, `assign-role`+`assign-additional-privileges`). A legacy action should only drop off when the user explicitly unchecks it. Silently migrating on save removes access from existing roles under the backend's old privilege-boundary system — see the backend `Permission System (CASL)` note in `backend/CLAUDE.md`.
+
 ### Styling
 
 Tailwind CSS v4 with PostCSS. Dark theme configured via CSS custom properties in `src/index.css` (@theme directive). Custom breakpoint `dashboard: 1100px`. Font: Inter. Color palette: primary (blue), mineshaft (dark gray), bunker (darker bg), success/warning/danger/info.

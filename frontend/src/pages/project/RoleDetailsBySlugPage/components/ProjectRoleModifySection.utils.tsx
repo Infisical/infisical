@@ -1221,11 +1221,10 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
           const canCreate = action.includes(ProjectPermissionSecretActions.Create);
           const canSubscribe = action.includes(ProjectPermissionSecretActions.Subscribe);
 
-          // Migrate legacy DescribeAndReadValue into the two new granular actions
           formVal[subject]!.push({
-            describeSecret: canDescribe || canDescribeAndReadValue,
-            read: false,
-            readValue: canReadValue || canDescribeAndReadValue,
+            describeSecret: canDescribe,
+            read: canDescribeAndReadValue,
+            readValue: canReadValue,
             create: canCreate,
             edit: canEdit,
             delete: canDelete,
@@ -1308,16 +1307,15 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
           const canGetToken = action.includes(ProjectPermissionIdentityActions.GetToken);
           const canDeleteToken = action.includes(ProjectPermissionIdentityActions.DeleteToken);
 
-          // Migrate legacy GrantPrivileges into the two new granular actions
           formVal[subject]!.push({
             [ProjectPermissionIdentityActions.Read]: canRead,
             [ProjectPermissionIdentityActions.Create]: canCreate,
             [ProjectPermissionIdentityActions.Edit]: canEdit,
             [ProjectPermissionIdentityActions.Delete]: canDelete,
-            [ProjectPermissionIdentityActions.GrantPrivileges]: false,
-            [ProjectPermissionIdentityActions.AssignRole]: canAssignRole || canGrantPrivileges,
+            [ProjectPermissionIdentityActions.GrantPrivileges]: canGrantPrivileges,
+            [ProjectPermissionIdentityActions.AssignRole]: canAssignRole,
             [ProjectPermissionIdentityActions.AssignAdditionalPrivileges]:
-              canAssignAdditionalPrivileges || canGrantPrivileges,
+              canAssignAdditionalPrivileges,
             [ProjectPermissionIdentityActions.AssumePrivileges]: canAssumePrivileges,
             [ProjectPermissionIdentityActions.RevokeAuth]: canRevokeAuth,
             [ProjectPermissionIdentityActions.CreateToken]: canCreateToken,
@@ -1373,16 +1371,15 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
             ProjectPermissionMemberActions.AssumePrivileges
           );
 
-          // Migrate legacy GrantPrivileges into the two new granular actions
           formVal[subject]!.push({
             [ProjectPermissionMemberActions.Read]: canRead,
             [ProjectPermissionMemberActions.Create]: canCreate,
             [ProjectPermissionMemberActions.Edit]: canEdit,
             [ProjectPermissionMemberActions.Delete]: canDelete,
-            [ProjectPermissionMemberActions.GrantPrivileges]: false,
-            [ProjectPermissionMemberActions.AssignRole]: canAssignRole || canGrantPrivileges,
+            [ProjectPermissionMemberActions.GrantPrivileges]: canGrantPrivileges,
+            [ProjectPermissionMemberActions.AssignRole]: canAssignRole,
             [ProjectPermissionMemberActions.AssignAdditionalPrivileges]:
-              canAssignAdditionalPrivileges || canGrantPrivileges,
+              canAssignAdditionalPrivileges,
             [ProjectPermissionMemberActions.AssumePrivileges]: canAssumePrivileges,
             conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
             inverted
@@ -1399,14 +1396,13 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
           const canGrantPrivileges = action.includes(ProjectPermissionGroupActions.GrantPrivileges);
           const canAssignRole = action.includes(ProjectPermissionGroupActions.AssignRole);
 
-          // Migrate legacy GrantPrivileges into AssignRole
           formVal[subject]!.push({
             [ProjectPermissionGroupActions.Read]: canRead,
             [ProjectPermissionGroupActions.Create]: canCreate,
             [ProjectPermissionGroupActions.Edit]: canEdit,
             [ProjectPermissionGroupActions.Delete]: canDelete,
-            [ProjectPermissionGroupActions.GrantPrivileges]: false,
-            [ProjectPermissionGroupActions.AssignRole]: canAssignRole || canGrantPrivileges,
+            [ProjectPermissionGroupActions.GrantPrivileges]: canGrantPrivileges,
+            [ProjectPermissionGroupActions.AssignRole]: canAssignRole,
             conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
             inverted
           });

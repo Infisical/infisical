@@ -78,7 +78,7 @@ export const ProjectTemplateRolesSection = ({ projectTemplate, isInfisicalTempla
       templateId: projectTemplate.id,
       // Sanitize remaining roles through the form round-trip so their permissions match the
       // shape ProjectPermissionV2Schema accepts (strips subjects not modeled by the form,
-      // e.g. certificate-application, and migrates legacy actions).
+      // e.g. certificate-application).
       roles: projectTemplate.roles
         .filter((role) => role.slug !== slug)
         .map((role) => ({
