@@ -122,6 +122,7 @@
                       "integrations/app-connections/circleci",
                       "integrations/app-connections/chef",
                       "integrations/app-connections/cloudflare",
+                      "integrations/app-connections/convex",
                       "integrations/app-connections/databricks",
                       "integrations/app-connections/datadog",
                       "integrations/app-connections/dbt",
