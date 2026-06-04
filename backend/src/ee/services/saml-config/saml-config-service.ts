@@ -554,7 +554,8 @@ export const samlConfigServiceFactory = ({
     // When the org enforces SSO, the verified domain + IdP are authoritative, so we skip the
     // separate email-verification step (the email-domain ownership check above already proves the
     // org owns this domain, and password signup is blocked for enforced domains).
-    const skipEmailVerification = Boolean(organization.authEnforced);
+    // Also skip when the instance admin has enabled "Trust SAML Emails" in the server admin console.
+    const skipEmailVerification = Boolean(organization.authEnforced) || Boolean(serverCfg.trustSamlEmails);
 
     const samlConfig = await samlConfigDAL.findOne({ orgId });
     const groupsMetadata = metadata?.find(({ key }) => key === "groups");
