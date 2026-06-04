@@ -211,11 +211,10 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
     async (kmipRouter) => {
       await kmipRouter.register(registerKmipRouter);
       await kmipRouter.register(registerKmipSpecRouter, { prefix: "/spec" });
+      await kmipRouter.register(registerKmipServerRouter, { prefix: "/servers" });
     },
     { prefix: "/kmip" }
   );
-
-  await server.register(registerKmipServerRouter, { prefix: "/kmip-servers" });
 
   await server.register(
     async (pamRouter) => {

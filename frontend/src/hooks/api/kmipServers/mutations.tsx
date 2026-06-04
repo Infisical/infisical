@@ -15,7 +15,7 @@ export const useDeleteKmipServerById = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (kmipServerId: string) => {
-      return apiRequest.delete(`/api/v1/kmip-servers/${kmipServerId}`);
+      return apiRequest.delete(`/api/v1/kmip/servers/${kmipServerId}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: kmipServerQueryKeys.list() });
@@ -28,7 +28,7 @@ export const useCreateKmipServer = () => {
   return useMutation({
     mutationFn: async (dto: TCreateKmipServerDTO) => {
       const { data } = await apiRequest.post<TKmipServerWithAuthMethod>(
-        "/api/v1/kmip-servers",
+        "/api/v1/kmip/servers",
         dto
       );
       return data;
@@ -47,7 +47,7 @@ export const useUpdateKmipServer = () => {
       if (authMethod !== undefined) body.authMethod = authMethod;
 
       const { data } = await apiRequest.patch<TKmipServerWithAuthMethod>(
-        `/api/v1/kmip-servers/${kmipServerId}`,
+        `/api/v1/kmip/servers/${kmipServerId}`,
         body
       );
       return data;
@@ -63,7 +63,7 @@ export const useGenerateKmipServerEnrollmentToken = () => {
   return useMutation({
     mutationFn: async ({ kmipServerId }: TGenerateKmipServerEnrollmentTokenDTO) => {
       const { data } = await apiRequest.post<{ token: string; expiresAt: string }>(
-        `/api/v1/kmip-servers/${kmipServerId}/token-auth/generate-enrollment-token`
+        `/api/v1/kmip/servers/${kmipServerId}/token-auth/generate-enrollment-token`
       );
       return data;
     }
@@ -75,7 +75,7 @@ export const useRevokeKmipServerAccess = () => {
   return useMutation({
     mutationFn: async ({ kmipServerId }: TRevokeKmipServerAccessDTO) => {
       const { data } = await apiRequest.post<{ method: string; deletedTokenCount: number }>(
-        `/api/v1/kmip-servers/${kmipServerId}/revoke`
+        `/api/v1/kmip/servers/${kmipServerId}/revoke`
       );
       return data;
     },

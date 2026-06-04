@@ -10,13 +10,13 @@ export const kmipServerQueryKeys = {
 };
 
 const fetchKmipServers = async (): Promise<TKmipServer[]> => {
-  const { data } = await apiRequest.get<TKmipServer[]>("/api/v1/kmip-servers");
+  const { data } = await apiRequest.get<TKmipServer[]>("/api/v1/kmip/servers");
   return data;
 };
 
 const fetchKmipServerById = async (kmipServerId: string): Promise<TKmipServerWithAuthMethod> => {
   const { data } = await apiRequest.get<TKmipServerWithAuthMethod>(
-    `/api/v1/kmip-servers/${kmipServerId}`
+    `/api/v1/kmip/servers/${kmipServerId}`
   );
   return data;
 };
