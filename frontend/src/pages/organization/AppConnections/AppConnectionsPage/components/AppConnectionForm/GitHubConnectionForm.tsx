@@ -28,7 +28,10 @@ import {
 } from "@app/context/OrgPermissionContext/types";
 import {
   APP_CONNECTION_MAP,
+  CSRF_TOKEN_STORAGE_KEY,
+  generateCsrfToken,
   getAppConnectionMethodDetails,
+  GITHUB_CONNECTION_FORM_STORAGE_KEY,
   useGetAppConnectionOauthReturnUrl
 } from "@app/helpers/appConnections";
 import { isInfisicalCloud } from "@app/helpers/platform";
@@ -94,8 +97,6 @@ const patSchema = rootSchema.extend({
     })
   ])
 });
-
-const GITHUB_CONNECTION_FORM_KEY = "githubConnectionFormData";
 
 type PatSchemaForm = z.infer<typeof patSchema>;
 
@@ -164,7 +165,7 @@ export const GitHubConnectionForm = ({ appConnection, projectId, onSubmit }: Pro
   useEffect(() => {
     if (isUpdate) return;
     try {
-      const raw = localStorage.getItem(GITHUB_CONNECTION_FORM_KEY);
+      const raw = localStorage.getItem(GITHUB_CONNECTION_FORM_STORAGE_KEY);
       if (!raw) return;
       const stored = JSON.parse(raw) as {
         method?: GitHubConnectionMethod;
@@ -194,7 +195,7 @@ export const GitHubConnectionForm = ({ appConnection, projectId, onSubmit }: Pro
     } catch {
       // ignore malformed state
     } finally {
-      localStorage.removeItem(GITHUB_CONNECTION_FORM_KEY);
+      localStorage.removeItem(GITHUB_CONNECTION_FORM_STORAGE_KEY);
     }
     // run once on mount
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -226,19 +227,14 @@ export const GitHubConnectionForm = ({ appConnection, projectId, onSubmit }: Pro
   const buildGithubHost = (host?: string) =>
     host && host.length > 0 ? `https://${host}` : "https://github.com";
 
-  const generateInstallState = () =>
-    Array.from(crypto.getRandomValues(new Uint8Array(16)))
-      .map((b) => b.toString(16).padStart(2, "0"))
-      .join("");
-
   const storeConnectionFormData = (
     formData: FormData,
     installState: string,
     gitHubAppId?: string | null
   ) => {
-    localStorage.setItem("latestCSRFToken", installState);
+    localStorage.setItem(CSRF_TOKEN_STORAGE_KEY, installState);
     localStorage.setItem(
-      GITHUB_CONNECTION_FORM_KEY,
+      GITHUB_CONNECTION_FORM_STORAGE_KEY,
       JSON.stringify({
         ...formData,
         credentials: {
@@ -259,7 +255,7 @@ export const GitHubConnectionForm = ({ appConnection, projectId, onSubmit }: Pro
   const handleCreateApp = async ({ name, githubOrg }: { name: string; githubOrg: string }) => {
     const formData = form.getValues();
     setIsRedirecting(true);
-    const installState = generateInstallState();
+    const installState = generateCsrfToken();
     storeConnectionFormData(formData, installState);
 
     try {
@@ -305,7 +301,7 @@ export const GitHubConnectionForm = ({ appConnection, projectId, onSubmit }: Pro
     setIsRedirecting(true);
 
     // generate install state here so the OAuth callback can validate it
-    const installState = generateInstallState();
+    const installState = generateCsrfToken();
     const githubHost = buildGithubHost(formData.credentials?.host);
 
     switch (formData.method) {

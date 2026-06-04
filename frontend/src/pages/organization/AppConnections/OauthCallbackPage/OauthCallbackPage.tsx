@@ -4,7 +4,11 @@ import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { createNotification } from "@app/components/notifications";
 import { ContentLoader } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
+import {
+  APP_CONNECTION_MAP,
+  consumeCsrfToken,
+  GITHUB_CONNECTION_FORM_STORAGE_KEY
+} from "@app/helpers/appConnections";
 import {
   AzureAppConfigurationConnectionMethod,
   AzureClientSecretsConnectionMethod,
@@ -23,7 +27,7 @@ import { IntegrationsListPageTabs } from "@app/types/integrations";
 import { FormDataMap } from "./OauthCallbackPage.types";
 
 const formDataStorageFieldMap: Partial<Record<AppConnection, string>> = {
-  [AppConnection.GitHub]: "githubConnectionFormData",
+  [AppConnection.GitHub]: GITHUB_CONNECTION_FORM_STORAGE_KEY,
   [AppConnection.GitHubRadar]: "githubRadarConnectionFormData",
   [AppConnection.GitLab]: "gitlabConnectionFormData",
   [AppConnection.AzureKeyVault]: "azureKeyVaultConnectionFormData",
@@ -55,14 +59,13 @@ export const OAuthCallbackPage = () => {
   const appConnection = rawState.includes("<:>") ? rawState.split("<:>")[1] : rawAppConnection;
 
   const clearState = (app: AppConnection) => {
-    if (state !== localStorage.getItem("latestCSRFToken")) {
+    if (!consumeCsrfToken(state)) {
       throw new Error("Invalid CSRF token");
     }
 
     const dataFieldName = formDataStorageFieldMap[app];
 
     localStorage.removeItem(dataFieldName!);
-    localStorage.removeItem("latestCSRFToken");
   };
 
   const getFormData = <T extends keyof FormDataMap>(app: T): FormDataMap[T] | null => {

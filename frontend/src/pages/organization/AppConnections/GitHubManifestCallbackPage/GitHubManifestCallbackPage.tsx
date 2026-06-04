@@ -4,9 +4,8 @@ import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { createNotification } from "@app/components/notifications";
 import { ContentLoader } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
+import { consumeCsrfToken, GITHUB_CONNECTION_FORM_STORAGE_KEY } from "@app/helpers/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
-
-const GITHUB_CONNECTION_FORM_KEY = "githubConnectionFormData";
 
 export const GitHubManifestCallbackPage = () => {
   const navigate = useNavigate();
@@ -39,17 +38,16 @@ export const GitHubManifestCallbackPage = () => {
     // round-tripped through the signed manifest token and echoed back here; it must match the CSRF
     // token stored when the user kicked off app creation. This blocks a crafted callback URL from
     // pre-seeding the connection form with an attacker-chosen app id.
-    if (installState !== localStorage.getItem("latestCSRFToken")) {
+    if (!consumeCsrfToken(installState)) {
       createNotification({ type: "error", text: "Invalid GitHub manifest callback state." });
       navigate({ to: "/organizations/$orgId/app-connections", params: { orgId } });
       return;
     }
-    localStorage.removeItem("latestCSRFToken");
 
     // The GitHub App is already created at this point. Mark the in-progress connection form so it
     // resumes with the new app selected, then send the user back to it to finish the connection.
     try {
-      const connectionFormRaw = localStorage.getItem(GITHUB_CONNECTION_FORM_KEY);
+      const connectionFormRaw = localStorage.getItem(GITHUB_CONNECTION_FORM_STORAGE_KEY);
       const connectionForm = connectionFormRaw
         ? (JSON.parse(connectionFormRaw) as {
             credentials?: Record<string, unknown>;
@@ -61,10 +59,10 @@ export const GitHubManifestCallbackPage = () => {
         gitHubAppId
       };
       connectionForm.resumeWithGitHubAppId = gitHubAppId;
-      localStorage.setItem(GITHUB_CONNECTION_FORM_KEY, JSON.stringify(connectionForm));
+      localStorage.setItem(GITHUB_CONNECTION_FORM_STORAGE_KEY, JSON.stringify(connectionForm));
     } catch {
       // A corrupt form just means we can't restore the other fields; the app was still created.
-      localStorage.removeItem(GITHUB_CONNECTION_FORM_KEY);
+      localStorage.removeItem(GITHUB_CONNECTION_FORM_STORAGE_KEY);
     }
 
     createNotification({

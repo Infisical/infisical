@@ -271,6 +271,22 @@ export const requestWithGitHubGateway = async <T>(
   );
 };
 
+export const signGitHubAppJwt = (appId: string, privateKey: string) => {
+  const appPrivateKey = privateKey
+    .split("\n")
+    .map((line) => line.trim())
+    .join("\n");
+
+  const now = Math.floor(Date.now() / 1000);
+  return crypto.jwt().sign({ iat: now, exp: now + 5 * 60, iss: appId }, appPrivateKey, { algorithm: "RS256" });
+};
+
+export const buildGitHubAppJwtHeaders = (appJwt: string) => ({
+  Accept: "application/vnd.github+json",
+  Authorization: `Bearer ${appJwt}`,
+  "X-GitHub-Api-Version": "2022-11-28"
+});
+
 export const getGitHubAppAuthToken = async (
   appConnection: TGitHubConnection,
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
@@ -300,19 +316,7 @@ export const getGitHubAppAuthToken = async (
 
   assertPlatformGitHubHostAllowed(effectiveCredentials.host);
 
-  const appPrivateKey = privateKey
-    .split("\n")
-    .map((line) => line.trim())
-    .join("\n");
-
-  const now = Math.floor(Date.now() / 1000);
-  const payload = {
-    iat: now,
-    exp: now + 5 * 60,
-    iss: appId
-  };
-
-  const appJwt = crypto.jwt().sign(payload, appPrivateKey, { algorithm: "RS256" });
+  const appJwt = signGitHubAppJwt(appId, privateKey);
 
   const apiBaseUrl = await getGitHubInstanceApiUrl({ credentials: effectiveCredentials });
   const { installationId } = appConnection.credentials;
@@ -333,11 +337,7 @@ export const getGitHubAppAuthToken = async (
     {
       url: `https://${apiBaseUrl}/app/installations/${installationId}/access_tokens`,
       method: "POST",
-      headers: {
-        Accept: "application/vnd.github+json",
-        Authorization: `Bearer ${appJwt}`,
-        "X-GitHub-Api-Version": "2022-11-28"
-      }
+      headers: buildGitHubAppJwtHeaders(appJwt)
     },
     gatewayConnectionDetails
   );
@@ -392,11 +392,10 @@ export const makePaginatedGitHubRequest = async <T, R = T[]>(
       token = await getGitHubAppAuthToken(appConnection, gatewayService, gatewayV2Service, gatewayPoolService, deps);
   }
 
-  const baseUrl = `https://${await getGitHubInstanceApiUrl(appConnection)}${path}`;
-  const initialUrlObj = new URL(baseUrl);
+  const apiBaseUrl = await getGitHubInstanceApiUrl(appConnection);
+  const initialUrlObj = new URL(`https://${apiBaseUrl}${path}`);
   initialUrlObj.searchParams.set("per_page", "100");
 
-  const apiBaseUrl = await getGitHubInstanceApiUrl(appConnection);
   const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
     gatewayId: appConnection.gatewayId,
     gatewayPoolId: appConnection.gatewayPoolId

@@ -17,8 +17,10 @@ import { TAppConnectionDALFactory } from "@app/services/app-connection/app-conne
 import { decryptAppConnectionCredentials } from "@app/services/app-connection/app-connection-fns";
 import {
   assertPlatformGitHubHostAllowed,
+  buildGitHubAppJwtHeaders,
   getGitHubInstanceApiUrl,
-  resolveGitHubAppCredentials
+  resolveGitHubAppCredentials,
+  signGitHubAppJwt
 } from "@app/services/app-connection/github/github-connection-fns";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -140,21 +142,8 @@ export const gitHubAppServiceFactory = ({
       credentials: { host: host ?? undefined, instanceType: instanceType ?? "cloud" }
     });
 
-    const appPrivateKey = privateKey
-      .split("\n")
-      .map((line) => line.trim())
-      .join("\n");
-
-    const now = Math.floor(Date.now() / 1000);
-    const appJwt = crypto.jwt().sign({ iat: now, exp: now + 5 * 60, iss: appId }, appPrivateKey, {
-      algorithm: "RS256"
-    });
-
-    const headers = {
-      Accept: "application/vnd.github+json",
-      Authorization: `Bearer ${appJwt}`,
-      "X-GitHub-Api-Version": "2022-11-28"
-    };
+    const appJwt = signGitHubAppJwt(appId, privateKey);
+    const headers = buildGitHubAppJwtHeaders(appJwt);
 
     const installationIds: number[] = [];
     let page = 1;
@@ -518,26 +507,14 @@ export const gitHubAppServiceFactory = ({
       credentials: { host: effectiveHost, instanceType: effectiveInstanceType }
     });
 
-    const appPrivateKey = privateKey
-      .split("\n")
-      .map((line) => line.trim())
-      .join("\n");
-
-    const now = Math.floor(Date.now() / 1000);
-    const appJwt = crypto.jwt().sign({ iat: now, exp: now + 5 * 60, iss: appId }, appPrivateKey, {
-      algorithm: "RS256"
-    });
+    const appJwt = signGitHubAppJwt(appId, privateKey);
 
     try {
       // safeRequest validates + DNS-pins the target and disables redirects, so a public host
       // cannot redirect this request to an internal service (SSRF).
       const { data } = await safeRequest.get<{ id: number }[]>(`https://${apiBaseUrl}/app/installations`, {
         params: { per_page: 1 },
-        headers: {
-          Accept: "application/vnd.github+json",
-          Authorization: `Bearer ${appJwt}`,
-          "X-GitHub-Api-Version": "2022-11-28"
-        }
+        headers: buildGitHubAppJwtHeaders(appJwt)
       });
 
       return { installed: data.length > 0, clientId };

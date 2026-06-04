@@ -344,6 +344,20 @@ export const AWS_REGIONS = [
   { name: "AWS GovCloud (US-West)", slug: "us-gov-west-1" }
 ];
 
+export const CSRF_TOKEN_STORAGE_KEY = "latestCSRFToken";
+export const GITHUB_CONNECTION_FORM_STORAGE_KEY = "githubConnectionFormData";
+
+export const generateCsrfToken = () =>
+  Array.from(crypto.getRandomValues(new Uint8Array(16)))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+
+export const consumeCsrfToken = (state: string) => {
+  if (state !== localStorage.getItem(CSRF_TOKEN_STORAGE_KEY)) return false;
+  localStorage.removeItem(CSRF_TOKEN_STORAGE_KEY);
+  return true;
+};
+
 export const useGetAppConnectionOauthReturnUrl = () => {
   const {
     location: { pathname }
