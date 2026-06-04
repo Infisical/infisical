@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { PamRecordingStorageBackend } from "../pam-session-recording-storage/pam-session-recording-storage-enums";
+import { PamRecordingStorageBackend } from "./pam-enums";
 
 export const PamPasswordConstraintsSchema = z.object({
   minLength: z.number().int().min(1).max(256),

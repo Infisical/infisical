@@ -22,3 +22,8 @@ export enum PamProductRole {
   Admin = "admin",
   Member = "member"
 }
+
+export enum PamRecordingStorageBackend {
+  Postgres = "postgres",
+  AwsS3 = "aws-s3"
+}

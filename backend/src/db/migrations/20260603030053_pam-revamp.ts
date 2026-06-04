@@ -237,19 +237,19 @@ export async function up(knex: Knex): Promise<void> {
 
       for (const account of resourceAccounts) {
         const templateId = templateMap[account.resourceType];
-        if (!templateId) continue;
-
-        await knex(TableName.PamAccount)
-          .where("id", account.accountId)
-          .update({
-            folderId,
-            templateId,
-            encryptedCredentials: reEncrypt(oldProjectCipher, account.encryptedCredentials),
-            encryptedConnectionDetails: reEncrypt(oldProjectCipher, account.encryptedConnectionDetails),
-            encryptedInternalMetadata: reEncrypt(oldProjectCipher, account.encryptedResourceMetadata),
-            gatewayId: account.gatewayId,
-            gatewayPoolId: account.gatewayPoolId
-          });
+        if (templateId) {
+          await knex(TableName.PamAccount)
+            .where("id", account.accountId)
+            .update({
+              folderId,
+              templateId,
+              encryptedCredentials: reEncrypt(oldProjectCipher, account.encryptedCredentials),
+              encryptedConnectionDetails: reEncrypt(oldProjectCipher, account.encryptedConnectionDetails),
+              encryptedInternalMetadata: reEncrypt(oldProjectCipher, account.encryptedResourceMetadata),
+              gatewayId: account.gatewayId,
+              gatewayPoolId: account.gatewayPoolId
+            });
+        }
       }
 
       const domainAccounts = await knex(TableName.PamAccount)
@@ -266,18 +266,18 @@ export async function up(knex: Knex): Promise<void> {
 
       for (const account of domainAccounts) {
         const templateId = templateMap[account.domainType];
-        if (!templateId) continue;
-
-        await knex(TableName.PamAccount)
-          .where("id", account.accountId)
-          .update({
-            folderId,
-            templateId,
-            encryptedCredentials: reEncrypt(oldProjectCipher, account.encryptedCredentials),
-            encryptedConnectionDetails: reEncrypt(oldProjectCipher, account.encryptedConnectionDetails),
-            gatewayId: account.gatewayId,
-            gatewayPoolId: account.gatewayPoolId
-          });
+        if (templateId) {
+          await knex(TableName.PamAccount)
+            .where("id", account.accountId)
+            .update({
+              folderId,
+              templateId,
+              encryptedCredentials: reEncrypt(oldProjectCipher, account.encryptedCredentials),
+              encryptedConnectionDetails: reEncrypt(oldProjectCipher, account.encryptedConnectionDetails),
+              gatewayId: account.gatewayId,
+              gatewayPoolId: account.gatewayPoolId
+            });
+        }
       }
     }
 
