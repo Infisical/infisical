@@ -470,16 +470,15 @@ export async function up(knex: Knex): Promise<void> {
         const sessionKey = decrypted.subarray(AAD_LENGTH, AAD_LENGTH + SESSION_KEY_LENGTH);
 
         const expectedOldAad = buildWrapAad(session.projectId, session.id);
-        if (!crypto.nativeCrypto.timingSafeEqual(oldAad, expectedOldAad)) {
+        if (crypto.nativeCrypto.timingSafeEqual(oldAad, expectedOldAad)) {
+          const newAad = buildWrapAad(session.orgId, session.id);
+          const newPayload = Buffer.concat([newAad, sessionKey]);
+          updates.encryptedSessionKey = newCipher.encryptor({ plainText: newPayload }).cipherTextBlob;
+        } else {
           logger.warn(
-            `PAM migration: skipping session due to AAD mismatch, recording will be unreadable [sessionId=${session.id}]`
+            `PAM migration: skipping session key re-encryption due to AAD mismatch, recording will be unreadable [sessionId=${session.id}]`
           );
-          continue;
         }
-
-        const newAad = buildWrapAad(session.orgId, session.id);
-        const newPayload = Buffer.concat([newAad, sessionKey]);
-        updates.encryptedSessionKey = newCipher.encryptor({ plainText: newPayload }).cipherTextBlob;
       }
 
       if (session.encryptedLogsBlob) {
