@@ -33,13 +33,13 @@ export const registerDeprecatedProjectMembershipRouter = async (server: FastifyZ
           .array()
           .default([])
           .describe(PROJECT_USERS.INVITE_MEMBER.emails)
-          .refine((val) => val.every((el) => el === el.toLowerCase()), "Email must be lowercase"),
+          .transform((val) => val.map((el) => el.toLowerCase())),
         usernames: z
           .string()
           .array()
           .default([])
           .describe(PROJECT_USERS.INVITE_MEMBER.usernames)
-          .refine((val) => val.every((el) => el === el.toLowerCase()), "Username must be lowercase"),
+          .transform((val) => val.map((el) => el.toLowerCase())),
         roleSlugs: z.string().array().min(1).optional().describe(PROJECT_USERS.INVITE_MEMBER.roleSlugs)
       }),
       response: {
@@ -127,13 +127,13 @@ export const registerDeprecatedProjectMembershipRouter = async (server: FastifyZ
           .array()
           .default([])
           .describe(PROJECT_USERS.REMOVE_MEMBER.emails)
-          .refine((val) => val.every((el) => el === el.toLowerCase()), "Email must be lowercase"),
+          .transform((val) => val.map((el) => el.toLowerCase())),
         usernames: z
           .string()
           .array()
           .default([])
           .describe(PROJECT_USERS.REMOVE_MEMBER.usernames)
-          .refine((val) => val.every((el) => el === el.toLowerCase()), "Username must be lowercase")
+          .transform((val) => val.map((el) => el.toLowerCase()))
       }),
       response: {
         200: z.object({
