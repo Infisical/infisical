@@ -4,47 +4,13 @@ import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { extractGoDaddyErrorMessage } from "@app/services/app-connection/godaddy/godaddy-connection-errors";
 
-type TCreateCertificateRequest = {
-  commonName: string;
-  csr: string;
-  period: number;
-  productType: string;
-  rootType?: string;
-  subjectAlternativeNames?: string[];
-};
-
-type TCreateCertificateResponse = {
-  certificateId: string;
-};
-
-type TRenewCertificateRequest = {
-  commonName?: string;
-  csr?: string;
-  period?: number;
-  rootType?: string;
-  subjectAlternativeNames?: string[];
-};
-
-type TGetCertificateResponse = {
-  certificateId: string;
-  status: string;
-  commonName?: string;
-  serialNumber?: string;
-  validStart?: string;
-  validEnd?: string;
-  productType?: string;
-  subjectAlternativeNames?: { subjectAlternativeName: string; status?: string }[];
-};
-
-type TCertificateBundleResponse = {
-  pems: {
-    certificate: string;
-    cross?: string;
-    intermediate?: string;
-    root?: string;
-  };
-  serialNumber?: string;
-};
+import {
+  TCertificateBundleResponse,
+  TCreateCertificateRequest,
+  TCreateCertificateResponse,
+  TGetCertificateResponse,
+  TRenewCertificateRequest
+} from "./godaddy-certificate-authority-types";
 
 export type TGoDaddyApiClient = ReturnType<typeof createGoDaddyApiClient>;
 
