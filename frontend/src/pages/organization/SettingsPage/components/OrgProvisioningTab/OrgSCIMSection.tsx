@@ -1,7 +1,24 @@
+import { UserCog } from "lucide-react";
+
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { Button, Switch } from "@app/components/v2";
+import {
+  Button,
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldGroup,
+  FieldTitle,
+  Separator,
+  Switch
+} from "@app/components/v3";
 import {
   OrgPermissionActions,
   OrgPermissionSubjects,
@@ -56,52 +73,50 @@ export const OrgScimSection = () => {
   };
 
   return (
-    <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-6">
-      <p className="text-xl font-medium text-gray-200">Provision users via SCIM</p>
-      <div className="py-4">
-        <div className="mb-2 flex items-center justify-between">
-          <h2 className="text-md text-mineshaft-100">SCIM</h2>
-          <OrgPermissionCan I={OrgPermissionActions.Read} a={OrgPermissionSubjects.Scim}>
-            {(isAllowed) => (
-              <Button
-                onClick={addScimTokenBtnClick}
-                colorSchema="secondary"
-                isDisabled={!isAllowed}
-              >
-                Configure
-              </Button>
-            )}
-          </OrgPermissionCan>
-        </div>
-        <p className="text-sm text-mineshaft-300">Manage SCIM configuration</p>
-      </div>
-      <ExternalGroupOrgRoleMappings />
-      <div className="py-4">
-        <div className="mb-2 flex items-center justify-between">
-          <h2 className="text-md text-mineshaft-100">Enable SCIM</h2>
-          <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Scim}>
-            {(isAllowed) => (
-              <Switch
-                id="enable-scim"
-                onCheckedChange={(value) => {
-                  if (subscription?.scim) {
-                    handleEnableSCIMToggle(value);
-                  } else {
-                    handlePopUpOpen("upgradePlan", {
-                      isEnterpriseFeature: true
-                    });
-                  }
-                }}
-                isChecked={currentOrg?.scimEnabled ?? false}
-                isDisabled={!isAllowed}
-              />
-            )}
-          </OrgPermissionCan>
-        </div>
-        <p className="text-sm text-mineshaft-300">
-          Allow member provisioning/deprovisioning with SCIM
-        </p>
-      </div>
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            <UserCog className="size-4 text-accent" />
+            SCIM Provisioning
+          </CardTitle>
+          <CardDescription>Manage SCIM configuration for member provisioning.</CardDescription>
+          <CardAction>
+            <OrgPermissionCan I={OrgPermissionActions.Read} a={OrgPermissionSubjects.Scim}>
+              {(isAllowed) => (
+                <Button variant="outline" isDisabled={!isAllowed} onClick={addScimTokenBtnClick}>
+                  Configure
+                </Button>
+              )}
+            </OrgPermissionCan>
+          </CardAction>
+        </CardHeader>
+        <CardContent>
+          <FieldGroup>
+            <Field orientation="horizontal">
+              <FieldContent>
+                <FieldTitle>Enable SCIM</FieldTitle>
+                <FieldDescription>
+                  Allow member provisioning/deprovisioning with SCIM.
+                </FieldDescription>
+              </FieldContent>
+              <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Scim}>
+                {(isAllowed) => (
+                  <Switch
+                    id="enable-scim"
+                    variant="org"
+                    checked={currentOrg?.scimEnabled ?? false}
+                    onCheckedChange={handleEnableSCIMToggle}
+                    disabled={!isAllowed}
+                  />
+                )}
+              </OrgPermissionCan>
+            </Field>
+          </FieldGroup>
+          <Separator className="my-4" />
+          <ExternalGroupOrgRoleMappings />
+        </CardContent>
+      </Card>
       <ScimTokenModal
         popUp={popUp}
         handlePopUpOpen={handlePopUpOpen}
@@ -113,6 +128,6 @@ export const OrgScimSection = () => {
         text="Your current plan does not include access to SCIM Provisioning. To unlock this feature, please upgrade to Infisical Enterprise plan."
         isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
       />
-    </div>
+    </>
   );
 };
