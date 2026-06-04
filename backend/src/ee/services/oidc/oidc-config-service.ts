@@ -604,8 +604,8 @@ export const oidcConfigServiceFactory = ({
       lastUsed: null,
       manageGroupMemberships,
       jwtSignatureAlgorithm,
-      claimEmailPath: claimEmailPath ?? null,
-      claimNamePath: claimNamePath ?? null
+      ...(claimEmailPath !== undefined && { claimEmailPath: claimEmailPath || null }),
+      ...(claimNamePath !== undefined && { claimNamePath: claimNamePath || null })
     };
 
     if (clientId !== undefined) {
@@ -816,7 +816,7 @@ export const oidcConfigServiceFactory = ({
           });
         }
 
-        if (!matchesAllowedEmailDomain(email, oidcCfg.allowedEmailDomains ?? "")) {
+        if (email.includes("@") && !matchesAllowedEmailDomain(email, oidcCfg.allowedEmailDomains ?? "")) {
           throw new ForbiddenRequestError({
             message: "Email not allowed."
           });
