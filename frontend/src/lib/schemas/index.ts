@@ -17,7 +17,9 @@ export const BaseSecretNameSchema = z.string().trim().min(1);
 export const SecretNameSchema = BaseSecretNameSchema.refine(
   (el) => !el.includes(" "),
   "Secret name cannot contain spaces."
-).refine((el) => !el.includes(":"), "Secret name cannot contain colon.");
+)
+  .refine((el) => !el.includes(":"), "Secret name cannot contain colon.")
+  .refine((el) => !el.includes("\\"), "Secret name cannot contain backslash.");
 
 export const safeJWTSchema = z
   .string()
