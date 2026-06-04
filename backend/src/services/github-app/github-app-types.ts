@@ -38,6 +38,7 @@ export type TResolveGitHubAppInstallationsDTO = {
   gitHubAppId?: string;
   host?: string;
   instanceType?: "cloud" | "server";
+  gatewayId?: string | null;
   projectId?: string;
   orgPermission: OrgServiceActor;
 };

@@ -430,6 +430,7 @@ export const OAuthCallbackPage = () => {
           gitHubAppId: storedGitHubAppId ?? undefined,
           ...(credentials?.instanceType && { instanceType: credentials.instanceType }),
           ...(credentials?.host && { host: credentials.host }),
+          ...(gatewayId && { gatewayId }),
           ...(projectId && { projectId })
         });
         setGitHubPicker({ ...result, formData });

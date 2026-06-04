@@ -19,6 +19,7 @@ export const resolveGitHubAppInstallations = async (params: {
   gitHubAppId?: string;
   host?: string;
   instanceType?: "cloud" | "server";
+  gatewayId?: string;
   projectId?: string;
 }) => {
   const { data } = await apiRequest.post<{

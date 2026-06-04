@@ -101,6 +101,7 @@ export const registerGitHubAppRouter = async (server: FastifyZodProvider) => {
         gitHubAppId: z.string().uuid().optional(),
         host: z.string().trim().optional(),
         instanceType: z.enum(["cloud", "server"]).optional(),
+        gatewayId: z.string().uuid().optional(),
         projectId: z.string().optional()
       }),
       response: {
@@ -123,6 +124,7 @@ export const registerGitHubAppRouter = async (server: FastifyZodProvider) => {
         gitHubAppId: req.body.gitHubAppId,
         host: req.body.host,
         instanceType: req.body.instanceType,
+        gatewayId: req.body.gatewayId,
         projectId: req.body.projectId
       });
 

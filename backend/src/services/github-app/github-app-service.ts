@@ -1,8 +1,17 @@
 import { ForbiddenError } from "@casl/ability";
-import { AxiosError } from "axios";
+import { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
 
 import { ActionProjectType, OrganizationActionScope } from "@app/db/schemas";
-import { OrgPermissionAppConnectionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
+import { TGatewayDALFactory } from "@app/ee/services/gateway/gateway-dal";
+import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
+import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
+import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import {
+  OrgPermissionAppConnectionActions,
+  OrgPermissionGatewayActions,
+  OrgPermissionSubjects
+} from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionAppConnectionActions,
@@ -18,13 +27,16 @@ import { safeRequest } from "@app/lib/validator/safe-request";
 import {
   assertPlatformGitHubHostAllowed,
   buildGitHubAppJwtHeaders,
+  getGitHubGatewayConnectionDetails,
   getGitHubInstanceApiUrl,
   GithubTokenRespData,
   isGithubErrorResponse,
   listGitHubUserInstallations,
+  requestWithGitHubGateway,
   resolveGitHubAppCredentials,
   signGitHubAppInstallationsToken,
-  signGitHubAppJwt
+  signGitHubAppJwt,
+  TGitHubUserInstallation
 } from "@app/services/app-connection/github/github-connection-fns";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -47,6 +59,11 @@ type TGitHubAppServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX" | "deleteItem">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
+  gatewayDAL: Pick<TGatewayDALFactory, "find">;
+  gatewayV2DAL: Pick<TGatewayV2DALFactory, "find">;
 };
 
 export type TGitHubAppServiceFactory = ReturnType<typeof gitHubAppServiceFactory>;
@@ -55,7 +72,12 @@ export const gitHubAppServiceFactory = ({
   gitHubAppDAL,
   permissionService,
   kmsService,
-  keyStore
+  keyStore,
+  licenseService,
+  gatewayService,
+  gatewayV2Service,
+  gatewayDAL,
+  gatewayV2DAL
 }: TGitHubAppServiceFactoryDep) => {
   const listGitHubApps = async ({ orgPermission }: TListGitHubAppsDTO): Promise<TSanitizedGitHubApp[]> => {
     const { permission } = await permissionService.getOrgPermission({
@@ -481,13 +503,22 @@ export const gitHubAppServiceFactory = ({
     gitHubAppId,
     host,
     instanceType,
+    gatewayId,
     projectId,
     orgPermission
   }: TResolveGitHubAppInstallationsDTO): Promise<{
     installations: TGitHubAppInstallation[];
     installationsToken: string;
   }> => {
-    // mirror the permission required to create the connection this flow feeds into
+    const { permission: orgScopedPermission } = await permissionService.getOrgPermission({
+      actor: orgPermission.type,
+      actorId: orgPermission.id,
+      orgId: orgPermission.orgId,
+      actorAuthMethod: orgPermission.authMethod,
+      actorOrgId: orgPermission.orgId,
+      scope: OrganizationActionScope.Any
+    });
+
     if (projectId) {
       const { permission } = await permissionService.getProjectPermission({
         actor: orgPermission.type,
@@ -503,19 +534,33 @@ export const gitHubAppServiceFactory = ({
         ProjectPermissionSub.AppConnections
       );
     } else {
-      const { permission } = await permissionService.getOrgPermission({
-        actor: orgPermission.type,
-        actorId: orgPermission.id,
-        orgId: orgPermission.orgId,
-        actorAuthMethod: orgPermission.authMethod,
-        actorOrgId: orgPermission.orgId,
-        scope: OrganizationActionScope.Any
-      });
-
-      ForbiddenError.from(permission).throwUnlessCan(
+      ForbiddenError.from(orgScopedPermission).throwUnlessCan(
         OrgPermissionAppConnectionActions.Create,
         OrgPermissionSubjects.AppConnections
       );
+    }
+
+    if (gatewayId) {
+      const plan = await licenseService.getPlan(orgPermission.orgId);
+      if (!plan.gateway) {
+        throw new BadRequestError({
+          message:
+            "Your current plan does not support gateway usage with app connections. Please upgrade your plan or contact Infisical Sales for assistance."
+        });
+      }
+
+      ForbiddenError.from(orgScopedPermission).throwUnlessCan(
+        OrgPermissionGatewayActions.AttachGateways,
+        OrgPermissionSubjects.Gateway
+      );
+
+      const [gateway] = await gatewayDAL.find({ id: gatewayId, orgId: orgPermission.orgId });
+      const [gatewayV2] = await gatewayV2DAL.find({ id: gatewayId, orgId: orgPermission.orgId });
+      if (!gateway && !gatewayV2) {
+        throw new NotFoundError({
+          message: `Gateway with ID ${gatewayId} not found for org`
+        });
+      }
     }
 
     const { SITE_URL } = getConfig();
@@ -546,22 +591,42 @@ export const gitHubAppServiceFactory = ({
 
     const oauthHost = effectiveHost ?? "github.com";
 
+    const sendGitHubRequest = async <T>(
+      requestConfig: AxiosRequestConfig & { url: string },
+      gatewayConnectionDetails?: Awaited<ReturnType<typeof getGitHubGatewayConnectionDetails>>
+    ): Promise<AxiosResponse<T>> =>
+      gatewayId
+        ? requestWithGitHubGateway<T>(
+            { gatewayId },
+            gatewayService,
+            gatewayV2Service,
+            requestConfig,
+            gatewayConnectionDetails
+          )
+        : safeRequest.request<T>(requestConfig);
+
+    const oauthGatewayConnectionDetails = gatewayId
+      ? await getGitHubGatewayConnectionDetails(gatewayId, oauthHost, gatewayV2Service)
+      : undefined;
+
     let tokenData: GithubTokenRespData;
     try {
-      const { data } = await safeRequest.post<GithubTokenRespData>(
-        `https://${oauthHost}/login/oauth/access_token`,
+      const { data } = await sendGitHubRequest<GithubTokenRespData>(
         {
-          client_id: clientId,
-          client_secret: clientSecret,
-          code,
-          redirect_uri: `${SITE_URL}/organization/app-connections/github/oauth/callback`
-        },
-        {
+          url: `https://${oauthHost}/login/oauth/access_token`,
+          method: "POST",
+          data: {
+            client_id: clientId,
+            client_secret: clientSecret,
+            code,
+            redirect_uri: `${SITE_URL}/organization/app-connections/github/oauth/callback`
+          },
           headers: {
             Accept: "application/json",
             "Content-Type": "application/json"
           }
-        }
+        },
+        oauthGatewayConnectionDetails
       );
       tokenData = data;
     } catch (err) {
@@ -581,8 +646,12 @@ export const gitHubAppServiceFactory = ({
       credentials: { host: effectiveHost, instanceType: effectiveInstanceType }
     });
 
+    const apiGatewayConnectionDetails = gatewayId
+      ? await getGitHubGatewayConnectionDetails(gatewayId, apiBaseUrl, gatewayV2Service)
+      : undefined;
+
     const installations = await listGitHubUserInstallations(apiBaseUrl, tokenData.access_token, (requestConfig) =>
-      safeRequest.request(requestConfig)
+      sendGitHubRequest<{ installations: TGitHubUserInstallation[] }>(requestConfig, apiGatewayConnectionDetails)
     );
 
     const appInstallations = installations.filter((installation) => String(installation.app_id) === appId);
