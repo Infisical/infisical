@@ -40,7 +40,7 @@ func (s *Service) GetBySlug(ctx context.Context, projectID, slug string) (*Envir
 	query := `
 		SELECT id, slug, name, "projectId", position
 		FROM project_environments
-		WHERE "projectId" = @projectID AND slug = @slug
+		WHERE "projectId" = @projectID AND slug = @slug AND "deleteAfter" IS NULL
 		LIMIT 1
 	`
 	args := pgx.NamedArgs{"projectID": projectID, "slug": slug}
@@ -63,7 +63,7 @@ func (s *Service) GetByID(ctx context.Context, envID uuid.UUID) (*Environment, e
 	query := `
 		SELECT id, slug, name, "projectId", position
 		FROM project_environments
-		WHERE id = @envID
+		WHERE id = @envID AND "deleteAfter" IS NULL
 		LIMIT 1
 	`
 	args := pgx.NamedArgs{"envID": envID}
@@ -86,7 +86,7 @@ func (s *Service) GetAllByProjectID(ctx context.Context, projectID string) ([]En
 	query := `
 		SELECT id, slug, name, "projectId", position
 		FROM project_environments
-		WHERE "projectId" = @projectID
+		WHERE "projectId" = @projectID AND "deleteAfter" IS NULL
 		ORDER BY position ASC
 	`
 	args := pgx.NamedArgs{"projectID": projectID}

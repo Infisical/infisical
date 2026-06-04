@@ -5,12 +5,15 @@ Partial Go rewrite of the Node.js backend using chi + oapi-codegen + raw pgx que
 ## Commands
 
 ```
-make build      # build binary
-make dev        # hot-reload via docker-compose + air
-make test       # integration tests (testcontainers, -race)
-make lint       # must pass before submission
-make lint-fix   # auto-fix linting issues
-make generate   # run go generate ./... for oapi-codegen
+make build            # build binary
+make dev              # hot-reload via docker-compose + air
+make test             # run all tests (unit + integration)
+make test-unit        # unit tests only (./internal/...)
+make test-integration # integration tests only (./tests/..., testcontainers)
+make test-hsm         # HSM tests (requires Docker, builds test container)
+make lint             # must pass before submission
+make lint-fix         # auto-fix linting issues
+make generate         # run go generate ./... for oapi-codegen
 ```
 
 ## Code Rules
@@ -49,8 +52,19 @@ internal/
 │   │   └── secretmanager/      # Secret manager handlers
 │   └── middlewares/            # HTTP middlewares (RequireAuth, etc.)
 ├── services/                   # Shared business logic (auth, permission, kms, ...)
-├── keystore/                   # Redis key-value operations
-└── testutil/                   # Test infra (testcontainers)
+└── keystore/                   # Redis key-value operations
+tests/                          # Integration tests (external test packages)
+├── infra/                      # Test infrastructure (testcontainers, helpers)
+├── platform/                   # Platform service tests
+│   ├── auth/                   # Authentication handler tests
+│   ├── externalkms/            # External KMS (AWS/GCP) tests
+│   ├── hsm/                    # HSM tests (container-based)
+│   ├── kms/                    # KMS service tests
+│   ├── permission/             # Permission system tests
+│   ├── projects/               # Projects handler tests
+│   └── ratelimit/              # Rate limiting tests
+└── secretmanager/
+    └── secrets/                # Secrets API tests (list, get, permissions)
 ```
 
 **Two tiers:**

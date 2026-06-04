@@ -53,7 +53,7 @@ func (s *Service) getImportsByProjectID(ctx context.Context, projectID string) (
 		FROM secret_imports imp
 		INNER JOIN secret_folders folder ON imp."folderId" = folder.id
 		INNER JOIN project_environments env ON folder."envId" = env.id
-		WHERE env."projectId" = @projectID
+		WHERE env."projectId" = @projectID AND env."deleteAfter" IS NULL
 		ORDER BY imp."folderId" ASC, imp.position ASC
 	`
 	args := pgx.NamedArgs{"projectID": projectID}
