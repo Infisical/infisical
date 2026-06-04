@@ -5,7 +5,8 @@ import { Knex } from "knex";
 import { PamFolderRole, PamProductRole } from "@app/ee/services/pam/pam-enums";
 import { DEFAULT_ACCOUNT_TEMPLATES } from "@app/ee/services/pam-instance/pam-project-bootstrap";
 import { inMemoryKeyStore } from "@app/keystore/memory";
-import { initLogger } from "@app/lib/logger";
+import { crypto } from "@app/lib/crypto/cryptography";
+import { initLogger, logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { kmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
 import { KmsDataKey } from "@app/services/kms/kms-types";
@@ -434,6 +435,77 @@ export async function up(knex: Knex): Promise<void> {
   await knex.schema.alterTable(TableName.PamSession, (t) => {
     t.uuid("orgId").notNullable().alter();
   });
+
+  // Re-encrypt session data from project key to org key
+  const SESSION_KEY_LENGTH = 32;
+  const AAD_LENGTH = 32;
+  const PAM_RECORDING_AAD_VERSION = "v1";
+
+  const buildWrapAad = (scopeId: string, sessionId: string) =>
+    crypto.nativeCrypto.createHash("sha256").update(`${scopeId}|${sessionId}|${PAM_RECORDING_AAD_VERSION}`).digest();
+
+  const sessionsToMigrate = await knex(TableName.PamSession)
+    .whereNotNull("projectId")
+    .select("id", "projectId", "orgId", "encryptedSessionKey", "encryptedLogsBlob");
+
+  const projectCipherCache = new Map<string, Awaited<ReturnType<typeof getProjectCipher>>>();
+  const orgCipherCache = new Map<string, Awaited<ReturnType<typeof getOrgCipher>>>();
+
+  for (const session of sessionsToMigrate) {
+    try {
+      const updates: Record<string, Buffer | undefined> = {};
+
+      if (session.encryptedSessionKey) {
+        if (!projectCipherCache.has(session.projectId)) {
+          projectCipherCache.set(session.projectId, await getProjectCipher(session.projectId));
+        }
+        if (!orgCipherCache.has(session.orgId)) {
+          orgCipherCache.set(session.orgId, await getOrgCipher(session.orgId));
+        }
+        const oldCipher = projectCipherCache.get(session.projectId)!;
+        const newCipher = orgCipherCache.get(session.orgId)!;
+
+        const decrypted = oldCipher.decryptor({ cipherTextBlob: session.encryptedSessionKey });
+        const oldAad = decrypted.subarray(0, AAD_LENGTH);
+        const sessionKey = decrypted.subarray(AAD_LENGTH, AAD_LENGTH + SESSION_KEY_LENGTH);
+
+        const expectedOldAad = buildWrapAad(session.projectId, session.id);
+        if (!crypto.nativeCrypto.timingSafeEqual(oldAad, expectedOldAad)) {
+          logger.warn(
+            `PAM migration: skipping session due to AAD mismatch, recording will be unreadable [sessionId=${session.id}]`
+          );
+          continue;
+        }
+
+        const newAad = buildWrapAad(session.orgId, session.id);
+        const newPayload = Buffer.concat([newAad, sessionKey]);
+        updates.encryptedSessionKey = newCipher.encryptor({ plainText: newPayload }).cipherTextBlob;
+      }
+
+      if (session.encryptedLogsBlob) {
+        if (!projectCipherCache.has(session.projectId)) {
+          projectCipherCache.set(session.projectId, await getProjectCipher(session.projectId));
+        }
+        if (!orgCipherCache.has(session.orgId)) {
+          orgCipherCache.set(session.orgId, await getOrgCipher(session.orgId));
+        }
+        const oldCipher = projectCipherCache.get(session.projectId)!;
+        const newCipher = orgCipherCache.get(session.orgId)!;
+
+        const plainText = oldCipher.decryptor({ cipherTextBlob: session.encryptedLogsBlob });
+        updates.encryptedLogsBlob = newCipher.encryptor({ plainText }).cipherTextBlob;
+      }
+
+      if (Object.keys(updates).length > 0) {
+        await knex(TableName.PamSession).where("id", session.id).update(updates);
+      }
+    } catch (err) {
+      logger.warn(
+        { err, sessionId: session.id },
+        `PAM migration: failed to re-encrypt session, skipping [sessionId=${session.id}]`
+      );
+    }
+  }
 
   await knex.schema.alterTable(TableName.PamSession, (t) => {
     t.renameColumn("resourceType", "accountType");
