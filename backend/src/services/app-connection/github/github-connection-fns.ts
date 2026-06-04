@@ -6,6 +6,7 @@ import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
+import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { request as httpRequest } from "@app/lib/config/request";
 import { crypto } from "@app/lib/crypto";
@@ -101,6 +102,23 @@ export const resolveGitHubAppCredentials = async (
     host: null,
     instanceType: null
   };
+};
+
+export type TGitHubAppInstallationsTokenPayload = {
+  jti: string;
+  orgId: string;
+  actorId: string;
+  gitHubAppId: string | null;
+  host: string;
+  instanceType: "cloud" | "server";
+  installationIds: string[];
+};
+
+export const GITHUB_APP_INSTALLATIONS_TOKEN_TTL = "10m";
+
+export const signGitHubAppInstallationsToken = (payload: TGitHubAppInstallationsTokenPayload) => {
+  const { AUTH_SECRET } = getConfig();
+  return crypto.jwt().sign(payload, AUTH_SECRET, { expiresIn: GITHUB_APP_INSTALLATIONS_TOKEN_TTL });
 };
 
 export const getGitHubConnectionListItem = () => {
@@ -641,14 +659,13 @@ export const validateGitHubConnectionCredentials = async (
   config: TGitHubConnectionConfig,
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
-  deps: TGitHubAppCredentialResolverDeps
+  deps: TGitHubAppCredentialResolverDeps & {
+    keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX">;
+    actorId?: string;
+  }
 ) => {
   const { credentials, method } = config;
 
-  // For org-managed GitHub App connections, bind the connection to the host/instance the app was
-  // registered against BEFORE any credential is used or any request host is derived. Without this,
-  // a user could create an app-method connection that references an existing app but supplies a
-  // custom host they control, causing the app's client secret / signed JWT to be sent there.
   let resolvedAppCredentials: TResolvedGitHubAppCredentials | undefined;
   if (method === GitHubConnectionMethod.App) {
     resolvedAppCredentials = await resolveGitHubAppCredentials(
@@ -661,6 +678,77 @@ export const validateGitHubConnectionCredentials = async (
       mutableCredentials.host = resolvedAppCredentials.host ?? undefined;
       mutableCredentials.instanceType = resolvedAppCredentials.instanceType ?? "cloud";
     }
+  }
+
+  if (method === GitHubConnectionMethod.App && credentials.installationsToken) {
+    const { AUTH_SECRET } = getConfig();
+
+    let tokenPayload: TGitHubAppInstallationsTokenPayload & { exp: number };
+    try {
+      tokenPayload = crypto
+        .jwt()
+        .verify(credentials.installationsToken, AUTH_SECRET) as TGitHubAppInstallationsTokenPayload & { exp: number };
+    } catch {
+      throw new BadRequestError({
+        message: "Invalid or expired GitHub installation token. Please reconnect and try again."
+      });
+    }
+
+    if (!tokenPayload.jti || !Array.isArray(tokenPayload.installationIds)) {
+      throw new BadRequestError({
+        message: "Invalid or expired GitHub installation token. Please reconnect and try again."
+      });
+    }
+
+    const ttlSeconds = Math.max(1, tokenPayload.exp - Math.floor(Date.now() / 1000));
+    const claimed = await deps.keyStore.setItemWithExpiryNX(
+      KeyStorePrefixes.UsedGitHubInstallationsToken(tokenPayload.jti),
+      ttlSeconds,
+      "1"
+    );
+    if (!claimed) {
+      throw new BadRequestError({
+        message: "This GitHub installation token has already been used. Please reconnect and try again."
+      });
+    }
+
+    if (tokenPayload.orgId !== config.orgId || (deps.actorId && tokenPayload.actorId !== deps.actorId)) {
+      throw new ForbiddenRequestError({
+        message: "GitHub installation token does not belong to this actor or organization."
+      });
+    }
+
+    if ((tokenPayload.gitHubAppId ?? null) !== (credentials.gitHubAppId ?? null)) {
+      throw new BadRequestError({
+        message: "GitHub installation token was issued for a different GitHub App."
+      });
+    }
+
+    if (!tokenPayload.installationIds.includes(credentials.installationId)) {
+      throw new ForbiddenRequestError({
+        message: "User does not have access to the provided installation"
+      });
+    }
+
+    const boundHost = credentials.gitHubAppId
+      ? (resolvedAppCredentials!.host ?? undefined)
+      : tokenPayload.host || undefined;
+    const boundInstanceType = credentials.gitHubAppId
+      ? (resolvedAppCredentials!.instanceType ?? "cloud")
+      : tokenPayload.instanceType;
+
+    assertPlatformGitHubHostAllowed(boundHost);
+
+    return {
+      installationId: credentials.installationId,
+      gitHubAppId: credentials.gitHubAppId ?? null,
+      instanceType: boundInstanceType,
+      host: boundHost
+    };
+  }
+
+  if (method === GitHubConnectionMethod.App && !credentials.code) {
+    throw new BadRequestError({ message: "GitHub App code required" });
   }
 
   const apiBaseUrl = await getGitHubInstanceApiUrl(config);

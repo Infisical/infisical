@@ -2512,7 +2512,8 @@ export const registerRoutes = async (
     projectDAL,
     appConnectionCredentialRotationService,
     identityUaDAL,
-    gitHubAppDAL
+    gitHubAppDAL,
+    keyStore
   });
 
   const honeyTokenConfigService = honeyTokenConfigServiceFactory({

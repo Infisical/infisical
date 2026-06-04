@@ -90,6 +90,7 @@ export const KeyStorePrefixes = {
   UsedAccountRecoveryToken: (userId: string, jti: string) => `used-account-recovery-token:${userId}:${jti}` as const,
   UsedGitHubManifestState: (jti: string) => `used-github-manifest-state:${jti}` as const,
   GitHubManifestNameLock: (orgId: string, name: string) => `github-manifest-name-lock:${orgId}:${name}` as const,
+  UsedGitHubInstallationsToken: (jti: string) => `used-github-installations-token:${jti}` as const,
 
   AiMcpServerOAuth: (sessionId: string) => `ai-mcp-server-oauth:${sessionId}` as const,
 

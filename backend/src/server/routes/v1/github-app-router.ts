@@ -10,6 +10,7 @@ const SanitizedGitHubAppSchema = z.object({
   name: z.string(),
   appId: z.string(),
   slug: z.string(),
+  clientId: z.string().nullable(),
   owner: z.string().nullable(),
   connectionCount: z.number(),
   createdAt: z.date().nullable(),
@@ -100,27 +101,41 @@ export const registerGitHubAppRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    method: "GET",
-    url: "/installation-status",
+    method: "POST",
+    url: "/resolve-installations",
     config: {
-      rateLimit: readLimit
+      rateLimit: writeLimit
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
-      querystring: z.object({
-        gitHubAppId: z.string().uuid().optional()
+      body: z.object({
+        code: z.string().trim().min(1),
+        gitHubAppId: z.string().uuid().optional(),
+        host: z.string().trim().optional(),
+        instanceType: z.enum(["cloud", "server"]).optional(),
+        projectId: z.string().optional()
       }),
       response: {
         200: z.object({
-          installed: z.boolean(),
-          clientId: z.string()
+          installations: z
+            .object({
+              id: z.string(),
+              accountLogin: z.string(),
+              accountType: z.string()
+            })
+            .array(),
+          installationsToken: z.string()
         })
       }
     },
     handler: async (req) => {
-      const result = await server.services.gitHubApp.getInstallationStatus({
+      const result = await server.services.gitHubApp.resolveUserInstallations({
         orgPermission: req.permission,
-        gitHubAppId: req.query.gitHubAppId
+        code: req.body.code,
+        gitHubAppId: req.body.gitHubAppId,
+        host: req.body.host,
+        instanceType: req.body.instanceType,
+        projectId: req.body.projectId
       });
 
       return result;

@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
-import { TGitHubApp } from "./types";
+import { TGitHubApp, TGitHubAppInstallation } from "./types";
 
 export const gitHubAppKeys = {
   all: ["github-apps"] as const,
@@ -14,13 +14,17 @@ const fetchGitHubApps = async () => {
   return data.gitHubApps;
 };
 
-// Imperative check used when connecting: already-installed apps must skip GitHub's install page
-// (it never redirects back to Infisical) and go through the OAuth authorize flow instead.
-export const fetchGitHubAppInstallationStatus = async (params: { gitHubAppId?: string }) => {
-  const { data } = await apiRequest.get<{ installed: boolean; clientId: string }>(
-    "/api/v1/github-apps/installation-status",
-    { params }
-  );
+export const resolveGitHubAppInstallations = async (params: {
+  code: string;
+  gitHubAppId?: string;
+  host?: string;
+  instanceType?: "cloud" | "server";
+  projectId?: string;
+}) => {
+  const { data } = await apiRequest.post<{
+    installations: TGitHubAppInstallation[];
+    installationsToken: string;
+  }>("/api/v1/github-apps/resolve-installations", params);
   return data;
 };
 

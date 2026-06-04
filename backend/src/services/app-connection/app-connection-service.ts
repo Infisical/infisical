@@ -23,6 +23,7 @@ import {
   ProjectPermissionAppConnectionActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
+import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
@@ -187,6 +188,7 @@ export type TAppConnectionServiceFactoryDep = {
   appConnectionCredentialRotationService: TAppConnectionCredentialRotationServiceFactory;
   identityUaDAL: Pick<TIdentityUaDALFactory, "findOne">;
   gitHubAppDAL: Pick<TGitHubAppDALFactory, "findOne" | "upsertConnectionLink">;
+  keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX">;
 };
 
 export type TAppConnectionServiceFactory = ReturnType<typeof appConnectionServiceFactory>;
@@ -275,7 +277,8 @@ export const appConnectionServiceFactory = ({
   projectDAL,
   appConnectionCredentialRotationService,
   identityUaDAL,
-  gitHubAppDAL
+  gitHubAppDAL,
+  keyStore
 }: TAppConnectionServiceFactoryDep) => {
   const listAppConnections = async (actor: OrgServiceActor, app?: AppConnection, projectId?: string) => {
     let appConnections: TAppConnections[];
@@ -542,7 +545,7 @@ export const appConnectionServiceFactory = ({
       } as TAppConnectionConfig,
       gatewayService,
       gatewayV2Service,
-      { identityUaDAL, gitHubAppDAL, kmsService }
+      { identityUaDAL, gitHubAppDAL, kmsService, keyStore, actorId: actor.id }
     );
 
     try {
@@ -815,7 +818,7 @@ export const appConnectionServiceFactory = ({
         } as TAppConnectionConfig,
         gatewayService,
         gatewayV2Service,
-        { identityUaDAL, gitHubAppDAL, kmsService }
+        { identityUaDAL, gitHubAppDAL, kmsService, keyStore, actorId: actor.id }
       );
 
       if (!updatedCredentials)

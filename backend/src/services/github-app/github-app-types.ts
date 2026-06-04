@@ -10,8 +10,6 @@ export type TInitiateGitHubManifestDTO = {
 };
 
 export type TGitHubManifestStatePayload = {
-  // Unique, single-use identifier. Consumed (claimed in the key store) on the first callback so a
-  // captured state token cannot be replayed within its validity window.
   jti: string;
   orgId: string;
   actorId: string;
@@ -33,9 +31,19 @@ export type TDeleteGitHubAppDTO = {
   orgPermission: OrgServiceActor;
 };
 
-export type TGetGitHubAppInstallationStatusDTO = {
+export type TResolveGitHubAppInstallationsDTO = {
+  code: string;
   gitHubAppId?: string;
+  host?: string;
+  instanceType?: "cloud" | "server";
+  projectId?: string;
   orgPermission: OrgServiceActor;
+};
+
+export type TGitHubAppInstallation = {
+  id: string;
+  accountLogin: string;
+  accountType: string;
 };
 
 export type TGitHubAppManifestResponse = {
@@ -56,6 +64,7 @@ export type TSanitizedGitHubApp = {
   name: string;
   appId: string;
   slug: string;
+  clientId: string | null;
   owner: string | null;
   connectionCount: number;
   createdAt: Date | null;

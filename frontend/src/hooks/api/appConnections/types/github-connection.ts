@@ -19,10 +19,9 @@ export type TGitHubConnection = TRootAppConnection & { app: AppConnection.GitHub
     | {
         method: GitHubConnectionMethod.App;
         credentials: {
-          code: string;
-          // omitted in the already-installed app flow — the backend resolves the installation
-          // from the authorizing user's access
-          installationId?: string;
+          code?: string;
+          installationsToken?: string;
+          installationId: string;
           gitHubAppId?: string | null;
           instanceType?: "cloud" | "server";
           host?: string;

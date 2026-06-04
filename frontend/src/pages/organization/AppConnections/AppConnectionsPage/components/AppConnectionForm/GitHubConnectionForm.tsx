@@ -230,7 +230,8 @@ export const GitHubConnectionForm = ({ appConnection, projectId, onSubmit }: Pro
   const storeConnectionFormData = (
     formData: FormData,
     installState: string,
-    gitHubAppId?: string | null
+    gitHubAppId?: string | null,
+    appSlug?: string
   ) => {
     localStorage.setItem(CSRF_TOKEN_STORAGE_KEY, installState);
     localStorage.setItem(
@@ -241,6 +242,7 @@ export const GitHubConnectionForm = ({ appConnection, projectId, onSubmit }: Pro
           ...(formData.credentials as TGitHubConnection["credentials"]),
           ...(gitHubAppId ? { gitHubAppId } : {})
         },
+        ...(appSlug ? { appSlug } : {}),
         connectionId: appConnection?.id,
         projectId,
         returnUrl
@@ -248,10 +250,6 @@ export const GitHubConnectionForm = ({ appConnection, projectId, onSubmit }: Pro
     );
   };
 
-  // Kicks off GitHub App manifest creation, then redirects to GitHub to create + install the app.
-  // This only creates the GitHub App — when the user returns they land back on this form with the
-  // new app selected and complete the connection separately, so the connection fields aren't
-  // required here (only the GitHub App name, which the selector validates).
   const handleCreateApp = async ({ name, githubOrg }: { name: string; githubOrg: string }) => {
     const formData = form.getValues();
     setIsRedirecting(true);
@@ -308,13 +306,16 @@ export const GitHubConnectionForm = ({ appConnection, projectId, onSubmit }: Pro
       case GitHubConnectionMethod.App: {
         const targetApp = isUpdate ? reconnectApp : selectedGitHubApp;
         const slug = targetApp?.slug ?? appClientSlug;
-        // Custom apps carry an id we persist into credentials; the shared app (id null) resolves
-        // to the instance-default app on the backend.
-        storeConnectionFormData(formData, installState, targetApp?.id ?? undefined);
 
-        // Always route through GitHub's install flow so the user explicitly selects the target
-        // account; GitHub redirects back with the chosen installation_id, which the backend binds
-        // directly (no server-side guessing of which installation to use).
+        storeConnectionFormData(formData, installState, targetApp?.id ?? undefined, slug);
+
+        if (targetApp?.clientId) {
+          window.location.assign(
+            `${githubHost}/login/oauth/authorize?client_id=${targetApp.clientId}&state=${installState}&redirect_uri=${window.location.origin}/organization/app-connections/github/oauth/callback`
+          );
+          break;
+        }
+
         window.location.assign(
           `${githubHost}/${formData.credentials?.instanceType === "server" ? "github-apps" : "apps"}/${slug}/installations/new?state=${installState}`
         );
