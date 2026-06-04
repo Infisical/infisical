@@ -38,7 +38,7 @@ type TGitHubAppServiceFactoryDep = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "countByGitHubApp">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
-  keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX">;
+  keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX" | "deleteItem">;
 };
 
 export type TGitHubAppServiceFactory = ReturnType<typeof gitHubAppServiceFactory>;
@@ -369,66 +369,97 @@ export const gitHubAppServiceFactory = ({
 
     assertPlatformGitHubHostAllowed(githubHost);
 
-    let manifestResponse: TGitHubAppManifestResponse;
-    try {
-      const resolvedApiHost = githubHost ? `https://${githubHost}/api/v3` : "https://api.github.com";
-      // safeRequest validates + DNS-pins the target and disables redirects, so a public host
-      // cannot redirect this exchange to an internal service (SSRF).
-      const { data } = await safeRequest.post<TGitHubAppManifestResponse>(
-        `${resolvedApiHost}/app-manifests/${encodeURIComponent(code)}/conversions`,
-        {},
-        {
-          headers: {
-            Accept: "application/vnd.github+json",
-            "X-GitHub-Api-Version": "2022-11-28"
-          }
-        }
-      );
-      manifestResponse = data;
-    } catch {
+    // Claim the (orgId, name) slot before asking GitHub to create the app. Without this, two
+    // concurrent callbacks for the same name both pass the precheck above, GitHub mints a real app
+    // for each of them, and the loser of the insert race leaves a live app — whose private key was
+    // never recorded — orphaned on GitHub. GitHub exposes no API to delete an app, so that orphan
+    // cannot be cleaned up programmatically; failing the loser here, before the conversion, is the
+    // only reliable prevention. The lock is released below once the insert settles either way.
+    const nameLockKey = KeyStorePrefixes.GitHubManifestNameLock(orgId, name);
+    const nameLockClaimed = await keyStore.setItemWithExpiryNX(nameLockKey, 60, "1");
+    if (!nameLockClaimed) {
       throw new BadRequestError({
-        message:
-          "Failed to exchange GitHub App manifest code. The code may be expired or invalid. Please try registering the GitHub App again."
+        message: `A GitHub App with name "${name}" is already being registered in this organization.`
       });
     }
 
-    const { encryptor } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.Organization,
-      orgId
-    });
-
-    const owner = manifestResponse.owner?.login ?? (githubOrg || null);
-
     let created: Awaited<ReturnType<typeof gitHubAppDAL.create>>;
     try {
-      created = await gitHubAppDAL.create({
-        orgId,
-        name,
-        appId: String(manifestResponse.id),
-        clientId: manifestResponse.client_id,
-        encryptedClientSecret: encryptor({ plainText: Buffer.from(manifestResponse.client_secret) }).cipherTextBlob,
-        encryptedPrivateKey: encryptor({ plainText: Buffer.from(manifestResponse.pem) }).cipherTextBlob,
-        slug: manifestResponse.slug,
-        owner,
-        // Bind the app to the host/instance it was registered against. Every later credential
-        // operation derives its target host from these stored values rather than from a
-        // caller-supplied host, so a signed app JWT or the client secret can never be sent to an
-        // arbitrary host an attacker controls.
-        host: githubHost || null,
-        instanceType
-      });
-    } catch (err) {
-      if (err instanceof DatabaseError && (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation) {
+      let manifestResponse: TGitHubAppManifestResponse;
+      try {
+        const resolvedApiHost = githubHost ? `https://${githubHost}/api/v3` : "https://api.github.com";
+        // safeRequest validates + DNS-pins the target and disables redirects, so a public host
+        // cannot redirect this exchange to an internal service (SSRF).
+        const { data } = await safeRequest.post<TGitHubAppManifestResponse>(
+          `${resolvedApiHost}/app-manifests/${encodeURIComponent(code)}/conversions`,
+          {},
+          {
+            headers: {
+              Accept: "application/vnd.github+json",
+              "X-GitHub-Api-Version": "2022-11-28"
+            }
+          }
+        );
+        manifestResponse = data;
+      } catch {
         throw new BadRequestError({
-          message: `A GitHub App with name "${name}" already exists in this organization.`
+          message:
+            "Failed to exchange GitHub App manifest code. The code may be expired or invalid. Please try registering the GitHub App again."
         });
       }
-      throw err;
+
+      const { encryptor } = await kmsService.createCipherPairWithDataKey({
+        type: KmsDataKey.Organization,
+        orgId
+      });
+
+      const owner = manifestResponse.owner?.login ?? (githubOrg || null);
+
+      try {
+        created = await gitHubAppDAL.create({
+          orgId,
+          name,
+          appId: String(manifestResponse.id),
+          clientId: manifestResponse.client_id,
+          encryptedClientSecret: encryptor({ plainText: Buffer.from(manifestResponse.client_secret) }).cipherTextBlob,
+          encryptedPrivateKey: encryptor({ plainText: Buffer.from(manifestResponse.pem) }).cipherTextBlob,
+          slug: manifestResponse.slug,
+          owner,
+          // Bind the app to the host/instance it was registered against. Every later credential
+          // operation derives its target host from these stored values rather than from a
+          // caller-supplied host, so a signed app JWT or the client secret can never be sent to an
+          // arbitrary host an attacker controls.
+          host: githubHost || null,
+          instanceType
+        });
+      } catch (err) {
+        // The conversion above already created a real app on GitHub, and GitHub has no API to
+        // delete an app — only the web UI can. Any failure past this point therefore strands a
+        // live app whose private key Infisical never stored. Log it and point the user at it so
+        // it can be removed manually.
+        logger.error(
+          { err, orgId, appId: manifestResponse.id, slug: manifestResponse.slug },
+          `Failed to store GitHub App after manifest conversion; the app must be deleted manually on GitHub [orgId=${orgId}] [appId=${manifestResponse.id}] [slug=${manifestResponse.slug}] [url=${manifestResponse.html_url}]`
+        );
+        if (
+          err instanceof DatabaseError &&
+          (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation
+        ) {
+          throw new BadRequestError({
+            message: `A GitHub App with name "${name}" already exists in this organization. Note: a duplicate app was still created on GitHub (${manifestResponse.html_url}) — please delete it from your GitHub app settings.`
+          });
+        }
+        throw err;
+      }
+    } finally {
+      // Best-effort release: on success the inserted row enforces uniqueness from here on, and on
+      // failure an immediate retry should not be blocked for the rest of the lock's TTL.
+      await keyStore.deleteItem(nameLockKey).catch(() => {});
     }
 
     const callbackUrl = new URL(`${SITE_URL}/organizations/${orgId}/app-connections/github/manifest/callback`);
     callbackUrl.searchParams.set("gitHubAppId", created.id ?? "");
-    callbackUrl.searchParams.set("slug", manifestResponse.slug);
+    callbackUrl.searchParams.set("slug", created.slug);
     callbackUrl.searchParams.set("installState", installState);
     callbackUrl.searchParams.set("instanceType", instanceType);
     if (githubHost) {
