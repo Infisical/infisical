@@ -190,15 +190,18 @@ export async function up(knex: Knex): Promise<void> {
   const getProjectCipher = async (projectId: string) =>
     kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId }, knex);
 
+  const getOrgCipher = async (orgId: string) =>
+    kmsService.createCipherPairWithDataKey({ type: KmsDataKey.Organization, orgId }, knex);
+
   for (const { orgId } of orgsWithPam) {
     const org = await knex(TableName.Organization).where("id", orgId).first("defaultPamProjectId");
     const newProjectId = org!.defaultPamProjectId as string;
-    const newProjectCipher = await getProjectCipher(newProjectId);
+    const orgCipher = await getOrgCipher(orgId);
 
     const reEncrypt = (oldCipher: Awaited<ReturnType<typeof getProjectCipher>>, blob?: Buffer | null) => {
       if (!blob) return undefined;
       const plainText = oldCipher.decryptor({ cipherTextBlob: blob });
-      return newProjectCipher.encryptor({ plainText }).cipherTextBlob;
+      return orgCipher.encryptor({ plainText }).cipherTextBlob;
     };
 
     const templates = await knex(TableName.PamAccountTemplate).where({ orgId }).select("id", "type");
