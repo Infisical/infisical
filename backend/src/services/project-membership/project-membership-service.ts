@@ -2,14 +2,7 @@
 import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
-import {
-  AccessScope,
-  ActionProjectType,
-  ProjectMembershipRole,
-  ProjectVersion,
-  RESOURCE_SCOPE,
-  TableName
-} from "@app/db/schemas";
+import { AccessScope, ActionProjectType, ProjectMembershipRole, ProjectVersion, TableName } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionMemberActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
@@ -27,6 +20,10 @@ import { TSecretApprovalPolicyDALFactory } from "../../ee/services/secret-approv
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
 import { ActorType } from "../auth/auth-type";
 import { TGroupProjectDALFactory } from "../group-project/group-project-dal";
+import {
+  ApplicationCleanupActorKind,
+  TApplicationMembershipCleanupServiceFactory
+} from "../membership/application-membership-cleanup-service";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
 import { assertWillRetainAdmin } from "../membership-user/membership-user-fns";
@@ -65,6 +62,10 @@ type TProjectMembershipServiceFactoryDep = {
   secretReminderRecipientsDAL: Pick<TSecretReminderRecipientsDALFactory, "delete">;
   groupProjectDAL: TGroupProjectDALFactory;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
+  applicationMembershipCleanupService: Pick<
+    TApplicationMembershipCleanupServiceFactory,
+    "cleanupActorApplicationMemberships"
+  >;
 };
 
 export type TProjectMembershipServiceFactory = ReturnType<typeof projectMembershipServiceFactory>;
@@ -86,7 +87,8 @@ export const projectMembershipServiceFactory = ({
   secretApprovalPolicyDAL,
   membershipUserDAL,
   userDAL,
-  membershipRoleDAL
+  membershipRoleDAL,
+  applicationMembershipCleanupService
 }: TProjectMembershipServiceFactoryDep) => {
   const checkUserApproverPolicies = async (
     userIds: string[],
@@ -377,16 +379,16 @@ export const projectMembershipServiceFactory = ({
         tx
       );
 
-      await membershipUserDAL.delete(
-        {
-          scope: RESOURCE_SCOPE,
-          scopeProjectId: projectId,
-          $in: {
-            actorUserId: projectMembers.map(({ user }) => user.id)
-          }
-        },
-        tx
-      );
+      for (const { user } of projectMembers) {
+        await applicationMembershipCleanupService.cleanupActorApplicationMemberships(
+          {
+            projectId,
+            actorKind: ApplicationCleanupActorKind.User,
+            actorId: user.id
+          },
+          tx
+        );
+      }
 
       await secretReminderRecipientsDAL.delete(
         {
@@ -496,11 +498,11 @@ export const projectMembershipServiceFactory = ({
         )
       )?.[0];
 
-      await membershipUserDAL.delete(
+      await applicationMembershipCleanupService.cleanupActorApplicationMemberships(
         {
-          scope: RESOURCE_SCOPE,
-          scopeProjectId: project.id,
-          actorUserId: actorId
+          projectId: project.id,
+          actorKind: ApplicationCleanupActorKind.User,
+          actorId
         },
         tx
       );

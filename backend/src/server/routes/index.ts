@@ -369,6 +369,7 @@ import { kmskeyDALFactory } from "@app/services/kms/kms-key-dal";
 import { TKmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
 import { kmsServiceFactory } from "@app/services/kms/kms-service";
 import { RootKeyEncryptionStrategy } from "@app/services/kms/kms-types";
+import { applicationMembershipCleanupServiceFactory } from "@app/services/membership/application-membership-cleanup-service";
 import { membershipDALFactory } from "@app/services/membership/membership-dal";
 import { membershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { membershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
@@ -731,6 +732,7 @@ export const registerRoutes = async (
   const membershipGroupDAL = membershipGroupDALFactory(db);
   const additionalPrivilegeDAL = additionalPrivilegeDALFactory(db);
   const membershipRoleDAL = membershipRoleDALFactory(db);
+  const approvalPolicyDAL = approvalPolicyDALFactory(db);
   const roleDAL = roleDALFactory(db);
   const pkiAlertHistoryDAL = pkiAlertHistoryDALFactory(db);
   const pkiAlertChannelDAL = pkiAlertChannelDALFactory(db);
@@ -780,6 +782,11 @@ export const registerRoutes = async (
 
   const tokenService = tokenServiceFactory({ tokenDAL: authTokenDAL, userDAL, membershipUserDAL, orgDAL, keyStore });
 
+  const applicationMembershipCleanupService = applicationMembershipCleanupServiceFactory({
+    membershipDAL,
+    approvalPolicyDAL
+  });
+
   const membershipUserService = membershipUserServiceFactory({
     licenseService,
     membershipRoleDAL,
@@ -795,7 +802,9 @@ export const registerRoutes = async (
     userAliasDAL,
     userGroupMembershipDAL,
     additionalPrivilegeDAL,
-    projectAccessRequestDAL
+    projectAccessRequestDAL,
+    applicationMembershipCleanupService,
+    approvalPolicyDAL
   });
 
   const membershipIdentityService = membershipIdentityServiceFactory({
@@ -806,7 +815,8 @@ export const registerRoutes = async (
     permissionService,
     roleDAL,
     additionalPrivilegeDAL,
-    licenseService
+    licenseService,
+    applicationMembershipCleanupService
   });
 
   const membershipGroupService = membershipGroupServiceFactory({
@@ -820,7 +830,8 @@ export const registerRoutes = async (
     permissionService,
     orgDAL,
     groupDAL,
-    licenseService
+    licenseService,
+    applicationMembershipCleanupService
   });
 
   const roleService = roleServiceFactory({
@@ -1009,6 +1020,7 @@ export const registerRoutes = async (
     membershipRoleDAL,
     membershipUserDAL,
     additionalPrivilegeDAL,
+    approvalPolicyDAL,
     emailDomainDAL,
     telemetryService
   });
@@ -1176,6 +1188,7 @@ export const registerRoutes = async (
     roleDAL,
     userGroupMembershipDAL,
     additionalPrivilegeDAL,
+    approvalPolicyDAL,
     certificatePolicyDAL
   });
 
@@ -1290,7 +1303,8 @@ export const registerRoutes = async (
     accessApprovalPolicyDAL,
     secretApprovalPolicyApproverDAL: sapApproverDAL,
     secretApprovalPolicyDAL,
-    membershipRoleDAL
+    membershipRoleDAL,
+    applicationMembershipCleanupService
   });
 
   const projectKeyService = projectKeyServiceFactory({
@@ -1376,7 +1390,6 @@ export const registerRoutes = async (
   const gatewayPoolDAL = gatewayPoolDalFactory(db);
   const gatewayPoolMembershipDAL = gatewayPoolMembershipDalFactory(db);
 
-  const approvalPolicyDAL = approvalPolicyDALFactory(db);
   const approvalRequestDAL = approvalRequestDALFactory(db);
   const approvalRequestGrantsDAL = approvalRequestGrantsDALFactory(db);
   const approvalRequestStepsDAL = approvalRequestStepsDALFactory(db);

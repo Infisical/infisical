@@ -19,6 +19,10 @@ import { groupBy } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
 import { SearchResourceOperators } from "@app/lib/search-resource/search";
 
+import {
+  ApplicationCleanupActorKind,
+  TApplicationMembershipCleanupServiceFactory
+} from "../membership/application-membership-cleanup-service";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TRoleDALFactory } from "../role/role-dal";
@@ -45,6 +49,10 @@ type TMembershipGroupServiceFactoryDep = {
   orgDAL: TOrgDALFactory;
   groupDAL: Pick<TGroupDALFactory, "findById">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  applicationMembershipCleanupService: Pick<
+    TApplicationMembershipCleanupServiceFactory,
+    "cleanupActorApplicationMemberships"
+  >;
 };
 
 export type TMembershipGroupServiceFactory = ReturnType<typeof membershipGroupServiceFactory>;
@@ -60,7 +68,8 @@ export const membershipGroupServiceFactory = ({
   orgDAL,
   permissionService,
   groupDAL,
-  licenseService
+  licenseService,
+  applicationMembershipCleanupService
 }: TMembershipGroupServiceFactoryDep) => {
   const scopeFactory = {
     [AccessScope.Organization]: newOrgMembershipGroupFactory({
@@ -369,6 +378,17 @@ export const membershipGroupServiceFactory = ({
     }
 
     const performDelete = async (tx: Knex) => {
+      if (scopeData.scope === AccessScope.Project && existingMembership.scopeProjectId) {
+        await applicationMembershipCleanupService.cleanupActorApplicationMemberships(
+          {
+            projectId: existingMembership.scopeProjectId,
+            actorKind: ApplicationCleanupActorKind.Group,
+            actorId: dto.selector.groupId
+          },
+          tx
+        );
+      }
+
       await membershipRoleDAL.delete({ membershipId: existingMembership.id }, tx);
       const doc = await membershipGroupDAL.deleteById(existingMembership.id, tx);
       return doc;

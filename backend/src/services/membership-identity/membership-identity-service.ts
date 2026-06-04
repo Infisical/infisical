@@ -1,12 +1,6 @@
 import { Knex } from "knex";
 
-import {
-  AccessScope,
-  ProjectMembershipRole,
-  RESOURCE_SCOPE,
-  TemporaryPermissionMode,
-  TMembershipRolesInsert
-} from "@app/db/schemas";
+import { AccessScope, ProjectMembershipRole, TemporaryPermissionMode, TMembershipRolesInsert } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -16,6 +10,10 @@ import { SearchResourceOperators } from "@app/lib/search-resource/search";
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
 import { TIdentityDALFactory } from "../identity/identity-dal";
+import {
+  ApplicationCleanupActorKind,
+  TApplicationMembershipCleanupServiceFactory
+} from "../membership/application-membership-cleanup-service";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TRoleDALFactory } from "../role/role-dal";
@@ -42,6 +40,10 @@ type TMembershipIdentityServiceFactoryDep = {
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
   identityDAL: Pick<TIdentityDALFactory, "findById">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  applicationMembershipCleanupService: Pick<
+    TApplicationMembershipCleanupServiceFactory,
+    "cleanupActorApplicationMemberships"
+  >;
 };
 
 export type TMembershipIdentityServiceFactory = ReturnType<typeof membershipIdentityServiceFactory>;
@@ -54,7 +56,8 @@ export const membershipIdentityServiceFactory = ({
   orgDAL,
   additionalPrivilegeDAL,
   identityDAL,
-  licenseService
+  licenseService,
+  applicationMembershipCleanupService
 }: TMembershipIdentityServiceFactoryDep) => {
   const scopeFactory = {
     [AccessScope.Organization]: newOrgMembershipIdentityFactory({
@@ -332,11 +335,11 @@ export const membershipIdentityServiceFactory = ({
       if (scopeData.scope === AccessScope.Project) {
         const projectScopeFields = scopeDatabaseFields as { scopeProjectId?: string };
         if (projectScopeFields.scopeProjectId) {
-          await membershipIdentityDAL.delete(
+          await applicationMembershipCleanupService.cleanupActorApplicationMemberships(
             {
-              scope: RESOURCE_SCOPE,
-              scopeProjectId: projectScopeFields.scopeProjectId,
-              actorIdentityId: dto.selector.identityId
+              projectId: projectScopeFields.scopeProjectId,
+              actorKind: ApplicationCleanupActorKind.Identity,
+              actorId: dto.selector.identityId
             },
             tx
           );
