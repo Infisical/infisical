@@ -1023,6 +1023,47 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     }
   };
 
+  const findProjectSecretsWithNullBlindIndex = async (projectId: string, limit: number, tx?: Knex) => {
+    try {
+      const docs = await (tx || db.replicaNode())(TableName.SecretV2)
+        .join(TableName.SecretFolder, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
+        .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+        .where("projectId", projectId)
+        .whereNull(`${TableName.Environment}.deleteAfter`)
+        .whereNull(`${TableName.SecretV2}.secretValueBlindIndex`)
+        .whereNotNull(`${TableName.SecretV2}.encryptedValue`)
+        .select(`${TableName.SecretV2}.id` as "id", `${TableName.SecretV2}.encryptedValue` as "encryptedValue")
+        .limit(limit);
+      return docs as Pick<TSecretsV2, "id" | "encryptedValue">[];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindProjectSecretsWithNullBlindIndex" });
+    }
+  };
+
+  const batchSetBlindIndexes = async (updates: { id: string; secretValueBlindIndex: string }[], tx?: Knex) => {
+    if (updates.length === 0) return;
+
+    try {
+      const bindings: string[] = [];
+      const valuePlaceholders = updates.map(({ id, secretValueBlindIndex }) => {
+        bindings.push(id, secretValueBlindIndex);
+        return "(CAST(? AS uuid), ?)";
+      });
+
+      const query = `
+        UPDATE ${TableName.SecretV2}
+        SET "secretValueBlindIndex" = v.blind_index
+        FROM (VALUES ${valuePlaceholders.join(", ")}) AS v(id, blind_index)
+        WHERE ${TableName.SecretV2}.id = v.id
+          AND ${TableName.SecretV2}."secretValueBlindIndex" IS NULL
+      `;
+
+      await (tx || db).raw(query, bindings);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "BatchSetBlindIndexes" });
+    }
+  };
+
   const findOneWithTags = async (filter: Partial<TSecretsV2>, tx?: Knex) => {
     try {
       const rawDocs = await (tx || db.replicaNode())(TableName.SecretV2)
@@ -1238,7 +1279,12 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
       let currentIndex: string | null = null;
       let currentGroup: { key: string; environment: string; folderId: string }[] = [];
 
-      for (const row of rows as { key: string; folderId: string; secretValueBlindIndex: string; environment: string }[]) {
+      for (const row of rows as {
+        key: string;
+        folderId: string;
+        secretValueBlindIndex: string;
+        environment: string;
+      }[]) {
         if (row.secretValueBlindIndex !== currentIndex) {
           if (currentGroup.length > 0) {
             groups.push({ secrets: currentGroup });
@@ -1291,6 +1337,8 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     upsertSecretReferences,
     findReferencedSecretReferences,
     findAllProjectSecretValues,
+    findProjectSecretsWithNullBlindIndex,
+    batchSetBlindIndexes,
     countByFolderIds,
     findStaleByProject,
     countStaleByProject,

@@ -104,6 +104,7 @@ import {
   TCreateProjectDTO,
   TDeleteProjectDTO,
   TDeleteProjectWorkflowIntegration,
+  TEnableSecretBlindIndexDTO,
   TGetActivityTrendDTO,
   TGetDashboardStatsDTO,
   TGetProjectDTO,
@@ -2573,6 +2574,53 @@ export const projectServiceFactory = ({
     return { requests };
   };
 
+  const enableSecretBlindIndex = async ({
+    actor,
+    actorId,
+    actorOrgId,
+    actorAuthMethod,
+    projectId
+  }: TEnableSecretBlindIndexDTO) => {
+    const project = await projectDAL.findById(projectId);
+    if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
+
+    // TODO: what permissions should we ask for this???
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: project.id,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Settings);
+
+    await projectQueue.startSecretBlindIndexMigration(project.id);
+  };
+
+  const getSecretBlindIndexMigrationStatus = async ({
+    actor,
+    actorId,
+    actorOrgId,
+    actorAuthMethod,
+    projectId
+  }: TEnableSecretBlindIndexDTO) => {
+    const project = await projectDAL.findById(projectId);
+    if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: project.id,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Settings);
+
+    return projectQueue.getSecretBlindIndexMigrationStatus(project.id);
+  };
+
   return {
     createProject,
     deleteProject,
@@ -2612,6 +2660,8 @@ export const projectServiceFactory = ({
     requestProjectAccess,
     getMyPendingProjectAccessRequests,
     searchProjects,
-    extractProjectIdFromSlug
+    extractProjectIdFromSlug,
+    enableSecretBlindIndex,
+    getSecretBlindIndexMigrationStatus
   };
 };

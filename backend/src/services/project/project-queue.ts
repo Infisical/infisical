@@ -32,6 +32,8 @@ import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueJobTypes, TQueueServiceFactory } from "@app/queue";
 
 import { TIntegrationAuthDALFactory } from "../integration-auth/integration-auth-dal";
+import { KmsDataKey } from "../kms/kms-types";
+import { TKmsServiceFactory } from "../kms/kms-service";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
 import { TOrgDALFactory } from "../org/org-dal";
@@ -42,6 +44,7 @@ import { TProjectKeyDALFactory } from "../project-key/project-key-dal";
 import { TSecretDALFactory } from "../secret/secret-dal";
 import { TSecretVersionDALFactory } from "../secret/secret-version-dal";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
+import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { TUserDALFactory } from "../user/user-dal";
 import { TProjectDALFactory } from "./project-dal";
 import { assignWorkspaceKeysToMembers, createProjectKey } from "./project-fns";
@@ -53,6 +56,8 @@ type TProjectQueueFactoryDep = {
   secretVersionDAL: Pick<TSecretVersionDALFactory, "find" | "bulkUpdateNoVersionIncrement" | "delete">;
   folderDAL: Pick<TSecretFolderDALFactory, "find">;
   secretDAL: Pick<TSecretDALFactory, "find" | "bulkUpdateNoVersionIncrement">;
+  secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "findProjectSecretsWithNullBlindIndex" | "batchSetBlindIndexes">;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "findLatestProjectKey" | "find" | "create" | "delete" | "insertMany">;
   secretApprovalRequestDAL: Pick<TSecretApprovalRequestDALFactory, "find">;
   secretApprovalSecretDAL: Pick<TSecretApprovalRequestSecretDALFactory, "find" | "bulkUpdateNoVersionIncrement">;
@@ -70,6 +75,8 @@ type TProjectQueueFactoryDep = {
 export const projectQueueFactory = ({
   queueService,
   secretDAL,
+  secretV2BridgeDAL,
+  kmsService,
   folderDAL,
   userDAL,
   secretVersionDAL,
@@ -639,7 +646,105 @@ export const projectQueueFactory = ({
     logger.error(err, "Upgrade project failed", job?.data);
   });
 
+  const startSecretBlindIndexMigration = async (projectId: string) => {
+    const jobId = `enable-blind-index-project-${projectId}`;
+
+    const existingJob = await queueService.getJob(QueueName.SecretBlindIndexMigration, jobId);
+    if (existingJob) {
+      const state = await existingJob.getState();
+      if (state === "completed" || state === "failed") {
+        await existingJob.remove();
+      } else {
+        logger.info(`Job for project ${projectId} already exists, skipping`)
+        return;
+      }
+    }
+
+    await queueService.queue(
+      QueueName.SecretBlindIndexMigration,
+      QueueJobs.SecretBlindIndexMigration,
+      { projectId },
+      {
+        removeOnComplete: { age: 360 },
+        removeOnFail: { age: 24 * 3600 },
+        jobId
+      }
+    );
+  };
+
+  queueService.start(QueueName.SecretBlindIndexMigration, async (job) => {
+    const { projectId } = job.data;
+    const BATCH_SIZE = 500;
+
+    logger.info(`SecretBlindIndexMigration: starting migration [projectId=${projectId}]`);
+
+    const { decryptor, generateSecretBlindIndex } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId
+    });
+
+    let totalProcessed = 0;
+
+    // eslint-disable-next-line no-constant-condition, @typescript-eslint/no-unnecessary-condition
+    while (true) {
+      const secrets = await secretV2BridgeDAL.findProjectSecretsWithNullBlindIndex(projectId, BATCH_SIZE);
+
+      if (secrets.length === 0) break;
+
+      const updates: { id: string; secretValueBlindIndex: string }[] = [];
+      for (const secret of secrets) {
+        const decryptedValue = decryptor({ cipherTextBlob: secret.encryptedValue! });
+        const blindIndex = await generateSecretBlindIndex(decryptedValue);
+        updates.push({ id: secret.id, secretValueBlindIndex: blindIndex });
+      }
+
+      if (updates.length > 0) {
+        await secretV2BridgeDAL.batchSetBlindIndexes(updates);
+      }
+
+      totalProcessed += updates.length;
+      logger.info(
+        `SecretBlindIndexMigration: processed batch [projectId=${projectId}] [batchSize=${updates.length}] [totalProcessed=${totalProcessed}]`
+      );
+
+      if (secrets.length < BATCH_SIZE) break;
+    }
+
+    await projectDAL.updateById(projectId, { secretBlindIndexEnabled: true });
+
+    logger.info(
+      `SecretBlindIndexMigration: migration complete [projectId=${projectId}] [totalProcessed=${totalProcessed}]`
+    );
+  });
+
+  queueService.listen(QueueName.SecretBlindIndexMigration, "failed", (job, err) => {
+    logger.error(err, `SecretBlindIndexMigration: failed [projectId=${job?.data.projectId}]`);
+  });
+
+  const getSecretBlindIndexMigrationStatus = async (projectId: string) => {
+    const jobId = `enable-blind-index-project-${projectId}`;
+    const job = await queueService.getJob(QueueName.SecretBlindIndexMigration, jobId);
+
+    if (!job) {
+      return { status: "not-found" as const };
+    }
+
+    const state = await job.getState();
+
+    if (state === "failed") {
+      return { status: "failed" as const, message: job.failedReason ?? "Unknown error" };
+    }
+
+    if (state === "completed") {
+      return { status: "completed" as const };
+    }
+
+    return { status: "pending" as const };
+  };
+
   return {
-    upgradeProject
+    upgradeProject,
+    startSecretBlindIndexMigration,
+    getSecretBlindIndexMigrationStatus
   };
 };

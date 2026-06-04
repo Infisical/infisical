@@ -1,4 +1,14 @@
-import { ArrowRightIcon, CopyIcon, FolderIcon, LinkIcon, LockIcon } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  AlertTriangleIcon,
+  ArrowRightIcon,
+  CopyIcon,
+  FolderIcon,
+  LinkIcon,
+  Loader2Icon,
+  LockIcon
+} from "lucide-react";
 
 import {
   Accordion,
@@ -19,7 +29,12 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { useProject } from "@app/context";
-import { useGetSecretsDuplication } from "@app/hooks/api/secretInsights";
+import { useEnableSecretBlindIndex } from "@app/hooks/api/projects";
+import {
+  secretInsightsKeys,
+  useGetSecretBlindIndexStatus,
+  useGetSecretsDuplication
+} from "@app/hooks/api/secretInsights";
 
 const ENVIRONMENT_COLOR_MAP: Record<string, string> = {
   production: "bg-green-500",
@@ -34,6 +49,10 @@ const getEnvironmentDotColor = (slug: string) => {
 
 export const DuplicatedSecretsCard = () => {
   const { projectId } = useProject();
+  const queryClient = useQueryClient();
+  const [migrationTriggered, setMigrationTriggered] = useState(false);
+
+  const enableBlindIndex = useEnableSecretBlindIndex();
 
   const { data, isPending } = useGetSecretsDuplication(
     { projectId },
@@ -42,6 +61,73 @@ export const DuplicatedSecretsCard = () => {
 
   const groups = data?.groups ?? [];
   const secretBlindIndexEnabled = data?.secretBlindIndexEnabled ?? true;
+
+  const shouldPollStatus =
+    !!projectId && !isPending && !secretBlindIndexEnabled;
+
+  const { data: statusData } = useGetSecretBlindIndexStatus(
+    { projectId },
+    {
+      enabled: shouldPollStatus,
+      refetchInterval: (query) => {
+        const status = query.state.data?.status;
+        if (status === "completed" || status === "failed" || status === "not-found") return false;
+        return 2000;
+      }
+    }
+  );
+
+  const migrationStatus = statusData?.status;
+
+  useEffect(() => {
+    if (migrationStatus === "pending") {
+      setMigrationTriggered(true);
+    }
+  }, [migrationStatus]);
+
+  useEffect(() => {
+    if (statusData?.status === "completed" && migrationTriggered) {
+      queryClient.invalidateQueries({
+        queryKey: secretInsightsKeys.secretsDuplication({ projectId })
+      });
+      setMigrationTriggered(false);
+    }
+  }, [statusData?.status, migrationTriggered, projectId, queryClient]);
+
+  const handleEnableClick = () => {
+    setMigrationTriggered(true);
+    enableBlindIndex.mutate(
+      { projectId },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({
+            // queryKey: secretInsightsKeys.blindIndexStatus({ projectId })
+          });
+        }
+      }
+    );
+  };
+
+  const handleRetryClick = () => {
+    setMigrationTriggered(true);
+    enableBlindIndex.reset();
+    enableBlindIndex.mutate(
+      { projectId },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({
+            queryKey: secretInsightsKeys.blindIndexStatus({ projectId })
+          });
+        }
+      }
+    );
+  };
+
+  const isMigrationRunning =
+    migrationTriggered && migrationStatus !== "completed" && migrationStatus !== "failed";
+  const isMigrationFailed = migrationStatus === "failed" && !enableBlindIndex.isPending;
+  const showEnableButton =
+    !secretBlindIndexEnabled && !isMigrationRunning && !isMigrationFailed;
 
   return (
     <Card>
@@ -54,9 +140,30 @@ export const DuplicatedSecretsCard = () => {
       </CardHeader>
       <CardContent>
         {isPending && <Skeleton className="h-[280px] w-full" />}
-        {!isPending && !secretBlindIndexEnabled && (
-          <div className="flex h-[200px] items-center justify-center">
-            <Button variant="outline">Enable Secret Duplication Detection</Button>
+        {!isPending && showEnableButton && (
+          <div className="flex h-[200px] flex-col items-center justify-center gap-3">
+            <Button variant="outline" onClick={handleEnableClick}>
+              Enable Secret Duplication Detection
+            </Button>
+          </div>
+        )}
+        {!isPending && isMigrationRunning && (
+          <div className="flex h-[200px] flex-col items-center justify-center gap-3">
+            <Loader2Icon className="size-6 animate-spin text-primary" />
+            <p className="text-sm text-muted">
+              Indexing secrets for duplicate detection. This may take a moment...
+            </p>
+          </div>
+        )}
+        {!isPending && isMigrationFailed && (
+          <div className="flex h-[200px] flex-col items-center justify-center gap-3">
+            <AlertTriangleIcon className="size-6 text-red-500" />
+            <p className="text-sm text-red-400">
+              Failed to index secrets: {statusData?.message ?? "Unknown error"}
+            </p>
+            <Button variant="outline" onClick={handleRetryClick}>
+              Retry
+            </Button>
           </div>
         )}
         {!isPending && secretBlindIndexEnabled && groups.length === 0 && (

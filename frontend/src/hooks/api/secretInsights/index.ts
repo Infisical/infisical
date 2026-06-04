@@ -1,9 +1,11 @@
 export {
+  secretInsightsKeys,
   useGetAuthMethodDistribution,
   useGetCalendarInsights,
   useGetInsightsSummary,
   // useGetSecretAccessLocations,
   useGetSecretAccessVolume,
+  useGetSecretBlindIndexStatus,
   useGetSecretsDuplication
 } from "./queries";
 export type {

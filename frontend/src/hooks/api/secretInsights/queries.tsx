@@ -13,6 +13,8 @@ import {
   // TGetSecretAccessLocationsResponse,
   TGetSecretAccessVolumeDTO,
   TGetSecretAccessVolumeResponse,
+  TGetSecretBlindIndexStatusDTO,
+  TGetSecretBlindIndexStatusResponse,
   TGetSecretsDuplicationDTO,
   TGetSecretsDuplicationResponse
 } from "./types";
@@ -30,7 +32,9 @@ export const secretInsightsKeys = {
   summary: (params: TGetInsightsSummaryDTO) =>
     [...secretInsightsKeys.all(), "summary", params] as const,
   secretsDuplication: (params: TGetSecretsDuplicationDTO) =>
-    [...secretInsightsKeys.all(), "secrets-duplication", params] as const
+    [...secretInsightsKeys.all(), "secrets-duplication", params] as const,
+  blindIndexStatus: (params: TGetSecretBlindIndexStatusDTO) =>
+    [...secretInsightsKeys.all(), "blind-index-status", params] as const
 };
 
 const INSIGHTS_STALE_TIME = 5 * 60 * 1000; // 5 minutes
@@ -187,6 +191,31 @@ export const useGetSecretsDuplication = (
       return data;
     },
     staleTime: INSIGHTS_STALE_TIME,
+    ...options
+  });
+};
+
+export const useGetSecretBlindIndexStatus = (
+  params: TGetSecretBlindIndexStatusDTO,
+  options?: Omit<
+    UseQueryOptions<
+      TGetSecretBlindIndexStatusResponse,
+      unknown,
+      TGetSecretBlindIndexStatusResponse,
+      ReturnType<typeof secretInsightsKeys.blindIndexStatus>
+    >,
+    "queryKey" | "queryFn"
+  >
+) => {
+  return useQuery({
+    queryKey: secretInsightsKeys.blindIndexStatus(params),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<TGetSecretBlindIndexStatusResponse>(
+        `/api/v1/projects/${params.projectId}/secret-blind-index/status`
+      );
+      return data;
+    },
+    staleTime: 0,
     ...options
   });
 };

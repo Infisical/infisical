@@ -570,6 +570,83 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
+    method: "POST",
+    url: "/:projectId/secret-blind-index",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      hide: false,
+      operationId: "enableProjectSecretBlindIndex",
+      tags: [ApiDocsTags.Projects],
+      description: "Enable secret blind indexing for duplicate detection",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      params: z.object({
+        projectId: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          message: z.string()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      await server.services.project.enableSecretBlindIndex({
+        projectId: req.params.projectId,
+        actorAuthMethod: req.permission.authMethod,
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorOrgId: req.permission.orgId
+      });
+
+      return { message: "Successfully enabled secret blind indexing" };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:projectId/secret-blind-index/status",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: false,
+      operationId: "getProjectSecretBlindIndexStatus",
+      tags: [ApiDocsTags.Projects],
+      description: "Get secret blind index migration status",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      params: z.object({
+        projectId: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          status: z.enum(["not-found", "pending", "completed", "failed"]),
+          message: z.string().optional()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      return server.services.project.getSecretBlindIndexMigrationStatus({
+        projectId: req.params.projectId,
+        actorAuthMethod: req.permission.authMethod,
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorOrgId: req.permission.orgId
+      });
+    }
+  });
+
+  server.route({
     method: "PUT",
     url: "/:projectId/audit-logs-retention",
     config: {

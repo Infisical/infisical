@@ -141,3 +141,12 @@ export type TGetSecretsDuplicationResponse = {
   secretBlindIndexEnabled: boolean;
   groups: TDuplicatedSecretGroup[];
 };
+
+export type TGetSecretBlindIndexStatusDTO = {
+  projectId: string;
+};
+
+export type TGetSecretBlindIndexStatusResponse = {
+  status: "not-found" | "pending" | "completed" | "failed";
+  message?: string;
+};
