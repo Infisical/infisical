@@ -5530,6 +5530,9 @@ interface ProjectDeleteEvent {
   metadata: {
     id: string;
     name: string;
+    // true: actor soft-deleted the project (marked for deletion).
+    // false: the async cleanup worker hard-deleted an expired soft-deleted project.
+    softDelete?: boolean;
   };
 }
 

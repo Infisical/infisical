@@ -1550,7 +1550,7 @@ const OverviewPageContent = () => {
     value: string,
     type = SecretType.Shared
   ) => {
-    if (isBatchModeActive) {
+    if (isBatchModeActive && type !== SecretType.Personal) {
       addPendingChange(
         {
           id: crypto.randomUUID(),
@@ -1637,7 +1637,7 @@ const OverviewPageContent = () => {
     skipMultilineEncoding?: boolean | null;
     originalValue?: string;
   }) => {
-    if (isBatchModeActive) {
+    if (isBatchModeActive && type !== SecretType.Personal) {
       const existingSecret = getSecretByKey(env, key);
 
       let batchSecretValue: string | undefined = value;
@@ -1753,7 +1753,7 @@ const OverviewPageContent = () => {
     secretId?: string,
     type = SecretType.Shared
   ) => {
-    if (isBatchModeActive) {
+    if (isBatchModeActive && type !== SecretType.Personal) {
       const existingSecret = getSecretByKey(env, key);
 
       if (!existingSecret) {

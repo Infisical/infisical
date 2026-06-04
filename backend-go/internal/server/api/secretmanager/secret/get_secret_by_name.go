@@ -288,9 +288,9 @@ func (h *Handler) GetSecretByNameRawV3(ctx context.Context, opts *GetSecretByNam
 }
 
 func (h *Handler) createGetSecretAuditLog(ctx context.Context, projectID, env, secretPath string, sec *SecretRaw) error {
-	identity, _ := auth.IdentityFromContext(ctx)
-	if identity == nil {
-		return nil
+	identity, err := auth.IdentityFromContext(ctx)
+	if err != nil {
+		return errutil.NotFound("Identity not found in context").WithErr(err)
 	}
 
 	info := auditlog.BuildAuditLogInfo(identity)
