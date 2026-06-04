@@ -2,11 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import { AxiosError } from "axios";
 
 import { ActionProjectType, OrganizationActionScope } from "@app/db/schemas";
-import {
-  OrgPermissionActions,
-  OrgPermissionAppConnectionActions,
-  OrgPermissionSubjects
-} from "@app/ee/services/permission/org-permission";
+import { OrgPermissionAppConnectionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionAppConnectionActions,
@@ -71,7 +67,10 @@ export const gitHubAppServiceFactory = ({
       scope: OrganizationActionScope.Any
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Settings);
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionAppConnectionActions.Read,
+      OrgPermissionSubjects.AppConnections
+    );
 
     const apps = await gitHubAppDAL.find({ orgId: orgPermission.orgId });
 
@@ -181,7 +180,10 @@ export const gitHubAppServiceFactory = ({
       scope: OrganizationActionScope.ParentOrganization
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.Settings);
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionAppConnectionActions.Delete,
+      OrgPermissionSubjects.AppConnections
+    );
 
     // Resolve credentials up front — once the row is deleted the private key is gone and we can no
     // longer sign the app JWT needed to uninstall the app's installations on GitHub.
@@ -271,7 +273,10 @@ export const gitHubAppServiceFactory = ({
       scope: OrganizationActionScope.ParentOrganization
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Settings);
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionAppConnectionActions.Create,
+      OrgPermissionSubjects.AppConnections
+    );
 
     assertPlatformGitHubHostAllowed(githubHost);
 
@@ -373,7 +378,10 @@ export const gitHubAppServiceFactory = ({
       scope: OrganizationActionScope.ParentOrganization
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Settings);
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionAppConnectionActions.Create,
+      OrgPermissionSubjects.AppConnections
+    );
 
     const existingByName = await gitHubAppDAL.findOne({ orgId, name });
     if (existingByName) {
