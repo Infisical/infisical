@@ -14,7 +14,7 @@ export enum PamAccountType {
 
 export enum PamFolderRole {
   Admin = "admin",
-  Connector = "connector",
+  Requester = "requester",
   Auditor = "auditor"
 }
 

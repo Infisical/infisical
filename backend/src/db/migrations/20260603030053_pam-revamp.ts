@@ -350,7 +350,7 @@ export async function up(knex: Knex): Promise<void> {
         const roles = await knex(TableName.MembershipRole).where("membershipId", member.id).select("role");
 
         const isAdmin = roles.some((r: { role: string }) => r.role === ProjectMembershipRole.Admin);
-        const folderRole = isAdmin ? PamFolderRole.Admin : PamFolderRole.Connector;
+        const folderRole = isAdmin ? PamFolderRole.Admin : PamFolderRole.Requester;
 
         const [folderMembership] = await knex(TableName.Membership)
           .insert({
