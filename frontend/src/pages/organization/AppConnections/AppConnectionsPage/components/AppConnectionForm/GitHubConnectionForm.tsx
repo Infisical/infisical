@@ -424,43 +424,6 @@ export const GitHubConnectionForm = ({ appConnection, projectId, onSubmit }: Pro
             </FormControl>
           )}
         />
-        {selectedMethod === GitHubConnectionMethod.App && !isUpdate && (
-          <FormControl
-            label="GitHub App"
-            tooltipText="Reuse an existing GitHub App in your organization or create a new one. Apps can be shared across multiple connections."
-          >
-            <GitHubAppSelector
-              apps={gitHubApps}
-              isLoading={isGitHubAppsLoading}
-              value={selectedGitHubApp}
-              onChange={setSelectedGitHubApp}
-              host={instanceType === "server" ? watch("credentials.host") : undefined}
-              instanceType={instanceType}
-              onCreateApp={handleCreateApp}
-              isCreating={isRedirecting}
-            />
-          </FormControl>
-        )}
-        {selectedMethod === GitHubConnectionMethod.Pat && (
-          <Controller
-            name="credentials.personalAccessToken"
-            control={control}
-            shouldUnregister
-            render={({ field: { value, onChange }, fieldState: { error } }) => (
-              <FormControl
-                errorText={error?.message}
-                isError={Boolean(error?.message)}
-                label="Personal Access Token"
-              >
-                <SecretInput
-                  containerClassName="text-gray-400 group-focus-within:!border-primary-400/50 border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
-                  value={value}
-                  onChange={(e) => onChange(e.target.value)}
-                />
-              </FormControl>
-            )}
-          />
-        )}
         <Accordion type="single" collapsible className="w-full">
           <AccordionItem value="enterprise-options" className="data-[state=open]:border-none">
             <AccordionTrigger className="h-fit flex-none pl-1 text-sm">
@@ -542,6 +505,43 @@ export const GitHubConnectionForm = ({ appConnection, projectId, onSubmit }: Pro
             </AccordionContent>
           </AccordionItem>
         </Accordion>
+        {selectedMethod === GitHubConnectionMethod.App && !isUpdate && (
+          <FormControl
+            label="GitHub App"
+            tooltipText="Reuse an existing GitHub App in your organization or create a new one. Apps can be shared across multiple connections."
+          >
+            <GitHubAppSelector
+              apps={gitHubApps}
+              isLoading={isGitHubAppsLoading}
+              value={selectedGitHubApp}
+              onChange={setSelectedGitHubApp}
+              host={instanceType === "server" ? watch("credentials.host") : undefined}
+              instanceType={instanceType}
+              onCreateApp={handleCreateApp}
+              isCreating={isRedirecting}
+            />
+          </FormControl>
+        )}
+        {selectedMethod === GitHubConnectionMethod.Pat && (
+          <Controller
+            name="credentials.personalAccessToken"
+            control={control}
+            shouldUnregister
+            render={({ field: { value, onChange }, fieldState: { error } }) => (
+              <FormControl
+                errorText={error?.message}
+                isError={Boolean(error?.message)}
+                label="Personal Access Token"
+              >
+                <SecretInput
+                  containerClassName="text-gray-400 group-focus-within:!border-primary-400/50 border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
+                  value={value}
+                  onChange={(e) => onChange(e.target.value)}
+                />
+              </FormControl>
+            )}
+          />
+        )}
         <div className="mt-8 flex items-center">
           <Button
             className="mr-4"
