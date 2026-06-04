@@ -1,7 +1,9 @@
 import { TProjectPermission } from "@app/lib/types";
 
 export enum SecretValidationRuleType {
-  StaticSecrets = "static-secrets"
+  StaticSecrets = "static-secrets",
+  DynamicSecrets = "dynamic-secrets",
+  SecretRotations = "secret-rotations"
 }
 
 export enum ConstraintType {
@@ -15,7 +17,22 @@ export enum ConstraintType {
 
 export enum ConstraintTarget {
   SecretKey = "key",
-  SecretValue = "value"
+  SecretValue = "value",
+  GeneratedPassword = "password"
+  // Future: GeneratedUsername = "username"
+}
+
+// Provider identifiers selectable in dynamic-secret rules.
+// Keep aligned with `DynamicSecretProviders` in dynamic-secret/providers/models.ts.
+export enum DynamicSecretRuleProvider {
+  SqlDatabase = "sql-database",
+  Milvus = "milvus"
+}
+
+// Provider identifiers selectable in secret-rotation rules.
+// Keep aligned with `SecretRotation` in secret-rotation-v2-enums.ts.
+export enum SecretRotationRuleProvider {
+  PostgresCredentials = "postgres-credentials"
 }
 
 export type TConstraint = {
@@ -28,7 +45,17 @@ export type TStaticSecretsInputs = {
   constraints: TConstraint[];
 };
 
-export type TSecretValidationRuleInputs = TStaticSecretsInputs;
+export type TDynamicSecretsInputs = {
+  providers: DynamicSecretRuleProvider[];
+  constraints: TConstraint[];
+};
+
+export type TSecretRotationsInputs = {
+  providers: SecretRotationRuleProvider[];
+  constraints: TConstraint[];
+};
+
+export type TSecretValidationRuleInputs = TStaticSecretsInputs | TDynamicSecretsInputs | TSecretRotationsInputs;
 
 export type TCreateSecretValidationRuleDTO = {
   name: string;

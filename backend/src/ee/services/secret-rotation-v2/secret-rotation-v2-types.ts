@@ -410,6 +410,15 @@ export type TRotationFactoryCheckActiveCredentials<T extends TSecretRotationV2Ge
   activeCredentials: T[number]
 ) => Promise<void>;
 
+// Password validation context passed to factories when an active
+// secret-validation rule covers the rotation's project/env/path/provider.
+// When present, factories that generate passwords must satisfy these
+// constraints and ignore any user-provided passwordRequirements.
+export type TRotationPasswordValidationContext = {
+  constraints: import("@app/services/secret-validation-rule/secret-validation-rule-types").TConstraint[];
+  ruleNames: string[];
+};
+
 export type TRotationFactory<
   T extends TSecretRotationV2WithConnection,
   C extends TSecretRotationV2GeneratedCredentials,
@@ -420,7 +429,8 @@ export type TRotationFactory<
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">,
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
-  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">
+  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">,
+  passwordValidationContext?: TRotationPasswordValidationContext
 ) => {
   issueCredentials: TRotationFactoryIssueCredentials<C, P>;
   revokeCredentials: TRotationFactoryRevokeCredentials<C>;

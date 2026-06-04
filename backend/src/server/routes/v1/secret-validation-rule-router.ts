@@ -6,6 +6,8 @@ import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import {
+  dynamicSecretsInputsSchema,
+  secretRotationsInputsSchema,
   SecretValidationRuleInputSchema,
   SecretValidationRuleResponseSchema,
   staticSecretsInputsSchema
@@ -127,7 +129,9 @@ export const registerSecretValidationRuleRouter = async (server: FastifyZodProvi
         environmentSlug: z.string().trim().min(1).nullable().optional(),
         secretPath: z.string().trim().min(1).optional(),
         type: z.nativeEnum(SecretValidationRuleType).optional(),
-        inputs: staticSecretsInputsSchema.optional(),
+        inputs: z
+          .union([staticSecretsInputsSchema, dynamicSecretsInputsSchema, secretRotationsInputsSchema])
+          .optional(),
         isActive: z.boolean().optional()
       }),
       response: {

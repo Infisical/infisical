@@ -1,6 +1,8 @@
 import {
+  DatabaseIcon,
   HashIcon,
   HistoryIcon,
+  LayersIcon,
   LucideIcon,
   RulerIcon,
   TextCursorInputIcon,
@@ -19,7 +21,8 @@ export enum ConstraintType {
 
 export enum ConstraintTarget {
   SecretKey = "key",
-  SecretValue = "value"
+  SecretValue = "value",
+  GeneratedPassword = "password"
 }
 
 export const CONSTRAINT_OPTIONS: {
@@ -97,12 +100,58 @@ export const CONSTRAINT_TYPE_LABELS: Record<ConstraintType, string> = {
 };
 
 export enum RuleType {
-  StaticSecrets = "static-secrets"
+  StaticSecrets = "static-secrets",
+  DynamicSecrets = "dynamic-secrets",
+  SecretRotations = "secret-rotations"
 }
 
 export const RULE_TYPE_LABELS: Record<RuleType, string> = {
-  [RuleType.StaticSecrets]: "Static Secrets"
+  [RuleType.StaticSecrets]: "Static Secrets",
+  [RuleType.DynamicSecrets]: "Dynamic Secrets",
+  [RuleType.SecretRotations]: "Secret Rotations"
 };
+
+// Provider identifiers selectable in dynamic-secret rules. Keep aligned with
+// backend `DynamicSecretRuleProvider`.
+export enum DynamicSecretRuleProvider {
+  SqlDatabase = "sql-database",
+  Milvus = "milvus"
+}
+
+// Provider identifiers selectable in secret-rotation rules. Keep aligned with
+// backend `SecretRotationRuleProvider`.
+export enum SecretRotationRuleProvider {
+  PostgresCredentials = "postgres-credentials"
+}
+
+export type TProviderOption<T extends string> = {
+  value: T;
+  label: string;
+  icon: LucideIcon;
+};
+
+export const DYNAMIC_SECRET_PROVIDER_OPTIONS: TProviderOption<DynamicSecretRuleProvider>[] = [
+  { value: DynamicSecretRuleProvider.SqlDatabase, label: "SQL Database", icon: DatabaseIcon },
+  { value: DynamicSecretRuleProvider.Milvus, label: "Milvus", icon: LayersIcon }
+];
+
+export const SECRET_ROTATION_PROVIDER_OPTIONS: TProviderOption<SecretRotationRuleProvider>[] = [
+  {
+    value: SecretRotationRuleProvider.PostgresCredentials,
+    label: "PostgreSQL Credentials",
+    icon: DatabaseIcon
+  }
+];
+
+// Constraints supported for generated-credential rules. PreventValueReuse is
+// excluded for dynamic secrets (ephemeral leases, no version history) but
+// supported for rotations.
+export const DYNAMIC_SECRET_RULE_DISALLOWED_CONSTRAINTS: ConstraintType[] = [
+  ConstraintType.PreventValueReuse
+];
+export const SECRET_ROTATION_RULE_DISALLOWED_CONSTRAINTS: ConstraintType[] = [
+  ConstraintType.PreventValueReuse
+];
 
 export const MAX_PREVENT_VALUE_REUSE_VERSIONS = 25;
 
@@ -128,17 +177,38 @@ export const constraintSchema = z
     }
   );
 
+const duplicateConstraintRefinement = (
+  constraints: { type: ConstraintType; appliesTo: ConstraintTarget }[]
+) => {
+  const pairs = constraints.map((c) => `${c.type}:${c.appliesTo}`);
+  return new Set(pairs).size === pairs.length;
+};
+
 const staticSecretsInputsSchema = z.object({
   constraints: z
     .array(constraintSchema)
     .min(1, "At least one constraint is required")
-    .refine(
-      (constraints) => {
-        const pairs = constraints.map((c) => `${c.type}:${c.appliesTo}`);
-        return new Set(pairs).size === pairs.length;
-      },
-      { message: "Duplicate constraint for the same target" }
-    )
+    .refine(duplicateConstraintRefinement, { message: "Duplicate constraint for the same target" })
+});
+
+const dynamicSecretsInputsSchema = z.object({
+  providers: z
+    .array(z.nativeEnum(DynamicSecretRuleProvider))
+    .min(1, "Select at least one provider"),
+  constraints: z
+    .array(constraintSchema)
+    .min(1, "At least one constraint is required")
+    .refine(duplicateConstraintRefinement, { message: "Duplicate constraint for the same target" })
+});
+
+const secretRotationsInputsSchema = z.object({
+  providers: z
+    .array(z.nativeEnum(SecretRotationRuleProvider))
+    .min(1, "Select at least one provider"),
+  constraints: z
+    .array(constraintSchema)
+    .min(1, "At least one constraint is required")
+    .refine(duplicateConstraintRefinement, { message: "Duplicate constraint for the same target" })
 });
 
 export const ruleFormSchema = z.object({
@@ -146,10 +216,11 @@ export const ruleFormSchema = z.object({
   description: z.string().max(500).optional(),
   environment: z.string().nullable().default(null),
   folderPath: z.string().min(1, "Folder path is required").default("/**"),
-  enforcement: z.object({
-    type: z.nativeEnum(RuleType),
-    inputs: staticSecretsInputsSchema
-  })
+  enforcement: z.discriminatedUnion("type", [
+    z.object({ type: z.literal(RuleType.StaticSecrets), inputs: staticSecretsInputsSchema }),
+    z.object({ type: z.literal(RuleType.DynamicSecrets), inputs: dynamicSecretsInputsSchema }),
+    z.object({ type: z.literal(RuleType.SecretRotations), inputs: secretRotationsInputsSchema })
+  ])
 });
 
 export type TRuleForm = z.infer<typeof ruleFormSchema>;
