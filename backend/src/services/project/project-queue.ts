@@ -32,8 +32,8 @@ import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueJobTypes, TQueueServiceFactory } from "@app/queue";
 
 import { TIntegrationAuthDALFactory } from "../integration-auth/integration-auth-dal";
-import { KmsDataKey } from "../kms/kms-types";
 import { TKmsServiceFactory } from "../kms/kms-service";
+import { KmsDataKey } from "../kms/kms-types";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
 import { TOrgDALFactory } from "../org/org-dal";
@@ -655,7 +655,7 @@ export const projectQueueFactory = ({
       if (state === "completed" || state === "failed") {
         await existingJob.remove();
       } else {
-        logger.info(`Job for project ${projectId} already exists, skipping`)
+        logger.info(`Job for project ${projectId} already exists, skipping`);
         return;
       }
     }
@@ -674,7 +674,7 @@ export const projectQueueFactory = ({
 
   queueService.start(QueueName.SecretBlindIndexMigration, async (job) => {
     const { projectId } = job.data;
-    const BATCH_SIZE = 500;
+    const BATCH_SIZE = 1000;
 
     logger.info(`SecretBlindIndexMigration: starting migration [projectId=${projectId}]`);
 
@@ -693,7 +693,9 @@ export const projectQueueFactory = ({
 
       const updates: { id: string; secretValueBlindIndex: string }[] = [];
       for (const secret of secrets) {
-        const decryptedValue = decryptor({ cipherTextBlob: secret.encryptedValue! });
+        if (!secret.encryptedValue) continue;
+
+        const decryptedValue = decryptor({ cipherTextBlob: secret.encryptedValue });
         const blindIndex = await generateSecretBlindIndex(decryptedValue);
         updates.push({ id: secret.id, secretValueBlindIndex: blindIndex });
       }
@@ -706,6 +708,9 @@ export const projectQueueFactory = ({
       logger.info(
         `SecretBlindIndexMigration: processed batch [projectId=${projectId}] [batchSize=${updates.length}] [totalProcessed=${totalProcessed}]`
       );
+
+      // Prevents job from being marked as stalled
+      job.updateProgress(totalProcessed);
 
       if (secrets.length < BATCH_SIZE) break;
 

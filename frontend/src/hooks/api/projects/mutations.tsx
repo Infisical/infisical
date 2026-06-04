@@ -6,8 +6,8 @@ import { groupMembershipsBase } from "@app/hooks/api/certManagerAccess";
 import { groupKeys } from "../groups/queries";
 import { TGroupMembership } from "../groups/types";
 import { pkiApplicationKeys } from "../pkiApplications/queries";
-import { userKeys } from "../users/query-keys";
 import { secretInsightsKeys } from "../secretInsights/queries";
+import { userKeys } from "../users/query-keys";
 import { projectKeys } from "./query-keys";
 import {
   TProjectSshConfig,

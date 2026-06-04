@@ -193,7 +193,7 @@ export enum QueueJobs {
 export type TQueueOptions = {
   jobId: string;
   removeOnComplete?: boolean | { count: number } | { age: number };
-  removeOnFail?: boolean | { count: number } | { age : number};
+  removeOnFail?: boolean | { count: number } | { age: number };
   attempts?: number;
   delay?: number;
   backoff?: {
@@ -603,7 +603,10 @@ export type TQueueServiceFactory = {
   ) => Promise<void>;
   removeJobScheduler: <T extends QueueName>(name: T, schedulerId: string) => Promise<void>;
   getJobSchedulers: (name: QueueName, start?: number, end?: number) => Promise<JobSchedulerJson[]>;
-  getJob: <T extends QueueName>(name: T, jobId: string) => Promise<Job<TQueueJobTypes[T]["payload"], void, TQueueJobTypes[T]["name"]> | undefined>;
+  getJob: <T extends QueueName>(
+    name: T,
+    jobId: string
+  ) => Promise<Job<TQueueJobTypes[T]["payload"], void, TQueueJobTypes[T]["name"]> | undefined>;
 };
 
 export const queueServiceFactory = (redisCfg: TRedisConfigKeys): TQueueServiceFactory => {

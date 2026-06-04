@@ -2584,7 +2584,6 @@ export const projectServiceFactory = ({
     const project = await projectDAL.findById(projectId);
     if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
 
-    // TODO: what permissions should we ask for this???
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
@@ -2594,6 +2593,10 @@ export const projectServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Settings);
+
+    if (project.secretBlindIndexEnabled) {
+      throw new BadRequestError({ message: "Secret blind indexing is already enabled for this project" });
+    }
 
     await projectQueue.startSecretBlindIndexMigration(project.id);
   };

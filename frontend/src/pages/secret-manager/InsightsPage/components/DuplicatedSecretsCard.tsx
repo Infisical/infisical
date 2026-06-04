@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
+import { useNavigate, useParams } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangleIcon,
   ArrowRightIcon,
-  CopyIcon,
   FolderIcon,
   LinkIcon,
   Loader2Icon,
@@ -47,23 +47,24 @@ const getEnvironmentDotColor = (slug: string) => {
   return ENVIRONMENT_COLOR_MAP[slug] || "bg-primary";
 };
 
+const overviewRoute =
+  "/organizations/$orgId/projects/secret-management/$projectId/overview" as const;
+
 export const DuplicatedSecretsCard = () => {
   const { projectId } = useProject();
+  const { orgId } = useParams({ strict: false });
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [migrationTriggered, setMigrationTriggered] = useState(false);
 
   const enableBlindIndex = useEnableSecretBlindIndex();
 
-  const { data, isPending } = useGetSecretsDuplication(
-    { projectId },
-    { enabled: !!projectId }
-  );
+  const { data, isPending } = useGetSecretsDuplication({ projectId }, { enabled: !!projectId });
 
   const groups = data?.groups ?? [];
   const secretBlindIndexEnabled = data?.secretBlindIndexEnabled ?? true;
 
-  const shouldPollStatus =
-    !!projectId && !isPending && !secretBlindIndexEnabled;
+  const shouldPollStatus = !!projectId && !isPending && !secretBlindIndexEnabled;
 
   const { data: statusData } = useGetSecretBlindIndexStatus(
     { projectId },
@@ -101,7 +102,7 @@ export const DuplicatedSecretsCard = () => {
       {
         onSuccess: () => {
           queryClient.invalidateQueries({
-            // queryKey: secretInsightsKeys.blindIndexStatus({ projectId })
+            queryKey: secretInsightsKeys.blindIndexStatus({ projectId })
           });
         }
       }
@@ -126,8 +127,7 @@ export const DuplicatedSecretsCard = () => {
   const isMigrationRunning =
     migrationTriggered && migrationStatus !== "completed" && migrationStatus !== "failed";
   const isMigrationFailed = migrationStatus === "failed" && !enableBlindIndex.isPending;
-  const showEnableButton =
-    !secretBlindIndexEnabled && !isMigrationRunning && !isMigrationFailed;
+  const showEnableButton = !secretBlindIndexEnabled && !isMigrationRunning && !isMigrationFailed;
 
   return (
     <Card>
@@ -180,14 +180,14 @@ export const DuplicatedSecretsCard = () => {
                     <div className="flex items-center gap-2">
                       <LockIcon className="size-3.5 text-muted" />
                       <span className="text-sm text-foreground">
-                        <span className="font-medium">{group.secrets.length} secrets</span> share
-                        an identical value
+                        <span className="font-medium">{group.secrets.length} secrets</span> share an
+                        identical value
                       </span>
                     </div>
                   </div>
                 </AccordionTrigger>
                 <AccordionContent>
-                  {group.secrets.length > 0 ? (
+                  {group.secrets.length > 0 && (
                     <div className="flex flex-col">
                       {group.secrets.map((entry, idx) => (
                         <div
@@ -216,20 +216,27 @@ export const DuplicatedSecretsCard = () => {
                                   size="sm"
                                   aria-label="Go to secret"
                                   className="opacity-0 transition-opacity group-hover/row:opacity-100"
+                                  onClick={() =>
+                                    navigate({
+                                      to: overviewRoute,
+                                      params: {
+                                        orgId: orgId as string,
+                                        projectId
+                                      },
+                                      search: {
+                                        secretPath: entry.secretPath
+                                      }
+                                    })
+                                  }
                                 >
                                   <ArrowRightIcon className="size-3.5" />
                                 </IconButton>
                               </TooltipTrigger>
-                              <TooltipContent>Go to secret</TooltipContent>
+                              <TooltipContent>Go to secret folder</TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
                         </div>
                       ))}
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-center py-4">
-                      <CopyIcon className="mr-2 size-4 text-muted" />
-                      <span className="text-sm text-muted">Expand to view duplicated secrets</span>
                     </div>
                   )}
                 </AccordionContent>
