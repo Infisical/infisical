@@ -114,13 +114,25 @@ const Page = () => {
     });
 
     handlePopUpClose("deleteCertificate");
-    navigate({
-      to: "/organizations/$orgId/projects/cert-manager/$projectId/inventory",
-      params: {
-        orgId: currentOrg.id,
-        projectId
-      }
-    });
+    if (fromApplication) {
+      navigate({
+        to: "/organizations/$orgId/projects/cert-manager/$projectId/applications/$applicationName",
+        params: {
+          orgId: currentOrg.id,
+          projectId,
+          applicationName: fromApplication
+        },
+        search: { selectedTab: "certificates" }
+      });
+    } else {
+      navigate({
+        to: "/organizations/$orgId/projects/cert-manager/$projectId/inventory",
+        params: {
+          orgId: currentOrg.id,
+          projectId
+        }
+      });
+    }
   };
 
   const handleCertificateExport = async (
