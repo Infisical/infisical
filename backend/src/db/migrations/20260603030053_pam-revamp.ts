@@ -372,7 +372,9 @@ export async function up(knex: Knex): Promise<void> {
   }
 
   // Clean up orphaned accounts and deduplicate before adding constraints
-  await knex(TableName.PamAccount).whereNull("folderId").orWhereNull("templateId").delete();
+  await knex(TableName.PamAccount)
+    .where((qb) => qb.whereNull("folderId").orWhereNull("templateId"))
+    .delete();
 
   await knex.raw(`
     UPDATE ${TableName.PamAccount} a
