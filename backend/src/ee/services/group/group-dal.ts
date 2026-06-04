@@ -475,6 +475,7 @@ export const groupDALFactory = (db: TDbClient) => {
       const query = db
         .replicaNode()(TableName.Project)
         .where(`${TableName.Project}.orgId`, orgId)
+        .whereNull(`${TableName.Project}.deleteAfter`)
         .leftJoin(TableName.Membership, (bd) => {
           bd.on(`${TableName.Project}.id`, "=", `${TableName.Membership}.scopeProjectId`)
             .andOn(`${TableName.Membership}.actorGroupId`, "=", db.raw("?", [groupId]))

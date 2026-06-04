@@ -1165,7 +1165,11 @@ export const secretSyncQueueFactory = ({
 
     const secretSync = await secretSyncDAL.findById(syncId);
 
-    if (!secretSync) throw new Error(`Cannot find secret sync with ID ${syncId}`);
+    if (!secretSync) {
+      // skip rather than throw, so it doesn't retry-storm when a sync is deleted.
+      logger.info(`AppConnectionSecretSync: secret sync ${syncId} not found (deleted?), skipping`);
+      return;
+    }
 
     const { connectionId } = secretSync;
 
