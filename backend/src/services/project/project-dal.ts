@@ -694,8 +694,8 @@ export const projectDALFactory = (db: TDbClient) => {
         name: string;
         deleteAfter: Date;
         softDeletedAt: Date;
-        deletedByActorType: string | null;
-        deletedByActorId: string | null;
+        deletedByUserId: string | null;
+        deletedByIdentityId: string | null;
         deletedByUserEmail: string | null;
         deletedByUserUsername: string | null;
         deletedByUserFirstName: string | null;
@@ -704,20 +704,8 @@ export const projectDALFactory = (db: TDbClient) => {
       };
 
       const rows = (await (tx || db.replicaNode())(TableName.Environment)
-        .leftJoin(TableName.Users, function joinUser() {
-          this.on(`${TableName.Environment}.deletedByActorId`, `${TableName.Users}.id`).andOnVal(
-            `${TableName.Environment}.deletedByActorType`,
-            "=",
-            "user"
-          );
-        })
-        .leftJoin(TableName.Identity, function joinIdentity() {
-          this.on(`${TableName.Environment}.deletedByActorId`, `${TableName.Identity}.id`).andOnVal(
-            `${TableName.Environment}.deletedByActorType`,
-            "=",
-            "identity"
-          );
-        })
+        .leftJoin(TableName.Users, `${TableName.Environment}.deletedByUserId`, `${TableName.Users}.id`)
+        .leftJoin(TableName.Identity, `${TableName.Environment}.deletedByIdentityId`, `${TableName.Identity}.id`)
         .where(`${TableName.Environment}.projectId`, projectId)
         .whereNotNull(`${TableName.Environment}.deleteAfter`)
         .whereNotNull(`${TableName.Environment}.softDeletedAt`)
@@ -727,8 +715,8 @@ export const projectDALFactory = (db: TDbClient) => {
           `${TableName.Environment}.name`,
           `${TableName.Environment}.deleteAfter`,
           `${TableName.Environment}.softDeletedAt`,
-          `${TableName.Environment}.deletedByActorType`,
-          `${TableName.Environment}.deletedByActorId`,
+          `${TableName.Environment}.deletedByUserId`,
+          `${TableName.Environment}.deletedByIdentityId`,
           db.ref("email").withSchema(TableName.Users).as("deletedByUserEmail"),
           db.ref("username").withSchema(TableName.Users).as("deletedByUserUsername"),
           db.ref("firstName").withSchema(TableName.Users).as("deletedByUserFirstName"),
@@ -750,19 +738,19 @@ export const projectDALFactory = (db: TDbClient) => {
           | { type: "identity"; id: string; name: string }
           | null = null;
 
-        if (row.deletedByActorType === "user" && row.deletedByActorId) {
+        if (row.deletedByUserId) {
           deletedBy = {
             type: "user",
-            id: row.deletedByActorId,
+            id: row.deletedByUserId,
             email: row.deletedByUserEmail,
             username: row.deletedByUserUsername,
             firstName: row.deletedByUserFirstName,
             lastName: row.deletedByUserLastName
           };
-        } else if (row.deletedByActorType === "identity" && row.deletedByActorId) {
+        } else if (row.deletedByIdentityId) {
           deletedBy = {
             type: "identity",
-            id: row.deletedByActorId,
+            id: row.deletedByIdentityId,
             name: row.deletedByIdentityName ?? ""
           };
         }

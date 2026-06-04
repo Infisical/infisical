@@ -10,6 +10,7 @@ import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 
+import { ActorType } from "../auth/auth-type";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TProjectEnvDALFactory } from "./project-env-dal";
 import { SOFT_DELETE_GRACE_MS } from "./project-env-queue";
@@ -302,13 +303,15 @@ export const projectEnvServiceFactory = ({
 
         const softDeletedAt = new Date();
         const deleteAfter = new Date(softDeletedAt.getTime() + SOFT_DELETE_GRACE_MS);
+        const deletedByUserId = actor === ActorType.USER ? actorId : null;
+        const deletedByIdentityId = actor === ActorType.IDENTITY ? actorId : null;
         const doc = await projectEnvDAL.softDeleteById(
           id,
           projectId,
           deleteAfter,
           softDeletedAt,
-          actor,
-          actorId,
+          deletedByUserId,
+          deletedByIdentityId,
           maxPos,
           tx
         );

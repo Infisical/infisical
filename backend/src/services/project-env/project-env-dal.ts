@@ -72,8 +72,8 @@ export const projectEnvDALFactory = (db: TDbClient) => {
     projectId: string,
     deleteAfter: Date,
     softDeletedAt: Date,
-    deletedByActorType: string | null,
-    deletedByActorId: string | null,
+    deletedByUserId: string | null,
+    deletedByIdentityId: string | null,
     position: number,
     tx?: Knex
   ) => {
@@ -81,7 +81,7 @@ export const projectEnvDALFactory = (db: TDbClient) => {
       const [doc] = await (tx || db)(TableName.Environment)
         .where({ id, projectId })
         .whereNull("deleteAfter")
-        .update({ deleteAfter, softDeletedAt, deletedByActorType, deletedByActorId, position })
+        .update({ deleteAfter, softDeletedAt, deletedByUserId, deletedByIdentityId, position })
         .returning("*");
       return doc as TProjectEnvironments | undefined;
     } catch (error) {
@@ -120,8 +120,8 @@ export const projectEnvDALFactory = (db: TDbClient) => {
         .update({
           deleteAfter: null,
           softDeletedAt: null,
-          deletedByActorType: null,
-          deletedByActorId: null,
+          deletedByUserId: null,
+          deletedByIdentityId: null,
           position
         })
         .returning("*");
