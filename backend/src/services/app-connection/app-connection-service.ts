@@ -29,6 +29,7 @@ import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { DiscriminativePick, OrgServiceActor } from "@app/lib/types";
 import {
   decryptAppConnection,
+  decryptAppConnectionCredentials,
   encryptAppConnectionConfiguration,
   encryptAppConnectionCredentials,
   enterpriseAppCheck,
@@ -107,7 +108,7 @@ import { ValidateFlyioConnectionCredentialsSchema } from "./flyio";
 import { flyioConnectionService } from "./flyio/flyio-connection-service";
 import { ValidateGcpConnectionCredentialsSchema } from "./gcp";
 import { gcpConnectionService } from "./gcp/gcp-connection-service";
-import { ValidateGitHubConnectionCredentialsSchema } from "./github";
+import { GitHubConnectionMethod, ValidateGitHubConnectionCredentialsSchema } from "./github";
 import { githubConnectionService } from "./github/github-connection-service";
 import { ValidateGitHubRadarConnectionCredentialsSchema } from "./github-radar";
 import { githubRadarConnectionService } from "./github-radar/github-radar-connection-service";
@@ -749,10 +750,30 @@ export const appConnectionServiceFactory = ({
         const picked = await gatewayPoolService.pickRandomHealthyGateway(effectiveGatewayPoolIdForUpdate);
         validationGatewayId = picked.id;
       }
+
+      let credentialsToValidate = credentials;
+
+      if (
+        app === AppConnection.GitHub &&
+        method === GitHubConnectionMethod.App &&
+        (credentials as { gitHubAppId?: string | null }).gitHubAppId === undefined
+      ) {
+        const existingCredentials = await decryptAppConnectionCredentials({
+          orgId: appConnection.orgId,
+          projectId: appConnection.projectId,
+          encryptedCredentials: appConnection.encryptedCredentials,
+          kmsService
+        });
+        const existingGitHubAppId = (existingCredentials as { gitHubAppId?: string | null }).gitHubAppId;
+        if (existingGitHubAppId) {
+          credentialsToValidate = { ...credentials, gitHubAppId: existingGitHubAppId } as typeof credentials;
+        }
+      }
+
       if (
         !VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[app].safeParse({
           method,
-          credentials
+          credentials: credentialsToValidate
         }).success
       )
         throw new BadRequestError({
@@ -767,7 +788,7 @@ export const appConnectionServiceFactory = ({
           orgId: actor.orgId,
           projectId: appConnection.projectId,
           version: appConnection.version,
-          credentials,
+          credentials: credentialsToValidate,
           method,
           gatewayId: validationGatewayId
         } as TAppConnectionConfig,
