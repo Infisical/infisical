@@ -118,6 +118,31 @@ export class BadRequestError extends Error {
   }
 }
 
+export class PreconditionFailedError extends Error {
+  name: string;
+
+  error: unknown;
+
+  details?: unknown;
+
+  constructor({
+    name,
+    error,
+    message,
+    details
+  }: {
+    message?: string;
+    name?: string;
+    error?: unknown;
+    details?: unknown;
+  }) {
+    super(message ?? "A precondition for this request was not met");
+    this.name = name || "PreconditionFailed";
+    this.error = error;
+    this.details = details;
+  }
+}
+
 export class RateLimitError extends Error {
   constructor({ message }: { message?: string }) {
     super(message || "Rate limit exceeded");

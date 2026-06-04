@@ -5,7 +5,7 @@ import {
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-  Badge,
+  Button,
   Card,
   CardContent,
   CardDescription,
@@ -18,21 +18,8 @@ import {
   TooltipProvider,
   TooltipTrigger
 } from "@app/components/v3";
-
-type DuplicatedSecretEntry = {
-  secretKey: string;
-  environment: string;
-  environmentSlug: string;
-  secretPath: string;
-};
-
-type DuplicatedSecretGroup = {
-  id: string;
-  hash: string;
-  count: number;
-  environmentCount: number;
-  entries: DuplicatedSecretEntry[];
-};
+import { useProject } from "@app/context";
+import { useGetSecretsDuplication } from "@app/hooks/api/secretInsights";
 
 const ENVIRONMENT_COLOR_MAP: Record<string, string> = {
   production: "bg-green-500",
@@ -45,58 +32,16 @@ const getEnvironmentDotColor = (slug: string) => {
   return ENVIRONMENT_COLOR_MAP[slug] || "bg-primary";
 };
 
-const MOCK_DATA: DuplicatedSecretGroup[] = [
-  {
-    id: "1",
-    hash: "abc123",
-    count: 4,
-    environmentCount: 3,
-    entries: [
-      {
-        secretKey: "DATABASE_URL",
-        environment: "Production",
-        environmentSlug: "production",
-        secretPath: "/backend"
-      },
-      {
-        secretKey: "DB_CONNECTION_STRING",
-        environment: "Staging",
-        environmentSlug: "staging",
-        secretPath: "/backend"
-      },
-      {
-        secretKey: "POSTGRES_URL",
-        environment: "Development",
-        environmentSlug: "development",
-        secretPath: "/services/api"
-      },
-      {
-        secretKey: "DATABASE_URL",
-        environment: "Development",
-        environmentSlug: "development",
-        secretPath: "/services/worker"
-      }
-    ]
-  },
-  {
-    id: "2",
-    hash: "def456",
-    count: 3,
-    environmentCount: 2,
-    entries: []
-  },
-  {
-    id: "3",
-    hash: "ghi789",
-    count: 2,
-    environmentCount: 2,
-    entries: []
-  }
-];
-
 export const DuplicatedSecretsCard = () => {
-  const isPending = false;
-  const groups = MOCK_DATA;
+  const { projectId } = useProject();
+
+  const { data, isPending } = useGetSecretsDuplication(
+    { projectId },
+    { enabled: !!projectId }
+  );
+
+  const groups = data?.groups ?? [];
+  const secretBlindIndexEnabled = data?.secretBlindIndexEnabled ?? true;
 
   return (
     <Card>
@@ -109,46 +54,46 @@ export const DuplicatedSecretsCard = () => {
       </CardHeader>
       <CardContent>
         {isPending && <Skeleton className="h-[280px] w-full" />}
-        {!isPending && groups.length === 0 && (
+        {!isPending && !secretBlindIndexEnabled && (
+          <div className="flex h-[200px] items-center justify-center">
+            <Button variant="outline">Enable Secret Duplication Detection</Button>
+          </div>
+        )}
+        {!isPending && secretBlindIndexEnabled && groups.length === 0 && (
           <div className="flex h-[200px] items-center justify-center">
             <p className="text-sm text-muted">No duplicated secrets found</p>
           </div>
         )}
-        {!isPending && groups.length > 0 && (
+        {!isPending && secretBlindIndexEnabled && groups.length > 0 && (
           <Accordion type="multiple">
-            {groups.map((group) => (
-              <AccordionItem key={group.id} value={group.id}>
+            {groups.map((group, groupIdx) => (
+              <AccordionItem key={`group-${String(groupIdx)}`} value={`group-${String(groupIdx)}`}>
                 <AccordionTrigger>
                   <div className="flex flex-1 items-center justify-between">
                     <div className="flex items-center gap-2">
                       <LockIcon className="size-3.5 text-muted" />
                       <span className="text-sm text-foreground">
-                        <span className="font-medium">{group.count} secrets</span> share an
-                        identical value
+                        <span className="font-medium">{group.secrets.length} secrets</span> share
+                        an identical value
                       </span>
                     </div>
-                    <Badge variant="outline">
-                      {group.environmentCount} Environment{group.environmentCount !== 1 && "s"}
-                    </Badge>
                   </div>
                 </AccordionTrigger>
                 <AccordionContent>
-                  {group.entries.length > 0 ? (
+                  {group.secrets.length > 0 ? (
                     <div className="flex flex-col">
-                      {group.entries.map((entry, idx) => (
+                      {group.secrets.map((entry, idx) => (
                         <div
-                          key={`${entry.secretKey}-${entry.environmentSlug}-${entry.secretPath}-${String(idx)}`}
+                          key={`${entry.key}-${entry.environment}-${entry.secretPath}-${String(idx)}`}
                           className="group/row -mx-2 flex items-center gap-6 rounded-md px-2 py-1.5 text-sm hover:bg-container-hover"
                         >
                           <div className="flex w-48 shrink-0 items-center gap-2">
                             <LinkIcon className="size-3.5 text-muted" />
-                            <span className="truncate font-mono text-foreground">
-                              {entry.secretKey}
-                            </span>
+                            <span className="truncate font-mono text-foreground">{entry.key}</span>
                           </div>
                           <div className="flex w-28 shrink-0 items-center gap-2">
                             <span
-                              className={`size-2 shrink-0 rounded-full ${getEnvironmentDotColor(entry.environmentSlug)}`}
+                              className={`size-2 shrink-0 rounded-full ${getEnvironmentDotColor(entry.environment)}`}
                             />
                             <span className="truncate text-foreground">{entry.environment}</span>
                           </div>

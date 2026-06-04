@@ -14,6 +14,7 @@ import { BadRequestError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TReminderDALFactory } from "@app/services/reminder/reminder-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
@@ -24,7 +25,8 @@ import {
   TGetAccessVolumeDTO,
   TGetAuthMethodDistributionDTO,
   TGetInsightsCalendarDTO,
-  TGetInsightsSummaryDTO
+  TGetInsightsSummaryDTO,
+  TGetSecretsDuplicationDTO
 } from "./insights-types";
 
 type TInsightsServiceFactoryDep = {
@@ -34,8 +36,9 @@ type TInsightsServiceFactoryDep = {
   secretRotationV2DAL: Pick<TSecretRotationV2DALFactory, "findByProjectAndDateRange" | "findByProject">;
   reminderDAL: Pick<TReminderDALFactory, "findByProjectAndDateRange">;
   folderDAL: Pick<TSecretFolderDALFactory, "findSecretPathByFolderIds">;
-  secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "findStaleByProject" | "countStaleByProject">;
+  secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "findStaleByProject" | "countStaleByProject" | "findDuplicatedSecretValues">;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
+  projectDAL: Pick<TProjectDALFactory, "findById">;
   userDAL: Pick<TUserDALFactory, "find">;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiry" | "getItem">;
 };
@@ -85,6 +88,7 @@ export const insightsServiceFactory = ({
   folderDAL,
   secretV2BridgeDAL,
   projectBotService,
+  projectDAL,
   userDAL,
   keyStore
 }: TInsightsServiceFactoryDep) => {
@@ -488,11 +492,46 @@ export const insightsServiceFactory = ({
     });
   };
 
+  const getSecretsDuplication = async (dto: TGetSecretsDuplicationDTO, actorDto: OrgServiceActor) => {
+    await checkInsightsPermission(permissionService, licenseService, dto.projectId, actorDto);
+
+    const project = await projectDAL.findById(dto.projectId);
+
+    if (!project.secretBlindIndexEnabled) {
+      return { secretBlindIndexEnabled: false, groups: [] };
+    }
+
+    const rawGroups = await secretV2BridgeDAL.findDuplicatedSecretValues(dto.projectId, {
+      offset: dto.offset ?? 0,
+      limit: dto.limit ?? 50
+    });
+
+    const folderIds = [...new Set(rawGroups.flatMap((g) => g.secrets.map((s) => s.folderId)))];
+    const foldersWithPath = folderIds.length
+      ? await folderDAL.findSecretPathByFolderIds(dto.projectId, folderIds)
+      : [];
+    const folderRecord: Record<string, string> = {};
+    foldersWithPath.forEach((f) => {
+      if (f) folderRecord[f.id] = f.path;
+    });
+
+    const groups = rawGroups.map((g) => ({
+      secrets: g.secrets.map((s) => ({
+        key: s.key,
+        environment: s.environment,
+        secretPath: folderRecord[s.folderId] ?? "/"
+      }))
+    }));
+
+    return { secretBlindIndexEnabled: true, groups };
+  };
+
   return {
     getCalendar,
     getAccessVolume,
     // getAccessLocations,
     getAuthMethodDistribution,
-    getSummary
+    getSummary,
+    getSecretsDuplication
   };
 };

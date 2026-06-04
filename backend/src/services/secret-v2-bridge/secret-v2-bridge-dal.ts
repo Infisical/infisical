@@ -1200,6 +1200,64 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     }
   };
 
+  const findDuplicatedSecretValues = async (
+    projectId: string,
+    pagination?: { offset: number; limit: number },
+    tx?: Knex
+  ) => {
+    try {
+      const duplicateBlindIndexes = (tx || db.replicaNode())(TableName.SecretV2)
+        .join(TableName.SecretFolder, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
+        .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+        .where(`${TableName.Environment}.projectId`, projectId)
+        .whereNull(`${TableName.Environment}.deleteAfter`)
+        .whereNull(`${TableName.SecretV2}.userId`)
+        .whereNotNull(`${TableName.SecretV2}.secretValueBlindIndex`)
+        .groupBy(`${TableName.SecretV2}.secretValueBlindIndex`)
+        .having(db.raw("count(*) > 1"))
+        .select(`${TableName.SecretV2}.secretValueBlindIndex`)
+        .orderBy(`${TableName.SecretV2}.secretValueBlindIndex`)
+        .offset(pagination?.offset ?? 0)
+        .limit(pagination?.limit ?? 50);
+
+      const rows = await (tx || db.replicaNode())(TableName.SecretV2)
+        .join(TableName.SecretFolder, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
+        .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+        .whereIn(`${TableName.SecretV2}.secretValueBlindIndex`, duplicateBlindIndexes)
+        .whereNull(`${TableName.Environment}.deleteAfter`)
+        .whereNull(`${TableName.SecretV2}.userId`)
+        .select(
+          `${TableName.SecretV2}.key`,
+          `${TableName.SecretV2}.folderId`,
+          `${TableName.SecretV2}.secretValueBlindIndex`,
+          `${TableName.Environment}.slug as environment`
+        )
+        .orderBy(`${TableName.SecretV2}.secretValueBlindIndex`);
+
+      const groups: { secrets: { key: string; environment: string; folderId: string }[] }[] = [];
+      let currentIndex: string | null = null;
+      let currentGroup: { key: string; environment: string; folderId: string }[] = [];
+
+      for (const row of rows as { key: string; folderId: string; secretValueBlindIndex: string; environment: string }[]) {
+        if (row.secretValueBlindIndex !== currentIndex) {
+          if (currentGroup.length > 0) {
+            groups.push({ secrets: currentGroup });
+          }
+          currentIndex = row.secretValueBlindIndex;
+          currentGroup = [];
+        }
+        currentGroup.push({ key: row.key, environment: row.environment, folderId: row.folderId });
+      }
+      if (currentGroup.length > 0) {
+        groups.push({ secrets: currentGroup });
+      }
+
+      return groups;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "findDuplicatedSecretValues" });
+    }
+  };
+
   const countStaleByProject = async (projectId: string, staleBeforeDate: Date, tx?: Knex) => {
     try {
       const result = await (tx || db.replicaNode())(TableName.SecretV2)
@@ -1236,6 +1294,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     countByFolderIds,
     findStaleByProject,
     countStaleByProject,
+    findDuplicatedSecretValues,
     findOne,
     find,
     invalidateSecretCacheByProjectId,

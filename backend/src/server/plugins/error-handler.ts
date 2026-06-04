@@ -18,6 +18,7 @@ import {
   OidcAuthError,
   PermissionBoundaryError,
   PolicyViolationError,
+  PreconditionFailedError,
   RateLimitError,
   ScimRequestError,
   UnauthorizedError
@@ -37,6 +38,7 @@ enum HttpStatusCodes {
   NotFound = 404,
   Unauthorized = 401,
   Forbidden = 403,
+  PreconditionFailed = 412,
   UnprocessableContent = 422,
   // eslint-disable-next-line @typescript-eslint/no-shadow
   InternalServerError = 500,
@@ -149,6 +151,14 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
       void res.status(HttpStatusCodes.BadRequest).send({
         reqId: req.id,
         statusCode: HttpStatusCodes.BadRequest,
+        message: error.message,
+        error: error.name,
+        details: error.details
+      });
+    } else if (error instanceof PreconditionFailedError) {
+      void res.status(HttpStatusCodes.PreconditionFailed).send({
+        reqId: req.id,
+        statusCode: HttpStatusCodes.PreconditionFailed,
         message: error.message,
         error: error.name,
         details: error.details

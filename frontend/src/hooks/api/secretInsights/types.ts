@@ -120,3 +120,24 @@ export type TGetAuthMethodDistributionDTO = {
 export type TGetAuthMethodDistributionResponse = {
   methods: TAuthMethodCount[];
 };
+
+export type TGetSecretsDuplicationDTO = {
+  projectId: string;
+  offset?: number;
+  limit?: number;
+};
+
+export type TDuplicatedSecretEntry = {
+  key: string;
+  environment: string;
+  secretPath: string;
+};
+
+export type TDuplicatedSecretGroup = {
+  secrets: TDuplicatedSecretEntry[];
+};
+
+export type TGetSecretsDuplicationResponse = {
+  secretBlindIndexEnabled: boolean;
+  groups: TDuplicatedSecretGroup[];
+};

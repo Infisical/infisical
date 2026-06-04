@@ -2612,6 +2612,7 @@ export const registerRoutes = async (
     folderDAL,
     secretV2BridgeDAL,
     projectBotService,
+    projectDAL,
     userDAL,
     keyStore
   });

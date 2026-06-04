@@ -12,7 +12,9 @@ import {
   // TGetSecretAccessLocationsDTO,
   // TGetSecretAccessLocationsResponse,
   TGetSecretAccessVolumeDTO,
-  TGetSecretAccessVolumeResponse
+  TGetSecretAccessVolumeResponse,
+  TGetSecretsDuplicationDTO,
+  TGetSecretsDuplicationResponse
 } from "./types";
 
 export const secretInsightsKeys = {
@@ -26,7 +28,9 @@ export const secretInsightsKeys = {
   authMethodDistribution: (params: TGetAuthMethodDistributionDTO) =>
     [...secretInsightsKeys.all(), "auth-method-distribution", params] as const,
   summary: (params: TGetInsightsSummaryDTO) =>
-    [...secretInsightsKeys.all(), "summary", params] as const
+    [...secretInsightsKeys.all(), "summary", params] as const,
+  secretsDuplication: (params: TGetSecretsDuplicationDTO) =>
+    [...secretInsightsKeys.all(), "secrets-duplication", params] as const
 };
 
 const INSIGHTS_STALE_TIME = 5 * 60 * 1000; // 5 minutes
@@ -152,6 +156,32 @@ export const useGetInsightsSummary = (
     queryFn: async () => {
       const { data } = await apiRequest.get<TGetInsightsSummaryResponse>(
         "/api/v1/insights/secrets/summary",
+        { params }
+      );
+      return data;
+    },
+    staleTime: INSIGHTS_STALE_TIME,
+    ...options
+  });
+};
+
+export const useGetSecretsDuplication = (
+  params: TGetSecretsDuplicationDTO,
+  options?: Omit<
+    UseQueryOptions<
+      TGetSecretsDuplicationResponse,
+      unknown,
+      TGetSecretsDuplicationResponse,
+      ReturnType<typeof secretInsightsKeys.secretsDuplication>
+    >,
+    "queryKey" | "queryFn"
+  >
+) => {
+  return useQuery({
+    queryKey: secretInsightsKeys.secretsDuplication(params),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<TGetSecretsDuplicationResponse>(
+        "/api/v1/insights/secrets/secrets-duplication",
         { params }
       );
       return data;
