@@ -141,7 +141,7 @@ export type TScepRenewalAuthResult = { authorized: true } | { authorized: false;
 
 const DN_WHITESPACE_RE = new RE2("\\s+", "g");
 
-export const normalizeX500Name = (name: x509.Name): string => {
+const normalizeX500Name = (name: x509.Name): string => {
   const rdns = name.toJSON();
 
   const canonicalRdns = rdns.map((rdn) => {
@@ -160,7 +160,7 @@ export const normalizeX500Name = (name: x509.Name): string => {
 };
 
 // SANs are an unordered set in RFC 5280; normalize each entry and sort for comparison.
-export const normalizeSubjectAltNames = (ext: x509.SubjectAlternativeNameExtension | null | undefined): string => {
+const normalizeSubjectAltNames = (ext: x509.SubjectAlternativeNameExtension | null | undefined): string => {
   if (!ext) return "";
   const pairs: string[] = [];
   for (const item of ext.names.items) {

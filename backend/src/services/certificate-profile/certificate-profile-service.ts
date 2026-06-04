@@ -321,7 +321,7 @@ const convertDalToService = (dalResult: Record<string, unknown>): TCertificatePr
   } as TCertificateProfile;
 };
 
-export const requiresIssueCertForEnrollmentConfig = (data: {
+const requiresIssueCertForEnrollmentConfig = (data: {
   enrollmentType?: EnrollmentType;
   estConfig?: unknown;
   acmeConfig?: unknown;
@@ -996,9 +996,6 @@ export const certificateProfileServiceFactory = ({
       }
     }
 
-    if (profile.estConfig) {
-      profile.estConfig.passphrase = "";
-    }
     if (profile.enrollmentType === EnrollmentType.ACME && profile.acmeConfig) {
       profile.acmeConfig.directoryUrl = buildUrl(profile.id, "/directory");
       if (profile.acmeConfig.encryptedEabSecret) {
