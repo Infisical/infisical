@@ -887,7 +887,7 @@ export const pkiAcmeServiceFactory = ({
       status: 201,
       body: buildAcmeOrderResource({
         profileId,
-        order
+        order: order as Parameters<typeof buildAcmeOrderResource>[0]["order"]
       }),
       headers: {
         Location: buildUrl(profileId, `/orders/${order.id}`),

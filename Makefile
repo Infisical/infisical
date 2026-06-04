@@ -34,6 +34,26 @@ reviewable: reviewable-ui reviewable-api
 up-dev-sso:
 	docker compose -f docker-compose.dev.yml --profile sso up --build
 
+up-dev-pingfed:
+	docker compose -f docker-compose.dev.yml --profile pingfed up --build
+
+up-dev-ad:
+	docker compose -f docker-compose.dev.yml --profile ad up --build
+
+seed-dev-ad:
+	docker compose -f docker-compose.dev.yml exec samba-ad bash -c '\
+	  samba-tool domain trust namespaces --add-upn-suffix=infisical.com 2>/dev/null || true; \
+	  samba-tool user delete jdoe 2>/dev/null || true; \
+	  samba-tool user delete asmith 2>/dev/null || true; \
+	  samba-tool group delete infisical-users 2>/dev/null || true; \
+	  samba-tool user create jdoe "Passw0rd!" --given-name=John --surname=Doe --mail-address=jdoe@infisical.com; \
+	  samba-tool user create asmith "Passw0rd!" --given-name=Alice --surname=Smith --mail-address=asmith@infisical.com; \
+	  samba-tool user rename jdoe --upn=jdoe@infisical.com; \
+	  samba-tool user rename asmith --upn=asmith@infisical.com; \
+	  samba-tool group add infisical-users; \
+	  samba-tool group addmembers infisical-users jdoe,asmith \
+	'
+
 
 # Golang commands
 go-generate:

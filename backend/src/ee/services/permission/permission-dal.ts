@@ -988,6 +988,7 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
               .andOn(`${TableName.Membership}.scopeOrgId`, `${TableName.IdentityMetadata}.orgId`);
           }
         })
+        .leftJoin(TableName.Project, `${TableName.Membership}.scopeProjectId`, `${TableName.Project}.id`)
         .where(`${TableName.Membership}.scopeOrgId`, orgId)
         .where((scopeQb) => {
           void scopeQb
@@ -1012,7 +1013,13 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
         })
         .select(
           db.ref("id").withSchema(TableName.Membership).as("mId"),
-          db.ref("updatedAt").withSchema(TableName.Membership).as("mUp"),
+          // Track isActive/status rather than updatedAt: every login bumps Membership.updatedAt
+          // (lastLoginTime/lastLoginAuthMethod), which would needlessly bust the fingerprint/ETag on
+          // every auth. isActive/status are the membership columns that actually gate permissions.
+          db.ref("isActive").withSchema(TableName.Membership).as("mActive"),
+          db.ref("status").withSchema(TableName.Membership).as("mStatus"),
+          // project soft-delete state — flips the fingerprint when the project is soft-deleted
+          db.ref("deleteAfter").withSchema(TableName.Project).as("pDel"),
           db.ref("id").withSchema(TableName.MembershipRole).as("rId"),
           db.ref("updatedAt").withSchema(TableName.MembershipRole).as("rUp"),
           db.ref("updatedAt").withSchema(TableName.Role).as("crUp"),
@@ -1026,7 +1033,15 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
           db.raw(
             `CASE WHEN "${TableName.AdditionalPrivilege}"."isTemporary" AND NOW() >= "${TableName.AdditionalPrivilege}"."temporaryAccessEndTime" THEN true ELSE false END AS "pExp"`
           )
-        );
+        )
+        // deterministic row order — Postgres doesn't guarantee ordering without it, and an unstable
+        // order would flip the hashed fingerprint between calls, silently breaking ETag/cache hits.
+        .orderBy([
+          { column: `${TableName.Membership}.id` },
+          { column: `${TableName.MembershipRole}.id` },
+          { column: `${TableName.AdditionalPrivilege}.id` },
+          { column: `${TableName.IdentityMetadata}.id` }
+        ]);
 
       return generateCacheKeyFromData(rows);
     } catch (error) {

@@ -60,7 +60,7 @@ import { groupBy } from "@app/lib/fn";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
-import { TProjectPermission } from "@app/lib/types";
+import { OrgServiceActor, TProjectPermission } from "@app/lib/types";
 import { TPkiSubscriberDALFactory } from "@app/services/pki-subscriber/pki-subscriber-dal";
 
 import { TGroupDALFactory } from "../../ee/services/group/group-dal";
@@ -94,6 +94,7 @@ import { TSlackIntegrationDALFactory } from "../slack/slack-integration-dal";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
 import { TUserDALFactory } from "../user/user-dal";
 import { WorkflowIntegration, WorkflowIntegrationStatus } from "../workflow-integration/workflow-integration-types";
+import { TProjectAccessRequestDALFactory } from "./project-access-request-dal";
 import { TProjectDALFactory } from "./project-dal";
 import { bootstrapSshProject } from "./project-fns";
 import { TProjectQueueFactory } from "./project-queue";
@@ -207,6 +208,10 @@ type TProjectServiceFactoryDep = {
   >;
   projectTemplateService: TProjectTemplateServiceFactory;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
+  projectAccessRequestDAL: Pick<
+    TProjectAccessRequestDALFactory,
+    "upsertPendingRequest" | "findPendingForRequesterInOrg"
+  >;
 };
 
 export type TProjectServiceFactory = ReturnType<typeof projectServiceFactory>;
@@ -249,7 +254,8 @@ export const projectServiceFactory = ({
   membershipGroupDAL,
   membershipRoleDAL,
   roleDAL,
-  groupDAL
+  groupDAL,
+  projectAccessRequestDAL
 }: TProjectServiceFactoryDep) => {
   /*
    * Create workspace. Make user the admin
@@ -816,47 +822,27 @@ export const projectServiceFactory = ({
     }
 
     try {
-      const deletedProject = await projectDAL.transaction(async (tx) => {
-        // delete these so that project custom roles can be deleted in cascade effect
-        // direct deletion of project without these will cause fk error
-        // this will clean up all memberships
-        await membershipUserDAL.delete(
-          { scopeOrgId: project.orgId, scopeProjectId: project.id, scope: AccessScope.Project },
-          tx
-        );
-        const delProject = await projectDAL.deleteById(project.id, tx);
-        const projectGhostUser = await projectMembershipDAL.findProjectGhostUser(project.id, tx).catch(() => null);
-        // akhilmhdh: before removing those kms checking any other project uses it
-        // happened due to project split
-        if (delProject.kmsCertificateKeyId) {
-          const projectsLinkedToForiegnKey = await projectDAL.find(
-            { kmsCertificateKeyId: delProject.kmsCertificateKeyId },
-            { tx }
-          );
-          if (!projectsLinkedToForiegnKey.length) {
-            await kmsService.deleteInternalKms(delProject.kmsCertificateKeyId, delProject.orgId, tx);
-          }
-        }
-
-        if (delProject.kmsSecretManagerKeyId) {
-          const projectsLinkedToForiegnKey = await projectDAL.find(
-            { kmsSecretManagerKeyId: delProject.kmsSecretManagerKeyId },
-            { tx }
-          );
-          if (!projectsLinkedToForiegnKey.length) {
-            await kmsService.deleteInternalKms(delProject.kmsSecretManagerKeyId, delProject.orgId, tx);
-          }
-        }
-        // Delete the org membership for the ghost user if it's found.
-        if (projectGhostUser) {
-          await userDAL.deleteById(projectGhostUser.id, tx);
-        }
-
-        return delProject;
+      // "Real delete" from the caller's perspective: this returns immediately (one UPDATE) and the
+      // project disappears from every read, but the expensive cascade runs asynchronously in the
+      // hard-delete worker. deleteAfter = now marks it immediately eligible for the next worker tick
+      // (no grace period). The slug is freed so a same-named project can be recreated right away.
+      const now = new Date();
+      const softDeletedProject = await projectDAL.softDeleteById(project.id, {
+        deleteAfter: now,
+        softDeletedAt: now,
+        deletedByActorType: actor,
+        deletedByActorId: actorId,
+        slug: `del-${alphaNumericNanoId(20)}`
       });
 
+      if (!softDeletedProject) {
+        throw new NotFoundError({ message: `Project with ID '${project.id}' not found` });
+      }
+
+      // refresh the cached plan so the freed workspace slot is reflected immediately
+      // (countOfOrgProjects now excludes soft-deleted projects)
       await keyStore.deleteItem(KeyStorePrefixes.LicenseCloudPlan(actorOrgId));
-      return deletedProject;
+      return { ...softDeletedProject, slug: project.slug };
     } finally {
       await lock.release();
     }
@@ -2544,6 +2530,12 @@ export const projectServiceFactory = ({
       ? `**${userDetails.firstName} ${userDetails.lastName}** (${userDetails.email}) has requested access to **${productLabel}**.`
       : `**${userDetails.firstName} ${userDetails.lastName}** (${userDetails.email}) has requested access to the project **${project.name}**.`;
 
+    await projectAccessRequestDAL.upsertPendingRequest({
+      projectId,
+      requesterUserId: permission.id,
+      comment: comment ?? null
+    });
+
     await notificationService.createUserNotifications(
       projectMembers
         .filter((member) => member.roles.some((role) => role.role === ProjectMembershipRole.Admin))
@@ -2571,6 +2563,14 @@ export const projectServiceFactory = ({
         ...(productLabel ? { productLabel } : {})
       }
     });
+  };
+
+  const getMyPendingProjectAccessRequests = async ({ permission }: { permission: OrgServiceActor }) => {
+    if (permission.type !== ActorType.USER) {
+      return { requests: [] as { projectId: string; createdAt: Date }[] };
+    }
+    const requests = await projectAccessRequestDAL.findPendingForRequesterInOrg(permission.id, permission.orgId);
+    return { requests };
   };
 
   return {
@@ -2610,6 +2610,7 @@ export const projectServiceFactory = ({
     getProjectSshConfig,
     updateProjectSshConfig,
     requestProjectAccess,
+    getMyPendingProjectAccessRequests,
     searchProjects,
     extractProjectIdFromSlug
   };

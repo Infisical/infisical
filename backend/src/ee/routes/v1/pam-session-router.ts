@@ -5,6 +5,7 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { PolicyRulesResponseSchema } from "@app/ee/services/pam-account-policy";
 import { KubernetesSessionCredentialsSchema } from "@app/ee/services/pam-resource/kubernetes/kubernetes-resource-schemas";
 import { MongoDBSessionCredentialsSchema } from "@app/ee/services/pam-resource/mongodb/mongodb-resource-schemas";
+import { MsSQLSessionCredentialsSchema } from "@app/ee/services/pam-resource/mssql/mssql-resource-schemas";
 import { MySQLSessionCredentialsSchema } from "@app/ee/services/pam-resource/mysql/mysql-resource-schemas";
 import { OracleSessionCredentialsSchema } from "@app/ee/services/pam-resource/oracle/oracle-resource-schemas";
 import { PostgresSessionCredentialsSchema } from "@app/ee/services/pam-resource/postgres/postgres-resource-schemas";
@@ -26,15 +27,17 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
+// Schemas with distinguishing fields must precede simpler ones — Zod strips unrecognized keys on first match.
 const SessionCredentialsSchema = z.union([
+  MsSQLSessionCredentialsSchema,
   SSHSessionCredentialsSchema,
+  WindowsSessionCredentialsSchema,
+  KubernetesSessionCredentialsSchema,
+  MongoDBSessionCredentialsSchema,
   PostgresSessionCredentialsSchema,
   MySQLSessionCredentialsSchema,
   OracleSessionCredentialsSchema,
-  MongoDBSessionCredentialsSchema,
-  KubernetesSessionCredentialsSchema,
-  RedisSessionCredentialsSchema,
-  WindowsSessionCredentialsSchema
+  RedisSessionCredentialsSchema
 ]);
 
 export const registerPamSessionRouter = async (server: FastifyZodProvider) => {

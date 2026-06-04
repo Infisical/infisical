@@ -1642,7 +1642,7 @@ export const approvalPolicyServiceFactory = ({
       return { requiresApproval: false, hasActiveGrant: false };
     }
 
-    const hasActiveGrant = await fac.canAccess(approvalRequestGrantsDAL, projectId, actor.id, inputs);
+    const activeGrant = await fac.canAccess(approvalRequestGrantsDAL, projectId, actor.id, inputs);
 
     const innerConstraints = policy.constraints?.constraints;
     const constraints =
@@ -1651,8 +1651,8 @@ export const approvalPolicyServiceFactory = ({
         : undefined;
 
     return {
-      requiresApproval: !hasActiveGrant,
-      hasActiveGrant,
+      requiresApproval: !activeGrant,
+      hasActiveGrant: !!activeGrant,
       constraints
     };
   };

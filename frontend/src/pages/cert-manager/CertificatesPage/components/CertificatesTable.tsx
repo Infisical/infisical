@@ -363,6 +363,7 @@ export const CertificatesTable = ({
       ? new Date(filterSearchParams.notBeforeTo)
       : undefined,
     source: filterSearchParams.source,
+    metadataFilter: filterSearchParams.metadata,
     applicationId,
     applicationIds: filterSearchParams.applicationIds,
     sortBy,
@@ -607,6 +608,16 @@ export const CertificatesTable = ({
             field: "source",
             operator: "in",
             value: sourceValue
+          });
+        }
+        if (customFilters.metadata && customFilters.metadata.length > 0) {
+          customFilters.metadata.forEach((m, i) => {
+            rules.push({
+              id: `cv-meta-${i}`,
+              field: "metadata",
+              operator: "is",
+              value: [m.key, m.value ?? ""]
+            });
           });
         }
         setAppliedFilters(rules);

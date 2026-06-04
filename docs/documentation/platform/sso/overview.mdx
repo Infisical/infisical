@@ -44,6 +44,17 @@ If your required identity provider is not shown in the list above, please reach 
   For enhanced security, Infisical enforces PKCE (Proof Key for Code Exchange) with the OAuth 2.0-based SSO providers and OIDC. This provides additional protection against authorization code interception attacks and strengthens your authentication flow security.
 </Info>
 
+## SSO Enforcement
+
+When you enforce SAML or OIDC SSO for your organization, members can only access Infisical by logging in through your identity provider. Enforcement has two additional effects tied to your [verified email domain(s)](/documentation/platform/email-domain):
+
+- **Email & password signup is blocked for your verified domain(s).** Once SSO is enforced, new email/password accounts can no longer be created for addresses on your verified domain(s). The verified domain and IdP are authoritative, so allowing a competing password account would reopen an account-takeover vector.
+- **Email verification is skipped for SSO sign-ins.** Because the verified domain and IdP already prove ownership of the email, Infisical skips the additional email-verification step that normally applies to SSO logins (see the FAQ below).
+
+<Warning>
+  Before enforcing SSO, make sure a break-glass organization admin already has a password and SSO bypass access. After enforcement is enabled, the signup block prevents creating new password accounts for the domain.
+</Warning>
+
 ## SSO Break Glass
 
 In the event your SSO provider experiences downtime, and you need to access Infisical, Organization Admins can utilize the Admin Login Portal to bypass SSO enforcement.
@@ -66,6 +77,8 @@ This portal is accessible at `/login/admin` (e.g., https://app.infisical.com/log
 
         If you're running a self-hosted instance of Infisical and would like it to trust emails from external identity providers,
         you can configure this behavior in the Server Admin Console.
+
+        This additional verification step is also skipped when your organization [enforces SSO](#sso-enforcement) for a [verified email domain](/documentation/platform/email-domain), since the verified domain and IdP are already authoritative for that email.
     </Accordion>
     <Accordion title="Why do I get redirected to SSO when trying to use the Admin Login Portal?">
         You are likely being redirected because you do not have email authentication mode enabled, or you're not an **Organization Admin**. This portal requires **Organization Admin** status and direct credential login (email and password). **Server Admin** status alone is insufficient.

@@ -16,6 +16,7 @@ import { BadRequestError, InternalServerError, NotFoundError, PermissionBoundary
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
+import { TProjectAccessRequestDALFactory } from "@app/services/project/project-access-request-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
@@ -30,6 +31,7 @@ type TProjectMembershipUserScopeFactoryDep = {
   membershipUserDAL: Pick<TMembershipUserDALFactory, "find">;
   smtpService: Pick<TSmtpService, "sendMail">;
   userDAL: Pick<TUserDALFactory, "findById">;
+  projectAccessRequestDAL: Pick<TProjectAccessRequestDALFactory, "delete">;
 };
 
 export const newProjectMembershipUserFactory = ({
@@ -38,7 +40,8 @@ export const newProjectMembershipUserFactory = ({
   projectDAL,
   membershipUserDAL,
   smtpService,
-  userDAL
+  userDAL,
+  projectAccessRequestDAL
 }: TProjectMembershipUserScopeFactoryDep): TMembershipUserScopeFactory => {
   const getScopeField: TMembershipUserScopeFactory["getScopeField"] = (dto) => {
     if (dto.scope === AccessScope.Project) {
@@ -139,6 +142,15 @@ export const newProjectMembershipUserFactory = ({
     dto,
     newMembers
   ) => {
+    const scopeField = getScopeField(dto.scopeData);
+    const newMemberUserIds = newMembers.map((m) => m.id);
+    if (newMemberUserIds.length) {
+      await projectAccessRequestDAL.delete({
+        projectId: scopeField.value,
+        $in: { requesterUserId: newMemberUserIds }
+      });
+    }
+
     const orgMembershipAccepted = await membershipUserDAL.find({
       scope: AccessScope.Organization,
       scopeOrgId: dto.permission.orgId,

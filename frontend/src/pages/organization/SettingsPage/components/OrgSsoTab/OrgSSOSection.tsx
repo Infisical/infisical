@@ -187,7 +187,7 @@ export const OrgSSOSection = ({ onSwitchProvider }: Props): JSX.Element => {
                     <div>
                       <Switch
                         id="enable-saml-sso"
-                        variant="project"
+                        variant="org"
                         checked={data ? data.isActive : false}
                         onCheckedChange={(value) => handleSamlSSOToggle(value)}
                         disabled={!isAllowed || isGoogleOAuthEnabled}
@@ -244,7 +244,7 @@ export const OrgSSOSection = ({ onSwitchProvider }: Props): JSX.Element => {
                   {(isAllowed) => (
                     <Switch
                       id="enable-saml-group-sync"
-                      variant="project"
+                      variant="org"
                       checked={data?.enableGroupSync ?? false}
                       onCheckedChange={(value) => handleSamlGroupManagement(value)}
                       disabled={!isAllowed}

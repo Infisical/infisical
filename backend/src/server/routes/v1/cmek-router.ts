@@ -23,21 +23,35 @@ const CmekSchema = KmsKeysSchema.merge(InternalKmsSchema.pick({ version: true, e
   isReserved: true
 });
 
-const base64Schema = z.string().superRefine((val, ctx) => {
-  if (!isBase64(val)) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: "plaintext must be base64 encoded"
-    });
-  }
+const MAX_KMS_PAYLOAD_BYTES = 1024 * 1024;
+// AES-GCM ciphertext carries a 12-byte IV, 16-byte auth tag, and 3-byte version blob on top of the plaintext,
+// so the decrypt limit must exceed the encrypt limit or a max-size encrypt's output can't be decrypted.
+const MAX_KMS_CIPHERTEXT_BYTES = MAX_KMS_PAYLOAD_BYTES + 1024;
+const MAX_KMS_SIGNATURE_BYTES = 8192;
+// A 1MB payload is ~1.37MB once base64 encoded, plus the JSON envelope, so the raw request body exceeds
+// Fastify's 1MB default bodyLimit. Override per-route so the body isn't rejected before schema validation runs.
+const KMS_PAYLOAD_BODY_LIMIT_BYTES = 2 * 1024 * 1024;
 
-  if (getBase64SizeInBytes(val) > 4096) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: "data cannot exceed 4096 bytes"
-    });
-  }
-});
+const createBase64Schema = (field: string, maxBytes: number) =>
+  z.string().superRefine((val, ctx) => {
+    if (!isBase64(val)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `${field} must be base64 encoded`
+      });
+    }
+
+    if (getBase64SizeInBytes(val) > maxBytes) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `${field} cannot exceed ${maxBytes} bytes`
+      });
+    }
+  });
+
+const base64Schema = createBase64Schema("data", MAX_KMS_PAYLOAD_BYTES);
+const ciphertextBase64Schema = createBase64Schema("ciphertext", MAX_KMS_CIPHERTEXT_BYTES);
+const signatureBase64Schema = createBase64Schema("signature", MAX_KMS_SIGNATURE_BYTES);
 
 export const registerCmekRouter = async (server: FastifyZodProvider) => {
   // create encryption key
@@ -396,6 +410,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
   // encrypt data
   server.route({
     method: "POST",
+    bodyLimit: KMS_PAYLOAD_BODY_LIMIT_BYTES,
     url: "/keys/:keyId/encrypt",
     config: {
       rateLimit: writeLimit
@@ -738,6 +753,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "POST",
+    bodyLimit: KMS_PAYLOAD_BODY_LIMIT_BYTES,
     url: "/keys/:keyId/sign",
     config: {
       rateLimit: writeLimit
@@ -794,6 +810,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "POST",
+    bodyLimit: KMS_PAYLOAD_BODY_LIMIT_BYTES,
     url: "/keys/:keyId/verify",
     config: {
       rateLimit: writeLimit
@@ -809,7 +826,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
       body: z.object({
         isDigest: z.boolean().optional().default(false).describe(KMS.VERIFY.isDigest),
         data: base64Schema.describe(KMS.VERIFY.data),
-        signature: base64Schema.describe(KMS.VERIFY.signature),
+        signature: signatureBase64Schema.describe(KMS.VERIFY.signature),
         signingAlgorithm: z.nativeEnum(SigningAlgorithm)
       }),
       response: {
@@ -853,6 +870,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "POST",
+    bodyLimit: KMS_PAYLOAD_BODY_LIMIT_BYTES,
     url: "/keys/:keyId/decrypt",
     config: {
       rateLimit: writeLimit
@@ -866,7 +884,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
         keyId: z.string().uuid().describe(KMS.DECRYPT.keyId)
       }),
       body: z.object({
-        ciphertext: base64Schema.describe(KMS.DECRYPT.ciphertext)
+        ciphertext: ciphertextBase64Schema.describe(KMS.DECRYPT.ciphertext)
       }),
       response: {
         200: z.object({

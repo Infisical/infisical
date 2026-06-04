@@ -639,22 +639,27 @@ export const secretRotationV2ServiceFactory = ({
 
           const secretsPayload = rotationFactory.getSecretsPayload(newCredentials);
 
-          const { encryptor } = await kmsService.createCipherPairWithDataKey({
+          const { encryptor, generateSecretBlindIndex } = await kmsService.createCipherPairWithDataKey({
             type: KmsDataKey.SecretManager,
             projectId
           });
+
+          const inputSecretsWithBlindIndex = await Promise.all(
+            secretsPayload.map(async ({ key, value }) => ({
+              key,
+              encryptedValue: encryptor({
+                plainText: Buffer.from(value)
+              }).cipherTextBlob,
+              secretValueBlindIndex: await generateSecretBlindIndex(Buffer.from(value)),
+              references: []
+            }))
+          );
 
           const mappedSecrets = await fnSecretBulkInsert({
             folderId: folder.id,
             orgId: connection.orgId,
             tx,
-            inputSecrets: secretsPayload.map(({ key, value }) => ({
-              key,
-              encryptedValue: encryptor({
-                plainText: Buffer.from(value)
-              }).cipherTextBlob,
-              references: []
-            })),
+            inputSecrets: inputSecretsWithBlindIndex,
             secretDAL: secretV2BridgeDAL,
             secretVersionDAL: secretVersionV2BridgeDAL,
             secretVersionTagDAL: secretVersionTagV2BridgeDAL,
@@ -1037,11 +1042,14 @@ export const secretRotationV2ServiceFactory = ({
 
     const mappedKeys = Object.values(secretsMapping as TSecretRotationV2["secretsMapping"]);
 
-    const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } =
-      await kmsService.createCipherPairWithDataKey({
-        type: KmsDataKey.SecretManager,
-        projectId
-      });
+    const {
+      encryptor: secretManagerEncryptor,
+      decryptor: secretManagerDecryptor,
+      generateSecretBlindIndex
+    } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId
+    });
 
     const updatedRotation = await secretRotationV2DAL.transaction(async (tx) => {
       const conflictingRotation = await secretRotationV2DAL.findOne({
@@ -1124,6 +1132,7 @@ export const secretRotationV2ServiceFactory = ({
             secretQueueService,
             encryptor: ({ plainText }) => secretManagerEncryptor({ plainText }),
             decryptor: ({ cipherTextBlob }) => secretManagerDecryptor({ cipherTextBlob }),
+            generateSecretBlindIndex,
             tx
           });
         }
@@ -1275,17 +1284,14 @@ export const secretRotationV2ServiceFactory = ({
           return secretRotationV2DAL.transaction(async (tx) => {
             const secretsPayload = rotationFactory.getSecretsPayload(newCredentials);
 
-            const { encryptor } = await kmsService.createCipherPairWithDataKey({
+            const { encryptor, generateSecretBlindIndex } = await kmsService.createCipherPairWithDataKey({
               type: KmsDataKey.SecretManager,
               projectId
             });
 
             // update mapped secrets with new credential values
-            await fnSecretBulkUpdate({
-              folderId,
-              orgId: connection.orgId,
-              tx,
-              inputSecrets: secretsPayload.map(({ key, value }) => ({
+            const inputSecretsWithBlindIndex = await Promise.all(
+              secretsPayload.map(async ({ key, value }) => ({
                 filter: {
                   key,
                   folderId,
@@ -1295,9 +1301,17 @@ export const secretRotationV2ServiceFactory = ({
                   encryptedValue: encryptor({
                     plainText: Buffer.from(value)
                   }).cipherTextBlob,
+                  secretValueBlindIndex: await generateSecretBlindIndex(Buffer.from(value)),
                   references: []
                 }
-              })),
+              }))
+            );
+
+            await fnSecretBulkUpdate({
+              folderId,
+              orgId: connection.orgId,
+              tx,
+              inputSecrets: inputSecretsWithBlindIndex,
               secretDAL: secretV2BridgeDAL,
               secretVersionDAL: secretVersionV2BridgeDAL,
               secretVersionTagDAL: secretVersionTagV2BridgeDAL,
@@ -1968,13 +1982,14 @@ export const secretRotationV2ServiceFactory = ({
         });
 
         return secretRotationV2DAL.transaction(async (tx) => {
-          const { encryptor } = await kmsService.createCipherPairWithDataKey({
+          const { encryptor, generateSecretBlindIndex } = await kmsService.createCipherPairWithDataKey({
             type: KmsDataKey.SecretManager,
             projectId
           });
 
           // Update the password secret with the new value
           const secretsMapping = secretRotation.secretsMapping as TLocalAccountRotation["secretsMapping"];
+          const passwordBuffer = Buffer.from(localAccountCredentials.password);
 
           await fnSecretBulkUpdate({
             folderId,
@@ -1989,8 +2004,9 @@ export const secretRotationV2ServiceFactory = ({
                 },
                 data: {
                   encryptedValue: encryptor({
-                    plainText: Buffer.from(localAccountCredentials.password)
+                    plainText: passwordBuffer
                   }).cipherTextBlob,
+                  secretValueBlindIndex: await generateSecretBlindIndex(passwordBuffer),
                   references: []
                 }
               }

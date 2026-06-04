@@ -1,0 +1,158 @@
+overlay: 1.0.0
+info:
+  title: Default responses and Go type mappings
+  version: 1.0.0
+
+actions:
+  # ============================================
+  # INJECT DEFAULT ERROR RESPONSES
+  # ============================================
+
+  - target: $.paths[*].get.responses
+    update:
+      '400':
+        description: Bad Request
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ValidationError'
+      '401':
+        description: Unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Error'
+      '500':
+        description: Internal Server Error
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Error'
+
+  - target: $.paths[*].post.responses
+    update:
+      '400':
+        description: Bad Request
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ValidationError'
+      '401':
+        description: Unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Error'
+      '500':
+        description: Internal Server Error
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Error'
+
+  - target: $.paths[*].put.responses
+    update:
+      '400':
+        description: Bad Request
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ValidationError'
+      '401':
+        description: Unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Error'
+      '500':
+        description: Internal Server Error
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Error'
+
+  - target: $.paths[*].patch.responses
+    update:
+      '400':
+        description: Bad Request
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ValidationError'
+      '401':
+        description: Unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Error'
+      '500':
+        description: Internal Server Error
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Error'
+
+  - target: $.paths[*].delete.responses
+    update:
+      '400':
+        description: Bad Request
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ValidationError'
+      '401':
+        description: Unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Error'
+      '500':
+        description: Internal Server Error
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Error'
+
+  # ============================================
+  # INJECT SECURITY SCHEMES
+  # ============================================
+
+  - target: $.components
+    update:
+      securitySchemes:
+        jwt:
+          type: http
+          scheme: bearer
+          bearerFormat: JWT
+          description: User session JWT token
+        identityAccessToken:
+          type: http
+          scheme: bearer
+          description: Machine identity access token
+        serviceToken:
+          type: http
+          scheme: bearer
+          description: Service token (st.<id>.<secret>)
+
+  # ============================================
+  # INJECT SHARED TYPES WITH x-go-type
+  # ============================================
+
+  - target: $.components.schemas
+    update:
+      Error:
+        x-go-type: shared.Error
+        x-go-type-import:
+          path: github.com/infisical/api/internal/server/api/shared
+      ValidationError:
+        x-go-type: shared.ValidationError
+        x-go-type-import:
+          path: github.com/infisical/api/internal/server/api/shared
+      FieldError:
+        x-go-type: shared.FieldError
+        x-go-type-import:
+          path: github.com/infisical/api/internal/server/api/shared
+      PaginationMeta:
+        x-go-type: shared.PaginationMeta
+        x-go-type-import:
+          path: github.com/infisical/api/internal/server/api/shared

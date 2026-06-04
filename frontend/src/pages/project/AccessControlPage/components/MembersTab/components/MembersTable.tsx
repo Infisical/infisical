@@ -5,6 +5,7 @@ import {
   ClockAlertIcon,
   ClockIcon,
   FilterIcon,
+  InfoIcon,
   MoreHorizontalIcon,
   SearchIcon,
   UserXIcon
@@ -43,7 +44,13 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { ProjectPermissionActions, ProjectPermissionSub, useProject, useUser } from "@app/context";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionMemberActions,
+  ProjectPermissionSub,
+  useProject,
+  useUser
+} from "@app/context";
 import { getProjectBaseURL } from "@app/helpers/project";
 import { formatProjectRoleName } from "@app/helpers/roles";
 import {
@@ -60,7 +67,10 @@ import { UsePopUpState } from "@app/hooks/usePopUp";
 const MAX_ROLES_TO_BE_SHOWN_IN_TABLE = 2;
 
 type Props = {
-  handlePopUpOpen: (popUpName: keyof UsePopUpState<["removeMember"]>, data?: object) => void;
+  handlePopUpOpen: (
+    popUpName: keyof UsePopUpState<["removeMember", "assumePrivileges"]>,
+    data?: object
+  ) => void;
 };
 
 enum MembersOrderBy {
@@ -448,6 +458,38 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
                             )}
                           </Tooltip>
                           <DropdownMenuContent sideOffset={2} align="end">
+                            {!isCertManager && (
+                              <ProjectPermissionCan
+                                I={ProjectPermissionMemberActions.AssumePrivileges}
+                                a={ProjectPermissionSub.Member}
+                              >
+                                {(isAllowed) => (
+                                  <Tooltip>
+                                    <TooltipTrigger className="block w-full">
+                                      <DropdownMenuItem
+                                        isDisabled={!isAllowed}
+                                        onClick={(evt) => {
+                                          evt.preventDefault();
+                                          evt.stopPropagation();
+                                          handlePopUpOpen("assumePrivileges", {
+                                            userId: u.id
+                                          });
+                                        }}
+                                      >
+                                        Assume Privileges
+                                        {isAllowed && <InfoIcon className="text-muted" />}
+                                      </DropdownMenuItem>
+                                    </TooltipTrigger>
+                                    {isAllowed && (
+                                      <TooltipContent className="max-w-80" side="left">
+                                        Assume the privileges of this user, allowing you to
+                                        replicate their access behavior.
+                                      </TooltipContent>
+                                    )}
+                                  </Tooltip>
+                                )}
+                              </ProjectPermissionCan>
+                            )}
                             <ProjectPermissionCan
                               I={ProjectPermissionActions.Delete}
                               a={ProjectPermissionSub.Member}

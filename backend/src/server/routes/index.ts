@@ -421,6 +421,8 @@ import { pkiSyncQueueFactory } from "@app/services/pki-sync/pki-sync-queue";
 import { pkiSyncServiceFactory } from "@app/services/pki-sync/pki-sync-service";
 import { pkiTemplatesDALFactory } from "@app/services/pki-templates/pki-templates-dal";
 import { pkiTemplatesServiceFactory } from "@app/services/pki-templates/pki-templates-service";
+import { projectAccessRequestDALFactory } from "@app/services/project/project-access-request-dal";
+import { projectCleanupQueueFactory } from "@app/services/project/project-cleanup-queue";
 import { projectDALFactory } from "@app/services/project/project-dal";
 import { projectQueueFactory } from "@app/services/project/project-queue";
 import { projectServiceFactory } from "@app/services/project/project-service";
@@ -470,7 +472,17 @@ import { secretValidationRuleDALFactory } from "@app/services/secret-validation-
 import { secretValidationRuleServiceFactory } from "@app/services/secret-validation-rule/secret-validation-rule-service";
 import { serviceTokenDALFactory } from "@app/services/service-token/service-token-dal";
 import { serviceTokenServiceFactory } from "@app/services/service-token/service-token-service";
-import { signerDALFactory, signerServiceFactory, signingOperationDALFactory } from "@app/services/signer";
+import {
+  signerDALFactory,
+  signerRequestDALFactory,
+  signerServiceFactory,
+  signingOperationDALFactory
+} from "@app/services/signer";
+import { signerAutoRenewalQueueFactory } from "@app/services/signer/signer-auto-renewal-queue";
+import { signerIssuanceJobDALFactory } from "@app/services/signer/signer-issuance-job-dal";
+import { signerIssuanceServiceFactory } from "@app/services/signer/signer-issuance-service";
+import { signerPolicyServiceFactory } from "@app/services/signer/signer-policy-service";
+import { signerMembershipServiceFactory } from "@app/services/signer-membership";
 import { projectSlackConfigDALFactory } from "@app/services/slack/project-slack-config-dal";
 import { slackIntegrationDALFactory } from "@app/services/slack/slack-integration-dal";
 import { slackServiceFactory } from "@app/services/slack/slack-service";
@@ -559,6 +571,7 @@ export const registerRoutes = async (
   const rateLimitDAL = rateLimitDALFactory(db);
 
   const projectDAL = projectDALFactory(db);
+  const projectAccessRequestDAL = projectAccessRequestDALFactory(db);
   const projectSshConfigDAL = projectSshConfigDALFactory(db);
   const projectMembershipDAL = projectMembershipDALFactory(db);
   const projectEnvDAL = projectEnvDALFactory(db);
@@ -781,7 +794,8 @@ export const registerRoutes = async (
     tokenService,
     userAliasDAL,
     userGroupMembershipDAL,
-    additionalPrivilegeDAL
+    additionalPrivilegeDAL,
+    projectAccessRequestDAL
   });
 
   const membershipIdentityService = membershipIdentityServiceFactory({
@@ -864,11 +878,7 @@ export const registerRoutes = async (
     licenseService,
     permissionService,
     auditLogStreamDAL,
-    kmsService,
-    keyStore,
-    notificationService,
-    smtpService,
-    orgDAL
+    kmsService
   });
 
   const auditLogQueue = await auditLogQueueServiceFactory({
@@ -1135,6 +1145,8 @@ export const registerRoutes = async (
     secretV2BridgeDAL
   });
 
+  const certificatePolicyDAL = certificatePolicyDALFactory(db);
+
   const orgService = orgServiceFactory({
     userAliasDAL,
     identityMetadataDAL,
@@ -1164,7 +1176,8 @@ export const registerRoutes = async (
     membershipDAL,
     roleDAL,
     userGroupMembershipDAL,
-    additionalPrivilegeDAL
+    additionalPrivilegeDAL,
+    certificatePolicyDAL
   });
 
   const subOrgService = subOrgServiceFactory({
@@ -1173,7 +1186,8 @@ export const registerRoutes = async (
     membershipRoleDAL,
     orgDAL,
     projectDAL,
-    permissionService
+    permissionService,
+    certificatePolicyDAL
   });
 
   const signupService = authSignupServiceFactory({
@@ -1184,7 +1198,8 @@ export const registerRoutes = async (
     userAliasDAL,
     orgDAL,
     orgService,
-    loginService
+    loginService,
+    emailDomainDAL
   });
 
   const microsoftTeamsService = microsoftTeamsServiceFactory({
@@ -1313,7 +1328,6 @@ export const registerRoutes = async (
   const certificateAuthorityCrlDAL = certificateAuthorityCrlDALFactory(db);
   const certificateTemplateDAL = certificateTemplateDALFactory(db);
   const certificateTemplateEstConfigDAL = certificateTemplateEstConfigDALFactory(db);
-  const certificatePolicyDAL = certificatePolicyDALFactory(db);
   const certificateProfileDAL = certificateProfileDALFactory(db);
   const pkiApplicationDAL = pkiApplicationDALFactory(db);
   const pkiApplicationProfileDAL = pkiApplicationProfileDALFactory(db);
@@ -1349,7 +1363,9 @@ export const registerRoutes = async (
   const pkiDiscoveryScanHistoryDAL = pkiDiscoveryScanHistoryDALFactory(db);
 
   const signerDAL = signerDALFactory(db);
+  const signerRequestDAL = signerRequestDALFactory(db);
   const signingOperationDAL = signingOperationDALFactory(db);
+  const signerIssuanceJobDAL = signerIssuanceJobDALFactory(db);
 
   const instanceRelayConfigDAL = instanceRelayConfigDalFactory(db);
   const orgRelayConfigDAL = orgRelayConfigDalFactory(db);
@@ -1482,6 +1498,19 @@ export const registerRoutes = async (
     userDAL,
     identityDAL,
     groupDAL,
+    approvalPolicyDAL
+  });
+
+  const signerMembershipService = signerMembershipServiceFactory({
+    signerDAL,
+    membershipDAL,
+    membershipRoleDAL,
+    permissionService,
+    userDAL,
+    identityDAL,
+    groupDAL,
+    userGroupMembershipDAL,
+    identityGroupMembershipDAL,
     approvalPolicyDAL
   });
 
@@ -1730,12 +1759,24 @@ export const registerRoutes = async (
     membershipRoleDAL,
     membershipUserDAL,
     roleDAL,
-    groupDAL
+    groupDAL,
+    projectAccessRequestDAL
   });
 
   const projectEnvQueue = projectEnvQueueFactory({
     cronJob,
     projectEnvDAL,
+    keyStore,
+    auditLogService
+  });
+
+  const projectCleanupQueue = projectCleanupQueueFactory({
+    cronJob,
+    queueService,
+    projectDAL,
+    membershipUserDAL,
+    userDAL,
+    kmsService,
     keyStore,
     auditLogService
   });
@@ -2407,7 +2448,8 @@ export const registerRoutes = async (
   const cmekService = cmekServiceFactory({
     kmsDAL,
     kmsService,
-    permissionService
+    permissionService,
+    licenseService
   });
 
   const externalMigrationQueue = externalMigrationQueueFactory({
@@ -3044,16 +3086,63 @@ export const registerRoutes = async (
     permissionService
   });
 
+  const signerIssuanceService = signerIssuanceServiceFactory({
+    signerIssuanceJobDAL,
+    signerDAL,
+    certificateAuthorityDAL,
+    certificateBodyDAL,
+    certificateSecretDAL,
+    projectDAL,
+    kmsService,
+    certificateIssuanceQueue,
+    cronJob
+  });
+
   const signerService = signerServiceFactory({
     signerDAL,
     signingOperationDAL,
     certificateDAL,
+    certificateBodyDAL,
     certificateSecretDAL,
+    certificateAuthorityDAL,
+    signerIssuanceService,
+    internalCertificateAuthorityService,
     projectDAL,
     kmsService,
     permissionService,
     approvalPolicyDAL,
-    approvalRequestGrantsDAL
+    approvalPolicyStepsDAL,
+    approvalPolicyStepApproversDAL,
+    approvalRequestDAL,
+    approvalRequestGrantsDAL,
+    membershipDAL,
+    membershipRoleDAL
+  });
+
+  const signerAutoRenewalQueue = signerAutoRenewalQueueFactory({
+    queueService,
+    cronJob,
+    signerDAL,
+    signerService
+  });
+
+  const signerPolicyService = signerPolicyServiceFactory({
+    signerDAL,
+    approvalPolicyDAL,
+    approvalPolicyStepsDAL,
+    approvalPolicyStepApproversDAL,
+    approvalRequestDAL,
+    signerRequestDAL,
+    approvalRequestStepsDAL,
+    approvalRequestStepEligibleApproversDAL,
+    approvalRequestGrantsDAL,
+    membershipDAL,
+    membershipRoleDAL,
+    userGroupMembershipDAL,
+    identityGroupMembershipDAL,
+    userDAL,
+    identityDAL,
+    permissionService
   });
 
   const pkiTemplateService = pkiTemplatesServiceFactory({
@@ -3413,6 +3502,7 @@ export const registerRoutes = async (
   telemetryQueue.startAggregatedEventsJob();
   dailyResourceCleanUp.init();
   projectEnvQueue.init();
+  projectCleanupQueue.init();
   healthAlert.init();
   pkiSyncCleanup.init();
   pkiDiscoveryQueue.startPkiDiscoveryScanQueue();
@@ -3431,6 +3521,8 @@ export const registerRoutes = async (
   digicertCaQueue.init();
   digicertRevocationSyncQueue.init();
   caAutoRenewalQueue.startDailyAutoRenewalJob();
+  signerAutoRenewalQueue.start();
+  signerIssuanceService.start();
   await microsoftTeamsService.start();
   await eventBusService.init();
 
@@ -3514,6 +3606,8 @@ export const registerRoutes = async (
     certificateProfile: certificateProfileService,
     pkiApplication: pkiApplicationService,
     pkiApplicationMembership: pkiApplicationMembershipService,
+    signerMembership: signerMembershipService,
+    signerPolicy: signerPolicyService,
     pkiApplicationEnrollment: pkiApplicationEnrollmentService,
     certManagerProjectResolver,
     certManagerInstance: certManagerInstanceService,

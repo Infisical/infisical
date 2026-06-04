@@ -8,7 +8,7 @@ import { BadRequestError, InternalServerError } from "@app/lib/errors";
 
 import { TAwsIamResourceConnectionDetails } from "./aws-iam-resource-types";
 
-const AWS_STS_MIN_DURATION_SECONDS = 900;
+export const AWS_STS_MIN_DURATION_SECONDS = 900;
 
 // We hardcode us-east-1 because:
 // 1. IAM is global - roles can be assumed from any STS regional endpoint

@@ -25,7 +25,14 @@ export const ProjectNavLink = ({
   const basePath = `/organizations/${currentOrg.id}/projects/${typePath}/${currentProject.id}`;
   const fullPath = `${basePath}/${item.pathSuffix}`;
 
-  const pathMatch = pathname.startsWith(fullPath) || Boolean(item.activeMatch?.test(pathname));
+  const activeMatchResult = (() => {
+    if (!item.activeMatch) return false;
+    if (typeof item.activeMatch === "function") {
+      return item.activeMatch(pathname, (locationSearch as Record<string, unknown>) ?? {});
+    }
+    return item.activeMatch.test(pathname);
+  })();
+  const pathMatch = pathname.startsWith(fullPath) || activeMatchResult;
   const isActive = item.search
     ? pathMatch &&
       Object.entries(item.search).every(([key, value]) => {

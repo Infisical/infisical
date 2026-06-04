@@ -7,6 +7,7 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { AppConnection, AWSRegion } from "@app/services/app-connection/app-connection-enums";
+import { TAppConnectionRaw } from "@app/services/app-connection/app-connection-types";
 
 import { AwsConnectionMethod } from "./aws-connection-enums";
 import { TAwsConnectionConfig } from "./aws-connection-types";
@@ -86,6 +87,19 @@ export const getAwsConnectionConfig = async (appConnection: TAwsConnectionConfig
     }
   };
 };
+
+export const buildAwsConnectionConfig = (
+  connection: Pick<TAppConnectionRaw, "orgId" | "projectId" | "version" | "method">,
+  credentials: TAwsConnectionConfig["credentials"]
+): TAwsConnectionConfig =>
+  ({
+    app: AppConnection.AWS,
+    method: connection.method as AwsConnectionMethod,
+    credentials,
+    orgId: connection.orgId,
+    projectId: connection.projectId,
+    version: connection.version
+  }) as TAwsConnectionConfig;
 
 export const validateAwsConnectionCredentials = async (appConnection: TAwsConnectionConfig) => {
   try {
