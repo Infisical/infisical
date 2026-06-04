@@ -449,7 +449,10 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.RELAY_CREATE]: "Create relay",
   [EventType.RELAY_UPDATE]: "Update relay",
   [EventType.RELAY_DELETE]: "Delete relay",
-  [EventType.RELAY_ENROLLMENT_TOKEN_CREATE]: "Generate relay enrollment token"
+  [EventType.RELAY_ENROLLMENT_TOKEN_CREATE]: "Generate relay enrollment token",
+  [EventType.KMIP_SERVER_CREATE]: "Create KMIP server",
+  [EventType.KMIP_SERVER_DELETE]: "Delete KMIP server",
+  [EventType.KMIP_SERVER_ENROLLMENT_TOKEN_CREATE]: "Generate KMIP server enrollment token"
 };
 
 export const userAgentTypeToNameMap: { [K in UserAgentType]: string } = {

@@ -94,7 +94,8 @@ export type TCreateAuditLogDTO = {
     | EstAccountActor
     | ScepAccountActor
     | GatewayActor
-    | RelayActor;
+    | RelayActor
+    | KmipServerActor;
   orgId?: string;
   projectId?: string;
 } & BaseAuthData;
@@ -866,6 +867,10 @@ export enum EventType {
   RELAY_DELETE = "relay-delete",
   RELAY_ENROLLMENT_TOKEN_CREATE = "relay-enrollment-token-create",
 
+  KMIP_SERVER_CREATE = "kmip-server-create",
+  KMIP_SERVER_DELETE = "kmip-server-delete",
+  KMIP_SERVER_ENROLLMENT_TOKEN_CREATE = "kmip-server-enrollment-token-create",
+
   // Gateway Pools
   GATEWAY_POOL_CREATE = "gateway-pool-create",
   GATEWAY_POOL_UPDATE = "gateway-pool-update",
@@ -894,7 +899,8 @@ export const ACTOR_TYPE_TO_METADATA_ID_KEY: Partial<Record<ActorType, string>> =
   [ActorType.EST_ACCOUNT]: "profileId",
   [ActorType.SCEP_ACCOUNT]: "profileId",
   [ActorType.GATEWAY]: "gatewayId",
-  [ActorType.RELAY]: "relayId"
+  [ActorType.RELAY]: "relayId",
+  [ActorType.KMIP_SERVER]: "kmipServerId"
 };
 
 export const filterableSecretEvents: EventType[] = [
@@ -966,6 +972,10 @@ interface RelayActorMetadata {
   relayId: string;
 }
 
+interface KmipServerActorMetadata {
+  kmipServerId: string;
+}
+
 export interface UserActor {
   type: ActorType.USER;
   metadata: UserActorMetadata;
@@ -1030,6 +1040,11 @@ export interface RelayActor {
   metadata: RelayActorMetadata;
 }
 
+export interface KmipServerActor {
+  type: ActorType.KMIP_SERVER;
+  metadata: KmipServerActorMetadata;
+}
+
 export type Actor =
   | UserActor
   | ServiceActor
@@ -1042,7 +1057,8 @@ export type Actor =
   | EstAccountActor
   | ScepAccountActor
   | GatewayActor
-  | RelayActor;
+  | RelayActor
+  | KmipServerActor;
 
 interface GetSecretsEvent {
   type: EventType.GET_SECRETS;
@@ -6976,7 +6992,7 @@ interface GatewayEnrollEvent {
 }
 
 type ResourceAuthMethodKind = "aws" | "token";
-type ResourceAuthMethodResourceType = "gateway" | "relay";
+type ResourceAuthMethodResourceType = "gateway" | "relay" | "kmip";
 
 interface ResourceAuthMethodLoginEvent {
   type: EventType.RESOURCE_AUTH_METHOD_LOGIN;
@@ -7055,6 +7071,30 @@ interface RelayDeleteEvent {
 
 interface RelayEnrollmentTokenCreateEvent {
   type: EventType.RELAY_ENROLLMENT_TOKEN_CREATE;
+  metadata: {
+    tokenId: string;
+    name: string;
+  };
+}
+
+interface KmipServerCreateEvent {
+  type: EventType.KMIP_SERVER_CREATE;
+  metadata: {
+    kmipServerId: string;
+    name: string;
+  };
+}
+
+interface KmipServerDeleteEvent {
+  type: EventType.KMIP_SERVER_DELETE;
+  metadata: {
+    kmipServerId: string;
+    name: string;
+  };
+}
+
+interface KmipServerEnrollmentTokenCreateEvent {
+  type: EventType.KMIP_SERVER_ENROLLMENT_TOKEN_CREATE;
   metadata: {
     tokenId: string;
     name: string;
@@ -7778,6 +7818,9 @@ export type Event =
   | RelayUpdateEvent
   | RelayDeleteEvent
   | RelayEnrollmentTokenCreateEvent
+  | KmipServerCreateEvent
+  | KmipServerDeleteEvent
+  | KmipServerEnrollmentTokenCreateEvent
   | GatewayPoolCreateEvent
   | GatewayPoolUpdateEvent
   | GatewayPoolDeleteEvent

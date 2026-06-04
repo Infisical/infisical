@@ -24,6 +24,7 @@ export enum AuthTokenType {
   SCIM_TOKEN = "scimToken",
   GATEWAY_ACCESS_TOKEN = "gatewayAccessToken",
   RELAY_ACCESS_TOKEN = "relayAccessToken",
+  KMIP_SERVER_ACCESS_TOKEN = "kmipServerAccessToken",
   ACCOUNT_RECOVERY_TOKEN = "accountRecoveryToken"
 }
 
@@ -43,7 +44,8 @@ export enum AuthMode {
   SCIM_TOKEN = "scimToken",
   MCP_JWT = "mcpJwt",
   GATEWAY_ACCESS_TOKEN = "gatewayAccessToken",
-  RELAY_ACCESS_TOKEN = "relayAccessToken"
+  RELAY_ACCESS_TOKEN = "relayAccessToken",
+  KMIP_SERVER_ACCESS_TOKEN = "kmipServerAccessToken"
 }
 
 export enum ActorType { // would extend to AWS, Azure, ...
@@ -59,7 +61,8 @@ export enum ActorType { // would extend to AWS, Azure, ...
   SCEP_ACCOUNT = "scepAccount",
   UNKNOWN_USER = "unknownUser",
   GATEWAY = "gateway",
-  RELAY = "relay"
+  RELAY = "relay",
+  KMIP_SERVER = "kmipServer"
 }
 
 export type TGatewayAccessTokenJwtPayload = {
@@ -72,6 +75,13 @@ export type TGatewayAccessTokenJwtPayload = {
 export type TRelayAccessTokenJwtPayload = {
   authTokenType: AuthTokenType.RELAY_ACCESS_TOKEN;
   relayId: string;
+  orgId: string;
+  tokenVersion: number;
+};
+
+export type TKmipServerAccessTokenJwtPayload = {
+  authTokenType: AuthTokenType.KMIP_SERVER_ACCESS_TOKEN;
+  kmipServerId: string;
   orgId: string;
   tokenVersion: number;
 };

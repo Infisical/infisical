@@ -8,6 +8,7 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { isValidIp } from "@app/lib/ip";
 import { ms } from "@app/lib/ms";
 import { isFQDN } from "@app/lib/validator/validate-url";
+import { ActorType } from "@app/services/auth/auth-type";
 import { constructPemChainFromCerts } from "@app/services/certificate/certificate-fns";
 import { CertExtendedKeyUsage, CertKeyAlgorithm, CertKeyUsage } from "@app/services/certificate/certificate-types";
 import {
@@ -725,16 +726,21 @@ export const kmipServiceFactory = ({
     keyAlgorithm,
     hostnamesOrIps
   }: TRegisterServerDTO) => {
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId: actorOrgId,
-      actorAuthMethod,
-      actorOrgId
-    });
+    // KMIP servers authenticate via their enrollment-based access token, which is itself the
+    // authorization — no org-level permission needed. The legacy machine-identity path still
+    // requires the (deprecated) KMIP proxy permission.
+    if (actor !== ActorType.KMIP_SERVER) {
+      const { permission } = await permissionService.getOrgPermission({
+        scope: OrganizationActionScope.Any,
+        actor,
+        actorId,
+        orgId: actorOrgId,
+        actorAuthMethod,
+        actorOrgId
+      });
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionKmipActions.Proxy, OrgPermissionSubjects.Kmip);
+      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionKmipActions.Proxy, OrgPermissionSubjects.Kmip);
+    }
 
     const plan = await licenseService.getPlan(actorOrgId);
     if (!plan.kmip)

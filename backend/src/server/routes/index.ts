@@ -88,6 +88,8 @@ import { kmipOperationServiceFactory } from "@app/ee/services/kmip/kmip-operatio
 import { kmipOrgConfigDALFactory } from "@app/ee/services/kmip/kmip-org-config-dal";
 import { kmipOrgServerCertificateDALFactory } from "@app/ee/services/kmip/kmip-org-server-certificate-dal";
 import { kmipServiceFactory } from "@app/ee/services/kmip/kmip-service";
+import { kmipServerDALFactory } from "@app/ee/services/kmip-server/kmip-server-dal";
+import { kmipServerServiceFactory } from "@app/ee/services/kmip-server/kmip-server-service";
 import { ldapConfigDALFactory } from "@app/ee/services/ldap-config/ldap-config-dal";
 import { ldapConfigServiceFactory } from "@app/ee/services/ldap-config/ldap-config-service";
 import { ldapGroupMapDALFactory } from "@app/ee/services/ldap-config/ldap-group-map-dal";
@@ -1357,6 +1359,7 @@ export const registerRoutes = async (
   const orgRelayConfigDAL = orgRelayConfigDalFactory(db);
   const relayDAL = relayDalFactory(db);
   const gatewayV2DAL = gatewayV2DalFactory(db);
+  const kmipServerDAL = kmipServerDALFactory(db);
   const resourceTokenAuthDAL = resourceTokenAuthDALFactory(db);
   const resourceAuthMethodDAL = resourceAuthMethodDALFactory(db);
   const resourceAwsAuthDAL = resourceAwsAuthDALFactory(db);
@@ -1561,6 +1564,7 @@ export const registerRoutes = async (
     resourceTokenAuthDAL,
     gatewayV2DAL,
     relayDAL,
+    kmipServerDAL,
     identityDAL,
     permissionService
   });
@@ -1577,6 +1581,12 @@ export const registerRoutes = async (
     userDAL,
     resourceAuthMethodService,
     gatewayV2DAL
+  });
+
+  const kmipServerService = kmipServerServiceFactory({
+    kmipServerDAL,
+    permissionService,
+    resourceAuthMethodService
   });
 
   const gatewayV2Service = gatewayV2ServiceFactory({
@@ -3558,6 +3568,7 @@ export const registerRoutes = async (
     secretSync: secretSyncService,
     kmip: kmipService,
     kmipOperation: kmipOperationService,
+    kmipServer: kmipServerService,
     gateway: gatewayService,
     relay: relayService,
     gatewayV2: gatewayV2Service,

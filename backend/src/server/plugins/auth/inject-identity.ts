@@ -17,6 +17,7 @@ import {
   AuthTokenType,
   MfaMethod,
   TGatewayAccessTokenJwtPayload,
+  TKmipServerAccessTokenJwtPayload,
   TRelayAccessTokenJwtPayload
 } from "@app/services/auth/auth-type";
 import { TIdentityAccessTokenJwtPayload } from "@app/services/identity-access-token/identity-access-token-types";
@@ -99,6 +100,16 @@ export type TAuthMode =
       parentOrgId: string;
       authMethod: null;
       token: TRelayAccessTokenJwtPayload;
+    }
+  | {
+      authMode: AuthMode.KMIP_SERVER_ACCESS_TOKEN;
+      actor: ActorType.KMIP_SERVER;
+      kmipServerId: string;
+      orgId: string;
+      rootOrgId: string;
+      parentOrgId: string;
+      authMethod: null;
+      token: TKmipServerAccessTokenJwtPayload;
     };
 
 export const extractAuth = async (req: FastifyRequest, jwtSecret: string) => {
@@ -162,6 +173,12 @@ export const extractAuth = async (req: FastifyRequest, jwtSecret: string) => {
         authMode: AuthMode.RELAY_ACCESS_TOKEN,
         token: decodedToken as TRelayAccessTokenJwtPayload,
         actor: ActorType.RELAY
+      } as const;
+    case AuthTokenType.KMIP_SERVER_ACCESS_TOKEN:
+      return {
+        authMode: AuthMode.KMIP_SERVER_ACCESS_TOKEN,
+        token: decodedToken as TKmipServerAccessTokenJwtPayload,
+        actor: ActorType.KMIP_SERVER
       } as const;
     default:
       return { authMode: null, token: null } as const;
@@ -413,6 +430,30 @@ export const injectIdentity = fp(
             authMode: AuthMode.RELAY_ACCESS_TOKEN,
             actor,
             relayId: token.relayId,
+            orgId: token.orgId,
+            rootOrgId: token.orgId,
+            parentOrgId: token.orgId,
+            authMethod: null,
+            token
+          };
+          break;
+        }
+        case AuthMode.KMIP_SERVER_ACCESS_TOKEN: {
+          const kmipServer = await server.services.kmipServer.getOrgKmipServer({
+            kmipServerId: token.kmipServerId,
+            orgId: token.orgId
+          });
+
+          if (kmipServer.tokenVersion !== token.tokenVersion) {
+            throw new UnauthorizedError({ message: "KMIP server token has been revoked" });
+          }
+
+          requestContext.set(RequestContextKey.OrgId, token.orgId);
+
+          req.auth = {
+            authMode: AuthMode.KMIP_SERVER_ACCESS_TOKEN,
+            actor,
+            kmipServerId: token.kmipServerId,
             orgId: token.orgId,
             rootOrgId: token.orgId,
             parentOrgId: token.orgId,

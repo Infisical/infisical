@@ -91,6 +91,14 @@ export enum OrgPermissionRelayActions {
   RevokeRelayAccess = "revoke-relay-access"
 }
 
+export enum OrgPermissionKmipServerActions {
+  CreateKmipServers = "create-kmip-servers",
+  ListKmipServers = "list-kmip-servers",
+  EditKmipServers = "edit-kmip-servers",
+  DeleteKmipServers = "delete-kmip-servers",
+  RevokeKmipServerAccess = "revoke-kmip-server-access"
+}
+
 export enum OrgPermissionIdentityActions {
   Read = "read",
   Create = "create",
@@ -165,6 +173,7 @@ export enum OrgPermissionSubjects {
   ProjectTemplates = "project-templates",
   AppConnections = "app-connections",
   Kmip = "kmip",
+  KmipServer = "kmip-server",
   Gateway = "gateway",
   GatewayPool = "gateway-pool",
   Relay = "relay",
@@ -202,6 +211,7 @@ export type OrgPermissionSet =
   | [OrgPermissionGatewayActions, OrgPermissionSubjects.Gateway]
   | [OrgPermissionGatewayPoolActions, OrgPermissionSubjects.GatewayPool]
   | [OrgPermissionRelayActions, OrgPermissionSubjects.Relay]
+  | [OrgPermissionKmipServerActions, OrgPermissionSubjects.KmipServer]
   | [
       OrgPermissionAppConnectionActions,
       (
@@ -376,6 +386,12 @@ export const OrgPermissionSchema = z.discriminatedUnion("subject", [
     )
   }),
   z.object({
+    subject: z.literal(OrgPermissionSubjects.KmipServer).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionKmipServerActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
     subject: z.literal(OrgPermissionSubjects.EmailDomains).describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionEmailDomainActions).describe(
       "Describe what action an entity can take."
@@ -521,6 +537,12 @@ const buildAdminPermission = () => {
   can(OrgPermissionRelayActions.DeleteRelays, OrgPermissionSubjects.Relay);
   can(OrgPermissionRelayActions.RevokeRelayAccess, OrgPermissionSubjects.Relay);
 
+  can(OrgPermissionKmipServerActions.ListKmipServers, OrgPermissionSubjects.KmipServer);
+  can(OrgPermissionKmipServerActions.CreateKmipServers, OrgPermissionSubjects.KmipServer);
+  can(OrgPermissionKmipServerActions.EditKmipServers, OrgPermissionSubjects.KmipServer);
+  can(OrgPermissionKmipServerActions.DeleteKmipServers, OrgPermissionSubjects.KmipServer);
+  can(OrgPermissionKmipServerActions.RevokeKmipServerAccess, OrgPermissionSubjects.KmipServer);
+
   can(OrgPermissionAdminConsoleAction.AccessAllProjects, OrgPermissionSubjects.AdminConsole);
 
   // the proxy assignment is temporary in order to prevent "more privilege" error during role assignment to MI
@@ -599,6 +621,10 @@ const buildMemberPermission = () => {
   can(OrgPermissionRelayActions.ListRelays, OrgPermissionSubjects.Relay);
   can(OrgPermissionRelayActions.CreateRelays, OrgPermissionSubjects.Relay);
   can(OrgPermissionRelayActions.EditRelays, OrgPermissionSubjects.Relay);
+
+  can(OrgPermissionKmipServerActions.ListKmipServers, OrgPermissionSubjects.KmipServer);
+  can(OrgPermissionKmipServerActions.CreateKmipServers, OrgPermissionSubjects.KmipServer);
+  can(OrgPermissionKmipServerActions.EditKmipServers, OrgPermissionSubjects.KmipServer);
 
   can(OrgPermissionMachineIdentityAuthTemplateActions.ListTemplates, OrgPermissionSubjects.MachineIdentityAuthTemplate);
   can(

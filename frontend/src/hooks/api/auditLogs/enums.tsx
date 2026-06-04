@@ -445,5 +445,8 @@ export enum EventType {
   RELAY_CREATE = "relay-create",
   RELAY_UPDATE = "relay-update",
   RELAY_DELETE = "relay-delete",
-  RELAY_ENROLLMENT_TOKEN_CREATE = "relay-enrollment-token-create"
+  RELAY_ENROLLMENT_TOKEN_CREATE = "relay-enrollment-token-create",
+  KMIP_SERVER_CREATE = "kmip-server-create",
+  KMIP_SERVER_DELETE = "kmip-server-delete",
+  KMIP_SERVER_ENROLLMENT_TOKEN_CREATE = "kmip-server-enrollment-token-create"
 }

@@ -101,6 +101,7 @@ export * from "./kmip-client-certificates";
 export * from "./kmip-clients";
 export * from "./kmip-org-configs";
 export * from "./kmip-org-server-certificates";
+export * from "./kmip-servers";
 export * from "./kms-key-versions";
 export * from "./kms-keys";
 export * from "./kms-root-config";

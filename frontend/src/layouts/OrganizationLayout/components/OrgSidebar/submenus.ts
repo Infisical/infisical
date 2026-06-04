@@ -181,8 +181,8 @@ export const NETWORKING_SUBMENU: Submenu = {
   pathSuffix: "networking",
   defaultTab: "gateways",
   items: [
-    { label: "Gateways", icon: DoorOpen, tab: "gateways" },
-    { label: "Relays", icon: Route, tab: "relays" }
+    { label: "Gateways", icon: DoorOpen, tab: "gateways", activeMatch: /\/networking\/gateways\// },
+    { label: "Relays", icon: Route, tab: "relays", activeMatch: /\/networking\/relays\// }
   ]
 };
 

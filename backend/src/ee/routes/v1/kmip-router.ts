@@ -352,8 +352,10 @@ export const registerKmipRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.KMIP_SERVER_ACCESS_TOKEN]),
     handler: async (req) => {
+      const { hostnamesOrIps } = req.body;
+
       const configs = await server.services.kmip.registerServer({
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -369,7 +371,7 @@ export const registerKmipRouter = async (server: FastifyZodProvider) => {
           type: EventType.REGISTER_KMIP_SERVER,
           metadata: {
             serverCertificateSerialNumber: configs.serverCertificateSerialNumber,
-            hostnamesOrIps: req.body.hostnamesOrIps,
+            hostnamesOrIps,
             commonName: req.body.commonName ?? "kmip-server",
             keyAlgorithm: req.body.keyAlgorithm,
             ttl: req.body.ttl

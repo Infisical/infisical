@@ -281,6 +281,9 @@ import {
   TKmipOrgServerCertificates,
   TKmipOrgServerCertificatesInsert,
   TKmipOrgServerCertificatesUpdate,
+  TKmipServers,
+  TKmipServersInsert,
+  TKmipServersUpdate,
   TKmsKeys,
   TKmsKeysInsert,
   TKmsKeysUpdate,
@@ -1517,6 +1520,7 @@ declare module "knex/types/tables" {
       TKmipClientCertificatesInsert,
       TKmipClientCertificatesUpdate
     >;
+    [TableName.KmipServer]: KnexOriginal.CompositeTableType<TKmipServers, TKmipServersInsert, TKmipServersUpdate>;
     [TableName.Gateway]: KnexOriginal.CompositeTableType<TGateways, TGatewaysInsert, TGatewaysUpdate>;
     [TableName.ProjectGateway]: KnexOriginal.CompositeTableType<
       TProjectGateways,

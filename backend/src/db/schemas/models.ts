@@ -186,6 +186,7 @@ export enum TableName {
   KmipOrgConfig = "kmip_org_configs",
   KmipOrgServerCertificates = "kmip_org_server_certificates",
   KmipClientCertificates = "kmip_client_certificates",
+  KmipServer = "kmip_servers",
   SecretRotationV2 = "secret_rotations_v2",
   SecretRotationV2SecretMapping = "secret_rotation_v2_secret_mappings",
   MicrosoftTeamsIntegrations = "microsoft_teams_integrations",

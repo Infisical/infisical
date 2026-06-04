@@ -80,6 +80,10 @@ export const ROUTE_PATHS = Object.freeze({
     RelayDetailsByIDPage: setRoute(
       "/organizations/$orgId/networking/relays/$relayId",
       "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/networking/relays/$relayId"
+    ),
+    KmipServerDetailsByIDPage: setRoute(
+      "/organizations/$orgId/projects/kms/kmip-servers/$kmipServerId",
+      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/kmip-servers/$kmipServerId"
     )
   },
   SecretManager: {
