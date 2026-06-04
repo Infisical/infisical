@@ -1484,7 +1484,8 @@ export const registerRoutes = async (
   });
 
   const pamProjectResolver = pamProjectResolverFactory({
-    orgDAL
+    orgDAL,
+    keyStore
   });
 
   const certManagerInstanceService = certManagerInstanceServiceFactory({
