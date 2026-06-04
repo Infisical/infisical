@@ -118,11 +118,20 @@ export const OAuthCallbackPage = () => {
   const getFormData = <T extends keyof FormDataMap>(app: T): FormDataMap[T] | null => {
     const dataFieldName = formDataStorageFieldMap[app];
 
-    try {
-      const rawData = JSON.parse(localStorage.getItem(dataFieldName!) ?? "{}");
+    const rawData = localStorage.getItem(dataFieldName!);
 
+    if (rawData === null) {
+      createNotification({
+        type: "error",
+        text: `Your ${app ? APP_CONNECTION_MAP[app as AppConnection].name : ""} Connection session has expired or was already completed. Please restart the connection flow.`
+      });
+      navigate({ to: "/" });
+      return null;
+    }
+
+    try {
       return {
-        ...rawData,
+        ...JSON.parse(rawData),
         app
       } as FormDataMap[T];
     } catch {
@@ -729,22 +738,31 @@ export const OAuthCallbackPage = () => {
         connection: TAppConnection;
       } | null = null;
 
-      if (appConnection === AppConnection.GitHub) {
-        data = await handleGitHub();
-      } else if (appConnection === AppConnection.GitHubRadar) {
-        data = await handleGitHubRadar();
-      } else if (appConnection === AppConnection.GitLab) {
-        data = await handleGitLab();
-      } else if (appConnection === AppConnection.AzureKeyVault) {
-        data = await handleAzureKeyVault();
-      } else if (appConnection === AppConnection.AzureAppConfiguration) {
-        data = await handleAzureAppConfiguration();
-      } else if (appConnection === AppConnection.AzureClientSecrets) {
-        data = await handleAzureClientSecrets();
-      } else if (appConnection === AppConnection.AzureDevOps) {
-        data = await handleAzureDevOps();
-      } else if (appConnection === AppConnection.Heroku) {
-        data = await handleHeroku();
+      try {
+        if (appConnection === AppConnection.GitHub) {
+          data = await handleGitHub();
+        } else if (appConnection === AppConnection.GitHubRadar) {
+          data = await handleGitHubRadar();
+        } else if (appConnection === AppConnection.GitLab) {
+          data = await handleGitLab();
+        } else if (appConnection === AppConnection.AzureKeyVault) {
+          data = await handleAzureKeyVault();
+        } else if (appConnection === AppConnection.AzureAppConfiguration) {
+          data = await handleAzureAppConfiguration();
+        } else if (appConnection === AppConnection.AzureClientSecrets) {
+          data = await handleAzureClientSecrets();
+        } else if (appConnection === AppConnection.AzureDevOps) {
+          data = await handleAzureDevOps();
+        } else if (appConnection === AppConnection.Heroku) {
+          data = await handleHeroku();
+        }
+      } catch {
+        createNotification({
+          type: "error",
+          text: "Your connection session is invalid or has expired. Please restart the connection flow."
+        });
+        await navigate({ to: "/" });
+        return;
       }
 
       if (data) {
