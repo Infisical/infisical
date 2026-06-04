@@ -52,7 +52,7 @@ type TPkiApplicationMembershipServiceFactoryDep = {
   >;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "find" | "delete" | "update">;
   permissionService: Pick<TPermissionServiceFactory, "getResourcePermission" | "getProjectPermission">;
-  userDAL: Pick<TUserDALFactory, "find" | "findByEmailsOrUsernames">;
+  userDAL: Pick<TUserDALFactory, "find" | "findByEmailsOrUsernames" | "findByCaseInsensitiveUsernames">;
   identityDAL: Pick<TIdentityDALFactory, "find">;
   groupDAL: Pick<TGroupDALFactory, "find">;
   approvalPolicyDAL: Pick<
