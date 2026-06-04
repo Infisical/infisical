@@ -21,6 +21,10 @@ import { assertCaInProfileProject } from "@app/services/certificate-authority/ce
 import { TCertificateIssuanceQueueFactory } from "@app/services/certificate-authority/certificate-issuance-queue";
 import { validateGoDaddyIssuanceInputs } from "@app/services/certificate-authority/godaddy/godaddy-certificate-authority-validators";
 import { TInternalCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-service";
+import {
+  extractAlgorithmsFromCSR,
+  extractCertificateRequestFromCSR
+} from "@app/services/certificate-common/certificate-csr-utils";
 import { TCertificatePolicyServiceFactory } from "@app/services/certificate-policy/certificate-policy-service";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import { EnrollmentType, IssuerType } from "@app/services/certificate-profile/certificate-profile-types";
@@ -494,10 +498,15 @@ export const certificateApprovalServiceFactory = (
     }
 
     if (caType === CaType.GODADDY) {
+      // Validate the CSR's actual contents when one is present, so an approved BYO CSR can't carry a
+      // non-RSA key or extra SANs the GoDaddy guard never saw.
+      const csrDerived = certRequest.csr ? extractCertificateRequestFromCSR(certRequest.csr) : undefined;
       validateGoDaddyIssuanceInputs({
-        keyAlgorithm: certRequest.keyAlgorithm || undefined,
-        altNames: altNames ?? undefined,
-        commonName: certRequest.commonName || undefined
+        keyAlgorithm: certRequest.csr
+          ? extractAlgorithmsFromCSR(certRequest.csr).keyAlgorithm
+          : certRequest.keyAlgorithm || undefined,
+        altNames: csrDerived?.subjectAlternativeNames ?? altNames ?? undefined,
+        commonName: csrDerived?.commonName ?? certRequest.commonName ?? undefined
       });
     }
 

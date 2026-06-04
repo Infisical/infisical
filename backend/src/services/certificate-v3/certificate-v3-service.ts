@@ -2186,10 +2186,16 @@ export const certificateV3ServiceFactory = ({
       }
 
       if (caType === CaType.GODADDY) {
+        // When a CSR is supplied, validate what it actually contains (key algorithm + SANs + CN)
+        // rather than the declared request fields, so a BYO CSR can't smuggle a non-RSA key or
+        // extra SANs past the guard and on to GoDaddy.
+        const csrDerived = certificateOrder.csr ? extractCertificateRequestFromCSR(certificateOrder.csr) : undefined;
         validateGoDaddyIssuanceInputs({
-          keyAlgorithm: certificateOrder.keyAlgorithm,
-          altNames: certificateOrder.altNames,
-          commonName: certificateOrder.commonName
+          keyAlgorithm: certificateOrder.csr
+            ? extractAlgorithmsFromCSR(certificateOrder.csr).keyAlgorithm
+            : certificateOrder.keyAlgorithm,
+          altNames: csrDerived?.subjectAlternativeNames ?? certificateOrder.altNames,
+          commonName: csrDerived?.commonName ?? certificateOrder.commonName
         });
       }
 
