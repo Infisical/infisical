@@ -27,6 +27,6 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  await knex.schema.dropTableIfExists(TableName.GitHubApp);
   await dropOnUpdateTrigger(knex, TableName.GitHubApp);
+  await knex.schema.dropTableIfExists(TableName.GitHubApp);
 }

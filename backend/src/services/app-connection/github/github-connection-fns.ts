@@ -311,7 +311,9 @@ export const signGitHubAppJwt = (appId: string, privateKey: string) => {
     .join("\n");
 
   const now = Math.floor(Date.now() / 1000);
-  return crypto.jwt().sign({ iat: now, exp: now + 5 * 60, iss: appId }, appPrivateKey, { algorithm: "RS256" });
+  // Backdate iat by 60s per GitHub's recommendation — GitHub rejects app JWTs whose iat is in the
+  // future relative to their clock, so a slightly fast server clock would cause intermittent 401s.
+  return crypto.jwt().sign({ iat: now - 60, exp: now + 5 * 60, iss: appId }, appPrivateKey, { algorithm: "RS256" });
 };
 
 export const buildGitHubAppJwtHeaders = (appJwt: string) => ({
