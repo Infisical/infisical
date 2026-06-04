@@ -27,7 +27,7 @@ export enum SecretActionType {
 }
 
 export const formSchema = z.object({
-  key: SecretNameSchema.describe("Secret key is required"),
+  key: SecretNameSchema,
   value: z
     .string()
     .transform((val) => (val.at(-1) === "\n" ? `${val.trim()}\n` : val.trim()))

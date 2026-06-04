@@ -30,7 +30,7 @@ import {
 } from "../../SecretMainPage.store";
 
 const typeSchema = z.object({
-  key: SecretNameSchema.describe("Secret key is required"),
+  key: SecretNameSchema,
   value: z.string().optional(),
   tags: z.array(z.object({ label: z.string().trim(), value: z.string().trim() })).optional()
 });
