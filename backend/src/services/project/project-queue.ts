@@ -708,6 +708,12 @@ export const projectQueueFactory = ({
       );
 
       if (secrets.length < BATCH_SIZE) break;
+
+      // pause between batches to avoid saturating the CPU
+      const jitter = 100 + Math.floor(Math.random() * 100);
+      await new Promise((resolve) => {
+        setTimeout(resolve, jitter);
+      });
     }
 
     await projectDAL.updateById(projectId, { secretBlindIndexEnabled: true });
