@@ -49,6 +49,18 @@ describe("resolveOidcGroupMembershipChanges", () => {
     expect(groupsToAddUserTo.map((g) => g.id).sort()).toEqual(["1", "2"]);
   });
 
+  test("adds the user to a case-variant they have not joined even when already in another variant", () => {
+    // User is in "Engineering" (id 1) but not "engineering" (id 2). A name-based "already member"
+    // check would wrongly skip id 2; keying on group ID adds them to the variant they actually lack.
+    const { groupsToAddUserTo } = resolveOidcGroupMembershipChanges({
+      idpGroups: ["engineering"],
+      userGroupMemberships: [makeMembership("1", "Engineering")],
+      orgGroups: [makeGroup("1", "Engineering"), makeGroup("2", "engineering")]
+    });
+
+    expect(groupsToAddUserTo.map((g) => g.id)).toEqual(["2"]);
+  });
+
   test("only removes groups the user is actually a member of, even when a case-variant exists", () => {
     // The user is a member of "Engineering" (id 1); a case-variant "engineering" (id 2) also exists
     // but the user never joined it, so it must not be queued for removal.

@@ -27,10 +27,13 @@ export const resolveOidcGroupMembershipChanges = <TGroup extends { id: string; n
   groupsToRemoveUserFrom: TGroup[];
 } => {
   const idpGroupNames = new Set(idpGroups.map((groupName) => groupName.toLowerCase()));
-  const userGroupNames = new Set(userGroupMemberships.map((membership) => membership.groupName.toLowerCase()));
+  // Track current memberships by group ID (not name): when an org holds case-variant groups, the
+  // user must still be added to every matching variant they are not actually a member of. Keying on
+  // ID also keeps this consistent with how the removal path below is constructed.
+  const userGroupIds = new Set(userGroupMemberships.map((membership) => membership.groupId));
 
   const groupsToAddUserTo = orgGroups.filter(
-    (group) => idpGroupNames.has(group.name.toLowerCase()) && !userGroupNames.has(group.name.toLowerCase())
+    (group) => idpGroupNames.has(group.name.toLowerCase()) && !userGroupIds.has(group.id)
   );
 
   const groupIdsToRemoveUserFrom = new Set(
