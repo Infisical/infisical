@@ -14,8 +14,8 @@ Infisical can issue Domain Validated (DV) TLS certificates directly from [GoDadd
 ## Prerequisites
 
 - A [GoDaddy App Connection](/integrations/app-connections/godaddy) with validated production API credentials.
-- An available **DV SSL** product in your GoDaddy account. The API consumes a product you already own; it does not purchase one (see the FAQ below).
-- A certificate policy that allows an **RSA** key with **DNS-name** SANs (see below). The built-in **TLS Server** preset works as long as you select RSA, since GoDaddy rejects ECDSA.
+- An available **DV SSL** product in your GoDaddy account. The API consumes a product you already own; it does not purchase one (see the [FAQ](#faq)).
+- A certificate policy that allows an **RSA** key with **DNS-name** SANs (see [Set up the certificate policy](#set-up-the-certificate-policy)). The built-in **TLS Server** preset works as long as you select RSA, since GoDaddy rejects ECDSA.
 
 ## Set up the certificate policy
 
