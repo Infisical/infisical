@@ -110,6 +110,9 @@ export async function up(knex: Knex): Promise<void> {
 
   await createOnUpdateTrigger(knex, TableName.PamAccountTemplate);
 
+  // Capture orgs that have a PAM project before backfill
+  const orgsWithPam = await knex(TableName.Project).where("type", ProjectType.PAM).distinct("orgId").select("orgId");
+
   await backfillPamProjectsForAllOrgs(knex);
 
   // Drop old folders table and recreate with new schema
@@ -186,8 +189,6 @@ export async function up(knex: Knex): Promise<void> {
 
   const getProjectCipher = async (projectId: string) =>
     kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId }, knex);
-
-  const orgsWithPam = await knex(TableName.Project).where("type", ProjectType.PAM).distinct("orgId").select("orgId");
 
   for (const { orgId } of orgsWithPam) {
     const org = await knex(TableName.Organization).where("id", orgId).first("defaultPamProjectId");
