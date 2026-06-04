@@ -17,11 +17,7 @@ export const ConvexAccessKeyRotationParametersFields = () => {
       control={control}
       render={({ field: { value, onChange }, fieldState: { error } }) => (
         <FormControl isError={Boolean(error)} errorText={error?.message} label="Name Prefix">
-          <Input
-            value={value}
-            onChange={onChange}
-            placeholder="e.g. infisical-rotation"
-          />
+          <Input value={value} onChange={onChange} placeholder="e.g. infisical-rotation" />
         </FormControl>
       )}
     />

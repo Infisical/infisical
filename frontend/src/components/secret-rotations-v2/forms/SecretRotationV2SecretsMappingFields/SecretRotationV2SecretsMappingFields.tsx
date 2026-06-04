@@ -4,9 +4,9 @@ import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
 
 import { TSecretRotationV2Form } from "../schemas";
 import { Auth0ClientSecretRotationSecretsMappingFields } from "./Auth0ClientSecretRotationSecretsMappingFields";
-import { ConvexAccessKeyRotationSecretsMappingFields } from "./ConvexAccessKeyRotationSecretsMappingFields";
 import { AwsIamUserSecretRotationSecretsMappingFields } from "./AwsIamUserSecretRotationSecretsMappingFields";
 import { AzureClientSecretRotationSecretsMappingFields } from "./AzureClientSecretRotationSecretsMappingFields";
+import { ConvexAccessKeyRotationSecretsMappingFields } from "./ConvexAccessKeyRotationSecretsMappingFields";
 import { DatabricksServicePrincipalSecretRotationSecretsMappingFields } from "./DatabricksServicePrincipalSecretRotationSecretsMappingFields";
 import { DatadogApplicationKeySecretRotationSecretsMappingFields } from "./DatadogApplicationKeySecretRotationSecretsMappingFields";
 import { DbtServiceTokenRotationSecretsMappingFields } from "./DbtServiceTokenRotationSecretsMappingFields";

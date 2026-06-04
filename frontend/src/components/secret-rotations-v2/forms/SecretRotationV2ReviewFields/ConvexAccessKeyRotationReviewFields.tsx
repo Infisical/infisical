@@ -18,9 +18,7 @@ export const ConvexAccessKeyRotationReviewFields = () => {
   return (
     <>
       <SecretRotationReviewSection label="Parameters">
-        <GenericFieldLabel label="Name Prefix">
-          {parameters.namePrefix}
-        </GenericFieldLabel>
+        <GenericFieldLabel label="Name Prefix">{parameters.namePrefix}</GenericFieldLabel>
       </SecretRotationReviewSection>
       <SecretRotationReviewSection label="Secrets Mapping">
         <GenericFieldLabel label="Access Key">{accessKey}</GenericFieldLabel>
