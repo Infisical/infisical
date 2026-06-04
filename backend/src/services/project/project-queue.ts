@@ -693,11 +693,11 @@ export const projectQueueFactory = ({
 
       const updates: { id: string; secretValueBlindIndex: string }[] = [];
       for (const secret of secrets) {
-        if (!secret.encryptedValue) continue;
-
-        const decryptedValue = decryptor({ cipherTextBlob: secret.encryptedValue });
-        const blindIndex = await generateSecretBlindIndex(decryptedValue);
-        updates.push({ id: secret.id, secretValueBlindIndex: blindIndex });
+        if (secret.encryptedValue) {
+          const decryptedValue = decryptor({ cipherTextBlob: secret.encryptedValue });
+          const blindIndex = await generateSecretBlindIndex(decryptedValue);
+          updates.push({ id: secret.id, secretValueBlindIndex: blindIndex });
+        }
       }
 
       if (updates.length > 0) {
@@ -710,7 +710,7 @@ export const projectQueueFactory = ({
       );
 
       // Prevents job from being marked as stalled
-      job.updateProgress(totalProcessed);
+      await job.updateProgress(totalProcessed);
 
       if (secrets.length < BATCH_SIZE) break;
 
