@@ -622,10 +622,6 @@ const buildMemberPermission = () => {
   can(OrgPermissionRelayActions.CreateRelays, OrgPermissionSubjects.Relay);
   can(OrgPermissionRelayActions.EditRelays, OrgPermissionSubjects.Relay);
 
-  can(OrgPermissionKmipServerActions.ListKmipServers, OrgPermissionSubjects.KmipServer);
-  can(OrgPermissionKmipServerActions.CreateKmipServers, OrgPermissionSubjects.KmipServer);
-  can(OrgPermissionKmipServerActions.EditKmipServers, OrgPermissionSubjects.KmipServer);
-
   can(OrgPermissionMachineIdentityAuthTemplateActions.ListTemplates, OrgPermissionSubjects.MachineIdentityAuthTemplate);
   can(
     OrgPermissionMachineIdentityAuthTemplateActions.UnlinkTemplates,
