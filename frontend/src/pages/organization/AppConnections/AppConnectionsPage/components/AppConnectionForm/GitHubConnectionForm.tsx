@@ -38,11 +38,7 @@ import {
   useGetAppConnectionOption
 } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
-import {
-  fetchGitHubAppInstallationStatus,
-  TGitHubApp,
-  useListGitHubApps
-} from "@app/hooks/api/gitHubApps";
+import { TGitHubApp, useListGitHubApps } from "@app/hooks/api/gitHubApps";
 
 import { GitHubFormData } from "../../../OauthCallbackPage/OauthCallbackPage.types";
 import {
@@ -320,29 +316,9 @@ export const GitHubConnectionForm = ({ appConnection, projectId, onSubmit }: Pro
         // to the instance-default app on the backend.
         storeConnectionFormData(formData, installState, targetApp?.id ?? undefined);
 
-        // GitHub never redirects back from the install page when the app is already installed, so
-        // installed apps go through the OAuth authorize flow instead — the user re-authorizes
-        // (auto-approved if previously authorized) and the backend resolves the installation.
-        // Skipped for the shared app on Infisical Cloud, where installations from unrelated orgs
-        // make the check meaningless.
-        if (targetApp?.id || !isInfisicalCloud()) {
-          try {
-            const { installed, clientId } = await fetchGitHubAppInstallationStatus({
-              gitHubAppId: targetApp?.id ?? undefined
-            });
-
-            if (installed) {
-              window.location.assign(
-                `${githubHost}/login/oauth/authorize?client_id=${clientId}&state=${installState}&redirect_uri=${window.location.origin}/organization/app-connections/github/oauth/callback`
-              );
-              break;
-            }
-          } catch {
-            // fall through to the install flow — first-time installs must keep working even if
-            // the status check is unavailable
-          }
-        }
-
+        // Always route through GitHub's install flow so the user explicitly selects the target
+        // account; GitHub redirects back with the chosen installation_id, which the backend binds
+        // directly (no server-side guessing of which installation to use).
         window.location.assign(
           `${githubHost}/${formData.credentials?.instanceType === "server" ? "github-apps" : "apps"}/${slug}/installations/new?state=${installState}`
         );

@@ -816,37 +816,19 @@ export const validateGitHubConnectionCredentials = async (
     // installations are scoped to this GitHub App since the token is a user-to-server token
     const { installations } = installationsResp.data;
 
-    if (credentials.installationId) {
-      const { installationId } = credentials;
-      const matchingInstallation = installations.find((installation) => installation.id === +installationId);
+    // The installation is selected through GitHub's own install UI and returned to us as an explicit
+    // installationId (required) — never auto-resolved from the user's accessible installations, so we
+    // can't bind to an account the user merely belongs to rather than one they intended.
+    const { installationId } = credentials;
+    const matchingInstallation = installations.find((installation) => installation.id === +installationId);
 
-      if (!matchingInstallation) {
-        throw new ForbiddenRequestError({
-          message: "User does not have access to the provided installation"
-        });
-      }
-
-      resolvedInstallationId = credentials.installationId;
-    } else {
-      // already-installed app flow: GitHub doesn't redirect back through the install page, so the
-      // user only re-authorized via OAuth and the installation must be resolved from their access
-      if (installations.length === 0) {
-        throw new BadRequestError({
-          message:
-            "The GitHub App has no installations accessible to your GitHub account. Install the app on a GitHub account or organization you have access to, then try again."
-        });
-      }
-
-      if (installations.length > 1) {
-        throw new BadRequestError({
-          message: `The GitHub App is installed on multiple GitHub accounts accessible to you (${installations
-            .map((installation) => installation.account.login)
-            .join(", ")}). Unable to determine which installation to use.`
-        });
-      }
-
-      resolvedInstallationId = String(installations[0].id);
+    if (!matchingInstallation) {
+      throw new ForbiddenRequestError({
+        message: "User does not have access to the provided installation"
+      });
     }
+
+    resolvedInstallationId = installationId;
   }
 
   switch (method) {

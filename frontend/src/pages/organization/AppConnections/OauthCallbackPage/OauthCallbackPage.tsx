@@ -365,10 +365,9 @@ export const OAuthCallbackPage = () => {
 
     try {
       const gitHubAppId = (credentials as { gitHubAppId?: string | null } | undefined)?.gitHubAppId;
-      // Fresh installs return from GitHub with an installation_id. Already-installed apps come
-      // back through the OAuth authorize flow without one — the stored method tells us it's still
-      // an App connection (the backend resolves the installation from the user's access).
-      const isAppMethod = formData.method === GitHubConnectionMethod.App || Boolean(installationId);
+      // App connections always route through GitHub's install flow, which returns an installation_id;
+      // its presence is what distinguishes an App callback from an OAuth callback.
+      const isAppMethod = Boolean(installationId);
 
       const appCredentials = {
         code: code as string,
