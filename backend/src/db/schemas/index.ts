@@ -60,6 +60,7 @@ export * from "./gateways";
 export * from "./gateways-v2";
 export * from "./git-app-install-sessions";
 export * from "./git-app-org";
+export * from "./github-app-connections";
 export * from "./github-apps";
 export * from "./github-org-sync-configs";
 export * from "./group-project-membership-roles";

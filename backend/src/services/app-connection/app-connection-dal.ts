@@ -203,23 +203,6 @@ export const appConnectionDALFactory = (db: TDbClient) => {
     return parseInt(String(result?.count || "0"), 10);
   };
 
-  // Returns the org's GitHub App method connections. Which GitHub App each connection references
-  // lives inside the encrypted credentials, so callers decrypt to group/count per app.
-  const findGitHubAppMethodConnections = async (orgId: string, tx?: Knex) => {
-    const rows = await (tx || db.replicaNode())(TableName.AppConnection)
-      .where(`${TableName.AppConnection}.orgId`, orgId)
-      .andWhere(`${TableName.AppConnection}.app`, "github")
-      .andWhere(`${TableName.AppConnection}.method`, "github-app")
-      .select(
-        db.ref("id").withSchema(TableName.AppConnection),
-        db.ref("orgId").withSchema(TableName.AppConnection),
-        db.ref("projectId").withSchema(TableName.AppConnection),
-        db.ref("encryptedCredentials").withSchema(TableName.AppConnection)
-      );
-
-    return rows;
-  };
-
   return {
     ...appConnectionOrm,
     findAppConnectionUsageById,
@@ -227,7 +210,6 @@ export const appConnectionDALFactory = (db: TDbClient) => {
     findByGatewayId,
     countByGatewayId,
     findByGatewayPoolId,
-    countByGatewayPoolId,
-    findGitHubAppMethodConnections
+    countByGatewayPoolId
   };
 };

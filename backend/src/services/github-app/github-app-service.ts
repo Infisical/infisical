@@ -1,7 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 import { AxiosError } from "axios";
 import jwt from "jsonwebtoken";
-import { Knex } from "knex";
 
 import { OrganizationActionScope } from "@app/db/schemas";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
@@ -13,8 +12,6 @@ import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { safeRequest } from "@app/lib/validator/safe-request";
-import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
-import { decryptAppConnectionCredentials } from "@app/services/app-connection/app-connection-fns";
 import {
   assertPlatformGitHubHostAllowed,
   buildGitHubAppJwtHeaders,
@@ -39,7 +36,6 @@ import {
 
 type TGitHubAppServiceFactoryDep = {
   gitHubAppDAL: TGitHubAppDALFactory;
-  appConnectionDAL: Pick<TAppConnectionDALFactory, "findGitHubAppMethodConnections">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX" | "deleteItem">;
@@ -49,32 +45,10 @@ export type TGitHubAppServiceFactory = ReturnType<typeof gitHubAppServiceFactory
 
 export const gitHubAppServiceFactory = ({
   gitHubAppDAL,
-  appConnectionDAL,
   permissionService,
   kmsService,
   keyStore
 }: TGitHubAppServiceFactoryDep) => {
-  const countConnectionsByGitHubApp = async (orgId: string, tx?: Knex) => {
-    const connections = await appConnectionDAL.findGitHubAppMethodConnections(orgId, tx);
-
-    const counts = new Map<string | null, number>();
-    await Promise.all(
-      connections.map(async (connection) => {
-        const credentials = await decryptAppConnectionCredentials({
-          orgId: connection.orgId,
-          projectId: connection.projectId,
-          encryptedCredentials: connection.encryptedCredentials,
-          kmsService
-        });
-
-        const gitHubAppId = (credentials as { gitHubAppId?: string | null }).gitHubAppId ?? null;
-        counts.set(gitHubAppId, (counts.get(gitHubAppId) ?? 0) + 1);
-      })
-    );
-
-    return counts;
-  };
-
   const listGitHubApps = async ({ orgPermission }: TListGitHubAppsDTO): Promise<TSanitizedGitHubApp[]> => {
     const { permission } = await permissionService.getOrgPermission({
       actor: orgPermission.type,
@@ -89,7 +63,7 @@ export const gitHubAppServiceFactory = ({
 
     const apps = await gitHubAppDAL.find({ orgId: orgPermission.orgId });
 
-    const countByAppId = await countConnectionsByGitHubApp(orgPermission.orgId);
+    const countByAppId = await gitHubAppDAL.countConnectionsPerApp(orgPermission.orgId);
 
     const dbApps: TSanitizedGitHubApp[] = apps.map((app) => ({
       id: app.id,
@@ -211,7 +185,7 @@ export const gitHubAppServiceFactory = ({
         throw new NotFoundError({ message: `GitHub App with id ${id} not found in this organization.` });
       }
 
-      const connectionCounts = await countConnectionsByGitHubApp(orgPermission.orgId, tx);
+      const connectionCounts = await gitHubAppDAL.countConnectionsPerApp(orgPermission.orgId, tx);
       const connectionCount = connectionCounts.get(existing.id) ?? 0;
 
       if (connectionCount > 0) {
@@ -234,7 +208,19 @@ export const gitHubAppServiceFactory = ({
         updatedAt: existing.updatedAt
       };
 
-      await gitHubAppDAL.deleteById(existing.id, tx);
+      try {
+        await gitHubAppDAL.deleteById(existing.id, tx);
+      } catch (err) {
+        if (
+          err instanceof DatabaseError &&
+          (err.error as { code: string })?.code === DatabaseErrorCode.ForeignKeyViolation
+        ) {
+          throw new BadRequestError({
+            message: `Cannot delete GitHub App "${existing.name}" while it is in use by a connection. Remove those connections first.`
+          });
+        }
+        throw err;
+      }
 
       return result;
     });
