@@ -1,5 +1,6 @@
 export { AuthMethodChart } from "./AuthMethodChart";
 export { CalendarCard } from "./CalendarCard";
+export { DuplicatedSecretsCard } from "./DuplicatedSecretsCard";
 export { CalendarGrid } from "./CalendarGrid";
 export { CalendarLegend } from "./CalendarLegend";
 export { InsightsSummaryCards } from "./InsightsSummaryCards";
