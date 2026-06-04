@@ -66,17 +66,11 @@ export const createGoDaddyApiClient = (authHeader: string, baseURL: string) => {
       await request.post(`${baseURL}/v1/certificates/${certificateId}/revoke`, { reason }, { headers });
     }, `certificate revocation for ${certificateId}`);
 
-  const cancelCertificate = async (certificateId: string) =>
-    wrap(async () => {
-      await request.post(`${baseURL}/v1/certificates/${certificateId}/cancel`, null, { headers });
-    }, `certificate cancellation for ${certificateId}`);
-
   return {
     createCertificate,
     getCertificate,
     downloadCertificate,
     renewCertificate,
-    revokeCertificate,
-    cancelCertificate
+    revokeCertificate
   };
 };
