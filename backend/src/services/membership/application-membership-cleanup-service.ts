@@ -14,7 +14,10 @@ export enum ApplicationCleanupActorKind {
 
 type TApplicationMembershipCleanupServiceFactoryDep = {
   membershipDAL: Pick<TMembershipDALFactory, "delete">;
-  approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "deleteStepApproversBySubject">;
+  approvalPolicyDAL: Pick<
+    TApprovalPolicyDALFactory,
+    "deleteStepApproversBySubject" | "deleteUserStepApproversInProjects"
+  >;
 };
 
 export type TApplicationMembershipCleanupServiceFactory = ReturnType<typeof applicationMembershipCleanupServiceFactory>;
@@ -61,5 +64,26 @@ export const applicationMembershipCleanupServiceFactory = ({
     );
   };
 
-  return { cleanupActorApplicationMemberships };
+  const cleanupUsersApplicationMemberships = async (
+    { projectId, userIds }: { projectId: string; userIds: string[] },
+    tx: Knex
+  ) => {
+    if (!userIds.length) return;
+
+    await approvalPolicyDAL.deleteUserStepApproversInProjects(
+      { projectIds: [projectId], userIds, scopeTypes: APPLICATION_APPROVAL_SCOPES },
+      tx
+    );
+
+    await membershipDAL.delete(
+      {
+        scope: RESOURCE_SCOPE,
+        scopeProjectId: projectId,
+        $in: { actorUserId: userIds }
+      },
+      tx
+    );
+  };
+
+  return { cleanupActorApplicationMemberships, cleanupUsersApplicationMemberships };
 };

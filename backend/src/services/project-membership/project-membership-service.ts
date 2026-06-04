@@ -64,7 +64,7 @@ type TProjectMembershipServiceFactoryDep = {
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
   applicationMembershipCleanupService: Pick<
     TApplicationMembershipCleanupServiceFactory,
-    "cleanupActorApplicationMemberships"
+    "cleanupActorApplicationMemberships" | "cleanupUsersApplicationMemberships"
   >;
 };
 
@@ -379,16 +379,13 @@ export const projectMembershipServiceFactory = ({
         tx
       );
 
-      for (const { user } of projectMembers) {
-        await applicationMembershipCleanupService.cleanupActorApplicationMemberships(
-          {
-            projectId,
-            actorKind: ApplicationCleanupActorKind.User,
-            actorId: user.id
-          },
-          tx
-        );
-      }
+      await applicationMembershipCleanupService.cleanupUsersApplicationMemberships(
+        {
+          projectId,
+          userIds: projectMembers.map(({ user }) => user.id)
+        },
+        tx
+      );
 
       await secretReminderRecipientsDAL.delete(
         {
