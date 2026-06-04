@@ -288,6 +288,7 @@ export async function up(knex: Knex): Promise<void> {
           .join(TableName.MembershipRole, `${TableName.MembershipRole}.membershipId`, `${TableName.Membership}.id`)
           .where(`${TableName.Membership}.scope`, AccessScope.Organization)
           .where(`${TableName.Membership}.scopeOrgId`, orgId)
+          .where(`${TableName.Membership}.isActive`, true)
           .where(`${TableName.MembershipRole}.role`, OrgMembershipRole.Admin)
           .whereNotNull(`${TableName.Membership}.actorUserId`)
           .select(`${TableName.Membership}.actorUserId as userId`)
@@ -299,7 +300,7 @@ export async function up(knex: Knex): Promise<void> {
 
     for (const project of oldPamProjects) {
       const projectMembers = await knex(TableName.Membership)
-        .where({ scope: AccessScope.Project, scopeProjectId: project.id })
+        .where({ scope: AccessScope.Project, scopeProjectId: project.id, isActive: true })
         .whereNotNull("actorUserId")
         .select("id", "actorUserId as userId");
 
@@ -340,7 +341,7 @@ export async function up(knex: Knex): Promise<void> {
       const folderId = projectToFolder[project.id];
 
       const projectMembers = await knex(TableName.Membership)
-        .where({ scope: AccessScope.Project, scopeProjectId: project.id })
+        .where({ scope: AccessScope.Project, scopeProjectId: project.id, isActive: true })
         .whereNotNull("actorUserId")
         .select("id", "actorUserId as userId");
 
