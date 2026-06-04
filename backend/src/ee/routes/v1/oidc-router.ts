@@ -291,8 +291,8 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
             .nativeEnum(OIDCJWTSignatureAlgorithm)
             .optional()
             .describe(OidcSSo.UPDATE_CONFIG.jwtSignatureAlgorithm),
-          claimEmailPath: z.string().trim().optional().describe(OidcSSo.UPDATE_CONFIG.claimEmailPath),
-          claimNamePath: z.string().trim().optional().describe(OidcSSo.UPDATE_CONFIG.claimNamePath)
+          claimEmailPath: z.string().trim().nullable().optional().describe(OidcSSo.UPDATE_CONFIG.claimEmailPath),
+          claimNamePath: z.string().trim().nullable().optional().describe(OidcSSo.UPDATE_CONFIG.claimNamePath)
         })
         .partial()
         .merge(z.object({ organizationId: z.string().describe(OidcSSo.UPDATE_CONFIG.organizationId) })),
@@ -399,8 +399,8 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
             .optional()
             .default(OIDCJWTSignatureAlgorithm.RS256)
             .describe(OidcSSo.CREATE_CONFIG.jwtSignatureAlgorithm),
-          claimEmailPath: z.string().trim().optional().describe(OidcSSo.CREATE_CONFIG.claimEmailPath),
-          claimNamePath: z.string().trim().optional().describe(OidcSSo.CREATE_CONFIG.claimNamePath)
+          claimEmailPath: z.string().trim().nullable().optional().describe(OidcSSo.CREATE_CONFIG.claimEmailPath),
+          claimNamePath: z.string().trim().nullable().optional().describe(OidcSSo.CREATE_CONFIG.claimNamePath)
         })
         .superRefine((data, ctx) => {
           if (data.configurationType === OIDCConfigurationType.CUSTOM) {

@@ -50,8 +50,8 @@ export type TCreateOidcCfgDTO = {
   organizationId: string;
   manageGroupMemberships: boolean;
   jwtSignatureAlgorithm: OIDCJWTSignatureAlgorithm;
-  claimEmailPath?: string;
-  claimNamePath?: string;
+  claimEmailPath?: string | null;
+  claimNamePath?: string | null;
 } & TGenericPermission;
 
 export type TUpdateOidcCfgDTO = Partial<{
@@ -69,7 +69,7 @@ export type TUpdateOidcCfgDTO = Partial<{
   organizationId: string;
   manageGroupMemberships: boolean;
   jwtSignatureAlgorithm: OIDCJWTSignatureAlgorithm;
-  claimEmailPath: string;
-  claimNamePath: string;
+  claimEmailPath: string | null;
+  claimNamePath: string | null;
 }> &
   TGenericPermission;
