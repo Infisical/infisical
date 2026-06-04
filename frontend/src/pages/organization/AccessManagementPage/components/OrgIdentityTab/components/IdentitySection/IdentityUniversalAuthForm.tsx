@@ -35,6 +35,7 @@ import {
 } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
+import { LOCKOUT_DEFAULT_VALUES } from "./lockout/constants";
 import { LockoutTab } from "./lockout/LockoutTab";
 import { superRefineLockout } from "./lockout/super-refine";
 import { AccessTokenNumUsesLimitField } from "./shared/AccessTokenNumUsesLimitField";
@@ -118,7 +119,8 @@ export const IdentityUniversalAuthForm = ({
     handleSubmit,
     reset,
     formState: { isSubmitting },
-    watch
+    watch,
+    trigger
   } = useForm<FormData>({
     resolver,
     defaultValues: {
@@ -128,12 +130,7 @@ export const IdentityUniversalAuthForm = ({
       clientSecretTrustedIps: DEFAULT_TRUSTED_IPS,
       accessTokenTrustedIps: DEFAULT_TRUSTED_IPS,
       accessTokenPeriod: "0",
-      lockoutEnabled: true,
-      lockoutThreshold: "3",
-      lockoutDurationValue: "5",
-      lockoutDurationUnit: "m",
-      lockoutCounterResetValue: "30",
-      lockoutCounterResetUnit: "s"
+      ...LOCKOUT_DEFAULT_VALUES
     }
   });
 
@@ -175,12 +172,7 @@ export const IdentityUniversalAuthForm = ({
         accessTokenPeriod: "0",
         clientSecretTrustedIps: DEFAULT_TRUSTED_IPS,
         accessTokenTrustedIps: DEFAULT_TRUSTED_IPS,
-        lockoutEnabled: true,
-        lockoutThreshold: "3",
-        lockoutDurationValue: "5",
-        lockoutDurationUnit: "m",
-        lockoutCounterResetValue: "30",
-        lockoutCounterResetUnit: "s"
+        ...LOCKOUT_DEFAULT_VALUES
       });
     }
   }, [data]);
@@ -322,6 +314,7 @@ export const IdentityUniversalAuthForm = ({
         </TabsContent>
         <LockoutTab
           control={control}
+          trigger={trigger}
           lockoutEnabled={lockoutEnabledWatch}
           lockoutThreshold={lockoutThresholdWatch}
           lockoutDurationValue={lockoutDurationValueWatch}

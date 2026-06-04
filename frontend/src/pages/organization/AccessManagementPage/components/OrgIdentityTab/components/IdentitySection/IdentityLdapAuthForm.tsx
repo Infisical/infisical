@@ -52,6 +52,7 @@ import {
 import { useGetAvailableTemplates } from "@app/hooks/api/identityAuthTemplates/queries";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
+import { LOCKOUT_DEFAULT_VALUES } from "./lockout/constants";
 import { LockoutTab } from "./lockout/LockoutTab";
 import { superRefineLockout } from "./lockout/super-refine";
 import { AccessTokenNumUsesLimitField } from "./shared/AccessTokenNumUsesLimitField";
@@ -209,6 +210,7 @@ export const IdentityLdapAuthForm = ({
     reset,
     watch,
     setValue,
+    trigger,
     formState: { isSubmitting }
   } = useForm<FormData>({
     resolver,
@@ -224,12 +226,7 @@ export const IdentityLdapAuthForm = ({
       accessTokenMaxTTL: "2592000",
       accessTokenNumUsesLimit: "",
       accessTokenTrustedIps: DEFAULT_TRUSTED_IPS,
-      lockoutEnabled: true,
-      lockoutThreshold: "3",
-      lockoutDurationValue: "5",
-      lockoutDurationUnit: "m",
-      lockoutCounterResetValue: "30",
-      lockoutCounterResetUnit: "s"
+      ...LOCKOUT_DEFAULT_VALUES
     }
   });
 
@@ -305,12 +302,7 @@ export const IdentityLdapAuthForm = ({
       accessTokenMaxTTL: "2592000",
       accessTokenNumUsesLimit: "",
       accessTokenTrustedIps: DEFAULT_TRUSTED_IPS,
-      lockoutEnabled: true,
-      lockoutThreshold: "3",
-      lockoutDurationValue: "5",
-      lockoutDurationUnit: "m",
-      lockoutCounterResetValue: "30",
-      lockoutCounterResetUnit: "s"
+      ...LOCKOUT_DEFAULT_VALUES
     });
   }, [data, reset]);
 
@@ -767,6 +759,7 @@ export const IdentityLdapAuthForm = ({
         </TabsContent>
         <LockoutTab
           control={control}
+          trigger={trigger}
           lockoutEnabled={lockoutEnabledWatch}
           lockoutThreshold={lockoutThresholdWatch}
           lockoutDurationValue={lockoutDurationValueWatch}

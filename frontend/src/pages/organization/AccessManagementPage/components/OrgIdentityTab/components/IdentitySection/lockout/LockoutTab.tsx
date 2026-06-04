@@ -1,4 +1,5 @@
-import { Control, Controller } from "react-hook-form";
+import { type FocusEvent } from "react";
+import { Control, Controller, UseFormTrigger } from "react-hook-form";
 import { InfoIcon } from "lucide-react";
 
 import {
@@ -24,9 +25,22 @@ import {
 import { useScopeVariant } from "@app/hooks";
 
 import { IdentityFormTab } from "../types";
+import { LOCKOUT_DEFAULT_VALUES } from "./constants";
+
+// Numeric lockout fields must never be left empty, otherwise the description label renders
+// values like "m" instead of "5m". On blur, an empty field reverts to its default.
+const handleRevertOnBlur =
+  (field: { onChange: (value: string) => void; onBlur: () => void }, fallback: string) =>
+  (e: FocusEvent<HTMLInputElement>) => {
+    field.onBlur();
+    if (e.target.value.trim() === "") {
+      field.onChange(fallback);
+    }
+  };
 
 export const LockoutTab = ({
   control,
+  trigger,
   lockoutEnabled,
   lockoutThreshold,
   lockoutDurationValue,
@@ -35,6 +49,7 @@ export const LockoutTab = ({
   lockoutCounterResetUnit
 }: {
   control: Control<any>;
+  trigger: UseFormTrigger<any>;
   lockoutEnabled: boolean;
   lockoutThreshold: string;
   lockoutDurationValue: string;
@@ -43,6 +58,13 @@ export const LockoutTab = ({
   lockoutCounterResetUnit: "s" | "m" | "h";
 }) => {
   const scopeVariant = useScopeVariant();
+
+  // Fall back to defaults so the description never collapses to "m"/"s"
+  // while a value field is momentarily empty during editing.
+  const thresholdLabel = lockoutThreshold || LOCKOUT_DEFAULT_VALUES.lockoutThreshold;
+  const durationLabel = lockoutDurationValue || LOCKOUT_DEFAULT_VALUES.lockoutDurationValue;
+  const counterResetLabel =
+    lockoutCounterResetValue || LOCKOUT_DEFAULT_VALUES.lockoutCounterResetValue;
 
   return (
     <TabsContent value={IdentityFormTab.Lockout}>
@@ -56,7 +78,7 @@ export const LockoutTab = ({
                 <FieldContent>
                   <FieldTitle>Lockout</FieldTitle>
                   <FieldDescription>
-                    {`The lockout feature will prevent login attempts for ${lockoutDurationValue}${lockoutDurationUnit} after ${lockoutThreshold} consecutive login failures. If ${lockoutCounterResetValue}${lockoutCounterResetUnit} pass after the most recent failure, the lockout counter resets.`}
+                    {`The lockout feature will prevent login attempts for ${durationLabel}${lockoutDurationUnit} after ${thresholdLabel} consecutive login failures. If ${counterResetLabel}${lockoutCounterResetUnit} pass after the most recent failure, the lockout counter resets.`}
                   </FieldDescription>
                   <FieldError>{error?.message}</FieldError>
                 </FieldContent>
@@ -64,7 +86,19 @@ export const LockoutTab = ({
                   id="lockout-enabled"
                   variant={scopeVariant}
                   checked={value}
-                  onCheckedChange={onChange}
+                  onCheckedChange={async (checked) => {
+                    // Lockout values are always submitted, so block disabling while any are
+                    // invalid; otherwise invalid values would silently reach the backend.
+                    if (!checked) {
+                      const isValid = await trigger([
+                        "lockoutThreshold",
+                        "lockoutDurationValue",
+                        "lockoutCounterResetValue"
+                      ]);
+                      if (!isValid) return;
+                    }
+                    onChange(checked);
+                  }}
                 />
               </Field>
             );
@@ -94,6 +128,7 @@ export const LockoutTab = ({
                   placeholder="Threshold..."
                   disabled={!lockoutEnabled}
                   isError={Boolean(error)}
+                  onBlur={handleRevertOnBlur(field, LOCKOUT_DEFAULT_VALUES.lockoutThreshold)}
                 />
                 <FieldError>{error?.message}</FieldError>
               </Field>
@@ -128,6 +163,7 @@ export const LockoutTab = ({
                     placeholder="Duration..."
                     disabled={!lockoutEnabled}
                     isError={Boolean(error)}
+                    onBlur={handleRevertOnBlur(field, LOCKOUT_DEFAULT_VALUES.lockoutDurationValue)}
                   />
                   <FieldError>{error?.message}</FieldError>
                 </Field>
@@ -191,6 +227,10 @@ export const LockoutTab = ({
                     type="number"
                     disabled={!lockoutEnabled}
                     isError={Boolean(error)}
+                    onBlur={handleRevertOnBlur(
+                      field,
+                      LOCKOUT_DEFAULT_VALUES.lockoutCounterResetValue
+                    )}
                   />
                   <FieldError>{error?.message}</FieldError>
                 </Field>
