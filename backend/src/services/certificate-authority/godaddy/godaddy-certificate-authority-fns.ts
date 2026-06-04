@@ -1,5 +1,6 @@
 /* eslint-disable no-await-in-loop */
 import * as x509 from "@peculiar/x509";
+import RE2 from "re2";
 
 import { TableName } from "@app/db/schemas";
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -89,8 +90,9 @@ const mapCrlReasonToGoDaddyReason = (reason: CrlReason): string => {
 };
 
 const TTL_DAYS_PER_YEAR = 365;
+const TTL_RE2 = new RE2("^(\\d+)([dhmy])$");
 const parseTtlToYears = (ttl: string): number => {
-  const match = ttl.match(/^(\d+)([dhmy])$/);
+  const match = ttl.match(TTL_RE2);
   if (!match) {
     throw new BadRequestError({ message: `Invalid TTL format: ${ttl}` });
   }
