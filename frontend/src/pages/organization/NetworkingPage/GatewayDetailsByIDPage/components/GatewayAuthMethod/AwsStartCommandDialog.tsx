@@ -51,7 +51,7 @@ export const AwsStartCommandDialog = ({ isOpen, onOpenChange, gatewayId, gateway
     return `sudo infisical gateway systemd install ${gatewayName} --enroll-method=aws --gateway-id=${gatewayId}${relayPart} --domain=${siteURL}`;
   }, [gatewayName, gatewayId, resolvedRelayName, siteURL]);
 
-  const startServiceCommand = "sudo systemctl start infisical-gateway";
+  const startServiceCommand = `sudo systemctl start ${gatewayName}`;
 
   const copy = (text: string, label: string) => {
     navigator.clipboard.writeText(text);

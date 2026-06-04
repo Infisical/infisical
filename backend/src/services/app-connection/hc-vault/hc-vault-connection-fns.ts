@@ -70,6 +70,10 @@ const isGateway404Error = (error: unknown): boolean => {
   return error instanceof BadRequestError && error.message?.includes("Request failed with status code 404");
 };
 
+const isGateway301Error = (error: unknown): boolean => {
+  return error instanceof BadRequestError && error.message?.includes("Request failed with status code 301");
+};
+
 // Helper to extract error message from Vault API errors
 const getVaultErrorMessage = (error: unknown, fallback: string): string => {
   if (error instanceof AxiosError) {
@@ -216,7 +220,12 @@ export const requestWithHCVaultGateway = async <T>(
         } catch (error) {
           if (error instanceof AxiosError) {
             logger.error(
-              { message: error.message, data: (error.response as undefined | { data: unknown })?.data },
+              {
+                error,
+                message: error.message,
+                data: (error.response as undefined | { data: unknown })?.data,
+                url: url.toString()
+              },
               "Error during HashiCorp Vault gateway request:"
             );
           }
@@ -263,7 +272,12 @@ export const requestWithHCVaultGateway = async <T>(
       } catch (error) {
         if (error instanceof AxiosError) {
           logger.error(
-            { message: error.message, data: (error.response as undefined | { data: unknown })?.data },
+            {
+              error,
+              message: error.message,
+              data: (error.response as undefined | { data: unknown })?.data,
+              url: url.toString()
+            },
             "Error during HashiCorp Vault gateway request:"
           );
         }
@@ -479,6 +493,41 @@ export const listHCVaultPolicies = async (
   }
 };
 
+const fetchHCVaultNamespacesWithoutNamespaceHeader = async ({
+  connection,
+  gatewayService,
+  gatewayV2Service,
+  instanceUrl,
+  accessToken
+}: {
+  connection: THCVaultConnection;
+  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
+  instanceUrl: string;
+  accessToken: string;
+}): Promise<string[]> => {
+  try {
+    const { data } = await requestWithHCVaultGateway<{
+      data: { keys: string[] };
+    }>(connection, gatewayService, gatewayV2Service, {
+      url: `${instanceUrl}/v1/sys/namespaces?list=true`,
+      method: "GET",
+      headers: {
+        "X-Vault-Token": accessToken
+      }
+    });
+
+    return data.data.keys || [];
+  } catch (error: unknown) {
+    if (error instanceof AxiosError) {
+      throw new BadRequestError({
+        message: `Failed to list namespaces: ${error.message || "Unknown error"}`
+      });
+    }
+    throw error;
+  }
+};
+
 export const listHCVaultNamespaces = async (
   connection: THCVaultConnection,
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
@@ -518,6 +567,22 @@ export const listHCVaultNamespaces = async (
         // No child namespaces at this path
         return null;
       }
+
+      // vault 1.0.0 does not support namespace root or /, so we need to handle this case
+      // if the error is 301 and the namespace path is /, try to fetch the namespaces without the namespace header
+      if (
+        ((error instanceof AxiosError && error.response?.status === 301) || isGateway301Error(error)) &&
+        (namespacePath === "/" || namespacePath === "root")
+      ) {
+        return fetchHCVaultNamespacesWithoutNamespaceHeader({
+          connection,
+          gatewayService,
+          gatewayV2Service,
+          instanceUrl,
+          accessToken
+        });
+      }
+
       throw error;
     }
   };
@@ -608,20 +673,37 @@ export const listHCVaultMounts = async (
 
   const targetNamespace = namespace || connection.credentials.namespace;
 
-  const { data } = await requestWithHCVaultGateway<THCVaultMountResponse>(
-    connection,
-    gatewayService,
-    gatewayV2Service,
-    {
-      url: `${instanceUrl}/v1/sys/mounts`,
-      method: "GET",
-      headers: {
-        "X-Vault-Token": accessToken,
-        ...(targetNamespace ? { "X-Vault-Namespace": targetNamespace } : {})
-      }
-    },
-    gatewayDetails
-  );
+  const fetchMounts = (namespaceHeader?: string) =>
+    requestWithHCVaultGateway<THCVaultMountResponse>(
+      connection,
+      gatewayService,
+      gatewayV2Service,
+      {
+        url: `${instanceUrl}/v1/sys/mounts`,
+        method: "GET",
+        headers: {
+          "X-Vault-Token": accessToken,
+          ...(namespaceHeader ? { "X-Vault-Namespace": namespaceHeader } : {})
+        }
+      },
+      gatewayDetails
+    );
+
+  let data: THCVaultMountResponse;
+  try {
+    ({ data } = await fetchMounts(targetNamespace));
+  } catch (error) {
+    // vault 1.0.0 does not support namespace root or /, so we need to handle this case
+    // if the error is 301 and the namespace is root or /, try to fetch mounts without the namespace header
+    if (
+      ((error instanceof AxiosError && error.response?.status === 301) || isGateway301Error(error)) &&
+      (targetNamespace === "/" || targetNamespace === "root" || !targetNamespace)
+    ) {
+      ({ data } = await fetchMounts());
+    } else {
+      throw error;
+    }
+  }
 
   const mounts: THCVaultMount[] = [];
 
@@ -636,6 +718,15 @@ export const listHCVaultMounts = async (
   return mounts;
 };
 
+// vault 1.0.0 does not support namespace root or /, responding with a 301 when the namespace header is sent.
+// This sentinel signals the caller to retry the request without the X-Vault-Namespace header.
+class NamespaceHeaderNotSupportedError extends Error {
+  constructor() {
+    super("HashiCorp Vault rejected the namespace header");
+    this.name = "NamespaceHeaderNotSupportedError";
+  }
+}
+
 export const listHCVaultSecretPaths = async (
   namespace: string,
   connection: THCVaultConnection,
@@ -647,17 +738,22 @@ export const listHCVaultSecretPaths = async (
   const instanceUrl = await getHCVaultInstanceUrl(connection);
   const accessToken = await getHCVaultAccessToken(connection, gatewayService, gatewayV2Service);
 
-  const getPaths = async (mountPath: string, secretPath: string, kvVersion: "1" | "2"): Promise<string[] | null> => {
-    try {
-      let path: string;
-      if (kvVersion === "2") {
-        // For KV v2: /v1/{mount}/metadata/{path}?list=true
-        path = secretPath ? `${mountPath}/metadata/${secretPath}` : `${mountPath}/metadata`;
-      } else {
-        // For KV v1: /v1/{mount}/{path}?list=true
-        path = secretPath ? `${mountPath}/${secretPath}` : mountPath;
-      }
+  const getPaths = async (
+    mountPath: string,
+    secretPath: string,
+    kvVersion: "1" | "2",
+    skipNamespaceHeader: boolean = false
+  ): Promise<string[] | null> => {
+    let path: string;
+    if (kvVersion === "2") {
+      // For KV v2: /v1/{mount}/metadata/{path}?list=true
+      path = secretPath ? `${mountPath}/metadata/${secretPath}` : `${mountPath}/metadata`;
+    } else {
+      // For KV v1: /v1/{mount}/{path}?list=true
+      path = secretPath ? `${mountPath}/${secretPath}` : mountPath;
+    }
 
+    try {
       const { data } = await requestWithHCVaultGateway<{
         data: {
           keys: string[];
@@ -671,16 +767,25 @@ export const listHCVaultSecretPaths = async (
           method: "GET",
           headers: {
             "X-Vault-Token": accessToken,
-            "X-Vault-Namespace": namespace
+            ...(skipNamespaceHeader ? {} : { "X-Vault-Namespace": namespace })
           }
         },
         gatewayDetails
       );
-
       return data.data.keys;
     } catch (error) {
       if ((error instanceof AxiosError && error.response?.status === 404) || isGateway404Error(error)) {
         return null;
+      }
+
+      // vault 1.0.0 does not support namespace root or /, responding with a 301 when the namespace header is sent.
+      // Signal the caller to retry the whole mount without the namespace header.
+      if (
+        !skipNamespaceHeader &&
+        ((error instanceof AxiosError && error.response?.status === 301) || isGateway301Error(error)) &&
+        (namespace === "/" || namespace === "root" || !namespace)
+      ) {
+        throw new NamespaceHeaderNotSupportedError();
       }
 
       throw error;
@@ -692,9 +797,10 @@ export const listHCVaultSecretPaths = async (
     mountPath: string,
     kvVersion: "1" | "2",
     limiter: ReturnType<typeof createConcurrencyLimiter>,
-    currentPath: string = ""
+    currentPath: string = "",
+    skipNamespaceHeader: boolean = false
   ): Promise<string[]> => {
-    const paths = await limiter(() => getPaths(mountPath, currentPath, kvVersion));
+    const paths = await limiter(() => getPaths(mountPath, currentPath, kvVersion, skipNamespaceHeader));
 
     if (paths === null || paths.length === 0) {
       return [];
@@ -708,7 +814,7 @@ export const listHCVaultSecretPaths = async (
 
         if (path.endsWith("/")) {
           // it's a folder so we recurse into it
-          return recursivelyGetAllPaths(mountPath, kvVersion, limiter, fullItemPath);
+          return recursivelyGetAllPaths(mountPath, kvVersion, limiter, fullItemPath, skipNamespaceHeader);
         }
         // it's a secret so we return it
         return [`${mountPath}/${fullItemPath}`];
@@ -739,7 +845,15 @@ export const listHCVaultSecretPaths = async (
     kvMounts.map(async (mount) => {
       const kvVersion = mount.version === "2" ? "2" : "1";
       const cleanMountPath = mount.path.replace(/\/$/, ""); // Remove trailing slash
-      return recursivelyGetAllPaths(cleanMountPath, kvVersion, limiter);
+      try {
+        return await recursivelyGetAllPaths(cleanMountPath, kvVersion, limiter);
+      } catch (error) {
+        // Vault rejected the namespace header (301 on root/"/"), retry the mount without it.
+        if (error instanceof NamespaceHeaderNotSupportedError) {
+          return recursivelyGetAllPaths(cleanMountPath, kvVersion, limiter, "", true);
+        }
+        throw error;
+      }
     })
   );
 
@@ -757,7 +871,8 @@ const fetchVaultSecretAtPath = async ({
   accessToken,
   connection,
   gatewayService,
-  gatewayV2Service
+  gatewayV2Service,
+  skipNamespaceHeader = false
 }: {
   namespace: string;
   secretPath: string;
@@ -767,6 +882,7 @@ const fetchVaultSecretAtPath = async ({
   connection: THCVaultConnection;
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
+  skipNamespaceHeader: boolean;
 }): Promise<Record<string, JsonValue>> => {
   try {
     // Extract mount and path from the secretPath
@@ -827,13 +943,23 @@ const fetchVaultSecretAtPath = async ({
       method: "GET",
       headers: {
         "X-Vault-Token": accessToken,
-        "X-Vault-Namespace": namespace
+        ...(skipNamespaceHeader ? {} : { "X-Vault-Namespace": namespace })
       }
     });
 
     return data.data;
   } catch (error: unknown) {
     logger.error(error, "Unable to fetch secrets from HC Vault path");
+
+    // vault 1.0.0 does not support namespace root or /, responding with a 301 when the namespace header is sent.
+    // Signal the caller to retry the request without the namespace header.
+    if (
+      !skipNamespaceHeader &&
+      ((error instanceof AxiosError && error.response?.status === 301) || isGateway301Error(error)) &&
+      (namespace === "/" || namespace === "root" || !namespace)
+    ) {
+      throw new NamespaceHeaderNotSupportedError();
+    }
 
     if (error instanceof AxiosError) {
       throw new BadRequestError({
@@ -863,23 +989,55 @@ export const getHCVaultSecretsForPaths = async (
   const mounts = await listHCVaultMounts(connection, gatewayService, gatewayV2Service, namespace);
   const limiter = createConcurrencyLimiter(HC_VAULT_CONCURRENCY_LIMIT);
 
-  return Promise.all(
-    secretPaths.map((vaultSecretPath) =>
-      limiter(async () => {
-        const secrets = await fetchVaultSecretAtPath({
-          namespace,
-          secretPath: vaultSecretPath,
-          mounts,
-          instanceUrl,
-          accessToken,
-          connection,
-          gatewayService,
-          gatewayV2Service
-        });
-        return { vaultSecretPath, secrets };
-      })
-    )
+  if (secretPaths.length === 0) {
+    return [];
+  }
+
+  const fetchParams = {
+    namespace,
+    mounts,
+    instanceUrl,
+    accessToken,
+    connection,
+    gatewayService,
+    gatewayV2Service
+  };
+
+  const fetchOne = async (vaultSecretPath: string, skipNamespaceHeader: boolean) => ({
+    vaultSecretPath,
+    secrets: await fetchVaultSecretAtPath({
+      ...fetchParams,
+      secretPath: vaultSecretPath,
+      skipNamespaceHeader
+    })
+  });
+
+  const [firstPath, ...restPaths] = secretPaths;
+
+  // Probe with the first path: Vault 1.0.0 returns 301 for root/"/" when the namespace header is sent.
+  // so we need to remove the namespace header and retry the request.
+  let skipNamespaceHeader = false;
+  let firstResult: { vaultSecretPath: string; secrets: Record<string, JsonValue> };
+  try {
+    firstResult = await fetchOne(firstPath, false);
+  } catch (error) {
+    if (error instanceof NamespaceHeaderNotSupportedError) {
+      skipNamespaceHeader = true;
+      firstResult = await fetchOne(firstPath, true);
+    } else {
+      throw error;
+    }
+  }
+
+  if (restPaths.length === 0) {
+    return [firstResult];
+  }
+
+  const restResults = await Promise.all(
+    restPaths.map((vaultSecretPath) => limiter(() => fetchOne(vaultSecretPath, skipNamespaceHeader)))
   );
+
+  return [firstResult, ...restResults];
 };
 
 export const getHCVaultAuthMounts = async (

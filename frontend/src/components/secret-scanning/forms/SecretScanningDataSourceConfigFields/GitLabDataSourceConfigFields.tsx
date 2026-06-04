@@ -1,10 +1,11 @@
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Controller, useFormContext, useWatch } from "react-hook-form";
 import { MultiValue, SingleValue } from "react-select";
 import { faCircleInfo } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { FilterableSelect, FormControl, Select, SelectItem, Tooltip } from "@app/components/v2";
+import { useDebounce } from "@app/hooks";
 import {
   TGitLabGroup,
   TGitLabProject,
@@ -22,6 +23,31 @@ enum ScanMethod {
   SelectProjects = "select-projects"
 }
 
+const GITLAB_DATA_SOURCE_LIST_LIMIT = 20;
+
+const formatGitLabGroupOptionLabel = (group: TGitLabGroup) => (
+  <div className="flex min-w-0 items-center gap-2">
+    <span className="shrink-0">{group.name}</span>
+    {group.fullPath !== group.name && (
+      <span className="min-w-0 truncate text-mineshaft-400">{group.fullPath}</span>
+    )}
+  </div>
+);
+
+const formatGitLabProjectOptionLabel = (project: TGitLabProject) => {
+  const fullPathWithNamespace = project.name;
+  const shortName = fullPathWithNamespace.split("/").pop() || fullPathWithNamespace;
+
+  return (
+    <div className="flex min-w-0 items-center gap-2">
+      <span className="shrink-0">{shortName}</span>
+      {fullPathWithNamespace !== shortName && (
+        <span className="min-w-0 truncate text-mineshaft-400">{fullPathWithNamespace}</span>
+      )}
+    </div>
+  );
+};
+
 export const GitLabDataSourceConfigFields = () => {
   const { control, watch, setValue } = useFormContext<
     TSecretScanningDataSourceForm & {
@@ -35,15 +61,70 @@ export const GitLabDataSourceConfigFields = () => {
   const scope = watch("config.scope");
   const groupName = watch("config.groupName");
   const includeProjects = watch("config.includeProjects");
+  const projectId = watch("config.projectId");
+  const projectName = watch("config.projectName");
+  const groupId = watch("config.groupId");
+
+  const [projectSearch, setProjectSearch] = useState("");
+  const [debouncedProjectSearch] = useDebounce(projectSearch, 300);
+  const [groupSearch, setGroupSearch] = useState("");
+  const [debouncedGroupSearch] = useDebounce(groupSearch, 300);
 
   const { data: projects, isPending: isProjectsPending } = useGitLabConnectionListProjects(
     connectionId,
+    debouncedProjectSearch || undefined,
+    GITLAB_DATA_SOURCE_LIST_LIMIT,
     { enabled: Boolean(connectionId) }
   );
 
-  const { data: groups, isPending: isGroupsPending } = useGitLabConnectionListGroups(connectionId, {
-    enabled: Boolean(connectionId) && scope === GitLabDataSourceScope.Group
-  });
+  const { data: groups, isPending: isGroupsPending } = useGitLabConnectionListGroups(
+    connectionId,
+    debouncedGroupSearch || undefined,
+    GITLAB_DATA_SOURCE_LIST_LIMIT,
+    {
+      enabled: Boolean(connectionId) && scope === GitLabDataSourceScope.Group
+    }
+  );
+
+  const groupOptions = useMemo(() => {
+    const results = groups ?? [];
+    if (
+      groupId &&
+      groupName &&
+      !results.some((group) => Number.parseInt(group.id, 10) === groupId)
+    ) {
+      return [
+        { id: String(groupId), name: groupName, fullName: groupName, fullPath: groupName },
+        ...results
+      ];
+    }
+    return results;
+  }, [groups, groupId, groupName]);
+
+  const projectOptions = useMemo(() => {
+    const results = projects ?? [];
+    if (
+      projectId &&
+      projectName &&
+      !results.some((project) => Number.parseInt(project.id, 10) === projectId)
+    ) {
+      return [{ id: String(projectId), name: projectName }, ...results];
+    }
+    return results;
+  }, [projects, projectId, projectName]);
+
+  const includeProjectOptions = useMemo(() => {
+    const selectedGroupPath = (groups ?? []).find(
+      (group) => Number.parseInt(group.id, 10) === groupId
+    )?.fullPath;
+    const filtered = (projects ?? []).filter(
+      (project) => !selectedGroupPath || project.name.startsWith(`${selectedGroupPath}/`)
+    );
+    const missing = (includeProjects ?? [])
+      .filter((name) => name !== "*" && !filtered.some((project) => project.name === name))
+      .map((name) => ({ id: name, name }));
+    return [...missing, ...filtered];
+  }, [projects, groups, groupId, includeProjects]);
 
   const scanMethod =
     !includeProjects || includeProjects.includes("*")
@@ -64,6 +145,8 @@ export const GitLabDataSourceConfigFields = () => {
     setValue("config.projectId", undefined);
     // @ts-expect-error rhf doesn't like this but we need to reset
     setValue("config.groupId", undefined);
+    setProjectSearch("");
+    setGroupSearch("");
   };
 
   return (
@@ -133,7 +216,13 @@ export const GitLabDataSourceConfigFields = () => {
               helperText={
                 <Tooltip
                   className="max-w-md"
-                  content={<>Ensure that your connection has the correct permissions.</>}
+                  content={
+                    <>
+                      Ensure the project exists in the connection&apos;s GitLab instance URL and the
+                      connection has access to it. Only the first results are shown, search by name
+                      to find more.
+                    </>
+                  }
                 >
                   <div>
                     <span>Don&#39;t see the project you&#39;re looking for?</span>{" "}
@@ -145,16 +234,22 @@ export const GitLabDataSourceConfigFields = () => {
               <FilterableSelect
                 isLoading={isProjectsPending && Boolean(connectionId)}
                 isDisabled={!connectionId}
-                value={projects?.find((project) => value === Number.parseInt(project.id, 10))}
+                value={projectOptions.find((project) => value === Number.parseInt(project.id, 10))}
                 onChange={(newValue) => {
                   const project = newValue as SingleValue<TGitLabProject>;
 
                   onChange(project ? Number.parseInt(project.id, 10) : null);
                   setValue("config.projectName", project?.name ?? "");
                 }}
-                options={projects}
-                placeholder="Select project..."
-                getOptionLabel={(option) => option.name}
+                onInputChange={(newValue) => setProjectSearch(newValue)}
+                filterOption={null}
+                options={projectOptions}
+                placeholder="Search for a project..."
+                getOptionLabel={(option) => {
+                  const shortName = option.name.split("/").pop() || option.name;
+                  return `${shortName} · ${option.name}`;
+                }}
+                formatOptionLabel={formatGitLabProjectOptionLabel}
                 getOptionValue={(option) => option.name}
               />
             </FormControl>
@@ -173,7 +268,13 @@ export const GitLabDataSourceConfigFields = () => {
                 helperText={
                   <Tooltip
                     className="max-w-md"
-                    content={<>Ensure that your connection has the correct permissions.</>}
+                    content={
+                      <>
+                        Ensure the group exists in the connection&apos;s GitLab instance URL and the
+                        connection has access to it. Only the first results are shown, search by
+                        name to find more.
+                      </>
+                    }
                   >
                     <div>
                       <span>Don&#39;t see the group you&#39;re looking for?</span>{" "}
@@ -185,7 +286,7 @@ export const GitLabDataSourceConfigFields = () => {
                 <FilterableSelect
                   isLoading={isGroupsPending && Boolean(connectionId)}
                   isDisabled={!connectionId}
-                  value={groups?.find((group) => value === Number.parseInt(group.id, 10))}
+                  value={groupOptions.find((group) => value === Number.parseInt(group.id, 10))}
                   onChange={(newValue) => {
                     const group = newValue as SingleValue<TGitLabGroup>;
 
@@ -193,9 +294,12 @@ export const GitLabDataSourceConfigFields = () => {
                     setValue("config.groupName", group?.fullName ?? "");
                     setValue("config.includeProjects", ["*"]);
                   }}
-                  options={groups}
-                  placeholder="Select group..."
-                  getOptionLabel={(option) => option.fullName}
+                  onInputChange={(newValue) => setGroupSearch(newValue)}
+                  filterOption={null}
+                  options={groupOptions}
+                  placeholder="Search for a group..."
+                  getOptionLabel={(option) => `${option.name} · ${option.fullPath}`}
+                  formatOptionLabel={formatGitLabGroupOptionLabel}
                   getOptionValue={(option) => option.id}
                 />
               </FormControl>
@@ -234,7 +338,13 @@ export const GitLabDataSourceConfigFields = () => {
                   helperText={
                     <Tooltip
                       className="max-w-md"
-                      content={<>Ensure that your connection has the correct permissions.</>}
+                      content={
+                        <>
+                          Ensure the project exists in the connection&apos;s GitLab instance URL and
+                          the connection has access to it. Only the first results are shown, search
+                          by name to find more.
+                        </>
+                      }
                     >
                       <div>
                         <span>Don&#39;t see the project you&#39;re looking for?</span>{" "}
@@ -248,7 +358,7 @@ export const GitLabDataSourceConfigFields = () => {
                     isLoading={isProjectsPending && Boolean(connectionId)}
                     isDisabled={!connectionId || !groupName}
                     isMulti
-                    value={projects?.filter((project) => value.includes(project.name))}
+                    value={includeProjectOptions.filter((project) => value.includes(project.name))}
                     onChange={(newValue) => {
                       onChange(
                         newValue
@@ -256,9 +366,15 @@ export const GitLabDataSourceConfigFields = () => {
                           : null
                       );
                     }}
-                    options={projects?.filter((project) => project.name.startsWith(groupName))}
-                    placeholder="Select projects..."
-                    getOptionLabel={(option) => option.name}
+                    onInputChange={(newValue) => setProjectSearch(newValue)}
+                    filterOption={null}
+                    options={includeProjectOptions}
+                    placeholder="Search for projects..."
+                    getOptionLabel={(option) => {
+                      const shortName = option.name.split("/").pop() || option.name;
+                      return `${shortName} · ${option.name}`;
+                    }}
+                    formatOptionLabel={formatGitLabProjectOptionLabel}
                     getOptionValue={(option) => option.name}
                   />
                 </FormControl>

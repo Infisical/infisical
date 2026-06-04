@@ -15,6 +15,7 @@ export const orgProductStatsDALFactory = (db: TDbClient) => {
         .whereNull(`${TableName.Environment}.deleteAfter`)
         .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
         .where(`${TableName.Project}.orgId`, orgId)
+        .whereNull(`${TableName.Project}.deleteAfter`)
         .where(`${TableName.Project}.type`, ProjectType.SecretManager)
         .count(`${TableName.SecretV2}.id as count`)
         .first()) as { count: string } | undefined;
@@ -30,6 +31,7 @@ export const orgProductStatsDALFactory = (db: TDbClient) => {
       const result = (await (tx || db.replicaNode())(TableName.Certificate)
         .join(TableName.Project, `${TableName.Certificate}.projectId`, `${TableName.Project}.id`)
         .where(`${TableName.Project}.orgId`, orgId)
+        .whereNull(`${TableName.Project}.deleteAfter`)
         .where(`${TableName.Project}.type`, ProjectType.CertificateManager)
         .count(`${TableName.Certificate}.id as count`)
         .first()) as { count: string } | undefined;
@@ -45,6 +47,7 @@ export const orgProductStatsDALFactory = (db: TDbClient) => {
       const result = (await (tx || db.replicaNode())(TableName.CertificateAuthority)
         .join(TableName.Project, `${TableName.CertificateAuthority}.projectId`, `${TableName.Project}.id`)
         .where(`${TableName.Project}.orgId`, orgId)
+        .whereNull(`${TableName.Project}.deleteAfter`)
         .where(`${TableName.Project}.type`, ProjectType.CertificateManager)
         .count(`${TableName.CertificateAuthority}.id as count`)
         .first()) as { count: string } | undefined;
@@ -60,6 +63,7 @@ export const orgProductStatsDALFactory = (db: TDbClient) => {
       const result = (await (tx || db.replicaNode())(TableName.KmsKey)
         .join(TableName.Project, `${TableName.KmsKey}.projectId`, `${TableName.Project}.id`)
         .where(`${TableName.Project}.orgId`, orgId)
+        .whereNull(`${TableName.Project}.deleteAfter`)
         .where(`${TableName.Project}.type`, ProjectType.KMS)
         .count(`${TableName.KmsKey}.id as count`)
         .first()) as { count: string } | undefined;
@@ -75,6 +79,7 @@ export const orgProductStatsDALFactory = (db: TDbClient) => {
       const result = (await (tx || db.replicaNode())(TableName.SecretScanningDataSource)
         .join(TableName.Project, `${TableName.SecretScanningDataSource}.projectId`, `${TableName.Project}.id`)
         .where(`${TableName.Project}.orgId`, orgId)
+        .whereNull(`${TableName.Project}.deleteAfter`)
         .where(`${TableName.Project}.type`, ProjectType.SecretScanning)
         .count(`${TableName.SecretScanningDataSource}.id as count`)
         .first()) as { count: string } | undefined;
@@ -90,6 +95,7 @@ export const orgProductStatsDALFactory = (db: TDbClient) => {
       const result = (await (tx || db.replicaNode())(TableName.PamAccount)
         .join(TableName.Project, `${TableName.PamAccount}.projectId`, `${TableName.Project}.id`)
         .where(`${TableName.Project}.orgId`, orgId)
+        .whereNull(`${TableName.Project}.deleteAfter`)
         .where(`${TableName.Project}.type`, ProjectType.PAM)
         .count(`${TableName.PamAccount}.id as count`)
         .first()) as { count: string } | undefined;
@@ -105,6 +111,7 @@ export const orgProductStatsDALFactory = (db: TDbClient) => {
       const result = (await (tx || db.replicaNode())(TableName.Environment)
         .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
         .where(`${TableName.Project}.orgId`, orgId)
+        .whereNull(`${TableName.Project}.deleteAfter`)
         .where(`${TableName.Project}.type`, ProjectType.SecretManager)
         .whereNull(`${TableName.Environment}.deleteAfter`)
         .count(`${TableName.Environment}.id as count`)
@@ -121,6 +128,7 @@ export const orgProductStatsDALFactory = (db: TDbClient) => {
       const result = (await (tx || db.replicaNode())(TableName.PkiSigners)
         .join(TableName.Project, `${TableName.PkiSigners}.projectId`, `${TableName.Project}.id`)
         .where(`${TableName.Project}.orgId`, orgId)
+        .whereNull(`${TableName.Project}.deleteAfter`)
         .where(`${TableName.Project}.type`, ProjectType.CertificateManager)
         .count(`${TableName.PkiSigners}.id as count`)
         .first()) as { count: string } | undefined;
@@ -136,6 +144,7 @@ export const orgProductStatsDALFactory = (db: TDbClient) => {
       const result = (await (tx || db.replicaNode())(TableName.KmipClient)
         .join(TableName.Project, `${TableName.KmipClient}.projectId`, `${TableName.Project}.id`)
         .where(`${TableName.Project}.orgId`, orgId)
+        .whereNull(`${TableName.Project}.deleteAfter`)
         .where(`${TableName.Project}.type`, ProjectType.KMS)
         .count(`${TableName.KmipClient}.id as count`)
         .first()) as { count: string } | undefined;
@@ -156,6 +165,7 @@ export const orgProductStatsDALFactory = (db: TDbClient) => {
         )
         .join(TableName.Project, `${TableName.SecretScanningDataSource}.projectId`, `${TableName.Project}.id`)
         .where(`${TableName.Project}.orgId`, orgId)
+        .whereNull(`${TableName.Project}.deleteAfter`)
         .where(`${TableName.Project}.type`, ProjectType.SecretScanning)
         .count(`${TableName.SecretScanningResource}.id as count`)
         .first()) as { count: string } | undefined;
@@ -171,6 +181,7 @@ export const orgProductStatsDALFactory = (db: TDbClient) => {
       const result = (await (tx || db.replicaNode())(TableName.PamResource)
         .join(TableName.Project, `${TableName.PamResource}.projectId`, `${TableName.Project}.id`)
         .where(`${TableName.Project}.orgId`, orgId)
+        .whereNull(`${TableName.Project}.deleteAfter`)
         .where(`${TableName.Project}.type`, ProjectType.PAM)
         .count(`${TableName.PamResource}.id as count`)
         .first()) as { count: string } | undefined;
@@ -185,6 +196,7 @@ export const orgProductStatsDALFactory = (db: TDbClient) => {
     try {
       const results = (await (tx || db.replicaNode())(TableName.Project)
         .where("orgId", orgId)
+        .whereNull("deleteAfter")
         .groupBy("type")
         .select("type")
         .count("id as count")) as Array<{ type: string; count: string }>;

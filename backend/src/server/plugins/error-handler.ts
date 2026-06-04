@@ -22,7 +22,9 @@ import {
   ScimRequestError,
   UnauthorizedError
 } from "@app/lib/errors";
+import { classifyError } from "@app/lib/errors/classify";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
+import { coreHttpErrorCounter, rateLimitExceededCounter } from "@app/lib/telemetry/metrics";
 
 enum JWTErrors {
   JwtExpired = "jwt expired",
@@ -57,11 +59,11 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
     unit: "{error}"
   });
 
-  server.setErrorHandler((error, req, res) => {
+  server.setErrorHandler((error: Error, req, res) => {
     req.log.error(error);
     if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
       const { method } = req;
-      const route = req.routerPath;
+      const route = req.routeOptions.url;
       const errorType =
         error instanceof jwt.JsonWebTokenError ? "TokenError" : error.constructor.name || "UnknownError";
 
@@ -80,7 +82,7 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
 
       const attributes: Record<string, string | number> = {
         "http.request.method": method,
-        "http.route": route,
+        "http.route": route ?? "",
         "error.type": errorType,
         "error.name": error.name
       };
@@ -132,6 +134,15 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
       }
 
       errorCounter.add(1, attributes);
+
+      const coreAttrs: Record<string, string | number> = {
+        "http.request.method": method,
+        "http.route": route ?? "unknown",
+        "error.type": classifyError(error)
+      };
+      if (orgId) coreAttrs["infisical.organization.id"] = orgId;
+      if (projectDetails?.id) coreAttrs["infisical.project.id"] = projectDetails.id;
+      coreHttpErrorCounter.add(1, coreAttrs);
     }
 
     if (error instanceof BadRequestError) {
@@ -203,6 +214,10 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
         details: error?.details
       });
     } else if (error instanceof RateLimitError) {
+      rateLimitExceededCounter.add(1, {
+        "http.route": req.routeOptions.url ?? "unknown",
+        "http.request.method": req.method
+      });
       void res.status(HttpStatusCodes.TooManyRequests).send({
         reqId: req.id,
         statusCode: HttpStatusCodes.TooManyRequests,
@@ -260,7 +275,6 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
           status: error.status,
           type: `urn:ietf:params:acme:error:${error.type}`,
           detail: error.message
-          // TODO: add subproblems if they exist
         });
     } else if (error instanceof PolicyViolationError) {
       void res.status(HttpStatusCodes.Forbidden).send({

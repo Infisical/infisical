@@ -125,6 +125,7 @@ export enum TableName {
   AccessApprovalRequest = "access_approval_requests",
   AccessApprovalRequestReviewer = "access_approval_requests_reviewers",
   AccessApprovalPolicyEnvironment = "access_approval_policies_environments",
+  ProjectAccessRequest = "project_access_requests",
   SecretApprovalPolicy = "secret_approval_policies",
   SecretApprovalPolicyApprover = "secret_approval_policies_approvers",
   SecretApprovalPolicyBypasser = "secret_approval_policies_bypassers",
@@ -292,6 +293,7 @@ export enum TableName {
 
   // Code Signing
   PkiSigners = "pki_signers",
+  PkiSignerCertificateIssuanceJobs = "pki_signer_certificate_issuance_jobs",
   PkiSigningOperations = "pki_signing_operations",
 
   CaSigningConfig = "ca_signing_configs",
@@ -353,7 +355,7 @@ export enum ProjectMembershipRole {
   KmsCryptographicOperator = "cryptographic-operator"
 }
 
-export enum ApplicationMembershipRole {
+export enum ResourceMembershipRole {
   Admin = "admin",
   Operator = "operator",
   Auditor = "auditor",
@@ -361,7 +363,8 @@ export enum ApplicationMembershipRole {
 }
 
 export enum ResourceType {
-  CertificateApplication = "certificate-application"
+  CertificateApplication = "certificate-application",
+  Signer = "pki-signer"
 }
 
 export enum SecretEncryptionAlgo {

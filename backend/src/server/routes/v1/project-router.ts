@@ -85,6 +85,33 @@ const projectWithEnv = SanitizedProjectSchema.merge(
 export const registerProjectRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
+    url: "/me/project-access-requests",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      operationId: "getMyPendingProjectAccessRequests",
+      response: {
+        200: z.object({
+          requests: z
+            .object({
+              projectId: z.string(),
+              createdAt: z.date()
+            })
+            .array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      return server.services.project.getMyPendingProjectAccessRequests({
+        permission: req.permission
+      });
+    }
+  });
+
+  server.route({
+    method: "GET",
     url: "/:projectId/users",
     config: {
       rateLimit: readLimit
@@ -408,24 +435,30 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
+      // Soft delete: returns fast (single UPDATE). The async cleanup worker hard-deletes the project
+      // after its grace period.
       const project = await server.services.project.deleteProject({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
         filter: {
           type: ProjectFilterType.ID,
           projectId: req.params.projectId
-        },
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId
+        }
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
-        projectId: req.params.projectId,
+        projectId: project.id,
         event: {
           type: EventType.DELETE_PROJECT,
-          metadata: project
+          metadata: {
+            id: project.id,
+            name: project.name,
+            softDelete: true
+          }
         }
       });
 

@@ -1,0 +1,681 @@
+/* eslint-disable jsx-a11y/label-has-associated-control */
+import { useState } from "react";
+import { Controller, FormProvider, useFieldArray, useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { EllipsisVerticalIcon, InfoIcon, PencilIcon, PlusIcon, TrashIcon } from "lucide-react";
+
+import { createNotification } from "@app/components/notifications";
+import { GlobPatternTooltip, ProjectPermissionCan } from "@app/components/permissions";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  Badge,
+  Button,
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+  IconButton,
+  Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  Switch,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
+import { useProject } from "@app/context";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub
+} from "@app/context/ProjectPermissionContext/types";
+import {
+  useCreateSecretValidationRule,
+  useDeleteSecretValidationRule,
+  useListSecretValidationRules,
+  useUpdateSecretValidationRule
+} from "@app/hooks/api/secretValidationRules";
+import { SecretValidationRuleType } from "@app/hooks/api/secretValidationRules/types";
+
+import { ConstraintCard } from "./ConstraintCard";
+import {
+  CONSTRAINT_OPTIONS,
+  ConstraintTarget,
+  ConstraintType,
+  RULE_TYPE_LABELS,
+  ruleFormSchema,
+  RuleType,
+  TRuleForm
+} from "./SecretValidationRulesSection.utils";
+
+const RuleFormContent = ({
+  defaultValues,
+  isEditing,
+  initialIsActive = true,
+  environments,
+  onClose,
+  onSubmit
+}: {
+  defaultValues?: Partial<TRuleForm>;
+  isEditing: boolean;
+  initialIsActive?: boolean;
+  environments: { slug: string; name: string }[];
+  onClose: () => void;
+  onSubmit: (data: TRuleForm, isActive?: boolean) => void;
+}) => {
+  const [isActive, setIsActive] = useState(initialIsActive);
+
+  const form = useForm<TRuleForm>({
+    resolver: zodResolver(ruleFormSchema),
+    defaultValues: defaultValues || {
+      name: "",
+      description: "",
+      environment: null,
+      folderPath: "/**",
+      enforcement: {
+        type: RuleType.StaticSecrets,
+        inputs: {
+          constraints: []
+        }
+      }
+    }
+  });
+
+  const {
+    handleSubmit,
+    control,
+    formState: { errors }
+  } = form;
+
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: "enforcement.inputs.constraints"
+  });
+
+  const watchedConstraints = form.watch("enforcement.inputs.constraints");
+  const usedConstraintPairs = new Set(watchedConstraints?.map((c) => `${c.type}:${c.appliesTo}`));
+  const availableConstraintOptions = CONSTRAINT_OPTIONS.filter((opt) => {
+    const targets = opt.allowedTargets || [
+      ConstraintTarget.SecretKey,
+      ConstraintTarget.SecretValue
+    ];
+    return targets.some((target) => !usedConstraintPairs.has(`${opt.type}:${target}`));
+  });
+
+  return (
+    <FormProvider {...form}>
+      <form
+        onSubmit={handleSubmit((data) => onSubmit(data, isEditing ? isActive : undefined))}
+        className="flex h-full flex-col"
+      >
+        {isEditing && (
+          <div className="flex items-center justify-between border-b border-border px-6 py-3">
+            <span className="text-xs text-muted">{isActive ? "Enabled" : "Disabled"}</span>
+            <Switch checked={isActive} onCheckedChange={setIsActive} variant="project" />
+          </div>
+        )}
+        <div
+          className={`flex-1 space-y-6 p-6 transition-opacity ${!isActive ? "pointer-events-none opacity-40" : ""}`}
+        >
+          {/* Name & Description */}
+          <div className="space-y-4">
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-medium text-muted">Name</label>
+              <Controller
+                control={control}
+                name="name"
+                render={({ field }) => (
+                  <Input
+                    {...field}
+                    placeholder="e.g. Production key naming"
+                    isError={Boolean(errors.name)}
+                  />
+                )}
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-medium text-muted">Description (optional)</label>
+              <Controller
+                control={control}
+                name="description"
+                render={({ field }) => (
+                  <Input
+                    {...field}
+                    value={field.value ?? ""}
+                    placeholder="Brief description of this rule"
+                  />
+                )}
+              />
+            </div>
+          </div>
+
+          {/* Enforcement Type */}
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-muted">Rule Type</label>
+            <Controller
+              control={control}
+              name="enforcement.type"
+              render={({ field: { value, onChange } }) => (
+                <Select value={value} onValueChange={onChange}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent position="popper">
+                    <SelectItem value={RuleType.StaticSecrets}>
+                      {RULE_TYPE_LABELS[RuleType.StaticSecrets]}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+            />
+          </div>
+
+          {/* Scope */}
+          <div>
+            <h4 className="mb-3 text-sm font-medium text-foreground">Scope</h4>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-medium text-muted">Environment</label>
+                <Controller
+                  control={control}
+                  name="environment"
+                  render={({ field: { value, onChange } }) => (
+                    <Select
+                      value={value ?? "all"}
+                      onValueChange={(val) => onChange(val === "all" ? null : val)}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="All Environments" />
+                      </SelectTrigger>
+                      <SelectContent position="popper">
+                        <SelectItem value="all">All Environments</SelectItem>
+                        {environments.map((env) => (
+                          <SelectItem key={env.slug} value={env.slug}>
+                            {env.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-medium text-muted">
+                  <div className="flex items-center gap-2">
+                    <p>Folder Path</p>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <InfoIcon className="size-4 text-muted" />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs text-wrap">
+                        <GlobPatternTooltip />
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                </label>
+                <Controller
+                  control={control}
+                  name="folderPath"
+                  render={({ field, fieldState: { error } }) => (
+                    <div>
+                      <Input {...field} placeholder="/**" isError={Boolean(error)} />
+                      {error?.message && (
+                        <p className="mt-1 text-xs text-danger">{error.message}</p>
+                      )}
+                    </div>
+                  )}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Constraints */}
+          <div>
+            <div className="mb-3 flex items-center justify-between">
+              <h4 className="text-sm font-medium text-foreground">Validation Constraints</h4>
+              {availableConstraintOptions.length > 0 && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button type="button" variant="outline" size="xs">
+                      <PlusIcon className="size-4" />
+                      Add Constraint
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    {availableConstraintOptions.map((opt) => {
+                      const targets = opt.allowedTargets || [
+                        ConstraintTarget.SecretValue,
+                        ConstraintTarget.SecretKey
+                      ];
+                      const defaultTarget =
+                        targets.find((t) => !usedConstraintPairs.has(`${opt.type}:${t}`)) ??
+                        targets[0];
+
+                      return (
+                        <DropdownMenuItem
+                          key={opt.type}
+                          onClick={() =>
+                            append({
+                              type: opt.type,
+                              appliesTo: defaultTarget,
+                              value:
+                                opt.type === ConstraintType.PreventValueReuse
+                                  ? String(opt.placeholder || 10)
+                                  : ""
+                            })
+                          }
+                        >
+                          <opt.icon className="mr-2 size-4" />
+                          <div>
+                            <div className="text-sm">{opt.label}</div>
+                            <div className="text-xs text-muted">{opt.description}</div>
+                          </div>
+                        </DropdownMenuItem>
+                      );
+                    })}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+            </div>
+
+            {fields.length === 0 && (
+              <div className="rounded-md border border-dashed border-border py-8 text-center">
+                <p className="text-sm text-muted">No constraints added yet</p>
+                {(errors.enforcement?.inputs?.constraints?.root?.message ||
+                  errors.enforcement?.inputs?.constraints?.message) && (
+                  <p className="mt-1 text-xs text-danger">
+                    {errors.enforcement?.inputs?.constraints?.root?.message ||
+                      errors.enforcement?.inputs?.constraints?.message}
+                  </p>
+                )}
+              </div>
+            )}
+
+            <div className="space-y-3">
+              {fields.map((field, idx) => (
+                <ConstraintCard key={field.id} index={idx} onRemove={() => remove(idx)} />
+              ))}
+            </div>
+
+            {fields.length > 0 &&
+              (errors.enforcement?.inputs?.constraints?.root?.message ||
+                errors.enforcement?.inputs?.constraints?.message) && (
+                <p className="mt-1 text-xs text-danger">
+                  {errors.enforcement?.inputs?.constraints?.root?.message ||
+                    errors.enforcement?.inputs?.constraints?.message}
+                </p>
+              )}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <SheetFooter className="border-t">
+          <Button variant="project" type="submit">
+            {isEditing ? "Save Changes" : "Create Rule"}
+          </Button>
+          <Button type="button" variant="ghost" onClick={onClose}>
+            Cancel
+          </Button>
+        </SheetFooter>
+      </form>
+    </FormProvider>
+  );
+};
+
+type SheetState =
+  | { open: false }
+  | { open: true; mode: "create" }
+  | { open: true; mode: "edit"; ruleId: string };
+
+export const SecretValidationRulesSection = () => {
+  const { currentProject } = useProject();
+
+  const [sheetState, setSheetState] = useState<SheetState>({ open: false });
+  const [deleteRuleId, setDeleteRuleId] = useState<string | null>(null);
+  const [deleteConfirmation, setDeleteConfirmation] = useState("");
+
+  const { data: rules = [], isLoading } = useListSecretValidationRules({
+    projectId: currentProject.id
+  });
+
+  const createRule = useCreateSecretValidationRule();
+  const updateRule = useUpdateSecretValidationRule();
+  const deleteRule = useDeleteSecretValidationRule();
+
+  const resolveEnvSlug = (envId: string | null) => {
+    if (!envId) return null;
+    const env = currentProject.environments.find((e) => e.id === envId);
+    return env?.slug ?? null;
+  };
+
+  const resolveEnvName = (envId: string | null) => {
+    if (!envId) return "All Environments";
+    const env = currentProject.environments.find((e) => e.id === envId);
+    return env?.name ?? envId;
+  };
+
+  const handleDelete = async () => {
+    if (!deleteRuleId) return;
+    await deleteRule
+      .mutateAsync({ projectId: currentProject.id, ruleId: deleteRuleId })
+      .finally(() => setDeleteRuleId(null));
+  };
+
+  const handleClose = () => setSheetState({ open: false });
+
+  const handleSubmit = async (data: TRuleForm, isActive?: boolean) => {
+    if (sheetState.open && sheetState.mode === "edit") {
+      await updateRule.mutateAsync({
+        projectId: currentProject.id,
+        ruleId: sheetState.ruleId,
+        name: data.name,
+        description: data.description,
+        isActive,
+        environmentSlug: data.environment ?? null,
+        secretPath: data.folderPath,
+        type: data.enforcement.type as string as SecretValidationRuleType,
+        inputs: data.enforcement.inputs
+      });
+      createNotification({ text: "Rule updated", type: "success" });
+    } else {
+      await createRule.mutateAsync({
+        projectId: currentProject.id,
+        name: data.name,
+        description: data.description,
+        environmentSlug: data.environment ?? undefined,
+        secretPath: data.folderPath,
+        rule: {
+          type: data.enforcement.type as string as SecretValidationRuleType,
+          inputs: data.enforcement.inputs
+        }
+      });
+      createNotification({ text: "Rule created", type: "success" });
+    }
+    handleClose();
+  };
+
+  const editingRule =
+    sheetState.open && sheetState.mode === "edit"
+      ? rules.find((r) => r.id === sheetState.ruleId)
+      : undefined;
+
+  const editingDefaults = editingRule
+    ? {
+        name: editingRule.name,
+        description: editingRule.description ?? undefined,
+        environment: resolveEnvSlug(editingRule.envId),
+        folderPath: editingRule.secretPath,
+        enforcement: {
+          type: editingRule.type as string as RuleType,
+          inputs: editingRule.inputs
+        }
+      }
+    : undefined;
+
+  const isEditing = sheetState.open && sheetState.mode === "edit";
+
+  return (
+    <Card className="mb-6">
+      <CardHeader>
+        <CardTitle>Secret Validation Rules</CardTitle>
+        <CardDescription>Define validation constraints for secret keys and values</CardDescription>
+        <CardAction>
+          <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Settings}>
+            {(isAllowed) => (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span>
+                    <Button
+                      isDisabled={!isAllowed}
+                      variant="project"
+                      size="sm"
+                      onClick={() => setSheetState({ open: true, mode: "create" })}
+                    >
+                      <PlusIcon className="size-4" />
+                      Create Rule
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="top" hidden={isAllowed}>
+                  <p>Access restricted</p>
+                </TooltipContent>
+              </Tooltip>
+            )}
+          </ProjectPermissionCan>
+        </CardAction>
+      </CardHeader>
+      <CardContent>
+        {isLoading && (
+          <div className="flex items-center justify-center py-12">
+            <p className="text-sm text-muted">Loading rules...</p>
+          </div>
+        )}
+        {!isLoading && rules.length === 0 ? (
+          <Empty className="border">
+            <EmptyHeader>
+              <EmptyTitle>No validation rules configured</EmptyTitle>
+              <EmptyDescription>
+                Create a rule to enforce validation constraints on secret keys and values
+              </EmptyDescription>
+            </EmptyHeader>
+            <EmptyContent>
+              <ProjectPermissionCan
+                I={ProjectPermissionActions.Edit}
+                a={ProjectPermissionSub.Settings}
+              >
+                {(isAllowed) => (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span>
+                        <Button
+                          variant="outline"
+                          size="xs"
+                          isDisabled={!isAllowed}
+                          onClick={() => setSheetState({ open: true, mode: "create" })}
+                        >
+                          <PlusIcon className="size-4" />
+                          Create Rule
+                        </Button>
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" hidden={isAllowed}>
+                      <p>Access restricted</p>
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+              </ProjectPermissionCan>
+            </EmptyContent>
+          </Empty>
+        ) : (
+          !isLoading && (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Scope</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="w-12" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {rules.map((rule) => (
+                  <TableRow key={rule.id}>
+                    <TableCell className="py-3">
+                      <div className="flex items-center">
+                        <span className="text-sm font-medium text-foreground">{rule.name}</span>
+                        {rule.description && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <InfoIcon className="ml-1.5 size-3.5 text-muted" />
+                            </TooltipTrigger>
+                            <TooltipContent>{rule.description}</TooltipContent>
+                          </Tooltip>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="py-3">
+                      <Badge variant="neutral">
+                        {RULE_TYPE_LABELS[rule.type as string as RuleType] ?? rule.type}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="py-3">
+                      <div className="flex items-center gap-1.5">
+                        <Badge variant="neutral">{resolveEnvName(rule.envId)}</Badge>
+                        <Badge variant="neutral">{rule.secretPath}</Badge>
+                      </div>
+                    </TableCell>
+                    <TableCell className="py-3">
+                      <Badge variant={rule.isActive ? "success" : "neutral"}>
+                        {rule.isActive ? "Active" : "Inactive"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="py-3">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <IconButton aria-label="Actions" variant="ghost" size="xs">
+                            <EllipsisVerticalIcon className="size-4" />
+                          </IconButton>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <ProjectPermissionCan
+                            I={ProjectPermissionActions.Edit}
+                            a={ProjectPermissionSub.Settings}
+                          >
+                            {(isAllowed) => (
+                              <DropdownMenuItem
+                                isDisabled={!isAllowed}
+                                onClick={() =>
+                                  setSheetState({ open: true, mode: "edit", ruleId: rule.id })
+                                }
+                              >
+                                <PencilIcon className="mr-2 size-4" />
+                                Edit
+                              </DropdownMenuItem>
+                            )}
+                          </ProjectPermissionCan>
+                          <ProjectPermissionCan
+                            I={ProjectPermissionActions.Edit}
+                            a={ProjectPermissionSub.Settings}
+                          >
+                            {(isAllowed) => (
+                              <DropdownMenuItem
+                                variant="danger"
+                                isDisabled={!isAllowed}
+                                onClick={() => setDeleteRuleId(rule.id)}
+                              >
+                                <TrashIcon className="mr-2 size-4" />
+                                Delete
+                              </DropdownMenuItem>
+                            )}
+                          </ProjectPermissionCan>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )
+        )}
+      </CardContent>
+
+      <AlertDialog
+        open={deleteRuleId !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeleteRuleId(null);
+            setDeleteConfirmation("");
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Validation Rule</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this rule? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="w-full pb-4">
+            <p className="mb-2 text-sm text-muted">
+              Enter the rule name{" "}
+              <span className="font-medium text-foreground">
+                {rules.find((r) => r.id === deleteRuleId)?.name}
+              </span>{" "}
+              to confirm the deletion
+            </p>
+            <Input
+              value={deleteConfirmation}
+              onChange={(e) => setDeleteConfirmation(e.target.value)}
+              placeholder={rules.find((r) => r.id === deleteRuleId)?.name}
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="danger"
+              onClick={handleDelete}
+              disabled={deleteConfirmation !== rules.find((r) => r.id === deleteRuleId)?.name}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <Sheet open={sheetState.open} onOpenChange={(open) => !open && handleClose()}>
+        <SheetContent className="flex h-full flex-col gap-y-0 overflow-y-auto sm:max-w-lg">
+          <SheetHeader className="border-b">
+            <SheetTitle>{isEditing ? "Edit Rule" : "Create Rule"}</SheetTitle>
+            <SheetDescription>
+              {isEditing ? "Modify this validation rule" : "Define a new secret validation rule"}
+            </SheetDescription>
+          </SheetHeader>
+          {sheetState.open && (
+            <RuleFormContent
+              key={isEditing ? editingRule?.id : "create"}
+              defaultValues={editingDefaults}
+              isEditing={isEditing}
+              initialIsActive={editingRule?.isActive ?? true}
+              environments={currentProject.environments}
+              onClose={handleClose}
+              onSubmit={handleSubmit}
+            />
+          )}
+        </SheetContent>
+      </Sheet>
+    </Card>
+  );
+};

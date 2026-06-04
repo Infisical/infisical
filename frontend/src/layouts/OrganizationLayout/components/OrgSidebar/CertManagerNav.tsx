@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "@tanstack/react-router";
 import {
   Bell,
   FileKey,
@@ -37,6 +38,8 @@ export const CertManagerNav = ({
 }) => {
   const { hasProjectRole } = useProjectPermission();
   const { currentProject } = useProject();
+  const { search: locationSearch } = useLocation();
+  const hasSignerContext = Boolean((locationSearch as { signerId?: string })?.signerId);
   const isCertManagerAdmin = hasProjectRole("admin");
   const projectId = currentProject?.id ?? "";
   const { data: certManagerInstance } = useCertManagerInstanceState();
@@ -108,8 +111,24 @@ export const CertManagerNav = ({
     }
   ];
 
+  const detailPathRegex = /\/(certificate-profiles|certificate-policies|ca)\//;
+
+  const isApplicationSourcedDetail = (
+    pathname: string,
+    search: Record<string, unknown>
+  ): boolean => {
+    if (!detailPathRegex.test(pathname)) return false;
+    const { from, profileFrom } = search as { from?: string; profileFrom?: string };
+    return from === "application" || (from === "profile" && profileFrom === "application");
+  };
+
   const applicationItems: NavItem[] = [
-    { label: "Applications", icon: ResourceIcon, pathSuffix: "applications" }
+    {
+      label: "Applications",
+      icon: ResourceIcon,
+      pathSuffix: "applications",
+      activeMatch: (pathname, search) => isApplicationSourcedDetail(pathname, search)
+    }
   ];
 
   const codeSigningItems: NavItem[] = [
@@ -117,7 +136,7 @@ export const CertManagerNav = ({
       label: "Signers",
       icon: PenTool,
       pathSuffix: "code-signing",
-      activeMatch: /\/code-signing/
+      activeMatch: hasSignerContext ? /\/code-signing|\/approvals\/[^/]+/ : /\/code-signing/
     }
   ];
 
@@ -150,7 +169,9 @@ export const CertManagerNav = ({
     {
       label: "Settings",
       icon: Settings,
-      pathSuffix: "settings"
+      pathSuffix: "settings",
+      activeMatch: (pathname, search) =>
+        detailPathRegex.test(pathname) && !isApplicationSourcedDetail(pathname, search)
     }
   ];
 

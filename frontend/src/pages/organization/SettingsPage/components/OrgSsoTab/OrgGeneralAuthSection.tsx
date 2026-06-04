@@ -140,7 +140,7 @@ export const OrgGeneralAuthSection = ({
       }
 
       if (value) {
-        setBypassEnabledInModal(currentOrg?.bypassOrgAuthEnabled ?? false);
+        setBypassEnabledInModal(true);
         setEnforcementTypeInModal(EnforceAuthType.SAML);
         handlePopUpOpen("enforceSamlSsoConfirmation");
         return;
@@ -165,7 +165,7 @@ export const OrgGeneralAuthSection = ({
       }
 
       if (value) {
-        setBypassEnabledInModal(currentOrg?.bypassOrgAuthEnabled ?? false);
+        setBypassEnabledInModal(true);
         setEnforcementTypeInModal(EnforceAuthType.GOOGLE);
         handlePopUpOpen("enforceSamlSsoConfirmation");
         return;
@@ -253,13 +253,16 @@ export const OrgGeneralAuthSection = ({
             >
               <FieldContent>
                 <FieldTitle>Enforce SAML SSO</FieldTitle>
-                <FieldDescription>Only allow members to sign in via SAML.</FieldDescription>
+                <FieldDescription>
+                  Only allow members to sign in via SAML. Also disables email & password signup for
+                  your verified domain(s) and skips email verification for SSO sign-ins.
+                </FieldDescription>
               </FieldContent>
               <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Sso}>
                 {(isAllowed) => (
                   <Switch
                     id="enforce-saml-auth"
-                    variant="project"
+                    variant="org"
                     checked={currentOrg?.authEnforced ?? false}
                     onCheckedChange={(value) =>
                       handleEnforceOrgAuthToggle(value, EnforceAuthType.SAML)
@@ -276,13 +279,16 @@ export const OrgGeneralAuthSection = ({
             >
               <FieldContent>
                 <FieldTitle>Enforce OIDC SSO</FieldTitle>
-                <FieldDescription>Only allow members to sign in via OIDC.</FieldDescription>
+                <FieldDescription>
+                  Only allow members to sign in via OIDC. Also disables email & password signup for
+                  your verified domain(s) and skips email verification for SSO sign-ins.
+                </FieldDescription>
               </FieldContent>
               <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Sso}>
                 {(isAllowed) => (
                   <Switch
                     id="enforce-oidc-auth"
-                    variant="project"
+                    variant="org"
                     checked={currentOrg?.authEnforced ?? false}
                     onCheckedChange={(value) =>
                       handleEnforceOrgAuthToggle(value, EnforceAuthType.OIDC)
@@ -309,7 +315,7 @@ export const OrgGeneralAuthSection = ({
                 {(isAllowed) => (
                   <Switch
                     id="enforce-google-sso"
-                    variant="project"
+                    variant="org"
                     checked={currentOrg?.googleSsoAuthEnforced ?? false}
                     onCheckedChange={(value) =>
                       handleEnforceOrgAuthToggle(value, EnforceAuthType.GOOGLE)
@@ -365,7 +371,7 @@ export const OrgGeneralAuthSection = ({
                 {(isAllowed) => (
                   <Switch
                     id="allow-admin-bypass"
-                    variant="project"
+                    variant="org"
                     checked={currentOrg?.bypassOrgAuthEnabled ?? false}
                     onCheckedChange={(value) => handleEnableBypassOrgAuthToggle(value)}
                     disabled={!isAllowed}
@@ -411,6 +417,14 @@ export const OrgGeneralAuthSection = ({
                 Before proceeding, ensure your {enforcementLabel} provider is available and properly
                 configured to avoid access issues.
               </p>
+              {enforcementTypeInModal !== EnforceAuthType.GOOGLE && (
+                <p>
+                  This also disables email & password signup for your verified domain(s) and skips
+                  email verification for SSO sign-ins. Make sure a break-glass admin already has a
+                  password and SSO bypass access before continuing — the signup block prevents
+                  creating new password accounts for the domain afterwards.
+                </p>
+              )}
             </AlertDescription>
           </Alert>
 
@@ -425,7 +439,7 @@ export const OrgGeneralAuthSection = ({
               </FieldContent>
               <Switch
                 id="bypass-enabled-modal"
-                variant="project"
+                variant="org"
                 checked={bypassEnabledInModal}
                 onCheckedChange={setBypassEnabledInModal}
               />

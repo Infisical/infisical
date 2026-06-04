@@ -6,10 +6,11 @@ import handlebars from "handlebars";
 import {
   AccessScope,
   ActionProjectType,
-  ApplicationMembershipRole,
   OrganizationActionScope,
   OrgMembershipRole,
   ProjectMembershipRole,
+  ResourceMembershipRole,
+  ResourceType,
   ServiceTokenScopes,
   TProjects
 } from "@app/db/schemas";
@@ -18,12 +19,16 @@ import {
   applicationAdminPermissions,
   applicationAuditorPermissions,
   applicationOperatorPermissions,
-  applicationProjectAdminFallbackPermissions,
   cryptographicOperatorPermissions,
+  projectAdminApplicationFallbackPermissions,
   projectAdminPermissions,
+  projectAdminSignerFallbackPermissions,
   projectMemberPermissions,
   projectNoAccessPermissions,
   projectViewerPermission,
+  signerAdminPermissions,
+  signerAuditorPermissions,
+  signerOperatorPermissions,
   sshHostBootstrapPermissions
 } from "@app/ee/services/permission/default-roles";
 import { ResourcePermissionSet } from "@app/ee/services/permission/resource-permission";
@@ -126,31 +131,51 @@ const buildProjectPermissionRules = (projectUserRoles: TBuildProjectPermissionDT
   return rules;
 };
 
-const buildResourcePermissionRules = (appUserRoles: TBuildProjectPermissionDTO) => {
+const resolveResourceRoleRules = (resourceType: ResourceType, role: string) => {
+  if (resourceType === ResourceType.Signer) {
+    switch (role) {
+      case ResourceMembershipRole.Admin:
+        return signerAdminPermissions;
+      case ResourceMembershipRole.Operator:
+        return signerOperatorPermissions;
+      case ResourceMembershipRole.Auditor:
+        return signerAuditorPermissions;
+      case ResourceMembershipRole.Custom:
+        throw new BadRequestError({ message: "Custom resource-level roles are not supported yet" });
+      default:
+        throw new NotFoundError({ name: "SignerRoleInvalid", message: `Signer role '${role}' not found` });
+    }
+  }
+
+  switch (role) {
+    case ResourceMembershipRole.Admin:
+      return applicationAdminPermissions;
+    case ResourceMembershipRole.Operator:
+      return applicationOperatorPermissions;
+    case ResourceMembershipRole.Auditor:
+      return applicationAuditorPermissions;
+    case ResourceMembershipRole.Custom:
+      throw new BadRequestError({ message: "Custom resource-level roles are not supported yet" });
+    default:
+      throw new NotFoundError({
+        name: "ApplicationRoleInvalid",
+        message: `Application role '${role}' not found`
+      });
+  }
+};
+
+const buildResourcePermissionRules = (appUserRoles: TBuildProjectPermissionDTO, resourceType: ResourceType) => {
   const rules = appUserRoles
-    .map(({ role }) => {
-      switch (role) {
-        case ApplicationMembershipRole.Admin:
-          return applicationAdminPermissions;
-        case ApplicationMembershipRole.Operator:
-          return applicationOperatorPermissions;
-        case ApplicationMembershipRole.Auditor:
-          return applicationAuditorPermissions;
-        case ApplicationMembershipRole.Custom:
-          throw new BadRequestError({
-            message: "Custom resource-level roles are not supported yet"
-          });
-        default:
-          throw new NotFoundError({
-            name: "ApplicationRoleInvalid",
-            message: `Application role '${role}' not found`
-          });
-      }
-    })
+    .map(({ role }) => resolveResourceRoleRules(resourceType, role))
     .reduce((prev, curr) => prev.concat(curr), [] as RawRuleOf<MongoAbility<ResourcePermissionSet>>[])
     .sort((a, b) => Number(Boolean(a.inverted)) - Number(Boolean(b.inverted)));
 
   return rules;
+};
+
+const resolveResourceProjectAdminFallback = (resourceType: ResourceType) => {
+  if (resourceType === ResourceType.Signer) return projectAdminSignerFallbackPermissions;
+  return projectAdminApplicationFallbackPermissions;
 };
 
 type MembershipWithRoles = {
@@ -696,15 +721,15 @@ export const permissionServiceFactory = ({
         actorType: actor
       });
 
+      const fallbackRules = resolveResourceProjectAdminFallback(resourceType);
+
       if (resourceMemberships?.length) {
         const permissionFromRoles = flattenActiveRolesFromMemberships(
           resourceMemberships,
-          ApplicationMembershipRole.Custom
+          ResourceMembershipRole.Custom
         );
-        const resourceRules = buildResourcePermissionRules(permissionFromRoles);
-        const mergedRules = isProjectAdmin
-          ? [...resourceRules, ...applicationProjectAdminFallbackPermissions]
-          : resourceRules;
+        const resourceRules = buildResourcePermissionRules(permissionFromRoles, resourceType);
+        const mergedRules = isProjectAdmin ? [...resourceRules, ...fallbackRules] : resourceRules;
         const permission = createMongoAbility<ResourcePermissionSet>(mergedRules, { conditionsMatcher });
 
         const hasRole = (role: string) => membershipsHaveActiveRole(resourceMemberships, role);
@@ -718,7 +743,7 @@ export const permissionServiceFactory = ({
       }
 
       if (isProjectAdmin) {
-        const permission = createMongoAbility<ResourcePermissionSet>(applicationProjectAdminFallbackPermissions, {
+        const permission = createMongoAbility<ResourcePermissionSet>(fallbackRules, {
           conditionsMatcher
         });
         return {

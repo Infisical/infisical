@@ -46,10 +46,12 @@ import { ActorAuthMethod, ActorType, AuthMethod, AuthModeJwtTokenPayload, AuthTo
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TokenType } from "../auth-token/auth-token-types";
 import { bootstrapCertManagerProject } from "../cert-manager-instance/cert-manager-project-bootstrap";
+import { TCertificatePolicyDALFactory } from "../certificate-policy/certificate-policy-dal";
 import { TIdentityMetadataDALFactory } from "../identity/identity-metadata-dal";
 import { TMembershipDALFactory } from "../membership/membership-dal";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
+import { assertWillRetainAdmin } from "../membership-user/membership-user-fns";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
 import { TProjectKeyDALFactory } from "../project-key/project-key-dal";
@@ -121,6 +123,7 @@ type TOrgServiceFactoryDep = {
   reminderService: Pick<TReminderServiceFactory, "deleteReminderBySecretId">;
   userGroupMembershipDAL: TUserGroupMembershipDALFactory;
   additionalPrivilegeDAL: TAdditionalPrivilegeDALFactory;
+  certificatePolicyDAL: Pick<TCertificatePolicyDALFactory, "create">;
 };
 
 export type TOrgServiceFactory = ReturnType<typeof orgServiceFactory>;
@@ -154,7 +157,8 @@ export const orgServiceFactory = ({
   membershipUserDAL,
   membershipDAL,
   userGroupMembershipDAL,
-  additionalPrivilegeDAL
+  additionalPrivilegeDAL,
+  certificatePolicyDAL
 }: TOrgServiceFactoryDep) => {
   /*
    * Get organization details by the organization id
@@ -685,7 +689,7 @@ export const orgServiceFactory = ({
           orgId: org.id,
           adminUserIds: userId ? [userId] : []
         },
-        { projectDAL, membershipDAL, membershipRoleDAL },
+        { projectDAL, membershipDAL, membershipRoleDAL, certificatePolicyDAL },
         tx
       );
 
@@ -853,7 +857,21 @@ export const orgServiceFactory = ({
         "Cannot assign a role exceeding your own privileges to an org member"
       );
     }
+
+    const updatesToActiveAdmin = role === OrgMembershipRole.Admin && isActive !== false;
+    const noRoleOrActivationChange = role === undefined && (isActive === undefined || isActive === true);
+
     const membership = await orgDAL.transaction(async (tx) => {
+      if (!updatesToActiveAdmin && !noRoleOrActivationChange) {
+        await assertWillRetainAdmin({
+          scope: AccessScope.Organization,
+          scopeOrgId: orgId,
+          excludeMembershipIds: [membershipId],
+          dal: membershipUserDAL,
+          tx
+        });
+      }
+
       // this is because if isActive is undefined then this would fail due to knexjs error
       const [updatedOrgMembership] =
         typeof isActive === "undefined"

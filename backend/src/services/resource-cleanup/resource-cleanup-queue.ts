@@ -100,9 +100,9 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
         await userNotificationDAL.pruneNotifications();
         await keyValueStoreDAL.pruneExpiredKeys();
         await scepTransactionDAL.pruneExpiredTransactions();
-        const expiredApprovalRequestIds = await approvalRequestDAL.markExpiredRequests();
-        if (expiredApprovalRequestIds.length > 0) {
-          await certificateRequestDAL.markExpiredApprovalRequests(expiredApprovalRequestIds);
+        const newlyExpired = await approvalRequestDAL.markExpiredRequests();
+        if (newlyExpired > 0) {
+          await certificateRequestDAL.markExpiredApprovalRequests();
         }
         await approvalRequestGrantsDAL.markExpiredGrants();
         await identityAccessTokenRevocationDAL.removeExpiredRevocations();
@@ -120,6 +120,11 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
       handler: async () => {
         logger.info(`cron[${CronJobName.FrequentResourceCleanup}]: task started`);
         await identityAccessTokenDAL.removeExpiredTokens();
+        const newlyExpired = await approvalRequestDAL.markExpiredRequests();
+        if (newlyExpired > 0) {
+          await certificateRequestDAL.markExpiredApprovalRequests();
+        }
+        await approvalRequestGrantsDAL.markExpiredGrants();
       }
     });
   };

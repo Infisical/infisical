@@ -42,6 +42,7 @@ type Props = {
   isReplicateSecretsAvailable: boolean;
   isSecretImportAvailable: boolean;
   isSingleEnvSelected: boolean;
+  requiresApproval: boolean;
   hasVaultConnection: boolean;
   hasDopplerConnection: boolean;
 };
@@ -63,6 +64,7 @@ export function AddResourceButtons({
   isReplicateSecretsAvailable,
   isSecretImportAvailable,
   isSingleEnvSelected,
+  requiresApproval,
   hasVaultConnection,
   hasDopplerConnection
 }: Props) {
@@ -79,7 +81,7 @@ export function AddResourceButtons({
                 onClick={onAddSecret}
               >
                 <PlusIcon />
-                Add Secret
+                {requiresApproval ? "Add Secret Request" : "Add Secret"}
               </Button>
             </TooltipTrigger>
             <TooltipContent>Access Denied</TooltipContent>

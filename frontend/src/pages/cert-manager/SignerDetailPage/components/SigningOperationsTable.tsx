@@ -12,6 +12,7 @@ import {
   CardHeader,
   CardTitle,
   Empty,
+  EmptyDescription,
   EmptyHeader,
   EmptyTitle,
   Pagination,
@@ -27,6 +28,7 @@ import {
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import {
+  SIGNER_TABLE_PAGE_SIZE,
   SigningActorType,
   SigningOperationStatus,
   signingOperationStatusLabels,
@@ -38,8 +40,6 @@ type Props = {
   signerId: string;
   projectId: string;
 };
-
-const PAGE_SIZE = 25;
 
 const getStatusBadgeVariant = (status: SigningOperationStatus) => {
   switch (status) {
@@ -81,7 +81,7 @@ const getActorDisplayName = (actorType: SigningActorType, actorName?: string | n
 
 export const SigningOperationsTable = ({ signerId, projectId }: Props) => {
   const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(PAGE_SIZE);
+  const [perPage, setPerPage] = useState(SIGNER_TABLE_PAGE_SIZE);
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
 
@@ -140,7 +140,7 @@ export const SigningOperationsTable = ({ signerId, projectId }: Props) => {
     <Card>
       <CardHeader>
         <CardTitle>Signing History</CardTitle>
-        <CardDescription>Trail of signing operations</CardDescription>
+        <CardDescription>Trail of signing operations on this signer.</CardDescription>
       </CardHeader>
       <CardContent>
         <Table>
@@ -168,7 +168,7 @@ export const SigningOperationsTable = ({ signerId, projectId }: Props) => {
               ))}
             {!isLoading &&
               operations.map((op) => (
-                <TableRow key={op.id}>
+                <TableRow key={op.id} className="[&>td]:py-3">
                   <TableCell>{format(new Date(op.createdAt), "MMM d, yyyy HH:mm:ss")}</TableCell>
                   <TableCell>
                     <Badge variant={getStatusBadgeVariant(op.status)}>
@@ -186,9 +186,9 @@ export const SigningOperationsTable = ({ signerId, projectId }: Props) => {
                       <TooltipTrigger asChild>
                         <div className="flex items-center gap-1.5">
                           {op.actorType === SigningActorType.User ? (
-                            <UserIcon className="text-muted-foreground size-3.5" />
+                            <UserIcon className="size-3.5 text-muted" />
                           ) : (
-                            <HardDriveIcon className="text-muted-foreground size-3.5" />
+                            <HardDriveIcon className="size-3.5 text-muted" />
                           )}
                           <button
                             type="button"
@@ -196,7 +196,7 @@ export const SigningOperationsTable = ({ signerId, projectId }: Props) => {
                             className={
                               isActorClickable(op)
                                 ? "cursor-pointer font-medium text-accent underline"
-                                : "text-muted-foreground"
+                                : "text-muted"
                             }
                           >
                             {getActorDisplayName(op.actorType, op.actorName)}
@@ -211,9 +211,12 @@ export const SigningOperationsTable = ({ signerId, projectId }: Props) => {
           </TableBody>
         </Table>
         {!isLoading && operations.length === 0 && (
-          <Empty>
+          <Empty className="border border-solid">
             <EmptyHeader>
               <EmptyTitle>No signing operations yet</EmptyTitle>
+              <EmptyDescription>
+                Once members sign artifacts with this signer, the activity trail will appear here.
+              </EmptyDescription>
             </EmptyHeader>
           </Empty>
         )}

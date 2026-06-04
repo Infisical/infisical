@@ -198,27 +198,30 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
 
   const validateRefreshToken = async (refreshToken?: string) => {
     const appCfg = getConfig();
-    if (!refreshToken)
+    if (!refreshToken) {
       throw new NotFoundError({
         name: "AuthTokenNotFound",
         message: "Invalid token"
       });
+    }
 
     const decodedToken = crypto.jwt().verify(refreshToken, appCfg.AUTH_SECRET) as AuthModeRefreshJwtTokenPayload;
 
-    if (decodedToken.authTokenType !== AuthTokenType.REFRESH_TOKEN)
+    if (decodedToken.authTokenType !== AuthTokenType.REFRESH_TOKEN) {
       throw new UnauthorizedError({
         message: "The token provided is not a refresh token",
         name: "InvalidToken"
       });
+    }
 
     const tokenVersion = await getUserTokenSessionById(decodedToken.tokenVersionId, decodedToken.userId);
 
-    if (!tokenVersion)
+    if (!tokenVersion) {
       throw new UnauthorizedError({
         message: "Invalid token",
         name: "InvalidToken"
       });
+    }
 
     if (decodedToken.refreshVersion !== tokenVersion.refreshVersion) {
       // Check grace period for multi-tab scenarios

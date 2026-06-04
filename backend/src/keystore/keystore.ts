@@ -37,7 +37,9 @@ export const PgSqlLock = {
   KmsOrgDataKeyCreation: (orgId: string) => pgAdvisoryLockHashText(`kms-org-data-key:${orgId}`),
   KmsProjectKeyCreation: (projectId: string) => pgAdvisoryLockHashText(`kms-project-key:${projectId}`),
   KmsProjectDataKeyCreation: (projectId: string) => pgAdvisoryLockHashText(`kms-project-data-key:${projectId}`),
-  ScimGroupUpdate: (groupId: string) => pgAdvisoryLockHashText(`scim-group-update:${groupId}`)
+  ScimGroupUpdate: (groupId: string) => pgAdvisoryLockHashText(`scim-group-update:${groupId}`),
+  LastAdminGuard: (scope: "org" | "project", scopeId: string) =>
+    pgAdvisoryLockHashText(`last-admin-guard:${scope}:${scopeId}`)
 } as const;
 
 // all the key prefixes used must be set here to avoid conflict
@@ -130,10 +132,7 @@ export const KeyStorePrefixes = {
 
   TelemetryEvent: (event: string, bucketId: string, distinctId: string, uuid: string) =>
     `telemetry-event-${event}-${bucketId}-${distinctId}-${uuid}` as const,
-  TelemetryEventByBucketPattern: (event: string, bucketId: string) => `telemetry-event-${event}-${bucketId}-*` as const,
-
-  AuditLogStreamFailureCount: (streamId: string) => `audit-log-stream:${streamId}:failures` as const,
-  AuditLogStreamAlertSent: (streamId: string) => `audit-log-stream:${streamId}:alert-sent` as const
+  TelemetryEventByBucketPattern: (event: string, bucketId: string) => `telemetry-event-${event}-${bucketId}-*` as const
 };
 
 export const KeyStoreTtls = {

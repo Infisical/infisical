@@ -32,7 +32,7 @@ export const getUserAgentType = (userAgent: string | undefined) => {
 };
 
 export const injectAuditLogInfo = fp(async (server: FastifyZodProvider) => {
-  server.decorateRequest("auditLogInfo", null);
+  server.decorateRequest("auditLogInfo");
   server.addHook("onRequest", async (req) => {
     const userAgent = req.headers["user-agent"] ?? "";
     const payload = {

@@ -13,6 +13,8 @@ export const projectKeys = {
   getProjectAuthorization: (projectId: string) => [{ projectId }, "project-authorizations"],
   getProjectIntegrations: (projectId: string) => [{ projectId }, "project-integrations"],
   getAllUserProjects: () => [...projectKeys.allProjectQueries()] as const,
+  getMyPendingProjectAccessRequests: () =>
+    [...projectKeys.allProjectQueries(), "my-pending-access-requests"] as const,
   getProjectAuditLogs: (projectId: string) => [{ projectId }, "project-audit-logs"] as const,
   getProjectUsers: (
     projectId: string,

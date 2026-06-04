@@ -117,32 +117,34 @@ export const pamAccessPolicyFactory: TApprovalResourceFactory<
     });
 
     // TODO(andrey): Move some of this check to be part of SQL query
-    return grants.some((grant) => {
-      const grantAttributes = grant.attributes as TPamAccessPolicyInputs;
+    return (
+      grants.find((grant) => {
+        const grantAttributes = grant.attributes as TPamAccessPolicyInputs;
 
-      if (inputs.resourceName || inputs.accountName) {
-        let resourceMatches = true;
-        let accountMatches = true;
+        if (inputs.resourceName || inputs.accountName) {
+          let resourceMatches = true;
+          let accountMatches = true;
 
-        if (inputs.resourceName && grantAttributes.resourceName) {
-          resourceMatches = picomatch(grantAttributes.resourceName)(inputs.resourceName);
-        } else if (inputs.resourceName && !grantAttributes.resourceName) {
-          resourceMatches = false;
+          if (inputs.resourceName && grantAttributes.resourceName) {
+            resourceMatches = picomatch(grantAttributes.resourceName)(inputs.resourceName);
+          } else if (inputs.resourceName && !grantAttributes.resourceName) {
+            resourceMatches = false;
+          }
+
+          if (inputs.accountName && grantAttributes.accountName) {
+            accountMatches = picomatch(grantAttributes.accountName)(inputs.accountName);
+          } else if (inputs.accountName && !grantAttributes.accountName) {
+            accountMatches = false;
+          }
+
+          if (resourceMatches && accountMatches && (!grant.expiresAt || grant.expiresAt > new Date())) {
+            return true;
+          }
         }
 
-        if (inputs.accountName && grantAttributes.accountName) {
-          accountMatches = picomatch(grantAttributes.accountName)(inputs.accountName);
-        } else if (inputs.accountName && !grantAttributes.accountName) {
-          accountMatches = false;
-        }
-
-        if (resourceMatches && accountMatches && (!grant.expiresAt || grant.expiresAt > new Date())) {
-          return true;
-        }
-      }
-
-      return false;
-    });
+        return false;
+      }) ?? null
+    );
   };
 
   const validateConstraints: TApprovalRequestFactoryValidateConstraints<TPamAccessPolicy, TPamAccessRequestData> = (

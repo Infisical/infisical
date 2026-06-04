@@ -417,7 +417,11 @@ export const rotateSecretsFns = async ({
   try {
     const secretRotation = await secretRotationV2DAL.findById(rotationId);
 
-    if (!secretRotation) throw new Error(`Secret rotation ${rotationId} not found`);
+    if (!secretRotation) {
+      // skip rather than throw, so it doesn't retry-storm when a rotation is deleted.
+      logger.info(`secretRotationV2Queue: rotation ${rotationId} not found (deleted?), skipping ${logDetails}`);
+      return;
+    }
 
     if (!secretRotation.isAutoRotationEnabled) {
       logger.info(`secretRotationV2Queue: Skipping Rotation - Auto-Rotation Disabled Since Queue ${logDetails}`);

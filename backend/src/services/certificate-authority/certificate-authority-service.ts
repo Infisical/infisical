@@ -117,7 +117,7 @@ type TCertificateAuthorityServiceFactoryDep = {
     | "findWithAssociatedCa"
     | "findByNameAndProjectIdWithAssociatedCa"
   >;
-  externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "create" | "update">;
+  externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "create" | "update" | "findOne">;
   internalCertificateAuthorityService: TInternalCertificateAuthorityServiceFactory;
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug" | "findOne" | "updateById" | "findById" | "transaction">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;

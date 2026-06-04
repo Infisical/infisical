@@ -4,9 +4,9 @@ import { Knex } from "knex";
 import {
   AccessScope,
   ActionProjectType,
-  ApplicationMembershipRole,
   ProjectMembershipRole,
   RESOURCE_SCOPE,
+  ResourceMembershipRole,
   ResourceType
 } from "@app/db/schemas";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
@@ -63,11 +63,11 @@ type TPkiApplicationMembershipServiceFactoryDep = {
 
 export type TPkiApplicationMembershipServiceFactory = ReturnType<typeof pkiApplicationMembershipServiceFactory>;
 
-const BUILTIN_APPLICATION_ROLES = Object.values(ApplicationMembershipRole).filter(
-  (r) => r !== ApplicationMembershipRole.Custom
+const BUILTIN_APPLICATION_ROLES = Object.values(ResourceMembershipRole).filter(
+  (r) => r !== ResourceMembershipRole.Custom
 );
 
-const isBuiltInApplicationRole = (role: string): role is ApplicationMembershipRole =>
+const isBuiltInApplicationRole = (role: string): role is ResourceMembershipRole =>
   (BUILTIN_APPLICATION_ROLES as string[]).includes(role);
 
 const unknownApplicationRoleMessage = (role: string) =>

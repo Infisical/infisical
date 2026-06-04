@@ -21,6 +21,7 @@ import {
 } from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub, useOrganization } from "@app/context";
 import {
+  isPamRotationSupported,
   PAM_RESOURCE_TYPE_MAP,
   PamResourceType,
   useDeletePamResource,
@@ -207,10 +208,12 @@ const PageContent = () => {
             resource={resource}
             onEdit={() => setIsEditModalOpen(true)}
           />
-          <PamResourceRotationPolicySection
-            resource={resource}
-            onEdit={() => setIsRotationPolicyModalOpen(true)}
-          />
+          {isPamRotationSupported(resource.resourceType) && (
+            <PamResourceRotationPolicySection
+              resource={resource}
+              onEdit={() => setIsRotationPolicyModalOpen(true)}
+            />
+          )}
           {[PamResourceType.Postgres, PamResourceType.SSH].includes(resource.resourceType) && (
             <PamResourceSessionRecordingSection
               config={resource.sessionSummaryConfig ?? null}
@@ -255,11 +258,13 @@ const PageContent = () => {
         onDeleteApproved={handleDeleteConfirm}
       />
 
-      <PamRotationPolicyModal
-        isOpen={isRotationPolicyModalOpen}
-        onOpenChange={setIsRotationPolicyModalOpen}
-        resource={resource}
-      />
+      {isPamRotationSupported(resource.resourceType) && (
+        <PamRotationPolicyModal
+          isOpen={isRotationPolicyModalOpen}
+          onOpenChange={setIsRotationPolicyModalOpen}
+          resource={resource}
+        />
+      )}
 
       {[PamResourceType.Postgres, PamResourceType.SSH].includes(resource.resourceType) && (
         <PamSessionRecordingModal

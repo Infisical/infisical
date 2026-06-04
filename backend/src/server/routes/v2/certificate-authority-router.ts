@@ -6,7 +6,7 @@ import { readLimit } from "@app/server/config/rateLimiter";
 import { openApiHidden } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { AcmeCertificateAuthoritySchema } from "@app/services/certificate-authority/acme/acme-certificate-authority-schemas";
+import { SanitizedAcmeCertificateAuthoritySchema } from "@app/services/certificate-authority/acme/acme-certificate-authority-schemas";
 import { AwsAcmPublicCaCertificateAuthoritySchema } from "@app/services/certificate-authority/aws-acm-public-ca/aws-acm-public-ca-certificate-authority-schemas";
 import { AwsPcaCertificateAuthoritySchema } from "@app/services/certificate-authority/aws-pca/aws-pca-certificate-authority-schemas";
 import { AzureAdCsCertificateAuthoritySchema } from "@app/services/certificate-authority/azure-ad-cs/azure-ad-cs-certificate-authority-schemas";
@@ -18,7 +18,7 @@ import { VenafiTppCertificateAuthoritySchema } from "@app/services/certificate-a
 
 const CertificateAuthoritySchema = z.discriminatedUnion("type", [
   InternalCertificateAuthoritySchema,
-  AcmeCertificateAuthoritySchema,
+  SanitizedAcmeCertificateAuthoritySchema,
   AzureAdCsCertificateAuthoritySchema,
   AwsPcaCertificateAuthoritySchema,
   DigiCertCertificateAuthoritySchema,

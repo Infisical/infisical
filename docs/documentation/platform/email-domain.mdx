@@ -171,7 +171,11 @@ When [SCIM provisioning](/documentation/platform/scim/overview) is enabled, emai
 
 <Accordion title="Do I need to verify domains for email/password login?">
   No. Email domain verification is required only for SSO (SAML, OIDC, LDAP) and
-  SCIM provisioning flows. Email/password login is not affected.
+  SCIM provisioning flows.
+
+  Note, however, that if your organization [enforces SSO](/documentation/platform/sso/overview#sso-enforcement),
+  email & password signup is blocked for your verified domain(s) — new password
+  accounts can no longer be created for addresses on those domains.
 </Accordion>
 
 <Accordion title="Does verifying a parent domain cover all subdomains?">
