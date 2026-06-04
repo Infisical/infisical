@@ -278,8 +278,8 @@ export const GitHubAppSelector = ({
           </FormControl>
           <div className="mt-3 flex items-start gap-2 rounded-md border border-mineshaft-500 bg-mineshaft-700/40 px-3 py-2.5 text-xs leading-relaxed text-mineshaft-300">
             <FontAwesomeIcon icon={faCircleInfo} className="mt-0.5 text-mineshaft-400" />
-            You&apos;ll be redirected to GitHub to install the app and grant repository access. It
-            appears here as soon as you return.
+            You&apos;ll be redirected to GitHub to complete the private app setup. It appears here
+            as soon as you return.
           </div>
           <div className="mt-3 flex items-center justify-end gap-2">
             <Button variant="plain" colorSchema="secondary" size="xs" onClick={resetCreate}>
