@@ -384,106 +384,112 @@ export const gitHubAppServiceFactory = ({
       throw new BadRequestError({ message: "Invalid or expired GitHub manifest state. Please try again." });
     }
     const ttlSeconds = Math.max(1, exp - Math.floor(Date.now() / 1000));
-    const claimed = await keyStore.setItemWithExpiryNX(KeyStorePrefixes.UsedGitHubManifestState(jti), ttlSeconds, "1");
+    const stateClaimKey = KeyStorePrefixes.UsedGitHubManifestState(jti);
+    const claimed = await keyStore.setItemWithExpiryNX(stateClaimKey, ttlSeconds, "1");
     if (!claimed) {
       throw new BadRequestError({
         message: "This GitHub manifest registration link has already been used. Please try again."
       });
     }
 
-    const { permission } = await permissionService.getOrgPermission({
-      actor: actorType as ActorType,
-      actorId,
-      orgId,
-      actorAuthMethod: authMethod as ActorAuthMethod,
-      actorOrgId: orgId,
-      scope: OrganizationActionScope.ParentOrganization
-    });
-
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionAppConnectionActions.Create,
-      OrgPermissionSubjects.AppConnections
-    );
-
-    const existingByName = await gitHubAppDAL.findOne({ orgId, name });
-    if (existingByName) {
-      throw new BadRequestError({
-        message: `A GitHub App with name "${name}" already exists in this organization.`
-      });
-    }
-
-    assertPlatformGitHubHostAllowed(githubHost);
-
-    const nameLockKey = KeyStorePrefixes.GitHubManifestNameLock(orgId, name);
-    const nameLockClaimed = await keyStore.setItemWithExpiryNX(nameLockKey, 60, "1");
-    if (!nameLockClaimed) {
-      throw new BadRequestError({
-        message: `A GitHub App with name "${name}" is already being registered in this organization.`
-      });
-    }
-
     let created: Awaited<ReturnType<typeof gitHubAppDAL.create>>;
     try {
-      let manifestResponse: TGitHubAppManifestResponse;
-      try {
-        const apiBaseUrl = await getGitHubInstanceApiUrl({
-          credentials: { host: githubHost || undefined, instanceType }
-        });
-        const { data } = await safeRequest.post<TGitHubAppManifestResponse>(
-          `https://${apiBaseUrl}/app-manifests/${encodeURIComponent(code)}/conversions`,
-          {},
-          {
-            headers: {
-              Accept: "application/vnd.github+json",
-              "X-GitHub-Api-Version": "2022-11-28"
-            }
-          }
-        );
-        manifestResponse = data;
-      } catch {
-        throw new BadRequestError({
-          message:
-            "Failed to exchange GitHub App manifest code. The code may be expired or invalid. Please try registering the GitHub App again."
-        });
-      }
-
-      const { encryptor } = await kmsService.createCipherPairWithDataKey({
-        type: KmsDataKey.Organization,
-        orgId
+      const { permission } = await permissionService.getOrgPermission({
+        actor: actorType as ActorType,
+        actorId,
+        orgId,
+        actorAuthMethod: authMethod as ActorAuthMethod,
+        actorOrgId: orgId,
+        scope: OrganizationActionScope.ParentOrganization
       });
 
-      const owner = manifestResponse.owner?.login ?? (githubOrg || null);
+      ForbiddenError.from(permission).throwUnlessCan(
+        OrgPermissionAppConnectionActions.Create,
+        OrgPermissionSubjects.AppConnections
+      );
+
+      const existingByName = await gitHubAppDAL.findOne({ orgId, name });
+      if (existingByName) {
+        throw new BadRequestError({
+          message: `A GitHub App with name "${name}" already exists in this organization.`
+        });
+      }
+
+      assertPlatformGitHubHostAllowed(githubHost);
+
+      const nameLockKey = KeyStorePrefixes.GitHubManifestNameLock(orgId, name);
+      const nameLockClaimed = await keyStore.setItemWithExpiryNX(nameLockKey, 60, "1");
+      if (!nameLockClaimed) {
+        throw new BadRequestError({
+          message: `A GitHub App with name "${name}" is already being registered in this organization.`
+        });
+      }
 
       try {
-        created = await gitHubAppDAL.create({
-          orgId,
-          name,
-          appId: String(manifestResponse.id),
-          clientId: manifestResponse.client_id,
-          encryptedClientSecret: encryptor({ plainText: Buffer.from(manifestResponse.client_secret) }).cipherTextBlob,
-          encryptedPrivateKey: encryptor({ plainText: Buffer.from(manifestResponse.pem) }).cipherTextBlob,
-          slug: manifestResponse.slug,
-          owner,
-          host: githubHost || null,
-          instanceType
-        });
-      } catch (err) {
-        logger.error(
-          { err, orgId, appId: manifestResponse.id, slug: manifestResponse.slug },
-          `Failed to store GitHub App after manifest conversion; the app must be deleted manually on GitHub [orgId=${orgId}] [appId=${manifestResponse.id}] [slug=${manifestResponse.slug}] [url=${manifestResponse.html_url}]`
-        );
-        if (
-          err instanceof DatabaseError &&
-          (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation
-        ) {
+        let manifestResponse: TGitHubAppManifestResponse;
+        try {
+          const apiBaseUrl = await getGitHubInstanceApiUrl({
+            credentials: { host: githubHost || undefined, instanceType }
+          });
+          const { data } = await safeRequest.post<TGitHubAppManifestResponse>(
+            `https://${apiBaseUrl}/app-manifests/${encodeURIComponent(code)}/conversions`,
+            {},
+            {
+              headers: {
+                Accept: "application/vnd.github+json",
+                "X-GitHub-Api-Version": "2022-11-28"
+              }
+            }
+          );
+          manifestResponse = data;
+        } catch {
           throw new BadRequestError({
-            message: `A GitHub App with name "${name}" already exists in this organization. Note: a duplicate app was still created on GitHub (${manifestResponse.html_url}) — please delete it from your GitHub app settings.`
+            message:
+              "Failed to exchange GitHub App manifest code. The code may be expired or invalid. Please try registering the GitHub App again."
           });
         }
-        throw err;
+
+        const { encryptor } = await kmsService.createCipherPairWithDataKey({
+          type: KmsDataKey.Organization,
+          orgId
+        });
+
+        const owner = manifestResponse.owner?.login ?? (githubOrg || null);
+
+        try {
+          created = await gitHubAppDAL.create({
+            orgId,
+            name,
+            appId: String(manifestResponse.id),
+            clientId: manifestResponse.client_id,
+            encryptedClientSecret: encryptor({ plainText: Buffer.from(manifestResponse.client_secret) }).cipherTextBlob,
+            encryptedPrivateKey: encryptor({ plainText: Buffer.from(manifestResponse.pem) }).cipherTextBlob,
+            slug: manifestResponse.slug,
+            owner,
+            host: githubHost || null,
+            instanceType
+          });
+        } catch (err) {
+          logger.error(
+            { err, orgId, appId: manifestResponse.id, slug: manifestResponse.slug },
+            `Failed to store GitHub App after manifest conversion; the app must be deleted manually on GitHub [orgId=${orgId}] [appId=${manifestResponse.id}] [slug=${manifestResponse.slug}] [url=${manifestResponse.html_url}]`
+          );
+          if (
+            err instanceof DatabaseError &&
+            (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation
+          ) {
+            throw new BadRequestError({
+              message: `A GitHub App with name "${name}" already exists in this organization. Note: a duplicate app was still created on GitHub (${manifestResponse.html_url}) — please delete it from your GitHub app settings.`
+            });
+          }
+          throw err;
+        }
+      } finally {
+        await keyStore.deleteItem(nameLockKey).catch(() => {});
       }
-    } finally {
-      await keyStore.deleteItem(nameLockKey).catch(() => {});
+    } catch (err) {
+      await keyStore.deleteItem(stateClaimKey).catch(() => {});
+      throw err;
     }
 
     const callbackUrl = new URL(`${SITE_URL}/organizations/${orgId}/app-connections/github/manifest/callback`);
