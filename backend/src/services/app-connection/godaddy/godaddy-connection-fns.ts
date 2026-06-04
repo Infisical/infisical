@@ -47,8 +47,17 @@ export const validateGoDaddyConnectionCredentials = async (config: TGoDaddyConne
             : "GoDaddy denied access (403 Forbidden) — the credentials lack access to the Certificates API";
         throw new BadRequestError({ message: detail ? `${reason}: ${detail}` : reason });
       }
-      // Any non-auth response (e.g. 404 for the missing certificate) means the credentials authenticated.
-      return credentials;
+      // 404 = authenticated, the probe certificate just doesn't exist (expected for valid credentials).
+      if (status === 404) {
+        return credentials;
+      }
+      // Anything else (5xx, 429, etc.) means we couldn't confirm the credentials — surface it rather
+      // than treating a transient or server error as a successful validation.
+      const data = error.response?.data as { message?: string; fields?: { message?: string }[] } | undefined;
+      const detail = data?.fields?.[0]?.message || data?.message || error.message;
+      throw new BadRequestError({
+        message: `Unable to validate GoDaddy connection${status ? ` (GoDaddy returned ${status})` : ""}: ${detail}`
+      });
     }
     throw new BadRequestError({
       message: `Unable to validate connection: ${(error as Error).message || "Verify credentials"}`
