@@ -809,10 +809,11 @@ export const oidcConfigServiceFactory = ({
         const claims = tokenSet.claims();
 
         const emailClaimPath = oidcCfg.claimEmailPath || "email";
-        const email = claims[emailClaimPath] as string | undefined;
+        const rawEmailClaim = claims[emailClaimPath];
+        const email = typeof rawEmailClaim === "string" ? rawEmailClaim : undefined;
         if (!email) {
           throw new BadRequestError({
-            message: `Invalid request. Missing "${emailClaimPath}" claim in the OIDC token.`
+            message: `Invalid request. Missing or non-string "${emailClaimPath}" claim in the OIDC token.`
           });
         }
 
@@ -823,10 +824,11 @@ export const oidcConfigServiceFactory = ({
         }
 
         const nameClaimPath = oidcCfg.claimNamePath;
-        const name = nameClaimPath ? (claims[nameClaimPath] as string | undefined) : claims?.given_name || claims?.name;
+        const rawNameClaim = nameClaimPath ? claims[nameClaimPath] : claims?.given_name || claims?.name;
+        const name = typeof rawNameClaim === "string" ? rawNameClaim : undefined;
         if (!name) {
           throw new BadRequestError({
-            message: `Invalid request. Missing "${nameClaimPath || "given_name/name"}" claim in the OIDC token.`
+            message: `Invalid request. Missing or non-string "${nameClaimPath || "given_name/name"}" claim in the OIDC token.`
           });
         }
 

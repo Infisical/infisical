@@ -209,8 +209,8 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
       isActive: true,
       organizationId: currentOrg.id,
       jwtSignatureAlgorithm,
-      claimEmailPath: claimEmailPath || undefined,
-      claimNamePath: claimNamePath || undefined
+      claimEmailPath: claimEmailPath || null,
+      claimNamePath: claimNamePath || null
     };
 
     if (!data) {

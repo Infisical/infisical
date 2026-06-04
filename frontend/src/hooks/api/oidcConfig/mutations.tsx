@@ -43,8 +43,8 @@ export const useUpdateOIDCConfig = () => {
       organizationId: string;
       manageGroupMemberships?: boolean;
       jwtSignatureAlgorithm?: OIDCJWTSignatureAlgorithm;
-      claimEmailPath?: string;
-      claimNamePath?: string;
+      claimEmailPath?: string | null;
+      claimNamePath?: string | null;
     }) => {
       const { data } = await apiRequest.patch("/api/v1/sso/oidc/config", {
         issuer,
@@ -111,8 +111,8 @@ export const useCreateOIDCConfig = () => {
       allowedEmailDomains?: string;
       manageGroupMemberships?: boolean;
       jwtSignatureAlgorithm?: OIDCJWTSignatureAlgorithm;
-      claimEmailPath?: string;
-      claimNamePath?: string;
+      claimEmailPath?: string | null;
+      claimNamePath?: string | null;
     }) => {
       const { data } = await apiRequest.post("/api/v1/sso/oidc/config", {
         issuer,
