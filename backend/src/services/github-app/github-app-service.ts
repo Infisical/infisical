@@ -5,6 +5,7 @@ import jwt from "jsonwebtoken";
 import { OrganizationActionScope } from "@app/db/schemas";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
@@ -37,6 +38,7 @@ type TGitHubAppServiceFactoryDep = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "countByGitHubApp">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX">;
 };
 
 export type TGitHubAppServiceFactory = ReturnType<typeof gitHubAppServiceFactory>;
@@ -45,7 +47,8 @@ export const gitHubAppServiceFactory = ({
   gitHubAppDAL,
   appConnectionDAL,
   permissionService,
-  kmsService
+  kmsService,
+  keyStore
 }: TGitHubAppServiceFactoryDep) => {
   const listGitHubApps = async ({ orgPermission }: TListGitHubAppsDTO): Promise<TSanitizedGitHubApp[]> => {
     const { permission } = await permissionService.getOrgPermission({
@@ -274,6 +277,7 @@ export const gitHubAppServiceFactory = ({
 
     const stateToken = jwt.sign(
       {
+        jti: crypto.nativeCrypto.randomUUID(),
         orgId: orgPermission.orgId,
         actorId: orgPermission.id,
         actorType: orgPermission.type,
@@ -324,15 +328,26 @@ export const gitHubAppServiceFactory = ({
       throw new BadRequestError({ message: "SITE_URL is not configured." });
     }
 
-    let statePayload: TGitHubManifestStatePayload;
+    let statePayload: TGitHubManifestStatePayload & { exp: number };
     try {
-      statePayload = jwt.verify(state, AUTH_SECRET) as TGitHubManifestStatePayload;
+      statePayload = jwt.verify(state, AUTH_SECRET) as TGitHubManifestStatePayload & { exp: number };
     } catch {
       throw new BadRequestError({ message: "Invalid or expired GitHub manifest state. Please try again." });
     }
 
-    const { orgId, actorId, actorType, authMethod, name, instanceType, githubOrg, githubHost, installState } =
+    const { jti, exp, orgId, actorId, actorType, authMethod, name, instanceType, githubOrg, githubHost, installState } =
       statePayload;
+
+    if (!jti) {
+      throw new BadRequestError({ message: "Invalid or expired GitHub manifest state. Please try again." });
+    }
+    const ttlSeconds = Math.max(1, exp - Math.floor(Date.now() / 1000));
+    const claimed = await keyStore.setItemWithExpiryNX(KeyStorePrefixes.UsedGitHubManifestState(jti), ttlSeconds, "1");
+    if (!claimed) {
+      throw new BadRequestError({
+        message: "This GitHub manifest registration link has already been used. Please try again."
+      });
+    }
 
     const { permission } = await permissionService.getOrgPermission({
       actor: actorType as ActorType,

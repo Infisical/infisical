@@ -10,6 +10,9 @@ export type TInitiateGitHubManifestDTO = {
 };
 
 export type TGitHubManifestStatePayload = {
+  // Unique, single-use identifier. Consumed (claimed in the key store) on the first callback so a
+  // captured state token cannot be replayed within its validity window.
+  jti: string;
   orgId: string;
   actorId: string;
   actorType: string;
