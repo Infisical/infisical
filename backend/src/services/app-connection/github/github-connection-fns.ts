@@ -121,6 +121,21 @@ export const signGitHubAppInstallationsToken = (payload: TGitHubAppInstallations
   return crypto.jwt().sign(payload, AUTH_SECRET, { expiresIn: GITHUB_APP_INSTALLATIONS_TOKEN_TTL });
 };
 
+export const releaseGitHubInstallationsTokenClaim = async (
+  installationsToken: string,
+  keyStore: Pick<TKeyStoreFactory, "deleteItem">
+) => {
+  try {
+    const { AUTH_SECRET } = getConfig();
+    const payload = crypto.jwt().verify(installationsToken, AUTH_SECRET) as TGitHubAppInstallationsTokenPayload;
+    if (payload.jti) {
+      await keyStore.deleteItem(KeyStorePrefixes.UsedGitHubInstallationsToken(payload.jti));
+    }
+  } catch {
+    // ignore — the claim will expire on its TTL if it can't be released here
+  }
+};
+
 export const getGitHubConnectionListItem = () => {
   const { INF_APP_CONNECTION_GITHUB_OAUTH_CLIENT_ID, INF_APP_CONNECTION_GITHUB_APP_SLUG } = getConfig();
 
@@ -655,6 +670,48 @@ export function isGithubErrorResponse(data: GithubTokenRespData): data is Github
   return "error" in data;
 }
 
+export type TGitHubUserInstallation = {
+  id: number;
+  app_id: number;
+  account: {
+    login: string;
+    type: string;
+  };
+};
+
+export const listGitHubUserInstallations = async (
+  apiBaseUrl: string,
+  accessToken: string,
+  requestFn: (
+    requestConfig: AxiosRequestConfig & { url: string }
+  ) => Promise<AxiosResponse<{ installations: TGitHubUserInstallation[] }>>
+): Promise<TGitHubUserInstallation[]> => {
+  const installations: TGitHubUserInstallation[] = [];
+  const MAX_PAGES = 100;
+  for (let page = 1; page <= MAX_PAGES; page += 1) {
+    // eslint-disable-next-line no-await-in-loop
+    const { data } = await requestFn({
+      url: `https://${apiBaseUrl}/user/installations`,
+      method: "GET",
+      params: { per_page: 100, page },
+      headers: {
+        Accept: "application/vnd.github+json",
+        Authorization: `Bearer ${accessToken}`,
+        "X-GitHub-Api-Version": "2022-11-28"
+      }
+    });
+
+    const pageInstallations = data.installations ?? [];
+    installations.push(...pageInstallations);
+
+    if (pageInstallations.length < 100) {
+      break;
+    }
+  }
+
+  return installations;
+};
+
 export const validateGitHubConnectionCredentials = async (
   config: TGitHubConnectionConfig,
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
@@ -700,18 +757,6 @@ export const validateGitHubConnectionCredentials = async (
       });
     }
 
-    const ttlSeconds = Math.max(1, tokenPayload.exp - Math.floor(Date.now() / 1000));
-    const claimed = await deps.keyStore.setItemWithExpiryNX(
-      KeyStorePrefixes.UsedGitHubInstallationsToken(tokenPayload.jti),
-      ttlSeconds,
-      "1"
-    );
-    if (!claimed) {
-      throw new BadRequestError({
-        message: "This GitHub installation token has already been used. Please reconnect and try again."
-      });
-    }
-
     if (tokenPayload.orgId !== config.orgId || (deps.actorId && tokenPayload.actorId !== deps.actorId)) {
       throw new ForbiddenRequestError({
         message: "GitHub installation token does not belong to this actor or organization."
@@ -738,6 +783,18 @@ export const validateGitHubConnectionCredentials = async (
       : tokenPayload.instanceType;
 
     assertPlatformGitHubHostAllowed(boundHost);
+
+    const ttlSeconds = Math.max(1, tokenPayload.exp - Math.floor(Date.now() / 1000));
+    const claimed = await deps.keyStore.setItemWithExpiryNX(
+      KeyStorePrefixes.UsedGitHubInstallationsToken(tokenPayload.jti),
+      ttlSeconds,
+      "1"
+    );
+    if (!claimed) {
+      throw new BadRequestError({
+        message: "This GitHub installation token has already been used. Please reconnect and try again."
+      });
+    }
 
     return {
       installationId: credentials.installationId,
@@ -876,32 +933,16 @@ export const validateGitHubConnectionCredentials = async (
       throw new InternalServerError({ message: `Missing access token: ${tokenResp.data.error}` });
     }
 
-    const installationsResp = await requestWithGitHubGateway<{
-      installations: {
-        id: number;
-        account: {
-          login: string;
-          type: string;
-          id: number;
-        };
-      }[];
-    }>(
-      resolvedConfig,
-      gatewayService,
-      gatewayV2Service,
-      {
-        url: `https://${await getGitHubInstanceApiUrl(config)}/user/installations`,
-        headers: {
-          Accept: "application/json",
-          Authorization: `Bearer ${tokenResp.data.access_token}`,
-          "Accept-Encoding": "application/json"
-        }
-      },
-      gatewayConnectionDetails
-    );
-
     // installations are scoped to this GitHub App since the token is a user-to-server token
-    const { installations } = installationsResp.data;
+    const installations = await listGitHubUserInstallations(apiBaseUrl, tokenResp.data.access_token, (requestConfig) =>
+      requestWithGitHubGateway<{ installations: TGitHubUserInstallation[] }>(
+        resolvedConfig,
+        gatewayService,
+        gatewayV2Service,
+        requestConfig,
+        gatewayConnectionDetails
+      )
+    );
 
     // The installation is selected through GitHub's own install UI and returned to us as an explicit
     // installationId (required) — never auto-resolved from the user's accessible installations, so we

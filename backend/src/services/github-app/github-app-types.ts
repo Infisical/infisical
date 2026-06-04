@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 import { OrgServiceActor } from "@app/lib/types";
 
 export type TInitiateGitHubManifestDTO = {
@@ -58,15 +60,17 @@ export type TGitHubAppManifestResponse = {
   } | null;
 };
 
-export type TSanitizedGitHubApp = {
-  id: string | null;
-  orgId: string;
-  name: string;
-  appId: string;
-  slug: string;
-  clientId: string | null;
-  owner: string | null;
-  connectionCount: number;
-  createdAt: Date | null;
-  updatedAt: Date | null;
-};
+export const SanitizedGitHubAppSchema = z.object({
+  id: z.string().uuid().nullable(),
+  orgId: z.string().uuid(),
+  name: z.string(),
+  appId: z.string(),
+  slug: z.string(),
+  clientId: z.string().nullable(),
+  owner: z.string().nullable(),
+  connectionCount: z.number(),
+  createdAt: z.date().nullable(),
+  updatedAt: z.date().nullable()
+});
+
+export type TSanitizedGitHubApp = z.infer<typeof SanitizedGitHubAppSchema>;

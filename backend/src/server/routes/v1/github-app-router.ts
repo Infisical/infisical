@@ -3,19 +3,7 @@ import { z } from "zod";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
-
-const SanitizedGitHubAppSchema = z.object({
-  id: z.string().uuid().nullable(),
-  orgId: z.string().uuid(),
-  name: z.string(),
-  appId: z.string(),
-  slug: z.string(),
-  clientId: z.string().nullable(),
-  owner: z.string().nullable(),
-  connectionCount: z.number(),
-  createdAt: z.date().nullable(),
-  updatedAt: z.date().nullable()
-});
+import { SanitizedGitHubAppSchema } from "@app/services/github-app/github-app-types";
 
 export const registerGitHubAppRouter = async (server: FastifyZodProvider) => {
   server.route({

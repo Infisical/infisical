@@ -28,6 +28,8 @@ import {
 } from "@app/context/OrgPermissionContext/types";
 import {
   APP_CONNECTION_MAP,
+  buildGitHubAppInstallUrl,
+  buildGitHubHostUrl,
   CSRF_TOKEN_STORAGE_KEY,
   generateCsrfToken,
   getAppConnectionMethodDetails,
@@ -224,9 +226,6 @@ export const GitHubConnectionForm = ({ appConnection, projectId, onSubmit }: Pro
     ? (gitHubApps.find((app) => (app.id ?? null) === existingGitHubAppId) ?? null)
     : null;
 
-  const buildGithubHost = (host?: string) =>
-    host && host.length > 0 ? `https://${host}` : "https://github.com";
-
   const storeConnectionFormData = (
     formData: FormData,
     installState: string,
@@ -300,7 +299,7 @@ export const GitHubConnectionForm = ({ appConnection, projectId, onSubmit }: Pro
 
     // generate install state here so the OAuth callback can validate it
     const installState = generateCsrfToken();
-    const githubHost = buildGithubHost(formData.credentials?.host);
+    const githubHost = buildGitHubHostUrl(formData.credentials?.host);
 
     switch (formData.method) {
       case GitHubConnectionMethod.App: {
@@ -317,7 +316,12 @@ export const GitHubConnectionForm = ({ appConnection, projectId, onSubmit }: Pro
         }
 
         window.location.assign(
-          `${githubHost}/${formData.credentials?.instanceType === "server" ? "github-apps" : "apps"}/${slug}/installations/new?state=${installState}`
+          buildGitHubAppInstallUrl(
+            slug ?? "",
+            installState,
+            formData.credentials?.host,
+            formData.credentials?.instanceType
+          )
         );
         break;
       }

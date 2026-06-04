@@ -109,7 +109,11 @@ import { ValidateFlyioConnectionCredentialsSchema } from "./flyio";
 import { flyioConnectionService } from "./flyio/flyio-connection-service";
 import { ValidateGcpConnectionCredentialsSchema } from "./gcp";
 import { gcpConnectionService } from "./gcp/gcp-connection-service";
-import { GitHubConnectionMethod, ValidateGitHubConnectionCredentialsSchema } from "./github";
+import {
+  GitHubConnectionMethod,
+  releaseGitHubInstallationsTokenClaim,
+  ValidateGitHubConnectionCredentialsSchema
+} from "./github";
 import { githubConnectionService } from "./github/github-connection-service";
 import { ValidateGitHubRadarConnectionCredentialsSchema } from "./github-radar";
 import { githubRadarConnectionService } from "./github-radar/github-radar-connection-service";
@@ -188,7 +192,7 @@ export type TAppConnectionServiceFactoryDep = {
   appConnectionCredentialRotationService: TAppConnectionCredentialRotationServiceFactory;
   identityUaDAL: Pick<TIdentityUaDALFactory, "findOne">;
   gitHubAppDAL: Pick<TGitHubAppDALFactory, "findOne" | "upsertConnectionLink">;
-  keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX">;
+  keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX" | "deleteItem">;
 };
 
 export type TAppConnectionServiceFactory = ReturnType<typeof appConnectionServiceFactory>;
@@ -635,6 +639,11 @@ export const appConnectionServiceFactory = ({
         configuration
       } as TAppConnection;
     } catch (err) {
+      if (app === AppConnection.GitHub && method === GitHubConnectionMethod.App) {
+        const installationsToken = (credentials as { installationsToken?: string } | undefined)?.installationsToken;
+        if (installationsToken) await releaseGitHubInstallationsTokenClaim(installationsToken, keyStore);
+      }
+
       if (err instanceof DatabaseError && (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation) {
         throw new BadRequestError({ message: `An App Connection with the name "${params.name}" already exists` });
       }
@@ -970,6 +979,11 @@ export const appConnectionServiceFactory = ({
 
       return await decryptAppConnection(updatedConnection, kmsService);
     } catch (err) {
+      if (app === AppConnection.GitHub && method === GitHubConnectionMethod.App) {
+        const installationsToken = (credentials as { installationsToken?: string } | undefined)?.installationsToken;
+        if (installationsToken) await releaseGitHubInstallationsTokenClaim(installationsToken, keyStore);
+      }
+
       if (err instanceof DatabaseError && (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation) {
         throw new BadRequestError({ message: `An App Connection with the name "${params.name}" already exists` });
       }

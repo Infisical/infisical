@@ -35,7 +35,11 @@ import { Badge } from "@app/components/v3";
 import { OrgPermissionSubjects, ProjectPermissionSub, useOrganization } from "@app/context";
 import { OrgPermissionAppConnectionActions } from "@app/context/OrgPermissionContext/types";
 import { ProjectPermissionAppConnectionActions } from "@app/context/ProjectPermissionContext/types";
-import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
+import {
+  APP_CONNECTION_MAP,
+  buildGitHubAppUrl,
+  getAppConnectionMethodDetails
+} from "@app/helpers/appConnections";
 import { getProjectBaseURL } from "@app/helpers/project";
 import { useToggle } from "@app/hooks";
 import { GitHubConnectionMethod, TAppConnection } from "@app/hooks/api/appConnections";
@@ -116,9 +120,11 @@ export const AppConnectionRow = ({
     : null;
 
   const gitHubAppUrl = linkedGitHubApp
-    ? `https://${gitHubAppCredentials?.host?.trim() || "github.com"}/${
-        gitHubAppCredentials?.instanceType === "server" ? "github-apps" : "apps"
-      }/${linkedGitHubApp.slug}`
+    ? buildGitHubAppUrl(
+        linkedGitHubApp.slug,
+        gitHubAppCredentials?.host,
+        gitHubAppCredentials?.instanceType
+      )
     : null;
 
   return (

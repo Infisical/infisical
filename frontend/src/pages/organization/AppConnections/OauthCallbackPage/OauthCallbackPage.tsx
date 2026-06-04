@@ -6,6 +6,7 @@ import { Button, ContentLoader } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
   APP_CONNECTION_MAP,
+  buildGitHubAppInstallUrl,
   consumeCsrfToken,
   CSRF_TOKEN_STORAGE_KEY,
   generateCsrfToken,
@@ -597,12 +598,13 @@ export const OAuthCallbackPage = () => {
     localStorage.setItem(CSRF_TOKEN_STORAGE_KEY, newState);
     localStorage.setItem(GITHUB_CONNECTION_FORM_STORAGE_KEY, JSON.stringify(formData));
 
-    const githubHost = formData.credentials?.host
-      ? `https://${formData.credentials.host}`
-      : "https://github.com";
-
     window.location.assign(
-      `${githubHost}/${formData.credentials?.instanceType === "server" ? "github-apps" : "apps"}/${formData.appSlug}/installations/new?state=${newState}`
+      buildGitHubAppInstallUrl(
+        formData.appSlug,
+        newState,
+        formData.credentials?.host,
+        formData.credentials?.instanceType
+      )
     );
   };
 

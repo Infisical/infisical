@@ -20,6 +20,7 @@ import {
   CommandList
 } from "@app/components/v3/generic/Command";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3/generic/Tooltip";
+import { buildGitHubAppUrl } from "@app/helpers/appConnections";
 import { TGitHubApp, useDeleteGitHubApp } from "@app/hooks/api/gitHubApps";
 
 const SHARED_KEY = "__shared__";
@@ -28,13 +29,6 @@ const SHARED_KEY = "__shared__";
 const GITHUB_APP_NAME_PREFIX = "infisical-";
 
 const getAppKey = (app: TGitHubApp | null) => (app ? (app.id ?? SHARED_KEY) : null);
-
-const buildAppUrl = (app: TGitHubApp, host?: string, instanceType?: "cloud" | "server") => {
-  const resolvedHost =
-    host && host.trim().length > 0 ? `https://${host.trim()}` : "https://github.com";
-  const segment = instanceType === "server" ? "github-apps" : "apps";
-  return `${resolvedHost}/${segment}/${app.slug}`;
-};
 
 type Props = {
   apps: TGitHubApp[];
@@ -188,7 +182,11 @@ export const GitHubAppSelector = ({
             className="rounded p-1 text-mineshaft-300 hover:bg-mineshaft-600 hover:text-mineshaft-100"
             onClick={(e) => {
               e.stopPropagation();
-              window.open(buildAppUrl(app, host, instanceType), "_blank", "noopener,noreferrer");
+              window.open(
+                buildGitHubAppUrl(app.slug, host, instanceType),
+                "_blank",
+                "noopener,noreferrer"
+              );
             }}
           >
             <FontAwesomeIcon icon={faArrowUpRightFromSquare} className="text-xs" />
@@ -334,7 +332,7 @@ export const GitHubAppSelector = ({
                         onClick={(e) => {
                           e.stopPropagation();
                           window.open(
-                            buildAppUrl(sharedApp, host, instanceType),
+                            buildGitHubAppUrl(sharedApp.slug, host, instanceType),
                             "_blank",
                             "noopener,noreferrer"
                           );

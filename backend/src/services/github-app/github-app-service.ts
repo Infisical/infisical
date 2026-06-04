@@ -1,6 +1,5 @@
 import { ForbiddenError } from "@casl/ability";
 import { AxiosError } from "axios";
-import jwt from "jsonwebtoken";
 
 import { ActionProjectType, OrganizationActionScope } from "@app/db/schemas";
 import {
@@ -26,6 +25,7 @@ import {
   getGitHubInstanceApiUrl,
   GithubTokenRespData,
   isGithubErrorResponse,
+  listGitHubUserInstallations,
   resolveGitHubAppCredentials,
   signGitHubAppInstallationsToken,
   signGitHubAppJwt
@@ -290,7 +290,7 @@ export const gitHubAppServiceFactory = ({
       });
     }
 
-    const stateToken = jwt.sign(
+    const stateToken = crypto.jwt().sign(
       {
         jti: crypto.nativeCrypto.randomUUID(),
         orgId: orgPermission.orgId,
@@ -345,7 +345,7 @@ export const gitHubAppServiceFactory = ({
 
     let statePayload: TGitHubManifestStatePayload & { exp: number };
     try {
-      statePayload = jwt.verify(state, AUTH_SECRET) as TGitHubManifestStatePayload & { exp: number };
+      statePayload = crypto.jwt().verify(state, AUTH_SECRET) as TGitHubManifestStatePayload & { exp: number };
     } catch {
       throw new BadRequestError({ message: "Invalid or expired GitHub manifest state. Please try again." });
     }
@@ -396,9 +396,11 @@ export const gitHubAppServiceFactory = ({
     try {
       let manifestResponse: TGitHubAppManifestResponse;
       try {
-        const resolvedApiHost = githubHost ? `https://${githubHost}/api/v3` : "https://api.github.com";
+        const apiBaseUrl = await getGitHubInstanceApiUrl({
+          credentials: { host: githubHost || undefined, instanceType }
+        });
         const { data } = await safeRequest.post<TGitHubAppManifestResponse>(
-          `${resolvedApiHost}/app-manifests/${encodeURIComponent(code)}/conversions`,
+          `https://${apiBaseUrl}/app-manifests/${encodeURIComponent(code)}/conversions`,
           {},
           {
             headers: {
@@ -571,34 +573,9 @@ export const gitHubAppServiceFactory = ({
       credentials: { host: effectiveHost, instanceType: effectiveInstanceType }
     });
 
-    type TUserInstallation = {
-      id: number;
-      app_id: number;
-      account: { login: string; type: string };
-    };
-
-    const installations: TUserInstallation[] = [];
-    const MAX_PAGES = 100;
-    for (let page = 1; page <= MAX_PAGES; page++) {
-      const { data } = await safeRequest.get<{ installations: TUserInstallation[] }>(
-        `https://${apiBaseUrl}/user/installations`,
-        {
-          params: { per_page: 100, page },
-          headers: {
-            Accept: "application/vnd.github+json",
-            Authorization: `Bearer ${tokenData.access_token}`,
-            "X-GitHub-Api-Version": "2022-11-28"
-          }
-        }
-      );
-
-      const pageInstallations = data.installations ?? [];
-      installations.push(...pageInstallations);
-
-      if (pageInstallations.length < 100) {
-        break;
-      }
-    }
+    const installations = await listGitHubUserInstallations(apiBaseUrl, tokenData.access_token, (requestConfig) =>
+      safeRequest.request(requestConfig)
+    );
 
     const appInstallations = installations.filter((installation) => String(installation.app_id) === appId);
 
