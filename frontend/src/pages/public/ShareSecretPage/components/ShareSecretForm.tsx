@@ -437,7 +437,7 @@ export const ShareSecretForm = ({
               }) => (
                 <Field orientation="horizontal">
                   <Switch
-                    variant="project"
+                    variant="org"
                     checked={isOrgAccess ? false : (isChecked ?? false)}
                     onCheckedChange={onChange}
                     disabled={isOrgAccess}
