@@ -1264,6 +1264,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
       const rows = await (tx || db.replicaNode())(TableName.SecretV2)
         .join(TableName.SecretFolder, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+        .where(`${TableName.Environment}.projectId`, projectId)
         .whereIn(`${TableName.SecretV2}.secretValueBlindIndex`, duplicateBlindIndexes)
         .whereNull(`${TableName.Environment}.deleteAfter`)
         .whereNull(`${TableName.SecretV2}.userId`)
