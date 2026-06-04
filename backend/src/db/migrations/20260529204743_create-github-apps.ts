@@ -24,25 +24,9 @@ export async function up(knex: Knex): Promise<void> {
 
     await createOnUpdateTrigger(knex, TableName.GitHubApp);
   }
-
-  if (!(await knex.schema.hasColumn(TableName.AppConnection, "gitHubAppId"))) {
-    await knex.schema.alterTable(TableName.AppConnection, (t) => {
-      t.uuid("gitHubAppId").nullable();
-      t.foreign("gitHubAppId").references("id").inTable(TableName.GitHubApp).onDelete("SET NULL");
-      t.index("gitHubAppId");
-    });
-  }
 }
 
 export async function down(knex: Knex): Promise<void> {
-  if (await knex.schema.hasColumn(TableName.AppConnection, "gitHubAppId")) {
-    await knex.schema.alterTable(TableName.AppConnection, (t) => {
-      t.dropForeign(["gitHubAppId"]);
-      t.dropIndex("gitHubAppId");
-      t.dropColumn("gitHubAppId");
-    });
-  }
-
   await knex.schema.dropTableIfExists(TableName.GitHubApp);
   await dropOnUpdateTrigger(knex, TableName.GitHubApp);
 }

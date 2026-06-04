@@ -203,21 +203,21 @@ export const appConnectionDALFactory = (db: TDbClient) => {
     return parseInt(String(result?.count || "0"), 10);
   };
 
-  // Counts GitHub App method connections per referenced GitHub App. The null bucket corresponds
-  // to connections using the instance-default (shared) GitHub App.
-  const countByGitHubApp = async (orgId: string, tx?: Knex) => {
+  // Returns the org's GitHub App method connections. Which GitHub App each connection references
+  // lives inside the encrypted credentials, so callers decrypt to group/count per app.
+  const findGitHubAppMethodConnections = async (orgId: string, tx?: Knex) => {
     const rows = await (tx || db.replicaNode())(TableName.AppConnection)
       .where(`${TableName.AppConnection}.orgId`, orgId)
       .andWhere(`${TableName.AppConnection}.app`, "github")
       .andWhere(`${TableName.AppConnection}.method`, "github-app")
-      .groupBy(`${TableName.AppConnection}.gitHubAppId`)
-      .select(db.ref("gitHubAppId").withSchema(TableName.AppConnection))
-      .count("id");
+      .select(
+        db.ref("id").withSchema(TableName.AppConnection),
+        db.ref("orgId").withSchema(TableName.AppConnection),
+        db.ref("projectId").withSchema(TableName.AppConnection),
+        db.ref("encryptedCredentials").withSchema(TableName.AppConnection)
+      );
 
-    return rows.map((row) => ({
-      gitHubAppId: (row as { gitHubAppId: string | null }).gitHubAppId,
-      count: parseInt(String(row.count || "0"), 10)
-    }));
+    return rows;
   };
 
   return {
@@ -228,6 +228,6 @@ export const appConnectionDALFactory = (db: TDbClient) => {
     countByGatewayId,
     findByGatewayPoolId,
     countByGatewayPoolId,
-    countByGitHubApp
+    findGitHubAppMethodConnections
   };
 };

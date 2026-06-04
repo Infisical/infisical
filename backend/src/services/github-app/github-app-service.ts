@@ -1,6 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 import { AxiosError } from "axios";
 import jwt from "jsonwebtoken";
+import { Knex } from "knex";
 
 import { OrganizationActionScope } from "@app/db/schemas";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
@@ -13,6 +14,7 @@ import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { safeRequest } from "@app/lib/validator/safe-request";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
+import { decryptAppConnectionCredentials } from "@app/services/app-connection/app-connection-fns";
 import {
   assertPlatformGitHubHostAllowed,
   getGitHubInstanceApiUrl,
@@ -35,7 +37,7 @@ import {
 
 type TGitHubAppServiceFactoryDep = {
   gitHubAppDAL: TGitHubAppDALFactory;
-  appConnectionDAL: Pick<TAppConnectionDALFactory, "countByGitHubApp">;
+  appConnectionDAL: Pick<TAppConnectionDALFactory, "findGitHubAppMethodConnections">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX" | "deleteItem">;
@@ -50,6 +52,27 @@ export const gitHubAppServiceFactory = ({
   kmsService,
   keyStore
 }: TGitHubAppServiceFactoryDep) => {
+  const countConnectionsByGitHubApp = async (orgId: string, tx?: Knex) => {
+    const connections = await appConnectionDAL.findGitHubAppMethodConnections(orgId, tx);
+
+    const counts = new Map<string | null, number>();
+    await Promise.all(
+      connections.map(async (connection) => {
+        const credentials = await decryptAppConnectionCredentials({
+          orgId: connection.orgId,
+          projectId: connection.projectId,
+          encryptedCredentials: connection.encryptedCredentials,
+          kmsService
+        });
+
+        const gitHubAppId = (credentials as { gitHubAppId?: string | null }).gitHubAppId ?? null;
+        counts.set(gitHubAppId, (counts.get(gitHubAppId) ?? 0) + 1);
+      })
+    );
+
+    return counts;
+  };
+
   const listGitHubApps = async ({ orgPermission }: TListGitHubAppsDTO): Promise<TSanitizedGitHubApp[]> => {
     const { permission } = await permissionService.getOrgPermission({
       actor: orgPermission.type,
@@ -64,8 +87,7 @@ export const gitHubAppServiceFactory = ({
 
     const apps = await gitHubAppDAL.find({ orgId: orgPermission.orgId });
 
-    const connectionCounts = await appConnectionDAL.countByGitHubApp(orgPermission.orgId);
-    const countByAppId = new Map(connectionCounts.map(({ gitHubAppId, count }) => [gitHubAppId, count]));
+    const countByAppId = await countConnectionsByGitHubApp(orgPermission.orgId);
 
     const dbApps: TSanitizedGitHubApp[] = apps.map((app) => ({
       id: app.id,
@@ -200,8 +222,8 @@ export const gitHubAppServiceFactory = ({
         throw new NotFoundError({ message: `GitHub App with id ${id} not found in this organization.` });
       }
 
-      const connectionCounts = await appConnectionDAL.countByGitHubApp(orgPermission.orgId, tx);
-      const connectionCount = connectionCounts.find(({ gitHubAppId }) => gitHubAppId === existing.id)?.count ?? 0;
+      const connectionCounts = await countConnectionsByGitHubApp(orgPermission.orgId, tx);
+      const connectionCount = connectionCounts.get(existing.id) ?? 0;
 
       if (connectionCount > 0) {
         throw new BadRequestError({
@@ -369,12 +391,6 @@ export const gitHubAppServiceFactory = ({
 
     assertPlatformGitHubHostAllowed(githubHost);
 
-    // Claim the (orgId, name) slot before asking GitHub to create the app. Without this, two
-    // concurrent callbacks for the same name both pass the precheck above, GitHub mints a real app
-    // for each of them, and the loser of the insert race leaves a live app — whose private key was
-    // never recorded — orphaned on GitHub. GitHub exposes no API to delete an app, so that orphan
-    // cannot be cleaned up programmatically; failing the loser here, before the conversion, is the
-    // only reliable prevention. The lock is released below once the insert settles either way.
     const nameLockKey = KeyStorePrefixes.GitHubManifestNameLock(orgId, name);
     const nameLockClaimed = await keyStore.setItemWithExpiryNX(nameLockKey, 60, "1");
     if (!nameLockClaimed) {
@@ -388,8 +404,6 @@ export const gitHubAppServiceFactory = ({
       let manifestResponse: TGitHubAppManifestResponse;
       try {
         const resolvedApiHost = githubHost ? `https://${githubHost}/api/v3` : "https://api.github.com";
-        // safeRequest validates + DNS-pins the target and disables redirects, so a public host
-        // cannot redirect this exchange to an internal service (SSRF).
         const { data } = await safeRequest.post<TGitHubAppManifestResponse>(
           `${resolvedApiHost}/app-manifests/${encodeURIComponent(code)}/conversions`,
           {},
@@ -425,18 +439,10 @@ export const gitHubAppServiceFactory = ({
           encryptedPrivateKey: encryptor({ plainText: Buffer.from(manifestResponse.pem) }).cipherTextBlob,
           slug: manifestResponse.slug,
           owner,
-          // Bind the app to the host/instance it was registered against. Every later credential
-          // operation derives its target host from these stored values rather than from a
-          // caller-supplied host, so a signed app JWT or the client secret can never be sent to an
-          // arbitrary host an attacker controls.
           host: githubHost || null,
           instanceType
         });
       } catch (err) {
-        // The conversion above already created a real app on GitHub, and GitHub has no API to
-        // delete an app — only the web UI can. Any failure past this point therefore strands a
-        // live app whose private key Infisical never stored. Log it and point the user at it so
-        // it can be removed manually.
         logger.error(
           { err, orgId, appId: manifestResponse.id, slug: manifestResponse.slug },
           `Failed to store GitHub App after manifest conversion; the app must be deleted manually on GitHub [orgId=${orgId}] [appId=${manifestResponse.id}] [slug=${manifestResponse.slug}] [url=${manifestResponse.html_url}]`
@@ -452,8 +458,6 @@ export const gitHubAppServiceFactory = ({
         throw err;
       }
     } finally {
-      // Best-effort release: on success the inserted row enforces uniqueness from here on, and on
-      // failure an immediate retry should not be blocked for the rest of the lock's TTL.
       await keyStore.deleteItem(nameLockKey).catch(() => {});
     }
 

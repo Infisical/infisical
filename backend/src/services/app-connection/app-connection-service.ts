@@ -107,7 +107,7 @@ import { ValidateFlyioConnectionCredentialsSchema } from "./flyio";
 import { flyioConnectionService } from "./flyio/flyio-connection-service";
 import { ValidateGcpConnectionCredentialsSchema } from "./gcp";
 import { gcpConnectionService } from "./gcp/gcp-connection-service";
-import { GitHubConnectionMethod, ValidateGitHubConnectionCredentialsSchema } from "./github";
+import { ValidateGitHubConnectionCredentialsSchema } from "./github";
 import { githubConnectionService } from "./github/github-connection-service";
 import { ValidateGitHubRadarConnectionCredentialsSchema } from "./github-radar";
 import { githubRadarConnectionService } from "./github-radar/github-radar-connection-service";
@@ -259,17 +259,6 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.Snowflake]: ValidateSnowflakeConnectionCredentialsSchema,
   [AppConnection.Datadog]: ValidateDatadogConnectionCredentialsSchema,
   [AppConnection.F5BigIp]: ValidateF5BigIpConnectionCredentialsSchema
-};
-
-// Extracts the GitHub App reference to persist in the queryable app_connections.gitHubAppId column.
-// Only GitHub App method connections reference a custom app; null means the instance-default (shared) app.
-const resolveGitHubAppIdColumn = (
-  app: AppConnection,
-  method: string,
-  credentials: TAppConnection["credentials"] | undefined
-): string | null => {
-  if (app !== AppConnection.GitHub || method !== GitHubConnectionMethod.App) return null;
-  return (credentials as { gitHubAppId?: string | null } | undefined)?.gitHubAppId ?? null;
 };
 
 export const appConnectionServiceFactory = ({
@@ -555,10 +544,6 @@ export const appConnectionServiceFactory = ({
       { identityUaDAL, gitHubAppDAL, kmsService }
     );
 
-    // For GitHub App connections we mirror the referenced GitHub App into a queryable FK column so
-    // we can count/enforce reuse without decrypting credentials. Null = instance-default (shared) app.
-    const gitHubAppId = resolveGitHubAppIdColumn(app, method, validatedCredentials);
-
     try {
       const createConnection = async (connectionCredentials: TAppConnection["credentials"]) => {
         return appConnectionDAL.transaction(async (tx) => {
@@ -583,7 +568,6 @@ export const appConnectionServiceFactory = ({
               encryptedConfiguration,
               method,
               app,
-              gitHubAppId,
               gatewayId: gatewayPoolId ? null : gatewayId,
               gatewayPoolId: gatewayPoolId ?? null,
               projectId,
@@ -817,17 +801,11 @@ export const appConnectionServiceFactory = ({
               })
             : undefined;
 
-        // Keep the queryable GitHub App FK in sync whenever credentials are re-validated on update.
-        const gitHubAppIdUpdate = updatedCredentials
-          ? { gitHubAppId: resolveGitHubAppIdColumn(app, method, updatedCredentials) }
-          : {};
-
         return appConnectionDAL.updateById(
           connectionId,
           {
             orgId: actor.orgId,
             encryptedCredentials,
-            ...gitHubAppIdUpdate,
             ...(encryptedConfiguration !== undefined && { encryptedConfiguration }),
             ...(gatewayIdValue !== undefined && { gatewayId: gatewayIdValue }),
             ...(gatewayPoolIdValue !== undefined && { gatewayPoolId: gatewayPoolIdValue }),
