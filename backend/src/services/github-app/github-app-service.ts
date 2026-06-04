@@ -393,6 +393,7 @@ export const gitHubAppServiceFactory = ({
     }
 
     let created: Awaited<ReturnType<typeof gitHubAppDAL.create>>;
+    let codeExchanged = false;
     try {
       const { permission } = await permissionService.getOrgPermission({
         actor: actorType as ActorType,
@@ -448,6 +449,7 @@ export const gitHubAppServiceFactory = ({
               "Failed to exchange GitHub App manifest code. The code may be expired or invalid. Please try registering the GitHub App again."
           });
         }
+        codeExchanged = true;
 
         const { encryptor } = await kmsService.createCipherPairWithDataKey({
           type: KmsDataKey.Organization,
@@ -488,7 +490,9 @@ export const gitHubAppServiceFactory = ({
         await keyStore.deleteItem(nameLockKey).catch(() => {});
       }
     } catch (err) {
-      await keyStore.deleteItem(stateClaimKey).catch(() => {});
+      if (!codeExchanged) {
+        await keyStore.deleteItem(stateClaimKey).catch(() => {});
+      }
       throw err;
     }
 
