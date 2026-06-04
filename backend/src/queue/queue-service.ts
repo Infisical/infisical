@@ -606,7 +606,7 @@ export type TQueueServiceFactory = {
   getJob: <T extends QueueName>(
     name: T,
     jobId: string
-  ) => Promise<Job<TQueueJobTypes[T]["payload"], void, TQueueJobTypes[T]["name"]> | undefined>;
+  ) => Promise<Job<TQueueJobTypes[T]["payload"], void, string> | undefined>;
 };
 
 export const queueServiceFactory = (redisCfg: TRedisConfigKeys): TQueueServiceFactory => {
