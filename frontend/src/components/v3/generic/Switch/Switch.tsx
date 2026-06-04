@@ -21,6 +21,8 @@ const switchVariants = cva(
   {
     variants: {
       variant: {
+        primary:
+          "data-[state=checked]:border-primary/25 data-[state=checked]:bg-primary/10 data-[state=checked]:hover:bg-primary/15 data-[state=checked]:hover:border-primary/30",
         outline:
           "data-[state=checked]:border-border data-[state=checked]:bg-foreground/10 data-[state=checked]:hover:bg-foreground/15 data-[state=checked]:hover:border-foreground/30",
         neutral:
@@ -56,7 +58,9 @@ const switchThumbVariants = cva(
     "data-[state=unchecked]:border-foreground/5 data-[state=unchecked]:bg-foreground/15",
     "data-[state=unchecked]:group-hover/switch:bg-foreground/35",
     "data-[state=checked]:border-foreground/5 data-[state=checked]:bg-foreground/65",
-    "data-[state=checked]:group-hover/switch:bg-foreground/75"
+    "data-[state=checked]:group-hover/switch:bg-foreground/75",
+    "group-data-[variant=primary]/switch:data-[state=checked]:bg-primary/80",
+    "group-data-[variant=primary]/switch:data-[state=checked]:group-hover/switch:bg-primary"
   )
 );
 
@@ -70,6 +74,7 @@ function Switch({ className, variant, size = "default", ...props }: SwitchProps)
     <SwitchPrimitive.Root
       data-slot="switch"
       data-size={size}
+      data-variant={variant ?? "outline"}
       className={cn(switchVariants({ variant }), className)}
       {...props}
     >
