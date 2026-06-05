@@ -214,21 +214,25 @@ export const GitHubAppSelector = ({
           </p>
         </div>
         <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 data-[selected=true]:opacity-100">
-          <button
-            type="button"
-            title="Open in GitHub"
-            className="rounded p-1 text-mineshaft-300 hover:bg-mineshaft-600 hover:text-mineshaft-100"
-            onClick={(e) => {
-              e.stopPropagation();
-              window.open(
-                buildGitHubAppUrl(app.slug, host, instanceType),
-                "_blank",
-                "noopener,noreferrer"
-              );
-            }}
-          >
-            <FontAwesomeIcon icon={faArrowUpRightFromSquare} className="text-xs" />
-          </button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                className="cursor-pointer rounded p-1 text-mineshaft-300 hover:bg-mineshaft-600 hover:text-mineshaft-100"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  window.open(
+                    buildGitHubAppUrl(app.slug, host, instanceType),
+                    "_blank",
+                    "noopener,noreferrer"
+                  );
+                }}
+              >
+                <FontAwesomeIcon icon={faArrowUpRightFromSquare} className="text-xs" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>Open on GitHub</TooltipContent>
+          </Tooltip>
           {isInUse || !canDelete ? (
             <Tooltip>
               <TooltipTrigger asChild>
@@ -257,17 +261,21 @@ export const GitHubAppSelector = ({
               </TooltipContent>
             </Tooltip>
           ) : (
-            <button
-              type="button"
-              title="Delete"
-              className="rounded p-1 text-mineshaft-300 hover:bg-mineshaft-600 hover:text-red-400"
-              onClick={(e) => {
-                e.stopPropagation();
-                setDeleteTargetId(app.id);
-              }}
-            >
-              <FontAwesomeIcon icon={faTrash} className="text-xs" />
-            </button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  className="cursor-pointer rounded p-1 text-mineshaft-300 hover:bg-mineshaft-600 hover:text-red-400"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setDeleteTargetId(app.id);
+                  }}
+                >
+                  <FontAwesomeIcon icon={faTrash} className="text-xs" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>Delete this app</TooltipContent>
+            </Tooltip>
           )}
         </div>
       </CommandItem>
@@ -328,6 +336,10 @@ export const GitHubAppSelector = ({
         <ModalContent
           title="Manage GitHub Apps"
           subTitle="Create, inspect, and remove the GitHub Apps available to your connections."
+          onOpenAutoFocus={(e) => {
+            e.preventDefault();
+            containerRef.current?.focus({ preventScroll: true });
+          }}
         >
           <div
             ref={containerRef}
@@ -422,24 +434,28 @@ export const GitHubAppSelector = ({
                             </p>
                           </div>
                           <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 data-[selected=true]:opacity-100">
-                            <button
-                              type="button"
-                              title="Open in GitHub"
-                              className="rounded p-1 text-mineshaft-300 hover:bg-mineshaft-600 hover:text-mineshaft-100"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                window.open(
-                                  buildGitHubAppUrl(sharedApp.slug, host, instanceType),
-                                  "_blank",
-                                  "noopener,noreferrer"
-                                );
-                              }}
-                            >
-                              <FontAwesomeIcon
-                                icon={faArrowUpRightFromSquare}
-                                className="text-xs"
-                              />
-                            </button>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button
+                                  type="button"
+                                  className="cursor-pointer rounded p-1 text-mineshaft-300 hover:bg-mineshaft-600 hover:text-mineshaft-100"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    window.open(
+                                      buildGitHubAppUrl(sharedApp.slug, host, instanceType),
+                                      "_blank",
+                                      "noopener,noreferrer"
+                                    );
+                                  }}
+                                >
+                                  <FontAwesomeIcon
+                                    icon={faArrowUpRightFromSquare}
+                                    className="text-xs"
+                                  />
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent>Open on GitHub</TooltipContent>
+                            </Tooltip>
                           </div>
                         </CommandItem>
                       </CommandGroup>
@@ -479,7 +495,7 @@ export const GitHubAppSelector = ({
                 <button
                   type="button"
                   onClick={() => switchMode("create")}
-                  className="group flex w-full items-center gap-2.5 border-t border-mineshaft-600 px-3 py-2.5 text-left hover:bg-foreground/5"
+                  className="group flex w-full cursor-pointer items-center gap-2.5 border-t border-mineshaft-600 px-3 py-2.5 text-left hover:bg-foreground/5"
                 >
                   <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-sm border border-mineshaft-500 text-mineshaft-200">
                     <FontAwesomeIcon icon={faPlus} />
