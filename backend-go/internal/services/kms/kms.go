@@ -15,7 +15,7 @@ import (
 
 	"github.com/infisical/api/internal/config"
 	"github.com/infisical/api/internal/database/pg"
-	"github.com/infisical/api/internal/database/pg/pglock"
+	"github.com/infisical/api/internal/ee/services/externalkms"
 	"github.com/infisical/api/internal/libs/crypto/cipher"
 	"github.com/infisical/api/internal/libs/errutil"
 )
@@ -45,14 +45,6 @@ const (
 	StrategySoftware RootKeyEncryptionStrategy = "SOFTWARE"
 )
 
-// DataKeyType selects between org-level and project-level data keys.
-type DataKeyType int
-
-const (
-	DataKeyOrganization DataKeyType = iota
-	DataKeyProject
-)
-
 // Encryptor encrypts plaintext and returns the ciphertext blob (with version suffix).
 type Encryptor func(plainText []byte) ([]byte, error)
 
@@ -75,13 +67,6 @@ func (c *CipherPair) Decrypt(ciphertext []byte) ([]byte, error) {
 	return c.decrypt(ciphertext)
 }
 
-// CreateCipherPairDTO selects which data key to use.
-type CreateCipherPairDTO struct {
-	Type      DataKeyType
-	ProjectID string    // required when Type == DataKeyProject
-	OrgID     uuid.UUID // required when Type == DataKeyOrganization
-}
-
 // HsmService defines the HSM operations needed by the KMS service.
 // Pass nil when HSM is not configured.
 type HsmService interface {
@@ -89,6 +74,13 @@ type HsmService interface {
 	Encrypt(data []byte) ([]byte, error)
 	Decrypt(blob []byte) ([]byte, error)
 	RandomBytes(n int) ([]byte, error)
+}
+
+// ExternalKmsService defines external KMS operations (AWS, GCP).
+// Pass nil when external KMS is not configured.
+type ExternalKmsService interface {
+	Encrypt(ctx context.Context, provider externalkms.ProviderType, config, plaintext []byte) ([]byte, error)
+	Decrypt(ctx context.Context, provider externalkms.ProviderType, config, ciphertext []byte) ([]byte, error)
 }
 
 // Service manages the KMS key hierarchy:
@@ -102,9 +94,10 @@ type Service struct {
 	rootEncryptionKey []byte // loaded during Start(), protected by mu
 
 	logger        *slog.Logger
-	encryptionKey []byte     // decoded during Start(), used to decrypt root key
-	db            pg.DB      // database operations
-	hsm           HsmService // nil when HSM is not configured
+	encryptionKey []byte             // decoded during Start(), used to decrypt root key
+	db            pg.DB              // database operations
+	hsm           HsmService         // nil when HSM is not configured
+	externalKms   ExternalKmsService // nil when external KMS is not configured
 
 	// Raw config values - decoded during Start() based on FIPS mode
 	rawEncryptionKey     string
@@ -114,9 +107,10 @@ type Service struct {
 
 // Deps holds the dependencies for the KMS shared service.
 type Deps struct {
-	DB     pg.DB
-	HSM    HsmService // nil when HSM is not configured
-	Config *config.Config
+	DB          pg.DB
+	HSM         HsmService         // nil when HSM is not configured
+	ExternalKms ExternalKmsService // nil when external KMS is not configured
+	Config      *config.Config
 }
 
 // NewService creates a new KMS service.
@@ -126,6 +120,7 @@ func NewService(_ context.Context, logger *slog.Logger, deps *Deps) (*Service, e
 		logger:               logger.With(slog.String("service", "kms")),
 		db:                   deps.DB,
 		hsm:                  deps.HSM,
+		externalKms:          deps.ExternalKms,
 		rawEncryptionKey:     deps.Config.EncryptionKey,
 		rawRootEncryptionKey: deps.Config.RootEncryptionKey,
 		fipsEnabledEnv:       deps.Config.FipsEnabled,
@@ -133,7 +128,7 @@ func NewService(_ context.Context, logger *slog.Logger, deps *Deps) (*Service, e
 }
 
 // Start bootstraps the KMS root key. It must be called once during server startup
-// before any calls to CreateCipherPairWithDataKey.
+// before any calls to CreateCipherPairWithOrgDataKey or CreateCipherPairWithProjectDataKey.
 //
 // It atomically finds or creates the root config in the database (using a PG advisory lock),
 // then decrypts the root key into memory.
@@ -149,30 +144,7 @@ func (s *Service) Start(ctx context.Context, hsmConfigured bool) error {
 		return fmt.Errorf("KMS: resolving encryption key: %w", err)
 	}
 
-	rootConfig, err := s.findOrCreateRootConfig(ctx, func() (encryptedRootKey []byte, encryptionStrategy string, err error) {
-		var newRootKey []byte
-		if hsmConfigured && s.hsm != nil {
-			var genErr error
-			newRootKey, genErr = s.hsm.RandomBytes(32)
-			if genErr != nil {
-				return nil, "", fmt.Errorf("generating root key with HSM: %w", genErr)
-			}
-		} else {
-			newRootKey = make([]byte, 32)
-			if _, genErr := rand.Read(newRootKey); genErr != nil {
-				return nil, "", fmt.Errorf("generating root key: %w", genErr)
-			}
-		}
-
-		encryptedNewKey, encErr := s.encryptRootKey(newRootKey, strategy)
-		if encErr != nil {
-			return nil, "", fmt.Errorf("encrypting new root key: %w", encErr)
-		}
-
-		strategyStr := string(strategy)
-		return encryptedNewKey, strategyStr, nil
-	})
-
+	rootConfig, err := s.findOrCreateRootConfig(ctx, hsmConfigured, strategy)
 	if err != nil {
 		return errutil.DatabaseErr("Failed to find or create KMS root config").WithErrf("Start: %w", err)
 	}
@@ -238,24 +210,6 @@ func (s *Service) resolveEncryptionKey(ctx context.Context) error {
 	return nil
 }
 
-// CreateCipherPairWithDataKey returns an Encryptor/Decryptor pair bound to the
-// data key for the given org or project. All blobs include a "v01" version suffix.
-func (s *Service) CreateCipherPairWithDataKey(ctx context.Context, dto CreateCipherPairDTO) (*CipherPair, error) {
-	dataKey, err := s.getDataKey(ctx, dto)
-	if err != nil {
-		return nil, err
-	}
-
-	return &CipherPair{
-		encrypt: func(plainText []byte) ([]byte, error) {
-			return encryptWithVersion(plainText, dataKey)
-		},
-		decrypt: func(cipherTextBlob []byte) ([]byte, error) {
-			return decryptWithVersion(cipherTextBlob, dataKey)
-		},
-	}, nil
-}
-
 // --- internal helpers ---
 
 func (s *Service) getRootKey() []byte {
@@ -267,25 +221,6 @@ func (s *Service) getRootKey() []byte {
 	keyCopy := make([]byte, len(s.rootEncryptionKey))
 	copy(keyCopy, s.rootEncryptionKey)
 	return keyCopy
-}
-
-func (s *Service) getDataKey(ctx context.Context, dto CreateCipherPairDTO) ([]byte, error) {
-	if dto.Type == DataKeyProject && dto.ProjectID == "" {
-		return nil, fmt.Errorf("project ID is required for project data key")
-	}
-
-	if dto.Type == DataKeyOrganization && dto.OrgID == uuid.Nil {
-		return nil, fmt.Errorf("org ID is required for organization data key")
-	}
-
-	switch dto.Type {
-	case DataKeyProject:
-		return s.getProjectDataKey(ctx, dto.ProjectID)
-	case DataKeyOrganization:
-		return s.getOrgDataKey(ctx, dto.OrgID)
-	default:
-		return nil, fmt.Errorf("KMS: unknown data key type: %d", dto.Type)
-	}
 }
 
 // --- KMS key material ---
@@ -311,26 +246,40 @@ func (s *Service) generateEncryptedKeyMaterial() ([]byte, error) {
 	return encryptedKey, nil
 }
 
-// decryptKmsKey loads a KMS key record and decrypts its key material using the root key.
-// For internal KMS keys, decrypts locally. External KMS keys are not yet supported.
-func (s *Service) decryptKmsKey(ctx context.Context, kmsKeyID uuid.UUID) ([]byte, error) {
-	kmsKeyDoc, err := s.findKmsKeyByID(ctx, kmsKeyID)
-	if err != nil {
-		return nil, errutil.DatabaseErr("Failed to find KMS key").WithErrf("decryptKmsKey(kmsKeyId=%s): %w", kmsKeyID, err)
-	}
-	return s.decryptKmsKeyMaterial(kmsKeyDoc)
-}
+// decryptInternalKmsKey loads a KMS key record and decrypts its key material using the root key.
+// For internal KMS keys only. Returns error for external KMS keys.
+func (s *Service) decryptInternalKmsKey(ctx context.Context, kmsKeyID uuid.UUID) ([]byte, error) {
+	query := `
+		SELECT
+			kmsKey.id,
+			internalKms.id AS internal_kms_id,
+			internalKms."encryptedKey" AS internal_encrypted_key,
+			internalKms."encryptionAlgorithm" AS internal_encryption_algorithm,
+			externalKms.id AS external_kms_id
+		FROM kms_keys kmsKey
+		LEFT JOIN internal_kms internalKms ON internalKms."kmsKeyId" = kmsKey.id
+		LEFT JOIN external_kms externalKms ON externalKms."kmsKeyId" = kmsKey.id
+		WHERE kmsKey.id = @kmsKeyID
+	`
+	row := s.db.Replica().QueryRow(ctx, query, pgx.NamedArgs{"kmsKeyID": kmsKeyID})
 
-// decryptKmsKeyMaterial decrypts the key material from a kmsKeyWithAssociatedKms record.
-// Branches on internal (local AES-GCM) vs external (cloud provider — not yet implemented).
-func (s *Service) decryptKmsKeyMaterial(kmsKeyDoc *kmsKeyWithAssociatedKms) ([]byte, error) {
-	// TODO(go): fix this before mileston
-	if kmsKeyDoc.ExternalKmsID.Valid {
-		panic("external KMS not implemented")
+	var (
+		id                          uuid.UUID
+		internalKmsID               sql.Null[uuid.UUID]
+		internalEncryptedKey        sql.Null[[]byte]
+		internalEncryptionAlgorithm sql.Null[string]
+		externalKmsID               sql.Null[uuid.UUID]
+	)
+	if err := row.Scan(&id, &internalKmsID, &internalEncryptedKey, &internalEncryptionAlgorithm, &externalKmsID); err != nil {
+		return nil, errutil.DatabaseErr("Failed to find KMS key").WithErrf("decryptInternalKmsKey(kmsKeyId=%s): %w", kmsKeyID, err)
 	}
 
-	if !kmsKeyDoc.InternalKmsID.Valid {
-		return nil, fmt.Errorf("KMS: key %s has no internal or external KMS association", kmsKeyDoc.ID.String())
+	if externalKmsID.Valid {
+		return nil, fmt.Errorf("KMS: cannot get key material for external KMS")
+	}
+
+	if !internalKmsID.Valid {
+		return nil, fmt.Errorf("KMS: key %s has no internal or external KMS association", id.String())
 	}
 
 	rootKey := s.getRootKey()
@@ -338,12 +287,96 @@ func (s *Service) decryptKmsKeyMaterial(kmsKeyDoc *kmsKeyWithAssociatedKms) ([]b
 		return nil, fmt.Errorf("KMS: root encryption key not loaded, call Start first")
 	}
 
-	if kmsKeyDoc.InternalEncryptionAlgorithm.V != "aes-256-gcm" {
-		return nil, fmt.Errorf("KMS: unsupported encryption algorithm: %s", kmsKeyDoc.InternalEncryptionAlgorithm.V)
+	if internalEncryptionAlgorithm.V != "aes-256-gcm" {
+		return nil, fmt.Errorf("KMS: unsupported encryption algorithm: %s", internalEncryptionAlgorithm.V)
 	}
 
-	// internal_kms.encrypted_key is AES-GCM encrypted with ROOT_KEY (no version suffix).
-	return cipher.SymmetricDecrypt(kmsKeyDoc.InternalEncryptedKey.V, rootKey)
+	return cipher.SymmetricDecrypt(internalEncryptedKey.V, rootKey)
+}
+
+// decryptWithKmsKey decrypts ciphertext using the specified KMS key.
+// Handles both internal KMS (local decryption) and external KMS (AWS/GCP).
+func (s *Service) decryptWithKmsKey(ctx context.Context, kmsKeyID uuid.UUID, ciphertext []byte, depth int) ([]byte, error) {
+	if depth > 2 {
+		return nil, fmt.Errorf("KMS: max recursion depth exceeded")
+	}
+
+	query := `
+		SELECT
+			kmsKey.id,
+			kmsKey."orgId",
+			internalKms."encryptedKey",
+			internalKms."encryptionAlgorithm",
+			externalKms.id AS external_kms_id,
+			externalKms.provider,
+			externalKms."encryptedProviderInputs"
+		FROM kms_keys kmsKey
+		LEFT JOIN internal_kms internalKms ON internalKms."kmsKeyId" = kmsKey.id
+		LEFT JOIN external_kms externalKms ON externalKms."kmsKeyId" = kmsKey.id
+		WHERE kmsKey.id = @kmsKeyID
+	`
+	row := s.db.Replica().QueryRow(ctx, query, pgx.NamedArgs{"kmsKeyID": kmsKeyID})
+
+	var (
+		id                     uuid.UUID
+		orgID                  uuid.UUID
+		internalEncryptedKey   sql.Null[[]byte]
+		internalEncAlgorithm   sql.Null[string]
+		externalKmsID          sql.Null[uuid.UUID]
+		externalProvider       sql.Null[string]
+		externalEncryptedInput sql.Null[[]byte]
+	)
+	if err := row.Scan(&id, &orgID, &internalEncryptedKey, &internalEncAlgorithm, &externalKmsID, &externalProvider, &externalEncryptedInput); err != nil {
+		return nil, errutil.DatabaseErr("Failed to find KMS key").WithErrf("decryptWithKmsKey(kmsKeyId=%s): %w", kmsKeyID, err)
+	}
+
+	// External KMS: decrypt config with org's data key, then call external provider
+	if externalKmsID.Valid {
+		if s.externalKms == nil {
+			return nil, fmt.Errorf("KMS: external KMS service not configured")
+		}
+
+		org, err := s.findOrgKmsInfo(ctx, s.db.Replica(), orgID)
+		if err != nil {
+			return nil, fmt.Errorf("KMS: finding org for external KMS: %w", err)
+		}
+		if !org.KmsDefaultKeyID.Valid || len(org.KmsEncryptedDataKey) == 0 {
+			return nil, fmt.Errorf("KMS: org has no default KMS key")
+		}
+
+		orgDataKey, err := s.decryptWithKmsKey(ctx, org.KmsDefaultKeyID.V, org.KmsEncryptedDataKey, depth+1)
+		if err != nil {
+			return nil, fmt.Errorf("KMS: decrypting org data key: %w", err)
+		}
+
+		decryptedConfig, err := decryptWithVersion(externalEncryptedInput.V, orgDataKey)
+		if err != nil {
+			return nil, fmt.Errorf("KMS: decrypting external KMS config: %w", err)
+		}
+
+		return s.externalKms.Decrypt(ctx, externalkms.ProviderType(externalProvider.V), decryptedConfig, ciphertext)
+	}
+
+	// Internal KMS: decrypt key material, then decrypt ciphertext locally
+	if !internalEncryptedKey.Valid {
+		return nil, fmt.Errorf("KMS: key %s has no internal or external KMS association", id.String())
+	}
+
+	rootKey := s.getRootKey()
+	if len(rootKey) == 0 {
+		return nil, fmt.Errorf("KMS: root encryption key not loaded")
+	}
+
+	if internalEncAlgorithm.V != "aes-256-gcm" {
+		return nil, fmt.Errorf("KMS: unsupported encryption algorithm: %s", internalEncAlgorithm.V)
+	}
+
+	kmsKey, err := cipher.SymmetricDecrypt(internalEncryptedKey.V, rootKey)
+	if err != nil {
+		return nil, fmt.Errorf("KMS: decrypting internal key: %w", err)
+	}
+
+	return decryptWithVersion(ciphertext, kmsKey)
 }
 
 // --- Root key encrypt/decrypt ---
@@ -435,35 +468,6 @@ type kmsRootConfigRow struct {
 	EncryptionStrategy sql.Null[string] `db:"encryption_strategy"`
 }
 
-// kmsKeyWithAssociatedKms is the join result of kms_keys LEFT JOIN internal_kms LEFT JOIN external_kms.
-type kmsKeyWithAssociatedKms struct {
-	ID   uuid.UUID `db:"id"`
-	Name string    `db:"name"`
-
-	// Internal KMS fields (nullable from LEFT JOIN)
-	InternalKmsID               sql.Null[uuid.UUID] `db:"internal_kms_id"`
-	InternalEncryptedKey        sql.Null[[]byte]    `db:"internal_encrypted_key"`
-	InternalEncryptionAlgorithm sql.Null[string]    `db:"internal_encryption_algorithm"`
-
-	// External KMS fields (nullable from LEFT JOIN)
-	ExternalKmsID sql.Null[uuid.UUID] `db:"external_kms_id"`
-}
-
-// orgKmsInfo holds the narrow org fields needed by the KMS service.
-type orgKmsInfo struct {
-	ID                  uuid.UUID           `db:"id"`
-	KmsDefaultKeyID     sql.Null[uuid.UUID] `db:"kms_default_key_id"`
-	KmsEncryptedDataKey []byte              `db:"kms_encrypted_data_key"`
-}
-
-// projectKmsInfo holds the narrow project fields needed by the KMS service.
-type projectKmsInfo struct {
-	ID                               string              `db:"id"`
-	OrgID                            uuid.UUID           `db:"org_id"`
-	KmsSecretManagerKeyID            sql.Null[uuid.UUID] `db:"kms_secret_manager_key_id"`
-	KmsSecretManagerEncryptedDataKey []byte              `db:"kms_secret_manager_encrypted_data_key"`
-}
-
 // --- Query methods ---
 
 // findSuperAdminConfig returns the super_admin config row if it exists.
@@ -483,24 +487,20 @@ func (s *Service) findSuperAdminConfig(ctx context.Context) (*superAdminConfigRo
 	return &cfg, nil
 }
 
-// findOrCreateRootConfig atomically ensures the KMS root config row exists.
-func (s *Service) findOrCreateRootConfig(ctx context.Context, createFn func() (encryptedRootKey []byte, encryptionStrategy string, err error)) (*kmsRootConfigRow, error) {
+func (s *Service) findOrCreateRootConfig(ctx context.Context, hsmConfigured bool, strategy RootKeyEncryptionStrategy) (*kmsRootConfigRow, error) {
 	tx, err := s.db.Primary().Begin(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("beginning transaction: %w", err)
 	}
-	defer tx.Rollback(ctx) //nolint:errcheck // rollback on defer is best-effort cleanup
+	defer tx.Rollback(ctx) //nolint:errcheck // rollback is no-op after commit
 
-	// Acquire advisory lock
 	if _, err := tx.Exec(ctx, "SELECT pg_advisory_xact_lock($1)", PgLockKmsRootKeyInit); err != nil {
 		return nil, fmt.Errorf("acquiring advisory lock: %w", err)
 	}
 
-	// Check if root config already exists.
-	checkQuery := `SELECT id, "encryptedRootKey", "encryptionStrategy" FROM kms_root_config WHERE id = @id`
-	checkArgs := pgx.NamedArgs{"id": KmsRootConfigUUID}
+	query := `SELECT id, "encryptedRootKey", "encryptionStrategy" FROM kms_root_config WHERE id = @id`
+	row := tx.QueryRow(ctx, query, pgx.NamedArgs{"id": KmsRootConfigUUID})
 
-	row := tx.QueryRow(ctx, checkQuery, checkArgs)
 	var existing kmsRootConfigRow
 	err = row.Scan(&existing.ID, &existing.EncryptedRootKey, &existing.EncryptionStrategy)
 	if err == nil {
@@ -513,13 +513,25 @@ func (s *Service) findOrCreateRootConfig(ctx context.Context, createFn func() (e
 		return nil, fmt.Errorf("checking existing root config: %w", err)
 	}
 
-	// Config doesn't exist — invoke callback to generate the new root key.
-	encryptionRootKey, encryptionStrategy, err := createFn()
-	if err != nil {
-		return nil, fmt.Errorf("generating root config: %w", err)
+	// Generate new root key
+	var newRootKey []byte
+	if hsmConfigured && s.hsm != nil {
+		newRootKey, err = s.hsm.RandomBytes(32)
+		if err != nil {
+			return nil, fmt.Errorf("generating root key with HSM: %w", err)
+		}
+	} else {
+		newRootKey = make([]byte, 32)
+		if _, err := rand.Read(newRootKey); err != nil {
+			return nil, fmt.Errorf("generating root key: %w", err)
+		}
 	}
 
-	// Create the initial root config row.
+	encryptedRootKey, err := s.encryptRootKey(newRootKey, strategy)
+	if err != nil {
+		return nil, fmt.Errorf("encrypting new root key: %w", err)
+	}
+
 	insertQuery := `
 		INSERT INTO kms_root_config (id, "encryptedRootKey", "encryptionStrategy")
 		VALUES (@id, @encryptedRootKey, @encryptionStrategy)
@@ -527,13 +539,12 @@ func (s *Service) findOrCreateRootConfig(ctx context.Context, createFn func() (e
 	`
 	insertArgs := pgx.NamedArgs{
 		"id":                 KmsRootConfigUUID,
-		"encryptedRootKey":   encryptionRootKey,
-		"encryptionStrategy": encryptionStrategy,
+		"encryptedRootKey":   encryptedRootKey,
+		"encryptionStrategy": string(strategy),
 	}
 
 	var result kmsRootConfigRow
-	err = tx.QueryRow(ctx, insertQuery, insertArgs).Scan(&result.ID, &result.EncryptedRootKey, &result.EncryptionStrategy)
-	if err != nil {
+	if err := tx.QueryRow(ctx, insertQuery, insertArgs).Scan(&result.ID, &result.EncryptedRootKey, &result.EncryptionStrategy); err != nil {
 		return nil, fmt.Errorf("creating root config: %w", err)
 	}
 
@@ -541,77 +552,6 @@ func (s *Service) findOrCreateRootConfig(ctx context.Context, createFn func() (e
 		return nil, fmt.Errorf("committing transaction: %w", err)
 	}
 
-	return &result, nil
-}
-
-// findKmsKeyByID loads a kms_keys row with its associated internal or external KMS material.
-func (s *Service) findKmsKeyByID(ctx context.Context, kmsKeyID uuid.UUID) (*kmsKeyWithAssociatedKms, error) {
-	query := `
-		SELECT
-			kmsKey.id,
-			kmsKey.name,
-			internalKms.id AS internal_kms_id,
-			internalKms."encryptedKey" AS internal_encrypted_key,
-			internalKms."encryptionAlgorithm" AS internal_encryption_algorithm,
-			externalKms.id AS external_kms_id
-		FROM kms_keys kmsKey
-		LEFT JOIN internal_kms internalKms ON internalKms."kmsKeyId" = kmsKey.id
-		LEFT JOIN external_kms externalKms ON externalKms."kmsKeyId" = kmsKey.id
-		WHERE kmsKey.id = @kmsKeyID
-	`
-	args := pgx.NamedArgs{"kmsKeyID": kmsKeyID}
-
-	row := s.db.Replica().QueryRow(ctx, query, args)
-	var result kmsKeyWithAssociatedKms
-	err := row.Scan(
-		&result.ID,
-		&result.Name,
-		&result.InternalKmsID,
-		&result.InternalEncryptedKey,
-		&result.InternalEncryptionAlgorithm,
-		&result.ExternalKmsID,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("finding KMS key: %w", err)
-	}
-	return &result, nil
-}
-
-// findOrgKmsInfo returns the narrow org fields needed for KMS data key operations.
-// Pass a pg.Querier (either *pgxpool.Pool or pgx.Tx).
-func (s *Service) findOrgKmsInfo(ctx context.Context, q pg.Querier, orgID uuid.UUID) (*orgKmsInfo, error) {
-	query := `
-		SELECT id, "kmsDefaultKeyId", "kmsEncryptedDataKey"
-		FROM organizations
-		WHERE id = @orgID
-	`
-	args := pgx.NamedArgs{"orgID": orgID}
-
-	row := q.QueryRow(ctx, query, args)
-	var result orgKmsInfo
-	err := row.Scan(&result.ID, &result.KmsDefaultKeyID, &result.KmsEncryptedDataKey)
-	if err != nil {
-		return nil, fmt.Errorf("finding org KMS info: %w", err)
-	}
-	return &result, nil
-}
-
-// findProjectKmsInfo returns the narrow project fields needed for KMS data key operations.
-// Pass a pg.Querier (either *pgxpool.Pool or pgx.Tx).
-func (s *Service) findProjectKmsInfo(ctx context.Context, q pg.Querier, projectID string) (*projectKmsInfo, error) {
-	query := `
-		SELECT id, "orgId", "kmsSecretManagerKeyId", "kmsSecretManagerEncryptedDataKey"
-		FROM projects
-		WHERE id = @projectID
-	`
-	args := pgx.NamedArgs{"projectID": projectID}
-
-	row := q.QueryRow(ctx, query, args)
-	var result projectKmsInfo
-	err := row.Scan(&result.ID, &result.OrgID, &result.KmsSecretManagerKeyID, &result.KmsSecretManagerEncryptedDataKey)
-	if err != nil {
-		return nil, fmt.Errorf("finding project KMS info: %w", err)
-	}
 	return &result, nil
 }
 
@@ -651,205 +591,4 @@ func (s *Service) createKmsKeyWithInternal(ctx context.Context, tx pgx.Tx, orgID
 	}
 
 	return kmsKeyID, nil
-}
-
-// findOrCreateOrgKmsKey atomically ensures the org has a default KMS key.
-func (s *Service) findOrCreateOrgKmsKey(ctx context.Context, orgID uuid.UUID, createFn func() (encryptedKey []byte, err error)) (uuid.UUID, error) {
-	lockID := fmt.Sprintf("kms-org-key:%s", orgID)
-
-	tx, err := s.db.Primary().Begin(ctx)
-	if err != nil {
-		return uuid.Nil, fmt.Errorf("beginning transaction: %w", err)
-	}
-
-	lock, err := pglock.AcquireBlockingLock(ctx, tx, lockID)
-	if err != nil {
-		tx.Rollback(ctx) //nolint:errcheck // rollback on error is best-effort cleanup
-		return uuid.Nil, fmt.Errorf("acquiring org key lock: %w", err)
-	}
-
-	// Re-check after lock — another request may have created it.
-	org, err := s.findOrgKmsInfo(ctx, tx, orgID)
-	if err != nil {
-		lock.Rollback(ctx) //nolint:errcheck // rollback on error is best-effort cleanup
-		return uuid.Nil, fmt.Errorf("finding org: %w", err)
-	}
-	if org.KmsDefaultKeyID.Valid {
-		if err := lock.Release(ctx); err != nil {
-			return uuid.Nil, err
-		}
-		return org.KmsDefaultKeyID.V, nil
-	}
-
-	encryptedKey, err := createFn()
-	if err != nil {
-		lock.Rollback(ctx) //nolint:errcheck // rollback on error is best-effort cleanup
-		return uuid.Nil, fmt.Errorf("generating KMS key: %w", err)
-	}
-
-	createdID, err := s.createKmsKeyWithInternal(ctx, tx, org.ID, encryptedKey)
-	if err != nil {
-		lock.Rollback(ctx) //nolint:errcheck // rollback on error is best-effort cleanup
-		return uuid.Nil, err
-	}
-
-	// Update org with new key ID
-	updateQuery := `UPDATE organizations SET "kmsDefaultKeyId" = @keyID WHERE id = @orgID`
-	updateArgs := pgx.NamedArgs{"keyID": createdID, "orgID": orgID}
-	if _, err := tx.Exec(ctx, updateQuery, updateArgs); err != nil {
-		lock.Rollback(ctx) //nolint:errcheck // rollback on error is best-effort cleanup
-		return uuid.Nil, fmt.Errorf("updating org default key: %w", err)
-	}
-
-	if err := lock.Release(ctx); err != nil {
-		return uuid.Nil, err
-	}
-	return createdID, nil
-}
-
-// findOrCreateOrgDataKey atomically ensures the org has an encrypted data key.
-func (s *Service) findOrCreateOrgDataKey(ctx context.Context, orgID uuid.UUID, createFn func() (encryptedDataKey []byte, err error)) ([]byte, error) {
-	lockID := fmt.Sprintf("kms-org-data-key:%s", orgID)
-
-	tx, err := s.db.Primary().Begin(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("beginning transaction: %w", err)
-	}
-
-	lock, err := pglock.AcquireBlockingLock(ctx, tx, lockID)
-	if err != nil {
-		tx.Rollback(ctx) //nolint:errcheck // rollback on error is best-effort cleanup
-		return nil, fmt.Errorf("acquiring org data key lock: %w", err)
-	}
-
-	// Re-check after lock — another request may have created it.
-	org, err := s.findOrgKmsInfo(ctx, tx, orgID)
-	if err != nil {
-		lock.Rollback(ctx) //nolint:errcheck // rollback on error is best-effort cleanup
-		return nil, fmt.Errorf("finding org: %w", err)
-	}
-	if len(org.KmsEncryptedDataKey) > 0 {
-		if err := lock.Release(ctx); err != nil {
-			return nil, err
-		}
-		return org.KmsEncryptedDataKey, nil
-	}
-
-	encryptedDataKey, err := createFn()
-	if err != nil {
-		lock.Rollback(ctx) //nolint:errcheck // rollback on error is best-effort cleanup
-		return nil, fmt.Errorf("generating data key: %w", err)
-	}
-
-	updateQuery := `UPDATE organizations SET "kmsEncryptedDataKey" = @dataKey WHERE id = @orgID`
-	updateArgs := pgx.NamedArgs{"dataKey": encryptedDataKey, "orgID": orgID}
-	if _, err := tx.Exec(ctx, updateQuery, updateArgs); err != nil {
-		lock.Rollback(ctx) //nolint:errcheck // rollback on error is best-effort cleanup
-		return nil, fmt.Errorf("setting org encrypted data key: %w", err)
-	}
-
-	if err := lock.Release(ctx); err != nil {
-		return nil, err
-	}
-	return encryptedDataKey, nil
-}
-
-// findOrCreateProjectKmsKey atomically ensures the project has a secret manager KMS key.
-func (s *Service) findOrCreateProjectKmsKey(ctx context.Context, projectID string, createFn func() (encryptedKey []byte, err error)) (uuid.UUID, error) {
-	lockID := fmt.Sprintf("kms-project-key:%s", projectID)
-
-	tx, err := s.db.Primary().Begin(ctx)
-	if err != nil {
-		return uuid.Nil, fmt.Errorf("beginning transaction: %w", err)
-	}
-
-	lock, err := pglock.AcquireBlockingLock(ctx, tx, lockID)
-	if err != nil {
-		tx.Rollback(ctx) //nolint:errcheck // rollback on error is best-effort cleanup
-		return uuid.Nil, fmt.Errorf("acquiring project key lock: %w", err)
-	}
-
-	// Re-check after lock — another request may have created it.
-	project, err := s.findProjectKmsInfo(ctx, tx, projectID)
-	if err != nil {
-		lock.Rollback(ctx) //nolint:errcheck // rollback on error is best-effort cleanup
-		return uuid.Nil, fmt.Errorf("finding project: %w", err)
-	}
-	if project.KmsSecretManagerKeyID.Valid {
-		if err := lock.Release(ctx); err != nil {
-			return uuid.Nil, err
-		}
-		return project.KmsSecretManagerKeyID.V, nil
-	}
-
-	encryptedKey, err := createFn()
-	if err != nil {
-		lock.Rollback(ctx) //nolint:errcheck // rollback on error is best-effort cleanup
-		return uuid.Nil, fmt.Errorf("generating KMS key: %w", err)
-	}
-
-	createdID, err := s.createKmsKeyWithInternal(ctx, tx, project.OrgID, encryptedKey)
-	if err != nil {
-		lock.Rollback(ctx) //nolint:errcheck // rollback on error is best-effort cleanup
-		return uuid.Nil, err
-	}
-
-	updateQuery := `UPDATE projects SET "kmsSecretManagerKeyId" = @keyID WHERE id = @projectID`
-	updateArgs := pgx.NamedArgs{"keyID": createdID, "projectID": projectID}
-	if _, err := tx.Exec(ctx, updateQuery, updateArgs); err != nil {
-		lock.Rollback(ctx) //nolint:errcheck // rollback on error is best-effort cleanup
-		return uuid.Nil, fmt.Errorf("updating project KMS key: %w", err)
-	}
-
-	if err := lock.Release(ctx); err != nil {
-		return uuid.Nil, err
-	}
-	return createdID, nil
-}
-
-// findOrCreateProjectDataKey atomically ensures the project has an encrypted data key.
-func (s *Service) findOrCreateProjectDataKey(ctx context.Context, projectID string, createFn func() (encryptedDataKey []byte, err error)) ([]byte, error) {
-	lockID := fmt.Sprintf("kms-project-data-key:%s", projectID)
-
-	tx, err := s.db.Primary().Begin(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("beginning transaction: %w", err)
-	}
-
-	lock, err := pglock.AcquireBlockingLock(ctx, tx, lockID)
-	if err != nil {
-		tx.Rollback(ctx) //nolint:errcheck // rollback on error is best-effort cleanup
-		return nil, fmt.Errorf("acquiring project data key lock: %w", err)
-	}
-
-	// Re-check after lock — another request may have created it.
-	project, err := s.findProjectKmsInfo(ctx, tx, projectID)
-	if err != nil {
-		lock.Rollback(ctx) //nolint:errcheck // rollback on error is best-effort cleanup
-		return nil, fmt.Errorf("finding project: %w", err)
-	}
-	if len(project.KmsSecretManagerEncryptedDataKey) > 0 {
-		if err := lock.Release(ctx); err != nil {
-			return nil, err
-		}
-		return project.KmsSecretManagerEncryptedDataKey, nil
-	}
-
-	encryptedDataKey, err := createFn()
-	if err != nil {
-		lock.Rollback(ctx) //nolint:errcheck // rollback on error is best-effort cleanup
-		return nil, fmt.Errorf("generating data key: %w", err)
-	}
-
-	updateQuery := `UPDATE projects SET "kmsSecretManagerEncryptedDataKey" = @dataKey WHERE id = @projectID`
-	updateArgs := pgx.NamedArgs{"dataKey": encryptedDataKey, "projectID": projectID}
-	if _, err := tx.Exec(ctx, updateQuery, updateArgs); err != nil {
-		lock.Rollback(ctx) //nolint:errcheck // rollback on error is best-effort cleanup
-		return nil, fmt.Errorf("setting project encrypted data key: %w", err)
-	}
-
-	if err := lock.Release(ctx); err != nil {
-		return nil, err
-	}
-	return encryptedDataKey, nil
 }

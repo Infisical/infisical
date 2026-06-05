@@ -209,6 +209,12 @@ import {
   TValidateGitLabConnectionCredentialsSchema
 } from "./gitlab";
 import {
+  TGoDaddyConnection,
+  TGoDaddyConnectionConfig,
+  TGoDaddyConnectionInput,
+  TValidateGoDaddyConnectionCredentialsSchema
+} from "./godaddy";
+import {
   THCVaultConnection,
   THCVaultConnectionConfig,
   THCVaultConnectionInput,
@@ -461,6 +467,7 @@ export type TAppConnection = { id: string; configuration?: TAppConnectionConfigu
   | TDevinConnection
   | TOnaConnection
   | TDigiCertConnection
+  | TGoDaddyConnection
   | TTravisCIConnection
   | TSalesforceConnection
   | TSnowflakeConnection
@@ -539,6 +546,7 @@ export type TAppConnectionInput = { id: string } & (
   | TDevinConnectionInput
   | TOnaConnectionInput
   | TDigiCertConnectionInput
+  | TGoDaddyConnectionInput
   | TTravisCIConnectionInput
   | TSalesforceConnectionInput
   | TSnowflakeConnectionInput
@@ -649,6 +657,7 @@ export type TAppConnectionConfig =
   | TDevinConnectionConfig
   | TOnaConnectionConfig
   | TDigiCertConnectionConfig
+  | TGoDaddyConnectionConfig
   | TTravisCIConnectionConfig
   | TSalesforceConnectionConfig
   | TSnowflakeConnectionConfig
@@ -718,6 +727,7 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateDevinConnectionCredentialsSchema
   | TValidateOnaConnectionCredentialsSchema
   | TValidateDigiCertConnectionCredentialsSchema
+  | TValidateGoDaddyConnectionCredentialsSchema
   | TValidateTravisCIConnectionCredentialsSchema
   | TValidateSalesforceConnectionCredentialsSchema
   | TValidateSnowflakeConnectionCredentialsSchema

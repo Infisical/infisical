@@ -27,19 +27,19 @@ type ActorAuthMethod string
 type IdentityAuthMethod string
 
 const (
-	IdentityAuthMethodUniversal  IdentityAuthMethod = "universal_auth"
-	IdentityAuthMethodKubernetes IdentityAuthMethod = "kubernetes_auth"
-	IdentityAuthMethodGCP        IdentityAuthMethod = "gcp_auth"
-	IdentityAuthMethodAliCloud   IdentityAuthMethod = "alicloud_auth"
-	IdentityAuthMethodAWS        IdentityAuthMethod = "aws_auth"
-	IdentityAuthMethodAzure      IdentityAuthMethod = "azure_auth"
-	IdentityAuthMethodToken      IdentityAuthMethod = "token_auth"
-	IdentityAuthMethodTLSCert    IdentityAuthMethod = "tls_cert_auth"
-	IdentityAuthMethodOCI        IdentityAuthMethod = "oci_auth"
-	IdentityAuthMethodOIDC       IdentityAuthMethod = "oidc_auth"
-	IdentityAuthMethodJWT        IdentityAuthMethod = "jwt_auth"
-	IdentityAuthMethodLDAP       IdentityAuthMethod = "ldap_auth"
-	IdentityAuthMethodSPIFFE     IdentityAuthMethod = "spiffe_auth"
+	IdentityAuthMethodUniversal  IdentityAuthMethod = "universal-auth"
+	IdentityAuthMethodKubernetes IdentityAuthMethod = "kubernetes-auth"
+	IdentityAuthMethodGCP        IdentityAuthMethod = "gcp-auth"
+	IdentityAuthMethodAliCloud   IdentityAuthMethod = "alicloud-auth"
+	IdentityAuthMethodAWS        IdentityAuthMethod = "aws-auth"
+	IdentityAuthMethodAzure      IdentityAuthMethod = "azure-auth"
+	IdentityAuthMethodToken      IdentityAuthMethod = "token-auth"
+	IdentityAuthMethodTLSCert    IdentityAuthMethod = "tls-cert-auth"
+	IdentityAuthMethodOCI        IdentityAuthMethod = "oci-auth"
+	IdentityAuthMethodOIDC       IdentityAuthMethod = "oidc-auth"
+	IdentityAuthMethodJWT        IdentityAuthMethod = "jwt-auth"
+	IdentityAuthMethodLDAP       IdentityAuthMethod = "ldap-auth"
+	IdentityAuthMethodSPIFFE     IdentityAuthMethod = "spiffe-auth"
 )
 
 // AuthOIDC holds OIDC-specific claims from the identity JWT payload.
@@ -164,7 +164,10 @@ func WithHTTPInfo(ctx context.Context, info *HTTPInfo) context.Context {
 
 // HTTPInfoFromContext returns the HTTPInfo stored in ctx, or nil if absent.
 func HTTPInfoFromContext(ctx context.Context) *HTTPInfo {
-	info, _ := ctx.Value(httpInfoKey{}).(*HTTPInfo)
+	info, ok := ctx.Value(httpInfoKey{}).(*HTTPInfo)
+	if !ok {
+		return nil
+	}
 	return info
 }
 
@@ -202,6 +205,9 @@ func WithAssumedPrivilege(ctx context.Context, details *AssumedPrivilegeDetails)
 
 // AssumedPrivilegeFromContext returns the assumed privilege details stored in ctx, or nil if absent.
 func AssumedPrivilegeFromContext(ctx context.Context) *AssumedPrivilegeDetails {
-	details, _ := ctx.Value(assumedPrivilegeKey{}).(*AssumedPrivilegeDetails)
+	details, ok := ctx.Value(assumedPrivilegeKey{}).(*AssumedPrivilegeDetails)
+	if !ok {
+		return nil
+	}
 	return details
 }

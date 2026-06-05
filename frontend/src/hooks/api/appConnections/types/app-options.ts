@@ -262,6 +262,10 @@ export type TDigiCertConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.DigiCert;
 };
 
+export type TGoDaddyConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.GoDaddy;
+};
+
 export type TTravisCIConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.TravisCI;
 };
@@ -345,6 +349,7 @@ export type TAppConnectionOption =
   | TDevinConnectionOption
   | TOnaConnectionOption
   | TDigiCertConnectionOption
+  | TGoDaddyConnectionOption
   | TTravisCIConnectionOption
   | TSalesforceConnectionOption
   | TSnowflakeConnectionOption
@@ -414,6 +419,7 @@ export type TAppConnectionOptionMap = {
   [AppConnection.Devin]: TDevinConnectionOption;
   [AppConnection.Ona]: TOnaConnectionOption;
   [AppConnection.DigiCert]: TDigiCertConnectionOption;
+  [AppConnection.GoDaddy]: TGoDaddyConnectionOption;
   [AppConnection.TravisCI]: TTravisCIConnectionOption;
   [AppConnection.Salesforce]: TSalesforceConnectionOption;
   [AppConnection.Snowflake]: TSnowflakeConnectionOption;

@@ -43,10 +43,25 @@ export const getGitHubInstanceApiUrl = async (config: {
   if (config.credentials.instanceType === "server") {
     apiBase = `${host}/api/v3`;
   } else {
+    await blockLocalAndPrivateIpAddresses(`https://api.${host}`);
     apiBase = `api.${host}`;
   }
 
   return apiBase;
+};
+
+export const PLATFORM_GITHUB_CREDENTIAL_HOST = "github.com";
+
+export const assertPlatformGitHubHostAllowed = (host?: string | null) => {
+  const { isCloud } = getConfig();
+  const normalizedHost = (host || PLATFORM_GITHUB_CREDENTIAL_HOST).trim().toLowerCase();
+
+  if (isCloud && normalizedHost !== PLATFORM_GITHUB_CREDENTIAL_HOST) {
+    throw new BadRequestError({
+      message:
+        "GitHub App and OAuth connections to a custom host (e.g. GitHub Enterprise Server) are only supported on self-hosted Infisical, where you can register your own GitHub App. To use a custom host, self-host Infisical — or use the Personal Access Token method on Infisical Cloud."
+    });
+  }
 };
 
 export const getGitHubGatewayConnectionDetails = async (
@@ -197,6 +212,8 @@ export const getGitHubAppAuthToken = async (
   if (appConnection.method !== GitHubConnectionMethod.App) {
     throw new InternalServerError({ message: "Cannot generate GitHub App token for non-app connection" });
   }
+
+  assertPlatformGitHubHostAllowed(appConnection.credentials.host);
 
   const now = Math.floor(Date.now() / 1000);
   const payload = {
@@ -600,6 +617,8 @@ export const validateGitHubConnectionCredentials = async (
 
   let tokenResp: AxiosResponse<GithubTokenRespData>;
   const host = credentials.host || "github.com";
+
+  assertPlatformGitHubHostAllowed(host);
 
   const oauthGatewayConnectionDetails = config.gatewayId
     ? await getGitHubGatewayConnectionDetails(config.gatewayId, host, gatewayV2Service)

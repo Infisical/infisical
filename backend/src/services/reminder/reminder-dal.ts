@@ -55,6 +55,7 @@ export const reminderDALFactory = (db: TDbClient) => {
         );
       })
       .leftJoin<TProjects>(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
+      .whereNull(`${TableName.Project}.deleteAfter`)
       .leftJoin<TOrganizations>(TableName.Organization, `${TableName.Project}.orgId`, `${TableName.Organization}.id`)
       .select(selectAllTableCols(TableName.Reminder))
       .select(db.ref("email").withSchema(TableName.Users))

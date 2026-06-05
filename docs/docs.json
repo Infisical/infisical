@@ -136,6 +136,7 @@
                       "integrations/app-connections/github",
                       "integrations/app-connections/github-radar",
                       "integrations/app-connections/gitlab",
+                      "integrations/app-connections/godaddy",
                       "integrations/app-connections/hashicorp-vault",
                       "integrations/app-connections/heroku",
                       "integrations/app-connections/humanitec",
@@ -280,6 +281,7 @@
                       "documentation/platform/scim/azure",
                       "documentation/platform/scim/jumpcloud",
                       "documentation/platform/scim/pingone",
+                      "documentation/platform/scim/pingfederate",
                       "documentation/platform/scim/group-mappings"
                     ]
                   },
@@ -515,6 +517,7 @@
                       "documentation/platform/dynamic-secrets/elastic-search",
                       "documentation/platform/dynamic-secrets/gcp-iam",
                       "documentation/platform/dynamic-secrets/github",
+                      "documentation/platform/dynamic-secrets/ibm-api-connect",
                       "documentation/platform/dynamic-secrets/ldap",
                       "documentation/platform/dynamic-secrets/milvus",
                       "documentation/platform/dynamic-secrets/mongo-atlas",
@@ -842,9 +845,7 @@
                     "pages": [
                       "documentation/platform/pki/code-signing/overview",
                       "documentation/platform/pki/code-signing/signers",
-                      "documentation/platform/pki/code-signing/signing-policies",
-                      "documentation/platform/pki/code-signing/signing-requests",
-                      "documentation/platform/pki/code-signing/grants",
+                      "documentation/platform/pki/code-signing/approvals",
                       "documentation/platform/pki/code-signing/pkcs11-module"
                     ]
                   },
@@ -875,6 +876,7 @@
                           "documentation/platform/pki/ca/lets-encrypt",
                           "documentation/platform/pki/ca/digicert",
                           "documentation/platform/pki/ca/digicert-direct",
+                          "documentation/platform/pki/ca/godaddy",
                           "documentation/platform/pki/ca/sectigo",
                           "documentation/platform/pki/ca/azure-adcs",
                           "documentation/platform/pki/ca/aws-pca",
@@ -3324,6 +3326,44 @@
                           "api-reference/endpoints/certificate-authorities/digicert/delete"
                         ]
                       }
+                    ]
+                  }
+                ]
+              },
+              {
+                "group": "Code Signing",
+                "pages": [
+                  {
+                    "group": "Signers",
+                    "pages": [
+                      "api-reference/endpoints/code-signing/signers/list",
+                      "api-reference/endpoints/code-signing/signers/create",
+                      "api-reference/endpoints/code-signing/signers/read",
+                      "api-reference/endpoints/code-signing/signers/update",
+                      "api-reference/endpoints/code-signing/signers/delete",
+                      "api-reference/endpoints/code-signing/signers/sign",
+                      "api-reference/endpoints/code-signing/signers/public-key",
+                      "api-reference/endpoints/code-signing/signers/export-certificate",
+                      "api-reference/endpoints/code-signing/signers/enable",
+                      "api-reference/endpoints/code-signing/signers/disable",
+                      "api-reference/endpoints/code-signing/signers/reissue-certificate",
+                      "api-reference/endpoints/code-signing/signers/list-operations"
+                    ]
+                  },
+                  {
+                    "group": "Approval Policy",
+                    "pages": [
+                      "api-reference/endpoints/code-signing/signers/get-policy",
+                      "api-reference/endpoints/code-signing/signers/update-policy"
+                    ]
+                  },
+                  {
+                    "group": "Signing Requests",
+                    "pages": [
+                      "api-reference/endpoints/code-signing/signers/list-requests",
+                      "api-reference/endpoints/code-signing/signers/request-to-sign",
+                      "api-reference/endpoints/code-signing/signers/pre-approve",
+                      "api-reference/endpoints/code-signing/signers/revoke-request"
                     ]
                   }
                 ]

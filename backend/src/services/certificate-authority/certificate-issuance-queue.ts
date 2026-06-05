@@ -28,7 +28,10 @@ import {
   resolveEffectiveApiConfig
 } from "../certificate-common/certificate-issuance-utils";
 import { CertificateRequestCancelledError } from "../certificate-common/certificate-request-errors";
-import { DigiCertExternalMetadataSchema } from "../certificate-common/external-metadata-schemas";
+import {
+  DigiCertExternalMetadataSchema,
+  GoDaddyExternalMetadataSchema
+} from "../certificate-common/external-metadata-schemas";
 import { TCertificateRequestDALFactory } from "../certificate-request/certificate-request-dal";
 import { TCertificateRequestServiceFactory } from "../certificate-request/certificate-request-service";
 import { CertificateRequestStatus } from "../certificate-request/certificate-request-types";
@@ -61,6 +64,7 @@ import { CaType } from "./certificate-authority-enums";
 import { keyAlgorithmToAlgCfg } from "./certificate-authority-fns";
 import { DigiCertCertificateAuthorityFns } from "./digicert/digicert-certificate-authority-fns";
 import { TExternalCertificateAuthorityDALFactory } from "./external-certificate-authority-dal";
+import { GoDaddyCertificateAuthorityFns } from "./godaddy/godaddy-certificate-authority-fns";
 import { VenafiTppCertificateAuthorityFns } from "./venafi-tpp/venafi-tpp-certificate-authority-fns";
 
 const base64UrlToBase64 = (base64url: string): string => {
@@ -94,7 +98,7 @@ const ensureCsrPemFormat = (csr: string): string => {
 
 export type TIssueCertificateFromProfileJobData = {
   certificateId: string;
-  profileId: string;
+  profileId?: string;
   caId: string;
   caType?: CaType;
   commonName?: string;
@@ -238,6 +242,18 @@ export const certificateIssuanceQueueFactory = ({
     projectDAL
   });
 
+  const godaddyFns = GoDaddyCertificateAuthorityFns({
+    appConnectionDAL,
+    appConnectionService,
+    certificateAuthorityDAL,
+    externalCertificateAuthorityDAL,
+    certificateDAL,
+    certificateBodyDAL,
+    certificateSecretDAL,
+    kmsService,
+    projectDAL
+  });
+
   const awsAcmPublicCaFns = AwsAcmPublicCaCertificateAuthorityFns({
     appConnectionDAL,
     appConnectionService,
@@ -333,7 +349,8 @@ export const certificateIssuanceQueueFactory = ({
       }
     }
 
-    await queueService.queue(QueueName.CertificateIssuance, QueueJobs.CaIssueCertificateFromProfile, jobData, {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
+    await queueService.queue(QueueName.CertificateIssuance, QueueJobs.CaIssueCertificateFromProfile, jobData as any, {
       jobId: `certificate-issuance-${jobIdSeed}`,
       ...queueOpts
     });
@@ -509,7 +526,7 @@ export const certificateIssuanceQueueFactory = ({
       } else if (ca.externalCa?.type === CaType.AZURE_AD_CS) {
         await setPending("Submitting the request to Azure AD CS");
         let template: string | undefined;
-        if (certificateProfileDAL) {
+        if (certificateProfileDAL && profileId) {
           try {
             const profile = await certificateProfileDAL.findById(profileId);
             if (
@@ -551,7 +568,9 @@ export const certificateIssuanceQueueFactory = ({
           return;
         }
 
-        const azureResult = await azureAdCsFns.orderCertificateFromProfile(azureParams);
+        const azureResult = await azureAdCsFns.orderCertificateFromProfile(
+          azureParams as Parameters<typeof azureAdCsFns.orderCertificateFromProfile>[0]
+        );
 
         if (await isCancelled()) {
           logger.info(`Cancelled after Azure AD CS order [certificateRequestId=${certificateRequestId}]`);
@@ -619,7 +638,9 @@ export const certificateIssuanceQueueFactory = ({
           return;
         }
 
-        const acmResult = await awsAcmPublicCaFns.orderCertificateFromProfile(acmParams);
+        const acmResult = await awsAcmPublicCaFns.orderCertificateFromProfile(
+          acmParams as Parameters<typeof awsAcmPublicCaFns.orderCertificateFromProfile>[0]
+        );
 
         if (await isCancelled()) {
           logger.info(`Cancelled after AWS ACM Public CA order [certificateRequestId=${certificateRequestId}]`);
@@ -686,7 +707,9 @@ export const certificateIssuanceQueueFactory = ({
           return;
         }
 
-        const awsPcaResult = await awsPcaFns.orderCertificateFromProfile(awsPcaParams);
+        const awsPcaResult = await awsPcaFns.orderCertificateFromProfile(
+          awsPcaParams as Parameters<typeof awsPcaFns.orderCertificateFromProfile>[0]
+        );
 
         if (await isCancelled()) {
           logger.info(`Cancelled after AWS Private CA order [certificateRequestId=${certificateRequestId}]`);
@@ -849,6 +872,89 @@ export const certificateIssuanceQueueFactory = ({
             `DigiCert order placed, awaiting validation [certificateRequestId=${certificateRequestId}] [orderId=${digicertResult.metadata.digicert.orderId}]`
           );
         }
+      } else if (ca.externalCa?.type === CaType.GODADDY) {
+        if (!certificateRequestId || !certificateRequestDAL) {
+          throw new NotFoundError({
+            message: "GoDaddy issuance requires a certificate request and request DAL"
+          });
+        }
+
+        await setPending("Submitting the request to GoDaddy");
+
+        let renewalOfCertificateId: string | undefined;
+        if (isRenewal && originalCertificateId) {
+          const originalCert = await certificateDAL.findById(originalCertificateId);
+          const parsedMetadata = GoDaddyExternalMetadataSchema.safeParse(originalCert?.externalMetadata);
+          if (parsedMetadata.success) {
+            renewalOfCertificateId = parsedMetadata.data.certificateId;
+          } else {
+            logger.warn(
+              `GoDaddy renewal requested but previous certificate has no GoDaddy reference in externalMetadata — falling back to a new order [originalCertificateId=${originalCertificateId}]`
+            );
+          }
+        }
+
+        if (await isCancelled()) {
+          logger.info(`Cancelled before GoDaddy order [certificateRequestId=${certificateRequestId}]`);
+          return;
+        }
+
+        const godaddyResult = await godaddyFns.orderCertificateFromProfile({
+          caId,
+          commonName: commonName || "",
+          altNames: altNames?.map((san) => san.value) || [],
+          signatureAlgorithm,
+          keyAlgorithm: keyAlgorithm as CertKeyAlgorithm,
+          ttl,
+          ...(csr && { csr }),
+          ...(renewalOfCertificateId && { renewalOfCertificateId })
+        });
+
+        if (await isCancelled()) {
+          logger.info(
+            `Cancelled after GoDaddy order — order placed at CA but will not be tracked locally [certificateRequestId=${certificateRequestId}]`
+          );
+          return;
+        }
+
+        let encryptedPrivateKey: Buffer | undefined;
+        if (godaddyResult.privateKey) {
+          const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
+            projectId: ca.projectId,
+            projectDAL,
+            kmsService
+          });
+          const kmsEncryptor = await kmsService.encryptWithKmsKey({ kmsId: certificateManagerKmsId });
+          const { cipherTextBlob } = await kmsEncryptor({ plainText: Buffer.from(godaddyResult.privateKey) });
+          encryptedPrivateKey = cipherTextBlob;
+        }
+
+        const metadataWithRenewal = {
+          ...godaddyResult.metadata,
+          godaddy: {
+            ...godaddyResult.metadata.godaddy,
+            ...(isRenewal && originalCertificateId ? { isRenewal: true, originalCertificateId } : {})
+          }
+        };
+
+        const transitioned = await certificateRequestDAL.transitionToPendingValidation(certificateRequestId, {
+          metadata: JSON.stringify(metadataWithRenewal),
+          ...(encryptedPrivateKey && { encryptedPrivateKey })
+        });
+
+        if (!transitioned) {
+          logger.info(
+            `Skipping GoDaddy validation transition — request is no longer pending [certificateRequestId=${certificateRequestId}]`
+          );
+          return;
+        }
+
+        await setPending(
+          `GoDaddy is processing the request — certificate ${godaddyResult.metadata.godaddy.certificateId}`
+        );
+        logger.info(
+          `GoDaddy order placed, awaiting validation [certificateRequestId=${certificateRequestId}] [godaddyCertificateId=${godaddyResult.metadata.godaddy.certificateId}]`
+        );
       } else if (ca.externalCa?.type === CaType.VENAFI_TPP) {
         await setPending("Submitting the request to Venafi TPP");
         const venafiTppParams = {
@@ -877,7 +983,9 @@ export const certificateIssuanceQueueFactory = ({
           return;
         }
 
-        const venafiTppResult = await venafiTppFns.orderCertificateFromProfile(venafiTppParams);
+        const venafiTppResult = await venafiTppFns.orderCertificateFromProfile(
+          venafiTppParams as Parameters<typeof venafiTppFns.orderCertificateFromProfile>[0]
+        );
 
         if (await isCancelled()) {
           logger.info(`Cancelled after Venafi TPP order [certificateRequestId=${certificateRequestId}]`);
@@ -1126,6 +1234,12 @@ export const certificateIssuanceQueueFactory = ({
 
   return {
     queueCertificateIssuance,
-    processCertificateIssuanceJobs
+    processCertificateIssuanceJobs,
+    acmeFns,
+    azureAdCsFns,
+    awsPcaFns,
+    awsAcmPublicCaFns,
+    digicertFns,
+    venafiTppFns
   };
 };

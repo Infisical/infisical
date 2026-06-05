@@ -112,6 +112,7 @@ import { ValidateGitHubRadarConnectionCredentialsSchema } from "./github-radar";
 import { githubRadarConnectionService } from "./github-radar/github-radar-connection-service";
 import { ValidateGitLabConnectionCredentialsSchema } from "./gitlab";
 import { gitlabConnectionService } from "./gitlab/gitlab-connection-service";
+import { ValidateGoDaddyConnectionCredentialsSchema } from "./godaddy/godaddy-connection-schemas";
 import { ValidateHCVaultConnectionCredentialsSchema } from "./hc-vault";
 import { hcVaultConnectionService } from "./hc-vault/hc-vault-connection-service";
 import { ValidateHerokuConnectionCredentialsSchema } from "./heroku";
@@ -250,6 +251,7 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.Devin]: ValidateDevinConnectionCredentialsSchema,
   [AppConnection.Ona]: ValidateOnaConnectionCredentialsSchema,
   [AppConnection.DigiCert]: ValidateDigiCertConnectionCredentialsSchema,
+  [AppConnection.GoDaddy]: ValidateGoDaddyConnectionCredentialsSchema,
   [AppConnection.TravisCI]: ValidateTravisCIConnectionCredentialsSchema,
   [AppConnection.Salesforce]: ValidateSalesforceConnectionCredentialsSchema,
   [AppConnection.Snowflake]: ValidateSnowflakeConnectionCredentialsSchema,

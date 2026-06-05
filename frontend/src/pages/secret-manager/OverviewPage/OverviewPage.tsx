@@ -6,7 +6,7 @@ import { DragDropProvider, DragEndEvent, DragOverlay } from "@dnd-kit/react";
 import { isSortable } from "@dnd-kit/react/sortable";
 import { arrayMove } from "@dnd-kit/sortable";
 import { useQueryClient } from "@tanstack/react-query";
-import { useNavigate, useParams, useRouter, useSearch } from "@tanstack/react-router";
+import { Link, useNavigate, useParams, useRouter, useSearch } from "@tanstack/react-router";
 import { AxiosError } from "axios";
 import {
   ChevronDownIcon,
@@ -99,7 +99,8 @@ import {
   ProjectPermissionSub,
   useProject,
   useProjectPermission,
-  useSubscription
+  useSubscription,
+  useUser
 } from "@app/context";
 import {
   ProjectPermissionCommitsActions,
@@ -153,6 +154,10 @@ import { TDashboardHoneyToken } from "@app/hooks/api/honeyTokens/types";
 import { useImportDopplerSecrets, useImportVaultSecrets } from "@app/hooks/api/migration";
 import { ExternalMigrationImportStatus } from "@app/hooks/api/migration/types";
 import { ProjectType, ProjectVersion } from "@app/hooks/api/projects/types";
+import {
+  useGetSecretApprovalRequestCount,
+  useGetSecretApprovalRequests
+} from "@app/hooks/api/secretApprovalRequest";
 import { useUpdateFolderBatch } from "@app/hooks/api/secretFolders/queries";
 import { PendingAction, TUpdateFolderBatchDTO } from "@app/hooks/api/secretFolders/types";
 import { TSecretImport } from "@app/hooks/api/secretImports/types";
@@ -294,6 +299,19 @@ const OverviewPageContent = () => {
   const { permission } = useProjectPermission();
   const tableRef = useRef<HTMLDivElement>(null);
   const { currentProject, projectId } = useProject();
+  const { user } = useUser();
+  const { data: approvalCount } = useGetSecretApprovalRequestCount({ projectId });
+  const pendingApprovalsCount = approvalCount?.open ?? 0;
+  const { data: openApprovalRequests } = useGetSecretApprovalRequests({
+    projectId,
+    status: "open",
+    limit: 100,
+    options: { enabled: pendingApprovalsCount > 0 }
+  });
+  const canApproveAny =
+    openApprovalRequests?.approvals?.some((req) =>
+      req.policy?.approvers?.some((a) => a.userId === user.id)
+    ) ?? false;
   const isProjectV3 = currentProject?.version === ProjectVersion.V3;
   const projectSlug = currentProject?.slug as string;
   const [searchFilter, setSearchFilter] = useState("");
@@ -1532,7 +1550,7 @@ const OverviewPageContent = () => {
     value: string,
     type = SecretType.Shared
   ) => {
-    if (isBatchModeActive) {
+    if (isBatchModeActive && type !== SecretType.Personal) {
       addPendingChange(
         {
           id: crypto.randomUUID(),
@@ -1619,7 +1637,7 @@ const OverviewPageContent = () => {
     skipMultilineEncoding?: boolean | null;
     originalValue?: string;
   }) => {
-    if (isBatchModeActive) {
+    if (isBatchModeActive && type !== SecretType.Personal) {
       const existingSecret = getSecretByKey(env, key);
 
       let batchSecretValue: string | undefined = value;
@@ -1735,7 +1753,7 @@ const OverviewPageContent = () => {
     secretId?: string,
     type = SecretType.Shared
   ) => {
-    if (isBatchModeActive) {
+    if (isBatchModeActive && type !== SecretType.Personal) {
       const existingSecret = getSecretByKey(env, key);
 
       if (!existingSecret) {
@@ -2544,6 +2562,7 @@ const OverviewPageContent = () => {
                 />
                 {userAvailableEnvs.length > 0 && (
                   <AddResourceButtons
+                    requiresApproval={isProtectedBranch}
                     onAddSecret={() => handlePopUpOpen("addSecretsInAllEnvs")}
                     onAddFolder={() => {
                       handlePopUpOpen("addFolder");
@@ -2617,6 +2636,29 @@ const OverviewPageContent = () => {
             </div>
           </CardHeader>
           <CardContent>
+            {pendingApprovalsCount > 0 && (
+              <Alert variant="info" className="-mt-2 mb-3 py-1.5">
+                <AlertTitle className="flex items-center gap-3">
+                  <InfoIcon className="size-4 shrink-0 text-info" />
+                  <span>
+                    {pendingApprovalsCount} secret change request
+                    {pendingApprovalsCount === 1 ? "" : "s"} pending approval
+                    {!canApproveAny && ". Waiting for a reviewer"}
+                  </span>
+                  {canApproveAny && (
+                    <Button asChild variant="outline" size="xs" className="ml-auto">
+                      <Link
+                        to={ROUTE_PATHS.SecretManager.ApprovalPage.path}
+                        params={{ orgId, projectId }}
+                        search={{ selectedTab: "approval-requests", requestId: "" }}
+                      >
+                        Review
+                      </Link>
+                    </Button>
+                  )}
+                </AlertTitle>
+              </Alert>
+            )}
             {isSingleEnvView &&
               hasPathPolicies &&
               // eslint-disable-next-line no-nested-ternary

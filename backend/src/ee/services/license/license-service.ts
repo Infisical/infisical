@@ -103,7 +103,7 @@ export const licenseServiceFactory = ({
         data: { currentPlan }
       } = await licenseServerOnPremApi.request.get<{ currentPlan: TFeatureSet }>("/api/license/v1/plan");
 
-      const workspacesUsed = await projectDAL.countOfOrgProjects(null);
+      const workspacesUsed = await projectDAL.countOfBillableOrgProjects(null);
       currentPlan.workspacesUsed = workspacesUsed;
 
       const usedIdentitySeats = await licenseDAL.countOrgUsersAndIdentities(null);
@@ -215,7 +215,7 @@ export const licenseServiceFactory = ({
         } = await licenseServerCloudApi.request.get<{ currentPlan: TFeatureSet }>(
           `/api/license-server/v1/customers/${org.customerId}/cloud-plan`
         );
-        const workspacesUsed = await projectDAL.countOfOrgProjects(rootOrgId);
+        const workspacesUsed = await projectDAL.countOfBillableOrgProjects(rootOrgId);
         currentPlan.workspacesUsed = workspacesUsed;
 
         const membersUsed = await licenseDAL.countOfOrgMembers(rootOrgId);
@@ -475,7 +475,7 @@ export const licenseServiceFactory = ({
     const [orgMembersUsed, identityUsed, projectCount] = await Promise.all([
       orgDAL.countAllOrgMembers(orgId),
       licenseDAL.countOfOrgIdentities(orgId),
-      projectDAL.countOfOrgProjects(orgId)
+      projectDAL.countOfBillableOrgProjects(orgId)
     ]);
 
     return {

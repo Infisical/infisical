@@ -112,6 +112,10 @@ import {
 } from "@app/services/app-connection/github-radar";
 import { GitLabConnectionListItemSchema, SanitizedGitLabConnectionSchema } from "@app/services/app-connection/gitlab";
 import {
+  GoDaddyConnectionListItemSchema,
+  SanitizedGoDaddyConnectionSchema
+} from "@app/services/app-connection/godaddy";
+import {
   HCVaultConnectionListItemSchema,
   SanitizedHCVaultConnectionSchema
 } from "@app/services/app-connection/hc-vault";
@@ -270,6 +274,7 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedOvhConnectionSchema.options,
   ...SanitizedOnaConnectionSchema.options,
   ...SanitizedDigiCertConnectionSchema.options,
+  ...SanitizedGoDaddyConnectionSchema.options,
   ...SanitizedTravisCIConnectionSchema.options,
   ...SanitizedSalesforceConnectionSchema.options,
   ...SanitizedSnowflakeConnectionSchema.options,
@@ -340,6 +345,7 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   DevinConnectionListItemSchema,
   OnaConnectionListItemSchema,
   DigiCertConnectionListItemSchema,
+  GoDaddyConnectionListItemSchema,
   TravisCIConnectionListItemSchema,
   SalesforceConnectionListItemSchema,
   SnowflakeConnectionListItemSchema,

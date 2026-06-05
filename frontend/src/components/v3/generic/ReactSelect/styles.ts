@@ -32,7 +32,9 @@ export const selectClassNames: ClassNamesConfig<unknown, boolean, GroupBase<unkn
   clearIndicator: () =>
     "opacity-50 hover:opacity-100 hover:bg-foreground/10 cursor-pointer rounded-md p-1 text-danger [&>svg]:size-4",
   noOptionsMessage: () => "text-muted p-2 text-sm",
-  loadingMessage: () => "text-muted p-2 text-sm"
+  loadingMessage: () => "text-muted p-2 text-sm",
+  group: () => "pb-1",
+  groupHeading: () => "px-2 pt-2 pb-1 text-xs font-medium text-muted"
 };
 
 export const selectStyles: StylesConfig<unknown, boolean, GroupBase<unknown>> = {

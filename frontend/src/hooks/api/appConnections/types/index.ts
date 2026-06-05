@@ -32,6 +32,7 @@ import { TGcpConnection } from "./gcp-connection";
 import { TGitHubConnection } from "./github-connection";
 import { TGitHubRadarConnection } from "./github-radar-connection";
 import { TGitLabConnection } from "./gitlab-connection";
+import { TGoDaddyConnection } from "./godaddy-connection";
 import { THCVaultConnection } from "./hc-vault-connection";
 import { THerokuConnection } from "./heroku-connection";
 import { THumanitecConnection } from "./humanitec-connection";
@@ -197,6 +198,7 @@ export type TAppConnection =
   | TDevinConnection
   | TOnaConnection
   | TDigiCertConnection
+  | TGoDaddyConnection
   | TTravisCIConnection
   | TSalesforceConnection
   | TSnowflakeConnection

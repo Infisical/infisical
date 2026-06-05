@@ -140,7 +140,7 @@ export const OrgGeneralAuthSection = ({
       }
 
       if (value) {
-        setBypassEnabledInModal(currentOrg?.bypassOrgAuthEnabled ?? false);
+        setBypassEnabledInModal(true);
         setEnforcementTypeInModal(EnforceAuthType.SAML);
         handlePopUpOpen("enforceSamlSsoConfirmation");
         return;
@@ -165,7 +165,7 @@ export const OrgGeneralAuthSection = ({
       }
 
       if (value) {
-        setBypassEnabledInModal(currentOrg?.bypassOrgAuthEnabled ?? false);
+        setBypassEnabledInModal(true);
         setEnforcementTypeInModal(EnforceAuthType.GOOGLE);
         handlePopUpOpen("enforceSamlSsoConfirmation");
         return;
@@ -253,7 +253,10 @@ export const OrgGeneralAuthSection = ({
             >
               <FieldContent>
                 <FieldTitle>Enforce SAML SSO</FieldTitle>
-                <FieldDescription>Only allow members to sign in via SAML.</FieldDescription>
+                <FieldDescription>
+                  Only allow members to sign in via SAML. Also disables email & password signup for
+                  your verified domain(s) and skips email verification for SSO sign-ins.
+                </FieldDescription>
               </FieldContent>
               <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Sso}>
                 {(isAllowed) => (
@@ -276,7 +279,10 @@ export const OrgGeneralAuthSection = ({
             >
               <FieldContent>
                 <FieldTitle>Enforce OIDC SSO</FieldTitle>
-                <FieldDescription>Only allow members to sign in via OIDC.</FieldDescription>
+                <FieldDescription>
+                  Only allow members to sign in via OIDC. Also disables email & password signup for
+                  your verified domain(s) and skips email verification for SSO sign-ins.
+                </FieldDescription>
               </FieldContent>
               <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Sso}>
                 {(isAllowed) => (
@@ -411,6 +417,14 @@ export const OrgGeneralAuthSection = ({
                 Before proceeding, ensure your {enforcementLabel} provider is available and properly
                 configured to avoid access issues.
               </p>
+              {enforcementTypeInModal !== EnforceAuthType.GOOGLE && (
+                <p>
+                  This also disables email & password signup for your verified domain(s) and skips
+                  email verification for SSO sign-ins. Make sure a break-glass admin already has a
+                  password and SSO bypass access before continuing — the signup block prevents
+                  creating new password accounts for the domain afterwards.
+                </p>
+              )}
             </AlertDescription>
           </Alert>
 

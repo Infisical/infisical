@@ -1,4 +1,6 @@
 import { AccessScope, OrgMembershipStatus } from "@app/db/schemas";
+import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
+import { findOrgIdByVerifiedDomain } from "@app/ee/services/email-domain/email-domain-fns";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
@@ -27,6 +29,7 @@ type TAuthSignupDep = {
   tokenService: TAuthTokenServiceFactory;
   smtpService: TSmtpService;
   loginService: Pick<TAuthLoginFactory, "generateUserTokens">;
+  emailDomainDAL: Pick<TEmailDomainDALFactory, "findOne">;
 };
 
 const DUMMY_USER_ID = "00000000-0000-0000-0000-000000000000";
@@ -40,7 +43,8 @@ export const authSignupServiceFactory = ({
   smtpService,
   orgService,
   orgDAL,
-  loginService
+  loginService,
+  emailDomainDAL
 }: TAuthSignupDep) => {
   // First step of signup to send OTP email
   const beginEmailSignupProcess = async (email: string): Promise<{ cooldownSeconds: number }> => {
@@ -51,8 +55,26 @@ export const authSignupServiceFactory = ({
       throw new Error("Provided a disposable email");
     }
 
-    // Acquire cooldown before any operation to avoid reliable enumeration oracle
+    // Acquire cooldown before any operation to avoid reliable enumeration oracle and to throttle the
+    // unauthenticated DB queries below (e.g. the SSO-enforced domain lookup).
     const { emailHash, cooldownSeconds } = await tokenService.acquireEmailSignupCooldown(sanitizedEmail);
+
+    // Block email/password signup for domains owned by an org that enforces SSO. The org's verified
+    // domain + IdP are authoritative, so allowing a competing password account would reopen an
+    // account-takeover vector. Domain ownership isn't secret, so surfacing this is acceptable.
+    const emailDomain = sanitizedEmail.split("@")?.[1];
+    if (emailDomain) {
+      const verifiedDomain = await findOrgIdByVerifiedDomain({ domain: emailDomain, emailDomainDAL });
+      if (verifiedDomain?.orgId) {
+        const org = await orgDAL.findById(verifiedDomain.orgId);
+        if (org?.authEnforced) {
+          throw new BadRequestError({
+            message:
+              "Your organization requires single sign-on. Please sign in through your identity provider instead of email and password."
+          });
+        }
+      }
+    }
 
     // Case sensitive email resolution
     const existingUser = await userDAL.findOne({ username: sanitizedEmail });

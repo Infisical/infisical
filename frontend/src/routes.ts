@@ -509,6 +509,10 @@ export const routes = rootRoute("root.tsx", [
         "/organization/app-connections/$appConnection/oauth/callback",
         "redirects/oauth-callback-redirect.tsx"
       ),
+      route(
+        "/organization/settings/oauth/callback",
+        "redirects/settings-oauth-callback-redirect.tsx"
+      ),
       layout("org-layout", "organization/layout.tsx", [
         organizationRoutes,
         route("/organizations/$orgId/secret-manager/$projectId", [

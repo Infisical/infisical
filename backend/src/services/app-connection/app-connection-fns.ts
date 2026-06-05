@@ -149,6 +149,7 @@ import {
 } from "./github-radar";
 import { GitLabConnectionMethod } from "./gitlab";
 import { getGitLabConnectionListItem, validateGitLabConnectionCredentials } from "./gitlab/gitlab-connection-fns";
+import { getGoDaddyConnectionListItem, GoDaddyConnectionMethod, validateGoDaddyConnectionCredentials } from "./godaddy";
 import {
   getHCVaultConnectionListItem,
   HCVaultConnectionMethod,
@@ -273,7 +274,8 @@ const PKI_APP_CONNECTIONS = [
   AppConnection.VenafiTpp,
   AppConnection.NetScaler,
   AppConnection.DigiCert,
-  AppConnection.F5BigIp
+  AppConnection.F5BigIp,
+  AppConnection.GoDaddy
 ];
 
 export const listAppConnectionOptions = (projectType?: ProjectType) => {
@@ -340,6 +342,7 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getOvhConnectionListItem(),
     getOnaConnectionListItem(),
     getDigiCertConnectionListItem(),
+    getGoDaddyConnectionListItem(),
     getTravisCIConnectionListItem(),
     getSalesforceConnectionListItem(),
     getSnowflakeConnectionListItem(),
@@ -570,6 +573,7 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.Salesforce]: validateSalesforceConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.OVH]: validateOvhConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.DigiCert]: validateDigiCertConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.GoDaddy]: validateGoDaddyConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Snowflake]: validateSnowflakeConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Datadog]: validateDatadogConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.F5BigIp]: validateF5BigIpConnectionCredentials as TAppConnectionCredentialsValidator
@@ -666,6 +670,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case DevinConnectionMethod.ApiKey:
     case DigiCertConnectionMethod.ApiKey:
     case DatadogConnectionMethod.ApiKey:
+    case GoDaddyConnectionMethod.ApiKey:
       return "API Key";
     case ChefConnectionMethod.UserKey:
       return "User Key";
@@ -809,7 +814,8 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.Salesforce]: platformManagedCredentialsNotSupported,
   [AppConnection.Snowflake]: platformManagedCredentialsNotSupported,
   [AppConnection.Datadog]: platformManagedCredentialsNotSupported,
-  [AppConnection.F5BigIp]: platformManagedCredentialsNotSupported
+  [AppConnection.F5BigIp]: platformManagedCredentialsNotSupported,
+  [AppConnection.GoDaddy]: platformManagedCredentialsNotSupported
 };
 
 export const enterpriseAppCheck = async (

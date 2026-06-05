@@ -7,7 +7,8 @@ export const CERTIFICATE_AUTHORITIES_TYPE_MAP: Record<CaType, string> = {
   [CaType.AWS_PCA]: "AWS Private Certificate Authority",
   [CaType.DIGICERT]: "DigiCert",
   [CaType.AWS_ACM_PUBLIC_CA]: "AWS ACM Public CA",
-  [CaType.VENAFI_TPP]: "Venafi Trust Protection Platform"
+  [CaType.VENAFI_TPP]: "Venafi Trust Protection Platform",
+  [CaType.GODADDY]: "GoDaddy"
 };
 
 export const CERTIFICATE_AUTHORITIES_CAPABILITIES_MAP: Record<CaType, CaCapability[]> = {
@@ -37,7 +38,8 @@ export const CERTIFICATE_AUTHORITIES_CAPABILITIES_MAP: Record<CaType, CaCapabili
     CaCapability.REVOKE_CERTIFICATES,
     CaCapability.RENEW_CERTIFICATES
   ],
-  [CaType.VENAFI_TPP]: [CaCapability.ISSUE_CERTIFICATES, CaCapability.RENEW_CERTIFICATES]
+  [CaType.VENAFI_TPP]: [CaCapability.ISSUE_CERTIFICATES, CaCapability.RENEW_CERTIFICATES],
+  [CaType.GODADDY]: [CaCapability.ISSUE_CERTIFICATES, CaCapability.REVOKE_CERTIFICATES, CaCapability.RENEW_CERTIFICATES]
 };
 
 /**
