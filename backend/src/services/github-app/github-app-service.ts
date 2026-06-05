@@ -511,7 +511,6 @@ export const gitHubAppServiceFactory = ({
   const resolveUserInstallations = async ({
     code,
     gitHubAppId,
-    host,
     instanceType,
     gatewayId,
     projectId,
