@@ -277,7 +277,7 @@ func (h *Handler) GetSecretByNameRawV3(ctx context.Context, opts *GetSecretByNam
 		UserID:                 getUserID(identity),
 		ViewSecretValue:        fn.ValueOr(q.ViewSecretValue, true),
 		ExpandSecretReferences: fn.ValueOr(q.ExpandSecretReferences, true),
-		IncludeImports:         fn.ValueOr(q.IncludeImports, true),
+		IncludeImports:         fn.ValueOr(q.IncludeImports, false), // V3 defaults to false (unlike V4)
 	})
 	if err != nil {
 		return nil, err
