@@ -665,7 +665,9 @@ export const projectQueueFactory = ({
       QueueJobs.SecretBlindIndexMigration,
       { projectId },
       {
-        removeOnComplete: { age: 360 },
+        // 1 minute, we don't use it after it's complete, just making sure any race condition can still fetch the job
+        removeOnComplete: { age: 60 },
+        // 1 day, this gives us time to display the error to the customer
         removeOnFail: { age: 24 * 3600 },
         jobId
       }
