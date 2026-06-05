@@ -213,12 +213,13 @@ class RailwayPublicClient {
 
   async getVariables(
     config: RailwaySendReqOptions,
-    variables: { projectId: string; environmentId: string; serviceId?: string }
+    variables: { projectId: string; environmentId: string; serviceId?: string; unrendered?: boolean }
   ) {
+    const { unrendered, ...queryVariables } = variables;
     const res = await this.send<TRailwayResponse<{ variables: Record<string, string> }>>(
-      `query variables($environmentId: String!, $projectId: String!, $serviceId: String) { variables( projectId: $projectId, environmentId: $environmentId, serviceId: $serviceId ) }`,
+      `query variables($environmentId: String!, $projectId: String!, $serviceId: String, $unrendered: Boolean) { variables( projectId: $projectId, environmentId: $environmentId, serviceId: $serviceId, unrendered: $unrendered ) }`,
       config,
-      variables
+      { ...queryVariables, unrendered: unrendered ?? false }
     );
 
     if (!res?.variables) {
