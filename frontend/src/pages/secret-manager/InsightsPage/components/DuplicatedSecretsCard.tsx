@@ -141,10 +141,14 @@ export const DuplicatedSecretsCard = () => {
       <CardContent>
         {isPending && <Skeleton className="h-[280px] w-full" />}
         {!isPending && showEnableButton && (
-          <div className="flex h-[200px] flex-col items-center justify-center gap-3">
+          <div className="flex h-[200px] flex-col items-center justify-center gap-3 px-4 text-center">
             <Button variant="outline" onClick={handleEnableClick}>
               Enable Secret Duplication Detection
             </Button>
+            <p className="max-w-md text-xs text-muted">
+              Indexes secret values to detect duplicates. Members who can create secrets may be able
+              to confirm whether a value exists in environments they cannot directly access.
+            </p>
           </div>
         )}
         {!isPending && isMigrationRunning && (
