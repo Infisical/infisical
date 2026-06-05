@@ -5,7 +5,8 @@ export enum PkiSync {
   AwsElasticLoadBalancer = "aws-elastic-load-balancer",
   Chef = "chef",
   CloudflareCustomCertificate = "cloudflare-custom-certificate",
-  NetScaler = "netscaler"
+  NetScaler = "netscaler",
+  F5BigIp = "f5-big-ip"
 }
 
 export enum PkiSyncStatus {

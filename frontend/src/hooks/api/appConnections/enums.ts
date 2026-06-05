@@ -65,5 +65,6 @@ export enum AppConnection {
   Salesforce = "salesforce",
   Snowflake = "snowflake",
   Datadog = "datadog",
+  F5BigIp = "f5-big-ip",
   GoDaddy = "godaddy"
 }

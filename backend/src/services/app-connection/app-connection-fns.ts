@@ -134,6 +134,11 @@ import {
   TExternalInfisicalConnectionConfig,
   validateExternalInfisicalConnectionCredentials
 } from "./external-infisical";
+import {
+  F5BigIpConnectionMethod,
+  getF5BigIpConnectionListItem,
+  validateF5BigIpConnectionCredentials
+} from "./f5-big-ip";
 import { FlyioConnectionMethod, getFlyioConnectionListItem, validateFlyioConnectionCredentials } from "./flyio";
 import { GcpConnectionMethod, getGcpConnectionListItem, validateGcpConnectionCredentials } from "./gcp";
 import { getGitHubConnectionListItem, GitHubConnectionMethod, validateGitHubConnectionCredentials } from "./github";
@@ -269,6 +274,7 @@ const PKI_APP_CONNECTIONS = [
   AppConnection.VenafiTpp,
   AppConnection.NetScaler,
   AppConnection.DigiCert,
+  AppConnection.F5BigIp,
   AppConnection.GoDaddy
 ];
 
@@ -340,7 +346,8 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getTravisCIConnectionListItem(),
     getSalesforceConnectionListItem(),
     getSnowflakeConnectionListItem(),
-    getDatadogConnectionListItem()
+    getDatadogConnectionListItem(),
+    getF5BigIpConnectionListItem()
   ]
     .filter((option) => {
       switch (projectType) {
@@ -568,7 +575,8 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.DigiCert]: validateDigiCertConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.GoDaddy]: validateGoDaddyConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Snowflake]: validateSnowflakeConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.Datadog]: validateDatadogConnectionCredentials as TAppConnectionCredentialsValidator
+    [AppConnection.Datadog]: validateDatadogConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.F5BigIp]: validateF5BigIpConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection, gatewayService, gatewayV2Service);
@@ -669,6 +677,8 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case SupabaseConnectionMethod.AccessToken:
       return "Access Token";
     case NetScalerConnectionMethod.BasicAuth:
+      return "Basic Auth";
+    case F5BigIpConnectionMethod.BasicAuth:
       return "Basic Auth";
     case ExternalInfisicalConnectionMethod.MachineIdentityUniversalAuth:
       return "Machine Identity - Universal Auth";
@@ -804,6 +814,7 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.Salesforce]: platformManagedCredentialsNotSupported,
   [AppConnection.Snowflake]: platformManagedCredentialsNotSupported,
   [AppConnection.Datadog]: platformManagedCredentialsNotSupported,
+  [AppConnection.F5BigIp]: platformManagedCredentialsNotSupported,
   [AppConnection.GoDaddy]: platformManagedCredentialsNotSupported
 };
 

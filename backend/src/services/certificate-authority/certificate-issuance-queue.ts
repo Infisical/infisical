@@ -35,6 +35,7 @@ import {
 import { TCertificateRequestDALFactory } from "../certificate-request/certificate-request-dal";
 import { TCertificateRequestServiceFactory } from "../certificate-request/certificate-request-service";
 import { CertificateRequestStatus } from "../certificate-request/certificate-request-types";
+import { TCertificateSyncDALFactory } from "../certificate-sync/certificate-sync-dal";
 import { TApiEnrollmentConfigDALFactory } from "../enrollment-config/api-enrollment-config-dal";
 import { TPkiAlertV2QueueServiceFactory } from "../pki-alert-v2/pki-alert-v2-queue";
 import { PkiAlertEventType } from "../pki-alert-v2/pki-alert-v2-types";
@@ -42,6 +43,7 @@ import { TPkiApplicationProfileDALFactory } from "../pki-application/pki-applica
 import { TPkiSubscriberDALFactory } from "../pki-subscriber/pki-subscriber-dal";
 import { TPkiSyncDALFactory } from "../pki-sync/pki-sync-dal";
 import { TPkiSyncQueueFactory } from "../pki-sync/pki-sync-queue";
+import { addRenewedCertificateToSyncs, triggerAutoSyncForCertificate } from "../pki-sync/pki-sync-utils";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 import { copyMetadataFromRequestToCertificate } from "../resource-metadata/resource-metadata-fns";
 import { runWithAcmeCancellation } from "./acme/acme-cancellation";
@@ -135,6 +137,10 @@ type TCertificateIssuanceQueueFactoryDep = {
   pkiSubscriberDAL: Pick<TPkiSubscriberDALFactory, "findById" | "updateById">;
   pkiSyncDAL: Pick<TPkiSyncDALFactory, "find">;
   pkiSyncQueue: Pick<TPkiSyncQueueFactory, "queuePkiSyncSyncCertificatesById">;
+  certificateSyncDAL: Pick<
+    TCertificateSyncDALFactory,
+    "findPkiSyncIdsByCertificateId" | "addCertificates" | "findByPkiSyncAndCertificate" | "updateSyncMetadata"
+  >;
   certificateProfileDAL?: Pick<TCertificateProfileDALFactory, "findById" | "findByIdWithConfigs">;
   certificateRequestService?: Pick<
     TCertificateRequestServiceFactory,
@@ -168,6 +174,7 @@ export const certificateIssuanceQueueFactory = ({
   pkiSubscriberDAL,
   pkiSyncDAL,
   pkiSyncQueue,
+  certificateSyncDAL,
   certificateProfileDAL,
   certificateRequestService,
   certificateRequestDAL,
@@ -1073,6 +1080,25 @@ export const certificateIssuanceQueueFactory = ({
         logger.warn(
           renewErr,
           `Failed to set renewBeforeDays on async-issued certificate [certificateRequestId=${certificateRequestId}]`
+        );
+      }
+
+      try {
+        if (isRenewal && originalCertificateId && certificateRequestId && certificateRequestDAL) {
+          const req = await certificateRequestDAL.findById(certificateRequestId);
+          if (req?.certificateId) {
+            await addRenewedCertificateToSyncs(originalCertificateId, req.certificateId, { certificateSyncDAL });
+            await triggerAutoSyncForCertificate(req.certificateId, {
+              certificateSyncDAL,
+              pkiSyncDAL,
+              pkiSyncQueue
+            });
+          }
+        }
+      } catch (syncErr) {
+        logger.warn(
+          syncErr,
+          `Failed to link renewed certificate to PKI syncs [originalCertificateId=${originalCertificateId}] [certificateRequestId=${certificateRequestId}]`
         );
       }
 

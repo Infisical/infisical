@@ -372,6 +372,49 @@ export const PkiSyncOptionsFields = ({ destination }: Props) => {
         />
       )}
 
+      {currentDestination === PkiSync.F5BigIp && (
+        <Controller
+          control={control}
+          name="syncOptions.preserveItemOnRenewal"
+          render={({ field: { value, onChange }, fieldState: { error } }) => (
+            <FormControl isError={Boolean(error)} errorText={error?.message}>
+              <Switch
+                className="bg-mineshaft-400/80 shadow-inner data-[state=checked]:bg-green/80"
+                id="preserve-item-on-renewal"
+                thumbClassName="bg-mineshaft-800"
+                onCheckedChange={onChange}
+                isChecked={value}
+              >
+                <p>
+                  Preserve Certificate on Renewal{" "}
+                  <Tooltip
+                    className="max-w-md"
+                    content={
+                      <>
+                        <p>
+                          <strong>Only applies to certificate renewals:</strong> controls what
+                          happens on the BIG-IP when Infisical renews a certificate.
+                        </p>
+                        <p className="mt-4">
+                          When on, the renewed certificate replaces the existing one under the same
+                          name, so any profile that uses it keeps working without any extra setup.
+                        </p>
+                        <p className="mt-4">
+                          When off, the renewed certificate is uploaded with a new name and the
+                          original stays on the BIG-IP.
+                        </p>
+                      </>
+                    }
+                  >
+                    <FontAwesomeIcon icon={faQuestionCircle} size="sm" className="ml-1" />
+                  </Tooltip>
+                </p>
+              </Switch>
+            </FormControl>
+          )}
+        />
+      )}
+
       <Controller
         control={control}
         name="syncOptions.certificateNameSchema"
