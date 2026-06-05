@@ -21,6 +21,11 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
   IconButton,
   Skeleton,
   Tooltip,
@@ -135,21 +140,25 @@ export const DuplicatedSecretsCard = () => {
         <CardTitle>Duplicated Secrets</CardTitle>
         <CardDescription>
           Secrets across environments and paths that resolve to the same value. Reuse increases
-          blast radius &mdash; consider referencing a single source instead of copying.
+          blast radius, consider referencing a single source instead of copying.
         </CardDescription>
       </CardHeader>
       <CardContent>
         {isPending && <Skeleton className="h-[280px] w-full" />}
         {!isPending && showEnableButton && (
-          <div className="flex h-[200px] flex-col items-center justify-center gap-3 px-4 text-center">
-            <Button variant="outline" onClick={handleEnableClick}>
-              Enable Secret Duplication Detection
-            </Button>
-            <p className="max-w-md text-xs text-muted">
-              Indexes secret values to detect duplicates. Members who can create secrets may be able
-              to confirm whether a value exists in environments they cannot directly access.
-            </p>
-          </div>
+          <Empty className="border">
+            <EmptyHeader>
+              <EmptyTitle>Secret duplication detection is not enabled</EmptyTitle>
+              <EmptyDescription>
+                Detect secrets that share the same value across environments and paths.
+              </EmptyDescription>
+              <EmptyContent>
+                <Button variant="project" size="xs" onClick={handleEnableClick}>
+                  Enable Detection
+                </Button>
+              </EmptyContent>
+            </EmptyHeader>
+          </Empty>
         )}
         {!isPending && isMigrationRunning && (
           <div className="flex h-[200px] flex-col items-center justify-center gap-3">
@@ -171,9 +180,14 @@ export const DuplicatedSecretsCard = () => {
           </div>
         )}
         {!isPending && secretBlindIndexEnabled && groups.length === 0 && (
-          <div className="flex h-[200px] items-center justify-center">
-            <p className="text-sm text-muted">No duplicated secrets found</p>
-          </div>
+          <Empty className="border">
+            <EmptyHeader>
+              <EmptyTitle>No duplicated secrets found</EmptyTitle>
+              <EmptyDescription>
+                All secrets across environments and paths have unique values.
+              </EmptyDescription>
+            </EmptyHeader>
+          </Empty>
         )}
         {!isPending && secretBlindIndexEnabled && groups.length > 0 && (
           <Accordion type="multiple">
