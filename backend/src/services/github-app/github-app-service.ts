@@ -2,6 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
 
 import { ActionProjectType, OrganizationActionScope } from "@app/db/schemas";
+import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayDALFactory } from "@app/ee/services/gateway/gateway-dal";
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
@@ -41,6 +42,7 @@ import {
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
+import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TGitHubAppDALFactory } from "./github-app-dal";
 import {
@@ -48,6 +50,7 @@ import {
   TGitHubAppInstallation,
   TGitHubAppManifestResponse,
   TGitHubManifestStatePayload,
+  THandleManifestCallbackDTO,
   TInitiateGitHubManifestDTO,
   TListGitHubAppsDTO,
   TResolveGitHubAppInstallationsDTO,
@@ -64,6 +67,8 @@ type TGitHubAppServiceFactoryDep = {
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayDAL: Pick<TGatewayDALFactory, "find">;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "find">;
+  auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
+  userDAL: Pick<TUserDALFactory, "findById">;
 };
 
 export type TGitHubAppServiceFactory = ReturnType<typeof gitHubAppServiceFactory>;
@@ -77,7 +82,9 @@ export const gitHubAppServiceFactory = ({
   gatewayService,
   gatewayV2Service,
   gatewayDAL,
-  gatewayV2DAL
+  gatewayV2DAL,
+  auditLogService,
+  userDAL
 }: TGitHubAppServiceFactoryDep) => {
   const listGitHubApps = async ({ orgPermission }: TListGitHubAppsDTO): Promise<TSanitizedGitHubApp[]> => {
     const { permission } = await permissionService.getOrgPermission({
@@ -363,7 +370,7 @@ export const gitHubAppServiceFactory = ({
     return { state: stateToken, manifest, githubActionUrl };
   };
 
-  const handleManifestCallback = async ({ code, state }: { code: string; state: string }) => {
+  const handleManifestCallback = async ({ code, state, auditLogInfo }: THandleManifestCallbackDTO) => {
     const { AUTH_SECRET, SITE_URL } = getConfig();
 
     if (!SITE_URL) {
@@ -495,6 +502,40 @@ export const gitHubAppServiceFactory = ({
       }
       throw err;
     }
+
+    // The callback route is unauthenticated (GitHub redirects the browser here) — the actor is
+    // carried in the signed state token. Manifest initiation is JWT-only, so the actor is a user.
+    const actorUser = actorType === ActorType.USER ? await userDAL.findById(actorId) : null;
+    await auditLogService.createAuditLog({
+      ...auditLogInfo,
+      orgId,
+      actor: actorUser
+        ? {
+            type: ActorType.USER,
+            metadata: {
+              userId: actorUser.id,
+              email: actorUser.email,
+              username: actorUser.username,
+              ...(authMethod ? { authMethod } : {})
+            }
+          }
+        : {
+            type: ActorType.UNKNOWN_USER,
+            metadata: {}
+          },
+      event: {
+        type: EventType.CREATE_GITHUB_APP,
+        metadata: {
+          gitHubAppId: created.id,
+          name: created.name,
+          appId: created.appId,
+          slug: created.slug,
+          owner: created.owner,
+          host: created.host,
+          instanceType
+        }
+      }
+    });
 
     const callbackUrl = new URL(`${SITE_URL}/organizations/${orgId}/app-connections/github/manifest/callback`);
     callbackUrl.searchParams.set("gitHubAppId", created.id ?? "");

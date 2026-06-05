@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { AuditLogInfo } from "@app/ee/services/audit-log/audit-log-types";
 import { OrgServiceActor } from "@app/lib/types";
 
 export type TInitiateGitHubManifestDTO = {
@@ -22,6 +23,12 @@ export type TGitHubManifestStatePayload = {
   githubOrg: string;
   githubHost: string;
   installState: string;
+};
+
+export type THandleManifestCallbackDTO = {
+  code: string;
+  state: string;
+  auditLogInfo: Pick<AuditLogInfo, "ipAddress" | "userAgent" | "userAgentType">;
 };
 
 export type TListGitHubAppsDTO = {

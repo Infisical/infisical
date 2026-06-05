@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -58,7 +59,12 @@ export const registerGitHubAppRouter = async (server: FastifyZodProvider) => {
     handler: async (req, reply) => {
       const { redirectUrl } = await server.services.gitHubApp.handleManifestCallback({
         code: req.query.code,
-        state: req.query.state
+        state: req.query.state,
+        auditLogInfo: {
+          ipAddress: req.auditLogInfo.ipAddress,
+          userAgent: req.auditLogInfo.userAgent,
+          userAgentType: req.auditLogInfo.userAgentType
+        }
       });
 
       return reply.redirect(redirectUrl);
@@ -153,6 +159,20 @@ export const registerGitHubAppRouter = async (server: FastifyZodProvider) => {
       const gitHubApp = await server.services.gitHubApp.deleteGitHubApp({
         orgPermission: req.permission,
         id: req.params.id
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.DELETE_GITHUB_APP,
+          metadata: {
+            gitHubAppId: req.params.id,
+            name: gitHubApp.name,
+            appId: gitHubApp.appId,
+            slug: gitHubApp.slug
+          }
+        }
       });
 
       return { gitHubApp };
