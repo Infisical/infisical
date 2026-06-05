@@ -45,6 +45,7 @@ import { GcpConnectionForm } from "./GcpConnectionForm";
 import { GitHubConnectionForm } from "./GitHubConnectionForm";
 import { GitHubRadarConnectionForm } from "./GitHubRadarConnectionForm";
 import { GitLabConnectionForm } from "./GitLabConnectionForm";
+import { GoDaddyConnectionForm } from "./GoDaddyConnectionForm";
 import { HCVaultConnectionForm } from "./HCVaultConnectionForm";
 import { HerokuConnectionForm } from "./HerokuAppConnectionForm";
 import { HumanitecConnectionForm } from "./HumanitecConnectionForm";
@@ -299,6 +300,8 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
         return <OnaConnectionForm onSubmit={onSubmit} />;
       case AppConnection.DigiCert:
         return <DigiCertConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.GoDaddy:
+        return <GoDaddyConnectionForm onSubmit={onSubmit} />;
       case AppConnection.TravisCI:
         return <TravisCIConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Salesforce:
@@ -528,6 +531,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         return <OnaConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.DigiCert:
         return <DigiCertConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.GoDaddy:
+        return <GoDaddyConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.TravisCI:
         return <TravisCIConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Salesforce:

@@ -64,5 +64,6 @@ export enum AppConnection {
   TravisCI = "travis-ci",
   Salesforce = "salesforce",
   Snowflake = "snowflake",
-  Datadog = "datadog"
+  Datadog = "datadog",
+  GoDaddy = "godaddy"
 }

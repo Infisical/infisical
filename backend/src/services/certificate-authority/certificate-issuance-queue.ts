@@ -28,7 +28,10 @@ import {
   resolveEffectiveApiConfig
 } from "../certificate-common/certificate-issuance-utils";
 import { CertificateRequestCancelledError } from "../certificate-common/certificate-request-errors";
-import { DigiCertExternalMetadataSchema } from "../certificate-common/external-metadata-schemas";
+import {
+  DigiCertExternalMetadataSchema,
+  GoDaddyExternalMetadataSchema
+} from "../certificate-common/external-metadata-schemas";
 import { TCertificateRequestDALFactory } from "../certificate-request/certificate-request-dal";
 import { TCertificateRequestServiceFactory } from "../certificate-request/certificate-request-service";
 import { CertificateRequestStatus } from "../certificate-request/certificate-request-types";
@@ -59,6 +62,7 @@ import { CaType } from "./certificate-authority-enums";
 import { keyAlgorithmToAlgCfg } from "./certificate-authority-fns";
 import { DigiCertCertificateAuthorityFns } from "./digicert/digicert-certificate-authority-fns";
 import { TExternalCertificateAuthorityDALFactory } from "./external-certificate-authority-dal";
+import { GoDaddyCertificateAuthorityFns } from "./godaddy/godaddy-certificate-authority-fns";
 import { VenafiTppCertificateAuthorityFns } from "./venafi-tpp/venafi-tpp-certificate-authority-fns";
 
 const base64UrlToBase64 = (base64url: string): string => {
@@ -220,6 +224,18 @@ export const certificateIssuanceQueueFactory = ({
   });
 
   const digicertFns = DigiCertCertificateAuthorityFns({
+    appConnectionDAL,
+    appConnectionService,
+    certificateAuthorityDAL,
+    externalCertificateAuthorityDAL,
+    certificateDAL,
+    certificateBodyDAL,
+    certificateSecretDAL,
+    kmsService,
+    projectDAL
+  });
+
+  const godaddyFns = GoDaddyCertificateAuthorityFns({
     appConnectionDAL,
     appConnectionService,
     certificateAuthorityDAL,
@@ -849,6 +865,89 @@ export const certificateIssuanceQueueFactory = ({
             `DigiCert order placed, awaiting validation [certificateRequestId=${certificateRequestId}] [orderId=${digicertResult.metadata.digicert.orderId}]`
           );
         }
+      } else if (ca.externalCa?.type === CaType.GODADDY) {
+        if (!certificateRequestId || !certificateRequestDAL) {
+          throw new NotFoundError({
+            message: "GoDaddy issuance requires a certificate request and request DAL"
+          });
+        }
+
+        await setPending("Submitting the request to GoDaddy");
+
+        let renewalOfCertificateId: string | undefined;
+        if (isRenewal && originalCertificateId) {
+          const originalCert = await certificateDAL.findById(originalCertificateId);
+          const parsedMetadata = GoDaddyExternalMetadataSchema.safeParse(originalCert?.externalMetadata);
+          if (parsedMetadata.success) {
+            renewalOfCertificateId = parsedMetadata.data.certificateId;
+          } else {
+            logger.warn(
+              `GoDaddy renewal requested but previous certificate has no GoDaddy reference in externalMetadata — falling back to a new order [originalCertificateId=${originalCertificateId}]`
+            );
+          }
+        }
+
+        if (await isCancelled()) {
+          logger.info(`Cancelled before GoDaddy order [certificateRequestId=${certificateRequestId}]`);
+          return;
+        }
+
+        const godaddyResult = await godaddyFns.orderCertificateFromProfile({
+          caId,
+          commonName: commonName || "",
+          altNames: altNames?.map((san) => san.value) || [],
+          signatureAlgorithm,
+          keyAlgorithm: keyAlgorithm as CertKeyAlgorithm,
+          ttl,
+          ...(csr && { csr }),
+          ...(renewalOfCertificateId && { renewalOfCertificateId })
+        });
+
+        if (await isCancelled()) {
+          logger.info(
+            `Cancelled after GoDaddy order — order placed at CA but will not be tracked locally [certificateRequestId=${certificateRequestId}]`
+          );
+          return;
+        }
+
+        let encryptedPrivateKey: Buffer | undefined;
+        if (godaddyResult.privateKey) {
+          const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
+            projectId: ca.projectId,
+            projectDAL,
+            kmsService
+          });
+          const kmsEncryptor = await kmsService.encryptWithKmsKey({ kmsId: certificateManagerKmsId });
+          const { cipherTextBlob } = await kmsEncryptor({ plainText: Buffer.from(godaddyResult.privateKey) });
+          encryptedPrivateKey = cipherTextBlob;
+        }
+
+        const metadataWithRenewal = {
+          ...godaddyResult.metadata,
+          godaddy: {
+            ...godaddyResult.metadata.godaddy,
+            ...(isRenewal && originalCertificateId ? { isRenewal: true, originalCertificateId } : {})
+          }
+        };
+
+        const transitioned = await certificateRequestDAL.transitionToPendingValidation(certificateRequestId, {
+          metadata: JSON.stringify(metadataWithRenewal),
+          ...(encryptedPrivateKey && { encryptedPrivateKey })
+        });
+
+        if (!transitioned) {
+          logger.info(
+            `Skipping GoDaddy validation transition — request is no longer pending [certificateRequestId=${certificateRequestId}]`
+          );
+          return;
+        }
+
+        await setPending(
+          `GoDaddy is processing the request — certificate ${godaddyResult.metadata.godaddy.certificateId}`
+        );
+        logger.info(
+          `GoDaddy order placed, awaiting validation [certificateRequestId=${certificateRequestId}] [godaddyCertificateId=${godaddyResult.metadata.godaddy.certificateId}]`
+        );
       } else if (ca.externalCa?.type === CaType.VENAFI_TPP) {
         await setPending("Submitting the request to Venafi TPP");
         const venafiTppParams = {
