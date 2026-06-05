@@ -83,12 +83,10 @@ const DrawerContent = ({
   const [isRevokeOpen, setIsRevokeOpen] = useState(false);
   const [isResetOpen, setIsResetOpen] = useState(false);
   const [revokeInput, setRevokeInput] = useState("");
-  const honeyTokenSubject = honeyToken?.environment
-    ? subject(ProjectPermissionSub.HoneyTokens, {
-        environment: honeyToken.environment.slug,
-        secretPath: honeyToken.folder?.path ?? "/"
-      })
-    : ProjectPermissionSub.HoneyTokens;
+  const honeyTokenSubject = subject(ProjectPermissionSub.HoneyTokens, {
+    environment: honeyToken?.environment?.slug ?? "",
+    secretPath: honeyToken?.folder?.path ?? ""
+  });
 
   const canReadCredentials = permission.can(
     ProjectPermissionHoneyTokenActions.ReadCredentials,
