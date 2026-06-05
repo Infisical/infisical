@@ -592,7 +592,11 @@ export const gitHubAppServiceFactory = ({
       }
     );
 
-    const effectiveHost = gitHubAppId ? (appHost ?? undefined) : host || undefined;
+    // For the shared/instance-default app, appHost is always derived from the
+    // server-side INF_APP_CONNECTION_GITHUB_APP_HOST env var (null = github.com).
+    // Never trust the caller-supplied host for the shared app — the client secret
+    // would otherwise be sent to an attacker-controlled server.
+    const effectiveHost = appHost ?? undefined;
     const effectiveInstanceType: "cloud" | "server" = gitHubAppId
       ? (appInstanceType ?? "cloud")
       : (instanceType ?? "cloud");

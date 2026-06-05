@@ -78,7 +78,8 @@ export const resolveGitHubAppCredentials = async (
     INF_APP_CONNECTION_GITHUB_APP_SLUG,
     INF_APP_CONNECTION_GITHUB_APP_CLIENT_ID,
     INF_APP_CONNECTION_GITHUB_APP_CLIENT_SECRET,
-    INF_APP_CONNECTION_GITHUB_APP_PRIVATE_KEY
+    INF_APP_CONNECTION_GITHUB_APP_PRIVATE_KEY,
+    INF_APP_CONNECTION_GITHUB_APP_HOST
   } = getConfig();
 
   if (
@@ -93,13 +94,18 @@ export const resolveGitHubAppCredentials = async (
     });
   }
 
+  // Bind the shared app to its server-configured host (defaults to github.com).
+  // This prevents callers from redirecting the OAuth exchange to an arbitrary host
+  // and receiving the shared client secret.
+  const sharedAppHost = INF_APP_CONNECTION_GITHUB_APP_HOST ?? null;
+
   return {
     appId: INF_APP_CONNECTION_GITHUB_APP_ID,
     slug: INF_APP_CONNECTION_GITHUB_APP_SLUG,
     clientId: INF_APP_CONNECTION_GITHUB_APP_CLIENT_ID,
     clientSecret: INF_APP_CONNECTION_GITHUB_APP_CLIENT_SECRET,
     privateKey: INF_APP_CONNECTION_GITHUB_APP_PRIVATE_KEY,
-    host: null,
+    host: sharedAppHost,
     instanceType: null
   };
 };
