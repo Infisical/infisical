@@ -70,6 +70,23 @@ export const certificateSyncDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findExternalIdentifiersInUse = async (
+    externalIdentifiers: string[],
+    excludePkiSyncId: string,
+    tx?: Knex
+  ): Promise<Set<string>> => {
+    try {
+      if (externalIdentifiers.length === 0) return new Set();
+      const docs = (await (tx || db.replicaNode())(TableName.CertificateSync)
+        .whereIn("externalIdentifier", externalIdentifiers)
+        .andWhereNot({ pkiSyncId: excludePkiSyncId })
+        .select("externalIdentifier")) as Array<{ externalIdentifier: string | null }>;
+      return new Set(docs.map((doc) => doc.externalIdentifier).filter((v): v is string => Boolean(v)));
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindExternalIdentifiersInUse" });
+    }
+  };
+
   const addCertificates = async (
     pkiSyncId: string,
     certificateData: Array<{ certificateId: string; externalIdentifier?: string }>,
@@ -312,6 +329,7 @@ export const certificateSyncDALFactory = (db: TDbClient) => {
     findByPkiSyncAndCertificate,
     findCertificateIdsByPkiSyncId,
     findPkiSyncIdsByCertificateId,
+    findExternalIdentifiersInUse,
     addCertificates,
     removeCertificates,
     removeAllCertificatesFromSync,

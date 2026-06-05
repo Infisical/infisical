@@ -62,7 +62,8 @@ const requestWithF5BigIpGateway = async <T>(
             ...requestConfig.headers,
             Host: hostname
           },
-          httpsAgent
+          httpsAgent,
+          maxRedirects: 0
         };
 
         const resp = await request.request<T>(finalRequestConfig);
@@ -84,7 +85,8 @@ const requestWithF5BigIpGateway = async <T>(
   });
   const resp = await request.request<T>({
     ...requestConfig,
-    httpsAgent
+    httpsAgent,
+    maxRedirects: 0
   });
   return resp.data;
 };
@@ -206,7 +208,8 @@ export const executeF5BigIpOperationWithGateway = async <T>(
               ...requestCfg.headers,
               Host: hostname
             },
-            httpsAgent
+            httpsAgent,
+            maxRedirects: 0
           });
           return resp.data;
         };
@@ -231,7 +234,8 @@ export const executeF5BigIpOperationWithGateway = async <T>(
   const makeRequest = async <R>(requestCfg: AxiosRequestConfig): Promise<R> => {
     const resp = await request.request<R>({
       ...requestCfg,
-      httpsAgent
+      httpsAgent,
+      maxRedirects: 0
     });
     return resp.data;
   };

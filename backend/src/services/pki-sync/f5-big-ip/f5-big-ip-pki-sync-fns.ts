@@ -43,6 +43,7 @@ type TF5BigIpPkiSyncFactoryDeps = {
     | "updateById"
     | "findByPkiSyncId"
     | "updateSyncStatus"
+    | "findExternalIdentifiersInUse"
   >;
   certificateDAL: Pick<TCertificateDALFactory, "findById">;
   gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
@@ -203,6 +204,28 @@ const saveF5BigIpConfig = async (session: TF5BigIpSession): Promise<void> => {
 };
 
 const F5_BIG_IP_UPLOAD_CHUNK_SIZE_BYTES = 512 * 1024;
+
+const F5_BIG_IP_UPLOAD_DIR = "/var/config/rest/downloads";
+
+const cleanupUploadedSourceFile = async (session: TF5BigIpSession, filename: string): Promise<void> => {
+  try {
+    await session.makeRequest({
+      method: "POST",
+      url: `${session.baseUrl}/mgmt/tm/util/unix-rm`,
+      data: {
+        command: "run",
+        // `-f` so a missing file is not an error.
+        utilCmdArgs: `-f ${F5_BIG_IP_UPLOAD_DIR}/${filename}`
+      },
+      headers: session.headers
+    });
+  } catch (error: unknown) {
+    logger.warn(
+      { error },
+      `F5 BIG-IP: best-effort source-file cleanup failed for "${filename}" — likely insufficient role (Certificate Manager doesn't grant unix-rm); safe to ignore`
+    );
+  }
+};
 
 const uploadFileToF5BigIp = async (session: TF5BigIpSession, filename: string, fileContent: string): Promise<void> => {
   const buffer = Buffer.from(fileContent, "utf-8");
@@ -872,6 +895,12 @@ export const f5BigIpPkiSyncFactory = ({
                 await installSslCertObject(session, partition, chainName, certFileName(chainName));
               }
 
+              await cleanupUploadedSourceFile(session, certFileName(targetName));
+              await cleanupUploadedSourceFile(session, keyFileName(targetName));
+              if (certificateChain && chainName) {
+                await cleanupUploadedSourceFile(session, certFileName(chainName));
+              }
+
               if (profileType !== F5BigIpProfileType.None && profileName) {
                 await bindCertToProfile(
                   session,
@@ -966,26 +995,26 @@ export const f5BigIpPkiSyncFactory = ({
             }
 
             const managedCertNamePattern = buildManagedCertNamePattern(certificateNameSchema);
-
+            const partitionCandidates: string[] = [];
             for (const certName of existingCertNames) {
               if (
                 managedCertNamePattern.test(certName) &&
                 !activeExternalIdentifiers.has(certName) &&
+                !certNamesToRemove.has(certName) &&
                 !certName.endsWith(F5_BIG_IP_CHAIN_SUFFIX)
               ) {
-                certNamesToRemove.add(certName);
+                partitionCandidates.push(certName);
               }
             }
 
-            const chainNamesToRemove = new Set<string>();
-            for (const certName of existingCertNames) {
-              if (certName.endsWith(F5_BIG_IP_CHAIN_SUFFIX)) {
-                const leafName = certName.slice(0, -F5_BIG_IP_CHAIN_SUFFIX.length);
-                const isOrphan = !existingCertNames.has(leafName) && !activeExternalIdentifiers.has(certName);
-                const matchesManagedPattern =
-                  managedCertNamePattern.test(certName) || managedCertNamePattern.test(leafName);
-                if (isOrphan && matchesManagedPattern) {
-                  chainNamesToRemove.add(certName);
+            if (partitionCandidates.length > 0) {
+              const ownedByOtherSync = await certificateSyncDAL.findExternalIdentifiersInUse(
+                partitionCandidates,
+                pkiSync.id
+              );
+              for (const certName of partitionCandidates) {
+                if (!ownedByOtherSync.has(certName)) {
+                  certNamesToRemove.add(certName);
                 }
               }
             }
@@ -1012,32 +1041,6 @@ export const f5BigIpPkiSyncFactory = ({
                 logger.error(
                   { error },
                   `F5 BIG-IP PKI sync [syncId=${pkiSync.id}]: failed to remove certificate "${certName}" — ${errorMessage}`
-                );
-              }
-            }
-
-            for (const chainName of chainNamesToRemove) {
-              try {
-                await unbindCertPathsFromAllProfiles(session, partition, [buildPartitionedPath(partition, chainName)]);
-                await deleteSslCertObject(session, partition, chainName);
-
-                removed += 1;
-
-                logger.info(
-                  `F5 BIG-IP PKI sync [syncId=${pkiSync.id}]: removed orphaned chain "${chainName}" from ${credentials.hostname}`
-                );
-              } catch (error: unknown) {
-                let errorMessage = "Unknown error";
-                if (error instanceof AxiosError) {
-                  errorMessage = String((error.response?.data as { message?: string })?.message || error.message);
-                } else if (error instanceof Error) {
-                  errorMessage = error.message;
-                }
-                failedRemovals.push({ name: chainName, error: errorMessage });
-
-                logger.error(
-                  { error },
-                  `F5 BIG-IP PKI sync [syncId=${pkiSync.id}]: failed to remove orphaned chain "${chainName}" — ${errorMessage}`
                 );
               }
             }
