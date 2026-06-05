@@ -139,8 +139,7 @@ export const DuplicatedSecretsCard = () => {
       <CardHeader>
         <CardTitle>Duplicated Secrets</CardTitle>
         <CardDescription>
-          Secrets across environments and paths that resolve to the same value. Reuse increases
-          blast radius, consider referencing a single source instead of copying.
+          Detect secrets that share the same value across environments and paths
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -149,9 +148,7 @@ export const DuplicatedSecretsCard = () => {
           <Empty className="border">
             <EmptyHeader>
               <EmptyTitle>Secret duplication detection is not enabled</EmptyTitle>
-              <EmptyDescription>
-                Detect secrets that share the same value across environments and paths.
-              </EmptyDescription>
+              <EmptyDescription>Enable detection to get started.</EmptyDescription>
               <EmptyContent>
                 <Button variant="project" size="xs" onClick={handleEnableClick}>
                   Enable Detection
