@@ -10,6 +10,7 @@ import { Link, useNavigate, useParams, useRouter, useSearch } from "@tanstack/re
 import { AxiosError } from "axios";
 import {
   ChevronDownIcon,
+  ChevronRightIcon,
   CopyIcon,
   DownloadIcon,
   EyeIcon,
@@ -2646,15 +2647,15 @@ const OverviewPageContent = () => {
                     {!canApproveAny && ". Waiting for a reviewer"}
                   </span>
                   {canApproveAny && (
-                    <Button asChild variant="outline" size="xs" className="ml-auto">
-                      <Link
-                        to={ROUTE_PATHS.SecretManager.ApprovalPage.path}
-                        params={{ orgId, projectId }}
-                        search={{ selectedTab: "approval-requests", requestId: "" }}
-                      >
-                        Review
-                      </Link>
-                    </Button>
+                    <Link
+                      to={ROUTE_PATHS.SecretManager.ApprovalPage.path}
+                      params={{ orgId, projectId }}
+                      search={{ selectedTab: "approval-requests", requestId: "" }}
+                      className="ml-auto flex shrink-0 items-center gap-1 text-sm text-info hover:underline"
+                    >
+                      Review
+                      <ChevronRightIcon className="size-3.5" />
+                    </Link>
                   )}
                 </AlertTitle>
               </Alert>
