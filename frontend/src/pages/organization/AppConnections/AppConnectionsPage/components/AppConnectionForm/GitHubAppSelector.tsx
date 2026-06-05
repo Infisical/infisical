@@ -17,6 +17,7 @@ import {
   FormControl,
   Input,
   Modal,
+  ModalClose,
   ModalContent,
   Select,
   SelectItem
@@ -506,6 +507,13 @@ export const GitHubAppSelector = ({
                 </button>
               </>
             )}
+          </div>
+          <div className="mt-4 flex items-center justify-end">
+            <ModalClose asChild>
+              <Button colorSchema="secondary" variant="plain">
+                Close
+              </Button>
+            </ModalClose>
           </div>
         </ModalContent>
       </Modal>
