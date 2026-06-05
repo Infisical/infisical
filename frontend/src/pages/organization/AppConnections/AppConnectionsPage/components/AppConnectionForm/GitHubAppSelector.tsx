@@ -305,7 +305,7 @@ export const GitHubAppSelector = ({
         >
           {sharedApp && (
             <>
-              {renderPickerHeading("SHARED")}
+              {renderPickerHeading("INSTANCE")}
               {renderPickerItem(sharedApp)}
             </>
           )}
@@ -416,9 +416,9 @@ export const GitHubAppSelector = ({
                 <Command className="bg-transparent">
                   <CommandList className="max-h-[360px]">
                     {sharedApp && (
-                      <CommandGroup heading="SHARED">
+                      <CommandGroup heading="INSTANCE">
                         <CommandItem
-                          value={`instance-default ${sharedApp.name}`}
+                          value={`instance server admin ${sharedApp.name}`}
                           onSelect={() => handleSelect(sharedApp)}
                           className={twMerge(
                             "group",
@@ -434,7 +434,7 @@ export const GitHubAppSelector = ({
                               {sharedApp.name}
                             </p>
                             <p className="truncate text-xs text-mineshaft-400">
-                              Instance default · {sharedApp.connectionCount} connection
+                              Server admin · {sharedApp.connectionCount} connection
                               {sharedApp.connectionCount === 1 ? "" : "s"}
                             </p>
                           </div>
