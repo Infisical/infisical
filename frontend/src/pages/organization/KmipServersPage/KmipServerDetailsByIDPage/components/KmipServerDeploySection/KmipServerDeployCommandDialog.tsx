@@ -40,19 +40,19 @@ export const KmipServerDeployCommandDialog = ({
   const siteURL = `${protocol}//${hostname}${portSuffix}`;
 
   const cliCommand = useMemo(() => {
-    const common = `--server-name=${kmipServerName} --domain=${siteURL}`;
+    const common = `--domain=${siteURL}`;
     if (authMethod === "aws") {
-      return `infisical kmip start --enroll-method=aws --kmip-server-id=${kmipServerId} ${common}`;
+      return `infisical kmip start ${kmipServerName} --enroll-method=aws --kmip-server-id=${kmipServerId} ${common}`;
     }
-    return `infisical kmip start --enroll-method=token --token=${enrollmentToken} ${common}`;
+    return `infisical kmip start ${kmipServerName} --enroll-method=token --token=${enrollmentToken} ${common}`;
   }, [kmipServerName, kmipServerId, enrollmentToken, authMethod, siteURL]);
 
   const systemdInstallCommand = useMemo(() => {
-    const common = `--server-name=${kmipServerName} --domain=${siteURL}`;
+    const common = `--domain=${siteURL}`;
     if (authMethod === "aws") {
-      return `sudo infisical kmip systemd install --enroll-method=aws --kmip-server-id=${kmipServerId} ${common}`;
+      return `sudo infisical kmip systemd install ${kmipServerName} --enroll-method=aws --kmip-server-id=${kmipServerId} ${common}`;
     }
-    return `sudo infisical kmip systemd install --enroll-method=token --token=${enrollmentToken} ${common}`;
+    return `sudo infisical kmip systemd install ${kmipServerName} --enroll-method=token --token=${enrollmentToken} ${common}`;
   }, [kmipServerName, kmipServerId, enrollmentToken, authMethod, siteURL]);
 
   const startServiceCommand = "sudo systemctl start infisical-kmip";

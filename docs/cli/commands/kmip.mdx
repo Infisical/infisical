@@ -6,19 +6,17 @@ description: "Run the Infisical KMIP server or manage its systemd service"
 <Tabs>
   <Tab title="Start KMIP server">
     ```bash
-    infisical kmip start \
+    infisical kmip start <server-name> \
       --enroll-method=token \
       --token=<enrollment-token> \
-      --server-name=<server-name> \
       --domain=<your-infisical-domain>
     ```
   </Tab>
   <Tab title="Start as background daemon (Linux only)">
     ```bash
-    sudo infisical kmip systemd install \
+    sudo infisical kmip systemd install <server-name> \
       --enroll-method=token \
       --token=<enrollment-token> \
-      --server-name=<server-name> \
       --domain=<your-infisical-domain>
     sudo systemctl start infisical-kmip
     ```
@@ -42,10 +40,9 @@ For detailed information about KMIP integration, PKI setup, and client configura
   Run the Infisical KMIP server in the foreground. The server enrolls with Infisical, listens for KMIP client connections, and proxies KMIP operations to Infisical KMS.
 
 ```bash
-infisical kmip start \
+infisical kmip start <server-name> \
   --enroll-method=token \
   --token=<enrollment-token> \
-  --server-name=<server-name> \
   --domain=<your-infisical-domain>
 ```
 
@@ -56,6 +53,10 @@ Once started, the KMIP server will:
 - Forward KMIP operations (Create, Get, Activate, Revoke, etc.) to Infisical KMS
 - Handle mTLS authentication for KMIP clients
 
+### Arguments
+
+`<server-name>` (required): the name of the KMIP server, passed as the first positional argument. The name scopes where enrollment state is stored locally, so use the same value across restarts. You can alternatively supply it with the `--server-name` flag or the `INFISICAL_KMIP_SERVER_NAME` environment variable instead of positionally.
+
 ### Flags
 
   <AccordionGroup>
@@ -64,7 +65,7 @@ Once started, the KMIP server will:
 
     ```bash
     # Example
-    infisical kmip start --enroll-method=token --token=<enrollment-token> --server-name=<server-name>
+    infisical kmip start <server-name> --enroll-method=token --token=<enrollment-token>
     ```
 
     You may also set this via the environment variable `INFISICAL_KMIP_ENROLL_METHOD`.
@@ -78,7 +79,7 @@ Once started, the KMIP server will:
 
     ```bash
     # Example
-    infisical kmip start --enroll-method=token --token=<enrollment-token> --server-name=<server-name>
+    infisical kmip start <server-name> --enroll-method=token --token=<enrollment-token>
     ```
 
   </Accordion>
@@ -88,7 +89,7 @@ Once started, the KMIP server will:
 
     ```bash
     # Example
-    infisical kmip start --enroll-method=aws --kmip-server-id=<kmip-server-id> --server-name=<server-name>
+    infisical kmip start <server-name> --enroll-method=aws --kmip-server-id=<kmip-server-id>
     ```
 
     You may also set this via the environment variable `INFISICAL_KMIP_SERVER_ID`.
@@ -96,10 +97,10 @@ Once started, the KMIP server will:
   </Accordion>
 
   <Accordion title="--server-name">
-    The name of the KMIP server. Default: `kmip-server`. This scopes where enrollment state is stored locally, so use the same name across restarts.
+    Alternative to passing the server name as the positional argument (`infisical kmip start <server-name>`), which is the recommended form. The name is required, so supply it either positionally, via this flag, or via the environment variable. It scopes where enrollment state is stored locally, so use the same value across restarts.
 
     ```bash
-    # Example
+    # Example (equivalent to: infisical kmip start production-kmip --enroll-method=token --token=<enrollment-token>)
     infisical kmip start --server-name="production-kmip" --enroll-method=token --token=<enrollment-token>
     ```
 
@@ -112,7 +113,7 @@ Once started, the KMIP server will:
 
     ```bash
     # Example
-    infisical kmip start --domain=https://app.your-domain.com --enroll-method=token --token=<enrollment-token> --server-name=<server-name>
+    infisical kmip start <server-name> --domain=https://app.your-domain.com --enroll-method=token --token=<enrollment-token>
     ```
 
     You may also set this via the environment variable `INFISICAL_API_URL`.
@@ -124,7 +125,7 @@ Once started, the KMIP server will:
 
     ```bash
     # Example - listen on all interfaces
-    infisical kmip start --listen-address="0.0.0.0:5696" --enroll-method=token --token=<enrollment-token> --server-name=<server-name>
+    infisical kmip start <server-name> --listen-address="0.0.0.0:5696" --enroll-method=token --token=<enrollment-token>
     ```
 
     You may also set this via the environment variable `INFISICAL_KMIP_LISTEN_ADDRESS`.
@@ -138,7 +139,7 @@ Once started, the KMIP server will:
 
     ```bash
     # Example
-    infisical kmip start --certificate-ttl="6m" --enroll-method=token --token=<enrollment-token> --server-name=<server-name>
+    infisical kmip start <server-name> --certificate-ttl="6m" --enroll-method=token --token=<enrollment-token>
     ```
 
     You may also set this via the environment variable `INFISICAL_KMIP_CERTIFICATE_TTL`.
@@ -152,7 +153,7 @@ Once started, the KMIP server will:
 
     ```bash
     # Example
-    infisical kmip start --hostnames-or-ips="kmip.example.com,10.0.1.50" --enroll-method=token --token=<enrollment-token> --server-name=<server-name>
+    infisical kmip start <server-name> --hostnames-or-ips="kmip.example.com,10.0.1.50" --enroll-method=token --token=<enrollment-token>
     ```
 
     You may also set this via the environment variable `INFISICAL_KMIP_HOSTNAMES_OR_IPS`.
@@ -166,10 +167,9 @@ Once started, the KMIP server will:
   Install and enable the KMIP server as a systemd service. This command must be run with sudo on Linux.
 
 ```bash
-sudo infisical kmip systemd install \
+sudo infisical kmip systemd install <server-name> \
   --enroll-method=token \
   --token=<enrollment-token> \
-  --server-name=<server-name> \
   --domain=<your-infisical-domain>
 sudo systemctl start infisical-kmip
 ```
@@ -189,9 +189,9 @@ For token enrollment, the single-use token is exchanged for a long-lived access 
 3. Reloads the systemd daemon
 4. Enables the service to start on boot
 
-### Flags
+### Arguments & Flags
 
-`infisical kmip systemd install` accepts the same flags as `infisical kmip start` (documented above): `--enroll-method`, `--token`, `--kmip-server-id`, `--server-name`, `--domain`, `--listen-address`, and (for legacy machine-identity servers only) `--hostnames-or-ips` and `--certificate-ttl`.
+Like `infisical kmip start`, this command takes the `<server-name>` as a required positional argument (or via `--server-name` / `INFISICAL_KMIP_SERVER_NAME`). It accepts the same flags as `infisical kmip start` (documented above): `--enroll-method`, `--token`, `--kmip-server-id`, `--server-name`, `--domain`, `--listen-address`, and (for legacy machine-identity servers only) `--hostnames-or-ips` and `--certificate-ttl`.
 
 ### Service Details
 

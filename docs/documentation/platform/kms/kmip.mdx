@@ -103,10 +103,9 @@ A KMIP server is created as an organization-wide entity in Infisical and then en
         <Tabs>
           <Tab title="Linux (Production)">
             ```bash
-            sudo infisical kmip systemd install \
+            sudo infisical kmip systemd install <server-name> \
               --enroll-method=token \
               --token=<enrollment-token> \
-              --server-name=<server-name> \
               --listen-address="0.0.0.0:5696" \
               --domain=<your-infisical-domain>
             sudo systemctl start infisical-kmip
@@ -114,10 +113,9 @@ A KMIP server is created as an organization-wide entity in Infisical and then en
           </Tab>
           <Tab title="Foreground">
             ```bash
-            infisical kmip start \
+            infisical kmip start <server-name> \
               --enroll-method=token \
               --token=<enrollment-token> \
-              --server-name=<server-name> \
               --listen-address="0.0.0.0:5696" \
               --domain=<your-infisical-domain>
             ```
@@ -130,10 +128,9 @@ A KMIP server is created as an organization-wide entity in Infisical and then en
         <Tabs>
           <Tab title="Linux (Production)">
             ```bash
-            sudo infisical kmip systemd install \
+            sudo infisical kmip systemd install <server-name> \
               --enroll-method=aws \
               --kmip-server-id=<kmip-server-id> \
-              --server-name=<server-name> \
               --listen-address="0.0.0.0:5696" \
               --domain=<your-infisical-domain>
             sudo systemctl start infisical-kmip
@@ -141,10 +138,9 @@ A KMIP server is created as an organization-wide entity in Infisical and then en
           </Tab>
           <Tab title="Foreground">
             ```bash
-            infisical kmip start \
+            infisical kmip start <server-name> \
               --enroll-method=aws \
               --kmip-server-id=<kmip-server-id> \
-              --server-name=<server-name> \
               --listen-address="0.0.0.0:5696" \
               --domain=<your-infisical-domain>
             ```
