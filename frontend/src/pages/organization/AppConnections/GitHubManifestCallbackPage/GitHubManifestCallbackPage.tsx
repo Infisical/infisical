@@ -6,6 +6,7 @@ import { ContentLoader } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { consumeCsrfToken, GITHUB_CONNECTION_FORM_STORAGE_KEY } from "@app/helpers/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { IntegrationsListPageTabs } from "@app/types/integrations";
 
 export const GitHubManifestCallbackPage = () => {
   const navigate = useNavigate();
@@ -21,16 +22,44 @@ export const GitHubManifestCallbackPage = () => {
 
     const { gitHubAppId, slug, installState } = search;
 
-    const returnToForm = () =>
-      navigate({
+    let connectionForm: {
+      credentials?: Record<string, unknown>;
+      resumeWithGitHubAppId?: string;
+      returnUrl?: string;
+    } | null = {};
+    try {
+      const connectionFormRaw = localStorage.getItem(GITHUB_CONNECTION_FORM_STORAGE_KEY);
+      connectionForm = connectionFormRaw ? JSON.parse(connectionFormRaw) : {};
+    } catch {
+      // A corrupt form just means we can't restore the other fields; the app was still created.
+      connectionForm = null;
+      localStorage.removeItem(GITHUB_CONNECTION_FORM_STORAGE_KEY);
+    }
+
+    const returnUrl = connectionForm?.returnUrl;
+
+    const navigateBack = (reopenForm: boolean) => {
+      if (returnUrl) {
+        return navigate({
+          to: returnUrl,
+          search: {
+            ...(reopenForm ? { addConnectionApp: AppConnection.GitHub } : {}),
+            ...(returnUrl.includes("integrations")
+              ? { selectedTab: IntegrationsListPageTabs.AppConnections }
+              : {})
+          }
+        });
+      }
+      return navigate({
         to: "/organizations/$orgId/app-connections",
         params: { orgId },
-        search: { addConnectionApp: AppConnection.GitHub }
+        search: reopenForm ? { addConnectionApp: AppConnection.GitHub } : undefined
       });
+    };
 
     if (!gitHubAppId || !slug || !installState) {
       createNotification({ type: "error", text: "Invalid GitHub manifest callback parameters." });
-      navigate({ to: "/organizations/$orgId/app-connections", params: { orgId } });
+      navigateBack(false);
       return;
     }
 
@@ -40,36 +69,26 @@ export const GitHubManifestCallbackPage = () => {
     // pre-seeding the connection form with an attacker-chosen app id.
     if (!consumeCsrfToken(installState)) {
       createNotification({ type: "error", text: "Invalid GitHub manifest callback state." });
-      navigate({ to: "/organizations/$orgId/app-connections", params: { orgId } });
+      navigateBack(false);
       return;
     }
 
     // The GitHub App is already created at this point. Mark the in-progress connection form so it
     // resumes with the new app selected, then send the user back to it to finish the connection.
-    try {
-      const connectionFormRaw = localStorage.getItem(GITHUB_CONNECTION_FORM_STORAGE_KEY);
-      const connectionForm = connectionFormRaw
-        ? (JSON.parse(connectionFormRaw) as {
-            credentials?: Record<string, unknown>;
-            resumeWithGitHubAppId?: string;
-          })
-        : {};
+    if (connectionForm) {
       connectionForm.credentials = {
         ...(connectionForm.credentials ?? {}),
         gitHubAppId
       };
       connectionForm.resumeWithGitHubAppId = gitHubAppId;
       localStorage.setItem(GITHUB_CONNECTION_FORM_STORAGE_KEY, JSON.stringify(connectionForm));
-    } catch {
-      // A corrupt form just means we can't restore the other fields; the app was still created.
-      localStorage.removeItem(GITHUB_CONNECTION_FORM_STORAGE_KEY);
     }
 
     createNotification({
       type: "success",
       text: "GitHub App created. Select it and finish setting up your connection."
     });
-    returnToForm();
+    navigateBack(true);
   }, []);
 
   return (

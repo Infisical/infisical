@@ -109,8 +109,8 @@ export const AppConnectionsTable = ({ projectId, projectType }: Props) => {
     setPresetApp(routeSearch.addConnectionApp);
     handlePopUpOpen("addConnection");
     navigate({
-      from: "/organizations/$orgId/app-connections/",
-      search: (prev) => ({ ...prev, addConnectionApp: undefined }),
+      to: ".",
+      search: (prev: Record<string, unknown>) => ({ ...prev, addConnectionApp: undefined }),
       replace: true
     });
   }, [routeSearch.addConnectionApp]);
