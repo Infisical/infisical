@@ -3,6 +3,7 @@ package secret
 import (
 	"context"
 	"log/slog"
+	"sort"
 
 	"github.com/google/uuid"
 
@@ -150,6 +151,10 @@ func (h *Handler) listSecrets(ctx context.Context, opts *listSecretsInternalOpts
 			for _, sec := range secretMap {
 				filtered = append(filtered, *sec)
 			}
+			// Sort by key to maintain consistent ordering (map iteration is random in Go)
+			sort.Slice(filtered, func(i, j int) bool {
+				return filtered[i].Secret.Key < filtered[j].Secret.Key
+			})
 			return filtered
 		default:
 			return secrets
@@ -161,10 +166,11 @@ func (h *Handler) listSecrets(ctx context.Context, opts *listSecretsInternalOpts
 	// 6. Build response
 	response := h.buildListSecretsResponse(result, opts.ProjectID, opts.IncludeImports)
 
-	// 7. Audit log
-	if err := h.createGetSecretsAuditLog(ctx, opts.ProjectID, opts.Environment, opts.SecretPath, len(response.Secrets)); err != nil {
-		return nil, err
-	}
+	// TODO: Re-enable audit logging once Go backend is primary
+	// // 7. Audit log
+	// if err := h.createGetSecretsAuditLog(ctx, opts.ProjectID, opts.Environment, opts.SecretPath, len(response.Secrets)); err != nil {
+	// 	return nil, err
+	// }
 
 	return response, nil
 }
