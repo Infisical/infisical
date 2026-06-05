@@ -125,7 +125,9 @@ export const GitHubAppSelector = ({
     } catch (err) {
       createNotification({
         type: "error",
-        text: err instanceof Error ? err.message : "Failed to delete GitHub App"
+        text:
+          (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+          (err instanceof Error ? err.message : "Failed to delete GitHub App")
       });
     }
   };

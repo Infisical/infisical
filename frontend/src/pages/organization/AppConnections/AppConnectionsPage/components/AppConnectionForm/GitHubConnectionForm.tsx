@@ -293,7 +293,9 @@ export const GitHubConnectionForm = ({ appConnection, projectId, onSubmit }: Pro
       setIsRedirecting(false);
       createNotification({
         type: "error",
-        text: err instanceof Error ? err.message : "Failed to start GitHub App creation."
+        text:
+          (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+          (err instanceof Error ? err.message : "Failed to start GitHub App creation.")
       });
       return false;
     }
