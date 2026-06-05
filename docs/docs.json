@@ -516,6 +516,7 @@
                       "documentation/platform/dynamic-secrets/elastic-search",
                       "documentation/platform/dynamic-secrets/gcp-iam",
                       "documentation/platform/dynamic-secrets/github",
+                      "documentation/platform/dynamic-secrets/ibm-api-connect",
                       "documentation/platform/dynamic-secrets/ldap",
                       "documentation/platform/dynamic-secrets/milvus",
                       "documentation/platform/dynamic-secrets/mongo-atlas",

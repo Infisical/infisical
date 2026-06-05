@@ -31,6 +31,7 @@ export const DynamicSecretsBrowser = () => {
     {"name": "RabbitMQ", "slug": "rabbitmq", "path": "/documentation/platform/dynamic-secrets/rabbit-mq", "description": "Learn how to generate dynamic RabbitMQ credentials on-demand.", "category": "Message Queues"},
     {"name": "LDAP", "slug": "ldap", "path": "/documentation/platform/dynamic-secrets/ldap", "description": "Learn how to generate dynamic LDAP credentials on-demand.", "category": "Directory Services"},
     {"name": "GitHub", "slug": "github", "path": "/documentation/platform/dynamic-secrets/github", "description": "Learn how to generate dynamic GitHub credentials on-demand.", "category": "CI/CD"},
+    {"name": "IBM API Connect", "slug": "ibm-api-connect", "path": "/documentation/platform/dynamic-secrets/ibm-api-connect", "description": "Learn how to generate dynamic IBM API Connect application credentials on-demand.", "category": "Cloud Providers"},
     {"name": "Kubernetes", "slug": "kubernetes", "path": "/documentation/platform/dynamic-secrets/kubernetes", "description": "Learn how to generate dynamic Kubernetes credentials on-demand.", "category": "Container Orchestration"},
     {"name": "TOTP", "slug": "totp", "path": "/documentation/platform/dynamic-secrets/totp", "description": "Learn how to generate dynamic TOTP codes on-demand.", "category": "Authentication"},
     {"name": "Milvus", "slug": "milvus", "path": "/documentation/platform/dynamic-secrets/milvus", "description": "Learn how to generate dynamic Milvus database credentials on-demand.", "category": "Databases"},
