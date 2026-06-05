@@ -9,6 +9,7 @@ import {
 import { getConfig as getAppConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
+import { prefixWithSlash, removeTrailingSlash } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { OrderByDirection, OrgServiceActor } from "@app/lib/types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
@@ -182,6 +183,16 @@ export const honeyTokenServiceFactory = ({
     { projectId, type, name, description, secretsMapping, environment, secretPath }: THoneyTokenCreateInput,
     actor: OrgServiceActor
   ) => {
+    const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
+
+    if (!folder) {
+      throw new BadRequestError({
+        message: `Could not find folder with path "${secretPath}" in environment "${environment}"`
+      });
+    }
+
+    const canonicalPath = prefixWithSlash(removeTrailingSlash(secretPath));
+
     const { permission } = await permissionService.getProjectPermission({
       actor: actor.type,
       actorId: actor.id,
@@ -192,7 +203,7 @@ export const honeyTokenServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionHoneyTokenActions.Create,
-      subject(ProjectPermissionSub.HoneyTokens, { environment, secretPath })
+      subject(ProjectPermissionSub.HoneyTokens, { environment, secretPath: canonicalPath })
     );
 
     const providerType = assertSupportedHoneyTokenType(type);
@@ -242,14 +253,6 @@ export const honeyTokenServiceFactory = ({
         message: pendingConfig
           ? "Honey token configuration exists but stack verification is still pending. Deploy and verify the stack in Organization Settings before creating honey tokens."
           : "No honey token configuration found for this organization. Configure it in Organization Settings first."
-      });
-    }
-
-    const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
-
-    if (!folder) {
-      throw new BadRequestError({
-        message: `Could not find folder with path "${secretPath}" in environment "${environment}"`
       });
     }
 
@@ -798,6 +801,7 @@ export const honeyTokenServiceFactory = ({
       projectId
     });
 
+    const canonicalSecretPath = prefixWithSlash(removeTrailingSlash(secretPath));
     const folders = await folderDAL.findBySecretPathMultiEnv(projectId, environments, secretPath);
     if (!folders.length) return 0;
 
@@ -806,7 +810,7 @@ export const honeyTokenServiceFactory = ({
         ProjectPermissionHoneyTokenActions.Read,
         subject(ProjectPermissionSub.HoneyTokens, {
           environment: f.environment.slug,
-          secretPath
+          secretPath: canonicalSecretPath
         })
       )
     );
@@ -857,6 +861,7 @@ export const honeyTokenServiceFactory = ({
       projectId
     });
 
+    const canonicalSecretPath = prefixWithSlash(removeTrailingSlash(secretPath));
     const folders = await folderDAL.findBySecretPathMultiEnv(projectId, environments, secretPath);
     if (!folders.length) return [];
 
@@ -865,7 +870,7 @@ export const honeyTokenServiceFactory = ({
         ProjectPermissionHoneyTokenActions.Read,
         subject(ProjectPermissionSub.HoneyTokens, {
           environment: f.environment.slug,
-          secretPath
+          secretPath: canonicalSecretPath
         })
       )
     );
