@@ -22,6 +22,6 @@ export type TTriggerDevSync = TRootSecretSync & {
   };
 
   syncOptions: RootSyncOptions & {
-    secret?: boolean;
+    markAsSecret?: boolean;
   };
 };

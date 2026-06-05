@@ -3008,7 +3008,8 @@ export const SecretSyncs = {
       autoRedeploy: "Whether Infisical should automatically redeploy the configured Fly.io app upon secret changes."
     },
     TRIGGER_DEV: {
-      secret: "Whether synced variables should be marked as secret (redacted) environment variables in Trigger.dev."
+      markAsSecret:
+        "Whether synced variables should be marked as secret (redacted) environment variables in Trigger.dev."
     },
     AZURE_KEY_VAULT: {
       disableCertificateImport:

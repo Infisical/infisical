@@ -39,7 +39,7 @@ const importTriggerDevEnvVars = async (
   const baseUrl = await getEnvVarsBaseUrl(secretSync);
   const { apiKey } = secretSync.connection.credentials;
   // Default to marking synced variables as secret in Trigger.dev (they originate from a secrets manager)
-  const isSecret = secretSync.syncOptions.secret ?? true;
+  const isSecret = secretSync.syncOptions.markAsSecret ?? true;
 
   await request.post(
     `${baseUrl}/import`,
@@ -77,9 +77,9 @@ export const TriggerDevSyncFns = {
       try {
         await importTriggerDevEnvVars(secretSync, variables);
       } catch (error) {
+        // The import is a single batch call, so the failure isn't attributable to one key
         throw new SecretSyncError({
-          error,
-          secretKey: Object.keys(variables)[0]
+          error
         });
       }
     }

@@ -7,14 +7,16 @@ type Props = {
 
 export const TriggerDevSyncOptionsSection = ({ secretSync }: Props) => {
   const {
-    syncOptions: { secret }
+    syncOptions: { markAsSecret }
   } = secretSync;
 
   return (
     <Detail>
       <DetailLabel>Mark Variables As Secret</DetailLabel>
       <DetailValue>
-        <Badge variant={secret ? "success" : "danger"}>{secret ? "Enabled" : "Disabled"}</Badge>
+        <Badge variant={markAsSecret ? "success" : "danger"}>
+          {markAsSecret ? "Enabled" : "Disabled"}
+        </Badge>
       </DetailValue>
     </Detail>
   );

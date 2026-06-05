@@ -17,7 +17,7 @@ export const TriggerDevSyncOptionsFields = () => {
 
   return (
     <Controller
-      name="syncOptions.secret"
+      name="syncOptions.markAsSecret"
       control={control}
       render={({ field: { value, onChange }, fieldState: { error } }) => (
         <Field className="mb-4">

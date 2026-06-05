@@ -28,7 +28,7 @@ const TriggerDevSyncDestinationConfigSchema = z.object({
 const TriggerDevSyncOptionsConfig: TSyncOptionsConfig = { canImportSecrets: false };
 
 const TriggerDevSyncOptionsSchema = z.object({
-  secret: z.boolean().optional().describe(SecretSyncs.ADDITIONAL_SYNC_OPTIONS.TRIGGER_DEV.secret)
+  markAsSecret: z.boolean().optional().describe(SecretSyncs.ADDITIONAL_SYNC_OPTIONS.TRIGGER_DEV.markAsSecret)
 });
 
 export const TriggerDevSyncSchema = BaseSecretSyncSchema(

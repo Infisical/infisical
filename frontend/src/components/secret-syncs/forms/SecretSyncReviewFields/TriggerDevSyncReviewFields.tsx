@@ -8,13 +8,13 @@ import { SecretSync } from "@app/hooks/api/secretSyncs";
 export const TriggerDevSyncOptionsReviewFields = () => {
   const { watch } = useFormContext<TSecretSyncForm & { destination: SecretSync.TriggerDev }>();
 
-  const [{ secret }] = watch(["syncOptions"]);
+  const [{ markAsSecret }] = watch(["syncOptions"]);
 
   return (
     <Detail>
       <DetailLabel>Mark as Secret</DetailLabel>
       <DetailValue>
-        <Badge variant={secret ? "success" : "danger"}>{secret ? "Yes" : "No"}</Badge>
+        <Badge variant={markAsSecret ? "success" : "danger"}>{markAsSecret ? "Yes" : "No"}</Badge>
       </DetailValue>
     </Detail>
   );

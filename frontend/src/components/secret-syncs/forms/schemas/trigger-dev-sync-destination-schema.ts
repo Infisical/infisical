@@ -6,7 +6,7 @@ import { TriggerDevSyncEnvironment } from "@app/hooks/api/secretSyncs/types/trig
 
 export const TriggerDevSyncDestinationSchema = BaseSecretSyncSchema(
   z.object({
-    secret: z.boolean().optional().default(true)
+    markAsSecret: z.boolean().optional().default(true)
   })
 ).merge(
   z.object({
