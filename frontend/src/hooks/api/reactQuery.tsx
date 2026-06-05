@@ -6,7 +6,21 @@ import { createNotification } from "@app/components/notifications";
 // akhilmhdh: doing individual imports to avoid cyclic import error
 import { Button } from "@app/components/v2/Button";
 import { Modal, ModalContent, ModalTrigger } from "@app/components/v2/Modal";
-import { Table, TableContainer, TBody, Td, Th, THead, Tr } from "@app/components/v2/Table";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle
+} from "@app/components/v3/generic/Dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from "@app/components/v3/generic/Table";
 import {
   formatedConditionsOperatorNames,
   PermissionConditionOperators
@@ -34,28 +48,32 @@ function ValidationErrorModal({
   }
 
   return (
-    <Modal isOpen={open} onOpenChange={setOpen}>
-      <ModalContent title="Validation Error Details">
-        <TableContainer>
-          <Table>
-            <THead>
-              <Tr>
-                <Th>Field</Th>
-                <Th>Issue</Th>
-              </Tr>
-            </THead>
-            <TBody>
-              {serverResponse.message?.map(({ message, path }) => (
-                <Tr key={path.join(".")}>
-                  <Td>{formatValidationErrorPath(path, requestBody)}</Td>
-                  <Td>{message.toLowerCase()}</Td>
-                </Tr>
-              ))}
-            </TBody>
-          </Table>
-        </TableContainer>
-      </ModalContent>
-    </Modal>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogContent className="sm:max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Validation Error Details</DialogTitle>
+          <DialogDescription>These fields did not pass validation.</DialogDescription>
+        </DialogHeader>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Field</TableHead>
+              <TableHead>Issue</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {serverResponse.message?.map(({ message, path }) => (
+              <TableRow key={path.join(".")}>
+                <TableCell className="whitespace-normal">
+                  {formatValidationErrorPath(path, requestBody)}
+                </TableCell>
+                <TableCell className="whitespace-normal">{message.toLowerCase()}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </DialogContent>
+    </Dialog>
   );
 }
 
