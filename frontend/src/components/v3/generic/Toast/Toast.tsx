@@ -29,20 +29,20 @@ const Toaster = ({ ...props }: ToasterProps) => {
         classNames: {
           // pointer-events-auto keeps the toast clickable over a modal (Radix sets
           // pointer-events:none outside itself); items-start aligns the icon with the title;
-          // flex-wrap drops the action button to its own row; pl-5 clears the accent strip.
-          toast: "!pointer-events-auto !items-start !flex-wrap !rounded-md !pl-5",
-          // Let the content fill the first row so the action button wraps below, bottom-right.
-          content: "!flex-1",
+          // pl-5 clears the accent strip.
+          toast: "!pointer-events-auto !items-start !rounded-md !pl-5",
           icon: "!mt-0.5",
           title: "!text-sm !font-medium !text-foreground whitespace-pre-line",
           description: "!text-xs !text-foreground/75 whitespace-pre-line",
           // Square close button seated inside the toast body at the top-right.
           closeButton:
             "!left-auto !right-2 !top-2 !transform-none !rounded-sm !border-transparent !bg-transparent !text-foreground/60 hover:!bg-foreground/10 hover:!text-foreground",
+          // self-end seats the action at the bottom of the toast; sonner's margin-left:auto
+          // pushes it right, so it lands bottom-right, clear of the top-right close button.
           actionButton:
-            "!rounded !border !border-border !bg-foreground/10 !text-foreground hover:!bg-foreground/20",
+            "!self-end !rounded !border !border-border !bg-foreground/10 !text-foreground hover:!bg-foreground/20",
           cancelButton:
-            "!rounded !border !border-border !bg-transparent !text-foreground/80 hover:!bg-foreground/10",
+            "!self-end !rounded !border !border-border !bg-transparent !text-foreground/80 hover:!bg-foreground/10",
           // Status accent: a 4px strip painted as a hard-stop gradient so the card's radius
           // rounds the strip's outer corner while the gradient stop keeps the inner edge
           // straight (a left border would curve on the inside and look crescent-shaped).
