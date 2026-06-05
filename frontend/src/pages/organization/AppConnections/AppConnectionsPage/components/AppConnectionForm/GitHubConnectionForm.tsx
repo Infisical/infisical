@@ -6,6 +6,10 @@ import { z } from "zod";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
   Button,
   FormControl,
   Input,
@@ -15,7 +19,6 @@ import {
   SelectItem,
   Tooltip
 } from "@app/components/v2";
-import { Switch } from "@app/components/v3/generic/Switch";
 import { GatewayPicker } from "@app/components/v3/platform/GatewayPicker";
 import { apiRequest } from "@app/config/request";
 import { useOrganization, useSubscription } from "@app/context";
@@ -396,101 +399,92 @@ export const GitHubConnectionForm = ({ appConnection, projectId, onSubmit }: Pro
     <FormProvider {...form}>
       <form onSubmit={handleSubmit(submitHandler)}>
         {!isUpdate && <GenericAppConnectionsFields />}
-        <div className="mb-4 flex items-center gap-3">
-          <Switch
-            id="github-enterprise"
-            variant="primary"
-            checked={isEnterpriseEnabled}
-            onCheckedChange={(checked) => {
-              setIsEnterpriseEnabled(checked);
-              if (!checked) {
-                setValue("credentials.instanceType" as never, "cloud" as never);
-                setValue("credentials.host" as never, "" as never);
-                setValue("gatewayId", null);
-                setValue("gatewayPoolId", null);
-              }
-            }}
-          />
-          {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
-          <label htmlFor="github-enterprise" className="cursor-pointer text-sm text-mineshaft-200">
-            GitHub Enterprise
-          </label>
-        </div>
-        {isEnterpriseEnabled && (
-          <div className="mb-4 rounded-md border border-mineshaft-600 bg-mineshaft-800/40 p-4">
-            <Controller
-              name="credentials.instanceType"
-              control={control}
-              render={({ field }) => (
-                <FormControl label="Instance Type">
-                  <Select
-                    value={field.value}
-                    onValueChange={(e) => {
-                      field.onChange(e);
-                      if (e === "cloud") {
-                        setValue("gatewayId", null);
-                        setValue("gatewayPoolId", null);
-                      }
-                    }}
-                    containerClassName="w-full"
-                    className="w-full border border-mineshaft-500"
-                    dropdownContainerClassName="max-w-none"
-                    placeholder="Enterprise Cloud"
-                    position="popper"
-                  >
-                    <SelectItem value="cloud">Enterprise Cloud</SelectItem>
-                    <SelectItem value="server">Enterprise Server</SelectItem>
-                  </Select>
-                </FormControl>
-              )}
-            />
-            <Controller
-              name="credentials.host"
-              control={control}
-              shouldUnregister
-              render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  errorText={error?.message}
-                  isError={Boolean(error?.message)}
-                  label="Instance Hostname"
-                  isOptional={instanceType === "cloud"}
-                  isRequired={instanceType === "server"}
-                >
-                  <Input {...field} placeholder="github.mycompany.com" />
-                </FormControl>
-              )}
-            />
-            {subscription.gateway && instanceType === "server" && (
-              <OrgPermissionCan
-                I={OrgGatewayPermissionActions.AttachGateways}
-                a={OrgPermissionSubjects.Gateway}
-              >
-                {(isAllowed) => (
-                  <FormControl label="Gateway">
-                    <Tooltip
-                      isDisabled={isAllowed}
-                      content="Restricted access. You don't have permission to attach gateways to resources."
+        <Accordion
+          type="single"
+          collapsible
+          className="mb-4 w-full"
+          value={isEnterpriseEnabled ? "enterprise-options" : ""}
+          onValueChange={(value) => setIsEnterpriseEnabled(value === "enterprise-options")}
+        >
+          <AccordionItem value="enterprise-options" className="data-[state=open]:border-none">
+            <AccordionTrigger className="h-fit flex-none pl-1 text-sm">
+              <div className="order-1 ml-3">GitHub Enterprise Options</div>
+            </AccordionTrigger>
+            <AccordionContent childrenClassName="px-0">
+              <Controller
+                name="credentials.instanceType"
+                control={control}
+                render={({ field }) => (
+                  <FormControl label="Instance Type">
+                    <Select
+                      value={field.value}
+                      onValueChange={(e) => {
+                        field.onChange(e);
+                        if (e === "cloud") {
+                          setValue("gatewayId", null);
+                          setValue("gatewayPoolId", null);
+                        }
+                      }}
+                      containerClassName="w-full"
+                      className="w-full border border-mineshaft-500"
+                      dropdownContainerClassName="max-w-none"
+                      placeholder="Enterprise Cloud"
+                      position="popper"
                     >
-                      <div>
-                        <GatewayPicker
-                          isDisabled={!isAllowed}
-                          value={{
-                            gatewayId: gatewayId ?? null,
-                            gatewayPoolId: gatewayPoolId ?? null
-                          }}
-                          onChange={({ gatewayId: newGwId, gatewayPoolId: newPoolId }) => {
-                            setValue("gatewayId", newGwId, { shouldDirty: true });
-                            setValue("gatewayPoolId", newPoolId, { shouldDirty: true });
-                          }}
-                        />
-                      </div>
-                    </Tooltip>
+                      <SelectItem value="cloud">Enterprise Cloud</SelectItem>
+                      <SelectItem value="server">Enterprise Server</SelectItem>
+                    </Select>
                   </FormControl>
                 )}
-              </OrgPermissionCan>
-            )}
-          </div>
-        )}
+              />
+              <Controller
+                name="credentials.host"
+                control={control}
+                shouldUnregister
+                render={({ field, fieldState: { error } }) => (
+                  <FormControl
+                    errorText={error?.message}
+                    isError={Boolean(error?.message)}
+                    label="Instance Hostname"
+                    isOptional={instanceType === "cloud"}
+                    isRequired={instanceType === "server"}
+                  >
+                    <Input {...field} placeholder="github.mycompany.com" />
+                  </FormControl>
+                )}
+              />
+              {subscription.gateway && instanceType === "server" && (
+                <OrgPermissionCan
+                  I={OrgGatewayPermissionActions.AttachGateways}
+                  a={OrgPermissionSubjects.Gateway}
+                >
+                  {(isAllowed) => (
+                    <FormControl label="Gateway">
+                      <Tooltip
+                        isDisabled={isAllowed}
+                        content="Restricted access. You don't have permission to attach gateways to resources."
+                      >
+                        <div>
+                          <GatewayPicker
+                            isDisabled={!isAllowed}
+                            value={{
+                              gatewayId: gatewayId ?? null,
+                              gatewayPoolId: gatewayPoolId ?? null
+                            }}
+                            onChange={({ gatewayId: newGwId, gatewayPoolId: newPoolId }) => {
+                              setValue("gatewayId", newGwId, { shouldDirty: true });
+                              setValue("gatewayPoolId", newPoolId, { shouldDirty: true });
+                            }}
+                          />
+                        </div>
+                      </Tooltip>
+                    </FormControl>
+                  )}
+                </OrgPermissionCan>
+              )}
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
         <Controller
           name="method"
           control={control}
