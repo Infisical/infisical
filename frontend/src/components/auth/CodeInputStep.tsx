@@ -70,6 +70,7 @@ export default function CodeInputStep({
   const [code, setCode] = useState("");
 
   const endTimeRef = useRef<number>(initialCooldown > 0 ? Date.now() + initialCooldown * 1000 : 0);
+  const autoSubmittedRef = useRef(false);
   const [, forceRender] = useState(0);
 
   // Tick every second
@@ -92,10 +93,14 @@ export default function CodeInputStep({
   };
 
   useEffect(() => {
-    if (code.length === 6 && !isVerifying) {
+    if (code.length === 6 && !isVerifying && !autoSubmittedRef.current) {
+      autoSubmittedRef.current = true;
       handleVerify();
     }
-  }, [code]);
+    if (code.length !== 6) {
+      autoSubmittedRef.current = false;
+    }
+  }, [code, isVerifying]);
 
   const handleResend = async () => {
     try {
