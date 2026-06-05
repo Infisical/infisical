@@ -101,7 +101,7 @@ export const AddApplicationMemberModal = ({
 
   const usersQuery = useGetWorkspaceUsers(projectId);
   const identitiesQuery = useListProjectIdentityMemberships({
-    projectId: "",
+    projectId,
     projectType: ProjectType.CertificateManager,
     limit: 1000
   });
@@ -173,12 +173,21 @@ export const AddApplicationMemberModal = ({
     if (selectedUsers.length === 0) return;
     const userIds = selectedUsers.map((u) => u.value);
 
-    await addUserMembers.mutateAsync({
+    const result = await addUserMembers.mutateAsync({
       applicationId,
       userIds,
       emails: [],
       role
     });
+
+    if (result.unresolved.length > 0) {
+      const labelById = new Map(selectedUsers.map((u) => [u.value, u.label]));
+      const names = result.unresolved.map((id) => labelById.get(id) ?? id);
+      createNotification({
+        type: "warning",
+        text: `Couldn't add ${names.length === 1 ? "this user" : "these users"}: ${names.join(", ")}. Grant them access from the Access Control page and try again.`
+      });
+    }
   };
 
   const submitIdentities = async () => {
