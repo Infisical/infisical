@@ -1,4 +1,4 @@
-import { ForbiddenError } from "@casl/ability";
+import { ForbiddenError, subject } from "@casl/ability";
 
 import { ActionProjectType, OrgMembershipRole, SecretType, TableName } from "@app/db/schemas";
 import { THoneyTokens } from "@app/db/schemas/honey-tokens";
@@ -192,7 +192,7 @@ export const honeyTokenServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionHoneyTokenActions.Create,
-      ProjectPermissionSub.HoneyTokens
+      subject(ProjectPermissionSub.HoneyTokens, { environment, secretPath })
     );
 
     const providerType = assertSupportedHoneyTokenType(type);
@@ -427,6 +427,7 @@ export const honeyTokenServiceFactory = ({
     }
 
     const { projectId } = honeyToken;
+    const [folderWithEnv] = await folderDAL.findSecretPathByFolderIds(projectId, [honeyToken.folderId]);
     const { permission: updatePermission } = await permissionService.getProjectPermission({
       actor: actor.type,
       actorId: actor.id,
@@ -437,7 +438,10 @@ export const honeyTokenServiceFactory = ({
     });
     ForbiddenError.from(updatePermission).throwUnlessCan(
       ProjectPermissionHoneyTokenActions.Edit,
-      ProjectPermissionSub.HoneyTokens
+      subject(ProjectPermissionSub.HoneyTokens, {
+        environment: folderWithEnv?.environmentSlug ?? "",
+        secretPath: folderWithEnv?.path ?? "/"
+      })
     );
 
     const updatePlan = await licenseService.getPlan(actor.orgId);
@@ -615,6 +619,7 @@ export const honeyTokenServiceFactory = ({
     }
 
     const { projectId } = honeyToken;
+    const [folderWithEnv] = await folderDAL.findSecretPathByFolderIds(projectId, [honeyToken.folderId]);
     const { permission: revokePermission } = await permissionService.getProjectPermission({
       actor: actor.type,
       actorId: actor.id,
@@ -625,7 +630,10 @@ export const honeyTokenServiceFactory = ({
     });
     ForbiddenError.from(revokePermission).throwUnlessCan(
       ProjectPermissionHoneyTokenActions.Revoke,
-      ProjectPermissionSub.HoneyTokens
+      subject(ProjectPermissionSub.HoneyTokens, {
+        environment: folderWithEnv?.environmentSlug ?? "",
+        secretPath: folderWithEnv?.path ?? "/"
+      })
     );
 
     const revokePlan = await licenseService.getPlan(actor.orgId);
@@ -734,6 +742,7 @@ export const honeyTokenServiceFactory = ({
       throw new NotFoundError({ message: `Honey token with ID "${honeyTokenId}" not found` });
     }
 
+    const [folderWithEnv] = await folderDAL.findSecretPathByFolderIds(honeyToken.projectId, [honeyToken.folderId]);
     const { permission: resetPermission } = await permissionService.getProjectPermission({
       actor: actor.type,
       actorId: actor.id,
@@ -744,7 +753,10 @@ export const honeyTokenServiceFactory = ({
     });
     ForbiddenError.from(resetPermission).throwUnlessCan(
       ProjectPermissionHoneyTokenActions.Reset,
-      ProjectPermissionSub.HoneyTokens
+      subject(ProjectPermissionSub.HoneyTokens, {
+        environment: folderWithEnv?.environmentSlug ?? "",
+        secretPath: folderWithEnv?.path ?? "/"
+      })
     );
 
     assertSupportedHoneyTokenType(honeyToken.type);
@@ -786,14 +798,21 @@ export const honeyTokenServiceFactory = ({
       projectId
     });
 
-    if (readPermission.cannot(ProjectPermissionHoneyTokenActions.Read, ProjectPermissionSub.HoneyTokens)) {
-      return 0;
-    }
-
     const folders = await folderDAL.findBySecretPathMultiEnv(projectId, environments, secretPath);
     if (!folders.length) return 0;
 
-    const folderIds = folders.map((f) => f.id);
+    const allowedFolders = folders.filter((f) =>
+      readPermission.can(
+        ProjectPermissionHoneyTokenActions.Read,
+        subject(ProjectPermissionSub.HoneyTokens, {
+          environment: f.environment.slug,
+          secretPath
+        })
+      )
+    );
+    if (!allowedFolders.length) return 0;
+
+    const folderIds = allowedFolders.map((f) => f.id);
     return honeyTokenDAL.countByFolderIds(folderIds, search);
   };
 
@@ -838,14 +857,21 @@ export const honeyTokenServiceFactory = ({
       projectId
     });
 
-    if (readPermission.cannot(ProjectPermissionHoneyTokenActions.Read, ProjectPermissionSub.HoneyTokens)) {
-      return [];
-    }
-
     const folders = await folderDAL.findBySecretPathMultiEnv(projectId, environments, secretPath);
     if (!folders.length) return [];
 
-    const folderIds = folders.map((f) => f.id);
+    const allowedFolders = folders.filter((f) =>
+      readPermission.can(
+        ProjectPermissionHoneyTokenActions.Read,
+        subject(ProjectPermissionSub.HoneyTokens, {
+          environment: f.environment.slug,
+          secretPath
+        })
+      )
+    );
+    if (!allowedFolders.length) return [];
+
+    const folderIds = allowedFolders.map((f) => f.id);
     let honeyTokens = await honeyTokenDAL.findByFolderIds(folderIds);
 
     if (search) {
@@ -872,6 +898,7 @@ export const honeyTokenServiceFactory = ({
       throw new NotFoundError({ message: `Honey token with ID "${honeyTokenId}" not found` });
     }
 
+    const [folderWithEnv] = await folderDAL.findSecretPathByFolderIds(honeyToken.projectId, [honeyToken.folderId]);
     const { permission: credentialPermission } = await permissionService.getProjectPermission({
       actor: actor.type,
       actorId: actor.id,
@@ -882,7 +909,10 @@ export const honeyTokenServiceFactory = ({
     });
     ForbiddenError.from(credentialPermission).throwUnlessCan(
       ProjectPermissionHoneyTokenActions.ReadCredentials,
-      ProjectPermissionSub.HoneyTokens
+      subject(ProjectPermissionSub.HoneyTokens, {
+        environment: folderWithEnv?.environmentSlug ?? "",
+        secretPath: folderWithEnv?.path ?? "/"
+      })
     );
 
     if (honeyToken.status === HoneyTokenStatus.Revoked) {
@@ -1075,6 +1105,7 @@ export const honeyTokenServiceFactory = ({
       throw new NotFoundError({ message: `Honey token with ID "${honeyTokenId}" not found` });
     }
 
+    const [folderWithEnv] = await folderDAL.findSecretPathByFolderIds(honeyToken.projectId, [honeyToken.folderId]);
     const { permission: readPermission } = await permissionService.getProjectPermission({
       actor: actor.type,
       actorId: actor.id,
@@ -1085,7 +1116,10 @@ export const honeyTokenServiceFactory = ({
     });
     ForbiddenError.from(readPermission).throwUnlessCan(
       ProjectPermissionHoneyTokenActions.Read,
-      ProjectPermissionSub.HoneyTokens
+      subject(ProjectPermissionSub.HoneyTokens, {
+        environment: folderWithEnv?.environmentSlug ?? "",
+        secretPath: folderWithEnv?.path ?? "/"
+      })
     );
 
     const allInFolder = await honeyTokenDAL.findByFolderIds([honeyToken.folderId]);
@@ -1112,6 +1146,7 @@ export const honeyTokenServiceFactory = ({
       throw new NotFoundError({ message: `Honey token with ID "${honeyTokenId}" not found` });
     }
 
+    const [folderWithEnv] = await folderDAL.findSecretPathByFolderIds(honeyToken.projectId, [honeyToken.folderId]);
     const { permission: eventsPermission } = await permissionService.getProjectPermission({
       actor: actor.type,
       actorId: actor.id,
@@ -1122,7 +1157,10 @@ export const honeyTokenServiceFactory = ({
     });
     ForbiddenError.from(eventsPermission).throwUnlessCan(
       ProjectPermissionHoneyTokenActions.Read,
-      ProjectPermissionSub.HoneyTokens
+      subject(ProjectPermissionSub.HoneyTokens, {
+        environment: folderWithEnv?.environmentSlug ?? "",
+        secretPath: folderWithEnv?.path ?? "/"
+      })
     );
 
     const since = honeyToken.lastResetAt ?? undefined;
