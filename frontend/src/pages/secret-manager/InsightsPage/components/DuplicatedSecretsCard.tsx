@@ -5,7 +5,7 @@ import {
   AlertTriangleIcon,
   ArrowRightIcon,
   FolderIcon,
-  LinkIcon,
+  KeyRoundIcon,
   Loader2Icon,
   LockIcon
 } from "lucide-react";
@@ -198,8 +198,8 @@ export const DuplicatedSecretsCard = () => {
                           key={`${entry.key}-${entry.environment}-${entry.secretPath}-${String(idx)}`}
                           className="group/row -mx-2 flex items-center gap-6 rounded-md px-2 py-1.5 text-sm hover:bg-container-hover"
                         >
-                          <div className="flex w-48 shrink-0 items-center gap-2">
-                            <LinkIcon className="size-3.5 text-muted" />
+                          <div className="flex w-72 shrink-0 items-center gap-2">
+                            <KeyRoundIcon className="size-3.5 text-muted" />
                             <span className="truncate font-mono text-foreground">{entry.key}</span>
                           </div>
                           <div className="flex w-28 shrink-0 items-center gap-2">
