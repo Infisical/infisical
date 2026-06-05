@@ -94,8 +94,18 @@ export const resolveGitHubAppCredentials = async (
     !INF_APP_CONNECTION_GITHUB_APP_CLIENT_SECRET ||
     !INF_APP_CONNECTION_GITHUB_APP_PRIVATE_KEY
   ) {
+    const missingEnvVars = Object.entries({
+      INF_APP_CONNECTION_GITHUB_APP_ID,
+      INF_APP_CONNECTION_GITHUB_APP_SLUG,
+      INF_APP_CONNECTION_GITHUB_APP_CLIENT_ID,
+      INF_APP_CONNECTION_GITHUB_APP_CLIENT_SECRET,
+      INF_APP_CONNECTION_GITHUB_APP_PRIVATE_KEY
+    })
+      .filter(([, value]) => !value)
+      .map(([key]) => key);
+
     throw new InternalServerError({
-      message: "GitHub App environment variables have not been configured"
+      message: `GitHub App environment variables have not been configured. Missing: ${missingEnvVars.join(", ")}`
     });
   }
 
@@ -729,6 +739,37 @@ export const listGitHubUserInstallations = async (
   return installations;
 };
 
+export const exchangeGitHubOAuthCode = async ({
+  host,
+  clientId,
+  clientSecret,
+  code,
+  requestFn
+}: {
+  host: string;
+  clientId: string;
+  clientSecret: string;
+  code: string;
+  requestFn: (requestConfig: AxiosRequestConfig & { url: string }) => Promise<AxiosResponse<GithubTokenRespData>>;
+}): Promise<AxiosResponse<GithubTokenRespData>> => {
+  const { SITE_URL } = getConfig();
+
+  return requestFn({
+    url: `https://${host}/login/oauth/access_token`,
+    method: "POST",
+    data: {
+      client_id: clientId,
+      client_secret: clientSecret,
+      code,
+      redirect_uri: `${SITE_URL}/organization/app-connections/github/oauth/callback`
+    },
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json"
+    }
+  });
+};
+
 export const validateGitHubConnectionCredentials = async (
   config: TGitHubConnectionConfig,
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
@@ -865,8 +906,7 @@ export const validateGitHubConnectionCredentials = async (
     }
   }
 
-  const { INF_APP_CONNECTION_GITHUB_OAUTH_CLIENT_ID, INF_APP_CONNECTION_GITHUB_OAUTH_CLIENT_SECRET, SITE_URL } =
-    getConfig();
+  const { INF_APP_CONNECTION_GITHUB_OAUTH_CLIENT_ID, INF_APP_CONNECTION_GITHUB_OAUTH_CLIENT_SECRET } = getConfig();
 
   let clientId: string | undefined;
   let clientSecret: string | undefined;
@@ -898,27 +938,26 @@ export const validateGitHubConnectionCredentials = async (
     ? await getGitHubGatewayConnectionDetails(config.gatewayId, host, gatewayV2Service)
     : undefined;
 
+  const oauthCode = credentials.code;
+  if (!oauthCode) {
+    throw new BadRequestError({ message: "GitHub authorization code required" });
+  }
+
   try {
-    tokenResp = await requestWithGitHubGateway<GithubTokenRespData>(
-      resolvedConfig,
-      gatewayService,
-      gatewayV2Service,
-      {
-        url: `https://${host}/login/oauth/access_token`,
-        method: "POST",
-        data: {
-          client_id: clientId,
-          client_secret: clientSecret,
-          code: credentials.code,
-          redirect_uri: `${SITE_URL}/organization/app-connections/github/oauth/callback`
-        },
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json"
-        }
-      },
-      oauthGatewayConnectionDetails
-    );
+    tokenResp = await exchangeGitHubOAuthCode({
+      host,
+      clientId,
+      clientSecret,
+      code: oauthCode,
+      requestFn: (requestConfig) =>
+        requestWithGitHubGateway<GithubTokenRespData>(
+          resolvedConfig,
+          gatewayService,
+          gatewayV2Service,
+          requestConfig,
+          oauthGatewayConnectionDetails
+        )
+    });
 
     if (isGithubErrorResponse(tokenResp?.data)) {
       throw new BadRequestError({

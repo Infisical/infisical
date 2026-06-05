@@ -83,6 +83,7 @@ import { SupabaseConnectionMethod } from "@app/hooks/api/appConnections/types/su
 import { TravisCIConnectionMethod } from "@app/hooks/api/appConnections/types/travis-ci-connection";
 import { VenafiConnectionMethod } from "@app/hooks/api/appConnections/types/venafi-connection";
 import { VenafiTppConnectionMethod } from "@app/hooks/api/appConnections/types/venafi-tpp-connection";
+import { IntegrationsListPageTabs } from "@app/types/integrations";
 
 export const APP_CONNECTION_MAP: Record<
   AppConnection,
@@ -380,4 +381,55 @@ export const useGetAppConnectionOauthReturnUrl = () => {
   } = useRouterState();
 
   return pathname;
+};
+
+export const getIntegrationsListTab = () => {
+  if (localStorage.getItem("pkiSyncFormData")) return IntegrationsListPageTabs.PkiSyncs;
+  if (localStorage.getItem("secretSyncFormData")) return IntegrationsListPageTabs.SecretSyncs;
+  return IntegrationsListPageTabs.AppConnections;
+};
+
+export const getConnectionFlowReturnNavigateOptions = ({
+  returnUrl,
+  projectId,
+  reopenFormApp
+}: {
+  returnUrl: string;
+  projectId?: string;
+  reopenFormApp?: AppConnection;
+}) => {
+  const search = {
+    ...(reopenFormApp ? { addConnectionApp: reopenFormApp } : {}),
+    ...(returnUrl.includes("integrations")
+      ? {
+          selectedTab: reopenFormApp
+            ? IntegrationsListPageTabs.AppConnections
+            : getIntegrationsListTab()
+        }
+      : {})
+  };
+
+  return {
+    to: returnUrl,
+    params: { projectId },
+    search: Object.keys(search).length > 0 ? search : undefined
+  };
+};
+
+export type TStoredConnectionFormData<T> =
+  | { status: "ok"; data: T }
+  | { status: "missing" }
+  | { status: "corrupt" };
+
+export const readConnectionFormData = <T>(storageKey: string): TStoredConnectionFormData<T> => {
+  const raw = localStorage.getItem(storageKey);
+
+  if (raw === null) return { status: "missing" };
+
+  try {
+    return { status: "ok", data: JSON.parse(raw) as T };
+  } catch {
+    localStorage.removeItem(storageKey);
+    return { status: "corrupt" };
+  }
 };

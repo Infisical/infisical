@@ -28,6 +28,7 @@ import { safeRequest } from "@app/lib/validator/safe-request";
 import {
   assertPlatformGitHubHostAllowed,
   buildGitHubAppJwtHeaders,
+  exchangeGitHubOAuthCode,
   getGitHubGatewayConnectionDetails,
   getGitHubInstanceApiUrl,
   GithubTokenRespData,
@@ -555,41 +556,46 @@ export const gitHubAppServiceFactory = ({
       throw err;
     }
 
-    // The callback route is unauthenticated (GitHub redirects the browser here) — the actor is
-    // carried in the signed state token. Manifest initiation is JWT-only, so the actor is a user.
-    const actorUser = actorType === ActorType.USER ? await userDAL.findById(actorId) : null;
-    await auditLogService.createAuditLog({
-      ...auditLogInfo,
-      orgId,
-      ...(projectId ? { projectId } : {}),
-      actor: actorUser
-        ? {
-            type: ActorType.USER,
-            metadata: {
-              userId: actorUser.id,
-              email: actorUser.email,
-              username: actorUser.username,
-              ...(authMethod ? { authMethod } : {})
+    try {
+      const actorUser = actorType === ActorType.USER ? await userDAL.findById(actorId) : null;
+      await auditLogService.createAuditLog({
+        ...auditLogInfo,
+        orgId,
+        ...(projectId ? { projectId } : {}),
+        actor: actorUser
+          ? {
+              type: ActorType.USER,
+              metadata: {
+                userId: actorUser.id,
+                email: actorUser.email,
+                username: actorUser.username,
+                ...(authMethod ? { authMethod } : {})
+              }
             }
+          : {
+              type: ActorType.UNKNOWN_USER,
+              metadata: {}
+            },
+        event: {
+          type: EventType.CREATE_GITHUB_APP,
+          metadata: {
+            gitHubAppId: created.id,
+            name: created.name,
+            appId: created.appId,
+            slug: created.slug,
+            owner: created.owner,
+            host: created.host,
+            instanceType,
+            projectId
           }
-        : {
-            type: ActorType.UNKNOWN_USER,
-            metadata: {}
-          },
-      event: {
-        type: EventType.CREATE_GITHUB_APP,
-        metadata: {
-          gitHubAppId: created.id,
-          name: created.name,
-          appId: created.appId,
-          slug: created.slug,
-          owner: created.owner,
-          host: created.host,
-          instanceType,
-          projectId
         }
-      }
-    });
+      });
+    } catch (err) {
+      logger.error(
+        { err, orgId, gitHubAppId: created.id },
+        `Failed to write audit log for GitHub App manifest creation [orgId=${orgId}] [gitHubAppId=${created.id}]`
+      );
+    }
 
     const callbackUrl = new URL(`${SITE_URL}/organizations/${orgId}/app-connections/github/manifest/callback`);
     callbackUrl.searchParams.set("gitHubAppId", created.id ?? "");
@@ -719,23 +725,14 @@ export const gitHubAppServiceFactory = ({
 
     let tokenData: GithubTokenRespData;
     try {
-      const { data } = await sendGitHubRequest<GithubTokenRespData>(
-        {
-          url: `https://${oauthHost}/login/oauth/access_token`,
-          method: "POST",
-          data: {
-            client_id: clientId,
-            client_secret: clientSecret,
-            code,
-            redirect_uri: `${SITE_URL}/organization/app-connections/github/oauth/callback`
-          },
-          headers: {
-            Accept: "application/json",
-            "Content-Type": "application/json"
-          }
-        },
-        oauthGatewayConnectionDetails
-      );
+      const { data } = await exchangeGitHubOAuthCode({
+        host: oauthHost,
+        clientId,
+        clientSecret,
+        code,
+        requestFn: (requestConfig) =>
+          sendGitHubRequest<GithubTokenRespData>(requestConfig, oauthGatewayConnectionDetails)
+      });
       tokenData = data;
     } catch (err) {
       logger.error(err, `Failed to exchange GitHub OAuth code [gitHubAppId=${gitHubAppId ?? "shared"}]`);

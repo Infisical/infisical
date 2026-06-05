@@ -10,7 +10,10 @@ import {
   consumeCsrfToken,
   CSRF_TOKEN_STORAGE_KEY,
   generateCsrfToken,
-  GITHUB_CONNECTION_FORM_STORAGE_KEY
+  getConnectionFlowReturnNavigateOptions,
+  getIntegrationsListTab,
+  GITHUB_CONNECTION_FORM_STORAGE_KEY,
+  readConnectionFormData
 } from "@app/helpers/appConnections";
 import {
   AzureAppConfigurationConnectionMethod,
@@ -26,7 +29,6 @@ import {
 } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { resolveGitHubAppInstallations, TGitHubAppInstallation } from "@app/hooks/api/gitHubApps";
-import { IntegrationsListPageTabs } from "@app/types/integrations";
 
 import { FormDataMap } from "./OauthCallbackPage.types";
 
@@ -81,12 +83,6 @@ export const OAuthCallbackPage = () => {
     localStorage.removeItem(dataFieldName!);
   };
 
-  const getIntegrationsTab = () => {
-    if (localStorage.getItem("pkiSyncFormData")) return IntegrationsListPageTabs.PkiSyncs;
-    if (localStorage.getItem("secretSyncFormData")) return IntegrationsListPageTabs.SecretSyncs;
-    return IntegrationsListPageTabs.AppConnections;
-  };
-
   // Shared post-success step: notify and navigate back to where the connection flow started.
   const finalizeConnection = async (data: {
     returnUrl: string;
@@ -111,7 +107,7 @@ export const OAuthCallbackPage = () => {
             connectionId: data.connection.id,
             connectionName: data.connection.name,
             ...(data.returnUrl.includes("integrations")
-              ? { selectedTab: getIntegrationsTab() }
+              ? { selectedTab: getIntegrationsListTab() }
               : {})
           }
     });
@@ -120,9 +116,9 @@ export const OAuthCallbackPage = () => {
   const getFormData = <T extends keyof FormDataMap>(app: T): FormDataMap[T] | null => {
     const dataFieldName = formDataStorageFieldMap[app];
 
-    const rawData = localStorage.getItem(dataFieldName!);
+    const result = readConnectionFormData<FormDataMap[T]>(dataFieldName!);
 
-    if (rawData === null) {
+    if (result.status === "missing") {
       createNotification({
         type: "error",
         text: `Your ${app ? APP_CONNECTION_MAP[app as AppConnection].name : ""} Connection session has expired or was already completed. Please restart the connection flow.`
@@ -131,12 +127,7 @@ export const OAuthCallbackPage = () => {
       return null;
     }
 
-    try {
-      return {
-        ...JSON.parse(rawData),
-        app
-      } as FormDataMap[T];
-    } catch {
+    if (result.status === "corrupt") {
       createNotification({
         type: "error",
         text: `Invalid ${app || ""} form state, redirecting...`
@@ -144,6 +135,11 @@ export const OAuthCallbackPage = () => {
       navigate({ to: "/" });
       return null;
     }
+
+    return {
+      ...result.data,
+      app
+    } as FormDataMap[T];
   };
 
   const handleGitLab = useCallback(async () => {
@@ -443,15 +439,7 @@ export const OAuthCallbackPage = () => {
             (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
             "Failed to resolve GitHub App installations"
         });
-        navigate({
-          to: returnUrl,
-          params: {
-            projectId
-          },
-          search: returnUrl.includes("integrations")
-            ? { selectedTab: getIntegrationsTab() }
-            : undefined
-        });
+        navigate(getConnectionFlowReturnNavigateOptions({ returnUrl, projectId }));
       }
       return null;
     }
@@ -509,15 +497,7 @@ export const OAuthCallbackPage = () => {
           (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
           `Failed to ${connectionId ? "update" : "create"} GitHub Connection`
       });
-      navigate({
-        to: returnUrl,
-        params: {
-          projectId
-        },
-        search: returnUrl.includes("integrations")
-          ? { selectedTab: getIntegrationsTab() }
-          : undefined
-      });
+      navigate(getConnectionFlowReturnNavigateOptions({ returnUrl, projectId }));
       return null;
     }
 
@@ -584,15 +564,7 @@ export const OAuthCallbackPage = () => {
           (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
           `Failed to ${connectionId ? "update" : "create"} GitHub Connection`
       });
-      navigate({
-        to: returnUrl,
-        params: {
-          projectId
-        },
-        search: returnUrl.includes("integrations")
-          ? { selectedTab: getIntegrationsTab() }
-          : undefined
-      });
+      navigate(getConnectionFlowReturnNavigateOptions({ returnUrl, projectId }));
     }
   };
 
@@ -606,15 +578,12 @@ export const OAuthCallbackPage = () => {
         type: "error",
         text: "Unable to determine the GitHub App to install. Please restart the connection flow."
       });
-      navigate({
-        to: formData.returnUrl,
-        params: {
+      navigate(
+        getConnectionFlowReturnNavigateOptions({
+          returnUrl: formData.returnUrl,
           projectId: formData.projectId
-        },
-        search: formData.returnUrl.includes("integrations")
-          ? { selectedTab: getIntegrationsTab() }
-          : undefined
-      });
+        })
+      );
       return;
     }
 

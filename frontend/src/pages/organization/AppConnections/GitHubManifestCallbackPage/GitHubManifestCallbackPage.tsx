@@ -4,9 +4,13 @@ import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { createNotification } from "@app/components/notifications";
 import { ContentLoader } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { consumeCsrfToken, GITHUB_CONNECTION_FORM_STORAGE_KEY } from "@app/helpers/appConnections";
+import {
+  consumeCsrfToken,
+  getConnectionFlowReturnNavigateOptions,
+  GITHUB_CONNECTION_FORM_STORAGE_KEY,
+  readConnectionFormData
+} from "@app/helpers/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
-import { IntegrationsListPageTabs } from "@app/types/integrations";
 
 export const GitHubManifestCallbackPage = () => {
   const navigate = useNavigate();
@@ -22,33 +26,35 @@ export const GitHubManifestCallbackPage = () => {
 
     const { gitHubAppId, slug, installState } = search;
 
-    let connectionForm: {
+    type TStoredGitHubConnectionForm = {
       credentials?: Record<string, unknown>;
       resumeWithGitHubAppId?: string;
       returnUrl?: string;
-    } | null = {};
-    try {
-      const connectionFormRaw = localStorage.getItem(GITHUB_CONNECTION_FORM_STORAGE_KEY);
-      connectionForm = connectionFormRaw ? JSON.parse(connectionFormRaw) : {};
-    } catch {
-      // A corrupt form just means we can't restore the other fields; the app was still created.
+    };
+
+    const storedForm = readConnectionFormData<TStoredGitHubConnectionForm>(
+      GITHUB_CONNECTION_FORM_STORAGE_KEY
+    );
+
+    let connectionForm: TStoredGitHubConnectionForm | null;
+    if (storedForm.status === "ok") {
+      connectionForm = storedForm.data;
+    } else if (storedForm.status === "missing") {
+      connectionForm = {};
+    } else {
       connectionForm = null;
-      localStorage.removeItem(GITHUB_CONNECTION_FORM_STORAGE_KEY);
     }
 
     const returnUrl = connectionForm?.returnUrl;
 
     const navigateBack = (reopenForm: boolean) => {
       if (returnUrl) {
-        return navigate({
-          to: returnUrl,
-          search: {
-            ...(reopenForm ? { addConnectionApp: AppConnection.GitHub } : {}),
-            ...(returnUrl.includes("integrations")
-              ? { selectedTab: IntegrationsListPageTabs.AppConnections }
-              : {})
-          }
-        });
+        return navigate(
+          getConnectionFlowReturnNavigateOptions({
+            returnUrl,
+            reopenFormApp: reopenForm ? AppConnection.GitHub : undefined
+          })
+        );
       }
       return navigate({
         to: "/organizations/$orgId/app-connections",
