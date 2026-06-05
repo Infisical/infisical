@@ -15,7 +15,17 @@ import {
   BaseSqlResourceConnectionDetailsSchema
 } from "../shared/sql/sql-resource-schemas";
 
-export const PostgresResourceConnectionDetailsSchema = BaseSqlResourceConnectionDetailsSchema;
+export const PostgresResourceConnectionDetailsSchema = BaseSqlResourceConnectionDetailsSchema.extend({
+  // Optional branch identifier required by branch-aware Postgres providers (e.g. PlanetScale).
+  // When set, it is appended to the connection username as `<username>.<branch>` so the provider's
+  // proxy can route to the correct branch. Leave unset for standard PostgreSQL deployments.
+  branch: z
+    .string()
+    .trim()
+    .max(255)
+    .transform((value) => value || undefined)
+    .optional()
+});
 export const PostgresAccountCredentialsSchema = BaseSqlAccountCredentialsSchema;
 
 // Resources
