@@ -10,7 +10,6 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import slugify from "@sindresorhus/slugify";
-import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -115,12 +114,6 @@ export const GitHubAppSelector = ({
     }
   };
 
-  // Selecting an app from the management modal also uses it for the connection.
-  const handleSelect = (app: TGitHubApp) => {
-    onChange(app);
-    handleManageOpenChange(false);
-  };
-
   const handleDelete = async (app: TGitHubApp) => {
     if (!app.id) return;
     try {
@@ -204,12 +197,7 @@ export const GitHubAppSelector = ({
       <CommandItem
         key={app.id}
         value={`${app.name} ${app.owner ?? ""} ${app.slug}`}
-        onSelect={() => handleSelect(app)}
-        className={twMerge(
-          "group",
-          getAppKey(value) === app.id &&
-            "bg-primary/5 ring-1 ring-primary/40 ring-inset data-[selected=true]:bg-primary/10"
-        )}
+        className="group cursor-default"
       >
         <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-sm bg-mineshaft-600">
           {app.projectId ? (
@@ -339,7 +327,7 @@ export const GitHubAppSelector = ({
       <Modal isOpen={isManageOpen} onOpenChange={handleManageOpenChange}>
         <ModalContent
           title="Manage GitHub Apps"
-          subTitle="Create, inspect, and remove the GitHub Apps available to your connections. Selecting an app uses it for this connection."
+          subTitle="Create, inspect, and remove the GitHub Apps available to your connections."
         >
           <div
             ref={containerRef}
@@ -419,12 +407,7 @@ export const GitHubAppSelector = ({
                       <CommandGroup heading="INSTANCE">
                         <CommandItem
                           value={`instance server admin ${sharedApp.name}`}
-                          onSelect={() => handleSelect(sharedApp)}
-                          className={twMerge(
-                            "group",
-                            getAppKey(value) === SHARED_KEY &&
-                              "bg-primary/5 ring-1 ring-primary/40 ring-inset data-[selected=true]:bg-primary/10"
-                          )}
+                          className="group cursor-default"
                         >
                           <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-sm bg-mineshaft-600">
                             <InstanceIcon className="size-4 text-mineshaft-200" />
