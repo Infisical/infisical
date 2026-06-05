@@ -4484,6 +4484,7 @@ interface CreateGitHubAppEvent {
     owner?: string | null;
     host?: string | null;
     instanceType: string;
+    projectId?: string | null;
   };
 }
 
@@ -4494,6 +4495,7 @@ interface DeleteGitHubAppEvent {
     name: string;
     appId: string;
     slug: string;
+    projectId?: string | null;
   };
 }
 

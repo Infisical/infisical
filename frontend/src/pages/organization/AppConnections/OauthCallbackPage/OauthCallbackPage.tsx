@@ -81,6 +81,12 @@ export const OAuthCallbackPage = () => {
     localStorage.removeItem(dataFieldName!);
   };
 
+  const getIntegrationsTab = () => {
+    if (localStorage.getItem("pkiSyncFormData")) return IntegrationsListPageTabs.PkiSyncs;
+    if (localStorage.getItem("secretSyncFormData")) return IntegrationsListPageTabs.SecretSyncs;
+    return IntegrationsListPageTabs.AppConnections;
+  };
+
   // Shared post-success step: notify and navigate back to where the connection flow started.
   const finalizeConnection = async (data: {
     returnUrl: string;
@@ -105,11 +111,7 @@ export const OAuthCallbackPage = () => {
             connectionId: data.connection.id,
             connectionName: data.connection.name,
             ...(data.returnUrl.includes("integrations")
-              ? {
-                  selectedTab: localStorage.getItem("pkiSyncFormData")
-                    ? IntegrationsListPageTabs.PkiSyncs
-                    : IntegrationsListPageTabs.SecretSyncs
-                }
+              ? { selectedTab: getIntegrationsTab() }
               : {})
           }
     });
@@ -445,7 +447,10 @@ export const OAuthCallbackPage = () => {
           to: returnUrl,
           params: {
             projectId
-          }
+          },
+          search: returnUrl.includes("integrations")
+            ? { selectedTab: getIntegrationsTab() }
+            : undefined
         });
       }
       return null;
@@ -508,7 +513,10 @@ export const OAuthCallbackPage = () => {
         to: returnUrl,
         params: {
           projectId
-        }
+        },
+        search: returnUrl.includes("integrations")
+          ? { selectedTab: getIntegrationsTab() }
+          : undefined
       });
       return null;
     }
@@ -580,7 +588,10 @@ export const OAuthCallbackPage = () => {
         to: returnUrl,
         params: {
           projectId
-        }
+        },
+        search: returnUrl.includes("integrations")
+          ? { selectedTab: getIntegrationsTab() }
+          : undefined
       });
     }
   };
@@ -599,7 +610,10 @@ export const OAuthCallbackPage = () => {
         to: formData.returnUrl,
         params: {
           projectId: formData.projectId
-        }
+        },
+        search: formData.returnUrl.includes("integrations")
+          ? { selectedTab: getIntegrationsTab() }
+          : undefined
       });
       return;
     }

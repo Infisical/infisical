@@ -9,12 +9,14 @@ export type TInitiateGitHubManifestDTO = {
   githubOrg?: string;
   githubHost?: string;
   installState: string;
+  projectId?: string;
   orgPermission: OrgServiceActor;
 };
 
 export type TGitHubManifestStatePayload = {
   jti: string;
   orgId: string;
+  projectId: string | null;
   actorId: string;
   actorType: string;
   authMethod: string | null;
@@ -32,6 +34,7 @@ export type THandleManifestCallbackDTO = {
 };
 
 export type TListGitHubAppsDTO = {
+  projectId?: string;
   orgPermission: OrgServiceActor;
 };
 
@@ -71,6 +74,7 @@ export type TGitHubAppManifestResponse = {
 export const SanitizedGitHubAppSchema = z.object({
   id: z.string().uuid().nullable(),
   orgId: z.string().uuid(),
+  projectId: z.string().nullable(),
   name: z.string(),
   appId: z.string(),
   slug: z.string(),

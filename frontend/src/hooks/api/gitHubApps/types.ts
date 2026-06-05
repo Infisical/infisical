@@ -1,6 +1,7 @@
 export type TGitHubApp = {
   id: string | null;
   orgId: string;
+  projectId: string | null;
   name: string;
   appId: string;
   slug: string;

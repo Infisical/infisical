@@ -112,7 +112,8 @@ export const AppConnectionRow = ({
     : null;
 
   const { data: gitHubApps } = useListGitHubApps(
-    isGitHubAppConnection ? currentOrg?.id : undefined
+    isGitHubAppConnection ? currentOrg?.id : undefined,
+    appConnection.projectId
   );
 
   const linkedGitHubApp = isGitHubAppConnection

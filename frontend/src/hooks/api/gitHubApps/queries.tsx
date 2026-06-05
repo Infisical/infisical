@@ -6,11 +6,14 @@ import { TGitHubApp, TGitHubAppInstallation } from "./types";
 
 export const gitHubAppKeys = {
   all: ["github-apps"] as const,
-  list: (orgId?: string) => [...gitHubAppKeys.all, "list", orgId] as const
+  list: (orgId?: string, projectId?: string | null) =>
+    [...gitHubAppKeys.all, "list", orgId, projectId ?? null] as const
 };
 
-const fetchGitHubApps = async () => {
-  const { data } = await apiRequest.get<{ gitHubApps: TGitHubApp[] }>("/api/v1/github-apps");
+const fetchGitHubApps = async (projectId?: string) => {
+  const { data } = await apiRequest.get<{ gitHubApps: TGitHubApp[] }>("/api/v1/github-apps", {
+    params: projectId ? { projectId } : undefined
+  });
   return data.gitHubApps;
 };
 
@@ -29,10 +32,10 @@ export const resolveGitHubAppInstallations = async (params: {
   return data;
 };
 
-export const useListGitHubApps = (orgId?: string) =>
+export const useListGitHubApps = (orgId?: string, projectId?: string | null) =>
   useQuery({
-    queryKey: gitHubAppKeys.list(orgId),
-    queryFn: fetchGitHubApps,
+    queryKey: gitHubAppKeys.list(orgId, projectId),
+    queryFn: () => fetchGitHubApps(projectId ?? undefined),
     enabled: Boolean(orgId),
     retry: false
   });

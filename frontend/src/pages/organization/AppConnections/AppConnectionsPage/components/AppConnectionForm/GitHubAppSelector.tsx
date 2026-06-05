@@ -37,10 +37,9 @@ type Props = {
   onChange: (app: TGitHubApp | null) => void;
   host?: string;
   instanceType?: "cloud" | "server";
-  // Kicks off the GitHub App manifest creation flow on the parent form (redirects to GitHub).
-  // Returns false when the parent form is invalid so we can return to the list view.
   onCreateApp: (params: { name: string; githubOrg: string }) => Promise<boolean> | void;
   isCreating?: boolean;
+  projectId?: string | null;
 };
 
 export const GitHubAppSelector = ({
@@ -51,7 +50,8 @@ export const GitHubAppSelector = ({
   host,
   instanceType,
   onCreateApp,
-  isCreating
+  isCreating,
+  projectId
 }: Props) => {
   const [mode, setMode] = useState<"list" | "create">("list");
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
@@ -77,6 +77,8 @@ export const GitHubAppSelector = ({
 
   const sharedApp = apps.find((app) => app.id === null) ?? null;
   const customApps = apps.filter((app) => app.id !== null);
+  const projectApps = customApps.filter((app) => app.projectId !== null);
+  const orgApps = customApps.filter((app) => app.projectId === null);
 
   const resetCreate = () => {
     switchMode("list");
@@ -116,7 +118,7 @@ export const GitHubAppSelector = ({
     }
   };
 
-  const renderCustomAppRow = (app: TGitHubApp) => {
+  const renderCustomAppRow = (app: TGitHubApp, canDelete: boolean) => {
     const isInUse = app.connectionCount > 0;
 
     if (deleteTargetId === app.id) {
@@ -191,7 +193,7 @@ export const GitHubAppSelector = ({
           >
             <FontAwesomeIcon icon={faArrowUpRightFromSquare} className="text-xs" />
           </button>
-          {isInUse ? (
+          {isInUse || !canDelete ? (
             <Tooltip>
               <TooltipTrigger asChild>
                 {/* Native disabled buttons don't fire pointer events, so the tooltip
@@ -208,8 +210,14 @@ export const GitHubAppSelector = ({
                 </span>
               </TooltipTrigger>
               <TooltipContent>
-                Remove the connection{app.connectionCount === 1 ? "" : "s"} before deleting this
-                app.
+                {canDelete ? (
+                  <>
+                    Remove the connection{app.connectionCount === 1 ? "" : "s"} before deleting this
+                    app.
+                  </>
+                ) : (
+                  "Organization apps can only be deleted from the organization's App Connections page."
+                )}
               </TooltipContent>
             </Tooltip>
           ) : (
@@ -351,29 +359,45 @@ export const GitHubAppSelector = ({
               <CommandGroup
                 heading={
                   <span className="flex items-center gap-2">
-                    CUSTOM APPS
-                    {customApps.length > 0 && (
+                    {projectId ? "PROJECT APPS" : "CUSTOM APPS"}
+                    {(projectId ? projectApps : customApps).length > 0 && (
                       <span className="rounded-full bg-mineshaft-600 px-1.5 text-[10px] text-mineshaft-200">
-                        {customApps.length}
+                        {(projectId ? projectApps : customApps).length}
                       </span>
                     )}
                   </span>
                 }
               >
-                {customApps.length === 0 && !isLoading ? (
+                {(projectId ? projectApps : customApps).length === 0 && !isLoading ? (
                   <div className="flex flex-col items-center gap-2 px-4 py-6 text-center">
                     <div className="flex h-12 w-12 items-center justify-center rounded-md bg-mineshaft-600 text-xl text-mineshaft-300">
                       <FontAwesomeIcon icon={faGithub} />
                     </div>
-                    <p className="text-sm font-medium text-mineshaft-100">No custom apps yet</p>
+                    <p className="text-sm font-medium text-mineshaft-100">
+                      No {projectId ? "project" : "custom"} apps yet
+                    </p>
                     <p className="max-w-[260px] text-xs leading-relaxed text-mineshaft-400">
                       Create a dedicated GitHub App for tighter, per-team permission scoping.
                     </p>
                   </div>
                 ) : (
-                  customApps.map((app) => renderCustomAppRow(app))
+                  (projectId ? projectApps : customApps).map((app) => renderCustomAppRow(app, true))
                 )}
               </CommandGroup>
+              {Boolean(projectId) && orgApps.length > 0 && (
+                <CommandGroup
+                  heading={
+                    <span className="flex items-center gap-2">
+                      ORGANIZATION APPS
+                      <span className="rounded-full bg-mineshaft-600 px-1.5 text-[10px] text-mineshaft-200">
+                        {orgApps.length}
+                      </span>
+                    </span>
+                  }
+                >
+                  {orgApps.map((app) => renderCustomAppRow(app, false))}
+                </CommandGroup>
+              )}
             </CommandList>
           </Command>
           <button

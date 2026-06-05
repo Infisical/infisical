@@ -33,6 +33,8 @@ export const gitHubAppDALFactory = (db: TDbClient) => {
 
   // Returns connection counts per GitHub App for the org, keyed by app id. The null key counts
   // GitHub App method connections with no link row, i.e. those using the instance-default app.
+  // Counts are org-wide: org apps are usable from any project, so an app's usage (and its delete
+  // protection) spans every scope in the org.
   const countConnectionsPerApp = async (orgId: string, tx?: Knex) => {
     const linkedRows = (await (tx || db.replicaNode())(TableName.GitHubAppConnection)
       .join(

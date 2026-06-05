@@ -104,6 +104,10 @@ Infisical supports three methods for connecting to GitHub.
                 - **Shared app** — the instance-default GitHub App configured by your Infisical admin.
                 - **Org-managed app** — a GitHub App registered under your GitHub organization. Select an existing one from the list, or click **Create new GitHub App** to register a new app directly from Infisical via GitHub's app manifest flow. The new app will be automatically configured with the correct permissions and callback URLs.
 
+                <Note>
+                    GitHub Apps are scoped to where they were created: apps created from the organization's App Connections page are available to organization-level connections and to every project, while apps created from a project's App Connections page are only available within that project. The shared instance-default app is available in both scopes.
+                </Note>
+
                 You may optionally enable **GitHub Enterprise** to configure enterprise-specific options:
                 - **Instance Type:** Enterprise Cloud or Enterprise Server
                 - **Instance Hostname:** The hostname of your GitHub Enterprise instance (e.g. `github.mycompany.com`)

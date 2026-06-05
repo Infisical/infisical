@@ -86,28 +86,64 @@ export const gitHubAppServiceFactory = ({
   auditLogService,
   userDAL
 }: TGitHubAppServiceFactoryDep) => {
-  const listGitHubApps = async ({ orgPermission }: TListGitHubAppsDTO): Promise<TSanitizedGitHubApp[]> => {
-    const { permission } = await permissionService.getOrgPermission({
-      actor: orgPermission.type,
-      actorId: orgPermission.id,
-      orgId: orgPermission.orgId,
-      actorAuthMethod: orgPermission.authMethod,
-      actorOrgId: orgPermission.orgId,
-      scope: OrganizationActionScope.Any
+  const checkAppConnectionPermission = async ({
+    actor,
+    projectId,
+    orgAction,
+    projectAction,
+    orgScope
+  }: {
+    actor: { type: ActorType; id: string; orgId: string; authMethod: ActorAuthMethod };
+    projectId: string | null | undefined;
+    orgAction: OrgPermissionAppConnectionActions;
+    projectAction: ProjectPermissionAppConnectionActions;
+    orgScope: OrganizationActionScope;
+  }) => {
+    if (projectId) {
+      const { permission } = await permissionService.getProjectPermission({
+        actor: actor.type,
+        actorId: actor.id,
+        projectId,
+        actorAuthMethod: actor.authMethod,
+        actorOrgId: actor.orgId,
+        actionProjectType: ActionProjectType.Any
+      });
+
+      ForbiddenError.from(permission).throwUnlessCan(projectAction, ProjectPermissionSub.AppConnections);
+    } else {
+      const { permission } = await permissionService.getOrgPermission({
+        actor: actor.type,
+        actorId: actor.id,
+        orgId: actor.orgId,
+        actorAuthMethod: actor.authMethod,
+        actorOrgId: actor.orgId,
+        scope: orgScope
+      });
+
+      ForbiddenError.from(permission).throwUnlessCan(orgAction, OrgPermissionSubjects.AppConnections);
+    }
+  };
+
+  const listGitHubApps = async ({ orgPermission, projectId }: TListGitHubAppsDTO): Promise<TSanitizedGitHubApp[]> => {
+    await checkAppConnectionPermission({
+      actor: orgPermission,
+      projectId,
+      orgAction: OrgPermissionAppConnectionActions.Read,
+      projectAction: ProjectPermissionAppConnectionActions.Read,
+      orgScope: OrganizationActionScope.Any
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionAppConnectionActions.Read,
-      OrgPermissionSubjects.AppConnections
-    );
-
-    const apps = await gitHubAppDAL.find({ orgId: orgPermission.orgId });
+    // Org apps are visible from project scope too, but not the other way around.
+    const orgApps = await gitHubAppDAL.find({ orgId: orgPermission.orgId, projectId: null });
+    const projectApps = projectId ? await gitHubAppDAL.find({ orgId: orgPermission.orgId, projectId }) : [];
+    const apps = [...orgApps, ...projectApps];
 
     const countByAppId = await gitHubAppDAL.countConnectionsPerApp(orgPermission.orgId);
 
     const dbApps: TSanitizedGitHubApp[] = apps.map((app) => ({
       id: app.id,
       orgId: app.orgId,
+      projectId: app.projectId ?? null,
       name: app.name,
       appId: app.appId,
       slug: app.slug,
@@ -129,6 +165,7 @@ export const gitHubAppServiceFactory = ({
         ? {
             id: null,
             orgId: orgPermission.orgId,
+            projectId: null,
             name: INF_APP_CONNECTION_GITHUB_APP_SLUG,
             appId: INF_APP_CONNECTION_GITHUB_APP_ID,
             slug: INF_APP_CONNECTION_GITHUB_APP_SLUG,
@@ -200,19 +237,18 @@ export const gitHubAppServiceFactory = ({
   };
 
   const deleteGitHubApp = async ({ id, orgPermission }: TDeleteGitHubAppDTO): Promise<TSanitizedGitHubApp> => {
-    const { permission } = await permissionService.getOrgPermission({
-      actor: orgPermission.type,
-      actorId: orgPermission.id,
-      orgId: orgPermission.orgId,
-      actorAuthMethod: orgPermission.authMethod,
-      actorOrgId: orgPermission.orgId,
-      scope: OrganizationActionScope.ParentOrganization
-    });
+    const app = await gitHubAppDAL.findOne({ id, orgId: orgPermission.orgId });
+    if (!app) {
+      throw new NotFoundError({ message: `GitHub App with id ${id} not found in this organization.` });
+    }
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionAppConnectionActions.Delete,
-      OrgPermissionSubjects.AppConnections
-    );
+    await checkAppConnectionPermission({
+      actor: orgPermission,
+      projectId: app.projectId,
+      orgAction: OrgPermissionAppConnectionActions.Delete,
+      projectAction: ProjectPermissionAppConnectionActions.Delete,
+      orgScope: OrganizationActionScope.ParentOrganization
+    });
 
     // Resolve credentials up front — once the row is deleted the private key is gone and we can no
     // longer sign the app JWT needed to uninstall the app's installations on GitHub.
@@ -247,6 +283,7 @@ export const gitHubAppServiceFactory = ({
       const result: TSanitizedGitHubApp = {
         id: existing.id,
         orgId: existing.orgId,
+        projectId: existing.projectId ?? null,
         name: existing.name,
         appId: existing.appId,
         slug: existing.slug,
@@ -291,28 +328,27 @@ export const gitHubAppServiceFactory = ({
     githubOrg,
     githubHost,
     installState,
+    projectId,
     orgPermission
   }: TInitiateGitHubManifestDTO) => {
-    const { permission } = await permissionService.getOrgPermission({
-      actor: orgPermission.type,
-      actorId: orgPermission.id,
-      orgId: orgPermission.orgId,
-      actorAuthMethod: orgPermission.authMethod,
-      actorOrgId: orgPermission.orgId,
-      scope: OrganizationActionScope.ParentOrganization
+    await checkAppConnectionPermission({
+      actor: orgPermission,
+      projectId,
+      orgAction: OrgPermissionAppConnectionActions.Create,
+      projectAction: ProjectPermissionAppConnectionActions.Create,
+      orgScope: OrganizationActionScope.ParentOrganization
     });
-
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionAppConnectionActions.Create,
-      OrgPermissionSubjects.AppConnections
-    );
 
     assertPlatformGitHubHostAllowed(githubHost);
 
-    const existing = await gitHubAppDAL.findOne({ orgId: orgPermission.orgId, name });
+    const existing = await gitHubAppDAL.findOne({
+      orgId: orgPermission.orgId,
+      projectId: projectId ?? null,
+      name
+    });
     if (existing) {
       throw new BadRequestError({
-        message: `A GitHub App with name "${name}" already exists in this organization.`
+        message: `A GitHub App with name "${name}" already exists in this ${projectId ? "project" : "organization"}.`
       });
     }
 
@@ -328,6 +364,7 @@ export const gitHubAppServiceFactory = ({
       {
         jti: crypto.nativeCrypto.randomUUID(),
         orgId: orgPermission.orgId,
+        projectId: projectId ?? null,
         actorId: orgPermission.id,
         actorType: orgPermission.type,
         authMethod: orgPermission.authMethod,
@@ -384,8 +421,20 @@ export const gitHubAppServiceFactory = ({
       throw new BadRequestError({ message: "Invalid or expired GitHub manifest state. Please try again." });
     }
 
-    const { jti, exp, orgId, actorId, actorType, authMethod, name, instanceType, githubOrg, githubHost, installState } =
-      statePayload;
+    const {
+      jti,
+      exp,
+      orgId,
+      projectId = null,
+      actorId,
+      actorType,
+      authMethod,
+      name,
+      instanceType,
+      githubOrg,
+      githubHost,
+      installState
+    } = statePayload;
 
     if (!jti) {
       throw new BadRequestError({ message: "Invalid or expired GitHub manifest state. Please try again." });
@@ -402,34 +451,35 @@ export const gitHubAppServiceFactory = ({
     let created: Awaited<ReturnType<typeof gitHubAppDAL.create>>;
     let codeExchanged = false;
     try {
-      const { permission } = await permissionService.getOrgPermission({
-        actor: actorType as ActorType,
-        actorId,
-        orgId,
-        actorAuthMethod: authMethod as ActorAuthMethod,
-        actorOrgId: orgId,
-        scope: OrganizationActionScope.ParentOrganization
+      await checkAppConnectionPermission({
+        actor: {
+          type: actorType as ActorType,
+          id: actorId,
+          orgId,
+          authMethod: authMethod as ActorAuthMethod
+        },
+        projectId,
+        orgAction: OrgPermissionAppConnectionActions.Create,
+        projectAction: ProjectPermissionAppConnectionActions.Create,
+        orgScope: OrganizationActionScope.ParentOrganization
       });
 
-      ForbiddenError.from(permission).throwUnlessCan(
-        OrgPermissionAppConnectionActions.Create,
-        OrgPermissionSubjects.AppConnections
-      );
-
-      const existingByName = await gitHubAppDAL.findOne({ orgId, name });
+      const existingByName = await gitHubAppDAL.findOne({ orgId, projectId, name });
       if (existingByName) {
         throw new BadRequestError({
-          message: `A GitHub App with name "${name}" already exists in this organization.`
+          message: `A GitHub App with name "${name}" already exists in this ${projectId ? "project" : "organization"}.`
         });
       }
 
       assertPlatformGitHubHostAllowed(githubHost);
 
-      const nameLockKey = KeyStorePrefixes.GitHubManifestNameLock(orgId, name);
+      const nameLockKey = KeyStorePrefixes.GitHubManifestNameLock(orgId, projectId, name);
       const nameLockClaimed = await keyStore.setItemWithExpiryNX(nameLockKey, 60, "1");
       if (!nameLockClaimed) {
         throw new BadRequestError({
-          message: `A GitHub App with name "${name}" is already being registered in this organization.`
+          message: `A GitHub App with name "${name}" is already being registered in this ${
+            projectId ? "project" : "organization"
+          }.`
         });
       }
 
@@ -458,16 +508,16 @@ export const gitHubAppServiceFactory = ({
         }
         codeExchanged = true;
 
-        const { encryptor } = await kmsService.createCipherPairWithDataKey({
-          type: KmsDataKey.Organization,
-          orgId
-        });
+        const { encryptor } = await kmsService.createCipherPairWithDataKey(
+          projectId ? { type: KmsDataKey.SecretManager, projectId } : { type: KmsDataKey.Organization, orgId }
+        );
 
         const owner = manifestResponse.owner?.login ?? (githubOrg || null);
 
         try {
           created = await gitHubAppDAL.create({
             orgId,
+            projectId,
             name,
             appId: String(manifestResponse.id),
             clientId: manifestResponse.client_id,
@@ -488,7 +538,9 @@ export const gitHubAppServiceFactory = ({
             (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation
           ) {
             throw new BadRequestError({
-              message: `A GitHub App with name "${name}" already exists in this organization. Note: a duplicate app was still created on GitHub (${manifestResponse.html_url}) — please delete it from your GitHub app settings.`
+              message: `A GitHub App with name "${name}" already exists in this ${
+                projectId ? "project" : "organization"
+              }. Note: a duplicate app was still created on GitHub (${manifestResponse.html_url}) — please delete it from your GitHub app settings.`
             });
           }
           throw err;
@@ -509,6 +561,7 @@ export const gitHubAppServiceFactory = ({
     await auditLogService.createAuditLog({
       ...auditLogInfo,
       orgId,
+      ...(projectId ? { projectId } : {}),
       actor: actorUser
         ? {
             type: ActorType.USER,
@@ -532,7 +585,8 @@ export const gitHubAppServiceFactory = ({
           slug: created.slug,
           owner: created.owner,
           host: created.host,
-          instanceType
+          instanceType,
+          projectId
         }
       }
     });
@@ -625,7 +679,7 @@ export const gitHubAppServiceFactory = ({
       host: appHost,
       instanceType: appInstanceType
     } = await resolveGitHubAppCredentials(
-      { gitHubAppId: gitHubAppId ?? null, orgId: orgPermission.orgId },
+      { gitHubAppId: gitHubAppId ?? null, orgId: orgPermission.orgId, projectId: projectId ?? null },
       {
         gitHubAppDAL,
         kmsService

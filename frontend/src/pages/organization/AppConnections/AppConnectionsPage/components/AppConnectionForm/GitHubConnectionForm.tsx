@@ -125,7 +125,8 @@ export const GitHubConnectionForm = ({ appConnection, projectId, onSubmit }: Pro
   } = useGetAppConnectionOption(AppConnection.GitHub);
 
   const { data: gitHubApps = [], isPending: isGitHubAppsLoading } = useListGitHubApps(
-    currentOrg?.id
+    currentOrg?.id,
+    projectId
   );
 
   const form = useForm<FormData>({
@@ -273,7 +274,8 @@ export const GitHubConnectionForm = ({ appConnection, projectId, onSubmit }: Pro
         instanceType: formData.credentials?.instanceType ?? "cloud",
         githubOrg: githubOrg || undefined,
         githubHost: formData.credentials?.host || undefined,
-        installState
+        installState,
+        projectId: projectId || undefined
       });
 
       const formEl = document.createElement("form");
@@ -521,7 +523,9 @@ export const GitHubConnectionForm = ({ appConnection, projectId, onSubmit }: Pro
         {selectedMethod === GitHubConnectionMethod.App && !isUpdate && (
           <FormControl
             label="GitHub App"
-            tooltipText="Reuse an existing GitHub App in your organization or create a new one. Apps can be shared across multiple connections."
+            tooltipText={`Reuse an existing GitHub App from ${
+              projectId ? "this project or your organization" : "your organization"
+            }, or create a new one. Apps can be shared across multiple connections.`}
           >
             <GitHubAppSelector
               apps={gitHubApps}
@@ -532,6 +536,7 @@ export const GitHubConnectionForm = ({ appConnection, projectId, onSubmit }: Pro
               instanceType={instanceType}
               onCreateApp={handleCreateApp}
               isCreating={isRedirecting}
+              projectId={projectId}
             />
           </FormControl>
         )}

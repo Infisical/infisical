@@ -20,7 +20,8 @@ export const registerGitHubAppRouter = async (server: FastifyZodProvider) => {
         instanceType: z.enum(["cloud", "server"]).default("cloud"),
         githubOrg: z.string().trim().optional(),
         githubHost: z.string().trim().optional(),
-        installState: z.string().trim().min(1)
+        installState: z.string().trim().min(1),
+        projectId: z.string().trim().optional()
       }),
       response: {
         200: z.object({
@@ -37,7 +38,8 @@ export const registerGitHubAppRouter = async (server: FastifyZodProvider) => {
         instanceType: req.body.instanceType,
         githubOrg: req.body.githubOrg,
         githubHost: req.body.githubHost,
-        installState: req.body.installState
+        installState: req.body.installState,
+        projectId: req.body.projectId
       });
 
       return result;
@@ -79,6 +81,9 @@ export const registerGitHubAppRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      querystring: z.object({
+        projectId: z.string().trim().optional()
+      }),
       response: {
         200: z.object({
           gitHubApps: SanitizedGitHubAppSchema.array()
@@ -87,7 +92,8 @@ export const registerGitHubAppRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const gitHubApps = await server.services.gitHubApp.listGitHubApps({
-        orgPermission: req.permission
+        orgPermission: req.permission,
+        projectId: req.query.projectId
       });
 
       return { gitHubApps };
@@ -164,13 +170,15 @@ export const registerGitHubAppRouter = async (server: FastifyZodProvider) => {
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
+        ...(gitHubApp.projectId ? { projectId: gitHubApp.projectId } : {}),
         event: {
           type: EventType.DELETE_GITHUB_APP,
           metadata: {
             gitHubAppId: req.params.id,
             name: gitHubApp.name,
             appId: gitHubApp.appId,
-            slug: gitHubApp.slug
+            slug: gitHubApp.slug,
+            projectId: gitHubApp.projectId
           }
         }
       });

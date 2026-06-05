@@ -21,6 +21,7 @@ export const GithubAppsSchema = z.object({
   owner: z.string().nullable().optional(),
   host: z.string().nullable().optional(),
   instanceType: z.string().default("cloud"),
+  projectId: z.string().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date()
 });

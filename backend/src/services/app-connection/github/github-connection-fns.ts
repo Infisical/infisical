@@ -42,25 +42,30 @@ type TResolvedGitHubAppCredentials = {
 export const resolveGitHubAppCredentials = async (
   {
     gitHubAppId,
-    orgId
+    orgId,
+    projectId
   }: {
     gitHubAppId?: string | null;
     orgId: string;
+    projectId?: string | null;
   },
   { gitHubAppDAL, kmsService }: TGitHubAppCredentialResolverDeps
 ): Promise<TResolvedGitHubAppCredentials> => {
   if (gitHubAppId) {
     const app = await gitHubAppDAL.findOne({ id: gitHubAppId, orgId });
-    if (!app) {
+    if (!app || (projectId !== undefined && app.projectId && app.projectId !== projectId)) {
       throw new BadRequestError({
-        message: `GitHub App with id ${gitHubAppId} not found in this organization.`
+        message: `GitHub App with id ${gitHubAppId} not found in this ${projectId ? "project" : "organization"}.`
       });
     }
 
-    const { decryptor } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.Organization,
-      orgId
-    });
+    // Project-scoped apps are encrypted with the project's data key, org-scoped apps with the
+    // org's, mirroring how app connection credentials are encrypted per scope.
+    const { decryptor } = await kmsService.createCipherPairWithDataKey(
+      app.projectId
+        ? { type: KmsDataKey.SecretManager, projectId: app.projectId }
+        : { type: KmsDataKey.Organization, orgId }
+    );
 
     return {
       appId: app.appId,
@@ -345,7 +350,11 @@ export const getGitHubAppAuthToken = async (
     host: appHost,
     instanceType: appInstanceType
   } = await resolveGitHubAppCredentials(
-    { gitHubAppId: appConnection.credentials.gitHubAppId, orgId: appConnection.orgId },
+    {
+      gitHubAppId: appConnection.credentials.gitHubAppId,
+      orgId: appConnection.orgId,
+      projectId: appConnection.projectId ?? null
+    },
     deps
   );
 
@@ -734,7 +743,7 @@ export const validateGitHubConnectionCredentials = async (
   let resolvedAppCredentials: TResolvedGitHubAppCredentials | undefined;
   if (method === GitHubConnectionMethod.App) {
     resolvedAppCredentials = await resolveGitHubAppCredentials(
-      { gitHubAppId: credentials.gitHubAppId, orgId: config.orgId },
+      { gitHubAppId: credentials.gitHubAppId, orgId: config.orgId, projectId: config.projectId ?? null },
       deps
     );
 
