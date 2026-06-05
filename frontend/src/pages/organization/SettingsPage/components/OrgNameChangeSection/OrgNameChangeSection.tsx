@@ -185,7 +185,7 @@ export const OrgNameChangeSection = (): JSX.Element => {
                 />
               )}
             </FieldGroup>
-            <div className="mt-6 flex justify-end">
+            <div className="mt-6 flex">
               <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Settings}>
                 {(isAllowed) => (
                   <Button variant="org" type="submit" isPending={isPending} isDisabled={!isAllowed}>

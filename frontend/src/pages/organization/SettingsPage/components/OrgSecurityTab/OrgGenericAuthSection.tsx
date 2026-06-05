@@ -117,7 +117,7 @@ export const OrgGenericAuthSection = () => {
                   value={currentOrg.selectedMfaMethod ?? MfaMethod.EMAIL}
                   onValueChange={(value) => handleUpdateSelectedMfa(value as MfaMethod)}
                 >
-                  <SelectTrigger id="org-mfa-method" className="w-full">
+                  <SelectTrigger id="org-mfa-method" className="w-full max-w-sm">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent position="popper">
