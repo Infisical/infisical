@@ -1,3 +1,5 @@
+import { CertKeyAlgorithm } from "@app/hooks/api/certificates/enums";
+
 export type TKmipServerAuthMethodView =
   | {
       method: "aws";
@@ -26,6 +28,10 @@ export type TKmipServer = {
   orgId: string;
   name: string;
   heartbeat: string | null;
+  hostnamesOrIps: string | null;
+  ttl: string | null;
+  commonName: string | null;
+  keyAlgorithm: string | null;
 };
 
 export type TKmipServerWithAuthMethod = TKmipServer & {
@@ -39,6 +45,10 @@ export type TDeleteKmipServerDTO = {
 
 export type TCreateKmipServerDTO = {
   name: string;
+  hostnamesOrIps: string;
+  ttl?: string;
+  commonName?: string;
+  keyAlgorithm?: CertKeyAlgorithm;
   authMethod:
     | {
         method: "aws";
@@ -51,6 +61,10 @@ export type TCreateKmipServerDTO = {
 
 export type TUpdateKmipServerDTO = {
   kmipServerId: string;
+  hostnamesOrIps?: string;
+  ttl?: string;
+  commonName?: string;
+  keyAlgorithm?: CertKeyAlgorithm;
   authMethod?:
     | {
         method: "aws";

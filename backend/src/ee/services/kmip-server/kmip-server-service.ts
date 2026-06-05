@@ -42,10 +42,18 @@ export const kmipServerServiceFactory = ({
 
   const createKmipServer = async ({
     name,
+    hostnamesOrIps,
+    ttl,
+    commonName,
+    keyAlgorithm,
     authMethod,
     actor
   }: {
     name: string;
+    hostnamesOrIps: string;
+    ttl?: string;
+    commonName?: string;
+    keyAlgorithm?: string;
     authMethod:
       | { method: "aws"; config: { stsEndpoint: string; allowedPrincipalArns: string; allowedAccountIds: string } }
       | { method: "token" };
@@ -55,7 +63,10 @@ export const kmipServerServiceFactory = ({
 
     try {
       return await kmipServerDAL.transaction(async (tx) => {
-        const created = await kmipServerDAL.create({ name, orgId: actor.orgId }, tx);
+        const created = await kmipServerDAL.create(
+          { name, orgId: actor.orgId, hostnamesOrIps, ttl, commonName, keyAlgorithm },
+          tx
+        );
         await resourceAuthMethodService.initAtCreate({ resource: { type: "kmip", id: created.id }, authMethod }, tx);
         return created;
       });
@@ -65,6 +76,28 @@ export const kmipServerServiceFactory = ({
       }
       throw err;
     }
+  };
+
+  const updateKmipServer = async ({
+    kmipServerId,
+    actor,
+    ...fields
+  }: {
+    kmipServerId: string;
+    hostnamesOrIps?: string;
+    ttl?: string;
+    commonName?: string;
+    keyAlgorithm?: string;
+    actor: TActor;
+  }) => {
+    await $checkPermission(actor, OrgPermissionKmipServerActions.EditKmipServers);
+
+    const kmipServer = await kmipServerDAL.findOne({ id: kmipServerId, orgId: actor.orgId });
+    if (!kmipServer) {
+      throw new NotFoundError({ message: `KMIP server ${kmipServerId} not found` });
+    }
+
+    return kmipServerDAL.updateById(kmipServerId, fields);
   };
 
   const getOrgKmipServer = async ({ kmipServerId, orgId }: { kmipServerId: string; orgId: string }) => {
@@ -93,6 +126,7 @@ export const kmipServerServiceFactory = ({
 
   return {
     createKmipServer,
+    updateKmipServer,
     getOrgKmipServer,
     listKmipServers,
     deleteKmipServer

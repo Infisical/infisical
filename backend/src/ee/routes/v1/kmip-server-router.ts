@@ -4,23 +4,34 @@ import { KmipServersSchema } from "@app/db/schemas";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { validateAccountIds, validatePrincipalArns } from "@app/ee/services/resource-auth-method/aws-auth-validators";
 import { ResourceAuthMethodType } from "@app/ee/services/resource-auth-method/resource-auth-method-fns";
-import { UnauthorizedError } from "@app/lib/errors";
+import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
+import { ms } from "@app/lib/ms";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
+import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
+import { validateAltNamesField } from "@app/services/certificate-authority/certificate-authority-validators";
 
 const loginRateLimit = { windowMs: 60 * 1000, max: 10 };
 
 const SanitizedKmipServerSchema = KmipServersSchema.pick({
   id: true,
   name: true,
+  hostnamesOrIps: true,
+  ttl: true,
+  commonName: true,
+  keyAlgorithm: true,
   createdAt: true,
   updatedAt: true,
   heartbeat: true
 }).extend({
   canRevoke: z.boolean()
 });
+
+// Cert config lives on the server entity (set in the UI). The daemon's /connect call reads it,
+// rather than passing it on every launch. ttl/keyAlgorithm get sensible defaults.
+const ttlField = z.string().refine((val) => ms(val) > 0, "TTL must be a positive number");
 
 const AwsAuthMethodConfigSchema = z.object({
   id: z.string().uuid(),
@@ -76,6 +87,10 @@ export const registerKmipServerRouter = async (server: FastifyZodProvider) => {
       description: "Create a new KMIP server with an initial auth method.",
       body: z.object({
         name: slugSchema({ min: 1, max: 32, field: "name" }),
+        hostnamesOrIps: validateAltNamesField,
+        ttl: ttlField.optional().default("1y"),
+        commonName: z.string().trim().min(1).optional(),
+        keyAlgorithm: z.nativeEnum(CertKeyAlgorithm).optional().default(CertKeyAlgorithm.RSA_2048),
         authMethod: SettableAuthMethodInputSchema
       }),
       response: {
@@ -84,7 +99,7 @@ export const registerKmipServerRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { authMethod: authMethodInput, name } = req.body;
+      const { authMethod: authMethodInput, name, hostnamesOrIps, ttl, commonName, keyAlgorithm } = req.body;
       const authMethodArg =
         authMethodInput.method === ResourceAuthMethodType.Aws
           ? {
@@ -99,6 +114,10 @@ export const registerKmipServerRouter = async (server: FastifyZodProvider) => {
 
       const kmipServer = await server.services.kmipServer.createKmipServer({
         name,
+        hostnamesOrIps,
+        ttl,
+        commonName,
+        keyAlgorithm,
         authMethod: authMethodArg,
         actor: {
           type: req.permission.type,
@@ -179,6 +198,10 @@ export const registerKmipServerRouter = async (server: FastifyZodProvider) => {
     schema: {
       params: z.object({ kmipServerId: z.string().uuid() }),
       body: z.object({
+        hostnamesOrIps: validateAltNamesField.optional(),
+        ttl: ttlField.optional(),
+        commonName: z.string().trim().min(1).optional(),
+        keyAlgorithm: z.nativeEnum(CertKeyAlgorithm).optional(),
         authMethod: SettableAuthMethodInputSchema.optional()
       }),
       response: {
@@ -187,10 +210,23 @@ export const registerKmipServerRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const kmipServer = await server.services.kmipServer.getOrgKmipServer({
-        kmipServerId: req.params.kmipServerId,
-        orgId: req.permission.orgId
-      });
+      const { hostnamesOrIps, ttl, commonName, keyAlgorithm } = req.body;
+      const hasFieldUpdate =
+        hostnamesOrIps !== undefined || ttl !== undefined || commonName !== undefined || keyAlgorithm !== undefined;
+
+      const kmipServer = hasFieldUpdate
+        ? await server.services.kmipServer.updateKmipServer({
+            kmipServerId: req.params.kmipServerId,
+            hostnamesOrIps,
+            ttl,
+            commonName,
+            keyAlgorithm,
+            actor: req.permission
+          })
+        : await server.services.kmipServer.getOrgKmipServer({
+            kmipServerId: req.params.kmipServerId,
+            orgId: req.permission.orgId
+          });
 
       if (req.body.authMethod) {
         const authMethodInput = req.body.authMethod;
@@ -456,6 +492,76 @@ export const registerKmipServerRouter = async (server: FastifyZodProvider) => {
         accessToken: result.accessToken,
         kmipServerId: result.resourceId,
         tokenType: "Bearer" as const
+      };
+    }
+  });
+
+  // ─── POST /connect ────────────────────────────────────────────────────────
+  // Enrollment-based servers fetch their TLS certificate here. The cert config (SANs, TTL,
+  // common name, key algorithm) is read from the stored server entity — nothing is passed in
+  // the request body. The legacy machine-identity path uses /kmip/server-registration instead.
+  server.route({
+    method: "POST",
+    url: "/connect",
+    config: { rateLimit: writeLimit },
+    schema: {
+      response: {
+        200: z.object({
+          clientCertificateChain: z.string(),
+          certificateChain: z.string(),
+          certificate: z.string(),
+          privateKey: z.string()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.KMIP_SERVER_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const kmipServer = await server.services.kmipServer.getOrgKmipServer({
+        kmipServerId: req.permission.id,
+        orgId: req.permission.orgId
+      });
+
+      if (!kmipServer.hostnamesOrIps) {
+        throw new BadRequestError({
+          message: "KMIP server has no hostnames or IPs configured. Set them before connecting."
+        });
+      }
+
+      const resolvedCommonName = kmipServer.commonName ?? kmipServer.name;
+      const resolvedTtl = kmipServer.ttl ?? "1y";
+      const resolvedKeyAlgorithm = (kmipServer.keyAlgorithm as CertKeyAlgorithm) ?? undefined;
+
+      const configs = await server.services.kmip.registerServer({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        hostnamesOrIps: kmipServer.hostnamesOrIps,
+        ttl: resolvedTtl,
+        commonName: resolvedCommonName,
+        keyAlgorithm: resolvedKeyAlgorithm
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.REGISTER_KMIP_SERVER,
+          metadata: {
+            serverCertificateSerialNumber: configs.serverCertificateSerialNumber,
+            hostnamesOrIps: kmipServer.hostnamesOrIps,
+            commonName: resolvedCommonName,
+            keyAlgorithm: resolvedKeyAlgorithm ?? CertKeyAlgorithm.RSA_2048,
+            ttl: resolvedTtl
+          }
+        }
+      });
+
+      return {
+        clientCertificateChain: configs.clientCertificateChain,
+        certificateChain: configs.certificateChain,
+        certificate: configs.certificate,
+        privateKey: configs.privateKey
       };
     }
   });

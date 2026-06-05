@@ -40,7 +40,7 @@ export const KmipServerDeployCommandDialog = ({
   const siteURL = `${protocol}//${hostname}${portSuffix}`;
 
   const cliCommand = useMemo(() => {
-    const common = `--hostnames-or-ips=<hostnames-or-ips> --server-name=${kmipServerName} --domain=${siteURL}`;
+    const common = `--server-name=${kmipServerName} --domain=${siteURL}`;
     if (authMethod === "aws") {
       return `infisical kmip start --enroll-method=aws --kmip-server-id=${kmipServerId} ${common}`;
     }
@@ -48,7 +48,7 @@ export const KmipServerDeployCommandDialog = ({
   }, [kmipServerName, kmipServerId, enrollmentToken, authMethod, siteURL]);
 
   const systemdInstallCommand = useMemo(() => {
-    const common = `--hostnames-or-ips=<hostnames-or-ips> --server-name=${kmipServerName} --domain=${siteURL}`;
+    const common = `--server-name=${kmipServerName} --domain=${siteURL}`;
     if (authMethod === "aws") {
       return `sudo infisical kmip systemd install --enroll-method=aws --kmip-server-id=${kmipServerId} ${common}`;
     }
@@ -63,11 +63,10 @@ export const KmipServerDeployCommandDialog = ({
   };
 
   const badgeLabel = authMethod === "aws" ? "AWS Auth" : "Token Auth";
-  const baseHelperText =
+  const helperText =
     authMethod === "aws"
-      ? "The host must have AWS credentials whose principal matches your allowlist."
-      : "The enrollment token expires in 1 hour and can only be used once.";
-  const helperText = `${baseHelperText} Replace <hostnames-or-ips> with a comma-separated list of the hostnames or IPs that KMIP clients will use to reach this server.`;
+      ? "The host must have AWS credentials whose principal matches your allowlist. The certificate config (hostnames/IPs, TTL, common name, key algorithm) is read from the server's settings."
+      : "The enrollment token expires in 1 hour and can only be used once. The certificate config (hostnames/IPs, TTL, common name, key algorithm) is read from the server's settings.";
 
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>

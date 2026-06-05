@@ -62,7 +62,14 @@ A KMIP server is created as an organization-wide entity in Infisical and then en
 <Steps>
   <Step title="Create the KMIP Server in the UI">
     1. In the Infisical dashboard, open **Infisical KMS** and select **KMIP Servers**.
-    2. Click **Create KMIP Server** and enter a **name**.
+    2. Click **Create KMIP Server** and fill in:
+        - **Name** of the server.
+        - **Hostnames or IPs**: a comma-separated list of the hostnames or IPs that KMIP clients will use to reach this server (for example `kmip.example.com` or `10.0.1.50`). These become the Subject Alternative Names (SANs) of the server's TLS certificate, so they must match how clients connect.
+        - **Common Name** (optional): subject common name for the server certificate. Defaults to the server name.
+        - **Certificate TTL**: validity period of the server certificate (for example `1y`).
+        - **Key Algorithm**: key algorithm used to sign the server certificate.
+
+        This certificate configuration is stored on the server entity. The CLI reads it on start, so you do not pass it on the command line. You can change it later from the server's detail page (edit the **Certificate Configuration** card) and restart the server to apply it.
     3. (Optional) Open the new server's detail page and click the edit icon next to **Authentication** to switch the auth method. Two methods are supported:
         - **Token** (default): a one-time enrollment token (1h expiry) bootstraps the server.
         - **AWS**: the server authenticates by signing an `sts:GetCallerIdentity` request with whatever AWS credentials it can resolve on the host (instance role, env vars, shared profile). Configure the allowed principal ARNs and/or account IDs that match your hosts.
@@ -100,7 +107,6 @@ A KMIP server is created as an organization-wide entity in Infisical and then en
               --enroll-method=token \
               --token=<enrollment-token> \
               --server-name=<server-name> \
-              --hostnames-or-ips=<hostnames-or-ips> \
               --listen-address="0.0.0.0:5696" \
               --domain=<your-infisical-domain>
             sudo systemctl start infisical-kmip
@@ -112,7 +118,6 @@ A KMIP server is created as an organization-wide entity in Infisical and then en
               --enroll-method=token \
               --token=<enrollment-token> \
               --server-name=<server-name> \
-              --hostnames-or-ips=<hostnames-or-ips> \
               --listen-address="0.0.0.0:5696" \
               --domain=<your-infisical-domain>
             ```
@@ -129,7 +134,6 @@ A KMIP server is created as an organization-wide entity in Infisical and then en
               --enroll-method=aws \
               --kmip-server-id=<kmip-server-id> \
               --server-name=<server-name> \
-              --hostnames-or-ips=<hostnames-or-ips> \
               --listen-address="0.0.0.0:5696" \
               --domain=<your-infisical-domain>
             sudo systemctl start infisical-kmip
@@ -141,7 +145,6 @@ A KMIP server is created as an organization-wide entity in Infisical and then en
               --enroll-method=aws \
               --kmip-server-id=<kmip-server-id> \
               --server-name=<server-name> \
-              --hostnames-or-ips=<hostnames-or-ips> \
               --listen-address="0.0.0.0:5696" \
               --domain=<your-infisical-domain>
             ```
@@ -155,7 +158,7 @@ A KMIP server is created as an organization-wide entity in Infisical and then en
     </Warning>
 
     <Note>
-      Replace `<hostnames-or-ips>` with a comma-separated list of the hostnames or IPs that KMIP clients will use to reach this server (for example `kmip.example.com` or `10.0.1.50`). These become the Subject Alternative Names (SANs) of the server's TLS certificate, so they must match how clients connect.
+      The server's certificate configuration (hostnames/IPs, TTL, common name, key algorithm) is read from the server entity you configured in the UI, so the deploy command does not include it. To change the certificate, edit the **Certificate Configuration** card on the server's detail page and restart the server.
     </Note>
 
     <Note>
@@ -189,6 +192,7 @@ A KMIP server is created as an organization-wide entity in Infisical and then en
 From the KMIP server's detail page (under **Infisical KMS > KMIP Servers**):
 
 - **Show deploy command** — Generates a fresh enrollment token (token method) or re-displays the AWS start command. For token-method servers this does not disconnect a running server; the next enrollment with the new token supersedes the old one.
+- **Edit certificate configuration**: Update the hostnames/IPs, common name, TTL, or key algorithm used for the server's TLS certificate. Restart the server after saving for the new certificate to take effect.
 - **Edit authentication** — Switch between Token and AWS, or update the AWS allowlists.
 - **Options → Revoke Access** — Invalidates the server's outstanding access tokens and enrollment tokens. The server must re-enroll to reconnect.
 - **Options → Delete** — Permanently removes the KMIP server entity.
@@ -249,7 +253,7 @@ While exact configuration steps vary by application, you'll generally need to pr
 ### General Configuration Steps
 <Steps>
   <Step title="Identify Your KMIP Server Endpoint">
-    Determine the address where your KMIP server is accessible. This should match one of the hostnames or IPs you passed via `--hostnames-or-ips` when deploying the server.
+    Determine the address where your KMIP server is accessible. This should match one of the hostnames or IPs configured on the server entity in the UI.
 
     **Example endpoints:**
     - `my-kmip-server.com:5696`

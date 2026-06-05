@@ -10,7 +10,6 @@ description: "Run the Infisical KMIP server or manage its systemd service"
       --enroll-method=token \
       --token=<enrollment-token> \
       --server-name=<server-name> \
-      --hostnames-or-ips=<hostnames-or-ips> \
       --domain=<your-infisical-domain>
     ```
   </Tab>
@@ -20,7 +19,6 @@ description: "Run the Infisical KMIP server or manage its systemd service"
       --enroll-method=token \
       --token=<enrollment-token> \
       --server-name=<server-name> \
-      --hostnames-or-ips=<hostnames-or-ips> \
       --domain=<your-infisical-domain>
     sudo systemctl start infisical-kmip
     ```
@@ -32,6 +30,8 @@ description: "Run the Infisical KMIP server or manage its systemd service"
 The Infisical KMIP server provides Key Management Interoperability Protocol (KMIP) support for integration with KMIP-compatible clients. It acts as a proxy between your KMIP clients and Infisical KMS, enabling standardized key management operations.
 
 The server is created as an entity in the Infisical UI and then enrolled from the host where you run it, using either a one-time enrollment **token** or **AWS** authentication. The deploy command (including the enrollment token) can be copied from the server's detail page via **Show deploy command**.
+
+The server's certificate configuration (hostnames/IPs, TTL, common name, and key algorithm) is defined on the server entity in the UI. The CLI fetches it on start, so you do not pass it on the command line. To change the certificate, edit the configuration in the UI and restart the server.
 
 For detailed information about KMIP integration, PKI setup, and client configuration, see the [KMIP Integration Guide](/documentation/platform/kms/kmip).
 
@@ -46,7 +46,6 @@ infisical kmip start \
   --enroll-method=token \
   --token=<enrollment-token> \
   --server-name=<server-name> \
-  --hostnames-or-ips=<hostnames-or-ips> \
   --domain=<your-infisical-domain>
 ```
 
@@ -132,8 +131,10 @@ Once started, the KMIP server will:
 
   </Accordion>
 
-  <Accordion title="--certificate-ttl">
+  <Accordion title="--certificate-ttl (legacy machine-identity servers only)">
     The TTL duration for the server certificate. Default: `1y`.
+
+    This flag applies only to legacy machine-identity KMIP servers. For servers enrolled via token or AWS, the certificate TTL is configured on the server entity in the UI and read on start, so this flag is ignored.
 
     ```bash
     # Example
@@ -144,8 +145,10 @@ Once started, the KMIP server will:
 
   </Accordion>
 
-  <Accordion title="--hostnames-or-ips (required)">
+  <Accordion title="--hostnames-or-ips (legacy machine-identity servers only)">
     Comma-separated list of hostnames or IP addresses that KMIP clients will use to reach the server. These become the Subject Alternative Names (SANs) of the server's TLS certificate, so they must match how clients connect.
+
+    This flag applies only to legacy machine-identity KMIP servers. For servers enrolled via token or AWS, the hostnames/IPs are configured on the server entity in the UI and read on start, so this flag is ignored.
 
     ```bash
     # Example
@@ -167,7 +170,6 @@ sudo infisical kmip systemd install \
   --enroll-method=token \
   --token=<enrollment-token> \
   --server-name=<server-name> \
-  --hostnames-or-ips=<hostnames-or-ips> \
   --domain=<your-infisical-domain>
 sudo systemctl start infisical-kmip
 ```
@@ -189,7 +191,7 @@ For token enrollment, the single-use token is exchanged for a long-lived access 
 
 ### Flags
 
-`infisical kmip systemd install` accepts the same flags as `infisical kmip start` (documented above): `--enroll-method`, `--token`, `--kmip-server-id`, `--server-name`, `--hostnames-or-ips`, `--domain`, `--listen-address`, and `--certificate-ttl`.
+`infisical kmip systemd install` accepts the same flags as `infisical kmip start` (documented above): `--enroll-method`, `--token`, `--kmip-server-id`, `--server-name`, `--domain`, `--listen-address`, and (for legacy machine-identity servers only) `--hostnames-or-ips` and `--certificate-ttl`.
 
 ### Service Details
 

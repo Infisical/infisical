@@ -33,6 +33,7 @@ import {
 } from "@app/hooks/api/kmipServers/types";
 
 import { KmipServerAuthMethodModal } from "../KmipServerAuthMethod/KmipServerAuthMethodModal";
+import { KmipServerCertConfigModal } from "../KmipServerCertConfig/KmipServerCertConfigModal";
 
 const AuthMethodBadge = ({ method }: { method: TKmipServerAuthMethodView["method"] }) => {
   if (method === "aws") return <Badge variant="info">AWS Auth</Badge>;
@@ -49,6 +50,7 @@ export const KmipServerDetailsCard = ({
     initialState: "Copy ID to clipboard"
   });
   const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [certConfigModalOpen, setCertConfigModalOpen] = useState(false);
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
 
@@ -90,6 +92,52 @@ export const KmipServerDetailsCard = ({
               <DetailValue>{format(new Date(kmipServer.createdAt), "PPpp")}</DetailValue>
             </Detail>
           </DetailGroup>
+          {!isIdentityServer && (
+            <>
+              <Separator className="my-4" />
+              <DetailGroup>
+                <DetailGroupHeader className="flex items-center justify-between">
+                  Certificate Configuration
+                  <OrgPermissionCan
+                    I={OrgKmipServerPermissionActions.EditKmipServers}
+                    a={OrgPermissionSubjects.KmipServer}
+                  >
+                    {(isAllowed) => (
+                      <IconButton
+                        size="xs"
+                        variant="ghost-muted"
+                        aria-label="edit certificate configuration"
+                        isDisabled={!isAllowed}
+                        onClick={() => setCertConfigModalOpen(true)}
+                      >
+                        <PencilIcon />
+                      </IconButton>
+                    )}
+                  </OrgPermissionCan>
+                </DetailGroupHeader>
+                <Detail>
+                  <DetailLabel>Hostnames / IPs</DetailLabel>
+                  <DetailValue>
+                    {kmipServer.hostnamesOrIps || <span className="text-muted">&mdash;</span>}
+                  </DetailValue>
+                </Detail>
+                <Detail>
+                  <DetailLabel>Common Name</DetailLabel>
+                  <DetailValue>
+                    {kmipServer.commonName || <span className="text-muted">{kmipServer.name}</span>}
+                  </DetailValue>
+                </Detail>
+                <Detail>
+                  <DetailLabel>Certificate TTL</DetailLabel>
+                  <DetailValue>{kmipServer.ttl || "1y"}</DetailValue>
+                </Detail>
+                <Detail>
+                  <DetailLabel>Key Algorithm</DetailLabel>
+                  <DetailValue>{kmipServer.keyAlgorithm || "RSA_2048"}</DetailValue>
+                </Detail>
+              </DetailGroup>
+            </>
+          )}
           <Separator className="my-4" />
           <DetailGroup>
             <DetailGroupHeader className="flex items-center justify-between">
@@ -175,12 +223,19 @@ export const KmipServerDetailsCard = ({
       </Card>
 
       {!isIdentityServer && (
-        <KmipServerAuthMethodModal
-          isOpen={authModalOpen}
-          onOpenChange={setAuthModalOpen}
-          kmipServerId={kmipServer.id}
-          currentMethod={authMethod}
-        />
+        <>
+          <KmipServerAuthMethodModal
+            isOpen={authModalOpen}
+            onOpenChange={setAuthModalOpen}
+            kmipServerId={kmipServer.id}
+            currentMethod={authMethod}
+          />
+          <KmipServerCertConfigModal
+            isOpen={certConfigModalOpen}
+            onOpenChange={setCertConfigModalOpen}
+            kmipServer={kmipServer}
+          />
+        </>
       )}
     </>
   );

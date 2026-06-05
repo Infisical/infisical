@@ -14,7 +14,11 @@ export const KmipServersSchema = z.object({
   orgId: z.string().uuid(),
   name: z.string(),
   heartbeat: z.date().nullable().optional(),
-  tokenVersion: z.number().default(0)
+  tokenVersion: z.number().default(0),
+  hostnamesOrIps: z.string().nullable().optional(),
+  ttl: z.string().nullable().optional(),
+  commonName: z.string().nullable().optional(),
+  keyAlgorithm: z.string().nullable().optional()
 });
 
 export type TKmipServers = z.infer<typeof KmipServersSchema>;
