@@ -953,25 +953,38 @@ export const honeyTokenServiceFactory = ({
       throw new BadRequestError({ message: "Unsupported honey token type" });
     }
 
-    if (!signature) throw new UnauthorizedError({ message: "Missing X-Infisical-Signature header" });
+    const startMs = Date.now();
+    // Floor to normalize response time across token-found and token-not-found paths,
+    // preventing timing side-channel enumeration of registered access key IDs.
+    const MIN_RESPONSE_TIME_MS = 150;
+
+    const rejectWithNormalizedTiming = async (): Promise<never> => {
+      const elapsed = Date.now() - startMs;
+      if (elapsed < MIN_RESPONSE_TIME_MS) {
+        await new Promise<void>((resolve) => {
+          setTimeout(resolve, MIN_RESPONSE_TIME_MS - elapsed);
+        });
+      }
+      throw new UnauthorizedError({ message: "Invalid webhook request" });
+    };
+
+    if (!signature) return rejectWithNormalizedTiming();
 
     const parts = Object.fromEntries(signature.split(",").map((p) => p.split("="))) as Record<string, string>;
     const timestamp = parts.t;
     const signatureHash = parts.v1;
     if (!timestamp || !signatureHash) {
-      throw new UnauthorizedError({
-        message: "Invalid X-Infisical-Signature format. Expected t=<timestamp>,v1=<signature>"
-      });
+      return rejectWithNormalizedTiming();
     }
 
     const timestampMs = Number(timestamp) * 1000;
     if (Number.isNaN(timestampMs) || Math.abs(Date.now() - timestampMs) > SIGNATURE_TOLERANCE_MS) {
-      throw new UnauthorizedError({ message: "Request timestamp is too old or invalid" });
+      return rejectWithNormalizedTiming();
     }
 
     const eventMetadata = payload.event;
     if (!eventMetadata) {
-      throw new UnauthorizedError({ message: "Invalid webhook request" });
+      return rejectWithNormalizedTiming();
     }
 
     const honeyTokenWithOrg = await honeyTokenDAL.findOneByTokenIdentifier(eventMetadata.accessKeyId);
@@ -1010,7 +1023,7 @@ export const honeyTokenServiceFactory = ({
       expectedBuf.byteLength !== receivedBuf.byteLength ||
       !crypto.nativeCrypto.timingSafeEqual(expectedBuf, receivedBuf)
     ) {
-      throw new UnauthorizedError({ message: "Invalid webhook request" });
+      return rejectWithNormalizedTiming();
     }
 
     const honeyToken = await honeyTokenDAL.findOneByTokenIdentifierAndOrgId(
