@@ -1,22 +1,15 @@
 import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
-import {
-  AccessScope,
-  ActionProjectType,
-  ProjectMembershipRole,
-  RESOURCE_SCOPE,
-  ResourceMembershipRole,
-  ResourceType
-} from "@app/db/schemas";
+import { AccessScope, RESOURCE_SCOPE, ResourceMembershipRole, ResourceType } from "@app/db/schemas";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { ProjectPermissionMemberActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { ProjectPermissionMemberActions } from "@app/ee/services/permission/project-permission";
 import {
   ResourcePermissionApplicationActions,
   ResourcePermissionSub
 } from "@app/ee/services/permission/resource-permission";
-import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
 
 import { TApprovalPolicyDALFactory } from "../approval-policy/approval-policy-dal";
@@ -51,7 +44,7 @@ type TPkiApplicationMembershipServiceFactoryDep = {
     | "findResourceMembershipsForGroup"
   >;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "find" | "delete" | "update">;
-  permissionService: Pick<TPermissionServiceFactory, "getResourcePermission" | "getProjectPermission">;
+  permissionService: Pick<TPermissionServiceFactory, "getResourcePermission">;
   userDAL: Pick<TUserDALFactory, "find" | "findByEmailsOrUsernames">;
   identityDAL: Pick<TIdentityDALFactory, "find">;
   groupDAL: Pick<TGroupDALFactory, "find">;
@@ -194,24 +187,6 @@ export const pkiApplicationMembershipServiceFactory = ({
 
     const orgMembership = await $assertActorPresentInOrg(actorOrgId, { userId, identityId, groupId });
 
-    let canCreateProjectMember = false;
-    try {
-      const { permission: projectPermission } = await permissionService.getProjectPermission({
-        actor,
-        actorId,
-        projectId,
-        actorAuthMethod,
-        actorOrgId,
-        actionProjectType: ActionProjectType.CertificateManager
-      });
-      canCreateProjectMember = projectPermission.can(
-        ProjectPermissionMemberActions.Create,
-        ProjectPermissionSub.Member
-      );
-    } catch {
-      canCreateProjectMember = false;
-    }
-
     const membership = await membershipDAL.transaction(async (tx) => {
       const existingAppMembershipFilter: Record<string, unknown> = {
         scope: RESOURCE_SCOPE,
@@ -241,22 +216,11 @@ export const pkiApplicationMembershipServiceFactory = ({
       const existingProjectMembership = await membershipDAL.find(projectMembershipFilter, { tx });
 
       if (existingProjectMembership.length === 0) {
-        if (!canCreateProjectMember) {
-          throw new ForbiddenRequestError({ message: "You don't have access to perform this action." });
-        }
-        const projectMembership = await membershipDAL.create(
-          {
-            scope: AccessScope.Project,
-            scopeOrgId: orgMembership.scopeOrgId,
-            scopeProjectId: projectId,
-            actorUserId: userId ?? null,
-            actorIdentityId: identityId ?? null,
-            actorGroupId: groupId ?? null,
-            isActive: true
-          },
-          tx
-        );
-        await membershipRoleDAL.create({ membershipId: projectMembership.id, role: ProjectMembershipRole.Member }, tx);
+        // eslint-disable-next-line no-nested-ternary
+        const subjectLabel = userId ? "user" : identityId ? "machine identity" : "group";
+        throw new BadRequestError({
+          message: `This ${subjectLabel} can't be added here yet. Grant them access under Access Control first, then assign them to the application.`
+        });
       }
 
       const newMembership = await membershipDAL.create(
@@ -586,20 +550,37 @@ export const pkiApplicationMembershipServiceFactory = ({
     });
     const alreadyAttached = new Set<string>(existing.map((m) => m.actorUserId).filter((v): v is string => Boolean(v)));
 
-    const targets: { userId: string; label: string }[] = [];
+    const candidates: { userId: string; label: string }[] = [];
     const seen = new Set<string>();
     userIds.forEach((id) => {
       if (!seen.has(id)) {
         seen.add(id);
-        targets.push({ userId: id, label: id });
+        candidates.push({ userId: id, label: id });
       }
     });
     emails.forEach((email) => {
       const user = userByEmail.get(email);
       if (user && !seen.has(user.id)) {
         seen.add(user.id);
-        targets.push({ userId: user.id, label: email });
+        candidates.push({ userId: user.id, label: email });
       }
+    });
+
+    const candidateIds = candidates.map((t) => t.userId);
+    const projectMemberRows = candidateIds.length
+      ? await membershipDAL.find({
+          scope: AccessScope.Project,
+          scopeProjectId: projectId,
+          $in: { actorUserId: candidateIds }
+        })
+      : [];
+    const projectMemberIds = new Set(
+      projectMemberRows.map((m) => m.actorUserId).filter((v): v is string => Boolean(v))
+    );
+    const targets = candidates.filter((t) => {
+      if (projectMemberIds.has(t.userId)) return true;
+      unresolved.push(t.label);
+      return false;
     });
 
     const memberships: TApplicationMember[] = [];

@@ -1,11 +1,9 @@
 import { useMemo, useState } from "react";
 import { HardDriveIcon, UserIcon, UsersIcon } from "lucide-react";
-import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { RoleOption } from "@app/components/roles";
 import { FilterableSelect, FormControl } from "@app/components/v2";
-import { CreatableSelect } from "@app/components/v2/CreatableSelect";
 import {
   Button,
   ButtonGroup,
@@ -16,22 +14,15 @@ import {
   DialogHeader,
   DialogTitle
 } from "@app/components/v3";
-import { useOrganization } from "@app/context";
-import {
-  useGetIdentityMembershipOrgs,
-  useGetOrganizationGroups
-} from "@app/hooks/api/organization";
+import { useProject } from "@app/context";
 import {
   TPkiApplicationMember,
   useAddPkiApplicationMember,
   useAddPkiApplicationUserMembers
 } from "@app/hooks/api/pkiApplications";
-import {
-  useCreateProjectIdentityMembership,
-  useListProjectIdentityMemberships
-} from "@app/hooks/api/projectIdentityMembership";
+import { useListProjectIdentityMemberships } from "@app/hooks/api/projectIdentityMembership";
+import { useGetWorkspaceUsers, useListWorkspaceGroups } from "@app/hooks/api/projects/queries";
 import { ProjectType } from "@app/hooks/api/projects/types";
-import { useGetOrgUsers } from "@app/hooks/api/users";
 
 type ActorType = "user" | "identity" | "group";
 
@@ -42,7 +33,7 @@ type Props = {
   existingMembers: TPkiApplicationMember[];
 };
 
-type Option = { value: string; label: string; isNew?: boolean };
+type Option = { value: string; label: string };
 
 type AppRoleOption = { slug: string; name: string; description?: string };
 
@@ -73,14 +64,21 @@ const runSequential = async <T,>(items: T[], fn: (item: T) => Promise<void>): Pr
 
 const NoUserOptions = () => (
   <p>
-    No matching org members. Type a full email to invite a new user — they&apos;ll receive an email
-    and be added to this Application.
+    No matching project members. Grant users access from the Access Control page, then return here
+    to attach them to this Application.
   </p>
 );
 
 const NoIdentityOptions = () => (
   <p>
-    No matching identities. Create machine identities from the Access Control page, then return here
+    No matching project identities. Grant machine identities access from the Access Control page,
+    then return here to attach them to this Application.
+  </p>
+);
+
+const NoGroupOptions = () => (
+  <p>
+    No matching project groups. Grant groups access from the Access Control page, then return here
     to attach them to this Application.
   </p>
 );
@@ -91,8 +89,8 @@ export const AddApplicationMemberModal = ({
   onOpenChange,
   existingMembers
 }: Props) => {
-  const { currentOrg } = useOrganization();
-  const orgId = currentOrg?.id ?? "";
+  const { currentProject } = useProject();
+  const projectId = currentProject?.id ?? "";
 
   const [type, setType] = useState<ActorType>("user");
   const [selectedUsers, setSelectedUsers] = useState<Option[]>([]);
@@ -101,23 +99,16 @@ export const AddApplicationMemberModal = ({
   const [role, setRole] = useState("operator");
   const [submitting, setSubmitting] = useState(false);
 
-  const usersQuery = useGetOrgUsers(orgId);
-  const identitiesQuery = useGetIdentityMembershipOrgs({ organizationId: orgId, limit: 100 });
-  const groupsQuery = useGetOrganizationGroups(orgId);
-
-  const projectIdentitiesQuery = useListProjectIdentityMemberships({
+  const usersQuery = useGetWorkspaceUsers(projectId);
+  const identitiesQuery = useListProjectIdentityMemberships({
     projectId: "",
     projectType: ProjectType.CertificateManager,
     limit: 1000
   });
-  const identityIdsAlreadyInProject = useMemo(() => {
-    const memberships = projectIdentitiesQuery.data?.identityMemberships ?? [];
-    return new Set(memberships.map((m) => m.identity.id));
-  }, [projectIdentitiesQuery.data]);
+  const groupsQuery = useListWorkspaceGroups(projectId, ProjectType.CertificateManager);
 
   const addMember = useAddPkiApplicationMember();
   const addUserMembers = useAddPkiApplicationUserMembers();
-  const addIdentityToProject = useCreateProjectIdentityMembership();
 
   const taken = useMemo(() => {
     const set = new Set<string>();
@@ -151,10 +142,10 @@ export const AddApplicationMemberModal = ({
   }, [identitiesQuery.data, taken]);
 
   const groupOptions: Option[] = useMemo(() => {
-    const groups = groupsQuery.data ?? [];
-    return groups
-      .filter((g) => !taken.has(`group:${g.id}`))
-      .map((g) => ({ value: g.id, label: g.name }));
+    const memberships = groupsQuery.data ?? [];
+    return memberships
+      .filter((gm) => !taken.has(`group:${gm.group.id}`))
+      .map((gm) => ({ value: gm.group.id, label: gm.group.name }));
   }, [groupsQuery.data, taken]);
 
   const reset = () => {
@@ -180,47 +171,20 @@ export const AddApplicationMemberModal = ({
 
   const submitUsers = async () => {
     if (selectedUsers.length === 0) return;
+    const userIds = selectedUsers.map((u) => u.value);
 
-    const userIds: string[] = [];
-    const emails: string[] = [];
-    selectedUsers.forEach((u) => {
-      if (u.isNew) emails.push(u.value);
-      else userIds.push(u.value);
-    });
-
-    const result = await addUserMembers.mutateAsync({
+    await addUserMembers.mutateAsync({
       applicationId,
       userIds,
-      emails,
+      emails: [],
       role
     });
-
-    if (result.unresolved.length > 0) {
-      createNotification({
-        type: "warning",
-        text: `Couldn't resolve ${result.unresolved.length === 1 ? "user" : "users"}: ${result.unresolved.join(", ")}. They were invited to the org but not yet attached to the Application.`
-      });
-    }
   };
 
   const submitIdentities = async () => {
     if (selectedIdentities.length === 0) return;
-    const identityIds = selectedIdentities.map((item) => item.value);
-
-    const idsNeedingProjectMembership = identityIds.filter(
-      (id) => !identityIdsAlreadyInProject.has(id)
-    );
-    await runSequential(idsNeedingProjectMembership, async (identityId) => {
-      await addIdentityToProject.mutateAsync({
-        identityId,
-        projectId: "",
-        projectType: ProjectType.CertificateManager,
-        role: "member"
-      });
-    });
-
-    await runSequential(identityIds, async (identityId) => {
-      await addMember.mutateAsync({ applicationId, kind: "identity", memberId: identityId, role });
+    await runSequential(selectedIdentities, async (item) => {
+      await addMember.mutateAsync({ applicationId, kind: "identity", memberId: item.value, role });
     });
   };
 
@@ -255,8 +219,6 @@ export const AddApplicationMemberModal = ({
     { value: "group", label: "Groups", icon: UsersIcon }
   ];
 
-  const isEmail = (s: string) => z.string().email().safeParse(s).success;
-
   const selectedByType: Record<ActorType, number> = {
     user: selectedUsers.length,
     identity: selectedIdentities.length,
@@ -270,8 +232,8 @@ export const AddApplicationMemberModal = ({
         <DialogHeader>
           <DialogTitle>Add Member</DialogTitle>
           <DialogDescription>
-            Grant access to this Application. Select existing org members, identities, or groups to
-            attach. New machine identities must be created from the Access Control page.
+            Grant access to this Application. Select existing project members, identities, or groups
+            to attach. New members must first be granted access from the Access Control page.
           </DialogDescription>
         </DialogHeader>
 
@@ -299,22 +261,13 @@ export const AddApplicationMemberModal = ({
 
           {type === "user" && (
             <FormControl label="Users">
-              <CreatableSelect
+              <FilterableSelect
                 isMulti
                 isLoading={usersQuery.isPending}
                 options={userOptions}
                 value={selectedUsers}
                 onChange={(v) => setSelectedUsers((v ?? []) as Option[])}
-                placeholder="Select users or type an email…"
-                onCreateOption={(input) => {
-                  if (!isEmail(input)) return;
-                  setSelectedUsers((prev) => [
-                    ...prev,
-                    { value: input, label: input, isNew: true }
-                  ]);
-                }}
-                isValidNewOption={(input) => isEmail(input)}
-                formatCreateLabel={(input) => `Invite "${input}"`}
+                placeholder="Select existing project members…"
                 noOptionsMessage={NoUserOptions}
               />
             </FormControl>
@@ -343,6 +296,7 @@ export const AddApplicationMemberModal = ({
                 value={selectedGroups}
                 onChange={(v) => setSelectedGroups((v ?? []) as Option[])}
                 placeholder="Select groups…"
+                noOptionsMessage={NoGroupOptions}
               />
             </FormControl>
           )}
