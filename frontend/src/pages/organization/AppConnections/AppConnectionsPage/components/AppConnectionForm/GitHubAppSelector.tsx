@@ -31,7 +31,7 @@ import {
 import { IconButton } from "@app/components/v3/generic/IconButton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3/generic/Tooltip";
 import { InstanceIcon, OrgIcon, ProjectIcon } from "@app/components/v3/platform/ScopeIcons";
-import { buildGitHubAppUrl } from "@app/helpers/appConnections";
+import { buildGitHubAppUrl, buildGitHubHostUrl } from "@app/helpers/appConnections";
 import { TGitHubApp, useDeleteGitHubApp } from "@app/hooks/api/gitHubApps";
 
 const SHARED_KEY = "__shared__";
@@ -395,8 +395,19 @@ export const GitHubAppSelector = ({
                 </FormControl>
                 <div className="mt-3 flex items-start gap-2 rounded-md border border-mineshaft-500 bg-mineshaft-700/40 px-3 py-2.5 text-xs leading-relaxed text-mineshaft-300">
                   <FontAwesomeIcon icon={faCircleInfo} className="mt-0.5 text-mineshaft-400" />
-                  You&apos;ll be redirected to GitHub to complete the private app setup. It appears
-                  here as soon as you return.
+                  <span>
+                    You&apos;ll be redirected to GitHub to complete the private app setup. GitHub
+                    fails the setup if you&apos;re signed out, so{" "}
+                    <a
+                      href={`${buildGitHubHostUrl(host)}/login`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-mineshaft-100 underline underline-offset-2 hover:text-primary"
+                    >
+                      sign in
+                    </a>{" "}
+                    first.
+                  </span>
                 </div>
                 <div className="mt-3 flex items-center justify-end gap-2">
                   <Button variant="plain" colorSchema="secondary" size="xs" onClick={resetCreate}>
