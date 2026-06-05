@@ -269,11 +269,15 @@ export const GitHubAppSelector = ({
               className="font-mono"
             />
           </FormControl>
-          <FormControl label="GitHub account / org" isOptional className="mt-3 mb-0">
+          <FormControl
+            label="Organization"
+            className="mt-3 mb-0"
+            tooltipText="Enter a GitHub organization name to create the app under that organization. This is required if you want to install the app on repositories owned by the organization. Leave blank to create the app under your personal account."
+          >
             <Input
               value={newAppOrg}
               onChange={(e) => setNewAppOrg(e.target.value)}
-              placeholder="Leave blank for your personal account"
+              placeholder="Leave blank to create on your personal account"
             />
           </FormControl>
           <div className="mt-3 flex items-start gap-2 rounded-md border border-mineshaft-500 bg-mineshaft-700/40 px-3 py-2.5 text-xs leading-relaxed text-mineshaft-300">
