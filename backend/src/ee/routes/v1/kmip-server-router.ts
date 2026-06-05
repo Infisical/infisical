@@ -59,23 +59,36 @@ const KmipServerWithAuthMethodSchema = SanitizedKmipServerSchema.extend({
   authMethod: AuthMethodViewSchema
 });
 
-const AwsAuthMethodInputSchema = z
-  .object({
-    method: z.literal(ResourceAuthMethodType.Aws),
-    stsEndpoint: z.string().trim().min(1).default("https://sts.amazonaws.com/"),
-    allowedPrincipalArns: validatePrincipalArns,
-    allowedAccountIds: validateAccountIds
-  })
-  .refine((data) => data.allowedPrincipalArns.trim().length > 0 || data.allowedAccountIds.trim().length > 0, {
-    message: "At least one of allowedPrincipalArns or allowedAccountIds must be set",
-    path: ["allowedPrincipalArns"]
-  });
+const AwsAuthMethodInputSchema = z.object({
+  method: z.literal(ResourceAuthMethodType.Aws),
+  stsEndpoint: z.string().trim().min(1).default("https://sts.amazonaws.com/"),
+  allowedPrincipalArns: validatePrincipalArns,
+  allowedAccountIds: validateAccountIds
+});
 
 const TokenAuthMethodInputSchema = z.object({
   method: z.literal(ResourceAuthMethodType.Token)
 });
 
-const SettableAuthMethodInputSchema = z.union([AwsAuthMethodInputSchema, TokenAuthMethodInputSchema]);
+// Discriminated on `method` so a bad ARN/account ID surfaces its real field error and path instead
+// of collapsing to a generic "invalid input" union error. The cross-field "at least one of" check
+// can't live in an object-level refine (discriminatedUnion options must be plain objects), so it
+// runs as a superRefine on the union.
+const SettableAuthMethodInputSchema = z
+  .discriminatedUnion("method", [AwsAuthMethodInputSchema, TokenAuthMethodInputSchema])
+  .superRefine((data, ctx) => {
+    if (
+      data.method === ResourceAuthMethodType.Aws &&
+      data.allowedPrincipalArns.trim().length === 0 &&
+      data.allowedAccountIds.trim().length === 0
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["allowedPrincipalArns"],
+        message: "At least one of allowedPrincipalArns or allowedAccountIds must be set"
+      });
+    }
+  });
 
 export const registerKmipServerRouter = async (server: FastifyZodProvider) => {
   // ─── POST / (Create KMIP server) ──────────────────────────────────────────
