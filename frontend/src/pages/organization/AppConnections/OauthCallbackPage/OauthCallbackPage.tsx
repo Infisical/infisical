@@ -2,7 +2,16 @@ import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, ContentLoader } from "@app/components/v2";
+import { Button } from "@app/components/v3/generic/Button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle
+} from "@app/components/v3/generic/Card";
+import { PageLoader } from "@app/components/v3/platform/PageLoader";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
   APP_CONNECTION_MAP,
@@ -760,50 +769,49 @@ export const OAuthCallbackPage = () => {
 
     return (
       <div className="flex h-full w-full items-center justify-center">
-        <div className="w-full max-w-md rounded-md border border-mineshaft-600 bg-mineshaft-800 p-6">
-          <div className="mb-1 text-lg font-medium text-mineshaft-100">
-            {hasInstallations ? "Select a GitHub account" : "Install the GitHub App"}
-          </div>
-          <p className="mb-4 text-sm text-mineshaft-300">
-            {hasInstallations
-              ? "The GitHub App is already installed on the following accounts. Select the installation to connect, or install the app on another account."
-              : "The GitHub App is not installed on any account you have access to. Install it to continue."}
-          </p>
+        <Card className="w-full max-w-md gap-4">
+          <CardHeader>
+            <CardTitle>
+              {hasInstallations ? "Select a GitHub account" : "Install the GitHub App"}
+            </CardTitle>
+            <CardDescription>
+              {hasInstallations
+                ? "The GitHub App is already installed on the following accounts. Select the installation to connect, or install the app on another account."
+                : "The GitHub App is not installed on any account you have access to. Install it to continue."}
+            </CardDescription>
+          </CardHeader>
           {hasInstallations && (
-            <div className="mb-4 flex flex-col gap-2">
+            <CardContent className="flex flex-col gap-2">
               {gitHubPicker.installations.map((installation) => (
                 <Button
                   key={installation.id}
-                  variant="outline_bg"
                   isFullWidth
                   isDisabled={Boolean(pickedInstallationId)}
-                  isLoading={pickedInstallationId === installation.id}
+                  isPending={pickedInstallationId === installation.id}
                   onClick={() => completeGitHubAppConnection(installation.id)}
                 >
                   <div className="flex w-full items-center justify-between">
                     <span>{installation.accountLogin}</span>
-                    <span className="text-xs text-mineshaft-400">{installation.accountType}</span>
+                    <span className="text-xs text-accent">{installation.accountType}</span>
                   </div>
                 </Button>
               ))}
-            </div>
+            </CardContent>
           )}
-          <Button
-            variant={hasInstallations ? "plain" : "outline_bg"}
-            isFullWidth
-            isDisabled={Boolean(pickedInstallationId)}
-            onClick={redirectToGitHubInstall}
-          >
-            {hasInstallations ? "Install on another account" : "Install GitHub App"}
-          </Button>
-        </div>
+          <CardFooter>
+            <Button
+              variant={hasInstallations ? "ghost" : "outline"}
+              isFullWidth
+              isDisabled={Boolean(pickedInstallationId)}
+              onClick={redirectToGitHubInstall}
+            >
+              {hasInstallations ? "Install on another account" : "Install GitHub App"}
+            </Button>
+          </CardFooter>
+        </Card>
       </div>
     );
   }
 
-  return (
-    <div className="flex h-full w-full items-center justify-center">
-      <ContentLoader text="Please wait! Authentication in process." />
-    </div>
-  );
+  return <PageLoader />;
 };
