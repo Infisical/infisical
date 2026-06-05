@@ -15,7 +15,11 @@ import {
   SelectItem
 } from "@app/components/v2";
 import { useOrganization } from "@app/context";
-import { certKeyAlgorithms, isPqcAlgorithm } from "@app/hooks/api/certificates/constants";
+import {
+  certKeyAlgorithms,
+  certKeyAlgorithmToNameMap,
+  isPqcAlgorithm
+} from "@app/hooks/api/certificates/constants";
 import { CertKeyAlgorithm } from "@app/hooks/api/certificates/enums";
 import { useCreateKmipServer } from "@app/hooks/api/kmipServers";
 
@@ -170,9 +174,9 @@ export const KmipServerDeployModal = ({ isOpen, onOpenChange }: Props) => {
                 >
                   {certKeyAlgorithms
                     .filter(({ value }) => !isPqcAlgorithm(value))
-                    .map(({ label, value }) => (
-                      <SelectItem value={String(value || "")} key={label}>
-                        {label}
+                    .map(({ value }) => (
+                      <SelectItem value={String(value || "")} key={value}>
+                        {certKeyAlgorithmToNameMap[value]}
                       </SelectItem>
                     ))}
                 </Select>

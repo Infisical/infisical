@@ -20,12 +20,18 @@ import {
   Input
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
-import { certKeyAlgorithms, isPqcAlgorithm } from "@app/hooks/api/certificates/constants";
+import {
+  certKeyAlgorithms,
+  certKeyAlgorithmToNameMap,
+  isPqcAlgorithm
+} from "@app/hooks/api/certificates/constants";
 import { CertKeyAlgorithm } from "@app/hooks/api/certificates/enums";
 import { useUpdateKmipServer } from "@app/hooks/api/kmipServers";
 import { TKmipServerWithAuthMethod } from "@app/hooks/api/kmipServers/types";
 
-const keyAlgorithmOptions = certKeyAlgorithms.filter(({ value }) => !isPqcAlgorithm(value));
+const keyAlgorithmOptions = certKeyAlgorithms
+  .filter(({ value }) => !isPqcAlgorithm(value))
+  .map(({ value }) => ({ value, label: certKeyAlgorithmToNameMap[value] }));
 
 const schema = z.object({
   hostnamesOrIps: z.string().trim().min(1, "At least one hostname or IP is required"),

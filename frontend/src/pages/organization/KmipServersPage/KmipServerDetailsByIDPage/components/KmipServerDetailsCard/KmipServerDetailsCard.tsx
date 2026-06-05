@@ -27,6 +27,8 @@ import {
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
 import { useTimedReset } from "@app/hooks";
+import { certKeyAlgorithmToNameMap } from "@app/hooks/api/certificates/constants";
+import { CertKeyAlgorithm } from "@app/hooks/api/certificates/enums";
 import {
   TKmipServerAuthMethodView,
   TKmipServerWithAuthMethod
@@ -133,7 +135,11 @@ export const KmipServerDetailsCard = ({
                 </Detail>
                 <Detail>
                   <DetailLabel>Key Algorithm</DetailLabel>
-                  <DetailValue>{kmipServer.keyAlgorithm || "RSA_2048"}</DetailValue>
+                  <DetailValue>
+                    {certKeyAlgorithmToNameMap[
+                      (kmipServer.keyAlgorithm as CertKeyAlgorithm) || CertKeyAlgorithm.RSA_2048
+                    ] ?? kmipServer.keyAlgorithm}
+                  </DetailValue>
                 </Detail>
               </DetailGroup>
             </>
