@@ -64,6 +64,12 @@ export const fetchAuthToken = async (): Promise<GetAuthTokenAPI> => {
 
       return data;
     })
+    .catch((error) => {
+      // Stale or invalid refresh token — clear any in-memory token and re-throw
+      // so the caller (ensureQueryData / fetchQuery) can handle it gracefully
+      setAuthToken("");
+      throw error;
+    })
     .finally(() => {
       activeRefreshPromise = null;
     });
