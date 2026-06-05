@@ -2625,6 +2625,8 @@ export const registerRoutes = async (
     resourceMetadataDAL,
     snapshotService,
     secretQueueService,
+    webhookDAL,
+    projectEnvDAL,
     appConnectionService,
     telemetryService,
     auditLogService

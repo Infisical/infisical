@@ -69,7 +69,8 @@ export const EditWebhookEventsModal = ({
   const defaultSettings = useMemo<TWebhookEventSettings>(
     () => ({
       [WebhookEvent.SecretModified]: true,
-      [WebhookEvent.SecretRotationFailed]: true
+      [WebhookEvent.SecretRotationFailed]: true,
+      [WebhookEvent.HoneyTokenTriggered]: true
     }),
     []
   );
