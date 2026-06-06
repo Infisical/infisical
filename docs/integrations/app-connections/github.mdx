@@ -101,12 +101,20 @@ Infisical supports three methods for connecting to GitHub.
                 Select the **GitHub App** method.
 
                 Choose which GitHub App to use for the connection:
-                - **Shared app** — the instance-default GitHub App configured by your Infisical admin.
-                - **Org-managed app** — a GitHub App registered under your GitHub organization. Select an existing one from the list, or click **Create new GitHub App** to register a new app directly from Infisical via GitHub's app manifest flow. The new app will be automatically configured with the correct permissions and callback URLs.
+                - **Instance** — the instance-default GitHub App configured by your Infisical server admin.
+                - **Private** — a GitHub App registered under your organization. Select an existing one from the list, or click the gear to manage your private apps.
 
                 <Note>
                     GitHub Apps are scoped to where they were created: apps created from the organization's App Connections page are available to organization-level connections and to every project, while apps created from a project's App Connections page are only available within that project. The shared instance-default app is available in both scopes.
                 </Note>
+
+                ![Select GitHub App](/images/app-connections/github/select-github-app.png)
+
+                When managing your apps, you can inspect them on GitHub, delete existing apps, or click **Create New GitHub App** to register a new app directly from Infisical using GitHub’s App Manifest flow. New apps are automatically configured with the required permissions and callback URLs.
+
+                ![Manage GitHub Apps](/images/app-connections/github/manage-github-app.png)
+
+                ![Create New GitHub App](/images/app-connections/github/create-new-github-app.png)
 
                 You may optionally enable **GitHub Enterprise** to configure enterprise-specific options:
                 - **Instance Type:** Enterprise Cloud or Enterprise Server
@@ -115,7 +123,6 @@ Infisical supports three methods for connecting to GitHub.
 
                 Click **Connect to GitHub** when ready.
 
-                ![Connect via GitHub App](/images/app-connections/github/create-github-app-method.png)
             </Step>
             <Step title="Install GitHub App">
                 You will then be redirected to the GitHub app installation page.
