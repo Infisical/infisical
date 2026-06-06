@@ -43,6 +43,7 @@ const ipv6RangeLists: Record<string, BlockList> = {
   linkLocal: new BlockList(),
   uniqueLocal: new BlockList(),
   ipv4Mapped: new BlockList(),
+  ipv4Compatible: new BlockList(),
   reserved: new BlockList()
 };
 
@@ -55,6 +56,12 @@ ipv6RangeLists.linkLocal.addSubnet("fe80::", 10, "ipv6");
 ipv6RangeLists.uniqueLocal.addSubnet("fc00::", 7, "ipv6");
 // IPv4-mapped IPv6 addresses (::ffff:0:0/96) — prevents bypass via e.g. ::ffff:127.0.0.1
 ipv6RangeLists.ipv4Mapped.addSubnet("::ffff:0:0", 96, "ipv6");
+// IPv4-compatible IPv6 addresses (::/96) — the deprecated ::a.b.c.d form (RFC 4291
+// 2.5.5.1) embeds an IPv4 address in the low 32 bits, e.g. ::7f00:1 == ::127.0.0.1.
+// Without this they are classified as public and bypass SSRF checks, mirroring the
+// ::ffff:0:0/96 (mapped), 2002::/16 (6to4) and 64:ff9b::/96 (NAT64) embeddings.
+// :: and ::1 are matched earlier by the unspecified/loopback lists.
+ipv6RangeLists.ipv4Compatible.addSubnet("::", 96, "ipv6");
 // IPv6 documentation (2001:db8::/32), benchmarking (2001:2::/48), discard (100::/64)
 ipv6RangeLists.reserved.addSubnet("2001:db8::", 32, "ipv6");
 ipv6RangeLists.reserved.addSubnet("2001:2::", 48, "ipv6");
