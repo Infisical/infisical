@@ -368,11 +368,16 @@ export const getGitHubAppAuthToken = async (
     deps
   );
 
-  // For an org-managed app, target the host the app is bound to rather than the host stored on the
-  // connection — the signed app JWT must never leave for a host that isn't the app's own.
+  // Always target the server-configured host the app is bound to, never the host stored on the
+  // connection — the signed app JWT (and any installation token minted from it) must never leave
+  // for a host that isn't the app's own. For an org-managed app this is the host on the app record;
+  // for the shared instance app it's INF_APP_CONNECTION_GITHUB_APP_HOST (null = github.com). The
+  // caller-supplied connection host is never trusted for either. instanceType is authoritative only
+  // for org-managed apps; the shared app's instanceType still comes from the connection, since it
+  // only shapes the API URL path and not the destination host.
   const effectiveCredentials = appConnection.credentials.gitHubAppId
     ? { host: appHost ?? undefined, instanceType: appInstanceType ?? "cloud" }
-    : { host: appConnection.credentials.host, instanceType: appConnection.credentials.instanceType };
+    : { host: appHost ?? undefined, instanceType: appConnection.credentials.instanceType };
 
   assertPlatformGitHubHostAllowed(effectiveCredentials.host);
 
@@ -805,9 +810,15 @@ export const validateGitHubConnectionCredentials = async (
       deps
     );
 
+    // Bind the connection's host to the server-configured host for the resolved app — for both the
+    // shared instance app (INF_APP_CONNECTION_GITHUB_APP_HOST, null = github.com) and org-managed apps.
+    // The caller-supplied host is never persisted, so the shared client secret / app JWT and any token
+    // minted from them can only ever be sent to the app's own host. instanceType is authoritative only
+    // for org-managed apps; the shared app's instanceType still comes from the caller (it only shapes
+    // the API URL path, not the destination host).
+    const mutableCredentials = credentials as { host?: string; instanceType: "cloud" | "server" };
+    mutableCredentials.host = resolvedAppCredentials.host ?? undefined;
     if (credentials.gitHubAppId) {
-      const mutableCredentials = credentials as { host?: string; instanceType: "cloud" | "server" };
-      mutableCredentials.host = resolvedAppCredentials.host ?? undefined;
       mutableCredentials.instanceType = resolvedAppCredentials.instanceType ?? "cloud";
     }
   }
