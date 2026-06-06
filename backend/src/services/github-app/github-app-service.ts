@@ -145,7 +145,7 @@ export const gitHubAppServiceFactory = ({
         actorOrgId: orgPermission.orgId,
         scope: OrganizationActionScope.Any
       });
-      includeOrgApps = permission.can(OrgPermissionAppConnectionActions.Read, OrgPermissionSubjects.AppConnections);
+      includeOrgApps = permission.can(OrgPermissionAppConnectionActions.Connect, OrgPermissionSubjects.AppConnections);
     }
 
     const orgApps = includeOrgApps ? await gitHubAppDAL.find({ orgId: orgPermission.orgId, projectId: null }) : [];
