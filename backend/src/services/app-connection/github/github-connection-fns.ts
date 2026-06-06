@@ -697,6 +697,23 @@ export function isGithubErrorResponse(data: GithubTokenRespData): data is Github
   return "error" in data;
 }
 
+export const sanitizeGitHubAxiosError = (error: unknown) => {
+  if (error instanceof AxiosError) {
+    const data = error.response?.data as { error?: string; error_description?: string; message?: string } | undefined;
+
+    return {
+      status: error.response?.status,
+      code: error.code,
+      githubError: data?.error,
+      githubErrorDescription: data?.error_description,
+      githubMessage: data?.message,
+      message: error.message
+    };
+  }
+
+  return { message: error instanceof Error ? error.message : "Unknown error" };
+};
+
 export type TGitHubUserInstallation = {
   id: number;
   app_id: number;
@@ -898,7 +915,7 @@ export const validateGitHubConnectionCredentials = async (
         host: credentials.host
       };
     } catch (e: unknown) {
-      logger.error(e, "Unable to verify GitHub PAT connection");
+      logger.error(sanitizeGitHubAxiosError(e), "Unable to verify GitHub PAT connection");
 
       throw new BadRequestError({
         message: "Unable to validate Personal Access Token: verify token has proper permissions"
@@ -965,7 +982,7 @@ export const validateGitHubConnectionCredentials = async (
       });
     }
   } catch (e: unknown) {
-    logger.error(e, "Unable to verify GitHub connection");
+    logger.error(sanitizeGitHubAxiosError(e), "Unable to verify GitHub connection");
 
     if (e instanceof BadRequestError) {
       throw e;

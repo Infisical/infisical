@@ -36,6 +36,7 @@ import {
   listGitHubUserInstallations,
   requestWithGitHubGateway,
   resolveGitHubAppCredentials,
+  sanitizeGitHubAxiosError,
   signGitHubAppInstallationsToken,
   signGitHubAppJwt,
   TGitHubUserInstallation
@@ -735,7 +736,10 @@ export const gitHubAppServiceFactory = ({
       });
       tokenData = data;
     } catch (err) {
-      logger.error(err, `Failed to exchange GitHub OAuth code [gitHubAppId=${gitHubAppId ?? "shared"}]`);
+      logger.error(
+        sanitizeGitHubAxiosError(err),
+        `Failed to exchange GitHub OAuth code [gitHubAppId=${gitHubAppId ?? "shared"}]`
+      );
       throw new BadRequestError({
         message: "Unable to authorize with GitHub. The code may be expired or invalid. Please try again."
       });
