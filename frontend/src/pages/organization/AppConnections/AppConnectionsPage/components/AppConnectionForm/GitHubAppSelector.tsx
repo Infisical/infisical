@@ -52,8 +52,9 @@ type Props = {
   // Returns false when the parent form is invalid so we can return to the list view.
   onCreateApp: (params: { name: string; githubOrg: string }) => Promise<boolean> | void;
   isCreating?: boolean;
-  // When set, the selector is in project scope: org apps are listed (and selectable) but managed
-  // from the organization's App Connections page, and newly created apps are project-scoped.
+  // When set, the selector is in project scope: org apps are listed (and selectable) only for
+  // users who can read org-level app connections, and are managed from the organization's App
+  // Connections page; newly created apps are project-scoped.
   projectId?: string | null;
 };
 
@@ -94,9 +95,9 @@ export const GitHubAppSelector = ({
   const deleteGitHubApp = useDeleteGitHubApp();
 
   const sharedApp = apps.find((app) => app.id === null) ?? null;
-  // In project scope the private list mixes both scopes: the project's own apps plus the org's
-  // (projects have visibility over their org, not the other way around). Each row's scope icon
-  // tells them apart.
+  // In project scope the private list can mix both scopes: the project's own apps plus the org's,
+  // when the user can read org-level app connections (the API filters org apps out otherwise).
+  // Each row's scope icon tells them apart.
   const customApps = apps.filter((app) => app.id !== null);
 
   const resetCreate = () => {

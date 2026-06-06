@@ -440,6 +440,23 @@ export const appConnectionServiceFactory = ({
     return decryptAppConnection(appConnection, kmsService);
   };
 
+  // In project scope, an org-managed GitHub App can only be referenced by actors who can also
+  // connect org-level app connections — everyone else is limited to the project's own apps and
+  // the shared instance app.
+  const checkGitHubAppScopeAccess = async (
+    gitHubAppId: string,
+    orgId: string,
+    orgPermission: Awaited<ReturnType<TPermissionServiceFactory["getOrgPermission"]>>["permission"]
+  ) => {
+    const gitHubApp = await gitHubAppDAL.findOne({ id: gitHubAppId, orgId });
+    if (gitHubApp && !gitHubApp.projectId) {
+      ForbiddenError.from(orgPermission).throwUnlessCan(
+        OrgPermissionAppConnectionActions.Connect,
+        OrgPermissionSubjects.AppConnections
+      );
+    }
+  };
+
   const createAppConnection = async (
     {
       method,
@@ -536,6 +553,13 @@ export const appConnectionServiceFactory = ({
       actor.orgId,
       "Failed to create app connection due to plan restriction. Upgrade plan to access enterprise app connections."
     );
+
+    if (app === AppConnection.GitHub && method === GitHubConnectionMethod.App && projectId) {
+      const { gitHubAppId } = credentials as { gitHubAppId?: string | null };
+      if (gitHubAppId) {
+        await checkGitHubAppScopeAccess(gitHubAppId, actor.orgId, orgPermission);
+      }
+    }
 
     const validatedCredentials = await validateAppConnectionCredentials(
       {
@@ -782,6 +806,15 @@ export const appConnectionServiceFactory = ({
       if (effectiveGatewayPoolIdForUpdate) {
         const picked = await gatewayPoolService.pickRandomHealthyGateway(effectiveGatewayPoolIdForUpdate);
         validationGatewayId = picked.id;
+      }
+
+      // Only checked when the caller explicitly selects an app — merged-in existing credentials
+      // (gitHubAppId undefined) keep already-configured connections editable.
+      if (app === AppConnection.GitHub && method === GitHubConnectionMethod.App && appConnection.projectId) {
+        const requestedGitHubAppId = (credentials as { gitHubAppId?: string | null }).gitHubAppId;
+        if (requestedGitHubAppId) {
+          await checkGitHubAppScopeAccess(requestedGitHubAppId, actor.orgId, orgPermission);
+        }
       }
 
       let credentialsToValidate = credentials;

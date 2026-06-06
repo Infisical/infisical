@@ -135,8 +135,20 @@ export const gitHubAppServiceFactory = ({
       orgScope: OrganizationActionScope.Any
     });
 
-    // Org apps are visible from project scope too, but not the other way around.
-    const orgApps = await gitHubAppDAL.find({ orgId: orgPermission.orgId, projectId: null });
+    let includeOrgApps = true;
+    if (projectId) {
+      const { permission } = await permissionService.getOrgPermission({
+        actor: orgPermission.type,
+        actorId: orgPermission.id,
+        orgId: orgPermission.orgId,
+        actorAuthMethod: orgPermission.authMethod,
+        actorOrgId: orgPermission.orgId,
+        scope: OrganizationActionScope.Any
+      });
+      includeOrgApps = permission.can(OrgPermissionAppConnectionActions.Read, OrgPermissionSubjects.AppConnections);
+    }
+
+    const orgApps = includeOrgApps ? await gitHubAppDAL.find({ orgId: orgPermission.orgId, projectId: null }) : [];
     const projectApps = projectId ? await gitHubAppDAL.find({ orgId: orgPermission.orgId, projectId }) : [];
     const apps = [...orgApps, ...projectApps];
 
@@ -644,6 +656,16 @@ export const gitHubAppServiceFactory = ({
         ProjectPermissionAppConnectionActions.Create,
         ProjectPermissionSub.AppConnections
       );
+
+      if (gitHubAppId) {
+        const app = await gitHubAppDAL.findOne({ id: gitHubAppId, orgId: orgPermission.orgId });
+        if (app && !app.projectId) {
+          ForbiddenError.from(orgScopedPermission).throwUnlessCan(
+            OrgPermissionAppConnectionActions.Connect,
+            OrgPermissionSubjects.AppConnections
+          );
+        }
+      }
     } else {
       ForbiddenError.from(orgScopedPermission).throwUnlessCan(
         OrgPermissionAppConnectionActions.Create,

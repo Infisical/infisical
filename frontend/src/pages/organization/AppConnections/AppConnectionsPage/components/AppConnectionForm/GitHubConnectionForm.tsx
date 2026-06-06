@@ -21,9 +21,10 @@ import {
 } from "@app/components/v2";
 import { GatewayPicker } from "@app/components/v3/platform/GatewayPicker";
 import { apiRequest } from "@app/config/request";
-import { useOrganization, useSubscription } from "@app/context";
+import { useOrganization, useOrgPermission, useSubscription } from "@app/context";
 import {
   OrgGatewayPermissionActions,
+  OrgPermissionAppConnectionActions,
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
 import {
@@ -118,6 +119,14 @@ export const GitHubConnectionForm = ({ appConnection, projectId, onSubmit }: Pro
   );
 
   const { currentOrg } = useOrganization();
+  const { permission: orgPermission } = useOrgPermission();
+  // In project scope, org apps are only listed when the user can read org-level app connections
+  // (mirrors the backend filtering on the list endpoint); using one additionally requires the
+  // org-level connect action, enforced server-side.
+  const canSeeOrgApps = orgPermission.can(
+    OrgPermissionAppConnectionActions.Read,
+    OrgPermissionSubjects.AppConnections
+  );
 
   const {
     option: { oauthClientId, appClientSlug },
@@ -526,7 +535,12 @@ export const GitHubConnectionForm = ({ appConnection, projectId, onSubmit }: Pro
           <FormControl
             label="GitHub App"
             tooltipText={`Reuse an existing GitHub App from ${
-              projectId ? "this project or your organization" : "your organization"
+              // eslint-disable-next-line no-nested-ternary
+              projectId
+                ? canSeeOrgApps
+                  ? "this project or your organization"
+                  : "this project"
+                : "your organization"
             }, or create a new one. Apps can be shared across multiple connections.`}
           >
             <GitHubAppSelector
