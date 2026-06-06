@@ -400,16 +400,6 @@ export async function up(knex: Knex): Promise<void> {
     t.uuid("orgId").notNullable().alter();
     t.uuid("templateId").notNullable().alter();
     t.binary("encryptedConnectionDetails").notNullable().alter();
-    t.dropColumn("projectId");
-    t.dropColumn("resourceId");
-    t.dropColumn("domainId");
-    t.dropColumn("policyId");
-    t.dropColumn("lastRotatedAt");
-    t.dropColumn("rotationStatus");
-    t.dropColumn("encryptedLastRotationMessage");
-    t.dropColumn("requireMfa");
-    t.dropColumn("internalMetadata");
-    t.dropColumn("discoveryFingerprint");
     t.unique(["folderId", "name"]);
   });
 
@@ -507,16 +497,6 @@ export async function up(knex: Knex): Promise<void> {
 
   await knex.schema.alterTable(TableName.PamSession, (t) => {
     t.renameColumn("resourceType", "accountType");
-  });
-
-  await knex.schema.alterTable(TableName.PamSession, (t) => {
-    t.dropColumn("projectId");
-    t.dropColumn("resourceName");
-    t.dropColumn("resourceId");
-    t.dropColumn("selectedResourceId");
-    t.dropColumn("encryptedAiInsights");
-    t.dropColumn("aiInsightsStatus");
-    t.dropColumn("aiInsightsError");
   });
 }
 
