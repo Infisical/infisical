@@ -122,10 +122,7 @@ export const identityV2ServiceFactory = ({
         tx
       );
 
-      await membershipRoleDAL.insertMany(
-        [{ membershipId: orgMembership.id, role: OrgMembershipRole.NoAccess }],
-        tx
-      );
+      await membershipRoleDAL.insertMany([{ membershipId: orgMembership.id, role: OrgMembershipRole.NoAccess }], tx);
 
       if (scopeData.scope === AccessScope.Project) {
         const projectMembership = await membershipIdentityDAL.create(
@@ -137,10 +134,7 @@ export const identityV2ServiceFactory = ({
           },
           tx
         );
-        await membershipRoleDAL.insertMany(
-          [{ membershipId: projectMembership.id, role: projectMemberRole }],
-          tx
-        );
+        await membershipRoleDAL.insertMany([{ membershipId: projectMembership.id, role: projectMemberRole }], tx);
       }
 
       let insertedMetadata: Array<{
