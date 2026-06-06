@@ -57,5 +57,10 @@ describe("isPrivateIp", () => {
     test("public address resolves to unicast", () => {
       expect(getIpRange("1.1.1.1")).toBe("unicast");
     });
+
+    test("::/96 does not shadow :: (unspecified) or ::1 (loopback)", () => {
+      expect(getIpRange("::")).toBe("unspecified");
+      expect(getIpRange("::1")).toBe("loopback");
+    });
   });
 });
