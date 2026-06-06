@@ -35,15 +35,19 @@ export async function up(knex: Knex): Promise<void> {
       t.index(["caId"]);
       t.index(["certificateId"]);
       t.index(["createdAt"]);
-
-      // The trigger must be created inside the hasTable guard. On a fresh
-      // install the createTable branch runs once and the trigger is created
-      // alongside it. On a re-run, the createTable branch is skipped (the
-      // table already exists) but the trigger creation still fired and
-      // crashed with "trigger ... already exists". Guarding the trigger
-      // creation with the same check makes the migration idempotent.
-      await createOnUpdateTrigger(knex, TableName.CertificateRequests);
     });
+
+    // The trigger must be created inside the hasTable guard (so the migration
+    // is idempotent on re-run) but outside the createTable callback — Knex
+    // 3.x does not await async callbacks passed to createTable, so awaiting
+    // createOnUpdateTrigger inside the callback would make the trigger
+    // creation fire-and-forget and the migration would return before the
+    // CREATE TRIGGER DDL had been issued. The other migrations in this repo
+    // that guard createOnUpdateTrigger (e.g. 20260401124650_certificate-
+    // inventory-views.ts, 20260413000001_gateway-enrollment-tokens.ts) place
+    // the call in this position: inside the hasTable guard, outside the
+    // createTable callback.
+    await createOnUpdateTrigger(knex, TableName.CertificateRequests);
   }
 }
 
