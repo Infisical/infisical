@@ -27,7 +27,6 @@ const schema = z.object({
   name: z.string().trim().min(1, "Name is required"),
   hostnamesOrIps: z.string().trim().min(1, "At least one hostname or IP is required"),
   ttl: z.string().trim().min(1, "TTL is required"),
-  commonName: z.string().trim().optional(),
   keyAlgorithm: z.nativeEnum(CertKeyAlgorithm)
 });
 
@@ -55,7 +54,6 @@ export const KmipServerDeployModal = ({ isOpen, onOpenChange }: Props) => {
       name: "",
       hostnamesOrIps: "",
       ttl: "1y",
-      commonName: "",
       keyAlgorithm: CertKeyAlgorithm.RSA_2048
     }
   });
@@ -66,7 +64,6 @@ export const KmipServerDeployModal = ({ isOpen, onOpenChange }: Props) => {
         name: form.name,
         hostnamesOrIps: form.hostnamesOrIps,
         ttl: form.ttl,
-        commonName: form.commonName?.trim() ? form.commonName.trim() : undefined,
         keyAlgorithm: form.keyAlgorithm,
         authMethod: { method: "token" }
       });
@@ -124,20 +121,6 @@ export const KmipServerDeployModal = ({ isOpen, onOpenChange }: Props) => {
                 helperText="Comma-separated list of the hostnames or IPs that KMIP clients will use to reach this server. These become the server certificate's subject alternative names."
               >
                 <Input {...field} placeholder="kmip.example.com, 10.0.0.5" />
-              </FormControl>
-            )}
-          />
-          <Controller
-            control={control}
-            name="commonName"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Common Name"
-                isError={Boolean(error)}
-                errorText={error?.message}
-                helperText="Subject common name for the server certificate. Defaults to the server name."
-              >
-                <Input {...field} placeholder="(defaults to server name)" />
               </FormControl>
             )}
           />

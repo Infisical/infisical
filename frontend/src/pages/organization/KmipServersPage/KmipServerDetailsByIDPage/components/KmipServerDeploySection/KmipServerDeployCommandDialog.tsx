@@ -65,8 +65,8 @@ export const KmipServerDeployCommandDialog = ({
   const badgeLabel = authMethod === "aws" ? "AWS Auth" : "Token Auth";
   const helperText =
     authMethod === "aws"
-      ? "The host must have AWS credentials whose principal matches your allowlist. The certificate config (hostnames/IPs, TTL, common name, key algorithm) is read from the server's settings."
-      : "The enrollment token expires in 1 hour and can only be used once. The certificate config (hostnames/IPs, TTL, common name, key algorithm) is read from the server's settings.";
+      ? "The host must have AWS credentials whose principal matches your allowlist. The certificate config (hostnames/IPs, TTL, key algorithm) is read from the server's settings."
+      : "The enrollment token expires in 1 hour and can only be used once. The certificate config (hostnames/IPs, TTL, key algorithm) is read from the server's settings.";
 
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>

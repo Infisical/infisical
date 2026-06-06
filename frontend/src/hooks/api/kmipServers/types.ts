@@ -30,7 +30,6 @@ export type TKmipServer = {
   heartbeat: string | null;
   hostnamesOrIps: string | null;
   ttl: string | null;
-  commonName: string | null;
   keyAlgorithm: string | null;
 };
 
@@ -47,7 +46,6 @@ export type TCreateKmipServerDTO = {
   name: string;
   hostnamesOrIps: string;
   ttl?: string;
-  commonName?: string;
   keyAlgorithm?: CertKeyAlgorithm;
   authMethod:
     | {
@@ -63,7 +61,6 @@ export type TUpdateKmipServerDTO = {
   kmipServerId: string;
   hostnamesOrIps?: string;
   ttl?: string;
-  commonName?: string;
   keyAlgorithm?: CertKeyAlgorithm;
   authMethod?:
     | {

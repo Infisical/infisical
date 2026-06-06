@@ -36,7 +36,6 @@ const keyAlgorithmOptions = certKeyAlgorithms
 const schema = z.object({
   hostnamesOrIps: z.string().trim().min(1, "At least one hostname or IP is required"),
   ttl: z.string().trim().min(1, "TTL is required"),
-  commonName: z.string().trim().optional(),
   keyAlgorithm: z.nativeEnum(CertKeyAlgorithm)
 });
 
@@ -55,7 +54,6 @@ export const KmipServerCertConfigModal = ({ isOpen, onOpenChange, kmipServer }: 
   const defaults: FormData = {
     hostnamesOrIps: kmipServer.hostnamesOrIps ?? "",
     ttl: kmipServer.ttl ?? "1y",
-    commonName: kmipServer.commonName ?? "",
     keyAlgorithm: (kmipServer.keyAlgorithm as CertKeyAlgorithm) ?? CertKeyAlgorithm.RSA_2048
   };
 
@@ -80,7 +78,6 @@ export const KmipServerCertConfigModal = ({ isOpen, onOpenChange, kmipServer }: 
         kmipServerId: kmipServer.id,
         hostnamesOrIps: form.hostnamesOrIps,
         ttl: form.ttl,
-        commonName: form.commonName?.trim() ? form.commonName.trim() : undefined,
         keyAlgorithm: form.keyAlgorithm
       });
       createNotification({
@@ -114,23 +111,6 @@ export const KmipServerCertConfigModal = ({ isOpen, onOpenChange, kmipServer }: 
                     {...field}
                     isError={Boolean(error)}
                     placeholder="kmip.example.com, 10.0.0.5"
-                  />
-                  <FieldError errors={[error]} />
-                </FieldContent>
-              </Field>
-            )}
-          />
-          <Controller
-            control={control}
-            name="commonName"
-            render={({ field, fieldState: { error } }) => (
-              <Field>
-                <FieldLabel>Common Name</FieldLabel>
-                <FieldContent>
-                  <Input
-                    {...field}
-                    isError={Boolean(error)}
-                    placeholder="(defaults to server name)"
                   />
                   <FieldError errors={[error]} />
                 </FieldContent>

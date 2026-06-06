@@ -65,7 +65,6 @@ A KMIP server is created as an organization-wide entity in Infisical and then en
     2. Click **Create KMIP Server** and fill in:
         - **Name** of the server.
         - **Hostnames or IPs**: a comma-separated list of the hostnames or IPs that KMIP clients will use to reach this server (for example `kmip.example.com` or `10.0.1.50`). These become the Subject Alternative Names (SANs) of the server's TLS certificate, so they must match how clients connect.
-        - **Common Name** (optional): subject common name for the server certificate. Defaults to the server name.
         - **Certificate TTL**: validity period of the server certificate (for example `1y`).
         - **Key Algorithm**: key algorithm used to sign the server certificate.
 
@@ -154,7 +153,7 @@ A KMIP server is created as an organization-wide entity in Infisical and then en
     </Warning>
 
     <Note>
-      The server's certificate configuration (hostnames/IPs, TTL, common name, key algorithm) is read from the server entity you configured in the UI, so the deploy command does not include it. To change the certificate, edit the **Certificate Configuration** card on the server's detail page and restart the server.
+      The server's certificate configuration (hostnames/IPs, TTL, key algorithm) is read from the server entity you configured in the UI, so the deploy command does not include it. To change the certificate, edit the **Certificate Configuration** card on the server's detail page and restart the server.
     </Note>
 
     <Note>
@@ -188,7 +187,7 @@ A KMIP server is created as an organization-wide entity in Infisical and then en
 From the KMIP server's detail page (under **Infisical KMS > KMIP Servers**):
 
 - **Show deploy command** — Generates a fresh enrollment token (token method) or re-displays the AWS start command. For token-method servers this does not disconnect a running server; the next enrollment with the new token supersedes the old one.
-- **Edit certificate configuration**: Update the hostnames/IPs, common name, TTL, or key algorithm used for the server's TLS certificate. Restart the server after saving for the new certificate to take effect.
+- **Edit certificate configuration**: Update the hostnames/IPs, TTL, or key algorithm used for the server's TLS certificate. Restart the server after saving for the new certificate to take effect.
 - **Edit authentication** — Switch between Token and AWS, or update the AWS allowlists.
 - **Options → Revoke Access** — Invalidates the server's outstanding access tokens and enrollment tokens. The server must re-enroll to reconnect.
 - **Options → Delete** — Permanently removes the KMIP server entity.

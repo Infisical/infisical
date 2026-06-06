@@ -20,7 +20,6 @@ const SanitizedKmipServerSchema = KmipServersSchema.pick({
   name: true,
   hostnamesOrIps: true,
   ttl: true,
-  commonName: true,
   keyAlgorithm: true,
   createdAt: true,
   updatedAt: true,
@@ -102,7 +101,6 @@ export const registerKmipServerRouter = async (server: FastifyZodProvider) => {
         name: slugSchema({ min: 1, max: 32, field: "name" }),
         hostnamesOrIps: validateAltNamesField,
         ttl: ttlField.optional().default("1y"),
-        commonName: z.string().trim().min(1).optional(),
         keyAlgorithm: z.nativeEnum(CertKeyAlgorithm).optional().default(CertKeyAlgorithm.RSA_2048),
         authMethod: SettableAuthMethodInputSchema
       }),
@@ -112,7 +110,7 @@ export const registerKmipServerRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { authMethod: authMethodInput, name, hostnamesOrIps, ttl, commonName, keyAlgorithm } = req.body;
+      const { authMethod: authMethodInput, name, hostnamesOrIps, ttl, keyAlgorithm } = req.body;
       const authMethodArg =
         authMethodInput.method === ResourceAuthMethodType.Aws
           ? {
@@ -129,7 +127,6 @@ export const registerKmipServerRouter = async (server: FastifyZodProvider) => {
         name,
         hostnamesOrIps,
         ttl,
-        commonName,
         keyAlgorithm,
         authMethod: authMethodArg,
         actor: {
@@ -213,7 +210,6 @@ export const registerKmipServerRouter = async (server: FastifyZodProvider) => {
       body: z.object({
         hostnamesOrIps: validateAltNamesField.optional(),
         ttl: ttlField.optional(),
-        commonName: z.string().trim().min(1).optional(),
         keyAlgorithm: z.nativeEnum(CertKeyAlgorithm).optional(),
         authMethod: SettableAuthMethodInputSchema.optional()
       }),
@@ -223,16 +219,14 @@ export const registerKmipServerRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { hostnamesOrIps, ttl, commonName, keyAlgorithm } = req.body;
-      const hasFieldUpdate =
-        hostnamesOrIps !== undefined || ttl !== undefined || commonName !== undefined || keyAlgorithm !== undefined;
+      const { hostnamesOrIps, ttl, keyAlgorithm } = req.body;
+      const hasFieldUpdate = hostnamesOrIps !== undefined || ttl !== undefined || keyAlgorithm !== undefined;
 
       const kmipServer = hasFieldUpdate
         ? await server.services.kmipServer.updateKmipServer({
             kmipServerId: req.params.kmipServerId,
             hostnamesOrIps,
             ttl,
-            commonName,
             keyAlgorithm,
             actor: req.permission
           })
@@ -540,7 +534,9 @@ export const registerKmipServerRouter = async (server: FastifyZodProvider) => {
         });
       }
 
-      const resolvedCommonName = kmipServer.commonName ?? kmipServer.name;
+      // The server certificate's subject CN is cosmetic (clients verify the SAN, and nothing reads
+      // the server CN), so it's derived from the server name rather than being separately configurable.
+      const resolvedCommonName = kmipServer.name;
       const resolvedTtl = kmipServer.ttl ?? "1y";
       const resolvedKeyAlgorithm = (kmipServer.keyAlgorithm as CertKeyAlgorithm) ?? undefined;
 

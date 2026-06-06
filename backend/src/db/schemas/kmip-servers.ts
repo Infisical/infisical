@@ -17,7 +17,6 @@ export const KmipServersSchema = z.object({
   tokenVersion: z.number().default(0),
   hostnamesOrIps: z.string().nullable().optional(),
   ttl: z.string().nullable().optional(),
-  commonName: z.string().nullable().optional(),
   keyAlgorithm: z.string().nullable().optional()
 });
 

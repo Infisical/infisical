@@ -124,12 +124,6 @@ export const KmipServerDetailsCard = ({
                   </DetailValue>
                 </Detail>
                 <Detail>
-                  <DetailLabel>Common Name</DetailLabel>
-                  <DetailValue>
-                    {kmipServer.commonName || <span className="text-muted">{kmipServer.name}</span>}
-                  </DetailValue>
-                </Detail>
-                <Detail>
                   <DetailLabel>Certificate TTL</DetailLabel>
                   <DetailValue>{kmipServer.ttl || "1y"}</DetailValue>
                 </Detail>

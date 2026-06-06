@@ -47,14 +47,12 @@ export const useUpdateKmipServer = () => {
       authMethod,
       hostnamesOrIps,
       ttl,
-      commonName,
       keyAlgorithm
     }: TUpdateKmipServerDTO) => {
       const body: Record<string, unknown> = {};
       if (authMethod !== undefined) body.authMethod = authMethod;
       if (hostnamesOrIps !== undefined) body.hostnamesOrIps = hostnamesOrIps;
       if (ttl !== undefined) body.ttl = ttl;
-      if (commonName !== undefined) body.commonName = commonName;
       if (keyAlgorithm !== undefined) body.keyAlgorithm = keyAlgorithm;
 
       const { data } = await apiRequest.patch<TKmipServerWithAuthMethod>(

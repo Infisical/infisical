@@ -44,7 +44,6 @@ export const kmipServerServiceFactory = ({
     name,
     hostnamesOrIps,
     ttl,
-    commonName,
     keyAlgorithm,
     authMethod,
     actor
@@ -52,7 +51,6 @@ export const kmipServerServiceFactory = ({
     name: string;
     hostnamesOrIps: string;
     ttl?: string;
-    commonName?: string;
     keyAlgorithm?: string;
     authMethod:
       | { method: "aws"; config: { stsEndpoint: string; allowedPrincipalArns: string; allowedAccountIds: string } }
@@ -63,10 +61,7 @@ export const kmipServerServiceFactory = ({
 
     try {
       return await kmipServerDAL.transaction(async (tx) => {
-        const created = await kmipServerDAL.create(
-          { name, orgId: actor.orgId, hostnamesOrIps, ttl, commonName, keyAlgorithm },
-          tx
-        );
+        const created = await kmipServerDAL.create({ name, orgId: actor.orgId, hostnamesOrIps, ttl, keyAlgorithm }, tx);
         await resourceAuthMethodService.initAtCreate({ resource: { type: "kmip", id: created.id }, authMethod }, tx);
         return created;
       });
@@ -86,7 +81,6 @@ export const kmipServerServiceFactory = ({
     kmipServerId: string;
     hostnamesOrIps?: string;
     ttl?: string;
-    commonName?: string;
     keyAlgorithm?: string;
     actor: TActor;
   }) => {

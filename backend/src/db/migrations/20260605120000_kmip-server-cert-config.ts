@@ -5,7 +5,7 @@ import { TableName } from "../schemas";
 // Enrollment-based KMIP servers store their certificate config on the resource itself (set in the
 // UI at creation) instead of having the daemon pass it on every launch. The /connect endpoint
 // reads these; the legacy machine-identity /server-registration path still takes them in the body.
-const COLUMNS = ["hostnamesOrIps", "ttl", "commonName", "keyAlgorithm"] as const;
+const COLUMNS = ["hostnamesOrIps", "ttl", "keyAlgorithm"] as const;
 
 export async function up(knex: Knex): Promise<void> {
   if (await knex.schema.hasTable(TableName.KmipServer)) {

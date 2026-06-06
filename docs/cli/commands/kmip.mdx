@@ -29,7 +29,7 @@ The Infisical KMIP server provides Key Management Interoperability Protocol (KMI
 
 The server is created as an entity in the Infisical UI and then enrolled from the host where you run it, using either a one-time enrollment **token** or **AWS** authentication. The deploy command (including the enrollment token) can be copied from the server's detail page via **Show deploy command**.
 
-The server's certificate configuration (hostnames/IPs, TTL, common name, and key algorithm) is defined on the server entity in the UI. The CLI fetches it on start, so you do not pass it on the command line. To change the certificate, edit the configuration in the UI and restart the server.
+The server's certificate configuration (hostnames/IPs, TTL, and key algorithm) is defined on the server entity in the UI. The CLI fetches it on start, so you do not pass it on the command line. To change the certificate, edit the configuration in the UI and restart the server.
 
 For detailed information about KMIP integration, PKI setup, and client configuration, see the [KMIP Integration Guide](/documentation/platform/kms/kmip).
 
