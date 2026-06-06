@@ -95,7 +95,6 @@ import { licenseDALFactory } from "@app/ee/services/license/license-dal";
 import { licenseServiceFactory } from "@app/ee/services/license/license-service";
 import { oidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
 import { oidcConfigServiceFactory } from "@app/ee/services/oidc/oidc-config-service";
-import { pamProjectResolverFactory } from "@app/ee/services/pam-instance/pam-project-resolver";
 import { permissionDALFactory } from "@app/ee/services/permission/permission-dal";
 import { permissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { pitServiceFactory } from "@app/ee/services/pit/pit-service";
@@ -1481,11 +1480,6 @@ export const registerRoutes = async (
   const certManagerProjectResolver = certManagerProjectResolverFactory({
     orgDAL,
     projectDAL
-  });
-
-  const pamProjectResolver = pamProjectResolverFactory({
-    orgDAL,
-    keyStore
   });
 
   const certManagerInstanceService = certManagerInstanceServiceFactory({
@@ -3373,7 +3367,6 @@ export const registerRoutes = async (
     signerPolicy: signerPolicyService,
     pkiApplicationEnrollment: pkiApplicationEnrollmentService,
     certManagerProjectResolver,
-    pamProjectResolver,
     certManagerInstance: certManagerInstanceService,
     certManagerExport: certManagerExportService,
     certificateAuthorityCrl: certificateAuthorityCrlService,

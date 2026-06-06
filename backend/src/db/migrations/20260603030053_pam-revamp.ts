@@ -56,29 +56,29 @@ const createPamProjectForOrg = async (knex: Knex, orgId: string) => {
     })
     .returning("id")) as Array<{ id: string }>;
 
-  await knex(TableName.Organization).where("id", orgId).update({ defaultPamProjectId: projectId });
   await seedDefaultTemplates(knex, orgId);
 
   return projectId;
 };
 
 const backfillPamProjectsForAllOrgs = async (knex: Knex) => {
-  const allOrgs = (await knex(TableName.Organization).whereNull("defaultPamProjectId").select("id")) as Array<{
-    id: string;
-  }>;
+  const allOrgs = (await knex(TableName.Organization).select("id")) as Array<{ id: string }>;
+  const orgToPamProject = new Map<string, string>();
 
   for (let i = 0; i < allOrgs.length; i += BACKFILL_CHUNK_SIZE) {
     const chunk = allOrgs.slice(i, i + BACKFILL_CHUNK_SIZE);
-    await Promise.all(chunk.map(({ id }) => createPamProjectForOrg(knex, id)));
+    const results = await Promise.all(
+      chunk.map(async ({ id }) => ({ orgId: id, projectId: await createPamProjectForOrg(knex, id) }))
+    );
+    for (const { orgId, projectId } of results) {
+      orgToPamProject.set(orgId, projectId);
+    }
   }
+
+  return orgToPamProject;
 };
 
 export async function up(knex: Knex): Promise<void> {
-  await knex.schema.alterTable(TableName.Organization, (t) => {
-    t.string("defaultPamProjectId", 36).nullable();
-    t.foreign("defaultPamProjectId").references("id").inTable(TableName.Project).onDelete("SET NULL");
-  });
-
   await knex.schema.createTable(TableName.PamAccountTemplate, (t) => {
     t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
 
@@ -114,7 +114,7 @@ export async function up(knex: Knex): Promise<void> {
   // Capture orgs that have a PAM project before backfill
   const orgsWithPam = await knex(TableName.Project).where("type", ProjectType.PAM).distinct("orgId").select("orgId");
 
-  await backfillPamProjectsForAllOrgs(knex);
+  const orgToPamProject = await backfillPamProjectsForAllOrgs(knex);
 
   // Drop old folders table and recreate with new schema
   await knex.raw(`UPDATE ${TableName.PamAccount} SET "folderId" = NULL WHERE "folderId" IS NOT NULL`);
@@ -195,8 +195,7 @@ export async function up(knex: Knex): Promise<void> {
     kmsService.createCipherPairWithDataKey({ type: KmsDataKey.Organization, orgId }, knex);
 
   for (const { orgId } of orgsWithPam) {
-    const org = await knex(TableName.Organization).where("id", orgId).first("defaultPamProjectId");
-    const newProjectId = org!.defaultPamProjectId as string;
+    const newProjectId = orgToPamProject.get(orgId)!;
     const orgCipher = await getOrgCipher(orgId);
 
     const reEncrypt = (oldCipher: Awaited<ReturnType<typeof getProjectCipher>>, blob?: Buffer | null) => {
