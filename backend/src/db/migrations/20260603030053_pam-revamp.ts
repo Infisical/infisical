@@ -25,8 +25,6 @@ import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 import { getMigrationEnvConfig, getMigrationHsmConfig } from "./utils/env-config";
 import { getMigrationEncryptionServices, getMigrationHsmService } from "./utils/services";
 
-const BACKFILL_CHUNK_SIZE = 8;
-
 const seedDefaultTemplates = async (knex: Knex, orgId: string) => {
   for (const template of DEFAULT_ACCOUNT_TEMPLATES) {
     await knex(TableName.PamAccountTemplate)
@@ -65,14 +63,9 @@ const backfillPamProjectsForAllOrgs = async (knex: Knex) => {
   const allOrgs = (await knex(TableName.Organization).select("id")) as Array<{ id: string }>;
   const orgToPamProject = new Map<string, string>();
 
-  for (let i = 0; i < allOrgs.length; i += BACKFILL_CHUNK_SIZE) {
-    const chunk = allOrgs.slice(i, i + BACKFILL_CHUNK_SIZE);
-    const results = await Promise.all(
-      chunk.map(async ({ id }) => ({ orgId: id, projectId: await createPamProjectForOrg(knex, id) }))
-    );
-    for (const { orgId, projectId } of results) {
-      orgToPamProject.set(orgId, projectId);
-    }
+  for (const { id } of allOrgs) {
+    const projectId = await createPamProjectForOrg(knex, id);
+    orgToPamProject.set(id, projectId);
   }
 
   return orgToPamProject;
@@ -240,19 +233,26 @@ export async function up(knex: Knex): Promise<void> {
         );
 
       for (const account of resourceAccounts) {
-        const templateId = templateMap[account.resourceType];
-        if (templateId) {
-          await knex(TableName.PamAccount)
-            .where("id", account.accountId)
-            .update({
-              folderId,
-              templateId,
-              encryptedCredentials: reEncrypt(oldProjectCipher, account.encryptedCredentials),
-              encryptedConnectionDetails: reEncrypt(oldProjectCipher, account.encryptedConnectionDetails),
-              encryptedInternalMetadata: reEncrypt(oldProjectCipher, account.encryptedResourceMetadata),
-              gatewayId: account.gatewayId,
-              gatewayPoolId: account.gatewayPoolId
-            });
+        try {
+          const templateId = templateMap[account.resourceType];
+          if (templateId) {
+            await knex(TableName.PamAccount)
+              .where("id", account.accountId)
+              .update({
+                folderId,
+                templateId,
+                encryptedCredentials: reEncrypt(oldProjectCipher, account.encryptedCredentials),
+                encryptedConnectionDetails: reEncrypt(oldProjectCipher, account.encryptedConnectionDetails),
+                encryptedInternalMetadata: reEncrypt(oldProjectCipher, account.encryptedResourceMetadata),
+                gatewayId: account.gatewayId,
+                gatewayPoolId: account.gatewayPoolId
+              });
+          }
+        } catch (err) {
+          logger.warn(
+            { err, accountId: account.accountId },
+            `PAM migration: failed to migrate resource account, skipping [accountId=${account.accountId}]`
+          );
         }
       }
 
@@ -269,18 +269,25 @@ export async function up(knex: Knex): Promise<void> {
         );
 
       for (const account of domainAccounts) {
-        const templateId = templateMap[account.domainType];
-        if (templateId) {
-          await knex(TableName.PamAccount)
-            .where("id", account.accountId)
-            .update({
-              folderId,
-              templateId,
-              encryptedCredentials: reEncrypt(oldProjectCipher, account.encryptedCredentials),
-              encryptedConnectionDetails: reEncrypt(oldProjectCipher, account.encryptedConnectionDetails),
-              gatewayId: account.gatewayId,
-              gatewayPoolId: account.gatewayPoolId
-            });
+        try {
+          const templateId = templateMap[account.domainType];
+          if (templateId) {
+            await knex(TableName.PamAccount)
+              .where("id", account.accountId)
+              .update({
+                folderId,
+                templateId,
+                encryptedCredentials: reEncrypt(oldProjectCipher, account.encryptedCredentials),
+                encryptedConnectionDetails: reEncrypt(oldProjectCipher, account.encryptedConnectionDetails),
+                gatewayId: account.gatewayId,
+                gatewayPoolId: account.gatewayPoolId
+              });
+          }
+        } catch (err) {
+          logger.warn(
+            { err, accountId: account.accountId },
+            `PAM migration: failed to migrate domain account, skipping [accountId=${account.accountId}]`
+          );
         }
       }
     }
