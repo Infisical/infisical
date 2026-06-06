@@ -11,8 +11,10 @@ import { TImmutableDBKeys } from "./models";
 
 export const PamSessionsSchema = z.object({
   id: z.string().uuid(),
+  projectId: z.string(),
   accountId: z.string().uuid().nullable().optional(),
   accountType: z.string(),
+  resourceName: z.string(),
   accountName: z.string(),
   userId: z.string().uuid().nullable().optional(),
   actorName: z.string(),
@@ -27,7 +29,12 @@ export const PamSessionsSchema = z.object({
   createdAt: z.date(),
   updatedAt: z.date(),
   accessMethod: z.string().nullable().optional(),
+  resourceId: z.string().uuid().nullable().optional(),
+  encryptedAiInsights: zodBuffer.nullable().optional(),
+  aiInsightsStatus: z.string().nullable().optional(),
+  aiInsightsError: z.string().nullable().optional(),
   reason: z.string().nullable().optional(),
+  selectedResourceId: z.string().uuid().nullable().optional(),
   encryptedSessionKey: zodBuffer.nullable().optional(),
   gatewayUploadTokenHash: zodBuffer.nullable().optional(),
   gatewayId: z.string().uuid().nullable().optional(),
