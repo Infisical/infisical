@@ -35,10 +35,16 @@ export async function up(knex: Knex): Promise<void> {
       t.index(["caId"]);
       t.index(["certificateId"]);
       t.index(["createdAt"]);
+
+      // The trigger must be created inside the hasTable guard. On a fresh
+      // install the createTable branch runs once and the trigger is created
+      // alongside it. On a re-run, the createTable branch is skipped (the
+      // table already exists) but the trigger creation still fired and
+      // crashed with "trigger ... already exists". Guarding the trigger
+      // creation with the same check makes the migration idempotent.
+      await createOnUpdateTrigger(knex, TableName.CertificateRequests);
     });
   }
-
-  await createOnUpdateTrigger(knex, TableName.CertificateRequests);
 }
 
 export async function down(knex: Knex): Promise<void> {
