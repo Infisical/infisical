@@ -95,7 +95,7 @@ export const identityV2ServiceFactory = ({
       });
     }
 
-    let projectMemberRole = OrgMembershipRole.NoAccess as string;
+    let projectMemberRole = ProjectMembershipRole.NoAccess as string;
     if (scopeData.scope === AccessScope.Project) {
       const project = await projectDAL.findById(scopeData.projectId);
       if (project?.type === ProjectType.CertificateManager) {
