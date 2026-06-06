@@ -515,7 +515,9 @@ export const routes = rootRoute("root.tsx", [
       ),
       route(
         "/organization/settings/oauth/callback",
-        "redirects/settings-oauth-callback-redirect.tsx",
+        "redirects/settings-oauth-callback-redirect.tsx"
+      ),
+      route(
         "/organization/app-connections/github/manifest/callback",
         "redirects/github-manifest-callback-redirect.tsx"
       ),
