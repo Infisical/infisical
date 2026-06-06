@@ -19,11 +19,10 @@ export type TNotification = {
   copyActions?: { icon?: IconDefinition; value: string; name: string; label?: string }[];
 };
 
-// Back-compat shim for the old react-toastify second argument. Across the codebase only
-// `autoClose` and `closeOnClick` were ever passed, so we map those and ignore the rest.
+// Back-compat shim for the old react-toastify second argument. Only `autoClose` is ever passed
+// at call sites; it maps to sonner's `duration`.
 type TNotificationOptions = {
   autoClose?: number | false;
-  closeOnClick?: boolean;
   duration?: number;
 };
 
@@ -43,8 +42,12 @@ const ToastCopyButton = ({ value, name }: { value: string; name: string }) => {
           className="size-5"
           onClick={(e) => {
             e.stopPropagation();
-            setCopyText("Copied");
-            navigator.clipboard.writeText(value);
+            navigator.clipboard
+              .writeText(value)
+              .then(() => setCopyText("Copied"))
+              .catch(() => {
+                // clipboard write failed (e.g. denied permissions); leave the state unchanged
+              });
           }}
         >
           {isCopying ? <CheckIcon className="size-3!" /> : <CopyIcon className="size-3!" />}
