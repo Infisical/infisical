@@ -502,6 +502,14 @@ export const AppConnectionsBrowser = () => {
       description:
         "Learn how to connect Convex to manage and rotate access keys with Infisical.",
       category: "SaaS",
+    },
+    {
+      name: "Trigger.dev",
+      slug: "trigger-dev",
+      path: "/integrations/app-connections/trigger-dev",
+      description:
+        "Learn how to connect your Trigger.dev account to sync secrets from Infisical.",
+      category: "DevOps Tools",
     }
   ].sort(function (a, b) {
     return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
