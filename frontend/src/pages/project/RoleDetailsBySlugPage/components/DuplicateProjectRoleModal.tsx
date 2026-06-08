@@ -11,6 +11,7 @@ import { getProjectBaseURL } from "@app/helpers/project";
 import { useCreateProjectRole, useGetProjectRoleBySlug } from "@app/hooks/api";
 import { TProjectRole } from "@app/hooks/api/roles/types";
 import { usePopUp } from "@app/hooks/usePopUp";
+import { stripRedundantLegacyActionsForNewRole } from "@app/lib/fn/permission";
 import { slugSchema } from "@app/lib/schemas";
 
 import { formRolePermission2API, rolePermission2Form } from "./ProjectRoleModifySection.utils";
@@ -67,9 +68,11 @@ const Content = ({ role, onClose }: ContentProps) => {
     }
 
     // Round-trip through the form schema to strip any subjects not supported by
-    // ProjectPermissionV2Schema (e.g. certificate-application in non-CertManager projects)
-    // and normalise legacy actions (e.g. DescribeAndReadValue → DescribeSecret + ReadValue).
-    const sanitizedPermission = formRolePermission2API(rolePermission2Form(role.permissions));
+    // ProjectPermissionV2Schema (e.g. certificate-application in non-CertManager projects).
+    // A duplicate is a brand-new role, so also strip legacy actions from the permissions
+    const sanitizedPermission = stripRedundantLegacyActionsForNewRole(
+      formRolePermission2API(rolePermission2Form(role.permissions))
+    );
 
     const newRole = await createRole.mutateAsync({
       projectId: currentProject.id,

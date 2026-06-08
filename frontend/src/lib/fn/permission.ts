@@ -10,6 +10,7 @@ import {
   ProjectPermissionSub,
   SecretSubjectFields
 } from "@app/context/ProjectPermissionContext/types";
+import { TProjectPermission } from "@app/hooks/api/roles/types";
 
 type MemberAssignRoleConditions = {
   emails?: string[];
@@ -337,6 +338,59 @@ const isAssignPrivilegesIdentityRule = (rule: RawRuleOf<MongoAbility<ProjectPerm
     assignPrivilegesActions.includes(action as ProjectPermissionIdentityActions)
   );
 };
+
+// ─── Legacy action normalization ─────────────────────────────────────
+
+const LEGACY_ACTION_REPLACEMENTS: Partial<Record<string, Record<string, string[]>>> = {
+  [ProjectPermissionSub.Secrets]: {
+    [ProjectPermissionSecretActions.DescribeAndReadValue]: [
+      ProjectPermissionSecretActions.DescribeSecret,
+      ProjectPermissionSecretActions.ReadValue
+    ]
+  },
+  [ProjectPermissionSub.Member]: {
+    [ProjectPermissionMemberActions.GrantPrivileges]: [
+      ProjectPermissionMemberActions.AssignRole,
+      ProjectPermissionMemberActions.AssignAdditionalPrivileges
+    ]
+  },
+  [ProjectPermissionSub.Identity]: {
+    [ProjectPermissionIdentityActions.GrantPrivileges]: [
+      ProjectPermissionIdentityActions.AssignRole,
+      ProjectPermissionIdentityActions.AssignAdditionalPrivileges
+    ]
+  },
+  [ProjectPermissionSub.Groups]: {
+    [ProjectPermissionGroupActions.GrantPrivileges]: [ProjectPermissionGroupActions.AssignRole]
+  }
+};
+
+// For new-role flows (e.g. Duplicate Role) only: drop a legacy action when its modern
+// replacements are all present, yielding an equivalent set the backend accepts. Existing
+// roles are never rewritten, and a lone legacy action is left as-is.
+export const stripRedundantLegacyActionsForNewRole = (
+  permissions: TProjectPermission[]
+): TProjectPermission[] =>
+  permissions.map((permission) => {
+    const permissionSubject = (
+      typeof permission.subject === "string" ? permission.subject : permission.subject[0]
+    ) as string;
+    const replacements = LEGACY_ACTION_REPLACEMENTS[permissionSubject];
+    if (!replacements) return permission;
+
+    const actions = new Set(permission.action);
+    let changed = false;
+    Object.entries(replacements).forEach(([legacyAction, modernActions]) => {
+      const isRedundant =
+        actions.has(legacyAction) && modernActions.every((action) => actions.has(action));
+      if (isRedundant) {
+        actions.delete(legacyAction);
+        changed = true;
+      }
+    });
+
+    return changed ? { ...permission, action: [...actions] } : permission;
+  });
 
 // ─── Subject helpers ─────────────────────────────────────────────────
 
