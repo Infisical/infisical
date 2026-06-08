@@ -430,7 +430,9 @@ export const registerOAuthRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    // Token introspection for OAuth clients: accepts the delegated OAuth access token. Reaching the
+    // handler means injectIdentity already verified the signature and the underlying session.
+    onRequest: verifyAuth([AuthMode.OAUTH]),
     handler: () => ({ active: true as const })
   });
 };

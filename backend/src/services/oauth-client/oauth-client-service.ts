@@ -56,7 +56,10 @@ type TOauthTokenClaims = {
   mfaMethod?: MfaMethod;
 };
 
-const signOauthAccessToken = (claims: TOauthTokenClaims & { accessVersion: number }, expiresIn: string | number) => {
+const signOauthAccessToken = (
+  claims: TOauthTokenClaims & { accessVersion: number; oauthClientId: string },
+  expiresIn: string | number
+) => {
   const appCfg = getConfig();
   return crypto.jwt().sign(
     {
@@ -67,7 +70,10 @@ const signOauthAccessToken = (claims: TOauthTokenClaims & { accessVersion: numbe
       accessVersion: claims.accessVersion,
       organizationId: claims.organizationId,
       isMfaVerified: claims.isMfaVerified,
-      mfaMethod: claims.mfaMethod
+      mfaMethod: claims.mfaMethod,
+      // Marks this as a delegated OAuth access token. extractAuth maps tokens carrying this
+      // claim to AuthMode.OAUTH so they are rejected by the default first-party JWT middleware.
+      oauthClientId: claims.oauthClientId
     },
     appCfg.AUTH_SECRET,
     { expiresIn }
@@ -348,7 +354,7 @@ export const oauthClientServiceFactory = ({
       };
 
       const accessToken = signOauthAccessToken(
-        { ...sharedClaims, accessVersion: tokenSession.accessVersion },
+        { ...sharedClaims, accessVersion: tokenSession.accessVersion, oauthClientId: client.clientId },
         accessTokenExpiresIn
       );
 
@@ -404,7 +410,7 @@ export const oauthClientServiceFactory = ({
     }
 
     const accessToken = signOauthAccessToken(
-      { ...sharedClaims, accessVersion: tokenVersion.accessVersion },
+      { ...sharedClaims, accessVersion: tokenVersion.accessVersion, oauthClientId: client.clientId },
       accessTokenExpiresIn
     );
 

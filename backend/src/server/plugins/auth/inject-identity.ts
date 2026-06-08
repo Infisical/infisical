@@ -24,7 +24,7 @@ import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 
 export type TAuthMode =
   | {
-      authMode: AuthMode.JWT | AuthMode.MCP_JWT;
+      authMode: AuthMode.JWT | AuthMode.MCP_JWT | AuthMode.OAUTH;
       actor: ActorType.USER;
       userId: string;
       tokenVersionId: string; // the session id of token used
@@ -35,6 +35,7 @@ export type TAuthMode =
       authMethod: AuthMethod;
       isMfaVerified?: boolean;
       mfaMethod?: MfaMethod;
+      oauthClientId?: string;
       token: AuthModeJwtTokenPayload;
     }
   | {
@@ -125,6 +126,14 @@ export const extractAuth = async (req: FastifyRequest, jwtSecret: string) => {
       if (decodedToken?.mcp) {
         return {
           authMode: AuthMode.MCP_JWT,
+          token: decodedToken as AuthModeJwtTokenPayload,
+          actor: ActorType.USER
+        } as const;
+      }
+
+      if (decodedToken?.oauthClientId) {
+        return {
+          authMode: AuthMode.OAUTH,
           token: decodedToken as AuthModeJwtTokenPayload,
           actor: ActorType.USER
         } as const;
@@ -286,6 +295,29 @@ export const injectIdentity = fp(
             parentOrgId,
             authMethod: token.authMethod,
             isMfaVerified: token.isMfaVerified,
+            token
+          };
+          fireIdentifyForUser(user);
+          break;
+        }
+        case AuthMode.OAUTH: {
+          const { user, tokenVersionId, orgId, orgName, rootOrgId, parentOrgId } =
+            await server.services.authToken.fnValidateJwtIdentity(token);
+          requestContext.set(RequestContextKey.OrgId, orgId);
+          requestContext.set(RequestContextKey.OrgName, orgName);
+          requestContext.set(RequestContextKey.UserAuthInfo, { userId: user.id, email: user.email || "" });
+          req.auth = {
+            authMode: AuthMode.OAUTH,
+            user,
+            userId: user.id,
+            tokenVersionId,
+            actor,
+            orgId,
+            rootOrgId,
+            parentOrgId,
+            authMethod: token.authMethod,
+            isMfaVerified: token.isMfaVerified,
+            oauthClientId: token.oauthClientId,
             token
           };
           fireIdentifyForUser(user);
