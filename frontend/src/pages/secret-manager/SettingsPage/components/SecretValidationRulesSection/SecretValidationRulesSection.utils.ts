@@ -143,9 +143,11 @@ export const SECRET_ROTATION_PROVIDER_OPTIONS: TProviderOption<SecretRotationRul
   }
 ];
 
-// Constraints supported for generated-credential rules. PreventValueReuse is
-// excluded for dynamic secrets (ephemeral leases, no version history) but
-// supported for rotations.
+// PreventValueReuse is intentionally static-secret-only. For dynamic secrets
+// each lease is independent so reuse has no meaning; for rotations we drive
+// uniqueness through password generation (length/regex) rather than failing a
+// rotation at issue time because the generator happened to land on a prior
+// value.
 export const DYNAMIC_SECRET_RULE_DISALLOWED_CONSTRAINTS: ConstraintType[] = [
   ConstraintType.PreventValueReuse
 ];

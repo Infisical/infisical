@@ -19,9 +19,13 @@ export const MAX_PREVENT_VALUE_REUSE_VERSIONS = 25;
 const STATIC_RULE_TARGETS = new Set<ConstraintTarget>([ConstraintTarget.SecretKey, ConstraintTarget.SecretValue]);
 const GENERATED_RULE_TARGETS = new Set<ConstraintTarget>([ConstraintTarget.GeneratedPassword]);
 
-// Constraint types not meaningful for the given rule type. PreventValueReuse
-// requires a version history, which dynamic secrets (ephemeral leases) do not have.
-const DYNAMIC_DISALLOWED_CONSTRAINTS = new Set<ConstraintType>([ConstraintType.PreventValueReuse]);
+// Constraint types disallowed on generated-credential rules (dynamic secrets
+// and secret rotations). PreventValueReuse is intentionally static-secret-only:
+// for dynamic secrets it has no anchor (each lease is independent and ephemeral),
+// and for rotations we explicitly want users to drive uniqueness through
+// password generation (length/regex) rather than a reuse check that would
+// surface a rotation as a failed lease at issue time.
+const GENERATED_RULE_DISALLOWED_CONSTRAINTS = new Set<ConstraintType>([ConstraintType.PreventValueReuse]);
 
 const baseConstraintSchema = z.object({
   type: z.nativeEnum(ConstraintType),
@@ -56,7 +60,9 @@ const buildConstraintSchemaForRuleType = (ruleType: SecretValidationRuleType) =>
   const allowedTargets =
     ruleType === SecretValidationRuleType.StaticSecrets ? STATIC_RULE_TARGETS : GENERATED_RULE_TARGETS;
   const disallowedTypes =
-    ruleType === SecretValidationRuleType.StaticSecrets ? new Set<ConstraintType>() : DYNAMIC_DISALLOWED_CONSTRAINTS;
+    ruleType === SecretValidationRuleType.StaticSecrets
+      ? new Set<ConstraintType>()
+      : GENERATED_RULE_DISALLOWED_CONSTRAINTS;
 
   return baseConstraintSchema
     .refine((c) => allowedTargets.has(c.appliesTo), {
