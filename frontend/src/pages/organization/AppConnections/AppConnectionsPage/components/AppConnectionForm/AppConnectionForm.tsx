@@ -313,7 +313,7 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
       case AppConnection.Datadog:
         return <DatadogConnectionForm onSubmit={onSubmit} />;
       case AppConnection.F5BigIp:
-        return <F5BigIpConnectionForm onSubmit={onSubmit} />;,
+        return <F5BigIpConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Convex:
         return <ConvexConnectionForm onSubmit={onSubmit} />;
       default:
@@ -548,7 +548,7 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
       case AppConnection.Datadog:
         return <DatadogConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.F5BigIp:
-        return <F5BigIpConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;,
+        return <F5BigIpConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Convex:
         return <ConvexConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Venafi:

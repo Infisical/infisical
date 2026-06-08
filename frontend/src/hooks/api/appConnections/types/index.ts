@@ -205,7 +205,7 @@ export type TAppConnection =
   | TSalesforceConnection
   | TSnowflakeConnection
   | TDatadogConnection
-  | TF5BigIpConnection;,
+  | TF5BigIpConnection
   | TConvexConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id" | "projectId">;

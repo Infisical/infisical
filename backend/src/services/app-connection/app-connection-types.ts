@@ -478,7 +478,7 @@ export type TAppConnection = { id: string; configuration?: TAppConnectionConfigu
   | TSalesforceConnection
   | TSnowflakeConnection
   | TDatadogConnection
-  | TF5BigIpConnection,
+  | TF5BigIpConnection
   | TConvexConnection
 );
 
@@ -558,7 +558,7 @@ export type TAppConnectionInput = { id: string } & (
   | TSalesforceConnectionInput
   | TSnowflakeConnectionInput
   | TDatadogConnectionInput
-  | TF5BigIpConnectionInput,
+  | TF5BigIpConnectionInput
   | TConvexConnectionInput
 );
 
@@ -670,7 +670,7 @@ export type TAppConnectionConfig =
   | TSalesforceConnectionConfig
   | TSnowflakeConnectionConfig
   | TDatadogConnectionConfig
-  | TF5BigIpConnectionConfig;,
+  | TF5BigIpConnectionConfig
   | TConvexConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
@@ -741,7 +741,7 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateSalesforceConnectionCredentialsSchema
   | TValidateSnowflakeConnectionCredentialsSchema
   | TValidateDatadogConnectionCredentialsSchema
-  | TValidateF5BigIpConnectionCredentialsSchema;,
+  | TValidateF5BigIpConnectionCredentialsSchema
   | TValidateConvexConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
