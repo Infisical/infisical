@@ -166,9 +166,8 @@ export const dynamicSecretLeaseServiceFactory = ({
       const ruleProvider = convertDynamicSecretProviderToValidationRuleProvider(
         dynamicSecretCfg.type as DynamicSecretProviders
       );
-      let passwordValidation:
-        | Awaited<ReturnType<typeof secretValidationRuleService.findConstraintsForGeneratedSecret>>
-        | undefined;
+
+      let passwordValidation;
       if (ruleProvider) {
         const matched = await secretValidationRuleService.findConstraintsForGeneratedSecret({
           projectId,
