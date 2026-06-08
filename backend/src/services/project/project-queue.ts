@@ -31,6 +31,8 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueJobTypes, TQueueServiceFactory } from "@app/queue";
 
+import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
+
 import { TIntegrationAuthDALFactory } from "../integration-auth/integration-auth-dal";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
@@ -53,6 +55,7 @@ export type TProjectQueueFactory = ReturnType<typeof projectQueueFactory>;
 
 type TProjectQueueFactoryDep = {
   queueService: TQueueServiceFactory;
+  keyStore: Pick<TKeyStoreFactory, "deleteItems">;
   secretVersionDAL: Pick<TSecretVersionDALFactory, "find" | "bulkUpdateNoVersionIncrement" | "delete">;
   folderDAL: Pick<TSecretFolderDALFactory, "find">;
   secretDAL: Pick<TSecretDALFactory, "find" | "bulkUpdateNoVersionIncrement">;
@@ -74,6 +77,7 @@ type TProjectQueueFactoryDep = {
 
 export const projectQueueFactory = ({
   queueService,
+  keyStore,
   secretDAL,
   secretV2BridgeDAL,
   kmsService,
@@ -724,6 +728,10 @@ export const projectQueueFactory = ({
     }
 
     await projectDAL.updateById(projectId, { secretBlindIndexEnabled: true });
+
+    await keyStore.deleteItems({
+      pattern: `${KeyStorePrefixes.InsightsCache(projectId, "secrets-duplication")}*`
+    });
 
     logger.info(
       `SecretBlindIndexMigration: migration complete [projectId=${projectId}] [totalProcessed=${totalProcessed}]`

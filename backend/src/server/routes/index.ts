@@ -1301,6 +1301,7 @@ export const registerRoutes = async (
 
   const projectQueueService = projectQueueFactory({
     queueService,
+    keyStore,
     secretDAL,
     secretV2BridgeDAL,
     kmsService,

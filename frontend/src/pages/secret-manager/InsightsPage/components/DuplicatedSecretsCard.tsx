@@ -96,9 +96,14 @@ export const DuplicatedSecretsCard = () => {
       queryClient.invalidateQueries({
         queryKey: secretInsightsKeys.secretsDuplication({ projectId })
       });
-      setMigrationTriggered(false);
     }
   }, [statusData?.status, migrationTriggered, projectId, queryClient]);
+
+  useEffect(() => {
+    if (migrationTriggered && secretBlindIndexEnabled) {
+      setMigrationTriggered(false);
+    }
+  }, [migrationTriggered, secretBlindIndexEnabled]);
 
   const handleEnableClick = () => {
     setMigrationTriggered(true);
@@ -129,8 +134,7 @@ export const DuplicatedSecretsCard = () => {
     );
   };
 
-  const isMigrationRunning =
-    migrationTriggered && migrationStatus !== "completed" && migrationStatus !== "failed";
+  const isMigrationRunning = migrationTriggered && migrationStatus !== "failed";
   const isMigrationFailed = migrationStatus === "failed" && !enableBlindIndex.isPending;
   const showEnableButton = !secretBlindIndexEnabled && !isMigrationRunning && !isMigrationFailed;
 

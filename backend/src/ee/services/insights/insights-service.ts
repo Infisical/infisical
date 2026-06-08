@@ -502,19 +502,21 @@ export const insightsServiceFactory = ({
       dto.projectId,
       `secrets-duplication:${dto.offset ?? 0}:${dto.limit ?? 50}`
     );
+
+    const project = await projectDAL.findById(dto.projectId);
+
+    if (!project.secretBlindIndexEnabled) {
+      return {
+        secretBlindIndexEnabled: false as const,
+        groups: [] as { secrets: { key: string; environment: string; secretPath: string }[] }[]
+      };
+    }
+
     return withCache({
       keyStore,
       key: cacheKey,
       ttlSeconds: KeyStoreTtls.InsightsDuplicationCacheInSeconds,
       fetcher: async () => {
-        const project = await projectDAL.findById(dto.projectId);
-
-        if (!project.secretBlindIndexEnabled) {
-          return {
-            secretBlindIndexEnabled: false as const,
-            groups: [] as { secrets: { key: string; environment: string; secretPath: string }[] }[]
-          };
-        }
 
         const rawGroups = await secretV2BridgeDAL.findDuplicatedSecretValues(dto.projectId, {
           offset: dto.offset ?? 0,
