@@ -13,6 +13,7 @@ import { ActorType } from "@app/services/auth/auth-type";
 import { constructPemChainFromCerts } from "@app/services/certificate/certificate-fns";
 import { CertExtendedKeyUsage, CertKeyAlgorithm, CertKeyUsage } from "@app/services/certificate/certificate-types";
 import {
+  createDistinguishedName,
   createSerialNumber,
   extractDnParts,
   keyAlgorithmToAlgCfg
@@ -549,14 +550,16 @@ export const kmipServiceFactory = ({
       const { keyAlgorithm: csrKeyAlgorithm } = extractAlgorithmsFromCSR(csr);
       effectiveKeyAlgorithm = csrKeyAlgorithm;
 
-      // Extract additional subject fields from CSR (O, L, ST, C)
+      // Extract additional subject fields from CSR (O, L, ST, C) and build DN with proper escaping
       const dn = extractDnParts(csrObj.subjectName);
-      const subjectParts = [`OU=${kmipClient.projectId}`, `CN=${clientId}`];
-      if (dn.organization) subjectParts.push(`O=${dn.organization}`);
-      if (dn.locality) subjectParts.push(`L=${dn.locality}`);
-      if (dn.province) subjectParts.push(`ST=${dn.province}`);
-      if (dn.country) subjectParts.push(`C=${dn.country}`);
-      const subject = subjectParts.join(",");
+      const subject = createDistinguishedName({
+        commonName: clientId,
+        ou: kmipClient.projectId,
+        organization: dn.organization,
+        locality: dn.locality,
+        province: dn.province,
+        country: dn.country
+      });
 
       const extensions: x509.Extension[] = [
         new x509.BasicConstraintsExtension(false),
@@ -581,7 +584,7 @@ export const kmipServiceFactory = ({
         notAfter: notAfterDate,
         signingKey: caPrivateKey,
         publicKey: csrObj.publicKey,
-        signingAlgorithm: keyAlgorithmToAlgCfg(effectiveKeyAlgorithm),
+        signingAlgorithm: caAlg,
         extensions
       });
     } else {
@@ -597,7 +600,10 @@ export const kmipServiceFactory = ({
       const skLeafObj = crypto.nativeCrypto.KeyObject.from(leafKeys.privateKey);
       privateKeyPem = skLeafObj.export({ format: "pem", type: "pkcs8" }) as string;
 
-      const subject = `OU=${kmipClient.projectId},CN=${clientId}`;
+      const subject = createDistinguishedName({
+        commonName: clientId,
+        ou: kmipClient.projectId
+      });
 
       const extensions: x509.Extension[] = [
         new x509.BasicConstraintsExtension(false),
