@@ -18,7 +18,10 @@ export const pamProjectResolverFactory = ({ projectDAL, keyStore }: TResolverDep
       key: KeyStorePrefixes.PamDefaultProject(actorOrgId),
       ttlSeconds: KeyStoreTtls.PamDefaultProjectInSeconds,
       fetcher: async () => {
-        const projects = await projectDAL.find({ orgId: actorOrgId, type: ProjectType.PAM });
+        const projects = await projectDAL.find(
+          { orgId: actorOrgId, type: ProjectType.PAM },
+          { sort: [["createdAt", "desc"]], limit: 1 }
+        );
         if (projects.length === 0) {
           throw new BadRequestError({
             message: "This organization has no Access Management project. Contact your administrator."
