@@ -196,8 +196,13 @@ export async function up(knex: Knex): Promise<void> {
 
     const projectToFolder: Record<string, string> = {};
 
+    const usedFolderNames = new Set<string>();
     for (const project of oldPamProjects) {
-      const folderName = slugify(project.name) || project.id.slice(0, 8);
+      let folderName = slugify(project.name) || project.id.slice(0, 8);
+      if (usedFolderNames.has(folderName)) {
+        folderName = `${folderName}-${project.id.slice(0, 8)}`;
+      }
+      usedFolderNames.add(folderName);
       const [folder] = await knex(TableName.PamFolder)
         .insert({ projectId: newProjectId, name: folderName })
         .returning("id");
