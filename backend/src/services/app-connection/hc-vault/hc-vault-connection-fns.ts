@@ -993,9 +993,7 @@ export const getHCVaultSecretsForPaths = async (
     return [];
   }
 
-  let skipNamespaceHeader = false;
-
-  const parameters = {
+  const fetchParams = {
     namespace,
     mounts,
     instanceUrl,
@@ -1003,36 +1001,43 @@ export const getHCVaultSecretsForPaths = async (
     connection,
     gatewayService,
     gatewayV2Service
-  } as const;
+  };
 
-  const [firstSecretPath, ...restSecretPaths] = secretPaths;
+  const fetchOne = async (vaultSecretPath: string, skipNamespaceHeader: boolean) => ({
+    vaultSecretPath,
+    secrets: await fetchVaultSecretAtPath({
+      ...fetchParams,
+      secretPath: vaultSecretPath,
+      skipNamespaceHeader
+    })
+  });
+
+  const [firstPath, ...restPaths] = secretPaths;
 
   // Probe with the first path: Vault 1.0.0 returns 301 for root/"/" when the namespace header is sent.
   // so we need to remove the namespace header and retry the request.
-  await fetchVaultSecretAtPath({
-    ...parameters,
-    secretPath: firstSecretPath,
-    skipNamespaceHeader
-  }).catch((err) => {
-    if (err instanceof NamespaceHeaderNotSupportedError) {
+  let skipNamespaceHeader = false;
+  let firstResult: { vaultSecretPath: string; secrets: Record<string, JsonValue> };
+  try {
+    firstResult = await fetchOne(firstPath, false);
+  } catch (error) {
+    if (error instanceof NamespaceHeaderNotSupportedError) {
       skipNamespaceHeader = true;
+      firstResult = await fetchOne(firstPath, true);
     } else {
-      throw err;
+      throw error;
     }
-  });
+  }
 
-  return Promise.all(
-    secretPaths.map((vaultSecretPath) =>
-      limiter(async () => {
-        const secrets = await fetchVaultSecretAtPath({
-          ...parameters,
-          secretPath: vaultSecretPath,
-          skipNamespaceHeader
-        });
-        return { vaultSecretPath, secrets };
-      })
-    )
+  if (restPaths.length === 0) {
+    return [firstResult];
+  }
+
+  const restResults = await Promise.all(
+    restPaths.map((vaultSecretPath) => limiter(() => fetchOne(vaultSecretPath, skipNamespaceHeader)))
   );
+
+  return [firstResult, ...restResults];
 };
 
 export const getHCVaultAuthMounts = async (
