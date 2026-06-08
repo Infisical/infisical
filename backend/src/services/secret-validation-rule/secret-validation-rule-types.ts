@@ -1,3 +1,4 @@
+import { TSecretValidationRules } from "@app/db/schemas";
 import { TProjectPermission } from "@app/lib/types";
 
 export enum SecretValidationRuleType {
@@ -57,13 +58,29 @@ export type TSecretRotationsInputs = {
 
 export type TSecretValidationRuleInputs = TStaticSecretsInputs | TDynamicSecretsInputs | TSecretRotationsInputs;
 
+// Discriminated rule shape returned by the service. The `type` field narrows
+// the matching `inputs` shape so the response schema (which is a
+// discriminated union over `type`) is satisfied without manual casts at
+// each handler.
+type TRuleCommonFields = Omit<TSecretValidationRules, "type">;
+
+export type TSecretValidationRuleRecord =
+  | (TRuleCommonFields & { type: SecretValidationRuleType.StaticSecrets; inputs: TStaticSecretsInputs })
+  | (TRuleCommonFields & { type: SecretValidationRuleType.DynamicSecrets; inputs: TDynamicSecretsInputs })
+  | (TRuleCommonFields & { type: SecretValidationRuleType.SecretRotations; inputs: TSecretRotationsInputs });
+
+// `inputs` is validated server-side by `parseSecretValidationRuleInputs` against
+// the resolved rule type, so the DTO accepts `unknown` rather than a structured
+// union. The shape can't be known at the route boundary because `type` and
+// `inputs` are sibling fields and a per-type Zod union would silently strip
+// fields when sibling members happen to also match.
 export type TCreateSecretValidationRuleDTO = {
   name: string;
   description?: string | null;
   environmentSlug?: string;
   secretPath: string;
   type: SecretValidationRuleType;
-  inputs: TSecretValidationRuleInputs;
+  inputs: unknown;
 } & TProjectPermission;
 
 export type TUpdateSecretValidationRuleDTO = {
@@ -73,7 +90,7 @@ export type TUpdateSecretValidationRuleDTO = {
   environmentSlug?: string | null;
   secretPath?: string;
   type?: SecretValidationRuleType;
-  inputs?: TSecretValidationRuleInputs;
+  inputs?: unknown;
   isActive?: boolean;
 } & TProjectPermission;
 

@@ -6,11 +6,8 @@ import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import {
-  dynamicSecretsInputsSchema,
-  secretRotationsInputsSchema,
   SecretValidationRuleInputSchema,
-  SecretValidationRuleResponseSchema,
-  staticSecretsInputsSchema
+  SecretValidationRuleResponseSchema
 } from "@app/services/secret-validation-rule/secret-validation-rule-schemas";
 import { SecretValidationRuleType } from "@app/services/secret-validation-rule/secret-validation-rule-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
@@ -129,9 +126,12 @@ export const registerSecretValidationRuleRouter = async (server: FastifyZodProvi
         environmentSlug: z.string().trim().min(1).nullable().optional(),
         secretPath: z.string().trim().min(1).optional(),
         type: z.nativeEnum(SecretValidationRuleType).optional(),
-        inputs: z
-          .union([staticSecretsInputsSchema, dynamicSecretsInputsSchema, secretRotationsInputsSchema])
-          .optional(),
+        // Inputs are validated strictly in the service against the resolved
+        // rule type via `parseSecretValidationRuleInputs`. We can't pick the
+        // right schema here because `type` and `inputs` are sibling fields,
+        // so a union over the per-type input schemas would silently strip
+        // fields (e.g. `providers`) whenever a sibling member also matched.
+        inputs: z.object({}).passthrough().optional(),
         isActive: z.boolean().optional()
       }),
       response: {

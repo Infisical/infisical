@@ -29,6 +29,7 @@ import {
   TDynamicSecretsInputs,
   TListSecretValidationRulesDTO,
   TSecretRotationsInputs,
+  TSecretValidationRuleRecord,
   TUpdateSecretValidationRuleDTO
 } from "./secret-validation-rule-types";
 
@@ -77,14 +78,17 @@ export const secretValidationRuleServiceFactory = ({
       projectId
     });
 
-    const finalRules = (rules || []).map((rule) => ({
-      ...rule,
-      type: rule.type as SecretValidationRuleType,
-      inputs: parseSecretValidationRuleInputs(
-        rule.type,
-        JSON.parse(ruleInputsDecryptor({ cipherTextBlob: rule.encryptedInputs }).toString()) as unknown
-      )
-    }));
+    const finalRules = (rules || []).map(
+      (rule) =>
+        ({
+          ...rule,
+          type: rule.type as SecretValidationRuleType,
+          inputs: parseSecretValidationRuleInputs(
+            rule.type,
+            JSON.parse(ruleInputsDecryptor({ cipherTextBlob: rule.encryptedInputs }).toString()) as unknown
+          )
+        }) as TSecretValidationRuleRecord
+    );
 
     return finalRules;
   };
@@ -173,7 +177,11 @@ export const secretValidationRuleServiceFactory = ({
       encryptedInputs: encryptedRuleInputs
     });
 
-    return { ...rule, type: rule.type as SecretValidationRuleType, inputs: parsedInputs };
+    return {
+      ...rule,
+      type: rule.type as SecretValidationRuleType,
+      inputs: parsedInputs
+    } as TSecretValidationRuleRecord;
   };
 
   const updateRule = async ({
@@ -282,7 +290,7 @@ export const secretValidationRuleServiceFactory = ({
         updatedRule.type,
         JSON.parse(ruleInputsDecryptor({ cipherTextBlob: updatedRule.encryptedInputs }).toString()) as unknown
       )
-    };
+    } as TSecretValidationRuleRecord;
   };
 
   const deleteRule = async ({
@@ -321,7 +329,7 @@ export const secretValidationRuleServiceFactory = ({
         existingRule.type,
         JSON.parse(ruleInputsDecryptor({ cipherTextBlob: existingRule.encryptedInputs }).toString()) as unknown
       )
-    };
+    } as TSecretValidationRuleRecord;
   };
 
   /**
