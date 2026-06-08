@@ -313,7 +313,7 @@ export const CreateKmipClientCertificateModal = ({
 }: Props) => {
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-      <ModalContent title="Generate KMIP client certificate">
+      <ModalContent title="KMIP client certificate">
         <KmipClientCertificateForm
           onComplete={() => onOpenChange(false)}
           displayNewClientCertificate={displayNewClientCertificate}
