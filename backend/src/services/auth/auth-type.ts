@@ -113,6 +113,7 @@ export type AuthModeRefreshJwtTokenPayload = {
   subOrganizationId?: string;
   isMfaVerified?: boolean;
   mfaMethod?: MfaMethod;
+  oauthClientId?: string;
 };
 
 export type AuthModeSignUpTokenPayload = {

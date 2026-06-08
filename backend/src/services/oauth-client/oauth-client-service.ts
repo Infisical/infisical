@@ -361,7 +361,9 @@ export const oauthClientServiceFactory = ({
       };
     }
 
-    const { decodedToken, tokenVersion, isGraceHit } = await tokenService.validateRefreshToken(dto.refreshToken);
+    const { decodedToken, tokenVersion, isGraceHit } = await tokenService.validateRefreshToken(dto.refreshToken, {
+      allowOauthClientToken: true
+    });
     const oauthDecodedToken = decodedToken as TOauthRefreshJwtTokenPayload;
 
     if (oauthDecodedToken.oauthClientId !== client.clientId) {

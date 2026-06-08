@@ -196,7 +196,7 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
   const revokeMySessionById = async (userId: string, sessionId: string) =>
     tokenDAL.deleteTokenSession({ userId, id: sessionId });
 
-  const validateRefreshToken = async (refreshToken?: string) => {
+  const validateRefreshToken = async (refreshToken?: string, opts?: { allowOauthClientToken?: boolean }) => {
     const appCfg = getConfig();
     if (!refreshToken) {
       throw new NotFoundError({
@@ -210,6 +210,13 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
     if (decodedToken.authTokenType !== AuthTokenType.REFRESH_TOKEN) {
       throw new UnauthorizedError({
         message: "The token provided is not a refresh token",
+        name: "InvalidToken"
+      });
+    }
+
+    if (decodedToken.oauthClientId && !opts?.allowOauthClientToken) {
+      throw new UnauthorizedError({
+        message: "This refresh token can only be used at the OAuth token endpoint",
         name: "InvalidToken"
       });
     }

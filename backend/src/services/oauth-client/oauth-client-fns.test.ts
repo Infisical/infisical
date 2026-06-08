@@ -1,6 +1,11 @@
 import crypto from "node:crypto";
 
-import { computePkceChallenge, isRegisteredRedirectUri, parseBasicAuthHeader } from "./oauth-client-fns";
+import {
+  computePkceChallenge,
+  isAllowedRedirectUri,
+  isRegisteredRedirectUri,
+  parseBasicAuthHeader
+} from "./oauth-client-fns";
 
 describe("parseBasicAuthHeader", () => {
   test("parses a valid Basic auth header", () => {
@@ -43,6 +48,41 @@ describe("computePkceChallenge", () => {
     expect(computePkceChallenge("dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk")).toEqual(
       "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM"
     );
+  });
+});
+
+describe("isAllowedRedirectUri", () => {
+  test("allows https for any host", () => {
+    expect(isAllowedRedirectUri("https://coder.example.com/callback")).toBe(true);
+  });
+
+  test("allows http for localhost", () => {
+    expect(isAllowedRedirectUri("http://localhost:3000/callback")).toBe(true);
+  });
+
+  test("allows http for 127.0.0.1", () => {
+    expect(isAllowedRedirectUri("http://127.0.0.1:8080/callback")).toBe(true);
+  });
+
+  test("allows http for IPv6 loopback", () => {
+    expect(isAllowedRedirectUri("http://[::1]:8080/callback")).toBe(true);
+  });
+
+  test("rejects http for a non-loopback host", () => {
+    expect(isAllowedRedirectUri("http://coder.example.com/callback")).toBe(false);
+  });
+
+  test("rejects http for a host that merely contains localhost", () => {
+    expect(isAllowedRedirectUri("http://localhost.evil.com/callback")).toBe(false);
+  });
+
+  test("rejects non-http(s) schemes", () => {
+    expect(isAllowedRedirectUri("ftp://localhost/callback")).toBe(false);
+    expect(isAllowedRedirectUri("javascript:alert(1)")).toBe(false);
+  });
+
+  test("rejects malformed URIs", () => {
+    expect(isAllowedRedirectUri("not a url")).toBe(false);
   });
 });
 

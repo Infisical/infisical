@@ -25,10 +25,16 @@ import {
 import { TOauthClient, useCreateOauthClient, useUpdateOauthClient } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
+const LOOPBACK_HOSTNAMES = new Set(["localhost", "127.0.0.1", "::1"]);
+
 const isValidRedirectUri = (uri: string) => {
   try {
     const parsed = new URL(uri);
-    return parsed.protocol === "https:" || parsed.protocol === "http:";
+    if (parsed.protocol === "https:") return true;
+    if (parsed.protocol === "http:") {
+      return LOOPBACK_HOSTNAMES.has(parsed.hostname.replace(/^\[|\]$/g, ""));
+    }
+    return false;
   } catch {
     return false;
   }

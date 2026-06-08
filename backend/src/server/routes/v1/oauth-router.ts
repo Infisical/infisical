@@ -6,7 +6,7 @@ import { BadRequestError } from "@app/lib/errors";
 import { authRateLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { parseBasicAuthHeader } from "@app/services/oauth-client/oauth-client-fns";
+import { isAllowedRedirectUri, parseBasicAuthHeader } from "@app/services/oauth-client/oauth-client-fns";
 
 const SanitizedOauthClientSchema = OauthClientsSchema.omit({ clientSecretHash: true });
 
@@ -14,8 +14,8 @@ const redirectUriSchema = z
   .string()
   .url()
   .refine(
-    (uri) => uri.startsWith("https://") || uri.startsWith("http://"),
-    "Redirect URI must start with https:// or http://"
+    isAllowedRedirectUri,
+    "Redirect URI must use https:// (http:// is only allowed for loopback addresses such as localhost)"
   );
 
 export const registerOAuthRouter = async (server: FastifyZodProvider) => {
