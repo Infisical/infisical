@@ -32,6 +32,8 @@ E2E tests live in `e2e-test/routes/`. The custom Vitest environment (`e2e-test/v
 - `npm run generate:schema` — regenerate Zod types from DB into `src/db/schemas/` (always run after migration changes)
 - `npm run seed-dev` — run database seeds
 
+- **Every foreign-key column must be covered by an index** (its own, or as the leftmost column of a composite index). Postgres does **not** auto-index FK columns. This holds regardless of cascade behavior: an unindexed FK forces a seq-scan of the child table on every parent `DELETE`/`UPDATE` (per-row RI trigger), and the FK column is almost always also a join/filter key. Watch helper-generated FKs — `createJunctionTable` (`src/db/utils.ts`) creates CASCADE FK columns with **no index** on either side.
+
 ### Scaffolding
 
 - `npm run generate:component` — interactive generator that can create a service module (DAL + service + types), a standalone DAL, or a router
