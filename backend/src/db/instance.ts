@@ -43,12 +43,12 @@ export const initDbConnection = ({
   let db: Knex<any, unknown[]>;
   // eslint-disable-next-line
   let readReplicaDbs: Knex<any, unknown[]>[];
-  // @ts-expect-error the querybuilder type is expected but our intension is to return  a knex instance
+  // @ts-expect-error the querybuilder type is expected but our intention is to return  a knex instance
   knex.QueryBuilder.extend("primaryNode", () => {
     return db;
   });
 
-  // @ts-expect-error the querybuilder type is expected but our intension is to return  a knex instance
+  // @ts-expect-error the querybuilder type is expected but our intention is to return  a knex instance
   knex.QueryBuilder.extend("replicaNode", () => {
     if (!readReplicaDbs.length) return db;
 

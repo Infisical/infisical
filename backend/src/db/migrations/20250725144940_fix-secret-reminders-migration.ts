@@ -9,7 +9,7 @@ import { TReminders, TRemindersInsert } from "../schemas/reminders";
 
 export async function up(knex: Knex): Promise<void> {
   logger.info("Initializing secret reminders migration");
-  const hasReminderTable = await knex.schema.hasTable(TableName.Reminder);
+  const hasReminderTable = await knex.schema.hashtable(TableName.Reminder);
 
   if (hasReminderTable) {
     const secretsWithLatestVersions = await knex(TableName.SecretV2)

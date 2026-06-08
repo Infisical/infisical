@@ -153,7 +153,7 @@ export const membershipUserServiceFactory = ({
           const inviteeUserId = inviteeUser?.id;
           const existingEncryptionKey = await userDAL.findUserEncKeyByUserId(inviteeUserId, tx);
 
-          // when user is missing the encrytion keys
+          // when user is missing the encryption keys
           // this could happen either if user doesn't exist or user didn't find step 3 of generating the encryption keys of srp
           // So what we do is we generate a random secure password and then encrypt it with a random pub-private key
           // Then when user sign in (as login is not possible as isAccepted is false) we rencrypt the private key with the user password

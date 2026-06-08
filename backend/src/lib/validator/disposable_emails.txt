@@ -285,7 +285,7 @@ allstarwe.us
 allthegoodnamesaretaken.org
 allurewe.us
 almondwe.us
-alph.wtf
+alpha.wtf
 alpha-web.net
 alphaomegawe.us
 alpinewe.us
@@ -457,7 +457,7 @@ bigwhoop.co.za
 bij.pl
 binka.me
 binkmail.com
-binnary.com
+binary.com
 bio-muesli.info
 bio-muesli.net
 bione.co
@@ -488,7 +488,7 @@ borged.com
 borged.net
 borged.org
 bot.nu
-boun.cr
+bound.cr
 bouncr.com
 boxformail.in
 boximail.com
@@ -1212,7 +1212,7 @@ g2xmail.top
 g3xmail.top
 g4hdrop.us
 gafy.net
-gage.ga
+gauge.ga
 galaxy.tv
 gally.jp
 gamail.top
@@ -3304,7 +3304,7 @@ webm4il.info
 webmail24.top
 webtrip.ch
 webuser.in
-wee.my
+we.my
 wef.gr
 weg-werf-email.de
 wegwerf-email-addressen.de

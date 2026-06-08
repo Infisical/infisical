@@ -12,7 +12,7 @@ export async function up(knex: Knex): Promise<void> {
     await knex.raw(`SET statement_timeout = ${MIGRATION_TIMEOUT}`);
 
     if (
-      (await knex.schema.hasTable(TableName.SecretV2)) &&
+      (await knex.schema.hashtable(TableName.SecretV2)) &&
       (await knex.schema.hasColumn(TableName.SecretV2, "folderId")) &&
       (await knex.schema.hasColumn(TableName.SecretV2, "key"))
     ) {

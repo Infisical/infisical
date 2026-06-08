@@ -16,7 +16,7 @@ export async function up(knex: Knex): Promise<void> {
     await knex.raw(`SET lock_timeout = ${MIGRATION_LOCK_TIMEOUT}`);
 
     if (
-      (await knex.schema.hasTable(TableName.Snapshot)) &&
+      (await knex.schema.hashtable(TableName.Snapshot)) &&
       (await knex.schema.hasColumn(TableName.Snapshot, "folderId"))
     ) {
       await knex.raw(`
@@ -26,7 +26,7 @@ export async function up(knex: Knex): Promise<void> {
     }
 
     if (
-      (await knex.schema.hasTable(TableName.SecretFolderVersion)) &&
+      (await knex.schema.hashtable(TableName.SecretFolderVersion)) &&
       (await knex.schema.hasColumn(TableName.SecretFolderVersion, "folderId"))
     ) {
       await knex.raw(`

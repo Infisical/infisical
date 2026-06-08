@@ -4,7 +4,7 @@ import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
-  if (!(await knex.schema.hasTable(TableName.SshHostGroup))) {
+  if (!(await knex.schema.hashtable(TableName.SshHostGroup))) {
     await knex.schema.createTable(TableName.SshHostGroup, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.timestamps(true, true, true);
@@ -16,7 +16,7 @@ export async function up(knex: Knex): Promise<void> {
     await createOnUpdateTrigger(knex, TableName.SshHostGroup);
   }
 
-  if (!(await knex.schema.hasTable(TableName.SshHostGroupMembership))) {
+  if (!(await knex.schema.hashtable(TableName.SshHostGroupMembership))) {
     await knex.schema.createTable(TableName.SshHostGroupMembership, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.timestamps(true, true, true);

@@ -3,7 +3,7 @@ import { Knex } from "knex";
 import { TableName } from "../schemas";
 
 export async function up(knex: Knex): Promise<void> {
-  if (await knex.schema.hasTable(TableName.SecretSharing)) {
+  if (await knex.schema.hashtable(TableName.SecretSharing)) {
     const hasEncryptedSecret = await knex.schema.hasColumn(TableName.SecretSharing, "encryptedSecret");
     const hasIdentifier = await knex.schema.hasColumn(TableName.SecretSharing, "identifier");
 
@@ -29,7 +29,7 @@ export async function up(knex: Knex): Promise<void> {
 export async function down(knex: Knex): Promise<void> {
   const hasEncryptedSecret = await knex.schema.hasColumn(TableName.SecretSharing, "encryptedSecret");
   const hasIdentifier = await knex.schema.hasColumn(TableName.SecretSharing, "identifier");
-  if (await knex.schema.hasTable(TableName.SecretSharing)) {
+  if (await knex.schema.hashtable(TableName.SecretSharing)) {
     await knex.schema.alterTable(TableName.SecretSharing, (t) => {
       if (hasEncryptedSecret) {
         t.dropColumn("encryptedSecret");

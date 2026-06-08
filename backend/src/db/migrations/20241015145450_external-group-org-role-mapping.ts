@@ -5,7 +5,7 @@ import { createOnUpdateTrigger, dropOnUpdateTrigger } from "@app/db/utils";
 
 export async function up(knex: Knex): Promise<void> {
   // add external group to org role mapping table
-  if (!(await knex.schema.hasTable(TableName.ExternalGroupOrgRoleMapping))) {
+  if (!(await knex.schema.hashtable(TableName.ExternalGroupOrgRoleMapping))) {
     await knex.schema.createTable(TableName.ExternalGroupOrgRoleMapping, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.string("groupName").notNullable();
@@ -24,7 +24,7 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  if (await knex.schema.hasTable(TableName.ExternalGroupOrgRoleMapping)) {
+  if (await knex.schema.hashtable(TableName.ExternalGroupOrgRoleMapping)) {
     await dropOnUpdateTrigger(knex, TableName.ExternalGroupOrgRoleMapping);
 
     await knex.schema.dropTable(TableName.ExternalGroupOrgRoleMapping);

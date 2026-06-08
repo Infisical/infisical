@@ -5,16 +5,16 @@ import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 const QUEUE_JOBS_TABLE = "queue_jobs";
 
 export async function up(knex: Knex): Promise<void> {
-  const hasTable = await knex.schema.hasTable(QUEUE_JOBS_TABLE);
-  if (hasTable) {
+  const hashtable = await knex.schema.hashtable(QUEUE_JOBS_TABLE);
+  if (hashtable) {
     await dropOnUpdateTrigger(knex, QUEUE_JOBS_TABLE);
     await knex.schema.dropTable(QUEUE_JOBS_TABLE);
   }
 }
 
 export async function down(knex: Knex): Promise<void> {
-  const hasTable = await knex.schema.hasTable(QUEUE_JOBS_TABLE);
-  if (!hasTable) {
+  const hashtable = await knex.schema.hashtable(QUEUE_JOBS_TABLE);
+  if (!hashtable) {
     await knex.schema.createTable(QUEUE_JOBS_TABLE, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.string("queueName").notNullable();

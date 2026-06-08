@@ -42,7 +42,7 @@ const writeBundledMigrations = async (migrationNames: string[]) => {
 const buildDbWithMissingMigrationTable = () =>
   ({
     schema: {
-      hasTable: vi.fn().mockResolvedValue(false)
+      hashtable: vi.fn().mockResolvedValue(false)
     }
   }) as unknown as Knex;
 
@@ -53,7 +53,7 @@ const buildDbWithAppliedMigrations = (migrationNames: string[]) => {
 
   return Object.assign(db, {
     schema: {
-      hasTable: vi.fn().mockResolvedValue(true)
+      hashtable: vi.fn().mockResolvedValue(true)
     }
   }) as unknown as Knex;
 };
@@ -213,7 +213,7 @@ describe("getMigrationBootState", () => {
     const testMigrationConfig = await writeBundledMigrations([testMigrationNames.first]);
     const db = {
       schema: {
-        hasTable: vi.fn().mockRejectedValue(new Error("connect ECONNREFUSED"))
+        hashtable: vi.fn().mockRejectedValue(new Error("connect ECONNREFUSED"))
       }
     } as unknown as Knex;
 

@@ -5,7 +5,7 @@ import { SecretType, TableName } from "../schemas";
 import { createJunctionTable, createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
-  const doesSecretV2TableExist = await knex.schema.hasTable(TableName.SecretV2);
+  const doesSecretV2TableExist = await knex.schema.hashtable(TableName.SecretV2);
   if (!doesSecretV2TableExist) {
     await knex.schema.createTable(TableName.SecretV2, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
@@ -31,7 +31,7 @@ export async function up(knex: Knex): Promise<void> {
   // many to many relation between tags
   await createJunctionTable(knex, TableName.SecretV2JnTag, TableName.SecretV2, TableName.SecretTag);
 
-  const doesSecretV2VersionTableExist = await knex.schema.hasTable(TableName.SecretVersionV2);
+  const doesSecretV2VersionTableExist = await knex.schema.hashtable(TableName.SecretVersionV2);
   if (!doesSecretV2VersionTableExist) {
     await knex.schema.createTable(TableName.SecretVersionV2, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
@@ -56,7 +56,7 @@ export async function up(knex: Knex): Promise<void> {
   }
   await createOnUpdateTrigger(knex, TableName.SecretVersionV2);
 
-  if (!(await knex.schema.hasTable(TableName.SecretReferenceV2))) {
+  if (!(await knex.schema.hashtable(TableName.SecretReferenceV2))) {
     await knex.schema.createTable(TableName.SecretReferenceV2, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.string("environment").notNullable();
@@ -69,7 +69,7 @@ export async function up(knex: Knex): Promise<void> {
 
   await createJunctionTable(knex, TableName.SecretVersionV2Tag, TableName.SecretVersionV2, TableName.SecretTag);
 
-  if (!(await knex.schema.hasTable(TableName.SecretApprovalRequestSecretV2))) {
+  if (!(await knex.schema.hashtable(TableName.SecretApprovalRequestSecretV2))) {
     await knex.schema.createTable(TableName.SecretApprovalRequestSecretV2, (t) => {
       // everything related  to secret
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
@@ -93,7 +93,7 @@ export async function up(knex: Knex): Promise<void> {
     });
   }
 
-  if (!(await knex.schema.hasTable(TableName.SecretApprovalRequestSecretTagV2))) {
+  if (!(await knex.schema.hashtable(TableName.SecretApprovalRequestSecretTagV2))) {
     await knex.schema.createTable(TableName.SecretApprovalRequestSecretTagV2, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.uuid("secretId").notNullable();
@@ -104,7 +104,7 @@ export async function up(knex: Knex): Promise<void> {
     });
   }
 
-  if (!(await knex.schema.hasTable(TableName.SnapshotSecretV2))) {
+  if (!(await knex.schema.hashtable(TableName.SnapshotSecretV2))) {
     await knex.schema.createTable(TableName.SnapshotSecretV2, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.uuid("envId").index().notNullable();
@@ -118,7 +118,7 @@ export async function up(knex: Knex): Promise<void> {
     });
   }
 
-  if (await knex.schema.hasTable(TableName.IntegrationAuth)) {
+  if (await knex.schema.hashtable(TableName.IntegrationAuth)) {
     const hasEncryptedAccess = await knex.schema.hasColumn(TableName.IntegrationAuth, "encryptedAccess");
     const hasEncryptedAccessId = await knex.schema.hasColumn(TableName.IntegrationAuth, "encryptedAccessId");
     const hasEncryptedRefresh = await knex.schema.hasColumn(TableName.IntegrationAuth, "encryptedRefresh");
@@ -134,7 +134,7 @@ export async function up(knex: Knex): Promise<void> {
     });
   }
 
-  if (!(await knex.schema.hasTable(TableName.DeprecatedSecretRotationOutputV2))) {
+  if (!(await knex.schema.hashtable(TableName.DeprecatedSecretRotationOutputV2))) {
     await knex.schema.createTable(TableName.DeprecatedSecretRotationOutputV2, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.string("key").notNullable();
@@ -163,7 +163,7 @@ export async function down(knex: Knex): Promise<void> {
   await dropOnUpdateTrigger(knex, TableName.SecretV2);
   await knex.schema.dropTableIfExists(TableName.SecretV2);
 
-  if (await knex.schema.hasTable(TableName.IntegrationAuth)) {
+  if (await knex.schema.hashtable(TableName.IntegrationAuth)) {
     const hasEncryptedAccess = await knex.schema.hasColumn(TableName.IntegrationAuth, "encryptedAccess");
     const hasEncryptedAccessId = await knex.schema.hasColumn(TableName.IntegrationAuth, "encryptedAccessId");
     const hasEncryptedRefresh = await knex.schema.hasColumn(TableName.IntegrationAuth, "encryptedRefresh");

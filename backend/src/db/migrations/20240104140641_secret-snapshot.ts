@@ -4,7 +4,7 @@ import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
-  if (!(await knex.schema.hasTable(TableName.Snapshot))) {
+  if (!(await knex.schema.hashtable(TableName.Snapshot))) {
     await knex.schema.createTable(TableName.Snapshot, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.uuid("envId").notNullable();
@@ -18,7 +18,7 @@ export async function up(knex: Knex): Promise<void> {
   }
   await createOnUpdateTrigger(knex, TableName.Snapshot);
 
-  if (!(await knex.schema.hasTable(TableName.SnapshotSecret))) {
+  if (!(await knex.schema.hashtable(TableName.SnapshotSecret))) {
     await knex.schema.createTable(TableName.SnapshotSecret, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.uuid("envId").notNullable();
@@ -32,7 +32,7 @@ export async function up(knex: Knex): Promise<void> {
     });
   }
 
-  if (!(await knex.schema.hasTable(TableName.SnapshotFolder))) {
+  if (!(await knex.schema.hashtable(TableName.SnapshotFolder))) {
     await knex.schema.createTable(TableName.SnapshotFolder, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.uuid("envId").notNullable();

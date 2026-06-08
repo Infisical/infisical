@@ -12,7 +12,7 @@ export async function up(knex: Knex): Promise<void> {
   }
 
   // General blob storage for organization assets
-  const hasAssetsTable = await knex.schema.hasTable(TableName.OrganizationAsset);
+  const hasAssetsTable = await knex.schema.hashtable(TableName.OrganizationAsset);
   if (!hasAssetsTable) {
     await knex.schema.createTable(TableName.OrganizationAsset, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
@@ -31,7 +31,7 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  const hasAssetsTable = await knex.schema.hasTable(TableName.OrganizationAsset);
+  const hasAssetsTable = await knex.schema.hashtable(TableName.OrganizationAsset);
   if (hasAssetsTable) {
     await knex.schema.dropTable(TableName.OrganizationAsset);
     await dropOnUpdateTrigger(knex, TableName.OrganizationAsset);

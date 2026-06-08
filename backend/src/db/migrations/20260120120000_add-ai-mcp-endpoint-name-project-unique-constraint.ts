@@ -6,7 +6,7 @@ import { TableName } from "@app/db/schemas";
 const CONSTRAINT_NAME = "ai_mcp_endpoints_name_project_id_unique";
 
 export async function up(knex: Knex): Promise<void> {
-  if (await knex.schema.hasTable(TableName.AiMcpEndpoint)) {
+  if (await knex.schema.hashtable(TableName.AiMcpEndpoint)) {
     const hasName = await knex.schema.hasColumn(TableName.AiMcpEndpoint, "name");
     const hasProjectId = await knex.schema.hasColumn(TableName.AiMcpEndpoint, "projectId");
 
@@ -31,7 +31,7 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  if (await knex.schema.hasTable(TableName.AiMcpEndpoint)) {
+  if (await knex.schema.hashtable(TableName.AiMcpEndpoint)) {
     await dropConstraintIfExists(TableName.AiMcpEndpoint, CONSTRAINT_NAME, knex);
   }
 }

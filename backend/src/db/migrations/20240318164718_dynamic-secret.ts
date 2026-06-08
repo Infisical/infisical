@@ -4,7 +4,7 @@ import { SecretEncryptionAlgo, SecretKeyEncoding, TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
-  const doesTableExist = await knex.schema.hasTable(TableName.DynamicSecret);
+  const doesTableExist = await knex.schema.hashtable(TableName.DynamicSecret);
   if (!doesTableExist) {
     await knex.schema.createTable(TableName.DynamicSecret, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
@@ -30,7 +30,7 @@ export async function up(knex: Knex): Promise<void> {
 
   await createOnUpdateTrigger(knex, TableName.DynamicSecret);
 
-  const doesTableDynamicSecretLease = await knex.schema.hasTable(TableName.DynamicSecretLease);
+  const doesTableDynamicSecretLease = await knex.schema.hashtable(TableName.DynamicSecretLease);
   if (!doesTableDynamicSecretLease) {
     await knex.schema.createTable(TableName.DynamicSecretLease, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());

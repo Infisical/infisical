@@ -30,7 +30,7 @@ export async function up(knex: Knex): Promise<void> {
   }
 
   // migrate secret approval request committer and statusChangeBy to user id
-  const hasSecretApprovalRequestTable = await knex.schema.hasTable(TableName.SecretApprovalRequest);
+  const hasSecretApprovalRequestTable = await knex.schema.hashtable(TableName.SecretApprovalRequest);
   const hasCommitterUserId = await knex.schema.hasColumn(TableName.SecretApprovalRequest, "committerUserId");
   const hasCommitterId = await knex.schema.hasColumn(TableName.SecretApprovalRequest, "committerId");
   const hasStatusChangeBy = await knex.schema.hasColumn(TableName.SecretApprovalRequest, "statusChangeBy");
@@ -133,7 +133,7 @@ export async function down(knex: Knex): Promise<void> {
     }
   }
 
-  const hasSecretApprovalRequestTable = await knex.schema.hasTable(TableName.SecretApprovalRequest);
+  const hasSecretApprovalRequestTable = await knex.schema.hashtable(TableName.SecretApprovalRequest);
   const hasCommitterUserId = await knex.schema.hasColumn(TableName.SecretApprovalRequest, "committerUserId");
   const hasCommitterId = await knex.schema.hasColumn(TableName.SecretApprovalRequest, "committerId");
   const hasStatusChangeBy = await knex.schema.hasColumn(TableName.SecretApprovalRequest, "statusChangeBy");

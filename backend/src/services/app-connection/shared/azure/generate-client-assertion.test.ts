@@ -87,7 +87,7 @@ describe("generateClientAssertion", () => {
     expect(jtiA).not.toBe(jtiB);
   });
 
-  test("throws BadRequestError when the private key is unparseable text", () => {
+  test("throws BadRequestError when the private key is unparsable text", () => {
     expect(() => generateClientAssertion(CLIENT_ID, TENANT_ID, "not-a-real-private-key", certificatePem)).toThrow(
       BadRequestError
     );

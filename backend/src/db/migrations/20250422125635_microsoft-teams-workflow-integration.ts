@@ -41,7 +41,7 @@ export async function up(knex: Knex): Promise<void> {
     });
   }
 
-  if (!(await knex.schema.hasTable(TableName.MicrosoftTeamsIntegrations))) {
+  if (!(await knex.schema.hashtable(TableName.MicrosoftTeamsIntegrations))) {
     await knex.schema.createTable(TableName.MicrosoftTeamsIntegrations, (table) => {
       table.uuid("id", { primaryKey: true }).notNullable();
       table.foreign("id").references("id").inTable(TableName.WorkflowIntegrations).onDelete("CASCADE"); // the ID itself is the workflow integration ID
@@ -60,7 +60,7 @@ export async function up(knex: Knex): Promise<void> {
     await createOnUpdateTrigger(knex, TableName.MicrosoftTeamsIntegrations);
   }
 
-  if (!(await knex.schema.hasTable(TableName.ProjectMicrosoftTeamsConfigs))) {
+  if (!(await knex.schema.hashtable(TableName.ProjectMicrosoftTeamsConfigs))) {
     await knex.schema.createTable(TableName.ProjectMicrosoftTeamsConfigs, (tb) => {
       tb.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       tb.string("projectId").notNullable().unique();
@@ -119,11 +119,11 @@ export async function down(knex: Knex): Promise<void> {
     });
   }
 
-  if (await knex.schema.hasTable(TableName.ProjectMicrosoftTeamsConfigs)) {
+  if (await knex.schema.hashtable(TableName.ProjectMicrosoftTeamsConfigs)) {
     await knex.schema.dropTableIfExists(TableName.ProjectMicrosoftTeamsConfigs);
     await dropOnUpdateTrigger(knex, TableName.ProjectMicrosoftTeamsConfigs);
   }
-  if (await knex.schema.hasTable(TableName.MicrosoftTeamsIntegrations)) {
+  if (await knex.schema.hashtable(TableName.MicrosoftTeamsIntegrations)) {
     await knex.schema.dropTableIfExists(TableName.MicrosoftTeamsIntegrations);
     await dropOnUpdateTrigger(knex, TableName.MicrosoftTeamsIntegrations);
   }

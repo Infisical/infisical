@@ -3,7 +3,7 @@ import { Knex } from "knex";
 import { TableName } from "../schemas";
 
 export async function up(knex: Knex): Promise<void> {
-  const isUsersTablePresent = await knex.schema.hasTable(TableName.Users);
+  const isUsersTablePresent = await knex.schema.hashtable(TableName.Users);
   if (isUsersTablePresent) {
     const hasIsEmailVerifiedColumn = await knex.schema.hasColumn(TableName.Users, "isEmailVerified");
 
@@ -17,14 +17,14 @@ export async function up(knex: Knex): Promise<void> {
     await knex(TableName.Users).update({ isEmailVerified: true }).where("isAccepted", true);
   }
 
-  const isUserAliasTablePresent = await knex.schema.hasTable(TableName.UserAliases);
+  const isUserAliasTablePresent = await knex.schema.hashtable(TableName.UserAliases);
   if (isUserAliasTablePresent) {
     await knex.schema.alterTable(TableName.UserAliases, (t) => {
       t.string("username").nullable().alter();
     });
   }
 
-  const isSuperAdminTablePresent = await knex.schema.hasTable(TableName.SuperAdmin);
+  const isSuperAdminTablePresent = await knex.schema.hashtable(TableName.SuperAdmin);
   if (isSuperAdminTablePresent) {
     await knex.schema.alterTable(TableName.SuperAdmin, (t) => {
       t.boolean("trustSamlEmails").defaultTo(false);

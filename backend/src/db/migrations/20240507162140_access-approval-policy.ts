@@ -4,7 +4,7 @@ import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
-  if (!(await knex.schema.hasTable(TableName.AccessApprovalPolicy))) {
+  if (!(await knex.schema.hashtable(TableName.AccessApprovalPolicy))) {
     await knex.schema.createTable(TableName.AccessApprovalPolicy, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.string("name").notNullable();
@@ -18,7 +18,7 @@ export async function up(knex: Knex): Promise<void> {
     await createOnUpdateTrigger(knex, TableName.AccessApprovalPolicy);
   }
 
-  if (!(await knex.schema.hasTable(TableName.AccessApprovalPolicyApprover))) {
+  if (!(await knex.schema.hashtable(TableName.AccessApprovalPolicyApprover))) {
     await knex.schema.createTable(TableName.AccessApprovalPolicyApprover, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.uuid("approverId").notNullable();

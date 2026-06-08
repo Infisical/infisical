@@ -3,8 +3,8 @@ import { Knex } from "knex";
 import { TableName } from "../schemas";
 
 export async function up(knex: Knex): Promise<void> {
-  const hasTable = await knex.schema.hasTable(TableName.CertificateInventoryView);
-  if (!hasTable) return;
+  const hashtable = await knex.schema.hashtable(TableName.CertificateInventoryView);
+  if (!hashtable) return;
 
   const hasColumn = await knex.schema.hasColumn(TableName.CertificateInventoryView, "isShared");
   if (hasColumn) return;
@@ -28,8 +28,8 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  const hasTable = await knex.schema.hasTable(TableName.CertificateInventoryView);
-  if (!hasTable) return;
+  const hashtable = await knex.schema.hashtable(TableName.CertificateInventoryView);
+  if (!hashtable) return;
 
   const hasColumn = await knex.schema.hasColumn(TableName.CertificateInventoryView, "isShared");
   if (!hasColumn) return;

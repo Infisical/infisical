@@ -3,7 +3,7 @@ import { Knex } from "knex";
 import { TableName } from "../schemas";
 
 export async function up(knex: Knex): Promise<void> {
-  if (await knex.schema.hasTable(TableName.CertificateAuthority)) {
+  if (await knex.schema.hashtable(TableName.CertificateAuthority)) {
     const hasRequireTemplateForIssuanceColumn = await knex.schema.hasColumn(
       TableName.CertificateAuthority,
       "requireTemplateForIssuance"
@@ -17,7 +17,7 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  if (await knex.schema.hasTable(TableName.CertificateAuthority)) {
+  if (await knex.schema.hashtable(TableName.CertificateAuthority)) {
     await knex.schema.alterTable(TableName.CertificateAuthority, (t) => {
       t.dropColumn("requireTemplateForIssuance");
     });

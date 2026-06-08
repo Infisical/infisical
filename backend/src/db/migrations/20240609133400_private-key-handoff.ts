@@ -20,7 +20,7 @@ export async function up(knex: Knex): Promise<void> {
     TableName.UserEncryptionKey,
     "serverEncryptedPrivateKeyEncoding"
   );
-  if (await knex.schema.hasTable(TableName.UserEncryptionKey)) {
+  if (await knex.schema.hashtable(TableName.UserEncryptionKey)) {
     await knex.schema.alterTable(TableName.UserEncryptionKey, (t) => {
       if (!doesPasswordFieldExist) t.string("hashedPassword");
       if (!doesPrivateKeyFieldExist) t.text("serverEncryptedPrivateKey");
@@ -49,7 +49,7 @@ export async function down(knex: Knex): Promise<void> {
     TableName.UserEncryptionKey,
     "serverEncryptedPrivateKeyEncoding"
   );
-  if (await knex.schema.hasTable(TableName.UserEncryptionKey)) {
+  if (await knex.schema.hashtable(TableName.UserEncryptionKey)) {
     await knex.schema.alterTable(TableName.UserEncryptionKey, (t) => {
       if (doesPasswordFieldExist) t.dropColumn("hashedPassword");
       if (doesPrivateKeyFieldExist) t.dropColumn("serverEncryptedPrivateKey");

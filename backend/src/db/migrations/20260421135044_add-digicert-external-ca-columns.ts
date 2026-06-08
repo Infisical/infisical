@@ -3,7 +3,7 @@ import { Knex } from "knex";
 import { TableName } from "../schemas";
 
 export async function up(knex: Knex): Promise<void> {
-  const hasCertificateRequests = await knex.schema.hasTable(TableName.CertificateRequests);
+  const hasCertificateRequests = await knex.schema.hashtable(TableName.CertificateRequests);
   if (hasCertificateRequests) {
     const hasEncryptedPrivateKey = await knex.schema.hasColumn(TableName.CertificateRequests, "encryptedPrivateKey");
     if (!hasEncryptedPrivateKey) {
@@ -15,7 +15,7 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  const hasCertificateRequests = await knex.schema.hasTable(TableName.CertificateRequests);
+  const hasCertificateRequests = await knex.schema.hashtable(TableName.CertificateRequests);
   if (hasCertificateRequests) {
     const hasEncryptedPrivateKey = await knex.schema.hasColumn(TableName.CertificateRequests, "encryptedPrivateKey");
     if (hasEncryptedPrivateKey) {

@@ -6,7 +6,7 @@ import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
-  if (await knex.schema.hasTable(TableName.Certificate)) {
+  if (await knex.schema.hashtable(TableName.Certificate)) {
     const hasSourceColumn = await knex.schema.hasColumn(TableName.Certificate, "source");
     if (!hasSourceColumn) {
       await knex.schema.alterTable(TableName.Certificate, (t) => {
@@ -39,7 +39,7 @@ export async function up(knex: Knex): Promise<void> {
     }
   }
 
-  if (!(await knex.schema.hasTable(TableName.PkiDiscoveryConfig))) {
+  if (!(await knex.schema.hashtable(TableName.PkiDiscoveryConfig))) {
     await knex.schema.createTable(TableName.PkiDiscoveryConfig, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.string("projectId").notNullable();
@@ -64,7 +64,7 @@ export async function up(knex: Knex): Promise<void> {
     await createOnUpdateTrigger(knex, TableName.PkiDiscoveryConfig);
   }
 
-  if (!(await knex.schema.hasTable(TableName.PkiCertificateInstallation))) {
+  if (!(await knex.schema.hashtable(TableName.PkiCertificateInstallation))) {
     await knex.schema.createTable(TableName.PkiCertificateInstallation, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.string("projectId").notNullable();
@@ -84,7 +84,7 @@ export async function up(knex: Knex): Promise<void> {
     await createOnUpdateTrigger(knex, TableName.PkiCertificateInstallation);
   }
 
-  if (!(await knex.schema.hasTable(TableName.PkiDiscoveryInstallation))) {
+  if (!(await knex.schema.hashtable(TableName.PkiDiscoveryInstallation))) {
     await knex.schema.createTable(TableName.PkiDiscoveryInstallation, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.uuid("discoveryId").notNullable();
@@ -99,7 +99,7 @@ export async function up(knex: Knex): Promise<void> {
     await createOnUpdateTrigger(knex, TableName.PkiDiscoveryInstallation);
   }
 
-  if (!(await knex.schema.hasTable(TableName.PkiCertificateInstallationCert))) {
+  if (!(await knex.schema.hashtable(TableName.PkiCertificateInstallationCert))) {
     await knex.schema.createTable(TableName.PkiCertificateInstallationCert, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.uuid("installationId").notNullable();
@@ -115,7 +115,7 @@ export async function up(knex: Knex): Promise<void> {
     await createOnUpdateTrigger(knex, TableName.PkiCertificateInstallationCert);
   }
 
-  if (!(await knex.schema.hasTable(TableName.PkiDiscoveryScanHistory))) {
+  if (!(await knex.schema.hashtable(TableName.PkiDiscoveryScanHistory))) {
     await knex.schema.createTable(TableName.PkiDiscoveryScanHistory, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.uuid("discoveryConfigId").notNullable();
@@ -151,7 +151,7 @@ export async function down(knex: Knex): Promise<void> {
   await dropOnUpdateTrigger(knex, TableName.PkiDiscoveryConfig);
   await knex.schema.dropTableIfExists(TableName.PkiDiscoveryConfig);
 
-  if (await knex.schema.hasTable(TableName.Certificate)) {
+  if (await knex.schema.hashtable(TableName.Certificate)) {
     const indexExists = await knex.raw(`SELECT 1 FROM pg_indexes WHERE tablename = ? AND indexname = ?`, [
       TableName.Certificate,
       `${TableName.Certificate}_fingerprintsha256_index`

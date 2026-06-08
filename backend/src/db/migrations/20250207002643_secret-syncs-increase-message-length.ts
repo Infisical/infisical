@@ -3,7 +3,7 @@ import { Knex } from "knex";
 import { TableName } from "@app/db/schemas";
 
 export async function up(knex: Knex): Promise<void> {
-  if (await knex.schema.hasTable(TableName.SecretSync)) {
+  if (await knex.schema.hashtable(TableName.SecretSync)) {
     const hasLastSyncMessage = await knex.schema.hasColumn(TableName.SecretSync, "lastSyncMessage");
     const hasLastImportMessage = await knex.schema.hasColumn(TableName.SecretSync, "lastImportMessage");
     const hasLastRemoveMessage = await knex.schema.hasColumn(TableName.SecretSync, "lastRemoveMessage");
@@ -17,7 +17,7 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  if (await knex.schema.hasTable(TableName.SecretSync)) {
+  if (await knex.schema.hashtable(TableName.SecretSync)) {
     const hasLastSyncMessage = await knex.schema.hasColumn(TableName.SecretSync, "lastSyncMessage");
     const hasLastImportMessage = await knex.schema.hasColumn(TableName.SecretSync, "lastImportMessage");
     const hasLastRemoveMessage = await knex.schema.hasColumn(TableName.SecretSync, "lastRemoveMessage");

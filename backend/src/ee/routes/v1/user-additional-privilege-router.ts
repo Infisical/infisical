@@ -56,7 +56,7 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const { userId, membership } = await server.services.convertor.userMembershipIdToUserId(
+      const { userId, membership } = await server.services.converter.userMembershipIdToUserId(
         req.body.projectMembershipId,
         AccessScope.Project,
         req.permission.orgId
@@ -128,7 +128,7 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const data = await server.services.convertor.additionalPrivilegeIdToDoc(req.params.privilegeId);
+      const data = await server.services.converter.additionalPrivilegeIdToDoc(req.params.privilegeId);
       if (!data.privilege.actorUserId)
         throw new NotFoundError({ message: `Privilege with id ${req.params.privilegeId} not found` });
 
@@ -194,7 +194,7 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const data = await server.services.convertor.additionalPrivilegeIdToDoc(req.params.privilegeId);
+      const data = await server.services.converter.additionalPrivilegeIdToDoc(req.params.privilegeId);
       if (!data.privilege.actorUserId)
         throw new NotFoundError({ message: `Privilege with id ${req.params.privilegeId} not found` });
 
@@ -256,7 +256,7 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const { userId, membership } = await server.services.convertor.userMembershipIdToUserId(
+      const { userId, membership } = await server.services.converter.userMembershipIdToUserId(
         req.query.projectMembershipId,
         AccessScope.Project,
         req.permission.orgId
@@ -305,7 +305,7 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const data = await server.services.convertor.additionalPrivilegeIdToDoc(req.params.privilegeId);
+      const data = await server.services.converter.additionalPrivilegeIdToDoc(req.params.privilegeId);
       if (!data.privilege.actorUserId)
         throw new NotFoundError({ message: `Privilege with id ${req.params.privilegeId} not found` });
 

@@ -53,7 +53,7 @@ const up = async (knex: Knex): Promise<void> => {
   console.log("Renaming audit log table to the intermediate name");
   await knex.schema.renameTable(TableName.AuditLog, INTERMEDIATE_AUDIT_LOG_TABLE);
 
-  if (!(await knex.schema.hasTable(TableName.AuditLog))) {
+  if (!(await knex.schema.hashtable(TableName.AuditLog))) {
     const createTableSql = knex.schema
       .createTable(TableName.AuditLog, (t) => {
         t.uuid("id").defaultTo(knex.fn.uuid());

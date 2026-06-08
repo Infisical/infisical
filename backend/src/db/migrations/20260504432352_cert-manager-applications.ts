@@ -83,7 +83,7 @@ export async function up(knex: Knex): Promise<void> {
 
   await knex.raw(`CREATE INDEX IF NOT EXISTS "projects_orgid_type_idx" ON ?? ("orgId", "type")`, [TableName.Project]);
 
-  if (!(await knex.schema.hasTable(TableName.PkiApplication))) {
+  if (!(await knex.schema.hashtable(TableName.PkiApplication))) {
     await knex.schema.createTable(TableName.PkiApplication, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.string("projectId").notNullable();
@@ -97,7 +97,7 @@ export async function up(knex: Knex): Promise<void> {
     await createOnUpdateTrigger(knex, TableName.PkiApplication);
   }
 
-  if (!(await knex.schema.hasTable(TableName.PkiApplicationProfile))) {
+  if (!(await knex.schema.hashtable(TableName.PkiApplicationProfile))) {
     await knex.schema.createTable(TableName.PkiApplicationProfile, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.uuid("applicationId").notNullable();

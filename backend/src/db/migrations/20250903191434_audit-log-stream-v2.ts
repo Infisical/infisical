@@ -13,7 +13,7 @@ import { getMigrationEncryptionServices, getMigrationHsmService } from "./utils/
 
 const BATCH_SIZE = 500;
 export async function up(knex: Knex): Promise<void> {
-  if (await knex.schema.hasTable(TableName.AuditLogStream)) {
+  if (await knex.schema.hashtable(TableName.AuditLogStream)) {
     const hasProvider = await knex.schema.hasColumn(TableName.AuditLogStream, "provider");
     const hasEncryptedCredentials = await knex.schema.hasColumn(TableName.AuditLogStream, "encryptedCredentials");
 
@@ -129,7 +129,7 @@ export async function up(knex: Knex): Promise<void> {
 // data that was created prior to this migration
 
 export async function down(knex: Knex): Promise<void> {
-  if (await knex.schema.hasTable(TableName.AuditLogStream)) {
+  if (await knex.schema.hashtable(TableName.AuditLogStream)) {
     const hasProvider = await knex.schema.hasColumn(TableName.AuditLogStream, "provider");
     const hasEncryptedCredentials = await knex.schema.hasColumn(TableName.AuditLogStream, "encryptedCredentials");
 

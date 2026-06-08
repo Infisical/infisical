@@ -5,7 +5,7 @@ import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
   // PAM Discovery Sources
-  if (!(await knex.schema.hasTable(TableName.PamDiscoverySource))) {
+  if (!(await knex.schema.hashtable(TableName.PamDiscoverySource))) {
     await knex.schema.createTable(TableName.PamDiscoverySource, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
 
@@ -34,7 +34,7 @@ export async function up(knex: Knex): Promise<void> {
   }
 
   // PAM Discovery Runs
-  if (!(await knex.schema.hasTable(TableName.PamDiscoverySourceRun))) {
+  if (!(await knex.schema.hashtable(TableName.PamDiscoverySourceRun))) {
     await knex.schema.createTable(TableName.PamDiscoverySourceRun, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
 
@@ -66,7 +66,7 @@ export async function up(knex: Knex): Promise<void> {
   }
 
   // PAM Account Dependencies
-  if (!(await knex.schema.hasTable(TableName.PamAccountDependency))) {
+  if (!(await knex.schema.hashtable(TableName.PamAccountDependency))) {
     await knex.schema.createTable(TableName.PamAccountDependency, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
 
@@ -97,7 +97,7 @@ export async function up(knex: Knex): Promise<void> {
   }
 
   // PAM Discovery Source Resources (junction)
-  if (!(await knex.schema.hasTable(TableName.PamDiscoverySourceResource))) {
+  if (!(await knex.schema.hashtable(TableName.PamDiscoverySourceResource))) {
     await knex.schema.createTable(TableName.PamDiscoverySourceResource, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
 
@@ -125,7 +125,7 @@ export async function up(knex: Knex): Promise<void> {
   }
 
   // PAM Discovery Source Accounts (junction)
-  if (!(await knex.schema.hasTable(TableName.PamDiscoverySourceAccount))) {
+  if (!(await knex.schema.hashtable(TableName.PamDiscoverySourceAccount))) {
     await knex.schema.createTable(TableName.PamDiscoverySourceAccount, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
 
@@ -153,7 +153,7 @@ export async function up(knex: Knex): Promise<void> {
   }
 
   // PAM Discovery Source Dependencies (junction)
-  if (!(await knex.schema.hasTable(TableName.PamDiscoverySourceDependency))) {
+  if (!(await knex.schema.hashtable(TableName.PamDiscoverySourceDependency))) {
     await knex.schema.createTable(TableName.PamDiscoverySourceDependency, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
 

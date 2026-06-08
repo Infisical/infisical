@@ -3,7 +3,7 @@ import { Knex } from "knex";
 import { TableName } from "../schemas";
 
 export async function up(knex: Knex): Promise<void> {
-  if (await knex.schema.hasTable(TableName.PamSession)) {
+  if (await knex.schema.hashtable(TableName.PamSession)) {
     const hasResourceId = await knex.schema.hasColumn(TableName.PamSession, "resourceId");
     const hasEncryptedAiInsights = await knex.schema.hasColumn(TableName.PamSession, "encryptedAiInsights");
     const hasAiInsightsStatus = await knex.schema.hasColumn(TableName.PamSession, "aiInsightsStatus");
@@ -29,7 +29,7 @@ export async function up(knex: Knex): Promise<void> {
     `);
   }
 
-  if (await knex.schema.hasTable(TableName.PamResource)) {
+  if (await knex.schema.hashtable(TableName.PamResource)) {
     const hasEncryptedSessionSummaryConfig = await knex.schema.hasColumn(
       TableName.PamResource,
       "encryptedSessionSummaryConfig"
@@ -43,7 +43,7 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  if (await knex.schema.hasTable(TableName.PamSession)) {
+  if (await knex.schema.hashtable(TableName.PamSession)) {
     await knex.schema.alterTable(TableName.PamSession, (t) => {
       t.dropForeign(["resourceId"]);
       t.dropColumn("resourceId");
@@ -53,7 +53,7 @@ export async function down(knex: Knex): Promise<void> {
     });
   }
 
-  if (await knex.schema.hasTable(TableName.PamResource)) {
+  if (await knex.schema.hashtable(TableName.PamResource)) {
     await knex.schema.alterTable(TableName.PamResource, (t) => {
       t.dropColumn("encryptedSessionSummaryConfig");
     });

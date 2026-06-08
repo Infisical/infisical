@@ -144,7 +144,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { privilege: privilegeDoc } = await server.services.convertor.additionalPrivilegeIdToDoc(req.params.id);
+      const { privilege: privilegeDoc } = await server.services.converter.additionalPrivilegeIdToDoc(req.params.id);
 
       if (!privilegeDoc.actorIdentityId) {
         throw new NotFoundError({ message: `Identity privilege with id ${req.params.id} not found` });
@@ -208,7 +208,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { privilege: privilegeDoc } = await server.services.convertor.additionalPrivilegeIdToDoc(req.params.id);
+      const { privilege: privilegeDoc } = await server.services.converter.additionalPrivilegeIdToDoc(req.params.id);
 
       if (!privilegeDoc.actorIdentityId) {
         throw new NotFoundError({ message: `Identity privilege with id ${req.params.id} not found` });
@@ -266,7 +266,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { privilege: privilegeDoc } = await server.services.convertor.additionalPrivilegeIdToDoc(req.params.id);
+      const { privilege: privilegeDoc } = await server.services.converter.additionalPrivilegeIdToDoc(req.params.id);
 
       if (!privilegeDoc.actorIdentityId) {
         throw new NotFoundError({ message: `Identity privilege with id ${req.params.id} not found` });
@@ -328,7 +328,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { id: projectId } = await server.services.convertor.projectSlugToId({
+      const { id: projectId } = await server.services.converter.projectSlugToId({
         slug: req.query.projectSlug,
         orgId: req.permission.orgId
       });

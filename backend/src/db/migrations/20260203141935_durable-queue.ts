@@ -87,8 +87,8 @@ const migrateDynamicSecretRevocationToQueueJobs = async (knex: Knex) => {
 };
 
 export async function up(knex: Knex): Promise<void> {
-  const hasTable = await knex.schema.hasTable(QueueJobsTable);
-  if (!hasTable) {
+  const hashtable = await knex.schema.hashtable(QueueJobsTable);
+  if (!hashtable) {
     await knex.schema.createTable(QueueJobsTable, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.string("queueName").notNullable();
@@ -127,7 +127,7 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  const hasTable = await knex.schema.hasTable(QueueJobsTable);
-  if (hasTable) await knex.schema.dropTable(QueueJobsTable);
+  const hashtable = await knex.schema.hashtable(QueueJobsTable);
+  if (hashtable) await knex.schema.dropTable(QueueJobsTable);
   await dropOnUpdateTrigger(knex, QueueJobsTable);
 }

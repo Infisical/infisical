@@ -3,8 +3,8 @@ import { Knex } from "knex";
 import { TableName } from "../schemas";
 
 export async function up(knex: Knex): Promise<void> {
-  const hasTable = await knex.schema.hasTable(TableName.Environment);
-  if (!hasTable) return;
+  const hashtable = await knex.schema.hashtable(TableName.Environment);
+  if (!hashtable) return;
 
   const hasDeleteAfter = await knex.schema.hasColumn(TableName.Environment, "deleteAfter");
   const hasSoftDeletedAt = await knex.schema.hasColumn(TableName.Environment, "softDeletedAt");
@@ -28,8 +28,8 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  const hasTable = await knex.schema.hasTable(TableName.Environment);
-  if (!hasTable) return;
+  const hashtable = await knex.schema.hashtable(TableName.Environment);
+  if (!hashtable) return;
 
   const hasDeleteAfter = await knex.schema.hasColumn(TableName.Environment, "deleteAfter");
   const hasSoftDeletedAt = await knex.schema.hasColumn(TableName.Environment, "softDeletedAt");

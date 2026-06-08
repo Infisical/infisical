@@ -4,7 +4,7 @@ import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
-  if (!(await knex.schema.hasTable(TableName.ApprovalPolicies))) {
+  if (!(await knex.schema.hashtable(TableName.ApprovalPolicies))) {
     await knex.schema.createTable(TableName.ApprovalPolicies, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
 
@@ -29,7 +29,7 @@ export async function up(knex: Knex): Promise<void> {
     await createOnUpdateTrigger(knex, TableName.ApprovalPolicies);
   }
 
-  if (!(await knex.schema.hasTable(TableName.ApprovalPolicySteps))) {
+  if (!(await knex.schema.hashtable(TableName.ApprovalPolicySteps))) {
     await knex.schema.createTable(TableName.ApprovalPolicySteps, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
 
@@ -44,7 +44,7 @@ export async function up(knex: Knex): Promise<void> {
     });
   }
 
-  if (!(await knex.schema.hasTable(TableName.ApprovalPolicyStepApprovers))) {
+  if (!(await knex.schema.hashtable(TableName.ApprovalPolicyStepApprovers))) {
     await knex.schema.createTable(TableName.ApprovalPolicyStepApprovers, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
 
@@ -61,7 +61,7 @@ export async function up(knex: Knex): Promise<void> {
     });
   }
 
-  if (!(await knex.schema.hasTable(TableName.ApprovalRequests))) {
+  if (!(await knex.schema.hashtable(TableName.ApprovalRequests))) {
     await knex.schema.createTable(TableName.ApprovalRequests, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
 
@@ -95,7 +95,7 @@ export async function up(knex: Knex): Promise<void> {
     await createOnUpdateTrigger(knex, TableName.ApprovalRequests);
   }
 
-  if (!(await knex.schema.hasTable(TableName.ApprovalRequestSteps))) {
+  if (!(await knex.schema.hashtable(TableName.ApprovalRequestSteps))) {
     await knex.schema.createTable(TableName.ApprovalRequestSteps, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
 
@@ -115,7 +115,7 @@ export async function up(knex: Knex): Promise<void> {
     });
   }
 
-  if (!(await knex.schema.hasTable(TableName.ApprovalRequestStepEligibleApprovers))) {
+  if (!(await knex.schema.hashtable(TableName.ApprovalRequestStepEligibleApprovers))) {
     await knex.schema.createTable(TableName.ApprovalRequestStepEligibleApprovers, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
 
@@ -132,7 +132,7 @@ export async function up(knex: Knex): Promise<void> {
     });
   }
 
-  if (!(await knex.schema.hasTable(TableName.ApprovalRequestApprovals))) {
+  if (!(await knex.schema.hashtable(TableName.ApprovalRequestApprovals))) {
     await knex.schema.createTable(TableName.ApprovalRequestApprovals, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
 
@@ -149,7 +149,7 @@ export async function up(knex: Knex): Promise<void> {
     });
   }
 
-  if (!(await knex.schema.hasTable(TableName.ApprovalRequestGrants))) {
+  if (!(await knex.schema.hashtable(TableName.ApprovalRequestGrants))) {
     await knex.schema.createTable(TableName.ApprovalRequestGrants, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
 

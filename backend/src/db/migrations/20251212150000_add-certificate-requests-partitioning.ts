@@ -41,7 +41,7 @@ export async function up(knex: Knex): Promise<void> {
     return;
   }
 
-  if (await knex.schema.hasTable(TableName.CertificateRequests)) {
+  if (await knex.schema.hashtable(TableName.CertificateRequests)) {
     console.info("Converting existing certificate_requests table to partitioned table...");
 
     // Drop primary key constraint

@@ -22,7 +22,7 @@ export async function up(knex: Knex): Promise<void> {
   const keyStore = inMemoryKeyStore();
   const { kmsService } = await getMigrationEncryptionServices({ envConfig, keyStore, db: knex });
 
-  if (!(await knex.schema.hasTable(TableName.ExternalMigrationConfig))) {
+  if (!(await knex.schema.hashtable(TableName.ExternalMigrationConfig))) {
     await knex.schema.createTable(TableName.ExternalMigrationConfig, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.uuid("orgId").notNullable();
@@ -36,7 +36,7 @@ export async function up(knex: Knex): Promise<void> {
 
     await createOnUpdateTrigger(knex, TableName.ExternalMigrationConfig);
 
-    if (await knex.schema.hasTable(TableName.VaultExternalMigrationConfig)) {
+    if (await knex.schema.hashtable(TableName.VaultExternalMigrationConfig)) {
       const existingVaultConfigs = await knex(TableName.VaultExternalMigrationConfig).select(
         selectAllTableCols(TableName.VaultExternalMigrationConfig)
       );

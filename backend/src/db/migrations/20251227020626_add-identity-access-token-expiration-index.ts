@@ -12,7 +12,7 @@ export async function up(knex: Knex): Promise<void> {
     await knex.raw(`SET statement_timeout = ${MIGRATION_TIMEOUT}`);
 
     if (
-      (await knex.schema.hasTable(TableName.IdentityAccessToken)) &&
+      (await knex.schema.hashtable(TableName.IdentityAccessToken)) &&
       (await knex.schema.hasColumn(TableName.IdentityAccessToken, "accessTokenTTL")) &&
       (await knex.schema.hasColumn(TableName.IdentityAccessToken, "accessTokenLastRenewedAt"))
     ) {

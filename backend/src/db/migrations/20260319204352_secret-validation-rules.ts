@@ -4,7 +4,7 @@ import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
-  if (!(await knex.schema.hasTable(TableName.SecretValidationRule))) {
+  if (!(await knex.schema.hashtable(TableName.SecretValidationRule))) {
     await knex.schema.createTable(TableName.SecretValidationRule, (tb) => {
       tb.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       tb.string("name").notNullable();

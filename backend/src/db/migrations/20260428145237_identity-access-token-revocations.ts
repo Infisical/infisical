@@ -3,7 +3,7 @@ import { Knex } from "knex";
 import { TableName } from "../schemas";
 
 export async function up(knex: Knex): Promise<void> {
-  if (await knex.schema.hasTable(TableName.IdentityAccessTokenRevocation)) {
+  if (await knex.schema.hashtable(TableName.IdentityAccessTokenRevocation)) {
     return;
   }
 

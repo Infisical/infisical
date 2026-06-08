@@ -6,7 +6,7 @@ import { TableName } from "@app/db/schemas";
 const CONSTRAINT_NAME = "unique_pki_acme_account_public_key_and_profile_id";
 
 export async function up(knex: Knex): Promise<void> {
-  if (await knex.schema.hasTable(TableName.PkiAcmeAccount)) {
+  if (await knex.schema.hashtable(TableName.PkiAcmeAccount)) {
     const hasProfileId = await knex.schema.hasColumn(TableName.PkiAcmeAccount, "profileId");
     const hasPublicKeyThumbprint = await knex.schema.hasColumn(TableName.PkiAcmeAccount, "publicKeyThumbprint");
 
@@ -19,7 +19,7 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  if (await knex.schema.hasTable(TableName.PkiAcmeAccount)) {
+  if (await knex.schema.hashtable(TableName.PkiAcmeAccount)) {
     const hasProfileId = await knex.schema.hasColumn(TableName.PkiAcmeAccount, "profileId");
     const hasPublicKeyThumbprint = await knex.schema.hasColumn(TableName.PkiAcmeAccount, "publicKeyThumbprint");
 

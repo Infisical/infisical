@@ -303,7 +303,7 @@ import { certificateApprovalServiceFactory } from "@app/services/certificate-v3/
 import { certificateV3QueueServiceFactory } from "@app/services/certificate-v3/certificate-v3-queue";
 import { certificateV3ServiceFactory } from "@app/services/certificate-v3/certificate-v3-service";
 import { cmekServiceFactory } from "@app/services/cmek/cmek-service";
-import { convertorServiceFactory } from "@app/services/convertor/convertor-service";
+import { convertorServiceFactory } from "@app/services/converter/converter-service";
 import { acmeEnrollmentConfigDALFactory } from "@app/services/enrollment-config/acme-enrollment-config-dal";
 import { apiEnrollmentConfigDALFactory } from "@app/services/enrollment-config/api-enrollment-config-dal";
 import { estEnrollmentConfigDALFactory } from "@app/services/enrollment-config/est-enrollment-config-dal";
@@ -3714,7 +3714,7 @@ export const registerRoutes = async (
     role: roleService,
     additionalPrivilege: additionalPrivilegeService,
     identityProject: identityProjectService,
-    convertor: convertorService,
+    converter: convertorService,
     pkiAlertV2: pkiAlertV2Service,
     aiMcpServer: aiMcpServerService,
     aiMcpEndpoint: aiMcpEndpointService,

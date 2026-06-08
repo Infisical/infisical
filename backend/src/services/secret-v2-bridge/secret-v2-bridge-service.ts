@@ -1347,7 +1347,7 @@ export const secretV2BridgeServiceFactory = ({
     } else if (personalOverridesBehavior === PersonalOverridesBehavior.Priority) {
       // if include personaloverrides is enabled, personal overrides should take PRIORITY over shared secrets.
       // this means if the secrets array already contains a shared secret of the same secret, and the current element is a personal secret, we should replace the existing shared secret with the personal secret.
-      // the TLDR is that we should always ensure that there is only ever 1 secret with the same key (in the same folder). and if personal secrets are included, they should take priorty.
+      // the TLDR is that we should always ensure that there is only ever 1 secret with the same key (in the same folder). and if personal secrets are included, they should take priority.
       const secretMap = new Map<string, (typeof unfilteredSecrets)[number]>();
 
       unfilteredSecrets.forEach((el) => {

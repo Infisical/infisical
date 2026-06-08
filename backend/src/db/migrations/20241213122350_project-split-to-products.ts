@@ -155,7 +155,7 @@ const newProject = async (knex: Knex, projectId: string, projectType: ProjectTyp
 
 const BATCH_SIZE = 500;
 export async function up(knex: Knex): Promise<void> {
-  const hasSplitMappingTable = await knex.schema.hasTable(TableName.ProjectSplitBackfillIds);
+  const hasSplitMappingTable = await knex.schema.hashtable(TableName.ProjectSplitBackfillIds);
   if (!hasSplitMappingTable) {
     await knex.schema.createTable(TableName.ProjectSplitBackfillIds, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
@@ -235,7 +235,7 @@ export async function up(knex: Knex): Promise<void> {
 
 export async function down(knex: Knex): Promise<void> {
   const hasTypeColumn = await knex.schema.hasColumn(TableName.Project, "type");
-  const hasSplitMappingTable = await knex.schema.hasTable(TableName.ProjectSplitBackfillIds);
+  const hasSplitMappingTable = await knex.schema.hashtable(TableName.ProjectSplitBackfillIds);
 
   if (hasTypeColumn && hasSplitMappingTable) {
     const splitProjectMappings = await knex(TableName.ProjectSplitBackfillIds).where({});

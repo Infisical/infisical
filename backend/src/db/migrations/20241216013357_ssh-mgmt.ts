@@ -4,7 +4,7 @@ import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
-  if (!(await knex.schema.hasTable(TableName.SshCertificateAuthority))) {
+  if (!(await knex.schema.hashtable(TableName.SshCertificateAuthority))) {
     await knex.schema.createTable(TableName.SshCertificateAuthority, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.timestamps(true, true, true);
@@ -17,7 +17,7 @@ export async function up(knex: Knex): Promise<void> {
     await createOnUpdateTrigger(knex, TableName.SshCertificateAuthority);
   }
 
-  if (!(await knex.schema.hasTable(TableName.SshCertificateAuthoritySecret))) {
+  if (!(await knex.schema.hashtable(TableName.SshCertificateAuthoritySecret))) {
     await knex.schema.createTable(TableName.SshCertificateAuthoritySecret, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.timestamps(true, true, true);
@@ -28,7 +28,7 @@ export async function up(knex: Knex): Promise<void> {
     await createOnUpdateTrigger(knex, TableName.SshCertificateAuthoritySecret);
   }
 
-  if (!(await knex.schema.hasTable(TableName.SshCertificateTemplate))) {
+  if (!(await knex.schema.hashtable(TableName.SshCertificateTemplate))) {
     await knex.schema.createTable(TableName.SshCertificateTemplate, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.timestamps(true, true, true);
@@ -47,7 +47,7 @@ export async function up(knex: Knex): Promise<void> {
     await createOnUpdateTrigger(knex, TableName.SshCertificateTemplate);
   }
 
-  if (!(await knex.schema.hasTable(TableName.SshCertificate))) {
+  if (!(await knex.schema.hashtable(TableName.SshCertificate))) {
     await knex.schema.createTable(TableName.SshCertificate, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.timestamps(true, true, true);
@@ -68,7 +68,7 @@ export async function up(knex: Knex): Promise<void> {
     await createOnUpdateTrigger(knex, TableName.SshCertificate);
   }
 
-  if (!(await knex.schema.hasTable(TableName.SshCertificateBody))) {
+  if (!(await knex.schema.hashtable(TableName.SshCertificateBody))) {
     await knex.schema.createTable(TableName.SshCertificateBody, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.timestamps(true, true, true);

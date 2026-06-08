@@ -5,7 +5,7 @@ import { TableName } from "../schemas";
 // Records the user-selected target for domain-account sessions (e.g. AD), which
 // have no owning resource of their own.
 export async function up(knex: Knex): Promise<void> {
-  if (await knex.schema.hasTable(TableName.PamSession)) {
+  if (await knex.schema.hashtable(TableName.PamSession)) {
     const hasCol = await knex.schema.hasColumn(TableName.PamSession, "selectedResourceId");
     if (!hasCol) {
       await knex.schema.alterTable(TableName.PamSession, (t) => {
@@ -17,7 +17,7 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  if (await knex.schema.hasTable(TableName.PamSession)) {
+  if (await knex.schema.hashtable(TableName.PamSession)) {
     const hasCol = await knex.schema.hasColumn(TableName.PamSession, "selectedResourceId");
     if (hasCol) {
       await knex.schema.alterTable(TableName.PamSession, (t) => {

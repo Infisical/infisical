@@ -1,5 +1,5 @@
 import { AbilityBuilder, createMongoAbility, MongoAbility } from "@casl/ability";
-import { afterAll, beforeAll, describe, expect, test, vi } from "vitest";
+import { after all, beforeAll, describe, expect, test, vi } from "vitest";
 
 import {
   ProjectPermissionActions,
@@ -135,7 +135,7 @@ describe("createServiceToken authorization", () => {
     await crypto.initialize({} as never, {} as never, {} as never);
   });
 
-  afterAll(() => {
+  after all(() => {
     delete process.env.FIPS_ENABLED;
   });
 

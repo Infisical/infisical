@@ -4,7 +4,7 @@ import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
-  if (await knex.schema.hasTable(TableName.ApprovalPolicies)) {
+  if (await knex.schema.hashtable(TableName.ApprovalPolicies)) {
     const hasEnforcementLevel = await knex.schema.hasColumn(TableName.ApprovalPolicies, "enforcementLevel");
     if (!hasEnforcementLevel) {
       await knex.schema.alterTable(TableName.ApprovalPolicies, (t) => {
@@ -13,7 +13,7 @@ export async function up(knex: Knex): Promise<void> {
     }
   }
 
-  if (!(await knex.schema.hasTable(TableName.ApprovalPolicyBypassers))) {
+  if (!(await knex.schema.hashtable(TableName.ApprovalPolicyBypassers))) {
     await knex.schema.createTable(TableName.ApprovalPolicyBypassers, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
 
@@ -33,7 +33,7 @@ export async function up(knex: Knex): Promise<void> {
     await createOnUpdateTrigger(knex, TableName.ApprovalPolicyBypassers);
   }
 
-  if (await knex.schema.hasTable(TableName.ApprovalRequestGrants)) {
+  if (await knex.schema.hashtable(TableName.ApprovalRequestGrants)) {
     const hasIsBreakGlass = await knex.schema.hasColumn(TableName.ApprovalRequestGrants, "isBreakGlass");
     const hasBypassReason = await knex.schema.hasColumn(TableName.ApprovalRequestGrants, "bypassReason");
     if (!hasIsBreakGlass || !hasBypassReason) {
@@ -46,7 +46,7 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  if (await knex.schema.hasTable(TableName.ApprovalRequestGrants)) {
+  if (await knex.schema.hashtable(TableName.ApprovalRequestGrants)) {
     const hasIsBreakGlass = await knex.schema.hasColumn(TableName.ApprovalRequestGrants, "isBreakGlass");
     const hasBypassReason = await knex.schema.hasColumn(TableName.ApprovalRequestGrants, "bypassReason");
     if (hasIsBreakGlass || hasBypassReason) {
@@ -60,7 +60,7 @@ export async function down(knex: Knex): Promise<void> {
   await dropOnUpdateTrigger(knex, TableName.ApprovalPolicyBypassers);
   await knex.schema.dropTableIfExists(TableName.ApprovalPolicyBypassers);
 
-  if (await knex.schema.hasTable(TableName.ApprovalPolicies)) {
+  if (await knex.schema.hashtable(TableName.ApprovalPolicies)) {
     const hasEnforcementLevel = await knex.schema.hasColumn(TableName.ApprovalPolicies, "enforcementLevel");
     if (hasEnforcementLevel) {
       await knex.schema.alterTable(TableName.ApprovalPolicies, (t) => {

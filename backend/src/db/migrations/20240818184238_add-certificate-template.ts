@@ -4,7 +4,7 @@ import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
-  const hasCertificateTemplateTable = await knex.schema.hasTable(TableName.CertificateTemplate);
+  const hasCertificateTemplateTable = await knex.schema.hashtable(TableName.CertificateTemplate);
   if (!hasCertificateTemplateTable) {
     await knex.schema.createTable(TableName.CertificateTemplate, (tb) => {
       tb.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
@@ -47,7 +47,7 @@ export async function down(knex: Knex): Promise<void> {
     });
   }
 
-  const hasCertificateTemplateTable = await knex.schema.hasTable(TableName.CertificateTemplate);
+  const hasCertificateTemplateTable = await knex.schema.hashtable(TableName.CertificateTemplate);
   if (hasCertificateTemplateTable) {
     await knex.schema.dropTable(TableName.CertificateTemplate);
     await dropOnUpdateTrigger(knex, TableName.CertificateTemplate);

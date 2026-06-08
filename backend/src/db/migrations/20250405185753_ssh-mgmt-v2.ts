@@ -4,7 +4,7 @@ import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
-  if (!(await knex.schema.hasTable(TableName.SshHost))) {
+  if (!(await knex.schema.hashtable(TableName.SshHost))) {
     await knex.schema.createTable(TableName.SshHost, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.timestamps(true, true, true);
@@ -22,7 +22,7 @@ export async function up(knex: Knex): Promise<void> {
     await createOnUpdateTrigger(knex, TableName.SshHost);
   }
 
-  if (!(await knex.schema.hasTable(TableName.SshHostLoginUser))) {
+  if (!(await knex.schema.hashtable(TableName.SshHostLoginUser))) {
     await knex.schema.createTable(TableName.SshHostLoginUser, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.timestamps(true, true, true);
@@ -34,7 +34,7 @@ export async function up(knex: Knex): Promise<void> {
     await createOnUpdateTrigger(knex, TableName.SshHostLoginUser);
   }
 
-  if (!(await knex.schema.hasTable(TableName.SshHostLoginUserMapping))) {
+  if (!(await knex.schema.hashtable(TableName.SshHostLoginUserMapping))) {
     await knex.schema.createTable(TableName.SshHostLoginUserMapping, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.timestamps(true, true, true);
@@ -47,7 +47,7 @@ export async function up(knex: Knex): Promise<void> {
     await createOnUpdateTrigger(knex, TableName.SshHostLoginUserMapping);
   }
 
-  if (!(await knex.schema.hasTable(TableName.ProjectSshConfig))) {
+  if (!(await knex.schema.hashtable(TableName.ProjectSshConfig))) {
     // new table to store configuration for projects of type SSH (i.e. Infisical SSH)
     await knex.schema.createTable(TableName.ProjectSshConfig, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());

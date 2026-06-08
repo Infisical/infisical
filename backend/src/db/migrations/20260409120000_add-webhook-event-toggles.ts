@@ -5,7 +5,7 @@ import { TableName } from "../schemas";
 const FILTERED_EVENTS_COLUMN = "filteredEvents";
 
 export async function up(knex: Knex): Promise<void> {
-  const hasWebhookTable = await knex.schema.hasTable(TableName.Webhook);
+  const hasWebhookTable = await knex.schema.hashtable(TableName.Webhook);
   if (!hasWebhookTable) return;
 
   const hasFilteredEventsColumn = await knex.schema.hasColumn(TableName.Webhook, FILTERED_EVENTS_COLUMN);
@@ -18,7 +18,7 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  const hasWebhookTable = await knex.schema.hasTable(TableName.Webhook);
+  const hasWebhookTable = await knex.schema.hashtable(TableName.Webhook);
   if (!hasWebhookTable) return;
 
   const hasFilteredEventsColumn = await knex.schema.hasColumn(TableName.Webhook, FILTERED_EVENTS_COLUMN);

@@ -941,7 +941,7 @@ export const gatewayV2ServiceFactory = ({
         }
       } catch {
         // Malformed JSON — fall back to default TTL since the gateway *was* reachable
-        logger.warn({ gatewayId, probeResponse }, "Gateway health probe returned unparseable JSON, using default TTL");
+        logger.warn({ gatewayId, probeResponse }, "Gateway health probe returned unparsable JSON, using default TTL");
       }
     }
 

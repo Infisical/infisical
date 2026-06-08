@@ -4,7 +4,7 @@ import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
-  const hasEstConfigTable = await knex.schema.hasTable(TableName.CertificateTemplateEstConfig);
+  const hasEstConfigTable = await knex.schema.hashtable(TableName.CertificateTemplateEstConfig);
   if (!hasEstConfigTable) {
     await knex.schema.createTable(TableName.CertificateTemplateEstConfig, (tb) => {
       tb.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());

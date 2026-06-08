@@ -4,7 +4,7 @@ import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
-  if (!(await knex.schema.hasTable(TableName.CertificateCleanupConfig))) {
+  if (!(await knex.schema.hashtable(TableName.CertificateCleanupConfig))) {
     await knex.schema.createTable(TableName.CertificateCleanupConfig, (tb) => {
       tb.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       tb.string("projectId").notNullable().unique();
@@ -37,7 +37,7 @@ export async function down(knex: Knex): Promise<void> {
   await dropOnUpdateTrigger(knex, TableName.CertificateCleanupConfig);
   await knex.schema.dropTableIfExists(TableName.CertificateCleanupConfig);
 
-  if (await knex.schema.hasTable(TableName.Certificate)) {
+  if (await knex.schema.hashtable(TableName.Certificate)) {
     const indexExists = await knex.raw(`SELECT 1 FROM pg_indexes WHERE tablename = ? AND indexname = ?`, [
       TableName.Certificate,
       "idx_certificates_not_after"

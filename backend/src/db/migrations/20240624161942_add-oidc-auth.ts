@@ -3,7 +3,7 @@ import { Knex } from "knex";
 import { TableName } from "../schemas";
 
 export async function up(knex: Knex): Promise<void> {
-  if (!(await knex.schema.hasTable(TableName.OidcConfig))) {
+  if (!(await knex.schema.hashtable(TableName.OidcConfig))) {
     await knex.schema.createTable(TableName.OidcConfig, (tb) => {
       tb.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       tb.string("discoveryURL");
@@ -27,7 +27,7 @@ export async function up(knex: Knex): Promise<void> {
     });
   }
 
-  if (await knex.schema.hasTable(TableName.SuperAdmin)) {
+  if (await knex.schema.hashtable(TableName.SuperAdmin)) {
     if (!(await knex.schema.hasColumn(TableName.SuperAdmin, "trustOidcEmails"))) {
       await knex.schema.alterTable(TableName.SuperAdmin, (tb) => {
         tb.boolean("trustOidcEmails").defaultTo(false);
@@ -39,7 +39,7 @@ export async function up(knex: Knex): Promise<void> {
 export async function down(knex: Knex): Promise<void> {
   await knex.schema.dropTableIfExists(TableName.OidcConfig);
 
-  if (await knex.schema.hasTable(TableName.SuperAdmin)) {
+  if (await knex.schema.hashtable(TableName.SuperAdmin)) {
     if (await knex.schema.hasColumn(TableName.SuperAdmin, "trustOidcEmails")) {
       await knex.schema.alterTable(TableName.SuperAdmin, (t) => {
         t.dropColumn("trustOidcEmails");

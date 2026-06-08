@@ -13,7 +13,7 @@ export type TSecretImportDALFactory = ReturnType<typeof secretImportDALFactory>;
 export const secretImportDALFactory = (db: TDbClient) => {
   const secretImportOrm = ormify(db, TableName.SecretImport);
 
-  // we are using postion based sorting as its a small list
+  // we are using position based sorting as its a small list
   // this will return the last value of the position in a folder with secret imports
   const findLastImportPosition = async (folderId: string, tx?: Knex) => {
     const lastPos = await (tx || db.replicaNode())(TableName.SecretImport)

@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment,@typescript-eslint/no-unsafe-member-access,@typescript-eslint/no-unsafe-argument */
-// akhilmhdh: I did this, quite strange bug with eslint. Everything do have a type stil has this error
+// akhilmhdh: I did this, quite strange bug with eslint. Everything do have a type still has this error
 import { ForbiddenError, subject } from "@casl/ability";
 
 import { ActionProjectType } from "@app/db/schemas";

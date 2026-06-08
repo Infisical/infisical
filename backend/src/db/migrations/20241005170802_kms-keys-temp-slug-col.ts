@@ -3,7 +3,7 @@ import { Knex } from "knex";
 import { TableName } from "@app/db/schemas";
 
 export async function up(knex: Knex): Promise<void> {
-  if (await knex.schema.hasTable(TableName.KmsKey)) {
+  if (await knex.schema.hashtable(TableName.KmsKey)) {
     const hasSlug = await knex.schema.hasColumn(TableName.KmsKey, "slug");
 
     if (!hasSlug) {
@@ -18,7 +18,7 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  if (await knex.schema.hasTable(TableName.KmsKey)) {
+  if (await knex.schema.hashtable(TableName.KmsKey)) {
     const hasSlug = await knex.schema.hasColumn(TableName.KmsKey, "slug");
 
     if (hasSlug) {

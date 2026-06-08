@@ -134,7 +134,7 @@ export function createEventStreamClient(redis: Redis | Cluster, options: IEventS
 
   /**
    * Refreshes the connection's auth permissions
-   * Must be called atleast once when connection is opened
+   * Must be called at least once when connection is opened
    */
   const refresh = async () => {
     try {

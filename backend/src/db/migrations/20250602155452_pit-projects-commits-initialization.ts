@@ -116,7 +116,7 @@ const getFoldersByParentIds = async (knex: Knex, parentIds: string[]): Promise<R
 
 export async function up(knex: Knex): Promise<void> {
   logger.info("Initializing folder commits");
-  const hasFolderCommitTable = await knex.schema.hasTable(TableName.FolderCommit);
+  const hasFolderCommitTable = await knex.schema.hashtable(TableName.FolderCommit);
   if (hasFolderCommitTable) {
     // Get Projects to Initialize
     const projects = await knex(TableName.Project)
@@ -355,7 +355,7 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  const hasFolderCommitTable = await knex.schema.hasTable(TableName.FolderCommit);
+  const hasFolderCommitTable = await knex.schema.hashtable(TableName.FolderCommit);
   if (hasFolderCommitTable) {
     // delete all existing entries
     await knex(TableName.FolderCommit).del();

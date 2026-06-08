@@ -15,7 +15,7 @@ export async function up(knex: Knex): Promise<void> {
   const doesSecretImportLastReplicatedExist = await knex.schema.hasColumn(TableName.SecretImport, "lastReplicated");
   const doesSecretImportIsReservedExist = await knex.schema.hasColumn(TableName.SecretImport, "isReserved");
 
-  if (await knex.schema.hasTable(TableName.SecretImport)) {
+  if (await knex.schema.hashtable(TableName.SecretImport)) {
     await knex.schema.alterTable(TableName.SecretImport, (t) => {
       if (!doesSecretImportIsReplicationExist) t.boolean("isReplication").defaultTo(false);
       if (!doesSecretImportIsReplicationSuccessExist) t.boolean("isReplicationSuccess").nullable();
@@ -26,7 +26,7 @@ export async function up(knex: Knex): Promise<void> {
   }
 
   const doesSecretFolderReservedExist = await knex.schema.hasColumn(TableName.SecretFolder, "isReserved");
-  if (await knex.schema.hasTable(TableName.SecretFolder)) {
+  if (await knex.schema.hashtable(TableName.SecretFolder)) {
     await knex.schema.alterTable(TableName.SecretFolder, (t) => {
       if (!doesSecretFolderReservedExist) t.boolean("isReserved").defaultTo(false);
     });
@@ -36,7 +36,7 @@ export async function up(knex: Knex): Promise<void> {
     TableName.SecretApprovalRequest,
     "isReplicated"
   );
-  if (await knex.schema.hasTable(TableName.SecretApprovalRequest)) {
+  if (await knex.schema.hashtable(TableName.SecretApprovalRequest)) {
     await knex.schema.alterTable(TableName.SecretApprovalRequest, (t) => {
       if (!doesSecretApprovalRequestIsReplicatedExist) t.boolean("isReplicated");
     });
@@ -56,7 +56,7 @@ export async function down(knex: Knex): Promise<void> {
   const doesSecretImportLastReplicatedExist = await knex.schema.hasColumn(TableName.SecretImport, "lastReplicated");
   const doesSecretImportIsReservedExist = await knex.schema.hasColumn(TableName.SecretImport, "isReserved");
 
-  if (await knex.schema.hasTable(TableName.SecretImport)) {
+  if (await knex.schema.hashtable(TableName.SecretImport)) {
     await knex.schema.alterTable(TableName.SecretImport, (t) => {
       if (doesSecretImportIsReplicationExist) t.dropColumn("isReplication");
       if (doesSecretImportIsReplicationSuccessExist) t.dropColumn("isReplicationSuccess");
@@ -67,7 +67,7 @@ export async function down(knex: Knex): Promise<void> {
   }
 
   const doesSecretFolderReservedExist = await knex.schema.hasColumn(TableName.SecretFolder, "isReserved");
-  if (await knex.schema.hasTable(TableName.SecretFolder)) {
+  if (await knex.schema.hashtable(TableName.SecretFolder)) {
     await knex.schema.alterTable(TableName.SecretFolder, (t) => {
       if (doesSecretFolderReservedExist) t.dropColumn("isReserved");
     });
@@ -77,7 +77,7 @@ export async function down(knex: Knex): Promise<void> {
     TableName.SecretApprovalRequest,
     "isReplicated"
   );
-  if (await knex.schema.hasTable(TableName.SecretApprovalRequest)) {
+  if (await knex.schema.hashtable(TableName.SecretApprovalRequest)) {
     await knex.schema.alterTable(TableName.SecretApprovalRequest, (t) => {
       if (doesSecretApprovalRequestIsReplicatedExist) t.dropColumn("isReplicated");
     });

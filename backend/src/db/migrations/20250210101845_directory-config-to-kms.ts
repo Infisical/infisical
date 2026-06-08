@@ -19,7 +19,7 @@ const reencryptSamlConfig = async (knex: Knex, kmsService: TKmsServiceFactory) =
   const hasEncryptedEntrypointColumn = await knex.schema.hasColumn(TableName.SamlConfig, "encryptedSamlEntryPoint");
   const hasEncryptedIssuerColumn = await knex.schema.hasColumn(TableName.SamlConfig, "encryptedSamlIssuer");
   const hasEncryptedCertificateColumn = await knex.schema.hasColumn(TableName.SamlConfig, "encryptedSamlCertificate");
-  const hasSamlConfigTable = await knex.schema.hasTable(TableName.SamlConfig);
+  const hasSamlConfigTable = await knex.schema.hashtable(TableName.SamlConfig);
 
   if (hasSamlConfigTable) {
     await knex.schema.alterTable(TableName.SamlConfig, (t) => {
@@ -161,7 +161,7 @@ const reencryptLdapConfig = async (knex: Knex, kmsService: TKmsServiceFactory) =
   const hasEncryptedLdapBindDNColum = await knex.schema.hasColumn(TableName.LdapConfig, "encryptedLdapBindDN");
   const hasEncryptedLdapBindPassColumn = await knex.schema.hasColumn(TableName.LdapConfig, "encryptedLdapBindPass");
   const hasEncryptedCertificateColumn = await knex.schema.hasColumn(TableName.LdapConfig, "encryptedLdapCaCertificate");
-  const hasLdapConfigTable = await knex.schema.hasTable(TableName.LdapConfig);
+  const hasLdapConfigTable = await knex.schema.hashtable(TableName.LdapConfig);
 
   const hasEncryptedCACertColumn = await knex.schema.hasColumn(TableName.LdapConfig, "encryptedCACert");
   const hasCaCertIVColumn = await knex.schema.hasColumn(TableName.LdapConfig, "caCertIV");
@@ -331,7 +331,7 @@ const reencryptOidcConfig = async (knex: Knex, kmsService: TKmsServiceFactory) =
   const hasClientSecretIVColumn = await knex.schema.hasColumn(TableName.OidcConfig, "clientSecretIV");
   const hasClientSecretTagColumn = await knex.schema.hasColumn(TableName.OidcConfig, "clientSecretTag");
 
-  const hasOidcConfigTable = await knex.schema.hasTable(TableName.OidcConfig);
+  const hasOidcConfigTable = await knex.schema.hashtable(TableName.OidcConfig);
 
   if (hasOidcConfigTable) {
     await knex.schema.alterTable(TableName.OidcConfig, (t) => {
@@ -470,7 +470,7 @@ const dropSamlConfigColumns = async (knex: Knex) => {
   const hasEncryptedEntrypointColumn = await knex.schema.hasColumn(TableName.SamlConfig, "encryptedSamlEntryPoint");
   const hasEncryptedIssuerColumn = await knex.schema.hasColumn(TableName.SamlConfig, "encryptedSamlIssuer");
   const hasEncryptedCertificateColumn = await knex.schema.hasColumn(TableName.SamlConfig, "encryptedSamlCertificate");
-  const hasSamlConfigTable = await knex.schema.hasTable(TableName.SamlConfig);
+  const hasSamlConfigTable = await knex.schema.hashtable(TableName.SamlConfig);
 
   if (hasSamlConfigTable) {
     await knex.schema.alterTable(TableName.SamlConfig, (t) => {
@@ -485,7 +485,7 @@ const dropLdapConfigColumns = async (knex: Knex) => {
   const hasEncryptedBindDN = await knex.schema.hasColumn(TableName.LdapConfig, "encryptedLdapBindDN");
   const hasEncryptedBindPass = await knex.schema.hasColumn(TableName.LdapConfig, "encryptedLdapBindPass");
   const hasEncryptedCertificateColumn = await knex.schema.hasColumn(TableName.LdapConfig, "encryptedLdapCaCertificate");
-  const hasLdapConfigTable = await knex.schema.hasTable(TableName.LdapConfig);
+  const hasLdapConfigTable = await knex.schema.hashtable(TableName.LdapConfig);
 
   if (hasLdapConfigTable) {
     await knex.schema.alterTable(TableName.LdapConfig, (t) => {
@@ -499,7 +499,7 @@ const dropLdapConfigColumns = async (knex: Knex) => {
 const dropOidcConfigColumns = async (knex: Knex) => {
   const hasEncryptedClientId = await knex.schema.hasColumn(TableName.OidcConfig, "encryptedOidcClientId");
   const hasEncryptedClientSecret = await knex.schema.hasColumn(TableName.OidcConfig, "encryptedOidcClientSecret");
-  const hasOidcConfigTable = await knex.schema.hasTable(TableName.OidcConfig);
+  const hasOidcConfigTable = await knex.schema.hashtable(TableName.OidcConfig);
 
   if (hasOidcConfigTable) {
     await knex.schema.alterTable(TableName.OidcConfig, (t) => {

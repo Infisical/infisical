@@ -3,7 +3,7 @@ import { Knex } from "knex";
 import { TableName } from "../schemas";
 
 export async function up(knex: Knex): Promise<void> {
-  if (await knex.schema.hasTable(TableName.PkiSync)) {
+  if (await knex.schema.hashtable(TableName.PkiSync)) {
     await knex.schema.alterTable(TableName.PkiSync, (t) => {
       t.string("name", 256).notNullable().alter();
     });

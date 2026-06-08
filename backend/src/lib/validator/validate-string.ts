@@ -4,7 +4,7 @@ import { z } from "zod";
 export enum CharacterType {
   Alphabets = "alphabets",
   Numbers = "numbers",
-  AlphaNumeric = "alpha-numeric",
+  AlphaNumeric = "alphanumeric",
   Spaces = "spaces",
   SpecialCharacters = "specialCharacters",
   Punctuation = "punctuation",

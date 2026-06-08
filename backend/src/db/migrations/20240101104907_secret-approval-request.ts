@@ -4,7 +4,7 @@ import { SecretEncryptionAlgo, SecretKeyEncoding, TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
-  if (!(await knex.schema.hasTable(TableName.SecretApprovalRequest))) {
+  if (!(await knex.schema.hashtable(TableName.SecretApprovalRequest))) {
     await knex.schema.createTable(TableName.SecretApprovalRequest, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.uuid("policyId").notNullable();
@@ -24,7 +24,7 @@ export async function up(knex: Knex): Promise<void> {
   }
   await createOnUpdateTrigger(knex, TableName.SecretApprovalRequest);
 
-  if (!(await knex.schema.hasTable(TableName.SecretApprovalRequestReviewer))) {
+  if (!(await knex.schema.hashtable(TableName.SecretApprovalRequestReviewer))) {
     await knex.schema.createTable(TableName.SecretApprovalRequestReviewer, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.uuid("member").notNullable();
@@ -37,7 +37,7 @@ export async function up(knex: Knex): Promise<void> {
   }
   await createOnUpdateTrigger(knex, TableName.SecretApprovalRequestReviewer);
 
-  if (!(await knex.schema.hasTable(TableName.SecretApprovalRequestSecret))) {
+  if (!(await knex.schema.hashtable(TableName.SecretApprovalRequestSecret))) {
     await knex.schema.createTable(TableName.SecretApprovalRequestSecret, (t) => {
       // everything related  to secret
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
@@ -71,7 +71,7 @@ export async function up(knex: Knex): Promise<void> {
   }
   await createOnUpdateTrigger(knex, TableName.SecretApprovalRequestSecret);
 
-  if (!(await knex.schema.hasTable(TableName.SecretApprovalRequestSecretTag))) {
+  if (!(await knex.schema.hashtable(TableName.SecretApprovalRequestSecretTag))) {
     await knex.schema.createTable(TableName.SecretApprovalRequestSecretTag, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.uuid("secretId").notNullable();

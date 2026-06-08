@@ -7,8 +7,8 @@ const OLD_GATEWAY_ENROLLMENT_TOKENS_TABLE = "gateway_enrollment_tokens";
 
 export async function up(knex: Knex): Promise<void> {
   // 1. Rename gateway_enrollment_tokens -> resource_token_auths (column-compatible).
-  const hasOldEnrollmentTokensTable = await knex.schema.hasTable(OLD_GATEWAY_ENROLLMENT_TOKENS_TABLE);
-  const hasNewEnrollmentTokensTable = await knex.schema.hasTable(TableName.ResourceTokenAuth);
+  const hasOldEnrollmentTokensTable = await knex.schema.hashtable(OLD_GATEWAY_ENROLLMENT_TOKENS_TABLE);
+  const hasNewEnrollmentTokensTable = await knex.schema.hashtable(TableName.ResourceTokenAuth);
   if (hasOldEnrollmentTokensTable && !hasNewEnrollmentTokensTable) {
     await knex.schema.renameTable(OLD_GATEWAY_ENROLLMENT_TOKENS_TABLE, TableName.ResourceTokenAuth);
   }
@@ -39,7 +39,7 @@ export async function up(knex: Knex): Promise<void> {
   //
   // Both shapes coexist peacefully on this table — they activate on different rows
   // based on which FK column is set.
-  if (!(await knex.schema.hasTable(TableName.ResourceAuthMethod))) {
+  if (!(await knex.schema.hashtable(TableName.ResourceAuthMethod))) {
     await knex.schema.createTable(TableName.ResourceAuthMethod, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.uuid("gatewayId").nullable();
@@ -73,7 +73,7 @@ export async function up(knex: Knex): Promise<void> {
   // 4. resource_aws_auths: AWS-method config. Keyed by authMethodId (FK to registry),
   // not by gatewayId — registry is the single source of truth for resource ownership.
   // Same table shape will serve any future resource type with no column changes.
-  if (!(await knex.schema.hasTable(TableName.ResourceAwsAuth))) {
+  if (!(await knex.schema.hashtable(TableName.ResourceAwsAuth))) {
     await knex.schema.createTable(TableName.ResourceAwsAuth, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.uuid("authMethodId").notNullable().unique();
@@ -189,8 +189,8 @@ export async function down(knex: Knex): Promise<void> {
        RENAME TO gateway_enrollment_tokens_pkey`
   );
 
-  const hasNewEnrollmentTokensTable = await knex.schema.hasTable(TableName.ResourceTokenAuth);
-  const hasOldEnrollmentTokensTable = await knex.schema.hasTable(OLD_GATEWAY_ENROLLMENT_TOKENS_TABLE);
+  const hasNewEnrollmentTokensTable = await knex.schema.hashtable(TableName.ResourceTokenAuth);
+  const hasOldEnrollmentTokensTable = await knex.schema.hashtable(OLD_GATEWAY_ENROLLMENT_TOKENS_TABLE);
   if (hasNewEnrollmentTokensTable && !hasOldEnrollmentTokensTable) {
     await knex.schema.renameTable(TableName.ResourceTokenAuth, OLD_GATEWAY_ENROLLMENT_TOKENS_TABLE);
   }

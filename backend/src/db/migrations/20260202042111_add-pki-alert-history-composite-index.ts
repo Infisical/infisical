@@ -5,7 +5,7 @@ import { TableName } from "../schemas";
 const INDEX_NAME = "pki_alert_history_alert_id_triggered_at_idx";
 
 export async function up(knex: Knex): Promise<void> {
-  if (await knex.schema.hasTable(TableName.PkiAlertHistory)) {
+  if (await knex.schema.hashtable(TableName.PkiAlertHistory)) {
     const hasAlertId = await knex.schema.hasColumn(TableName.PkiAlertHistory, "alertId");
     const hasTriggeredAt = await knex.schema.hasColumn(TableName.PkiAlertHistory, "triggeredAt");
 
@@ -22,7 +22,7 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  if (await knex.schema.hasTable(TableName.PkiAlertHistory)) {
+  if (await knex.schema.hashtable(TableName.PkiAlertHistory)) {
     const indexExists = await knex.raw(`SELECT 1 FROM pg_indexes WHERE indexname = ?`, [INDEX_NAME]);
 
     if (indexExists.rows.length > 0) {

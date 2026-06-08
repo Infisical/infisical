@@ -3,8 +3,8 @@ import { Knex } from "knex";
 import { TableName } from "../schemas";
 
 export async function up(knex: Knex): Promise<void> {
-  const hasTable = await knex.schema.hasTable(TableName.InternalCertificateAuthority);
-  if (!hasTable) return;
+  const hashtable = await knex.schema.hashtable(TableName.InternalCertificateAuthority);
+  if (!hashtable) return;
 
   const hasColumn = await knex.schema.hasColumn(
     TableName.InternalCertificateAuthority,
@@ -19,8 +19,8 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  const hasTable = await knex.schema.hasTable(TableName.InternalCertificateAuthority);
-  if (!hasTable) return;
+  const hashtable = await knex.schema.hashtable(TableName.InternalCertificateAuthority);
+  if (!hashtable) return;
 
   const hasColumn = await knex.schema.hasColumn(
     TableName.InternalCertificateAuthority,

@@ -3,7 +3,7 @@ import { Knex } from "knex";
 import { TableName } from "../schemas";
 
 export async function up(knex: Knex): Promise<void> {
-  if (!(await knex.schema.hasTable(TableName.AuditLog))) {
+  if (!(await knex.schema.hashtable(TableName.AuditLog))) {
     await knex.schema.createTable(TableName.AuditLog, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.string("actor").notNullable();

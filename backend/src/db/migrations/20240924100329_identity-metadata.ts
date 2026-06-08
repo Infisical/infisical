@@ -3,7 +3,7 @@ import { Knex } from "knex";
 import { TableName } from "../schemas";
 
 export async function up(knex: Knex): Promise<void> {
-  if (!(await knex.schema.hasTable(TableName.IdentityMetadata))) {
+  if (!(await knex.schema.hashtable(TableName.IdentityMetadata))) {
     await knex.schema.createTable(TableName.IdentityMetadata, (tb) => {
       tb.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       tb.string("key").notNullable();

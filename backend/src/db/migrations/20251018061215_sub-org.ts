@@ -11,7 +11,7 @@ export async function up(knex: Knex): Promise<void> {
       // the one just above the chain
       t.uuid("parentOrgId");
       t.foreign("parentOrgId").references("id").inTable(TableName.Organization).onDelete("CASCADE");
-      // this would root organization containing various informations like billing etc
+      // this would root organization containing various information like billing etc
       t.uuid("rootOrgId");
       t.foreign("rootOrgId").references("id").inTable(TableName.Organization).onDelete("CASCADE");
 

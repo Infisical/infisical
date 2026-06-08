@@ -4,7 +4,7 @@ import { TableName } from "@app/db/schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "@app/db/utils";
 
 export async function up(knex: Knex): Promise<void> {
-  if (!(await knex.schema.hasTable(TableName.ProjectTemplates))) {
+  if (!(await knex.schema.hashtable(TableName.ProjectTemplates))) {
     await knex.schema.createTable(TableName.ProjectTemplates, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.string("name", 32).notNullable();
@@ -20,7 +20,7 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  if (await knex.schema.hasTable(TableName.ProjectTemplates)) {
+  if (await knex.schema.hashtable(TableName.ProjectTemplates)) {
     await dropOnUpdateTrigger(knex, TableName.ProjectTemplates);
 
     await knex.schema.dropTable(TableName.ProjectTemplates);

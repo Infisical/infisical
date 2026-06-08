@@ -5,7 +5,7 @@ import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
   // PAM Folders
-  if (!(await knex.schema.hasTable(TableName.PamFolder))) {
+  if (!(await knex.schema.hashtable(TableName.PamFolder))) {
     await knex.schema.createTable(TableName.PamFolder, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
 
@@ -39,7 +39,7 @@ export async function up(knex: Knex): Promise<void> {
   }
 
   // PAM Resources
-  if (!(await knex.schema.hasTable(TableName.PamResource))) {
+  if (!(await knex.schema.hashtable(TableName.PamResource))) {
     await knex.schema.createTable(TableName.PamResource, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
 
@@ -64,7 +64,7 @@ export async function up(knex: Knex): Promise<void> {
   }
 
   // PAM Accounts
-  if (!(await knex.schema.hasTable(TableName.PamAccount))) {
+  if (!(await knex.schema.hashtable(TableName.PamAccount))) {
     await knex.schema.createTable(TableName.PamAccount, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
 
@@ -103,7 +103,7 @@ export async function up(knex: Knex): Promise<void> {
   }
 
   // PAM Sessions
-  if (!(await knex.schema.hasTable(TableName.PamSession))) {
+  if (!(await knex.schema.hashtable(TableName.PamSession))) {
     await knex.schema.createTable(TableName.PamSession, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
 

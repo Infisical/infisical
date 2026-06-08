@@ -23,7 +23,7 @@ const reencryptIdentityK8sAuth = async (knex: Knex) => {
     TableName.IdentityKubernetesAuth,
     "encryptedKubernetesCaCertificate"
   );
-  const hasidentityKubernetesAuthTable = await knex.schema.hasTable(TableName.IdentityKubernetesAuth);
+  const hasidentityKubernetesAuthTable = await knex.schema.hashtable(TableName.IdentityKubernetesAuth);
 
   const hasEncryptedCaCertColumn = await knex.schema.hasColumn(TableName.IdentityKubernetesAuth, "encryptedCaCert");
   const hasCaCertIVColumn = await knex.schema.hasColumn(TableName.IdentityKubernetesAuth, "caCertIV");
@@ -196,7 +196,7 @@ const dropIdentityK8sColumns = async (knex: Knex) => {
     TableName.IdentityKubernetesAuth,
     "encryptedKubernetesCaCertificate"
   );
-  const hasidentityKubernetesAuthTable = await knex.schema.hasTable(TableName.IdentityKubernetesAuth);
+  const hasidentityKubernetesAuthTable = await knex.schema.hashtable(TableName.IdentityKubernetesAuth);
 
   if (hasidentityKubernetesAuthTable) {
     await knex.schema.alterTable(TableName.IdentityKubernetesAuth, (t) => {

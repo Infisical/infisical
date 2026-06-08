@@ -4,7 +4,7 @@ import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
-  if (!(await knex.schema.hasTable(TableName.IdentityUniversalAuth))) {
+  if (!(await knex.schema.hashtable(TableName.IdentityUniversalAuth))) {
     await knex.schema.createTable(TableName.IdentityUniversalAuth, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.string("clientId").notNullable();
@@ -18,7 +18,7 @@ export async function up(knex: Knex): Promise<void> {
       t.foreign("identityId").references("id").inTable(TableName.Identity).onDelete("CASCADE");
     });
   }
-  if (!(await knex.schema.hasTable(TableName.IdentityUaClientSecret))) {
+  if (!(await knex.schema.hashtable(TableName.IdentityUaClientSecret))) {
     await knex.schema.createTable(TableName.IdentityUaClientSecret, (t) => {
       t.string("id", 36).primary().defaultTo(knex.fn.uuid());
       t.string("description").notNullable();

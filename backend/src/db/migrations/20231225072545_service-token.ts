@@ -4,7 +4,7 @@ import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
-  if (!(await knex.schema.hasTable(TableName.ServiceToken))) {
+  if (!(await knex.schema.hashtable(TableName.ServiceToken))) {
     await knex.schema.createTable(TableName.ServiceToken, (t) => {
       t.string("id", 36).primary().defaultTo(knex.fn.uuid());
       t.string("name").notNullable();

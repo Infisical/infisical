@@ -23,7 +23,7 @@ export const hasNonWildcardTrustedIps = (trustedIps: TIp[] | null | undefined): 
 };
 
 // Parse the per-token uses-remaining hash field. Returns null when absent or
-// unparseable (treated as "no constraint"); callers reject on values <= 0.
+// unparsable (treated as "no constraint"); callers reject on values <= 0.
 export const parseUsesRemaining = (raw: string | null): number | null => {
   if (raw === null) {
     return null;

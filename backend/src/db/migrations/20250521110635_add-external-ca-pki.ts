@@ -6,9 +6,9 @@ import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { TableName } from "../schemas";
 
 export async function up(knex: Knex): Promise<void> {
-  const hasCATable = await knex.schema.hasTable(TableName.CertificateAuthority);
-  const hasExternalCATable = await knex.schema.hasTable(TableName.ExternalCertificateAuthority);
-  const hasInternalCATable = await knex.schema.hasTable(TableName.InternalCertificateAuthority);
+  const hasCATable = await knex.schema.hashtable(TableName.CertificateAuthority);
+  const hasExternalCATable = await knex.schema.hashtable(TableName.ExternalCertificateAuthority);
+  const hasInternalCATable = await knex.schema.hashtable(TableName.InternalCertificateAuthority);
 
   if (hasCATable && !hasInternalCATable) {
     await knex.schema.createTableLike(TableName.InternalCertificateAuthority, TableName.CertificateAuthority, (t) => {
@@ -91,7 +91,7 @@ export async function up(knex: Knex): Promise<void> {
     });
   }
 
-  if (await knex.schema.hasTable(TableName.PkiSubscriber)) {
+  if (await knex.schema.hashtable(TableName.PkiSubscriber)) {
     await knex.schema.alterTable(TableName.PkiSubscriber, (t) => {
       t.string("ttl").nullable().alter();
 
@@ -107,9 +107,9 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  const hasCATable = await knex.schema.hasTable(TableName.CertificateAuthority);
-  const hasExternalCATable = await knex.schema.hasTable(TableName.ExternalCertificateAuthority);
-  const hasInternalCATable = await knex.schema.hasTable(TableName.InternalCertificateAuthority);
+  const hasCATable = await knex.schema.hashtable(TableName.CertificateAuthority);
+  const hasExternalCATable = await knex.schema.hashtable(TableName.ExternalCertificateAuthority);
+  const hasInternalCATable = await knex.schema.hashtable(TableName.InternalCertificateAuthority);
 
   if (hasCATable && hasInternalCATable) {
     // First add all columns as nullable
@@ -191,7 +191,7 @@ export async function down(knex: Knex): Promise<void> {
     await knex.schema.dropTable(TableName.ExternalCertificateAuthority);
   }
 
-  if (await knex.schema.hasTable(TableName.PkiSubscriber)) {
+  if (await knex.schema.hashtable(TableName.PkiSubscriber)) {
     await knex.schema.alterTable(TableName.PkiSubscriber, (t) => {
       t.dropColumn("enableAutoRenewal");
       t.dropColumn("autoRenewalPeriodInDays");

@@ -3,7 +3,7 @@ import { Knex } from "knex";
 import { TableName } from "../schemas";
 
 export async function up(knex: Knex): Promise<void> {
-  if (!(await knex.schema.hasTable(TableName.PkiAlertsV2))) {
+  if (!(await knex.schema.hashtable(TableName.PkiAlertsV2))) {
     await knex.schema.createTable(TableName.PkiAlertsV2, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.string("name").notNullable();
@@ -21,7 +21,7 @@ export async function up(knex: Knex): Promise<void> {
     });
   }
 
-  if (!(await knex.schema.hasTable(TableName.PkiAlertChannels))) {
+  if (!(await knex.schema.hashtable(TableName.PkiAlertChannels))) {
     await knex.schema.createTable(TableName.PkiAlertChannels, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.uuid("alertId").notNullable();
@@ -37,7 +37,7 @@ export async function up(knex: Knex): Promise<void> {
     });
   }
 
-  if (!(await knex.schema.hasTable(TableName.PkiAlertHistory))) {
+  if (!(await knex.schema.hashtable(TableName.PkiAlertHistory))) {
     await knex.schema.createTable(TableName.PkiAlertHistory, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.uuid("alertId").notNullable();
@@ -52,7 +52,7 @@ export async function up(knex: Knex): Promise<void> {
     });
   }
 
-  if (!(await knex.schema.hasTable(TableName.PkiAlertHistoryCertificate))) {
+  if (!(await knex.schema.hashtable(TableName.PkiAlertHistoryCertificate))) {
     await knex.schema.createTable(TableName.PkiAlertHistoryCertificate, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.uuid("alertHistoryId").notNullable();
@@ -69,19 +69,19 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  if (await knex.schema.hasTable(TableName.PkiAlertHistoryCertificate)) {
+  if (await knex.schema.hashtable(TableName.PkiAlertHistoryCertificate)) {
     await knex.schema.dropTable(TableName.PkiAlertHistoryCertificate);
   }
 
-  if (await knex.schema.hasTable(TableName.PkiAlertHistory)) {
+  if (await knex.schema.hashtable(TableName.PkiAlertHistory)) {
     await knex.schema.dropTable(TableName.PkiAlertHistory);
   }
 
-  if (await knex.schema.hasTable(TableName.PkiAlertChannels)) {
+  if (await knex.schema.hashtable(TableName.PkiAlertChannels)) {
     await knex.schema.dropTable(TableName.PkiAlertChannels);
   }
 
-  if (await knex.schema.hasTable(TableName.PkiAlertsV2)) {
+  if (await knex.schema.hashtable(TableName.PkiAlertsV2)) {
     await knex.schema.dropTable(TableName.PkiAlertsV2);
   }
 }

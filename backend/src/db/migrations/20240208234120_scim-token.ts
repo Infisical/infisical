@@ -4,7 +4,7 @@ import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
-  if (!(await knex.schema.hasTable(TableName.ScimToken))) {
+  if (!(await knex.schema.hashtable(TableName.ScimToken))) {
     await knex.schema.createTable(TableName.ScimToken, (t) => {
       t.string("id", 36).primary().defaultTo(knex.fn.uuid());
       t.bigInteger("ttlDays").defaultTo(365).notNullable();

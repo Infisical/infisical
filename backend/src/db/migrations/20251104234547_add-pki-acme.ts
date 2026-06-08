@@ -16,7 +16,7 @@ const PUBLIC_KEY_THUMBPRINT_ALG_INDEX = "pki_acme_accounts_publicKey_thumbprint_
 
 export async function up(knex: Knex): Promise<void> {
   // Create PkiAcmeEnrollmentConfig table
-  if (!(await knex.schema.hasTable(TableName.PkiAcmeEnrollmentConfig))) {
+  if (!(await knex.schema.hashtable(TableName.PkiAcmeEnrollmentConfig))) {
     await knex.schema.createTable(TableName.PkiAcmeEnrollmentConfig, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.binary("encryptedEabSecret").notNullable();
@@ -47,7 +47,7 @@ export async function up(knex: Knex): Promise<void> {
   }
 
   // Create PkiAcmeAccount table
-  if (!(await knex.schema.hasTable(TableName.PkiAcmeAccount))) {
+  if (!(await knex.schema.hashtable(TableName.PkiAcmeAccount))) {
     await knex.schema.createTable(TableName.PkiAcmeAccount, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
 
@@ -74,7 +74,7 @@ export async function up(knex: Knex): Promise<void> {
   }
 
   // Create PkiAcmeOrder table
-  if (!(await knex.schema.hasTable(TableName.PkiAcmeOrder))) {
+  if (!(await knex.schema.hashtable(TableName.PkiAcmeOrder))) {
     await knex.schema.createTable(TableName.PkiAcmeOrder, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
 
@@ -103,7 +103,7 @@ export async function up(knex: Knex): Promise<void> {
   }
 
   // Create PkiAcmeAuth table
-  if (!(await knex.schema.hasTable(TableName.PkiAcmeAuth))) {
+  if (!(await knex.schema.hashtable(TableName.PkiAcmeAuth))) {
     await knex.schema.createTable(TableName.PkiAcmeAuth, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
 
@@ -135,7 +135,7 @@ export async function up(knex: Knex): Promise<void> {
   }
 
   // Create PkiAcmeOrderAuth table
-  if (!(await knex.schema.hasTable(TableName.PkiAcmeOrderAuth))) {
+  if (!(await knex.schema.hashtable(TableName.PkiAcmeOrderAuth))) {
     await knex.schema.createTable(TableName.PkiAcmeOrderAuth, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
 
@@ -154,7 +154,7 @@ export async function up(knex: Knex): Promise<void> {
   }
 
   // Create PkiAcmeChallenge table
-  if (!(await knex.schema.hasTable(TableName.PkiAcmeChallenge))) {
+  if (!(await knex.schema.hashtable(TableName.PkiAcmeChallenge))) {
     await knex.schema.createTable(TableName.PkiAcmeChallenge, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
 
@@ -185,31 +185,31 @@ export async function down(knex: Knex): Promise<void> {
   // Drop tables in reverse dependency order
 
   // Drop PkiAcmeChallenge first (depends on PkiAcmeAuth)
-  if (await knex.schema.hasTable(TableName.PkiAcmeChallenge)) {
+  if (await knex.schema.hashtable(TableName.PkiAcmeChallenge)) {
     await knex.schema.dropTable(TableName.PkiAcmeChallenge);
     await dropOnUpdateTrigger(knex, TableName.PkiAcmeChallenge);
   }
 
   // Drop PkiAcmeOrderAuth (depends on PkiAcmeOrder and PkiAcmeAuth)
-  if (await knex.schema.hasTable(TableName.PkiAcmeOrderAuth)) {
+  if (await knex.schema.hashtable(TableName.PkiAcmeOrderAuth)) {
     await knex.schema.dropTable(TableName.PkiAcmeOrderAuth);
     await dropOnUpdateTrigger(knex, TableName.PkiAcmeOrderAuth);
   }
 
   // Drop PkiAcmeAuth (depends on PkiAcmeAccount and Certificate)
-  if (await knex.schema.hasTable(TableName.PkiAcmeAuth)) {
+  if (await knex.schema.hashtable(TableName.PkiAcmeAuth)) {
     await knex.schema.dropTable(TableName.PkiAcmeAuth);
     await dropOnUpdateTrigger(knex, TableName.PkiAcmeAuth);
   }
 
   // Drop PkiAcmeOrder (depends on PkiAcmeAccount)
-  if (await knex.schema.hasTable(TableName.PkiAcmeOrder)) {
+  if (await knex.schema.hashtable(TableName.PkiAcmeOrder)) {
     await knex.schema.dropTable(TableName.PkiAcmeOrder);
     await dropOnUpdateTrigger(knex, TableName.PkiAcmeOrder);
   }
 
   // Drop PkiAcmeAccount (depends on PkiCertificateProfile)
-  if (await knex.schema.hasTable(TableName.PkiAcmeAccount)) {
+  if (await knex.schema.hashtable(TableName.PkiAcmeAccount)) {
     await knex.schema.dropTable(TableName.PkiAcmeAccount);
     await dropOnUpdateTrigger(knex, TableName.PkiAcmeAccount);
   }
@@ -240,7 +240,7 @@ export async function down(knex: Knex): Promise<void> {
   }
 
   // Drop PkiAcmeEnrollmentConfig
-  if (await knex.schema.hasTable(TableName.PkiAcmeEnrollmentConfig)) {
+  if (await knex.schema.hashtable(TableName.PkiAcmeEnrollmentConfig)) {
     await knex.schema.dropTable(TableName.PkiAcmeEnrollmentConfig);
     await dropOnUpdateTrigger(knex, TableName.PkiAcmeEnrollmentConfig);
   }

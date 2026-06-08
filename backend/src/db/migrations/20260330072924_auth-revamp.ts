@@ -4,7 +4,7 @@ import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
-  const hasUserTable = await knex.schema.hasTable(TableName.Users);
+  const hasUserTable = await knex.schema.hashtable(TableName.Users);
   const hasHashedPasswordColumn = await knex.schema.hasColumn(TableName.Users, "hashedPassword");
   const hasIsGoogleVerifiedColumn = await knex.schema.hasColumn(TableName.Users, "isGoogleVerified");
   const hasIsGitHubVerifiedColumn = await knex.schema.hasColumn(TableName.Users, "isGitHubVerified");
@@ -26,7 +26,7 @@ export async function up(knex: Knex): Promise<void> {
     });
   }
 
-  if (!(await knex.schema.hasTable(TableName.EmailDomains))) {
+  if (!(await knex.schema.hashtable(TableName.EmailDomains))) {
     await knex.schema.createTable(TableName.EmailDomains, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
 
@@ -66,12 +66,12 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  if (await knex.schema.hasTable(TableName.EmailDomains)) {
+  if (await knex.schema.hashtable(TableName.EmailDomains)) {
     await dropOnUpdateTrigger(knex, TableName.EmailDomains);
     await knex.schema.dropTable(TableName.EmailDomains);
   }
 
-  const hasUserTable = await knex.schema.hasTable(TableName.Users);
+  const hasUserTable = await knex.schema.hashtable(TableName.Users);
   const hasHashedPasswordColumn = await knex.schema.hasColumn(TableName.Users, "hashedPassword");
   const hasIsGitHubVerifiedColumn = await knex.schema.hasColumn(TableName.Users, "isGitHubVerified");
   const hasIsGitlabVerifiedColumn = await knex.schema.hasColumn(TableName.Users, "isGitLabVerified");

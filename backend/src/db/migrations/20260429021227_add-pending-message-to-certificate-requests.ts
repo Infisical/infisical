@@ -3,7 +3,7 @@ import { Knex } from "knex";
 import { TableName } from "../schemas";
 
 export async function up(knex: Knex): Promise<void> {
-  if (await knex.schema.hasTable(TableName.CertificateRequests)) {
+  if (await knex.schema.hashtable(TableName.CertificateRequests)) {
     const hasPendingMessage = await knex.schema.hasColumn(TableName.CertificateRequests, "pendingMessage");
     if (!hasPendingMessage) {
       await knex.schema.alterTable(TableName.CertificateRequests, (t) => {
@@ -14,7 +14,7 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  if (await knex.schema.hasTable(TableName.CertificateRequests)) {
+  if (await knex.schema.hashtable(TableName.CertificateRequests)) {
     const hasPendingMessage = await knex.schema.hasColumn(TableName.CertificateRequests, "pendingMessage");
     if (hasPendingMessage) {
       await knex.schema.alterTable(TableName.CertificateRequests, (t) => {

@@ -40,7 +40,7 @@ export const snapshotDALFactory = (db: TDbClient) => {
         .first();
       if (data) {
         const { envId, envName, envSlug } = data;
-        return { ...data, envId, enviroment: { id: envId, name: envName, slug: envSlug } };
+        return { ...data, envId, environment: { id: envId, name: envName, slug: envSlug } };
       }
     } catch (error) {
       throw new DatabaseError({ error, name: "FindById" });
@@ -367,7 +367,7 @@ export const snapshotDALFactory = (db: TDbClient) => {
           db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug")
         );
 
-      const formated = sqlNestRelationships({
+      const formatted = sqlNestRelationships({
         data,
         key: "snapshotId",
         parentMapper: ({ snapshotId: id, snapshotFolderId: folderId, snapshotParentFolderId: parentFolderId }) => ({
@@ -408,7 +408,7 @@ export const snapshotDALFactory = (db: TDbClient) => {
           }
         ]
       });
-      return formated;
+      return formatted;
     } catch (error) {
       throw new DatabaseError({ error, name: "FindRecursivelySnapshots" });
     }
@@ -527,7 +527,7 @@ export const snapshotDALFactory = (db: TDbClient) => {
           db.ref("rotationId").withSchema(TableName.SecretRotationV2SecretMapping)
         );
 
-      const formated = sqlNestRelationships({
+      const formatted = sqlNestRelationships({
         data,
         key: "snapshotId",
         parentMapper: ({ snapshotId: id, snapshotFolderId: folderId, snapshotParentFolderId: parentFolderId }) => ({
@@ -569,7 +569,7 @@ export const snapshotDALFactory = (db: TDbClient) => {
           }
         ]
       });
-      return formated;
+      return formatted;
     } catch (error) {
       throw new DatabaseError({ error, name: "FindRecursivelySnapshots" });
     }

@@ -4,7 +4,7 @@ import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
-  if (!(await knex.schema.hasTable(TableName.KmsServerRootConfig))) {
+  if (!(await knex.schema.hashtable(TableName.KmsServerRootConfig))) {
     await knex.schema.createTable(TableName.KmsServerRootConfig, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.binary("encryptedRootKey").notNullable();
@@ -13,7 +13,7 @@ export async function up(knex: Knex): Promise<void> {
 
   await createOnUpdateTrigger(knex, TableName.KmsServerRootConfig);
 
-  if (!(await knex.schema.hasTable(TableName.KmsKey))) {
+  if (!(await knex.schema.hashtable(TableName.KmsKey))) {
     await knex.schema.createTable(TableName.KmsKey, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.binary("encryptedKey").notNullable();
@@ -31,7 +31,7 @@ export async function up(knex: Knex): Promise<void> {
 
   await createOnUpdateTrigger(knex, TableName.KmsKey);
 
-  if (!(await knex.schema.hasTable(TableName.KmsKeyVersion))) {
+  if (!(await knex.schema.hashtable(TableName.KmsKeyVersion))) {
     await knex.schema.createTable(TableName.KmsKeyVersion, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.binary("encryptedKey").notNullable();

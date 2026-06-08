@@ -9,7 +9,7 @@ export async function up(knex: Knex): Promise<void> {
     });
   }
 
-  if (!(await knex.schema.hasTable(TableName.CertificateSecret))) {
+  if (!(await knex.schema.hashtable(TableName.CertificateSecret))) {
     await knex.schema.createTable(TableName.CertificateSecret, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.timestamps(true, true, true);
@@ -21,7 +21,7 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  if (await knex.schema.hasTable(TableName.CertificateSecret)) {
+  if (await knex.schema.hashtable(TableName.CertificateSecret)) {
     await knex.schema.dropTable(TableName.CertificateSecret);
   }
 

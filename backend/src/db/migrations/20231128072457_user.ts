@@ -9,7 +9,7 @@ import {
 } from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
-  const isTablePresent = await knex.schema.hasTable(TableName.Users);
+  const isTablePresent = await knex.schema.hashtable(TableName.Users);
   if (!isTablePresent) {
     await knex.schema.createTable(TableName.Users, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());

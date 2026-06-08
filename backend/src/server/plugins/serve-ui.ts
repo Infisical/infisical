@@ -81,7 +81,7 @@ export const registerServeUI = async (
         "script-src": [
           "https://www.googletagmanager.com",
           "https://www.google-analytics.com",
-          "https://googleads.g.doubleclick.net",
+          "https://googleads.g.double-click.net",
           "https://www.googleadservices.com",
           "https://www.google.com",
           "https://js.hs-scripts.com",
@@ -93,16 +93,16 @@ export const registerServeUI = async (
         ],
         "frame-src": [
           "https://www.googletagmanager.com",
-          "https://bid.g.doubleclick.net",
-          "https://td.doubleclick.net"
+          "https://bid.g.double-click.net",
+          "https://td.double-click.net"
         ],
         "connect-src": [
           "https://www.googletagmanager.com",
           "https://www.google-analytics.com",
           "https://region1.google-analytics.com",
           "https://analytics.google.com",
-          "https://stats.g.doubleclick.net",
-          "https://googleads.g.doubleclick.net",
+          "https://stats.g.double-click.net",
+          "https://googleads.g.double-click.net",
           "https://*.hubspot.com",
           "https://forms.hubspot.com",
           "https://api.hubapi.com"
@@ -111,7 +111,7 @@ export const registerServeUI = async (
           "https://www.googletagmanager.com",
           "https://www.google-analytics.com",
           "https://www.google.com",
-          "https://googleads.g.doubleclick.net",
+          "https://googleads.g.double-click.net",
           "https://www.googleadservices.com",
           "https://track.hubspot.com",
           "https://forms.hubspot.com"

@@ -4,7 +4,7 @@ import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
-  if (await knex.schema.hasTable(TableName.Project)) {
+  if (await knex.schema.hashtable(TableName.Project)) {
     const doesProjectCertificateKeyIdExist = await knex.schema.hasColumn(TableName.Project, "kmsCertificateKeyId");
     await knex.schema.alterTable(TableName.Project, (t) => {
       if (!doesProjectCertificateKeyIdExist) {
@@ -14,7 +14,7 @@ export async function up(knex: Knex): Promise<void> {
     });
   }
 
-  if (!(await knex.schema.hasTable(TableName.CertificateAuthority))) {
+  if (!(await knex.schema.hashtable(TableName.CertificateAuthority))) {
     await knex.schema.createTable(TableName.CertificateAuthority, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.timestamps(true, true, true);
@@ -40,7 +40,7 @@ export async function up(knex: Knex): Promise<void> {
     });
   }
 
-  if (!(await knex.schema.hasTable(TableName.CertificateAuthorityCert))) {
+  if (!(await knex.schema.hashtable(TableName.CertificateAuthorityCert))) {
     // table to keep track of certificates belonging to CA
     await knex.schema.createTable(TableName.CertificateAuthorityCert, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
@@ -52,7 +52,7 @@ export async function up(knex: Knex): Promise<void> {
     });
   }
 
-  if (!(await knex.schema.hasTable(TableName.CertificateAuthoritySecret))) {
+  if (!(await knex.schema.hashtable(TableName.CertificateAuthoritySecret))) {
     await knex.schema.createTable(TableName.CertificateAuthoritySecret, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.timestamps(true, true, true);
@@ -62,7 +62,7 @@ export async function up(knex: Knex): Promise<void> {
     });
   }
 
-  if (!(await knex.schema.hasTable(TableName.CertificateAuthorityCrl))) {
+  if (!(await knex.schema.hashtable(TableName.CertificateAuthorityCrl))) {
     await knex.schema.createTable(TableName.CertificateAuthorityCrl, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.timestamps(true, true, true);
@@ -72,7 +72,7 @@ export async function up(knex: Knex): Promise<void> {
     });
   }
 
-  if (!(await knex.schema.hasTable(TableName.Certificate))) {
+  if (!(await knex.schema.hashtable(TableName.Certificate))) {
     await knex.schema.createTable(TableName.Certificate, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.timestamps(true, true, true);
@@ -89,7 +89,7 @@ export async function up(knex: Knex): Promise<void> {
     });
   }
 
-  if (!(await knex.schema.hasTable(TableName.CertificateBody))) {
+  if (!(await knex.schema.hashtable(TableName.CertificateBody))) {
     await knex.schema.createTable(TableName.CertificateBody, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.timestamps(true, true, true);
@@ -108,7 +108,7 @@ export async function up(knex: Knex): Promise<void> {
 
 export async function down(knex: Knex): Promise<void> {
   // project
-  if (await knex.schema.hasTable(TableName.Project)) {
+  if (await knex.schema.hashtable(TableName.Project)) {
     const doesProjectCertificateKeyIdExist = await knex.schema.hasColumn(TableName.Project, "kmsCertificateKeyId");
     await knex.schema.alterTable(TableName.Project, (t) => {
       if (doesProjectCertificateKeyIdExist) t.dropColumn("kmsCertificateKeyId");

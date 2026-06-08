@@ -5,7 +5,7 @@ import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
-  if (!(await knex.schema.hasTable(TableName.CaSigningConfig))) {
+  if (!(await knex.schema.hashtable(TableName.CaSigningConfig))) {
     await knex.schema.createTable(TableName.CaSigningConfig, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.uuid("caId").notNullable().unique();
@@ -35,7 +35,7 @@ export async function up(knex: Knex): Promise<void> {
     }
   }
 
-  if (await knex.schema.hasTable(TableName.InternalCertificateAuthority)) {
+  if (await knex.schema.hashtable(TableName.InternalCertificateAuthority)) {
     const hasAutoRenewalEnabled = await knex.schema.hasColumn(
       TableName.InternalCertificateAuthority,
       "autoRenewalEnabled"
@@ -53,7 +53,7 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  if (await knex.schema.hasTable(TableName.InternalCertificateAuthority)) {
+  if (await knex.schema.hashtable(TableName.InternalCertificateAuthority)) {
     const hasAutoRenewalEnabled = await knex.schema.hasColumn(
       TableName.InternalCertificateAuthority,
       "autoRenewalEnabled"
@@ -69,7 +69,7 @@ export async function down(knex: Knex): Promise<void> {
     }
   }
 
-  if (await knex.schema.hasTable(TableName.CaSigningConfig)) {
+  if (await knex.schema.hashtable(TableName.CaSigningConfig)) {
     await dropOnUpdateTrigger(knex, TableName.CaSigningConfig);
     await knex.schema.dropTableIfExists(TableName.CaSigningConfig);
   }

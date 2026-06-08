@@ -3,7 +3,7 @@ import { Knex } from "knex";
 import { TableName } from "../schemas";
 
 export async function up(knex: Knex): Promise<void> {
-  const hasSecretReminderRecipientsTable = await knex.schema.hasTable(TableName.SecretReminderRecipients);
+  const hasSecretReminderRecipientsTable = await knex.schema.hashtable(TableName.SecretReminderRecipients);
 
   if (!hasSecretReminderRecipientsTable) {
     await knex.schema.createTable(TableName.SecretReminderRecipients, (table) => {
@@ -26,7 +26,7 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  const hasSecretReminderRecipientsTable = await knex.schema.hasTable(TableName.SecretReminderRecipients);
+  const hasSecretReminderRecipientsTable = await knex.schema.hashtable(TableName.SecretReminderRecipients);
 
   if (hasSecretReminderRecipientsTable) {
     await knex.schema.dropTableIfExists(TableName.SecretReminderRecipients);

@@ -4,7 +4,7 @@ import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
-  const hasFolderCommitTable = await knex.schema.hasTable(TableName.FolderCommit);
+  const hasFolderCommitTable = await knex.schema.hashtable(TableName.FolderCommit);
   if (!hasFolderCommitTable) {
     await knex.schema.createTable(TableName.FolderCommit, (t) => {
       t.uuid("id").primary().defaultTo(knex.fn.uuid());
@@ -22,7 +22,7 @@ export async function up(knex: Knex): Promise<void> {
     });
   }
 
-  const hasFolderCommitChangesTable = await knex.schema.hasTable(TableName.FolderCommitChanges);
+  const hasFolderCommitChangesTable = await knex.schema.hashtable(TableName.FolderCommitChanges);
   if (!hasFolderCommitChangesTable) {
     await knex.schema.createTable(TableName.FolderCommitChanges, (t) => {
       t.uuid("id").primary().defaultTo(knex.fn.uuid());
@@ -42,7 +42,7 @@ export async function up(knex: Knex): Promise<void> {
     });
   }
 
-  const hasFolderCheckpointTable = await knex.schema.hasTable(TableName.FolderCheckpoint);
+  const hasFolderCheckpointTable = await knex.schema.hashtable(TableName.FolderCheckpoint);
   if (!hasFolderCheckpointTable) {
     await knex.schema.createTable(TableName.FolderCheckpoint, (t) => {
       t.uuid("id").primary().defaultTo(knex.fn.uuid());
@@ -54,7 +54,7 @@ export async function up(knex: Knex): Promise<void> {
     });
   }
 
-  const hasFolderCheckpointResourcesTable = await knex.schema.hasTable(TableName.FolderCheckpointResources);
+  const hasFolderCheckpointResourcesTable = await knex.schema.hashtable(TableName.FolderCheckpointResources);
   if (!hasFolderCheckpointResourcesTable) {
     await knex.schema.createTable(TableName.FolderCheckpointResources, (t) => {
       t.uuid("id").primary().defaultTo(knex.fn.uuid());
@@ -72,7 +72,7 @@ export async function up(knex: Knex): Promise<void> {
     });
   }
 
-  const hasFolderTreeCheckpointTable = await knex.schema.hasTable(TableName.FolderTreeCheckpoint);
+  const hasFolderTreeCheckpointTable = await knex.schema.hashtable(TableName.FolderTreeCheckpoint);
   if (!hasFolderTreeCheckpointTable) {
     await knex.schema.createTable(TableName.FolderTreeCheckpoint, (t) => {
       t.uuid("id").primary().defaultTo(knex.fn.uuid());
@@ -84,7 +84,7 @@ export async function up(knex: Knex): Promise<void> {
     });
   }
 
-  const hasFolderTreeCheckpointResourcesTable = await knex.schema.hasTable(TableName.FolderTreeCheckpointResources);
+  const hasFolderTreeCheckpointResourcesTable = await knex.schema.hashtable(TableName.FolderTreeCheckpointResources);
   if (!hasFolderTreeCheckpointResourcesTable) {
     await knex.schema.createTable(TableName.FolderTreeCheckpointResources, (t) => {
       t.uuid("id").primary().defaultTo(knex.fn.uuid());
@@ -127,12 +127,12 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  const hasFolderCheckpointResourcesTable = await knex.schema.hasTable(TableName.FolderCheckpointResources);
-  const hasFolderTreeCheckpointResourcesTable = await knex.schema.hasTable(TableName.FolderTreeCheckpointResources);
-  const hasFolderCommitTable = await knex.schema.hasTable(TableName.FolderCommit);
-  const hasFolderCommitChangesTable = await knex.schema.hasTable(TableName.FolderCommitChanges);
-  const hasFolderTreeCheckpointTable = await knex.schema.hasTable(TableName.FolderTreeCheckpoint);
-  const hasFolderCheckpointTable = await knex.schema.hasTable(TableName.FolderCheckpoint);
+  const hasFolderCheckpointResourcesTable = await knex.schema.hashtable(TableName.FolderCheckpointResources);
+  const hasFolderTreeCheckpointResourcesTable = await knex.schema.hashtable(TableName.FolderTreeCheckpointResources);
+  const hasFolderCommitTable = await knex.schema.hashtable(TableName.FolderCommit);
+  const hasFolderCommitChangesTable = await knex.schema.hashtable(TableName.FolderCommitChanges);
+  const hasFolderTreeCheckpointTable = await knex.schema.hashtable(TableName.FolderTreeCheckpoint);
+  const hasFolderCheckpointTable = await knex.schema.hashtable(TableName.FolderCheckpoint);
 
   if (hasFolderTreeCheckpointResourcesTable) {
     await dropOnUpdateTrigger(knex, TableName.FolderTreeCheckpointResources);

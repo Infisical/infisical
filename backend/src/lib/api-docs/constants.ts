@@ -637,8 +637,8 @@ export const KUBERNETES_AUTH = {
       "The new optional audience claim that the service account JWT token must have to authenticate with Infisical.",
     gatewayId: "The ID of the gateway to use when performing kubernetes API requests.",
     accessTokenTrustedIps: "The new IPs or CIDR ranges that access tokens can be used from.",
-    accessTokenTTL: "The new lifetime for an acccess token in seconds.",
-    accessTokenMaxTTL: "The new maximum lifetime for an acccess token in seconds.",
+    accessTokenTTL: "The new lifetime for an access token in seconds.",
+    accessTokenMaxTTL: "The new maximum lifetime for an access token in seconds.",
     accessTokenNumUsesLimit: "The new maximum number of times that an access token can be used."
   },
   RETRIEVE: {
@@ -1806,7 +1806,7 @@ export const INTEGRATION = {
     metadata: {
       secretPrefix: "The prefix for the saved secret. Used by GCP.",
       secretSuffix: "The suffix for the saved secret. Used by GCP.",
-      initialSyncBehavoir: "Type of syncing behavoir with the integration.",
+      initialSyncBehavoir: "Type of syncing behavior with the integration.",
       mappingBehavior: "The mapping behavior of the integration.",
       shouldAutoRedeploy: "Used by Render to trigger auto deploy.",
       secretGCPLabel: "The label for GCP secrets.",

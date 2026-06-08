@@ -13,7 +13,7 @@ export async function up(knex: Knex): Promise<void> {
     "approverGroupId"
   );
   const hasSecretApproverUserId = await knex.schema.hasColumn(TableName.SecretApprovalPolicyApprover, "approverUserId");
-  if (await knex.schema.hasTable(TableName.AccessApprovalPolicyApprover)) {
+  if (await knex.schema.hashtable(TableName.AccessApprovalPolicyApprover)) {
     await knex.schema.alterTable(TableName.AccessApprovalPolicyApprover, (table) => {
       // add column approverGroupId to AccessApprovalPolicyApprover
       if (!hasAccessApproverGroupId) {
@@ -51,7 +51,7 @@ export async function down(knex: Knex): Promise<void> {
   );
   const hasSecretApproverUserId = await knex.schema.hasColumn(TableName.SecretApprovalPolicyApprover, "approverUserId");
 
-  if (await knex.schema.hasTable(TableName.AccessApprovalPolicyApprover)) {
+  if (await knex.schema.hashtable(TableName.AccessApprovalPolicyApprover)) {
     await knex.schema.alterTable(TableName.AccessApprovalPolicyApprover, (table) => {
       if (hasAccessApproverGroupId) {
         table.dropColumn("approverGroupId");

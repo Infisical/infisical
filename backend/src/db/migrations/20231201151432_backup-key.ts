@@ -3,7 +3,7 @@ import { Knex } from "knex";
 import { TableName } from "../schemas";
 
 export async function up(knex: Knex): Promise<void> {
-  const doesTableExist = await knex.schema.hasTable(TableName.BackupPrivateKey);
+  const doesTableExist = await knex.schema.hashtable(TableName.BackupPrivateKey);
   if (!doesTableExist) {
     await knex.schema.createTable(TableName.BackupPrivateKey, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());

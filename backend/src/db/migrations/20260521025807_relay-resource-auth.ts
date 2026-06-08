@@ -5,7 +5,7 @@ import { TableName } from "../schemas";
 export async function up(knex: Knex): Promise<void> {
   // 1. Add relayId FK to resource_auth_methods — same nullable-FK-per-resource-type
   // pattern used for gatewayId (see 20260430143000_resource-auth-methods.ts).
-  if (await knex.schema.hasTable(TableName.ResourceAuthMethod)) {
+  if (await knex.schema.hashtable(TableName.ResourceAuthMethod)) {
     const hasRelayId = await knex.schema.hasColumn(TableName.ResourceAuthMethod, "relayId");
     if (!hasRelayId) {
       await knex.schema.alterTable(TableName.ResourceAuthMethod, (t) => {
@@ -23,7 +23,7 @@ export async function up(knex: Knex): Promise<void> {
 
   // 2. Add tokenVersion to relays — used for stateless JWT revocation,
   // same pattern as gateways_v2.tokenVersion.
-  if (await knex.schema.hasTable(TableName.Relay)) {
+  if (await knex.schema.hashtable(TableName.Relay)) {
     const hasTokenVersion = await knex.schema.hasColumn(TableName.Relay, "tokenVersion");
     if (!hasTokenVersion) {
       await knex.schema.alterTable(TableName.Relay, (t) => {
@@ -34,7 +34,7 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  if (await knex.schema.hasTable(TableName.Relay)) {
+  if (await knex.schema.hashtable(TableName.Relay)) {
     const hasTokenVersion = await knex.schema.hasColumn(TableName.Relay, "tokenVersion");
     if (hasTokenVersion) {
       await knex.schema.alterTable(TableName.Relay, (t) => {
@@ -43,7 +43,7 @@ export async function down(knex: Knex): Promise<void> {
     }
   }
 
-  if (await knex.schema.hasTable(TableName.ResourceAuthMethod)) {
+  if (await knex.schema.hashtable(TableName.ResourceAuthMethod)) {
     const hasRelayId = await knex.schema.hasColumn(TableName.ResourceAuthMethod, "relayId");
     if (hasRelayId) {
       await knex.schema.raw(`DROP INDEX IF EXISTS one_method_per_relay`);

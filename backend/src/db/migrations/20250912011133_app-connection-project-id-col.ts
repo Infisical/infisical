@@ -6,7 +6,7 @@ import { TableName } from "@app/db/schemas";
 const UNIQUE_NAME_ORG_CONNECTION_INDEX = "unique_name_org_app_connection";
 
 export async function up(knex: Knex): Promise<void> {
-  if (await knex.schema.hasTable(TableName.AppConnection)) {
+  if (await knex.schema.hashtable(TableName.AppConnection)) {
     // we can't add the constraint back after up since there may be conflicting names so we do if exists
     await dropConstraintIfExists(TableName.AppConnection, "app_connections_orgid_name_unique", knex);
 
@@ -29,7 +29,7 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  if (await knex.schema.hasTable(TableName.AppConnection)) {
+  if (await knex.schema.hashtable(TableName.AppConnection)) {
     if (await knex.schema.hasColumn(TableName.AppConnection, "projectId")) {
       await knex.schema.alterTable(TableName.AppConnection, (t) => {
         t.dropUnique(["name", "projectId", "orgId"]);
