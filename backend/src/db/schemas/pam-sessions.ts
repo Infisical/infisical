@@ -38,7 +38,6 @@ export const PamSessionsSchema = z.object({
   encryptedSessionKey: zodBuffer.nullable().optional(),
   gatewayUploadTokenHash: zodBuffer.nullable().optional(),
   gatewayId: z.string().uuid().nullable().optional(),
-  orgId: z.string().uuid(),
   folderName: z.string().nullable().optional(),
   selectedHost: z.string().nullable().optional()
 });

@@ -27,7 +27,6 @@ export const PamAccountsSchema = z.object({
   discoveryFingerprint: z.string().nullable().optional(),
   policyId: z.string().uuid().nullable().optional(),
   domainId: z.string().uuid().nullable().optional(),
-  orgId: z.string().uuid(),
   templateId: z.string().uuid(),
   encryptedConnectionDetails: zodBuffer,
   encryptedInternalMetadata: zodBuffer.nullable().optional(),

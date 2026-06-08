@@ -9,7 +9,7 @@ import { TImmutableDBKeys } from "./models";
 
 export const PamAccountTemplatesSchema = z.object({
   id: z.string().uuid(),
-  orgId: z.string().uuid(),
+  projectId: z.string(),
   name: z.string(),
   description: z.string().nullable().optional(),
   type: z.string(),

@@ -274,7 +274,7 @@ export const bootstrapPamProject = async (
   for (const template of DEFAULT_ACCOUNT_TEMPLATES) {
     // eslint-disable-next-line no-await-in-loop
     await tx(TableName.PamAccountTemplate).insert({
-      orgId,
+      projectId: project.id,
       name: template.name,
       type: template.type,
       accessPolicy: JSON.stringify(template.accessPolicy),

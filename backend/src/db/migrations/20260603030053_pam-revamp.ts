@@ -25,17 +25,17 @@ import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 import { getMigrationEnvConfig, getMigrationHsmConfig } from "./utils/env-config";
 import { getMigrationEncryptionServices, getMigrationHsmService } from "./utils/services";
 
-const seedDefaultTemplates = async (knex: Knex, orgId: string) => {
+const seedDefaultTemplates = async (knex: Knex, projectId: string) => {
   for (const template of DEFAULT_ACCOUNT_TEMPLATES) {
     await knex(TableName.PamAccountTemplate)
       .insert({
-        orgId,
+        projectId,
         name: template.name,
         type: template.type,
         accessPolicy: JSON.stringify(template.accessPolicy),
         settings: JSON.stringify(template.settings)
       })
-      .onConflict(["orgId", "name"])
+      .onConflict(["projectId", "name"])
       .ignore();
   }
 };
@@ -54,7 +54,7 @@ const createPamProjectForOrg = async (knex: Knex, orgId: string) => {
     })
     .returning("id")) as Array<{ id: string }>;
 
-  await seedDefaultTemplates(knex, orgId);
+  await seedDefaultTemplates(knex, projectId);
 
   return projectId;
 };
@@ -75,9 +75,9 @@ export async function up(knex: Knex): Promise<void> {
   await knex.schema.createTable(TableName.PamAccountTemplate, (t) => {
     t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
 
-    t.uuid("orgId").notNullable();
-    t.foreign("orgId").references("id").inTable(TableName.Organization).onDelete("CASCADE");
-    t.index("orgId");
+    t.string("projectId").notNullable();
+    t.foreign("projectId").references("id").inTable(TableName.Project).onDelete("CASCADE");
+    t.index("projectId");
 
     t.string("name").notNullable();
     t.text("description").nullable();
@@ -97,7 +97,7 @@ export async function up(knex: Knex): Promise<void> {
     t.uuid("recordingConnectionId").nullable();
     t.foreign("recordingConnectionId").references("id").inTable(TableName.AppConnection).onDelete("SET NULL");
 
-    t.unique(["orgId", "name"]);
+    t.unique(["projectId", "name"]);
 
     t.timestamps(true, true, true);
   });
@@ -120,16 +120,16 @@ export async function up(knex: Knex): Promise<void> {
   await knex.schema.createTable(TableName.PamFolder, (t) => {
     t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
 
-    t.uuid("orgId").notNullable();
-    t.foreign("orgId").references("id").inTable(TableName.Organization).onDelete("CASCADE");
-    t.index("orgId");
+    t.string("projectId").notNullable();
+    t.foreign("projectId").references("id").inTable(TableName.Project).onDelete("CASCADE");
+    t.index("projectId");
 
     t.string("name").notNullable();
     t.index("name");
 
     t.text("description").nullable();
 
-    t.unique(["orgId", "name"]);
+    t.unique(["projectId", "name"]);
 
     t.timestamps(true, true, true);
   });
@@ -144,10 +144,6 @@ export async function up(knex: Knex): Promise<void> {
   await knex.raw(`ALTER TABLE ${TableName.PamAccount} DROP CONSTRAINT IF EXISTS chk_pam_account_parent`);
 
   await knex.schema.alterTable(TableName.PamAccount, (t) => {
-    t.uuid("orgId").nullable();
-    t.foreign("orgId").references("id").inTable(TableName.Organization).onDelete("CASCADE");
-    t.index("orgId");
-
     t.uuid("templateId").nullable();
     t.foreign("templateId").references("id").inTable(TableName.PamAccountTemplate).onDelete("RESTRICT");
     t.index("templateId");
@@ -165,13 +161,6 @@ export async function up(knex: Knex): Promise<void> {
     t.foreign("recordingConnectionId").references("id").inTable(TableName.AppConnection).onDelete("SET NULL");
   });
 
-  await knex.raw(`
-    UPDATE ${TableName.PamAccount} a
-    SET "orgId" = p."orgId"
-    FROM ${TableName.Project} p
-    WHERE a."projectId" = p.id
-  `);
-
   // Migrate data from old projects
   initLogger();
   const { hsmService } = await getMigrationHsmService({ envConfig: getMigrationHsmConfig() });
@@ -184,20 +173,17 @@ export async function up(knex: Knex): Promise<void> {
   const getProjectCipher = async (projectId: string) =>
     kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId }, knex);
 
-  const getOrgCipher = async (orgId: string) =>
-    kmsService.createCipherPairWithDataKey({ type: KmsDataKey.Organization, orgId }, knex);
-
   for (const { orgId } of orgsWithPam) {
     const newProjectId = orgToPamProject.get(orgId)!;
-    const orgCipher = await getOrgCipher(orgId);
+    const newProjectCipher = await getProjectCipher(newProjectId);
 
     const reEncrypt = (oldCipher: Awaited<ReturnType<typeof getProjectCipher>>, blob?: Buffer | null) => {
       if (!blob) return undefined;
       const plainText = oldCipher.decryptor({ cipherTextBlob: blob });
-      return orgCipher.encryptor({ plainText }).cipherTextBlob;
+      return newProjectCipher.encryptor({ plainText }).cipherTextBlob;
     };
 
-    const templates = await knex(TableName.PamAccountTemplate).where({ orgId }).select("id", "type");
+    const templates = await knex(TableName.PamAccountTemplate).where({ projectId: newProjectId }).select("id", "type");
     const templateMap: Record<string, string> = {};
     for (const t of templates) {
       templateMap[t.type] = t.id;
@@ -212,16 +198,18 @@ export async function up(knex: Knex): Promise<void> {
 
     for (const project of oldPamProjects) {
       const folderName = slugify(project.name) || project.id.slice(0, 8);
-      const [folder] = await knex(TableName.PamFolder).insert({ orgId, name: folderName }).returning("id");
+      const [folder] = await knex(TableName.PamFolder)
+        .insert({ projectId: newProjectId, name: folderName })
+        .returning("id");
       projectToFolder[project.id] = folder.id;
     }
 
-    for (const [projectId, folderId] of Object.entries(projectToFolder)) {
-      const oldProjectCipher = await getProjectCipher(projectId);
+    for (const [oldProjectId, folderId] of Object.entries(projectToFolder)) {
+      const oldProjectCipher = await getProjectCipher(oldProjectId);
 
       const resourceAccounts = await knex(TableName.PamAccount)
         .join(TableName.PamResource, `${TableName.PamAccount}.resourceId`, `${TableName.PamResource}.id`)
-        .where(`${TableName.PamResource}.projectId`, projectId)
+        .where(`${TableName.PamResource}.projectId`, oldProjectId)
         .select(
           `${TableName.PamAccount}.id as accountId`,
           `${TableName.PamAccount}.encryptedCredentials`,
@@ -239,6 +227,7 @@ export async function up(knex: Knex): Promise<void> {
             await knex(TableName.PamAccount)
               .where("id", account.accountId)
               .update({
+                projectId: newProjectId,
                 folderId,
                 templateId,
                 encryptedCredentials: reEncrypt(oldProjectCipher, account.encryptedCredentials),
@@ -258,7 +247,7 @@ export async function up(knex: Knex): Promise<void> {
 
       const domainAccounts = await knex(TableName.PamAccount)
         .join(TableName.PamDomain, `${TableName.PamAccount}.domainId`, `${TableName.PamDomain}.id`)
-        .where(`${TableName.PamDomain}.projectId`, projectId)
+        .where(`${TableName.PamDomain}.projectId`, oldProjectId)
         .select(
           `${TableName.PamAccount}.id as accountId`,
           `${TableName.PamAccount}.encryptedCredentials`,
@@ -275,6 +264,7 @@ export async function up(knex: Knex): Promise<void> {
             await knex(TableName.PamAccount)
               .where("id", account.accountId)
               .update({
+                projectId: newProjectId,
                 folderId,
                 templateId,
                 encryptedCredentials: reEncrypt(oldProjectCipher, account.encryptedCredentials),
@@ -404,7 +394,6 @@ export async function up(knex: Knex): Promise<void> {
   await knex.raw(`DROP INDEX IF EXISTS "uidx_pam_account_root_name"`);
 
   await knex.schema.alterTable(TableName.PamAccount, (t) => {
-    t.uuid("orgId").notNullable().alter();
     t.uuid("templateId").notNullable().alter();
     t.binary("encryptedConnectionDetails").notNullable().alter();
     t.unique(["folderId", "name"]);
@@ -412,27 +401,11 @@ export async function up(knex: Knex): Promise<void> {
 
   // Sessions
   await knex.schema.alterTable(TableName.PamSession, (t) => {
-    t.uuid("orgId").nullable();
-    t.foreign("orgId").references("id").inTable(TableName.Organization).onDelete("CASCADE");
-    t.index("orgId");
     t.string("folderName").nullable();
     t.string("selectedHost").nullable();
   });
 
-  await knex.raw(`
-    UPDATE ${TableName.PamSession} s
-    SET "orgId" = p."orgId"
-    FROM ${TableName.Project} p
-    WHERE s."projectId" = p.id
-  `);
-
-  await knex(TableName.PamSession).whereNull("orgId").delete();
-
-  await knex.schema.alterTable(TableName.PamSession, (t) => {
-    t.uuid("orgId").notNullable().alter();
-  });
-
-  // Re-encrypt session data from project key to org key
+  // Re-encrypt session data from old project key to new consolidated project key
   const SESSION_KEY_LENGTH = 32;
   const AAD_LENGTH = 32;
   const PAM_RECORDING_AAD_VERSION = "v1";
@@ -441,33 +414,45 @@ export async function up(knex: Knex): Promise<void> {
     crypto.nativeCrypto.createHash("sha256").update(`${scopeId}|${sessionId}|${PAM_RECORDING_AAD_VERSION}`).digest();
 
   const sessionsToMigrate = await knex(TableName.PamSession)
-    .whereNotNull("projectId")
-    .select("id", "projectId", "orgId", "encryptedSessionKey", "encryptedLogsBlob");
+    .join(TableName.Project, `${TableName.PamSession}.projectId`, `${TableName.Project}.id`)
+    .whereNotNull(`${TableName.PamSession}.projectId`)
+    .select(
+      `${TableName.PamSession}.id as id`,
+      `${TableName.PamSession}.projectId as projectId`,
+      `${TableName.Project}.orgId as orgId`,
+      `${TableName.PamSession}.encryptedSessionKey`,
+      `${TableName.PamSession}.encryptedLogsBlob`
+    );
 
   const projectCipherCache = new Map<string, Awaited<ReturnType<typeof getProjectCipher>>>();
-  const orgCipherCache = new Map<string, Awaited<ReturnType<typeof getOrgCipher>>>();
 
   for (const session of sessionsToMigrate) {
     try {
-      const updates: Record<string, Buffer | undefined> = {};
+      const sessionNewProjectId = orgToPamProject.get(session.orgId);
+      if (!sessionNewProjectId || session.projectId === sessionNewProjectId) {
+        // eslint-disable-next-line no-continue
+        continue;
+      }
+
+      const updates: Record<string, Buffer | string | undefined> = { projectId: sessionNewProjectId };
+
+      if (!projectCipherCache.has(session.projectId)) {
+        projectCipherCache.set(session.projectId, await getProjectCipher(session.projectId));
+      }
+      if (!projectCipherCache.has(sessionNewProjectId)) {
+        projectCipherCache.set(sessionNewProjectId, await getProjectCipher(sessionNewProjectId));
+      }
+      const oldCipher = projectCipherCache.get(session.projectId)!;
+      const newCipher = projectCipherCache.get(sessionNewProjectId)!;
 
       if (session.encryptedSessionKey) {
-        if (!projectCipherCache.has(session.projectId)) {
-          projectCipherCache.set(session.projectId, await getProjectCipher(session.projectId));
-        }
-        if (!orgCipherCache.has(session.orgId)) {
-          orgCipherCache.set(session.orgId, await getOrgCipher(session.orgId));
-        }
-        const oldCipher = projectCipherCache.get(session.projectId)!;
-        const newCipher = orgCipherCache.get(session.orgId)!;
-
         const decrypted = oldCipher.decryptor({ cipherTextBlob: session.encryptedSessionKey });
         const oldAad = decrypted.subarray(0, AAD_LENGTH);
         const sessionKey = decrypted.subarray(AAD_LENGTH, AAD_LENGTH + SESSION_KEY_LENGTH);
 
         const expectedOldAad = buildWrapAad(session.projectId, session.id);
         if (crypto.nativeCrypto.timingSafeEqual(oldAad, expectedOldAad)) {
-          const newAad = buildWrapAad(session.orgId, session.id);
+          const newAad = buildWrapAad(sessionNewProjectId, session.id);
           const newPayload = Buffer.concat([newAad, sessionKey]);
           updates.encryptedSessionKey = newCipher.encryptor({ plainText: newPayload }).cipherTextBlob;
         } else {
@@ -478,22 +463,11 @@ export async function up(knex: Knex): Promise<void> {
       }
 
       if (session.encryptedLogsBlob) {
-        if (!projectCipherCache.has(session.projectId)) {
-          projectCipherCache.set(session.projectId, await getProjectCipher(session.projectId));
-        }
-        if (!orgCipherCache.has(session.orgId)) {
-          orgCipherCache.set(session.orgId, await getOrgCipher(session.orgId));
-        }
-        const oldCipher = projectCipherCache.get(session.projectId)!;
-        const newCipher = orgCipherCache.get(session.orgId)!;
-
         const plainText = oldCipher.decryptor({ cipherTextBlob: session.encryptedLogsBlob });
         updates.encryptedLogsBlob = newCipher.encryptor({ plainText }).cipherTextBlob;
       }
 
-      if (Object.keys(updates).length > 0) {
-        await knex(TableName.PamSession).where("id", session.id).update(updates);
-      }
+      await knex(TableName.PamSession).where("id", session.id).update(updates);
     } catch (err) {
       logger.warn(
         { err, sessionId: session.id },
