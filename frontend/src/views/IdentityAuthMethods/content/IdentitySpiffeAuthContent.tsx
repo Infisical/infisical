@@ -1,45 +1,51 @@
-import { faBan } from "@fortawesome/free-solid-svg-icons";
-import { EyeIcon } from "lucide-react";
+import { BanIcon, EyeIcon } from "lucide-react";
 
-import { EmptyState, Spinner, Tooltip } from "@app/components/v2";
-import { Badge } from "@app/components/v3";
+import {
+  Badge,
+  Empty,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+  PageLoader,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { useGetIdentitySpiffeAuth } from "@app/hooks/api";
 import { SpiffeTrustBundleProfile } from "@app/hooks/api/identities/enums";
-import { ViewIdentityContentWrapper } from "@app/pages/organization/IdentityDetailsByIDPage/components/ViewIdentityAuth/ViewIdentityContentWrapper";
 
-import { IdentityAuthFieldDisplay } from "./IdentityAuthFieldDisplay";
-import { ViewAuthMethodProps } from "./types";
+import { IdentityAuthAccessTokenFields, IdentityAuthFieldDisplay } from "../helpers";
+import { ViewAuthMethodProps } from "../types";
 
 const PROFILE_DISPLAY_MAP: Record<string, string> = {
   [SpiffeTrustBundleProfile.STATIC]: "Static",
   [SpiffeTrustBundleProfile.HTTPS_WEB_BUNDLE]: "HTTPS Web Bundle"
 };
 
-export const ViewIdentitySpiffeAuthContent = ({
-  identityId,
-  onEdit,
-  onDelete
-}: ViewAuthMethodProps) => {
+export const IdentitySpiffeAuthContent = ({ identityId }: ViewAuthMethodProps) => {
   const { data, isPending } = useGetIdentitySpiffeAuth(identityId);
 
   if (isPending) {
-    return (
-      <div className="flex w-full items-center justify-center">
-        <Spinner className="text-mineshaft-400" />
-      </div>
-    );
+    return <PageLoader />;
   }
 
   if (!data) {
     return (
-      <EmptyState icon={faBan} title="Could not find SPIFFE Auth associated with this Identity." />
+      <Empty className="border">
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <BanIcon />
+          </EmptyMedia>
+          <EmptyTitle>Could not find SPIFFE Auth associated with this Identity.</EmptyTitle>
+        </EmptyHeader>
+      </Empty>
     );
   }
 
   const { trustBundleDistribution: dist } = data;
 
   return (
-    <ViewIdentityContentWrapper onEdit={onEdit} onDelete={onDelete} identityId={identityId}>
+    <div className="grid grid-cols-2 gap-3">
       <IdentityAuthFieldDisplay className="col-span-2" label="Trust Domain">
         {data.trustDomain}
       </IdentityAuthFieldDisplay>
@@ -61,19 +67,18 @@ export const ViewIdentitySpiffeAuthContent = ({
       {dist.profile === SpiffeTrustBundleProfile.STATIC ? (
         <IdentityAuthFieldDisplay className="col-span-2" label="CA Bundle JWKS">
           {dist.bundle && (
-            <Tooltip
-              side="right"
-              className="max-w-xl p-2"
-              content={
-                <pre className="rounded-sm bg-mineshaft-600 p-2 break-words whitespace-pre-wrap">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Badge variant="neutral">
+                  <EyeIcon />
+                  Reveal
+                </Badge>
+              </TooltipTrigger>
+              <TooltipContent side="right" className="max-w-xl p-2">
+                <pre className="rounded-sm bg-container p-2 break-words whitespace-pre-wrap">
                   {dist.bundle}
                 </pre>
-              }
-            >
-              <Badge variant="neutral">
-                <EyeIcon />
-                Reveal
-              </Badge>
+              </TooltipContent>
             </Tooltip>
           )}
         </IdentityAuthFieldDisplay>
@@ -84,17 +89,16 @@ export const ViewIdentitySpiffeAuthContent = ({
           </IdentityAuthFieldDisplay>
           <IdentityAuthFieldDisplay className="col-span-2" label="Root CA Certificate">
             {dist.caCert && (
-              <Tooltip
-                side="right"
-                className="max-w-xl p-2"
-                content={
-                  <p className="rounded-sm bg-mineshaft-600 p-2 break-words">{dist.caCert}</p>
-                }
-              >
-                <Badge variant="neutral">
-                  <EyeIcon />
-                  Reveal
-                </Badge>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Badge variant="neutral">
+                    <EyeIcon />
+                    Reveal
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent side="right" className="max-w-xl p-2">
+                  <p className="rounded-sm bg-container p-2 break-words">{dist.caCert}</p>
+                </TooltipContent>
               </Tooltip>
             )}
           </IdentityAuthFieldDisplay>
@@ -108,18 +112,12 @@ export const ViewIdentitySpiffeAuthContent = ({
           </IdentityAuthFieldDisplay>
         </>
       )}
-      <IdentityAuthFieldDisplay label="Access Token TTL (seconds)">
-        {data.accessTokenTTL}
-      </IdentityAuthFieldDisplay>
-      <IdentityAuthFieldDisplay label="Access Token Max TTL (seconds)">
-        {data.accessTokenMaxTTL}
-      </IdentityAuthFieldDisplay>
-      <IdentityAuthFieldDisplay label="Access Token Max Number of Uses">
-        {data.accessTokenNumUsesLimit}
-      </IdentityAuthFieldDisplay>
-      <IdentityAuthFieldDisplay label="Access Token Trusted IPs">
-        {data.accessTokenTrustedIps.map((ip) => ip.ipAddress).join(", ")}
-      </IdentityAuthFieldDisplay>
-    </ViewIdentityContentWrapper>
+      <IdentityAuthAccessTokenFields
+        accessTokenTTL={data.accessTokenTTL}
+        accessTokenMaxTTL={data.accessTokenMaxTTL}
+        accessTokenNumUsesLimit={data.accessTokenNumUsesLimit}
+        accessTokenTrustedIps={data.accessTokenTrustedIps}
+      />
+    </div>
   );
 };

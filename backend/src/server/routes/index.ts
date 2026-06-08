@@ -808,7 +808,8 @@ export const registerRoutes = async (
     permissionService,
     roleDAL,
     additionalPrivilegeDAL,
-    licenseService
+    licenseService,
+    keyStore
   });
 
   const membershipGroupService = membershipGroupServiceFactory({
