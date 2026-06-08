@@ -391,6 +391,7 @@ export const registerOAuthRouter = async (server: FastifyZodProvider) => {
       const clientSecret = basicAuth?.clientSecret ?? req.body.client_secret;
 
       void res.header("Cache-Control", "no-store");
+      void res.header("Pragma", "no-cache");
 
       if (req.body.grant_type === "authorization_code") {
         if (!req.body.code) throw new BadRequestError({ message: "Missing authorization code" });

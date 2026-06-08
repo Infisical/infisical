@@ -78,6 +78,7 @@ describe("isAllowedRedirectUri", () => {
 
   test("rejects non-http(s) schemes", () => {
     expect(isAllowedRedirectUri("ftp://localhost/callback")).toBe(false);
+    // eslint-disable-next-line no-script-url
     expect(isAllowedRedirectUri("javascript:alert(1)")).toBe(false);
   });
 

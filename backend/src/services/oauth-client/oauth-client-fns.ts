@@ -28,6 +28,11 @@ export const parseBasicAuthHeader = (
   }
 };
 
+// RFC 7636 §4.1: the code_verifier is 43-128 characters from the unreserved set
+// [A-Z] / [a-z] / [0-9] / "-" / "." / "_" / "~". Enforcing this guarantees the verifier
+// carries enough entropy that the challenge cannot be brute-forced against the token endpoint.
+export const PKCE_CODE_VERIFIER_REGEX = /^[A-Za-z0-9\-._~]{43,128}$/;
+
 export const computePkceChallenge = (codeVerifier: string) => {
   const sha256 = crypto.createHash("sha256").update(codeVerifier).digest();
   return Buffer.from(sha256).toString("base64url");

@@ -15,7 +15,7 @@ import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-se
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 
 import { TOauthClientDALFactory } from "./oauth-client-dal";
-import { computePkceChallenge, isRegisteredRedirectUri } from "./oauth-client-fns";
+import { computePkceChallenge, isRegisteredRedirectUri, PKCE_CODE_VERIFIER_REGEX } from "./oauth-client-fns";
 import {
   OauthAuthorizationCodePayloadSchema,
   TCreateOauthClientDTO,
@@ -238,7 +238,7 @@ export const oauthClientServiceFactory = ({
     const tokenSession = await tokenService.getUserTokenSession({
       userId: dto.userId,
       ip: dto.ip,
-      userAgent: `Infisical OAuth - ${client.name}`
+      userAgent: `Infisical OAuth - ${client.clientId}`
     });
     if (!tokenSession) throw new BadRequestError({ message: "Failed to create user token session" });
 
@@ -321,6 +321,11 @@ export const oauthClientServiceFactory = ({
 
       if (codePayload.codeChallenge) {
         if (!dto.codeVerifier) throw new BadRequestError({ message: "Missing PKCE code_verifier" });
+        if (!PKCE_CODE_VERIFIER_REGEX.test(dto.codeVerifier)) {
+          throw new BadRequestError({
+            message: "Invalid PKCE code_verifier: must be 43-128 characters using only [A-Za-z0-9-._~]"
+          });
+        }
         if (computePkceChallenge(dto.codeVerifier) !== codePayload.codeChallenge) {
           throw new BadRequestError({ message: "PKCE challenge mismatch" });
         }
