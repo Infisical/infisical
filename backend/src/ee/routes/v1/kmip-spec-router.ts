@@ -41,9 +41,6 @@ export const registerKmipSpecRouter = async (server: FastifyZodProvider) => {
       });
     }
 
-    // TODO: assert that server certificate used is not revoked
-    // TODO: assert that client certificate used is not revoked
-
     const kmipClient = await server.store.kmipClient.findByProjectAndClientId(projectId, clientId);
 
     if (!kmipClient) {
@@ -57,6 +54,16 @@ export const registerKmipSpecRouter = async (server: FastifyZodProvider) => {
         message: "Client specified in the request does not belong in the organization"
       });
     }
+
+    // Bind the request to certificates this org actually issued: the caller (a KMIP server access
+    // token) supplies the client identity in headers, so verify the presented client cert serial
+    // belongs to this client before acting as it.
+    await server.services.kmip.validateKmipSessionCertificates({
+      orgId: req.permission.orgId,
+      kmipClientId: kmipClient.id,
+      clientCertificateSerialNumber: clientCertSerialNumber,
+      serverCertificateSerialNumber: serverCertSerialNumber
+    });
 
     req.kmipUser = {
       projectId,

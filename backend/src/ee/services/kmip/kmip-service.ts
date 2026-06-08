@@ -4,7 +4,7 @@ import * as x509 from "@peculiar/x509";
 import { ActionProjectType, OrganizationActionScope } from "@app/db/schemas";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto/cryptography";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { isValidIp } from "@app/lib/ip";
 import { ms } from "@app/lib/ms";
 import { isFQDN } from "@app/lib/validator/validate-url";
@@ -36,6 +36,33 @@ import {
   TRegisterServerDTO,
   TUpdateKmipClientDTO
 } from "./kmip-types";
+
+// Serials are stored as fixed 40-char lowercase hex (crypto.randomBytes(20).toString("hex")), but the
+// daemon sends them derived from a Go big.Int in differing forms (decimal for client, hex for server,
+// leading zeros dropped). Reduce any representation to the canonical stored form via BigInt. For an
+// all-digit input the base is ambiguous, so emit both the decimal and hex readings as candidates.
+const normalizeSerialNumberCandidates = (raw: string): string[] => {
+  const value = raw.trim();
+  const candidates = new Set<string>();
+  const toCanonical = (n: bigint) => n.toString(16).padStart(40, "0");
+
+  if (/^[0-9a-fA-F]+$/.test(value)) {
+    try {
+      candidates.add(toCanonical(BigInt(`0x${value}`)));
+    } catch {
+      // not a valid hex serial
+    }
+  }
+  if (/^[0-9]+$/.test(value)) {
+    try {
+      candidates.add(toCanonical(BigInt(value)));
+    } catch {
+      // not a valid decimal serial
+    }
+  }
+
+  return [...candidates];
+};
 
 type TKmipServiceFactoryDep = {
   kmipClientDAL: TKmipClientDALFactory;
@@ -772,6 +799,44 @@ export const kmipServiceFactory = ({
     };
   };
 
+  // The /kmip/spec/* endpoints identify the acting client from caller-supplied headers, so before
+  // trusting them assert the presented certificates are ones this org actually issued: the server
+  // cert must exist in the org, and the client cert serial must belong to the named client and be
+  // unexpired. This stops a KMIP server access token from impersonating an arbitrary client by
+  // supplying forged headers.
+  const validateKmipSessionCertificates = async ({
+    orgId,
+    kmipClientId,
+    clientCertificateSerialNumber,
+    serverCertificateSerialNumber
+  }: {
+    orgId: string;
+    kmipClientId: string;
+    clientCertificateSerialNumber: string;
+    serverCertificateSerialNumber: string;
+  }) => {
+    const serverCertCandidates = normalizeSerialNumberCandidates(serverCertificateSerialNumber);
+    const [serverCert] = serverCertCandidates.length
+      ? await kmipOrgServerCertificateDAL.find({ orgId, $in: { serialNumber: serverCertCandidates } }, { limit: 1 })
+      : [];
+    if (!serverCert) {
+      throw new ForbiddenRequestError({ message: "Invalid KMIP server certificate" });
+    }
+
+    const clientCertCandidates = normalizeSerialNumberCandidates(clientCertificateSerialNumber);
+    const [clientCert] = clientCertCandidates.length
+      ? await kmipClientCertificateDAL.find({ $in: { serialNumber: clientCertCandidates } }, { limit: 1 })
+      : [];
+    if (!clientCert || clientCert.kmipClientId !== kmipClientId) {
+      throw new ForbiddenRequestError({
+        message: "Client certificate does not match the specified KMIP client"
+      });
+    }
+    if (new Date(clientCert.expiration).getTime() < Date.now()) {
+      throw new ForbiddenRequestError({ message: "Client certificate has expired" });
+    }
+  };
+
   return {
     createKmipClient,
     updateKmipClient,
@@ -781,6 +846,7 @@ export const kmipServiceFactory = ({
     createKmipClientCertificate,
     generateOrgKmipServerCertificate,
     getServerCertificateBySerialNumber,
-    registerServer
+    registerServer,
+    validateKmipSessionCertificates
   };
 };
