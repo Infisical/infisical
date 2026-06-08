@@ -260,7 +260,7 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.Salesforce]: ValidateSalesforceConnectionCredentialsSchema,
   [AppConnection.Snowflake]: ValidateSnowflakeConnectionCredentialsSchema,
   [AppConnection.Datadog]: ValidateDatadogConnectionCredentialsSchema,
-  [AppConnection.F5BigIp]: ValidateF5BigIpConnectionCredentialsSchema
+  [AppConnection.F5BigIp]: ValidateF5BigIpConnectionCredentialsSchema,
   [AppConnection.NutanixPrismCentral]: ValidateNutanixPrismCentralConnectionCredentialsSchema
 };
 
