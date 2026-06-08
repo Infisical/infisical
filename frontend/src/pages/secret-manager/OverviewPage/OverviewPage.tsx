@@ -2651,7 +2651,7 @@ const OverviewPageContent = () => {
                       to={ROUTE_PATHS.SecretManager.ApprovalPage.path}
                       params={{ orgId, projectId }}
                       search={{ selectedTab: "approval-requests", requestId: "" }}
-                      className="ml-auto flex shrink-0 items-center gap-1 text-sm text-info hover:underline"
+                      className="ml-auto flex shrink-0 items-center gap-1 text-sm text-info underline underline-offset-2"
                     >
                       Review
                       <ChevronRightIcon className="size-3.5" />
