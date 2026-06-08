@@ -954,15 +954,18 @@ export const honeyTokenServiceFactory = ({
     }
 
     const startMs = Date.now();
-    // Floor to normalize response time across token-found and token-not-found paths,
-    // preventing timing side-channel enumeration of registered access key IDs.
+    // Floor + random jitter prevents timing side-channel enumeration of registered
+    // access key IDs. The jitter defeats statistical averaging across many requests.
     const MIN_RESPONSE_TIME_MS = 150;
+    const JITTER_MAX_MS = 200;
 
     const rejectWithNormalizedTiming = async (): Promise<never> => {
       const elapsed = Date.now() - startMs;
-      if (elapsed < MIN_RESPONSE_TIME_MS) {
+      const jitter = Math.floor(Math.random() * JITTER_MAX_MS);
+      const target = MIN_RESPONSE_TIME_MS + jitter;
+      if (elapsed < target) {
         await new Promise<void>((resolve) => {
-          setTimeout(resolve, MIN_RESPONSE_TIME_MS - elapsed);
+          setTimeout(resolve, target - elapsed);
         });
       }
       throw new UnauthorizedError({ message: "Invalid webhook request" });
