@@ -291,7 +291,7 @@ export const registerKmipRouter = async (server: FastifyZodProvider) => {
         .object({
           keyAlgorithm: z.nativeEnum(CertKeyAlgorithm).optional(),
           ttl: z.string().refine((val) => ms(val) > 0, "TTL must be a positive number"),
-          csr: z.string().trim().min(1, "CSR cannot be empty").optional()
+          csr: z.string().trim().min(1, "CSR cannot be empty").max(4096).optional()
         })
         .refine((data) => data.csr || data.keyAlgorithm, {
           message: "Either csr or keyAlgorithm must be provided"
