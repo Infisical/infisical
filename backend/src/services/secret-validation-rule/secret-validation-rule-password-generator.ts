@@ -1,7 +1,7 @@
-import { randomInt } from "crypto";
 import RandExp from "randexp";
 import RE2 from "re2";
 
+import { crypto } from "@app/lib/crypto";
 import { BadRequestError } from "@app/lib/errors";
 
 import { ConstraintTarget, ConstraintType, TConstraint } from "./secret-validation-rule-types";
@@ -14,7 +14,7 @@ const CHAR_POOL = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz012345678
 const generateRandomString = (length: number): string => {
   let out = "";
   for (let i = 0; i < length; i += 1) {
-    out += CHAR_POOL[randomInt(0, CHAR_POOL.length)];
+    out += CHAR_POOL[crypto.randomInt(0, CHAR_POOL.length)];
   }
   return out;
 };
