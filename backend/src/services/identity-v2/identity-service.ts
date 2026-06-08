@@ -391,6 +391,17 @@ export const identityV2ServiceFactory = ({
       return { identityMemberships: [], totalCount: 0 };
     }
 
+    const enrichWithLockouts = async <T extends { identity: { id: string } }>(rows: T[]) =>
+      Promise.all(
+        rows.map(async (row) => ({
+          ...row,
+          identity: {
+            ...row.identity,
+            activeLockoutAuthMethods: await getIdentityActiveLockoutAuthMethods(row.identity.id, keyStore)
+          }
+        }))
+      );
+
     if (conditionalProjectIds.size === 0) {
       const { totalCount, docs } = await identityMembershipV2DAL.searchIdentitiesV2({
         orgId: actorOrgId,
@@ -403,7 +414,7 @@ export const identityV2ServiceFactory = ({
         accessibleProjectIds
       });
 
-      return { identityMemberships: docs, totalCount };
+      return { identityMemberships: await enrichWithLockouts(docs), totalCount };
     }
 
     // Conditional Read rules on Identity exist for at least one accessible project. SQL pagination
@@ -422,7 +433,7 @@ export const identityV2ServiceFactory = ({
     const pageOffset = offset ?? 0;
     const pageLimit = limit ?? filtered.length;
     return {
-      identityMemberships: filtered.slice(pageOffset, pageOffset + pageLimit),
+      identityMemberships: await enrichWithLockouts(filtered.slice(pageOffset, pageOffset + pageLimit)),
       totalCount: filtered.length
     };
   };

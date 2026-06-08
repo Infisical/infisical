@@ -22,6 +22,8 @@ import { chefPkiSyncFactory } from "./chef/chef-pki-sync-fns";
 import { CHEF_PKI_SYNC_LIST_OPTION } from "./chef/chef-pki-sync-list-constants";
 import { CLOUDFLARE_CUSTOM_CERTIFICATE_PKI_SYNC_LIST_OPTION } from "./cloudflare-custom-certificate/cloudflare-custom-certificate-pki-sync-constants";
 import { cloudflareCustomCertificatePkiSyncFactory } from "./cloudflare-custom-certificate/cloudflare-custom-certificate-pki-sync-fns";
+import { F5_BIG_IP_PKI_SYNC_LIST_OPTION } from "./f5-big-ip/f5-big-ip-pki-sync-constants";
+import { f5BigIpPkiSyncFactory } from "./f5-big-ip/f5-big-ip-pki-sync-fns";
 import { NETSCALER_PKI_SYNC_LIST_OPTION } from "./netscaler/netscaler-pki-sync-constants";
 import { netScalerPkiSyncFactory } from "./netscaler/netscaler-pki-sync-fns";
 import { PkiSync } from "./pki-sync-enums";
@@ -36,7 +38,8 @@ const PKI_SYNC_LIST_OPTIONS = {
   [PkiSync.AwsElasticLoadBalancer]: AWS_ELASTIC_LOAD_BALANCER_PKI_SYNC_LIST_OPTION,
   [PkiSync.Chef]: CHEF_PKI_SYNC_LIST_OPTION,
   [PkiSync.CloudflareCustomCertificate]: CLOUDFLARE_CUSTOM_CERTIFICATE_PKI_SYNC_LIST_OPTION,
-  [PkiSync.NetScaler]: NETSCALER_PKI_SYNC_LIST_OPTION
+  [PkiSync.NetScaler]: NETSCALER_PKI_SYNC_LIST_OPTION,
+  [PkiSync.F5BigIp]: F5_BIG_IP_PKI_SYNC_LIST_OPTION
 };
 
 export const enterprisePkiSyncCheck = async (
@@ -217,6 +220,9 @@ export const PkiSyncFns = {
           "NetScaler does not support importing certificates into Infisical (private keys cannot be extracted)"
         );
       }
+      case PkiSync.F5BigIp: {
+        throw new Error("F5 BIG-IP does not support importing certificates into Infisical");
+      }
       default:
         throw new Error(`Unsupported PKI sync destination: ${String(pkiSync.destination)}`);
     }
@@ -309,6 +315,16 @@ export const PkiSyncFns = {
           gatewayPoolService: dependencies.gatewayPoolService
         });
         return netScalerPkiSync.syncCertificates(pkiSync, certificateMap);
+      }
+      case PkiSync.F5BigIp: {
+        checkPkiSyncDestination(pkiSync, PkiSync.F5BigIp as PkiSync);
+        const f5BigIpPkiSync = f5BigIpPkiSyncFactory({
+          certificateDAL: dependencies.certificateDAL,
+          certificateSyncDAL: dependencies.certificateSyncDAL,
+          gatewayV2Service: dependencies.gatewayV2Service,
+          gatewayPoolService: dependencies.gatewayPoolService
+        });
+        return f5BigIpPkiSync.syncCertificates(pkiSync, certificateMap);
       }
       default:
         throw new Error(`Unsupported PKI sync destination: ${String(pkiSync.destination)}`);
@@ -413,6 +429,20 @@ export const PkiSyncFns = {
           gatewayPoolService: dependencies.gatewayPoolService
         });
         await netScalerPkiSync.removeCertificates(pkiSync, certificateNames, {
+          certificateSyncDAL: dependencies.certificateSyncDAL,
+          certificateMap: dependencies.certificateMap
+        });
+        break;
+      }
+      case PkiSync.F5BigIp: {
+        checkPkiSyncDestination(pkiSync, PkiSync.F5BigIp as PkiSync);
+        const f5BigIpPkiSync = f5BigIpPkiSyncFactory({
+          certificateDAL: dependencies.certificateDAL,
+          certificateSyncDAL: dependencies.certificateSyncDAL,
+          gatewayV2Service: dependencies.gatewayV2Service,
+          gatewayPoolService: dependencies.gatewayPoolService
+        });
+        await f5BigIpPkiSync.removeCertificates(pkiSync, certificateNames, {
           certificateSyncDAL: dependencies.certificateSyncDAL,
           certificateMap: dependencies.certificateMap
         });

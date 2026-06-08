@@ -1017,5 +1017,6 @@ export type IdentityMembershipSearchResult = {
   roles: IdentityMembershipSearchRole[];
   identity: Pick<Identity, "id" | "name" | "hasDeleteProtection" | "orgId"> & {
     authMethods: IdentityAuthMethod[];
+    activeLockoutAuthMethods: IdentityAuthMethod[];
   };
 };

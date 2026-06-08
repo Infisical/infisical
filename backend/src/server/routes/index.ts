@@ -248,6 +248,8 @@ import { DigiCertCertificateAuthorityFns } from "@app/services/certificate-autho
 import { digicertCertificateAuthorityQueueServiceFactory } from "@app/services/certificate-authority/digicert/digicert-certificate-authority-queue";
 import { digicertRevocationSyncQueueFactory } from "@app/services/certificate-authority/digicert/digicert-revocation-sync-queue";
 import { externalCertificateAuthorityDALFactory } from "@app/services/certificate-authority/external-certificate-authority-dal";
+import { GoDaddyCertificateAuthorityFns } from "@app/services/certificate-authority/godaddy/godaddy-certificate-authority-fns";
+import { godaddyCertificateAuthorityQueueServiceFactory } from "@app/services/certificate-authority/godaddy/godaddy-certificate-authority-queue";
 import { internalCertificateAuthorityDALFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-dal";
 import { InternalCertificateAuthorityFns } from "@app/services/certificate-authority/internal/internal-certificate-authority-fns";
 import { internalCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-service";
@@ -774,7 +776,8 @@ export const registerRoutes = async (
     permissionService,
     roleDAL,
     additionalPrivilegeDAL,
-    licenseService
+    licenseService,
+    keyStore
   });
 
   const membershipGroupService = membershipGroupServiceFactory({
@@ -2775,6 +2778,18 @@ export const registerRoutes = async (
     projectDAL
   });
 
+  const godaddyCaFns = GoDaddyCertificateAuthorityFns({
+    appConnectionDAL,
+    appConnectionService,
+    certificateAuthorityDAL,
+    externalCertificateAuthorityDAL,
+    certificateDAL,
+    certificateBodyDAL,
+    certificateSecretDAL,
+    kmsService,
+    projectDAL
+  });
+
   const certificateRequestService = certificateRequestServiceFactory({
     certificateRequestDAL,
     certificateDAL,
@@ -2800,6 +2815,7 @@ export const registerRoutes = async (
     pkiSubscriberDAL,
     pkiSyncDAL,
     pkiSyncQueue,
+    certificateSyncDAL,
     certificateProfileDAL,
     certificateRequestService,
     certificateRequestDAL,
@@ -2913,6 +2929,17 @@ export const registerRoutes = async (
     kmsService,
     auditLogService,
     pkiAlertV2Queue
+  });
+
+  const godaddyCaQueue = godaddyCertificateAuthorityQueueServiceFactory({
+    cronJob,
+    certificateRequestDAL,
+    certificateRequestService,
+    certificateAuthorityDAL,
+    appConnectionDAL,
+    kmsService,
+    resourceMetadataDAL,
+    godaddyFns: godaddyCaFns
   });
 
   const certificateEstV3Service = certificateEstV3ServiceFactory({
@@ -3283,6 +3310,7 @@ export const registerRoutes = async (
   certificateV3Queue.init();
   digicertCaQueue.init();
   digicertRevocationSyncQueue.init();
+  godaddyCaQueue.init();
   caAutoRenewalQueue.startDailyAutoRenewalJob();
   signerAutoRenewalQueue.start();
   signerIssuanceService.start();

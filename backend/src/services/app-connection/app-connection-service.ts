@@ -101,6 +101,7 @@ import { ValidateDopplerConnectionCredentialsSchema } from "./doppler/doppler-co
 import { dopplerConnectionService } from "./doppler/doppler-connection-service";
 import { ValidateExternalInfisicalConnectionCredentialsSchema } from "./external-infisical";
 import { externalInfisicalConnectionService } from "./external-infisical/external-infisical-connection-service";
+import { ValidateF5BigIpConnectionCredentialsSchema } from "./f5-big-ip";
 import { ValidateFlyioConnectionCredentialsSchema } from "./flyio";
 import { flyioConnectionService } from "./flyio/flyio-connection-service";
 import { ValidateGcpConnectionCredentialsSchema } from "./gcp";
@@ -111,6 +112,7 @@ import { ValidateGitHubRadarConnectionCredentialsSchema } from "./github-radar";
 import { githubRadarConnectionService } from "./github-radar/github-radar-connection-service";
 import { ValidateGitLabConnectionCredentialsSchema } from "./gitlab";
 import { gitlabConnectionService } from "./gitlab/gitlab-connection-service";
+import { ValidateGoDaddyConnectionCredentialsSchema } from "./godaddy/godaddy-connection-schemas";
 import { ValidateHCVaultConnectionCredentialsSchema } from "./hc-vault";
 import { hcVaultConnectionService } from "./hc-vault/hc-vault-connection-service";
 import { ValidateHerokuConnectionCredentialsSchema } from "./heroku";
@@ -249,10 +251,12 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.Devin]: ValidateDevinConnectionCredentialsSchema,
   [AppConnection.Ona]: ValidateOnaConnectionCredentialsSchema,
   [AppConnection.DigiCert]: ValidateDigiCertConnectionCredentialsSchema,
+  [AppConnection.GoDaddy]: ValidateGoDaddyConnectionCredentialsSchema,
   [AppConnection.TravisCI]: ValidateTravisCIConnectionCredentialsSchema,
   [AppConnection.Salesforce]: ValidateSalesforceConnectionCredentialsSchema,
   [AppConnection.Snowflake]: ValidateSnowflakeConnectionCredentialsSchema,
-  [AppConnection.Datadog]: ValidateDatadogConnectionCredentialsSchema
+  [AppConnection.Datadog]: ValidateDatadogConnectionCredentialsSchema,
+  [AppConnection.F5BigIp]: ValidateF5BigIpConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({

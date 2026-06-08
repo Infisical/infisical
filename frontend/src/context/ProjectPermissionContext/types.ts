@@ -362,7 +362,8 @@ export type ConditionalProjectPermissionSubject =
   | ProjectPermissionSub.McpEndpoints
   | ProjectPermissionSub.Member
   | ProjectPermissionSub.Groups
-  | ProjectPermissionSub.Commits;
+  | ProjectPermissionSub.Commits
+  | ProjectPermissionSub.HoneyTokens;
 
 export const formatedConditionsOperatorNames: { [K in PermissionConditionOperators]: string } = {
   [PermissionConditionOperators.$EQ]: "equal to",
@@ -495,6 +496,11 @@ export type DynamicSecretSubjectFields = {
 };
 
 export type SecretImportSubjectFields = {
+  environment: string;
+  secretPath: string;
+};
+
+export type HoneyTokenSubjectFields = {
   environment: string;
   secretPath: string;
 };
@@ -757,7 +763,13 @@ export type ProjectPermissionSet =
   | [ProjectPermissionApprovalRequestGrantActions, ProjectPermissionSub.ApprovalRequestGrants]
   | [ProjectPermissionSecretApprovalRequestActions, ProjectPermissionSub.SecretApprovalRequest]
   | [ProjectPermissionInsightsActions, ProjectPermissionSub.Insights]
-  | [ProjectPermissionHoneyTokenActions, ProjectPermissionSub.HoneyTokens]
+  | [
+      ProjectPermissionHoneyTokenActions,
+      (
+        | ProjectPermissionSub.HoneyTokens
+        | (ForcedSubject<ProjectPermissionSub.HoneyTokens> & HoneyTokenSubjectFields)
+      )
+    ]
   | [
       ProjectPermissionMcpEndpointActions,
       (

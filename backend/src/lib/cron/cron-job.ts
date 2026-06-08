@@ -32,6 +32,7 @@ export const CronJobName = {
   ProjectEnvHardDelete: "project-env-hard-delete",
   ProjectHardDelete: "project-hard-delete",
   DigiCertRevocationSync: "digicert-revocation-sync",
+  GoDaddyOrderPolling: "godaddy-order-polling",
   CaCrlRotation: "ca-crl-rotation",
   SignerDailyAutoRenewal: "signer-daily-auto-renewal",
   SignerIssuancePolling: "signer-issuance-polling"

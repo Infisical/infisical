@@ -19,7 +19,12 @@ import { TCertificateAuthorityDALFactory } from "@app/services/certificate-autho
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { assertCaInProfileProject } from "@app/services/certificate-authority/certificate-authority-fns";
 import { TCertificateIssuanceQueueFactory } from "@app/services/certificate-authority/certificate-issuance-queue";
+import { validateGoDaddyIssuanceInputs } from "@app/services/certificate-authority/godaddy/godaddy-certificate-authority-validators";
 import { TInternalCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-service";
+import {
+  extractAlgorithmsFromCSR,
+  extractCertificateRequestFromCSR
+} from "@app/services/certificate-common/certificate-csr-utils";
 import { TCertificatePolicyServiceFactory } from "@app/services/certificate-policy/certificate-policy-service";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import { EnrollmentType, IssuerType } from "@app/services/certificate-profile/certificate-profile-types";
@@ -470,7 +475,8 @@ export const certificateApprovalServiceFactory = (
       caType !== CaType.AZURE_AD_CS &&
       caType !== CaType.AWS_PCA &&
       caType !== CaType.AWS_ACM_PUBLIC_CA &&
-      caType !== CaType.VENAFI_TPP
+      caType !== CaType.VENAFI_TPP &&
+      caType !== CaType.GODADDY
     ) {
       return null;
     }
@@ -488,6 +494,19 @@ export const certificateApprovalServiceFactory = (
         country: certRequest.country || undefined,
         state: certRequest.state || undefined,
         locality: certRequest.locality || undefined
+      });
+    }
+
+    if (caType === CaType.GODADDY) {
+      // Validate the CSR's actual contents when one is present, so an approved BYO CSR can't carry a
+      // non-RSA key or extra SANs the GoDaddy guard never saw.
+      const csrDerived = certRequest.csr ? extractCertificateRequestFromCSR(certRequest.csr) : undefined;
+      validateGoDaddyIssuanceInputs({
+        keyAlgorithm: certRequest.csr
+          ? extractAlgorithmsFromCSR(certRequest.csr).keyAlgorithm
+          : certRequest.keyAlgorithm || undefined,
+        altNames: csrDerived?.subjectAlternativeNames ?? altNames ?? undefined,
+        commonName: csrDerived?.commonName ?? certRequest.commonName ?? undefined
       });
     }
 

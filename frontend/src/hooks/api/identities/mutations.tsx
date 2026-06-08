@@ -272,6 +272,11 @@ export const useClearIdentityUniversalAuthLockouts = () => {
       queryClient.invalidateQueries({
         queryKey: identitiesKeys.getIdentityUniversalAuth(identityId)
       });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.searchIdentitiesRoot });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
+      queryClient.invalidateQueries({
+        predicate: (q) => q.queryKey.includes("project-identity-memberships")
+      });
     }
   });
 };
@@ -1999,6 +2004,11 @@ export const useClearIdentityLdapAuthLockouts = () => {
     onSuccess: (_, { identityId }) => {
       queryClient.invalidateQueries({
         queryKey: identitiesKeys.getIdentityLdapAuth(identityId)
+      });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.searchIdentitiesRoot });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
+      queryClient.invalidateQueries({
+        predicate: (q) => q.queryKey.includes("project-identity-memberships")
       });
     }
   });
