@@ -517,7 +517,6 @@ export const insightsServiceFactory = ({
       key: cacheKey,
       ttlSeconds: KeyStoreTtls.InsightsDuplicationCacheInSeconds,
       fetcher: async () => {
-
         const rawGroups = await secretV2BridgeDAL.findDuplicatedSecretValues(dto.projectId, {
           offset: dto.offset ?? 0,
           limit: dto.limit ?? 50
