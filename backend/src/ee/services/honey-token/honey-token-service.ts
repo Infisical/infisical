@@ -183,14 +183,6 @@ export const honeyTokenServiceFactory = ({
     { projectId, type, name, description, secretsMapping, environment, secretPath }: THoneyTokenCreateInput,
     actor: OrgServiceActor
   ) => {
-    const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
-
-    if (!folder) {
-      throw new BadRequestError({
-        message: `Could not find folder with path "${secretPath}" in environment "${environment}"`
-      });
-    }
-
     const canonicalPath = prefixWithSlash(removeTrailingSlash(secretPath));
 
     const { permission } = await permissionService.getProjectPermission({
@@ -205,6 +197,14 @@ export const honeyTokenServiceFactory = ({
       ProjectPermissionHoneyTokenActions.Create,
       subject(ProjectPermissionSub.HoneyTokens, { environment, secretPath: canonicalPath })
     );
+
+    const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
+
+    if (!folder) {
+      throw new BadRequestError({
+        message: `Could not find folder with path "${secretPath}" in environment "${environment}"`
+      });
+    }
 
     const providerType = assertSupportedHoneyTokenType(type);
     const providerHooks = honeyTokenProviderHooksByType[providerType];
