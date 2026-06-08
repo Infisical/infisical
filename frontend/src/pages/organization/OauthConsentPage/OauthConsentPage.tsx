@@ -148,7 +148,7 @@ export const OauthConsentPage = () => {
           <div className="flex gap-3">
             <Button
               variant="outline"
-              isFullWidth
+              className="flex-1"
               onClick={handleDeny}
               isDisabled={isConsenting || !isRequestValidated}
             >
@@ -156,7 +156,7 @@ export const OauthConsentPage = () => {
             </Button>
             <Button
               variant="org"
-              isFullWidth
+              className="flex-1"
               onClick={handleAuthorize}
               isPending={isConsenting}
               isDisabled={isConsenting || !isRequestValidated || isPkceMissing}
