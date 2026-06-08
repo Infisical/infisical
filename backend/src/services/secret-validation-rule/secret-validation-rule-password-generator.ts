@@ -11,6 +11,8 @@ const DEFAULT_MAX_LENGTH = 64;
 
 const MAX_GENERATED_PASSWORD_LENGTH = 2048;
 
+const DRY_RUN_ITERATIONS = 100;
+
 const CHAR_POOL = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_.~!*";
 
 const SAFE_PASSWORD_ALPHABET = new RE2(/^[A-Za-z0-9\-_.~!*]+$/);
@@ -134,4 +136,10 @@ export const generatePasswordWithConstraints = (constraints: TConstraint[]): str
   }
 
   return finalPassword;
+};
+
+export const assertConstraintsProduceSafePasswords = (constraints: TConstraint[]): void => {
+  for (let i = 0; i < DRY_RUN_ITERATIONS; i += 1) {
+    generatePasswordWithConstraints(constraints);
+  }
 };

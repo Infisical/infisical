@@ -15,7 +15,7 @@ import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-
 import { TSecretVersionV2DALFactory } from "../secret-v2-bridge/secret-version-dal";
 import { TSecretValidationRuleDALFactory } from "./secret-validation-rule-dal";
 import { checkForOverlappingRules, enforceSecretValidationRules } from "./secret-validation-rule-fns";
-import { generatePasswordWithConstraints } from "./secret-validation-rule-password-generator";
+import { assertConstraintsProduceSafePasswords } from "./secret-validation-rule-password-generator";
 import { MAX_PREVENT_VALUE_REUSE_VERSIONS, parseSecretValidationRuleInputs } from "./secret-validation-rule-schemas";
 import {
   ConstraintTarget,
@@ -131,7 +131,9 @@ export const secretValidationRuleServiceFactory = ({
     // infeasible constraints (impossible length window, bad regex, etc.) fail
     // at save time rather than silently breaking lease/rotation creation later.
     if (type === SecretValidationRuleType.DynamicSecrets || type === SecretValidationRuleType.SecretRotations) {
-      generatePasswordWithConstraints((parsedInputs as TDynamicSecretsInputs | TSecretRotationsInputs).constraints);
+      assertConstraintsProduceSafePasswords(
+        (parsedInputs as TDynamicSecretsInputs | TSecretRotationsInputs).constraints
+      );
     }
 
     const { decryptor: ruleInputsDecryptor } = await kmsService.createCipherPairWithDataKey({
@@ -237,7 +239,9 @@ export const secretValidationRuleServiceFactory = ({
     const parsedInputs = parseSecretValidationRuleInputs(ruleType, ruleInputs);
 
     if (ruleType === SecretValidationRuleType.DynamicSecrets || ruleType === SecretValidationRuleType.SecretRotations) {
-      generatePasswordWithConstraints((parsedInputs as TDynamicSecretsInputs | TSecretRotationsInputs).constraints);
+      assertConstraintsProduceSafePasswords(
+        (parsedInputs as TDynamicSecretsInputs | TSecretRotationsInputs).constraints
+      );
     }
 
     const finalEnvId = envId !== undefined ? envId : (existingRule.envId as string | null);
