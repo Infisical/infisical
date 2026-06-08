@@ -51,6 +51,19 @@ const CERT_MANAGER_ROLES = [
   }
 ];
 
+const PAM_ROLES = [
+  {
+    slug: "admin",
+    name: "Admin",
+    description: "Full administrative access over Access Management"
+  },
+  {
+    slug: "member",
+    name: "Member",
+    description: "Access scoped to the folders and accounts they've been added to"
+  }
+];
+
 const EmailSchema = z.string().email().min(1).trim().toLowerCase();
 
 const addMemberFormSchema = z.object({
@@ -111,14 +124,20 @@ export const AddOrgMemberModal = ({
   const projects = useMemo(() => {
     if (!rawProjects) return rawProjects;
     const activeId = certManagerInstance?.activeProjectId ?? null;
+    const latestPamId = rawProjects
+      .filter((p) => p.type === ProjectType.PAM)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0]?.id;
     return rawProjects
       .filter((p) => {
-        if (p.type !== ProjectType.CertificateManager) return true;
-        return activeId ? p.id === activeId : true;
+        if (p.type === ProjectType.CertificateManager) return activeId ? p.id === activeId : true;
+        if (p.type === ProjectType.PAM) return p.id === latestPamId;
+        return true;
       })
-      .map((p) =>
-        p.type === ProjectType.CertificateManager ? { ...p, name: "Certificate Manager" } : p
-      );
+      .map((p) => {
+        if (p.type === ProjectType.CertificateManager) return { ...p, name: "Certificate Manager" };
+        if (p.type === ProjectType.PAM) return { ...p, name: "Access Management" };
+        return p;
+      });
   }, [rawProjects, certManagerInstance?.activeProjectId]);
 
   const {
@@ -138,19 +157,25 @@ export const AddOrgMemberModal = ({
   const hasCertManagerSelection = selectedProjects.some(
     (p) => p.type === ProjectType.CertificateManager
   );
+  const hasPamSelection = selectedProjects.some((p) => p.type === ProjectType.PAM);
   const { data: fetchedProjectRoles, isPending: isProjectRolesLoading } = useGetProjectRoles(
     singleSelectedProjectId ?? ""
   );
-  // eslint-disable-next-line no-nested-ternary
-  const projectRoles = hasCertManagerSelection
-    ? CERT_MANAGER_ROLES
-    : fetchedProjectRoles?.length
-      ? fetchedProjectRoles
-      : BUILT_IN_PROJECT_ROLES;
+
+  let projectRoles;
+  if (hasCertManagerSelection) {
+    projectRoles = CERT_MANAGER_ROLES;
+  } else if (hasPamSelection) {
+    projectRoles = PAM_ROLES;
+  } else if (fetchedProjectRoles?.length) {
+    projectRoles = fetchedProjectRoles;
+  } else {
+    projectRoles = BUILT_IN_PROJECT_ROLES;
+  }
 
   useEffect(() => {
     setValue("projectRole", DEFAULT_PROJECT_ROLE);
-  }, [singleSelectedProjectId, hasCertManagerSelection, setValue]);
+  }, [singleSelectedProjectId, hasCertManagerSelection, hasPamSelection, setValue]);
 
   // set initial form role based off org default role
   useEffect(() => {
@@ -262,6 +287,8 @@ export const AddOrgMemberModal = ({
         return "KMS";
       case ProjectType.SSH:
         return "SSH";
+      case ProjectType.PAM:
+        return "Access Management";
       default:
         return "Other";
     }
