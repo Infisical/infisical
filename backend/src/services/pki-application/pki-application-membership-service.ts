@@ -52,7 +52,7 @@ type TPkiApplicationMembershipServiceFactoryDep = {
   >;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "find" | "delete" | "update">;
   permissionService: Pick<TPermissionServiceFactory, "getResourcePermission" | "getProjectPermission">;
-  userDAL: Pick<TUserDALFactory, "find" | "findByEmailsOrUsernames">;
+  userDAL: Pick<TUserDALFactory, "find" | "findByEmailsOrUsernames" | "findByCaseInsensitiveUsernames">;
   identityDAL: Pick<TIdentityDALFactory, "find">;
   groupDAL: Pick<TGroupDALFactory, "find">;
   approvalPolicyDAL: Pick<
@@ -573,10 +573,10 @@ export const pkiApplicationMembershipServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Create, ResourcePermissionSub.Member);
 
-    const usersByEmail = emails.length ? await userDAL.find({ $in: { username: emails } }) : [];
+    const usersByEmail = emails.length ? await userDAL.findByCaseInsensitiveUsernames(emails) : [];
     const userByEmail = new Map<string, (typeof usersByEmail)[number]>();
-    for (const u of usersByEmail) userByEmail.set(u.username, u);
-    const unresolved = emails.filter((e) => !userByEmail.has(e));
+    for (const u of usersByEmail) userByEmail.set(u.username.toLowerCase(), u);
+    const unresolved = emails.filter((e) => !userByEmail.has(e.toLowerCase()));
 
     const existing = await membershipDAL.find({
       scope: RESOURCE_SCOPE,
@@ -595,7 +595,7 @@ export const pkiApplicationMembershipServiceFactory = ({
       }
     });
     emails.forEach((email) => {
-      const user = userByEmail.get(email);
+      const user = userByEmail.get(email.toLowerCase());
       if (user && !seen.has(user.id)) {
         seen.add(user.id);
         targets.push({ userId: user.id, label: email });

@@ -251,6 +251,21 @@ export const oidcConfigServiceFactory = ({
           return foundUser;
         }
 
+        // Normalize username/email to lowercase on re-auth so that
+        // pre-migration mixed-case values are corrected.
+        if (foundUser.username !== sanitizedEmail || foundUser.email !== sanitizedEmail) {
+          await userDAL.updateById(
+            foundUser.id,
+            {
+              username: sanitizedEmail,
+              email: sanitizedEmail
+            },
+            tx
+          );
+          foundUser.username = sanitizedEmail;
+          foundUser.email = sanitizedEmail;
+        }
+
         const [orgMembership] = await orgDAL.findMembership(
           {
             [`${TableName.Membership}.actorUserId` as "actorUserId"]: userAlias.userId,

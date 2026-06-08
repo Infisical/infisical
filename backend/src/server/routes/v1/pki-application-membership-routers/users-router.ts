@@ -26,7 +26,7 @@ const AddUsersBodySchema = z
       .email()
       .array()
       .default([])
-      .refine((val) => val.every((el) => el === el.toLowerCase()), "Email must be lowercase"),
+      .transform((val) => val.map((el) => el.toLowerCase())),
     role: z.string().min(1).default("operator")
   })
   .refine((val) => val.userIds.length + val.emails.length > 0, {

@@ -114,10 +114,10 @@ export const membershipUserServiceFactory = ({
   };
 
   const $getUsers = async (usernames: string[]) => {
-    const existingUsers = await userDAL.find({ $in: { username: usernames } });
+    const existingUsers = await userDAL.findByCaseInsensitiveUsernames(usernames);
     if (existingUsers.length !== usernames.length) {
       const newUserEmails = usernames
-        .filter((inviteeEmail) => !existingUsers.find((el) => el.username === inviteeEmail))
+        .filter((inviteeEmail) => !existingUsers.find((el) => el.username.toLowerCase() === inviteeEmail.toLowerCase()))
         .map((el) => el.toLowerCase());
 
       const invalidEmails = newUserEmails.filter((el) => {
@@ -134,7 +134,7 @@ export const membershipUserServiceFactory = ({
 
       await userDAL.transaction(async (tx) => {
         for await (const inviteeEmail of newUserEmails) {
-          let inviteeUser = await userDAL.findOne({ username: inviteeEmail }, tx);
+          let inviteeUser = await userDAL.findOneByCaseInsensitiveUsername(inviteeEmail, tx);
           // if the user doesn't exist we create the user with the email
           if (!inviteeUser) {
             inviteeUser = await userDAL.create(

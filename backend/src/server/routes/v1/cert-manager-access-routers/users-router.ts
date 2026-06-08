@@ -99,12 +99,12 @@ export const registerCertManagerAccessUsersRouter = async (server: FastifyZodPro
           .email()
           .array()
           .default([])
-          .refine((val) => val.every((el) => el === el.toLowerCase()), "Email must be lowercase"),
+          .transform((val) => val.map((el) => el.toLowerCase())),
         usernames: z
           .string()
           .array()
           .default([])
-          .refine((val) => val.every((el) => el === el.toLowerCase()), "Username must be lowercase"),
+          .transform((val) => val.map((el) => el.toLowerCase())),
         roleSlugs: z.string().array().min(1).optional()
       }),
       response: {
@@ -207,12 +207,12 @@ export const registerCertManagerAccessUsersRouter = async (server: FastifyZodPro
           .email()
           .array()
           .default([])
-          .refine((val) => val.every((el) => el === el.toLowerCase()), "Email must be lowercase"),
+          .transform((val) => val.map((el) => el.toLowerCase())),
         usernames: z
           .string()
           .array()
           .default([])
-          .refine((val) => val.every((el) => el === el.toLowerCase()), "Username must be lowercase")
+          .transform((val) => val.map((el) => el.toLowerCase()))
       }),
       response: { 200: z.object({ memberships: ProjectMembershipsSchema.omit({ projectId: true }).array() }) }
     },

@@ -563,22 +563,38 @@ export const samlConfigServiceFactory = ({
     const shouldSyncGroups = !!samlConfig?.enableGroupSync && !!plan.groups;
 
     let user: TUsers;
+    let isStaleAlias = false;
     if (userAlias) {
-      const foundUser = await userDAL.findById(userAlias.userId);
-      // Verify the existing user's stored email domain + cross-org check
-      await verifyEmailDomainOwnership({
-        email: foundUser.username,
-        orgId,
-        emailDomainDAL
-      });
-      // A stale, still-unverified alias may point at another user's account. Don't mutate that
-      // account's org membership / identity metadata / group state until the IdP proves control of
-      // it (the email-verification fallback below issues no session). This guard must run before the
-      // mutations, not just before ensureSsoAccountVerified at the end.
-      const isStaleAlias = isStaleSsoAlias({ user: foundUser, userAlias, assertedEmail: sanitizedEmail });
       user = await userDAL.transaction(async (tx) => {
+        const foundUser = await userDAL.findById(userAlias.userId, tx);
+        // Verify the existing user's stored email domain + cross-org check
+        await verifyEmailDomainOwnership({
+          email: foundUser.username,
+          orgId,
+          emailDomainDAL
+        });
+        // A stale, still-unverified alias may point at another user's account. Don't mutate that
+        // account's org membership / identity metadata / group state until the IdP proves control of
+        // it (the email-verification fallback below issues no session). This guard must run before the
+        // mutations, not just before ensureSsoAccountVerified at the end.
+        isStaleAlias = isStaleSsoAlias({ user: foundUser, userAlias, assertedEmail: sanitizedEmail });
         if (isStaleAlias) {
           return foundUser;
+        }
+
+        // Normalize username/email to lowercase on re-auth so that
+        // pre-migration mixed-case values are corrected.
+        if (foundUser.username !== sanitizedEmail || foundUser.email !== sanitizedEmail) {
+          await userDAL.updateById(
+            foundUser.id,
+            {
+              username: sanitizedEmail,
+              email: sanitizedEmail
+            },
+            tx
+          );
+          foundUser.username = sanitizedEmail;
+          foundUser.email = sanitizedEmail;
         }
 
         const [orgMembership] = await orgDAL.findMembership(

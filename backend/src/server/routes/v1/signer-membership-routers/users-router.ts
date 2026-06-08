@@ -62,7 +62,7 @@ export const registerSignerUserMembershipRouter = async (server: FastifyZodProvi
             .email()
             .array()
             .default([])
-            .refine((val) => val.every((el) => el === el.toLowerCase()), "Email must be lowercase"),
+            .transform((val) => val.map((el) => el.toLowerCase())),
           role: SignerRoleSchema.default("operator")
         })
         .refine((val) => val.userIds.length + val.emails.length > 0, {

@@ -248,16 +248,46 @@ export const userDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findByCaseInsensitiveUsernames = async (usernames: string[], tx?: Knex) => {
+    if (!usernames.length) return [];
+    try {
+      const lowercased = usernames.map((u) => u.toLowerCase());
+      return await (tx || db.replicaNode())(TableName.Users)
+        .whereRaw(`LOWER("username") IN (${lowercased.map(() => "?").join(",")})`, lowercased)
+        .select(selectAllTableCols(TableName.Users));
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find users by case-insensitive usernames" });
+    }
+  };
+
+  const findOneByCaseInsensitiveUsername = async (username: string, tx?: Knex) => {
+    try {
+      return await (tx || db.replicaNode())(TableName.Users)
+        .whereRaw(`LOWER("username") = ?`, [username.toLowerCase()])
+        .first(selectAllTableCols(TableName.Users));
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find one user by case-insensitive username" });
+    }
+  };
+
   const findByEmailsOrUsernames = async (
     { emails, usernames }: { emails: string[]; usernames: string[] },
     tx?: Knex
   ) => {
     if (!emails.length && !usernames.length) return [];
     try {
+      const lowercasedEmails = emails.map((e) => e.toLowerCase());
+      const lowercasedUsernames = usernames.map((u) => u.toLowerCase());
+
       return await (tx || db.replicaNode())(TableName.Users)
         .where((qb) => {
-          if (emails.length) void qb.whereIn("email", emails);
-          if (usernames.length) void qb.orWhereIn("username", usernames);
+          if (lowercasedEmails.length)
+            void qb.whereRaw(`LOWER("email") IN (${lowercasedEmails.map(() => "?").join(",")})`, lowercasedEmails);
+          if (lowercasedUsernames.length)
+            void qb.orWhereRaw(
+              `LOWER("username") IN (${lowercasedUsernames.map(() => "?").join(",")})`,
+              lowercasedUsernames
+            );
         })
         .select(selectAllTableCols(TableName.Users));
     } catch (error) {
@@ -279,6 +309,8 @@ export const userDALFactory = (db: TDbClient) => {
     createUserAction,
     getUsersByFilter,
     findAllMyAccounts,
-    findByEmailsOrUsernames
+    findByEmailsOrUsernames,
+    findByCaseInsensitiveUsernames,
+    findOneByCaseInsensitiveUsername
   };
 };
