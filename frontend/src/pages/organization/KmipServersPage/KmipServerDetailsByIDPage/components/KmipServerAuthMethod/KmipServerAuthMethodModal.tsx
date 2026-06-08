@@ -33,9 +33,11 @@ const METHOD_OPTIONS: { value: SettableMethod; label: string }[] = [
 const schema = z
   .object({
     method: z.enum(["aws", "token"]),
-    stsEndpoint: z.string(),
-    allowedPrincipalArns: z.string(),
-    allowedAccountIds: z.string()
+    stsEndpoint: z.string().max(255, "STS endpoint must be at most 255 characters"),
+    allowedPrincipalArns: z
+      .string()
+      .max(4096, "Allowed principal ARNs must be at most 4096 characters"),
+    allowedAccountIds: z.string().max(2048, "Allowed account IDs must be at most 2048 characters")
   })
   .superRefine((data, ctx) => {
     if (data.method === "aws") {
