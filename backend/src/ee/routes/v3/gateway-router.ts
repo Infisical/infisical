@@ -61,10 +61,13 @@ const AwsAuthMethodInputSchema = z
       .string()
       .trim()
       .min(1)
+      .max(255)
       .default("https://sts.amazonaws.com/")
       .describe(GATEWAYS.AUTH_METHOD.stsEndpoint),
     allowedPrincipalArns: validatePrincipalArns.describe(GATEWAYS.AUTH_METHOD.allowedPrincipalArns),
-    allowedAccountIds: validateAccountIds.describe(GATEWAYS.AUTH_METHOD.allowedAccountIds)
+    allowedAccountIds: validateAccountIds
+      .refine((val) => val.length <= 2048, "Allowed account IDs must be at most 2048 characters")
+      .describe(GATEWAYS.AUTH_METHOD.allowedAccountIds)
   })
   .refine((data) => data.allowedPrincipalArns.trim().length > 0 || data.allowedAccountIds.trim().length > 0, {
     message: "At least one of allowedPrincipalArns or allowedAccountIds must be set",

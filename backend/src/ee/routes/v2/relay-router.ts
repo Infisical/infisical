@@ -53,9 +53,12 @@ const RelayWithAuthMethodSchema = SanitizedRelaySchema.extend({
 const AwsAuthMethodInputSchema = z
   .object({
     method: z.literal(ResourceAuthMethodType.Aws),
-    stsEndpoint: z.string().trim().min(1).default("https://sts.amazonaws.com/"),
+    stsEndpoint: z.string().trim().min(1).max(255).default("https://sts.amazonaws.com/"),
     allowedPrincipalArns: validatePrincipalArns,
-    allowedAccountIds: validateAccountIds
+    allowedAccountIds: validateAccountIds.refine(
+      (val) => val.length <= 2048,
+      "Allowed account IDs must be at most 2048 characters"
+    )
   })
   .refine((data) => data.allowedPrincipalArns.trim().length > 0 || data.allowedAccountIds.trim().length > 0, {
     message: "At least one of allowedPrincipalArns or allowedAccountIds must be set",
