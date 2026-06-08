@@ -26,7 +26,13 @@ export const PamAccountsSchema = z.object({
   internalMetadata: z.unknown().nullable().optional(),
   discoveryFingerprint: z.string().nullable().optional(),
   policyId: z.string().uuid().nullable().optional(),
-  domainId: z.string().uuid().nullable().optional()
+  domainId: z.string().uuid().nullable().optional(),
+  templateId: z.string().uuid(),
+  encryptedConnectionDetails: zodBuffer,
+  encryptedInternalMetadata: zodBuffer.nullable().optional(),
+  gatewayId: z.string().uuid().nullable().optional(),
+  gatewayPoolId: z.string().uuid().nullable().optional(),
+  recordingConnectionId: z.string().uuid().nullable().optional()
 });
 
 export type TPamAccounts = z.infer<typeof PamAccountsSchema>;

@@ -13,7 +13,7 @@ export const PamSessionsSchema = z.object({
   id: z.string().uuid(),
   projectId: z.string(),
   accountId: z.string().uuid().nullable().optional(),
-  resourceType: z.string(),
+  accountType: z.string(),
   resourceName: z.string(),
   accountName: z.string(),
   userId: z.string().uuid().nullable().optional(),
@@ -37,7 +37,9 @@ export const PamSessionsSchema = z.object({
   selectedResourceId: z.string().uuid().nullable().optional(),
   encryptedSessionKey: zodBuffer.nullable().optional(),
   gatewayUploadTokenHash: zodBuffer.nullable().optional(),
-  gatewayId: z.string().uuid().nullable().optional()
+  gatewayId: z.string().uuid().nullable().optional(),
+  folderName: z.string().nullable().optional(),
+  selectedHost: z.string().nullable().optional()
 });
 
 export type TPamSessions = z.infer<typeof PamSessionsSchema>;
