@@ -44,7 +44,11 @@ import {
   azureEntraIdScimPreSaveTransformSyncOptions,
   AzureEntraIdScimSyncFns
 } from "./azure-entra-id-scim";
-import { AZURE_KEY_VAULT_SYNC_LIST_OPTION, azureKeyVaultSyncFactory } from "./azure-key-vault";
+import {
+  AZURE_KEY_VAULT_SYNC_LIST_OPTION,
+  azureKeyVaultSyncFactory,
+  AzureKeyVaultSyncMappingBehavior
+} from "./azure-key-vault";
 import { BITBUCKET_SYNC_LIST_OPTION, BitbucketSyncFns } from "./bitbucket";
 import { CAMUNDA_SYNC_LIST_OPTION, camundaSyncFactory } from "./camunda";
 import { CHECKLY_SYNC_LIST_OPTION } from "./checkly/checkly-sync-constants";
@@ -317,7 +321,7 @@ export const SecretSyncFns = {
         return azureKeyVaultSyncFactory({
           appConnectionDAL,
           kmsService
-        }).syncSecrets(secretSync, schemaSecretMap);
+        }).syncSecrets(secretSync, schemaSecretMap, secretMap);
       case SecretSync.AzureAppConfiguration:
         return azureAppConfigurationSyncFactory({
           appConnectionDAL,
@@ -444,6 +448,8 @@ export const SecretSyncFns = {
           appConnectionDAL,
           kmsService
         }).getSecrets(secretSync);
+        if (secretSync.destinationConfig.mappingBehavior === AzureKeyVaultSyncMappingBehavior.ManyToOne)
+          return secretMap;
         break;
       case SecretSync.AzureAppConfiguration:
         secretMap = await azureAppConfigurationSyncFactory({

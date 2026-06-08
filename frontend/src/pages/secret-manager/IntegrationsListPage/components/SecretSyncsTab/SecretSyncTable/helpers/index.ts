@@ -58,6 +58,7 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
       break;
     case SecretSync.AzureKeyVault:
       primaryText = destinationConfig.vaultBaseUrl;
+      secondaryText = destinationConfig.mappingBehavior ?? "one-to-one";
       break;
     case SecretSync.AzureAppConfiguration:
       primaryText = destinationConfig.configurationUrl;

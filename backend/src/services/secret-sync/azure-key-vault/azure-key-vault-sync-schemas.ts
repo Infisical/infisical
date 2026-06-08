@@ -11,14 +11,46 @@ import {
 import { TSyncOptionsConfig } from "@app/services/secret-sync/secret-sync-types";
 
 import { SECRET_SYNC_NAME_MAP } from "../secret-sync-maps";
+import { AzureKeyVaultSyncMappingBehavior } from "./azure-key-vault-sync-enums";
 
-const AzureKeyVaultSyncDestinationConfigSchema = z.object({
-  vaultBaseUrl: z
-    .string()
-    .url("Invalid vault base URL format")
-    .min(1, "Vault base URL required")
-    .describe(SecretSyncs.DESTINATION_CONFIG.AZURE_KEY_VAULT.vaultBaseUrl)
-});
+const AzureKeyVaultSyncDestinationConfigInputSchema = z
+  .discriminatedUnion("mappingBehavior", [
+    z.object({
+      mappingBehavior: z
+        .literal(AzureKeyVaultSyncMappingBehavior.OneToOne)
+        .describe(SecretSyncs.DESTINATION_CONFIG.AZURE_KEY_VAULT.mappingBehavior)
+    }),
+    z.object({
+      mappingBehavior: z
+        .literal(AzureKeyVaultSyncMappingBehavior.ManyToOne)
+        .describe(SecretSyncs.DESTINATION_CONFIG.AZURE_KEY_VAULT.mappingBehavior),
+      secretName: z
+        .string()
+        .min(1, "Secret name is required")
+        .max(127, "Secret name cannot exceed 127 characters")
+        .regex(/^[a-zA-Z0-9-]+$/, "Secret name must contain only alphanumeric characters and hyphens")
+        .describe(SecretSyncs.DESTINATION_CONFIG.AZURE_KEY_VAULT.secretName)
+    })
+  ])
+  .and(
+    z.object({
+      vaultBaseUrl: z
+        .string()
+        .url("Invalid vault base URL format")
+        .min(1, "Vault base URL required")
+        .describe(SecretSyncs.DESTINATION_CONFIG.AZURE_KEY_VAULT.vaultBaseUrl)
+    })
+  );
+
+// Backward-compatible schema for response serialization: existing AKV sync records
+// created before Many-to-One support won't have mappingBehavior in their destinationConfig.
+// Default to OneToOne so Fastify serialization doesn't fail with a 500 error.
+const AzureKeyVaultSyncDestinationConfigSchema = z.preprocess((data) => {
+  if (typeof data === "object" && data !== null && !("mappingBehavior" in (data as Record<string, unknown>))) {
+    return { ...(data as Record<string, unknown>), mappingBehavior: AzureKeyVaultSyncMappingBehavior.OneToOne };
+  }
+  return data;
+}, AzureKeyVaultSyncDestinationConfigInputSchema);
 
 const AzureKeyVaultSyncOptionsSchema = z.object({
   disableCertificateImport: z
@@ -45,7 +77,7 @@ export const CreateAzureKeyVaultSyncSchema = GenericCreateSecretSyncFieldsSchema
   AzureKeyVaultSyncOptionsConfig,
   AzureKeyVaultSyncOptionsSchema
 ).extend({
-  destinationConfig: AzureKeyVaultSyncDestinationConfigSchema
+  destinationConfig: AzureKeyVaultSyncDestinationConfigInputSchema
 });
 
 export const UpdateAzureKeyVaultSyncSchema = GenericUpdateSecretSyncFieldsSchema(
@@ -53,7 +85,7 @@ export const UpdateAzureKeyVaultSyncSchema = GenericUpdateSecretSyncFieldsSchema
   AzureKeyVaultSyncOptionsConfig,
   AzureKeyVaultSyncOptionsSchema
 ).extend({
-  destinationConfig: AzureKeyVaultSyncDestinationConfigSchema.optional()
+  destinationConfig: AzureKeyVaultSyncDestinationConfigInputSchema.optional()
 });
 
 export const AzureKeyVaultSyncListItemSchema = z

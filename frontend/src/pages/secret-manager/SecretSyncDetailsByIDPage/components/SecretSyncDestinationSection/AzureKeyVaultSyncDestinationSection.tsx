@@ -1,19 +1,34 @@
 import { Detail, DetailLabel, DetailValue } from "@app/components/v3";
-import { TAzureKeyVaultSync } from "@app/hooks/api/secretSyncs/types/azure-key-vault-sync";
+import {
+  AzureKeyVaultSyncMappingBehavior,
+  TAzureKeyVaultSync
+} from "@app/hooks/api/secretSyncs/types/azure-key-vault-sync";
 
 type Props = {
   secretSync: TAzureKeyVaultSync;
 };
 
 export const AzureKeyVaultSyncDestinationSection = ({ secretSync }: Props) => {
-  const {
-    destinationConfig: { vaultBaseUrl }
-  } = secretSync;
+  const { destinationConfig } = secretSync;
 
   return (
-    <Detail>
-      <DetailLabel>Vault URL</DetailLabel>
-      <DetailValue>{vaultBaseUrl}</DetailValue>
-    </Detail>
+    <>
+      <Detail>
+        <DetailLabel>Vault URL</DetailLabel>
+        <DetailValue>{destinationConfig.vaultBaseUrl}</DetailValue>
+      </Detail>
+      <Detail className="capitalize">
+        <DetailLabel>Mapping Behavior</DetailLabel>
+        <DetailValue>
+          {destinationConfig.mappingBehavior ?? AzureKeyVaultSyncMappingBehavior.OneToOne}
+        </DetailValue>
+      </Detail>
+      {destinationConfig.mappingBehavior === AzureKeyVaultSyncMappingBehavior.ManyToOne && (
+        <Detail>
+          <DetailLabel>Secret Name</DetailLabel>
+          <DetailValue>{destinationConfig.secretName}</DetailValue>
+        </Detail>
+      )}
+    </>
   );
 };
