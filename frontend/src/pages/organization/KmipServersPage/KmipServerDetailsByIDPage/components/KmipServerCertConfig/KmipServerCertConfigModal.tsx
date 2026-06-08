@@ -34,8 +34,12 @@ const keyAlgorithmOptions = certKeyAlgorithms
   .map(({ value }) => ({ value, label: certKeyAlgorithmToNameMap[value] }));
 
 const schema = z.object({
-  hostnamesOrIps: z.string().trim().min(1, "At least one hostname or IP is required"),
-  ttl: z.string().trim().min(1, "TTL is required"),
+  hostnamesOrIps: z
+    .string()
+    .trim()
+    .min(1, "At least one hostname or IP is required")
+    .max(4096, "Hostnames or IPs must be at most 4096 characters"),
+  ttl: z.string().trim().min(1, "TTL is required").max(64, "TTL is too long"),
   keyAlgorithm: z.nativeEnum(CertKeyAlgorithm)
 });
 

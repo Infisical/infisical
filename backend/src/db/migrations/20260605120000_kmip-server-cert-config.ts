@@ -7,10 +7,16 @@ import { TableName } from "../schemas";
 // reads these; the legacy machine-identity /server-registration path still takes them in the body.
 const COLUMNS = ["hostnamesOrIps", "ttl", "keyAlgorithm"] as const;
 
+// hostnamesOrIps is a comma-separated SAN list, so it gets the same capacity as the issued cert's
+// altNames column (4096); ttl/keyAlgorithm are short and use the default varchar length.
+const HOSTNAMES_OR_IPS_MAX_LENGTH = 4096;
+
 export async function up(knex: Knex): Promise<void> {
   if (await knex.schema.hasTable(TableName.KmipServer)) {
     await knex.schema.alterTable(TableName.KmipServer, (t) => {
-      COLUMNS.forEach((col) => t.string(col));
+      t.string("hostnamesOrIps", HOSTNAMES_OR_IPS_MAX_LENGTH);
+      t.string("ttl");
+      t.string("keyAlgorithm");
     });
   }
 }
