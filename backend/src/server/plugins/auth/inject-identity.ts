@@ -212,6 +212,10 @@ export const injectIdentity = fp(
         return;
       }
 
+      if (pathname === "/api/v1/oauth/token") {
+        return;
+      }
+
       // Authentication is handled on a route-level
       if (pathname === "/api/v1/relays/register-instance-relay") {
         return;

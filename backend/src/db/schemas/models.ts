@@ -301,6 +301,9 @@ export enum TableName {
   CaSigningConfig = "ca_signing_configs",
   SecretValidationRule = "secret_validation_rules",
 
+  // OAuth 2.0 authorization server (Infisical as an OAuth provider)
+  OauthClient = "oauth_clients",
+
   // Honey Tokens
   HoneyTokenConfig = "honey_token_configs",
   HoneyToken = "honey_tokens",

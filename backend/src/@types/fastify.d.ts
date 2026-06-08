@@ -134,6 +134,7 @@ import { TMembershipUserServiceFactory } from "@app/services/membership-user/mem
 import { TMfaSessionServiceFactory } from "@app/services/mfa-session/mfa-session-service";
 import { TMicrosoftTeamsServiceFactory } from "@app/services/microsoft-teams/microsoft-teams-service";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
+import { TOauthClientServiceFactory } from "@app/services/oauth-client/oauth-client-service";
 import { TOfflineUsageReportServiceFactory } from "@app/services/offline-usage-report/offline-usage-report-service";
 import { TOrgServiceFactory } from "@app/services/org/org-service";
 import { TOrgAdminServiceFactory } from "@app/services/org-admin/org-admin-service";
@@ -278,6 +279,7 @@ declare module "fastify" {
       accountRecovery: TAccountRecoveryServiceFactory;
       signup: TAuthSignupFactory;
       authToken: TAuthTokenServiceFactory;
+      oauthClient: TOauthClientServiceFactory;
       permission: TPermissionServiceFactory;
       org: TOrgServiceFactory;
       oidc: TOidcConfigServiceFactory;
