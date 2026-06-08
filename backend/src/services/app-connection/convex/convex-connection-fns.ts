@@ -32,7 +32,7 @@ export const validateConvexConnectionCredentials = async (config: TConvexConnect
       validateStatus: (status) => status === 200
     });
   } catch (e) {
-    logger.error(e, "failed to connect");
+    logger.error({ error: e instanceof Error ? e.message : "Unknown error" }, "failed to connect");
     throw new UnauthorizedError({
       message: "Unable to validate connection: verify that your access token and instance URL are correct"
     });
