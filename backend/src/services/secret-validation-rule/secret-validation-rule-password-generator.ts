@@ -9,7 +9,11 @@ import { ConstraintTarget, ConstraintType, TConstraint } from "./secret-validati
 const DEFAULT_MIN_LENGTH = 16;
 const DEFAULT_MAX_LENGTH = 64;
 
+const MAX_GENERATED_PASSWORD_LENGTH = 2048;
+
 const CHAR_POOL = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_.~!*";
+
+const SAFE_PASSWORD_ALPHABET = new RE2(/^[A-Za-z0-9\-_.~!*]+$/);
 
 const generateRandomString = (length: number): string => {
   let out = "";
@@ -17,6 +21,12 @@ const generateRandomString = (length: number): string => {
     out += CHAR_POOL[crypto.randomInt(0, CHAR_POOL.length)];
   }
   return out;
+};
+
+const buildSecureRandExp = (pattern: RegExp): RandExp => {
+  const instance = new RandExp(pattern);
+  instance.randInt = (a: number, b: number) => crypto.randomInt(a, b + 1);
+  return instance;
 };
 
 /**
@@ -66,7 +76,7 @@ export const generatePasswordWithConstraints = (constraints: TConstraint[]): str
       });
     }
     try {
-      middle = new RandExp(new RegExp(validatedPattern)).gen();
+      middle = buildSecureRandExp(new RegExp(validatedPattern)).gen();
     } catch {
       throw new BadRequestError({
         message: `Could not generate a value from regex pattern: ${regexConstraint.value}`
@@ -81,6 +91,12 @@ export const generatePasswordWithConstraints = (constraints: TConstraint[]): str
     if (!Number.isFinite(minLength) || !Number.isFinite(maxLength) || minLength > maxLength) {
       throw new BadRequestError({
         message: "Secret validation rule has impossible length constraints"
+      });
+    }
+
+    if (maxLength > MAX_GENERATED_PASSWORD_LENGTH || minLength > MAX_GENERATED_PASSWORD_LENGTH) {
+      throw new BadRequestError({
+        message: `Secret validation rule length constraints exceed the maximum allowed (${MAX_GENERATED_PASSWORD_LENGTH} characters)`
       });
     }
 
@@ -101,5 +117,21 @@ export const generatePasswordWithConstraints = (constraints: TConstraint[]): str
     middle = generateRandomString(fillLength);
   }
 
-  return `${prefix}${middle}${suffix}`;
+  const finalPassword = `${prefix}${middle}${suffix}`;
+
+  if (finalPassword.length > MAX_GENERATED_PASSWORD_LENGTH) {
+    throw new BadRequestError({
+      message: `Secret validation rule produced a value longer than the maximum allowed (${MAX_GENERATED_PASSWORD_LENGTH} characters). Adjust the rule's regex pattern or length constraints.`
+    });
+  }
+
+  if (!SAFE_PASSWORD_ALPHABET.test(finalPassword)) {
+    throw new BadRequestError({
+      message:
+        "Secret validation rule produced a value containing characters outside the allowed alphabet (A-Z, a-z, 0-9, and -_.~!*). " +
+        "Adjust the rule's regex pattern, required prefix, and required suffix to use only safe characters."
+    });
+  }
+
+  return finalPassword;
 };
