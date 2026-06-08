@@ -94,7 +94,9 @@ export const generatePasswordWithConstraints = (constraints: TConstraint[]): str
     const targetMinFill = Math.max(0, minLength - fixedLength);
     const targetMaxFill = maxLength - fixedLength;
     const fillLength =
-      targetMaxFill === targetMinFill ? targetMinFill : targetMinFill + randomInt(0, targetMaxFill - targetMinFill + 1);
+      targetMaxFill === targetMinFill
+        ? targetMinFill
+        : targetMinFill + crypto.randomInt(0, targetMaxFill - targetMinFill + 1);
 
     middle = generateRandomString(fillLength);
   }
