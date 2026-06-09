@@ -400,10 +400,6 @@ The v1beta1 API introduces a cleaner separation of concerns. Instead of defining
 
   Connection config is now defined in a standalone `InfisicalConnection` resource that can be reused by auth and secret resources.
 
-- **Template:** `engineVersion: v1` is now enforced and `includeAllSecrets` has been removed.
-
-  `engineVersion` is a required field and `v1` should be used. The `includeAllSecrets` option no longer exists. Instead, you can iterate over all secrets using a bulk string template with a range loop. See the [Templating](#templating) section for details and examples.
-
 ### Migration steps
 
 <Steps>
@@ -418,6 +414,8 @@ The v1beta1 API introduces a cleaner separation of concerns. Instead of defining
   <Step title="Replace InfisicalSecret with InfisicalStaticSecret">
     Create a new `InfisicalStaticSecret` resource that references your `InfisicalConnection` and `InfisicalAuth` resources.
     See the [InfisicalStaticSecret CRD](/integrations/platforms/kubernetes/infisical-static-secret-crd) documentation for the full spec.
+
+    If you were using templates, note that `engineVersion` is now a required field and the only accepted value is `v1`. The `includeAllSecrets` option no longer exists. Instead, you can iterate over all secrets using a bulk string template with a range loop. See the [Templating](#templating) section for details and examples.
   </Step>
   <Step title="Delete the old v1alpha1 resource">
     Once you have verified that the new v1beta1 resources are working, delete the old `InfisicalSecret` CRD instance.
