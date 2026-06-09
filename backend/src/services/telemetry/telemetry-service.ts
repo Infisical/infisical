@@ -492,7 +492,7 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
 
         // Attach breakdown dimension values as flat properties on the aggregated event
         for (const dim of breakdownDimensions) {
-          if (key[dim]) {
+          if (key[dim] !== undefined) {
             properties[dim] = key[dim];
           }
         }
