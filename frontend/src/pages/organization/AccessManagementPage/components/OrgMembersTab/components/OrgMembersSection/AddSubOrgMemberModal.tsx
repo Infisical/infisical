@@ -103,8 +103,9 @@ export const AddSubOrgMemberModal = ({ onClose }: Props) => {
       : BUILT_IN_PROJECT_ROLES;
 
   useEffect(() => {
-    setValue("projectRole", DEFAULT_PROJECT_ROLE);
-  }, [singleSelectedProjectId, hasCertManagerSelection, setValue]);
+    const memberRole = projectRoles.find((role) => role.slug === DEFAULT_PROJECT_ROLE.slug);
+    setValue("projectRole", memberRole ?? DEFAULT_PROJECT_ROLE);
+  }, [singleSelectedProjectId, hasCertManagerSelection, projectRoles, setValue]);
 
   useEffect(() => {
     if (organizationRoles) {
