@@ -38,6 +38,7 @@ import { registerDeprecatedSecretImportRouter } from "./deprecated-secret-import
 import { registerDeprecatedSecretTagRouter } from "./deprecated-secret-tag-router";
 import { registerEventRouter } from "./event-router";
 import { registerExternalGroupOrgRoleMappingRouter } from "./external-group-org-role-mapping-router";
+import { registerGitHubAppRouter } from "./github-app-router";
 import { registerGroupOrgMembershipRouter } from "./group-org-membership-router";
 import { registerGroupProjectRouter } from "./group-project-router";
 import { registerIdentityAccessTokenRouter } from "./identity-access-token-router";
@@ -145,6 +146,8 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
     },
     { prefix: "/workflow-integrations" }
   );
+
+  await server.register(registerGitHubAppRouter, { prefix: "/github-apps" });
 
   await server.register(
     async (projectRouter) => {

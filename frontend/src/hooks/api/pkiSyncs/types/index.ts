@@ -6,6 +6,7 @@ import { TAwsSecretsManagerPkiSync } from "./aws-secrets-manager-sync";
 import { TAzureKeyVaultPkiSync } from "./azure-key-vault-sync";
 import { TChefPkiSync } from "./chef-sync";
 import { TCloudflareCustomCertificatePkiSync } from "./cloudflare-custom-certificate-sync";
+import { TF5BigIpPkiSync } from "./f5-big-ip-sync";
 import { TNetScalerPkiSync } from "./netscaler-sync";
 
 export type TPkiSyncOption = {
@@ -28,7 +29,8 @@ export type TPkiSync =
   | TAwsElasticLoadBalancerPkiSync
   | TChefPkiSync
   | TCloudflareCustomCertificatePkiSync
-  | TNetScalerPkiSync;
+  | TNetScalerPkiSync
+  | TF5BigIpPkiSync;
 
 export type TListPkiSyncs = { pkiSyncs: TPkiSync[] };
 
@@ -76,6 +78,11 @@ export type TCreatePkiSyncDTO = TCreatePkiSyncDTOBase & {
     }>;
     zoneId?: string;
     vserverName?: string;
+    partition?: string;
+    profileType?: string;
+    profileName?: string;
+    createProfileIfMissing?: boolean;
+    parentProfile?: string;
   };
 };
 
@@ -115,4 +122,5 @@ export * from "./azure-key-vault-sync";
 export * from "./chef-sync";
 export * from "./cloudflare-custom-certificate-sync";
 export * from "./common";
+export * from "./f5-big-ip-sync";
 export * from "./netscaler-sync";

@@ -15,6 +15,7 @@ import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { SECRET_ROTATION_CONNECTION_MAP } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-maps";
 import { SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-maps";
+import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
 import { APP_CONNECTION_NAME_MAP, APP_CONNECTION_PLAN_MAP } from "@app/services/app-connection/app-connection-maps";
@@ -23,7 +24,9 @@ import {
   validateSqlConnectionCredentials
 } from "@app/services/app-connection/shared/sql";
 import { EXTERNAL_MIGRATION_APP_CONNECTIONS } from "@app/services/external-migration/external-migration-map";
+import { TGitHubAppDALFactory } from "@app/services/github-app/github-app-dal";
 import { TIdentityUaDALFactory } from "@app/services/identity-ua/identity-ua-dal";
+import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { SECRET_SYNC_CONNECTION_MAP } from "@app/services/secret-sync/secret-sync-maps";
 
@@ -134,9 +137,19 @@ import {
   TExternalInfisicalConnectionConfig,
   validateExternalInfisicalConnectionCredentials
 } from "./external-infisical";
+import {
+  F5BigIpConnectionMethod,
+  getF5BigIpConnectionListItem,
+  validateF5BigIpConnectionCredentials
+} from "./f5-big-ip";
 import { FlyioConnectionMethod, getFlyioConnectionListItem, validateFlyioConnectionCredentials } from "./flyio";
 import { GcpConnectionMethod, getGcpConnectionListItem, validateGcpConnectionCredentials } from "./gcp";
-import { getGitHubConnectionListItem, GitHubConnectionMethod, validateGitHubConnectionCredentials } from "./github";
+import {
+  getGitHubConnectionListItem,
+  GitHubConnectionMethod,
+  TGitHubConnectionConfig,
+  validateGitHubConnectionCredentials
+} from "./github";
 import {
   getGitHubRadarConnectionListItem,
   GitHubRadarConnectionMethod,
@@ -269,6 +282,7 @@ const PKI_APP_CONNECTIONS = [
   AppConnection.VenafiTpp,
   AppConnection.NetScaler,
   AppConnection.DigiCert,
+  AppConnection.F5BigIp,
   AppConnection.GoDaddy
 ];
 
@@ -340,7 +354,8 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getTravisCIConnectionListItem(),
     getSalesforceConnectionListItem(),
     getSnowflakeConnectionListItem(),
-    getDatadogConnectionListItem()
+    getDatadogConnectionListItem(),
+    getF5BigIpConnectionListItem()
   ]
     .filter((option) => {
       switch (projectType) {
@@ -489,12 +504,24 @@ export const validateAppConnectionCredentials = async (
   appConnection: TAppConnectionConfig,
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
-  deps: { identityUaDAL: Pick<TIdentityUaDALFactory, "findOne"> }
+  deps: {
+    identityUaDAL: Pick<TIdentityUaDALFactory, "findOne">;
+    gitHubAppDAL: Pick<TGitHubAppDALFactory, "findOne">;
+    kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+    keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX">;
+    actorId?: string;
+  }
 ): Promise<TAppConnection["credentials"]> => {
   const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TAppConnectionCredentialsValidator> = {
     [AppConnection.AWS]: validateAwsConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Databricks]: validateDatabricksConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.GitHub]: validateGitHubConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.GitHub]: ((config: TAppConnectionConfig, gw, gw2) =>
+      validateGitHubConnectionCredentials(config as TGitHubConnectionConfig, gw, gw2, {
+        gitHubAppDAL: deps.gitHubAppDAL,
+        kmsService: deps.kmsService,
+        keyStore: deps.keyStore,
+        actorId: deps.actorId
+      })) as TAppConnectionCredentialsValidator,
     [AppConnection.GitHubRadar]: validateGitHubRadarConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.GCP]: validateGcpConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.AzureKeyVault]: validateAzureKeyVaultConnectionCredentials as TAppConnectionCredentialsValidator,
@@ -568,7 +595,8 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.DigiCert]: validateDigiCertConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.GoDaddy]: validateGoDaddyConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Snowflake]: validateSnowflakeConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.Datadog]: validateDatadogConnectionCredentials as TAppConnectionCredentialsValidator
+    [AppConnection.Datadog]: validateDatadogConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.F5BigIp]: validateF5BigIpConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection, gatewayService, gatewayV2Service);
@@ -669,6 +697,8 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case SupabaseConnectionMethod.AccessToken:
       return "Access Token";
     case NetScalerConnectionMethod.BasicAuth:
+      return "Basic Auth";
+    case F5BigIpConnectionMethod.BasicAuth:
       return "Basic Auth";
     case ExternalInfisicalConnectionMethod.MachineIdentityUniversalAuth:
       return "Machine Identity - Universal Auth";
@@ -804,6 +834,7 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.Salesforce]: platformManagedCredentialsNotSupported,
   [AppConnection.Snowflake]: platformManagedCredentialsNotSupported,
   [AppConnection.Datadog]: platformManagedCredentialsNotSupported,
+  [AppConnection.F5BigIp]: platformManagedCredentialsNotSupported,
   [AppConnection.GoDaddy]: platformManagedCredentialsNotSupported
 };
 

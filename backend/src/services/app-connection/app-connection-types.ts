@@ -173,6 +173,12 @@ import {
   TValidateExternalInfisicalConnectionCredentialsSchema
 } from "./external-infisical";
 import {
+  TF5BigIpConnection,
+  TF5BigIpConnectionConfig,
+  TF5BigIpConnectionInput,
+  TValidateF5BigIpConnectionCredentialsSchema
+} from "./f5-big-ip";
+import {
   TFlyioConnection,
   TFlyioConnectionConfig,
   TFlyioConnectionInput,
@@ -466,6 +472,7 @@ export type TAppConnection = { id: string; configuration?: TAppConnectionConfigu
   | TSalesforceConnection
   | TSnowflakeConnection
   | TDatadogConnection
+  | TF5BigIpConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -544,6 +551,7 @@ export type TAppConnectionInput = { id: string } & (
   | TSalesforceConnectionInput
   | TSnowflakeConnectionInput
   | TDatadogConnectionInput
+  | TF5BigIpConnectionInput
 );
 
 export type TSqlConnectionInput =
@@ -653,7 +661,8 @@ export type TAppConnectionConfig =
   | TTravisCIConnectionConfig
   | TSalesforceConnectionConfig
   | TSnowflakeConnectionConfig
-  | TDatadogConnectionConfig;
+  | TDatadogConnectionConfig
+  | TF5BigIpConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -722,7 +731,8 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateTravisCIConnectionCredentialsSchema
   | TValidateSalesforceConnectionCredentialsSchema
   | TValidateSnowflakeConnectionCredentialsSchema
-  | TValidateDatadogConnectionCredentialsSchema;
+  | TValidateDatadogConnectionCredentialsSchema
+  | TValidateF5BigIpConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;

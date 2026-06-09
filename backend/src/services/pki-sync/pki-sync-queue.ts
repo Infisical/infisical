@@ -533,6 +533,23 @@ export const pkiSyncQueueFactory = ({
         }
       }
 
+      if (syncResult.details?.skippedCertificates) {
+        for (const skip of syncResult.details.skippedCertificates) {
+          const metadata = certificateMetadata.get(skip.name);
+          if (metadata) {
+            const updateIndex = postSyncUpdates.findIndex((u) => u.certificateId === metadata.id);
+            if (updateIndex >= 0) {
+              postSyncUpdates[updateIndex] = {
+                pkiSyncId: pkiSync.id,
+                certificateId: metadata.id,
+                status: CertificateSyncStatus.Failed,
+                message: `Certificate skipped: ${skip.reason}`
+              };
+            }
+          }
+        }
+      }
+
       if (postSyncUpdates.length > 0) {
         await certificateSyncDAL.bulkUpdateSyncStatus(postSyncUpdates);
       }

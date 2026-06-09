@@ -320,6 +320,8 @@ import { folderCommitServiceFactory } from "@app/services/folder-commit/folder-c
 import { folderCommitChangesDALFactory } from "@app/services/folder-commit-changes/folder-commit-changes-dal";
 import { folderTreeCheckpointDALFactory } from "@app/services/folder-tree-checkpoint/folder-tree-checkpoint-dal";
 import { folderTreeCheckpointResourcesDALFactory } from "@app/services/folder-tree-checkpoint-resources/folder-tree-checkpoint-resources-dal";
+import { gitHubAppDALFactory } from "@app/services/github-app/github-app-dal";
+import { gitHubAppServiceFactory } from "@app/services/github-app/github-app-service";
 import { groupProjectDALFactory } from "@app/services/group-project/group-project-dal";
 import { groupProjectServiceFactory } from "@app/services/group-project/group-project-service";
 import { healthAlertServiceFactory } from "@app/services/health-alert/health-alert-queue";
@@ -717,6 +719,7 @@ export const registerRoutes = async (
   const gatewayDAL = gatewayDALFactory(db);
   const secretReminderRecipientsDAL = secretReminderRecipientsDALFactory(db);
   const githubOrgSyncDAL = githubOrgSyncDALFactory(db);
+  const gitHubAppDAL = gitHubAppDALFactory(db);
   const honeyTokenConfigDAL = honeyTokenConfigDALFactory(db);
   const honeyTokenDAL = honeyTokenDALFactory(db);
   const honeyTokenEventDAL = honeyTokenEventDALFactory(db);
@@ -809,7 +812,8 @@ export const registerRoutes = async (
     roleDAL,
     additionalPrivilegeDAL,
     licenseService,
-    projectDAL
+    projectDAL,
+    keyStore
   });
 
   const membershipGroupService = membershipGroupServiceFactory({
@@ -1028,6 +1032,8 @@ export const registerRoutes = async (
     membershipRoleDAL,
     membershipGroupDAL
   });
+
+  // gitHubAppService is created after gatewayPoolService (below) due to dependency on gateway services
 
   // ldapService is created after loginService (below) due to dependency on processProviderCallback
 
@@ -1645,6 +1651,20 @@ export const registerRoutes = async (
     dynamicSecretDAL
   });
 
+  const gitHubAppService = gitHubAppServiceFactory({
+    gitHubAppDAL,
+    permissionService,
+    kmsService,
+    keyStore,
+    licenseService,
+    gatewayService,
+    gatewayV2Service,
+    gatewayDAL,
+    gatewayV2DAL,
+    auditLogService,
+    userDAL
+  });
+
   const secretSyncQueue = secretSyncQueueFactory({
     queueService,
     cronJob,
@@ -1669,6 +1689,7 @@ export const registerRoutes = async (
     secretVersionTagV2BridgeDAL,
     resourceMetadataDAL,
     appConnectionDAL,
+    gitHubAppDAL,
     licenseService,
     gatewayService,
     gatewayV2Service,
@@ -2502,7 +2523,9 @@ export const registerRoutes = async (
     gatewayV2DAL,
     projectDAL,
     appConnectionCredentialRotationService,
-    identityUaDAL
+    identityUaDAL,
+    gitHubAppDAL,
+    keyStore
   });
 
   const honeyTokenConfigService = honeyTokenConfigServiceFactory({
@@ -2851,6 +2874,7 @@ export const registerRoutes = async (
     pkiSubscriberDAL,
     pkiSyncDAL,
     pkiSyncQueue,
+    certificateSyncDAL,
     certificateProfileDAL,
     certificateRequestService,
     certificateRequestDAL,
@@ -3686,6 +3710,7 @@ export const registerRoutes = async (
     insights: insightsService,
     pamInsights: pamInsightsService,
     githubOrgSync: githubOrgSyncConfigService,
+    gitHubApp: gitHubAppService,
     honeyTokenConfig: honeyTokenConfigService,
     honeyToken: honeyTokenService,
     folderCommit: folderCommitService,

@@ -62,6 +62,7 @@ import { DigitalOceanConnectionMethod } from "@app/hooks/api/appConnections/type
 import { DNSMadeEasyConnectionMethod } from "@app/hooks/api/appConnections/types/dns-made-easy-connection";
 import { DopplerConnectionMethod } from "@app/hooks/api/appConnections/types/doppler-connection";
 import { ExternalInfisicalConnectionMethod } from "@app/hooks/api/appConnections/types/external-infisical-connection";
+import { F5BigIpConnectionMethod } from "@app/hooks/api/appConnections/types/f5-big-ip-connection";
 import { GoDaddyConnectionMethod } from "@app/hooks/api/appConnections/types/godaddy-connection";
 import { HerokuConnectionMethod } from "@app/hooks/api/appConnections/types/heroku-connection";
 import { LaravelForgeConnectionMethod } from "@app/hooks/api/appConnections/types/laravel-forge-connection";
@@ -82,6 +83,7 @@ import { SupabaseConnectionMethod } from "@app/hooks/api/appConnections/types/su
 import { TravisCIConnectionMethod } from "@app/hooks/api/appConnections/types/travis-ci-connection";
 import { VenafiConnectionMethod } from "@app/hooks/api/appConnections/types/venafi-connection";
 import { VenafiTppConnectionMethod } from "@app/hooks/api/appConnections/types/venafi-tpp-connection";
+import { IntegrationsListPageTabs } from "@app/types/integrations";
 
 export const APP_CONNECTION_MAP: Record<
   AppConnection,
@@ -183,7 +185,8 @@ export const APP_CONNECTION_MAP: Record<
   [AppConnection.TravisCI]: { name: "Travis CI", image: "Travis CI.png" },
   [AppConnection.Salesforce]: { name: "Salesforce", image: "Salesforce.png" },
   [AppConnection.Snowflake]: { name: "Snowflake", image: "Snowflake.png" },
-  [AppConnection.Datadog]: { name: "Datadog", image: "DatadogWhite.png" }
+  [AppConnection.Datadog]: { name: "Datadog", image: "DatadogWhite.png" },
+  [AppConnection.F5BigIp]: { name: "F5 BIG-IP", image: "F5 BIG-IP.png" }
 };
 
 export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) => {
@@ -303,6 +306,8 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
       return { name: "Basic Auth", icon: faLock };
     case OVHConnectionMethod.Certificate:
       return { name: "Certificate", icon: faCertificate };
+    case F5BigIpConnectionMethod.BasicAuth:
+      return { name: "Basic Auth", icon: faLock };
     default:
       throw new Error(`Unhandled App Connection Method: ${method}`);
   }
@@ -340,10 +345,91 @@ export const AWS_REGIONS = [
   { name: "AWS GovCloud (US-West)", slug: "us-gov-west-1" }
 ];
 
+export const CSRF_TOKEN_STORAGE_KEY = "latestCSRFToken";
+export const GITHUB_CONNECTION_FORM_STORAGE_KEY = "githubConnectionFormData";
+
+export const buildGitHubHostUrl = (host?: string | null) =>
+  host && host.trim().length > 0 ? `https://${host.trim()}` : "https://github.com";
+
+export const buildGitHubAppUrl = (
+  slug: string,
+  host?: string | null,
+  instanceType?: "cloud" | "server"
+) => `${buildGitHubHostUrl(host)}/${instanceType === "server" ? "github-apps" : "apps"}/${slug}`;
+
+export const buildGitHubAppInstallUrl = (
+  slug: string,
+  state: string,
+  host?: string | null,
+  instanceType?: "cloud" | "server"
+) => `${buildGitHubAppUrl(slug, host, instanceType)}/installations/new?state=${state}`;
+
+export const generateCsrfToken = () =>
+  Array.from(crypto.getRandomValues(new Uint8Array(16)))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+
+export const consumeCsrfToken = (state: string) => {
+  if (state !== localStorage.getItem(CSRF_TOKEN_STORAGE_KEY)) return false;
+  localStorage.removeItem(CSRF_TOKEN_STORAGE_KEY);
+  return true;
+};
+
 export const useGetAppConnectionOauthReturnUrl = () => {
   const {
     location: { pathname }
   } = useRouterState();
 
   return pathname;
+};
+
+export const getIntegrationsListTab = () => {
+  if (localStorage.getItem("pkiSyncFormData")) return IntegrationsListPageTabs.PkiSyncs;
+  if (localStorage.getItem("secretSyncFormData")) return IntegrationsListPageTabs.SecretSyncs;
+  return IntegrationsListPageTabs.AppConnections;
+};
+
+export const getConnectionFlowReturnNavigateOptions = ({
+  returnUrl,
+  projectId,
+  reopenFormApp
+}: {
+  returnUrl: string;
+  projectId?: string;
+  reopenFormApp?: AppConnection;
+}) => {
+  const search = {
+    ...(reopenFormApp ? { addConnectionApp: reopenFormApp } : {}),
+    ...(returnUrl.includes("integrations")
+      ? {
+          selectedTab: reopenFormApp
+            ? IntegrationsListPageTabs.AppConnections
+            : getIntegrationsListTab()
+        }
+      : {})
+  };
+
+  return {
+    to: returnUrl,
+    params: { projectId },
+    search: Object.keys(search).length > 0 ? search : undefined
+  };
+};
+
+export type TStoredConnectionFormData<T> =
+  | { status: "ok"; data: T }
+  | { status: "missing" }
+  | { status: "corrupt" };
+
+export const readConnectionFormData = <T>(storageKey: string): TStoredConnectionFormData<T> => {
+  const raw = localStorage.getItem(storageKey);
+
+  if (raw === null) return { status: "missing" };
+
+  try {
+    return { status: "ok", data: JSON.parse(raw) as T };
+  } catch {
+    localStorage.removeItem(storageKey);
+    return { status: "corrupt" };
+  }
 };

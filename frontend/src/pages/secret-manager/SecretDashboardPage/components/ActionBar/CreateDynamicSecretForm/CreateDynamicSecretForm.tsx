@@ -15,7 +15,7 @@ import {
 } from "react-icons/si";
 import { VscAzure } from "react-icons/vsc";
 import { faAws, faGithub, faGoogle } from "@fortawesome/free-brands-svg-icons";
-import { faClock, faDatabase, faTerminal } from "@fortawesome/free-solid-svg-icons";
+import { faClock, faDatabase, faGlobe, faTerminal } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { AnimatePresence, motion } from "framer-motion";
 
@@ -35,6 +35,7 @@ import { CouchbaseInputForm } from "./CouchbaseInputForm";
 import { ElasticSearchInputForm } from "./ElasticSearchInputForm";
 import { GcpIamInputForm } from "./GcpIamInputForm";
 import { GithubInputForm } from "./GithubInputForm";
+import { IbmApiConnectInputForm } from "./IbmApiConnectInputForm";
 import { KubernetesInputForm } from "./KubernetesInputForm";
 import { LdapInputForm } from "./LdapInputForm";
 import { MilvusInputForm } from "./MilvusInputForm";
@@ -189,6 +190,11 @@ const DYNAMIC_SECRET_LIST = [
     icon: <FontAwesomeIcon icon={faTerminal} size="lg" />,
     provider: DynamicSecretProviders.Ssh,
     title: "SSH"
+  },
+  {
+    icon: <FontAwesomeIcon icon={faGlobe} size="lg" />,
+    provider: DynamicSecretProviders.IbmApiConnect,
+    title: "IBM API Connect"
   }
 ];
 
@@ -736,6 +742,25 @@ export const CreateDynamicSecretForm = ({
                 exit={{ opacity: 0, translateX: -30 }}
               >
                 <SshInputForm
+                  onCompleted={handleFormReset}
+                  onCancel={handleFormReset}
+                  projectSlug={projectSlug}
+                  secretPath={secretPath}
+                  environments={environments}
+                  isSingleEnvironmentMode={isSingleEnvironmentMode}
+                />
+              </motion.div>
+            )}
+          {wizardStep === WizardSteps.ProviderInputs &&
+            selectedProvider === DynamicSecretProviders.IbmApiConnect && (
+              <motion.div
+                key="dynamic-ibm-api-connect-step"
+                transition={{ duration: 0.1 }}
+                initial={{ opacity: 0, translateX: 30 }}
+                animate={{ opacity: 1, translateX: 0 }}
+                exit={{ opacity: 0, translateX: -30 }}
+              >
+                <IbmApiConnectInputForm
                   onCompleted={handleFormReset}
                   onCancel={handleFormReset}
                   projectSlug={projectSlug}

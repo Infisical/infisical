@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { subject } from "@casl/ability";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   AsteriskIcon,
@@ -146,7 +147,10 @@ export const HoneyTokenItem = ({
             </Tooltip>
             <ProjectPermissionCan
               I={ProjectPermissionHoneyTokenActions.ReadCredentials}
-              a={ProjectPermissionSub.HoneyTokens}
+              a={subject(ProjectPermissionSub.HoneyTokens, {
+                environment: honeyToken.environment.slug,
+                secretPath: honeyToken.folder.path
+              })}
               renderTooltip
               allowedLabel="View credentials"
             >
@@ -168,7 +172,10 @@ export const HoneyTokenItem = ({
             </ProjectPermissionCan>
             <ProjectPermissionCan
               I={ProjectPermissionHoneyTokenActions.Edit}
-              a={ProjectPermissionSub.HoneyTokens}
+              a={subject(ProjectPermissionSub.HoneyTokens, {
+                environment: honeyToken.environment.slug,
+                secretPath: honeyToken.folder.path
+              })}
               renderTooltip
               allowedLabel="Edit"
             >
@@ -191,7 +198,10 @@ export const HoneyTokenItem = ({
             {status !== HoneyTokenStatus.Revoked && (
               <ProjectPermissionCan
                 I={ProjectPermissionHoneyTokenActions.Revoke}
-                a={ProjectPermissionSub.HoneyTokens}
+                a={subject(ProjectPermissionSub.HoneyTokens, {
+                  environment: honeyToken.environment.slug,
+                  secretPath: honeyToken.folder.path
+                })}
                 renderTooltip
                 allowedLabel="Revoke"
               >
