@@ -36,16 +36,28 @@ describe("verifyAuth — delegated OAuth access", () => {
     expect(done).toHaveBeenCalledOnce();
   });
 
-  test("a JWT route also accepts a delegated OAuth token (acts on behalf of the user)", () => {
+  test("a JWT route does NOT accept a delegated OAuth token (must opt in explicitly)", () => {
+    // This is the core of the explicit opt-in contract: a route guarded only by AuthMode.JWT — e.g.
+    // account routes like /me/totp that authenticate on userId without building a scope-narrowed
+    // permission — must reject delegated OAuth tokens so their scopes cannot be bypassed.
     const { call, done } = run([AuthMode.JWT], makeReq({ authMode: AuthMode.OAUTH }, { orgId: "org-1" }));
-    expect(call).not.toThrow();
-    expect(done).toHaveBeenCalledOnce();
+    expect(call).toThrow(ForbiddenRequestError);
+    expect(done).not.toHaveBeenCalled();
   });
 
-  test("the JWT→OAUTH allowance is one-directional: an OAUTH-only route rejects a session JWT", () => {
+  test("an OAUTH-only route rejects a session JWT", () => {
     const { call, done } = run([AuthMode.OAUTH], makeReq({ authMode: AuthMode.JWT }, { orgId: "org-1" }));
     expect(call).toThrow(ForbiddenRequestError);
     expect(done).not.toHaveBeenCalled();
+  });
+
+  test("a route opts into delegated access by listing AuthMode.OAUTH alongside AuthMode.JWT", () => {
+    const { call, done } = run(
+      [AuthMode.JWT, AuthMode.OAUTH],
+      makeReq({ authMode: AuthMode.OAUTH }, { orgId: "org-1" })
+    );
+    expect(call).not.toThrow();
+    expect(done).toHaveBeenCalledOnce();
   });
 
   test("an OAUTH-only route accepts a delegated OAuth token", () => {
@@ -54,7 +66,7 @@ describe("verifyAuth — delegated OAuth access", () => {
     expect(done).toHaveBeenCalledOnce();
   });
 
-  test("a route that does not allow JWT (e.g. identity-only) rejects a delegated OAuth token", () => {
+  test("a route that does not allow OAUTH (e.g. identity-only) rejects a delegated OAuth token", () => {
     const { call, done } = run(
       [AuthMode.IDENTITY_ACCESS_TOKEN],
       makeReq({ authMode: AuthMode.OAUTH }, { orgId: "org-1" })
@@ -71,7 +83,7 @@ describe("verifyAuth — delegated OAuth access", () => {
 
 describe("verifyAuth — requireOrg", () => {
   test("a delegated OAuth token without an org is rejected when requireOrg is set", () => {
-    const { call } = run([AuthMode.JWT], makeReq({ authMode: AuthMode.OAUTH }), { requireOrg: true });
+    const { call } = run([AuthMode.JWT, AuthMode.OAUTH], makeReq({ authMode: AuthMode.OAUTH }), { requireOrg: true });
     expect(call).toThrow(UnauthorizedError);
   });
 
@@ -81,15 +93,21 @@ describe("verifyAuth — requireOrg", () => {
   });
 
   test("a delegated OAuth token with an org passes when requireOrg is set", () => {
-    const { call, done } = run([AuthMode.JWT], makeReq({ authMode: AuthMode.OAUTH }, { orgId: "org-1" }), {
-      requireOrg: true
-    });
+    const { call, done } = run(
+      [AuthMode.JWT, AuthMode.OAUTH],
+      makeReq({ authMode: AuthMode.OAUTH }, { orgId: "org-1" }),
+      {
+        requireOrg: true
+      }
+    );
     expect(call).not.toThrow();
     expect(done).toHaveBeenCalledOnce();
   });
 
   test("requireOrg=false lets an org-less delegated OAuth token through", () => {
-    const { call, done } = run([AuthMode.JWT], makeReq({ authMode: AuthMode.OAUTH }), { requireOrg: false });
+    const { call, done } = run([AuthMode.JWT, AuthMode.OAUTH], makeReq({ authMode: AuthMode.OAUTH }), {
+      requireOrg: false
+    });
     expect(call).not.toThrow();
     expect(done).toHaveBeenCalledOnce();
   });

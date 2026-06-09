@@ -4,8 +4,8 @@ import { applyOauthScopeToProjectRules, isValidOauthScope, OauthScope, parseOaut
 
 describe("parseOauthScopeString", () => {
   test("splits, trims, and de-duplicates recognized scopes", () => {
-    const { granted, invalid } = parseOauthScopeString("  secrets:read   secrets:read projects:read ");
-    expect(granted).toEqual([OauthScope.SecretsRead, OauthScope.ProjectsRead]);
+    const { granted, invalid } = parseOauthScopeString("  secrets:read   secrets:read ");
+    expect(granted).toEqual([OauthScope.SecretsRead]);
     expect(invalid).toEqual([]);
   });
 

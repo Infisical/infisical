@@ -1,13 +1,5 @@
 import {
-  OrgPermissionActions,
-  OrgPermissionIdentityActions,
-  OrgPermissionSubjects
-} from "@app/ee/services/permission/org-permission";
-import {
   ProjectPermissionActions,
-  ProjectPermissionDynamicSecretActions,
-  ProjectPermissionIdentityActions,
-  ProjectPermissionMemberActions,
   ProjectPermissionSecretActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
@@ -16,14 +8,12 @@ import {
 // underlying user; scopes only *narrow* that ability (effective = userPermissions ∩ grantedScopes).
 // Each scope maps to a set of (level, subject, actions) rules that are intersected against the user's
 // CASL rules in permission-service. Keep this list curated — it is a public contract.
+//
+// Only secrets:read is exposed for now: the sole delegated use case is `infisical run` fetching
+// secrets at runtime (e.g. via Coder External Auth). Add further scopes only when a route is opted
+// into AuthMode.OAUTH to serve them.
 export enum OauthScope {
-  SecretsRead = "secrets:read",
-  SecretsWrite = "secrets:write",
-  ProjectsRead = "projects:read",
-  DynamicSecretsRead = "dynamic-secrets:read",
-  DynamicSecretsLease = "dynamic-secrets:lease",
-  IdentitiesRead = "identities:read",
-  IdentitiesManage = "identities:manage"
+  SecretsRead = "secrets:read"
 }
 
 // Which permission ability a rule applies to. getOrgPermission builds org-level abilities,
@@ -56,90 +46,6 @@ export const OAUTH_SCOPE_DEFINITIONS: Record<OauthScope, TOauthScopeDefinition> 
       },
       { level: "project", subject: ProjectPermissionSub.SecretFolders, actions: [ProjectPermissionActions.Read] },
       { level: "project", subject: ProjectPermissionSub.SecretImports, actions: [ProjectPermissionActions.Read] }
-    ]
-  },
-  [OauthScope.SecretsWrite]: {
-    description: "Create, edit, and delete secrets, folders, and imports",
-    rules: [
-      {
-        level: "project",
-        subject: ProjectPermissionSub.Secrets,
-        actions: [
-          ProjectPermissionSecretActions.Create,
-          ProjectPermissionSecretActions.Edit,
-          ProjectPermissionSecretActions.Delete
-        ]
-      },
-      {
-        level: "project",
-        subject: ProjectPermissionSub.SecretFolders,
-        actions: [ProjectPermissionActions.Create, ProjectPermissionActions.Edit, ProjectPermissionActions.Delete]
-      },
-      {
-        level: "project",
-        subject: ProjectPermissionSub.SecretImports,
-        actions: [ProjectPermissionActions.Create, ProjectPermissionActions.Edit, ProjectPermissionActions.Delete]
-      }
-    ]
-  },
-  [OauthScope.ProjectsRead]: {
-    description: "Read project metadata, environments, tags, and members",
-    rules: [
-      { level: "org", subject: OrgPermissionSubjects.Workspace, actions: [OrgPermissionActions.Read] },
-      { level: "project", subject: ProjectPermissionSub.Project, actions: [ProjectPermissionActions.Read] },
-      { level: "project", subject: ProjectPermissionSub.Environments, actions: [ProjectPermissionActions.Read] },
-      { level: "project", subject: ProjectPermissionSub.Tags, actions: [ProjectPermissionActions.Read] },
-      { level: "project", subject: ProjectPermissionSub.Member, actions: [ProjectPermissionMemberActions.Read] }
-    ]
-  },
-  [OauthScope.DynamicSecretsRead]: {
-    description: "Read dynamic secret configurations",
-    rules: [
-      {
-        level: "project",
-        subject: ProjectPermissionSub.DynamicSecrets,
-        actions: [ProjectPermissionDynamicSecretActions.ReadRootCredential]
-      }
-    ]
-  },
-  [OauthScope.DynamicSecretsLease]: {
-    description: "Generate and manage dynamic secret leases",
-    rules: [
-      {
-        level: "project",
-        subject: ProjectPermissionSub.DynamicSecrets,
-        actions: [ProjectPermissionDynamicSecretActions.Lease]
-      }
-    ]
-  },
-  [OauthScope.IdentitiesRead]: {
-    description: "Read machine identities",
-    rules: [
-      {
-        level: "org",
-        subject: OrgPermissionSubjects.Identity,
-        actions: [OrgPermissionIdentityActions.Read, OrgPermissionIdentityActions.GetToken]
-      },
-      {
-        level: "project",
-        subject: ProjectPermissionSub.Identity,
-        actions: [ProjectPermissionIdentityActions.Read]
-      }
-    ]
-  },
-  [OauthScope.IdentitiesManage]: {
-    description: "Create, edit, delete, and issue tokens for machine identities",
-    rules: [
-      {
-        level: "org",
-        subject: OrgPermissionSubjects.Identity,
-        actions: Object.values(OrgPermissionIdentityActions)
-      },
-      {
-        level: "project",
-        subject: ProjectPermissionSub.Identity,
-        actions: Object.values(ProjectPermissionIdentityActions)
-      }
     ]
   }
 };
