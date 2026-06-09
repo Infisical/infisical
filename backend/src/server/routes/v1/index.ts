@@ -1,5 +1,5 @@
 import { BadRequestError } from "@app/lib/errors";
-import { withBootYield } from "@app/server/lib/boot-yield";
+import { withRoutePrefix } from "@app/server/lib/with-route-prefix";
 import { injectCertManagerProjectId } from "@app/server/plugins/inject-cert-manager-project-id";
 import {
   APP_CONNECTION_REGISTER_ROUTER_MAP,
@@ -323,8 +323,11 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
       await appConnectionRouter.register(registerAppConnectionRouter);
 
       // register service specific endpoints (app-connections/aws, app-connections/github, etc.)
+      // routes are registered on the shared context with the destination baked into the URL —
+      // a register({ prefix }) per destination would create hundreds of encapsulated contexts
+      // and overflow the call stack during Fastify's onReady boot walk
       for await (const [app, router] of Object.entries(APP_CONNECTION_REGISTER_ROUTER_MAP)) {
-        await appConnectionRouter.register(withBootYield(router), { prefix: `/${app}` });
+        await router(withRoutePrefix(appConnectionRouter as unknown as FastifyZodProvider, `/${app}`));
       }
     },
     { prefix: "/app-connections" }
@@ -336,8 +339,9 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
       await secretSyncRouter.register(registerSecretSyncRouter);
 
       // register service specific secret sync endpoints (secret-syncs/aws-parameter-store, secret-syncs/github, etc.)
+      // see app-connections above: routes share one context with the destination baked into the URL
       for await (const [destination, router] of Object.entries(SECRET_SYNC_REGISTER_ROUTER_MAP)) {
-        await secretSyncRouter.register(withBootYield(router), { prefix: `/${destination}` });
+        await router(withRoutePrefix(secretSyncRouter as unknown as FastifyZodProvider, `/${destination}`));
       }
     },
     { prefix: "/secret-syncs" }
