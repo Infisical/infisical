@@ -28,7 +28,10 @@ export type GitLabFormData = BaseFormData &
   Pick<TGitLabConnection, "name" | "method" | "description" | "credentials">;
 
 export type AzureKeyVaultFormData = BaseFormData &
-  Pick<TAzureKeyVaultConnection, "name" | "method" | "description"> &
+  Pick<
+    TAzureKeyVaultConnection,
+    "name" | "method" | "description" | "gatewayId" | "gatewayPoolId"
+  > &
   Pick<TAzureKeyVaultConnection["credentials"], "tenantId">;
 
 export type AzureAppConfigurationFormData = BaseFormData &

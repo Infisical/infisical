@@ -316,7 +316,10 @@ export const SecretSyncFns = {
       case SecretSync.AzureKeyVault:
         return azureKeyVaultSyncFactory({
           appConnectionDAL,
-          kmsService
+          kmsService,
+          gatewayService,
+          gatewayV2Service,
+          gatewayPoolService
         }).syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.AzureAppConfiguration:
         return azureAppConfigurationSyncFactory({
@@ -442,7 +445,10 @@ export const SecretSyncFns = {
       case SecretSync.AzureKeyVault:
         secretMap = await azureKeyVaultSyncFactory({
           appConnectionDAL,
-          kmsService
+          kmsService,
+          gatewayService,
+          gatewayV2Service,
+          gatewayPoolService
         }).getSecrets(secretSync);
         break;
       case SecretSync.AzureAppConfiguration:
@@ -602,7 +608,10 @@ export const SecretSyncFns = {
       case SecretSync.AzureKeyVault:
         return azureKeyVaultSyncFactory({
           appConnectionDAL,
-          kmsService
+          kmsService,
+          gatewayService,
+          gatewayV2Service,
+          gatewayPoolService
         }).removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.AzureAppConfiguration:
         return azureAppConfigurationSyncFactory({

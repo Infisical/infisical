@@ -83,7 +83,7 @@ export const GatewayPicker = ({
       <SelectTrigger className={className ?? "w-full"} isError={isError}>
         <SelectValue placeholder={placeholder ?? "Select gateway..."} />
       </SelectTrigger>
-      <SelectContent position="popper">
+      <SelectContent position="popper" className="z-[100]">
         {!isRequired && (
           <SelectItem value="internet">
             <span className="flex items-center gap-2">
