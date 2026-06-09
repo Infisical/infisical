@@ -88,51 +88,6 @@ describe("SCIM user list — duplicate suppression", () => {
     expect(userIds.length).toBe(uniqueUserIds.length);
   });
 
-  test("current query produces duplicates when a user has multiple SAML aliases (documents the bug)", async () => {
-    // Insert two SAML aliases for the same user — the scenario Nethermind hit.
-    const id1 = await insertSamlAlias(
-      seedData1.id,
-      seedData1.organization.id,
-      "saml-external-id-A"
-    );
-    const id2 = await insertSamlAlias(
-      seedData1.id,
-      seedData1.organization.id,
-      "saml-external-id-B"
-    );
-    insertedAliasIds.push(id1, id2);
-
-    const rows = await testDb(TableName.Membership)
-      .where(`${TableName.Membership}.scopeOrgId`, seedData1.organization.id)
-      .where(`${TableName.Membership}.scope`, AccessScope.Organization)
-      .whereNotNull(`${TableName.Membership}.actorUserId`)
-      .join(TableName.Users, `${TableName.Users}.id`, `${TableName.Membership}.actorUserId`)
-      .join(
-        TableName.Organization,
-        `${TableName.Organization}.id`,
-        `${TableName.Membership}.scopeOrgId`
-      )
-      .whereNull(`${TableName.Organization}.rootOrgId`)
-      .leftJoin(TableName.UserAliases, function joinUserAlias(this: any) {
-        this.on(`${TableName.UserAliases}.userId`, "=", `${TableName.Membership}.actorUserId`)
-          .andOn(`${TableName.UserAliases}.orgId`, "=", `${TableName.Membership}.scopeOrgId`)
-          .andOn(
-            `${TableName.UserAliases}.aliasType`,
-            "=",
-            testDb.raw("?", ["saml"])
-          );
-      })
-      .where({ isGhost: false })
-      .select(`${TableName.Membership}.actorUserId`);
-
-    const userIds = rows.map((r: { actorUserId: string }) => r.actorUserId);
-    const occurrences = userIds.filter((id: string) => id === seedData1.id).length;
-
-    // This assertion documents the bug: the same user appears once per alias row.
-    // After the fix is applied, this test should be updated or removed.
-    expect(occurrences).toBe(2);
-  });
-
   test("findMembershipWithScimFilter returns each user exactly once regardless of SAML alias count", async () => {
     // Insert three SAML aliases — more extreme version of the bug scenario.
     const ids = await Promise.all([

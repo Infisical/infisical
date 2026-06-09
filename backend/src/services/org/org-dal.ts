@@ -882,7 +882,12 @@ export const orgDALFactory = (db: TDbClient) => {
       if (limit) void query.limit(limit);
       if (offset) void query.offset(offset);
       if (sort) {
-        void query.orderBy(sort.map(([column, order, nulls]) => ({ column: column as string, order, nulls })));
+        void query.orderBy([
+          { column: `${TableName.Membership}.actorUserId` },
+          ...sort.map(([column, order, nulls]) => ({ column: column as string, order, nulls }))
+        ]);
+      } else {
+        void query.orderBy(`${TableName.Membership}.actorUserId`);
       }
       const res = await query;
       return res;
