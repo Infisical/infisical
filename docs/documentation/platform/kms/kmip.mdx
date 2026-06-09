@@ -1,5 +1,5 @@
 ---
-title: "Overview"
+title: "KMIP Integration"
 description: "Learn more about integrating with Infisical KMS using KMIP (Key Management Interoperability Protocol)."
 ---
 
@@ -147,11 +147,19 @@ Follow these steps in order to set up KMIP integration with Infisical:
   <Step title="Generate Client Certificate">
     Each KMIP client needs its own certificate for mTLS authentication.
 
-    Click **Generate Certificate** for your newly created client. Select the request method:
-    - **Managed**: Infisical generates the key pair and certificate for you. Provide the TTL and key algorithm.
-    - **CSR**: Provide your own Certificate Signing Request if your device generates keys internally (e.g., Dell iDRAC). See the [Dell PowerEdge SEKM](/documentation/platform/kms/kmip-dell-poweredge) guide for details.
+    Click **Generate Certificate** for your newly created client.
+    
+    ![KMIP generate client cert](/images/platform/kms/kmip/kmip-client-generate-cert.png)
 
-    Download the generated certificate and certificate chain (and private key if using Managed mode). Configure your KMIP-compatible applications or tools to use these credentials when connecting to the KMIP server.
+    Provide the desired TTL (time-to-live) and key algorithm, then click **Generate Client Certificate**.
+    
+    ![KMIP client cert config](/images/platform/kms/kmip/kmip-client-cert-config-modal.png)
+
+    Download the generated client certificate, certificate chain, and private key.
+    
+    ![KMIP client cert modal](/images/platform/kms/kmip/kmip-client-certificate-modal.png)
+
+    Configure your KMIP-compatible applications or tools to use these credentials when connecting to the KMIP server. The client will now authenticate via mTLS and perform authorized key management operations through the KMIP server, which proxies requests to Infisical KMS.
   </Step>
 </Steps>
 
