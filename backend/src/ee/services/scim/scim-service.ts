@@ -90,6 +90,7 @@ type TScimServiceFactoryDep = {
     | "findMembership"
     | "findEffectiveOrgMembership"
     | "findMembershipWithScimFilter"
+    | "countMembershipsWithScimFilter"
     | "deleteMembershipById"
     | "transaction"
     | "updateMembershipById"
@@ -310,7 +311,10 @@ export const scimServiceFactory = ({
       ...(limit && { limit })
     };
 
-    const users = await orgDAL.findMembershipWithScimFilter(orgId, filter, findOpts);
+    const [users, totalResults] = await Promise.all([
+      orgDAL.findMembershipWithScimFilter(orgId, filter, findOpts),
+      orgDAL.countMembershipsWithScimFilter(orgId, filter)
+    ]);
 
     const scimUsers = users.map(
       ({ id, externalId, username, firstName, lastName, email, isActive, createdAt, updatedAt }) =>
@@ -338,7 +342,8 @@ export const scimServiceFactory = ({
     return buildScimUserList({
       scimUsers,
       startIndex,
-      limit
+      limit,
+      totalResults
     });
   };
 
