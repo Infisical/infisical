@@ -9,7 +9,7 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { ProjectPermissionInsightsActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { TSecretRotationV2DALFactory } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-dal";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
-import { withCache } from "@app/lib/cache/with-cache";
+import { getCacheTtl, withCache } from "@app/lib/cache/with-cache";
 import { BadRequestError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
 import { ActorType } from "@app/services/auth/auth-type";
@@ -47,7 +47,7 @@ type TInsightsServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findById">;
   userDAL: Pick<TUserDALFactory, "find">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
-  keyStore: Pick<TKeyStoreFactory, "setItemWithExpiry" | "getItem">;
+  keyStore: Pick<TKeyStoreFactory, "setItemWithExpiry" | "getItem" | "ttl">;
 };
 
 export type TInsightsServiceFactory = ReturnType<typeof insightsServiceFactory>;
@@ -512,14 +512,19 @@ export const insightsServiceFactory = ({
 
     if (!project.secretBlindIndexEnabled) {
       return {
-        secretBlindIndexEnabled: false as const,
-        groups: [] as {
-          secrets: { key: string; environment: string; environmentSlug: string; secretPath: string }[];
-        }[]
+        result: {
+          secretBlindIndexEnabled: false as const,
+          groups: [] as {
+            secrets: { key: string; environment: string; environmentSlug: string; secretPath: string }[];
+          }[]
+        },
+        remainingTTL: -1
       };
     }
 
-    return withCache({
+    const remainingTTL = await getCacheTtl(keyStore, cacheKey);
+
+    const result = await withCache({
       keyStore,
       key: cacheKey,
       ttlSeconds: KeyStoreTtls.InsightsDuplicationCacheInSeconds,
@@ -563,6 +568,8 @@ export const insightsServiceFactory = ({
         return { secretBlindIndexEnabled: true as const, groups };
       }
     });
+
+    return { result, remainingTTL };
   };
 
   return {

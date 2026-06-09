@@ -132,6 +132,11 @@ export const DuplicatedSecretsCard = () => {
     );
   };
 
+  const remainingMinutes =
+    data?.remainingTtl != null && data.remainingTtl >= 0
+      ? Math.max(1, Math.ceil(data.remainingTtl / 60))
+      : null;
+
   const isMigrationRunning = migrationTriggered && migrationStatus !== "failed";
   const isMigrationFailed = migrationStatus === "failed" && !enableBlindIndex.isPending;
   const showEnableButton = !secretBlindIndexEnabled && !isMigrationRunning && !isMigrationFailed;
@@ -139,9 +144,16 @@ export const DuplicatedSecretsCard = () => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Duplicated Secrets</CardTitle>
+        <CardTitle>
+          Duplicated Secrets
+          {remainingMinutes != null && (
+            <Badge variant="neutral" className="ml-2 font-normal">
+              Updates in {remainingMinutes} {remainingMinutes === 1 ? "minute" : "minutes"}
+            </Badge>
+          )}
+        </CardTitle>
         <CardDescription>
-          Detect secrets that share the same value across environments and paths
+          <span>Detect secrets that share the same value across environments and paths</span>
         </CardDescription>
       </CardHeader>
       <CardContent>

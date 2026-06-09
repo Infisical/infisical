@@ -184,11 +184,12 @@ export const useGetSecretsDuplication = (
   return useQuery({
     queryKey: secretInsightsKeys.secretsDuplication(params),
     queryFn: async () => {
-      const { data } = await apiRequest.get<TGetSecretsDuplicationResponse>(
+      const res = await apiRequest.get<TGetSecretsDuplicationResponse>(
         "/api/v1/insights/secrets/secrets-duplication",
         { params }
       );
-      return data;
+      const remainingTtl = Number(res.headers["x-cache-ttl"] ?? -1);
+      return { ...res.data, remainingTtl };
     },
     staleTime: INSIGHTS_STALE_TIME,
     ...options

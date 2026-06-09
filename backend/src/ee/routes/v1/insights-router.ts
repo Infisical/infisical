@@ -195,14 +195,22 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
       }
     },
     onRequest: verifyAuth([AuthMode.JWT]),
-    handler: async (req) => {
+    handler: async (req, reply) => {
       const { projectId, offset, limit } = req.query;
-      const result = await server.services.insights.getSecretsDuplication({ projectId, offset, limit }, req.permission);
+      const { result, remainingTTL } = await server.services.insights.getSecretsDuplication(
+        { projectId, offset, limit },
+        req.permission
+      );
       await server.services.auditLog.createAuditLog({
         projectId,
         event: { type: EventType.VIEW_INSIGHTS_SECRETS_DUPLICATION, metadata: { projectId } },
         ...req.auditLogInfo
       });
+
+      if (remainingTTL >= 0) {
+        void reply.header("X-Cache-TTL", remainingTTL);
+      }
+
       return result;
     }
   });
