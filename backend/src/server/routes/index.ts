@@ -1507,6 +1507,8 @@ export const registerRoutes = async (
     userDAL,
     identityDAL,
     groupDAL,
+    userGroupMembershipDAL,
+    identityGroupMembershipDAL,
     approvalPolicyDAL
   });
 

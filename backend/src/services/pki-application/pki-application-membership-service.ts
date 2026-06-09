@@ -3,6 +3,8 @@ import { Knex } from "knex";
 
 import { AccessScope, RESOURCE_SCOPE, ResourceMembershipRole, ResourceType } from "@app/db/schemas";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
+import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
+import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionMemberActions } from "@app/ee/services/permission/project-permission";
 import {
@@ -48,6 +50,8 @@ type TPkiApplicationMembershipServiceFactoryDep = {
   userDAL: Pick<TUserDALFactory, "find" | "findByEmailsOrUsernames">;
   identityDAL: Pick<TIdentityDALFactory, "find">;
   groupDAL: Pick<TGroupDALFactory, "find">;
+  userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
+  identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find">;
   approvalPolicyDAL: Pick<
     TApprovalPolicyDALFactory,
     "findPoliciesWhereSubjectIsApprover" | "deleteStepApproversBySubject"
@@ -74,8 +78,52 @@ export const pkiApplicationMembershipServiceFactory = ({
   userDAL,
   identityDAL,
   groupDAL,
+  userGroupMembershipDAL,
+  identityGroupMembershipDAL,
   approvalPolicyDAL
 }: TPkiApplicationMembershipServiceFactoryDep) => {
+  const $projectGroupIds = async (projectId: string, tx?: Knex): Promise<string[]> => {
+    const projectMemberships = await membershipDAL.find(
+      { scope: AccessScope.Project, scopeProjectId: projectId },
+      tx ? { tx } : undefined
+    );
+    return projectMemberships.map((m) => m.actorGroupId).filter((id): id is string => Boolean(id));
+  };
+
+  const $usersWithGroupProjectAccess = async (
+    projectId: string,
+    userIds: string[],
+    tx?: Knex
+  ): Promise<Set<string>> => {
+    if (userIds.length === 0) return new Set();
+    const projectGroupIds = await $projectGroupIds(projectId, tx);
+    if (projectGroupIds.length === 0) return new Set();
+
+    const candidateIds = new Set(userIds);
+    const groupUsers = await userGroupMembershipDAL.find(
+      { $in: { groupId: projectGroupIds } },
+      tx ? { tx } : undefined
+    );
+    return new Set(groupUsers.map((gu) => gu.userId).filter((id) => candidateIds.has(id)));
+  };
+
+  const $identitiesWithGroupProjectAccess = async (
+    projectId: string,
+    identityIds: string[],
+    tx?: Knex
+  ): Promise<Set<string>> => {
+    if (identityIds.length === 0) return new Set();
+    const projectGroupIds = await $projectGroupIds(projectId, tx);
+    if (projectGroupIds.length === 0) return new Set();
+
+    const candidateIds = new Set(identityIds);
+    const groupIdentities = await identityGroupMembershipDAL.find(
+      { $in: { groupId: projectGroupIds } },
+      tx ? { tx } : undefined
+    );
+    return new Set(groupIdentities.map((gi) => gi.identityId).filter((id) => candidateIds.has(id)));
+  };
+
   const $loadApplicationOrThrow = async (applicationId: string, projectId: string) => {
     const application = await pkiApplicationDAL.findById(applicationId);
     if (!application || application.projectId !== projectId) {
@@ -215,7 +263,17 @@ export const pkiApplicationMembershipServiceFactory = ({
       else if (groupId) projectMembershipFilter.actorGroupId = groupId;
       const existingProjectMembership = await membershipDAL.find(projectMembershipFilter, { tx });
 
-      if (existingProjectMembership.length === 0) {
+      let hasProjectAccess = existingProjectMembership.length > 0;
+      if (!hasProjectAccess && userId) {
+        const usersViaGroup = await $usersWithGroupProjectAccess(projectId, [userId], tx);
+        hasProjectAccess = usersViaGroup.has(userId);
+      }
+      if (!hasProjectAccess && identityId) {
+        const identitiesViaGroup = await $identitiesWithGroupProjectAccess(projectId, [identityId], tx);
+        hasProjectAccess = identitiesViaGroup.has(identityId);
+      }
+
+      if (!hasProjectAccess) {
         // eslint-disable-next-line no-nested-ternary
         const subjectLabel = userId ? "user" : identityId ? "machine identity" : "group";
         throw new BadRequestError({
@@ -577,6 +635,9 @@ export const pkiApplicationMembershipServiceFactory = ({
     const projectMemberIds = new Set(
       projectMemberRows.map((m) => m.actorUserId).filter((v): v is string => Boolean(v))
     );
+    const usersViaGroup = await $usersWithGroupProjectAccess(projectId, candidateIds);
+    usersViaGroup.forEach((id) => projectMemberIds.add(id));
+
     const targets = candidates.filter((t) => {
       if (projectMemberIds.has(t.userId)) return true;
       unresolved.push(t.label);

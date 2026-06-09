@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useQueries } from "@tanstack/react-query";
 import { HardDriveIcon, UserIcon, UsersIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
@@ -14,6 +15,7 @@ import {
   DialogHeader,
   DialogTitle
 } from "@app/components/v3";
+import { apiRequest } from "@app/config/request";
 import { useProject } from "@app/context";
 import {
   TPkiApplicationMember,
@@ -99,13 +101,31 @@ export const AddApplicationMemberModal = ({
   const [role, setRole] = useState("operator");
   const [submitting, setSubmitting] = useState(false);
 
-  const usersQuery = useGetWorkspaceUsers(projectId);
+  // includeGroupMembers so users who only have project access via a group still appear.
+  const usersQuery = useGetWorkspaceUsers(projectId, true);
   const identitiesQuery = useListProjectIdentityMemberships({
     projectId,
     projectType: ProjectType.CertificateManager,
     limit: 1000
   });
   const groupsQuery = useListWorkspaceGroups(projectId, ProjectType.CertificateManager);
+
+  const projectGroups = groupsQuery.data ?? [];
+  const groupIdentityQueries = useQueries({
+    queries: projectGroups.map((gm) => ({
+      queryKey: ["pki-application-add-member", "group-identities", gm.group.id],
+      enabled: isOpen,
+      queryFn: async () => {
+        const { data } = await apiRequest.get<{
+          machineIdentities: { id: string; name: string }[];
+        }>(`/api/v1/groups/${gm.group.id}/machine-identities`, {
+          params: { offset: 0, limit: 1000 }
+        });
+        return data.machineIdentities;
+      }
+    }))
+  });
+  const groupIdentities = groupIdentityQueries.flatMap((q) => q.data ?? []);
 
   const addMember = useAddPkiApplicationMember();
   const addUserMembers = useAddPkiApplicationUserMembers();
@@ -135,11 +155,19 @@ export const AddApplicationMemberModal = ({
   }, [usersQuery.data, taken]);
 
   const identityOptions: Option[] = useMemo(() => {
-    const memberships = identitiesQuery.data?.identityMemberships ?? [];
-    return memberships
-      .filter((im) => !taken.has(`identity:${im.identity.id}`))
-      .map((im) => ({ value: im.identity.id, label: im.identity.name }));
-  }, [identitiesQuery.data, taken]);
+    const byId = new Map<string, Option>();
+    (identitiesQuery.data?.identityMemberships ?? []).forEach((im) => {
+      if (!taken.has(`identity:${im.identity.id}`)) {
+        byId.set(im.identity.id, { value: im.identity.id, label: im.identity.name });
+      }
+    });
+    groupIdentities.forEach((i) => {
+      if (!taken.has(`identity:${i.id}`) && !byId.has(i.id)) {
+        byId.set(i.id, { value: i.id, label: i.name });
+      }
+    });
+    return Array.from(byId.values());
+  }, [identitiesQuery.data, groupIdentities, taken]);
 
   const groupOptions: Option[] = useMemo(() => {
     const memberships = groupsQuery.data ?? [];
