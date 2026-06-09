@@ -9,6 +9,7 @@ import { z } from "zod";
 import { TtlFormLabel } from "@app/components/features";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
+import { ValidationRuleOverrideNotice } from "@app/components/secret-validation/ValidationRuleOverrideNotice";
 import {
   Accordion,
   AccordionContent,
@@ -37,6 +38,10 @@ import { useListAvailableAppConnections } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { DynamicSecretProviders, SqlProviders } from "@app/hooks/api/dynamicSecret/types";
 import { VaultDatabaseRole } from "@app/hooks/api/migration/types";
+import {
+  DynamicSecretRuleProvider,
+  SecretValidationRuleType
+} from "@app/hooks/api/secretValidationRules";
 import { ProjectEnv } from "@app/hooks/api/types";
 import { slugSchema } from "@app/lib/schemas";
 
@@ -752,6 +757,12 @@ export const SqlDatabaseInputForm = ({
                   <AccordionItem value="password-config">
                     <AccordionTrigger>Password Configuration (optional)</AccordionTrigger>
                     <AccordionContent>
+                      <ValidationRuleOverrideNotice
+                        type={SecretValidationRuleType.DynamicSecrets}
+                        provider={DynamicSecretRuleProvider.SqlDatabase}
+                        environmentSlug={watch("environment")?.slug}
+                        secretPath={secretPath}
+                      />
                       <div className="mb-4 text-sm text-mineshaft-300">
                         Set constraints on the generated database password
                       </div>

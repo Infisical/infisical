@@ -2378,7 +2378,8 @@ export const registerRoutes = async (
     licenseService,
     kmsService,
     userDAL,
-    identityDAL
+    identityDAL,
+    secretValidationRuleService
   });
 
   const emailDomainService = emailDomainServiceFactory({
@@ -2625,7 +2626,8 @@ export const registerRoutes = async (
     gatewayService,
     gatewayV2Service,
     gatewayPoolService,
-    telemetryService
+    telemetryService,
+    secretValidationRuleService
   });
 
   const insightsService = insightsServiceFactory({
