@@ -1,8 +1,18 @@
 import { Controller, FormProvider, useForm } from "react-hook-form";
+import { faQuestionCircle } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
-import { Button, FormControl, Input, ModalClose, SecretInput, Switch } from "@app/components/v2";
+import {
+  Button,
+  FormControl,
+  Input,
+  ModalClose,
+  SecretInput,
+  Switch,
+  Tooltip
+} from "@app/components/v2";
 import { LogProvider, StreamMode } from "@app/hooks/api/auditLogStreams/enums";
 import { TCriblProviderLogStream } from "@app/hooks/api/auditLogStreams/types/providers/cribl-provider";
 
@@ -97,7 +107,7 @@ export const CriblProviderAuditLogStreamForm = ({ auditLogStream, onSubmit }: Pr
           )}
         />
         {isUpdate && (
-          <div className="mt-6 rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4">
+          <div className="mt-6">
             <Controller
               control={control}
               name="streamMode"
@@ -113,7 +123,15 @@ export const CriblProviderAuditLogStreamForm = ({ auditLogStream, onSubmit }: Pr
                         field.onChange(checked ? StreamMode.Batch : StreamMode.Single)
                       }
                     >
-                      <span className="text-sm">Batch delivery (send events as a JSON array)</span>
+                      <p className="text-sm">
+                        Batch delivery
+                        <Tooltip
+                          className="max-w-md"
+                          content={<p>Send events as a newline-delimited JSON (NDJSON) batch.</p>}
+                        >
+                          <FontAwesomeIcon icon={faQuestionCircle} size="sm" className="ml-1" />
+                        </Tooltip>
+                      </p>
                     </Switch>
                     {isSingleStream &&
                       (isBatch ? (
