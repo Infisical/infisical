@@ -320,6 +320,7 @@ export const injectIdentity = fp(
             parentOrgId,
             authMethod: token.authMethod,
             isMfaVerified: token.isMfaVerified,
+            mfaMethod: token.mfaMethod,
             oauthClientId: token.oauthClientId,
             token
           };

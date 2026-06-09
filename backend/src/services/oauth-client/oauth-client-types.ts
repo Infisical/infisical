@@ -69,8 +69,6 @@ export const OauthAuthorizationCodePayloadSchema = z.object({
   scopes: z.array(z.string()).optional()
 });
 
-export type TOauthAuthorizationCodePayload = z.infer<typeof OauthAuthorizationCodePayloadSchema>;
-
 export type TOauthRefreshJwtTokenPayload = AuthModeRefreshJwtTokenPayload & {
   oauthClientId?: string;
 };

@@ -7,8 +7,7 @@ import { TOauthAuthorizeInfo, TOauthClient } from "./types";
 export const oauthClientKeys = {
   list: (orgId: string) => [{ orgId }, "oauth-clients"] as const,
   authorizeInfo: (clientId: string, redirectUri: string, scope?: string) =>
-    ["oauth-authorize-info", clientId, redirectUri, scope ?? ""] as const,
-  all: ["oauth-clients"] as const
+    ["oauth-authorize-info", clientId, redirectUri, scope ?? ""] as const
 };
 
 export const useGetOauthClients = (orgId: string) => {

@@ -1,16 +1,6 @@
 import { useState } from "react";
 import { format } from "date-fns";
-import {
-  Check,
-  Copy,
-  KeyRound,
-  MoreHorizontal,
-  Pencil,
-  Plus,
-  RefreshCw,
-  Search,
-  Trash2
-} from "lucide-react";
+import { KeyRound, MoreHorizontal, Pencil, Plus, RefreshCw, Search, Trash2 } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan, PermissionDeniedBanner } from "@app/components/permissions";
@@ -32,6 +22,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  CopyButton,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -58,7 +49,7 @@ import {
   useOrganization,
   useOrgPermission
 } from "@app/context";
-import { usePopUp, useTimedReset } from "@app/hooks";
+import { usePopUp } from "@app/hooks";
 import {
   TOauthClient,
   useDeleteOauthClient,
@@ -68,29 +59,6 @@ import {
 
 import { OauthClientModal } from "./OauthClientModal";
 import { OauthClientSecretModal } from "./OauthClientSecretModal";
-
-const ClientIdCell = ({ clientId }: { clientId: string }) => {
-  const [, isCopying, setCopyText] = useTimedReset<string>({
-    initialState: "Copy to clipboard"
-  });
-
-  return (
-    <div className="flex items-center gap-1">
-      <span className="font-mono text-xs">{clientId}</span>
-      <IconButton
-        variant="ghost"
-        size="xs"
-        aria-label="Copy client ID"
-        onClick={() => {
-          navigator.clipboard.writeText(clientId);
-          setCopyText("Copied");
-        }}
-      >
-        {isCopying ? <Check /> : <Copy />}
-      </IconButton>
-    </div>
-  );
-};
 
 export const OrgOauthClientsTab = () => {
   const { currentOrg } = useOrganization();
@@ -168,8 +136,8 @@ export const OrgOauthClientsTab = () => {
             OAuth Applications
           </CardTitle>
           <CardDescription>
-            Register external platforms that sign users in with their Infisical identity via OAuth
-            2.0.
+            Register external platforms to request delegated access to Infisical on a user&apos;s
+            behalf via OAuth 2.0, limited to that user&apos;s permissions.
           </CardDescription>
           <CardAction>
             <OrgPermissionCan
@@ -209,8 +177,8 @@ export const OrgOauthClientsTab = () => {
                   <EmptyHeader>
                     <EmptyTitle>No OAuth applications found</EmptyTitle>
                     <EmptyDescription>
-                      Add an application to let an external platform authenticate users via
-                      Infisical.
+                      Add an application to let an external platform access Infisical on a
+                      user&apos;s behalf via OAuth 2.0.
                     </EmptyDescription>
                   </EmptyHeader>
                 </Empty>
@@ -240,7 +208,10 @@ export const OrgOauthClientsTab = () => {
                       <TableRow key={client.id}>
                         <TableCell className="font-medium text-foreground">{client.name}</TableCell>
                         <TableCell>
-                          <ClientIdCell clientId={client.clientId} />
+                          <div className="flex items-center gap-1">
+                            <span className="font-mono text-xs">{client.clientId}</span>
+                            <CopyButton value={client.clientId} ariaLabel="Copy client ID" />
+                          </div>
                         </TableCell>
                         <TableCell>
                           <div className="flex flex-col gap-0.5">
@@ -356,8 +327,8 @@ export const OrgOauthClientsTab = () => {
               Delete &quot;{(popUp?.deleteClient?.data as TOauthClient | undefined)?.name}&quot;?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              External platforms using this application will no longer be able to authenticate users
-              or refresh tokens.
+              External platforms using this application will no longer be able to access Infisical
+              on a user&apos;s behalf, and existing tokens will be revoked.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -1,18 +1,15 @@
-import { Check, Copy } from "lucide-react";
-
 import {
   Alert,
   AlertDescription,
   Button,
+  CopyButton,
   Dialog,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
-  DialogTitle,
-  IconButton
+  DialogTitle
 } from "@app/components/v3";
-import { useTimedReset } from "@app/hooks";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 export type TOauthClientSecretData = {
@@ -27,31 +24,15 @@ type Props = {
   handlePopUpToggle: (popUpName: keyof UsePopUpState<["clientSecret"]>, state?: boolean) => void;
 };
 
-const CopyableValue = ({ label, value }: { label: string; value: string }) => {
-  const [, isCopying, setCopyText] = useTimedReset<string>({
-    initialState: "Copy to clipboard"
-  });
-
-  return (
-    <div className="flex flex-col gap-1">
-      <span className="text-xs text-accent">{label}</span>
-      <div className="flex items-center gap-2 rounded-md border border-border bg-container p-2">
-        <p className="grow font-mono text-sm break-all text-foreground">{value}</p>
-        <IconButton
-          variant="ghost"
-          size="xs"
-          aria-label={`Copy ${label}`}
-          onClick={() => {
-            navigator.clipboard.writeText(value);
-            setCopyText("Copied");
-          }}
-        >
-          {isCopying ? <Check /> : <Copy />}
-        </IconButton>
-      </div>
+const CopyableValue = ({ label, value }: { label: string; value: string }) => (
+  <div className="flex flex-col gap-1">
+    <span className="text-xs text-accent">{label}</span>
+    <div className="flex items-center gap-2 rounded-md border border-border bg-container p-2">
+      <p className="grow font-mono text-sm break-all text-foreground">{value}</p>
+      <CopyButton value={value} ariaLabel={`Copy ${label}`} />
     </div>
-  );
-};
+  </div>
+);
 
 export const OauthClientSecretModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Props) => {
   const data = popUp?.clientSecret?.data as TOauthClientSecretData | undefined;

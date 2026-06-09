@@ -268,6 +268,10 @@ export const oauthClientServiceFactory = ({
       throw new BadRequestError({ message: `Unsupported OAuth scope(s): ${invalidScopes.join(", ")}` });
     }
 
+    // Called only for its side effects: it throws if the consenting user is not a member of the
+    // client's org or fails org SSO enforcement. This blocks issuing a delegation code to a user
+    // who has no standing in the org the client belongs to. The returned ability is intentionally
+    // unused here; scope narrowing happens later when the delegated token builds its permission.
     await permissionService.getOrgPermission({
       actor: ActorType.USER,
       actorId: dto.userId,

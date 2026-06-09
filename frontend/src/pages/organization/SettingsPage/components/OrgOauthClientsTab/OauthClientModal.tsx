@@ -159,7 +159,7 @@ export const OauthClientModal = ({
       open={popUp?.clientForm?.isOpen}
       onOpenChange={(isOpen) => {
         handlePopUpToggle("clientForm", isOpen);
-        reset();
+        if (!isOpen) reset();
       }}
     >
       <DialogContent className="sm:max-w-lg">
@@ -168,8 +168,8 @@ export const OauthClientModal = ({
             {isEditing ? "Edit OAuth application" : "Add OAuth application"}
           </DialogTitle>
           <DialogDescription>
-            External platforms can use this application to sign users in with their Infisical
-            identity via OAuth 2.0.
+            External platforms use this application to request delegated access to Infisical on a
+            user&apos;s behalf via OAuth 2.0, limited to that user&apos;s permissions.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit(onFormSubmit)} className="flex flex-col gap-6">
