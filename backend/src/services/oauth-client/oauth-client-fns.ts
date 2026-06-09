@@ -61,6 +61,11 @@ export const isAllowedRedirectUri = (uri: string) => {
   return false;
 };
 
+// OAuth token sessions are tagged with this userAgent so they are distinguishable from first-party
+// browser sessions and from other clients. Deleting a client revokes its sessions by this exact value,
+// so the format must stay in sync between session creation and revocation.
+export const getOauthClientSessionUserAgent = (clientId: string) => `Infisical OAuth - ${clientId}`;
+
 export const isRegisteredRedirectUri = (registeredUris: string[], redirectUri: string) =>
   registeredUris.some((uri) => {
     if (uri === redirectUri) return true;

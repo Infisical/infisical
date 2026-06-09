@@ -15,7 +15,12 @@ import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-se
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 
 import { TOauthClientDALFactory } from "./oauth-client-dal";
-import { computePkceChallenge, isRegisteredRedirectUri, PKCE_CODE_VERIFIER_REGEX } from "./oauth-client-fns";
+import {
+  computePkceChallenge,
+  getOauthClientSessionUserAgent,
+  isRegisteredRedirectUri,
+  PKCE_CODE_VERIFIER_REGEX
+} from "./oauth-client-fns";
 import {
   OauthAuthorizationCodePayloadSchema,
   TCreateOauthClientDTO,
@@ -32,7 +37,11 @@ type TOauthClientServiceFactoryDep = {
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiry" | "getItem" | "deleteItem">;
   tokenService: Pick<
     TAuthTokenServiceFactory,
-    "getUserTokenSession" | "getUserTokenSessionById" | "validateRefreshToken" | "rotateRefreshToken"
+    | "getUserTokenSession"
+    | "getUserTokenSessionById"
+    | "validateRefreshToken"
+    | "rotateRefreshToken"
+    | "revokeSessionsByUserAgent"
   >;
   orgDAL: Pick<TOrgDALFactory, "findById">;
 };
@@ -183,6 +192,12 @@ export const oauthClientServiceFactory = ({
     if (!client) throw new NotFoundError({ message: `OAuth client with ID '${clientDbId}' not found` });
 
     const deletedClient = await oauthClientDAL.deleteById(client.id);
+
+    // Revoke all access/refresh tokens issued for this client. The OAuth token sessions are tagged
+    // with the client's userAgent, so deleting them makes fnValidateJwtIdentity reject every token
+    // the client issued on the next request, rather than letting them live until JWT expiry.
+    await tokenService.revokeSessionsByUserAgent(getOauthClientSessionUserAgent(client.clientId));
+
     return sanitizeOauthClient(deletedClient);
   };
 
@@ -244,7 +259,7 @@ export const oauthClientServiceFactory = ({
     const tokenSession = await tokenService.getUserTokenSession({
       userId: dto.userId,
       ip: dto.ip,
-      userAgent: `Infisical OAuth - ${client.clientId}`
+      userAgent: getOauthClientSessionUserAgent(client.clientId)
     });
     if (!tokenSession) throw new BadRequestError({ message: "Failed to create user token session" });
 

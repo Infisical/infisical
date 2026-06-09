@@ -196,6 +196,10 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
   const revokeMySessionById = async (userId: string, sessionId: string) =>
     tokenDAL.deleteTokenSession({ userId, id: sessionId });
 
+  // Revokes every token session created under the given userAgent (across all users/IPs). Used to
+  // invalidate all OAuth access/refresh tokens issued for a client when that client is deleted.
+  const revokeSessionsByUserAgent = async (userAgent: string) => tokenDAL.deleteTokenSession({ userAgent });
+
   const validateRefreshToken = async (refreshToken?: string, opts?: { allowOauthClientToken?: boolean }) => {
     const appCfg = getConfig();
     if (!refreshToken) {
@@ -488,6 +492,7 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
     getTokenSessionByUser,
     revokeAllMySessions,
     revokeMySessionById,
+    revokeSessionsByUserAgent,
     validateRefreshToken,
     rotateRefreshToken,
     fnValidateJwtIdentity,
