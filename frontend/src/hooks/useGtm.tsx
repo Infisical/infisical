@@ -10,6 +10,8 @@ export const GtmHead = () => {
   useEffect(() => {
     if (!shouldLoad) return undefined;
 
+    window.gtmLoaded = true;
+
     // If GTM was already injected by the backend (standalone mode), skip.
     // The backend injects the full GTM snippet into the static HTML <head>.
     if (window.dataLayer) return undefined;

@@ -9,5 +9,6 @@ declare global {
       TELEMETRY_CAPTURING_ENABLED: string;
     };
     dataLayer?: Record<string, unknown>[];
+    gtmLoaded?: boolean;
   }
 }

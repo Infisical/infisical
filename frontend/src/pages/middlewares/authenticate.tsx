@@ -11,6 +11,13 @@ import { clearSession, fetchUserDetails, logoutUser } from "@app/hooks/api/users
 
 export const Route = createFileRoute("/_authenticate")({
   beforeLoad: async ({ context, location }) => {
+    if (typeof window !== "undefined" && window.gtmLoaded) {
+      window.location.assign(location.href);
+      await new Promise<never>(() => {
+        // intentionally never resolves; the full page reload above takes over
+      });
+    }
+
     if (!context.serverConfig.initialized) {
       throw redirect({ to: "/admin/signup" });
     }
