@@ -188,7 +188,6 @@ export const OrgOauthClientsTab = () => {
                     <TableRow>
                       <TableHead>Name</TableHead>
                       <TableHead>Client ID</TableHead>
-                      <TableHead>Redirect URIs</TableHead>
                       <TableHead>PKCE</TableHead>
                       <TableHead>Created</TableHead>
                       <TableHead className="w-px text-right" aria-label="Actions" />
@@ -199,7 +198,7 @@ export const OrgOauthClientsTab = () => {
                       Array.from({ length: 3 }).map((_, idx) => (
                         // eslint-disable-next-line react/no-array-index-key
                         <TableRow key={`oauth-client-skeleton-${idx}`}>
-                          <TableCell colSpan={6}>
+                          <TableCell colSpan={5}>
                             <Skeleton className="h-5 w-full" />
                           </TableCell>
                         </TableRow>
@@ -211,15 +210,6 @@ export const OrgOauthClientsTab = () => {
                           <div className="flex items-center gap-1">
                             <span className="font-mono text-xs">{client.clientId}</span>
                             <CopyButton value={client.clientId} ariaLabel="Copy client ID" />
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex flex-col gap-0.5">
-                            {client.redirectUris.map((uri) => (
-                              <span key={uri} className="font-mono text-xs break-all">
-                                {uri}
-                              </span>
-                            ))}
                           </div>
                         </TableCell>
                         <TableCell>
