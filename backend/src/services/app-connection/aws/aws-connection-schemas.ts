@@ -12,7 +12,14 @@ import { APP_CONNECTION_NAME_MAP } from "../app-connection-maps";
 import { AwsConnectionMethod } from "./aws-connection-enums";
 
 export const AwsConnectionAssumeRoleCredentialsSchema = z.object({
-  roleArn: z.string().trim().min(1, "Role ARN required")
+  roleArn: z.string().trim().min(1, "Role ARN required"),
+  stsEndpoint: z
+    .string()
+    .trim()
+    .url("STS endpoint must be a valid URL")
+    .startsWith("https://", "STS endpoint must use HTTPS")
+    .optional()
+    .describe(AppConnections.CREATE(AppConnection.AWS).stsEndpoint)
 });
 
 export const AwsConnectionAccessTokenCredentialsSchema = z.object({
@@ -39,7 +46,7 @@ export const AwsConnectionSchema = z.intersection(
 export const SanitizedAwsConnectionSchema = z.discriminatedUnion("method", [
   BaseAwsConnectionSchema.extend({
     method: z.literal(AwsConnectionMethod.AssumeRole),
-    credentials: AwsConnectionAssumeRoleCredentialsSchema.pick({})
+    credentials: AwsConnectionAssumeRoleCredentialsSchema.pick({ stsEndpoint: true })
   }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.AWS]} (Assume Role)` })),
   BaseAwsConnectionSchema.extend({
     method: z.literal(AwsConnectionMethod.AccessKey),

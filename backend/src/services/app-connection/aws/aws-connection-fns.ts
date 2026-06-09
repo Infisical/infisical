@@ -12,6 +12,29 @@ import { TAppConnectionRaw } from "@app/services/app-connection/app-connection-t
 import { AwsConnectionMethod } from "./aws-connection-enums";
 import { TAwsConnectionConfig } from "./aws-connection-types";
 
+// Regional and VPC PrivateLink STS endpoints reject requests whose SigV4 credential scope region
+// doesn't match the endpoint's region. In AWS STS hosts the region is the label following the "sts"
+// (or "sts-fips") service label (e.g. sts.eu-west-1.amazonaws.com,
+// vpce-0abc.sts.eu-west-1.vpce.amazonaws.com), so parse it out of the host. Returns undefined for the
+// global endpoint (sts.amazonaws.com) and non-AWS hosts (e.g. LocalStack), where the caller's region
+// is used and region scoping isn't enforced.
+const getStsSigningRegion = (stsEndpoint?: string): string | undefined => {
+  if (!stsEndpoint) return undefined;
+
+  try {
+    const { hostname } = new URL(stsEndpoint);
+
+    const labels = hostname.split(".");
+    const stsLabelIndex = labels.findIndex((label) => label === "sts" || label === "sts-fips");
+    const region = stsLabelIndex === -1 ? undefined : labels[stsLabelIndex + 1];
+
+    // the global endpoint (sts.amazonaws.com) has the domain in the region position, not a region
+    return region === "amazonaws" ? undefined : region;
+  } catch {
+    return undefined;
+  }
+};
+
 export const getAwsConnectionListItem = () => {
   const { INF_APP_CONNECTION_AWS_ACCESS_KEY_ID } = getConfig();
 
@@ -35,9 +58,14 @@ export const getAwsConnectionConfig = async (appConnection: TAwsConnectionConfig
   switch (method) {
     case AwsConnectionMethod.AssumeRole: {
       const client = new STSClient({
-        region,
+        // when a custom STS endpoint is set, sign for the region embedded in that endpoint so the
+        // request isn't rejected for being scoped to the wrong region; otherwise use the caller's region
+        region: getStsSigningRegion(credentials.stsEndpoint) ?? region,
         useFipsEndpoint: crypto.isFipsModeEnabled(),
         sha256: CustomAWSHasher,
+        // only override the endpoint when explicitly set; otherwise preserve the SDK's
+        // default region/FIPS endpoint resolution so existing connections are unaffected
+        ...(credentials.stsEndpoint ? { endpoint: credentials.stsEndpoint } : {}),
         credentials:
           appCfg.INF_APP_CONNECTION_AWS_ACCESS_KEY_ID && appCfg.INF_APP_CONNECTION_AWS_SECRET_ACCESS_KEY
             ? {
@@ -104,9 +132,16 @@ export const buildAwsConnectionConfig = (
 export const validateAwsConnectionCredentials = async (appConnection: TAwsConnectionConfig) => {
   try {
     const awsConfig = await getAwsConnectionConfig(appConnection);
+
+    // honor the custom STS endpoint for the caller-identity check too, so validation
+    // works in isolated environments where only the custom endpoint is reachable
+    const stsEndpoint =
+      appConnection.method === AwsConnectionMethod.AssumeRole ? appConnection.credentials.stsEndpoint : undefined;
+
     const sts = new STSClient({
-      region: awsConfig.region,
-      credentials: awsConfig.credentials
+      region: getStsSigningRegion(stsEndpoint) ?? awsConfig.region,
+      credentials: awsConfig.credentials,
+      ...(stsEndpoint ? { endpoint: stsEndpoint } : {})
     });
 
     await sts.send(new GetCallerIdentityCommand({}));
