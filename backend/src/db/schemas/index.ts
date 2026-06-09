@@ -23,7 +23,6 @@ export * from "./approval-request-step-eligible-approvers";
 export * from "./approval-request-steps";
 export * from "./approval-requests";
 export * from "./audit-log-stream-outbox";
-export * from "./audit-log-stream-outbox-dlq";
 export * from "./audit-log-streams";
 export * from "./audit-logs";
 export * from "./auth-token-sessions";

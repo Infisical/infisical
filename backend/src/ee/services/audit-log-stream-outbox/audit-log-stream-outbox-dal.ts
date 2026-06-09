@@ -6,11 +6,7 @@ import { DatabaseError } from "@app/lib/errors";
 import { chunkArray } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 
-import {
-  AuditLogStreamOutboxStatus,
-  TAuditLogStreamOutboxRow,
-  TFailedStreamRow
-} from "./audit-log-stream-outbox-types";
+import { AuditLogStreamOutboxStatus, TAuditLogStreamOutboxRow } from "./audit-log-stream-outbox-types";
 
 export type TAuditLogStreamOutboxDALFactory = ReturnType<typeof auditLogStreamOutboxDALFactory>;
 
@@ -114,53 +110,17 @@ export const auditLogStreamOutboxDALFactory = (db: TDbClient) => {
     }
   };
 
-  // Move exhausted rows out of the hot table into the DLQ in one transaction —
-  // copies the payload + audit history, then deletes the original rows so the
-  // worker never picks them up again.
-  const moveToDlq = async (rows: TAuditLogStreamOutboxRow[], errorMessage: string, tx?: Knex) => {
-    if (rows.length === 0) return;
-    try {
-      const exec = async (trx: Knex) => {
-        const dlqRows = rows.map((row) => ({
-          originalAuditLogStreamOutboxId: row.id,
-          streamId: row.streamId,
-          orgId: row.orgId,
-          payload: JSON.stringify(row.payload),
-          attempts: row.attempts + 1,
-          lastError: errorMessage,
-          originalCreatedAt: row.createdAt
-        }));
-        await trx.batchInsert(TableName.AuditLogStreamOutboxDlq, dlqRows);
-        await trx(TableName.AuditLogStreamOutbox)
-          .whereIn(
-            "id",
-            rows.map((row) => row.id)
-          )
-          .del();
-      };
-
-      if (tx) {
-        await exec(tx);
-      } else {
-        await db.transaction(exec);
-      }
-    } catch (error) {
-      throw new DatabaseError({ error, name: "AuditLogStreamOutbox: moveToDlq" });
-    }
-  };
-
   // Commit the outcome of a chunked delivery for a single claimed batch in one
   // transaction:
-  //   - successIds: rows that reached the provider — flip to 'delivered' (kept
-  //                 around as the dedup guard against a re-fanout from a
-  //                 retried ingest tick; pruned later by the cleanup cron).
-  //   - retriable:  rows whose chunk failed but can still retry — flip to 'retry'
-  //                 with attempt+1.
-  //   - exhausted:  rows whose chunk failed and used up MAX_ATTEMPTS — move to DLQ.
-  // Failed rows arrive as TFailedStreamRow so each carries the errorMessage from
-  // its own chunk (different chunks of one claim can fail with different errors).
-  // Exhausted rows are grouped by errorMessage and moved to the DLQ one group at
-  // a time so each DLQ row records what actually broke for it.
+  //   - successIds:   rows that reached the provider — flip to 'delivered' (kept
+  //                   around as the dedup guard against a re-fanout from a
+  //                   retried ingest tick; pruned later by the cleanup cron).
+  //   - retriable:    rows whose chunk failed but can still retry — flip to 'retry'
+  //                   with attempt+1.
+  //   - exhaustedIds: rows whose chunk failed and used up MAX_ATTEMPTS — deleted
+  //                   (dropped). There is no DLQ; the caller logs + emits a metric
+  //                   for these before committing, so the event is gone once the
+  //                   row is removed.
   //
   // Folding all three outcomes into a single transaction means a crash between
   // the writes can't leave the claim half-applied (e.g. some rows flipped to
@@ -170,10 +130,10 @@ export const auditLogStreamOutboxDALFactory = (db: TDbClient) => {
   const commitDeliveryResult = async (input: {
     successIds: number[];
     retriable: { groups: { ids: number[]; nextRetryDelayMs: number }[] } | null;
-    exhausted: TFailedStreamRow[];
+    exhaustedIds: number[];
   }) => {
     const retriableCount = input.retriable?.groups.reduce((n, g) => n + g.ids.length, 0) ?? 0;
-    if (input.successIds.length === 0 && retriableCount === 0 && input.exhausted.length === 0) return;
+    if (input.successIds.length === 0 && retriableCount === 0 && input.exhaustedIds.length === 0) return;
     try {
       await db.transaction(async (tx) => {
         if (input.successIds.length > 0) {
@@ -185,17 +145,8 @@ export const auditLogStreamOutboxDALFactory = (db: TDbClient) => {
             await markBatchForRetry(group.ids, group.nextRetryDelayMs, tx);
           }
         }
-        if (input.exhausted.length > 0) {
-          const rowsByError = new Map<string, TAuditLogStreamOutboxRow[]>();
-          for (const { row, errorMessage } of input.exhausted) {
-            const existing = rowsByError.get(errorMessage);
-            if (existing) existing.push(row);
-            else rowsByError.set(errorMessage, [row]);
-          }
-          for (const [errorMessage, rows] of rowsByError) {
-            // eslint-disable-next-line no-await-in-loop
-            await moveToDlq(rows, errorMessage, tx);
-          }
+        if (input.exhaustedIds.length > 0) {
+          await tx(TableName.AuditLogStreamOutbox).whereIn("id", input.exhaustedIds).del();
         }
       });
     } catch (error) {
@@ -208,12 +159,12 @@ export const auditLogStreamOutboxDALFactory = (db: TDbClient) => {
   // Treat a stale claim as a consumed attempt — a payload that crashes the worker
   // is indistinguishable from one that fails delivery, and either way must respect
   // MAX_ATTEMPTS so a poison pill can't loop forever. Rows that hit the cap are
-  // moved to DLQ in the same transaction.
+  // dropped (deleted) in the same transaction; there is no DLQ. The caller logs +
+  // emits a metric for the dropped count.
   const recoverStaleClaims = async (
     thresholdMs: number,
     maxAttempts: number
-  ): Promise<{ retried: number; movedToDlq: number }> => {
-    const errorMessage = "stale-claim-recovered: worker did not release lock before threshold";
+  ): Promise<{ retried: number; dropped: { streamId: string; orgId: string }[] }> => {
     try {
       return await db.transaction(async (tx) => {
         const staleRows = await tx(TableName.AuditLogStreamOutbox)
@@ -223,7 +174,7 @@ export const auditLogStreamOutboxDALFactory = (db: TDbClient) => {
           .skipLocked()
           .select<TAuditLogStreamOutboxRow[]>("*");
 
-        if (staleRows.length === 0) return { retried: 0, movedToDlq: 0 };
+        if (staleRows.length === 0) return { retried: 0, dropped: [] };
 
         const exhausted: TAuditLogStreamOutboxRow[] = [];
         const retriable: TAuditLogStreamOutboxRow[] = [];
@@ -250,10 +201,18 @@ export const auditLogStreamOutboxDALFactory = (db: TDbClient) => {
         }
 
         if (exhausted.length > 0) {
-          await moveToDlq(exhausted, errorMessage, tx);
+          await tx(TableName.AuditLogStreamOutbox)
+            .whereIn(
+              "id",
+              exhausted.map((row) => row.id)
+            )
+            .del();
         }
 
-        return { retried: retriable.length, movedToDlq: exhausted.length };
+        return {
+          retried: retriable.length,
+          dropped: exhausted.map((row) => ({ streamId: row.streamId, orgId: row.orgId }))
+        };
       });
     } catch (error) {
       throw new DatabaseError({ error, name: "AuditLogStreamOutbox: recoverStaleClaims" });
@@ -293,34 +252,6 @@ export const auditLogStreamOutboxDALFactory = (db: TDbClient) => {
     }
   };
 
-  const deleteDlqOlderThan = async (retentionMs: number, batchSize = 10_000, maxBatches = 100): Promise<number> => {
-    try {
-      let total = 0;
-      for (let i = 0; i < maxBatches; i += 1) {
-        // eslint-disable-next-line no-await-in-loop
-        const deleted = await db(TableName.AuditLogStreamOutboxDlq)
-          .whereIn("id", function selectExpiredIds() {
-            void this.from(TableName.AuditLogStreamOutboxDlq)
-              .select("id")
-              .whereRaw(`"failedAt" < NOW() - (? || ' milliseconds')::INTERVAL`, [retentionMs])
-              .limit(batchSize);
-          })
-          .del();
-
-        total += deleted;
-        if (deleted < batchSize) break;
-        if (i === maxBatches - 1) {
-          logger.warn(
-            `audit-log-stream-outbox: deleteDlqOlderThan hit the batch ceiling [maxBatches=${maxBatches}] [batchSize=${batchSize}] [deleted=${total}] — expired DLQ entries remain unpruned`
-          );
-        }
-      }
-      return total;
-    } catch (error) {
-      throw new DatabaseError({ error, name: "AuditLogStreamOutbox: deleteDlqOlderThan" });
-    }
-  };
-
   const findStreamsWithOverdueRows = async (): Promise<{ streamId: string; orgId: string; provider: string }[]> => {
     try {
       return await db(`${TableName.AuditLogStreamOutbox} as o`)
@@ -341,7 +272,6 @@ export const auditLogStreamOutboxDALFactory = (db: TDbClient) => {
     commitDeliveryResult,
     recoverStaleClaims,
     findStreamsWithOverdueRows,
-    deleteDeliveredOlderThan,
-    deleteDlqOlderThan
+    deleteDeliveredOlderThan
   };
 };

@@ -12,10 +12,10 @@ const OUTBOX_WORKER_CONCURRENCY = 5;
 const STALE_CLAIM_SWEEPER_CRON = "*/5 * * * *";
 const STALE_CLAIM_SWEEPER_RUN_HASH_TTL_S = 60 * 60;
 
-// Cleanup cadence. Runs every 15 min to prune both 'delivered' outbox rows and DLQ
-// entries past their respective retention windows. Tighter than the old hourly cadence
-// so deletes come in smaller, more frequent bursts (less autovacuum/bloat pressure) and
-// the outbox table tracks the now-shorter delivered retention closely.
+// Cleanup cadence. Runs every 15 min to prune 'delivered' outbox rows past their
+// retention window. Tighter than the old hourly cadence so deletes come in smaller,
+// more frequent bursts (less autovacuum/bloat pressure) and the outbox table tracks
+// the now-shorter delivered retention closely.
 const CLEANUP_CRON = "*/15 * * * *";
 // Per-fire hash dedup window — only needs to outlive a single run + retries, so 1h is
 // ample for a 15-min cron (the hash id is keyed per scheduled fire, so this never gates
@@ -27,7 +27,7 @@ export type TAuditLogStreamOutboxQueueDep = {
   cronJob: TCronJobFactory;
   auditLogStreamOutboxService: Pick<
     TAuditLogStreamOutboxServiceFactory,
-    "drainStream" | "sweepStaleClaims" | "pruneDeliveredRows" | "pruneDlqEntries"
+    "drainStream" | "sweepStaleClaims" | "pruneDeliveredRows"
   >;
 };
 
@@ -68,14 +68,10 @@ export const auditLogStreamOutboxQueueFactory = ({
       pattern: CLEANUP_CRON,
       runHashTtlS: CLEANUP_RUN_HASH_TTL_S,
       handler: async () => {
-        const results = await Promise.allSettled([
-          auditLogStreamOutboxService.pruneDeliveredRows(),
-          auditLogStreamOutboxService.pruneDlqEntries()
-        ]);
-        for (const result of results) {
-          if (result.status === "rejected") {
-            logger.error(result.reason as Error, "audit-log-stream-outbox: cleanup prune failed");
-          }
+        try {
+          await auditLogStreamOutboxService.pruneDeliveredRows();
+        } catch (error) {
+          logger.error(error as Error, "audit-log-stream-outbox: cleanup prune failed");
         }
       }
     });

@@ -2,11 +2,7 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { LogProvider, StreamMode } from "../audit-log-stream/audit-log-stream-enums";
 import { auditLogStreamOutboxServiceFactory } from "./audit-log-stream-outbox-service";
-import {
-  AuditLogStreamOutboxStatus,
-  TAuditLogStreamOutboxRow,
-  TFailedStreamRow
-} from "./audit-log-stream-outbox-types";
+import { AuditLogStreamOutboxStatus, TAuditLogStreamOutboxRow } from "./audit-log-stream-outbox-types";
 
 const STREAM_ID = "stream-1";
 const ORG_ID = "org-1";
@@ -68,10 +64,9 @@ const createService = () => {
     batchInsert: vi.fn(async () => undefined),
     claimBatchForStream: vi.fn<(...args: unknown[]) => Promise<TAuditLogStreamOutboxRow[]>>(async () => []),
     commitDeliveryResult: vi.fn<(input: unknown) => Promise<void>>(async () => undefined),
-    recoverStaleClaims: vi.fn(async () => ({ retried: 0, movedToDlq: 0 })),
+    recoverStaleClaims: vi.fn(async () => ({ retried: 0, dropped: [] })),
     findStreamsWithOverdueRows: vi.fn(async () => []),
-    deleteDeliveredOlderThan: vi.fn<(retentionMs: number) => Promise<number>>(async () => 0),
-    deleteDlqOlderThan: vi.fn<(retentionMs: number) => Promise<number>>(async () => 0)
+    deleteDeliveredOlderThan: vi.fn<(retentionMs: number) => Promise<number>>(async () => 0)
   };
 
   const auditLogStreamDAL = {
@@ -115,17 +110,18 @@ describe("audit-log-stream-outbox-service drainStream failure handling", () => {
     const call = auditLogStreamOutboxDAL.commitDeliveryResult.mock.calls[0][0] as {
       successIds: number[];
       retriable: { groups: { ids: number[]; nextRetryDelayMs: number }[] } | null;
-      exhausted: TFailedStreamRow[];
+      exhaustedIds: number[];
     };
     expect(call.successIds).toEqual([]);
     expect(call.retriable?.groups.flatMap((g) => g.ids)).toEqual([1]);
-    expect(call.exhausted).toEqual([]);
+    expect(call.exhaustedIds).toEqual([]);
   });
 
-  test("routes rows that hit MAX_ATTEMPTS to DLQ instead of retry", async () => {
+  test("drops rows that hit MAX_ATTEMPTS instead of retrying them", async () => {
     const { service, auditLogStreamOutboxDAL } = createService();
 
-    // attempts=4 → attempts+1=5 hits MAX_ATTEMPTS so the row must go to DLQ.
+    // attempts=4 → attempts+1=5 hits MAX_ATTEMPTS so the row is dropped (no DLQ):
+    // its id lands in exhaustedIds for deletion and nothing is queued for retry.
     auditLogStreamOutboxDAL.claimBatchForStream
       .mockResolvedValueOnce([buildRow({ attempts: 4 })])
       .mockResolvedValueOnce([]);
@@ -137,12 +133,11 @@ describe("audit-log-stream-outbox-service drainStream failure handling", () => {
     const call = auditLogStreamOutboxDAL.commitDeliveryResult.mock.calls[0][0] as {
       successIds: number[];
       retriable: { groups: { ids: number[]; nextRetryDelayMs: number }[] } | null;
-      exhausted: TFailedStreamRow[];
+      exhaustedIds: number[];
     };
     expect(call.successIds).toEqual([]);
     expect(call.retriable).toBeNull();
-    expect(call.exhausted).toHaveLength(1);
-    expect(call.exhausted[0].errorMessage).toEqual(expect.stringContaining(FAILURE_MESSAGE));
+    expect(call.exhaustedIds).toEqual([1]);
   });
 
   test("commits delivered rows on the success path", async () => {
@@ -157,11 +152,11 @@ describe("audit-log-stream-outbox-service drainStream failure handling", () => {
     const call = auditLogStreamOutboxDAL.commitDeliveryResult.mock.calls[0][0] as {
       successIds: number[];
       retriable: { groups: { ids: number[]; nextRetryDelayMs: number }[] } | null;
-      exhausted: TFailedStreamRow[];
+      exhaustedIds: number[];
     };
     expect(call.successIds).toEqual([1]);
     expect(call.retriable).toBeNull();
-    expect(call.exhausted).toEqual([]);
+    expect(call.exhaustedIds).toEqual([]);
   });
 
   test("stops draining after the first failed batch — does not claim another batch", async () => {
@@ -193,11 +188,11 @@ describe("audit-log-stream-outbox-service drainStream failure handling", () => {
     const call = auditLogStreamOutboxDAL.commitDeliveryResult.mock.calls[0][0] as {
       successIds: number[];
       retriable: { groups: { ids: number[]; nextRetryDelayMs: number }[] } | null;
-      exhausted: TFailedStreamRow[];
+      exhaustedIds: number[];
     };
     expect(call.successIds).toEqual([1]);
     expect(call.retriable?.groups.flatMap((g) => g.ids)).toEqual([2]);
-    expect(call.exhausted).toEqual([]);
+    expect(call.exhaustedIds).toEqual([]);
   });
 
   test("per-attempt backoff: rows at different attempts retry in separate groups with distinct delays", async () => {
@@ -220,7 +215,7 @@ describe("audit-log-stream-outbox-service drainStream failure handling", () => {
     const call = auditLogStreamOutboxDAL.commitDeliveryResult.mock.calls[0][0] as {
       successIds: number[];
       retriable: { groups: { ids: number[]; nextRetryDelayMs: number }[] } | null;
-      exhausted: TFailedStreamRow[];
+      exhaustedIds: number[];
     };
     const groups = call.retriable?.groups ?? [];
     expect(groups).toHaveLength(2);
@@ -268,11 +263,11 @@ describe("audit-log-stream-outbox-service drainStream single mode", () => {
     const call = auditLogStreamOutboxDAL.commitDeliveryResult.mock.calls[0][0] as {
       successIds: number[];
       retriable: { groups: { ids: number[]; nextRetryDelayMs: number }[] } | null;
-      exhausted: TFailedStreamRow[];
+      exhaustedIds: number[];
     };
     expect(call.successIds).toEqual([1, 2]);
     expect(call.retriable).toBeNull();
-    expect(call.exhausted).toEqual([]);
+    expect(call.exhaustedIds).toEqual([]);
   });
 
   test("retries only the row whose single-event send failed", async () => {
@@ -297,11 +292,11 @@ describe("audit-log-stream-outbox-service drainStream single mode", () => {
     const call = auditLogStreamOutboxDAL.commitDeliveryResult.mock.calls[0][0] as {
       successIds: number[];
       retriable: { groups: { ids: number[]; nextRetryDelayMs: number }[] } | null;
-      exhausted: TFailedStreamRow[];
+      exhaustedIds: number[];
     };
     expect(call.successIds).toEqual([1]);
     expect(call.retriable?.groups.flatMap((g) => g.ids)).toEqual([2]);
-    expect(call.exhausted).toEqual([]);
+    expect(call.exhaustedIds).toEqual([]);
   });
 });
 
@@ -311,7 +306,7 @@ describe("audit-log-stream-outbox-service enqueueForLogs batch fanout", () => {
       batchInsert: vi.fn<(rows: unknown[]) => Promise<void>>(async () => undefined),
       claimBatchForStream: vi.fn(async () => []),
       commitDeliveryResult: vi.fn(async () => undefined),
-      recoverStaleClaims: vi.fn(async () => ({ retried: 0, movedToDlq: 0 })),
+      recoverStaleClaims: vi.fn(async () => ({ retried: 0, dropped: [] })),
       findStreamsWithOverdueRows: vi.fn(async () => []),
       deleteDeliveredOlderThan: vi.fn<(retentionMs: number) => Promise<number>>(async () => 0)
     };
@@ -409,20 +404,5 @@ describe("audit-log-stream-outbox-service pruneDeliveredRows", () => {
     // delivered rows still serve their dedup-guard purpose — guards against accidental
     // tightening down toward that window.
     expect(retentionMs).toBeGreaterThanOrEqual(5 * 60_000);
-  });
-});
-
-describe("audit-log-stream-outbox-service pruneDlqEntries", () => {
-  test("delegates to DAL with the configured retention", async () => {
-    const { service, auditLogStreamOutboxDAL } = createService();
-    auditLogStreamOutboxDAL.deleteDlqOlderThan.mockResolvedValueOnce(7);
-
-    await service.pruneDlqEntries();
-
-    expect(auditLogStreamOutboxDAL.deleteDlqOlderThan).toHaveBeenCalledTimes(1);
-    const [retentionMs] = auditLogStreamOutboxDAL.deleteDlqOlderThan.mock.calls[0];
-    // DLQ retention should give operators a meaningful window (at least several hours)
-    // to notice and triage a wedged provider.
-    expect(retentionMs).toBeGreaterThanOrEqual(12 * 60 * 60_000);
   });
 });

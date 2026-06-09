@@ -44,33 +44,9 @@ export async function up(knex: Knex): Promise<void> {
   }
 
   await createOnUpdateTrigger(knex, TableName.AuditLogStreamOutbox);
-
-  if (!(await knex.schema.hasTable(TableName.AuditLogStreamOutboxDlq))) {
-    await knex.schema.createTable(TableName.AuditLogStreamOutboxDlq, (t) => {
-      t.bigIncrements("id").primary();
-      t.bigInteger("originalAuditLogStreamOutboxId").notNullable();
-      t.uuid("streamId").notNullable();
-      t.uuid("orgId").notNullable();
-      t.jsonb("payload").notNullable();
-      t.integer("attempts").notNullable();
-      t.text("lastError");
-      t.timestamp("originalCreatedAt", { useTz: true }).notNullable();
-      t.timestamp("failedAt", { useTz: true }).notNullable().defaultTo(knex.fn.now());
-
-      t.foreign("streamId").references("id").inTable(TableName.AuditLogStream).onDelete("CASCADE");
-      t.foreign("orgId").references("id").inTable(TableName.Organization).onDelete("CASCADE");
-
-      // FK referencing columns: Postgres does not auto-index these, so cascade
-      // deletes (stream/org removal) would otherwise seq-scan the DLQ.
-      t.index(["streamId"]);
-      t.index(["orgId"]);
-      t.index(["failedAt"]);
-    });
-  }
 }
 
 export async function down(knex: Knex): Promise<void> {
   await dropOnUpdateTrigger(knex, TableName.AuditLogStreamOutbox);
-  await knex.schema.dropTableIfExists(TableName.AuditLogStreamOutboxDlq);
   await knex.schema.dropTableIfExists(TableName.AuditLogStreamOutbox);
 }

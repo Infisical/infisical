@@ -50,6 +50,7 @@ const INFISICAL_CORE_METER_ATTRIBUTES = [
   "audit_log.backend",
   "audit_log.drop_reason",
   "audit_log_stream.provider",
+  "audit_log_stream.id",
   "scim.operation",
   "sso.provider",
   "sso.action",

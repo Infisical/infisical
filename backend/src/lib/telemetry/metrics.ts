@@ -310,6 +310,17 @@ export const auditLogStreamDeliveryDurationHistogram = infisicalCoreMeter.create
   }
 );
 
+// Wired in audit-log-stream-outbox-service.ts. Incremented when stream events are dropped after
+// exhausting all delivery retries (there is no DLQ — the events are gone). Operators should alert on this.
+export const auditLogStreamDeliveryExhaustedCounter = infisicalCoreMeter.createCounter(
+  "infisical.audit_log_stream.delivery.exhausted.count",
+  {
+    description:
+      "Audit log stream events dropped after exhausting all delivery retries, by stream and org. Operators should alert on this.",
+    unit: "{event}"
+  }
+);
+
 // Permission cache metrics. Wired in lib/cache/with-cache.ts withCacheFingerprint().
 export const permissionCacheLookupCounter = infisicalCoreMeter.createCounter(
   "infisical.permission_cache.lookup.count",

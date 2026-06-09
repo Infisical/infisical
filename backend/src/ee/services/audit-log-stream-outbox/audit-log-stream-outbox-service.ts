@@ -2,7 +2,10 @@ import { TAuditLogs } from "@app/db/schemas";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { chunkArray } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
-import { auditLogStreamDeliveryDurationHistogram } from "@app/lib/telemetry/metrics";
+import {
+  auditLogStreamDeliveryDurationHistogram,
+  auditLogStreamDeliveryExhaustedCounter
+} from "@app/lib/telemetry/metrics";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
@@ -50,11 +53,6 @@ export const STALE_CLAIM_THRESHOLD_MS = 10 * 60_000;
 // so the 'delivered' rows (the table's hottest section) don't pile up.
 export const DELIVERED_RETENTION_MS = 15 * 60_000;
 
-// Retention for DLQ entries. Long enough for an operator to notice + triage a
-// wedged provider via dashboard, short enough that the table doesn't grow
-// without bound. Same cron prunes these alongside delivered rows.
-export const DLQ_RETENTION_MS = 12 * 60 * 60_000;
-
 const computeBackoffMs = (attemptsAfterIncrement: number): number => {
   const exponent = Math.min(attemptsAfterIncrement - 1, 10);
   const base = BACKOFF_BASE_MS * 2 ** exponent;
@@ -75,7 +73,6 @@ export type TAuditLogStreamOutboxServiceFactory = {
   drainStream: (data: TAuditLogStreamFlushJobData) => Promise<void>;
   sweepStaleClaims: () => Promise<void>;
   pruneDeliveredRows: () => Promise<void>;
-  pruneDlqEntries: () => Promise<void>;
 };
 
 export const auditLogStreamOutboxServiceFactory = ({
@@ -279,17 +276,38 @@ export const auditLogStreamOutboxServiceFactory = ({
           }
         : null;
 
+      // There is no DLQ: once a row exhausts MAX_ATTEMPTS the event is dropped
+      // (deleted in commitDeliveryResult below). Surface it as an error log +
+      // metric so a wedged provider is observable. Group by error so a batch
+      // failing for one reason logs once rather than per-row.
+      if (exhausted.length > 0) {
+        const exhaustedCountByError = new Map<string, number>();
+        for (const { errorMessage } of exhausted) {
+          exhaustedCountByError.set(errorMessage, (exhaustedCountByError.get(errorMessage) ?? 0) + 1);
+        }
+        for (const [errorMessage, count] of exhaustedCountByError) {
+          logger.error(
+            `audit-log-stream-outbox: dropping events after exhausting retries [streamId=${streamId}] [orgId=${orgId}] [provider=${provider}] [count=${count}] [maxAttempts=${MAX_ATTEMPTS}]: ${errorMessage}`
+          );
+        }
+        auditLogStreamDeliveryExhaustedCounter.add(exhausted.length, {
+          "audit_log_stream.id": streamId,
+          "infisical.organization.id": orgId,
+          "audit_log_stream.provider": provider
+        });
+      }
+
       // eslint-disable-next-line no-await-in-loop
       await auditLogStreamOutboxDAL.commitDeliveryResult({
         successIds: streamSuccess.map((row) => row.id),
         retriable: retriableInput,
-        exhausted
+        exhaustedIds: exhausted.map((failed) => failed.row.id)
       });
 
       if (streamFail.length > 0) {
         // Each failed chunk is already logged with its error above; the rows are
-        // committed to 'retry'/DLQ by commitDeliveryResult. Bail when this claim
-        // saw any failure. The inner loop already attempted
+        // committed to 'retry' (or dropped if exhausted) by commitDeliveryResult.
+        // Bail when this claim saw any failure. The inner loop already attempted
         // every chunk independently (so partial-success rows are committed
         // above), but hopping straight to the next claim risks compounding load
         // on a degraded endpoint — let backoff on the retriable rows govern
@@ -302,8 +320,8 @@ export const auditLogStreamOutboxServiceFactory = ({
   // Stale-claim sweeper. Two responsibilities, both about preventing rows from
   // getting stuck in the outbox:
   //   1. Rows whose worker crashed mid-batch stay 'processing' forever and never
-  //      re-enter the drain query — flip them back to 'retry' (or DLQ if attempts
-  //      are exhausted).
+  //      re-enter the drain query — flip them back to 'retry' (or drop them if
+  //      attempts are exhausted).
   //   2. Rows in 'pending'/'retry' whose nextRetryAt is now in the past but never
   //      got a follow-up flush job (drainStream bailed on a chunk failure and no
   //      new event arrived after backoff). For these, enqueue a flush via the
@@ -317,14 +335,32 @@ export const auditLogStreamOutboxServiceFactory = ({
   //   - claimBatchForStream's FOR UPDATE SKIP LOCKED + atomic flip to 'processing'
   //     so even concurrent workers claim disjoint rows.
   const sweepStaleClaims = async () => {
-    const { retried, movedToDlq } = await auditLogStreamOutboxDAL.recoverStaleClaims(
+    const { retried, dropped } = await auditLogStreamOutboxDAL.recoverStaleClaims(
       STALE_CLAIM_THRESHOLD_MS,
       MAX_ATTEMPTS
     );
-    if (retried > 0 || movedToDlq > 0) {
+    if (retried > 0 || dropped.length > 0) {
       logger.warn(
-        `audit-log-stream-outbox: recovered stale claims [retried=${retried}] [movedToDlq=${movedToDlq}] [thresholdMs=${STALE_CLAIM_THRESHOLD_MS}]`
+        `audit-log-stream-outbox: recovered stale claims [retried=${retried}] [dropped=${dropped.length}] [thresholdMs=${STALE_CLAIM_THRESHOLD_MS}]`
       );
+    }
+    if (dropped.length > 0) {
+      // Stale claims that used up their attempts are dropped (no DLQ); count them
+      // alongside delivery-path exhaustions, keyed by the same stream/org dimensions.
+      // No provider attribute here — the row doesn't carry it and the sweep isn't tied
+      // to a specific delivery attempt.
+      const droppedByStream = new Map<string, { streamId: string; orgId: string; count: number }>();
+      for (const { streamId, orgId } of dropped) {
+        const entry = droppedByStream.get(streamId);
+        if (entry) entry.count += 1;
+        else droppedByStream.set(streamId, { streamId, orgId, count: 1 });
+      }
+      for (const { streamId, orgId, count } of droppedByStream.values()) {
+        auditLogStreamDeliveryExhaustedCounter.add(count, {
+          "audit_log_stream.id": streamId,
+          "infisical.organization.id": orgId
+        });
+      }
     }
 
     const overdueStreams = await auditLogStreamOutboxDAL.findStreamsWithOverdueRows();
@@ -348,18 +384,10 @@ export const auditLogStreamOutboxServiceFactory = ({
     }
   };
 
-  const pruneDlqEntries = async () => {
-    const deleted = await auditLogStreamOutboxDAL.deleteDlqOlderThan(DLQ_RETENTION_MS);
-    if (deleted > 0) {
-      logger.info(`audit-log-stream-outbox: pruned dlq entries [deleted=${deleted}] [retentionMs=${DLQ_RETENTION_MS}]`);
-    }
-  };
-
   return {
     enqueueForLogs,
     drainStream,
     sweepStaleClaims,
-    pruneDeliveredRows,
-    pruneDlqEntries
+    pruneDeliveredRows
   };
 };
