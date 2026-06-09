@@ -70,49 +70,33 @@ type TOauthTokenClaims = {
   scopes: string[];
 };
 
-const signOauthAccessToken = (
-  claims: TOauthTokenClaims & { accessVersion: number; oauthClientId: string },
+const signOauthToken = (
+  claims: TOauthTokenClaims & {
+    oauthClientId: string;
+    tokenType: AuthTokenType.ACCESS_TOKEN | AuthTokenType.REFRESH_TOKEN;
+    version: number;
+  },
   expiresIn: string | number
 ) => {
   const appCfg = getConfig();
+  const isAccessToken = claims.tokenType === AuthTokenType.ACCESS_TOKEN;
   return crypto.jwt().sign(
     {
       authMethod: claims.authMethod,
-      authTokenType: AuthTokenType.ACCESS_TOKEN,
+      authTokenType: claims.tokenType,
       userId: claims.userId,
       tokenVersionId: claims.tokenVersionId,
-      accessVersion: claims.accessVersion,
+      // Access tokens are validated against the session's accessVersion, refresh tokens against its
+      // refreshVersion. Emit whichever claim matches this token's type under its expected name.
+      ...(isAccessToken ? { accessVersion: claims.version } : { refreshVersion: claims.version }),
       organizationId: claims.organizationId,
       isMfaVerified: claims.isMfaVerified,
       mfaMethod: claims.mfaMethod,
-      // Marks this as a delegated OAuth access token. extractAuth maps tokens carrying this
-      // claim to AuthMode.OAUTH so they are rejected by the default first-party JWT middleware.
+      // Marks this as a delegated OAuth token. extractAuth maps tokens carrying this claim to
+      // AuthMode.OAUTH so they are rejected by the default first-party JWT middleware.
       oauthClientId: claims.oauthClientId,
       // Granted delegation scopes. permission-service intersects the user's ability with these,
       // so the token can never exceed what the user consented to.
-      scopes: claims.scopes
-    },
-    appCfg.AUTH_SECRET,
-    { expiresIn }
-  );
-};
-
-const signOauthRefreshToken = (
-  claims: TOauthTokenClaims & { refreshVersion: number; oauthClientId: string },
-  expiresIn: string | number
-) => {
-  const appCfg = getConfig();
-  return crypto.jwt().sign(
-    {
-      authMethod: claims.authMethod,
-      authTokenType: AuthTokenType.REFRESH_TOKEN,
-      userId: claims.userId,
-      tokenVersionId: claims.tokenVersionId,
-      refreshVersion: claims.refreshVersion,
-      organizationId: claims.organizationId,
-      isMfaVerified: claims.isMfaVerified,
-      mfaMethod: claims.mfaMethod,
-      oauthClientId: claims.oauthClientId,
       scopes: claims.scopes
     },
     appCfg.AUTH_SECRET,
@@ -139,6 +123,15 @@ export const oauthClientServiceFactory = ({
     });
 
     ForbiddenError.from(permission).throwUnlessCan(action, OrgPermissionSubjects.OauthClients);
+  };
+
+  // Loads a client scoped to the actor's org (so one org can never address another's client) and
+  // throws a 404 when it is missing. Shared by every management method that operates on an existing
+  // client by its database id.
+  const getOrgClientOrThrow = async (clientDbId: string, orgId: string) => {
+    const client = await oauthClientDAL.findOne({ id: clientDbId, orgId });
+    if (!client) throw new NotFoundError({ message: `OAuth client with ID '${clientDbId}' not found` });
+    return client;
   };
 
   const createOauthClient = async (dto: TCreateOauthClientDTO, actor: OrgServiceActor) => {
@@ -173,8 +166,7 @@ export const oauthClientServiceFactory = ({
   const getOauthClientById = async (clientDbId: string, actor: OrgServiceActor) => {
     await checkOauthClientPermission(actor, OrgPermissionActions.Read);
 
-    const client = await oauthClientDAL.findOne({ id: clientDbId, orgId: actor.orgId });
-    if (!client) throw new NotFoundError({ message: `OAuth client with ID '${clientDbId}' not found` });
+    const client = await getOrgClientOrThrow(clientDbId, actor.orgId);
 
     return sanitizeOauthClient(client);
   };
@@ -182,8 +174,7 @@ export const oauthClientServiceFactory = ({
   const updateOauthClient = async (dto: TUpdateOauthClientDTO, actor: OrgServiceActor) => {
     await checkOauthClientPermission(actor, OrgPermissionActions.Edit);
 
-    const client = await oauthClientDAL.findOne({ id: dto.clientDbId, orgId: actor.orgId });
-    if (!client) throw new NotFoundError({ message: `OAuth client with ID '${dto.clientDbId}' not found` });
+    const client = await getOrgClientOrThrow(dto.clientDbId, actor.orgId);
 
     const updatedClient = await oauthClientDAL.updateById(client.id, {
       name: dto.name,
@@ -198,8 +189,7 @@ export const oauthClientServiceFactory = ({
   const deleteOauthClient = async (clientDbId: string, actor: OrgServiceActor) => {
     await checkOauthClientPermission(actor, OrgPermissionActions.Delete);
 
-    const client = await oauthClientDAL.findOne({ id: clientDbId, orgId: actor.orgId });
-    if (!client) throw new NotFoundError({ message: `OAuth client with ID '${clientDbId}' not found` });
+    const client = await getOrgClientOrThrow(clientDbId, actor.orgId);
 
     const deletedClient = await oauthClientDAL.deleteById(client.id);
 
@@ -214,8 +204,7 @@ export const oauthClientServiceFactory = ({
   const rotateOauthClientSecret = async (clientDbId: string, actor: OrgServiceActor) => {
     await checkOauthClientPermission(actor, OrgPermissionActions.Edit);
 
-    const client = await oauthClientDAL.findOne({ id: clientDbId, orgId: actor.orgId });
-    if (!client) throw new NotFoundError({ message: `OAuth client with ID '${clientDbId}' not found` });
+    const client = await getOrgClientOrThrow(clientDbId, actor.orgId);
 
     const appCfg = getConfig();
     const clientSecret = crypto.randomBytes(32).toString("hex");
@@ -424,13 +413,23 @@ export const oauthClientServiceFactory = ({
         scopes: grantedScopes
       };
 
-      const accessToken = signOauthAccessToken(
-        { ...sharedClaims, accessVersion: tokenSession.accessVersion, oauthClientId: client.clientId },
+      const accessToken = signOauthToken(
+        {
+          ...sharedClaims,
+          tokenType: AuthTokenType.ACCESS_TOKEN,
+          version: tokenSession.accessVersion,
+          oauthClientId: client.clientId
+        },
         accessTokenExpiresIn
       );
 
-      const refreshToken = signOauthRefreshToken(
-        { ...sharedClaims, refreshVersion: tokenSession.refreshVersion, oauthClientId: client.clientId },
+      const refreshToken = signOauthToken(
+        {
+          ...sharedClaims,
+          tokenType: AuthTokenType.REFRESH_TOKEN,
+          version: tokenSession.refreshVersion,
+          oauthClientId: client.clientId
+        },
         refreshTokenExpiresIn
       );
 
@@ -478,14 +477,19 @@ export const oauthClientServiceFactory = ({
       const { updatedSession } = await tokenService.rotateRefreshToken(decodedToken, tokenVersion);
       refreshVersion = updatedSession.refreshVersion;
 
-      refreshToken = signOauthRefreshToken(
-        { ...sharedClaims, refreshVersion, oauthClientId: client.clientId },
+      refreshToken = signOauthToken(
+        { ...sharedClaims, tokenType: AuthTokenType.REFRESH_TOKEN, version: refreshVersion, oauthClientId: client.clientId },
         refreshTokenExpiresIn
       );
     }
 
-    const accessToken = signOauthAccessToken(
-      { ...sharedClaims, accessVersion: tokenVersion.accessVersion, oauthClientId: client.clientId },
+    const accessToken = signOauthToken(
+      {
+        ...sharedClaims,
+        tokenType: AuthTokenType.ACCESS_TOKEN,
+        version: tokenVersion.accessVersion,
+        oauthClientId: client.clientId
+      },
       accessTokenExpiresIn
     );
 
