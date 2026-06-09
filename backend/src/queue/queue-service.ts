@@ -190,6 +190,13 @@ export enum QueueJobs {
   SecretBlindIndexMigration = "secret-blind-index-migration"
 }
 
+export enum JobState {
+  NotFound = "not-found",
+  Pending = "pending",
+  Completed = "completed",
+  Failed = "failed"
+}
+
 export type TQueueOptions = {
   jobId: string;
   removeOnComplete?: boolean | { count: number } | { age: number };

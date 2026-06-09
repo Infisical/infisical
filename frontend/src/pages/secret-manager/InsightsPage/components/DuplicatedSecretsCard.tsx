@@ -214,7 +214,7 @@ export const DuplicatedSecretsCard = () => {
                     </div>
                     {(() => {
                       const locationCount = new Set(
-                        group.secrets.map((s) => `${s.environmentSlug}:${s.secretPath}`)
+                        group.secrets.map((s) => `${s.environment.slug}:${s.secretPath}`)
                       ).size;
                       return (
                         <Badge variant="neutral" className="flex items-center gap-1.5 font-normal">
@@ -242,7 +242,7 @@ export const DuplicatedSecretsCard = () => {
                       <TableBody>
                         {group.secrets.map((entry, idx) => (
                           <TableRow
-                            key={`${entry.key}-${entry.environment}-${entry.secretPath}-${String(idx)}`}
+                            key={`${entry.key}-${entry.environment.slug}-${entry.secretPath}-${String(idx)}`}
                             className="group/row bg-mineshaft-900"
                           >
                             <TableCell isTruncatable className="max-w-60">
@@ -253,7 +253,7 @@ export const DuplicatedSecretsCard = () => {
                             </TableCell>
                             <TableCell>
                               <Badge variant="info" isTruncatable className="max-w-full">
-                                <span>{entry.environment}</span>
+                                <span>{entry.environment.name}</span>
                               </Badge>
                             </TableCell>
                             <TableCell>
@@ -280,7 +280,7 @@ export const DuplicatedSecretsCard = () => {
                                           },
                                           search: {
                                             secretPath: entry.secretPath,
-                                            environments: [entry.environmentSlug]
+                                            environments: [entry.environment.slug]
                                           }
                                         })
                                       }

@@ -31,6 +31,8 @@ import {
 import { crypto } from "@app/lib/crypto/cryptography";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueJobTypes, TQueueServiceFactory } from "@app/queue";
+import { JobState } from "@app/queue/queue-service";
+
 
 import { TIntegrationAuthDALFactory } from "../integration-auth/integration-auth-dal";
 import { TKmsServiceFactory } from "../kms/kms-service";
@@ -741,30 +743,30 @@ export const projectQueueFactory = ({
     logger.error(err, `SecretBlindIndexMigration: failed [projectId=${job?.data.projectId}]`);
   });
 
-  const getSecretBlindIndexMigrationStatus = async (projectId: string) => {
+  const getJobState = async (projectId: string) => {
     const jobId = `enable-blind-index-project-${projectId}`;
     const job = await queueService.getJob(QueueName.SecretBlindIndexMigration, jobId);
 
     if (!job) {
-      return { status: "not-found" as const };
+      return { status: JobState.NotFound };
     }
 
     const state = await job.getState();
 
-    if (state === "failed") {
-      return { status: "failed" as const, message: job.failedReason ?? "Unknown error" };
+    if (state === JobState.Failed) {
+      return { status: JobState.Failed, message: job.failedReason ?? "Unknown error" };
     }
 
-    if (state === "completed") {
-      return { status: "completed" as const };
+    if (state === JobState.Completed) {
+      return { status: JobState.Completed };
     }
 
-    return { status: "pending" as const };
+    return { status: JobState.Pending };
   };
 
   return {
     upgradeProject,
     startSecretBlindIndexMigration,
-    getSecretBlindIndexMigrationStatus
+    getJobState
   };
 };

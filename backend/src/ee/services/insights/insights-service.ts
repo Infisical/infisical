@@ -510,12 +510,9 @@ export const insightsServiceFactory = ({
     if (!project.secretBlindIndexEnabled) {
       return {
         result: {
-          secretBlindIndexEnabled: false as const,
-          groups: [] as {
-            secrets: { key: string; environment: string; environmentSlug: string; secretPath: string }[];
-          }[]
+          secretBlindIndexEnabled: false,
+          groups: []
         },
-        remainingTTL: -1
       };
     }
 
@@ -551,8 +548,10 @@ export const insightsServiceFactory = ({
         const groups = filteredGroups.map((g) => ({
           secrets: g.secrets.map((s) => ({
             key: s.key,
-            environment: s.environmentName,
-            environmentSlug: s.environment,
+            environment: {
+              name: s.environmentName,
+              slug: s.environment
+            },
             secretPath: folderRecord[s.folderId] ?? "/"
           }))
         }));

@@ -182,8 +182,10 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
               secrets: z.array(
                 z.object({
                   key: z.string(),
-                  environment: z.string(),
-                  environmentSlug: z.string(),
+                  environment: z.object({
+                    name: z.string(),
+                    slug: z.string()
+                  }),
                   secretPath: z.string()
                 })
               )
@@ -205,7 +207,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
         ...req.auditLogInfo
       });
 
-      if (remainingTTL >= 0) {
+      if (remainingTTL && remainingTTL >= 0) {
         void reply.header("X-Cache-TTL", remainingTTL);
       }
 

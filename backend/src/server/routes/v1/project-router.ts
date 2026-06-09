@@ -36,6 +36,7 @@ import { CaStatus } from "@app/services/certificate-authority/certificate-author
 import { sanitizedCertificateTemplate } from "@app/services/certificate-template/certificate-template-schema";
 import { validateMicrosoftTeamsChannelsSchema } from "@app/services/microsoft-teams/microsoft-teams-fns";
 import { sanitizedPkiSubscriber } from "@app/services/pki-subscriber/pki-subscriber-schema";
+import { JobState } from "@app/queue/queue-service";
 import { ProjectFilterType, SearchProjectSortBy } from "@app/services/project/project-types";
 import { validateSlackChannelsField } from "@app/services/slack/slack-auth-validators";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
@@ -576,7 +577,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
-      hide: false,
+      hide: true,
       operationId: "enableProjectSecretBlindIndex",
       tags: [ApiDocsTags.Projects],
       description: "Enable secret blind indexing for duplicate detection",
@@ -615,7 +616,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
-      hide: false,
+      hide: true,
       operationId: "getProjectSecretBlindIndexStatus",
       tags: [ApiDocsTags.Projects],
       description: "Get secret blind index migration status",
@@ -629,7 +630,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          status: z.enum(["not-found", "pending", "completed", "failed"]),
+          status: z.nativeEnum(JobState),
           message: z.string().optional()
         })
       }
