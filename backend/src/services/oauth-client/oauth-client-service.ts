@@ -10,9 +10,11 @@ import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/erro
 import { getMinExpiresIn } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
 import { OrgServiceActor } from "@app/lib/types";
+import { getRequiredMfaMethod } from "@app/services/auth/auth-fns";
 import { ActorType, AuthMethod, AuthTokenType, MfaMethod } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
+import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TOauthClientDALFactory } from "./oauth-client-dal";
 import {
@@ -45,6 +47,7 @@ type TOauthClientServiceFactoryDep = {
     | "revokeSessionsByUserAgent"
   >;
   orgDAL: Pick<TOrgDALFactory, "findById">;
+  userDAL: Pick<TUserDALFactory, "findById">;
 };
 
 export type TOauthClientServiceFactory = ReturnType<typeof oauthClientServiceFactory>;
@@ -122,7 +125,8 @@ export const oauthClientServiceFactory = ({
   permissionService,
   keyStore,
   tokenService,
-  orgDAL
+  orgDAL,
+  userDAL
 }: TOauthClientServiceFactoryDep) => {
   const checkOauthClientPermission = async (actor: OrgServiceActor, action: OrgPermissionActions) => {
     const { permission } = await permissionService.getOrgPermission({
@@ -280,6 +284,30 @@ export const oauthClientServiceFactory = ({
       actorOrgId: client.orgId,
       scope: OrganizationActionScope.ParentOrganization
     });
+
+    // The consent endpoint authenticates with AuthMode.JWT, which also accepts the pre-MFA access
+    // token issued right after password verification (organization not yet selected, MFA not yet
+    // completed). Issuing a delegation code from such a session would let anyone holding only the
+    // password mint OAuth tokens, bypassing MFA entirely. So we re-derive whether MFA is required
+    // for this user in the client's organization and reject the request unless the session actually
+    // completed the matching MFA challenge. MFA enforcement lives on the root organization (matching
+    // the login flow), so resolve it when the client belongs to a sub-organization.
+    const clientOrg = await orgDAL.findById(client.orgId);
+    if (!clientOrg) throw new NotFoundError({ message: "OAuth client organization not found" });
+
+    const isSubOrganization = Boolean(clientOrg.rootOrgId && clientOrg.id !== clientOrg.rootOrgId);
+    const rootOrg = isSubOrganization ? await orgDAL.findById(clientOrg.rootOrgId as string) : clientOrg;
+    if (!rootOrg) throw new NotFoundError({ message: "OAuth client organization not found" });
+
+    const user = await userDAL.findById(dto.userId);
+    if (!user) throw new UnauthorizedError({ message: "User not found" });
+
+    const { isMfaRequired, requiredMfaMethod } = getRequiredMfaMethod(rootOrg, user);
+    if (isMfaRequired && (!dto.isMfaVerified || dto.mfaMethod !== requiredMfaMethod)) {
+      throw new UnauthorizedError({
+        message: "Multi-factor authentication is required before authorizing this application"
+      });
+    }
 
     const tokenSession = await tokenService.getUserTokenSession({
       userId: dto.userId,

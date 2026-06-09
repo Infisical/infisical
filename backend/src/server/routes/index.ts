@@ -800,7 +800,8 @@ export const registerRoutes = async (
     permissionService,
     keyStore,
     tokenService,
-    orgDAL
+    orgDAL,
+    userDAL
   });
 
   const membershipUserService = membershipUserServiceFactory({
