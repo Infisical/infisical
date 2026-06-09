@@ -60,6 +60,7 @@ import { UserAliasType } from "@app/services/user-alias/user-alias-types";
 import { TEmailDomainDALFactory } from "../email-domain/email-domain-dal";
 import { findOrgIdByVerifiedDomain, verifyEmailDomainOwnership } from "../email-domain/email-domain-fns";
 import { TOidcConfigDALFactory } from "./oidc-config-dal";
+import { resolveOidcGroupMembershipChanges } from "./oidc-config-fns";
 import {
   OIDCConfigurationType,
   TCreateOidcCfgDTO,
@@ -382,9 +383,11 @@ export const oidcConfigServiceFactory = ({
       const userGroups = await userGroupMembershipDAL.findGroupMembershipsByUserIdInOrg(user.id, orgId);
       const orgGroups = await groupDAL.findByOrgId(orgId);
 
-      const userGroupsNames = userGroups.map((membership) => membership.groupName);
-      const missingGroupsMemberships = groups.filter((groupName) => !userGroupsNames.includes(groupName));
-      const groupsToAddUserTo = orgGroups.filter((group) => missingGroupsMemberships.includes(group.name));
+      const { groupsToAddUserTo, groupsToRemoveUserFrom } = resolveOidcGroupMembershipChanges({
+        idpGroups: groups,
+        userGroupMemberships: userGroups,
+        orgGroups
+      });
 
       for await (const group of groupsToAddUserTo) {
         await addUsersToGroupByUserIds({
@@ -418,11 +421,6 @@ export const oidcConfigServiceFactory = ({
           }
         });
       }
-
-      const membershipsToRemove = userGroups
-        .filter((membership) => !groups.includes(membership.groupName))
-        .map((membership) => membership.groupId);
-      const groupsToRemoveUserFrom = orgGroups.filter((group) => membershipsToRemove.includes(group.id));
 
       for await (const group of groupsToRemoveUserFrom) {
         await removeUsersFromGroupByUserIds({

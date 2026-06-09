@@ -14,6 +14,7 @@ import { CouchbaseProvider } from "./couchbase";
 import { ElasticSearchProvider } from "./elastic-search";
 import { GcpIamProvider } from "./gcp-iam";
 import { GithubProvider } from "./github";
+import { IbmApiConnectProvider } from "./ibm-api-connect";
 import { KubernetesProvider } from "./kubernetes";
 import { LdapProvider } from "./ldap";
 import { MilvusProvider } from "./milvus";
@@ -68,5 +69,6 @@ export const buildDynamicSecretProviders = ({
   [DynamicSecretProviders.Github]: GithubProvider(),
   [DynamicSecretProviders.Couchbase]: CouchbaseProvider(),
   [DynamicSecretProviders.Milvus]: MilvusProvider({ gatewayService, gatewayV2Service, gatewayPoolService }),
-  [DynamicSecretProviders.Ssh]: SshProvider()
+  [DynamicSecretProviders.Ssh]: SshProvider(),
+  [DynamicSecretProviders.IbmApiConnect]: IbmApiConnectProvider()
 });

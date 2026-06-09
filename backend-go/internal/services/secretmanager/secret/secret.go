@@ -152,7 +152,7 @@ type SecretImportService interface {
 
 // KMSService creates cipher pairs for encryption/decryption.
 type KMSService interface {
-	CreateCipherPairWithDataKey(ctx context.Context, dto kms.CreateCipherPairDTO) (*kms.CipherPair, error)
+	CreateCipherPairWithProjectDataKey(ctx context.Context, projectID string) (*kms.CipherPair, error)
 }
 
 // --- Service ---

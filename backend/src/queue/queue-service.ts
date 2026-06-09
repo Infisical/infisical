@@ -184,6 +184,7 @@ export enum QueueJobs {
   CertificateCleanup = "certificate-cleanup-job",
   DailySecretSyncRetry = "daily-secret-sync-retry-job",
   DigiCertOrderPolling = "digicert-order-polling-job",
+  GoDaddyOrderPolling = "godaddy-order-polling-job",
   ProjectHardDelete = "project-hard-delete-job",
   SignerDailyAutoRenewal = "signer-daily-auto-renewal"
 }

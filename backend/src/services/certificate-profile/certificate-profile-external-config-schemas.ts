@@ -38,6 +38,11 @@ export const AwsAcmPublicCaExternalConfigSchema = z.object({});
 export const VenafiTppExternalConfigSchema = z.object({});
 
 /**
+ * External configuration schema for GoDaddy Certificate Authority
+ */
+export const GoDaddyExternalConfigSchema = z.object({});
+
+/**
  * Map of CA types to their corresponding external configuration schemas
  */
 export const ExternalConfigSchemaMap = {
@@ -47,6 +52,7 @@ export const ExternalConfigSchemaMap = {
   [CaType.DIGICERT]: DigiCertExternalConfigSchema,
   [CaType.AWS_ACM_PUBLIC_CA]: AwsAcmPublicCaExternalConfigSchema,
   [CaType.VENAFI_TPP]: VenafiTppExternalConfigSchema,
+  [CaType.GODADDY]: GoDaddyExternalConfigSchema,
   [CaType.INTERNAL]: z.object({}).optional() // Internal CAs don't use external configs
 } as const;
 
@@ -74,6 +80,7 @@ export const ExternalConfigUnionSchema = z
     DigiCertExternalConfigSchema,
     AwsAcmPublicCaExternalConfigSchema,
     VenafiTppExternalConfigSchema,
+    GoDaddyExternalConfigSchema,
     z.object({})
   ])
   .nullable()

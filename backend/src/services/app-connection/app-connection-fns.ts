@@ -134,6 +134,11 @@ import {
   TExternalInfisicalConnectionConfig,
   validateExternalInfisicalConnectionCredentials
 } from "./external-infisical";
+import {
+  F5BigIpConnectionMethod,
+  getF5BigIpConnectionListItem,
+  validateF5BigIpConnectionCredentials
+} from "./f5-big-ip";
 import { FlyioConnectionMethod, getFlyioConnectionListItem, validateFlyioConnectionCredentials } from "./flyio";
 import { GcpConnectionMethod, getGcpConnectionListItem, validateGcpConnectionCredentials } from "./gcp";
 import { getGitHubConnectionListItem, GitHubConnectionMethod, validateGitHubConnectionCredentials } from "./github";
@@ -144,6 +149,7 @@ import {
 } from "./github-radar";
 import { GitLabConnectionMethod } from "./gitlab";
 import { getGitLabConnectionListItem, validateGitLabConnectionCredentials } from "./gitlab/gitlab-connection-fns";
+import { getGoDaddyConnectionListItem, GoDaddyConnectionMethod, validateGoDaddyConnectionCredentials } from "./godaddy";
 import {
   getHCVaultConnectionListItem,
   HCVaultConnectionMethod,
@@ -267,7 +273,9 @@ const PKI_APP_CONNECTIONS = [
   AppConnection.Venafi,
   AppConnection.VenafiTpp,
   AppConnection.NetScaler,
-  AppConnection.DigiCert
+  AppConnection.DigiCert,
+  AppConnection.F5BigIp,
+  AppConnection.GoDaddy
 ];
 
 export const listAppConnectionOptions = (projectType?: ProjectType) => {
@@ -334,10 +342,12 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getOvhConnectionListItem(),
     getOnaConnectionListItem(),
     getDigiCertConnectionListItem(),
+    getGoDaddyConnectionListItem(),
     getTravisCIConnectionListItem(),
     getSalesforceConnectionListItem(),
     getSnowflakeConnectionListItem(),
-    getDatadogConnectionListItem()
+    getDatadogConnectionListItem(),
+    getF5BigIpConnectionListItem()
   ]
     .filter((option) => {
       switch (projectType) {
@@ -563,8 +573,10 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.Salesforce]: validateSalesforceConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.OVH]: validateOvhConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.DigiCert]: validateDigiCertConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.GoDaddy]: validateGoDaddyConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Snowflake]: validateSnowflakeConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.Datadog]: validateDatadogConnectionCredentials as TAppConnectionCredentialsValidator
+    [AppConnection.Datadog]: validateDatadogConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.F5BigIp]: validateF5BigIpConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection, gatewayService, gatewayV2Service);
@@ -658,12 +670,15 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case DevinConnectionMethod.ApiKey:
     case DigiCertConnectionMethod.ApiKey:
     case DatadogConnectionMethod.ApiKey:
+    case GoDaddyConnectionMethod.ApiKey:
       return "API Key";
     case ChefConnectionMethod.UserKey:
       return "User Key";
     case SupabaseConnectionMethod.AccessToken:
       return "Access Token";
     case NetScalerConnectionMethod.BasicAuth:
+      return "Basic Auth";
+    case F5BigIpConnectionMethod.BasicAuth:
       return "Basic Auth";
     case ExternalInfisicalConnectionMethod.MachineIdentityUniversalAuth:
       return "Machine Identity - Universal Auth";
@@ -798,7 +813,9 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.TravisCI]: platformManagedCredentialsNotSupported,
   [AppConnection.Salesforce]: platformManagedCredentialsNotSupported,
   [AppConnection.Snowflake]: platformManagedCredentialsNotSupported,
-  [AppConnection.Datadog]: platformManagedCredentialsNotSupported
+  [AppConnection.Datadog]: platformManagedCredentialsNotSupported,
+  [AppConnection.F5BigIp]: platformManagedCredentialsNotSupported,
+  [AppConnection.GoDaddy]: platformManagedCredentialsNotSupported
 };
 
 export const enterpriseAppCheck = async (

@@ -269,6 +269,10 @@ export const projectTemplateServiceFactory = ({
       throw new BadRequestError({ message: "Agent Sentinel project templates are not supported" });
     }
 
+    if (type === ProjectType.CertificateManager) {
+      throw new BadRequestError({ message: "Certificate Manager project templates are not supported" });
+    }
+
     if (environments && type !== ProjectType.SecretManager) {
       throw new BadRequestError({ message: "Cannot configure environments for non-SecretManager project templates" });
     }

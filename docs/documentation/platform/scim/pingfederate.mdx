@@ -1,0 +1,410 @@
+---
+title: "PingFederate SCIM"
+description: "Learn how to configure SCIM provisioning with PingFederate for Infisical."
+---
+
+<Info>
+    PingFederate SCIM provisioning is a paid feature.
+
+    If you're using Infisical Cloud, then it is available under the **Enterprise Tier**. If you're self-hosting Infisical,
+    then you should contact sales@infisical.com to purchase a self-hosted license to use it.
+</Info>
+
+<Note>
+    Unlike PingOne, PingFederate is a self-hosted product. The setup below assumes you already have a running PingFederate
+    instance reachable from the server that hosts your Infisical deployment. This guide covers PingFederate 13.x; earlier
+    versions use the same conceptual steps but the menu labels may differ slightly.
+</Note>
+
+Prerequisites:
+- A running PingFederate 11.x or later installation with the Outbound Provisioning role licensed.
+- An external RDBMS (PostgreSQL, MySQL, Oracle, or SQL Server) to back the PingFederate Provisioner Data Store. Required for any non-trivial install — the embedded H2 store should only be used for local testing.
+- An Active Directory (or other LDAP) directory containing the users you want to provision, reachable from PingFederate over LDAP/LDAPS. A read-only service account with permission to query the user subtree is sufficient.
+- PingFederate's runtime must be able to reach your Infisical deployment over HTTPS at the SCIM URL Infisical issues. If PingFederate runs in a different network zone than Infisical, ensure firewall rules and DNS resolution are in place before continuing.
+- On the Infisical side, the organization must already have **SAML or OIDC SSO configured** and at least one **verified email domain** (**Settings → Organization → Email Domains**).
+
+<Steps>
+    <Step title="Install the PingFederate SCIM Connector Add-on">
+        Infisical requires **SCIM 2.0**. PingFederate's bundled template is SCIM 1.1 only — install the SCIM Connector Add-on to add SCIM 2.0 support.
+
+        **1. Download the connector**
+
+        Sign in at [pingidentity.com](https://www.pingidentity.com) with the email tied to your PingFederate license, then
+        open the [PingFederate downloads page](https://www.pingidentity.com/en/resources/downloads/pingfederate.html).
+        Click the **Add-ons** tab. Under **SaaS Connectors**, download the **SCIM Connector** `.zip`.
+
+         ![Download SCIM connector](/images/platform/scim/pingfederate/download-scim-connector.png)
+
+        **2. Install the connector**
+
+        Extract the `.zip`. Inside you'll find a `dist/` directory containing a single jar named
+        `pf-scim-quickconnection-<version>.jar`.
+
+        Stop PingFederate and copy that jar into `<pf-install>/server/default/deploy/`. Leave PingFederate stopped — the next step edits another config file.
+    </Step>
+
+    <Step title="Enable the Outbound Provisioning runtime in PingFederate">
+        PingFederate ships with the provisioning runtime **disabled** by default. You must enable it before any SCIM channel
+        will run.
+
+        Edit `<pf-install>/bin/run.properties` and change:
+
+        ```properties
+        pf.provisioner.mode=OFF
+        ```
+
+        to:
+
+        ```properties
+        pf.provisioner.mode=STANDALONE
+        ```
+
+        Use `STANDALONE` for a single-node install. For high availability, see Ping's [Deploying provisioning failover](https://docs.pingidentity.com/pingfederate/13.0/server_clustering_guide/pf_deploy_provis_failover.html) guide.
+
+        Start PingFederate.
+
+        <Info>
+            To verify the SCIM Connector is now available, go to **Applications → Integration → SP Connections → Create Connection → Connection Type tab**, check **Outbound Provisioning**, and open the **Type** dropdown — you should see **SCIM 2.0 Service Provider** alongside the bundled SCIM 1.1 entry. If you only see SCIM 1.1, check PingFederate's `server.log` for connector load errors. Cancel out of the wizard once you've confirmed; you'll return to it in a later step.
+
+              ![Connector installed](/images/platform/scim/pingfederate/connector-confirmation.png)
+        </Info>
+    </Step>
+
+    <Step title="Configure the Provisioner Data Store">
+        PingFederate persists provisioning state (last-sync timestamps, externalId mappings, etc.) in a dedicated database.
+        This is **separate** from your user source — it's PingFederate's internal bookkeeping. The provisioner data store
+        must be a JDBC database; LDAP data stores cannot be used for this purpose.
+
+        1. Create an empty schema in your RDBMS for PingFederate's provisioner state.
+        2. Run the schema script that matches your RDBMS against that schema. The scripts ship with PingFederate and live at `<pf-install>/server/default/conf/provisioner/sql-scripts/`:
+            - `provisioner-mssql.sql` — SQL Server
+            - `provisioner-mysql.sql` — MySQL
+            - `provisioner-oracle.sql` — Oracle
+            - `provisioner-postgresql.sql` — PostgreSQL
+        3. Install the JDBC driver for your database. PingFederate only bundles the H2 driver — other databases require you to download the driver `.jar` from the vendor and copy it into `<pf-install>/server/default/lib/`, then restart PingFederate. If you skip this step, the Add Data Store step will fail with "You must provide a valid driver class name" even when the class name is correct.
+        4. In the PingFederate admin console: **System → Data Stores → Add Data Store → JDBC**. Configure the connection and save.
+          ![Add data store step 1](/images/platform/scim/pingfederate/data-store-step-3-1.png)
+          ![Add data store step 2](/images/platform/scim/pingfederate/data-store-step-3-2.png)
+          ![Add data store step 3](/images/platform/scim/pingfederate/data-store-step-3-3.png)
+          ![Add data store step 4](/images/platform/scim/pingfederate/data-store-step-3-4.png)
+        5. Go to **System → Server → Protocol Settings → Outbound Provisioning** and select the JDBC data store you just created as the **Provisioner Data Store**. Save.
+        
+        ![Set data store](/images/platform/scim/pingfederate/data-store-step-4.png)
+       
+        Leave the **Synchronization Frequency** at the default 60 seconds unless you have a reason to change it.
+    </Step>
+
+    <Step title="Add your LDAP directory as a Data Store">
+        PingFederate's SCIM channel pulls users from a **source** Data Store and provisions them outbound to Infisical.
+        Most deployments use Active Directory as the source — these steps assume AD or another LDAP directory. If you
+        provision users from a relational database instead, see the JDBC note at the end of this step.
+
+        In the PingFederate admin console: **System → Data Stores → Add New Data Store** → select **LDAP**.
+
+        ![Add directory step 1](/images/platform/scim/pingfederate/directory-step-1.png)
+      
+        ![Add directory step 2](/images/platform/scim/pingfederate/directory-step-2.png)
+
+        - **LDAP Type**: select **Active Directory** (or **Generic** / **Oracle Directory Server** / etc. for non-AD directories). The LDAP Type affects which attribute behaviors PingFederate assumes (binary handling for AD's `objectGUID`, etc.) — picking the wrong one will silently produce incorrect change detection.
+
+        Fill out the Data Store form:
+
+        ![Add directory step 3](/images/platform/scim/pingfederate/directory-step-3.png)
+
+        - **Hostname**: your AD / LDAP server (e.g. `ad.corp.example.com`). For HA, add multiple hosts. Click **Add** to commit each hostname into the list.
+        - **Use LDAPS** (recommended) or **Use StartTLS**: enable one if your directory supports TLS. If using LDAPS, ensure the directory's CA certificate is trusted by PingFederate (Security → Certificate & Key Management → Trusted CAs).
+        - **Authentication Method**: Simple.
+        - **User DN**: a service account DN with read access to the user subtree, e.g. `CN=pf-svc,OU=Service Accounts,DC=corp,DC=example,DC=com`.
+        - **Password**: the service account password.
+
+        Click **Test Connection**. PingFederate should return "Connection Successful." If not, the bind credentials or
+        network reachability is wrong — fix that before continuing.
+
+        Save the Data Store.
+
+        ![Add directory step 4](/images/platform/scim/pingfederate/directory-step-4.png)
+
+        <Note>
+            **Using JDBC instead?** Choose **Database** rather than **LDAP** at the Add Data Store step and configure the
+            JDBC URL, driver, and credentials for your user table. The rest of this guide is otherwise identical, except
+            the source attribute names in the channel mapping table (Step 8) will be your **column names** instead of
+            LDAP attribute names.
+        </Note>
+    </Step>
+
+    <Step title="Generate a SCIM token in Infisical">
+       In Infisical, head to the **Organization Settings** page and select the **Provisioning** tab. Under SCIM Configuration,
+        press the **Enable SCIM provisioning** toggle to allow PingFederate to provision/deprovision users for your organization.
+        
+        ![SCIM enable provisioning](/images/platform/scim/scim-enable-provisioning-new.png)
+        
+        Press **Configure** and then **Create** to generate a SCIM token for PingFederate.
+
+        ![SCIM create token](/images/platform/scim/scim-create-token.png)
+
+        Copy the **SCIM URL** and **New SCIM Token** — you'll paste them into PingFederate's SP Connection in a later step.
+        The token is shown once and cannot be retrieved again.
+
+        ![SCIM copy token](/images/platform/scim/scim-copy-token.png)
+    </Step>
+
+    <Step title="Create the SP Connection">
+        Navigate to **Applications → Integration → SP Connections** and click **Create Connection**.
+
+        ![Sp connections tab](/images/platform/scim/pingfederate/connection-step-1.png)
+
+        **1. Connection Template tab**
+
+        Select **USE A TEMPLATE FOR THIS CONNECTION** → from the dropdown, pick **SCIM Connector** → Next.
+
+        ![template tab](/images/platform/scim/pingfederate/connection-step-2.png)
+        
+        **2. Connection Type tab**
+
+        - Check **Outbound Provisioning**.
+        - The **Type** dropdown that appears next to Outbound Provisioning should say **SCIM Connector**.
+        - Click Next.
+
+        ![Outbound provision tab](/images/platform/scim/pingfederate/connection-step-3.png)
+
+        **3. General Info tab**
+
+        - **Partner's Entity ID (Connection ID)**: e.g. `infisical-scim`.
+        - **Connection Name**: e.g. `Infisical SCIM`.
+        - Leave the rest (Base URL, Company, Contact, Application metadata) empty or default.
+        - Click Next.
+      
+        ![General tab](/images/platform/scim/pingfederate/connection-step-4.png)
+
+        **4. Outbound Provisioning tab**
+
+        Click **Configure Provisioning** — this opens the Target / Channel configuration wizard, which we cover in the next two steps.
+
+        ![configure provisioning tab](/images/platform/scim/pingfederate/connection-step-5.png)
+
+    </Step>
+
+    <Step title="Configure the SCIM target">
+        Inside the Configure Provisioning wizard, the first tab is **Target** — this is where you tell PingFederate how to reach Infisical.
+
+        | Field | Value |
+        |---|---|
+        | **SCIM URL** | The SCIM URL you copied from Infisical in Step 5 |
+        | **SCIM Version** | `2.0` |
+        | **Authentication Method** | `OAuth 2 Bearer Token` |
+        | **Access Token** (under OAUTH 2 BEARER TOKEN) | The SCIM token you copied from Infisical |
+        | **Unique User Identifier** | `userName` |
+        | **Filter Expression** | `userName eq "%s"` |
+        | **Authorization Header Type** | leave blank (defaults to `Bearer`) |
+        | **Users API Path / Groups API Path** | leave blank (defaults to `/Users` and `/Groups`) |
+        | **Results Per Page** | `1000` |
+        | **Provisioning Options → User Create / User Update / User Disable-Delete** | all checked |
+        | **Provision Disabled Users** | unchecked |
+        | **Remove User Action** | `Disable` for a first run (changes deprovisioned users to inactive in Infisical rather than hard-deleting them). Switch to `Delete` later if you want true hard deprovisioning. |
+        | **Group Name Source** | `Common Name` |
+        | **Use PATCH for Group Updates** | Optional, but recommended if you provision groups. |
+
+        Leave the Basic Authentication and OAuth 2 Client Credentials sections empty — only OAuth 2 Bearer Token is used.
+
+        ![configure scim target 1](/images/platform/scim/pingfederate/connection-step-6-1.png)
+        ![configure scim target 2](/images/platform/scim/pingfederate/connection-step-6-2.png)
+
+        <Warning>
+            **The SCIM URL host must be reachable from the PingFederate runtime, not from your browser.** If PingFederate
+            runs on a different host than Infisical, make sure the hostname in the SCIM URL is one PingFederate's container
+            or server can actually resolve and connect to — not just one you can hit from your laptop. If you see
+            "Connection refused" errors in PingFederate's `provisioner.log`, this is almost always why.
+        </Warning>
+
+        Click Next to move on to the channel configuration.
+    </Step>
+
+    <Step title="Configure the SCIM channel">
+        On the Manage Channels tab, click **Create**. This opens the per-channel wizard with six tabs.
+
+        ![create channel](/images/platform/scim/pingfederate/channel-step-1.png)
+
+        **1. Channel Info**
+
+        - **Channel Name**: `infisical-users` (or any identifier).
+        - **Max Threads**: `1` for dev, increase for production as needed.
+        - **Timeout (Secs)**: `60` (default).
+
+        ![channel info](/images/platform/scim/pingfederate/channel-step-2.png)
+
+        **2. Source**
+
+        - **Active Data Store**: select the LDAP data store you configured in Step 4.
+
+        ![active data store](/images/platform/scim/pingfederate/channel-step-3.png)
+
+        **3. Source Settings**
+
+        This tab tells PingFederate how to detect changes and identify users in your LDAP source.
+
+        | Field | Value (AD) | Value (Generic LDAP / OpenLDAP) |
+        |---|---|---|
+        | **Entry GUID Attribute** | `objectGUID` | `entryUUID` |
+        | **GUID Type** | `Binary` | `Text` |
+        | **Member of Group Attribute** | `memberOf` | `memberOf` (if the `memberof` overlay is enabled) — otherwise leave blank |
+        | **Group Member Attribute** | `member` | `member` |
+        | **User Objectclass** | `user` | `inetOrgPerson` |
+        | **Group Objectclass** | `group` | `groupOfNames` |
+        | **Changed Users/Groups Algorithm** | `USN` (AD-specific) or `Timestamp` | `Timestamp` |
+        | **USN Attribute** (only if USN algorithm) | `uSNChanged` | n/a |
+        | **Timestamp Attribute** (only if Timestamp algorithm) | `whenChanged` | `modifyTimestamp` |
+        | **Account Status Attribute** | `userAccountControl` | varies by directory (e.g. `pwdAccountLockedTime` if password policy overlay) |
+        | **Account Status Algorithm** | `Flag` | `Flag` |
+        | **Default Status** | `true` (users active by default) | `true` |
+        | **Flag Comparison Value** | `514` (the disabled bit) | varies |
+        | **Flag Comparison Status** | `false` (when flag matches, user is inactive) | `false` |
+
+         ![source settings 1](/images/platform/scim/pingfederate/channel-step-4.png)
+         ![source settings 2](/images/platform/scim/pingfederate/channel-step-5.png)
+
+        <Note>
+            **At least one of Member of Group Attribute or Group Member Attribute is required**, even if you're not actually provisioning groups. Fill in `member` for Group Member Attribute as a safe default if you don't plan to use the values.
+        </Note>
+
+        <Warning>
+            **With the `Active Directory USN` algorithm, point the LDAP data store at a single domain controller.** `uSNChanged` is a per-DC counter that AD does **not** replicate, so if PingFederate spreads queries across multiple DCs (e.g. the multi-host HA setup in Step 4) it can read a different DC than the one whose USN it last recorded and silently miss changes. For a multi-DC / HA source, either pin the data store to one DC, or switch **Changed Users/Groups Algorithm** to `Timestamp` with **Timestamp Attribute** `whenChanged` (which *is* replicated).
+        </Warning>
+
+        **4. Source Location**
+
+        - **Base DN**: the search root for *both* users and groups — it must contain both (use a common ancestor like the domain root if they're in different OUs). e.g. `CN=Users,DC=corp,DC=example,DC=com` for AD.
+        - **Users → Group DN**: leave blank, or set to a group to provision only its members.
+        - **Users → Filter**: AD `(&(objectClass=user)(!(userAccountControl:1.2.840.113556.1.4.803:=2)))` (enabled users); OpenLDAP `(objectClass=inetOrgPerson)`.
+        - **Groups → Filter** (only if provisioning groups): AD `(objectClass=group)`; OpenLDAP `(objectClass=groupOfNames)` — **scope it** (e.g. `(&(objectClass=group)(cn=infisical-*))`) or you'll also pull AD's built-in groups. Leave **Group DN** and **Nested Search** empty (Infisical doesn't support nested groups).
+
+        ![source location](/images/platform/scim/pingfederate/channel-step-6.png)
+
+        <Note>
+            Infisical groups are flat — members are users only (nested groups are ignored), and a member resolves only if that user was also provisioned, so keep group members in your **Users** scope. The group's CN (set by **Group Name Source**, Step 7) is what you map under **Settings → Provisioning → SCIM Group to Organization Role Mappings**.
+        </Note>
+
+        **5. Attribute Mapping**
+
+        Click **Edit** on each SCIM field below. The edit form has two dropdowns: **Root Object Class** and **Attribute**.
+
+        <Note>
+            **Attribute mapping trap**: the Root Object Class dropdown only shows attributes defined *directly* on that
+            class — it does **not** show inherited attributes. For LDAP, `sn` is defined on the `person` class and inherited
+            by `inetOrgPerson`. So mapping `familyName` requires selecting Root Object Class = `person`, not `inetOrgPerson`.
+            If the attribute you expect is missing from the dropdown, try a parent object class.
+        </Note>
+
+        The minimum set Infisical requires:
+
+        | SCIM Field | Root Object Class (AD) | Attribute (AD) | Root Object Class (LDAP) | Attribute (LDAP) |
+        |---|---|---|---|---|
+        | `userName` | `user` | `userPrincipalName` (or `mail`) | `inetOrgPerson` | `mail` |
+        | `workEmail` | `user` | `mail` | `inetOrgPerson` | `mail` |
+        | `givenName` | `user` | `givenName` | `inetOrgPerson` | `givenName` |
+        | `familyName` | `user` | `sn` | `person` | `sn` |
+
+        For each row: click **Edit** → pick **Root Object Class** → pick **Attribute** → click **Add Attribute** → click **Done**.
+
+        `active` doesn't need an explicit mapping — PingFederate derives it from the Account Status Attribute settings in Source Settings.
+
+        ![attribute mapping 1](/images/platform/scim/pingfederate/channel-step-7.png)
+        ![attribute mapping 2](/images/platform/scim/pingfederate/channel-step-8.png)
+
+        <Note>
+            The `userName`'s email domain **must be a verified email domain** for your Infisical organization
+            (**Settings → Organization → Email Domains**). If it isn't, SCIM user creation is **rejected** with a
+            `403 – "…not a part of the accepted domains…"` and the user is **not** created — groups have no such check, so
+            you'll see the group sync without its members. Verify the domain **before** provisioning.
+        </Note>
+
+        **6. Activation & Summary**
+
+        - Set **Channel Status** to `Active`.
+        - Scroll through the summary and confirm Source Settings, Source Location, and Attribute Mapping all reflect what you intended.
+        - Click **Done**.
+
+        ![activate channel 1](/images/platform/scim/pingfederate/channel-step-9.png)
+        ![activate channel 2](/images/platform/scim/pingfederate/channel-step-10.png)
+    </Step>
+
+    <Step title="Activate the SP Connection">
+        After saving the channel you'll be back on Configure Channels. Click **Done** to close that screen.
+
+        ![channel done](/images/platform/scim/pingfederate/channel-step-11.png)
+
+        On the parent SP Connection wizard's **Outbound Provisioning** tab, click **Next**.
+
+        ![connection next](/images/platform/scim/pingfederate/connection-step-7.png)
+
+        On **Activation & Summary**:
+        - Set **Connection Status** to `Active`.
+        - Review the summary.
+        - Click **Save**.
+
+       ![connection enable](/images/platform/scim/pingfederate/connection-step-8.png)
+       ![connection save](/images/platform/scim/pingfederate/connection-step-9.png)
+
+        <Warning>
+            **Both the channel AND the parent SP Connection must be Active.** If either one is Inactive, provisioning silently does nothing — there's no error in the UI. Double-check both before troubleshooting other things.
+        </Warning>
+    </Step>
+
+    <Step title="Verify provisioning works">
+        PingFederate runs the channel on the cadence set in **System → Server → Protocol Settings → Outbound Provisioning → Synchronization Frequency** (default 60 seconds). The first sync should run within that window of activation.
+
+        Verify on three levels:
+
+        **1. PingFederate's provisioner log**
+
+        Tail `<pf-install>/log/provisioner.log`. Look for lines like:
+
+        ```
+        [GenericUserProvisioningChannel] Starting provisioning cycle for channel: infisical-users
+        [ProvisioningEventLogger] Finished pushing user/group updates to the target. Completed in 331 ms. Total users created 2.
+        ```
+
+        If you see `Connection refused` or `Service Unavailable` errors, the SCIM URL host isn't reachable from PingFederate — re-check Step 7.
+
+        **2. Infisical's user list**
+
+        Go to **Settings → Organization → Access Control → Users**. Provisioned users appear as pending (invited) accounts.
+
+        **3. Infisical's SCIM event log**
+
+        Go to **Organization Settings → Provisioning → SCIM Events**. Each successful POST/PUT/PATCH from PingFederate appears here with the SCIM payload — useful for diagnosing attribute-mapping mistakes.
+    </Step>
+</Steps>
+
+## Troubleshooting
+
+<AccordionGroup>
+<Accordion title="provisioner.log shows: Connection refused / Service Unavailable">
+    PingFederate can't reach the host in your SCIM URL. The most common causes:
+
+    - The SCIM URL uses `localhost` or `127.0.0.1` but PingFederate runs in a different container or on a different host.
+    - DNS doesn't resolve the host from PingFederate's network zone.
+    - A firewall is blocking outbound HTTPS from PingFederate to Infisical.
+
+    Fix the SCIM URL on the **Target** tab (SP Connection → Outbound Provisioning → Configure Provisioning → Target). The next sync (within the configured frequency) will use the new URL.
+</Accordion>
+
+<Accordion title="Sync runs successfully but Total users created is 0">
+    Either no users matched your **Source Location → Filter**, or every matching user already exists in Infisical (PingFederate tracks this in its Provisioner Data Store and skips re-creation).
+
+    To diagnose: search PingFederate's `provisioner.log` for `Processed N users` and `Users added: N` lines from the most recent cycle. A zero `Users added` count means the filter is too restrictive or change-detection thinks nothing has changed.
+
+    To force a re-provision: delete the entry for that channel from the Provisioner Data Store's tracking tables, then trigger a new sync. (For development only — never do this in production.)
+</Accordion>
+
+<Accordion title="Only SCIM 1.1 Service Provider appears in the Connection Type dropdown">
+    The SCIM Connector Add-on isn't loaded. Re-check Step 1 — confirm the jar landed in `<pf-install>/server/default/deploy/`, PingFederate was restarted after the copy, and `server.log` has no errors loading the connector.
+</Accordion>
+
+<Accordion title="LDAP attribute isn't appearing in the Attribute Mapping edit dropdown">
+    The Root Object Class dropdown only exposes attributes defined directly on that class — not inherited ones. Common case: `sn` is defined on `person`, not `inetOrgPerson` or `user`. Change the Root Object Class to the parent class that actually defines the attribute.
+</Accordion>
+
+<Accordion title="Provisioning runs but no users land in Infisical, no errors in the logs">
+    Most likely: either the channel or the parent SP Connection is still in `Inactive` status. Both must be Active. Confirm in both **Configure Provisioning → Manage Channels** (channel status column) and **SP Connections** list (connection status column).
+</Accordion>
+</AccordionGroup>

@@ -130,11 +130,13 @@
                       "integrations/app-connections/digital-ocean",
                       "integrations/app-connections/doppler",
                       "integrations/app-connections/dns-made-easy",
+                      "integrations/app-connections/f5-big-ip",
                       "integrations/app-connections/flyio",
                       "integrations/app-connections/gcp",
                       "integrations/app-connections/github",
                       "integrations/app-connections/github-radar",
                       "integrations/app-connections/gitlab",
+                      "integrations/app-connections/godaddy",
                       "integrations/app-connections/hashicorp-vault",
                       "integrations/app-connections/heroku",
                       "integrations/app-connections/humanitec",
@@ -279,6 +281,7 @@
                       "documentation/platform/scim/azure",
                       "documentation/platform/scim/jumpcloud",
                       "documentation/platform/scim/pingone",
+                      "documentation/platform/scim/pingfederate",
                       "documentation/platform/scim/group-mappings"
                     ]
                   },
@@ -514,6 +517,7 @@
                       "documentation/platform/dynamic-secrets/elastic-search",
                       "documentation/platform/dynamic-secrets/gcp-iam",
                       "documentation/platform/dynamic-secrets/github",
+                      "documentation/platform/dynamic-secrets/ibm-api-connect",
                       "documentation/platform/dynamic-secrets/ldap",
                       "documentation/platform/dynamic-secrets/milvus",
                       "documentation/platform/dynamic-secrets/mongo-atlas",
@@ -830,6 +834,7 @@
                           "documentation/platform/pki/applications/certificate-syncs/azure-key-vault",
                           "documentation/platform/pki/applications/certificate-syncs/chef",
                           "documentation/platform/pki/applications/certificate-syncs/cloudflare-custom-certificate",
+                          "documentation/platform/pki/applications/certificate-syncs/f5-big-ip",
                           "documentation/platform/pki/applications/certificate-syncs/netscaler"
                         ]
                       }
@@ -871,6 +876,7 @@
                           "documentation/platform/pki/ca/lets-encrypt",
                           "documentation/platform/pki/ca/digicert",
                           "documentation/platform/pki/ca/digicert-direct",
+                          "documentation/platform/pki/ca/godaddy",
                           "documentation/platform/pki/ca/sectigo",
                           "documentation/platform/pki/ca/azure-adcs",
                           "documentation/platform/pki/ca/aws-pca",
@@ -909,7 +915,13 @@
                   "documentation/platform/kms/overview",
                   "documentation/platform/kms/hsm-integration",
                   "documentation/platform/kms/kubernetes-encryption",
-                  "documentation/platform/kms/kmip",
+                  {
+                    "group": "KMIP Integration",
+                    "pages": [
+                      "documentation/platform/kms/kmip",
+                      "documentation/platform/kms/kmip-dell-poweredge"
+                    ]
+                  },
                   "documentation/platform/kms/sigstore-cosign"
                 ]
               }
@@ -1567,6 +1579,18 @@
                       "api-reference/endpoints/app-connections/doppler/create",
                       "api-reference/endpoints/app-connections/doppler/update",
                       "api-reference/endpoints/app-connections/doppler/delete"
+                    ]
+                  },
+                  {
+                    "group": "F5 BIG-IP",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/f5-big-ip/list",
+                      "api-reference/endpoints/app-connections/f5-big-ip/available",
+                      "api-reference/endpoints/app-connections/f5-big-ip/get-by-id",
+                      "api-reference/endpoints/app-connections/f5-big-ip/get-by-name",
+                      "api-reference/endpoints/app-connections/f5-big-ip/create",
+                      "api-reference/endpoints/app-connections/f5-big-ip/update",
+                      "api-reference/endpoints/app-connections/f5-big-ip/delete"
                     ]
                   },
                   {
@@ -3171,6 +3195,18 @@
                           "api-reference/endpoints/pki/syncs/cloudflare-custom-certificate/delete",
                           "api-reference/endpoints/pki/syncs/cloudflare-custom-certificate/sync-certificates",
                           "api-reference/endpoints/pki/syncs/cloudflare-custom-certificate/remove-certificates"
+                        ]
+                      },
+                      {
+                        "group": "F5 BIG-IP",
+                        "pages": [
+                          "api-reference/endpoints/pki/syncs/f5-big-ip/list",
+                          "api-reference/endpoints/pki/syncs/f5-big-ip/get-by-id",
+                          "api-reference/endpoints/pki/syncs/f5-big-ip/create",
+                          "api-reference/endpoints/pki/syncs/f5-big-ip/update",
+                          "api-reference/endpoints/pki/syncs/f5-big-ip/delete",
+                          "api-reference/endpoints/pki/syncs/f5-big-ip/sync-certificates",
+                          "api-reference/endpoints/pki/syncs/f5-big-ip/remove-certificates"
                         ]
                       },
                       {
