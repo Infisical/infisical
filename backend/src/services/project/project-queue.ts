@@ -33,7 +33,6 @@ import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueJobTypes, TQueueServiceFactory } from "@app/queue";
 import { JobState } from "@app/queue/queue-service";
 
-
 import { TIntegrationAuthDALFactory } from "../integration-auth/integration-auth-dal";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
@@ -743,7 +742,7 @@ export const projectQueueFactory = ({
     logger.error(err, `SecretBlindIndexMigration: failed [projectId=${job?.data.projectId}]`);
   });
 
-  const getJobState = async (projectId: string) => {
+  const getJobState = async (projectId: string): Promise<{ status: JobState; message?: string }> => {
     const jobId = `enable-blind-index-project-${projectId}`;
     const job = await queueService.getJob(QueueName.SecretBlindIndexMigration, jobId);
 

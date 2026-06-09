@@ -3,7 +3,7 @@ import { logger } from "@app/lib/logger";
 import { permissionCacheFingerprintDurationHistogram, permissionCacheLookupCounter } from "@app/lib/telemetry/metrics";
 
 type TCacheKeyStore = Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry">;
-type TCacheKeyStoreTTLGetter = Pick<TKeyStoreFactory, "ttl">
+type TCacheKeyStoreTTLGetter = Pick<TKeyStoreFactory, "ttl">;
 
 /** Read a raw string from Redis, returning null on miss or error. */
 const cacheGet = async (keyStore: TCacheKeyStore, key: string, errMsg: string): Promise<string | null> => {

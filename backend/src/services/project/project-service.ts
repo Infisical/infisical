@@ -2621,7 +2621,7 @@ export const projectServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Settings);
 
-    return projectQueue.getSecretBlindIndexMigrationStatus(project.id);
+    return projectQueue.getJobState(project.id);
   };
 
   return {

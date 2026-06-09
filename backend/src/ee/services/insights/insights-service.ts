@@ -512,7 +512,7 @@ export const insightsServiceFactory = ({
         result: {
           secretBlindIndexEnabled: false,
           groups: []
-        },
+        }
       };
     }
 
