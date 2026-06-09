@@ -31,7 +31,7 @@ const readSecrets = async (token: string) =>
     url: `/api/v3/secrets/raw`,
     headers: { authorization: `Bearer ${token}` },
     query: {
-      workspaceId: seedData1.project.id,
+      workspaceId: seedData1.projectV3.id,
       environment: seedData1.environment.slug,
       secretPath: "/"
     }
@@ -43,7 +43,7 @@ const createFolder = async (token: string, name: string) =>
     url: `/api/v1/folders`,
     headers: { authorization: `Bearer ${token}` },
     body: {
-      workspaceId: seedData1.project.id,
+      workspaceId: seedData1.projectV3.id,
       environment: seedData1.environment.slug,
       name,
       path: "/"
