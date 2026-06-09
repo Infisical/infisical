@@ -358,7 +358,7 @@ export type TAppConnectionOption =
   | TSalesforceConnectionOption
   | TSnowflakeConnectionOption
   | TDatadogConnectionOption
-  | TF5BigIpConnectionOption;
+  | TF5BigIpConnectionOption
   | TNutanixPrismCentralConnectionOption;
 
 export type TAppConnectionOptionMap = {

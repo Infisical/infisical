@@ -20,7 +20,9 @@ export const NutanixPrismCentralPkiSyncFields = () => {
     isFetching: isLoadingClusters,
     isError: isClustersError,
     error: clustersError
-  } = useNutanixPrismCentralConnectionListClusters(connectionId, { enabled: Boolean(connectionId) });
+  } = useNutanixPrismCentralConnectionListClusters(connectionId, {
+    enabled: Boolean(connectionId)
+  });
 
   return (
     <>

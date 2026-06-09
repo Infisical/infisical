@@ -101,4 +101,3 @@ export const listNutanixClusters = async (
     });
   }
 };
-

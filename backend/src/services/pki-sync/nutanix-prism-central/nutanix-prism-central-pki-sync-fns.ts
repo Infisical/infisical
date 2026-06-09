@@ -2,8 +2,8 @@
 import * as x509 from "@peculiar/x509";
 
 import { logger } from "@app/lib/logger";
-import { buildNutanixApiClient } from "@app/services/app-connection/nutanix-prism-central/nutanix-prism-central-connection-fns";
 import { NutanixPrismCentralConnectionMethod } from "@app/services/app-connection/nutanix-prism-central/nutanix-prism-central-connection-enums";
+import { buildNutanixApiClient } from "@app/services/app-connection/nutanix-prism-central/nutanix-prism-central-connection-fns";
 import { TNutanixPrismCentralConnection } from "@app/services/app-connection/nutanix-prism-central/nutanix-prism-central-connection-types";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TCertificateSyncDALFactory } from "@app/services/certificate-sync/certificate-sync-dal";
@@ -81,12 +81,14 @@ const inferPrivateKeyAlgorithm = (certPem: string): NutanixKeyAlgorithm => {
 // So the correct format is base64(PEM string) — i.e. the full PEM including headers, base64-encoded.
 const pemToNutanixFormat = (pem: string): string => Buffer.from(pem.trim()).toString("base64");
 
-
 // Minimal SDK-compatible response class for the Prism v4 tasks endpoint.
 // The clustermgmt ApiClient's _deserialize calls returnType.constructFromObject(body),
 // and addEtagToReservedMap calls data.getData() — both must exist on the returned instance.
 class NutanixTaskResponse {
   private data: unknown;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private readonly reservedMap: Record<string, any> = {};
 
   static constructFromObject(raw: unknown) {
     const instance = new NutanixTaskResponse();
@@ -101,7 +103,7 @@ class NutanixTaskResponse {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   get$Reserved(): Record<string, any> {
-    return {};
+    return this.reservedMap;
   }
 }
 
@@ -113,14 +115,14 @@ const pollNutanixTask = async (apiClient: any, taskExtId: string, syncId: string
 
   let lastPollError: unknown;
 
-  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt += 1) {
     await new Promise<void>((resolve) => {
       setTimeout(resolve, POLL_INTERVAL_MS);
     });
 
     try {
       // Use the SDK's ApiClient so auth headers are applied automatically.
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
       const result = await apiClient.callApi(
         "/api/prism/v4.0/config/tasks/{taskExtId}",
         "GET",
@@ -242,7 +244,10 @@ export const nutanixPrismCentralPkiSyncFactory = ({
 
     try {
       const { SSLCertificateApi } = await import("@nutanix-api/clustermgmt-js-client/dist/es");
-      const apiClient = await buildNutanixApiClient(credentials, pkiSync.connection.method as NutanixPrismCentralConnectionMethod);
+      const apiClient = await buildNutanixApiClient(
+        credentials,
+        pkiSync.connection.method as NutanixPrismCentralConnectionMethod
+      );
       const sslApi = new SSLCertificateApi(apiClient);
 
       // Nutanix v4 API requires an ETag (If-Match header) for PUT operations.
@@ -255,7 +260,10 @@ export const nutanixPrismCentralPkiSyncFactory = ({
       type TApiResponse = { data: { getData: () => { get$Reserved: () => Record<string, string> } } };
       const getApiResponse = getResponse as unknown as TApiResponse;
       const etag = getApiResponse?.data?.getData?.()?.get$Reserved?.()?.ETag;
-      logger.info({ syncId: pkiSync.id, clusterId, hasEtag: Boolean(etag) }, "[nutanix-pki-sync] Fetched current SSL certificate for ETag");
+      logger.info(
+        { syncId: pkiSync.id, clusterId, hasEtag: Boolean(etag) },
+        "[nutanix-pki-sync] Fetched current SSL certificate for ETag"
+      );
 
       // Build the SSLCertificate payload using the SDK model.
       const { default: SSLCertificate } = await import(
@@ -273,7 +281,7 @@ export const nutanixPrismCentralPkiSyncFactory = ({
       // Set ETag on the body — the SDK reads sslCertBody.$reserved.ETag in
       // addEtagReferenceToHeader() and adds it as the If-Match header on the PUT request.
       if (etag) {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment
         (sslCertBody as any).$reserved = { ...((sslCertBody as any).$reserved ?? {}), ETag: etag };
       }
 

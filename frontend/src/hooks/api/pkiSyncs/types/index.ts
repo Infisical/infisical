@@ -32,7 +32,7 @@ export type TPkiSync =
   | TCloudflareCustomCertificatePkiSync
   | TNetScalerPkiSync
   | TF5BigIpPkiSync
-  | TNutanixPrismCentralPkiSync
+  | TNutanixPrismCentralPkiSync;
 
 export type TListPkiSyncs = { pkiSyncs: TPkiSync[] };
 

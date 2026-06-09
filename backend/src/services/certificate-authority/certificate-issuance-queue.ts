@@ -40,7 +40,6 @@ import { TApiEnrollmentConfigDALFactory } from "../enrollment-config/api-enrollm
 import { TPkiAlertV2QueueServiceFactory } from "../pki-alert-v2/pki-alert-v2-queue";
 import { PkiAlertEventType } from "../pki-alert-v2/pki-alert-v2-types";
 import { TPkiApplicationProfileDALFactory } from "../pki-application/pki-application-profile-dal";
-import { TCertificateSyncDALFactory } from "../certificate-sync/certificate-sync-dal";
 import { TPkiSubscriberDALFactory } from "../pki-subscriber/pki-subscriber-dal";
 import { TPkiSyncDALFactory } from "../pki-sync/pki-sync-dal";
 import { TPkiSyncQueueFactory } from "../pki-sync/pki-sync-queue";

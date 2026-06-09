@@ -670,7 +670,7 @@ export type TAppConnectionConfig =
   | TSalesforceConnectionConfig
   | TSnowflakeConnectionConfig
   | TDatadogConnectionConfig
-  | TF5BigIpConnectionConfig;
+  | TF5BigIpConnectionConfig
   | TNutanixPrismCentralConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
@@ -741,7 +741,7 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateSalesforceConnectionCredentialsSchema
   | TValidateSnowflakeConnectionCredentialsSchema
   | TValidateDatadogConnectionCredentialsSchema
-  | TValidateF5BigIpConnectionCredentialsSchema;
+  | TValidateF5BigIpConnectionCredentialsSchema
   | TValidateNutanixPrismCentralConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {

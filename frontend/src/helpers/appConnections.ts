@@ -57,7 +57,6 @@ import { ChecklyConnectionMethod } from "@app/hooks/api/appConnections/types/che
 import { ChefConnectionMethod } from "@app/hooks/api/appConnections/types/chef-connection";
 import { CircleCIConnectionMethod } from "@app/hooks/api/appConnections/types/circleci-connection";
 import { DatadogConnectionMethod } from "@app/hooks/api/appConnections/types/datadog-connection";
-import { NutanixPrismCentralConnectionMethod } from "@app/hooks/api/appConnections/types/nutanix-prism-central-connection";
 import { DigiCertConnectionMethod } from "@app/hooks/api/appConnections/types/digicert-connection";
 import { DigitalOceanConnectionMethod } from "@app/hooks/api/appConnections/types/digital-ocean";
 import { DNSMadeEasyConnectionMethod } from "@app/hooks/api/appConnections/types/dns-made-easy-connection";
@@ -70,6 +69,7 @@ import { LaravelForgeConnectionMethod } from "@app/hooks/api/appConnections/type
 import { NetlifyConnectionMethod } from "@app/hooks/api/appConnections/types/netlify-connection";
 import { NetScalerConnectionMethod } from "@app/hooks/api/appConnections/types/netscaler-connection";
 import { NorthflankConnectionMethod } from "@app/hooks/api/appConnections/types/northflank-connection";
+import { NutanixPrismCentralConnectionMethod } from "@app/hooks/api/appConnections/types/nutanix-prism-central-connection";
 import { OCIConnectionMethod } from "@app/hooks/api/appConnections/types/oci-connection";
 import { OnaConnectionMethod } from "@app/hooks/api/appConnections/types/ona-connection";
 import { OpenRouterConnectionMethod } from "@app/hooks/api/appConnections/types/open-router-connection";
@@ -187,7 +187,11 @@ export const APP_CONNECTION_MAP: Record<
   [AppConnection.Snowflake]: { name: "Snowflake", image: "Snowflake.png" },
   [AppConnection.Datadog]: { name: "Datadog", image: "DatadogWhite.png" },
   [AppConnection.F5BigIp]: { name: "F5 BIG-IP", image: "F5 BIG-IP.png" },
-  [AppConnection.NutanixPrismCentral]: { name: "Nutanix Prism Central", image: "Nutanix.png", size: 120 }
+  [AppConnection.NutanixPrismCentral]: {
+    name: "Nutanix Prism Central",
+    image: "Nutanix.png",
+    size: 120
+  }
 };
 
 export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) => {

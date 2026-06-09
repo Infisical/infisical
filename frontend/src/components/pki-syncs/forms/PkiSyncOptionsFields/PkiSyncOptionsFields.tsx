@@ -78,16 +78,16 @@ export const PkiSyncOptionsFields = ({ destination }: Props) => {
                     content={
                       <>
                         <p>
-                          When enabled, Infisical will remove certificates from the destination during
-                          a sync if they are no longer active in Infisical.
+                          When enabled, Infisical will remove certificates from the destination
+                          during a sync if they are no longer active in Infisical.
                         </p>
                         {currentDestination === PkiSync.AwsElasticLoadBalancer && (
                           <p className="mt-4">
-                            For AWS Elastic Load Balancer, this will remove the certificate from both
-                            the load balancer listeners and AWS Certificate Manager. This only affects
-                            certificates managed by this specific sync and will not interfere with
-                            certificates managed by other syncs (such as ACM syncs or other ELB
-                            syncs).
+                            For AWS Elastic Load Balancer, this will remove the certificate from
+                            both the load balancer listeners and AWS Certificate Manager. This only
+                            affects certificates managed by this specific sync and will not
+                            interfere with certificates managed by other syncs (such as ACM syncs or
+                            other ELB syncs).
                           </p>
                         )}
                         <p className="mt-4">
@@ -132,7 +132,8 @@ export const PkiSyncOptionsFields = ({ destination }: Props) => {
                           </p>
                           <p className="mt-4">
                             When disabled, the root CA will be excluded from the certificate chain
-                            during sync operations, reducing the size of the synced certificate chain.
+                            during sync operations, reducing the size of the synced certificate
+                            chain.
                           </p>
                           <p className="mt-4">
                             Most applications and services work correctly with intermediate
@@ -153,47 +154,47 @@ export const PkiSyncOptionsFields = ({ destination }: Props) => {
 
       {(currentDestination === PkiSync.AwsCertificateManager ||
         currentDestination === PkiSync.AwsElasticLoadBalancer) && (
-          <Controller
-            control={control}
-            name="syncOptions.preserveArn"
-            render={({ field: { value, onChange }, fieldState: { error } }) => (
-              <FormControl isError={Boolean(error)} errorText={error?.message}>
-                <Switch
-                  className="bg-mineshaft-400/80 shadow-inner data-[state=checked]:bg-green/80"
-                  id="preserve-arn"
-                  thumbClassName="bg-mineshaft-800"
-                  onCheckedChange={onChange}
-                  isChecked={value}
-                >
-                  <p>
-                    Preserve ARN on Renewal{" "}
-                    <Tooltip
-                      className="max-w-md"
-                      content={
-                        <>
-                          <p>
-                            When enabled, Infisical will replace the contents of existing certificates
-                            while preserving the same ARN during certificate renewal syncs.
-                          </p>
-                          <p className="mt-4">
-                            This allows consuming services like load balancers to continue using the
-                            same ARN without requiring manual updates.
-                          </p>
-                          <p className="mt-4">
-                            When disabled, new certificates will be created with new ARNs, and old
-                            certificates will be removed.
-                          </p>
-                        </>
-                      }
-                    >
-                      <FontAwesomeIcon icon={faQuestionCircle} size="sm" className="ml-1" />
-                    </Tooltip>
-                  </p>
-                </Switch>
-              </FormControl>
-            )}
-          />
-        )}
+        <Controller
+          control={control}
+          name="syncOptions.preserveArn"
+          render={({ field: { value, onChange }, fieldState: { error } }) => (
+            <FormControl isError={Boolean(error)} errorText={error?.message}>
+              <Switch
+                className="bg-mineshaft-400/80 shadow-inner data-[state=checked]:bg-green/80"
+                id="preserve-arn"
+                thumbClassName="bg-mineshaft-800"
+                onCheckedChange={onChange}
+                isChecked={value}
+              >
+                <p>
+                  Preserve ARN on Renewal{" "}
+                  <Tooltip
+                    className="max-w-md"
+                    content={
+                      <>
+                        <p>
+                          When enabled, Infisical will replace the contents of existing certificates
+                          while preserving the same ARN during certificate renewal syncs.
+                        </p>
+                        <p className="mt-4">
+                          This allows consuming services like load balancers to continue using the
+                          same ARN without requiring manual updates.
+                        </p>
+                        <p className="mt-4">
+                          When disabled, new certificates will be created with new ARNs, and old
+                          certificates will be removed.
+                        </p>
+                      </>
+                    }
+                  >
+                    <FontAwesomeIcon icon={faQuestionCircle} size="sm" className="ml-1" />
+                  </Tooltip>
+                </p>
+              </Switch>
+            </FormControl>
+          )}
+        />
+      )}
 
       {currentDestination === PkiSync.AzureKeyVault && (
         <Controller

@@ -190,7 +190,7 @@ export const pkiSyncQueueFactory = ({
         // is included in the map. Without this, the old cert is filtered out and the new
         // cert is never seen (it was never explicitly added to certificate_syncs).
         const renewedIds = directCertificates
-          .map((c) => (c as TCertificates).renewedByCertificateId)
+          .map((c) => c.renewedByCertificateId)
           .filter((id): id is string => Boolean(id));
 
         if (renewedIds.length > 0) {
