@@ -354,7 +354,7 @@ For **Custom** streams, each request is an HTTP `POST` with a body containing a 
 Your endpoint must be able to accept a JSON array. Batches are bounded — your receiver should be prepared to handle up to **500 events** or **1 MB** per request. The managed providers (Azure, Cribl, Datadog, Splunk) are batched automatically using each provider's native bulk-ingestion format.
 
 <Note>
-    **Legacy single-event delivery.** Custom streams created before batch delivery was introduced continue to receive **one event per request** as a single JSON object (not an array), so existing receivers keep working unchanged. You can upgrade such a stream to batch delivery by editing it and enabling **Batch delivery** in the form. This switch is **one-way** — once a stream is on batch delivery it cannot be reverted to single-event delivery, so confirm your endpoint accepts a JSON array before enabling it.
+    **Legacy single-event delivery.** **Custom** and **Cribl** streams created before batch delivery was introduced continue to receive **one event per request** as a single JSON object, so existing receivers keep working unchanged. You can upgrade such a stream to batch delivery by editing it and enabling **Batch delivery** in the form. This switch is **one-way** — once a stream is on batch delivery it cannot be reverted to single-event delivery, so confirm your endpoint accepts batched events first (a JSON array for Custom, or newline-delimited JSON (NDJSON) for Cribl). The Azure, Datadog, and Splunk providers always batch and have no single-event mode.
 </Note>
 
 ### Example Log Entry
