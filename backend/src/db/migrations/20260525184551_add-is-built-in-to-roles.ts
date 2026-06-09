@@ -47,7 +47,7 @@ export async function up(knex: Knex): Promise<void> {
 
   for (let offset = 0; offset < totalOrgs; offset += CHUNK_SIZE) {
     // eslint-disable-next-line no-await-in-loop
-    const orgChunk = await knex(TableName.Organization).select("id").offset(offset).limit(CHUNK_SIZE);
+    const orgChunk = await knex(TableName.Organization).select("id").orderBy("id").offset(offset).limit(CHUNK_SIZE);
     const orgIds = orgChunk.map((o) => o.id);
 
     // eslint-disable-next-line no-await-in-loop
@@ -107,7 +107,11 @@ export async function up(knex: Knex): Promise<void> {
 
   for (let offset = 0; offset < totalProjects; offset += CHUNK_SIZE) {
     // eslint-disable-next-line no-await-in-loop
-    const projectChunk = await knex(TableName.Project).select("id", "type").offset(offset).limit(CHUNK_SIZE);
+    const projectChunk = await knex(TableName.Project)
+      .select("id", "type")
+      .orderBy("id")
+      .offset(offset)
+      .limit(CHUNK_SIZE);
     const projectIds = projectChunk.map((p) => p.id);
 
     // eslint-disable-next-line no-await-in-loop
