@@ -478,7 +478,12 @@ export const oauthClientServiceFactory = ({
       refreshVersion = updatedSession.refreshVersion;
 
       refreshToken = signOauthToken(
-        { ...sharedClaims, tokenType: AuthTokenType.REFRESH_TOKEN, version: refreshVersion, oauthClientId: client.clientId },
+        {
+          ...sharedClaims,
+          tokenType: AuthTokenType.REFRESH_TOKEN,
+          version: refreshVersion,
+          oauthClientId: client.clientId
+        },
         refreshTokenExpiresIn
       );
     }
