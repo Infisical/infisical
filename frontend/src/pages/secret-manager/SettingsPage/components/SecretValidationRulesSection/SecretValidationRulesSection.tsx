@@ -590,7 +590,10 @@ export const SecretValidationRulesSection = () => {
     <Card className="mb-6">
       <CardHeader>
         <CardTitle>Secret Validation Rules</CardTitle>
-        <CardDescription>Define validation constraints for secret keys and values</CardDescription>
+        <CardDescription>
+          Define constraints applied to static secret keys and values on write, and to the passwords
+          generated for dynamic secrets and secret rotations.
+        </CardDescription>
         <CardAction>
           <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Settings}>
             {(isAllowed) => (

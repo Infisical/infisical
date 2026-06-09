@@ -167,17 +167,42 @@ export const constraintSchema = z
     message: "Value is required",
     path: ["value"]
   })
-  .refine(
-    (c) => {
-      if (c.type !== ConstraintType.PreventValueReuse) return true;
+  .superRefine((c, ctx) => {
+    if (c.type === ConstraintType.PreventValueReuse) {
       const num = Number(c.value);
-      return Number.isInteger(num) && num >= 1 && num <= MAX_PREVENT_VALUE_REUSE_VERSIONS;
-    },
-    {
-      message: `Must be a number between 1 and ${MAX_PREVENT_VALUE_REUSE_VERSIONS}`,
-      path: ["value"]
+
+      const isAboveMaxVersions =
+        Number.isInteger(num) && (num < 1 || num > MAX_PREVENT_VALUE_REUSE_VERSIONS);
+
+      if (isAboveMaxVersions) {
+        ctx.addIssue({
+          path: ["value"],
+          code: z.ZodIssueCode.custom,
+          message: `Must be a number between 1 and ${MAX_PREVENT_VALUE_REUSE_VERSIONS}`
+        });
+      }
+    } else if (c.type === ConstraintType.MinLength) {
+      const num = Number(c.value);
+
+      if (num <= 0) {
+        ctx.addIssue({
+          path: ["value"],
+          code: z.ZodIssueCode.custom,
+          message: "Minimum length must be a at least 1"
+        });
+      }
+    } else if (c.type === ConstraintType.MaxLength) {
+      const num = Number(c.value);
+
+      if (num <= 0) {
+        ctx.addIssue({
+          path: ["value"],
+          code: z.ZodIssueCode.custom,
+          message: "Maximum length must be a at least 1"
+        });
+      }
     }
-  );
+  });
 
 const duplicateConstraintRefinement = (
   constraints: { type: ConstraintType; appliesTo: ConstraintTarget }[]
