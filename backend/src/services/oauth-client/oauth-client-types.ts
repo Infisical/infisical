@@ -20,6 +20,7 @@ export type TUpdateOauthClientDTO = {
 export type TOauthAuthorizeInfoDTO = {
   clientId: string;
   redirectUri: string;
+  scope?: string;
 };
 
 export type TOauthConsentDTO = {
@@ -63,7 +64,9 @@ export const OauthAuthorizationCodePayloadSchema = z.object({
   redirectUri: z.string(),
   codeChallenge: z.string().optional(),
   codeChallengeMethod: z.literal("S256").optional(),
-  scope: z.string().optional()
+  // Granted, validated delegation scopes (recognized OauthScope values only). Resolved at consent
+  // time so the token exchange does not have to re-parse the original space-delimited request.
+  scopes: z.array(z.string()).optional()
 });
 
 export type TOauthAuthorizationCodePayload = z.infer<typeof OauthAuthorizationCodePayloadSchema>;

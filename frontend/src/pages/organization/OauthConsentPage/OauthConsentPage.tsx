@@ -28,7 +28,7 @@ export const OauthConsentPage = () => {
     data: authorizeInfo,
     isPending: isInfoPending,
     error: authorizeInfoError
-  } = useGetOauthAuthorizeInfo(search.client_id, search.redirect_uri);
+  } = useGetOauthAuthorizeInfo(search.client_id, search.redirect_uri, search.scope);
 
   const { mutateAsync: consentOauth, isPending: isConsenting } = useOauthConsent();
 
@@ -123,9 +123,23 @@ export const OauthConsentPage = () => {
                 <p className="mt-1 text-sm text-accent">{authorizeInfo.clientDescription}</p>
               )}
               <p className="mt-3 text-xs text-muted">
-                This application will be able to act on your behalf with your existing Infisical
-                permissions until you revoke its session.
+                {authorizeInfo.requestedScopes.length
+                  ? "This application is requesting the following access on your behalf, limited to your existing Infisical permissions, until you revoke its session."
+                  : "This application will be able to act on your behalf with your existing Infisical permissions until you revoke its session."}
               </p>
+              {authorizeInfo.requestedScopes.length > 0 && (
+                <ul className="mt-3 flex flex-col gap-2">
+                  {authorizeInfo.requestedScopes.map(({ scope, description }) => (
+                    <li key={scope} className="flex items-start gap-2 text-sm text-foreground">
+                      <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-success" />
+                      <span>
+                        {description}
+                        <span className="ml-1 text-xs text-muted">({scope})</span>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           )}
           {!isInfoPending && authorizeInfoError && (

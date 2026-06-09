@@ -30,6 +30,7 @@ import {
   TOauthTokenExchangeDTO,
   TUpdateOauthClientDTO
 } from "./oauth-client-types";
+import { getOauthScopeDescriptions, parseOauthScopeString } from "./oauth-scope";
 
 type TOauthClientServiceFactoryDep = {
   oauthClientDAL: TOauthClientDALFactory;
@@ -63,6 +64,7 @@ type TOauthTokenClaims = {
   organizationId: string;
   isMfaVerified?: boolean;
   mfaMethod?: MfaMethod;
+  scopes: string[];
 };
 
 const signOauthAccessToken = (
@@ -82,7 +84,10 @@ const signOauthAccessToken = (
       mfaMethod: claims.mfaMethod,
       // Marks this as a delegated OAuth access token. extractAuth maps tokens carrying this
       // claim to AuthMode.OAUTH so they are rejected by the default first-party JWT middleware.
-      oauthClientId: claims.oauthClientId
+      oauthClientId: claims.oauthClientId,
+      // Granted delegation scopes. permission-service intersects the user's ability with these,
+      // so the token can never exceed what the user consented to.
+      scopes: claims.scopes
     },
     appCfg.AUTH_SECRET,
     { expiresIn }
@@ -104,7 +109,8 @@ const signOauthRefreshToken = (
       organizationId: claims.organizationId,
       isMfaVerified: claims.isMfaVerified,
       mfaMethod: claims.mfaMethod,
-      oauthClientId: claims.oauthClientId
+      oauthClientId: claims.oauthClientId,
+      scopes: claims.scopes
     },
     appCfg.AUTH_SECRET,
     { expiresIn }
@@ -219,7 +225,7 @@ export const oauthClientServiceFactory = ({
     return { client: sanitizeOauthClient(updatedClient), clientSecret };
   };
 
-  const getAuthorizeInfo = async ({ clientId, redirectUri }: TOauthAuthorizeInfoDTO) => {
+  const getAuthorizeInfo = async ({ clientId, redirectUri, scope }: TOauthAuthorizeInfoDTO) => {
     const client = await oauthClientDAL.findOne({ clientId });
     if (!client) throw new UnauthorizedError({ message: "OAuth client not found" });
 
@@ -227,11 +233,19 @@ export const oauthClientServiceFactory = ({
       throw new BadRequestError({ message: "Redirect URI is not registered for this OAuth client" });
     }
 
+    // Surface unknown scopes up front so the consent screen can refuse rather than letting the
+    // user approve a request that authorizeConsent will reject anyway.
+    const { granted, invalid } = parseOauthScopeString(scope);
+    if (invalid.length) {
+      throw new BadRequestError({ message: `Unsupported OAuth scope(s): ${invalid.join(", ")}` });
+    }
+
     return {
       clientName: client.name,
       clientDescription: client.description,
       orgId: client.orgId,
-      requirePkce: client.requirePkce
+      requirePkce: client.requirePkce,
+      requestedScopes: getOauthScopeDescriptions(granted)
     };
   };
 
@@ -245,6 +259,13 @@ export const oauthClientServiceFactory = ({
 
     if (client.requirePkce && !dto.codeChallenge) {
       throw new BadRequestError({ message: "This OAuth client requires PKCE (code_challenge is missing)" });
+    }
+
+    // Reject the request if it asks for any scope we don't recognize (RFC 6749 invalid_scope),
+    // rather than silently dropping it and issuing a token narrower than the client expects.
+    const { granted: grantedScopes, invalid: invalidScopes } = parseOauthScopeString(dto.scope);
+    if (invalidScopes.length) {
+      throw new BadRequestError({ message: `Unsupported OAuth scope(s): ${invalidScopes.join(", ")}` });
     }
 
     await permissionService.getOrgPermission({
@@ -278,7 +299,7 @@ export const oauthClientServiceFactory = ({
         redirectUri: dto.redirectUri,
         codeChallenge: dto.codeChallenge,
         codeChallengeMethod: dto.codeChallengeMethod,
-        scope: dto.scope
+        scopes: grantedScopes
       })
     );
 
@@ -359,13 +380,16 @@ export const oauthClientServiceFactory = ({
 
       const { accessTokenExpiresIn, refreshTokenExpiresIn } = await getTokenLifetimes(codePayload.orgId);
 
+      const grantedScopes = codePayload.scopes ?? [];
+
       const sharedClaims = {
         authMethod: codePayload.authMethod,
         userId: codePayload.userId,
         tokenVersionId: tokenSession.id,
         organizationId: codePayload.orgId,
         isMfaVerified: codePayload.isMfaVerified,
-        mfaMethod: codePayload.mfaMethod
+        mfaMethod: codePayload.mfaMethod,
+        scopes: grantedScopes
       };
 
       const accessToken = signOauthAccessToken(
@@ -383,7 +407,7 @@ export const oauthClientServiceFactory = ({
         token_type: "Bearer" as const,
         expires_in: expiresInToSeconds(accessTokenExpiresIn),
         refresh_token: refreshToken,
-        scope: codePayload.scope ?? ""
+        scope: grantedScopes.join(" ")
       };
     }
 
@@ -405,13 +429,17 @@ export const oauthClientServiceFactory = ({
     let { refreshToken } = dto;
     let { refreshVersion } = tokenVersion;
 
+    // Carry the originally-granted scopes forward; a refresh must never broaden delegation.
+    const grantedScopes = oauthDecodedToken.scopes ?? [];
+
     const sharedClaims = {
       authMethod: decodedToken.authMethod,
       userId: decodedToken.userId,
       tokenVersionId: tokenVersion.id,
       organizationId: decodedToken.organizationId,
       isMfaVerified: decodedToken.isMfaVerified,
-      mfaMethod: decodedToken.mfaMethod
+      mfaMethod: decodedToken.mfaMethod,
+      scopes: grantedScopes
     };
 
     if (!isGraceHit) {
@@ -434,7 +462,7 @@ export const oauthClientServiceFactory = ({
       token_type: "Bearer" as const,
       expires_in: expiresInToSeconds(accessTokenExpiresIn),
       refresh_token: refreshToken,
-      scope: ""
+      scope: grantedScopes.join(" ")
     };
   };
 

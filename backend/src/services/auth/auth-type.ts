@@ -98,6 +98,9 @@ export type AuthModeJwtTokenPayload = {
   // Present only on delegated OAuth 2.0 access tokens. Its presence marks the token as
   // AuthMode.OAUTH so the default JWT middleware will not accept it as a first-party session.
   oauthClientId?: string;
+  // Granted OAuth delegation scopes (see OauthScope). The delegated ability is intersected with
+  // these in permission-service; an empty/absent list denies all scope-guarded resource access.
+  scopes?: string[];
 };
 
 export type AuthModeMfaJwtTokenPayload = {
@@ -120,6 +123,7 @@ export type AuthModeRefreshJwtTokenPayload = {
   isMfaVerified?: boolean;
   mfaMethod?: MfaMethod;
   oauthClientId?: string;
+  scopes?: string[];
 };
 
 export type AuthModeSignUpTokenPayload = {

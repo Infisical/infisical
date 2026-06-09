@@ -34,10 +34,16 @@ export type TRotateOauthClientSecretDTO = {
   clientDbId: string;
 };
 
+export type TOauthRequestedScope = {
+  scope: string;
+  description: string;
+};
+
 export type TOauthAuthorizeInfo = {
   clientName: string;
   clientDescription?: string | null;
   requirePkce: boolean;
+  requestedScopes: TOauthRequestedScope[];
 };
 
 export type TOauthConsentDTO = {

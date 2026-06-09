@@ -184,6 +184,10 @@ declare module "@fastify/request-context" {
     reqId: string;
     ip?: string;
     userAgent?: string;
+    // Set only on delegated OAuth requests. Presence (even as an empty array) signals that
+    // permission abilities must be intersected with these scopes; absence means a first-party
+    // session with no scope narrowing.
+    oauthScopes?: string[];
     orgId?: string;
     orgName?: string;
     userAuthInfo?: {

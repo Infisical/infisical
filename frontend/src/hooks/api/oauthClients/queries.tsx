@@ -6,8 +6,8 @@ import { TOauthAuthorizeInfo, TOauthClient } from "./types";
 
 export const oauthClientKeys = {
   list: (orgId: string) => [{ orgId }, "oauth-clients"] as const,
-  authorizeInfo: (clientId: string, redirectUri: string) =>
-    ["oauth-authorize-info", clientId, redirectUri] as const,
+  authorizeInfo: (clientId: string, redirectUri: string, scope?: string) =>
+    ["oauth-authorize-info", clientId, redirectUri, scope ?? ""] as const,
   all: ["oauth-clients"] as const
 };
 
@@ -22,14 +22,15 @@ export const useGetOauthClients = (orgId: string) => {
   });
 };
 
-export const useGetOauthAuthorizeInfo = (clientId: string, redirectUri: string) => {
+export const useGetOauthAuthorizeInfo = (clientId: string, redirectUri: string, scope?: string) => {
   return useQuery({
-    queryKey: oauthClientKeys.authorizeInfo(clientId, redirectUri),
+    queryKey: oauthClientKeys.authorizeInfo(clientId, redirectUri, scope),
     queryFn: async () => {
       const { data } = await apiRequest.get<TOauthAuthorizeInfo>("/api/v1/oauth/authorize/info", {
         params: {
           client_id: clientId,
-          redirect_uri: redirectUri
+          redirect_uri: redirectUri,
+          ...(scope ? { scope } : {})
         }
       });
       return data;

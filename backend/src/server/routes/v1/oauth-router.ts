@@ -280,26 +280,30 @@ export const registerOAuthRouter = async (server: FastifyZodProvider) => {
     schema: {
       querystring: z.object({
         client_id: z.string(),
-        redirect_uri: z.string().url()
+        redirect_uri: z.string().url(),
+        scope: z.string().optional()
       }),
       response: {
         200: z.object({
           clientName: z.string(),
           clientDescription: z.string().nullable().optional(),
-          requirePkce: z.boolean()
+          requirePkce: z.boolean(),
+          requestedScopes: z.object({ scope: z.string(), description: z.string() }).array()
         })
       }
     },
     handler: async (req) => {
       const info = await server.services.oauthClient.getAuthorizeInfo({
         clientId: req.query.client_id,
-        redirectUri: req.query.redirect_uri
+        redirectUri: req.query.redirect_uri,
+        scope: req.query.scope
       });
 
       return {
         clientName: info.clientName,
         clientDescription: info.clientDescription,
-        requirePkce: info.requirePkce
+        requirePkce: info.requirePkce,
+        requestedScopes: info.requestedScopes
       };
     }
   });

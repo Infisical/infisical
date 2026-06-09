@@ -305,6 +305,9 @@ export const injectIdentity = fp(
             await server.services.authToken.fnValidateJwtIdentity(token);
           requestContext.set(RequestContextKey.OrgId, orgId);
           requestContext.set(RequestContextKey.OrgName, orgName);
+          // Always set (even as []) so permission-service can distinguish a delegated OAuth request
+          // that must be scope-narrowed from a first-party session that must not be.
+          requestContext.set(RequestContextKey.OauthScopes, token.scopes ?? []);
           requestContext.set(RequestContextKey.UserAuthInfo, { userId: user.id, email: user.email || "" });
           req.auth = {
             authMode: AuthMode.OAUTH,
