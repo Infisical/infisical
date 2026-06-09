@@ -1,5 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
+import RE2 from "re2";
 
 import { ActionProjectType, OrganizationActionScope } from "@app/db/schemas";
 import { PgSqlLock } from "@app/keystore/keystore";
@@ -46,14 +47,14 @@ const normalizeSerialNumberCandidates = (raw: string): string[] => {
   const candidates = new Set<string>();
   const toCanonical = (n: bigint) => n.toString(16).padStart(40, "0");
 
-  if (/^[0-9a-fA-F]+$/.test(value)) {
+  if (new RE2(/^[0-9a-fA-F]+$/).test(value)) {
     try {
       candidates.add(toCanonical(BigInt(`0x${value}`)));
     } catch {
       // not a valid hex serial
     }
   }
-  if (/^[0-9]+$/.test(value)) {
+  if (new RE2(/^[0-9]+$/).test(value)) {
     try {
       candidates.add(toCanonical(BigInt(value)));
     } catch {
