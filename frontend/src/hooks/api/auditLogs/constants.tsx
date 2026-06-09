@@ -451,6 +451,7 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.RELAY_DELETE]: "Delete relay",
   [EventType.RELAY_ENROLLMENT_TOKEN_CREATE]: "Generate relay enrollment token",
   [EventType.KMIP_SERVER_CREATE]: "Create KMIP server",
+  [EventType.KMIP_SERVER_UPDATE]: "Update KMIP server",
   [EventType.KMIP_SERVER_DELETE]: "Delete KMIP server",
   [EventType.KMIP_SERVER_ENROLLMENT_TOKEN_CREATE]: "Generate KMIP server enrollment token"
 };

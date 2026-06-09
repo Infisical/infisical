@@ -245,6 +245,18 @@ export const registerKmipServerRouter = async (server: FastifyZodProvider) => {
             orgId: req.permission.orgId
           });
 
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.KMIP_SERVER_UPDATE,
+          metadata: {
+            kmipServerId: req.params.kmipServerId,
+            name: kmipServer.name
+          }
+        }
+      });
+
       if (req.body.authMethod) {
         const authMethodInput = req.body.authMethod;
         const authMethodArg =

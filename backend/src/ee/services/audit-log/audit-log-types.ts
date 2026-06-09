@@ -868,6 +868,7 @@ export enum EventType {
   RELAY_ENROLLMENT_TOKEN_CREATE = "relay-enrollment-token-create",
 
   KMIP_SERVER_CREATE = "kmip-server-create",
+  KMIP_SERVER_UPDATE = "kmip-server-update",
   KMIP_SERVER_DELETE = "kmip-server-delete",
   KMIP_SERVER_ENROLLMENT_TOKEN_CREATE = "kmip-server-enrollment-token-create",
 
@@ -7084,6 +7085,14 @@ interface KmipServerCreateEvent {
   };
 }
 
+interface KmipServerUpdateEvent {
+  type: EventType.KMIP_SERVER_UPDATE;
+  metadata: {
+    kmipServerId: string;
+    name: string;
+  };
+}
+
 interface KmipServerDeleteEvent {
   type: EventType.KMIP_SERVER_DELETE;
   metadata: {
@@ -7818,6 +7827,7 @@ export type Event =
   | RelayDeleteEvent
   | RelayEnrollmentTokenCreateEvent
   | KmipServerCreateEvent
+  | KmipServerUpdateEvent
   | KmipServerDeleteEvent
   | KmipServerEnrollmentTokenCreateEvent
   | GatewayPoolCreateEvent
