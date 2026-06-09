@@ -2,7 +2,7 @@
 import slugify from "@sindresorhus/slugify";
 import { Knex } from "knex";
 
-import { PamFolderRole, PamProductRole } from "@app/ee/services/pam/pam-enums";
+import { PamProductRole, PamResourceRole } from "@app/ee/services/pam/pam-enums";
 import { DEFAULT_ACCOUNT_TEMPLATES } from "@app/ee/services/pam-instance/pam-project-bootstrap";
 import { inMemoryKeyStore } from "@app/keystore/memory";
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -355,7 +355,7 @@ export async function up(knex: Knex): Promise<void> {
         const roles = await knex(TableName.MembershipRole).where("membershipId", member.id).select("role");
 
         const isAdmin = roles.some((r: { role: string }) => r.role === ProjectMembershipRole.Admin);
-        const folderRole = isAdmin ? PamFolderRole.Admin : PamFolderRole.Requester;
+        const resourceRole = isAdmin ? PamResourceRole.Admin : PamResourceRole.Requester;
 
         const [folderMembership] = await knex(TableName.Membership)
           .insert({
@@ -371,7 +371,7 @@ export async function up(knex: Knex): Promise<void> {
 
         await knex(TableName.MembershipRole).insert({
           membershipId: folderMembership.id,
-          role: folderRole
+          role: resourceRole
         });
       }
     }
@@ -402,6 +402,11 @@ export async function up(knex: Knex): Promise<void> {
     t.uuid("templateId").notNullable().alter();
     t.binary("encryptedConnectionDetails").notNullable().alter();
     t.unique(["folderId", "name"]);
+    // Make retained old columns nullable so new accounts can be created without them
+    t.string("projectId", 36).nullable().alter();
+    t.uuid("resourceId").nullable().alter();
+    t.uuid("domainId").nullable().alter();
+    t.uuid("policyId").nullable().alter();
   });
 
   // Sessions

@@ -20,6 +20,9 @@ import {
   applicationAuditorPermissions,
   applicationOperatorPermissions,
   cryptographicOperatorPermissions,
+  pamResourceAdminPermissions,
+  pamResourceAuditorPermissions,
+  pamResourceRequesterPermissions,
   projectAdminApplicationFallbackPermissions,
   projectAdminPermissions,
   projectAdminSignerFallbackPermissions,
@@ -147,6 +150,19 @@ const resolveResourceRoleRules = (resourceType: ResourceType, role: string) => {
     }
   }
 
+  if (resourceType === ResourceType.PamFolder || resourceType === ResourceType.PamAccount) {
+    switch (role) {
+      case "admin":
+        return pamResourceAdminPermissions;
+      case "requester":
+        return pamResourceRequesterPermissions;
+      case "auditor":
+        return pamResourceAuditorPermissions;
+      default:
+        throw new NotFoundError({ name: "PamRoleInvalid", message: `PAM role '${role}' not found` });
+    }
+  }
+
   switch (role) {
     case ResourceMembershipRole.Admin:
       return applicationAdminPermissions;
@@ -175,6 +191,7 @@ const buildResourcePermissionRules = (appUserRoles: TBuildProjectPermissionDTO, 
 
 const resolveResourceProjectAdminFallback = (resourceType: ResourceType) => {
   if (resourceType === ResourceType.Signer) return projectAdminSignerFallbackPermissions;
+  if (resourceType === ResourceType.PamFolder || resourceType === ResourceType.PamAccount) return [];
   return projectAdminApplicationFallbackPermissions;
 };
 
@@ -692,7 +709,10 @@ export const permissionServiceFactory = ({
           projectId,
           actorAuthMethod,
           actorOrgId,
-          actionProjectType: ActionProjectType.CertificateManager
+          actionProjectType:
+            resourceType === ResourceType.PamFolder || resourceType === ResourceType.PamAccount
+              ? ActionProjectType.PAM
+              : ActionProjectType.CertificateManager
         });
         isProjectAdmin = projectPerm.hasRole(ProjectMembershipRole.Admin);
         isProjectMember = true;

@@ -12,7 +12,7 @@ export enum PamAccountType {
   ActiveDirectory = "active-directory"
 }
 
-export enum PamFolderRole {
+export enum PamResourceRole {
   Admin = "admin",
   Requester = "requester",
   Auditor = "auditor"

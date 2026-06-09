@@ -49,6 +49,7 @@ import {
   ResourcePermissionApplicationEnrollmentActions,
   ResourcePermissionApprovalPolicyActions,
   ResourcePermissionCertificateActions,
+  ResourcePermissionPamResourceActions,
   ResourcePermissionPkiSyncActions,
   ResourcePermissionSet,
   ResourcePermissionSignerActions,
@@ -1138,3 +1139,52 @@ export const signerAdminPermissions = buildSignerAdminPermissionRules();
 export const signerOperatorPermissions = buildSignerOperatorPermissionRules();
 export const signerAuditorPermissions = buildSignerAuditorPermissionRules();
 export const projectAdminSignerFallbackPermissions = buildProjectAdminSignerFallbackRules();
+
+const buildPamResourceAdminPermissionRules = () => {
+  const { can, rules } = new AbilityBuilder<MongoAbility<ResourcePermissionSet>>(createMongoAbility);
+  can(
+    [
+      ResourcePermissionPamResourceActions.ReadFolder,
+      ResourcePermissionPamResourceActions.EditFolder,
+      ResourcePermissionPamResourceActions.DeleteFolder,
+      ResourcePermissionPamResourceActions.ReadAccounts,
+      ResourcePermissionPamResourceActions.CreateAccounts,
+      ResourcePermissionPamResourceActions.EditAccounts,
+      ResourcePermissionPamResourceActions.DeleteAccounts,
+      ResourcePermissionPamResourceActions.LaunchSessions,
+      ResourcePermissionPamResourceActions.ViewSessions,
+      ResourcePermissionPamResourceActions.TerminateSessions,
+      ResourcePermissionPamResourceActions.ViewCredentials,
+      ResourcePermissionPamResourceActions.RequestAccess,
+      ResourcePermissionPamResourceActions.ApproveRequests,
+      ResourcePermissionPamResourceActions.ManagePolicies,
+      ResourcePermissionPamResourceActions.ManageRotation,
+      ResourcePermissionPamResourceActions.ManageMembers,
+      ResourcePermissionPamResourceActions.ViewAuditLogs
+    ],
+    ResourcePermissionSub.PamResource
+  );
+  return rules;
+};
+
+const buildPamResourceRequesterPermissionRules = () => {
+  const { can, rules } = new AbilityBuilder<MongoAbility<ResourcePermissionSet>>(createMongoAbility);
+  can(
+    [ResourcePermissionPamResourceActions.ReadAccounts, ResourcePermissionPamResourceActions.RequestAccess],
+    ResourcePermissionSub.PamResource
+  );
+  return rules;
+};
+
+const buildPamResourceAuditorPermissionRules = () => {
+  const { can, rules } = new AbilityBuilder<MongoAbility<ResourcePermissionSet>>(createMongoAbility);
+  can(
+    [ResourcePermissionPamResourceActions.ViewSessions, ResourcePermissionPamResourceActions.ViewAuditLogs],
+    ResourcePermissionSub.PamResource
+  );
+  return rules;
+};
+
+export const pamResourceAdminPermissions = buildPamResourceAdminPermissionRules();
+export const pamResourceRequesterPermissions = buildPamResourceRequesterPermissionRules();
+export const pamResourceAuditorPermissions = buildPamResourceAuditorPermissionRules();
