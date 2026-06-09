@@ -16,7 +16,6 @@ import {
   ResourcePermissionSub
 } from "@app/ee/services/permission/resource-permission";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
-import { ActorType } from "@app/services/auth/auth-type";
 
 import { TApprovalPolicyDALFactory } from "../approval-policy/approval-policy-dal";
 import { ApprovalPolicyScope } from "../approval-policy/approval-policy-enums";
@@ -38,17 +37,7 @@ import {
 
 type TPkiApplicationMembershipServiceFactoryDep = {
   pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById" | "find">;
-  membershipDAL: Pick<
-    TMembershipDALFactory,
-    | "create"
-    | "findById"
-    | "find"
-    | "delete"
-    | "deleteById"
-    | "transaction"
-    | "findResourceMembershipsForActor"
-    | "findResourceMembershipsForGroup"
-  >;
+  membershipDAL: Pick<TMembershipDALFactory, "create" | "findById" | "find" | "deleteById" | "transaction">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "find" | "delete" | "update">;
   permissionService: Pick<TPermissionServiceFactory, "getResourcePermission" | "getProjectPermission">;
   userDAL: Pick<TUserDALFactory, "find">;
@@ -626,46 +615,11 @@ export const pkiApplicationMembershipServiceFactory = ({
     return { memberships, skipped, unresolved };
   };
 
-  const listApplicationsForActor = async ({
-    projectId,
-    actorKind,
-    actorId
-  }: {
-    projectId: string;
-    actorKind: ApplicationMemberKind;
-    actorId: string;
-  }): Promise<Array<{ id: string; name: string }>> => {
-    const memberships =
-      actorKind === ApplicationMemberKind.Group
-        ? await membershipDAL.findResourceMembershipsForGroup({
-            projectId,
-            resourceType: ResourceType.CertificateApplication,
-            groupId: actorId
-          })
-        : await membershipDAL.findResourceMembershipsForActor({
-            projectId,
-            resourceType: ResourceType.CertificateApplication,
-            actorType: actorKind === ApplicationMemberKind.User ? ActorType.USER : ActorType.IDENTITY,
-            actorId
-          });
-
-    if (!memberships.length) return [];
-
-    const applicationIds = Array.from(
-      new Set(memberships.map((m) => m.scopeResourceId).filter((id): id is string => Boolean(id)))
-    );
-    if (!applicationIds.length) return [];
-
-    const applications = await pkiApplicationDAL.find({ $in: { id: applicationIds } });
-    return applications.map((app) => ({ id: app.id, name: app.name }));
-  };
-
   return {
     addMember,
     addUserMembers,
     listMembers,
     updateMemberRole,
-    removeMember,
-    listApplicationsForActor
+    removeMember
   };
 };

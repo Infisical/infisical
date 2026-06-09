@@ -10,7 +10,6 @@ import {
   ResourcePermissionSub
 } from "@app/ee/services/permission/resource-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
-import { ActorType } from "@app/services/auth/auth-type";
 
 import { TApprovalPolicyDALFactory } from "../approval-policy/approval-policy-dal";
 import { ApprovalPolicyScope } from "../approval-policy/approval-policy-enums";
@@ -35,17 +34,7 @@ import {
 
 type TSignerMembershipServiceFactoryDep = {
   signerDAL: Pick<TSignerDALFactory, "findById" | "find">;
-  membershipDAL: Pick<
-    TMembershipDALFactory,
-    | "create"
-    | "findById"
-    | "find"
-    | "delete"
-    | "deleteById"
-    | "transaction"
-    | "findResourceMembershipsForActor"
-    | "findResourceMembershipsForGroup"
-  >;
+  membershipDAL: Pick<TMembershipDALFactory, "create" | "findById" | "find" | "deleteById" | "transaction">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "find" | "delete" | "update">;
   permissionService: Pick<TPermissionServiceFactory, "getResourcePermission">;
   userDAL: Pick<TUserDALFactory, "find" | "findByEmailsOrUsernames">;
@@ -753,47 +742,12 @@ export const signerMembershipServiceFactory = ({
     return { memberships, skipped, unresolved };
   };
 
-  const listSignersForActor = async ({
-    projectId,
-    actorKind,
-    actorId
-  }: {
-    projectId: string;
-    actorKind: SignerMemberKind;
-    actorId: string;
-  }): Promise<Array<{ id: string; name: string }>> => {
-    const memberships =
-      actorKind === SignerMemberKind.Group
-        ? await membershipDAL.findResourceMembershipsForGroup({
-            projectId,
-            resourceType: ResourceType.Signer,
-            groupId: actorId
-          })
-        : await membershipDAL.findResourceMembershipsForActor({
-            projectId,
-            resourceType: ResourceType.Signer,
-            actorType: actorKind === SignerMemberKind.User ? ActorType.USER : ActorType.IDENTITY,
-            actorId
-          });
-
-    if (!memberships.length) return [];
-
-    const signerIds = Array.from(
-      new Set(memberships.map((m) => m.scopeResourceId).filter((id): id is string => Boolean(id)))
-    );
-    if (!signerIds.length) return [];
-
-    const signers = await signerDAL.find({ $in: { id: signerIds } });
-    return signers.map((s) => ({ id: s.id, name: s.name }));
-  };
-
   return {
     addMember,
     addUserMembers,
     listMembers,
     listEffectiveMembers,
     updateMemberRole,
-    removeMember,
-    listSignersForActor
+    removeMember
   };
 };

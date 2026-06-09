@@ -4,13 +4,8 @@ import { RESOURCE_SCOPE } from "@app/db/schemas";
 
 import { TApprovalPolicyDALFactory } from "../approval-policy/approval-policy-dal";
 import { ApprovalPolicyScope } from "../approval-policy/approval-policy-enums";
+import { ApplicationMemberKind } from "../pki-application/pki-application-types";
 import { TMembershipDALFactory } from "./membership-dal";
-
-export enum ApplicationCleanupActorKind {
-  User = "user",
-  Group = "group",
-  Identity = "identity"
-}
 
 type TApplicationMembershipCleanupServiceFactoryDep = {
   membershipDAL: Pick<TMembershipDALFactory, "delete">;
@@ -35,14 +30,14 @@ export const applicationMembershipCleanupServiceFactory = ({
       actorId
     }: {
       projectId: string;
-      actorKind: ApplicationCleanupActorKind;
+      actorKind: ApplicationMemberKind;
       actorId: string;
     },
     tx: Knex
   ) => {
-    if (actorKind !== ApplicationCleanupActorKind.Identity) {
-      const userId = actorKind === ApplicationCleanupActorKind.User ? actorId : undefined;
-      const groupId = actorKind === ApplicationCleanupActorKind.Group ? actorId : undefined;
+    if (actorKind !== ApplicationMemberKind.Identity) {
+      const userId = actorKind === ApplicationMemberKind.User ? actorId : undefined;
+      const groupId = actorKind === ApplicationMemberKind.Group ? actorId : undefined;
       for (const scopeType of APPLICATION_APPROVAL_SCOPES) {
         // eslint-disable-next-line no-await-in-loop
         await approvalPolicyDAL.deleteStepApproversBySubject({ projectId, scopeType, userId, groupId }, tx);
@@ -50,8 +45,8 @@ export const applicationMembershipCleanupServiceFactory = ({
     }
 
     const actorFilter: Record<string, string> = {};
-    if (actorKind === ApplicationCleanupActorKind.User) actorFilter.actorUserId = actorId;
-    else if (actorKind === ApplicationCleanupActorKind.Identity) actorFilter.actorIdentityId = actorId;
+    if (actorKind === ApplicationMemberKind.User) actorFilter.actorUserId = actorId;
+    else if (actorKind === ApplicationMemberKind.Identity) actorFilter.actorIdentityId = actorId;
     else actorFilter.actorGroupId = actorId;
 
     await membershipDAL.delete(

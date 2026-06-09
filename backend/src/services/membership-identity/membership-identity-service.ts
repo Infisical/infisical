@@ -12,12 +12,10 @@ import { getIdentityActiveLockoutAuthMethods } from "@app/services/identity/iden
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
 import { TIdentityDALFactory } from "../identity/identity-dal";
-import {
-  ApplicationCleanupActorKind,
-  TApplicationMembershipCleanupServiceFactory
-} from "../membership/application-membership-cleanup-service";
+import { TApplicationMembershipCleanupServiceFactory } from "../membership/application-membership-cleanup-service";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TOrgDALFactory } from "../org/org-dal";
+import { ApplicationMemberKind } from "../pki-application/pki-application-types";
 import { TRoleDALFactory } from "../role/role-dal";
 import { TMembershipIdentityDALFactory } from "./membership-identity-dal";
 import {
@@ -342,7 +340,7 @@ export const membershipIdentityServiceFactory = ({
           await applicationMembershipCleanupService.cleanupActorApplicationMemberships(
             {
               projectId: projectScopeFields.scopeProjectId,
-              actorKind: ApplicationCleanupActorKind.Identity,
+              actorKind: ApplicationMemberKind.Identity,
               actorId: dto.selector.identityId
             },
             tx

@@ -23,14 +23,12 @@ import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/addition
 import { TApprovalPolicyDALFactory } from "../approval-policy/approval-policy-dal";
 import { AuthMethod } from "../auth/auth-type";
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
-import {
-  ApplicationCleanupActorKind,
-  TApplicationMembershipCleanupServiceFactory
-} from "../membership/application-membership-cleanup-service";
+import { TApplicationMembershipCleanupServiceFactory } from "../membership/application-membership-cleanup-service";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TOrgDALFactory } from "../org/org-dal";
 import { deleteOrgMembershipsFn } from "../org/org-fns";
 import { isCustomOrgRole } from "../org/org-role-fns";
+import { ApplicationMemberKind } from "../pki-application/pki-application-types";
 import { TProjectAccessRequestDALFactory } from "../project/project-access-request-dal";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectKeyDALFactory } from "../project-key/project-key-dal";
@@ -541,7 +539,7 @@ export const membershipUserServiceFactory = ({
         await applicationMembershipCleanupService.cleanupActorApplicationMemberships(
           {
             projectId: dto.scopeData.projectId,
-            actorKind: ApplicationCleanupActorKind.User,
+            actorKind: ApplicationMemberKind.User,
             actorId: dto.selector.userId
           },
           tx

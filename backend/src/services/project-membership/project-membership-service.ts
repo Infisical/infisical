@@ -20,15 +20,13 @@ import { TSecretApprovalPolicyDALFactory } from "../../ee/services/secret-approv
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
 import { ActorType } from "../auth/auth-type";
 import { TGroupProjectDALFactory } from "../group-project/group-project-dal";
-import {
-  ApplicationCleanupActorKind,
-  TApplicationMembershipCleanupServiceFactory
-} from "../membership/application-membership-cleanup-service";
+import { TApplicationMembershipCleanupServiceFactory } from "../membership/application-membership-cleanup-service";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
 import { assertWillRetainAdmin } from "../membership-user/membership-user-fns";
 import { TNotificationServiceFactory } from "../notification/notification-service";
 import { NotificationType } from "../notification/notification-types";
+import { ApplicationMemberKind } from "../pki-application/pki-application-types";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectKeyDALFactory } from "../project-key/project-key-dal";
 import { TSecretReminderRecipientsDALFactory } from "../secret-reminder-recipients/secret-reminder-recipients-dal";
@@ -498,7 +496,7 @@ export const projectMembershipServiceFactory = ({
       await applicationMembershipCleanupService.cleanupActorApplicationMemberships(
         {
           projectId: project.id,
-          actorKind: ApplicationCleanupActorKind.User,
+          actorKind: ApplicationMemberKind.User,
           actorId
         },
         tx

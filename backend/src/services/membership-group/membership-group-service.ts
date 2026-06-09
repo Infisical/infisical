@@ -19,12 +19,10 @@ import { groupBy } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
 import { SearchResourceOperators } from "@app/lib/search-resource/search";
 
-import {
-  ApplicationCleanupActorKind,
-  TApplicationMembershipCleanupServiceFactory
-} from "../membership/application-membership-cleanup-service";
+import { TApplicationMembershipCleanupServiceFactory } from "../membership/application-membership-cleanup-service";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TOrgDALFactory } from "../org/org-dal";
+import { ApplicationMemberKind } from "../pki-application/pki-application-types";
 import { TRoleDALFactory } from "../role/role-dal";
 import { TMembershipGroupDALFactory } from "./membership-group-dal";
 import {
@@ -382,7 +380,7 @@ export const membershipGroupServiceFactory = ({
         await applicationMembershipCleanupService.cleanupActorApplicationMemberships(
           {
             projectId: existingMembership.scopeProjectId,
-            actorKind: ApplicationCleanupActorKind.Group,
+            actorKind: ApplicationMemberKind.Group,
             actorId: dto.selector.groupId
           },
           tx
