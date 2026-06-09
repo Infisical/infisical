@@ -274,6 +274,27 @@ The Infisical Secrets Operator exposes a wide range of helper functions to make 
   ```
 </Accordion>
 
+<Accordion title="resolveSecretFromPath">
+  <Note>This function is only available in `v1beta1` resources (e.g. `InfisicalPushSecret`).</Note>
+
+  Resolves a secret from a specific folder path within the Infisical project using dot-separated notation.
+
+  The path follows the format `folder.subfolder.SECRET_NAME.Value`, where each segment before the secret name represents a folder level, and `.Value` returns the secret's value.
+
+  **Signature**
+  ```go
+  resolveSecretFromPath(path string) string
+  ```
+
+  **Template usage**
+  ```yaml
+  template:
+    data:
+      DB_PASSWORD: '{{ resolveSecretFromPath "databases.postgres.DB_PASSWORD.Value" }}'
+      API_KEY: '{{ resolveSecretFromPath "services.payments.API_KEY.Value" }}'
+  ```
+</Accordion>
+
 </AccordionGroup>
 
 ### Sprig functions
