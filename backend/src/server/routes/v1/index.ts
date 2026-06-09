@@ -1,4 +1,5 @@
 import { BadRequestError } from "@app/lib/errors";
+import { withBootYield } from "@app/server/lib/boot-yield";
 import { injectCertManagerProjectId } from "@app/server/plugins/inject-cert-manager-project-id";
 import {
   APP_CONNECTION_REGISTER_ROUTER_MAP,
@@ -323,7 +324,7 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
 
       // register service specific endpoints (app-connections/aws, app-connections/github, etc.)
       for await (const [app, router] of Object.entries(APP_CONNECTION_REGISTER_ROUTER_MAP)) {
-        await appConnectionRouter.register(router, { prefix: `/${app}` });
+        await appConnectionRouter.register(withBootYield(router), { prefix: `/${app}` });
       }
     },
     { prefix: "/app-connections" }
@@ -336,7 +337,7 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
 
       // register service specific secret sync endpoints (secret-syncs/aws-parameter-store, secret-syncs/github, etc.)
       for await (const [destination, router] of Object.entries(SECRET_SYNC_REGISTER_ROUTER_MAP)) {
-        await secretSyncRouter.register(router, { prefix: `/${destination}` });
+        await secretSyncRouter.register(withBootYield(router), { prefix: `/${destination}` });
       }
     },
     { prefix: "/secret-syncs" }
