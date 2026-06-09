@@ -16,6 +16,7 @@ import {
   ResourcePermissionSub
 } from "@app/ee/services/permission/resource-permission";
 import { TPkiAcmeAccountDALFactory } from "@app/ee/services/pki-acme/pki-acme-account-dal";
+import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
@@ -175,6 +176,7 @@ type TCertificateV3ServiceFactoryDep = {
   >;
   apiEnrollmentConfigDAL: Pick<TApiEnrollmentConfigDALFactory, "findById">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  keyStore: Pick<TKeyStoreFactory, "deleteItemsByKeyIn">;
 };
 
 export type TCertificateV3ServiceFactory = ReturnType<typeof certificateV3ServiceFactory>;
@@ -696,8 +698,18 @@ export const certificateV3ServiceFactory = ({
   pkiAlertV2Queue,
   pkiApplicationProfileDAL,
   apiEnrollmentConfigDAL,
-  licenseService
+  licenseService,
+  keyStore
 }: TCertificateV3ServiceFactoryDep) => {
+  const invalidateDashboardCache = async (projectId: string) => {
+    const RANGES = ["7d", "30d", "6m"];
+    await keyStore.deleteItemsByKeyIn([
+      KeyStorePrefixes.CertDashboardStats(projectId),
+      ...RANGES.map((r) => KeyStorePrefixes.CertActivityTrend(projectId, r)),
+      ...RANGES.map((r) => KeyStorePrefixes.CertPqcTrend(projectId, r))
+    ]);
+  };
+
   const $resolveApplicationIdForProfile = async (
     profile: {
       id: string;
@@ -1243,6 +1255,8 @@ export const certificateV3ServiceFactory = ({
 
       const privateKeyForResponse = canReadPrivateKey ? selfSignedResult.privateKey.toString("utf8") : undefined;
 
+      await invalidateDashboardCache(profile.projectId);
+
       try {
         await pkiAlertV2Queue?.queueCertificateEvent({
           certificateId: certificateData.id,
@@ -1463,6 +1477,8 @@ export const certificateV3ServiceFactory = ({
     }
 
     const privateKeyForResponse = canReadPrivateKey ? bufferToString(privateKey) : undefined;
+
+    await invalidateDashboardCache(profile.projectId);
 
     try {
       await pkiAlertV2Queue?.queueCertificateEvent({
@@ -1866,6 +1882,8 @@ export const certificateV3ServiceFactory = ({
     if (removeRootsFromChain) {
       certificateChainString = removeRootCaFromChain(certificateChainString);
     }
+
+    await invalidateDashboardCache(profile.projectId);
 
     try {
       await pkiAlertV2Queue?.queueCertificateEvent({
@@ -2832,6 +2850,8 @@ export const certificateV3ServiceFactory = ({
     if (removeRootsFromChain) {
       finalCertificateChain = removeRootCaFromChain(finalCertificateChain);
     }
+
+    await invalidateDashboardCache(renewalResult.originalCert.projectId);
 
     try {
       await pkiAlertV2Queue?.queueCertificateEvent({

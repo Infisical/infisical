@@ -283,6 +283,9 @@ describe("CertificateV3Service", () => {
       },
       licenseService: {
         getPlan: vi.fn().mockResolvedValue({ pkiPqc: true })
+      },
+      keyStore: {
+        deleteItemsByKeyIn: vi.fn().mockResolvedValue(0)
       }
     });
   });

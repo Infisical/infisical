@@ -8,6 +8,7 @@ import {
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { TPkiAcmeAccountDALFactory } from "@app/ee/services/pki-acme/pki-acme-account-dal";
+import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
@@ -76,6 +77,7 @@ export type TIssueCertificateFromApprovedRequestDeps = {
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find" | "insertMany">;
   pkiApplicationProfileDAL: Pick<TPkiApplicationProfileDALFactory, "findOneByApplicationAndProfile">;
   apiEnrollmentConfigDAL: Pick<TApiEnrollmentConfigDALFactory, "findById">;
+  keyStore: Pick<TKeyStoreFactory, "deleteItemsByKeyIn">;
 };
 
 export type TCertificateApprovalService = {
@@ -101,8 +103,18 @@ export const certificateApprovalServiceFactory = (
     certificateIssuanceQueue,
     resourceMetadataDAL,
     pkiApplicationProfileDAL,
-    apiEnrollmentConfigDAL
+    apiEnrollmentConfigDAL,
+    keyStore
   } = deps;
+
+  const invalidateDashboardCache = async (projectId: string) => {
+    const RANGES = ["7d", "30d", "6m"];
+    await keyStore.deleteItemsByKeyIn([
+      KeyStorePrefixes.CertDashboardStats(projectId),
+      ...RANGES.map((r) => KeyStorePrefixes.CertActivityTrend(projectId, r)),
+      ...RANGES.map((r) => KeyStorePrefixes.CertPqcTrend(projectId, r))
+    ]);
+  };
 
   const $validateProfileAndPermissions = async ({
     profileId,
@@ -839,11 +851,14 @@ export const certificateApprovalServiceFactory = (
         ttl
       );
       if (externalCaResult) {
+        await invalidateDashboardCache(targetProfile.projectId);
         return externalCaResult;
       }
 
       if (certRequest.csr) {
-        return await $processCSRSigningRequest(certRequest, certificateRequestId, profileId, ttl);
+        const csrResult = await $processCSRSigningRequest(certRequest, certificateRequestId, profileId, ttl);
+        await invalidateDashboardCache(targetProfile.projectId);
+        return csrResult;
       }
 
       const basicConstraints = certRequest.basicConstraints as { isCA: boolean; pathLength?: number } | null;
@@ -897,8 +912,17 @@ export const certificateApprovalServiceFactory = (
 
       const issuerType = targetProfile?.issuerType || (targetProfile?.caId ? IssuerType.CA : IssuerType.SELF_SIGNED);
 
+      let result: TCertificateIssuanceResponse;
       if (issuerType === IssuerType.SELF_SIGNED) {
-        return await $processSelfSignedRequest(
+        result = await $processSelfSignedRequest(
+          certificateRequestInput,
+          certificateRequestId,
+          targetProfile,
+          certPolicy,
+          certRequest.applicationId
+        );
+      } else {
+        result = await $processCASignedRequest(
           certificateRequestInput,
           certificateRequestId,
           targetProfile,
@@ -907,13 +931,8 @@ export const certificateApprovalServiceFactory = (
         );
       }
 
-      return await $processCASignedRequest(
-        certificateRequestInput,
-        certificateRequestId,
-        targetProfile,
-        certPolicy,
-        certRequest.applicationId
-      );
+      await invalidateDashboardCache(targetProfile.projectId);
+      return result;
     } catch (error) {
       await certificateRequestDAL.updateById(certificateRequestId, {
         status: CertificateRequestStatus.FAILED,

@@ -2798,7 +2798,8 @@ export const registerRoutes = async (
     resourceMetadataDAL,
     pkiAlertV2Queue,
     pkiApplicationDAL,
-    licenseService
+    licenseService,
+    keyStore
   });
 
   const digicertCaFns = DigiCertCertificateAuthorityFns({
@@ -2878,7 +2879,8 @@ export const registerRoutes = async (
     certificateIssuanceQueue,
     resourceMetadataDAL,
     pkiApplicationProfileDAL,
-    apiEnrollmentConfigDAL
+    apiEnrollmentConfigDAL,
+    keyStore
   });
 
   const approvalPolicyStepsDAL = approvalPolicyStepsDALFactory(db);
@@ -2935,7 +2937,8 @@ export const registerRoutes = async (
     pkiAlertV2Queue,
     pkiApplicationProfileDAL,
     apiEnrollmentConfigDAL,
-    licenseService
+    licenseService,
+    keyStore
   });
 
   const certificateV3Queue = certificateV3QueueServiceFactory({

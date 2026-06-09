@@ -14,6 +14,7 @@ import {
   ResourcePermissionCertificateActions,
   ResourcePermissionSub
 } from "@app/ee/services/permission/resource-permission";
+import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -101,6 +102,7 @@ type TCertificateServiceFactoryDep = {
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find">;
   pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  keyStore: Pick<TKeyStoreFactory, "deleteItemsByKeyIn">;
 };
 
 export type TCertificateServiceFactory = ReturnType<typeof certificateServiceFactory>;
@@ -125,8 +127,18 @@ export const certificateServiceFactory = ({
   resourceMetadataDAL,
   pkiAlertV2Queue,
   pkiApplicationDAL,
-  licenseService
+  licenseService,
+  keyStore
 }: TCertificateServiceFactoryDep) => {
+  const invalidateDashboardCache = async (projectId: string) => {
+    const RANGES = ["7d", "30d", "6m"];
+    await keyStore.deleteItemsByKeyIn([
+      KeyStorePrefixes.CertDashboardStats(projectId),
+      ...RANGES.map((r) => KeyStorePrefixes.CertActivityTrend(projectId, r)),
+      ...RANGES.map((r) => KeyStorePrefixes.CertPqcTrend(projectId, r))
+    ]);
+  };
+
   const $canActOnCertViaApplication = async (
     cert: { applicationId?: string | null; projectId: string },
     action: ResourcePermissionCertificateActions,
@@ -402,6 +414,8 @@ export const certificateServiceFactory = ({
       pkiSyncQueue
     });
 
+    await invalidateDashboardCache(cert.projectId);
+
     return {
       deletedCert
     };
@@ -561,6 +575,8 @@ export const certificateServiceFactory = ({
           externalCa: ca.externalCa
         }
       : expandInternalCa(ca);
+
+    await invalidateDashboardCache(ca.projectId);
 
     return { revokedAt, cert, ca: caResult };
   };
@@ -907,6 +923,8 @@ export const certificateServiceFactory = ({
         throw error;
       }
     });
+
+    await invalidateDashboardCache(projectId);
 
     return {
       certificate: certificatePem,
