@@ -20,6 +20,11 @@ description: "Learn how to configure a Azure Key Vault Sync for Infisical."
   Secrets in Infisical that contain an underscore (`_`) will be converted to a hyphen (`-`) when synced to Azure Key Vault.
 </Note>
 
+
+<Note>
+    If your Azure Key Vault uses a private endpoint, it can only be reached from allowlisted IPs inside your private network. Configure this app connection to use an Infisical Gateway running from an allowed network location.
+</Note>
+
 <Tabs>
     <Tab title="Infisical UI">
         1. Navigate to **Project** > **Integrations** and select the **Secret Syncs** tab. Click on the **Add Sync** button.
