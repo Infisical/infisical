@@ -5005,9 +5005,8 @@ interface CreateKmipClientCertificateEvent {
   metadata: {
     clientId: string;
     ttl: string;
-    keyAlgorithm?: string;
+    keyAlgorithm: string;
     serialNumber: string;
-    isFromCsr: boolean;
   };
 }
 
