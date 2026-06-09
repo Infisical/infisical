@@ -9,6 +9,7 @@ import { AwsSecretsManagerPkiSyncFields } from "./AwsSecretsManagerPkiSyncFields
 import { AzureKeyVaultPkiSyncFields } from "./AzureKeyVaultPkiSyncFields";
 import { ChefPkiSyncFields } from "./ChefPkiSyncFields";
 import { CloudflareCustomCertificatePkiSyncFields } from "./CloudflareCustomCertificatePkiSyncFields";
+import { F5BigIpPkiSyncFields } from "./F5BigIpPkiSyncFields";
 import { NetScalerPkiSyncFields } from "./NetScalerPkiSyncFields";
 
 export const PkiSyncDestinationFields = () => {
@@ -31,6 +32,8 @@ export const PkiSyncDestinationFields = () => {
       return <CloudflareCustomCertificatePkiSyncFields />;
     case PkiSync.NetScaler:
       return <NetScalerPkiSyncFields />;
+    case PkiSync.F5BigIp:
+      return <F5BigIpPkiSyncFields />;
     default:
       return (
         <div className="flex items-center justify-center rounded-md border border-red-500 bg-red-100 p-4 text-red-700">

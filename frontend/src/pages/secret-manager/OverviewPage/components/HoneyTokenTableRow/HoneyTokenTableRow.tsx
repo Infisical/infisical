@@ -1,3 +1,4 @@
+import { subject } from "@casl/ability";
 import {
   AsteriskIcon,
   BanIcon,
@@ -114,7 +115,10 @@ export const HoneyTokenTableRow = ({
         </Tooltip>
         <ProjectPermissionCan
           I={ProjectPermissionHoneyTokenActions.ReadCredentials}
-          a={ProjectPermissionSub.HoneyTokens}
+          a={subject(ProjectPermissionSub.HoneyTokens, {
+            environment: honeyToken.environment.slug,
+            secretPath: honeyToken.folder.path
+          })}
         >
           {(isAllowed) => (
             <Tooltip>
@@ -135,7 +139,10 @@ export const HoneyTokenTableRow = ({
         </ProjectPermissionCan>
         <ProjectPermissionCan
           I={ProjectPermissionHoneyTokenActions.Edit}
-          a={ProjectPermissionSub.HoneyTokens}
+          a={subject(ProjectPermissionSub.HoneyTokens, {
+            environment: honeyToken.environment.slug,
+            secretPath: honeyToken.folder.path
+          })}
           renderTooltip
           allowedLabel="Edit"
         >
@@ -159,7 +166,10 @@ export const HoneyTokenTableRow = ({
         {honeyToken.status !== HoneyTokenStatus.Revoked && (
           <ProjectPermissionCan
             I={ProjectPermissionHoneyTokenActions.Revoke}
-            a={ProjectPermissionSub.HoneyTokens}
+            a={subject(ProjectPermissionSub.HoneyTokens, {
+              environment: honeyToken.environment.slug,
+              secretPath: honeyToken.folder.path
+            })}
           >
             {(isAllowed) => (
               <Tooltip>

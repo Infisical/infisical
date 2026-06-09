@@ -2723,6 +2723,10 @@ export const AppConnections = {
       apiKey: "The CertCentral API Key used to authenticate with DigiCert.",
       region: "The CertCentral region the API key belongs to (us or eu)."
     },
+    GODADDY: {
+      apiKey: "The GoDaddy API Key used to authenticate with the GoDaddy API.",
+      apiSecret: "The GoDaddy API Secret used to authenticate with the GoDaddy API."
+    },
     TRAVISCI: {
       apiToken: "The API token used to authenticate with Travis CI."
     },

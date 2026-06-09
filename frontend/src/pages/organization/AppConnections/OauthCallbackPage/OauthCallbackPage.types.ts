@@ -19,7 +19,9 @@ type BaseFormData = {
 };
 
 export type GitHubFormData = BaseFormData &
-  Pick<TGitHubConnection, "name" | "method" | "description" | "gatewayId" | "credentials">;
+  Pick<TGitHubConnection, "name" | "method" | "description" | "gatewayId" | "credentials"> & {
+    appSlug?: string;
+  };
 
 export type GitHubRadarFormData = BaseFormData &
   Pick<TGitHubRadarConnection, "name" | "method" | "description">;

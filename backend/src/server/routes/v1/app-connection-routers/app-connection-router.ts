@@ -99,6 +99,10 @@ import {
   ExternalInfisicalConnectionListItemSchema,
   SanitizedExternalInfisicalConnectionSchema
 } from "@app/services/app-connection/external-infisical";
+import {
+  F5BigIpConnectionListItemSchema,
+  SanitizedF5BigIpConnectionSchema
+} from "@app/services/app-connection/f5-big-ip";
 import { FlyioConnectionListItemSchema, SanitizedFlyioConnectionSchema } from "@app/services/app-connection/flyio";
 import { GcpConnectionListItemSchema, SanitizedGcpConnectionSchema } from "@app/services/app-connection/gcp";
 import { GitHubConnectionListItemSchema, SanitizedGitHubConnectionSchema } from "@app/services/app-connection/github";
@@ -107,6 +111,10 @@ import {
   SanitizedGitHubRadarConnectionSchema
 } from "@app/services/app-connection/github-radar";
 import { GitLabConnectionListItemSchema, SanitizedGitLabConnectionSchema } from "@app/services/app-connection/gitlab";
+import {
+  GoDaddyConnectionListItemSchema,
+  SanitizedGoDaddyConnectionSchema
+} from "@app/services/app-connection/godaddy";
 import {
   HCVaultConnectionListItemSchema,
   SanitizedHCVaultConnectionSchema
@@ -266,10 +274,12 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedOvhConnectionSchema.options,
   ...SanitizedOnaConnectionSchema.options,
   ...SanitizedDigiCertConnectionSchema.options,
+  ...SanitizedGoDaddyConnectionSchema.options,
   ...SanitizedTravisCIConnectionSchema.options,
   ...SanitizedSalesforceConnectionSchema.options,
   ...SanitizedSnowflakeConnectionSchema.options,
-  ...SanitizedDatadogConnectionSchema.options
+  ...SanitizedDatadogConnectionSchema.options,
+  ...SanitizedF5BigIpConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -335,10 +345,12 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   DevinConnectionListItemSchema,
   OnaConnectionListItemSchema,
   DigiCertConnectionListItemSchema,
+  GoDaddyConnectionListItemSchema,
   TravisCIConnectionListItemSchema,
   SalesforceConnectionListItemSchema,
   SnowflakeConnectionListItemSchema,
-  DatadogConnectionListItemSchema
+  DatadogConnectionListItemSchema,
+  F5BigIpConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

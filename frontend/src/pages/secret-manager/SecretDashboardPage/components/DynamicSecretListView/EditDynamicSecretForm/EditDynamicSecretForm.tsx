@@ -15,6 +15,7 @@ import { EditDynamicSecretCouchbaseForm } from "./EditDynamicSecretCouchbaseForm
 import { EditDynamicSecretElasticSearchForm } from "./EditDynamicSecretElasticSearchForm";
 import { EditDynamicSecretGcpIamForm } from "./EditDynamicSecretGcpIamForm";
 import { EditDynamicSecretGithubForm } from "./EditDynamicSecretGithubForm";
+import { EditDynamicSecretIbmApiConnectForm } from "./EditDynamicSecretIbmApiConnectForm";
 import { EditDynamicSecretKubernetesForm } from "./EditDynamicSecretKubernetesForm";
 import { EditDynamicSecretLdapForm } from "./EditDynamicSecretLdapForm";
 import { EditDynamicSecretMilvusForm } from "./EditDynamicSecretMilvusForm";
@@ -485,6 +486,23 @@ export const EditDynamicSecretForm = ({
           exit={{ opacity: 0, translateX: -30 }}
         >
           <EditDynamicSecretSshForm
+            onClose={onClose}
+            projectSlug={projectSlug}
+            secretPath={secretPath}
+            dynamicSecret={dynamicSecretDetails}
+            environment={environment}
+          />
+        </motion.div>
+      )}
+      {dynamicSecretDetails?.type === DynamicSecretProviders.IbmApiConnect && (
+        <motion.div
+          key="ibm-api-connect-edit"
+          transition={{ duration: 0.1 }}
+          initial={{ opacity: 0, translateX: 30 }}
+          animate={{ opacity: 1, translateX: 0 }}
+          exit={{ opacity: 0, translateX: -30 }}
+        >
+          <EditDynamicSecretIbmApiConnectForm
             onClose={onClose}
             projectSlug={projectSlug}
             secretPath={secretPath}

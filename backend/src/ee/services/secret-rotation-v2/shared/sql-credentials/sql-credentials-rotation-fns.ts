@@ -15,6 +15,7 @@ import {
   executeWithPotentialGateway,
   SQL_CONNECTION_ALTER_LOGIN_STATEMENT
 } from "@app/services/app-connection/shared/sql";
+import { generatePasswordWithConstraints } from "@app/services/secret-validation-rule/secret-validation-rule-password-generator";
 
 import { DEFAULT_PASSWORD_REQUIREMENTS, generatePassword } from "../utils";
 import {
@@ -44,7 +45,15 @@ const ORACLE_PASSWORD_REQUIREMENTS = {
 export const sqlCredentialsRotationFactory: TRotationFactory<
   TSqlCredentialsRotationWithConnection,
   TSqlCredentialsRotationGeneratedCredentials
-> = (secretRotation, _appConnectionDAL, _kmsService, gatewayService, gatewayV2Service, gatewayPoolService) => {
+> = (
+  secretRotation,
+  _appConnectionDAL,
+  _kmsService,
+  gatewayService,
+  gatewayV2Service,
+  gatewayPoolService,
+  passwordValidationContext
+) => {
   const {
     connection,
     parameters: {
@@ -67,6 +76,13 @@ export const sqlCredentialsRotationFactory: TRotationFactory<
   const defaultPasswordRequirement =
     connection.app === AppConnection.OracleDB ? ORACLE_PASSWORD_REQUIREMENTS : DEFAULT_PASSWORD_REQUIREMENTS;
   const passwordRequirement = userProvidedPasswordRequirements || defaultPasswordRequirement;
+
+  // When a secret validation rule covers this rotation, its constraints
+  // fully replace the user-configured passwordRequirements.
+  const generateRotationPassword = () =>
+    passwordValidationContext?.constraints?.length
+      ? generatePasswordWithConstraints(passwordValidationContext.constraints)
+      : generatePassword(passwordRequirement);
 
   let resolvedConnection: typeof connection | undefined;
   const getResolvedConnection = async () => {
@@ -132,10 +148,10 @@ export const sqlCredentialsRotationFactory: TRotationFactory<
   ) => {
     // For SQL, since we get existing users, we change both their passwords
     // on issue to invalidate their existing passwords
-    const credentialsSet = [{ username: username1, password: generatePassword(passwordRequirement) }];
+    const credentialsSet = [{ username: username1, password: generateRotationPassword() }];
     // if both are same username like for mysql dual password rotation - we don't want to reissue twice loosing first cred access
     if (username1 !== username2) {
-      credentialsSet.push({ username: username2, password: generatePassword(passwordRequirement) });
+      credentialsSet.push({ username: username2, password: generateRotationPassword() });
     }
 
     try {
@@ -163,7 +179,7 @@ export const sqlCredentialsRotationFactory: TRotationFactory<
   ) => {
     const revokedCredentials = credentialsToRevoke.map(({ username }) => ({
       username,
-      password: generatePassword(passwordRequirement)
+      password: generateRotationPassword()
     }));
 
     try {
@@ -189,7 +205,7 @@ export const sqlCredentialsRotationFactory: TRotationFactory<
     // generate new password for the next active user
     const credentials = {
       username: activeIndex === 0 ? username2 : username1,
-      password: generatePassword(passwordRequirement)
+      password: generateRotationPassword()
     };
 
     try {

@@ -2,12 +2,17 @@ import { Controller, useFormContext } from "react-hook-form";
 import { ClipboardCheckIcon, CopyIcon } from "lucide-react";
 
 import { TSecretRotationV2Form } from "@app/components/secret-rotations-v2/forms/schemas";
+import { ValidationRuleOverrideNotice } from "@app/components/secret-validation/ValidationRuleOverrideNotice";
 import { FormControl, Input, Tab, TabList, TabPanel, Tabs, TextArea } from "@app/components/v2";
 import { NoticeBannerV2 } from "@app/components/v2/NoticeBannerV2/NoticeBannerV2";
 import { IconButton, Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
 import { useTimedReset } from "@app/hooks";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { SecretRotation, useSecretRotationV2Option } from "@app/hooks/api/secretRotationsV2";
+import {
+  SecretRotationRuleProvider,
+  SecretValidationRuleType
+} from "@app/hooks/api/secretValidationRules";
 
 import { DEFAULT_PASSWORD_REQUIREMENTS } from "../../schemas/shared";
 
@@ -29,6 +34,8 @@ export const SqlCredentialsRotationParametersFields = () => {
 
   const { rotationOption } = useSecretRotationV2Option(type);
   const [, isCopied, setCopyState] = useTimedReset({ initialState: false });
+  const environmentSlug = watch("environment")?.slug;
+  const secretPath = watch("secretPath");
 
   const handleCopy = () => {
     navigator.clipboard.writeText(rotationOption!.template.createUserStatement);
@@ -147,6 +154,14 @@ export const SqlCredentialsRotationParametersFields = () => {
           )}
         />
         <div className="flex flex-col gap-3">
+          {type === SecretRotation.PostgresCredentials && (
+            <ValidationRuleOverrideNotice
+              type={SecretValidationRuleType.SecretRotations}
+              provider={SecretRotationRuleProvider.PostgresCredentials}
+              environmentSlug={environmentSlug}
+              secretPath={secretPath}
+            />
+          )}
           <div className="w-full border-b border-mineshaft-600">
             <span className="text-sm text-mineshaft-300">Password Requirements</span>
           </div>

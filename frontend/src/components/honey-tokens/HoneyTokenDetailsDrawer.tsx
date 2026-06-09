@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { subject } from "@casl/ability";
 import { format, formatDistanceToNow } from "date-fns";
 import {
   AlertTriangle,
@@ -82,9 +83,14 @@ const DrawerContent = ({
   const [isRevokeOpen, setIsRevokeOpen] = useState(false);
   const [isResetOpen, setIsResetOpen] = useState(false);
   const [revokeInput, setRevokeInput] = useState("");
+  const honeyTokenSubject = subject(ProjectPermissionSub.HoneyTokens, {
+    environment: honeyToken?.environment?.slug ?? "",
+    secretPath: honeyToken?.folder?.path ?? ""
+  });
+
   const canReadCredentials = permission.can(
     ProjectPermissionHoneyTokenActions.ReadCredentials,
-    ProjectPermissionSub.HoneyTokens
+    honeyTokenSubject
   );
   const { data: credentials, isPending: isCredentialsPending } = useGetHoneyTokenCredentials({
     honeyTokenId,
@@ -165,16 +171,40 @@ const DrawerContent = ({
           </div>
           <div className="flex shrink-0 items-center gap-2">
             {isTriggered && (
-              <Button variant="outline" size="xs" onClick={() => setIsResetOpen(true)}>
-                <RotateCcw size={14} />
-                Reset
-              </Button>
+              <ProjectPermissionCan
+                I={ProjectPermissionHoneyTokenActions.Reset}
+                a={honeyTokenSubject}
+              >
+                {(isAllowed) => (
+                  <Button
+                    variant="outline"
+                    size="xs"
+                    onClick={() => setIsResetOpen(true)}
+                    isDisabled={!isAllowed}
+                  >
+                    <RotateCcw size={14} />
+                    Reset
+                  </Button>
+                )}
+              </ProjectPermissionCan>
             )}
             {!isRevoked && (
-              <Button variant="danger" size="xs" onClick={() => setIsRevokeOpen(true)}>
-                <BanIcon size={14} />
-                Revoke
-              </Button>
+              <ProjectPermissionCan
+                I={ProjectPermissionHoneyTokenActions.Revoke}
+                a={honeyTokenSubject}
+              >
+                {(isAllowed) => (
+                  <Button
+                    variant="danger"
+                    size="xs"
+                    onClick={() => setIsRevokeOpen(true)}
+                    isDisabled={!isAllowed}
+                  >
+                    <BanIcon size={14} />
+                    Revoke
+                  </Button>
+                )}
+              </ProjectPermissionCan>
             )}
           </div>
         </div>
@@ -219,7 +249,7 @@ const DrawerContent = ({
         {!isRevoked && (
           <ProjectPermissionCan
             I={ProjectPermissionHoneyTokenActions.ReadCredentials}
-            a={ProjectPermissionSub.HoneyTokens}
+            a={honeyTokenSubject}
           >
             {(isAllowed) =>
               isAllowed && (
