@@ -123,8 +123,6 @@ export type TGetAuthMethodDistributionResponse = {
 
 export type TGetSecretsDuplicationDTO = {
   projectId: string;
-  offset?: number;
-  limit?: number;
 };
 
 export type TDuplicatedSecretEntry = {

@@ -172,9 +172,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
       description: "Get groups of duplicated secrets across environments and paths",
       security: [{ bearerAuth: [] }],
       querystring: z.object({
-        projectId: z.string().trim(),
-        offset: z.coerce.number().min(0).max(10000).default(0),
-        limit: z.coerce.number().min(1).max(100).default(50)
+        projectId: z.string().trim()
       }),
       response: {
         200: z.object({
@@ -196,9 +194,9 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req, reply) => {
-      const { projectId, offset, limit } = req.query;
+      const { projectId } = req.query;
       const { result, remainingTTL } = await server.services.insights.getSecretsDuplication(
-        { projectId, offset, limit },
+        { projectId },
         req.permission
       );
       await server.services.auditLog.createAuditLog({

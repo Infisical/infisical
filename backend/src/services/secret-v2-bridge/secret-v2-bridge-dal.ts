@@ -1241,11 +1241,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     }
   };
 
-  const findDuplicatedSecretValues = async (
-    projectId: string,
-    pagination?: { offset: number; limit: number },
-    tx?: Knex
-  ) => {
+  const findDuplicatedSecretValues = async (projectId: string, tx?: Knex) => {
     try {
       const duplicateBlindIndexes = (tx || db.replicaNode())(TableName.SecretV2)
         .join(TableName.SecretFolder, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
@@ -1257,9 +1253,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
         .groupBy(`${TableName.SecretV2}.secretValueBlindIndex`)
         .having(db.raw("count(*) > 1"))
         .select(`${TableName.SecretV2}.secretValueBlindIndex`)
-        .orderBy(`${TableName.SecretV2}.secretValueBlindIndex`)
-        .offset(pagination?.offset ?? 0)
-        .limit(pagination?.limit ?? 50);
+        .orderBy(`${TableName.SecretV2}.secretValueBlindIndex`);
 
       const rows = await (tx || db.replicaNode())(TableName.SecretV2)
         .join(TableName.SecretFolder, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)

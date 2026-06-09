@@ -503,10 +503,7 @@ export const insightsServiceFactory = ({
   const getSecretsDuplication = async (dto: TGetSecretsDuplicationDTO, actorDto: OrgServiceActor) => {
     await checkInsightsPermission(permissionService, licenseService, dto.projectId, actorDto);
 
-    const cacheKey = KeyStorePrefixes.InsightsCache(
-      dto.projectId,
-      `secrets-duplication:${dto.offset ?? 0}:${dto.limit ?? 50}`
-    );
+    const cacheKey = KeyStorePrefixes.InsightsCache(dto.projectId, "secrets-duplication");
 
     const project = await projectDAL.findById(dto.projectId);
 
@@ -522,17 +519,12 @@ export const insightsServiceFactory = ({
       };
     }
 
-    const remainingTTL = await getCacheTtl(keyStore, cacheKey);
-
     const result = await withCache({
       keyStore,
       key: cacheKey,
       ttlSeconds: KeyStoreTtls.InsightsDuplicationCacheInSeconds,
       fetcher: async () => {
-        const rawGroups = await secretV2BridgeDAL.findDuplicatedSecretValues(dto.projectId, {
-          offset: dto.offset ?? 0,
-          limit: dto.limit ?? 50
-        });
+        const rawGroups = await secretV2BridgeDAL.findDuplicatedSecretValues(dto.projectId);
 
         const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
           type: KmsDataKey.SecretManager,
@@ -568,6 +560,8 @@ export const insightsServiceFactory = ({
         return { secretBlindIndexEnabled: true as const, groups };
       }
     });
+
+    const remainingTTL = await getCacheTtl(keyStore, cacheKey);
 
     return { result, remainingTTL };
   };

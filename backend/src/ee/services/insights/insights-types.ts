@@ -26,6 +26,4 @@ export type TGetInsightsSummaryDTO = {
 
 export type TGetSecretsDuplicationDTO = {
   projectId: string;
-  offset?: number;
-  limit?: number;
 };
