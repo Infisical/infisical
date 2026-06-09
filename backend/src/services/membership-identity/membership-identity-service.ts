@@ -20,6 +20,7 @@ import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/addition
 import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TOrgDALFactory } from "../org/org-dal";
+import { TProjectDALFactory } from "../project/project-dal";
 import { TRoleDALFactory } from "../role/role-dal";
 import { TMembershipIdentityDALFactory } from "./membership-identity-dal";
 import {
@@ -44,6 +45,7 @@ type TMembershipIdentityServiceFactoryDep = {
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
   identityDAL: Pick<TIdentityDALFactory, "findById">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  projectDAL: Pick<TProjectDALFactory, "findById">;
   keyStore: Pick<TKeyStoreFactory, "getKeysByPattern" | "getItem">;
 };
 
@@ -58,6 +60,7 @@ export const membershipIdentityServiceFactory = ({
   additionalPrivilegeDAL,
   identityDAL,
   licenseService,
+  projectDAL,
   keyStore
 }: TMembershipIdentityServiceFactoryDep) => {
   const scopeFactory = {
@@ -70,7 +73,8 @@ export const membershipIdentityServiceFactory = ({
       membershipIdentityDAL,
       orgDAL,
       permissionService,
-      identityDAL
+      identityDAL,
+      projectDAL
     })
   };
 

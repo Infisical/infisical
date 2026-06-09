@@ -105,7 +105,7 @@ export const registerCertManagerAccessGroupsRouter = async (server: FastifyZodPr
       operationId: "addCertManagerGroup",
       params: z.object({ groupId: z.string().uuid() }),
       body: z.object({
-        role: z.string().trim().min(1).default(ProjectMembershipRole.NoAccess).optional(),
+        role: z.string().trim().min(1).default(ProjectMembershipRole.Member).optional(),
         roles: z
           .array(
             z.union([
@@ -132,7 +132,7 @@ export const registerCertManagerAccessGroupsRouter = async (server: FastifyZodPr
         req.body.roles ??
         (req.body.role
           ? [{ role: req.body.role, isTemporary: false }]
-          : [{ role: ProjectMembershipRole.NoAccess, isTemporary: false }]);
+          : [{ role: ProjectMembershipRole.Member, isTemporary: false }]);
       await server.services.membershipGroup.createMembership({
         permission: req.permission,
         data: { groupId: req.params.groupId, roles },

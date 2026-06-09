@@ -812,6 +812,7 @@ export const registerRoutes = async (
     roleDAL,
     additionalPrivilegeDAL,
     licenseService,
+    projectDAL,
     keyStore
   });
 
@@ -826,7 +827,8 @@ export const registerRoutes = async (
     permissionService,
     orgDAL,
     groupDAL,
-    licenseService
+    licenseService,
+    projectDAL
   });
 
   const roleService = roleServiceFactory({
