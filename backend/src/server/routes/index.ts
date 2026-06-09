@@ -2617,6 +2617,7 @@ export const registerRoutes = async (
     projectBotService,
     projectDAL,
     userDAL,
+    kmsService,
     keyStore
   });
 

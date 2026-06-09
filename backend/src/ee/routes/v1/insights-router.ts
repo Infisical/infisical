@@ -185,6 +185,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
                 z.object({
                   key: z.string(),
                   environment: z.string(),
+                  environmentSlug: z.string(),
                   secretPath: z.string()
                 })
               )

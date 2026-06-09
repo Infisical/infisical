@@ -20,6 +20,7 @@ import {
 import { TSecretApprovalRequestDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-dal";
 import { TSecretApprovalRequestSecretDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-secret-dal";
 import { RequestState } from "@app/ee/services/secret-approval-request/secret-approval-request-types";
+import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import {
   decryptIntegrationAuths,
   decryptSecretApprovals,
@@ -30,8 +31,6 @@ import {
 import { crypto } from "@app/lib/crypto/cryptography";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueJobTypes, TQueueServiceFactory } from "@app/queue";
-
-import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 
 import { TIntegrationAuthDALFactory } from "../integration-auth/integration-auth-dal";
 import { TKmsServiceFactory } from "../kms/kms-service";

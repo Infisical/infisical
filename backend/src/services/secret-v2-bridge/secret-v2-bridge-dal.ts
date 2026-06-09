@@ -1271,20 +1271,38 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
         .select(
           `${TableName.SecretV2}.key`,
           `${TableName.SecretV2}.folderId`,
+          `${TableName.SecretV2}.encryptedValue`,
           `${TableName.SecretV2}.secretValueBlindIndex`,
-          `${TableName.Environment}.slug as environment`
+          `${TableName.Environment}.slug as environment`,
+          `${TableName.Environment}.name as environmentName`
         )
         .orderBy(`${TableName.SecretV2}.secretValueBlindIndex`);
 
-      const groups: { secrets: { key: string; environment: string; folderId: string }[] }[] = [];
+      const groups: {
+        secrets: {
+          key: string;
+          environment: string;
+          environmentName: string;
+          folderId: string;
+          encryptedValue: Buffer | null;
+        }[];
+      }[] = [];
       let currentIndex: string | null = null;
-      let currentGroup: { key: string; environment: string; folderId: string }[] = [];
+      let currentGroup: {
+        key: string;
+        environment: string;
+        environmentName: string;
+        folderId: string;
+        encryptedValue: Buffer | null;
+      }[] = [];
 
       for (const row of rows as {
         key: string;
         folderId: string;
+        encryptedValue: Buffer | null;
         secretValueBlindIndex: string;
         environment: string;
+        environmentName: string;
       }[]) {
         if (row.secretValueBlindIndex !== currentIndex) {
           if (currentGroup.length > 0) {
@@ -1293,7 +1311,13 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
           currentIndex = row.secretValueBlindIndex;
           currentGroup = [];
         }
-        currentGroup.push({ key: row.key, environment: row.environment, folderId: row.folderId });
+        currentGroup.push({
+          key: row.key,
+          environment: row.environment,
+          environmentName: row.environmentName,
+          folderId: row.folderId,
+          encryptedValue: row.encryptedValue
+        });
       }
       if (currentGroup.length > 0) {
         groups.push({ secrets: currentGroup });

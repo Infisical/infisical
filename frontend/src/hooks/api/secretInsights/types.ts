@@ -130,6 +130,7 @@ export type TGetSecretsDuplicationDTO = {
 export type TDuplicatedSecretEntry = {
   key: string;
   environment: string;
+  environmentSlug: string;
   secretPath: string;
 };
 

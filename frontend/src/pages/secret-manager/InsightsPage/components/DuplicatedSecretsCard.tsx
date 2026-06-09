@@ -15,6 +15,7 @@ import {
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
+  Badge,
   Button,
   Card,
   CardContent,
@@ -41,16 +42,13 @@ import {
   useGetSecretsDuplication
 } from "@app/hooks/api/secretInsights";
 
-const ENVIRONMENT_COLOR_MAP: Record<string, string> = {
-  production: "bg-green-500",
-  staging: "bg-yellow-500",
-  development: "bg-emerald-400",
-  testing: "bg-blue-400"
+const ENV_BADGE_VARIANT: Record<string, "danger" | "warning" | "success" | "info"> = {
+  prod: "danger",
+  staging: "warning",
+  dev: "info",
 };
 
-const getEnvironmentDotColor = (slug: string) => {
-  return ENVIRONMENT_COLOR_MAP[slug] || "bg-primary";
-};
+const getEnvBadgeVariant = (slug: string) => ENV_BADGE_VARIANT[slug] || "neutral";
 
 const overviewRoute =
   "/organizations/$orgId/projects/secret-management/$projectId/overview" as const;
@@ -214,14 +212,13 @@ export const DuplicatedSecretsCard = () => {
                           className="group/row -mx-2 flex items-center gap-6 rounded-md px-2 py-1.5 text-sm hover:bg-container-hover"
                         >
                           <div className="flex w-72 shrink-0 items-center gap-2">
-                            <KeyRoundIcon className="size-3.5 text-muted" />
+                            <KeyRoundIcon className="size-4 text-muted" />
                             <span className="truncate font-mono text-foreground">{entry.key}</span>
                           </div>
-                          <div className="flex w-28 shrink-0 items-center gap-2">
-                            <span
-                              className={`size-2 shrink-0 rounded-full ${getEnvironmentDotColor(entry.environment)}`}
-                            />
-                            <span className="truncate text-foreground">{entry.environment}</span>
+                          <div className="w-28 shrink-0">
+                            <Badge variant={getEnvBadgeVariant(entry.environmentSlug)} isTruncatable className="max-w-full">
+                              <span>{entry.environment}</span>
+                            </Badge>
                           </div>
                           <div className="flex min-w-0 flex-1 items-center gap-2 text-muted">
                             <FolderIcon className="size-3.5 shrink-0" />
@@ -243,7 +240,8 @@ export const DuplicatedSecretsCard = () => {
                                         projectId
                                       },
                                       search: {
-                                        secretPath: entry.secretPath
+                                        secretPath: entry.secretPath,
+                                        environments: [entry.environmentSlug]
                                       }
                                     })
                                   }

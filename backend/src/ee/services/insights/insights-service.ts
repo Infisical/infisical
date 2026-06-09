@@ -13,10 +13,13 @@ import { withCache } from "@app/lib/cache/with-cache";
 import { BadRequestError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
 import { ActorType } from "@app/services/auth/auth-type";
+import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { TReminderDALFactory } from "@app/services/reminder/reminder-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
+import { containsSecretReference } from "@app/services/secret-v2-bridge/secret-reference-fns";
 import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
@@ -43,6 +46,7 @@ type TInsightsServiceFactoryDep = {
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   userDAL: Pick<TUserDALFactory, "find">;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiry" | "getItem">;
 };
 
@@ -93,6 +97,7 @@ export const insightsServiceFactory = ({
   projectBotService,
   projectDAL,
   userDAL,
+  kmsService,
   keyStore
 }: TInsightsServiceFactoryDep) => {
   const fetchReminders = async (projectId: string, startDate: Date, endDate: Date) => {
@@ -508,7 +513,9 @@ export const insightsServiceFactory = ({
     if (!project.secretBlindIndexEnabled) {
       return {
         secretBlindIndexEnabled: false as const,
-        groups: [] as { secrets: { key: string; environment: string; secretPath: string }[] }[]
+        groups: [] as {
+          secrets: { key: string; environment: string; environmentSlug: string; secretPath: string }[];
+        }[]
       };
     }
 
@@ -522,7 +529,20 @@ export const insightsServiceFactory = ({
           limit: dto.limit ?? 50
         });
 
-        const folderIds = [...new Set(rawGroups.flatMap((g) => g.secrets.map((s) => s.folderId)))];
+        const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
+          type: KmsDataKey.SecretManager,
+          projectId: dto.projectId
+        });
+
+        const filteredGroups = rawGroups.filter((g) => {
+          if (!g.secrets.length) return false;
+          const firstSecret = g.secrets[0];
+          if (!firstSecret.encryptedValue) return true;
+          const decryptedValue = secretManagerDecryptor({ cipherTextBlob: firstSecret.encryptedValue }).toString();
+          return !containsSecretReference(decryptedValue);
+        });
+
+        const folderIds = [...new Set(filteredGroups.flatMap((g) => g.secrets.map((s) => s.folderId)))];
         const foldersWithPath = folderIds.length
           ? await folderDAL.findSecretPathByFolderIds(dto.projectId, folderIds)
           : [];
@@ -531,10 +551,11 @@ export const insightsServiceFactory = ({
           if (f) folderRecord[f.id] = f.path;
         });
 
-        const groups = rawGroups.map((g) => ({
+        const groups = filteredGroups.map((g) => ({
           secrets: g.secrets.map((s) => ({
             key: s.key,
-            environment: s.environment,
+            environment: s.environmentName,
+            environmentSlug: s.environment,
             secretPath: folderRecord[s.folderId] ?? "/"
           }))
         }));
