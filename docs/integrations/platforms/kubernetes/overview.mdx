@@ -400,6 +400,10 @@ The v1beta1 API introduces a cleaner separation of concerns. Instead of defining
 
   Connection config is now defined in a standalone `InfisicalConnection` resource that can be reused by auth and secret resources.
 
+- **Template:** `engineVersion: v1` is now enforced and `includeAllSecrets` has been removed.
+
+  `engineVersion` is a required field and `v1` should be used. The `includeAllSecrets` option no longer exists. Instead, you can iterate over all secrets using a bulk string template with a range loop. See the [Templating](#templating) section for details and examples.
+
 ### Migration steps
 
 <Steps>
