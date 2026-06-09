@@ -45,7 +45,7 @@ import {
 const ENV_BADGE_VARIANT: Record<string, "danger" | "warning" | "success" | "info"> = {
   prod: "danger",
   staging: "warning",
-  dev: "info",
+  dev: "info"
 };
 
 const getEnvBadgeVariant = (slug: string) => ENV_BADGE_VARIANT[slug] || "neutral";
@@ -216,7 +216,11 @@ export const DuplicatedSecretsCard = () => {
                             <span className="truncate font-mono text-foreground">{entry.key}</span>
                           </div>
                           <div className="w-28 shrink-0">
-                            <Badge variant={getEnvBadgeVariant(entry.environmentSlug)} isTruncatable className="max-w-full">
+                            <Badge
+                              variant={getEnvBadgeVariant(entry.environmentSlug)}
+                              isTruncatable
+                              className="max-w-full"
+                            >
                               <span>{entry.environment}</span>
                             </Badge>
                           </div>
