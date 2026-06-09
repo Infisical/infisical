@@ -6,8 +6,8 @@ import {
   ArrowRightIcon,
   FolderIcon,
   KeyRoundIcon,
-  Loader2Icon,
   LayersIcon,
+  Loader2Icon,
   LockIcon
 } from "lucide-react";
 
@@ -227,7 +227,10 @@ export const DuplicatedSecretsCard = () => {
                 </AccordionTrigger>
                 <AccordionContent className="group-data-[variant=default]/accordion:p-0">
                   {group.secrets.length > 0 && (
-                    <Table containerClassName="rounded-t-none overflow-x-hidden" className="table-fixed">
+                    <Table
+                      containerClassName="rounded-t-none overflow-x-hidden"
+                      className="table-fixed"
+                    >
                       <TableHeader className="bg-mineshaft-800">
                         <TableRow>
                           <TableHead className="h-10 w-[35%]">SECRET KEY</TableHead>
