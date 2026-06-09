@@ -88,6 +88,18 @@ export enum OrgPermissionSubjects {
   HoneyTokens = "honey-tokens"
 }
 
+// Permission subjects that only apply to a root organization and are rejected on
+// sub-organization roles. Mirrors the backend INVALID_SUBORG_PERMISSION_SUBJECTS.
+export const INVALID_SUB_ORG_PERMISSION_SUBJECTS: OrgPermissionSubjects[] = [
+  OrgPermissionSubjects.Sso,
+  OrgPermissionSubjects.Ldap,
+  OrgPermissionSubjects.Scim,
+  OrgPermissionSubjects.GithubOrgSync,
+  OrgPermissionSubjects.GithubOrgSyncManual,
+  OrgPermissionSubjects.Billing,
+  OrgPermissionSubjects.SubOrganization
+];
+
 export enum OrgPermissionCertManagerActions {
   Read = "read",
   ManageInstance = "manage-instance",

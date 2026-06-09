@@ -7,6 +7,7 @@ import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Input, Modal, ModalContent, Spinner } from "@app/components/v2";
 import { useOrganization, useSubscription } from "@app/context";
+import { INVALID_SUB_ORG_PERMISSION_SUBJECTS } from "@app/context/OrgPermissionContext/types";
 import { useCreateOrgRole, useGetOrgRole } from "@app/hooks/api";
 import { TOrgRole } from "@app/hooks/api/roles/types";
 import { usePopUp } from "@app/hooks/usePopUp";
@@ -46,6 +47,7 @@ const Content = ({ role, onClose }: ContentProps) => {
   });
 
   const { subscription } = useSubscription();
+  const { isSubOrganization } = useOrganization();
   const {
     popUp: upgradePlanPopUp,
     handlePopUpOpen: handleUpgradePlanPopUpOpen,
@@ -61,9 +63,18 @@ const Content = ({ role, onClose }: ContentProps) => {
       return;
     }
 
+    // Platform roles (e.g. Admin) carry root-only subjects that sub-organization roles
+    // can't have, so strip them when duplicating inside a sub-organization.
+    const invalidSubOrgSubjects = new Set<string>(INVALID_SUB_ORG_PERMISSION_SUBJECTS);
+    const permissions = isSubOrganization
+      ? role.permissions.filter(
+          (permission) => !invalidSubOrgSubjects.has(permission.subject as string)
+        )
+      : role.permissions;
+
     const newRole = await createRole.mutateAsync({
       orgId: role.orgId,
-      permissions: role.permissions,
+      permissions,
       ...form
     });
 
