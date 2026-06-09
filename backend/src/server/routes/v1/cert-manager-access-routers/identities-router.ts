@@ -158,7 +158,7 @@ export const registerCertManagerAccessIdentitiesRouter = async (server: FastifyZ
       operationId: "addCertManagerIdentity",
       params: z.object({ identityId: z.string().trim().uuid() }),
       body: z.object({
-        role: z.string().trim().optional().default(ProjectMembershipRole.NoAccess),
+        role: z.string().trim().optional().default(ProjectMembershipRole.Member),
         roles: z
           .array(
             z.union([

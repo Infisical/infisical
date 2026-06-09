@@ -460,6 +460,10 @@ const organizationRoutes = route("/organizations/$orgId", [
     route(
       "/$appConnection/oauth/callback",
       "organization/AppConnections/OauthCallbackPage/route.tsx"
+    ),
+    route(
+      "/github/manifest/callback",
+      "organization/AppConnections/GitHubManifestCallbackPage/route.tsx"
     )
   ]),
   route("/networking", [
@@ -512,6 +516,10 @@ export const routes = rootRoute("root.tsx", [
       route(
         "/organization/settings/oauth/callback",
         "redirects/settings-oauth-callback-redirect.tsx"
+      ),
+      route(
+        "/organization/app-connections/github/manifest/callback",
+        "redirects/github-manifest-callback-redirect.tsx"
       ),
       layout("org-layout", "organization/layout.tsx", [
         organizationRoutes,

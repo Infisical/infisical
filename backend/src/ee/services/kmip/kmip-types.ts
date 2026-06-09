@@ -6,9 +6,8 @@ import { KmipPermission } from "./kmip-enum";
 
 export type TCreateKmipClientCertificateDTO = {
   clientId: string;
-  keyAlgorithm?: CertKeyAlgorithm;
+  keyAlgorithm: CertKeyAlgorithm;
   ttl: string;
-  csr?: string;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TCreateKmipClientDTO = {

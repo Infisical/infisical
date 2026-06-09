@@ -556,6 +556,8 @@ export enum EventType {
   GET_APP_CONNECTION_USAGE = "get-app-connection-usage",
   MIGRATE_APP_CONNECTION = "migrate-app-connection",
   ROTATE_APP_CONNECTION_CREDENTIALS = "rotate-app-connection-credentials",
+  CREATE_GITHUB_APP = "create-github-app",
+  DELETE_GITHUB_APP = "delete-github-app",
   CREATE_SHARED_SECRET = "create-shared-secret",
   CREATE_SECRET_REQUEST = "create-secret-request",
   DELETE_SHARED_SECRET = "delete-shared-secret",
@@ -4472,6 +4474,31 @@ interface RotateAppConnectionCredentialsEvent {
   };
 }
 
+interface CreateGitHubAppEvent {
+  type: EventType.CREATE_GITHUB_APP;
+  metadata: {
+    gitHubAppId: string;
+    name: string;
+    appId: string;
+    slug: string;
+    owner?: string | null;
+    host?: string | null;
+    instanceType: string;
+    projectId?: string | null;
+  };
+}
+
+interface DeleteGitHubAppEvent {
+  type: EventType.DELETE_GITHUB_APP;
+  metadata: {
+    gitHubAppId: string;
+    name: string;
+    appId: string;
+    slug: string;
+    projectId?: string | null;
+  };
+}
+
 interface CreateSharedSecretEvent {
   type: EventType.CREATE_SHARED_SECRET;
   metadata: {
@@ -5005,9 +5032,8 @@ interface CreateKmipClientCertificateEvent {
   metadata: {
     clientId: string;
     ttl: string;
-    keyAlgorithm?: string;
+    keyAlgorithm: string;
     serialNumber: string;
-    isFromCsr: boolean;
   };
 }
 
@@ -7603,6 +7629,8 @@ export type Event =
   | GetAppConnectionUsageEvent
   | MigrateAppConnectionEvent
   | RotateAppConnectionCredentialsEvent
+  | CreateGitHubAppEvent
+  | DeleteGitHubAppEvent
   | GetSshHostGroupEvent
   | CreateSshHostGroupEvent
   | UpdateSshHostGroupEvent

@@ -23,6 +23,7 @@ import { TApplicationMembershipCleanupServiceFactory } from "../membership/appli
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TOrgDALFactory } from "../org/org-dal";
 import { ApplicationMemberKind } from "../pki-application/pki-application-types";
+import { TProjectDALFactory } from "../project/project-dal";
 import { TRoleDALFactory } from "../role/role-dal";
 import { TMembershipGroupDALFactory } from "./membership-group-dal";
 import {
@@ -51,6 +52,7 @@ type TMembershipGroupServiceFactoryDep = {
     TApplicationMembershipCleanupServiceFactory,
     "cleanupActorApplicationMemberships"
   >;
+  projectDAL: Pick<TProjectDALFactory, "findById">;
 };
 
 export type TMembershipGroupServiceFactory = ReturnType<typeof membershipGroupServiceFactory>;
@@ -67,7 +69,8 @@ export const membershipGroupServiceFactory = ({
   permissionService,
   groupDAL,
   licenseService,
-  applicationMembershipCleanupService
+  applicationMembershipCleanupService,
+  projectDAL
 }: TMembershipGroupServiceFactoryDep) => {
   const scopeFactory = {
     [AccessScope.Organization]: newOrgMembershipGroupFactory({
@@ -79,7 +82,8 @@ export const membershipGroupServiceFactory = ({
       membershipGroupDAL,
       orgDAL,
       permissionService,
-      groupDAL
+      groupDAL,
+      projectDAL
     })
   };
 
