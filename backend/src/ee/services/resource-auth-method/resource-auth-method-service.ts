@@ -466,24 +466,20 @@ export const resourceAuthMethodServiceFactory = ({
       });
     }
 
-    const result = await resourceTokenAuthDAL.transaction(async (tx) => {
-      let deletedTokenCount = 0;
+    await resourceTokenAuthDAL.transaction(async (tx) => {
       if (registry.method === ResourceAuthMethodType.Token) {
         const tokens = await resourceTokenAuthDAL.find({ authMethodId: registry.id }, { tx });
-        deletedTokenCount = tokens.length;
         if (tokens.length > 0) {
           await resourceTokenAuthDAL.delete({ authMethodId: registry.id }, tx);
         }
       }
       await $bumpTokenVersion(resource, tx);
-      return { deletedTokenCount };
     });
 
     return {
       resourceName: loaded.name,
       orgId: loaded.orgId,
-      method: registry.method as "aws" | "token",
-      deletedTokenCount: result.deletedTokenCount
+      method: registry.method as "aws" | "token"
     };
   };
 

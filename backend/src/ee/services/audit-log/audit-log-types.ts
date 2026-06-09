@@ -7040,7 +7040,6 @@ interface ResourceAuthMethodRevokeEvent {
     resourceId: string;
     method: ResourceAuthMethodKind;
     resourceName: string;
-    deletedTokenCount: number;
   };
 }
 

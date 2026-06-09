@@ -313,7 +313,7 @@ export const registerRelayV2Router = async (server: FastifyZodProvider) => {
     schema: {
       params: z.object({ relayId: z.string().uuid() }),
       response: {
-        200: z.object({ method: z.string(), deletedTokenCount: z.number() })
+        200: z.object({ method: z.string() })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
@@ -333,12 +333,11 @@ export const registerRelayV2Router = async (server: FastifyZodProvider) => {
             resourceId: req.params.relayId,
             method: result.method,
             resourceName: result.resourceName,
-            deletedTokenCount: result.deletedTokenCount
           }
         }
       });
 
-      return { method: result.method, deletedTokenCount: result.deletedTokenCount };
+      return { method: result.method };
     }
   });
 

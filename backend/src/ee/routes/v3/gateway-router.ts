@@ -292,8 +292,7 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
       params: z.object({ gatewayId: z.string().trim().uuid() }),
       response: {
         200: z.object({
-          method: z.enum(["aws", "token"]),
-          deletedTokenCount: z.number()
+          method: z.enum(["aws", "token"])
         })
       }
     },
@@ -314,12 +313,11 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
             resourceId: req.params.gatewayId,
             method: result.method,
             resourceName: result.resourceName,
-            deletedTokenCount: result.deletedTokenCount
           }
         }
       });
 
-      return { method: result.method, deletedTokenCount: result.deletedTokenCount };
+      return { method: result.method };
     }
   });
 
