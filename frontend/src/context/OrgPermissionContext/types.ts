@@ -140,6 +140,8 @@ export enum OrgPermissionAuditLogsActions {
   Read = "read"
 }
 
+// TODO: remove once KMIP clients are fully migrated to KMIP servers (OrgKmipServerPermissionActions).
+// This only gates the legacy KMIP proxy flow.
 export enum OrgPermissionKmipActions {
   Proxy = "proxy"
 }
