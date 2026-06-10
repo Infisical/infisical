@@ -142,7 +142,7 @@ The CLI defaults to US Cloud (https://app.infisical.com). To connect to **EU Clo
 - Use the `--domain` flag on every command
 - Set the `domain` field in your project's [`.infisical.json`](/cli/project-config)
 
-When more than one is set, the CLI uses this order of precedence: `--domain` flag, then `INFISICAL_DOMAIN`, then the `domain` field in `.infisical.json`, then the default. The legacy `INFISICAL_API_URL` environment variable is still honored.
+When more than one is set, the CLI uses this order of precedence: `--domain` flag, then `INFISICAL_DOMAIN`, then the `domain` field in `.infisical.json`, then the default. The legacy `INFISICAL_API_URL` environment variable is still honored, but `INFISICAL_DOMAIN` takes precedence when both are set.
 
 <Tabs>
   <Tab title='Use Environment Variable (Recommended)'>
