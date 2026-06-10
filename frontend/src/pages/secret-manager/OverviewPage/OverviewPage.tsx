@@ -467,6 +467,22 @@ const OverviewPageContent = () => {
   const visibleEnvs = filteredEnvs.length ? filteredEnvs : userAvailableEnvs;
   const singleVisibleEnv = visibleEnvs.length === 1 ? visibleEnvs[0] : null;
 
+  const relevantPendingApprovalsCount = useMemo(() => {
+    // Reviewers see project-wide pending requests (existing behavior).
+    if (canApproveAny) return pendingApprovalsCount;
+
+    // Requesters only see requests at the specific environment + path they're viewing,
+    // so only when a single environment is selected.
+    if (visibleEnvs.length !== 1) return 0;
+
+    const selectedEnvSlug = visibleEnvs[0].slug;
+    return (
+      openApprovalRequests?.approvals?.filter(
+        (req) => req.policy?.secretPath === secretPath && req.environment === selectedEnvSlug
+      ).length ?? 0
+    );
+  }, [canApproveAny, pendingApprovalsCount, openApprovalRequests, visibleEnvs, secretPath]);
+
   const {
     data: { count: singleEnvCommitCount, folderId: singleEnvFolderId } = {
       count: 0,
@@ -2637,13 +2653,13 @@ const OverviewPageContent = () => {
             </div>
           </CardHeader>
           <CardContent>
-            {pendingApprovalsCount > 0 && (
+            {relevantPendingApprovalsCount > 0 && (
               <Alert variant="info" className="-mt-2 mb-3 py-1.5">
                 <AlertTitle className="flex items-center gap-3">
                   <InfoIcon className="size-4 shrink-0 text-info" />
                   <span>
-                    You have {pendingApprovalsCount} pending secret change request
-                    {pendingApprovalsCount === 1 ? "" : "s"}.
+                    You have {relevantPendingApprovalsCount} pending secret change request
+                    {relevantPendingApprovalsCount === 1 ? "" : "s"}.
                     {!canApproveAny &&
                       " Once approved, the secrets will become available in this folder."}
                   </span>
