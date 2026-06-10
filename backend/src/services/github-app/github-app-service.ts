@@ -5,6 +5,7 @@ import { ActionProjectType, OrganizationActionScope } from "@app/db/schemas";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayDALFactory } from "@app/ee/services/gateway/gateway-dal";
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
+import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
@@ -68,6 +69,10 @@ type TGitHubAppServiceFactoryDep = {
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
+  gatewayPoolService: Pick<
+    TGatewayPoolServiceFactory,
+    "resolveAttachableGatewayFromPool" | "resolveEffectiveGatewayId"
+  >;
   gatewayDAL: Pick<TGatewayDALFactory, "find">;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "find">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
@@ -84,6 +89,7 @@ export const gitHubAppServiceFactory = ({
   licenseService,
   gatewayService,
   gatewayV2Service,
+  gatewayPoolService,
   gatewayDAL,
   gatewayV2DAL,
   auditLogService,
@@ -159,6 +165,23 @@ export const gitHubAppServiceFactory = ({
     if (!gateway && !gatewayV2) {
       throw new NotFoundError({
         message: `Gateway with ID ${gatewayId} not found for org`
+      });
+    }
+  };
+
+  const assertGatewayConfigUsable = async (
+    { gatewayId, gatewayPoolId }: { gatewayId?: string | null; gatewayPoolId?: string | null },
+    orgPermission: OrgServiceActor
+  ) => {
+    if (gatewayId) {
+      await assertGatewayUsable(gatewayId, orgPermission);
+      return;
+    }
+    if (gatewayPoolId) {
+      await gatewayPoolService.resolveAttachableGatewayFromPool({
+        poolId: gatewayPoolId,
+        orgId: orgPermission.orgId,
+        actor: orgPermission
       });
     }
   };
@@ -381,6 +404,7 @@ export const gitHubAppServiceFactory = ({
     installState,
     projectId,
     gatewayId,
+    gatewayPoolId,
     orgPermission
   }: TInitiateGitHubManifestDTO) => {
     await checkAppConnectionPermission({
@@ -393,9 +417,7 @@ export const gitHubAppServiceFactory = ({
 
     assertPlatformGitHubHostAllowed(githubHost);
 
-    if (gatewayId) {
-      await assertGatewayUsable(gatewayId, orgPermission);
-    }
+    await assertGatewayConfigUsable({ gatewayId, gatewayPoolId }, orgPermission);
 
     const existing = await gitHubAppDAL.findOne({
       orgId: orgPermission.orgId,
@@ -429,6 +451,7 @@ export const gitHubAppServiceFactory = ({
         githubOrg: githubOrg ?? "",
         githubHost: githubHost ?? "",
         gatewayId: gatewayId ?? null,
+        gatewayPoolId: gatewayPoolId ?? null,
         installState
       } satisfies TGitHubManifestStatePayload,
       AUTH_SECRET,
@@ -491,6 +514,7 @@ export const gitHubAppServiceFactory = ({
       githubOrg,
       githubHost,
       gatewayId = null,
+      gatewayPoolId = null,
       installState
     } = statePayload;
 
@@ -558,13 +582,15 @@ export const gitHubAppServiceFactory = ({
             }
           };
 
-          const { data } = gatewayId
+          const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({ gatewayId, gatewayPoolId });
+
+          const { data } = effectiveGatewayId
             ? await requestWithGitHubGateway<TGitHubAppManifestResponse>(
-                { gatewayId },
+                { gatewayId: effectiveGatewayId },
                 gatewayService,
                 gatewayV2Service,
                 requestConfig,
-                await getGitHubGatewayConnectionDetails(gatewayId, apiBaseUrl, gatewayV2Service)
+                await getGitHubGatewayConnectionDetails(effectiveGatewayId, apiBaseUrl, gatewayV2Service)
               )
             : await safeRequest.request<TGitHubAppManifestResponse>(requestConfig);
           manifestResponse = data;
@@ -576,11 +602,14 @@ export const gitHubAppServiceFactory = ({
               projectId,
               instanceType,
               host: githubHost || "github.com",
-              gatewayId
+              gatewayId,
+              gatewayPoolId
             },
             `Failed to exchange GitHub App manifest code [orgId=${orgId}] [projectId=${
               projectId ?? "null"
-            }] [instanceType=${instanceType}] [host=${githubHost || "github.com"}] [gatewayId=${gatewayId ?? "null"}]`
+            }] [instanceType=${instanceType}] [host=${githubHost || "github.com"}] [gatewayId=${
+              gatewayId ?? "null"
+            }] [gatewayPoolId=${gatewayPoolId ?? "null"}]`
           );
           throw new BadRequestError({
             message:
@@ -694,6 +723,7 @@ export const gitHubAppServiceFactory = ({
     gitHubAppId,
     instanceType,
     gatewayId,
+    gatewayPoolId,
     projectId,
     orgPermission
   }: TResolveGitHubAppInstallationsDTO): Promise<{
@@ -740,9 +770,9 @@ export const gitHubAppServiceFactory = ({
       );
     }
 
-    if (gatewayId) {
-      await assertGatewayUsable(gatewayId, orgPermission);
-    }
+    await assertGatewayConfigUsable({ gatewayId, gatewayPoolId }, orgPermission);
+
+    const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({ gatewayId, gatewayPoolId });
 
     const { SITE_URL } = getConfig();
     if (!SITE_URL) {
@@ -780,9 +810,9 @@ export const gitHubAppServiceFactory = ({
       requestConfig: AxiosRequestConfig & { url: string },
       gatewayConnectionDetails?: Awaited<ReturnType<typeof getGitHubGatewayConnectionDetails>>
     ): Promise<AxiosResponse<T>> =>
-      gatewayId
+      effectiveGatewayId
         ? requestWithGitHubGateway<T>(
-            { gatewayId },
+            { gatewayId: effectiveGatewayId },
             gatewayService,
             gatewayV2Service,
             requestConfig,
@@ -790,8 +820,8 @@ export const gitHubAppServiceFactory = ({
           )
         : safeRequest.request<T>(requestConfig);
 
-    const oauthGatewayConnectionDetails = gatewayId
-      ? await getGitHubGatewayConnectionDetails(gatewayId, oauthHost, gatewayV2Service)
+    const oauthGatewayConnectionDetails = effectiveGatewayId
+      ? await getGitHubGatewayConnectionDetails(effectiveGatewayId, oauthHost, gatewayV2Service)
       : undefined;
 
     let tokenData: GithubTokenRespData;
@@ -825,8 +855,8 @@ export const gitHubAppServiceFactory = ({
       credentials: { host: effectiveHost, instanceType: effectiveInstanceType }
     });
 
-    const apiGatewayConnectionDetails = gatewayId
-      ? await getGitHubGatewayConnectionDetails(gatewayId, apiBaseUrl, gatewayV2Service)
+    const apiGatewayConnectionDetails = effectiveGatewayId
+      ? await getGitHubGatewayConnectionDetails(effectiveGatewayId, apiBaseUrl, gatewayV2Service)
       : undefined;
 
     const installations = await listGitHubUserInstallations(apiBaseUrl, tokenData.access_token, (requestConfig) =>

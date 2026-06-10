@@ -285,7 +285,8 @@ export const GitHubConnectionForm = ({ appConnection, projectId, onSubmit }: Pro
         githubHost: formData.credentials?.host || undefined,
         installState,
         projectId: projectId || undefined,
-        gatewayId: formData.gatewayId || undefined
+        gatewayId: formData.gatewayId || undefined,
+        gatewayPoolId: formData.gatewayPoolId || undefined
       });
 
       const formEl = document.createElement("form");
