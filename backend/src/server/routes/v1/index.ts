@@ -64,6 +64,7 @@ import { registerIntegrationRouter } from "./integration-router";
 import { registerInviteOrgRouter } from "./invite-org-router";
 import { registerMicrosoftTeamsRouter } from "./microsoft-teams-router";
 import { registerNotificationRouter } from "./notification-router";
+import { registerOAuthRouter } from "./oauth-router";
 import { registerOrgAdminRouter } from "./org-admin-router";
 import { registerOrgIdentityRouter } from "./org-identity-router";
 import { registerOrganizationMembershipsRouter } from "./organization-memberships-router";
@@ -119,6 +120,7 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
   );
   await server.register(registerPasswordRouter, { prefix: "/password" });
   await server.register(registerAccountRecoveryRouter, { prefix: "/account-recovery" });
+  await server.register(registerOAuthRouter, { prefix: "/oauth" });
   await server.register(
     async (orgRouter) => {
       await orgRouter.register(registerOrgRouter);

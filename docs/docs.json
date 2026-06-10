@@ -68,6 +68,7 @@
                   "documentation/platform/identities/machine-identities"
                 ]
               },
+              "documentation/platform/oauth-applications",
               {
                 "group": "Access Control",
                 "pages": [
@@ -3518,6 +3519,19 @@
                   "api-reference/endpoints/kms/signing/signing-algorithms"
                 ]
               }
+            ]
+          },
+          {
+            "group": "KMIP Servers",
+            "pages": [
+              "api-reference/endpoints/kmip-servers/list",
+              "api-reference/endpoints/kmip-servers/get",
+              "api-reference/endpoints/kmip-servers/create",
+              "api-reference/endpoints/kmip-servers/update",
+              "api-reference/endpoints/kmip-servers/delete",
+              "api-reference/endpoints/kmip-servers/generate-enrollment-token",
+              "api-reference/endpoints/kmip-servers/revoke",
+              "api-reference/endpoints/kmip-servers/login"
             ]
           },
           {

@@ -1,13 +1,15 @@
 import { ForbiddenError } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
+import RE2 from "re2";
 
 import { ActionProjectType, OrganizationActionScope } from "@app/db/schemas";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto/cryptography";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { isValidIp } from "@app/lib/ip";
 import { ms } from "@app/lib/ms";
 import { isFQDN } from "@app/lib/validator/validate-url";
+import { ActorType } from "@app/services/auth/auth-type";
 import { constructPemChainFromCerts } from "@app/services/certificate/certificate-fns";
 import { CertExtendedKeyUsage, CertKeyAlgorithm, CertKeyUsage } from "@app/services/certificate/certificate-types";
 import {
@@ -35,6 +37,33 @@ import {
   TRegisterServerDTO,
   TUpdateKmipClientDTO
 } from "./kmip-types";
+
+// Serials are stored as fixed 40-char lowercase hex (crypto.randomBytes(20).toString("hex")), but the
+// daemon sends them derived from a Go big.Int in differing forms (decimal for client, hex for server,
+// leading zeros dropped). Reduce any representation to the canonical stored form via BigInt. For an
+// all-digit input the base is ambiguous, so emit both the decimal and hex readings as candidates.
+const normalizeSerialNumberCandidates = (raw: string): string[] => {
+  const value = raw.trim();
+  const candidates = new Set<string>();
+  const toCanonical = (n: bigint) => n.toString(16).padStart(40, "0");
+
+  if (new RE2(/^[0-9a-fA-F]+$/).test(value)) {
+    try {
+      candidates.add(toCanonical(BigInt(`0x${value}`)));
+    } catch {
+      // not a valid hex serial
+    }
+  }
+  if (new RE2(/^[0-9]+$/).test(value)) {
+    try {
+      candidates.add(toCanonical(BigInt(value)));
+    } catch {
+      // not a valid decimal serial
+    }
+  }
+
+  return [...candidates];
+};
 
 type TKmipServiceFactoryDep = {
   kmipClientDAL: TKmipClientDALFactory;
@@ -725,16 +754,21 @@ export const kmipServiceFactory = ({
     keyAlgorithm,
     hostnamesOrIps
   }: TRegisterServerDTO) => {
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId: actorOrgId,
-      actorAuthMethod,
-      actorOrgId
-    });
+    // KMIP servers authenticate via their enrollment-based access token, which is itself the
+    // authorization — no org-level permission needed. The legacy machine-identity path still
+    // requires the (deprecated) KMIP proxy permission.
+    if (actor !== ActorType.KMIP_SERVER) {
+      const { permission } = await permissionService.getOrgPermission({
+        scope: OrganizationActionScope.Any,
+        actor,
+        actorId,
+        orgId: actorOrgId,
+        actorAuthMethod,
+        actorOrgId
+      });
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionKmipActions.Proxy, OrgPermissionSubjects.Kmip);
+      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionKmipActions.Proxy, OrgPermissionSubjects.Kmip);
+    }
 
     const plan = await licenseService.getPlan(actorOrgId);
     if (!plan.kmip)
@@ -766,6 +800,41 @@ export const kmipServiceFactory = ({
     };
   };
 
+  // Validates that the presented certs were actually issued by this org.
+  // Revocation checking is out of scope until KMIP certs gain a revocation model.
+  const validateKmipSessionCertificates = async ({
+    orgId,
+    kmipClientId,
+    clientCertificateSerialNumber,
+    serverCertificateSerialNumber
+  }: {
+    orgId: string;
+    kmipClientId: string;
+    clientCertificateSerialNumber: string;
+    serverCertificateSerialNumber: string;
+  }) => {
+    const serverCertCandidates = normalizeSerialNumberCandidates(serverCertificateSerialNumber);
+    const [serverCert] = serverCertCandidates.length
+      ? await kmipOrgServerCertificateDAL.find({ orgId, $in: { serialNumber: serverCertCandidates } }, { limit: 1 })
+      : [];
+    if (!serverCert) {
+      throw new ForbiddenRequestError({ message: "Invalid KMIP server certificate" });
+    }
+
+    const clientCertCandidates = normalizeSerialNumberCandidates(clientCertificateSerialNumber);
+    const [clientCert] = clientCertCandidates.length
+      ? await kmipClientCertificateDAL.find({ $in: { serialNumber: clientCertCandidates } }, { limit: 1 })
+      : [];
+    if (!clientCert || clientCert.kmipClientId !== kmipClientId) {
+      throw new ForbiddenRequestError({
+        message: "Client certificate does not match the specified KMIP client"
+      });
+    }
+    if (new Date(clientCert.expiration).getTime() < Date.now()) {
+      throw new ForbiddenRequestError({ message: "Client certificate has expired" });
+    }
+  };
+
   return {
     createKmipClient,
     updateKmipClient,
@@ -775,6 +844,7 @@ export const kmipServiceFactory = ({
     createKmipClientCertificate,
     generateOrgKmipServerCertificate,
     getServerCertificateBySerialNumber,
-    registerServer
+    registerServer,
+    validateKmipSessionCertificates
   };
 };
