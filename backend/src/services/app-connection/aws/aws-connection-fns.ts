@@ -62,8 +62,6 @@ export const getAwsConnectionConfig = async (appConnection: TAwsConnectionConfig
   switch (method) {
     case AwsConnectionMethod.AssumeRole: {
       const client = new STSClient({
-        // when a custom STS endpoint is set, sign for the region embedded in that endpoint so the
-        // request isn't rejected for being scoped to the wrong region; otherwise use the caller's region
         region: getStsSigningRegion(credentials.stsEndpoint) ?? region,
         useFipsEndpoint: crypto.isFipsModeEnabled(),
         sha256: CustomAWSHasher,
