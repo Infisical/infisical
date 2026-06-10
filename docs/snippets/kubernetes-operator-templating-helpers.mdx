@@ -275,11 +275,14 @@ The Infisical Secrets Operator exposes a wide range of helper functions to make 
 </Accordion>
 
 <Accordion title="resolveSecretFromPath">
-  <Note>This function is only available in `v1beta1` resources (e.g. `InfisicalPushSecret`).</Note>
+  <Note>This function is only available in `v1beta1` resources (e.g. `InfisicalStaticSecret`).</Note>
 
   Resolves a secret from a specific folder path within the Infisical project using dot-separated notation.
 
-  The path follows the format `folder.subfolder.SECRET_NAME.Value`, where each segment before the secret name represents a folder level, and `.Value` returns the secret's value.
+  The path follows the format `folder.subfolder.SECRET_NAME.Value`, where each segment before the secret name represents a folder level, and `.Value` returns the secret's value. You can also access the secret path by using `.SecretPath` instead of `.Value`.
+
+  This is especially useful for selecting secrets that have the same key and are ignored by our merge strategy (read more [here](/integrations/platforms/kubernetes/infisical-static-secret-crd#sources)). 
+  If two sources have conflicting secrets under the same path, the secret from the first source will be used.
 
   **Signature**
   ```go
@@ -291,7 +294,8 @@ The Infisical Secrets Operator exposes a wide range of helper functions to make 
   template:
     data:
       DB_PASSWORD: '{{ resolveSecretFromPath "databases.postgres.DB_PASSWORD.Value" }}'
-      API_KEY: '{{ resolveSecretFromPath "services.payments.API_KEY.Value" }}'
+      STRIPE_API_KEY: '{{ resolveSecretFromPath "services.payments.API_KEY.Value" }}'
+      DATADOG_API_KEY: '{{ resolveSecretFromPath "services.observability.API_KEY.Value" }}'
   ```
 </Accordion>
 
