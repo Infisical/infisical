@@ -36,7 +36,6 @@ export type TCreateMembershipUserDTO = {
       temporaryAccessStartTime?: string;
     }[];
   };
-  bootstrapForApplication?: { applicationId: string; projectId: string };
 };
 
 export type TUpdateMembershipUserDTO = {

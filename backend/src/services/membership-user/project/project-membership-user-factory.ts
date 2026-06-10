@@ -64,22 +64,15 @@ export const newProjectMembershipUserFactory = ({
     newUsers
   ) => {
     const scope = getScopeField(dto.scopeData);
-    let permission: Awaited<ReturnType<typeof permissionService.getProjectPermission>>["permission"] | null = null;
-    if (!dto.bootstrapForApplication) {
-      const { permission: projectPermission } = await permissionService.getProjectPermission({
-        actor: dto.permission.type,
-        actorId: dto.permission.id,
-        actionProjectType: ActionProjectType.Any,
-        actorAuthMethod: dto.permission.authMethod,
-        projectId: scope.value,
-        actorOrgId: dto.permission.orgId
-      });
-      ForbiddenError.from(projectPermission).throwUnlessCan(
-        ProjectPermissionMemberActions.Create,
-        ProjectPermissionSub.Member
-      );
-      permission = projectPermission;
-    }
+    const { permission } = await permissionService.getProjectPermission({
+      actor: dto.permission.type,
+      actorId: dto.permission.id,
+      actionProjectType: ActionProjectType.Any,
+      actorAuthMethod: dto.permission.authMethod,
+      projectId: scope.value,
+      actorOrgId: dto.permission.orgId
+    });
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Create, ProjectPermissionSub.Member);
 
     // TODO(namespace): this becomes tricky in namespace due to group flow
     const orgMemberships = await membershipUserDAL.find({
@@ -110,10 +103,6 @@ export const newProjectMembershipUserFactory = ({
       }
     }
 
-    if (dto.bootstrapForApplication) {
-      return;
-    }
-
     const { shouldUseNewPrivilegeSystem } = await requestMemoize(
       requestMemoKeys.orgFindById(dto.permission.orgId),
       () => orgDAL.findById(dto.permission.orgId)
@@ -130,7 +119,7 @@ export const newProjectMembershipUserFactory = ({
           shouldUseNewPrivilegeSystem,
           [ProjectPermissionMemberActions.AssignRole, ProjectPermissionMemberActions.GrantPrivileges],
           ProjectPermissionSub.Member,
-          permission as NonNullable<typeof permission>,
+          permission,
           permissionRole.permission,
           {
             userEmail: newUser.email ?? undefined,

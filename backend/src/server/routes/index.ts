@@ -1526,8 +1526,9 @@ export const registerRoutes = async (
     userDAL,
     identityDAL,
     groupDAL,
-    approvalPolicyDAL,
-    roleDAL
+    userGroupMembershipDAL,
+    identityGroupMembershipDAL,
+    approvalPolicyDAL
   });
 
   const signerMembershipService = signerMembershipServiceFactory({
