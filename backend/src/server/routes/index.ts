@@ -103,6 +103,8 @@ import { pamFolderDALFactory } from "@app/ee/services/pam-folder/pam-folder-dal"
 import { pamFolderServiceFactory } from "@app/ee/services/pam-folder/pam-folder-service";
 import { pamProjectResolverFactory } from "@app/ee/services/pam-instance/pam-project-resolver";
 import { pamMembershipServiceFactory } from "@app/ee/services/pam-membership/pam-membership-service";
+import { pamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
+import { pamWebAccessServiceFactory } from "@app/ee/services/pam-web-access/pam-web-access-service";
 import { permissionDALFactory } from "@app/ee/services/permission/permission-dal";
 import { permissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { pitServiceFactory } from "@app/ee/services/pit/pit-service";
@@ -1651,6 +1653,20 @@ export const registerRoutes = async (
     pkiDiscoveryConfigDAL,
     appConnectionDAL,
     dynamicSecretDAL
+  });
+
+  const pamSessionDAL = pamSessionDALFactory(db);
+
+  const pamWebAccessService = pamWebAccessServiceFactory({
+    pamAccountDAL,
+    permissionService,
+    auditLogService,
+    tokenService,
+    pamSessionDAL,
+    gatewayV2Service,
+    gatewayPoolService,
+    kmsService,
+    userDAL
   });
 
   const secretSyncQueue = secretSyncQueueFactory({
@@ -3450,6 +3466,7 @@ export const registerRoutes = async (
     pamFolder: pamFolderService,
     pamAccount: pamAccountService,
     pamMembership: pamMembershipService,
+    pamWebAccess: pamWebAccessService,
     certManagerInstance: certManagerInstanceService,
     certManagerExport: certManagerExportService,
     certificateAuthorityCrl: certificateAuthorityCrlService,

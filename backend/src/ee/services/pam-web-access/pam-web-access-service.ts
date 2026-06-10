@@ -1,0 +1,558 @@
+import "./pam-postgres-session-handler";
+import "./pam-ssh-session-handler";
+
+import net from "node:net";
+
+import { ForbiddenError } from "@casl/ability";
+import type WebSocket from "ws";
+
+import { ResourceType } from "@app/db/schemas";
+import { AuditLogInfo, EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
+import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
+import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
+import { PamAccountType } from "@app/ee/services/pam/pam-enums";
+import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import {
+  ResourcePermissionPamResourceActions,
+  ResourcePermissionSub
+} from "@app/ee/services/permission/resource-permission";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { GatewayProxyProtocol } from "@app/lib/gateway/types";
+import { createGatewayConnection, createRelayConnection, setupRelayServer } from "@app/lib/gateway-v2/gateway-v2";
+import { logger } from "@app/lib/logger";
+import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
+import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
+import { TokenType } from "@app/services/auth-token/auth-token-types";
+import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { KmsDataKey } from "@app/services/kms/kms-types";
+import { TUserDALFactory } from "@app/services/user/user-dal";
+
+import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
+import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
+import { PamSessionStatus } from "../pam-session/pam-session-enums";
+import { getSessionHandler, isWebAccessSupported } from "./pam-session-handler-registry";
+import {
+  DEFAULT_WEB_SESSION_DURATION_MS,
+  MAX_WEB_SESSIONS_PER_USER,
+  SessionEndReason,
+  TEarlyBufferedMsg,
+  TerminalServerMessageType,
+  TIssueWebSocketTicketDTO,
+  TSessionContext,
+  TSessionHandlerResult,
+  TWebSocketServerMessage,
+  WebSocketServerMessageSchema,
+  WS_IDLE_TIMEOUT_MS,
+  WS_PING_INTERVAL_MS
+} from "./pam-web-access-types";
+
+type TPamWebAccessServiceFactoryDep = {
+  pamAccountDAL: Pick<TPamAccountDALFactory, "findByIdWithDetails">;
+  permissionService: Pick<TPermissionServiceFactory, "getResourcePermission">;
+  auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
+  tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
+  pamSessionDAL: Pick<
+    TPamSessionDALFactory,
+    "create" | "endSessionById" | "activateSession" | "countActiveWebSessions" | "endExpiredWebSessions"
+  >;
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
+  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  userDAL: Pick<TUserDALFactory, "findById">;
+};
+
+export type TPamWebAccessServiceFactory = ReturnType<typeof pamWebAccessServiceFactory>;
+
+type THandleWebSocketConnectionDTO = {
+  socket: WebSocket;
+  accountId: string;
+  projectId: string;
+  orgId: string;
+  accountName: string;
+  auditLogInfo: AuditLogInfo;
+  userId: string;
+  actorEmail: string;
+  actorName: string;
+  actorIp: string;
+  actorUserAgent: string;
+  reason: string | null | undefined;
+  preAuthMessages: TEarlyBufferedMsg[];
+  preAuthHandler: (raw: Buffer | ArrayBuffer | Buffer[], isBinary: boolean) => void;
+};
+
+export const pamWebAccessServiceFactory = ({
+  pamAccountDAL,
+  permissionService,
+  auditLogService,
+  tokenService,
+  pamSessionDAL,
+  gatewayV2Service,
+  gatewayPoolService,
+  kmsService,
+  userDAL
+}: TPamWebAccessServiceFactoryDep) => {
+  const decrypt = async (projectId: string, blob: Buffer): Promise<Record<string, unknown>> => {
+    const { decryptor } = await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
+    return JSON.parse(decryptor({ cipherTextBlob: blob }).toString("utf-8")) as Record<string, unknown>;
+  };
+
+  const sendMessage = (socket: WebSocket, message: TWebSocketServerMessage): void => {
+    try {
+      if (socket.readyState === socket.OPEN) {
+        const parsed = WebSocketServerMessageSchema.parse(message);
+        socket.send(JSON.stringify(parsed));
+      }
+    } catch (err) {
+      logger.error(err, "Failed to send WebSocket message");
+    }
+  };
+
+  const sendSessionEndAndClose = (socket: WebSocket, reason: SessionEndReason): void => {
+    try {
+      if (socket.readyState === socket.OPEN) {
+        const parsed = WebSocketServerMessageSchema.parse({ type: TerminalServerMessageType.SessionEnd, reason });
+        socket.send(JSON.stringify(parsed), () => {
+          socket.close();
+        });
+        return;
+      }
+    } catch (err) {
+      logger.error(err, "Failed to send session end message");
+    }
+    socket.close();
+  };
+
+  const checkLaunchPermission = async (
+    projectId: string,
+    accountId: string,
+    folderId: string | null | undefined,
+    ctx: { actorId: string; actor: ActorType; actorOrgId: string; actorAuthMethod: ActorAuthMethod }
+  ) => {
+    if (folderId) {
+      try {
+        const { permission } = await permissionService.getResourcePermission({
+          actor: ctx.actor,
+          actorId: ctx.actorId,
+          projectId,
+          resourceType: ResourceType.PamFolder,
+          resourceId: folderId,
+          actorAuthMethod: ctx.actorAuthMethod,
+          actorOrgId: ctx.actorOrgId
+        });
+        ForbiddenError.from(permission).throwUnlessCan(
+          ResourcePermissionPamResourceActions.LaunchSessions,
+          ResourcePermissionSub.PamResource
+        );
+        return;
+      } catch {
+        // folder permission failed, fall through to account-level check
+      }
+    }
+
+    const { permission } = await permissionService.getResourcePermission({
+      actor: ctx.actor,
+      actorId: ctx.actorId,
+      projectId,
+      resourceType: ResourceType.PamAccount,
+      resourceId: accountId,
+      actorAuthMethod: ctx.actorAuthMethod,
+      actorOrgId: ctx.actorOrgId
+    });
+    ForbiddenError.from(permission).throwUnlessCan(
+      ResourcePermissionPamResourceActions.LaunchSessions,
+      ResourcePermissionSub.PamResource
+    );
+  };
+
+  const issueWebSocketTicket = async ({
+    accountId,
+    projectId,
+    orgId,
+    actor,
+    actorEmail,
+    actorName,
+    auditLogInfo,
+    reason
+  }: TIssueWebSocketTicketDTO) => {
+    const account = await pamAccountDAL.findByIdWithDetails(accountId);
+    if (!account || account.projectId !== projectId) {
+      throw new NotFoundError({ message: `Account with ID '${accountId}' not found` });
+    }
+
+    if (!isWebAccessSupported(account.accountType as PamAccountType)) {
+      throw new BadRequestError({ message: "Web access is not supported for this account type" });
+    }
+
+    const trimmedReason = reason?.trim() || null;
+
+    await checkLaunchPermission(projectId, accountId, account.folderId, {
+      actorId: actor.id,
+      actor: actor.type,
+      actorOrgId: actor.orgId,
+      actorAuthMethod: actor.authMethod
+    });
+
+    await pamSessionDAL.endExpiredWebSessions(actor.id, projectId);
+    const activeCount = await pamSessionDAL.countActiveWebSessions(actor.id, projectId);
+    if (activeCount >= MAX_WEB_SESSIONS_PER_USER) {
+      throw new BadRequestError({
+        message: `You have reached the maximum of ${MAX_WEB_SESSIONS_PER_USER} active web access sessions. Close an existing session and try again.`
+      });
+    }
+
+    const token = await tokenService.createTokenForUser({
+      type: TokenType.TOKEN_PAM_WS_TICKET,
+      userId: actor.id,
+      payload: JSON.stringify({
+        accountId,
+        projectId,
+        orgId,
+        accountName: account.name,
+        accountType: account.accountType,
+        actorEmail,
+        actorName,
+        auditLogInfo,
+        reason: trimmedReason
+      })
+    });
+
+    await auditLogService.createAuditLog({
+      ...auditLogInfo,
+      orgId,
+      projectId,
+      event: {
+        type: EventType.PAM_WEB_ACCESS_SESSION_TICKET_CREATED,
+        metadata: {
+          accountId,
+          resourceName: account.name,
+          accountName: account.name
+        }
+      }
+    });
+
+    return { ticket: `${actor.id}:${token}` };
+  };
+
+  const handleWebSocketConnection = async ({
+    socket,
+    accountId,
+    projectId,
+    orgId,
+    accountName,
+    auditLogInfo,
+    userId,
+    actorEmail,
+    actorName,
+    actorIp,
+    actorUserAgent,
+    reason: accessReason,
+    preAuthMessages,
+    preAuthHandler
+  }: THandleWebSocketConnectionDTO): Promise<void> => {
+    const earlyMessages: TEarlyBufferedMsg[] = preAuthMessages;
+    const releaseEarlyBuffer = () => {
+      socket.off("message", preAuthHandler);
+    };
+
+    let session: { id: string } | null = null;
+    let cleanedUp = false;
+    let handlerResult: TSessionHandlerResult | null = null;
+    let relayServer: { port: number; cleanup: () => Promise<void> } | null = null;
+    let relayCerts: {
+      relay: { clientCertificate: string; clientPrivateKey: string; serverCertificateChain: string };
+      gateway: { clientCertificate: string; clientPrivateKey: string; serverCertificateChain: string };
+      relayHost: string;
+    } | null = null;
+    let expiryTimer: ReturnType<typeof setTimeout> | null = null;
+    let pingInterval: ReturnType<typeof setInterval> | null = null;
+    let idleTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const cleanup = async () => {
+      if (expiryTimer) {
+        clearTimeout(expiryTimer);
+        expiryTimer = null;
+      }
+      if (pingInterval) {
+        clearInterval(pingInterval);
+        pingInterval = null;
+      }
+      if (idleTimer) {
+        clearTimeout(idleTimer);
+        idleTimer = null;
+      }
+
+      if (handlerResult) {
+        try {
+          await handlerResult.cleanup();
+        } catch (err) {
+          logger.debug(err, "Error in handler cleanup");
+        } finally {
+          handlerResult = null;
+        }
+      }
+
+      if (relayServer) {
+        try {
+          await relayServer.cleanup();
+        } catch (err) {
+          logger.debug(err, "Error closing relay server");
+        } finally {
+          relayServer = null;
+        }
+      }
+
+      if (session) {
+        const sessionId = session.id;
+        try {
+          const updated = await pamSessionDAL.endSessionById(sessionId);
+          if (updated) {
+            await auditLogService.createAuditLog({
+              ...auditLogInfo,
+              orgId,
+              projectId,
+              event: {
+                type: EventType.PAM_SESSION_END,
+                metadata: { sessionId, accountName }
+              }
+            });
+          }
+        } catch (err) {
+          logger.error(err, `Failed to end session in DB [sessionId=${sessionId}]`);
+        } finally {
+          session = null;
+        }
+      }
+
+      if (relayCerts) {
+        const certs = relayCerts;
+        relayCerts = null;
+        void (async () => {
+          let relayConn: net.Socket | null = null;
+          try {
+            relayConn = await createRelayConnection({
+              relayHost: certs.relayHost,
+              clientCertificate: certs.relay.clientCertificate,
+              clientPrivateKey: certs.relay.clientPrivateKey,
+              serverCertificateChain: certs.relay.serverCertificateChain
+            });
+            const cancelConn = await createGatewayConnection(
+              relayConn,
+              certs.gateway,
+              GatewayProxyProtocol.PamSessionCancellation
+            );
+            cancelConn.end();
+          } catch (err) {
+            logger.debug(err, "Session cancellation signal failed (best-effort)");
+          } finally {
+            relayConn?.destroy();
+          }
+        })();
+      }
+
+      cleanedUp = true;
+    };
+
+    try {
+      const account = await pamAccountDAL.findByIdWithDetails(accountId);
+      if (!account || account.projectId !== projectId) {
+        throw new BadRequestError({ message: "Invalid account or project" });
+      }
+
+      const handlerEntry = getSessionHandler(account.accountType as PamAccountType);
+      if (!handlerEntry) {
+        throw new BadRequestError({ message: "Web access is not supported for this account type" });
+      }
+
+      const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
+        gatewayId: account.gatewayId,
+        gatewayPoolId: account.gatewayPoolId
+      });
+      if (!effectiveGatewayId) {
+        throw new BadRequestError({ message: "Gateway not configured for this account" });
+      }
+
+      await pamSessionDAL.endExpiredWebSessions(userId, projectId);
+      const activeCount = await pamSessionDAL.countActiveWebSessions(userId, projectId);
+      if (activeCount >= MAX_WEB_SESSIONS_PER_USER) {
+        sendMessage(socket, {
+          type: TerminalServerMessageType.Output,
+          data: `${SessionEndReason.SessionLimitReached}\n`
+        });
+        sendSessionEndAndClose(socket, SessionEndReason.SessionLimitReached);
+        return;
+      }
+
+      const connectionDetails = (await decrypt(projectId, account.encryptedConnectionDetails)) as {
+        host: string;
+        port: number;
+      };
+      const credentials = await decrypt(projectId, account.encryptedCredentials);
+
+      const user = await userDAL.findById(userId);
+      const sessionDurationMs = DEFAULT_WEB_SESSION_DURATION_MS;
+      const expiresAt = new Date(Date.now() + sessionDurationMs);
+
+      session = await pamSessionDAL.create({
+        status: PamSessionStatus.Starting,
+        accessMethod: "web",
+        expiresAt,
+        accountName,
+        accountType: account.accountType,
+        actorEmail,
+        actorIp,
+        actorName,
+        actorUserAgent,
+        projectId,
+        resourceName: account.name,
+        accountId: account.id,
+        userId,
+        gatewayId: effectiveGatewayId,
+        reason: accessReason?.trim() || null,
+        folderName: account.folderName,
+        selectedHost: connectionDetails.host
+      });
+
+      const certs = await gatewayV2Service.getPAMConnectionDetails({
+        gatewayId: effectiveGatewayId,
+        sessionId: session.id,
+        resourceType: handlerEntry.gatewayResourceType,
+        host: connectionDetails.host,
+        port: connectionDetails.port,
+        duration: sessionDurationMs,
+        actorMetadata: {
+          id: userId,
+          type: ActorType.USER,
+          name: user?.email ?? ""
+        }
+      });
+
+      if (!certs) {
+        throw new BadRequestError({ message: "Failed to obtain gateway connection details" });
+      }
+
+      relayCerts = {
+        relayHost: certs.relayHost,
+        relay: certs.relay,
+        gateway: certs.gateway
+      };
+
+      relayServer = await setupRelayServer({
+        protocol: GatewayProxyProtocol.Pam,
+        relayHost: certs.relayHost,
+        relay: certs.relay,
+        gateway: certs.gateway,
+        longLived: true
+      });
+
+      const isNearSessionExpiry = () => Date.now() >= expiresAt.getTime() - 30_000;
+
+      const boundSendMessage = (msg: TWebSocketServerMessage) => sendMessage(socket, msg);
+      const boundSendSessionEnd = (reason: SessionEndReason) =>
+        sendMessage(socket, { type: TerminalServerMessageType.SessionEnd, reason });
+      const handlerCleanup = () => {
+        if (!cleanedUp) void cleanup();
+      };
+
+      const ctx: TSessionContext = {
+        socket,
+        relayPort: relayServer.port,
+        resourceName: account.name,
+        sessionId: session.id,
+        sendMessage: boundSendMessage,
+        sendSessionEnd: boundSendSessionEnd,
+        isNearSessionExpiry,
+        onCleanup: handlerCleanup,
+        earlyMessages,
+        releaseEarlyBuffer
+      };
+
+      try {
+        handlerResult = await handlerEntry.handler(ctx, {
+          connectionDetails: connectionDetails as Record<string, unknown>,
+          credentials
+        });
+      } finally {
+        releaseEarlyBuffer();
+      }
+
+      await pamSessionDAL.activateSession(session.id);
+
+      logger.info({ accountId, sessionId: session.id }, "Web access session established");
+
+      await auditLogService.createAuditLog({
+        ...auditLogInfo,
+        orgId,
+        projectId,
+        event: {
+          type: EventType.PAM_ACCOUNT_ACCESS,
+          metadata: {
+            accountId,
+            resourceName: account.name,
+            accountName,
+            duration: expiresAt.toISOString(),
+            reason: accessReason ?? undefined
+          }
+        }
+      });
+
+      const resetIdleTimer = () => {
+        if (idleTimer) clearTimeout(idleTimer);
+        idleTimer = setTimeout(() => {
+          if (!cleanedUp) {
+            void cleanup();
+            sendSessionEndAndClose(socket, SessionEndReason.IdleTimeout);
+          }
+        }, WS_IDLE_TIMEOUT_MS);
+      };
+
+      resetIdleTimer();
+
+      let isAlive = true;
+
+      socket.on("pong", () => {
+        isAlive = true;
+      });
+
+      pingInterval = setInterval(() => {
+        if (!isAlive) {
+          socket.terminate();
+          return;
+        }
+        isAlive = false;
+        if (socket.readyState === socket.OPEN) {
+          socket.ping();
+        }
+      }, WS_PING_INTERVAL_MS);
+
+      socket.on("message", () => {
+        resetIdleTimer();
+      });
+
+      expiryTimer = setTimeout(() => {
+        if (!cleanedUp) {
+          void cleanup();
+          sendSessionEndAndClose(socket, SessionEndReason.SessionCompleted);
+        }
+      }, sessionDurationMs);
+
+      socket.on("close", () => {
+        logger.info({ accountId, sessionId: session?.id }, "WebSocket connection closed");
+        void cleanup();
+      });
+
+      socket.on("error", (err: Error) => {
+        logger.error(err, "WebSocket error");
+        void cleanup();
+      });
+    } catch (err) {
+      logger.error(err, "Failed to establish web access session");
+      await cleanup();
+      sendSessionEndAndClose(socket, SessionEndReason.SetupFailed);
+    }
+  };
+
+  return {
+    issueWebSocketTicket,
+    handleWebSocketConnection
+  };
+};
