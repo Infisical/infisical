@@ -1,13 +1,59 @@
 /* eslint-disable func-names */
+import handlebars from "handlebars";
 import { customAlphabet } from "nanoid";
+import RE2 from "re2";
 
 import { TDynamicSecrets } from "@app/db/schemas/dynamic-secrets";
 import { BadRequestError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
-import { createHandlebarsClient } from "@app/lib/template/handlebars-client";
 
 import { ActorIdentityAttributes } from "../../dynamic-secret-lease/dynamic-secret-lease-types";
 import { DynamicSecretProviders, DynamicSecretSqlDBSchema, SqlProviders } from "./models";
+
+const hbsReplace = (text: string, searchValue: string, replaceValue: string) => {
+  // Convert to string if it's not already
+  const textStr = String(text || "");
+  if (!textStr) {
+    return textStr;
+  }
+
+  try {
+    const re2Pattern = new RE2(searchValue, "g");
+    // Replace all occurrences
+    return re2Pattern.replace(textStr, replaceValue);
+  } catch (error) {
+    logger.error(error, "RE2 pattern failed, using original template");
+    return textStr;
+  }
+};
+
+const hbsRandom = (length: number) => {
+  if (typeof length !== "number" || length <= 0 || length > 100) {
+    return "";
+  }
+  return alphaNumericNanoId(length);
+};
+
+const hbsTruncate = (text: string, length: number) => {
+  const textStr = String(text || "");
+  if (!textStr) {
+    return textStr;
+  }
+
+  if (typeof length !== "number" || length <= 0) return textStr;
+  return textStr.substring(0, length);
+};
+
+const hbsUppercase = (text: string) => {
+  const textStr = String(text || "");
+  return textStr.toUpperCase();
+};
+
+const hbsLowercase = (text: string) => {
+  const textStr = String(text || "");
+  return textStr.toLowerCase();
+};
 
 const compileUsernameTemplate = ({
   usernameTemplate,
@@ -26,8 +72,22 @@ const compileUsernameTemplate = ({
     toUpperCase?: boolean;
   };
 }): string => {
-  const hbs = createHandlebarsClient();
+  // Create isolated handlebars instance
+  const hbs = handlebars.create();
 
+  // Register random helper on local instance
+  hbs.registerHelper("random", hbsRandom);
+  // Register replace helper on local instance
+  hbs.registerHelper("replace", hbsReplace);
+  // Register truncate helper on local instance
+  hbs.registerHelper("truncate", hbsTruncate);
+
+  // Register uppercase helper on local instance
+  hbs.registerHelper("uppercase", hbsUppercase);
+  // Register lowercase helper on local instance
+  hbs.registerHelper("lowercase", hbsLowercase);
+
+  // Compile template with context using local instance
   const context = {
     randomUsername,
     unixTimestamp,

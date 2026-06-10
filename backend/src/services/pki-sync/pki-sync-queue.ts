@@ -4,9 +4,9 @@ import * as x509 from "@peculiar/x509";
 import { AxiosError } from "axios";
 import { Job } from "bullmq";
 import { randomUUID } from "crypto";
+import handlebars from "handlebars";
 
 import { TCertificates } from "@app/db/schemas";
-import { createHandlebarsClient } from "@app/lib/template/handlebars-client";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -297,7 +297,7 @@ export const pkiSyncQueueFactory = ({
                 friendlyName: cert.friendlyName || "",
                 environment
               };
-              certificateName = createHandlebarsClient().compile(certificateNameSchema)(templateData);
+              certificateName = handlebars.compile(certificateNameSchema)(templateData);
             } else {
               const stableId = cert.profileId
                 ? `${cert.profileId.replace(/-/g, "")}-${(cert.commonName || "").replace(/[^a-zA-Z0-9]/g, "")}`

@@ -1,9 +1,8 @@
 import ldapjs from "@infisical/ldapjs";
+import handlebars from "handlebars";
 import ldif from "ldif";
 import { customAlphabet } from "nanoid";
 import RE2 from "re2";
-
-import { createHandlebarsClient } from "@app/lib/template/handlebars-client";
 import { z } from "zod";
 
 import { TDynamicSecrets } from "@app/db/schemas";
@@ -43,7 +42,7 @@ const generateLDIF = ({
     EncodedPassword: encodePassword(password)
   };
 
-  const renderTemplate = createHandlebarsClient().compile(ldifTemplate);
+  const renderTemplate = handlebars.compile(ldifTemplate);
   const renderedLdif = renderTemplate(data);
 
   return renderedLdif;

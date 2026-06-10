@@ -1,5 +1,6 @@
 /* eslint-disable no-nested-ternary */
 import { ForbiddenError, MongoAbility, PureAbility, RawRuleOf, subject } from "@casl/ability";
+import handlebars from "handlebars";
 import { z } from "zod";
 
 import { TOrganizations } from "@app/db/schemas";
@@ -19,6 +20,7 @@ import {
   ProjectPermissionV2Schema,
   SecretSubjectFields
 } from "./project-permission";
+import { logger } from "@app/lib/logger";
 
 export function throwIfMissingSecretReadValueOrDescribePermission(
   permission: MongoAbility<ProjectPermissionSet> | PureAbility,
@@ -366,9 +368,30 @@ const expandLegacyForbidActions = <T extends RawRuleOf<MongoAbility<ProjectPermi
   });
 };
 
+
+const createHandlebarsClient = () => {
+  const hbs = handlebars.create();
+
+  hbs.registerHelper('substr', hbsSubstr);
+  hbs.registerHelper("stripPrefix", hbsStripPrefix);
+
+  return hbs;
+}
+
+const hbsSubstr = (text: string, start: number, end?: number) => {
+  const endIndex = end && typeof end === 'number' ? end : undefined;
+  logger.info({text, start, end: end ?? 'undefined'}, 'substr')
+  return text.substring(start, endIndex);
+}
+
+const hbsStripPrefix = (text: string, prefix: string) => {
+  return text.startsWith(prefix) ? text.substring(prefix.length) : text;
+}
+
 export {
   assertPermissionBoundary,
   constructPermissionErrorMessage,
+  createHandlebarsClient,
   escapeHandlebarsMissingDict,
   expandLegacyForbidActions,
   isAuthMethodSaml,

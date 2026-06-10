@@ -1,8 +1,8 @@
+import handlebars from "handlebars";
 import knex, { Knex } from "knex";
 import { z } from "zod";
 
 import { crypto } from "@app/lib/crypto/cryptography";
-import { createHandlebarsClient } from "@app/lib/template/handlebars-client";
 import { BadRequestError } from "@app/lib/errors";
 import { sanitizeString } from "@app/lib/fn";
 import { GatewayProxyProtocol, withGatewayProxy } from "@app/lib/gateway";
@@ -127,7 +127,7 @@ const generateUsername = (usernameTemplate?: string | null) => {
   const randomUsername = `inf_${alphaNumericNanoId(25)}`; // Username must start with an ascii letter, so we prepend the username with "inf-"
   if (!usernameTemplate) return randomUsername;
 
-  return createHandlebarsClient().compile(usernameTemplate)({
+  return handlebars.compile(usernameTemplate)({
     randomUsername,
     unixTimestamp: Math.floor(Date.now() / 100)
   });
@@ -286,7 +286,7 @@ export const VerticaProvider = ({
       try {
         client = await $getClient({ ...providerInputs, hostIp: host, port });
 
-        const creationStatement = createHandlebarsClient().compile(providerInputs.creationStatement, { noEscape: true })({
+        const creationStatement = handlebars.compile(providerInputs.creationStatement, { noEscape: true })({
           username,
           password
         });
@@ -332,7 +332,7 @@ export const VerticaProvider = ({
       try {
         client = await $getClient({ ...providerInputs, hostIp: host, port });
 
-        const revokeStatement = createHandlebarsClient().compile(providerInputs.revocationStatement, { noEscape: true })({
+        const revokeStatement = handlebars.compile(providerInputs.revocationStatement, { noEscape: true })({
           username
         });
 

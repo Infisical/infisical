@@ -1,7 +1,7 @@
 import { AxiosError } from "axios";
+import handlebars from "handlebars";
 
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
-import { createHandlebarsClient } from "@app/lib/template/handlebars-client";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
@@ -184,7 +184,7 @@ export const getKeyWithSchema = ({
 }) => {
   if (!schema) return key;
 
-  return createHandlebarsClient().compile(schema)({
+  return handlebars.compile(schema)({
     secretKey: key,
     environment
   });
@@ -197,7 +197,7 @@ const addSchema = (unprocessedSecretMap: TSecretMap, environment: string, schema
   const processedSecretMap: TSecretMap = {};
 
   for (const [key, value] of Object.entries(unprocessedSecretMap)) {
-    const newKey = createHandlebarsClient().compile(schema)({
+    const newKey = handlebars.compile(schema)({
       secretKey: key,
       environment
     });
@@ -212,7 +212,7 @@ const addSchema = (unprocessedSecretMap: TSecretMap, environment: string, schema
 const stripSchema = (unprocessedSecretMap: TSecretMap, environment: string, schema?: string): TSecretMap => {
   if (!schema) return unprocessedSecretMap;
 
-  const compiledSchemaPattern = createHandlebarsClient().compile(schema)({
+  const compiledSchemaPattern = handlebars.compile(schema)({
     secretKey: "{{secretKey}}", // Keep secretKey
     environment
   });
@@ -240,7 +240,7 @@ const stripSchema = (unprocessedSecretMap: TSecretMap, environment: string, sche
 export const matchesSchema = (key: string, environment: string, schema?: string): boolean => {
   if (!schema) return true;
 
-  const compiledSchemaPattern = createHandlebarsClient().compile(schema)({
+  const compiledSchemaPattern = handlebars.compile(schema)({
     secretKey: "{{secretKey}}", // Keep secretKey
     environment
   });

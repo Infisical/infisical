@@ -1,3 +1,4 @@
+import handlebars from "handlebars";
 import { Knex } from "knex";
 
 import {
@@ -9,7 +10,6 @@ import {
   TRotationFactoryRotateCredentials
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
 import { BadRequestError } from "@app/lib/errors";
-import { createHandlebarsClient } from "@app/lib/template/handlebars-client";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import {
   executeWithPotentialGateway,
@@ -129,7 +129,7 @@ export const sqlCredentialsRotationFactory: TRotationFactory<
 
   const $executeQuery = async (tx: Knex, username: string, password: string) => {
     if (userProvidedRotationStatement) {
-      const revokeStatement = createHandlebarsClient().compile(userProvidedRotationStatement)({
+      const revokeStatement = handlebars.compile(userProvidedRotationStatement)({
         username,
         password,
         database: connection.credentials.database

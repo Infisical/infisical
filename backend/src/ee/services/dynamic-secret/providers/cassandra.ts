@@ -1,8 +1,7 @@
 import cassandra from "cassandra-driver";
+import handlebars from "handlebars";
 import { customAlphabet } from "nanoid";
 import { z } from "zod";
-
-import { createHandlebarsClient } from "@app/lib/template/handlebars-client";
 
 import { TDynamicSecrets } from "@app/db/schemas";
 import { BadRequestError } from "@app/lib/errors";
@@ -110,7 +109,7 @@ export const CassandraProvider = (): TDynamicProviderFns => {
     try {
       const expiration = new Date(expireAt).toISOString();
 
-      const creationStatement = createHandlebarsClient().compile(providerInputs.creationStatement, { noEscape: true })({
+      const creationStatement = handlebars.compile(providerInputs.creationStatement, { noEscape: true })({
         username,
         password,
         expiration,
@@ -149,7 +148,7 @@ export const CassandraProvider = (): TDynamicProviderFns => {
     const { keyspace } = providerInputs;
 
     try {
-      const revokeStatement = createHandlebarsClient().compile(providerInputs.revocationStatement, { noEscape: true })({
+      const revokeStatement = handlebars.compile(providerInputs.revocationStatement, { noEscape: true })({
         username,
         keyspace
       });
@@ -186,7 +185,7 @@ export const CassandraProvider = (): TDynamicProviderFns => {
     try {
       const expiration = new Date(expireAt).toISOString();
 
-      const renewStatement = createHandlebarsClient().compile(providerInputs.renewStatement, { noEscape: true })({
+      const renewStatement = handlebars.compile(providerInputs.renewStatement, { noEscape: true })({
         username: entityId,
         keyspace,
         expiration

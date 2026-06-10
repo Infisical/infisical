@@ -4,11 +4,10 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 
+import handlebars from "handlebars";
 import hdb from "hdb";
 import { customAlphabet } from "nanoid";
 import { z } from "zod";
-
-import { createHandlebarsClient } from "@app/lib/template/handlebars-client";
 
 import { TDynamicSecrets } from "@app/db/schemas";
 import { BadRequestError } from "@app/lib/errors";
@@ -118,7 +117,7 @@ export const SapHanaProvider = (): TDynamicProviderFns => {
     const expiration = new Date(expireAt).toISOString();
 
     const client = await $getClient(providerInputs);
-    const creationStatement = createHandlebarsClient().compile(providerInputs.creationStatement, { noEscape: true })({
+    const creationStatement = handlebars.compile(providerInputs.creationStatement, { noEscape: true })({
       username,
       password,
       expiration
@@ -150,7 +149,7 @@ export const SapHanaProvider = (): TDynamicProviderFns => {
   const revoke = async (inputs: unknown, username: string) => {
     const providerInputs = await validateProviderInputs(inputs);
     const client = await $getClient(providerInputs);
-    const revokeStatement = createHandlebarsClient().compile(providerInputs.revocationStatement, { noEscape: true })({ username });
+    const revokeStatement = handlebars.compile(providerInputs.revocationStatement, { noEscape: true })({ username });
     const queries = revokeStatement.toString().split(";").filter(Boolean);
     try {
       for await (const query of queries) {
@@ -184,7 +183,7 @@ export const SapHanaProvider = (): TDynamicProviderFns => {
     try {
       const expiration = new Date(expireAt).toISOString();
 
-      const renewStatement = createHandlebarsClient().compile(providerInputs.renewStatement, { noEscape: true })({
+      const renewStatement = handlebars.compile(providerInputs.renewStatement, { noEscape: true })({
         username: entityId,
         expiration
       });

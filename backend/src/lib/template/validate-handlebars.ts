@@ -1,14 +1,16 @@
+import handlebars from "handlebars";
+
 import { BadRequestError } from "../errors";
 import { logger } from "../logger";
-import { createHandlebarsClient } from "./handlebars-client";
 
 type SanitizationArg = {
   allowedExpressions?: (arg: string) => boolean;
+  allowedHelpers?: string[];
 };
 
 const isValidExpression = (expression: string, dto: SanitizationArg): boolean => {
   // Allow helper functions (replace, truncate)
-  const allowedHelpers = ["replace", "truncate", "random", "uppercase", "lowercase", "substr", "stripPrefix"];
+  const allowedHelpers = dto.allowedHelpers ?? ["replace", "truncate", "random", "uppercase", "lowercase"];
   if (allowedHelpers.includes(expression)) {
     return true;
   }
@@ -18,7 +20,7 @@ const isValidExpression = (expression: string, dto: SanitizationArg): boolean =>
 };
 
 export const validateHandlebarTemplate = (templateName: string, template: string, dto: SanitizationArg) => {
-  const parsedAst = createHandlebarsClient().parse(template);
+  const parsedAst = handlebars.parse(template);
   parsedAst.body.forEach((el) => {
     if (el.type === "ContentStatement") return;
     if (el.type === "MustacheStatement" && "path" in el) {
@@ -31,7 +33,7 @@ export const validateHandlebarTemplate = (templateName: string, template: string
 };
 
 export const isValidHandleBarTemplate = (template: string, dto: SanitizationArg) => {
-  const parsedAst = createHandlebarsClient().parse(template);
+  const parsedAst = handlebars.parse(template);
   return parsedAst.body.every((el) => {
     if (el.type === "ContentStatement") return true;
     if (el.type === "MustacheStatement" && "path" in el) {

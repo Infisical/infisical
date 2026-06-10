@@ -1,7 +1,7 @@
+import handlebars from "handlebars";
 import { z, ZodSchema } from "zod";
 
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
-import { createHandlebarsClient } from "@app/lib/template/handlebars-client";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { BadRequestError } from "@app/lib/errors";
@@ -99,7 +99,7 @@ export const applyCertificateNameSchema = (
   const processedCertificateMap: TCertificateMap = {};
 
   for (const [certificateId, value] of Object.entries(certificateMap)) {
-    const newName = createHandlebarsClient().compile(schema)({
+    const newName = handlebars.compile(schema)({
       certificateId,
       environment
     });
@@ -117,7 +117,7 @@ export const stripCertificateNameSchema = (
 ): TCertificateMap => {
   if (!schema) return certificateMap;
 
-  const compiledSchemaPattern = createHandlebarsClient().compile(schema)({
+  const compiledSchemaPattern = handlebars.compile(schema)({
     certificateId: "{{certificateId}}",
     environment
   });
@@ -144,7 +144,7 @@ export const stripCertificateNameSchema = (
 export const matchesCertificateNameSchema = (name: string, environment: string, schema?: string): boolean => {
   if (!schema) return true;
 
-  const compiledSchemaPattern = createHandlebarsClient().compile(schema)({
+  const compiledSchemaPattern = handlebars.compile(schema)({
     certificateId: "{{certificateId}}",
     environment
   });

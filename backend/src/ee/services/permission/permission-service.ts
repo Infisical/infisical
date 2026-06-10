@@ -1,6 +1,7 @@
 import { createMongoAbility, ForbiddenError, MongoAbility, RawRuleOf, subject } from "@casl/ability";
 import { PackRule, packRules, unpackRules } from "@casl/ability/extra";
 import { requestContext } from "@fastify/request-context";
+import handlebars from "handlebars";
 
 import {
   AccessScope,
@@ -62,7 +63,7 @@ import {
   OrgPermissionSubjects
 } from "./org-permission";
 import { TPermissionDALFactory } from "./permission-dal";
-import { escapeHandlebarsMissingDict, expandLegacyForbidActions, validateOrgSSO } from "./permission-fns";
+import { createHandlebarsClient, escapeHandlebarsMissingDict, expandLegacyForbidActions, validateOrgSSO } from "./permission-fns";
 import {
   TBuildOrgPermissionDTO,
   TBuildProjectPermissionDTO,
@@ -76,8 +77,6 @@ import {
   ProjectPermissionSet,
   ProjectPermissionSub
 } from "./project-permission";
-import { createHandlebarsClient } from "@app/lib/template/handlebars-client";
-import { logger } from "@app/lib/logger";
 
 // Returns the delegated OAuth scopes for the current request, or undefined when this is not an
 // OAuth-delegated request. The distinction matters: a returned array (even empty) means scope
