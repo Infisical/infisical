@@ -286,6 +286,10 @@ export type TF5BigIpConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.F5BigIp;
 };
 
+export type TConvexConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Convex;
+};
+
 export type TAppConnectionOption =
   | TAwsConnectionOption
   | TGitHubConnectionOption
@@ -354,7 +358,8 @@ export type TAppConnectionOption =
   | TSalesforceConnectionOption
   | TSnowflakeConnectionOption
   | TDatadogConnectionOption
-  | TF5BigIpConnectionOption;
+  | TF5BigIpConnectionOption
+  | TConvexConnectionOption;
 
 export type TAppConnectionOptionMap = {
   [AppConnection.AWS]: TAwsConnectionOption;
@@ -425,4 +430,5 @@ export type TAppConnectionOptionMap = {
   [AppConnection.Snowflake]: TSnowflakeConnectionOption;
   [AppConnection.Datadog]: TDatadogConnectionOption;
   [AppConnection.F5BigIp]: TF5BigIpConnectionOption;
+  [AppConnection.Convex]: TConvexConnectionOption;
 };
