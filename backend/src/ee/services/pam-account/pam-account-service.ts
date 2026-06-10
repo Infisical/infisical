@@ -194,8 +194,8 @@ export const pamAccountServiceFactory = ({
         const { permission } = await checkFolderPermission(folderId, projectId, ctx);
         ForbiddenError.from(permission).throwUnlessCan(action, ResourcePermissionSub.PamResource);
         return;
-      } catch {
-        // folder permission failed, fall through to account-level check
+      } catch (err) {
+        if (!(err instanceof ForbiddenError)) throw err;
       }
     }
 

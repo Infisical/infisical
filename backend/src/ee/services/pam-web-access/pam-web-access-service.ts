@@ -144,8 +144,8 @@ export const pamWebAccessServiceFactory = ({
           ResourcePermissionSub.PamResource
         );
         return;
-      } catch {
-        // folder permission failed, fall through to account-level check
+      } catch (err) {
+        if (!(err instanceof ForbiddenError)) throw err;
       }
     }
 
