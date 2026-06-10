@@ -10,6 +10,7 @@ export type TInitiateGitHubManifestDTO = {
   githubHost?: string;
   installState: string;
   projectId?: string;
+  gatewayId?: string;
   orgPermission: OrgServiceActor;
 };
 
@@ -24,6 +25,7 @@ export type TGitHubManifestStatePayload = {
   instanceType: "cloud" | "server";
   githubOrg: string;
   githubHost: string;
+  gatewayId: string | null;
   installState: string;
 };
 

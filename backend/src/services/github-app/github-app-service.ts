@@ -24,6 +24,7 @@ import { crypto } from "@app/lib/crypto";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { OrgServiceActor } from "@app/lib/types";
 import { safeRequest } from "@app/lib/validator/safe-request";
 import {
   assertPlatformGitHubHostAllowed,
@@ -123,6 +124,42 @@ export const gitHubAppServiceFactory = ({
       });
 
       ForbiddenError.from(permission).throwUnlessCan(orgAction, OrgPermissionSubjects.AppConnections);
+    }
+  };
+
+  // Validates that the actor may attach the given gateway and that it exists for the org.
+  // Mirrors the gateway checks in resolveUserInstallations so the manifest exchange can route
+  // through a gateway when the GitHub host (e.g. a private GitHub Enterprise Server) isn't
+  // directly reachable from the Infisical backend.
+  const assertGatewayUsable = async (gatewayId: string, orgPermission: OrgServiceActor) => {
+    const plan = await licenseService.getPlan(orgPermission.orgId);
+    if (!plan.gateway) {
+      throw new BadRequestError({
+        message:
+          "Your current plan does not support gateway usage with app connections. Please upgrade your plan or contact Infisical Sales for assistance."
+      });
+    }
+
+    const { permission } = await permissionService.getOrgPermission({
+      actor: orgPermission.type,
+      actorId: orgPermission.id,
+      orgId: orgPermission.orgId,
+      actorAuthMethod: orgPermission.authMethod,
+      actorOrgId: orgPermission.orgId,
+      scope: OrganizationActionScope.Any
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionGatewayActions.AttachGateways,
+      OrgPermissionSubjects.Gateway
+    );
+
+    const [gateway] = await gatewayDAL.find({ id: gatewayId, orgId: orgPermission.orgId });
+    const [gatewayV2] = await gatewayV2DAL.find({ id: gatewayId, orgId: orgPermission.orgId });
+    if (!gateway && !gatewayV2) {
+      throw new NotFoundError({
+        message: `Gateway with ID ${gatewayId} not found for org`
+      });
     }
   };
 
@@ -343,6 +380,7 @@ export const gitHubAppServiceFactory = ({
     githubHost,
     installState,
     projectId,
+    gatewayId,
     orgPermission
   }: TInitiateGitHubManifestDTO) => {
     await checkAppConnectionPermission({
@@ -354,6 +392,10 @@ export const gitHubAppServiceFactory = ({
     });
 
     assertPlatformGitHubHostAllowed(githubHost);
+
+    if (gatewayId) {
+      await assertGatewayUsable(gatewayId, orgPermission);
+    }
 
     const existing = await gitHubAppDAL.findOne({
       orgId: orgPermission.orgId,
@@ -386,6 +428,7 @@ export const gitHubAppServiceFactory = ({
         instanceType,
         githubOrg: githubOrg ?? "",
         githubHost: githubHost ?? "",
+        gatewayId: gatewayId ?? null,
         installState
       } satisfies TGitHubManifestStatePayload,
       AUTH_SECRET,
@@ -447,6 +490,7 @@ export const gitHubAppServiceFactory = ({
       instanceType,
       githubOrg,
       githubHost,
+      gatewayId = null,
       installState
     } = statePayload;
 
@@ -503,23 +547,40 @@ export const gitHubAppServiceFactory = ({
           const apiBaseUrl = await getGitHubInstanceApiUrl({
             credentials: { host: githubHost || undefined, instanceType }
           });
-          const { data } = await safeRequest.post<TGitHubAppManifestResponse>(
-            `https://${apiBaseUrl}/app-manifests/${encodeURIComponent(code)}/conversions`,
-            {},
-            {
-              headers: {
-                Accept: "application/vnd.github+json",
-                "X-GitHub-Api-Version": "2022-11-28"
-              }
+
+          const requestConfig: AxiosRequestConfig & { url: string } = {
+            url: `https://${apiBaseUrl}/app-manifests/${encodeURIComponent(code)}/conversions`,
+            method: "POST",
+            data: {},
+            headers: {
+              Accept: "application/vnd.github+json",
+              "X-GitHub-Api-Version": "2022-11-28"
             }
-          );
+          };
+
+          const { data } = gatewayId
+            ? await requestWithGitHubGateway<TGitHubAppManifestResponse>(
+                { gatewayId },
+                gatewayService,
+                gatewayV2Service,
+                requestConfig,
+                await getGitHubGatewayConnectionDetails(gatewayId, apiBaseUrl, gatewayV2Service)
+              )
+            : await safeRequest.request<TGitHubAppManifestResponse>(requestConfig);
           manifestResponse = data;
         } catch (err) {
           logger.error(
-            { ...sanitizeGitHubAxiosError(err), orgId, projectId, instanceType, host: githubHost || "github.com" },
+            {
+              ...sanitizeGitHubAxiosError(err),
+              orgId,
+              projectId,
+              instanceType,
+              host: githubHost || "github.com",
+              gatewayId
+            },
             `Failed to exchange GitHub App manifest code [orgId=${orgId}] [projectId=${
               projectId ?? "null"
-            }] [instanceType=${instanceType}] [host=${githubHost || "github.com"}]`
+            }] [instanceType=${instanceType}] [host=${githubHost || "github.com"}] [gatewayId=${gatewayId ?? "null"}]`
           );
           throw new BadRequestError({
             message:

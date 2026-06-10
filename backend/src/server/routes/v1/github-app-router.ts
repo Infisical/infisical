@@ -21,7 +21,8 @@ export const registerGitHubAppRouter = async (server: FastifyZodProvider) => {
         githubOrg: z.string().trim().optional(),
         githubHost: z.string().trim().optional(),
         installState: z.string().trim().min(1),
-        projectId: z.string().trim().optional()
+        projectId: z.string().trim().optional(),
+        gatewayId: z.string().uuid().optional()
       }),
       response: {
         200: z.object({
@@ -39,7 +40,8 @@ export const registerGitHubAppRouter = async (server: FastifyZodProvider) => {
         githubOrg: req.body.githubOrg,
         githubHost: req.body.githubHost,
         installState: req.body.installState,
-        projectId: req.body.projectId
+        projectId: req.body.projectId,
+        gatewayId: req.body.gatewayId
       });
 
       return result;
