@@ -54,7 +54,10 @@ export const auditLogStreamOutboxDALFactory = (db: TDbClient) => {
           .where({ streamId })
           .whereIn("status", [AuditLogStreamOutboxStatus.Pending, AuditLogStreamOutboxStatus.Retry])
           .andWhere("nextRetryAt", "<=", tx.fn.now())
-          .orderBy("id", "asc")
+          .orderBy([
+            { column: "nextRetryAt", order: "asc" },
+            { column: "id", order: "asc" }
+          ])
           .limit(limit)
           .forUpdate()
           .skipLocked()
@@ -254,13 +257,21 @@ export const auditLogStreamOutboxDALFactory = (db: TDbClient) => {
 
   const findStreamsWithOverdueRows = async (): Promise<{ streamId: string; orgId: string; provider: string }[]> => {
     try {
-      return await db(`${TableName.AuditLogStreamOutbox} as o`)
-        .join(`${TableName.AuditLogStream} as s`, "s.id", "o.streamId")
-        .whereIn("o.status", [AuditLogStreamOutboxStatus.Pending, AuditLogStreamOutboxStatus.Retry])
-        .andWhere("o.nextRetryAt", "<=", db.fn.now())
-        .distinct<
-          { streamId: string; orgId: string; provider: string }[]
-        >("o.streamId as streamId", "o.orgId as orgId", "s.provider as provider");
+      const rows = await db(`${TableName.AuditLogStream} as s`)
+        .whereExists((qb) => {
+          void qb
+            .select(db.raw("1"))
+            .from(`${TableName.AuditLogStreamOutbox} as o`)
+            .whereRaw('o."streamId" = s.id')
+            .whereIn("o.status", [AuditLogStreamOutboxStatus.Pending, AuditLogStreamOutboxStatus.Retry])
+            .andWhere("o.nextRetryAt", "<=", db.fn.now());
+        })
+        .select<{ streamId: string; orgId: string; provider: string }[]>(
+          "s.id as streamId",
+          "s.orgId as orgId",
+          "s.provider as provider"
+        );
+      return rows;
     } catch (error) {
       throw new DatabaseError({ error, name: "AuditLogStreamOutbox: findStreamsWithOverdueRows" });
     }

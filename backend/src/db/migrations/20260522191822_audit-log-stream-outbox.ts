@@ -18,9 +18,6 @@ export async function up(knex: Knex): Promise<void> {
       t.timestamp("lockedAt", { useTz: true });
       t.timestamps(true, true, true);
 
-      t.foreign("streamId").references("id").inTable(TableName.AuditLogStream).onDelete("CASCADE");
-      t.foreign("orgId").references("id").inTable(TableName.Organization).onDelete("CASCADE");
-
       t.unique(["streamId", "auditLogId"]);
     });
 
