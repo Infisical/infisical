@@ -39,7 +39,7 @@ func startPostgres(ctx context.Context, networkName string) (*PostgresService, e
 		WaitingFor: wait.ForAll(
 			wait.ForListeningPort("5432/tcp"),
 			wait.ForLog("database system is ready to accept connections").WithOccurrence(2),
-		).WithStartupTimeout(60 * time.Second),
+		).WithDeadline(60 * time.Second),
 	}
 
 	container, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
