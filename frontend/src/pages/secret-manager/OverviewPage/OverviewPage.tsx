@@ -2642,9 +2642,10 @@ const OverviewPageContent = () => {
                 <AlertTitle className="flex items-center gap-3">
                   <InfoIcon className="size-4 shrink-0 text-info" />
                   <span>
-                    {pendingApprovalsCount} secret change request
-                    {pendingApprovalsCount === 1 ? "" : "s"} pending approval
-                    {!canApproveAny && ". Waiting for a reviewer"}
+                    You have {pendingApprovalsCount} pending secret change request
+                    {pendingApprovalsCount === 1 ? "" : "s"}.
+                    {!canApproveAny &&
+                      " Once approved, the secrets will become available in this folder."}
                   </span>
                   {canApproveAny && (
                     <Link
@@ -2724,7 +2725,7 @@ const OverviewPageContent = () => {
                   <div className="absolute top-2 right-3 z-50 mb-4 flex items-center justify-end gap-2">
                     {isProtectedBranch && (
                       <Tooltip>
-                        <TooltipTrigger>
+                        <TooltipTrigger asChild>
                           <Badge variant="info">
                             <LockIcon />
                             Protected
