@@ -19,6 +19,7 @@ import {
   SUBSCRIBABLE_WEBHOOK_EVENTS,
   TCreateWebhookDTO,
   TDeleteWebhookDTO,
+  TGetWebhookByIdDTO,
   TListWebhookDTO,
   TSubscribableWebhookEvent,
   TTestWebhookDTO,
@@ -251,10 +252,36 @@ export const webhookServiceFactory = ({
     });
   };
 
+  const getWebhookById = async ({ id, actor, actorId, actorAuthMethod, actorOrgId }: TGetWebhookByIdDTO) => {
+    const webhook = await webhookDAL.findById(id);
+    if (!webhook) throw new NotFoundError({ message: `Webhook with ID '${id}' not found` });
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: webhook.projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.Any
+    });
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Webhooks);
+
+    const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId: webhook.projectId
+    });
+    const { url } = decryptWebhookDetails(webhook, (value) =>
+      secretManagerDecryptor({ cipherTextBlob: value }).toString()
+    );
+
+    return { ...withEventsFilter(webhook), url };
+  };
+
   return {
     createWebhook,
     deleteWebhook,
     listWebhooks,
+    getWebhookById,
     updateWebhook,
     testWebhook
   };

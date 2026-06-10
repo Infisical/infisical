@@ -25,6 +25,10 @@ export type TDeleteWebhookDTO = {
   id: string;
 } & Omit<TProjectPermission, "projectId">;
 
+export type TGetWebhookByIdDTO = {
+  id: string;
+} & Omit<TProjectPermission, "projectId">;
+
 export type TListWebhookDTO = {
   environment?: string;
   secretPath?: string;
