@@ -265,7 +265,11 @@ export const shadowToGoSidecar = fp(async (server, opt: { sidecarUrl: string; sa
         }
       } catch (error) {
         logger.error(
-          { requestId, route: routeUrl, error },
+          {
+            requestId,
+            route: routeUrl,
+            error: error instanceof Error ? { name: error.name, message: error.message } : String(error)
+          },
           `[Shadow:error] Failed to shadow request to Go sidecar [requestId=${requestId}] [route=${routeUrl}]`
         );
       }
