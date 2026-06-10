@@ -201,105 +201,107 @@ export const DuplicatedSecretsCard = () => {
         )}
         {!isPending && secretBlindIndexEnabled && groups.length > 0 && (
           <Accordion type="multiple">
-            {groups.map((group, groupIdx) => (
-              <AccordionItem key={`group-${String(groupIdx)}`} value={`group-${String(groupIdx)}`}>
-                <AccordionTrigger>
-                  <div className="flex flex-1 items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <LockIcon className="size-3.5 text-muted" />
-                      <span className="text-sm text-foreground">
-                        <span className="font-medium">{group.secrets.length} secrets</span> share an
-                        identical value
-                      </span>
+            {groups.map((group, groupIdx) => {
+              const locationCount = new Set(
+                group.secrets.map((s) => `${s.environment.slug}:${s.secretPath}`)
+              ).size;
+
+              return (
+                <AccordionItem
+                  key={`group-${String(groupIdx)}`}
+                  value={`group-${String(groupIdx)}`}
+                >
+                  <AccordionTrigger>
+                    <div className="flex flex-1 items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <LockIcon className="size-3.5 text-muted" />
+                        <span className="text-sm text-foreground">
+                          <span className="font-medium">{group.secrets.length} secrets</span> share
+                          an identical value
+                        </span>
+                      </div>
+                      <Badge variant="neutral" className="flex items-center gap-1.5 font-normal">
+                        <LayersIcon className="size-3" />
+                        {locationCount} {locationCount === 1 ? "location" : "locations"}
+                      </Badge>
                     </div>
-                    {(() => {
-                      const locationCount = new Set(
-                        group.secrets.map((s) => `${s.environment.slug}:${s.secretPath}`)
-                      ).size;
-                      return (
-                        <Badge variant="neutral" className="flex items-center gap-1.5 font-normal">
-                          <LayersIcon className="size-3" />
-                          {locationCount} {locationCount === 1 ? "location" : "locations"}
-                        </Badge>
-                      );
-                    })()}
-                  </div>
-                </AccordionTrigger>
-                <AccordionContent className="group-data-[variant=default]/accordion:p-0">
-                  {group.secrets.length > 0 && (
-                    <Table
-                      containerClassName="rounded-t-none overflow-x-hidden"
-                      className="table-fixed"
-                    >
-                      <TableHeader className="bg-mineshaft-800">
-                        <TableRow>
-                          <TableHead className="h-10 w-[35%]">SECRET KEY</TableHead>
-                          <TableHead className="h-10 w-[25%]">ENVIRONMENT</TableHead>
-                          <TableHead className="h-10">PATH</TableHead>
-                          <TableHead className="h-10 w-12" />
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {group.secrets.map((entry, idx) => (
-                          <TableRow
-                            key={`${entry.key}-${entry.environment.slug}-${entry.secretPath}-${String(idx)}`}
-                            className="group/row bg-mineshaft-900"
-                          >
-                            <TableCell isTruncatable className="max-w-60">
-                              <div className="flex items-center gap-2">
-                                <KeyRoundIcon className="size-4 shrink-0 text-muted" />
-                                <span className="truncate font-mono">{entry.key}</span>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant="info" isTruncatable className="max-w-full">
-                                <span>{entry.environment.name}</span>
-                              </Badge>
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-2 text-muted">
-                                <FolderIcon className="size-3.5 shrink-0" />
-                                <span className="truncate">{entry.secretPath}</span>
-                              </div>
-                            </TableCell>
-                            <TableCell className="pr-5">
-                              <TooltipProvider>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <IconButton
-                                      variant="ghost"
-                                      size="sm"
-                                      aria-label="Go to secret"
-                                      className="opacity-0 transition-opacity group-hover/row:opacity-100"
-                                      onClick={() =>
-                                        navigate({
-                                          to: overviewRoute,
-                                          params: {
-                                            orgId: orgId as string,
-                                            projectId
-                                          },
-                                          search: {
-                                            secretPath: entry.secretPath,
-                                            environments: [entry.environment.slug]
-                                          }
-                                        })
-                                      }
-                                    >
-                                      <ArrowRightIcon className="size-3.5" />
-                                    </IconButton>
-                                  </TooltipTrigger>
-                                  <TooltipContent>Go to secret folder</TooltipContent>
-                                </Tooltip>
-                              </TooltipProvider>
-                            </TableCell>
+                  </AccordionTrigger>
+                  <AccordionContent className="group-data-[variant=default]/accordion:p-0">
+                    {group.secrets.length > 0 && (
+                      <Table
+                        containerClassName="rounded-t-none overflow-x-hidden"
+                        className="table-fixed"
+                      >
+                        <TableHeader className="bg-mineshaft-800">
+                          <TableRow>
+                            <TableHead className="h-10 w-[35%]">SECRET KEY</TableHead>
+                            <TableHead className="h-10 w-[25%]">ENVIRONMENT</TableHead>
+                            <TableHead className="h-10">PATH</TableHead>
+                            <TableHead className="h-10 w-12" />
                           </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  )}
-                </AccordionContent>
-              </AccordionItem>
-            ))}
+                        </TableHeader>
+                        <TableBody>
+                          {group.secrets.map((entry, idx) => (
+                            <TableRow
+                              key={`${entry.key}-${entry.environment.slug}-${entry.secretPath}-${String(idx)}`}
+                              className="group/row bg-mineshaft-900"
+                            >
+                              <TableCell isTruncatable className="max-w-60">
+                                <div className="flex items-center gap-2">
+                                  <KeyRoundIcon className="size-4 shrink-0 text-muted" />
+                                  <span className="truncate font-mono">{entry.key}</span>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant="info" isTruncatable className="max-w-full">
+                                  <span>{entry.environment.name}</span>
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-2 text-muted">
+                                  <FolderIcon className="size-3.5 shrink-0" />
+                                  <span className="truncate">{entry.secretPath}</span>
+                                </div>
+                              </TableCell>
+                              <TableCell className="pr-5">
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <IconButton
+                                        variant="ghost"
+                                        size="sm"
+                                        aria-label="Go to secret"
+                                        className="opacity-0 transition-opacity group-hover/row:opacity-100"
+                                        onClick={() =>
+                                          navigate({
+                                            to: overviewRoute,
+                                            params: {
+                                              orgId: orgId as string,
+                                              projectId
+                                            },
+                                            search: {
+                                              secretPath: entry.secretPath,
+                                              environments: [entry.environment.slug]
+                                            }
+                                          })
+                                        }
+                                      >
+                                        <ArrowRightIcon className="size-3.5" />
+                                      </IconButton>
+                                    </TooltipTrigger>
+                                    <TooltipContent>Go to secret folder</TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    )}
+                  </AccordionContent>
+                </AccordionItem>
+              );
+            })}
           </Accordion>
         )}
       </CardContent>
