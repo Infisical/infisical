@@ -268,8 +268,8 @@ const ServiceTokenForm = () => {
                     />
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- focusable wrapper so the tooltip surfaces on keyboard focus while the trash button is disabled */}
                         <span
+                        {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- focusable wrapper so the tooltip surfaces on keyboard focus while the trash button is disabled */}
                           tabIndex={isOnlyScope ? 0 : -1}
                           className={index === 0 ? "mt-6" : undefined}
                         >
