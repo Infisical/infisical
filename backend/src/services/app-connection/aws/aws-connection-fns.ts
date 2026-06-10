@@ -132,14 +132,21 @@ export const buildAwsConnectionConfig = (
   }) as TAwsConnectionConfig;
 
 export const validateAwsConnectionCredentials = async (appConnection: TAwsConnectionConfig) => {
+  const stsEndpoint =
+    appConnection.method === AwsConnectionMethod.AssumeRole ? appConnection.credentials.stsEndpoint : undefined;
+  const stsRegion = getStsSigningRegion(stsEndpoint);
+
+  if (stsEndpoint && (!stsRegion || !(Object.values(AWSRegion) as string[]).includes(stsRegion))) {
+    throw new BadRequestError({
+      message: `STS endpoint must target a supported AWS region. "${stsEndpoint}" does not resolve to a supported region.`
+    });
+  }
+
   try {
     const awsConfig = await getAwsConnectionConfig(appConnection);
 
-    const stsEndpoint =
-      appConnection.method === AwsConnectionMethod.AssumeRole ? appConnection.credentials.stsEndpoint : undefined;
-
     const sts = new STSClient({
-      region: getStsSigningRegion(stsEndpoint) ?? awsConfig.region,
+      region: stsRegion ?? awsConfig.region,
       credentials: awsConfig.credentials,
       ...(stsEndpoint ? { endpoint: stsEndpoint } : {})
     });
