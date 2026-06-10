@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -29,7 +29,7 @@ type Props = {
 
 export const AssignCertificateToApplicationModal = ({ isOpen, onClose, certificateId }: Props) => {
   const [selectedApplicationId, setSelectedApplicationId] = useState<string>("");
-  const loaderRef = useRef<HTMLDivElement>(null);
+  const observerRef = useRef<IntersectionObserver | null>(null);
   const {
     data,
     fetchNextPage,
@@ -49,19 +49,28 @@ export const AssignCertificateToApplicationModal = ({ isOpen, onClose, certifica
     if (!isOpen) setSelectedApplicationId("");
   }, [isOpen]);
 
-  useEffect(() => {
-    if (!loaderRef.current) return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
-          fetchNextPage();
-        }
-      },
-      { threshold: 0.1 }
-    );
-    observer.observe(loaderRef.current);
-    return () => observer.disconnect();
-  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+  const loaderRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      if (observerRef.current) {
+        observerRef.current.disconnect();
+        observerRef.current = null;
+      }
+
+      if (node) {
+        const observer = new IntersectionObserver(
+          (entries) => {
+            if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+              fetchNextPage();
+            }
+          },
+          { threshold: 0.1 }
+        );
+        observer.observe(node);
+        observerRef.current = observer;
+      }
+    },
+    [hasNextPage, isFetchingNextPage, fetchNextPage]
+  );
 
   const handleSubmit = async () => {
     if (!selectedApplicationId) return;

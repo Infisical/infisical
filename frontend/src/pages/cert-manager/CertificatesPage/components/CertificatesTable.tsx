@@ -81,7 +81,7 @@ import type {
 import { useListCertificateProfiles } from "@app/hooks/api/certificateProfiles";
 import { NON_PQC_KEY_ALGORITHMS, PQC_KEY_ALGORITHMS } from "@app/hooks/api/certificates/constants";
 import { CertSource, CertStatus } from "@app/hooks/api/certificates/enums";
-import { useListPkiApplications, useListPkiApplicationsInfinite } from "@app/hooks/api/pkiApplications";
+import { useListPkiApplicationsInfinite } from "@app/hooks/api/pkiApplications";
 import { useGetPkiApplicationPermissions } from "@app/hooks/api/pkiApplications/queries";
 import {
   PkiApplicationResourceActions,

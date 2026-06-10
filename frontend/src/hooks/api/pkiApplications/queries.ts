@@ -11,7 +11,6 @@ import {
   TListPkiApplicationsResponse,
   TPkiApplication,
   TPkiApplicationEnrollmentState,
-  TPkiApplicationListItem,
   TPkiApplicationMember,
   TPkiApplicationPermissionSet,
   TPkiApplicationProfile
@@ -68,7 +67,7 @@ export const useListPkiApplicationsInfinite = (
       TListPkiApplicationsResponse,
       ReturnType<typeof pkiApplicationKeys.listInfinite>
     >,
-    "queryKey" | "queryFn"
+    "queryKey" | "queryFn" | "initialPageParam" | "getNextPageParam"
   >
 ) =>
   useInfiniteQuery({

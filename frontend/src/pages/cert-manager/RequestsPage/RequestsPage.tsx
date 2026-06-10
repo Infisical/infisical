@@ -42,7 +42,7 @@ import {
   CodeSigningRequestData,
   TApprovalRequest
 } from "@app/hooks/api/approvalRequests";
-import { useListPkiApplications } from "@app/hooks/api/pkiApplications";
+import { useListPkiApplicationsInfinite } from "@app/hooks/api/pkiApplications";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
 type StatusFilter = "pending" | "approved" | "rejected";
@@ -175,8 +175,23 @@ export const RequestsPage = () => {
     })
   );
 
-  const { data: appsData } = useListPkiApplications({ limit: 25 });
-  const apps = appsData?.applications ?? [];
+  const {
+    data: appsResponse,
+    fetchNextPage: fetchNextAppsPage,
+    hasNextPage: hasNextAppsPage,
+    isFetchingNextPage: isFetchingNextAppsPage
+  } = useListPkiApplicationsInfinite({ limit: 100 });
+
+  useEffect(() => {
+    if (hasNextAppsPage && !isFetchingNextAppsPage) {
+      fetchNextAppsPage();
+    }
+  }, [hasNextAppsPage, isFetchingNextAppsPage, fetchNextAppsPage]);
+
+  const apps = useMemo(() => {
+    return appsResponse?.pages?.flatMap((page) => page?.applications ?? []) ?? [];
+  }, [appsResponse]);
+
   const appById = useMemo(() => {
     const map = new Map<string, { id: string; name: string }>();
     apps.forEach((a) => map.set(a.id, { id: a.id, name: a.name }));
