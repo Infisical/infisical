@@ -5,6 +5,7 @@ import { OrgPermissionSubjects } from "@app/context";
 import {
   OrgGatewayPermissionActions,
   OrgGatewayPoolPermissionActions,
+  OrgKmipServerPermissionActions,
   OrgPermissionActions,
   OrgPermissionAdminConsoleAction,
   OrgPermissionAppConnectionActions,
@@ -143,6 +144,18 @@ const orgRelayPermissionSchema = z
   )
   .optional();
 
+const orgKmipServerPermissionSchema = z
+  .array(
+    z.object({
+      [OrgKmipServerPermissionActions.ListKmipServers]: z.boolean().optional(),
+      [OrgKmipServerPermissionActions.EditKmipServers]: z.boolean().optional(),
+      [OrgKmipServerPermissionActions.DeleteKmipServers]: z.boolean().optional(),
+      [OrgKmipServerPermissionActions.CreateKmipServers]: z.boolean().optional(),
+      [OrgKmipServerPermissionActions.RevokeKmipServerAccess]: z.boolean().optional()
+    })
+  )
+  .optional();
+
 const machineIdentityAuthTemplatePermissionSchema = z
   .array(
     z.object({
@@ -234,6 +247,7 @@ export const formSchema = z.object({
       gateway: orgGatewayPermissionSchema,
       "gateway-pool": orgGatewayPoolPermissionSchema,
       relay: orgRelayPermissionSchema,
+      [OrgPermissionSubjects.KmipServer]: orgKmipServerPermissionSchema,
       "machine-identity-auth-template": machineIdentityAuthTemplatePermissionSchema,
       "secret-share": secretSharingPermissionSchema,
       "sub-organization": subOrganizationPermissionSchema,
@@ -799,6 +813,37 @@ export const ORG_PERMISSION_OBJECT: Record<string, TOrgPermissionConfig> = {
       }
     ]
   },
+  [OrgPermissionSubjects.KmipServer]: {
+    title: "KMIP Servers",
+    description: "Manage KMIP servers that proxy KMIP requests to Infisical KMS",
+    actions: [
+      {
+        value: OrgKmipServerPermissionActions.ListKmipServers,
+        label: "List KMIP Servers",
+        description: "View available KMIP servers"
+      },
+      {
+        value: OrgKmipServerPermissionActions.CreateKmipServers,
+        label: "Create KMIP Servers",
+        description: "Add new KMIP servers"
+      },
+      {
+        value: OrgKmipServerPermissionActions.EditKmipServers,
+        label: "Edit KMIP Servers",
+        description: "Update KMIP server configuration and auth method"
+      },
+      {
+        value: OrgKmipServerPermissionActions.DeleteKmipServers,
+        label: "Delete KMIP Servers",
+        description: "Remove KMIP servers"
+      },
+      {
+        value: OrgKmipServerPermissionActions.RevokeKmipServerAccess,
+        label: "Revoke KMIP Server Access",
+        description: "Revoke access to KMIP servers"
+      }
+    ]
+  },
   [OrgPermissionSubjects.Billing]: {
     title: "Billing",
     description: "View and manage billing details, invoices, and payment methods",
@@ -926,17 +971,9 @@ export const ORG_PERMISSION_OBJECT: Record<string, TOrgPermissionConfig> = {
       }
     ]
   },
-  [OrgPermissionSubjects.Kmip]: {
-    title: "KMIP",
-    description: "Proxy KMIP requests to organization key management infrastructure",
-    actions: [
-      {
-        value: OrgPermissionKmipActions.Proxy,
-        label: "Proxy KMIP requests",
-        description: "Route KMIP requests to organization key management infrastructure"
-      }
-    ]
-  },
+  // NOTE: The "KMIP" (proxy) org permission is deprecated — KMIP servers now authenticate via
+  // enrollment-based access tokens, so the permission is no longer needed and is intentionally
+  // not surfaced here. The schema still accepts it so existing roles that carry it keep working.
   [OrgPermissionSubjects.SubOrganization]: {
     title: "Sub-Organizations",
     description: "Create and manage namespaces within the organization",

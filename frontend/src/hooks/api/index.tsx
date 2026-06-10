@@ -32,6 +32,7 @@ export * from "./identityProjectAdditionalPrivilege";
 export * from "./incidentContacts";
 export * from "./integrationAuth";
 export * from "./integrations";
+export * from "./kmipServers";
 export * from "./kms";
 export * from "./ldapConfig";
 export * from "./mfaSession";

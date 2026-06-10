@@ -3522,6 +3522,19 @@
             ]
           },
           {
+            "group": "KMIP Servers",
+            "pages": [
+              "api-reference/endpoints/kmip-servers/list",
+              "api-reference/endpoints/kmip-servers/get",
+              "api-reference/endpoints/kmip-servers/create",
+              "api-reference/endpoints/kmip-servers/update",
+              "api-reference/endpoints/kmip-servers/delete",
+              "api-reference/endpoints/kmip-servers/generate-enrollment-token",
+              "api-reference/endpoints/kmip-servers/revoke",
+              "api-reference/endpoints/kmip-servers/login"
+            ]
+          },
+          {
             "group": "External Migrations",
             "pages": [
               {
