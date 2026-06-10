@@ -1,8 +1,8 @@
 import { createClient } from "@clickhouse/client";
-import handlebars from "handlebars";
 import { z } from "zod";
 
 import { TDynamicSecrets } from "@app/db/schemas";
+import { createHandlebarsClient } from "@app/lib/template/handlebars-client";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
 import { sanitizeString } from "@app/lib/fn";
@@ -278,7 +278,7 @@ export const ClickhouseProvider = ({
       try {
         const expiration = new Date(expireAt).toISOString();
 
-        const creationStatement = handlebars.compile(providerInputs.creationStatement, { noEscape: true })({
+        const creationStatement = createHandlebarsClient().compile(providerInputs.creationStatement, { noEscape: true })({
           username,
           password,
           expiration,
@@ -323,7 +323,7 @@ export const ClickhouseProvider = ({
       });
 
       try {
-        const revokeStatement = handlebars.compile(providerInputs.revocationStatement, { noEscape: true })({
+        const revokeStatement = createHandlebarsClient().compile(providerInputs.revocationStatement, { noEscape: true })({
           username,
           database
         });
@@ -368,7 +368,7 @@ export const ClickhouseProvider = ({
       const { database } = providerInputs;
 
       try {
-        const renewStatement = handlebars.compile(providerInputs.renewStatement as string, { noEscape: true })({
+        const renewStatement = createHandlebarsClient().compile(providerInputs.renewStatement as string, { noEscape: true })({
           username: entityId,
           expiration,
           database

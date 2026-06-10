@@ -5,11 +5,11 @@ import {
   MemoryDB,
   UpdateACLCommand
 } from "@aws-sdk/client-memorydb";
-import handlebars from "handlebars";
 import { customAlphabet } from "nanoid";
 import { z } from "zod";
 
 import { TDynamicSecrets } from "@app/db/schemas";
+import { createHandlebarsClient } from "@app/lib/template/handlebars-client";
 import { CustomAWSHasher } from "@app/lib/aws/hashing";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError } from "@app/lib/errors";
@@ -188,7 +188,7 @@ export const AwsMemoryDbDatabaseProvider = (): TDynamicProviderFns => {
     const leasePassword = generatePassword();
     const leaseExpiration = new Date(expireAt).toISOString();
 
-    const creationStatement = handlebars.compile(providerInputs.creationStatement, { noEscape: true })({
+    const creationStatement = createHandlebarsClient().compile(providerInputs.creationStatement, { noEscape: true })({
       username: leaseUsername,
       password: leasePassword,
       expiration: leaseExpiration
@@ -230,7 +230,7 @@ export const AwsMemoryDbDatabaseProvider = (): TDynamicProviderFns => {
     const providerInputs = await validateProviderInputs(inputs);
     const credentials = $getAwsCredentials(providerInputs);
 
-    const revokeStatement = handlebars.compile(providerInputs.revocationStatement, { noEscape: true })({
+    const revokeStatement = createHandlebarsClient().compile(providerInputs.revocationStatement, { noEscape: true })({
       username: entityId
     });
     const parsedStatement = DeleteMemoryDbUserSchema.parse(JSON.parse(revokeStatement));

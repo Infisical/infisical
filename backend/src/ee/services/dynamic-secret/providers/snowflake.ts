@@ -1,7 +1,8 @@
-import handlebars from "handlebars";
 import { customAlphabet } from "nanoid";
 import snowflake from "snowflake-sdk";
 import { z } from "zod";
+
+import { createHandlebarsClient } from "@app/lib/template/handlebars-client";
 
 import { TDynamicSecrets } from "@app/db/schemas";
 import { BadRequestError } from "@app/lib/errors";
@@ -109,7 +110,7 @@ export const SnowflakeProvider = (): TDynamicProviderFns => {
 
     try {
       const expiration = getDaysToExpiry(new Date(expireAt));
-      const creationStatement = handlebars.compile(providerInputs.creationStatement, { noEscape: true })({
+      const creationStatement = createHandlebarsClient().compile(providerInputs.creationStatement, { noEscape: true })({
         username,
         password,
         expiration
@@ -146,7 +147,7 @@ export const SnowflakeProvider = (): TDynamicProviderFns => {
     const client = await $getClient(providerInputs);
 
     try {
-      const revokeStatement = handlebars.compile(providerInputs.revocationStatement, { noEscape: true })({ username });
+      const revokeStatement = createHandlebarsClient().compile(providerInputs.revocationStatement, { noEscape: true })({ username });
 
       await new Promise((resolve, reject) => {
         client.execute({
@@ -181,7 +182,7 @@ export const SnowflakeProvider = (): TDynamicProviderFns => {
 
     try {
       const expiration = getDaysToExpiry(new Date(expireAt));
-      const renewStatement = handlebars.compile(providerInputs.renewStatement, { noEscape: true })({
+      const renewStatement = createHandlebarsClient().compile(providerInputs.renewStatement, { noEscape: true })({
         username: entityId,
         expiration
       });

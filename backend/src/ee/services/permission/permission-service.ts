@@ -1,7 +1,6 @@
 import { createMongoAbility, ForbiddenError, MongoAbility, RawRuleOf, subject } from "@casl/ability";
 import { PackRule, packRules, unpackRules } from "@casl/ability/extra";
 import { requestContext } from "@fastify/request-context";
-import handlebars from "handlebars";
 
 import {
   AccessScope,
@@ -77,6 +76,8 @@ import {
   ProjectPermissionSet,
   ProjectPermissionSub
 } from "./project-permission";
+import { createHandlebarsClient } from "@app/lib/template/handlebars-client";
+import { logger } from "@app/lib/logger";
 
 // Returns the delegated OAuth scopes for the current request, or undefined when this is not an
 // OAuth-delegated request. The distinction matters: a returned array (even empty) means scope
@@ -621,7 +622,7 @@ export const permissionServiceFactory = ({
       }
 
       const rules = buildProjectPermissionRules(permissionFromRoles);
-      const templatedRules = handlebars.compile(JSON.stringify(rules), { data: false });
+      const templatedRules = createHandlebarsClient().compile(JSON.stringify(rules), { data: false });
       const unescapedMetadata = objectify(
         permissionData?.[0]?.metadata,
         (i) => i.key,
@@ -823,7 +824,7 @@ export const permissionServiceFactory = ({
         })) || [];
 
       const rules = buildProjectPermissionRules(rolePermissions.concat(additionalPrivileges));
-      const templatedRules = handlebars.compile(JSON.stringify(rules), { data: false });
+      const templatedRules = createHandlebarsClient().compile(JSON.stringify(rules), { data: false });
       const metadataKeyValuePair = escapeHandlebarsMissingDict(
         objectify(
           userProjectPermission.metadata,
@@ -869,7 +870,7 @@ export const permissionServiceFactory = ({
         })) || [];
 
       const rules = buildProjectPermissionRules(rolePermissions.concat(additionalPrivileges));
-      const templatedRules = handlebars.compile(JSON.stringify(rules), { data: false });
+      const templatedRules = createHandlebarsClient().compile(JSON.stringify(rules), { data: false });
       const metadataKeyValuePair = escapeHandlebarsMissingDict(
         objectify(
           identityProjectPermission.metadata,

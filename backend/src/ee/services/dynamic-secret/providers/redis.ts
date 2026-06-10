@@ -1,7 +1,8 @@
-import handlebars from "handlebars";
 import { Redis } from "ioredis";
 import { customAlphabet } from "nanoid";
 import { z } from "zod";
+
+import { createHandlebarsClient } from "@app/lib/template/handlebars-client";
 
 import { TDynamicSecrets } from "@app/db/schemas";
 import { BadRequestError } from "@app/lib/errors";
@@ -147,7 +148,7 @@ export const RedisDatabaseProvider = (): TDynamicProviderFns => {
     const password = generatePassword();
     const expiration = new Date(expireAt).toISOString();
 
-    const creationStatement = handlebars.compile(providerInputs.creationStatement, { noEscape: true })({
+    const creationStatement = createHandlebarsClient().compile(providerInputs.creationStatement, { noEscape: true })({
       username,
       password,
       expiration
@@ -177,7 +178,7 @@ export const RedisDatabaseProvider = (): TDynamicProviderFns => {
 
     const username = entityId;
 
-    const revokeStatement = handlebars.compile(providerInputs.revocationStatement, { noEscape: true })({ username });
+    const revokeStatement = createHandlebarsClient().compile(providerInputs.revocationStatement, { noEscape: true })({ username });
     const queries = revokeStatement.toString().split(";").filter(Boolean);
 
     try {
@@ -205,7 +206,7 @@ export const RedisDatabaseProvider = (): TDynamicProviderFns => {
     const username = entityId;
     const expiration = new Date(expireAt).toISOString();
 
-    const renewStatement = handlebars.compile(providerInputs.renewStatement, { noEscape: true })({
+    const renewStatement = createHandlebarsClient().compile(providerInputs.renewStatement, { noEscape: true })({
       username,
       expiration
     });

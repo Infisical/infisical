@@ -19,9 +19,9 @@ import {
   SSMClient,
   type Tag
 } from "@aws-sdk/client-ssm";
-import handlebars from "handlebars";
 
 import { isAwsError } from "@app/lib/aws/error";
+import { createHandlebarsClient } from "@app/lib/template/handlebars-client";
 import { getAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-fns";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
@@ -59,7 +59,7 @@ const getFullPath = ({ path, keySchema, environment }: { path: string; keySchema
     throw new SecretSyncError({ message: `Key schema cannot contain leading '/'`, shouldRetry: false });
   }
 
-  const keySchemaSegments = handlebars
+  const keySchemaSegments = createHandlebarsClient()
     .compile(keySchema)({
       environment,
       secretKey: "{{secretKey}}"

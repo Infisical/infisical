@@ -1,10 +1,10 @@
 /* eslint-disable no-await-in-loop */
 import { AxiosError, AxiosRequestConfig } from "axios";
-import handlebars from "handlebars";
 import RE2 from "re2";
 
 import { TCertificateSyncs } from "@app/db/schemas";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
+import { createHandlebarsClient } from "@app/lib/template/handlebars-client";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { logger } from "@app/lib/logger";
 import { executeNetScalerOperationWithGateway } from "@app/services/app-connection/netscaler/netscaler-connection-fns";
@@ -450,7 +450,7 @@ export const netScalerPkiSyncFactory = ({
               } else if (certificate?.renewedFromCertificateId && !preserveItemOnRenewal) {
                 const certIdClean = certificateId.replace(new RE2("-", "g"), "");
                 if (certificateNameSchema) {
-                  targetCertKeyName = handlebars.compile(certificateNameSchema)({
+                  targetCertKeyName = createHandlebarsClient().compile(certificateNameSchema)({
                     certificateId: certIdClean,
                     environment: "global"
                   });

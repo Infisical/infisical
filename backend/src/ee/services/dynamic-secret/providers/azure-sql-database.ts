@@ -1,7 +1,8 @@
-import handlebars from "handlebars";
 import knex from "knex";
 import RE2 from "re2";
 import { z } from "zod";
+
+import { createHandlebarsClient } from "@app/lib/template/handlebars-client";
 
 import { TDynamicSecrets } from "@app/db/schemas";
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -302,7 +303,7 @@ export const AzureSqlDatabaseProvider = ({
       );
 
       try {
-        const masterCreationStatement = handlebars.compile(providerInputs.masterCreationStatement, { noEscape: true })({
+        const masterCreationStatement = createHandlebarsClient().compile(providerInputs.masterCreationStatement, { noEscape: true })({
           username,
           password,
           expiration,
@@ -336,7 +337,7 @@ export const AzureSqlDatabaseProvider = ({
       });
 
       try {
-        const creationStatement = handlebars.compile(providerInputs.creationStatement, { noEscape: true })({
+        const creationStatement = createHandlebarsClient().compile(providerInputs.creationStatement, { noEscape: true })({
           username,
           password,
           expiration,
@@ -377,7 +378,7 @@ export const AzureSqlDatabaseProvider = ({
     const { database, masterDatabase } = providerInputs;
 
     const gatewayCallback = async (host = providerInputs.host, port = providerInputs.port) => {
-      const revokeStatement = handlebars.compile(providerInputs.revocationStatement, { noEscape: true })({
+      const revokeStatement = createHandlebarsClient().compile(providerInputs.revocationStatement, { noEscape: true })({
         username,
         database
       });
@@ -500,7 +501,7 @@ export const AzureSqlDatabaseProvider = ({
       const expiration = new Date(expireAt).toISOString();
       const { database } = providerInputs;
 
-      const renewStatement = handlebars.compile(providerInputs.renewStatement, { noEscape: true })({
+      const renewStatement = createHandlebarsClient().compile(providerInputs.renewStatement, { noEscape: true })({
         username: entityId,
         expiration,
         database

@@ -1,7 +1,8 @@
-import handlebars from "handlebars";
 import { customAlphabet } from "nanoid";
 import odbc from "odbc";
 import { z } from "zod";
+
+import { createHandlebarsClient } from "@app/lib/template/handlebars-client";
 
 import { TDynamicSecrets } from "@app/db/schemas";
 import { BadRequestError } from "@app/lib/errors";
@@ -116,7 +117,7 @@ export const SapAseProvider = (): TDynamicProviderFns => {
     const client = await $getClient(providerInputs);
     const masterClient = await $getClient(providerInputs, true);
 
-    const creationStatement = handlebars.compile(providerInputs.creationStatement, { noEscape: true })({
+    const creationStatement = createHandlebarsClient().compile(providerInputs.creationStatement, { noEscape: true })({
       username,
       password
     });
@@ -148,7 +149,7 @@ export const SapAseProvider = (): TDynamicProviderFns => {
   const revoke = async (inputs: unknown, username: string) => {
     const providerInputs = await validateProviderInputs(inputs);
 
-    const revokeStatement = handlebars.compile(providerInputs.revocationStatement, { noEscape: true })({
+    const revokeStatement = createHandlebarsClient().compile(providerInputs.revocationStatement, { noEscape: true })({
       username
     });
 
