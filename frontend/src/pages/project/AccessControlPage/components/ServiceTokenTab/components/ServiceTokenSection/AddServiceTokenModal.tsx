@@ -112,6 +112,7 @@ const ServiceTokenForm = () => {
   });
 
   const { fields: tokenScopes, append, remove } = useFieldArray({ control, name: "scopes" });
+  const isOnlyScope = tokenScopes.length === 1;
 
   const [newToken, setToken] = useState("");
   const [, isTokenCopied, setTokenCopied] = useTimedReset<string>({ initialState: "" });
@@ -265,15 +266,29 @@ const ServiceTokenForm = () => {
                         </Field>
                       )}
                     />
-                    <IconButton
-                      variant="ghost"
-                      type="button"
-                      aria-label="Remove scope"
-                      className={index === 0 ? "mt-6 hover:text-danger" : "hover:text-danger"}
-                      onClick={() => remove(index)}
-                    >
-                      <TrashIcon />
-                    </IconButton>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- focusable wrapper so the tooltip surfaces on keyboard focus while the trash button is disabled */}
+                        <span
+                          tabIndex={isOnlyScope ? 0 : -1}
+                          className={index === 0 ? "mt-6" : undefined}
+                        >
+                          <IconButton
+                            variant="ghost"
+                            type="button"
+                            aria-label="Remove scope"
+                            className="hover:text-danger"
+                            isDisabled={isOnlyScope}
+                            onClick={() => remove(index)}
+                          >
+                            <TrashIcon />
+                          </IconButton>
+                        </span>
+                      </TooltipTrigger>
+                      {isOnlyScope && (
+                        <TooltipContent>At least one scope is required</TooltipContent>
+                      )}
+                    </Tooltip>
                   </div>
                 ))}
                 <Button
