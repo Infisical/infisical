@@ -11,7 +11,6 @@ import {
   CardHeader,
   CardTitle
 } from "@app/components/v3";
-
 import {
   OrgKmipServerPermissionActions,
   OrgPermissionSubjects
@@ -27,12 +26,7 @@ type Props = {
   authMethod: TKmipServerAuthMethodView;
 };
 
-export const KmipServerDeploySection = ({
-  kmipServerId,
-  kmipServerName,
-  authMethod
-}: Props) => {
-
+export const KmipServerDeploySection = ({ kmipServerId, kmipServerName, authMethod }: Props) => {
   const [showDialog, setShowDialog] = useState(false);
   const [enrollmentToken, setEnrollmentToken] = useState<string | null>(null);
   const { mutateAsync: mint, isPending: isMinting } = useGenerateKmipServerEnrollmentToken();
