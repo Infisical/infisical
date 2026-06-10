@@ -85,6 +85,8 @@ export const SanitizedGitHubAppSchema = z.object({
   slug: z.string(),
   clientId: z.string().nullable(),
   owner: z.string().nullable(),
+  host: z.string().nullable(),
+  instanceType: z.enum(["cloud", "server"]).nullable(),
   connectionCount: z.number(),
   createdAt: z.date().nullable(),
   updatedAt: z.date().nullable()

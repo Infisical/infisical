@@ -226,7 +226,7 @@ export const GitHubAppSelector = ({
                 onClick={(e) => {
                   e.stopPropagation();
                   window.open(
-                    buildGitHubAppUrl(app.slug, host, instanceType),
+                    buildGitHubAppUrl(app.slug, app.host, app.instanceType ?? instanceType),
                     "_blank",
                     "noopener,noreferrer"
                   );
@@ -367,7 +367,9 @@ export const GitHubAppSelector = ({
                   className="mb-1"
                   helperText={
                     <>
-                      github.com/apps/
+                      {`${buildGitHubHostUrl(host).replace("https://", "")}/${
+                        instanceType === "server" ? "github-apps" : "apps"
+                      }/`}
                       <span className="font-mono text-mineshaft-200">
                         {GITHUB_APP_NAME_PREFIX}
                         {newAppName.trim() ? slugify(newAppName, { lowercase: true }) : "your-app"}
@@ -457,7 +459,11 @@ export const GitHubAppSelector = ({
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     window.open(
-                                      buildGitHubAppUrl(sharedApp.slug, host, instanceType),
+                                      buildGitHubAppUrl(
+                                        sharedApp.slug,
+                                        sharedApp.host,
+                                        sharedApp.instanceType ?? instanceType
+                                      ),
                                       "_blank",
                                       "noopener,noreferrer"
                                     );

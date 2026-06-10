@@ -7,6 +7,8 @@ export type TGitHubApp = {
   slug: string;
   clientId: string | null;
   owner: string | null;
+  host: string | null;
+  instanceType: "cloud" | "server" | null;
   connectionCount: number;
   createdAt: string | null;
   updatedAt: string | null;

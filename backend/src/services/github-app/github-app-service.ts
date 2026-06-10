@@ -223,6 +223,8 @@ export const gitHubAppServiceFactory = ({
       slug: app.slug,
       clientId: app.clientId,
       owner: app.owner ?? null,
+      host: app.host ?? null,
+      instanceType: app.instanceType === "server" ? "server" : "cloud",
       connectionCount: countByAppId.get(app.id) ?? 0,
       createdAt: app.createdAt,
       updatedAt: app.updatedAt
@@ -231,7 +233,8 @@ export const gitHubAppServiceFactory = ({
     const {
       INF_APP_CONNECTION_GITHUB_APP_ID,
       INF_APP_CONNECTION_GITHUB_APP_SLUG,
-      INF_APP_CONNECTION_GITHUB_APP_CLIENT_ID
+      INF_APP_CONNECTION_GITHUB_APP_CLIENT_ID,
+      INF_APP_CONNECTION_GITHUB_APP_HOST
     } = getConfig();
 
     const sharedApp: TSanitizedGitHubApp | null =
@@ -245,6 +248,8 @@ export const gitHubAppServiceFactory = ({
             slug: INF_APP_CONNECTION_GITHUB_APP_SLUG,
             clientId: INF_APP_CONNECTION_GITHUB_APP_CLIENT_ID ?? null,
             owner: null,
+            host: INF_APP_CONNECTION_GITHUB_APP_HOST ?? null,
+            instanceType: null,
             connectionCount: countByAppId.get(null) ?? 0,
             createdAt: null,
             updatedAt: null
@@ -363,6 +368,8 @@ export const gitHubAppServiceFactory = ({
         slug: existing.slug,
         clientId: existing.clientId,
         owner: existing.owner ?? null,
+        host: existing.host ?? null,
+        instanceType: existing.instanceType === "server" ? "server" : "cloud",
         connectionCount: 0,
         createdAt: existing.createdAt,
         updatedAt: existing.updatedAt
