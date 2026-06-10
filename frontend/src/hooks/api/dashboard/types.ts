@@ -182,3 +182,16 @@ export type DashboardSecretValue =
       value: undefined;
       valueOverride: string;
     };
+
+export type FolderMoveBlockingType =
+  | "dynamic_secret"
+  | "secret_rotation"
+  | "honey_token"
+  | "secret_import";
+
+export type FolderMoveEligibilityResponse = {
+  canMove: boolean;
+  folderName: string;
+  blockingType?: FolderMoveBlockingType;
+  blockingPath?: string;
+};

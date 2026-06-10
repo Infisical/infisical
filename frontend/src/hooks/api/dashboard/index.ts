@@ -1,5 +1,6 @@
 export {
   useGetAccessibleSecrets,
+  useGetFoldersMoveEligibility,
   useGetProjectSecretsDetails,
   useGetProjectSecretsOverview,
   useGetProjectSecretsQuickSearch

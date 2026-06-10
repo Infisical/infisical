@@ -56,6 +56,15 @@ export type TGetFolderByIdDTO = {
   id: string;
 } & Omit<TProjectPermission, "projectId">;
 
+export type TFolderMoveBlockingType = "dynamic_secret" | "secret_rotation" | "honey_token" | "secret_import";
+
+export type TFolderMoveEligibility = {
+  canMove: boolean;
+  folderName: string;
+  blockingType?: TFolderMoveBlockingType;
+  blockingPath?: string;
+};
+
 export type TGetFoldersDeepByEnvsDTO = {
   projectId: string;
   environments: string[];

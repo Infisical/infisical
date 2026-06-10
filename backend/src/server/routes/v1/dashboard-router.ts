@@ -1871,4 +1871,41 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       return { value: secretVersion.secretValue };
     }
   });
+
+  server.route({
+    method: "GET",
+    url: "/folder/move-check/:folderId",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      operationId: "checkFolderMoveCheck",
+      description: "Check whether a folder and its subtree can be moved (only static secrets allowed)",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      params: z.object({
+        folderId: z.string().trim().uuid()
+      }),
+      response: {
+        200: z.object({
+          canMove: z.boolean(),
+          folderName: z.string(),
+          blockingType: z.enum(["dynamic_secret", "secret_rotation", "honey_token", "secret_import"]).optional(),
+          blockingPath: z.string().optional()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) =>
+      server.services.folder.getFolderMoveEligibility({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        id: req.params.folderId
+      })
+  });
 };

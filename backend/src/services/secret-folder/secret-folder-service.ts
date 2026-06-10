@@ -6,9 +6,11 @@ import { v4 as uuidv4, validate as uuidValidate } from "uuid";
 
 import { ActionProjectType, TProjectEnvironments, TSecretFolders, TSecretFoldersInsert } from "@app/db/schemas";
 import { TDynamicSecretDALFactory } from "@app/ee/services/dynamic-secret/dynamic-secret-dal";
+import { THoneyTokenDALFactory } from "@app/ee/services/honey-token/honey-token-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
+import { TSecretRotationV2DALFactory } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-dal";
 import { TSecretSnapshotServiceFactory } from "@app/ee/services/secret-snapshot/secret-snapshot-service";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -25,6 +27,7 @@ import {
 } from "../folder-commit/folder-commit-service";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
+import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { TSecretFolderDALFactory } from "./secret-folder-dal";
 import {
@@ -32,6 +35,8 @@ import {
   TCreateManyFoldersDTO,
   TDeleteFolderDTO,
   TDeleteManyFoldersDTO,
+  TFolderMoveBlockingType,
+  TFolderMoveEligibility,
   TGetFolderByIdDTO,
   TGetFolderByPathDTO,
   TGetFolderDTO,
@@ -54,7 +59,10 @@ type TSecretFolderServiceFactoryDep = {
     TSecretV2BridgeDALFactory,
     "findByFolderIds" | "invalidateSecretCacheByProjectId" | "findOne"
   >;
-  dynamicSecretDAL: Pick<TDynamicSecretDALFactory, "findOne">;
+  dynamicSecretDAL: Pick<TDynamicSecretDALFactory, "findOne" | "find">;
+  secretRotationV2DAL: Pick<TSecretRotationV2DALFactory, "existsByFolderIds">;
+  honeyTokenDAL: Pick<THoneyTokenDALFactory, "find">;
+  secretImportDAL: Pick<TSecretImportDALFactory, "findImportByFolderIds">;
 };
 
 export type TSecretFolderServiceFactory = ReturnType<typeof secretFolderServiceFactory>;
@@ -69,7 +77,10 @@ export const secretFolderServiceFactory = ({
   projectDAL,
   secretApprovalPolicyService,
   secretV2BridgeDAL,
-  dynamicSecretDAL
+  dynamicSecretDAL,
+  secretRotationV2DAL,
+  honeyTokenDAL,
+  secretImportDAL
 }: TSecretFolderServiceFactoryDep) => {
   const createFolder = async ({
     projectId,
@@ -1448,6 +1459,61 @@ export const secretFolderServiceFactory = ({
     return folder;
   };
 
+  // checks whether a folder (and its entire recursive subtree) can be moved.
+  const getFolderMoveEligibility = async ({
+    actor,
+    actorId,
+    actorOrgId,
+    actorAuthMethod,
+    id
+  }: TGetFolderByIdDTO): Promise<TFolderMoveEligibility> => {
+    const folder = await getFolderById({ actor, actorId, actorOrgId, actorAuthMethod, id });
+
+    const delay = (ms: number): Promise<void> => {
+      return new Promise((resolve) => {
+        setTimeout(resolve, ms);
+      });
+    };
+
+    await delay(10000);
+
+    // run every read inside a transaction so it hits the primary database rather than a read replica
+    const block = await folderDAL.transaction(
+      async (tx): Promise<{ blockingType: TFolderMoveBlockingType; blockingPath: string } | null> => {
+        // parent folder + full recursive subtree (with paths); reserved folders are already excluded.
+        const subtree = await folderDAL.findByEnvsDeep({ parentIds: [folder.id] }, tx);
+        const folderIds = subtree.map((f) => f.id);
+
+        if (!folderIds.length) return null;
+
+        const pathByFolderId = new Map(subtree.map((f) => [f.id, f.path]));
+        const resolvePath = (folderId: string) => pathByFolderId.get(folderId) ?? folder.path;
+
+        // sequential early-exit checks, cheapest single-table queries first.
+        const importHit = await secretImportDAL.findImportByFolderIds(folderIds, tx);
+        if (importHit) return { blockingType: "secret_import", blockingPath: resolvePath(importHit.folderId) };
+
+        const [dynamicSecret] = await dynamicSecretDAL.find({ $in: { folderId: folderIds } }, { limit: 1, tx });
+        if (dynamicSecret) return { blockingType: "dynamic_secret", blockingPath: resolvePath(dynamicSecret.folderId) };
+
+        const [honeyToken] = await honeyTokenDAL.find({ $in: { folderId: folderIds } }, { limit: 1, tx });
+        if (honeyToken) return { blockingType: "honey_token", blockingPath: resolvePath(honeyToken.folderId) };
+
+        const rotation = await secretRotationV2DAL.existsByFolderIds(folderIds, tx);
+        if (rotation) return { blockingType: "secret_rotation", blockingPath: resolvePath(rotation.folderId) };
+
+        return null;
+      }
+    );
+
+    return {
+      canMove: !block,
+      folderName: folder.name,
+      blockingType: block?.blockingType,
+      blockingPath: block?.blockingPath
+    };
+  };
+
   return {
     createFolder,
     updateFolder,
@@ -1455,6 +1521,7 @@ export const secretFolderServiceFactory = ({
     deleteFolder,
     getFolders,
     getFolderById,
+    getFolderMoveEligibility,
     getFolderByPath,
     getProjectFolderCount,
     getFoldersMultiEnv,

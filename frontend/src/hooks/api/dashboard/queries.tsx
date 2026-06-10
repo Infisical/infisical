@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import { useQuery, useQueryClient, UseQueryOptions } from "@tanstack/react-query";
+import { useQueries, useQuery, useQueryClient, UseQueryOptions } from "@tanstack/react-query";
 import { AxiosError } from "axios";
 
 import { apiRequest } from "@app/config/request";
@@ -11,6 +11,8 @@ import {
   DashboardProjectSecretsOverviewResponse,
   DashboardSecretsOrderBy,
   DashboardSecretValue,
+  FolderMoveBlockingType,
+  FolderMoveEligibilityResponse,
   TDashboardProjectSecretsQuickSearch,
   TDashboardProjectSecretsQuickSearchResponse,
   TGetAccessibleSecretsDTO,
@@ -84,7 +86,9 @@ export const dashboardKeys = {
       secretPath,
       secretKey,
       isOverride
-    ] as const
+    ] as const,
+  getFolderMoveEligibility: (folderId: string) =>
+    [...dashboardKeys.all(), "folder-move-eligibility", folderId] as const
 };
 
 export const fetchProjectSecretsOverview = async ({
@@ -545,3 +549,42 @@ export const useGetSecretValue = (
     ...options
   });
 };
+
+export const fetchFolderMoveEligibility = async (folderId: string) => {
+  const { data } = await apiRequest.get<FolderMoveEligibilityResponse>(
+    `/api/v1/dashboard/folder/move-check/${folderId}`
+  );
+
+  return data;
+};
+
+// fans out a recursive move-eligibility check per selected folder id and aggregates the results.
+// a move is only allowed when every selected folder resolves to canMove === true.
+export const useGetFoldersMoveEligibility = (folderIds: string[]) =>
+  useQueries({
+    queries: folderIds.map((folderId) => ({
+      queryKey: dashboardKeys.getFolderMoveEligibility(folderId),
+      queryFn: () => fetchFolderMoveEligibility(folderId),
+      enabled: Boolean(folderId)
+    })),
+    combine: (results) => {
+      const isChecking = results.some((result) => result.isLoading);
+      const canMove =
+        results.length > 0 &&
+        results.every((result) => result.isSuccess && Boolean(result.data?.canMove));
+
+      // the same folder name can appear once per environment, so dedupe by name. the UI only needs
+      // to surface which folder is blocked and why (type), not the per-folder path.
+      const seen = new Set<string>();
+      const blockedFolders: { folderName: string; blockingType?: FolderMoveBlockingType }[] = [];
+      results.forEach((result) => {
+        const { data } = result;
+        if (data && !data.canMove && !seen.has(data.folderName)) {
+          seen.add(data.folderName);
+          blockedFolders.push({ folderName: data.folderName, blockingType: data.blockingType });
+        }
+      });
+
+      return { isChecking, canMove, blockedFolders };
+    }
+  });

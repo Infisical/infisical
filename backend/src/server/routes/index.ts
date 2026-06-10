@@ -1871,7 +1871,10 @@ export const registerRoutes = async (
     folderCommitService,
     secretApprovalPolicyService,
     secretV2BridgeDAL,
-    dynamicSecretDAL
+    dynamicSecretDAL,
+    secretRotationV2DAL,
+    honeyTokenDAL,
+    secretImportDAL
   });
 
   const secretImportService = secretImportServiceFactory({
