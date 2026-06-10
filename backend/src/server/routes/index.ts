@@ -1539,16 +1539,6 @@ export const registerRoutes = async (
     permissionService
   });
 
-  const pamAccountService = pamAccountServiceFactory({
-    pamAccountDAL,
-    pamFolderDAL,
-    pamAccountTemplateDAL,
-    membershipDAL,
-    membershipRoleDAL,
-    permissionService,
-    kmsService
-  });
-
   const pamMembershipService = pamMembershipServiceFactory({
     membershipDAL,
     membershipRoleDAL,
@@ -1675,6 +1665,18 @@ export const registerRoutes = async (
     pkiDiscoveryConfigDAL,
     appConnectionDAL,
     dynamicSecretDAL
+  });
+
+  const pamAccountService = pamAccountServiceFactory({
+    pamAccountDAL,
+    pamFolderDAL,
+    pamAccountTemplateDAL,
+    membershipDAL,
+    membershipRoleDAL,
+    permissionService,
+    kmsService,
+    gatewayV2DAL,
+    gatewayPoolService
   });
 
   const pamSessionDAL = pamSessionDALFactory(db);
