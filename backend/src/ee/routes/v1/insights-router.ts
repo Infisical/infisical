@@ -165,6 +165,58 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "GET",
+    url: "/secrets/secrets-duplication",
+    config: { rateLimit: readLimit },
+    schema: {
+      operationId: "getInsightsSecretsDuplication",
+      description: "Get groups of duplicated secrets across environments and paths",
+      security: [{ bearerAuth: [] }],
+      querystring: z.object({
+        projectId: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          secretBlindIndexEnabled: z.boolean(),
+          groups: z.array(
+            z.object({
+              secrets: z.array(
+                z.object({
+                  key: z.string(),
+                  environment: z.object({
+                    name: z.string(),
+                    slug: z.string()
+                  }),
+                  secretPath: z.string()
+                })
+              )
+            })
+          )
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req, reply) => {
+      const { projectId } = req.query;
+      const { result, remainingTTL } = await server.services.insights.getSecretsDuplication(
+        { projectId },
+        req.permission
+      );
+      await server.services.auditLog.createAuditLog({
+        projectId,
+        event: { type: EventType.VIEW_INSIGHTS_SECRETS_DUPLICATION, metadata: { projectId } },
+        ...req.auditLogInfo
+      });
+
+      if (remainingTTL && remainingTTL >= 0) {
+        void reply.header("X-Cache-TTL", remainingTTL);
+      }
+
+      return result;
+    }
+  });
+
+  server.route({
+    method: "GET",
     url: "/secrets/summary",
     config: { rateLimit: readLimit },
     schema: {
