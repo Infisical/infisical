@@ -15,6 +15,7 @@ import {
 } from "@app/ee/services/permission/project-permission";
 import { auth0ClientSecretRotationFactory } from "@app/ee/services/secret-rotation-v2/auth0-client-secret/auth0-client-secret-rotation-fns";
 import { azureClientSecretRotationFactory } from "@app/ee/services/secret-rotation-v2/azure-client-secret/azure-client-secret-rotation-fns";
+import { convexAccessKeyRotationFactory } from "@app/ee/services/secret-rotation-v2/convex-access-key/convex-access-key-rotation-fns";
 import { databricksServicePrincipalSecretRotationFactory } from "@app/ee/services/secret-rotation-v2/databricks-service-principal-secret/databricks-service-principal-secret-rotation-fns";
 import { datadogApplicationKeySecretRotationFactory } from "@app/ee/services/secret-rotation-v2/datadog-application-key-secret/datadog-application-key-secret-rotation-fns";
 import { ldapPasswordRotationFactory } from "@app/ee/services/secret-rotation-v2/ldap-password/ldap-password-rotation-fns";
@@ -202,7 +203,8 @@ const SECRET_ROTATION_FACTORY_MAP: Record<SecretRotation, TRotationFactoryImplem
   [SecretRotation.SalesforceOauthCredentials]:
     salesforceOauthCredentialsRotationFactory as TRotationFactoryImplementation,
   [SecretRotation.DatadogApplicationKeySecret]:
-    datadogApplicationKeySecretRotationFactory as TRotationFactoryImplementation
+    datadogApplicationKeySecretRotationFactory as TRotationFactoryImplementation,
+  [SecretRotation.ConvexAccessKey]: convexAccessKeyRotationFactory as TRotationFactoryImplementation
 };
 
 export const secretRotationV2ServiceFactory = ({
