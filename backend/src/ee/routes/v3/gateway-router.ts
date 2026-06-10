@@ -312,7 +312,7 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
             resourceType: "gateway",
             resourceId: req.params.gatewayId,
             method: result.method,
-            resourceName: result.resourceName,
+            resourceName: result.resourceName
           }
         }
       });

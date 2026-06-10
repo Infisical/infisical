@@ -332,7 +332,7 @@ export const registerRelayV2Router = async (server: FastifyZodProvider) => {
             resourceType: "relay",
             resourceId: req.params.relayId,
             method: result.method,
-            resourceName: result.resourceName,
+            resourceName: result.resourceName
           }
         }
       });
