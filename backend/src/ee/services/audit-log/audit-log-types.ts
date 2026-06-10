@@ -679,6 +679,7 @@ export enum EventType {
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_ACCESS_VOLUME = "view-insights-secrets-management-access-volume",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_ACCESS_LOCATIONS = "view-insights-secrets-management-access-locations",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_SUMMARY = "view-insights-secrets-management-summary",
+  VIEW_INSIGHTS_SECRETS_DUPLICATION = "view-insights-secrets-duplication",
   VIEW_INSIGHTS_PAM_SUMMARY = "view-insights-pam-summary",
   VIEW_INSIGHTS_PAM_SESSION_ACTIVITY = "view-insights-pam-session-activity",
   VIEW_INSIGHTS_PAM_TOP_ACTORS = "view-insights-pam-top-actors",
@@ -5655,6 +5656,13 @@ interface ViewSecretManagementInsightsSummaryEvent {
   };
 }
 
+interface ViewInsightsSecretsDuplicationEvent {
+  type: EventType.VIEW_INSIGHTS_SECRETS_DUPLICATION;
+  metadata: {
+    projectId: string;
+  };
+}
+
 interface ViewAuditLogsEvent {
   type: EventType.VIEW_AUDIT_LOGS;
   metadata?: Record<string, unknown>;
@@ -7866,6 +7874,7 @@ export type Event =
   | ViewSecretManagementInsightsAccessLocationsEvent
   | ViewInsightsAuthMethodsEvent
   | ViewSecretManagementInsightsSummaryEvent
+  | ViewInsightsSecretsDuplicationEvent
   | ViewAuditLogsEvent
   | ViewPamInsightsSummaryEvent
   | ViewPamInsightsSessionActivityEvent
