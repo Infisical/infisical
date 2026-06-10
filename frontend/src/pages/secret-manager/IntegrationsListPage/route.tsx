@@ -3,6 +3,7 @@ import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
 
 import { projectKeys } from "@app/hooks/api";
+import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { TIntegration } from "@app/hooks/api/integrations/types";
 import { fetchWorkspaceIntegrations } from "@app/hooks/api/projects/queries";
 import {
@@ -19,7 +20,8 @@ const IntegrationsListPageQuerySchema = z.object({
   selectedTab: z.nativeEnum(IntegrationsListPageTabs).optional(),
   addSync: z.nativeEnum(SecretSync).optional(),
   connectionId: z.string().optional(),
-  connectionName: z.string().optional()
+  connectionName: z.string().optional(),
+  addConnectionApp: z.nativeEnum(AppConnection).optional()
 });
 
 export const Route = createFileRoute(

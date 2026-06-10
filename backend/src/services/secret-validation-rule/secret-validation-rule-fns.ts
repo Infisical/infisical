@@ -1,14 +1,20 @@
 import picomatch from "picomatch";
 import RE2 from "re2";
 
+import { DynamicSecretProviders } from "@app/ee/services/dynamic-secret/providers/models";
+import { SecretRotation } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-enums";
 import { BadRequestError } from "@app/lib/errors";
 
 import { MAX_PREVENT_VALUE_REUSE_VERSIONS } from "./secret-validation-rule-schemas";
 import {
   ConstraintTarget,
   ConstraintType,
+  DynamicSecretRuleProvider,
+  SecretRotationRuleProvider,
   SecretValidationRuleType,
   TConstraint,
+  TDynamicSecretsInputs,
+  TSecretRotationsInputs,
   TSecretValidationRuleInputs,
   TStaticSecretsInputs
 } from "./secret-validation-rule-types";
@@ -78,13 +84,42 @@ const $checkStaticSecretsConstraintOverlap = (
   return overlapping;
 };
 
+/**
+ * For dynamic-secret / secret-rotation rules: two rules conflict only if their
+ * selected provider sets intersect AND they share at least one constraint type
+ * targeting the same generated field (e.g. two regex patterns on the password).
+ */
+const $checkGeneratedSecretConstraintOverlap = (
+  incoming: TDynamicSecretsInputs | TSecretRotationsInputs,
+  existing: TDynamicSecretsInputs | TSecretRotationsInputs
+): ConstraintType[] => {
+  const incomingProviders = new Set<string>(incoming.providers as string[]);
+  const sharesProvider = (existing.providers as string[]).some((p) => incomingProviders.has(p));
+  if (!sharesProvider) return [];
+
+  const overlapping: ConstraintType[] = [];
+  for (const incomingConstraint of incoming.constraints) {
+    for (const existingConstraint of existing.constraints) {
+      if (
+        incomingConstraint.type === existingConstraint.type &&
+        incomingConstraint.appliesTo === existingConstraint.appliesTo
+      ) {
+        overlapping.push(incomingConstraint.type);
+      }
+    }
+  }
+  return overlapping;
+};
+
 type TOverlapChecker<TInputs = TSecretValidationRuleInputs> = (
   incoming: TInputs,
   existing: TInputs
 ) => ConstraintType[];
 
 const overlapCheckersByType: Record<SecretValidationRuleType, TOverlapChecker> = {
-  [SecretValidationRuleType.StaticSecrets]: $checkStaticSecretsConstraintOverlap as TOverlapChecker
+  [SecretValidationRuleType.StaticSecrets]: $checkStaticSecretsConstraintOverlap as TOverlapChecker,
+  [SecretValidationRuleType.DynamicSecrets]: $checkGeneratedSecretConstraintOverlap as TOverlapChecker,
+  [SecretValidationRuleType.SecretRotations]: $checkGeneratedSecretConstraintOverlap as TOverlapChecker
 };
 
 export const checkForOverlappingRules = ({
@@ -176,7 +211,8 @@ const CONSTRAINT_LABELS: Record<ConstraintType, string> = {
 
 const TARGET_LABELS: Record<ConstraintTarget, string> = {
   [ConstraintTarget.SecretKey]: "key",
-  [ConstraintTarget.SecretValue]: "value"
+  [ConstraintTarget.SecretValue]: "value",
+  [ConstraintTarget.GeneratedPassword]: "password"
 };
 
 const evaluateConstraint = (constraint: TConstraint, secret: TSecretToValidate): string | null => {
@@ -288,7 +324,10 @@ const enforceStaticSecretsRules = (rules: TValidationRule[], secrets: TSecretToV
 // To add a new rule type, implement an enforcer and add it here.
 type TRuleEnforcer = (rules: TValidationRule[], secrets: TSecretToValidate[]) => TValidationViolation[];
 
-const ruleEnforcersByType: Record<SecretValidationRuleType, TRuleEnforcer> = {
+// Generated-credential rule types (dynamic-secrets / secret-rotations) are
+// enforced inline at password generation time, not through this enforcement
+// path, so they intentionally have no entry here.
+const ruleEnforcersByType: Partial<Record<SecretValidationRuleType, TRuleEnforcer>> = {
   [SecretValidationRuleType.StaticSecrets]: enforceStaticSecretsRules
 };
 
@@ -358,4 +397,27 @@ export const enforceSecretValidationRules = ({
       message: `Secret validation failed:\n${details.join("\n\n")}`
     });
   }
+};
+
+// Maps a runtime dynamic-secret provider type to the rule-provider slug
+// selectable in a secret validation rule. Providers that aren't yet
+// covered by validation rules return null, which short-circuits the lookup.
+export const convertDynamicSecretProviderToValidationRuleProvider = (
+  type: DynamicSecretProviders
+): DynamicSecretRuleProvider | null => {
+  if (type === DynamicSecretProviders.SqlDatabase) return DynamicSecretRuleProvider.SqlDatabase;
+  if (type === DynamicSecretProviders.Milvus) return DynamicSecretRuleProvider.Milvus;
+
+  return null;
+};
+
+// Maps a runtime rotation type to the rule-provider slug selectable in a
+// secret validation rule. Rotation types not yet covered return null.
+export const convertSecretRotationToValidationRuleProvider = (
+  type: SecretRotation
+): SecretRotationRuleProvider | null => {
+  if (type === SecretRotation.PostgresCredentials) {
+    return SecretRotationRuleProvider.PostgresCredentials;
+  }
+  return null;
 };

@@ -1,6 +1,12 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { AccessScope, ActionProjectType, OrgMembershipStatus, ProjectMembershipRole } from "@app/db/schemas";
+import {
+  AccessScope,
+  ActionProjectType,
+  OrgMembershipStatus,
+  ProjectMembershipRole,
+  ProjectType
+} from "@app/db/schemas";
 import {
   constructPermissionErrorMessage,
   validatePrivilegeChangeOperation
@@ -94,6 +100,20 @@ export const newProjectMembershipUserFactory = ({
         .filter((el) => !orgMemberships.find((memb) => memb.actorUserId === el.id))
         .map((el) => el.email);
       throw new BadRequestError({ message: `Users ${missingUsers.join(",")} not part of organization` });
+    }
+
+    const project = await requestMemoize(requestMemoKeys.projectFindById(scope.value), () =>
+      projectDAL.findById(scope.value)
+    );
+    if (project?.type === ProjectType.CertificateManager) {
+      const invalidRoles = dto.data.roles.filter(
+        (r) => r.role !== ProjectMembershipRole.Admin && r.role !== ProjectMembershipRole.Member
+      );
+      if (invalidRoles.length > 0) {
+        throw new BadRequestError({
+          message: "Certificate Manager only supports Admin and Member roles."
+        });
+      }
     }
 
     if (dto.bootstrapForApplication) {
@@ -197,6 +217,20 @@ export const newProjectMembershipUserFactory = ({
       actorOrgId: dto.permission.orgId
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Edit, ProjectPermissionSub.Member);
+
+    const project = await requestMemoize(requestMemoKeys.projectFindById(scope.value), () =>
+      projectDAL.findById(scope.value)
+    );
+    if (project?.type === ProjectType.CertificateManager) {
+      const invalidRoles = dto.data.roles.filter(
+        (r) => r.role !== ProjectMembershipRole.Admin && r.role !== ProjectMembershipRole.Member
+      );
+      if (invalidRoles.length > 0) {
+        throw new BadRequestError({
+          message: "Certificate Manager only supports Admin and Member roles."
+        });
+      }
+    }
 
     const targetUser = await requestMemoize(requestMemoKeys.userFindById(dto.selector.userId), () =>
       userDAL.findById(dto.selector.userId)

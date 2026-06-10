@@ -320,6 +320,8 @@ import { folderCommitServiceFactory } from "@app/services/folder-commit/folder-c
 import { folderCommitChangesDALFactory } from "@app/services/folder-commit-changes/folder-commit-changes-dal";
 import { folderTreeCheckpointDALFactory } from "@app/services/folder-tree-checkpoint/folder-tree-checkpoint-dal";
 import { folderTreeCheckpointResourcesDALFactory } from "@app/services/folder-tree-checkpoint-resources/folder-tree-checkpoint-resources-dal";
+import { gitHubAppDALFactory } from "@app/services/github-app/github-app-dal";
+import { gitHubAppServiceFactory } from "@app/services/github-app/github-app-service";
 import { groupProjectDALFactory } from "@app/services/group-project/group-project-dal";
 import { groupProjectServiceFactory } from "@app/services/group-project/group-project-service";
 import { healthAlertServiceFactory } from "@app/services/health-alert/health-alert-queue";
@@ -371,6 +373,7 @@ import { kmskeyDALFactory } from "@app/services/kms/kms-key-dal";
 import { TKmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
 import { kmsServiceFactory } from "@app/services/kms/kms-service";
 import { RootKeyEncryptionStrategy } from "@app/services/kms/kms-types";
+import { applicationMembershipCleanupServiceFactory } from "@app/services/membership/application-membership-cleanup-service";
 import { membershipDALFactory } from "@app/services/membership/membership-dal";
 import { membershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { membershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
@@ -717,6 +720,7 @@ export const registerRoutes = async (
   const gatewayDAL = gatewayDALFactory(db);
   const secretReminderRecipientsDAL = secretReminderRecipientsDALFactory(db);
   const githubOrgSyncDAL = githubOrgSyncDALFactory(db);
+  const gitHubAppDAL = gitHubAppDALFactory(db);
   const honeyTokenConfigDAL = honeyTokenConfigDALFactory(db);
   const honeyTokenDAL = honeyTokenDALFactory(db);
   const honeyTokenEventDAL = honeyTokenEventDALFactory(db);
@@ -733,6 +737,7 @@ export const registerRoutes = async (
   const membershipGroupDAL = membershipGroupDALFactory(db);
   const additionalPrivilegeDAL = additionalPrivilegeDALFactory(db);
   const membershipRoleDAL = membershipRoleDALFactory(db);
+  const approvalPolicyDAL = approvalPolicyDALFactory(db);
   const roleDAL = roleDALFactory(db);
   const pkiAlertHistoryDAL = pkiAlertHistoryDALFactory(db);
   const pkiAlertChannelDAL = pkiAlertChannelDALFactory(db);
@@ -782,6 +787,11 @@ export const registerRoutes = async (
 
   const tokenService = tokenServiceFactory({ tokenDAL: authTokenDAL, userDAL, membershipUserDAL, orgDAL, keyStore });
 
+  const applicationMembershipCleanupService = applicationMembershipCleanupServiceFactory({
+    membershipDAL,
+    approvalPolicyDAL
+  });
+
   const membershipUserService = membershipUserServiceFactory({
     licenseService,
     membershipRoleDAL,
@@ -797,7 +807,9 @@ export const registerRoutes = async (
     userAliasDAL,
     userGroupMembershipDAL,
     additionalPrivilegeDAL,
-    projectAccessRequestDAL
+    projectAccessRequestDAL,
+    applicationMembershipCleanupService,
+    approvalPolicyDAL
   });
 
   const membershipIdentityService = membershipIdentityServiceFactory({
@@ -809,6 +821,8 @@ export const registerRoutes = async (
     roleDAL,
     additionalPrivilegeDAL,
     licenseService,
+    applicationMembershipCleanupService,
+    projectDAL,
     keyStore
   });
 
@@ -823,7 +837,9 @@ export const registerRoutes = async (
     permissionService,
     orgDAL,
     groupDAL,
-    licenseService
+    licenseService,
+    applicationMembershipCleanupService,
+    projectDAL
   });
 
   const roleService = roleServiceFactory({
@@ -1012,6 +1028,7 @@ export const registerRoutes = async (
     membershipRoleDAL,
     membershipUserDAL,
     additionalPrivilegeDAL,
+    approvalPolicyDAL,
     emailDomainDAL,
     telemetryService
   });
@@ -1027,6 +1044,8 @@ export const registerRoutes = async (
     membershipRoleDAL,
     membershipGroupDAL
   });
+
+  // gitHubAppService is created after gatewayPoolService (below) due to dependency on gateway services
 
   // ldapService is created after loginService (below) due to dependency on processProviderCallback
 
@@ -1179,6 +1198,7 @@ export const registerRoutes = async (
     roleDAL,
     userGroupMembershipDAL,
     additionalPrivilegeDAL,
+    approvalPolicyDAL,
     certificatePolicyDAL
   });
 
@@ -1293,7 +1313,8 @@ export const registerRoutes = async (
     accessApprovalPolicyDAL,
     secretApprovalPolicyApproverDAL: sapApproverDAL,
     secretApprovalPolicyDAL,
-    membershipRoleDAL
+    membershipRoleDAL,
+    applicationMembershipCleanupService
   });
 
   const projectKeyService = projectKeyServiceFactory({
@@ -1379,7 +1400,6 @@ export const registerRoutes = async (
   const gatewayPoolDAL = gatewayPoolDalFactory(db);
   const gatewayPoolMembershipDAL = gatewayPoolMembershipDalFactory(db);
 
-  const approvalPolicyDAL = approvalPolicyDALFactory(db);
   const approvalRequestDAL = approvalRequestDALFactory(db);
   const approvalRequestGrantsDAL = approvalRequestGrantsDALFactory(db);
   const approvalRequestStepsDAL = approvalRequestStepsDALFactory(db);
@@ -1644,6 +1664,20 @@ export const registerRoutes = async (
     dynamicSecretDAL
   });
 
+  const gitHubAppService = gitHubAppServiceFactory({
+    gitHubAppDAL,
+    permissionService,
+    kmsService,
+    keyStore,
+    licenseService,
+    gatewayService,
+    gatewayV2Service,
+    gatewayDAL,
+    gatewayV2DAL,
+    auditLogService,
+    userDAL
+  });
+
   const secretSyncQueue = secretSyncQueueFactory({
     queueService,
     cronJob,
@@ -1668,6 +1702,7 @@ export const registerRoutes = async (
     secretVersionTagV2BridgeDAL,
     resourceMetadataDAL,
     appConnectionDAL,
+    gitHubAppDAL,
     licenseService,
     gatewayService,
     gatewayV2Service,
@@ -2358,7 +2393,8 @@ export const registerRoutes = async (
     licenseService,
     kmsService,
     userDAL,
-    identityDAL
+    identityDAL,
+    secretValidationRuleService
   });
 
   const emailDomainService = emailDomainServiceFactory({
@@ -2501,7 +2537,9 @@ export const registerRoutes = async (
     gatewayV2DAL,
     projectDAL,
     appConnectionCredentialRotationService,
-    identityUaDAL
+    identityUaDAL,
+    gitHubAppDAL,
+    keyStore
   });
 
   const honeyTokenConfigService = honeyTokenConfigServiceFactory({
@@ -2603,7 +2641,8 @@ export const registerRoutes = async (
     gatewayService,
     gatewayV2Service,
     gatewayPoolService,
-    telemetryService
+    telemetryService,
+    secretValidationRuleService
   });
 
   const insightsService = insightsServiceFactory({
@@ -3686,6 +3725,7 @@ export const registerRoutes = async (
     insights: insightsService,
     pamInsights: pamInsightsService,
     githubOrgSync: githubOrgSyncConfigService,
+    gitHubApp: gitHubAppService,
     honeyTokenConfig: honeyTokenConfigService,
     honeyToken: honeyTokenService,
     folderCommit: folderCommitService,

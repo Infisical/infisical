@@ -89,6 +89,9 @@ import {
 } from "@app/services/secret-v2-bridge/secret-v2-bridge-fns";
 import { TSecretVersionV2DALFactory } from "@app/services/secret-v2-bridge/secret-version-dal";
 import { TSecretVersionV2TagDALFactory } from "@app/services/secret-v2-bridge/secret-version-tag-dal";
+import { convertSecretRotationToValidationRuleProvider } from "@app/services/secret-validation-rule/secret-validation-rule-fns";
+import { TSecretValidationRuleServiceFactory } from "@app/services/secret-validation-rule/secret-validation-rule-service";
+import { SecretValidationRuleType } from "@app/services/secret-validation-rule/secret-validation-rule-types";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { WebhookEvents } from "@app/services/webhook/webhook-types";
@@ -164,6 +167,7 @@ export type TSecretRotationV2ServiceFactoryDep = {
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
+  secretValidationRuleService: Pick<TSecretValidationRuleServiceFactory, "findConstraintsForGeneratedSecret">;
 };
 
 export type TSecretRotationV2ServiceFactory = ReturnType<typeof secretRotationV2ServiceFactory>;
@@ -224,8 +228,34 @@ export const secretRotationV2ServiceFactory = ({
   gatewayService,
   gatewayV2Service,
   gatewayPoolService,
-  telemetryService
+  telemetryService,
+  secretValidationRuleService
 }: TSecretRotationV2ServiceFactoryDep) => {
+  const $resolvePasswordValidationContext = async ({
+    projectId,
+    envId,
+    secretPath,
+    type
+  }: {
+    projectId: string;
+    envId: string;
+    secretPath: string;
+    type: SecretRotation;
+  }) => {
+    const provider = convertSecretRotationToValidationRuleProvider(type);
+    if (!provider) return undefined;
+
+    const matched = await secretValidationRuleService.findConstraintsForGeneratedSecret({
+      projectId,
+      envId,
+      secretPath,
+      type: SecretValidationRuleType.SecretRotations,
+      provider
+    });
+    if (!matched.constraints.length) return undefined;
+    return matched;
+  };
+
   const $queueSendSecretRotationStatusNotification = async (secretRotation: TSecretRotationV2Raw) => {
     const appCfg = getConfig();
     if (!appCfg.isSmtpConfigured) return; // comment out if testing email sending
@@ -559,6 +589,13 @@ export const secretRotationV2ServiceFactory = ({
       actor
     );
 
+    const passwordValidationContext = await $resolvePasswordValidationContext({
+      projectId,
+      envId: folder.envId,
+      secretPath,
+      type: payload.type
+    });
+
     const rotationFactory = SECRET_ROTATION_FACTORY_MAP[payload.type](
       {
         parameters: payload.parameters,
@@ -570,7 +607,8 @@ export const secretRotationV2ServiceFactory = ({
       kmsService,
       gatewayService,
       gatewayV2Service,
-      gatewayPoolService
+      gatewayPoolService,
+      passwordValidationContext
     );
 
     // Perform ALL validation checks BEFORE rotating credentials on the external system.
@@ -931,6 +969,13 @@ export const secretRotationV2ServiceFactory = ({
     if (revokeGeneratedCredentials) {
       const appConnection = await decryptAppConnection(connection, kmsService);
 
+      const passwordValidationContext = await $resolvePasswordValidationContext({
+        projectId,
+        envId: environment.id,
+        secretPath: folder.path,
+        type
+      });
+
       const rotationFactory = SECRET_ROTATION_FACTORY_MAP[type](
         {
           ...secretRotation,
@@ -940,7 +985,8 @@ export const secretRotationV2ServiceFactory = ({
         kmsService,
         gatewayService,
         gatewayV2Service,
-        gatewayPoolService
+        gatewayPoolService,
+        passwordValidationContext
       );
 
       const generatedCredentials = await decryptSecretRotationCredentials({
@@ -1257,6 +1303,13 @@ export const secretRotationV2ServiceFactory = ({
       const inactiveCredentials = generatedCredentials[inactiveIndex];
       const activeCredentials = generatedCredentials[activeIndex];
 
+      const passwordValidationContext = await $resolvePasswordValidationContext({
+        projectId,
+        envId: environment.id,
+        secretPath: folder.path,
+        type: type as SecretRotation
+      });
+
       const rotationFactory = SECRET_ROTATION_FACTORY_MAP[type as SecretRotation](
         {
           ...secretRotation,
@@ -1266,7 +1319,8 @@ export const secretRotationV2ServiceFactory = ({
         kmsService,
         gatewayService,
         gatewayV2Service,
-        gatewayPoolService
+        gatewayPoolService,
+        passwordValidationContext
       );
 
       const updatedRotation = await rotationFactory.rotateCredentials(

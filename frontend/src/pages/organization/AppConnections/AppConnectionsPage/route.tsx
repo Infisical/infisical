@@ -1,6 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 
+import { AppConnection } from "@app/hooks/api/appConnections/enums";
+
 import { AppConnectionsPage } from "./AppConnectionsPage";
 
 export const Route = createFileRoute(
@@ -10,7 +12,9 @@ export const Route = createFileRoute(
   validateSearch: z.object({
     error: z.string().optional(),
     success: z.string().optional(),
-    connectionId: z.string().optional()
+    connectionId: z.string().optional(),
+    // Set after creating a new GitHub App so we reopen the Add Connection modal to that app's form.
+    addConnectionApp: z.nativeEnum(AppConnection).optional()
   }),
   context: () => ({
     breadcrumbs: [
