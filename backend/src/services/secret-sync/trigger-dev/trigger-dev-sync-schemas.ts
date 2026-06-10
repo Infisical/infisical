@@ -11,7 +11,6 @@ import {
 import { TSyncOptionsConfig } from "@app/services/secret-sync/secret-sync-types";
 
 import { SECRET_SYNC_NAME_MAP } from "../secret-sync-maps";
-import { TriggerDevSyncEnvironment } from "./trigger-dev-sync-enums";
 
 const TriggerDevSyncDestinationConfigSchema = z.object({
   projectRef: z
@@ -20,8 +19,12 @@ const TriggerDevSyncDestinationConfigSchema = z.object({
     .min(1, "Project reference required")
     .max(255)
     .describe(SecretSyncs.DESTINATION_CONFIG.TRIGGER_DEV.projectRef),
+  // The environment slug is validated dynamically against the project's available environments
+  // (fetched from Trigger.dev) rather than a hardcoded enum, so new environments work automatically.
   environment: z
-    .nativeEnum(TriggerDevSyncEnvironment)
+    .string()
+    .trim()
+    .min(1, "Environment required")
     .describe(SecretSyncs.DESTINATION_CONFIG.TRIGGER_DEV.environment)
 });
 

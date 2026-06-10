@@ -9,41 +9,28 @@ import {
   FieldError,
   FieldGroup,
   FieldLabel,
-  FilterableSelect,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
+  FilterableSelect
 } from "@app/components/v3";
 import {
+  TTriggerDevEnvironment,
   TTriggerDevOrganization,
   TTriggerDevProject,
+  useTriggerDevConnectionListEnvironments,
   useTriggerDevConnectionListProjects
 } from "@app/hooks/api/appConnections/trigger-dev";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
-import { TriggerDevSyncEnvironment } from "@app/hooks/api/secretSyncs/types/trigger-dev-sync";
 
 import { TSecretSyncForm } from "../schemas";
 
-const TRIGGER_DEV_ENVIRONMENTS = [
-  {
-    name: "Production",
-    value: TriggerDevSyncEnvironment.Production
-  },
-  {
-    name: "Staging",
-    value: TriggerDevSyncEnvironment.Staging
-  },
-  {
-    name: "Development",
-    value: TriggerDevSyncEnvironment.Development
-  },
-  {
-    name: "Preview",
-    value: TriggerDevSyncEnvironment.Preview
-  }
-];
+const ENVIRONMENT_TYPE_LABELS: Record<string, string> = {
+  DEVELOPMENT: "Development",
+  STAGING: "Staging",
+  PREVIEW: "Preview",
+  PRODUCTION: "Production"
+};
+
+const getEnvironmentLabel = (environment: TTriggerDevEnvironment) =>
+  ENVIRONMENT_TYPE_LABELS[environment.type] ?? environment.slug;
 
 export const TriggerDevSyncFields = () => {
   const { control, setValue } = useFormContext<
@@ -59,6 +46,13 @@ export const TriggerDevSyncFields = () => {
       enabled: Boolean(connectionId)
     }
   );
+
+  // Environments are project-scoped and only include what the connected token can access,
+  // so they're fetched lazily once a project is selected.
+  const { data: environments, isLoading: isEnvironmentsLoading } =
+    useTriggerDevConnectionListEnvironments(connectionId, projectRef, {
+      enabled: Boolean(connectionId && projectRef)
+    });
 
   // The PAT can span multiple organizations, so we first scope by organization and then list
   // only that organization's projects. The organization is a UI-only filter — only the
@@ -95,6 +89,7 @@ export const TriggerDevSyncFields = () => {
         onChange={() => {
           setSelectedOrgId(null);
           setValue("destinationConfig.projectRef", "");
+          setValue("destinationConfig.environment", "");
         }}
       />
 
@@ -109,6 +104,7 @@ export const TriggerDevSyncFields = () => {
               const selected = option as SingleValue<TTriggerDevOrganization>;
               setSelectedOrgId(selected?.id ?? null);
               setValue("destinationConfig.projectRef", "");
+              setValue("destinationConfig.environment", "");
             }}
             options={organizationOptions}
             placeholder="Select an organization..."
@@ -131,7 +127,8 @@ export const TriggerDevSyncFields = () => {
                 value={orgProjects.find((v) => v.id === value) ?? null}
                 onChange={(option) => {
                   const selected = option as SingleValue<TTriggerDevProject>;
-                  onChange(selected?.id ?? null);
+                  onChange(selected?.id ?? "");
+                  setValue("destinationConfig.environment", "");
                 }}
                 options={orgProjects}
                 placeholder={selectedOrgId ? "Select a project..." : "Select an organization first"}
@@ -151,18 +148,19 @@ export const TriggerDevSyncFields = () => {
           <Field>
             <FieldLabel>Environment</FieldLabel>
             <FieldContent>
-              <Select value={value} onValueChange={(val) => onChange(val)}>
-                <SelectTrigger className="w-full" isError={Boolean(error)}>
-                  <SelectValue placeholder="Select an environment..." />
-                </SelectTrigger>
-                <SelectContent position="popper">
-                  {TRIGGER_DEV_ENVIRONMENTS.map(({ name, value: envValue }) => (
-                    <SelectItem value={envValue} key={envValue}>
-                      {name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <FilterableSelect
+                isLoading={isEnvironmentsLoading && Boolean(connectionId && projectRef)}
+                isDisabled={!projectRef}
+                value={environments?.find((env) => env.slug === value) ?? null}
+                onChange={(option) => {
+                  const selected = option as SingleValue<TTriggerDevEnvironment>;
+                  onChange(selected?.slug ?? "");
+                }}
+                options={environments ?? []}
+                placeholder={projectRef ? "Select an environment..." : "Select a project first"}
+                getOptionLabel={(option) => getEnvironmentLabel(option)}
+                getOptionValue={(option) => option.slug}
+              />
               <FieldError errors={[error]} />
             </FieldContent>
           </Field>

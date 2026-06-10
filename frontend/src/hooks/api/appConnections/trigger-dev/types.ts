@@ -9,3 +9,9 @@ export type TTriggerDevProject = {
   name: string;
   organization: TTriggerDevOrganization;
 };
+
+export type TTriggerDevEnvironment = {
+  id: string;
+  slug: string;
+  type: string;
+};

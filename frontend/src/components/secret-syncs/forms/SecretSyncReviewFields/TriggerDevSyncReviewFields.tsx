@@ -2,8 +2,18 @@ import { useFormContext, useWatch } from "react-hook-form";
 
 import { TSecretSyncForm } from "@app/components/secret-syncs/forms/schemas";
 import { Badge, Detail, DetailLabel, DetailValue } from "@app/components/v3";
-import { useTriggerDevConnectionListProjects } from "@app/hooks/api/appConnections/trigger-dev";
+import {
+  useTriggerDevConnectionListEnvironments,
+  useTriggerDevConnectionListProjects
+} from "@app/hooks/api/appConnections/trigger-dev";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
+
+const ENVIRONMENT_TYPE_LABELS: Record<string, string> = {
+  DEVELOPMENT: "Development",
+  STAGING: "Staging",
+  PREVIEW: "Preview",
+  PRODUCTION: "Production"
+};
 
 export const TriggerDevSyncOptionsReviewFields = () => {
   const { watch } = useFormContext<TSecretSyncForm & { destination: SecretSync.TriggerDev }>();
@@ -30,7 +40,14 @@ export const TriggerDevSyncReviewFields = () => {
   const { data: projects } = useTriggerDevConnectionListProjects(connectionId, {
     enabled: Boolean(connectionId)
   });
+  const { data: environments } = useTriggerDevConnectionListEnvironments(connectionId, projectRef, {
+    enabled: Boolean(connectionId && projectRef)
+  });
   const displayName = projects?.find((p) => p.id === projectRef)?.name ?? projectRef;
+  const environmentType = environments?.find((env) => env.slug === environment)?.type;
+  const environmentLabel = environmentType
+    ? ENVIRONMENT_TYPE_LABELS[environmentType] ?? environment
+    : environment;
 
   return (
     <>
@@ -40,7 +57,7 @@ export const TriggerDevSyncReviewFields = () => {
       </Detail>
       <Detail>
         <DetailLabel>Environment</DetailLabel>
-        <DetailValue className="capitalize">{environment}</DetailValue>
+        <DetailValue className="capitalize">{environmentLabel}</DetailValue>
       </Detail>
     </>
   );

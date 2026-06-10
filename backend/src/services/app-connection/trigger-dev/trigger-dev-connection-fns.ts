@@ -11,8 +11,15 @@ import { TriggerDevConnectionMethod } from "./trigger-dev-connection-enums";
 import {
   TTriggerDevConnection,
   TTriggerDevConnectionConfig,
+  TTriggerDevEnvironment,
   TTriggerDevProject
 } from "./trigger-dev-connection-types";
+
+type TTriggerDevApiEnvironment = {
+  id: string;
+  slug: string;
+  type: string;
+};
 
 type TTriggerDevApiProject = {
   id: string;
@@ -93,5 +100,31 @@ export const listTriggerDevProjects = async (appConnection: TTriggerDevConnectio
       name: project.organization.title,
       slug: project.organization.slug
     }
+  }));
+};
+
+export const listTriggerDevEnvironments = async (
+  appConnection: TTriggerDevConnection,
+  projectRef: string
+): Promise<TTriggerDevEnvironment[]> => {
+  const instanceUrl = await getTriggerDevInstanceUrl(appConnection);
+  const { apiKey } = appConnection.credentials;
+
+  // Returns only the parent environments the token can access (dev is scoped to the
+  // token owner); preview branch children are excluded since syncs target the parent.
+  const { data } = await request.get<TTriggerDevApiEnvironment[]>(
+    `${instanceUrl}/api/v1/projects/${encodeURIComponent(projectRef)}/environments`,
+    {
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        Accept: "application/json"
+      }
+    }
+  );
+
+  return data.map((environment) => ({
+    id: environment.id,
+    slug: environment.slug,
+    type: environment.type
   }));
 };

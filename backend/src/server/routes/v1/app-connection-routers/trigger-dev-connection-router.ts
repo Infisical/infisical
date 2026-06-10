@@ -54,4 +54,41 @@ export const registerTriggerDevConnectionRouter = async (server: FastifyZodProvi
       return projects;
     }
   });
+
+  server.route({
+    method: "GET",
+    url: `/:connectionId/environments`,
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      operationId: "listTriggerDevEnvironments",
+      params: z.object({
+        connectionId: z.string().uuid()
+      }),
+      querystring: z.object({
+        projectRef: z.string().trim().min(1)
+      }),
+      response: {
+        200: z
+          .object({
+            id: z.string(),
+            slug: z.string(),
+            type: z.string()
+          })
+          .array()
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const { connectionId } = req.params;
+      const { projectRef } = req.query;
+      const environments = await server.services.appConnection.triggerDev.listEnvironments(
+        connectionId,
+        projectRef,
+        req.permission
+      );
+      return environments;
+    }
+  });
 };

@@ -33,3 +33,10 @@ export type TTriggerDevProject = {
     slug: string;
   };
 };
+
+export type TTriggerDevEnvironment = {
+  id: string;
+  // The slug is the environment identifier used by the env-vars API (e.g. "dev", "stg", "prod", "preview")
+  slug: string;
+  type: string;
+};

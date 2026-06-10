@@ -2,7 +2,7 @@ import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
 
 import { AppConnection } from "../app-connection-enums";
-import { listTriggerDevProjects } from "./trigger-dev-connection-fns";
+import { listTriggerDevEnvironments, listTriggerDevProjects } from "./trigger-dev-connection-fns";
 import { TTriggerDevConnection } from "./trigger-dev-connection-types";
 
 type TGetAppConnectionFunc = (
@@ -24,7 +24,20 @@ export const triggerDevConnectionService = (getAppConnection: TGetAppConnectionF
     }
   };
 
+  const listEnvironments = async (connectionId: string, projectRef: string, actor: OrgServiceActor) => {
+    const appConnection = await getAppConnection(AppConnection.TriggerDev, connectionId, actor);
+
+    try {
+      const environments = await listTriggerDevEnvironments(appConnection, projectRef);
+      return environments;
+    } catch (error) {
+      logger.error(error, "Failed to establish connection with Trigger.dev");
+      return [];
+    }
+  };
+
   return {
-    listProjects
+    listProjects,
+    listEnvironments
   };
 };
