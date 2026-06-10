@@ -172,10 +172,7 @@ export const RequestsPage = () => {
   }, [requests]);
 
   const { data: appsResponse } = useListPkiApplications(
-    {
-      applicationIds: referencedAppIds,
-      limit: Math.min(Math.max(referencedAppIds.length, 1), 100)
-    },
+    { applicationIds: referencedAppIds, limit: 100 },
     { enabled: referencedAppIds.length > 0 }
   );
   const appById = useMemo(() => {

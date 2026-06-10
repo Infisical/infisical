@@ -100,14 +100,14 @@ export const registerPkiApplicationRouter = async (server: FastifyZodProvider) =
         applicationIds: z
           .string()
           .optional()
-          .transform((val) =>
-            val
-              ? val
-                  .split(",")
-                  .map((id) => id.trim())
-                  .filter(Boolean)
-              : undefined
-          )
+          .transform((val) => {
+            if (!val) return undefined;
+            const ids = val
+              .split(",")
+              .map((id) => id.trim())
+              .filter(Boolean);
+            return ids.length > 0 ? ids : undefined;
+          })
       }),
       response: {
         200: z.object({

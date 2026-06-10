@@ -317,10 +317,7 @@ export const CertificatesTable = ({
   }, [appliedFilters, pendingFilters]);
 
   const { data: selectedApplicationsResponse } = useListPkiApplications(
-    {
-      applicationIds: selectedApplicationIds,
-      limit: Math.min(Math.max(selectedApplicationIds.length, 1), 100)
-    },
+    { applicationIds: selectedApplicationIds, limit: 100 },
     { enabled: !applicationId && selectedApplicationIds.length > 0 }
   );
 
