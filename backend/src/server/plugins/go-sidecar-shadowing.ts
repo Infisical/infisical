@@ -202,8 +202,8 @@ export const shadowToGoSidecar = fp(async (server, opt: { sidecarUrl: string; sa
         delete headers["content-length"];
 
         const goResponse = await axios({
-          method: request.method as "GET",
-          url: `${opt.sidecarUrl}${request.url}`,
+          method: request.method,
+          url: new URL(request.url, opt.sidecarUrl).href,
           headers,
           timeout: 30000,
           validateStatus: () => true

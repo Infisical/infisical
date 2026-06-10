@@ -34,7 +34,8 @@ export const goSidecarPlugin = fp(async (server, opts: GoSidecarOpts) => {
       env: {
         ...process.env,
         ...opts.env,
-        PORT: "4040" // Override PORT so Go doesn't conflict with Node.js
+        PORT: "4040", // Override PORT so Go doesn't conflict with Node.js
+        HOST: "127.0.0.1"
       }
     });
 

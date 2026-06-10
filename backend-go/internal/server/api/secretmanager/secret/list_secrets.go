@@ -343,10 +343,9 @@ func (h *Handler) buildSecretRaw(ps *secretsvc.ProcessedSecret, projectID string
 		})
 	}
 
-	var isRotatedSecret *bool
+	isRotatedSecret := new(sec.IsRotatedSecret())
 	var rotationID *string
 	if sec.IsRotatedSecret() {
-		isRotatedSecret = new(true)
 		rid := sec.GetRotationID().String()
 		rotationID = &rid
 	}
@@ -410,8 +409,8 @@ func (h *Handler) buildImportSecretRaw(ps *secretsvc.ProcessedSecret, projectID 
 	if sec.SkipMultilineEncoding.Valid {
 		raw.SkipMultilineEncoding = &sec.SkipMultilineEncoding.V
 	}
+	raw.IsRotatedSecret = new(sec.IsRotatedSecret())
 	if sec.IsRotatedSecret() {
-		raw.IsRotatedSecret = new(true)
 		rid := sec.GetRotationID().String()
 		raw.RotationID = &rid
 	}
