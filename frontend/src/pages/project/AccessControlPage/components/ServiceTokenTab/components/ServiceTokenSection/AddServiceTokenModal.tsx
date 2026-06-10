@@ -228,9 +228,8 @@ const ServiceTokenForm = () => {
                                 <SelectValue placeholder="Select environment">
                                   <span className="truncate">
                                     {
-                                      currentProject?.environments.find(
-                                        (env) => env.slug === value
-                                      )?.name
+                                      currentProject?.environments.find((env) => env.slug === value)
+                                        ?.name
                                     }
                                   </span>
                                 </SelectValue>
