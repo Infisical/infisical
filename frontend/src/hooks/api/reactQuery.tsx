@@ -124,12 +124,21 @@ export const onRequestError = (error: unknown) => {
       return;
     }
     if (serverResponse?.error === ApiErrorTypes.ForbiddenError) {
-      createNotification({
+      const toastIdRef: { current: string | number | undefined } = { current: undefined };
+      toastIdRef.current = createNotification({
         title: "Forbidden Access",
         type: "error",
         text: `${serverResponse.message}.`,
         callToAction: serverResponse?.details?.length ? (
-          <Dialog>
+          <Dialog
+            onOpenChange={(open) => {
+              // The dialog renders inside the toast; its overlay pins sonner's dismiss timer
+              // while open. Dismiss the toast on close so it does not linger afterwards.
+              if (!open && toastIdRef.current !== undefined) {
+                dismissNotification(toastIdRef.current);
+              }
+            }}
+          >
             <DialogTrigger asChild>
               <Button variant="outline" size="xs">
                 Show more
