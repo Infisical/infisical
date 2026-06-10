@@ -175,7 +175,7 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
       // Provider-specific endpoints
       await Promise.all(
         Object.entries(AUDIT_LOG_STREAM_REGISTER_ROUTER_MAP).map(([provider, router]) =>
-          router(withRoutePrefix(auditLogStreamRouter as unknown as FastifyZodProvider, `/${provider}`))
+          router(withRoutePrefix(auditLogStreamRouter, `/${provider}`))
         )
       );
     },
@@ -197,7 +197,7 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
       // Provider-specific endpoints
       await Promise.all(
         Object.entries(EXTERNAL_KMS_REGISTER_ROUTER_MAP).map(([provider, router]) =>
-          router(withRoutePrefix(externalKmsRouter as unknown as FastifyZodProvider, `/${provider}`))
+          router(withRoutePrefix(externalKmsRouter, `/${provider}`))
         )
       );
     },
@@ -234,7 +234,7 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
           // Domain-type-specific endpoints
           await Promise.all(
             Object.entries(PAM_DOMAIN_REGISTER_ROUTER_MAP).map(([provider, router]) =>
-              router(withRoutePrefix(pamDomainRouter as unknown as FastifyZodProvider, `/${provider}`))
+              router(withRoutePrefix(pamDomainRouter, `/${provider}`))
             )
           );
         },
@@ -247,7 +247,7 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
           // Discovery-type-specific endpoints
           await Promise.all(
             Object.entries(PAM_DISCOVERY_REGISTER_ROUTER_MAP).map(([provider, router]) =>
-              router(withRoutePrefix(pamDiscoveryRouter as unknown as FastifyZodProvider, `/${provider}`))
+              router(withRoutePrefix(pamDiscoveryRouter, `/${provider}`))
             )
           );
         },
@@ -261,14 +261,14 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
           // Resource-type-specific account endpoints
           await Promise.all(
             Object.entries(PAM_ACCOUNT_REGISTER_ROUTER_MAP).map(([provider, router]) =>
-              router(withRoutePrefix(pamAccountRouter as unknown as FastifyZodProvider, `/${provider}`))
+              router(withRoutePrefix(pamAccountRouter, `/${provider}`))
             )
           );
 
           // Domain-type-specific account endpoints
           await Promise.all(
             Object.entries(PAM_DOMAIN_ACCOUNT_REGISTER_ROUTER_MAP).map(([provider, router]) =>
-              router(withRoutePrefix(pamAccountRouter as unknown as FastifyZodProvider, `/${provider}`))
+              router(withRoutePrefix(pamAccountRouter, `/${provider}`))
             )
           );
         },
@@ -283,7 +283,7 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
           // Provider-specific endpoints
           await Promise.all(
             Object.entries(PAM_RESOURCE_REGISTER_ROUTER_MAP).map(([provider, router]) =>
-              router(withRoutePrefix(pamResourceRouter as unknown as FastifyZodProvider, `/${provider}`))
+              router(withRoutePrefix(pamResourceRouter, `/${provider}`))
             )
           );
         },

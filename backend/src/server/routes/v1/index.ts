@@ -188,7 +188,7 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
       await pkiRouter.register(
         async (caRouter) => {
           for await (const [caType, router] of Object.entries(CERTIFICATE_AUTHORITY_REGISTER_ROUTER_MAP)) {
-            await router(withRoutePrefix(caRouter as unknown as FastifyZodProvider, `/${caType}`));
+            await router(withRoutePrefix(caRouter, `/${caType}`));
           }
 
           await caRouter.register(registerGeneralCertificateAuthorityRouter);
@@ -239,7 +239,7 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
         async (pkiSyncRouter) => {
           await registerPkiSyncRouter(pkiSyncRouter as unknown as FastifyZodProvider);
           for await (const [destination, router] of Object.entries(PKI_SYNC_REGISTER_ROUTER_MAP)) {
-            await router(withRoutePrefix(pkiSyncRouter as unknown as FastifyZodProvider, `/${destination}`));
+            await router(withRoutePrefix(pkiSyncRouter, `/${destination}`));
           }
         },
         { prefix: "/syncs" }
@@ -257,7 +257,7 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
       await pkiRouter.register(
         async (caRouter) => {
           for await (const [caType, router] of Object.entries(DEPRECATED_CERTIFICATE_AUTHORITY_REGISTER_ROUTER_MAP)) {
-            await router(withRoutePrefix(caRouter as unknown as FastifyZodProvider, `/${caType}`));
+            await router(withRoutePrefix(caRouter, `/${caType}`));
           }
         },
         {
@@ -279,7 +279,7 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
         async (pkiSyncRouter) => {
           await registerPkiSyncRouter(pkiSyncRouter as unknown as FastifyZodProvider, false);
           for await (const [destination, router] of Object.entries(PKI_SYNC_REGISTER_ROUTER_MAP)) {
-            await router(withRoutePrefix(pkiSyncRouter as unknown as FastifyZodProvider, `/${destination}`), false);
+            await router(withRoutePrefix(pkiSyncRouter, `/${destination}`), false);
           }
         },
         { prefix: "/syncs" }
@@ -317,7 +317,7 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
       // a register({ prefix }) per destination would create hundreds of encapsulated contexts
       // and overflow the call stack during Fastify's onReady boot walk
       for await (const [app, router] of Object.entries(APP_CONNECTION_REGISTER_ROUTER_MAP)) {
-        await router(withRoutePrefix(appConnectionRouter as unknown as FastifyZodProvider, `/${app}`));
+        await router(withRoutePrefix(appConnectionRouter, `/${app}`));
       }
     },
     { prefix: "/app-connections" }
@@ -331,7 +331,7 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
       // register service specific secret sync endpoints (secret-syncs/aws-parameter-store, secret-syncs/github, etc.)
       // see app-connections above: routes share one context with the destination baked into the URL
       for await (const [destination, router] of Object.entries(SECRET_SYNC_REGISTER_ROUTER_MAP)) {
-        await router(withRoutePrefix(secretSyncRouter as unknown as FastifyZodProvider, `/${destination}`));
+        await router(withRoutePrefix(secretSyncRouter, `/${destination}`));
       }
     },
     { prefix: "/secret-syncs" }
@@ -341,7 +341,7 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
     async (reminderRouter) => {
       // register service specific reminder endpoints (reminders/secret)
       for await (const [reminderType, router] of Object.entries(SECRET_REMINDER_REGISTER_ROUTER_MAP)) {
-        await router(withRoutePrefix(reminderRouter as unknown as FastifyZodProvider, `/${reminderType}`));
+        await router(withRoutePrefix(reminderRouter, `/${reminderType}`));
       }
     },
     { prefix: "/reminders" }
@@ -352,7 +352,7 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
     async (approvalPolicyRouter) => {
       // Register policy type-specific endpoints
       for await (const [type, router] of Object.entries(APPROVAL_POLICY_REGISTER_ROUTER_MAP)) {
-        await router(withRoutePrefix(approvalPolicyRouter as unknown as FastifyZodProvider, `/${type}`));
+        await router(withRoutePrefix(approvalPolicyRouter, `/${type}`));
       }
     },
     { prefix: "/approval-policies" }
