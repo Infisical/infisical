@@ -2542,7 +2542,7 @@ export const KMS = {
   },
   VERIFY: {
     keyId: "The ID of the key to verify the data with.",
-    data: "The data in string format to be verified (base64 encoded). For data larger than 4096 bytes you must first create a digest of the data and then pass the digest in the data parameter.",
+    data: "The data in string format to be verified (base64 encoded). For data larger than 1MB you must first create a digest of the data and then pass the digest in the data parameter.",
     signature: "The signature to be verified (base64 encoded).",
     isDigest: "Whether the data is already digested or not."
   }
@@ -2724,6 +2724,10 @@ export const AppConnections = {
       apiKey: "The CertCentral API Key used to authenticate with DigiCert.",
       region: "The CertCentral region the API key belongs to (us or eu)."
     },
+    GODADDY: {
+      apiKey: "The GoDaddy API Key used to authenticate with the GoDaddy API.",
+      apiSecret: "The GoDaddy API Secret used to authenticate with the GoDaddy API."
+    },
     TRAVISCI: {
       apiToken: "The API token used to authenticate with Travis CI."
     },
@@ -2883,6 +2887,10 @@ export const AppConnections = {
     },
     ANTHROPIC: {
       apiKey: "The Anthropic API key used to authenticate with the Anthropic API."
+    },
+    CONVEX: {
+      accessToken: "The Convex deploy key or access token used to authenticate with the Convex API.",
+      instanceUrl: "The Convex API instance URL. Defaults to 'https://api.convex.dev' if not provided."
     },
     OVH: {
       privateKey:
@@ -3386,6 +3394,9 @@ export const SecretRotations = {
     },
     DATADOG_APPLICATION_KEY_SECRET: {
       serviceAccountId: "The ID of the Datadog service account to rotate the application key for."
+    },
+    CONVEX_ACCESS_KEY: {
+      namePrefix: "A prefix to use when naming the generated Convex access key."
     }
   },
   SECRETS_MAPPING: {
@@ -3457,6 +3468,9 @@ export const SecretRotations = {
     DATADOG_APPLICATION_KEY_SECRET: {
       applicationKeyId: "The name of the secret that the rotated Datadog application key ID will be mapped to.",
       applicationKey: "The name of the secret that the rotated Datadog application key value will be mapped to."
+    },
+    CONVEX_ACCESS_KEY: {
+      accessKey: "The name of the secret that the rotated Convex access key will be mapped to."
     }
   }
 };

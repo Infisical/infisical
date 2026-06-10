@@ -193,6 +193,8 @@ export enum TableName {
   ProjectMicrosoftTeamsConfigs = "project_microsoft_teams_configs",
   SecretReminderRecipients = "secret_reminder_recipients", // TODO(Carlos): Remove this in the future after migrating to the new reminder recipients table
   GithubOrgSyncConfig = "github_org_sync_configs",
+  GitHubApp = "github_apps",
+  GitHubAppConnection = "github_app_connections",
   FolderCommit = "folder_commits",
   FolderCommitChanges = "folder_commit_changes",
   FolderCheckpoint = "folder_checkpoints",
@@ -294,6 +296,7 @@ export enum TableName {
 
   // Code Signing
   PkiSigners = "pki_signers",
+  PkiSignerCertificateIssuanceJobs = "pki_signer_certificate_issuance_jobs",
   PkiSigningOperations = "pki_signing_operations",
 
   CaSigningConfig = "ca_signing_configs",
@@ -355,7 +358,7 @@ export enum ProjectMembershipRole {
   KmsCryptographicOperator = "cryptographic-operator"
 }
 
-export enum ApplicationMembershipRole {
+export enum ResourceMembershipRole {
   Admin = "admin",
   Operator = "operator",
   Auditor = "auditor",
@@ -363,7 +366,8 @@ export enum ApplicationMembershipRole {
 }
 
 export enum ResourceType {
-  CertificateApplication = "certificate-application"
+  CertificateApplication = "certificate-application",
+  Signer = "pki-signer"
 }
 
 export enum SecretEncryptionAlgo {

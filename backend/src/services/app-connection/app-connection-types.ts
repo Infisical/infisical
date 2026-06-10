@@ -119,6 +119,12 @@ import {
   TValidateCloudflareConnectionCredentialsSchema
 } from "./cloudflare/cloudflare-connection-types";
 import {
+  TConvexConnection,
+  TConvexConnectionConfig,
+  TConvexConnectionInput,
+  TValidateConvexConnectionCredentialsSchema
+} from "./convex";
+import {
   TDatabricksConnection,
   TDatabricksConnectionConfig,
   TDatabricksConnectionInput,
@@ -173,6 +179,12 @@ import {
   TValidateExternalInfisicalConnectionCredentialsSchema
 } from "./external-infisical";
 import {
+  TF5BigIpConnection,
+  TF5BigIpConnectionConfig,
+  TF5BigIpConnectionInput,
+  TValidateF5BigIpConnectionCredentialsSchema
+} from "./f5-big-ip";
+import {
   TFlyioConnection,
   TFlyioConnectionConfig,
   TFlyioConnectionInput,
@@ -202,6 +214,12 @@ import {
   TGitLabConnectionInput,
   TValidateGitLabConnectionCredentialsSchema
 } from "./gitlab";
+import {
+  TGoDaddyConnection,
+  TGoDaddyConnectionConfig,
+  TGoDaddyConnectionInput,
+  TValidateGoDaddyConnectionCredentialsSchema
+} from "./godaddy";
 import {
   THCVaultConnection,
   THCVaultConnectionConfig,
@@ -455,10 +473,13 @@ export type TAppConnection = { id: string; configuration?: TAppConnectionConfigu
   | TDevinConnection
   | TOnaConnection
   | TDigiCertConnection
+  | TGoDaddyConnection
   | TTravisCIConnection
   | TSalesforceConnection
   | TSnowflakeConnection
   | TDatadogConnection
+  | TF5BigIpConnection
+  | TConvexConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -532,10 +553,13 @@ export type TAppConnectionInput = { id: string } & (
   | TDevinConnectionInput
   | TOnaConnectionInput
   | TDigiCertConnectionInput
+  | TGoDaddyConnectionInput
   | TTravisCIConnectionInput
   | TSalesforceConnectionInput
   | TSnowflakeConnectionInput
   | TDatadogConnectionInput
+  | TF5BigIpConnectionInput
+  | TConvexConnectionInput
 );
 
 export type TSqlConnectionInput =
@@ -641,10 +665,13 @@ export type TAppConnectionConfig =
   | TDevinConnectionConfig
   | TOnaConnectionConfig
   | TDigiCertConnectionConfig
+  | TGoDaddyConnectionConfig
   | TTravisCIConnectionConfig
   | TSalesforceConnectionConfig
   | TSnowflakeConnectionConfig
-  | TDatadogConnectionConfig;
+  | TDatadogConnectionConfig
+  | TF5BigIpConnectionConfig
+  | TConvexConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -709,10 +736,13 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateDevinConnectionCredentialsSchema
   | TValidateOnaConnectionCredentialsSchema
   | TValidateDigiCertConnectionCredentialsSchema
+  | TValidateGoDaddyConnectionCredentialsSchema
   | TValidateTravisCIConnectionCredentialsSchema
   | TValidateSalesforceConnectionCredentialsSchema
   | TValidateSnowflakeConnectionCredentialsSchema
-  | TValidateDatadogConnectionCredentialsSchema;
+  | TValidateDatadogConnectionCredentialsSchema
+  | TValidateF5BigIpConnectionCredentialsSchema
+  | TValidateConvexConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;

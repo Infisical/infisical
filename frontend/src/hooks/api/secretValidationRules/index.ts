@@ -11,4 +11,11 @@ export type {
   TSecretValidationRule,
   TUpdateSecretValidationRuleDTO
 } from "./types";
-export { ConstraintTarget, ConstraintType } from "./types";
+export {
+  ConstraintTarget,
+  ConstraintType,
+  DynamicSecretRuleProvider,
+  SecretRotationRuleProvider,
+  SecretValidationRuleType
+} from "./types";
+export { useMatchingValidationRules } from "./useMatchingValidationRules";

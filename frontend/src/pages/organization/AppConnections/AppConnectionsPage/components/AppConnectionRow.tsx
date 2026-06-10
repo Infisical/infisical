@@ -35,10 +35,16 @@ import { Badge } from "@app/components/v3";
 import { OrgPermissionSubjects, ProjectPermissionSub, useOrganization } from "@app/context";
 import { OrgPermissionAppConnectionActions } from "@app/context/OrgPermissionContext/types";
 import { ProjectPermissionAppConnectionActions } from "@app/context/ProjectPermissionContext/types";
-import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
+import {
+  APP_CONNECTION_MAP,
+  buildGitHubAppUrl,
+  getAppConnectionMethodDetails
+} from "@app/helpers/appConnections";
 import { getProjectBaseURL } from "@app/helpers/project";
 import { useToggle } from "@app/hooks";
-import { TAppConnection } from "@app/hooks/api/appConnections";
+import { GitHubConnectionMethod, TAppConnection } from "@app/hooks/api/appConnections";
+import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { useListGitHubApps } from "@app/hooks/api/gitHubApps";
 
 import { CrededentialRotationStatusBadge } from "./AppConnectionForm/shared/CrededentialRotationBadge";
 
@@ -94,6 +100,34 @@ export const AppConnectionRow = ({
 
   const connectionDetails = APP_CONNECTION_MAP[app];
 
+  const isGitHubAppConnection =
+    app === AppConnection.GitHub && method === GitHubConnectionMethod.App;
+
+  const gitHubAppCredentials = isGitHubAppConnection
+    ? (appConnection.credentials as {
+        gitHubAppId?: string | null;
+        host?: string;
+        instanceType?: "cloud" | "server";
+      })
+    : null;
+
+  const { data: gitHubApps } = useListGitHubApps(
+    isGitHubAppConnection ? currentOrg?.id : undefined,
+    appConnection.projectId
+  );
+
+  const linkedGitHubApp = isGitHubAppConnection
+    ? gitHubApps?.find((a) => a.id === (gitHubAppCredentials?.gitHubAppId ?? null))
+    : null;
+
+  const gitHubAppUrl = linkedGitHubApp
+    ? buildGitHubAppUrl(
+        linkedGitHubApp.slug,
+        gitHubAppCredentials?.host,
+        gitHubAppCredentials?.instanceType
+      )
+    : null;
+
   return (
     <Tr
       className={twMerge("group h-12 transition-colors duration-100 hover:bg-mineshaft-700")}
@@ -129,14 +163,42 @@ export const AppConnectionRow = ({
         </div>
       </Td>
       <Td className="max-w-0 min-w-32!">
-        <p className="truncate">
-          <FontAwesomeIcon
-            size="sm"
-            className="mr-1.5 text-mineshaft-300/75"
-            icon={methodDetails.icon}
-          />
-          {methodDetails.name}
-        </p>
+        {gitHubAppUrl && linkedGitHubApp ? (
+          <Tooltip
+            content={
+              <div className="flex flex-col gap-0.5">
+                <span className="text-[10px] tracking-wider text-mineshaft-400 uppercase">
+                  {methodDetails.name}
+                </span>
+                <span className="font-mono text-sm text-mineshaft-100">{linkedGitHubApp.slug}</span>
+              </div>
+            }
+          >
+            <a
+              href={gitHubAppUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="inline-flex items-center gap-1.5 text-mineshaft-100 underline-offset-2 hover:text-primary hover:underline"
+            >
+              <FontAwesomeIcon
+                size="sm"
+                className="text-mineshaft-300/75"
+                icon={methodDetails.icon}
+              />
+              <span className="truncate underline">{methodDetails.name}</span>
+            </a>
+          </Tooltip>
+        ) : (
+          <p className="truncate">
+            <FontAwesomeIcon
+              size="sm"
+              className="mr-1.5 text-mineshaft-300/75"
+              icon={methodDetails.icon}
+            />
+            {methodDetails.name}
+          </p>
+        )}
       </Td>
       {!isProjectView && (
         <Td className="max-w-0 min-w-32!">

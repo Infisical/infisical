@@ -988,6 +988,7 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
               .andOn(`${TableName.Membership}.scopeOrgId`, `${TableName.IdentityMetadata}.orgId`);
           }
         })
+        .leftJoin(TableName.Project, `${TableName.Membership}.scopeProjectId`, `${TableName.Project}.id`)
         .where(`${TableName.Membership}.scopeOrgId`, orgId)
         .where((scopeQb) => {
           void scopeQb
@@ -1017,6 +1018,8 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
           // every auth. isActive/status are the membership columns that actually gate permissions.
           db.ref("isActive").withSchema(TableName.Membership).as("mActive"),
           db.ref("status").withSchema(TableName.Membership).as("mStatus"),
+          // project soft-delete state — flips the fingerprint when the project is soft-deleted
+          db.ref("deleteAfter").withSchema(TableName.Project).as("pDel"),
           db.ref("id").withSchema(TableName.MembershipRole).as("rId"),
           db.ref("updatedAt").withSchema(TableName.MembershipRole).as("rUp"),
           db.ref("updatedAt").withSchema(TableName.Role).as("crUp"),

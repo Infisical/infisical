@@ -23,12 +23,14 @@ import {
   ProjectPermissionAppConnectionActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
+import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { DiscriminativePick, OrgServiceActor } from "@app/lib/types";
 import {
   decryptAppConnection,
+  decryptAppConnectionCredentials,
   encryptAppConnectionConfiguration,
   encryptAppConnectionCredentials,
   enterpriseAppCheck,
@@ -37,6 +39,7 @@ import {
   TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM,
   validateAppConnectionCredentials
 } from "@app/services/app-connection/app-connection-fns";
+import { TGitHubAppDALFactory } from "@app/services/github-app/github-app-dal";
 import { TIdentityUaDALFactory } from "@app/services/identity-ua/identity-ua-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -83,6 +86,7 @@ import { ValidateCircleCIConnectionCredentialsSchema } from "./circleci";
 import { circleciConnectionService } from "./circleci/circleci-connection-service";
 import { ValidateCloudflareConnectionCredentialsSchema } from "./cloudflare/cloudflare-connection-schema";
 import { cloudflareConnectionService } from "./cloudflare/cloudflare-connection-service";
+import { ValidateConvexConnectionCredentialsSchema } from "./convex";
 import { TAppConnectionCredentialRotationServiceFactory } from "./credential-rotation";
 import { ValidateDatabricksConnectionCredentialsSchema } from "./databricks";
 import { databricksConnectionService } from "./databricks/databricks-connection-service";
@@ -101,16 +105,22 @@ import { ValidateDopplerConnectionCredentialsSchema } from "./doppler/doppler-co
 import { dopplerConnectionService } from "./doppler/doppler-connection-service";
 import { ValidateExternalInfisicalConnectionCredentialsSchema } from "./external-infisical";
 import { externalInfisicalConnectionService } from "./external-infisical/external-infisical-connection-service";
+import { ValidateF5BigIpConnectionCredentialsSchema } from "./f5-big-ip";
 import { ValidateFlyioConnectionCredentialsSchema } from "./flyio";
 import { flyioConnectionService } from "./flyio/flyio-connection-service";
 import { ValidateGcpConnectionCredentialsSchema } from "./gcp";
 import { gcpConnectionService } from "./gcp/gcp-connection-service";
-import { ValidateGitHubConnectionCredentialsSchema } from "./github";
+import {
+  GitHubConnectionMethod,
+  releaseGitHubInstallationsTokenClaim,
+  ValidateGitHubConnectionCredentialsSchema
+} from "./github";
 import { githubConnectionService } from "./github/github-connection-service";
 import { ValidateGitHubRadarConnectionCredentialsSchema } from "./github-radar";
 import { githubRadarConnectionService } from "./github-radar/github-radar-connection-service";
 import { ValidateGitLabConnectionCredentialsSchema } from "./gitlab";
 import { gitlabConnectionService } from "./gitlab/gitlab-connection-service";
+import { ValidateGoDaddyConnectionCredentialsSchema } from "./godaddy/godaddy-connection-schemas";
 import { ValidateHCVaultConnectionCredentialsSchema } from "./hc-vault";
 import { hcVaultConnectionService } from "./hc-vault/hc-vault-connection-service";
 import { ValidateHerokuConnectionCredentialsSchema } from "./heroku";
@@ -182,6 +192,8 @@ export type TAppConnectionServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findProjectById">;
   appConnectionCredentialRotationService: TAppConnectionCredentialRotationServiceFactory;
   identityUaDAL: Pick<TIdentityUaDALFactory, "findOne">;
+  gitHubAppDAL: Pick<TGitHubAppDALFactory, "findOne" | "upsertConnectionLink">;
+  keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX" | "deleteItem">;
 };
 
 export type TAppConnectionServiceFactory = ReturnType<typeof appConnectionServiceFactory>;
@@ -249,10 +261,13 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.Devin]: ValidateDevinConnectionCredentialsSchema,
   [AppConnection.Ona]: ValidateOnaConnectionCredentialsSchema,
   [AppConnection.DigiCert]: ValidateDigiCertConnectionCredentialsSchema,
+  [AppConnection.GoDaddy]: ValidateGoDaddyConnectionCredentialsSchema,
   [AppConnection.TravisCI]: ValidateTravisCIConnectionCredentialsSchema,
   [AppConnection.Salesforce]: ValidateSalesforceConnectionCredentialsSchema,
   [AppConnection.Snowflake]: ValidateSnowflakeConnectionCredentialsSchema,
-  [AppConnection.Datadog]: ValidateDatadogConnectionCredentialsSchema
+  [AppConnection.Datadog]: ValidateDatadogConnectionCredentialsSchema,
+  [AppConnection.F5BigIp]: ValidateF5BigIpConnectionCredentialsSchema,
+  [AppConnection.Convex]: ValidateConvexConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({
@@ -267,7 +282,9 @@ export const appConnectionServiceFactory = ({
   gatewayV2DAL,
   projectDAL,
   appConnectionCredentialRotationService,
-  identityUaDAL
+  identityUaDAL,
+  gitHubAppDAL,
+  keyStore
 }: TAppConnectionServiceFactoryDep) => {
   const listAppConnections = async (actor: OrgServiceActor, app?: AppConnection, projectId?: string) => {
     let appConnections: TAppConnections[];
@@ -425,6 +442,23 @@ export const appConnectionServiceFactory = ({
     return decryptAppConnection(appConnection, kmsService);
   };
 
+  // In project scope, an org-managed GitHub App can only be referenced by actors who can also
+  // connect org-level app connections — everyone else is limited to the project's own apps and
+  // the shared instance app.
+  const checkGitHubAppScopeAccess = async (
+    gitHubAppId: string,
+    orgId: string,
+    orgPermission: Awaited<ReturnType<TPermissionServiceFactory["getOrgPermission"]>>["permission"]
+  ) => {
+    const gitHubApp = await gitHubAppDAL.findOne({ id: gitHubAppId, orgId });
+    if (gitHubApp && !gitHubApp.projectId) {
+      ForbiddenError.from(orgPermission).throwUnlessCan(
+        OrgPermissionAppConnectionActions.Connect,
+        OrgPermissionSubjects.AppConnections
+      );
+    }
+  };
+
   const createAppConnection = async (
     {
       method,
@@ -522,6 +556,13 @@ export const appConnectionServiceFactory = ({
       "Failed to create app connection due to plan restriction. Upgrade plan to access enterprise app connections."
     );
 
+    if (app === AppConnection.GitHub && method === GitHubConnectionMethod.App && projectId) {
+      const { gitHubAppId } = credentials as { gitHubAppId?: string | null };
+      if (gitHubAppId) {
+        await checkGitHubAppScopeAccess(gitHubAppId, actor.orgId, orgPermission);
+      }
+    }
+
     const validatedCredentials = await validateAppConnectionCredentials(
       {
         app,
@@ -534,7 +575,7 @@ export const appConnectionServiceFactory = ({
       } as TAppConnectionConfig,
       gatewayService,
       gatewayV2Service,
-      { identityUaDAL }
+      { identityUaDAL, gitHubAppDAL, kmsService, keyStore, actorId: actor.id }
     );
 
     try {
@@ -581,6 +622,19 @@ export const appConnectionServiceFactory = ({
             );
           }
 
+          // Which GitHub App the connection references is mirrored from the encrypted credentials
+          // into github_app_connections so usage can be counted (and deletes blocked) without
+          // decrypting, and so the FK rejects creates racing an app deletion.
+          if (app === AppConnection.GitHub && method === GitHubConnectionMethod.App) {
+            await gitHubAppDAL.upsertConnectionLink(
+              {
+                appConnectionId: appConnection.id,
+                githubAppId: (connectionCredentials as { gitHubAppId?: string | null }).gitHubAppId ?? null
+              },
+              tx
+            );
+          }
+
           return appConnection;
         });
       };
@@ -611,8 +665,21 @@ export const appConnectionServiceFactory = ({
         configuration
       } as TAppConnection;
     } catch (err) {
+      if (app === AppConnection.GitHub && method === GitHubConnectionMethod.App) {
+        const installationsToken = (credentials as { installationsToken?: string } | undefined)?.installationsToken;
+        if (installationsToken) await releaseGitHubInstallationsTokenClaim(installationsToken, keyStore);
+      }
+
       if (err instanceof DatabaseError && (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation) {
         throw new BadRequestError({ message: `An App Connection with the name "${params.name}" already exists` });
+      }
+
+      if (
+        err instanceof DatabaseError &&
+        (err.error as { code: string })?.code === DatabaseErrorCode.ForeignKeyViolation
+      ) {
+        // the github_app_connections link FK — the referenced GitHub App was deleted concurrently
+        throw new BadRequestError({ message: "The selected GitHub App no longer exists. Please try again." });
       }
 
       throw err;
@@ -742,10 +809,39 @@ export const appConnectionServiceFactory = ({
         const picked = await gatewayPoolService.pickRandomHealthyGateway(effectiveGatewayPoolIdForUpdate);
         validationGatewayId = picked.id;
       }
+
+      // Only checked when the caller explicitly selects an app — merged-in existing credentials
+      // (gitHubAppId undefined) keep already-configured connections editable.
+      if (app === AppConnection.GitHub && method === GitHubConnectionMethod.App && appConnection.projectId) {
+        const requestedGitHubAppId = (credentials as { gitHubAppId?: string | null }).gitHubAppId;
+        if (requestedGitHubAppId) {
+          await checkGitHubAppScopeAccess(requestedGitHubAppId, actor.orgId, orgPermission);
+        }
+      }
+
+      let credentialsToValidate = credentials;
+
+      if (
+        app === AppConnection.GitHub &&
+        method === GitHubConnectionMethod.App &&
+        (credentials as { gitHubAppId?: string | null }).gitHubAppId === undefined
+      ) {
+        const existingCredentials = await decryptAppConnectionCredentials({
+          orgId: appConnection.orgId,
+          projectId: appConnection.projectId,
+          encryptedCredentials: appConnection.encryptedCredentials,
+          kmsService
+        });
+        const existingGitHubAppId = (existingCredentials as { gitHubAppId?: string | null }).gitHubAppId;
+        if (existingGitHubAppId) {
+          credentialsToValidate = { ...credentials, gitHubAppId: existingGitHubAppId } as typeof credentials;
+        }
+      }
+
       if (
         !VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[app].safeParse({
           method,
-          credentials
+          credentials: credentialsToValidate
         }).success
       )
         throw new BadRequestError({
@@ -760,13 +856,13 @@ export const appConnectionServiceFactory = ({
           orgId: actor.orgId,
           projectId: appConnection.projectId,
           version: appConnection.version,
-          credentials,
+          credentials: credentialsToValidate,
           method,
           gatewayId: validationGatewayId
         } as TAppConnectionConfig,
         gatewayService,
         gatewayV2Service,
-        { identityUaDAL }
+        { identityUaDAL, gitHubAppDAL, kmsService, keyStore, actorId: actor.id }
       );
 
       if (!updatedCredentials)
@@ -844,6 +940,18 @@ export const appConnectionServiceFactory = ({
           connection = await updateConnection(updatedCredentials, tx);
         }
 
+        // Keep the github_app_connections link in sync with the (re-validated) credentials — see
+        // the matching block in createAppConnection.
+        if (updatedCredentials && app === AppConnection.GitHub && method === GitHubConnectionMethod.App) {
+          await gitHubAppDAL.upsertConnectionLink(
+            {
+              appConnectionId: connectionId,
+              githubAppId: (updatedCredentials as { gitHubAppId?: string | null }).gitHubAppId ?? null
+            },
+            tx
+          );
+        }
+
         // Handle rotation updates
         if (isAutoRotationEnabled !== undefined || rotation) {
           if (isAutoRotationEnabled === false) {
@@ -906,8 +1014,21 @@ export const appConnectionServiceFactory = ({
 
       return await decryptAppConnection(updatedConnection, kmsService);
     } catch (err) {
+      if (app === AppConnection.GitHub && method === GitHubConnectionMethod.App) {
+        const installationsToken = (credentials as { installationsToken?: string } | undefined)?.installationsToken;
+        if (installationsToken) await releaseGitHubInstallationsTokenClaim(installationsToken, keyStore);
+      }
+
       if (err instanceof DatabaseError && (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation) {
         throw new BadRequestError({ message: `An App Connection with the name "${params.name}" already exists` });
+      }
+
+      if (
+        err instanceof DatabaseError &&
+        (err.error as { code: string })?.code === DatabaseErrorCode.ForeignKeyViolation
+      ) {
+        // the github_app_connections link FK — the referenced GitHub App was deleted concurrently
+        throw new BadRequestError({ message: "The selected GitHub App no longer exists. Please try again." });
       }
 
       throw err;
@@ -953,6 +1074,10 @@ export const appConnectionServiceFactory = ({
       throw new BadRequestError({ message: `App Connection with ID ${connectionId} is not for App "${app}"` });
 
     // TODO (scott): add option to delete all dependencies
+
+    // Note: for GitHub App connections we intentionally do NOT uninstall the app installation on
+    // GitHub or delete the underlying GitHub App — both are reusable across connections and are
+    // managed separately (the app via the GitHub Apps settings page, the installation on GitHub).
 
     try {
       const deletedAppConnection = await appConnectionDAL.deleteById(connectionId);
@@ -1186,7 +1311,10 @@ export const appConnectionServiceFactory = ({
     listAvailableAppConnectionsForUser,
     findAppConnectionUsageById,
     triggerCredentialRotation,
-    github: githubConnectionService(connectAppConnectionById, gatewayService, gatewayV2Service, gatewayPoolService),
+    github: githubConnectionService(connectAppConnectionById, gatewayService, gatewayV2Service, gatewayPoolService, {
+      gitHubAppDAL,
+      kmsService
+    }),
     githubRadar: githubRadarConnectionService(connectAppConnectionById),
     gcp: gcpConnectionService(connectAppConnectionById),
     databricks: databricksConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),

@@ -557,6 +557,8 @@ export enum EventType {
   GET_APP_CONNECTION_USAGE = "get-app-connection-usage",
   MIGRATE_APP_CONNECTION = "migrate-app-connection",
   ROTATE_APP_CONNECTION_CREDENTIALS = "rotate-app-connection-credentials",
+  CREATE_GITHUB_APP = "create-github-app",
+  DELETE_GITHUB_APP = "delete-github-app",
   CREATE_SHARED_SECRET = "create-shared-secret",
   CREATE_SECRET_REQUEST = "create-secret-request",
   DELETE_SHARED_SECRET = "delete-shared-secret",
@@ -834,6 +836,17 @@ export enum EventType {
   GET_PKI_SIGNER_PUBLIC_KEY = "get-pki-signer-public-key",
   GET_PKI_SIGNING_OPERATIONS = "get-pki-signing-operations",
   PKI_SIGNER_SIGN = "pki-signer-sign",
+  ENABLE_PKI_SIGNER = "enable-pki-signer",
+  DISABLE_PKI_SIGNER = "disable-pki-signer",
+  REISSUE_PKI_SIGNER_CERTIFICATE = "reissue-pki-signer-certificate",
+  EXPORT_PKI_SIGNER_CERTIFICATE = "export-pki-signer-certificate",
+  UPDATE_PKI_SIGNER_APPROVAL_POLICY = "update-pki-signer-approval-policy",
+  PKI_SIGNER_REQUEST_TO_SIGN = "pki-signer-request-to-sign",
+  PKI_SIGNER_PRE_APPROVE_SIGNING = "pki-signer-pre-approve-signing",
+  PKI_SIGNER_REVOKE_REQUEST = "pki-signer-revoke-request",
+  ADD_PKI_SIGNER_MEMBER = "add-pki-signer-member",
+  UPDATE_PKI_SIGNER_MEMBER = "update-pki-signer-member",
+  REMOVE_PKI_SIGNER_MEMBER = "remove-pki-signer-member",
   SCEP_ENROLLMENT = "scep-enrollment",
   SCEP_RENEWAL = "scep-renewal",
   SCEP_DYNAMIC_CHALLENGE_GENERATED = "scep-dynamic-challenge-generated",
@@ -4478,6 +4491,31 @@ interface RotateAppConnectionCredentialsEvent {
   };
 }
 
+interface CreateGitHubAppEvent {
+  type: EventType.CREATE_GITHUB_APP;
+  metadata: {
+    gitHubAppId: string;
+    name: string;
+    appId: string;
+    slug: string;
+    owner?: string | null;
+    host?: string | null;
+    instanceType: string;
+    projectId?: string | null;
+  };
+}
+
+interface DeleteGitHubAppEvent {
+  type: EventType.DELETE_GITHUB_APP;
+  metadata: {
+    gitHubAppId: string;
+    name: string;
+    appId: string;
+    slug: string;
+    projectId?: string | null;
+  };
+}
+
 interface CreateSharedSecretEvent {
   type: EventType.CREATE_SHARED_SECRET;
   metadata: {
@@ -4781,7 +4819,9 @@ interface CreatePkiSignerEvent {
   metadata: {
     signerId: string;
     name: string;
-    certificateId: string;
+    certificateId?: string | null;
+    caId?: string | null;
+    commonName?: string | null;
     approvalPolicyId?: string | null;
   };
 }
@@ -4841,6 +4881,107 @@ interface PkiSignerSignEvent {
     signerId: string;
     name: string;
     signingAlgorithm: string;
+  };
+}
+
+interface EnablePkiSignerEvent {
+  type: EventType.ENABLE_PKI_SIGNER;
+  metadata: {
+    signerId: string;
+    name: string;
+  };
+}
+
+interface DisablePkiSignerEvent {
+  type: EventType.DISABLE_PKI_SIGNER;
+  metadata: {
+    signerId: string;
+    name: string;
+  };
+}
+
+interface ReissuePkiSignerCertificateEvent {
+  type: EventType.REISSUE_PKI_SIGNER_CERTIFICATE;
+  metadata: {
+    signerId: string;
+    name: string;
+    caId: string;
+    commonName?: string;
+  };
+}
+
+interface ExportPkiSignerCertificateEvent {
+  type: EventType.EXPORT_PKI_SIGNER_CERTIFICATE;
+  metadata: {
+    signerId: string;
+    name: string;
+    serialNumber: string;
+  };
+}
+
+interface UpdatePkiSignerApprovalPolicyEvent {
+  type: EventType.UPDATE_PKI_SIGNER_APPROVAL_POLICY;
+  metadata: {
+    signerId: string;
+    stepCount: number;
+  };
+}
+
+interface PkiSignerRequestToSignEvent {
+  type: EventType.PKI_SIGNER_REQUEST_TO_SIGN;
+  metadata: {
+    signerId: string;
+    requestId?: string;
+  };
+}
+
+interface PkiSignerPreApproveSigningEvent {
+  type: EventType.PKI_SIGNER_PRE_APPROVE_SIGNING;
+  metadata: {
+    signerId: string;
+    requestId?: string;
+    granteeUserId?: string;
+    granteeIdentityId?: string;
+  };
+}
+
+interface PkiSignerRevokeRequestEvent {
+  type: EventType.PKI_SIGNER_REVOKE_REQUEST;
+  metadata: {
+    signerId: string;
+    requestId: string;
+  };
+}
+
+interface AddPkiSignerMemberEvent {
+  type: EventType.ADD_PKI_SIGNER_MEMBER;
+  metadata: {
+    signerId: string;
+    kind: string;
+    role?: string;
+    added?: number;
+    userIds?: string[];
+    identityId?: string;
+    groupId?: string;
+  };
+}
+
+interface UpdatePkiSignerMemberEvent {
+  type: EventType.UPDATE_PKI_SIGNER_MEMBER;
+  metadata: {
+    signerId: string;
+    kind: string;
+    memberId: string;
+    role: string;
+  };
+}
+
+interface RemovePkiSignerMemberEvent {
+  type: EventType.REMOVE_PKI_SIGNER_MEMBER;
+  metadata: {
+    signerId: string;
+    kind: string;
+    memberId: string;
   };
 }
 
@@ -5433,6 +5574,9 @@ interface ProjectDeleteEvent {
   metadata: {
     id: string;
     name: string;
+    // true: actor soft-deleted the project (marked for deletion).
+    // false: the async cleanup worker hard-deleted an expired soft-deleted project.
+    softDelete?: boolean;
   };
 }
 
@@ -7533,6 +7677,8 @@ export type Event =
   | GetAppConnectionUsageEvent
   | MigrateAppConnectionEvent
   | RotateAppConnectionCredentialsEvent
+  | CreateGitHubAppEvent
+  | DeleteGitHubAppEvent
   | GetSshHostGroupEvent
   | CreateSshHostGroupEvent
   | UpdateSshHostGroupEvent
@@ -7580,6 +7726,17 @@ export type Event =
   | GetPkiSignerPublicKeyEvent
   | GetPkiSigningOperationsEvent
   | PkiSignerSignEvent
+  | EnablePkiSignerEvent
+  | DisablePkiSignerEvent
+  | ReissuePkiSignerCertificateEvent
+  | ExportPkiSignerCertificateEvent
+  | UpdatePkiSignerApprovalPolicyEvent
+  | PkiSignerRequestToSignEvent
+  | PkiSignerPreApproveSigningEvent
+  | PkiSignerRevokeRequestEvent
+  | AddPkiSignerMemberEvent
+  | UpdatePkiSignerMemberEvent
+  | RemovePkiSignerMemberEvent
   | OidcGroupMembershipMappingAssignUserEvent
   | OidcGroupMembershipMappingRemoveUserEvent
   | CreateKmipClientEvent

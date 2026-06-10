@@ -67,6 +67,10 @@ export const ROUTE_PATHS = Object.freeze({
       OauthCallbackPage: setRoute(
         "/organizations/$orgId/app-connections/$appConnection/oauth/callback",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/app-connections/$appConnection/oauth/callback"
+      ),
+      GitHubManifestCallbackPage: setRoute(
+        "/organizations/$orgId/app-connections/github/manifest/callback",
+        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/app-connections/github/manifest/callback"
       )
     },
     NetworkingPage: setRoute(
@@ -366,6 +370,10 @@ export const ROUTE_PATHS = Object.freeze({
     SignerDetailByIDPage: setRoute(
       "/organizations/$orgId/projects/cert-manager/$projectId/code-signing/$signerId",
       "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/code-signing/$signerId"
+    ),
+    CodeSigningPage: setRoute(
+      "/organizations/$orgId/projects/cert-manager/$projectId/code-signing",
+      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/code-signing"
     )
   },
   Ssh: {

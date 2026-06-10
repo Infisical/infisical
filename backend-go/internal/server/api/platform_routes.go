@@ -5,9 +5,10 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/infisical/api/internal/ee/services/ratelimit"
 	"github.com/infisical/api/internal/server/api/platform/projects"
 	"github.com/infisical/api/internal/server/api/shared"
-	"github.com/infisical/api/internal/server/middlewares"
+	"github.com/infisical/api/internal/services/auth/apiauth"
 )
 
 // RegisterPlatformRoutes initializes platform handlers and registers their routes.
@@ -29,10 +30,10 @@ func RegisterPlatformRoutes(router chi.Router, logger *slog.Logger, svc *Platfor
 
 		// Authenticated routes
 		r.Group(func(r chi.Router) {
-			r.Use(middlewares.RequireAuth(
-				svc.Authenticator,
-				middlewares.WithAuthModes(middlewares.JWTAuth, middlewares.IdentityAccessTokenAuth, middlewares.ServiceTokenAuth),
+			r.Use(svc.ApiAuthenticator.RequireAuth(
+				apiauth.WithAuthModes(apiauth.JWTAuth, apiauth.IdentityAccessTokenAuth, apiauth.ServiceTokenAuth),
 			))
+			r.Use(svc.RateLimit.Middleware(ratelimit.PresetWrite))
 			r.Post("/", projectsAdapter.CreateProject)
 		})
 	})

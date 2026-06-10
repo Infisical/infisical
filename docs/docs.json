@@ -122,6 +122,7 @@
                       "integrations/app-connections/circleci",
                       "integrations/app-connections/chef",
                       "integrations/app-connections/cloudflare",
+                      "integrations/app-connections/convex",
                       "integrations/app-connections/databricks",
                       "integrations/app-connections/datadog",
                       "integrations/app-connections/dbt",
@@ -130,11 +131,13 @@
                       "integrations/app-connections/digital-ocean",
                       "integrations/app-connections/doppler",
                       "integrations/app-connections/dns-made-easy",
+                      "integrations/app-connections/f5-big-ip",
                       "integrations/app-connections/flyio",
                       "integrations/app-connections/gcp",
                       "integrations/app-connections/github",
                       "integrations/app-connections/github-radar",
                       "integrations/app-connections/gitlab",
+                      "integrations/app-connections/godaddy",
                       "integrations/app-connections/hashicorp-vault",
                       "integrations/app-connections/heroku",
                       "integrations/app-connections/humanitec",
@@ -279,6 +282,7 @@
                       "documentation/platform/scim/azure",
                       "documentation/platform/scim/jumpcloud",
                       "documentation/platform/scim/pingone",
+                      "documentation/platform/scim/pingfederate",
                       "documentation/platform/scim/group-mappings"
                     ]
                   },
@@ -479,6 +483,7 @@
                       "documentation/platform/secret-rotation/auth0-client-secret",
                       "documentation/platform/secret-rotation/aws-iam-user-secret",
                       "documentation/platform/secret-rotation/azure-client-secret",
+                      "documentation/platform/secret-rotation/convex-access-key",
                       "documentation/platform/secret-rotation/databricks-service-principal-secret",
                       "documentation/platform/secret-rotation/datadog-application-key-secret",
                       "documentation/platform/secret-rotation/dbt-service-token",
@@ -514,6 +519,7 @@
                       "documentation/platform/dynamic-secrets/elastic-search",
                       "documentation/platform/dynamic-secrets/gcp-iam",
                       "documentation/platform/dynamic-secrets/github",
+                      "documentation/platform/dynamic-secrets/ibm-api-connect",
                       "documentation/platform/dynamic-secrets/ldap",
                       "documentation/platform/dynamic-secrets/milvus",
                       "documentation/platform/dynamic-secrets/mongo-atlas",
@@ -830,6 +836,7 @@
                           "documentation/platform/pki/applications/certificate-syncs/azure-key-vault",
                           "documentation/platform/pki/applications/certificate-syncs/chef",
                           "documentation/platform/pki/applications/certificate-syncs/cloudflare-custom-certificate",
+                          "documentation/platform/pki/applications/certificate-syncs/f5-big-ip",
                           "documentation/platform/pki/applications/certificate-syncs/netscaler"
                         ]
                       }
@@ -840,9 +847,7 @@
                     "pages": [
                       "documentation/platform/pki/code-signing/overview",
                       "documentation/platform/pki/code-signing/signers",
-                      "documentation/platform/pki/code-signing/signing-policies",
-                      "documentation/platform/pki/code-signing/signing-requests",
-                      "documentation/platform/pki/code-signing/grants",
+                      "documentation/platform/pki/code-signing/approvals",
                       "documentation/platform/pki/code-signing/pkcs11-module"
                     ]
                   },
@@ -873,6 +878,7 @@
                           "documentation/platform/pki/ca/lets-encrypt",
                           "documentation/platform/pki/ca/digicert",
                           "documentation/platform/pki/ca/digicert-direct",
+                          "documentation/platform/pki/ca/godaddy",
                           "documentation/platform/pki/ca/sectigo",
                           "documentation/platform/pki/ca/azure-adcs",
                           "documentation/platform/pki/ca/aws-pca",
@@ -1569,6 +1575,18 @@
                       "api-reference/endpoints/app-connections/doppler/create",
                       "api-reference/endpoints/app-connections/doppler/update",
                       "api-reference/endpoints/app-connections/doppler/delete"
+                    ]
+                  },
+                  {
+                    "group": "F5 BIG-IP",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/f5-big-ip/list",
+                      "api-reference/endpoints/app-connections/f5-big-ip/available",
+                      "api-reference/endpoints/app-connections/f5-big-ip/get-by-id",
+                      "api-reference/endpoints/app-connections/f5-big-ip/get-by-name",
+                      "api-reference/endpoints/app-connections/f5-big-ip/create",
+                      "api-reference/endpoints/app-connections/f5-big-ip/update",
+                      "api-reference/endpoints/app-connections/f5-big-ip/delete"
                     ]
                   },
                   {
@@ -3176,6 +3194,18 @@
                         ]
                       },
                       {
+                        "group": "F5 BIG-IP",
+                        "pages": [
+                          "api-reference/endpoints/pki/syncs/f5-big-ip/list",
+                          "api-reference/endpoints/pki/syncs/f5-big-ip/get-by-id",
+                          "api-reference/endpoints/pki/syncs/f5-big-ip/create",
+                          "api-reference/endpoints/pki/syncs/f5-big-ip/update",
+                          "api-reference/endpoints/pki/syncs/f5-big-ip/delete",
+                          "api-reference/endpoints/pki/syncs/f5-big-ip/sync-certificates",
+                          "api-reference/endpoints/pki/syncs/f5-big-ip/remove-certificates"
+                        ]
+                      },
+                      {
                         "group": "NetScaler",
                         "pages": [
                           "api-reference/endpoints/pki/syncs/netscaler/list",
@@ -3298,6 +3328,44 @@
                           "api-reference/endpoints/certificate-authorities/digicert/delete"
                         ]
                       }
+                    ]
+                  }
+                ]
+              },
+              {
+                "group": "Code Signing",
+                "pages": [
+                  {
+                    "group": "Signers",
+                    "pages": [
+                      "api-reference/endpoints/code-signing/signers/list",
+                      "api-reference/endpoints/code-signing/signers/create",
+                      "api-reference/endpoints/code-signing/signers/read",
+                      "api-reference/endpoints/code-signing/signers/update",
+                      "api-reference/endpoints/code-signing/signers/delete",
+                      "api-reference/endpoints/code-signing/signers/sign",
+                      "api-reference/endpoints/code-signing/signers/public-key",
+                      "api-reference/endpoints/code-signing/signers/export-certificate",
+                      "api-reference/endpoints/code-signing/signers/enable",
+                      "api-reference/endpoints/code-signing/signers/disable",
+                      "api-reference/endpoints/code-signing/signers/reissue-certificate",
+                      "api-reference/endpoints/code-signing/signers/list-operations"
+                    ]
+                  },
+                  {
+                    "group": "Approval Policy",
+                    "pages": [
+                      "api-reference/endpoints/code-signing/signers/get-policy",
+                      "api-reference/endpoints/code-signing/signers/update-policy"
+                    ]
+                  },
+                  {
+                    "group": "Signing Requests",
+                    "pages": [
+                      "api-reference/endpoints/code-signing/signers/list-requests",
+                      "api-reference/endpoints/code-signing/signers/request-to-sign",
+                      "api-reference/endpoints/code-signing/signers/pre-approve",
+                      "api-reference/endpoints/code-signing/signers/revoke-request"
                     ]
                   }
                 ]

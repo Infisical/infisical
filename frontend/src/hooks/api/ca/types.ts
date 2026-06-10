@@ -1,5 +1,12 @@
 import { CertExtendedKeyUsage, CertKeyAlgorithm, CertKeyUsage } from "../certificates/enums";
-import { AcmeDnsProvider, CaRenewalType, CaStatus, CaType, InternalCaType } from "./enums";
+import {
+  AcmeDnsProvider,
+  CaRenewalType,
+  CaStatus,
+  CaType,
+  GoDaddyProductType,
+  InternalCaType
+} from "./enums";
 
 export type TAcmeCertificateAuthority = {
   id: string;
@@ -59,6 +66,19 @@ export type TDigiCertCertificateAuthority = {
     appConnectionId: string;
     organizationId: number;
     productNameId: string;
+  };
+};
+
+export type TGoDaddyCertificateAuthority = {
+  id: string;
+  projectId: string;
+  type: CaType.GODADDY;
+  status: CaStatus;
+  name: string;
+  enableDirectIssuance: boolean;
+  configuration: {
+    appConnectionId: string;
+    productType: GoDaddyProductType;
   };
 };
 
@@ -127,6 +147,7 @@ export type TUnifiedCertificateAuthority =
   | TAzureAdCsCertificateAuthority
   | TAwsPcaCertificateAuthority
   | TDigiCertCertificateAuthority
+  | TGoDaddyCertificateAuthority
   | TAwsAcmPublicCaCertificateAuthority
   | TVenafiTppCertificateAuthority
   | TInternalCertificateAuthority;

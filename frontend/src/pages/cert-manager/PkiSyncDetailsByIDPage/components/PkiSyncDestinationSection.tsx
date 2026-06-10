@@ -13,6 +13,7 @@ import {
   AwsSecretsManagerPkiSyncDestinationSection,
   AzureKeyVaultPkiSyncDestinationSection,
   ChefPkiSyncDestinationSection,
+  F5BigIpPkiSyncDestinationSection,
   NetScalerPkiSyncDestinationSection
 } from "./PkiSyncDestinationSection/index";
 
@@ -52,6 +53,9 @@ export const PkiSyncDestinationSection = ({ pkiSync, onEditDestination }: Props)
       break;
     case PkiSync.NetScaler:
       DestinationComponents = <NetScalerPkiSyncDestinationSection pkiSync={pkiSync} />;
+      break;
+    case PkiSync.F5BigIp:
+      DestinationComponents = <F5BigIpPkiSyncDestinationSection pkiSync={pkiSync} />;
       break;
     default:
       // For future destinations, return null (no additional fields to show)

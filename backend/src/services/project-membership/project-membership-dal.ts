@@ -209,6 +209,7 @@ export const projectMembershipDALFactory = (db: TDbClient) => {
         .join(TableName.Users, `${TableName.Membership}.actorUserId`, `${TableName.Users}.id`)
         .where(`${TableName.Users}.id`, userId)
         .where(`${TableName.Project}.orgId`, orgId)
+        .whereNull(`${TableName.Project}.deleteAfter`)
         .join(TableName.MembershipRole, `${TableName.MembershipRole}.membershipId`, `${TableName.Membership}.id`)
         .leftJoin(TableName.Role, `${TableName.MembershipRole}.customRoleId`, `${TableName.Role}.id`)
         .select(
@@ -305,6 +306,7 @@ export const projectMembershipDALFactory = (db: TDbClient) => {
         .join(TableName.Users, `${TableName.Membership}.actorUserId`, `${TableName.Users}.id`)
         .whereIn(`${TableName.Users}.id`, userIds)
         .where(`${TableName.Project}.orgId`, orgId)
+        .whereNull(`${TableName.Project}.deleteAfter`)
         .leftJoin<TUserEncryptionKeys>(
           TableName.UserEncryptionKey,
           `${TableName.UserEncryptionKey}.userId`,

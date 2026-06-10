@@ -46,6 +46,10 @@ spec:
       imagePullSecrets:
         {{- toYaml $infisicalValues.image.imagePullSecrets | nindent 6 }}
     {{- end }}
+    {{- with $infisicalValues.extraInitContainers }}
+      initContainers:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
       containers:
       - name: {{ template "infisical.name" . }}-{{ $infisicalValues.name }}
         image: "{{ $infisicalValues.image.repository }}:{{ $infisicalValues.image.tag }}"
@@ -87,6 +91,9 @@ spec:
         volumeMounts:
           {{- toYaml . | nindent 10 }}
         {{- end }}
+      {{- with $infisicalValues.extraContainers }}
+        {{- toYaml . | nindent 6 }}
+      {{- end }}
       {{- with $infisicalValues.extraVolumes }}
       volumes:
         {{- toYaml . | nindent 8 }}

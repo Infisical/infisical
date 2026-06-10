@@ -33,6 +33,7 @@ import {
 } from "@app/services/secret-sync/secret-sync-types";
 
 import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
+import { TGitHubAppDALFactory } from "../github-app/github-app-dal";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { ONEPASS_SYNC_LIST_OPTION, OnePassSyncFns } from "./1password";
 import { AwsSecretsManagerSyncMappingBehavior } from "./aws-secrets-manager/aws-secrets-manager-sync-enums";
@@ -166,6 +167,7 @@ export const preSaveTransformDestinationConfig = async (
 type TSyncSecretDeps = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  gitHubAppDAL: Pick<TGitHubAppDALFactory, "findOne">;
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
@@ -294,7 +296,14 @@ export const SecretSyncFns = {
   syncSecrets: (
     secretSync: TSecretSyncWithCredentials,
     secretMap: TSecretMap,
-    { kmsService, appConnectionDAL, gatewayService, gatewayV2Service, gatewayPoolService }: TSyncSecretDeps
+    {
+      kmsService,
+      appConnectionDAL,
+      gitHubAppDAL,
+      gatewayService,
+      gatewayV2Service,
+      gatewayPoolService
+    }: TSyncSecretDeps
   ): Promise<TSyncSecretsResult | void> => {
     const schemaSecretMap = addSchema(secretMap, secretSync.environment?.slug || "", secretSync.syncOptions.keySchema);
 
@@ -309,7 +318,8 @@ export const SecretSyncFns = {
           schemaSecretMap,
           gatewayService,
           gatewayV2Service,
-          gatewayPoolService
+          gatewayPoolService,
+          { gitHubAppDAL, kmsService }
         );
       case SecretSync.GCPSecretManager:
         return GcpSyncFns.syncSecrets(secretSync, schemaSecretMap);
@@ -580,7 +590,14 @@ export const SecretSyncFns = {
   removeSecrets: (
     secretSync: TSecretSyncWithCredentials,
     secretMap: TSecretMap,
-    { kmsService, appConnectionDAL, gatewayService, gatewayV2Service, gatewayPoolService }: TSyncSecretDeps
+    {
+      kmsService,
+      appConnectionDAL,
+      gitHubAppDAL,
+      gatewayService,
+      gatewayV2Service,
+      gatewayPoolService
+    }: TSyncSecretDeps
   ): Promise<void> => {
     const schemaSecretMap = addSchema(secretMap, secretSync.environment?.slug || "", secretSync.syncOptions.keySchema);
 
@@ -595,7 +612,8 @@ export const SecretSyncFns = {
           schemaSecretMap,
           gatewayService,
           gatewayV2Service,
-          gatewayPoolService
+          gatewayPoolService,
+          { gitHubAppDAL, kmsService }
         );
       case SecretSync.GCPSecretManager:
         return GcpSyncFns.removeSecrets(secretSync, schemaSecretMap);

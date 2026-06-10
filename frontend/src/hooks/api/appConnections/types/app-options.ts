@@ -262,6 +262,10 @@ export type TDigiCertConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.DigiCert;
 };
 
+export type TGoDaddyConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.GoDaddy;
+};
+
 export type TTravisCIConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.TravisCI;
 };
@@ -269,12 +273,21 @@ export type TTravisCIConnectionOption = TAppConnectionOptionBase & {
 export type TSalesforceConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Salesforce;
 };
+
 export type TSnowflakeConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Snowflake;
 };
 
 export type TDatadogConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Datadog;
+};
+
+export type TF5BigIpConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.F5BigIp;
+};
+
+export type TConvexConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Convex;
 };
 
 export type TAppConnectionOption =
@@ -340,10 +353,13 @@ export type TAppConnectionOption =
   | TDevinConnectionOption
   | TOnaConnectionOption
   | TDigiCertConnectionOption
+  | TGoDaddyConnectionOption
   | TTravisCIConnectionOption
   | TSalesforceConnectionOption
   | TSnowflakeConnectionOption
-  | TDatadogConnectionOption;
+  | TDatadogConnectionOption
+  | TF5BigIpConnectionOption
+  | TConvexConnectionOption;
 
 export type TAppConnectionOptionMap = {
   [AppConnection.AWS]: TAwsConnectionOption;
@@ -408,8 +424,11 @@ export type TAppConnectionOptionMap = {
   [AppConnection.Devin]: TDevinConnectionOption;
   [AppConnection.Ona]: TOnaConnectionOption;
   [AppConnection.DigiCert]: TDigiCertConnectionOption;
+  [AppConnection.GoDaddy]: TGoDaddyConnectionOption;
   [AppConnection.TravisCI]: TTravisCIConnectionOption;
   [AppConnection.Salesforce]: TSalesforceConnectionOption;
   [AppConnection.Snowflake]: TSnowflakeConnectionOption;
   [AppConnection.Datadog]: TDatadogConnectionOption;
+  [AppConnection.F5BigIp]: TF5BigIpConnectionOption;
+  [AppConnection.Convex]: TConvexConnectionOption;
 };

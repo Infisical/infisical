@@ -95,15 +95,13 @@ const isCertRequestData = (data: unknown): data is { requestData: CertRequestReq
   );
 };
 
-const isCodeSigningData = (data: unknown): data is { requestData: CodeSigningRequestData } => {
-  return Boolean(
-    data &&
-      typeof data === "object" &&
-      "requestData" in data &&
-      data.requestData &&
-      typeof data.requestData === "object" &&
-      "signerName" in (data.requestData as object)
-  );
+const getCodeSigningData = (data: unknown): CodeSigningRequestData | null => {
+  if (!data || typeof data !== "object") return null;
+  const wrapped = (data as { requestData?: unknown }).requestData;
+  if (wrapped && typeof wrapped === "object" && "signerName" in (wrapped as object)) {
+    return wrapped as CodeSigningRequestData;
+  }
+  return null;
 };
 
 export const RequestsPage = () => {
@@ -205,9 +203,7 @@ export const RequestsPage = () => {
       .filter((r) => matchesStatus(r.status as ApprovalRequestStatus))
       .filter((r) => {
         if (!norm) return true;
-        const signerName = isCodeSigningData(r.requestData)
-          ? (r.requestData.requestData.signerName ?? "")
-          : "";
+        const signerName = getCodeSigningData(r.requestData)?.signerName ?? "";
         const requester = `${r.requesterName} ${r.requesterEmail}`;
         return signerName.toLowerCase().includes(norm) || requester.toLowerCase().includes(norm);
       });
@@ -484,9 +480,7 @@ export const RequestsPage = () => {
                         </TableHeader>
                         <TableBody>
                           {filteredSigning.map((r) => {
-                            const signingData = isCodeSigningData(r.requestData)
-                              ? r.requestData.requestData
-                              : null;
+                            const signingData = getCodeSigningData(r.requestData);
                             const signerName = signingData?.signerName ?? "—";
                             const badge = STATUS_BADGE[r.status as ApprovalRequestStatus] ?? {
                               label: r.status,
