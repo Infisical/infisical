@@ -379,13 +379,18 @@ const createHandlebarsClient = () => {
 }
 
 const hbsSubstr = (text: string, start: number, end?: number) => {
+  const textStr = String(text || "");
+  if (!textStr) return textStr;
+
   const endIndex = end && typeof end === 'number' ? end : undefined;
-  logger.info({text, start, end: end ?? 'undefined'}, 'substr')
-  return text.substring(start, endIndex);
+  return textStr.substring(start, endIndex);
 }
 
 const hbsStripPrefix = (text: string, prefix: string) => {
-  return text.startsWith(prefix) ? text.substring(prefix.length) : text;
+  const textStr = String(text || "");
+  if (!textStr) return textStr;
+
+  return textStr.startsWith(prefix) ? textStr.substring(prefix.length) : textStr;
 }
 
 export {
