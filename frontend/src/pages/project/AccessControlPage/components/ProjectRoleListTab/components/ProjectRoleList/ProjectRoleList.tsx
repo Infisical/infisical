@@ -449,7 +449,11 @@ export const ProjectRoleList = () => {
                               {!isNonMutatable && (
                                 <Tooltip>
                                   <TooltipTrigger asChild>
-                                    <div>
+                                    {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events -- a disabled delete item (built-in role) won't run its own onClick, so guard here to stop the click bubbling to the row and navigating */}
+                                    <div
+                                      onClick={(e) => e.stopPropagation()}
+                                      onPointerDown={(e) => e.stopPropagation()}
+                                    >
                                       <ProjectPermissionCan
                                         I={ProjectPermissionActions.Delete}
                                         a={ProjectPermissionSub.Role}
