@@ -62,7 +62,10 @@ import {
   useOrgPermission,
   useSubscription
 } from "@app/context";
-import { OrgPermissionAdminConsoleAction } from "@app/context/OrgPermissionContext/types";
+import {
+  OrgPermissionAdminConsoleAction,
+  OrgPermissionProjectActions
+} from "@app/context/OrgPermissionContext/types";
 import {
   getProjectDescription,
   getProjectHomePage,
@@ -149,6 +152,11 @@ const ProjectTypeContent = ({
   orgId: string;
 }) => {
   const { subscription } = useSubscription();
+  const { permission } = useOrgPermission();
+  const canRequestAccess = permission.can(
+    OrgPermissionProjectActions.RequestAccess,
+    OrgPermissionSubjects.Project
+  );
   const isAddingProjectsAllowed = subscription?.workspaceLimit
     ? subscription.workspacesUsed < subscription.workspaceLimit
     : true;
@@ -157,6 +165,7 @@ const ProjectTypeContent = ({
     const storedView = localStorage.getItem("projectListView");
     if (
       storedView &&
+      canRequestAccess &&
       (storedView === ProjectListView.AllProjects || storedView === ProjectListView.MyProjects)
     ) {
       return storedView;
@@ -197,7 +206,7 @@ const ProjectTypeContent = ({
         scope={projectType}
         icon={getProjectLucideIcon(projectType)}
       />
-      {projectListView === ProjectListView.MyProjects ? (
+      {projectListView === ProjectListView.MyProjects || !canRequestAccess ? (
         <MyProjectsForType
           projectType={projectType}
           projectListView={projectListView}
@@ -205,6 +214,7 @@ const ProjectTypeContent = ({
           onAddNewProject={() => handlePopUpOpen("addNewWs")}
           onUpgradePlan={() => handlePopUpOpen("upgradePlan")}
           isAddingProjectsAllowed={isAddingProjectsAllowed}
+          hideProjectListToggle={!canRequestAccess}
         />
       ) : (
         <AllProjectsForType
@@ -214,6 +224,7 @@ const ProjectTypeContent = ({
           onAddNewProject={() => handlePopUpOpen("addNewWs")}
           onUpgradePlan={() => handlePopUpOpen("upgradePlan")}
           isAddingProjectsAllowed={isAddingProjectsAllowed}
+          hideProjectListToggle={!canRequestAccess}
         />
       )}
       <NewProjectModal
@@ -237,12 +248,14 @@ type SubViewProps = {
   onAddNewProject: () => void;
   onUpgradePlan: () => void;
   isAddingProjectsAllowed: boolean;
+  hideProjectListToggle: boolean;
 };
 
 const MyProjectsForType = ({
   projectType,
   projectListView,
   onProjectListViewChange,
+  hideProjectListToggle,
   onAddNewProject,
   onUpgradePlan,
   isAddingProjectsAllowed
@@ -590,6 +603,7 @@ const MyProjectsForType = ({
           }}
           projectListView={projectListView}
           onProjectListViewChange={onProjectListViewChange}
+          hideProjectListToggle={hideProjectListToggle}
           onAddNewProject={onAddNewProject}
           onUpgradePlan={onUpgradePlan}
           isAddingProjectsAllowed={isAddingProjectsAllowed}
@@ -616,6 +630,7 @@ const AllProjectsForType = ({
   projectType,
   projectListView,
   onProjectListViewChange,
+  hideProjectListToggle,
   onAddNewProject,
   onUpgradePlan,
   isAddingProjectsAllowed
@@ -882,6 +897,7 @@ const AllProjectsForType = ({
           onViewModeChange={() => {}}
           projectListView={projectListView}
           onProjectListViewChange={onProjectListViewChange}
+          hideProjectListToggle={hideProjectListToggle}
           onAddNewProject={onAddNewProject}
           onUpgradePlan={onUpgradePlan}
           isAddingProjectsAllowed={isAddingProjectsAllowed}
@@ -919,6 +935,7 @@ const Toolbar = ({
   onViewModeChange,
   projectListView,
   onProjectListViewChange,
+  hideProjectListToggle,
   onAddNewProject,
   onUpgradePlan,
   isAddingProjectsAllowed,
@@ -932,13 +949,16 @@ const Toolbar = ({
   onViewModeChange: (mode: ProjectsViewMode) => void;
   projectListView: ProjectListView;
   onProjectListViewChange: (value: ProjectListView) => void;
+  hideProjectListToggle: boolean;
   onAddNewProject: () => void;
   onUpgradePlan: () => void;
   isAddingProjectsAllowed: boolean;
   isGridDisabled?: boolean;
 }) => (
   <div className="flex w-full flex-row flex-wrap items-center gap-2 md:flex-nowrap">
-    <ProjectListToggle value={projectListView} onChange={onProjectListViewChange} />
+    {!hideProjectListToggle && (
+      <ProjectListToggle value={projectListView} onChange={onProjectListViewChange} />
+    )}
     <InputGroup className="flex-1">
       <InputGroupAddon align="inline-start">
         <SearchIcon />
