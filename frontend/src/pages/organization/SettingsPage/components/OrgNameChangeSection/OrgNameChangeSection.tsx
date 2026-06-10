@@ -1,11 +1,31 @@
 import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Building2 } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { Button, FormControl, Input, Select, SelectItem, Spinner } from "@app/components/v2";
+import {
+  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+  Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Skeleton
+} from "@app/components/v3";
 import {
   OrgPermissionActions,
   OrgPermissionSubjects,
@@ -71,95 +91,112 @@ export const OrgNameChangeSection = (): JSX.Element => {
     });
   };
 
-  if (!isFormInitialized) {
-    return (
-      <div className="flex h-101 w-full items-center justify-center">
-        <Spinner size="lg" />
-      </div>
-    );
-  }
-
   return (
-    <form onSubmit={handleSubmit(onFormSubmit)} className="py-4">
-      <div className="">
-        <h2 className="text-md mb-2 text-mineshaft-100">Organization Name</h2>
-        <Controller
-          defaultValue=""
-          render={({ field, fieldState: { error } }) => (
-            <FormControl isError={Boolean(error)} errorText={error?.message} className="max-w-md">
-              <Input placeholder="Acme Corp" {...field} />
-            </FormControl>
-          )}
-          control={control}
-          name="name"
-        />
-      </div>
-      <div>
-        <h2 className="text-md mb-2 text-mineshaft-100">Organization ID</h2>
-        <FormControl className="max-w-md">
-          <Input isDisabled value={currentOrg.id} />
-        </FormControl>
-      </div>
-      <div>
-        <h2 className="text-md mb-2 text-mineshaft-100">Organization Slug</h2>
-        <Controller
-          defaultValue=""
-          render={({ field, fieldState: { error } }) => (
-            <FormControl isError={Boolean(error)} errorText={error?.message} className="max-w-md">
-              <Input placeholder="acme" {...field} />
-            </FormControl>
-          )}
-          control={control}
-          name="slug"
-        />
-      </div>
-      {canReadOrgRoles && (
-        <div className="pb-4">
-          <h2 className="text-md mb-2 text-mineshaft-100">Default Organization Member Role</h2>
-          <p className="text-mineshaft-400" />
-          <Controller
-            defaultValue=""
-            control={control}
-            name="defaultMembershipRole"
-            render={({ field: { value, onChange }, fieldState: { error } }) => (
-              <FormControl
-                helperText="Users joining your organization will be assigned this role unless otherwise specified."
-                isError={Boolean(error)}
-                errorText={error?.message}
-                className="max-w-md"
-              >
-                <Select
-                  isDisabled={isRolesLoading}
-                  className="w-full capitalize"
-                  value={value}
-                  onValueChange={!roles?.length ? undefined : onChange}
-                >
-                  {roles?.map((role) => {
-                    return (
-                      <SelectItem key={role.id} value={role.slug}>
-                        {role.name}
-                      </SelectItem>
-                    );
-                  })}
-                </Select>
-              </FormControl>
-            )}
-          />
-        </div>
-      )}
-      <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Settings}>
-        {(isAllowed) => (
-          <Button
-            isLoading={isPending}
-            isDisabled={!isAllowed}
-            colorSchema="primary"
-            variant="outline_bg"
-            type="submit"
-          >
-            Save
-          </Button>
+    <Card>
+      <CardHeader>
+        <CardTitle>
+          <Building2 className="size-4 text-accent" />
+          Organization Details
+        </CardTitle>
+        <CardDescription>
+          Update your organization&apos;s name, slug, and default member role.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {!isFormInitialized ? (
+          <FieldGroup>
+            <Skeleton className="h-9 w-full" />
+            <Skeleton className="h-9 w-full" />
+            <Skeleton className="h-9 w-full" />
+          </FieldGroup>
+        ) : (
+          <form onSubmit={handleSubmit(onFormSubmit)}>
+            <FieldGroup>
+              <Controller
+                defaultValue=""
+                control={control}
+                name="name"
+                render={({ field, fieldState: { error } }) => (
+                  <Field>
+                    <FieldLabel htmlFor="org-name">Organization Name</FieldLabel>
+                    <Input
+                      id="org-name"
+                      placeholder="Acme Corp"
+                      isError={Boolean(error)}
+                      {...field}
+                    />
+                    <FieldError>{error?.message}</FieldError>
+                  </Field>
+                )}
+              />
+              <Field>
+                <FieldLabel htmlFor="org-id">Organization ID</FieldLabel>
+                <Input id="org-id" value={currentOrg.id} disabled />
+              </Field>
+              <Controller
+                defaultValue=""
+                control={control}
+                name="slug"
+                render={({ field, fieldState: { error } }) => (
+                  <Field>
+                    <FieldLabel htmlFor="org-slug">Organization Slug</FieldLabel>
+                    <Input id="org-slug" placeholder="acme" isError={Boolean(error)} {...field} />
+                    <FieldError>{error?.message}</FieldError>
+                  </Field>
+                )}
+              />
+              {canReadOrgRoles && (
+                <Controller
+                  defaultValue=""
+                  control={control}
+                  name="defaultMembershipRole"
+                  render={({ field: { value, onChange }, fieldState: { error } }) => (
+                    <Field>
+                      <FieldLabel htmlFor="org-default-role">
+                        Default Organization Member Role
+                      </FieldLabel>
+                      <Select
+                        value={value}
+                        onValueChange={!roles?.length ? undefined : onChange}
+                        disabled={isRolesLoading}
+                      >
+                        <SelectTrigger
+                          id="org-default-role"
+                          isError={Boolean(error)}
+                          className="w-full capitalize"
+                        >
+                          <SelectValue placeholder="Select role" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {roles?.map((role) => (
+                            <SelectItem key={role.id} value={role.slug} className="capitalize">
+                              {role.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FieldDescription>
+                        Users joining your organization will be assigned this role unless otherwise
+                        specified.
+                      </FieldDescription>
+                      <FieldError>{error?.message}</FieldError>
+                    </Field>
+                  )}
+                />
+              )}
+            </FieldGroup>
+            <div className="mt-6 flex">
+              <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Settings}>
+                {(isAllowed) => (
+                  <Button variant="org" type="submit" isPending={isPending} isDisabled={!isAllowed}>
+                    Save
+                  </Button>
+                )}
+              </OrgPermissionCan>
+            </div>
+          </form>
         )}
-      </OrgPermissionCan>
-    </form>
+      </CardContent>
+    </Card>
   );
 };

@@ -1,8 +1,20 @@
-import { useState } from "react";
+import { KeyRound } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { Switch } from "@app/components/v2";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldGroup,
+  FieldTitle,
+  Switch
+} from "@app/components/v3";
 import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { useUpdateOrg } from "@app/hooks/api/organization/queries";
 
@@ -11,63 +23,61 @@ import { HoneyTokenSection } from "./HoneyTokenSection";
 
 export const OrgProductSettingsTab = () => {
   const { currentOrg } = useOrganization();
-  const { mutateAsync: updateOrg } = useUpdateOrg();
-
-  const [isLoading, setIsLoading] = useState(false);
+  const { mutateAsync: updateOrg, isPending } = useUpdateOrg();
 
   const handleToggle = async (state: boolean) => {
-    setIsLoading(true);
+    if (!currentOrg?.id) return;
 
-    try {
-      if (!currentOrg?.id) {
-        setIsLoading(false);
-        return;
-      }
+    await updateOrg({
+      orgId: currentOrg.id,
+      blockDuplicateSecretSyncDestinations: state
+    });
 
-      await updateOrg({
-        orgId: currentOrg.id,
-        blockDuplicateSecretSyncDestinations: state
-      });
-
-      createNotification({
-        text: `Successfully ${state ? "enabled" : "disabled"} blocking duplicate secret sync destinations for this organization`,
-        type: "success"
-      });
-    } finally {
-      setIsLoading(false);
-    }
+    createNotification({
+      text: `Successfully ${state ? "enabled" : "disabled"} blocking duplicate secret sync destinations for this organization`,
+      type: "success"
+    });
   };
 
   return (
-    <>
-      <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-6">
-        <div className="mb-6">
-          <h2 className="text-xl font-medium text-mineshaft-100">Secrets Management</h2>
-        </div>
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="mb-2 text-lg font-medium text-mineshaft-100">
-              Unique Secret Sync Destination Policy
-            </h3>
-            <p className="text-sm text-mineshaft-400">
-              When enabled, ensures each destination can only be used by one secret sync
-              configuration, preventing potential conflicts or overwrites.
-            </p>
-          </div>
-          <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Settings}>
-            {(isAllowed) => (
-              <Switch
-                id="blockDuplicateSecretSyncDestinations"
-                isDisabled={!isAllowed || isLoading}
-                isChecked={currentOrg?.blockDuplicateSecretSyncDestinations ?? false}
-                onCheckedChange={(state) => handleToggle(state as boolean)}
-              />
-            )}
-          </OrgPermissionCan>
-        </div>
-        <HoneyTokenSection />
-      </div>
+    <div className="flex flex-col gap-4">
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            <KeyRound className="size-4 text-accent" />
+            Secrets Management
+          </CardTitle>
+          <CardDescription>
+            Configure organization-wide policies for secrets management.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <FieldGroup>
+            <Field orientation="horizontal">
+              <FieldContent>
+                <FieldTitle>Unique Secret Sync Destination Policy</FieldTitle>
+                <FieldDescription>
+                  When enabled, ensures each destination can only be used by one secret sync
+                  configuration, preventing potential conflicts or overwrites.
+                </FieldDescription>
+              </FieldContent>
+              <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Settings}>
+                {(isAllowed) => (
+                  <Switch
+                    id="block-duplicate-secret-sync-destinations"
+                    variant="org"
+                    checked={currentOrg?.blockDuplicateSecretSyncDestinations ?? false}
+                    onCheckedChange={(value) => handleToggle(value)}
+                    disabled={!isAllowed || isPending}
+                  />
+                )}
+              </OrgPermissionCan>
+            </Field>
+          </FieldGroup>
+        </CardContent>
+      </Card>
+      <HoneyTokenSection />
       <OrgCertManagerTab />
-    </>
+    </div>
   );
 };
