@@ -11,7 +11,7 @@ import {
   CardHeader,
   CardTitle
 } from "@app/components/v3";
-import { useOrganization } from "@app/context";
+
 import {
   OrgKmipServerPermissionActions,
   OrgPermissionSubjects
@@ -25,16 +25,14 @@ type Props = {
   kmipServerId: string;
   kmipServerName: string;
   authMethod: TKmipServerAuthMethodView;
-  isFirstTimeSetup: boolean;
 };
 
 export const KmipServerDeploySection = ({
   kmipServerId,
   kmipServerName,
-  authMethod,
-  isFirstTimeSetup
+  authMethod
 }: Props) => {
-  const { isSubOrganization } = useOrganization();
+
   const [showDialog, setShowDialog] = useState(false);
   const [enrollmentToken, setEnrollmentToken] = useState<string | null>(null);
   const { mutateAsync: mint, isPending: isMinting } = useGenerateKmipServerEnrollmentToken();
@@ -67,11 +65,9 @@ export const KmipServerDeploySection = ({
               a={OrgPermissionSubjects.KmipServer}
             >
               {(isAllowed) => {
-                let variant: "neutral" | "org" | "sub-org" = "neutral";
-                if (isFirstTimeSetup) variant = isSubOrganization ? "sub-org" : "org";
                 return (
                   <Button
-                    variant={variant}
+                    variant="neutral"
                     size="sm"
                     isPending={isMinting}
                     isDisabled={!isAllowed || isMinting}

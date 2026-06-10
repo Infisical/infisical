@@ -91,7 +91,8 @@ export const kmipServerServiceFactory = ({
       throw new NotFoundError({ message: `KMIP server ${kmipServerId} not found` });
     }
 
-    return kmipServerDAL.updateById(kmipServerId, fields);
+    const definedFields = Object.fromEntries(Object.entries(fields).filter(([, v]) => v !== undefined));
+    return kmipServerDAL.updateById(kmipServerId, definedFields);
   };
 
   const getOrgKmipServer = async ({ kmipServerId, orgId }: { kmipServerId: string; orgId: string }) => {

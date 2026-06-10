@@ -22,8 +22,7 @@ const SanitizedKmipServerSchema = KmipServersSchema.pick({
   ttl: true,
   keyAlgorithm: true,
   createdAt: true,
-  updatedAt: true,
-  heartbeat: true
+  updatedAt: true
 }).extend({
   canRevoke: z.boolean()
 });

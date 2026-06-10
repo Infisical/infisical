@@ -17,7 +17,6 @@ export async function up(knex: Knex): Promise<void> {
       t.foreign("orgId").references("id").inTable(TableName.Organization).onDelete("CASCADE");
 
       t.string("name").notNullable();
-      t.datetime("heartbeat");
       t.integer("tokenVersion").notNullable().defaultTo(0);
 
       t.unique(["orgId", "name"]);

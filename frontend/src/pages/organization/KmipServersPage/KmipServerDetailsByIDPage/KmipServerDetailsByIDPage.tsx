@@ -54,7 +54,6 @@ const Page = () => {
             kmipServerId={kmipServerId}
             kmipServerName={kmipServer.name}
             authMethod={kmipServer.authMethod}
-            isFirstTimeSetup={!kmipServer.heartbeat}
           />
           <KmipServerClientsSection />
         </div>

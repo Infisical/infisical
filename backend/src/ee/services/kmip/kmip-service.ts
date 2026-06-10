@@ -800,11 +800,8 @@ export const kmipServiceFactory = ({
     };
   };
 
-  // The /kmip/spec/* endpoints identify the acting client from caller-supplied headers, so before
-  // trusting them assert the presented certificates are ones this org actually issued: the server
-  // cert must exist in the org, and the client cert serial must belong to the named client and be
-  // unexpired. This stops a KMIP server access token from impersonating an arbitrary client by
-  // supplying forged headers.
+  // Validates that the presented certs were actually issued by this org.
+  // Revocation checking is out of scope until KMIP certs gain a revocation model.
   const validateKmipSessionCertificates = async ({
     orgId,
     kmipClientId,

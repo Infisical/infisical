@@ -27,7 +27,6 @@ export type TKmipServer = {
   updatedAt: string;
   orgId: string;
   name: string;
-  heartbeat: string | null;
   hostnamesOrIps: string | null;
   ttl: string | null;
   keyAlgorithm: string | null;

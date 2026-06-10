@@ -13,7 +13,6 @@ export const KmipServersSchema = z.object({
   updatedAt: z.date(),
   orgId: z.string().uuid(),
   name: z.string(),
-  heartbeat: z.date().nullable().optional(),
   tokenVersion: z.number().default(0),
   hostnamesOrIps: z.string().nullable().optional(),
   ttl: z.string().nullable().optional(),

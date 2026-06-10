@@ -131,7 +131,7 @@ export const resourceAuthMethodServiceFactory = ({
   };
 
   // Bumps tokenVersion (invalidating outstanding JWTs) and clears heartbeat. Gateways
-  // additionally clear heartbeatTTL; relays and KMIP servers don't carry that column.
+  // additionally clear heartbeatTTL; KMIP servers have neither heartbeat column.
   const $bumpTokenVersion = async (resource: ResourceRef, tx?: Knex): Promise<number> => {
     if (resource.type === RESOURCE_TYPE_GATEWAY) {
       const refreshed = await gatewayV2DAL.updateById(
@@ -145,7 +145,7 @@ export const resourceAuthMethodServiceFactory = ({
       const refreshed = await relayDAL.updateById(resource.id, { $incr: { tokenVersion: 1 }, heartbeat: null }, tx);
       return refreshed.tokenVersion;
     }
-    const refreshed = await kmipServerDAL.updateById(resource.id, { $incr: { tokenVersion: 1 }, heartbeat: null }, tx);
+    const refreshed = await kmipServerDAL.updateById(resource.id, { $incr: { tokenVersion: 1 } }, tx);
     return refreshed.tokenVersion;
   };
 
