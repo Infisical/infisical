@@ -99,6 +99,9 @@ export const KeyStorePrefixes = {
   AiMcpEndpointOAuthClient: (clientId: string) => `ai-mcp-endpoint-oauth-client:${clientId}` as const,
   AiMcpEndpointOAuthCode: (clientId: string, code: string) => `ai-mcp-endpoint-oauth-code:${clientId}:${code}` as const,
 
+  // OAuth 2.0 authorization server (Infisical as an OAuth provider)
+  OauthAuthorizationCode: (code: string) => `oauth-authorization-code:${code}` as const,
+
   // Project SSE Connection Rate Limiting
   ProjectSSEConnectionsSet: (projectId: string) => `project-sse-connections:${projectId}` as const,
   ProjectSSEConnectionsLockoutKey: (projectId: string) => `project-sse-connections:lockout:${projectId}` as const,
@@ -159,6 +162,7 @@ export const KeyStoreTtls = {
   AuditLogMigrationAlertInSeconds: 604800, // 7 days
   LicenseCloudPlanInSeconds: 300, // 5 minutes
   AiMcpEndpointOAuthFlowInSeconds: 300, // 5 minutes
+  OauthAuthorizationCodeInSeconds: 600, // 10 minutes
   AiMcpServerOAuthSessionInSeconds: 600, // 10 minutes
   DashboardCacheInSeconds: 600, // 10 minutes
   ProjectEnvironmentOperationMarkerInSeconds: 10,

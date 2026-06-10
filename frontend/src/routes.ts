@@ -506,6 +506,7 @@ export const routes = rootRoute("root.tsx", [
     ]),
     route("/organizations/none", "organization/NoOrgPage/route.tsx"),
     route("/organization/mcp-endpoint-finalize", "organization/McpEndpointFinalizePage/route.tsx"),
+    route("/organization/oauth-consent", "organization/OauthConsentPage/route.tsx"),
     middleware("inject-org-details.tsx", [
       adminRoute,
       pamAccessRoute,

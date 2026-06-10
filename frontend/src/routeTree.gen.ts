@@ -35,6 +35,7 @@ import { Route as authLoginLdapPageRouteImport } from './pages/auth/LoginLdapPag
 import { Route as authAdminLoginPageRouteImport } from './pages/auth/AdminLoginPage/route'
 import { Route as adminSignUpPageRouteImport } from './pages/admin/SignUpPage/route'
 import { Route as organizationNoOrgPageRouteImport } from './pages/organization/NoOrgPage/route'
+import { Route as organizationOauthConsentPageRouteImport } from './pages/organization/OauthConsentPage/route'
 import { Route as organizationMcpEndpointFinalizePageRouteImport } from './pages/organization/McpEndpointFinalizePage/route'
 import { Route as MfaSessionPageRouteImport } from './pages/MfaSessionPage/route'
 import { Route as authSignUpPageRouteImport } from './pages/auth/SignUpPage/route'
@@ -599,6 +600,13 @@ const organizationNoOrgPageRouteRoute = organizationNoOrgPageRouteImport.update(
     getParentRoute: () => middlewaresAuthenticateRoute,
   } as any,
 )
+
+const organizationOauthConsentPageRouteRoute =
+  organizationOauthConsentPageRouteImport.update({
+    id: '/organization/oauth-consent',
+    path: '/organization/oauth-consent',
+    getParentRoute: () => middlewaresAuthenticateRoute,
+  } as any)
 
 const organizationMcpEndpointFinalizePageRouteRoute =
   organizationMcpEndpointFinalizePageRouteImport.update({
@@ -2876,6 +2884,13 @@ declare module '@tanstack/react-router' {
       path: '/organization/mcp-endpoint-finalize'
       fullPath: '/organization/mcp-endpoint-finalize'
       preLoaderRoute: typeof organizationMcpEndpointFinalizePageRouteImport
+      parentRoute: typeof middlewaresAuthenticateImport
+    }
+    '/_authenticate/organization/oauth-consent': {
+      id: '/_authenticate/organization/oauth-consent'
+      path: '/organization/oauth-consent'
+      fullPath: '/organization/oauth-consent'
+      preLoaderRoute: typeof organizationOauthConsentPageRouteImport
       parentRoute: typeof middlewaresAuthenticateImport
     }
     '/_authenticate/organizations/none': {
@@ -6201,6 +6216,7 @@ interface middlewaresAuthenticateRouteChildren {
   AuthenticatePersonalSettingsRoute: typeof AuthenticatePersonalSettingsRouteWithChildren
   MfaSessionPageRouteRoute: typeof MfaSessionPageRouteRoute
   organizationMcpEndpointFinalizePageRouteRoute: typeof organizationMcpEndpointFinalizePageRouteRoute
+  organizationOauthConsentPageRouteRoute: typeof organizationOauthConsentPageRouteRoute
   organizationNoOrgPageRouteRoute: typeof organizationNoOrgPageRouteRoute
 }
 
@@ -6214,6 +6230,8 @@ const middlewaresAuthenticateRouteChildren: middlewaresAuthenticateRouteChildren
     MfaSessionPageRouteRoute: MfaSessionPageRouteRoute,
     organizationMcpEndpointFinalizePageRouteRoute:
       organizationMcpEndpointFinalizePageRouteRoute,
+    organizationOauthConsentPageRouteRoute:
+      organizationOauthConsentPageRouteRoute,
     organizationNoOrgPageRouteRoute: organizationNoOrgPageRouteRoute,
   }
 
@@ -6308,6 +6326,7 @@ export interface FileRoutesByFullPath {
   '/signup/': typeof authSignUpPageRouteRoute
   '/mfa-session/$mfaSessionId': typeof MfaSessionPageRouteRoute
   '/organization/mcp-endpoint-finalize': typeof organizationMcpEndpointFinalizePageRouteRoute
+  '/organization/oauth-consent': typeof organizationOauthConsentPageRouteRoute
   '/organizations/none': typeof organizationNoOrgPageRouteRoute
   '/admin/signup': typeof adminSignUpPageRouteRoute
   '/login/admin': typeof authAdminLoginPageRouteRoute
@@ -6602,6 +6621,7 @@ export interface FileRoutesByTo {
   '/signup': typeof authSignUpPageRouteRoute
   '/mfa-session/$mfaSessionId': typeof MfaSessionPageRouteRoute
   '/organization/mcp-endpoint-finalize': typeof organizationMcpEndpointFinalizePageRouteRoute
+  '/organization/oauth-consent': typeof organizationOauthConsentPageRouteRoute
   '/organizations/none': typeof organizationNoOrgPageRouteRoute
   '/admin/signup': typeof adminSignUpPageRouteRoute
   '/login/admin': typeof authAdminLoginPageRouteRoute
@@ -6874,6 +6894,7 @@ export interface FileRoutesById {
   '/_restrict-login-signup/signup/': typeof authSignUpPageRouteRoute
   '/_authenticate/mfa-session/$mfaSessionId': typeof MfaSessionPageRouteRoute
   '/_authenticate/organization/mcp-endpoint-finalize': typeof organizationMcpEndpointFinalizePageRouteRoute
+  '/_authenticate/organization/oauth-consent': typeof organizationOauthConsentPageRouteRoute
   '/_authenticate/organizations/none': typeof organizationNoOrgPageRouteRoute
   '/_restrict-login-signup/admin/signup': typeof adminSignUpPageRouteRoute
   '/_restrict-login-signup/login/admin': typeof authAdminLoginPageRouteRoute
@@ -7182,6 +7203,7 @@ export interface FileRouteTypes {
     | '/signup/'
     | '/mfa-session/$mfaSessionId'
     | '/organization/mcp-endpoint-finalize'
+    | '/organization/oauth-consent'
     | '/organizations/none'
     | '/admin/signup'
     | '/login/admin'
@@ -7475,6 +7497,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/mfa-session/$mfaSessionId'
     | '/organization/mcp-endpoint-finalize'
+    | '/organization/oauth-consent'
     | '/organizations/none'
     | '/admin/signup'
     | '/login/admin'
@@ -7745,6 +7768,7 @@ export interface FileRouteTypes {
     | '/_restrict-login-signup/signup/'
     | '/_authenticate/mfa-session/$mfaSessionId'
     | '/_authenticate/organization/mcp-endpoint-finalize'
+    | '/_authenticate/organization/oauth-consent'
     | '/_authenticate/organizations/none'
     | '/_restrict-login-signup/admin/signup'
     | '/_restrict-login-signup/login/admin'
@@ -8093,6 +8117,7 @@ export const routeTree = rootRoute
         "/_authenticate/personal-settings",
         "/_authenticate/mfa-session/$mfaSessionId",
         "/_authenticate/organization/mcp-endpoint-finalize",
+        "/_authenticate/organization/oauth-consent",
         "/_authenticate/organizations/none"
       ]
     },
@@ -8185,6 +8210,10 @@ export const routeTree = rootRoute
     },
     "/_authenticate/organization/mcp-endpoint-finalize": {
       "filePath": "organization/McpEndpointFinalizePage/route.tsx",
+      "parent": "/_authenticate"
+    },
+    "/_authenticate/organization/oauth-consent": {
+      "filePath": "organization/OauthConsentPage/route.tsx",
       "parent": "/_authenticate"
     },
     "/_authenticate/organizations/none": {

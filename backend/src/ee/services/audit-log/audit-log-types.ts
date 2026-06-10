@@ -859,6 +859,14 @@ export enum EventType {
   EXTERNAL_MIGRATION_CREATE = "external-migration-create",
   EXTERNAL_MIGRATION_UPDATE = "external-migration-update",
   EXTERNAL_MIGRATION_DELETE = "external-migration-delete",
+
+  // OAuth 2.0 authorization server clients
+  CREATE_OAUTH_CLIENT = "create-oauth-client",
+  UPDATE_OAUTH_CLIENT = "update-oauth-client",
+  DELETE_OAUTH_CLIENT = "delete-oauth-client",
+  ROTATE_OAUTH_CLIENT_SECRET = "rotate-oauth-client-secret",
+  OAUTH_CLIENT_AUTHORIZE = "oauth-client-authorize",
+
   // Email Domains
   CREATE_EMAIL_DOMAIN = "create-email-domain",
   VERIFY_EMAIL_DOMAIN = "verify-email-domain",
@@ -7071,6 +7079,50 @@ interface ExternalMigrationDeleteEvent {
     provider: string;
   };
 }
+interface CreateOauthClientEvent {
+  type: EventType.CREATE_OAUTH_CLIENT;
+  metadata: {
+    clientDbId: string;
+    clientId: string;
+    name: string;
+  };
+}
+
+interface UpdateOauthClientEvent {
+  type: EventType.UPDATE_OAUTH_CLIENT;
+  metadata: {
+    clientDbId: string;
+    clientId: string;
+    name: string;
+  };
+}
+
+interface DeleteOauthClientEvent {
+  type: EventType.DELETE_OAUTH_CLIENT;
+  metadata: {
+    clientDbId: string;
+    clientId: string;
+    name: string;
+  };
+}
+
+interface RotateOauthClientSecretEvent {
+  type: EventType.ROTATE_OAUTH_CLIENT_SECRET;
+  metadata: {
+    clientDbId: string;
+    clientId: string;
+    name: string;
+  };
+}
+
+interface OauthClientAuthorizeEvent {
+  type: EventType.OAUTH_CLIENT_AUTHORIZE;
+  metadata: {
+    clientId: string;
+    clientName: string;
+  };
+}
+
 interface CreateEmailDomainEvent {
   type: EventType.CREATE_EMAIL_DOMAIN;
   metadata: {
@@ -7921,6 +7973,11 @@ export type Event =
   | ExternalMigrationCreateEvent
   | ExternalMigrationUpdateEvent
   | ExternalMigrationDeleteEvent
+  | CreateOauthClientEvent
+  | UpdateOauthClientEvent
+  | DeleteOauthClientEvent
+  | RotateOauthClientSecretEvent
+  | OauthClientAuthorizeEvent
   | CreateEmailDomainEvent
   | VerifyEmailDomainEvent
   | DeleteEmailDomainEvent

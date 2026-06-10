@@ -389,6 +389,8 @@ import { projectMicrosoftTeamsConfigDALFactory } from "@app/services/microsoft-t
 import { notificationQueueServiceFactory } from "@app/services/notification/notification-queue";
 import { notificationServiceFactory } from "@app/services/notification/notification-service";
 import { userNotificationDALFactory } from "@app/services/notification/user-notification-dal";
+import { oauthClientDALFactory } from "@app/services/oauth-client/oauth-client-dal";
+import { oauthClientServiceFactory } from "@app/services/oauth-client/oauth-client-service";
 import { offlineUsageReportDALFactory } from "@app/services/offline-usage-report/offline-usage-report-dal";
 import { offlineUsageReportServiceFactory } from "@app/services/offline-usage-report/offline-usage-report-service";
 import { incidentContactDALFactory } from "@app/services/org/incident-contacts-dal";
@@ -790,6 +792,16 @@ export const registerRoutes = async (
   const applicationMembershipCleanupService = applicationMembershipCleanupServiceFactory({
     membershipDAL,
     approvalPolicyDAL
+  });
+
+  const oauthClientDAL = oauthClientDALFactory(db);
+  const oauthClientService = oauthClientServiceFactory({
+    oauthClientDAL,
+    permissionService,
+    keyStore,
+    tokenService,
+    orgDAL,
+    userDAL
   });
 
   const membershipUserService = membershipUserServiceFactory({
@@ -3608,6 +3620,7 @@ export const registerRoutes = async (
     subOrganization: subOrgService,
     oidc: oidcService,
     authToken: tokenService,
+    oauthClient: oauthClientService,
     superAdmin: superAdminService,
     offlineUsageReport: offlineUsageReportService,
     orgProductStats: orgProductStatsService,

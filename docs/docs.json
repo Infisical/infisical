@@ -68,6 +68,7 @@
                   "documentation/platform/identities/machine-identities"
                 ]
               },
+              "documentation/platform/oauth-applications",
               {
                 "group": "Access Control",
                 "pages": [

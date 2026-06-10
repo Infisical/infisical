@@ -172,7 +172,8 @@ export enum OrgPermissionSubjects {
   SubOrganization = "sub-organization",
   EmailDomains = "email-domains",
   CertManager = "certificate-manager",
-  HoneyTokens = "honey-tokens"
+  HoneyTokens = "honey-tokens",
+  OauthClients = "oauth-clients"
 }
 
 export type AppConnectionSubjectFields = {
@@ -215,7 +216,8 @@ export type OrgPermissionSet =
   | [OrgPermissionSecretShareAction, OrgPermissionSubjects.SecretShare]
   | [OrgPermissionEmailDomainActions, OrgPermissionSubjects.EmailDomains]
   | [OrgPermissionCertManagerActions, OrgPermissionSubjects.CertManager]
-  | [OrgPermissionHoneyTokenActions, OrgPermissionSubjects.HoneyTokens];
+  | [OrgPermissionHoneyTokenActions, OrgPermissionSubjects.HoneyTokens]
+  | [OrgPermissionActions, OrgPermissionSubjects.OauthClients];
 
 const AppConnectionConditionSchema = z
   .object({
@@ -392,6 +394,10 @@ export const OrgPermissionSchema = z.discriminatedUnion("subject", [
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionHoneyTokenActions).describe(
       "Describe what action an entity can take."
     )
+  }),
+  z.object({
+    subject: z.literal(OrgPermissionSubjects.OauthClients).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionActions).describe("Describe what action an entity can take.")
   })
 ]);
 
@@ -556,6 +562,11 @@ const buildAdminPermission = () => {
   can(OrgPermissionCertManagerActions.Read, OrgPermissionSubjects.CertManager);
   can(OrgPermissionCertManagerActions.ManageInstance, OrgPermissionSubjects.CertManager);
   can(OrgPermissionCertManagerActions.ManageSettings, OrgPermissionSubjects.CertManager);
+
+  can(OrgPermissionActions.Read, OrgPermissionSubjects.OauthClients);
+  can(OrgPermissionActions.Create, OrgPermissionSubjects.OauthClients);
+  can(OrgPermissionActions.Edit, OrgPermissionSubjects.OauthClients);
+  can(OrgPermissionActions.Delete, OrgPermissionSubjects.OauthClients);
 
   return rules;
 };

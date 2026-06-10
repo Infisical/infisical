@@ -85,7 +85,8 @@ export enum OrgPermissionSubjects {
   SubOrganization = "sub-organization",
   EmailDomains = "email-domains",
   CertManager = "certificate-manager",
-  HoneyTokens = "honey-tokens"
+  HoneyTokens = "honey-tokens",
+  OauthClients = "oauth-clients"
 }
 
 export enum OrgPermissionCertManagerActions {
@@ -209,6 +210,7 @@ export type OrgPermissionSet =
   | [OrgPermissionSubOrgActions, OrgPermissionSubjects.SubOrganization]
   | [OrgPermissionEmailDomainActions, OrgPermissionSubjects.EmailDomains]
   | [OrgPermissionCertManagerActions, OrgPermissionSubjects.CertManager]
-  | [OrgPermissionHoneyTokenActions, OrgPermissionSubjects.HoneyTokens];
+  | [OrgPermissionHoneyTokenActions, OrgPermissionSubjects.HoneyTokens]
+  | [OrgPermissionActions, OrgPermissionSubjects.OauthClients];
 
 export type TOrgPermission = MongoAbility<OrgPermissionSet>;
