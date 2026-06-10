@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Controller, FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useQuery } from "@tanstack/react-query";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -44,6 +45,8 @@ import {
   useGetAppConnectionOption
 } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { gatewayPoolsQueryKeys } from "@app/hooks/api/gateway-pools/queries";
+import { gatewaysQueryKeys } from "@app/hooks/api/gateways/queries";
 import { TGitHubApp, useListGitHubApps } from "@app/hooks/api/gitHubApps";
 
 import { GitHubFormData } from "../../../OauthCallbackPage/OauthCallbackPage.types";
@@ -165,6 +168,24 @@ export const GitHubConnectionForm = ({ appConnection, projectId, onSubmit }: Pro
   const instanceType = watch("credentials.instanceType");
   const gatewayId = watch("gatewayId");
   const gatewayPoolId = watch("gatewayPoolId");
+
+  // Resolve the selected gateway/pool name so the create-app modal can tell the user how Infisical
+  // will reach GitHub. Both lists are already cached by the gateway picker above.
+  const { data: gateways } = useQuery({
+    ...gatewaysQueryKeys.list(),
+    enabled: Boolean(gatewayId)
+  });
+  const { data: gatewayPools } = useQuery({
+    ...gatewayPoolsQueryKeys.list(),
+    enabled: Boolean(gatewayPoolId)
+  });
+
+  const getGatewayLabel = () => {
+    if (gatewayPoolId) return gatewayPools?.find((pool) => pool.id === gatewayPoolId)?.name ?? null;
+    if (gatewayId) return gateways?.find((gateway) => gateway.id === gatewayId)?.name ?? null;
+    return null;
+  };
+  const gatewayLabel = getGatewayLabel();
 
   const returnUrl = useGetAppConnectionOauthReturnUrl();
 
@@ -550,8 +571,9 @@ export const GitHubConnectionForm = ({ appConnection, projectId, onSubmit }: Pro
               isLoading={isGitHubAppsLoading}
               value={selectedGitHubApp}
               onChange={setSelectedGitHubApp}
-              host={instanceType === "server" ? watch("credentials.host") : undefined}
+              host={watch("credentials.host")}
               instanceType={instanceType}
+              gatewayLabel={gatewayLabel}
               onCreateApp={handleCreateApp}
               isCreating={isRedirecting}
               projectId={projectId}
