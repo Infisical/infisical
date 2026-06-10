@@ -2661,7 +2661,7 @@ const OverviewPageContent = () => {
                     You have {relevantPendingApprovalsCount} pending secret change request
                     {relevantPendingApprovalsCount === 1 ? "" : "s"}.
                     {!canApproveAny &&
-                      " Once approved, the secrets will become available in this folder."}
+                      " Once approved, your changes will be applied to this folder."}
                   </span>
                   {canApproveAny && (
                     <Link
