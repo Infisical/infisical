@@ -38,6 +38,7 @@ import { registerDeprecatedSecretImportRouter } from "./deprecated-secret-import
 import { registerDeprecatedSecretTagRouter } from "./deprecated-secret-tag-router";
 import { registerEventRouter } from "./event-router";
 import { registerExternalGroupOrgRoleMappingRouter } from "./external-group-org-role-mapping-router";
+import { registerGitHubAppRouter } from "./github-app-router";
 import { registerGroupOrgMembershipRouter } from "./group-org-membership-router";
 import { registerGroupProjectRouter } from "./group-project-router";
 import { registerIdentityAccessTokenRouter } from "./identity-access-token-router";
@@ -83,7 +84,8 @@ import { registerSecretRequestsRouter } from "./secret-requests-router";
 import { registerSecretSharingRouter } from "./secret-sharing-router";
 import { registerSecretTagRouter } from "./secret-tag-router";
 import { registerSecretValidationRuleRouter } from "./secret-validation-rule-router";
-import { registerSignerRouter } from "./signer-router";
+import { registerSignerMembershipRoutes } from "./signer-membership-routers";
+import { registerSignerRouter } from "./signer-routers";
 import { registerSlackRouter } from "./slack-router";
 import { registerSsoRouter } from "./sso-router";
 import { registerUserActionRouter } from "./user-action-router";
@@ -144,6 +146,8 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
     },
     { prefix: "/workflow-integrations" }
   );
+
+  await server.register(registerGitHubAppRouter, { prefix: "/github-apps" });
 
   await server.register(
     async (projectRouter) => {
@@ -229,6 +233,7 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
       await pkiRouter.register(registerCertManagerInstanceRouter);
       await pkiRouter.register(registerCertManagerExportRouter);
       await pkiRouter.register(registerSignerRouter, { prefix: "/signers" });
+      await pkiRouter.register(registerSignerMembershipRoutes, { prefix: "/signers" });
       await pkiRouter.register(registerCertificateCleanupRouter, { prefix: "/certificate-cleanup" });
       await pkiRouter.register(registerCertificateInventoryViewRouter, { prefix: "/certificate-inventory-views" });
       await pkiRouter.register(registerCertManagerAccessRouter, { prefix: "/access" });

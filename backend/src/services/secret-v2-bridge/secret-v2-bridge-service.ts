@@ -43,7 +43,12 @@ import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
-import { recordSecretReadMetric } from "@app/lib/telemetry/metrics";
+import {
+  recordSecretCacheAccessMetric,
+  recordSecretCacheWriteMetric,
+  recordSecretReadMetric,
+  SecretCacheAccessResult
+} from "@app/lib/telemetry/metrics";
 
 import { ActorType } from "../auth/auth-type";
 import { TCommitResourceChangeDTO, TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
@@ -1201,7 +1206,11 @@ export const secretV2BridgeServiceFactory = ({
     }
 
     const etagRedisKey = KeyStorePrefixes.SecretEtag(projectId, utcDayStamp());
-    const etagField = `${actorId}:${permissionFingerprint}:${generateCacheKeyFromData({
+    // Hash of only the request inputs that change the response body, shared by the ETag field and the
+    // cache key. Transport-only inputs like ifNoneMatch are excluded so a client's stale ETag can't fork
+    // a fresh entry, and throwOnMissingReadValuePermission is included because it flips partial-permission
+    // reads between masking values and throwing. The actor's permission identity is keyed separately.
+    const requestParamsHash = generateCacheKeyFromData({
       environment,
       path,
       recursive,
@@ -1211,12 +1220,15 @@ export const secretV2BridgeServiceFactory = ({
       personalOverridesBehavior,
       secretImportReferencesBehavior,
       viewSecretValue,
+      throwOnMissingReadValuePermission,
       ...params
-    })}`;
+    });
+    const etagField = `${actorId}:${permissionFingerprint}:${requestParamsHash}`;
 
     if (ifNoneMatch) {
       const storedEtag = await keyStore.hashGet(etagRedisKey, etagField);
       if (storedEtag && storedEtag === ifNoneMatch) {
+        recordSecretCacheAccessMetric(SecretCacheAccessResult.NOT_MODIFIED);
         return { notModified: true, etag: ifNoneMatch, secrets: [], imports: [] };
       }
     }
@@ -1238,9 +1250,18 @@ export const secretV2BridgeServiceFactory = ({
 
     const cachedSecretDalVersion = await keyStore.pgGetIntItem(SecretServiceCacheKeys.getSecretDalVersion(projectId));
     const secretDalVersion = Number(cachedSecretDalVersion || 0);
-    const cacheKey = SecretServiceCacheKeys.getSecretsOfServiceLayer(projectId, secretDalVersion, {
-      ...dto,
-      permissionRules: permission.rules
+    // The ETag field keys on permissionFingerprint alone — the ETag value is a content hash of the
+    // payload, so a shared field across auth contexts can at worst miss a 304, never serve stale content.
+    // The cache blob is returned without re-filtering, so its key additionally folds in the interpolated
+    // permission.rules: those carry request-time identity.auth context that the fingerprint (membership
+    // rows only) does not, and two auth contexts for the same identity must not share a cached payload.
+    const cacheKey = SecretServiceCacheKeys.getSecretsOfServiceLayer({
+      projectId,
+      version: secretDalVersion,
+      actorId,
+      permissionFingerprint,
+      permissionHash: generateCacheKeyFromData(permission.rules),
+      requestParamsHash
     });
 
     const { decryptor: secretManagerDecryptor, encryptor: secretManagerEncryptor } =
@@ -1269,6 +1290,7 @@ export const secretV2BridgeServiceFactory = ({
         const cachedEtag = `"${generateCacheKeyFromData(payload)}"`;
         await keyStore.hashSet(etagRedisKey, etagField, cachedEtag);
         await keyStore.setExpiry(etagRedisKey, KeyStoreTtls.SecretEtagInSeconds);
+        recordSecretCacheAccessMetric(SecretCacheAccessResult.HIT);
         return { ...payload, etag: cachedEtag };
       } catch (err) {
         logger.error(err, "Secret service layer cache miss");
@@ -1514,9 +1536,13 @@ export const secretV2BridgeServiceFactory = ({
       const encryptedUpdatedCachedSecrets = secretManagerEncryptor({
         plainText: Buffer.from(JSON.stringify(payload))
       }).cipherTextBlob;
-      if (encryptedUpdatedCachedSecrets.byteLength < MAX_SECRET_CACHE_BYTES) {
+      const cacheBytes = encryptedUpdatedCachedSecrets.byteLength;
+      const stored = cacheBytes < MAX_SECRET_CACHE_BYTES;
+      if (stored) {
         await keyStore.setItemWithExpiry(cacheKey, SECRET_DAL_TTL(), encryptedUpdatedCachedSecrets.toString("base64"));
       }
+      recordSecretCacheWriteMetric({ bytes: cacheBytes, stored });
+      recordSecretCacheAccessMetric(SecretCacheAccessResult.MISS);
       const computedEtag = `"${generateCacheKeyFromData(payload)}"`;
       await keyStore.hashSet(etagRedisKey, etagField, computedEtag);
       await keyStore.setExpiry(etagRedisKey, KeyStoreTtls.SecretEtagInSeconds);
@@ -1588,9 +1614,13 @@ export const secretV2BridgeServiceFactory = ({
     const encryptedUpdatedCachedSecrets = secretManagerEncryptor({
       plainText: Buffer.from(JSON.stringify(payload))
     }).cipherTextBlob;
-    if (encryptedUpdatedCachedSecrets.byteLength < MAX_SECRET_CACHE_BYTES) {
+    const cacheBytes = encryptedUpdatedCachedSecrets.byteLength;
+    const stored = cacheBytes < MAX_SECRET_CACHE_BYTES;
+    if (stored) {
       await keyStore.setItemWithExpiry(cacheKey, SECRET_DAL_TTL(), encryptedUpdatedCachedSecrets.toString("base64"));
     }
+    recordSecretCacheWriteMetric({ bytes: cacheBytes, stored });
+    recordSecretCacheAccessMetric(SecretCacheAccessResult.MISS);
     const computedEtag = `"${generateCacheKeyFromData(payload)}"`;
     await keyStore.hashSet(etagRedisKey, etagField, computedEtag);
     await keyStore.setExpiry(etagRedisKey, KeyStoreTtls.SecretEtagInSeconds);

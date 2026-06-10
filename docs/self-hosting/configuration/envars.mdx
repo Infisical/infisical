@@ -742,6 +742,10 @@ You can configure third-party app connections for re-use across Infisical Projec
         The private key for the GitHub App
     </ParamField>
 
+    <ParamField query="INF_APP_CONNECTION_GITHUB_APP_HOST" type="string" default="github.com" optional>
+        The hostname of the GitHub instance where the shared GitHub App is registered. Only required when the shared GitHub App is registered on a GitHub Enterprise Server (GHES) instance rather than github.com (e.g. `github.mycompany.com`). Defaults to `github.com` when not set.
+    </ParamField>
+
 </Accordion>
 
 <Accordion title="GitHub Radar App Connection">
@@ -868,6 +872,10 @@ If the export type is set to `otlp`, you will have to configure a value for `OTE
 </ParamField>
 <ParamField query="OTEL_COLLECTOR_BASIC_AUTH_PASSWORD" type="string">
   The password for authenticating with the telemetry collector.
+</ParamField>
+
+<ParamField query="OTEL_DROP_HIGH_CARDINALITY_METERS" type="string" default="false" optional>
+  When set to `true`, the SDK discards all data points from the high-cardinality, per-actor `Infisical`, `API`, `SecretSyncs`, `PkiSyncs`, and `Integrations` meters before aggregation. The instruments still exist in code (no errors), but nothing is stored or exported. Only bounded-cardinality `InfisicalCore` metrics are emitted. Useful for large or multi-tenant deployments where per-actor label cardinality is too expensive. See [Monitoring & Telemetry](/self-hosting/guides/monitoring-telemetry#available-metrics) for details.
 </ParamField>
 
 ## Identity Auth Method

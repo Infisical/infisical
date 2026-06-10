@@ -67,6 +67,10 @@ export const ROUTE_PATHS = Object.freeze({
       OauthCallbackPage: setRoute(
         "/organizations/$orgId/app-connections/$appConnection/oauth/callback",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/app-connections/$appConnection/oauth/callback"
+      ),
+      GitHubManifestCallbackPage: setRoute(
+        "/organizations/$orgId/app-connections/github/manifest/callback",
+        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/app-connections/github/manifest/callback"
       )
     },
     NetworkingPage: setRoute(
@@ -319,6 +323,14 @@ export const ROUTE_PATHS = Object.freeze({
       "/organizations/$orgId/projects/cert-manager/$projectId/ca/$caId",
       "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/ca/$caId"
     ),
+    CertificateProfileDetailsByIDPage: setRoute(
+      "/organizations/$orgId/projects/cert-manager/$projectId/certificate-profiles/$profileId",
+      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/certificate-profiles/$profileId"
+    ),
+    CertificatePolicyDetailsByIDPage: setRoute(
+      "/organizations/$orgId/projects/cert-manager/$projectId/certificate-policies/$policyId",
+      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/certificate-policies/$policyId"
+    ),
     SubscribersPage: setRoute(
       "/organizations/$orgId/projects/cert-manager/$projectId/subscribers",
       "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/subscribers"
@@ -354,6 +366,10 @@ export const ROUTE_PATHS = Object.freeze({
     SignerDetailByIDPage: setRoute(
       "/organizations/$orgId/projects/cert-manager/$projectId/code-signing/$signerId",
       "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/code-signing/$signerId"
+    ),
+    CodeSigningPage: setRoute(
+      "/organizations/$orgId/projects/cert-manager/$projectId/code-signing",
+      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/code-signing"
     )
   },
   Ssh: {

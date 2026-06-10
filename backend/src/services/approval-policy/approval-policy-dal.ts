@@ -330,6 +330,34 @@ export const approvalPolicyDALFactory = (db: TDbClient) => {
     }
   };
 
+  const deleteUserStepApproversInProjects = async (
+    args: { projectIds: string[]; userIds: string[]; scopeTypes: string[] },
+    tx?: Knex
+  ): Promise<void> => {
+    try {
+      if (!args.projectIds.length || !args.userIds.length || !args.scopeTypes.length) return;
+
+      const conn = tx || db;
+
+      const stepIds = conn(TableName.ApprovalPolicies)
+        .whereIn(`${TableName.ApprovalPolicies}.projectId`, args.projectIds)
+        .whereIn(`${TableName.ApprovalPolicies}.scopeType`, args.scopeTypes)
+        .innerJoin(
+          TableName.ApprovalPolicySteps,
+          `${TableName.ApprovalPolicySteps}.policyId`,
+          `${TableName.ApprovalPolicies}.id`
+        )
+        .select(`${TableName.ApprovalPolicySteps}.id`);
+
+      await conn(TableName.ApprovalPolicyStepApprovers)
+        .whereIn("policyStepId", stepIds)
+        .whereIn("userId", args.userIds)
+        .delete();
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Delete user step approvers in projects" });
+    }
+  };
+
   return {
     ...orm,
     findStepsByPolicyId,
@@ -337,7 +365,8 @@ export const approvalPolicyDALFactory = (db: TDbClient) => {
     findBypassersByPolicyIds,
     findByProjectId,
     findPoliciesWhereSubjectIsApprover,
-    deleteStepApproversBySubject
+    deleteStepApproversBySubject,
+    deleteUserStepApproversInProjects
   };
 };
 

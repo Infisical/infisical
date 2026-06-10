@@ -40,11 +40,13 @@ import { DigitalOceanConnectionForm } from "./DigitalOceanConnectionForm";
 import { DNSMadeEasyConnectionForm } from "./DNSMadeEasyConnectionForm";
 import { DopplerConnectionForm } from "./DopplerConnectionForm";
 import { ExternalInfisicalConnectionForm } from "./ExternalInfisicalConnectionForm";
+import { F5BigIpConnectionForm } from "./F5BigIpConnectionForm";
 import { FlyioConnectionForm } from "./FlyioConnectionForm";
 import { GcpConnectionForm } from "./GcpConnectionForm";
 import { GitHubConnectionForm } from "./GitHubConnectionForm";
 import { GitHubRadarConnectionForm } from "./GitHubRadarConnectionForm";
 import { GitLabConnectionForm } from "./GitLabConnectionForm";
+import { GoDaddyConnectionForm } from "./GoDaddyConnectionForm";
 import { HCVaultConnectionForm } from "./HCVaultConnectionForm";
 import { HerokuConnectionForm } from "./HerokuAppConnectionForm";
 import { HumanitecConnectionForm } from "./HumanitecConnectionForm";
@@ -299,6 +301,8 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
         return <OnaConnectionForm onSubmit={onSubmit} />;
       case AppConnection.DigiCert:
         return <DigiCertConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.GoDaddy:
+        return <GoDaddyConnectionForm onSubmit={onSubmit} />;
       case AppConnection.TravisCI:
         return <TravisCIConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Salesforce:
@@ -307,6 +311,8 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
         return <SnowflakeConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Datadog:
         return <DatadogConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.F5BigIp:
+        return <F5BigIpConnectionForm onSubmit={onSubmit} />;
       default:
         throw new Error(`Unhandled App ${app}`);
     }
@@ -528,6 +534,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         return <OnaConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.DigiCert:
         return <DigiCertConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.GoDaddy:
+        return <GoDaddyConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.TravisCI:
         return <TravisCIConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Salesforce:
@@ -536,6 +544,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         return <SnowflakeConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Datadog:
         return <DatadogConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.F5BigIp:
+        return <F5BigIpConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Venafi:
         return <VenafiConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.VenafiTpp:

@@ -1,5 +1,3 @@
-import { z } from "zod";
-
 import { AuditLogStreamsSchema } from "@app/db/schemas";
 
 export const BaseProviderSchema = AuditLogStreamsSchema.omit({
@@ -13,7 +11,4 @@ export const BaseProviderSchema = AuditLogStreamsSchema.omit({
   encryptedHeadersKeyEncoding: true,
   encryptedHeadersTag: true,
   url: true
-}).extend({
-  lastErrorMessage: z.string().nullish(),
-  lastErrorTimestamp: z.date().nullish()
 });

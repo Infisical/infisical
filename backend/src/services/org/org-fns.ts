@@ -7,21 +7,25 @@ import { TProjectKeyDALFactory } from "@app/services/project-key/project-key-dal
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
+import { TApprovalPolicyDALFactory } from "../approval-policy/approval-policy-dal";
+import { APPLICATION_APPROVAL_SCOPES } from "../membership/application-membership-cleanup-service";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
+import { assertWillRetainAdmin } from "../membership-user/membership-user-fns";
 
 type TDeleteOrgMemberships = {
   orgMembershipIds: string[];
   orgId: string;
   orgDAL: Pick<TOrgDALFactory, "transaction" | "find">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "delete">;
-  membershipUserDAL: Pick<TMembershipUserDALFactory, "delete" | "find">;
+  membershipUserDAL: Pick<TMembershipUserDALFactory, "delete" | "find" | "countActiveAdmins">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "delete">;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "delete">;
   userAliasDAL: Pick<TUserAliasDALFactory, "delete">;
   licenseService: Pick<TLicenseServiceFactory, "updateSubscriptionOrgMemberCount">;
   userId?: string;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
+  approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "deleteUserStepApproversInProjects">;
 };
 
 export const deleteOrgMembershipsFn = async ({
@@ -34,9 +38,18 @@ export const deleteOrgMembershipsFn = async ({
   userId,
   membershipUserDAL,
   userGroupMembershipDAL,
-  additionalPrivilegeDAL
+  additionalPrivilegeDAL,
+  approvalPolicyDAL
 }: TDeleteOrgMemberships) => {
   const deletedMemberships = await orgDAL.transaction(async (tx) => {
+    await assertWillRetainAdmin({
+      scope: AccessScope.Organization,
+      scopeOrgId: orgId,
+      excludeMembershipIds: orgMembershipIds,
+      dal: membershipUserDAL,
+      tx
+    });
+
     const orgMemberships = await membershipUserDAL.delete(
       {
         scopeOrgId: orgId,
@@ -53,7 +66,6 @@ export const deleteOrgMembershipsFn = async ({
       .map((member) => member.actorUserId) as string[];
 
     if (userId && membershipUserIds.includes(userId)) {
-      // scott: this is temporary, we will add a leave org endpoint with proper handling to ensure org isn't abandoned/broken
       throw new BadRequestError({ message: "You cannot remove yourself from an organization" });
     }
 
@@ -114,6 +126,15 @@ export const deleteOrgMembershipsFn = async ({
           projectId: projectIds,
           actorUserId: membershipUserIds
         }
+      },
+      tx
+    );
+
+    await approvalPolicyDAL.deleteUserStepApproversInProjects(
+      {
+        projectIds,
+        userIds: membershipUserIds,
+        scopeTypes: APPLICATION_APPROVAL_SCOPES
       },
       tx
     );

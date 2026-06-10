@@ -18,8 +18,11 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 import { SearchResourceOperators } from "@app/lib/search-resource/search";
 
+import { TApplicationMembershipCleanupServiceFactory } from "../membership/application-membership-cleanup-service";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TOrgDALFactory } from "../org/org-dal";
+import { ApplicationMemberKind } from "../pki-application/pki-application-types";
+import { TProjectDALFactory } from "../project/project-dal";
 import { TRoleDALFactory } from "../role/role-dal";
 import { TMembershipGroupDALFactory } from "./membership-group-dal";
 import {
@@ -41,9 +44,14 @@ type TMembershipGroupServiceFactoryDep = {
   secretApprovalPolicyApproverDAL: Pick<TSecretApprovalPolicyApproverDALFactory, "find">;
   roleDAL: Pick<TRoleDALFactory, "find">;
   permissionService: TPermissionServiceFactory;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   orgDAL: TOrgDALFactory;
   groupDAL: Pick<TGroupDALFactory, "findById">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  applicationMembershipCleanupService: Pick<
+    TApplicationMembershipCleanupServiceFactory,
+    "cleanupActorApplicationMemberships"
+  >;
+  projectDAL: Pick<TProjectDALFactory, "findById">;
 };
 
 export type TMembershipGroupServiceFactory = ReturnType<typeof membershipGroupServiceFactory>;
@@ -58,8 +66,10 @@ export const membershipGroupServiceFactory = ({
   membershipRoleDAL,
   orgDAL,
   permissionService,
+  groupDAL,
   licenseService,
-  groupDAL
+  applicationMembershipCleanupService,
+  projectDAL
 }: TMembershipGroupServiceFactoryDep) => {
   const scopeFactory = {
     [AccessScope.Organization]: newOrgMembershipGroupFactory({
@@ -71,7 +81,8 @@ export const membershipGroupServiceFactory = ({
       membershipGroupDAL,
       orgDAL,
       permissionService,
-      groupDAL
+      groupDAL,
+      projectDAL
     })
   };
 
@@ -372,6 +383,17 @@ export const membershipGroupServiceFactory = ({
     }
 
     const performDelete = async (tx: Knex) => {
+      if (scopeData.scope === AccessScope.Project && existingMembership.scopeProjectId) {
+        await applicationMembershipCleanupService.cleanupActorApplicationMemberships(
+          {
+            projectId: existingMembership.scopeProjectId,
+            actorKind: ApplicationMemberKind.Group,
+            actorId: dto.selector.groupId
+          },
+          tx
+        );
+      }
+
       await membershipRoleDAL.delete({ membershipId: existingMembership.id }, tx);
       const doc = await membershipGroupDAL.deleteById(existingMembership.id, tx);
       return doc;

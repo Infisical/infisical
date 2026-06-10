@@ -105,6 +105,7 @@ import { TConvertorServiceFactory } from "@app/services/convertor/convertor-serv
 import { TExternalGroupOrgRoleMappingServiceFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-service";
 import { TExternalMigrationServiceFactory } from "@app/services/external-migration/external-migration-service";
 import { TFolderCommitServiceFactory } from "@app/services/folder-commit/folder-commit-service";
+import { TGitHubAppServiceFactory } from "@app/services/github-app/github-app-service";
 import { TGroupProjectServiceFactory } from "@app/services/group-project/group-project-service";
 import { THsmServiceFactory } from "@app/services/hsm/hsm-service";
 import { TIdentityServiceFactory } from "@app/services/identity/identity-service";
@@ -163,7 +164,9 @@ import { TSecretSyncServiceFactory } from "@app/services/secret-sync/secret-sync
 import { TSecretTagServiceFactory } from "@app/services/secret-tag/secret-tag-service";
 import { TSecretValidationRuleServiceFactory } from "@app/services/secret-validation-rule/secret-validation-rule-service";
 import { TServiceTokenServiceFactory } from "@app/services/service-token/service-token-service";
+import { TSignerPolicyServiceFactory } from "@app/services/signer/signer-policy-service";
 import { TSignerServiceFactory } from "@app/services/signer/signer-service";
+import { TSignerMembershipServiceFactory } from "@app/services/signer-membership";
 import { TSlackServiceFactory } from "@app/services/slack/slack-service";
 import { TSuperAdminServiceFactory } from "@app/services/super-admin/super-admin-service";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
@@ -335,6 +338,8 @@ declare module "fastify" {
       certificateProfile: TCertificateProfileServiceFactory;
       pkiApplication: TPkiApplicationServiceFactory;
       pkiApplicationMembership: TPkiApplicationMembershipServiceFactory;
+      signerMembership: TSignerMembershipServiceFactory;
+      signerPolicy: TSignerPolicyServiceFactory;
       pkiApplicationEnrollment: TPkiApplicationEnrollmentServiceFactory;
       certManagerProjectResolver: TCertManagerProjectResolverFactory;
       certManagerInstance: TCertManagerInstanceServiceFactory;
@@ -392,6 +397,7 @@ declare module "fastify" {
       gatewayPool: TGatewayPoolServiceFactory;
       resourceAuthMethod: TResourceAuthMethodServiceFactory;
       githubOrgSync: TGithubOrgSyncServiceFactory;
+      gitHubApp: TGitHubAppServiceFactory;
       honeyTokenConfig: THoneyTokenConfigServiceFactory;
       honeyToken: THoneyTokenServiceFactory;
       folderCommit: TFolderCommitServiceFactory;

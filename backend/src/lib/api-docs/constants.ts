@@ -2541,7 +2541,7 @@ export const KMS = {
   },
   VERIFY: {
     keyId: "The ID of the key to verify the data with.",
-    data: "The data in string format to be verified (base64 encoded). For data larger than 4096 bytes you must first create a digest of the data and then pass the digest in the data parameter.",
+    data: "The data in string format to be verified (base64 encoded). For data larger than 1MB you must first create a digest of the data and then pass the digest in the data parameter.",
     signature: "The signature to be verified (base64 encoded).",
     isDigest: "Whether the data is already digested or not."
   }
@@ -2722,6 +2722,10 @@ export const AppConnections = {
     DIGICERT: {
       apiKey: "The CertCentral API Key used to authenticate with DigiCert.",
       region: "The CertCentral region the API key belongs to (us or eu)."
+    },
+    GODADDY: {
+      apiKey: "The GoDaddy API Key used to authenticate with the GoDaddy API.",
+      apiSecret: "The GoDaddy API Secret used to authenticate with the GoDaddy API."
     },
     TRAVISCI: {
       apiToken: "The API token used to authenticate with Travis CI."

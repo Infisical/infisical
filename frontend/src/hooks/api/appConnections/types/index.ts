@@ -26,11 +26,13 @@ import { TDigitalOceanConnection } from "./digital-ocean";
 import { TDNSMadeEasyConnection } from "./dns-made-easy-connection";
 import { TDopplerConnection } from "./doppler-connection";
 import { TExternalInfisicalConnection } from "./external-infisical-connection";
+import { TF5BigIpConnection } from "./f5-big-ip-connection";
 import { TFlyioConnection } from "./flyio-connection";
 import { TGcpConnection } from "./gcp-connection";
 import { TGitHubConnection } from "./github-connection";
 import { TGitHubRadarConnection } from "./github-radar-connection";
 import { TGitLabConnection } from "./gitlab-connection";
+import { TGoDaddyConnection } from "./godaddy-connection";
 import { THCVaultConnection } from "./hc-vault-connection";
 import { THerokuConnection } from "./heroku-connection";
 import { THumanitecConnection } from "./humanitec-connection";
@@ -91,6 +93,7 @@ export * from "./digicert-connection";
 export * from "./dns-made-easy-connection";
 export * from "./doppler-connection";
 export * from "./external-infisical-connection";
+export * from "./f5-big-ip-connection";
 export * from "./flyio-connection";
 export * from "./gcp-connection";
 export * from "./github-connection";
@@ -195,10 +198,12 @@ export type TAppConnection =
   | TDevinConnection
   | TOnaConnection
   | TDigiCertConnection
+  | TGoDaddyConnection
   | TTravisCIConnection
   | TSalesforceConnection
   | TSnowflakeConnection
-  | TDatadogConnection;
+  | TDatadogConnection
+  | TF5BigIpConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id" | "projectId">;
 

@@ -5,6 +5,7 @@ import { AccessScope, OrganizationActionScope, OrgMembershipRole, OrgMembershipS
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
 import { bootstrapCertManagerProject } from "@app/services/cert-manager-instance/cert-manager-project-bootstrap";
+import { TCertificatePolicyDALFactory } from "@app/services/certificate-policy/certificate-policy-dal";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
@@ -28,6 +29,7 @@ type TSubOrgServiceFactoryDep = {
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create">;
   projectDAL: Pick<TProjectDALFactory, "create" | "findOne">;
   roleDAL: Pick<TRoleDALFactory, "insertMany" | "findOne">;
+  certificatePolicyDAL: Pick<TCertificatePolicyDALFactory, "create">;
 };
 
 export type TSubOrgServiceFactory = ReturnType<typeof subOrgServiceFactory>;
@@ -39,7 +41,8 @@ export const subOrgServiceFactory = ({
   membershipDAL,
   membershipRoleDAL,
   projectDAL,
-  roleDAL
+  roleDAL,
+  certificatePolicyDAL
 }: TSubOrgServiceFactoryDep) => {
   const createSubOrg = async ({ name, slug, permission }: TCreateSubOrgDTO) => {
     const { permission: orgPermission } = await permissionService.getOrgPermission({
@@ -105,7 +108,7 @@ export const subOrgServiceFactory = ({
           adminUserIds: permission.type === ActorType.USER ? [permission.id] : [],
           adminIdentityIds: permission.type === ActorType.IDENTITY ? [permission.id] : []
         },
-        { projectDAL, membershipDAL, membershipRoleDAL, roleDAL },
+        { projectDAL, membershipDAL, membershipRoleDAL, roleDAL, certificatePolicyDAL },
         tx
       );
 

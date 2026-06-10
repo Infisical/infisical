@@ -5,12 +5,13 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/redis/go-redis/v9"
+
 	"github.com/infisical/api/internal/config"
 	"github.com/infisical/api/internal/database/pg"
+	"github.com/infisical/api/internal/ee/services/license"
 	"github.com/infisical/api/internal/keystore"
 	"github.com/infisical/api/internal/queue"
-	genprojects "github.com/infisical/api/internal/server/gen/projects"
-	gensecrets "github.com/infisical/api/internal/server/gen/secrets"
 	"github.com/infisical/api/internal/services/kms"
 )
 
@@ -19,30 +20,22 @@ type Infra struct {
 	Logger   *slog.Logger
 	Config   *config.Config
 	DB       pg.DB
+	Redis    redis.UniversalClient
 	HSM      kms.HsmService
+	License  *license.Service
 	KeyStore keystore.KeyStore
 	Queue    *queue.Service
 }
 
-// Registry holds all HTTP handlers for the API.
-type Registry struct {
-	Platform      *PlatformHandlers
-	SecretManager *SecretManagerHandlers
+// Services holds all initialized services for the API.
+type Services struct {
+	Platform      *PlatformServices
+	SecretManager *SecretManagerServices
 }
 
-// PlatformHandlers holds handlers for platform endpoints.
-type PlatformHandlers struct {
-	Projects genprojects.Service
-}
-
-// SecretManagerHandlers holds handlers for secret manager endpoints.
-type SecretManagerHandlers struct {
-	Secrets gensecrets.Service
-}
-
-// NewRegistry creates a new API registry with all services and handlers initialized.
+// NewServices creates all services for the API.
 // Returns a cleanup function that should be called during graceful shutdown.
-func NewRegistry(ctx context.Context, infra *Infra) (*Registry, func(), error) {
+func NewServices(ctx context.Context, infra *Infra) (*Services, func(), error) {
 	platformSvc, err := newPlatformServices(ctx, infra)
 	if err != nil {
 		return nil, nil, fmt.Errorf("platform services: %w", err)
@@ -50,18 +43,15 @@ func NewRegistry(ctx context.Context, infra *Infra) (*Registry, func(), error) {
 
 	secretManagerSvc := newSecretManagerServices(ctx, infra, platformSvc)
 
-	platformHandlers := newPlatformHandlers(infra.Logger, platformSvc)
-	secretManagerHandlers := newSecretManagerHandlers(infra.Logger, platformSvc, secretManagerSvc)
-
-	registry := &Registry{
-		Platform:      platformHandlers,
-		SecretManager: secretManagerHandlers,
+	services := &Services{
+		Platform:      platformSvc,
+		SecretManager: secretManagerSvc,
 	}
 
 	cleanup := func() {
-		platformSvc.kms.Close()
-		platformSvc.license.Close()
+		platformSvc.KMS.Close()
+		platformSvc.License.Close()
 	}
 
-	return registry, cleanup, nil
+	return services, cleanup, nil
 }

@@ -3,14 +3,19 @@ import { Knex } from "knex";
 import { AccessScope, ProjectMembershipRole, TemporaryPermissionMode, TMembershipRolesInsert } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 import { SearchResourceOperators } from "@app/lib/search-resource/search";
+import { getIdentityActiveLockoutAuthMethods } from "@app/services/identity/identity-fns";
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
 import { TIdentityDALFactory } from "../identity/identity-dal";
+import { TApplicationMembershipCleanupServiceFactory } from "../membership/application-membership-cleanup-service";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TOrgDALFactory } from "../org/org-dal";
+import { ApplicationMemberKind } from "../pki-application/pki-application-types";
+import { TProjectDALFactory } from "../project/project-dal";
 import { TRoleDALFactory } from "../role/role-dal";
 import { TMembershipIdentityDALFactory } from "./membership-identity-dal";
 import {
@@ -35,6 +40,12 @@ type TMembershipIdentityServiceFactoryDep = {
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
   identityDAL: Pick<TIdentityDALFactory, "findById">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  applicationMembershipCleanupService: Pick<
+    TApplicationMembershipCleanupServiceFactory,
+    "cleanupActorApplicationMemberships"
+  >;
+  projectDAL: Pick<TProjectDALFactory, "findById">;
+  keyStore: Pick<TKeyStoreFactory, "getKeysByPattern" | "getItem">;
 };
 
 export type TMembershipIdentityServiceFactory = ReturnType<typeof membershipIdentityServiceFactory>;
@@ -47,7 +58,10 @@ export const membershipIdentityServiceFactory = ({
   orgDAL,
   additionalPrivilegeDAL,
   identityDAL,
-  licenseService
+  licenseService,
+  applicationMembershipCleanupService,
+  projectDAL,
+  keyStore
 }: TMembershipIdentityServiceFactoryDep) => {
   const scopeFactory = {
     [AccessScope.Organization]: newOrgMembershipIdentityFactory({
@@ -59,7 +73,8 @@ export const membershipIdentityServiceFactory = ({
       membershipIdentityDAL,
       orgDAL,
       permissionService,
-      identityDAL
+      identityDAL,
+      projectDAL
     })
   };
 
@@ -327,6 +342,21 @@ export const membershipIdentityServiceFactory = ({
       );
       await membershipRoleDAL.delete({ membershipId: existingMembership.id }, tx);
       const doc = await membershipIdentityDAL.deleteById(existingMembership.id, tx);
+
+      if (scopeData.scope === AccessScope.Project) {
+        const projectScopeFields = scopeDatabaseFields as { scopeProjectId?: string };
+        if (projectScopeFields.scopeProjectId) {
+          await applicationMembershipCleanupService.cleanupActorApplicationMemberships(
+            {
+              projectId: projectScopeFields.scopeProjectId,
+              actorKind: ApplicationMemberKind.Identity,
+              actorId: dto.selector.identityId
+            },
+            tx
+          );
+        }
+      }
+
       return doc;
     };
 
@@ -358,7 +388,17 @@ export const membershipIdentityServiceFactory = ({
           : undefined
       }
     });
-    return { ...memberships, data: memberships.data.filter((el) => listFilter({ identityId: el.identity.id })) };
+    const filtered = memberships.data.filter((el) => listFilter({ identityId: el.identity.id }));
+    const withLockouts = await Promise.all(
+      filtered.map(async (el) => ({
+        ...el,
+        identity: {
+          ...el.identity,
+          activeLockoutAuthMethods: await getIdentityActiveLockoutAuthMethods(el.identity.id, keyStore)
+        }
+      }))
+    );
+    return { ...memberships, data: withLockouts };
   };
 
   const getMembershipByIdentityId = async (dto: TGetMembershipIdentityByIdentityIdDTO) => {

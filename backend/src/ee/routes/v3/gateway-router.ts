@@ -8,6 +8,7 @@ import { ApiDocsTags, GATEWAYS } from "@app/lib/api-docs";
 import { UnauthorizedError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
@@ -88,7 +89,7 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
       operationId: "createGateway",
       tags: [ApiDocsTags.GatewaysV3],
       body: z.object({
-        name: z.string().trim().min(1).max(64).describe(GATEWAYS.CREATE.name),
+        name: slugSchema({ field: "name" }).describe(GATEWAYS.CREATE.name),
         authMethod: SettableAuthMethodInputSchema.describe(GATEWAYS.CREATE.authMethod)
       }),
       response: {

@@ -277,6 +277,10 @@ export const projectTemplateServiceFactory = ({
       throw new BadRequestError({ message: "Agent Sentinel project templates are not supported" });
     }
 
+    if (type === ProjectType.CertificateManager) {
+      throw new BadRequestError({ message: "Certificate Manager project templates are not supported" });
+    }
+
     // Seed with default built-in roles when none are explicitly provided
     const resolvedRoles: TProjectTemplateRole[] =
       roles.length === 0 ? (getDefaultTemplateRoles(type) as unknown as TProjectTemplateRole[]) : roles;

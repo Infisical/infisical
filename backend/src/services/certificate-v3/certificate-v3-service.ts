@@ -52,6 +52,7 @@ import {
   createDistinguishedName,
   extractDnParts
 } from "@app/services/certificate-authority/certificate-authority-fns";
+import { validateGoDaddyIssuanceInputs } from "@app/services/certificate-authority/godaddy/godaddy-certificate-authority-validators";
 import { TInternalCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-service";
 import { TCertificatePolicyServiceFactory } from "@app/services/certificate-policy/certificate-policy-service";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
@@ -321,7 +322,8 @@ const validateRenewalEligibility = (
     caType === CaType.AWS_PCA ||
     caType === CaType.AWS_ACM_PUBLIC_CA ||
     caType === CaType.DIGICERT ||
-    caType === CaType.VENAFI_TPP;
+    caType === CaType.VENAFI_TPP ||
+    caType === CaType.GODADDY;
   const isImportedCertificate = certificate.pkiSubscriberId != null && !certificate.profileId;
 
   if (!isInternalCa && !isConnectedExternalCa) {
@@ -2162,7 +2164,8 @@ export const certificateV3ServiceFactory = ({
       caType === CaType.AWS_PCA ||
       caType === CaType.DIGICERT ||
       caType === CaType.AWS_ACM_PUBLIC_CA ||
-      caType === CaType.VENAFI_TPP
+      caType === CaType.VENAFI_TPP ||
+      caType === CaType.GODADDY
     ) {
       // Pre-flight validation for ACM — reject bad inputs synchronously so the user
       // gets a 400 on submit rather than a FAILED request row after the job runs.
@@ -2179,6 +2182,20 @@ export const certificateV3ServiceFactory = ({
           country: certificateRequest.country,
           state: certificateRequest.state,
           locality: certificateRequest.locality
+        });
+      }
+
+      if (caType === CaType.GODADDY) {
+        // When a CSR is supplied, validate what it actually contains (key algorithm + SANs + CN)
+        // rather than the declared request fields, so a BYO CSR can't smuggle a non-RSA key or
+        // extra SANs past the guard and on to GoDaddy.
+        const csrDerived = certificateOrder.csr ? extractCertificateRequestFromCSR(certificateOrder.csr) : undefined;
+        validateGoDaddyIssuanceInputs({
+          keyAlgorithm: certificateOrder.csr
+            ? extractAlgorithmsFromCSR(certificateOrder.csr).keyAlgorithm
+            : certificateOrder.keyAlgorithm,
+          altNames: csrDerived?.subjectAlternativeNames ?? certificateOrder.altNames,
+          commonName: csrDerived?.commonName ?? certificateOrder.commonName
         });
       }
 
@@ -2558,7 +2575,8 @@ export const certificateV3ServiceFactory = ({
           caType === CaType.AWS_PCA ||
           caType === CaType.DIGICERT ||
           caType === CaType.AWS_ACM_PUBLIC_CA ||
-          caType === CaType.VENAFI_TPP
+          caType === CaType.VENAFI_TPP ||
+          caType === CaType.GODADDY
         ) {
           // External CA renewal - mark for async processing outside transaction
           return {

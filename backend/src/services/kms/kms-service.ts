@@ -636,8 +636,9 @@ export const kmsServiceFactory = ({
     // internal KMS
     const keyCipher = symmetricCipherService(SymmetricKeyAlgorithm.AES_GCM_256);
     const dataCipher = symmetricCipherService(encryptionAlgorithm);
+    const kmsKey = keyCipher.decrypt(kmsDoc.internalKms?.encryptedKey as Buffer, ROOT_ENCRYPTION_KEY);
+
     return ({ plainText }: Pick<TEncryptWithKmsDTO, "plainText">) => {
-      const kmsKey = keyCipher.decrypt(kmsDoc.internalKms?.encryptedKey as Buffer, ROOT_ENCRYPTION_KEY);
       const encryptedPlainTextBlob = dataCipher.encrypt(plainText, kmsKey);
 
       // Buffer#1 encrypted text + Buffer#2 version number

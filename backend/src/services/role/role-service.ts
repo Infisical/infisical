@@ -321,7 +321,7 @@ export const roleServiceFactory = ({
         );
         if (!userDetails)
           throw new NotFoundError({ message: `User with ID ${assumedPrivilegeDetails.actorId} not found` });
-        assumedPrivilegeDetails.actorName = `${userDetails?.firstName} ${userDetails?.lastName || ""}`;
+        assumedPrivilegeDetails.actorName = `${userDetails?.firstName ?? ""} ${userDetails?.lastName ?? ""}`.trim();
         assumedPrivilegeDetails.actorEmail = userDetails?.email || "";
       }
 

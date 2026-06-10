@@ -247,14 +247,16 @@ func TestExpand_AbsoluteReference_PermissionDenied(t *testing.T) {
 	}
 
 	opts := ExpandOpts{
-		CanAccessAbsolute: func(ref AbsoluteSecretRef) bool {
+		CanAccessAbsolute: func(ref AbsoluteSecretRef, tags []string) bool {
+			// Only allow ALLOWED key, deny DENIED
 			return ref.Key == "ALLOWED"
 		},
 		FetchAbsoluteSecrets: func(refs []AbsoluteSecretRef) []*ProcessedSecret {
-			assert.Len(t, refs, 1)
-			assert.Equal(t, "ALLOWED", refs[0].Key)
+			// Fetch returns ALL requested secrets - permission filtering happens after
+			assert.Len(t, refs, 2)
 			return []*ProcessedSecret{
 				newTestSecret("ALLOWED", "yes", "prod", "/"),
+				newTestSecret("DENIED", "no", "prod", "/"),
 			}
 		},
 	}
@@ -263,6 +265,8 @@ func TestExpand_AbsoluteReference_PermissionDenied(t *testing.T) {
 	expander.Expand()
 
 	assert.Equal(t, "allowed=yes denied=", secrets[0].Value)
+	assert.True(t, expander.HasDeniedRefs())
+	assert.Contains(t, expander.DeniedRefs(), "prod:/:DENIED")
 }
 
 func TestExpand_CircularReference_Direct(t *testing.T) {

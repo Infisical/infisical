@@ -19,11 +19,14 @@ import { SearchResourceOperators } from "@app/lib/search-resource/search";
 import { isDisposableEmail, sanitizeEmail, validateEmail } from "@app/lib/validator";
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
+import { TApprovalPolicyDALFactory } from "../approval-policy/approval-policy-dal";
 import { AuthMethod } from "../auth/auth-type";
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
+import { TApplicationMembershipCleanupServiceFactory } from "../membership/application-membership-cleanup-service";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TOrgDALFactory } from "../org/org-dal";
 import { deleteOrgMembershipsFn } from "../org/org-fns";
+import { ApplicationMemberKind } from "../pki-application/pki-application-types";
 import { TProjectAccessRequestDALFactory } from "../project/project-access-request-dal";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectKeyDALFactory } from "../project-key/project-key-dal";
@@ -34,6 +37,7 @@ import { LoginMethod } from "../super-admin/super-admin-types";
 import { TUserDALFactory } from "../user/user-dal";
 import { TUserAliasDALFactory } from "../user-alias/user-alias-dal";
 import { TMembershipUserDALFactory } from "./membership-user-dal";
+import { assertWillRetainAdmin } from "./membership-user-fns";
 import {
   TCreateMembershipUserDTO,
   TDeleteMembershipUserDTO,
@@ -67,6 +71,11 @@ type TMembershipUserServiceFactoryDep = {
   projectDAL: TProjectDALFactory;
   additionalPrivilegeDAL: TAdditionalPrivilegeDALFactory;
   projectAccessRequestDAL: TProjectAccessRequestDALFactory;
+  applicationMembershipCleanupService: Pick<
+    TApplicationMembershipCleanupServiceFactory,
+    "cleanupActorApplicationMemberships"
+  >;
+  approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "deleteUserStepApproversInProjects">;
 };
 
 export type TMembershipUserServiceFactory = ReturnType<typeof membershipUserServiceFactory>;
@@ -86,7 +95,9 @@ export const membershipUserServiceFactory = ({
   userGroupMembershipDAL,
   projectDAL,
   additionalPrivilegeDAL,
-  projectAccessRequestDAL
+  projectAccessRequestDAL,
+  applicationMembershipCleanupService,
+  approvalPolicyDAL
 }: TMembershipUserServiceFactoryDep) => {
   const scopeFactory = {
     [AccessScope.Organization]: newOrgMembershipUserFactory({
@@ -381,6 +392,10 @@ export const membershipUserServiceFactory = ({
         message: "User doesn't have membership"
       });
 
+    const newIsActive = typeof data.isActive === "undefined" ? existingMembership.isActive : data.isActive;
+    const newRolesHavePermanentAdmin =
+      newIsActive && data.roles.some((r) => r.role === OrgMembershipRole.Admin && !r.isTemporary);
+
     const scopeField = factory.getScopeField(dto.scopeData);
 
     const roleSlugsToResolve = data.roles.filter((el) => el.role !== OrgMembershipRole.Admin).map(({ role }) => role);
@@ -407,6 +422,17 @@ export const membershipUserServiceFactory = ({
     const roleBySlug = new Map(resolvedRoles.map((r) => [r.slug, r]));
 
     const membershipDoc = await membershipUserDAL.transaction(async (tx) => {
+      if (!newRolesHavePermanentAdmin) {
+        await assertWillRetainAdmin({
+          scope: scopeData.scope,
+          scopeOrgId: scopeData.orgId,
+          scopeProjectId: scopeData.scope === AccessScope.Project ? scopeData.projectId : undefined,
+          excludeMembershipIds: [existingMembership.id],
+          dal: membershipUserDAL,
+          tx
+        });
+      }
+
       const doc =
         typeof data?.isActive === "undefined"
           ? existingMembership
@@ -481,6 +507,8 @@ export const membershipUserServiceFactory = ({
 
     const performDelete = async (tx: Knex) => {
       if (dto.scopeData.scope === AccessScope.Organization) {
+        // Org-scope last-admin guard runs inside deleteOrgMembershipsFn's transaction so the
+        // advisory lock and count are race-safe with the delete itself.
         const [doc] = await deleteOrgMembershipsFn({
           orgMembershipIds: [existingMembership.id],
           orgId: dto.permission.orgId,
@@ -492,16 +520,35 @@ export const membershipUserServiceFactory = ({
           membershipUserDAL,
           userGroupMembershipDAL,
           membershipRoleDAL,
-          additionalPrivilegeDAL
+          additionalPrivilegeDAL,
+          approvalPolicyDAL
         });
         return doc;
       }
 
       if (dto.scopeData.scope === AccessScope.Project) {
+        await assertWillRetainAdmin({
+          scope: AccessScope.Project,
+          scopeOrgId: scopeData.orgId,
+          scopeProjectId: dto.scopeData.projectId,
+          excludeMembershipIds: [existingMembership.id],
+          dal: membershipUserDAL,
+          tx
+        });
+
         await additionalPrivilegeDAL.delete(
           {
             actorUserId: dto.selector.userId,
             projectId: dto.scopeData.projectId
+          },
+          tx
+        );
+
+        await applicationMembershipCleanupService.cleanupActorApplicationMemberships(
+          {
+            projectId: dto.scopeData.projectId,
+            actorKind: ApplicationMemberKind.User,
+            actorId: dto.selector.userId
           },
           tx
         );

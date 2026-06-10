@@ -5,6 +5,7 @@ export {
   CaSigningConfigType,
   CaStatus,
   CaType,
+  GoDaddyProductType,
   InternalCaType
 } from "./enums";
 export {

@@ -182,6 +182,12 @@ import {
   TGitAppOrg,
   TGitAppOrgInsert,
   TGitAppOrgUpdate,
+  TGithubAppConnections,
+  TGithubAppConnectionsInsert,
+  TGithubAppConnectionsUpdate,
+  TGithubApps,
+  TGithubAppsInsert,
+  TGithubAppsUpdate,
   TGithubOrgSyncConfigs,
   TGithubOrgSyncConfigsInsert,
   TGithubOrgSyncConfigsUpdate,
@@ -407,6 +413,9 @@ import {
   TPkiScepTransactions,
   TPkiScepTransactionsInsert,
   TPkiScepTransactionsUpdate,
+  TPkiSignerCertificateIssuanceJobs,
+  TPkiSignerCertificateIssuanceJobsInsert,
+  TPkiSignerCertificateIssuanceJobsUpdate,
   TPkiSigners,
   TPkiSignersInsert,
   TPkiSignersUpdate,
@@ -1048,6 +1057,11 @@ declare module "knex/types/tables" {
       TPkiDiscoveryScanHistoryUpdate
     >;
     [TableName.PkiSigners]: KnexOriginal.CompositeTableType<TPkiSigners, TPkiSignersInsert, TPkiSignersUpdate>;
+    [TableName.PkiSignerCertificateIssuanceJobs]: KnexOriginal.CompositeTableType<
+      TPkiSignerCertificateIssuanceJobs,
+      TPkiSignerCertificateIssuanceJobsInsert,
+      TPkiSignerCertificateIssuanceJobsUpdate
+    >;
     [TableName.PkiSigningOperations]: KnexOriginal.CompositeTableType<
       TPkiSigningOperations,
       TPkiSigningOperationsInsert,
@@ -1552,6 +1566,12 @@ declare module "knex/types/tables" {
       TSecretReminderRecipients,
       TSecretReminderRecipientsInsert,
       TSecretReminderRecipientsUpdate
+    >;
+    [TableName.GitHubApp]: KnexOriginal.CompositeTableType<TGithubApps, TGithubAppsInsert, TGithubAppsUpdate>;
+    [TableName.GitHubAppConnection]: KnexOriginal.CompositeTableType<
+      TGithubAppConnections,
+      TGithubAppConnectionsInsert,
+      TGithubAppConnectionsUpdate
     >;
     [TableName.GithubOrgSyncConfig]: KnexOriginal.CompositeTableType<
       TGithubOrgSyncConfigs,

@@ -26,8 +26,10 @@ import { ms } from "@app/lib/ms";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
+import { recordScimOperationMetric, ScimOperation } from "@app/lib/telemetry/metrics";
 import { sanitizeEmail, validateEmail } from "@app/lib/validator/validate-email";
 import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
+import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
 import { AuthTokenType } from "@app/services/auth/auth-type";
 import { TExternalGroupOrgRoleMappingDALFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
@@ -128,6 +130,7 @@ type TScimServiceFactoryDep = {
   smtpService: Pick<TSmtpService, "sendMail">;
   externalGroupOrgRoleMappingDAL: TExternalGroupOrgRoleMappingDALFactory;
   additionalPrivilegeDAL: TAdditionalPrivilegeDALFactory;
+  approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "deleteUserStepApproversInProjects">;
   scimEventsDAL: Pick<TScimEventsDALFactory, "create" | "findEventsByOrgId">;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "findOne">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
@@ -152,6 +155,7 @@ export const scimServiceFactory = ({
   membershipRoleDAL,
   roleDAL,
   additionalPrivilegeDAL,
+  approvalPolicyDAL,
   scimEventsDAL,
   emailDomainDAL,
   telemetryService
@@ -866,7 +870,8 @@ export const scimServiceFactory = ({
       membershipUserDAL,
       membershipRoleDAL,
       userGroupMembershipDAL,
-      additionalPrivilegeDAL
+      additionalPrivilegeDAL,
+      approvalPolicyDAL
     });
 
     await scimEventsDAL.create({
@@ -1623,6 +1628,24 @@ export const scimServiceFactory = ({
     return processedCount;
   };
 
+  const withScimMetric =
+    <TArgs extends [{ orgId?: string }, ...unknown[]], TReturn>(
+      operation: ScimOperation,
+      fn: (...args: TArgs) => Promise<TReturn>
+    ) =>
+    async (...args: TArgs): Promise<TReturn> => {
+      const startTime = performance.now();
+      const orgId = args[0]?.orgId;
+      try {
+        const result = await fn(...args);
+        recordScimOperationMetric({ startTime, operation, outcome: "success", orgId });
+        return result;
+      } catch (error) {
+        recordScimOperationMetric({ startTime, operation, outcome: "failure", orgId, error });
+        throw error;
+      }
+    };
+
   return {
     createScimToken,
     listScimTokens,
@@ -1630,16 +1653,16 @@ export const scimServiceFactory = ({
     listScimEvents,
     listScimUsers,
     getScimUser,
-    createScimUser,
-    updateScimUser,
-    replaceScimUser,
-    deleteScimUser,
+    createScimUser: withScimMetric(ScimOperation.CreateUser, createScimUser),
+    updateScimUser: withScimMetric(ScimOperation.UpdateUser, updateScimUser),
+    replaceScimUser: withScimMetric(ScimOperation.ReplaceUser, replaceScimUser),
+    deleteScimUser: withScimMetric(ScimOperation.DeleteUser, deleteScimUser),
     listScimGroups,
-    createScimGroup,
+    createScimGroup: withScimMetric(ScimOperation.CreateGroup, createScimGroup),
     getScimGroup,
-    deleteScimGroup,
-    replaceScimGroup,
-    updateScimGroup,
+    deleteScimGroup: withScimMetric(ScimOperation.DeleteGroup, deleteScimGroup),
+    replaceScimGroup: withScimMetric(ScimOperation.ReplaceGroup, replaceScimGroup),
+    updateScimGroup: withScimMetric(ScimOperation.UpdateGroup, updateScimGroup),
     fnValidateScimToken,
     notifyExpiringTokens
   };

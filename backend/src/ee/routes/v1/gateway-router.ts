@@ -1,8 +1,6 @@
 import { z } from "zod";
 
 import { GatewaysSchema } from "@app/db/schemas";
-import { isValidIp } from "@app/lib/ip";
-import { logger } from "@app/lib/logger";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
@@ -21,85 +19,7 @@ const SanitizedGatewaySchema = GatewaysSchema.pick({
   heartbeat: true
 });
 
-const isValidRelayAddress = (relayAddress: string) => {
-  const [ip, port] = relayAddress.split(":");
-  return isValidIp(ip) && Number(port) <= 65535 && Number(port) >= 40000;
-};
-
 export const registerGatewayRouter = async (server: FastifyZodProvider) => {
-  server.route({
-    method: "POST",
-    url: "/register-identity",
-    config: {
-      rateLimit: writeLimit
-    },
-    schema: {
-      response: {
-        200: z.object({
-          turnServerUsername: z.string(),
-          turnServerPassword: z.string(),
-          turnServerRealm: z.string(),
-          turnServerAddress: z.string(),
-          infisicalStaticIp: z.string().optional()
-        })
-      }
-    },
-    onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN]),
-    handler: async (req) => {
-      const relayDetails = await server.services.gateway.getGatewayRelayDetails(
-        req.permission.id,
-        req.permission.orgId,
-        req.permission.authMethod
-      );
-      return relayDetails;
-    }
-  });
-
-  server.route({
-    method: "POST",
-    url: "/exchange-cert",
-    config: {
-      rateLimit: writeLimit
-    },
-    schema: {
-      body: z.object({
-        relayAddress: z.string().refine(isValidRelayAddress, { message: "Invalid relay address" })
-      }),
-      response: {
-        200: z.object({
-          serialNumber: z.string(),
-          privateKey: z.string(),
-          certificate: z.string(),
-          certificateChain: z.string()
-        })
-      }
-    },
-    onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN]),
-    handler: async (req) => {
-      const gatewayCertificates = await server.services.gateway.exchangeAllocatedRelayAddress({
-        identityOrg: req.permission.orgId,
-        identityId: req.permission.id,
-        relayAddress: req.body.relayAddress,
-        identityOrgAuthMethod: req.permission.authMethod
-      });
-
-      void server.services.telemetry
-        .sendPostHogEvents({
-          event: PostHogEventTypes.GatewayCertExchanged,
-          distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
-          properties: {
-            certificateSerialNumber: gatewayCertificates.serialNumber,
-            identityId: req.permission.id,
-            orgId: req.permission.orgId
-          }
-        })
-        .catch((err) => logger.error(err, "Failed to send GatewayCertExchanged telemetry event"));
-
-      return gatewayCertificates;
-    }
-  });
-
   server.route({
     method: "POST",
     url: "/heartbeat",

@@ -304,6 +304,14 @@ const certManagerRoutes = route("/organizations/$orgId/projects/cert-manager/$pr
       route("/$approvalRequestId", "cert-manager/ApprovalRequestDetailPage/route.tsx")
     ]),
     route("/ca/$caId", "cert-manager/CertAuthDetailsByIDPage/route.tsx"),
+    route(
+      "/certificate-profiles/$profileId",
+      "cert-manager/CertificateProfileDetailsByIDPage/route.tsx"
+    ),
+    route(
+      "/certificate-policies/$policyId",
+      "cert-manager/CertificatePolicyDetailsByIDPage/route.tsx"
+    ),
     route("/certificates/$certificateId", "cert-manager/CertificateDetailsByIDPage/route.tsx"),
     route("/pki-collections/$collectionId", "cert-manager/PkiCollectionDetailsByIDPage/routes.tsx"),
     route("/integrations", [
@@ -452,6 +460,10 @@ const organizationRoutes = route("/organizations/$orgId", [
     route(
       "/$appConnection/oauth/callback",
       "organization/AppConnections/OauthCallbackPage/route.tsx"
+    ),
+    route(
+      "/github/manifest/callback",
+      "organization/AppConnections/GitHubManifestCallbackPage/route.tsx"
     )
   ]),
   route("/networking", [
@@ -500,6 +512,14 @@ export const routes = rootRoute("root.tsx", [
       route(
         "/organization/app-connections/$appConnection/oauth/callback",
         "redirects/oauth-callback-redirect.tsx"
+      ),
+      route(
+        "/organization/settings/oauth/callback",
+        "redirects/settings-oauth-callback-redirect.tsx"
+      ),
+      route(
+        "/organization/app-connections/github/manifest/callback",
+        "redirects/github-manifest-callback-redirect.tsx"
       ),
       layout("org-layout", "organization/layout.tsx", [
         organizationRoutes,

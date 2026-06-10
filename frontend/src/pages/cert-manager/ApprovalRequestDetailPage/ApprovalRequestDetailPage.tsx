@@ -96,7 +96,7 @@ const CodeSigningDetailsSection = ({
 
 const PageContent = () => {
   const { approvalRequestId } = useParams({ from: ROUTE_ID });
-  const { policyType, applicationName, from } = useSearch({ from: ROUTE_ID });
+  const { policyType, applicationName, signerId, from } = useSearch({ from: ROUTE_ID });
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const { user: currentUser } = useUser();
@@ -151,6 +151,18 @@ const PageContent = () => {
             });
             return;
           }
+          if (signerId) {
+            navigate({
+              to: "/organizations/$orgId/projects/cert-manager/$projectId/code-signing/$signerId",
+              params: {
+                orgId: currentOrg.id,
+                projectId: currentProject.id,
+                signerId
+              },
+              search: { selectedTab: "approvals" }
+            });
+            return;
+          }
           navigate({
             to: isCodeSigning
               ? "/organizations/$orgId/projects/cert-manager/$projectId/code-signing"
@@ -159,7 +171,7 @@ const PageContent = () => {
               orgId: currentProject.orgId,
               projectId: currentProject.id
             },
-            search: isCodeSigning ? { tab: "approvals" } : undefined
+            search: undefined
           });
         }
       }
@@ -316,6 +328,24 @@ const PageContent = () => {
       );
     }
 
+    if (signerId) {
+      return (
+        <Link
+          to="/organizations/$orgId/projects/cert-manager/$projectId/code-signing/$signerId"
+          params={{
+            orgId: currentOrg.id,
+            projectId: currentProject.id,
+            signerId
+          }}
+          search={{ selectedTab: "approvals" }}
+          className={linkClass}
+        >
+          <FontAwesomeIcon icon={faChevronLeft} />
+          Back to Signer
+        </Link>
+      );
+    }
+
     return (
       <Link
         to={
@@ -324,7 +354,7 @@ const PageContent = () => {
             : "/organizations/$orgId/projects/cert-manager/$projectId/approvals"
         }
         params={{ orgId: currentOrg.id, projectId: currentProject.id }}
-        search={isCodeSigning ? { tab: "approvals" } : { section: "certificates" }}
+        search={isCodeSigning ? undefined : { section: "certificates" }}
         className={linkClass}
       >
         <FontAwesomeIcon icon={faChevronLeft} />
