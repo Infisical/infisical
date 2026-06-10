@@ -1,4 +1,5 @@
 import { registerProjectTemplateRouter } from "@app/ee/routes/v1/project-template-router";
+import { withRoutePrefix } from "@app/server/lib/with-route-prefix";
 import { injectCertManagerProjectId } from "@app/server/plugins/inject-cert-manager-project-id";
 
 import { registerAccessApprovalPolicyRouter } from "./access-approval-policy-router";
@@ -156,7 +157,7 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
       // Provider-specific endpoints
       await Promise.all(
         Object.entries(AUDIT_LOG_STREAM_REGISTER_ROUTER_MAP).map(([provider, router]) =>
-          auditLogStreamRouter.register(router, { prefix: `/${provider}` })
+          router(withRoutePrefix(auditLogStreamRouter, `/${provider}`))
         )
       );
     },
@@ -178,7 +179,7 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
       // Provider-specific endpoints
       await Promise.all(
         Object.entries(EXTERNAL_KMS_REGISTER_ROUTER_MAP).map(([provider, router]) =>
-          externalKmsRouter.register(router, { prefix: `/${provider}` })
+          router(withRoutePrefix(externalKmsRouter, `/${provider}`))
         )
       );
     },

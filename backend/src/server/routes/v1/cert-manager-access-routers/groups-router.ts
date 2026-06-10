@@ -12,7 +12,6 @@ import { ms } from "@app/lib/ms";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { ApplicationMemberKind } from "@app/services/pki-application/pki-application-types";
 
 import { RolesUpdateBodySchema } from "./schemas";
 
@@ -105,7 +104,7 @@ export const registerCertManagerAccessGroupsRouter = async (server: FastifyZodPr
       operationId: "addCertManagerGroup",
       params: z.object({ groupId: z.string().uuid() }),
       body: z.object({
-        role: z.string().trim().min(1).default(ProjectMembershipRole.NoAccess).optional(),
+        role: z.string().trim().min(1).default(ProjectMembershipRole.Member).optional(),
         roles: z
           .array(
             z.union([
@@ -132,7 +131,7 @@ export const registerCertManagerAccessGroupsRouter = async (server: FastifyZodPr
         req.body.roles ??
         (req.body.role
           ? [{ role: req.body.role, isTemporary: false }]
-          : [{ role: ProjectMembershipRole.NoAccess, isTemporary: false }]);
+          : [{ role: ProjectMembershipRole.Member, isTemporary: false }]);
       await server.services.membershipGroup.createMembership({
         permission: req.permission,
         data: { groupId: req.params.groupId, roles },
@@ -220,19 +219,10 @@ export const registerCertManagerAccessGroupsRouter = async (server: FastifyZodPr
     },
     handler: async (req) => {
       const projectId = req.internalCertManagerProjectId;
-      const { membership: groupMembership } = await server.services.pkiApplicationMembership.deleteMemberAndCleanup({
-        projectId,
-        actorKind: ApplicationMemberKind.Group,
-        actorId: req.params.groupId,
-        performDelete: (tx) =>
-          server.services.membershipGroup.deleteMembership(
-            {
-              permission: req.permission,
-              selector: { groupId: req.params.groupId },
-              scopeData: { scope: AccessScope.Project, orgId: req.permission.orgId, projectId }
-            },
-            tx
-          )
+      const { membership: groupMembership } = await server.services.membershipGroup.deleteMembership({
+        permission: req.permission,
+        selector: { groupId: req.params.groupId },
+        scopeData: { scope: AccessScope.Project, orgId: req.permission.orgId, projectId }
       });
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,

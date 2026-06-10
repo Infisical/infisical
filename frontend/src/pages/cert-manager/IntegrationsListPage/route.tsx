@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
 
+import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { PkiSync } from "@app/hooks/api/pkiSyncs";
 import { IntegrationsListPageTabs } from "@app/types/integrations";
 
@@ -12,7 +13,8 @@ const IntegrationsListPageQuerySchema = z.object({
   addSync: z.nativeEnum(PkiSync).optional(),
   connectionId: z.string().optional(),
   connectionName: z.string().optional(),
-  legacy: z.enum(["true"]).optional()
+  legacy: z.enum(["true"]).optional(),
+  addConnectionApp: z.nativeEnum(AppConnection).optional()
 });
 
 export const Route = createFileRoute(
