@@ -6,7 +6,7 @@ import { groupBy, unique } from "@app/lib/fn";
 import { ResourceMetadataWithEncryptionDTO } from "../resource-metadata/resource-metadata-schema";
 import { TSecretDALFactory } from "../secret/secret-dal";
 import { INFISICAL_SECRET_VALUE_HIDDEN_MASK } from "../secret/secret-fns";
-import { PersonalOverridesBehavior } from "../secret/secret-types";
+import { PersonalOverridesBehavior, SecretsOrderBy } from "../secret/secret-types";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { TSecretImportDALFactory } from "./secret-import-dal";
@@ -304,7 +304,8 @@ export const fnSecretsV2FromImports = async ({
     if (shouldIncludePersonal) {
       const allSecrets = await secretDAL.findByFolderIds({
         folderIds: importedFolderIds,
-        userId
+        userId,
+        filters: { orderBy: SecretsOrderBy.Name }
       });
 
       if (personalOverridesBehavior === PersonalOverridesBehavior.Priority) {
@@ -319,7 +320,7 @@ export const fnSecretsV2FromImports = async ({
             secretMap.set(key, el);
           }
         });
-        importedSecrets = Array.from(secretMap.values());
+        importedSecrets = Array.from(secretMap.values()).sort((a, b) => a.key.localeCompare(b.key));
       } else {
         importedSecrets = allSecrets;
       }
@@ -330,7 +331,7 @@ export const fnSecretsV2FromImports = async ({
           type: SecretType.Shared
         },
         {
-          sort: [["id", "asc"]]
+          sort: [["key", "asc"]]
         }
       );
     }

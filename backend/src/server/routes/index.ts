@@ -517,7 +517,9 @@ import { injectAuditLogInfo } from "../plugins/audit-log";
 import { injectAssumePrivilege } from "../plugins/auth/inject-assume-privilege";
 import { injectIdentity } from "../plugins/auth/inject-identity";
 import { injectPermission } from "../plugins/auth/inject-permission";
-import { forwardToGoSidecar } from "../plugins/go-sidecar-forwarding";
+import { goSidecarPlugin } from "../plugins/go-sidecar";
+// import { forwardToGoSidecar } from "../plugins/go-sidecar-forwarding";
+import { shadowToGoSidecar } from "../plugins/go-sidecar-shadowing";
 import { injectRateLimits } from "../plugins/inject-rate-limits";
 import { forwardWritesToPrimary } from "../plugins/primary-forwarding-mode";
 import { registerV1Routes } from "./v1";
@@ -3821,10 +3823,37 @@ export const registerRoutes = async (
     user: userDAL,
     kmipClient: kmipClientDAL
   });
-  if (envConfig.GOLANG_SIDECAR_URL) {
-    logger.info(`Go sidecar is configured: ${envConfig.GOLANG_SIDECAR_URL}`);
-    await server.register(forwardToGoSidecar, { sidecarUrl: envConfig.GOLANG_SIDECAR_URL });
+
+  // Spawn Go sidecar as subprocess (must be registered before shadowing plugin)
+  if (envConfig.GO_SIDECAR_SPAWN_ENABLED) {
+    logger.info(`Go sidecar spawn enabled: ${envConfig.GO_SIDECAR_BINARY_PATH || "./go-sidecar"}`);
+    await server.register(goSidecarPlugin, {
+      enabled: true,
+      binaryPath: envConfig.GO_SIDECAR_BINARY_PATH,
+      env: {
+        // Pass through relevant env vars to Go sidecar
+        DB_CONNECTION_URI: envConfig.DB_CONNECTION_URI,
+        REDIS_URL: envConfig.REDIS_URL || "",
+        ENCRYPTION_KEY: envConfig.ENCRYPTION_KEY || "",
+        AUTH_SECRET: envConfig.AUTH_SECRET || ""
+      }
+    });
   }
+
+  if (envConfig.GOLANG_SIDECAR_URL && envConfig.GO_SIDECAR_SHADOW_ENABLED) {
+    logger.info(
+      `Go sidecar shadowing enabled: ${envConfig.GOLANG_SIDECAR_URL} [sampleRate=${envConfig.GO_SIDECAR_SHADOW_SAMPLE_RATE}%]`
+    );
+    await server.register(shadowToGoSidecar, {
+      sidecarUrl: envConfig.GOLANG_SIDECAR_URL,
+      sampleRate: envConfig.GO_SIDECAR_SHADOW_SAMPLE_RATE
+    });
+  }
+  // Forwarding plugin disabled in favor of shadowing
+  // if (envConfig.GOLANG_SIDECAR_URL) {
+  //   logger.info(`Go sidecar is configured: ${envConfig.GOLANG_SIDECAR_URL}`);
+  //   await server.register(forwardToGoSidecar, { sidecarUrl: envConfig.GOLANG_SIDECAR_URL });
+  // }
 
   const shouldForwardWritesToPrimaryInstance = Boolean(envConfig.INFISICAL_PRIMARY_INSTANCE_URL);
   if (shouldForwardWritesToPrimaryInstance) {
