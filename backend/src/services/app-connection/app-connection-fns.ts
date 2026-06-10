@@ -192,6 +192,11 @@ import {
   validateNorthflankConnectionCredentials
 } from "./northflank";
 import {
+  getNutanixPrismCentralConnectionListItem,
+  NutanixPrismCentralConnectionMethod,
+  validateNutanixPrismCentralConnectionCredentials
+} from "./nutanix-prism-central";
+import {
   getOctopusDeployConnectionListItem,
   OctopusDeployConnectionMethod,
   validateOctopusDeployConnectionCredentials
@@ -283,7 +288,8 @@ const PKI_APP_CONNECTIONS = [
   AppConnection.NetScaler,
   AppConnection.DigiCert,
   AppConnection.F5BigIp,
-  AppConnection.GoDaddy
+  AppConnection.GoDaddy,
+  AppConnection.NutanixPrismCentral
 ];
 
 export const listAppConnectionOptions = (projectType?: ProjectType) => {
@@ -355,7 +361,8 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getSalesforceConnectionListItem(),
     getSnowflakeConnectionListItem(),
     getDatadogConnectionListItem(),
-    getF5BigIpConnectionListItem()
+    getF5BigIpConnectionListItem(),
+    getNutanixPrismCentralConnectionListItem()
   ]
     .filter((option) => {
       switch (projectType) {
@@ -596,7 +603,9 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.GoDaddy]: validateGoDaddyConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Snowflake]: validateSnowflakeConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Datadog]: validateDatadogConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.F5BigIp]: validateF5BigIpConnectionCredentials as TAppConnectionCredentialsValidator
+    [AppConnection.F5BigIp]: validateF5BigIpConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.NutanixPrismCentral]:
+      validateNutanixPrismCentralConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection, gatewayService, gatewayV2Service);
@@ -706,6 +715,10 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
       return "API Token";
     case OVHConnectionMethod.Certificate:
       return "Certificate";
+    case NutanixPrismCentralConnectionMethod.ApiKey:
+      return "API Key";
+    case NutanixPrismCentralConnectionMethod.BasicAuth:
+      return "Basic Auth";
     default:
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       throw new Error(`Unhandled App Connection Method: ${method}`);
@@ -835,7 +848,8 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.Snowflake]: platformManagedCredentialsNotSupported,
   [AppConnection.Datadog]: platformManagedCredentialsNotSupported,
   [AppConnection.F5BigIp]: platformManagedCredentialsNotSupported,
-  [AppConnection.GoDaddy]: platformManagedCredentialsNotSupported
+  [AppConnection.GoDaddy]: platformManagedCredentialsNotSupported,
+  [AppConnection.NutanixPrismCentral]: platformManagedCredentialsNotSupported
 };
 
 export const enterpriseAppCheck = async (

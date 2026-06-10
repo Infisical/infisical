@@ -271,6 +271,12 @@ import {
   TValidateNorthflankConnectionCredentialsSchema
 } from "./northflank";
 import {
+  TNutanixPrismCentralConnection,
+  TNutanixPrismCentralConnectionConfig,
+  TNutanixPrismCentralConnectionInput,
+  TValidateNutanixPrismCentralConnectionCredentialsSchema
+} from "./nutanix-prism-central";
+import {
   TOctopusDeployConnection,
   TOctopusDeployConnectionConfig,
   TOctopusDeployConnectionInput,
@@ -473,6 +479,7 @@ export type TAppConnection = { id: string; configuration?: TAppConnectionConfigu
   | TSnowflakeConnection
   | TDatadogConnection
   | TF5BigIpConnection
+  | TNutanixPrismCentralConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -552,6 +559,7 @@ export type TAppConnectionInput = { id: string } & (
   | TSnowflakeConnectionInput
   | TDatadogConnectionInput
   | TF5BigIpConnectionInput
+  | TNutanixPrismCentralConnectionInput
 );
 
 export type TSqlConnectionInput =
@@ -662,7 +670,8 @@ export type TAppConnectionConfig =
   | TSalesforceConnectionConfig
   | TSnowflakeConnectionConfig
   | TDatadogConnectionConfig
-  | TF5BigIpConnectionConfig;
+  | TF5BigIpConnectionConfig
+  | TNutanixPrismCentralConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -732,7 +741,8 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateSalesforceConnectionCredentialsSchema
   | TValidateSnowflakeConnectionCredentialsSchema
   | TValidateDatadogConnectionCredentialsSchema
-  | TValidateF5BigIpConnectionCredentialsSchema;
+  | TValidateF5BigIpConnectionCredentialsSchema
+  | TValidateNutanixPrismCentralConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;

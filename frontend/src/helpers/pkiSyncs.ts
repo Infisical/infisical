@@ -6,6 +6,7 @@ export const PKI_SYNC_MAP: Record<
   {
     name: string;
     image: string;
+    size?: number;
   }
 > = {
   [PkiSync.AzureKeyVault]: {
@@ -39,6 +40,11 @@ export const PKI_SYNC_MAP: Record<
   [PkiSync.F5BigIp]: {
     name: "F5 BIG-IP",
     image: "F5 BIG-IP.png"
+  },
+  [PkiSync.NutanixPrismCentral]: {
+    name: "Nutanix Prism Central",
+    image: "Nutanix.png",
+    size: 100
   }
 };
 
@@ -50,5 +56,6 @@ export const PKI_SYNC_CONNECTION_MAP: Record<PkiSync, AppConnection> = {
   [PkiSync.Chef]: AppConnection.Chef,
   [PkiSync.CloudflareCustomCertificate]: AppConnection.Cloudflare,
   [PkiSync.NetScaler]: AppConnection.NetScaler,
-  [PkiSync.F5BigIp]: AppConnection.F5BigIp
+  [PkiSync.F5BigIp]: AppConnection.F5BigIp,
+  [PkiSync.NutanixPrismCentral]: AppConnection.NutanixPrismCentral
 };

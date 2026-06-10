@@ -8,6 +8,7 @@ import { TChefPkiSync } from "./chef-sync";
 import { TCloudflareCustomCertificatePkiSync } from "./cloudflare-custom-certificate-sync";
 import { TF5BigIpPkiSync } from "./f5-big-ip-sync";
 import { TNetScalerPkiSync } from "./netscaler-sync";
+import { TNutanixPrismCentralPkiSync } from "./nutanix-prism-central-sync";
 
 export type TPkiSyncOption = {
   name: string;
@@ -30,7 +31,8 @@ export type TPkiSync =
   | TChefPkiSync
   | TCloudflareCustomCertificatePkiSync
   | TNetScalerPkiSync
-  | TF5BigIpPkiSync;
+  | TF5BigIpPkiSync
+  | TNutanixPrismCentralPkiSync;
 
 export type TListPkiSyncs = { pkiSyncs: TPkiSync[] };
 
@@ -83,6 +85,8 @@ export type TCreatePkiSyncDTO = TCreatePkiSyncDTOBase & {
     profileName?: string;
     createProfileIfMissing?: boolean;
     parentProfile?: string;
+    clusterId?: string;
+    clusterName?: string;
   };
 };
 
@@ -124,3 +128,4 @@ export * from "./cloudflare-custom-certificate-sync";
 export * from "./common";
 export * from "./f5-big-ip-sync";
 export * from "./netscaler-sync";
+export * from "./nutanix-prism-central-sync";

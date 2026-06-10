@@ -11,6 +11,7 @@ import { ChefPkiSyncFields } from "./ChefPkiSyncFields";
 import { CloudflareCustomCertificatePkiSyncFields } from "./CloudflareCustomCertificatePkiSyncFields";
 import { F5BigIpPkiSyncFields } from "./F5BigIpPkiSyncFields";
 import { NetScalerPkiSyncFields } from "./NetScalerPkiSyncFields";
+import { NutanixPrismCentralPkiSyncFields } from "./NutanixPrismCentralPkiSyncFields";
 
 export const PkiSyncDestinationFields = () => {
   const { watch } = useFormContext<TPkiSyncForm>();
@@ -34,6 +35,8 @@ export const PkiSyncDestinationFields = () => {
       return <NetScalerPkiSyncFields />;
     case PkiSync.F5BigIp:
       return <F5BigIpPkiSyncFields />;
+    case PkiSync.NutanixPrismCentral:
+      return <NutanixPrismCentralPkiSyncFields />;
     default:
       return (
         <div className="flex items-center justify-center rounded-md border border-red-500 bg-red-100 p-4 text-red-700">

@@ -26,7 +26,10 @@ import { F5_BIG_IP_PKI_SYNC_LIST_OPTION } from "./f5-big-ip/f5-big-ip-pki-sync-c
 import { f5BigIpPkiSyncFactory } from "./f5-big-ip/f5-big-ip-pki-sync-fns";
 import { NETSCALER_PKI_SYNC_LIST_OPTION } from "./netscaler/netscaler-pki-sync-constants";
 import { netScalerPkiSyncFactory } from "./netscaler/netscaler-pki-sync-fns";
+import { NUTANIX_PRISM_CENTRAL_PKI_SYNC_LIST_OPTION } from "./nutanix-prism-central/nutanix-prism-central-pki-sync-constants";
+import { nutanixPrismCentralPkiSyncFactory } from "./nutanix-prism-central/nutanix-prism-central-pki-sync-fns";
 import { PkiSync } from "./pki-sync-enums";
+import { PkiSyncError } from "./pki-sync-errors";
 import { TCertificateMap, TPkiSyncWithCredentials } from "./pki-sync-types";
 
 const ENTERPRISE_PKI_SYNCS: PkiSync[] = [];
@@ -39,7 +42,8 @@ const PKI_SYNC_LIST_OPTIONS = {
   [PkiSync.Chef]: CHEF_PKI_SYNC_LIST_OPTION,
   [PkiSync.CloudflareCustomCertificate]: CLOUDFLARE_CUSTOM_CERTIFICATE_PKI_SYNC_LIST_OPTION,
   [PkiSync.NetScaler]: NETSCALER_PKI_SYNC_LIST_OPTION,
-  [PkiSync.F5BigIp]: F5_BIG_IP_PKI_SYNC_LIST_OPTION
+  [PkiSync.F5BigIp]: F5_BIG_IP_PKI_SYNC_LIST_OPTION,
+  [PkiSync.NutanixPrismCentral]: NUTANIX_PRISM_CENTRAL_PKI_SYNC_LIST_OPTION
 };
 
 export const enterprisePkiSyncCheck = async (
@@ -223,6 +227,11 @@ export const PkiSyncFns = {
       case PkiSync.F5BigIp: {
         throw new Error("F5 BIG-IP does not support importing certificates into Infisical");
       }
+      case PkiSync.NutanixPrismCentral: {
+        throw new Error(
+          "Nutanix Prism Central does not support importing certificates into Infisical (private keys cannot be extracted)"
+        );
+      }
       default:
         throw new Error(`Unsupported PKI sync destination: ${String(pkiSync.destination)}`);
     }
@@ -325,6 +334,14 @@ export const PkiSyncFns = {
           gatewayPoolService: dependencies.gatewayPoolService
         });
         return f5BigIpPkiSync.syncCertificates(pkiSync, certificateMap);
+      }
+      case PkiSync.NutanixPrismCentral: {
+        checkPkiSyncDestination(pkiSync, PkiSync.NutanixPrismCentral as PkiSync);
+        const nutanixPkiSync = nutanixPrismCentralPkiSyncFactory({
+          certificateDAL: dependencies.certificateDAL,
+          certificateSyncDAL: dependencies.certificateSyncDAL
+        });
+        return nutanixPkiSync.syncCertificates(pkiSync, certificateMap);
       }
       default:
         throw new Error(`Unsupported PKI sync destination: ${String(pkiSync.destination)}`);
@@ -447,6 +464,12 @@ export const PkiSyncFns = {
           certificateMap: dependencies.certificateMap
         });
         break;
+      }
+      case PkiSync.NutanixPrismCentral: {
+        throw new PkiSyncError({
+          shouldRetry: false,
+          message: "Nutanix Prism Central does not support removing certificates"
+        });
       }
       default:
         throw new Error(`Unsupported PKI sync destination: ${String(pkiSync.destination)}`);

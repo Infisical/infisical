@@ -66,5 +66,6 @@ export enum AppConnection {
   Snowflake = "snowflake",
   Datadog = "datadog",
   F5BigIp = "f5-big-ip",
-  GoDaddy = "godaddy"
+  GoDaddy = "godaddy",
+  NutanixPrismCentral = "nutanix-prism-central"
 }
