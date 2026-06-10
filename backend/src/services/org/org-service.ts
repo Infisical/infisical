@@ -42,6 +42,7 @@ import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membe
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
+import { TApprovalPolicyDALFactory } from "../approval-policy/approval-policy-dal";
 import { TAuthLoginFactory } from "../auth/auth-login-service";
 import { ActorAuthMethod, ActorType, AuthMethod, AuthModeJwtTokenPayload, AuthTokenType } from "../auth/auth-type";
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
@@ -124,6 +125,7 @@ type TOrgServiceFactoryDep = {
   reminderService: Pick<TReminderServiceFactory, "deleteReminderBySecretId">;
   userGroupMembershipDAL: TUserGroupMembershipDALFactory;
   additionalPrivilegeDAL: TAdditionalPrivilegeDALFactory;
+  approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "deleteUserStepApproversInProjects">;
   certificatePolicyDAL: Pick<TCertificatePolicyDALFactory, "create">;
 };
 
@@ -159,6 +161,7 @@ export const orgServiceFactory = ({
   membershipDAL,
   userGroupMembershipDAL,
   additionalPrivilegeDAL,
+  approvalPolicyDAL,
   certificatePolicyDAL
 }: TOrgServiceFactoryDep) => {
   /*
@@ -1131,7 +1134,8 @@ export const orgServiceFactory = ({
       membershipUserDAL,
       membershipRoleDAL,
       userGroupMembershipDAL,
-      additionalPrivilegeDAL
+      additionalPrivilegeDAL,
+      approvalPolicyDAL
     });
 
     return deletedMembership;
@@ -1169,7 +1173,8 @@ export const orgServiceFactory = ({
       membershipUserDAL,
       membershipRoleDAL,
       userGroupMembershipDAL,
-      additionalPrivilegeDAL
+      additionalPrivilegeDAL,
+      approvalPolicyDAL
     });
 
     return deletedMemberships;

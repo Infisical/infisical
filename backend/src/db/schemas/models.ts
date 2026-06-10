@@ -192,6 +192,8 @@ export enum TableName {
   ProjectMicrosoftTeamsConfigs = "project_microsoft_teams_configs",
   SecretReminderRecipients = "secret_reminder_recipients", // TODO(Carlos): Remove this in the future after migrating to the new reminder recipients table
   GithubOrgSyncConfig = "github_org_sync_configs",
+  GitHubApp = "github_apps",
+  GitHubAppConnection = "github_app_connections",
   FolderCommit = "folder_commits",
   FolderCommitChanges = "folder_commit_changes",
   FolderCheckpoint = "folder_checkpoints",

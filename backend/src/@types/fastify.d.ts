@@ -94,6 +94,7 @@ import { TConvertorServiceFactory } from "@app/services/convertor/convertor-serv
 import { TExternalGroupOrgRoleMappingServiceFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-service";
 import { TExternalMigrationServiceFactory } from "@app/services/external-migration/external-migration-service";
 import { TFolderCommitServiceFactory } from "@app/services/folder-commit/folder-commit-service";
+import { TGitHubAppServiceFactory } from "@app/services/github-app/github-app-service";
 import { TGroupProjectServiceFactory } from "@app/services/group-project/group-project-service";
 import { THsmServiceFactory } from "@app/services/hsm/hsm-service";
 import { TIdentityServiceFactory } from "@app/services/identity/identity-service";
@@ -386,6 +387,7 @@ declare module "fastify" {
       gatewayPool: TGatewayPoolServiceFactory;
       resourceAuthMethod: TResourceAuthMethodServiceFactory;
       githubOrgSync: TGithubOrgSyncServiceFactory;
+      gitHubApp: TGitHubAppServiceFactory;
       honeyTokenConfig: THoneyTokenConfigServiceFactory;
       honeyToken: THoneyTokenServiceFactory;
       folderCommit: TFolderCommitServiceFactory;

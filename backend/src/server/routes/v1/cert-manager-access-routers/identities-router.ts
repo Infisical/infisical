@@ -14,7 +14,6 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { ApplicationMemberKind } from "@app/services/pki-application/pki-application-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { MembershipRoleSchema, RolesUpdateBodySchema } from "./schemas";
@@ -159,7 +158,7 @@ export const registerCertManagerAccessIdentitiesRouter = async (server: FastifyZ
       operationId: "addCertManagerIdentity",
       params: z.object({ identityId: z.string().trim().uuid() }),
       body: z.object({
-        role: z.string().trim().optional().default(ProjectMembershipRole.NoAccess),
+        role: z.string().trim().optional().default(ProjectMembershipRole.Member),
         roles: z
           .array(
             z.union([
@@ -266,19 +265,10 @@ export const registerCertManagerAccessIdentitiesRouter = async (server: FastifyZ
     },
     handler: async (req) => {
       const projectId = req.internalCertManagerProjectId;
-      const { membership } = await server.services.pkiApplicationMembership.deleteMemberAndCleanup({
-        projectId,
-        actorKind: ApplicationMemberKind.Identity,
-        actorId: req.params.identityId,
-        performDelete: (tx) =>
-          server.services.membershipIdentity.deleteMembership(
-            {
-              permission: req.permission,
-              scopeData: { scope: AccessScope.Project, orgId: req.permission.orgId, projectId },
-              selector: { identityId: req.params.identityId }
-            },
-            tx
-          )
+      const { membership } = await server.services.membershipIdentity.deleteMembership({
+        permission: req.permission,
+        scopeData: { scope: AccessScope.Project, orgId: req.permission.orgId, projectId },
+        selector: { identityId: req.params.identityId }
       });
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,

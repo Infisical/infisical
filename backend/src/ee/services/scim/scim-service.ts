@@ -29,6 +29,7 @@ import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { recordScimOperationMetric, ScimOperation } from "@app/lib/telemetry/metrics";
 import { sanitizeEmail, validateEmail } from "@app/lib/validator/validate-email";
 import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
+import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
 import { AuthTokenType } from "@app/services/auth/auth-type";
 import { TExternalGroupOrgRoleMappingDALFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
@@ -127,6 +128,7 @@ type TScimServiceFactoryDep = {
   smtpService: Pick<TSmtpService, "sendMail">;
   externalGroupOrgRoleMappingDAL: TExternalGroupOrgRoleMappingDALFactory;
   additionalPrivilegeDAL: TAdditionalPrivilegeDALFactory;
+  approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "deleteUserStepApproversInProjects">;
   scimEventsDAL: Pick<TScimEventsDALFactory, "create" | "findEventsByOrgId">;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "findOne">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
@@ -150,6 +152,7 @@ export const scimServiceFactory = ({
   membershipUserDAL,
   membershipRoleDAL,
   additionalPrivilegeDAL,
+  approvalPolicyDAL,
   scimEventsDAL,
   emailDomainDAL,
   telemetryService
@@ -864,7 +867,8 @@ export const scimServiceFactory = ({
       membershipUserDAL,
       membershipRoleDAL,
       userGroupMembershipDAL,
-      additionalPrivilegeDAL
+      additionalPrivilegeDAL,
+      approvalPolicyDAL
     });
 
     await scimEventsDAL.create({

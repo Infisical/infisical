@@ -1,5 +1,7 @@
 export enum SecretValidationRuleType {
-  StaticSecrets = "static-secrets"
+  StaticSecrets = "static-secrets",
+  DynamicSecrets = "dynamic-secrets",
+  SecretRotations = "secret-rotations"
 }
 
 export enum ConstraintType {
@@ -13,7 +15,21 @@ export enum ConstraintType {
 
 export enum ConstraintTarget {
   SecretKey = "key",
-  SecretValue = "value"
+  SecretValue = "value",
+  GeneratedPassword = "password"
+}
+
+// Provider identifiers selectable in dynamic-secret rules.
+// Mirror of backend `DynamicSecretRuleProvider`.
+export enum DynamicSecretRuleProvider {
+  SqlDatabase = "sql-database",
+  Milvus = "milvus"
+}
+
+// Provider identifiers selectable in secret-rotation rules.
+// Mirror of backend `SecretRotationRuleProvider`.
+export enum SecretRotationRuleProvider {
+  PostgresCredentials = "postgres-credentials"
 }
 
 export type TConstraint = {
@@ -26,7 +42,20 @@ export type TStaticSecretsInputs = {
   constraints: TConstraint[];
 };
 
-export type TSecretValidationRuleInputs = TStaticSecretsInputs;
+export type TDynamicSecretsInputs = {
+  providers: DynamicSecretRuleProvider[];
+  constraints: TConstraint[];
+};
+
+export type TSecretRotationsInputs = {
+  providers: SecretRotationRuleProvider[];
+  constraints: TConstraint[];
+};
+
+export type TSecretValidationRuleInputs =
+  | TStaticSecretsInputs
+  | TDynamicSecretsInputs
+  | TSecretRotationsInputs;
 
 export type TSecretValidationRule = {
   id: string;
