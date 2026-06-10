@@ -514,7 +514,13 @@ export const gitHubAppServiceFactory = ({
             }
           );
           manifestResponse = data;
-        } catch {
+        } catch (err) {
+          logger.error(
+            { ...sanitizeGitHubAxiosError(err), orgId, projectId, instanceType, host: githubHost || "github.com" },
+            `Failed to exchange GitHub App manifest code [orgId=${orgId}] [projectId=${
+              projectId ?? "null"
+            }] [instanceType=${instanceType}] [host=${githubHost || "github.com"}]`
+          );
           throw new BadRequestError({
             message:
               "Failed to exchange GitHub App manifest code. The code may be expired or invalid. Please try registering the GitHub App again."
