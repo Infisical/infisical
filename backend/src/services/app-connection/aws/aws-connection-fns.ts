@@ -220,7 +220,13 @@ export const awsSyncPreSaveTransformDestinationConfig: TPreSaveTransformDestinat
 
   const region = destinationConfig.region as string | undefined;
 
-  if (region && region !== stsRegion) {
+  if (!region) {
+    throw new BadRequestError({
+      message: `Secret sync region is required when the AWS connection uses a regional STS endpoint. Set the region in the sync destination config to match the connection's STS endpoint.`
+    });
+  }
+
+  if (region !== stsRegion) {
     throw new BadRequestError({
       message: `Secret sync region "${region}" must match the AWS connection's STS endpoint region from the app connection. Update the sync region or the connection's STS endpoint.`
     });
