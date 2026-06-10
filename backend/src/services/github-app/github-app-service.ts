@@ -131,11 +131,7 @@ export const gitHubAppServiceFactory = ({
   // Mirrors the gateway checks in resolveUserInstallations so the manifest exchange can route
   // through a gateway when the GitHub host (e.g. a private GitHub Enterprise Server) isn't
   // directly reachable from the Infisical backend.
-  const assertGatewayUsable = async (
-    gatewayId: string,
-    orgPermission: OrgServiceActor,
-    prefetchedOrgPermission?: Awaited<ReturnType<typeof permissionService.getOrgPermission>>["permission"]
-  ) => {
+  const assertGatewayUsable = async (gatewayId: string, orgPermission: OrgServiceActor) => {
     const plan = await licenseService.getPlan(orgPermission.orgId);
     if (!plan.gateway) {
       throw new BadRequestError({
@@ -144,18 +140,14 @@ export const gitHubAppServiceFactory = ({
       });
     }
 
-    const permission =
-      prefetchedOrgPermission ??
-      (
-        await permissionService.getOrgPermission({
-          actor: orgPermission.type,
-          actorId: orgPermission.id,
-          orgId: orgPermission.orgId,
-          actorAuthMethod: orgPermission.authMethod,
-          actorOrgId: orgPermission.orgId,
-          scope: OrganizationActionScope.Any
-        })
-      ).permission;
+    const { permission } = await permissionService.getOrgPermission({
+      actor: orgPermission.type,
+      actorId: orgPermission.id,
+      orgId: orgPermission.orgId,
+      actorAuthMethod: orgPermission.authMethod,
+      actorOrgId: orgPermission.orgId,
+      scope: OrganizationActionScope.Any
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(
       OrgPermissionGatewayActions.AttachGateways,
@@ -749,7 +741,7 @@ export const gitHubAppServiceFactory = ({
     }
 
     if (gatewayId) {
-      await assertGatewayUsable(gatewayId, orgPermission, orgScopedPermission);
+      await assertGatewayUsable(gatewayId, orgPermission);
     }
 
     const { SITE_URL } = getConfig();
