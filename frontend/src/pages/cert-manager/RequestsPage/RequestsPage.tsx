@@ -161,13 +161,28 @@ export const RequestsPage = () => {
     })
   );
 
-  const { data: appsResponse } = useListPkiApplications({ limit: 100 });
-  const apps = appsResponse?.applications ?? [];
+  // resolve names only for the applications actually referenced by the visible
+  // requests, rather than loading the project's entire application list
+  const referencedAppIds = useMemo(() => {
+    const ids = new Set<string>();
+    (requests as TApprovalRequest[]).forEach((r) => {
+      if (r.scopeType === ApprovalPolicyScope.PkiApplication && r.scopeId) ids.add(r.scopeId);
+    });
+    return Array.from(ids);
+  }, [requests]);
+
+  const { data: appsResponse } = useListPkiApplications(
+    {
+      applicationIds: referencedAppIds,
+      limit: Math.min(Math.max(referencedAppIds.length, 1), 100)
+    },
+    { enabled: referencedAppIds.length > 0 }
+  );
   const appById = useMemo(() => {
     const map = new Map<string, { id: string; name: string }>();
-    apps.forEach((a) => map.set(a.id, { id: a.id, name: a.name }));
+    (appsResponse?.applications ?? []).forEach((a) => map.set(a.id, { id: a.id, name: a.name }));
     return map;
-  }, [apps]);
+  }, [appsResponse]);
 
   const filtered = useMemo(() => {
     const norm = debouncedSearch.trim().toLowerCase();

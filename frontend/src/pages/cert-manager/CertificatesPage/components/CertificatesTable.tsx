@@ -88,6 +88,7 @@ import {
   PkiApplicationResourceSub
 } from "@app/hooks/api/pkiApplications/types";
 import { useListWorkspaceCertificates } from "@app/hooks/api/projects";
+import { useDebounce } from "@app/hooks/useDebounce";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 import { ActiveFilterChips } from "./ActiveFilterChips";
@@ -296,13 +297,43 @@ export const CertificatesTable = ({
     applicationId
   });
 
-  const { data: applicationsResponse } = useListPkiApplications(
-    { limit: 100 },
-    {
-      enabled: !applicationId
-    }
+  const [applicationFilterSearch, setApplicationFilterSearch] = useState("");
+  const [debouncedApplicationFilterSearch] = useDebounce(applicationFilterSearch);
+  const { data: applicationOptionsResponse } = useListPkiApplications(
+    { search: debouncedApplicationFilterSearch || undefined, limit: 20 },
+    { enabled: !applicationId }
   );
-  const applicationsData = applicationsResponse?.applications;
+
+  const selectedApplicationIds = useMemo(() => {
+    const ids = new Set<string>();
+    [...appliedFilters, ...pendingFilters].forEach((rule) => {
+      if (rule.field === "applicationId" && Array.isArray(rule.value)) {
+        rule.value.forEach((v) => {
+          if (typeof v === "string") ids.add(v);
+        });
+      }
+    });
+    return Array.from(ids);
+  }, [appliedFilters, pendingFilters]);
+
+  const { data: selectedApplicationsResponse } = useListPkiApplications(
+    {
+      applicationIds: selectedApplicationIds,
+      limit: Math.min(Math.max(selectedApplicationIds.length, 1), 100)
+    },
+    { enabled: !applicationId && selectedApplicationIds.length > 0 }
+  );
+
+  const applicationOptions = useMemo(() => {
+    const byId = new Map<string, { value: string; label: string }>();
+    (applicationOptionsResponse?.applications ?? []).forEach((app) => {
+      byId.set(app.id, { value: app.id, label: app.name });
+    });
+    (selectedApplicationsResponse?.applications ?? []).forEach((app) => {
+      byId.set(app.id, { value: app.id, label: app.name });
+    });
+    return Array.from(byId.values());
+  }, [applicationOptionsResponse, selectedApplicationsResponse]);
 
   const { data: caData } = useListCasByProjectId();
   const { data: viewsData } = useListCertificateInventoryViews(applicationId);
@@ -334,14 +365,11 @@ export const CertificatesTable = ({
         label: p.slug
       }));
     }
-    if (applicationsData) {
-      options.applicationId = applicationsData.map((app) => ({
-        value: app.id,
-        label: app.name
-      }));
+    if (applicationOptions.length) {
+      options.applicationId = applicationOptions;
     }
     return options;
-  }, [caData, profilesData, applicationsData]);
+  }, [caData, profilesData, applicationOptions]);
 
   const filterSearchParams = useMemo(() => filtersToSearchParams(appliedFilters), [appliedFilters]);
 
@@ -747,6 +775,7 @@ export const CertificatesTable = ({
               }}
               onSaveView={canCreateViews ? () => setIsSaveViewOpen(true) : undefined}
               dynamicFieldOptions={dynamicFieldOptions}
+              onDynamicFieldSearch={{ applicationId: setApplicationFilterSearch }}
               hiddenFieldKeys={applicationId ? ["applicationId"] : undefined}
             />
           </PopoverContent>

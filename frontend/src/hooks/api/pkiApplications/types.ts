@@ -171,6 +171,7 @@ export type TListPkiApplicationsParams = {
   search?: string;
   limit?: number;
   offset?: number;
+  applicationIds?: string[];
 };
 
 export type TListPkiApplicationsResponse = {

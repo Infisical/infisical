@@ -49,8 +49,12 @@ export const useListPkiApplications = (
   useQuery({
     queryKey: pkiApplicationKeys.list(params),
     queryFn: async () => {
+      const { applicationIds, ...rest } = params ?? {};
       const { data } = await apiRequest.get<TListPkiApplicationsResponse>(BASE_URL, {
-        params
+        params: {
+          ...rest,
+          ...(applicationIds?.length ? { applicationIds: applicationIds.join(",") } : {})
+        }
       });
       return data;
     },

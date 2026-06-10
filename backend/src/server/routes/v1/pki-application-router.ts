@@ -96,7 +96,18 @@ export const registerPkiApplicationRouter = async (server: FastifyZodProvider) =
       querystring: z.object({
         search: z.string().optional(),
         limit: z.coerce.number().int().min(1).max(100).default(20),
-        offset: z.coerce.number().int().min(0).default(0)
+        offset: z.coerce.number().int().min(0).default(0),
+        applicationIds: z
+          .string()
+          .optional()
+          .transform((val) =>
+            val
+              ? val
+                  .split(",")
+                  .map((id) => id.trim())
+                  .filter(Boolean)
+              : undefined
+          )
       }),
       response: {
         200: z.object({
@@ -115,7 +126,8 @@ export const registerPkiApplicationRouter = async (server: FastifyZodProvider) =
         projectId: req.internalCertManagerProjectId,
         search: req.query.search,
         limit: req.query.limit,
-        offset: req.query.offset
+        offset: req.query.offset,
+        applicationIds: req.query.applicationIds
       });
 
       await server.services.auditLog.createAuditLog({
