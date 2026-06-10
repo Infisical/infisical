@@ -167,6 +167,12 @@ export type TRemovePkiApplicationMemberDTO = {
   memberId: string;
 };
 
+export type TListPkiApplicationsParams = {
+  search?: string;
+  limit?: number;
+  offset?: number;
+};
+
 export type TListPkiApplicationsResponse = {
   applications: TPkiApplicationListItem[];
   total: number;

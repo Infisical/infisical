@@ -161,7 +161,8 @@ export const RequestsPage = () => {
     })
   );
 
-  const { data: apps = [] } = useListPkiApplications();
+  const { data: appsResponse } = useListPkiApplications({ limit: 100 });
+  const apps = appsResponse?.applications ?? [];
   const appById = useMemo(() => {
     const map = new Map<string, { id: string; name: string }>();
     apps.forEach((a) => map.set(a.id, { id: a.id, name: a.name }));

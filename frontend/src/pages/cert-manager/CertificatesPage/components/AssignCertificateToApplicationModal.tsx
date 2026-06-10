@@ -29,9 +29,13 @@ type Props = {
 
 export const AssignCertificateToApplicationModal = ({ isOpen, onClose, certificateId }: Props) => {
   const [selectedApplicationId, setSelectedApplicationId] = useState<string>("");
-  const { data: applications = [], isPending } = useListPkiApplications(undefined, {
-    enabled: isOpen
-  });
+  const { data, isPending } = useListPkiApplications(
+    { limit: 100 },
+    {
+      enabled: isOpen
+    }
+  );
+  const applications = data?.applications ?? [];
   const assign = useAssignCertificateToApplication();
 
   useEffect(() => {
