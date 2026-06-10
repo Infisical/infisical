@@ -30,8 +30,8 @@ const ApplicationSelectInner = ({
 }) => {
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
-  const { data: applications = [] } = useListPkiApplications();
-
+  const { data } = useListPkiApplications({ limit: 100 });
+  const applications = data?.applications ?? [];
   const current = applications.find((a) => a.name === applicationName);
   const displayName = current?.name ?? applicationName;
 

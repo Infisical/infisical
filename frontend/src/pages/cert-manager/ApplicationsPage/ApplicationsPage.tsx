@@ -3,7 +3,7 @@ import { Helmet } from "react-helmet";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { InfoIcon, MoreHorizontalIcon, PlusIcon, SlidersHorizontalIcon } from "lucide-react";
 
-import { PageHeader } from "@app/components/v2";
+import { PageHeader, Pagination } from "@app/components/v2";
 import {
   Button,
   Card,
@@ -35,6 +35,7 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { useProjectPermission } from "@app/context";
+import { usePagination } from "@app/hooks";
 import { TPkiApplication, useListPkiApplications } from "@app/hooks/api/pkiApplications";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { usePopUp } from "@app/hooks/usePopUp";
@@ -46,7 +47,18 @@ import { PkiApplicationModal } from "./components/PkiApplicationModal";
 export const ApplicationsPage = () => {
   const { projectId, orgId } = useParams({ strict: false });
   const navigate = useNavigate();
-  const { data: applications, isPending } = useListPkiApplications();
+  
+  const { page, perPage, setPage, setPerPage, offset, limit } = usePagination("", {
+    initPerPage: 20
+  });
+
+  const { data, isPending } = useListPkiApplications({
+    limit,
+    offset
+  });
+  const applications = data?.applications;
+  const totalCount = data?.total ?? 0;
+
   const { hasProjectRole } = useProjectPermission();
   const canCreateApplication = hasProjectRole("admin");
   const canConfigureProfiles = canCreateApplication;
@@ -71,81 +83,90 @@ export const ApplicationsPage = () => {
       );
     }
     return (
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-full">Name</TableHead>
-            <TableHead className="whitespace-nowrap">Profiles</TableHead>
-            <TableHead className="whitespace-nowrap">Members</TableHead>
-            <TableHead className="whitespace-nowrap">Certificates</TableHead>
-            <TableHead className="whitespace-nowrap">Created</TableHead>
-            <TableHead className="w-5" />
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {applications.map((app) => (
-            <TableRow
-              key={app.id}
-              className="cursor-pointer"
-              onClick={() =>
-                navigate({
-                  to: "/organizations/$orgId/projects/cert-manager/$projectId/applications/$applicationName",
-                  params: {
-                    orgId: orgId ?? "",
-                    projectId: projectId ?? "",
-                    applicationName: app.name
-                  }
-                })
-              }
-            >
-              <TableCell className="w-full">
-                <div className="flex items-center gap-x-2 font-mono">
-                  <ResourceIcon className="size-4 shrink-0 text-primary" />
-                  <span>{app.name}</span>
-                  {app.description?.length ? (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <InfoIcon className="size-3.5 shrink-0 text-accent" />
-                      </TooltipTrigger>
-                      <TooltipContent side="right" className="max-w-xs">
-                        {app.description}
-                      </TooltipContent>
-                    </Tooltip>
-                  ) : null}
-                </div>
-              </TableCell>
-              <TableCell className="whitespace-nowrap">{app.profileCount}</TableCell>
-              <TableCell className="whitespace-nowrap">{app.memberCount}</TableCell>
-              <TableCell className="whitespace-nowrap">{app.certificateCount}</TableCell>
-              <TableCell className="whitespace-nowrap text-accent">
-                {new Date(app.createdAt).toLocaleDateString()}
-              </TableCell>
-              <TableCell>
-                {canConfigureProfiles ? (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <IconButton variant="ghost" size="xs" onClick={(e) => e.stopPropagation()}>
-                        <MoreHorizontalIcon />
-                      </IconButton>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent className="min-w-40" align="end" sideOffset={2}>
-                      <DropdownMenuItem
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setConfigureProfilesApp(app);
-                        }}
-                      >
-                        <SlidersHorizontalIcon />
-                        Configure Profiles
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                ) : null}
-              </TableCell>
+      <>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-full">Name</TableHead>
+              <TableHead className="whitespace-nowrap">Profiles</TableHead>
+              <TableHead className="whitespace-nowrap">Members</TableHead>
+              <TableHead className="whitespace-nowrap">Certificates</TableHead>
+              <TableHead className="whitespace-nowrap">Created</TableHead>
+              <TableHead className="w-5" />
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+          </TableHeader>
+          <TableBody>
+            {applications.map((app) => (
+              <TableRow
+                key={app.id}
+                className="cursor-pointer"
+                onClick={() =>
+                  navigate({
+                    to: "/organizations/$orgId/projects/cert-manager/$projectId/applications/$applicationName",
+                    params: {
+                      orgId: orgId ?? "",
+                      projectId: projectId ?? "",
+                      applicationName: app.name
+                    }
+                  })
+                }
+              >
+                <TableCell className="w-full">
+                  <div className="flex items-center gap-x-2 font-mono">
+                    <ResourceIcon className="size-4 shrink-0 text-primary" />
+                    <span>{app.name}</span>
+                    {app.description?.length ? (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <InfoIcon className="size-3.5 shrink-0 text-accent" />
+                        </TooltipTrigger>
+                        <TooltipContent side="right" className="max-w-xs">
+                          {app.description}
+                        </TooltipContent>
+                      </Tooltip>
+                    ) : null}
+                  </div>
+                </TableCell>
+                <TableCell className="whitespace-nowrap">{app.profileCount}</TableCell>
+                <TableCell className="whitespace-nowrap">{app.memberCount}</TableCell>
+                <TableCell className="whitespace-nowrap">{app.certificateCount}</TableCell>
+                <TableCell className="whitespace-nowrap text-accent">
+                  {new Date(app.createdAt).toLocaleDateString()}
+                </TableCell>
+                <TableCell>
+                  {canConfigureProfiles ? (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <IconButton variant="ghost" size="xs" onClick={(e) => e.stopPropagation()}>
+                          <MoreHorizontalIcon />
+                        </IconButton>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent className="min-w-40" align="end" sideOffset={2}>
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setConfigureProfilesApp(app);
+                          }}
+                        >
+                          <SlidersHorizontalIcon />
+                          Configure Profiles
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  ) : null}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+        <Pagination
+          count={totalCount}
+          page={page}
+          perPage={perPage}
+          onChangePage={setPage}
+          onChangePerPage={setPerPage}
+        />
+      </>
     );
   };
 

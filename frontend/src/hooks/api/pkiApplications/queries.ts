@@ -7,6 +7,7 @@ import {
 } from "@app/helpers/resourcePermissions";
 
 import {
+  TListPkiApplicationsDTO,
   TListPkiApplicationsResponse,
   TPkiApplication,
   TPkiApplicationEnrollmentState,
@@ -18,7 +19,7 @@ import {
 
 export const pkiApplicationKeys = {
   all: ["pki-applications"] as const,
-  list: (search?: string) => [...pkiApplicationKeys.all, "list", { search }] as const,
+  list: (dto: TListPkiApplicationsDTO) => [...pkiApplicationKeys.all, "list", dto] as const,
   byId: (applicationId: string) => [...pkiApplicationKeys.all, "by-id", { applicationId }] as const,
   byName: (name: string) => [...pkiApplicationKeys.all, "by-name", { name }] as const,
   profiles: (applicationId: string) =>
@@ -34,26 +35,25 @@ export const pkiApplicationKeys = {
 const BASE_URL = "/api/v1/cert-manager/applications";
 
 export const useListPkiApplications = (
-  search?: string,
+  dto: TListPkiApplicationsDTO = {},
   options?: Omit<
     UseQueryOptions<
       TListPkiApplicationsResponse,
       unknown,
-      TPkiApplicationListItem[],
+      TListPkiApplicationsResponse,
       ReturnType<typeof pkiApplicationKeys.list>
     >,
     "queryKey" | "queryFn"
   >
 ) =>
   useQuery({
-    queryKey: pkiApplicationKeys.list(search),
+    queryKey: pkiApplicationKeys.list(dto),
     queryFn: async () => {
       const { data } = await apiRequest.get<TListPkiApplicationsResponse>(BASE_URL, {
-        params: { search }
+        params: dto
       });
       return data;
     },
-    select: (data) => data.applications,
     ...options
   });
 

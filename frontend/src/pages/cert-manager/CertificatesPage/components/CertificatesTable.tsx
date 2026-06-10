@@ -296,9 +296,13 @@ export const CertificatesTable = ({
     applicationId
   });
 
-  const { data: applicationsData } = useListPkiApplications(undefined, {
-    enabled: !applicationId
-  });
+  const { data: applicationsResponse } = useListPkiApplications(
+    { limit: 100 },
+    {
+      enabled: !applicationId
+    }
+  );
+  const applicationsData = applicationsResponse?.applications;
 
   const { data: caData } = useListCasByProjectId();
   const { data: viewsData } = useListCertificateInventoryViews(applicationId);
