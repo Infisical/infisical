@@ -131,7 +131,11 @@ export const gitHubAppServiceFactory = ({
   // Mirrors the gateway checks in resolveUserInstallations so the manifest exchange can route
   // through a gateway when the GitHub host (e.g. a private GitHub Enterprise Server) isn't
   // directly reachable from the Infisical backend.
-  const assertGatewayUsable = async (gatewayId: string, orgPermission: OrgServiceActor) => {
+  const assertGatewayUsable = async (
+    gatewayId: string,
+    orgPermission: OrgServiceActor,
+    prefetchedOrgPermission?: Awaited<ReturnType<typeof permissionService.getOrgPermission>>["permission"]
+  ) => {
     const plan = await licenseService.getPlan(orgPermission.orgId);
     if (!plan.gateway) {
       throw new BadRequestError({
@@ -140,14 +144,18 @@ export const gitHubAppServiceFactory = ({
       });
     }
 
-    const { permission } = await permissionService.getOrgPermission({
-      actor: orgPermission.type,
-      actorId: orgPermission.id,
-      orgId: orgPermission.orgId,
-      actorAuthMethod: orgPermission.authMethod,
-      actorOrgId: orgPermission.orgId,
-      scope: OrganizationActionScope.Any
-    });
+    const permission =
+      prefetchedOrgPermission ??
+      (
+        await permissionService.getOrgPermission({
+          actor: orgPermission.type,
+          actorId: orgPermission.id,
+          orgId: orgPermission.orgId,
+          actorAuthMethod: orgPermission.authMethod,
+          actorOrgId: orgPermission.orgId,
+          scope: OrganizationActionScope.Any
+        })
+      ).permission;
 
     ForbiddenError.from(permission).throwUnlessCan(
       OrgPermissionGatewayActions.AttachGateways,
@@ -741,26 +749,7 @@ export const gitHubAppServiceFactory = ({
     }
 
     if (gatewayId) {
-      const plan = await licenseService.getPlan(orgPermission.orgId);
-      if (!plan.gateway) {
-        throw new BadRequestError({
-          message:
-            "Your current plan does not support gateway usage with app connections. Please upgrade your plan or contact Infisical Sales for assistance."
-        });
-      }
-
-      ForbiddenError.from(orgScopedPermission).throwUnlessCan(
-        OrgPermissionGatewayActions.AttachGateways,
-        OrgPermissionSubjects.Gateway
-      );
-
-      const [gateway] = await gatewayDAL.find({ id: gatewayId, orgId: orgPermission.orgId });
-      const [gatewayV2] = await gatewayV2DAL.find({ id: gatewayId, orgId: orgPermission.orgId });
-      if (!gateway && !gatewayV2) {
-        throw new NotFoundError({
-          message: `Gateway with ID ${gatewayId} not found for org`
-        });
-      }
+      await assertGatewayUsable(gatewayId, orgPermission, orgScopedPermission);
     }
 
     const { SITE_URL } = getConfig();
