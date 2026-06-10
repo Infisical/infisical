@@ -1,7 +1,6 @@
 import { createMongoAbility, ForbiddenError, MongoAbility, RawRuleOf, subject } from "@casl/ability";
 import { PackRule, packRules, unpackRules } from "@casl/ability/extra";
 import { requestContext } from "@fastify/request-context";
-import handlebars from "handlebars";
 
 import {
   AccessScope,
@@ -63,7 +62,12 @@ import {
   OrgPermissionSubjects
 } from "./org-permission";
 import { TPermissionDALFactory } from "./permission-dal";
-import { createHandlebarsClient, escapeHandlebarsMissingDict, expandLegacyForbidActions, validateOrgSSO } from "./permission-fns";
+import {
+  escapeHandlebarsMissingDict,
+  expandLegacyForbidActions,
+  handlebarsClient,
+  validateOrgSSO
+} from "./permission-fns";
 import {
   TBuildOrgPermissionDTO,
   TBuildProjectPermissionDTO,
@@ -621,7 +625,7 @@ export const permissionServiceFactory = ({
       }
 
       const rules = buildProjectPermissionRules(permissionFromRoles);
-      const templatedRules = createHandlebarsClient().compile(JSON.stringify(rules), { data: false });
+      const templatedRules = handlebarsClient.compile(JSON.stringify(rules), { data: false });
       const unescapedMetadata = objectify(
         permissionData?.[0]?.metadata,
         (i) => i.key,
@@ -823,7 +827,7 @@ export const permissionServiceFactory = ({
         })) || [];
 
       const rules = buildProjectPermissionRules(rolePermissions.concat(additionalPrivileges));
-      const templatedRules = createHandlebarsClient().compile(JSON.stringify(rules), { data: false });
+      const templatedRules = handlebarsClient.compile(JSON.stringify(rules), { data: false });
       const metadataKeyValuePair = escapeHandlebarsMissingDict(
         objectify(
           userProjectPermission.metadata,
@@ -869,7 +873,7 @@ export const permissionServiceFactory = ({
         })) || [];
 
       const rules = buildProjectPermissionRules(rolePermissions.concat(additionalPrivileges));
-      const templatedRules = createHandlebarsClient().compile(JSON.stringify(rules), { data: false });
+      const templatedRules = handlebarsClient.compile(JSON.stringify(rules), { data: false });
       const metadataKeyValuePair = escapeHandlebarsMissingDict(
         objectify(
           identityProjectPermission.metadata,

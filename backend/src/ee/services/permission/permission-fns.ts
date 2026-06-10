@@ -20,7 +20,6 @@ import {
   ProjectPermissionV2Schema,
   SecretSubjectFields
 } from "./project-permission";
-import { logger } from "@app/lib/logger";
 
 export function throwIfMissingSecretReadValueOrDescribePermission(
   permission: MongoAbility<ProjectPermissionSet> | PureAbility,
@@ -368,37 +367,36 @@ const expandLegacyForbidActions = <T extends RawRuleOf<MongoAbility<ProjectPermi
   });
 };
 
-
-const createHandlebarsClient = () => {
-  const hbs = handlebars.create();
-
-  hbs.registerHelper('substr', hbsSubstr);
-  hbs.registerHelper("stripPrefix", hbsStripPrefix);
-
-  return hbs;
-}
-
 const hbsSubstr = (text: string, start: number, end?: number) => {
   const textStr = String(text || "");
   if (!textStr) return textStr;
 
-  const endIndex = end && typeof end === 'number' ? end : undefined;
+  const endIndex = end && typeof end === "number" ? end : undefined;
   return textStr.substring(start, endIndex);
-}
+};
 
 const hbsStripPrefix = (text: string, prefix: string) => {
   const textStr = String(text || "");
   if (!textStr) return textStr;
 
   return textStr.startsWith(prefix) ? textStr.substring(prefix.length) : textStr;
-}
+};
+
+const handlebarsClient = (() => {
+  const hbs = handlebars.create();
+
+  hbs.registerHelper("substr", hbsSubstr);
+  hbs.registerHelper("stripPrefix", hbsStripPrefix);
+
+  return hbs;
+})();
 
 export {
   assertPermissionBoundary,
   constructPermissionErrorMessage,
-  createHandlebarsClient,
   escapeHandlebarsMissingDict,
   expandLegacyForbidActions,
+  handlebarsClient,
   isAuthMethodSaml,
   validateOrgSSO,
   validatePrivilegeChangeOperation

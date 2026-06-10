@@ -9,7 +9,6 @@ type SanitizationArg = {
 };
 
 const isValidExpression = (expression: string, dto: SanitizationArg): boolean => {
-  // Allow helper functions (replace, truncate)
   const allowedHelpers = dto.allowedHelpers ?? ["replace", "truncate", "random", "uppercase", "lowercase"];
   if (allowedHelpers.includes(expression)) {
     return true;
