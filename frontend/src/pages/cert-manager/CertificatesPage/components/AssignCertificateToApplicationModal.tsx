@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -19,7 +19,7 @@ import {
   SelectValue
 } from "@app/components/v3";
 import { useAssignCertificateToApplication } from "@app/hooks/api/certificates";
-import { useListPkiApplications } from "@app/hooks/api/pkiApplications";
+import { useListPkiApplicationsInfinite } from "@app/hooks/api/pkiApplications";
 
 type Props = {
   isOpen: boolean;
@@ -29,18 +29,39 @@ type Props = {
 
 export const AssignCertificateToApplicationModal = ({ isOpen, onClose, certificateId }: Props) => {
   const [selectedApplicationId, setSelectedApplicationId] = useState<string>("");
-  const { data, isPending } = useListPkiApplications(
-    { limit: 100 },
+  const loaderRef = useRef<HTMLDivElement>(null);
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isPending
+  } = useListPkiApplicationsInfinite(
+    { limit: 25 },
     {
       enabled: isOpen
     }
   );
-  const applications = data?.applications ?? [];
+  const applications = data?.pages?.flatMap((page) => page?.applications ?? []) ?? [];
   const assign = useAssignCertificateToApplication();
 
   useEffect(() => {
     if (!isOpen) setSelectedApplicationId("");
   }, [isOpen]);
+
+  useEffect(() => {
+    if (!loaderRef.current) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+          fetchNextPage();
+        }
+      },
+      { threshold: 0.1 }
+    );
+    observer.observe(loaderRef.current);
+    return () => observer.disconnect();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   const handleSubmit = async () => {
     if (!selectedApplicationId) return;
@@ -82,12 +103,17 @@ export const AssignCertificateToApplicationModal = ({ isOpen, onClose, certifica
                   }
                 />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent position="popper" className="max-h-60">
                 {applications.map((app) => (
                   <SelectItem key={app.id} value={app.id}>
                     {app.name}
                   </SelectItem>
                 ))}
+                {(hasNextPage || isFetchingNextPage) && (
+                  <div ref={loaderRef} className="flex justify-center p-2 text-xs text-muted">
+                    {isFetchingNextPage ? "Loading more..." : ""}
+                  </div>
+                )}
               </SelectContent>
             </Select>
           </FieldContent>

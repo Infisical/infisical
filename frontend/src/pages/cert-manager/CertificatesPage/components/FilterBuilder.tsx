@@ -28,6 +28,7 @@ type Props = {
   onSaveView?: () => void;
   dynamicFieldOptions?: Record<string, { value: string; label: string }[]>;
   hiddenFieldKeys?: string[];
+  onMenuScrollToBottom?: (fieldKey: string) => void;
 };
 
 const getFieldDef = (
@@ -103,13 +104,15 @@ const FilterRow = ({
   onUpdate,
   onRemove,
   dynamicFieldOptions: dynOpts,
-  availableFields
+  availableFields,
+  onMenuScrollToBottom
 }: {
   rule: FilterRule;
   onUpdate: (updated: FilterRule) => void;
   onRemove: () => void;
   dynamicFieldOptions?: Record<string, { value: string; label: string }[]>;
   availableFields: FilterFieldDefinition[];
+  onMenuScrollToBottom?: (fieldKey: string) => void;
 }) => {
   const fieldDef = getFieldDef(rule.field, dynOpts);
 
@@ -169,6 +172,9 @@ const FilterRow = ({
             maxMenuHeight={160}
             menuPortalTarget={document.body}
             menuPosition="fixed"
+            onMenuScrollToBottom={() => {
+              onMenuScrollToBottom?.(rule.field);
+            }}
           />
         );
       }
@@ -277,7 +283,8 @@ export const FilterBuilder = ({
   onClearAll,
   onSaveView,
   dynamicFieldOptions,
-  hiddenFieldKeys
+  hiddenFieldKeys,
+  onMenuScrollToBottom
 }: Props) => {
   const availableFields = hiddenFieldKeys?.length
     ? FILTER_FIELDS.filter((f) => !hiddenFieldKeys.includes(f.key))
@@ -345,6 +352,7 @@ export const FilterBuilder = ({
                 onRemove={() => handleRemoveRule(index)}
                 dynamicFieldOptions={dynamicFieldOptions}
                 availableFields={availableFields}
+                onMenuScrollToBottom={onMenuScrollToBottom}
               />
             </div>
           ))}

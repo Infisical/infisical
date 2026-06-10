@@ -81,7 +81,7 @@ import type {
 import { useListCertificateProfiles } from "@app/hooks/api/certificateProfiles";
 import { NON_PQC_KEY_ALGORITHMS, PQC_KEY_ALGORITHMS } from "@app/hooks/api/certificates/constants";
 import { CertSource, CertStatus } from "@app/hooks/api/certificates/enums";
-import { useListPkiApplications } from "@app/hooks/api/pkiApplications";
+import { useListPkiApplications, useListPkiApplicationsInfinite } from "@app/hooks/api/pkiApplications";
 import { useGetPkiApplicationPermissions } from "@app/hooks/api/pkiApplications/queries";
 import {
   PkiApplicationResourceActions,
@@ -296,13 +296,18 @@ export const CertificatesTable = ({
     applicationId
   });
 
-  const { data: applicationsResponse } = useListPkiApplications(
-    { limit: 100 },
+  const {
+    data: applicationsResponse,
+    fetchNextPage: fetchNextApplicationsPage,
+    hasNextPage: hasNextApplicationsPage,
+    isFetchingNextPage: isFetchingNextApplicationsPage
+  } = useListPkiApplicationsInfinite(
+    { limit: 25 },
     {
       enabled: !applicationId
     }
   );
-  const applicationsData = applicationsResponse?.applications;
+  const applicationsData = applicationsResponse?.pages?.flatMap((page) => page?.applications ?? []) ?? [];
 
   const { data: caData } = useListCasByProjectId();
   const { data: viewsData } = useListCertificateInventoryViews(applicationId);
@@ -748,6 +753,13 @@ export const CertificatesTable = ({
               onSaveView={canCreateViews ? () => setIsSaveViewOpen(true) : undefined}
               dynamicFieldOptions={dynamicFieldOptions}
               hiddenFieldKeys={applicationId ? ["applicationId"] : undefined}
+              onMenuScrollToBottom={(fieldKey) => {
+                if (fieldKey === "applicationId") {
+                  if (hasNextApplicationsPage && !isFetchingNextApplicationsPage) {
+                    fetchNextApplicationsPage();
+                  }
+                }
+              }}
             />
           </PopoverContent>
         </Popover>

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
@@ -25,6 +25,7 @@ import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
+  Pagination,
   Table,
   TableBody,
   TableCell,
@@ -125,6 +126,19 @@ export const RequestsPage = () => {
   const [signingSearchInput, setSigningSearchInput] = useState("");
   const [debouncedSigningSearch] = useDebounce(signingSearchInput, 300);
 
+  const [appPage, setAppPage] = useState(1);
+  const [appPerPage, setAppPerPage] = useState(25);
+  const [signingPage, setSigningPage] = useState(1);
+  const [signingPerPage, setSigningPerPage] = useState(25);
+
+  useEffect(() => {
+    setAppPage(1);
+  }, [debouncedSearch, statusFilters]);
+
+  useEffect(() => {
+    setSigningPage(1);
+  }, [debouncedSigningSearch, signingStatusFilters]);
+
   const toggleStatusFilter = (key: StatusFilter) => {
     setStatusFilters((prev) => {
       const next = new Set(prev);
@@ -161,7 +175,7 @@ export const RequestsPage = () => {
     })
   );
 
-  const { data: appsData } = useListPkiApplications({ limit: 100 });
+  const { data: appsData } = useListPkiApplications({ limit: 25 });
   const apps = appsData?.applications ?? [];
   const appById = useMemo(() => {
     const map = new Map<string, { id: string; name: string }>();
@@ -209,6 +223,14 @@ export const RequestsPage = () => {
         return signerName.toLowerCase().includes(norm) || requester.toLowerCase().includes(norm);
       });
   }, [signingRequests, signingStatusFilters, debouncedSigningSearch]);
+
+  const paginatedRequests = useMemo(() => {
+    return filtered.slice((appPage - 1) * appPerPage, appPage * appPerPage);
+  }, [filtered, appPage, appPerPage]);
+
+  const paginatedSigningRequests = useMemo(() => {
+    return filteredSigning.slice((signingPage - 1) * signingPerPage, signingPage * signingPerPage);
+  }, [filteredSigning, signingPage, signingPerPage]);
 
   return (
     <>
@@ -312,90 +334,99 @@ export const RequestsPage = () => {
                       </Empty>
                     )}
                     {!isRequestsLoading && filtered.length > 0 && (
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Common Name</TableHead>
-                            <TableHead>Profile</TableHead>
-                            <TableHead>Application</TableHead>
-                            <TableHead>Requester</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead>Requested</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {filtered.map((r) => {
-                            const certData = isCertRequestData(r.requestData)
-                              ? r.requestData.requestData
-                              : null;
-                            const cn = certData?.certificateRequest?.commonName ?? "—";
-                            const profile = certData?.profileName ?? "—";
-                            const requestAppId =
-                              r.scopeType === ApprovalPolicyScope.PkiApplication ? r.scopeId : null;
-                            const app = requestAppId ? appById.get(requestAppId) : null;
-                            const badge = STATUS_BADGE[r.status as ApprovalRequestStatus] ?? {
-                              label: r.status,
-                              variant: "neutral" as const
-                            };
+                      <>
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Common Name</TableHead>
+                              <TableHead>Profile</TableHead>
+                              <TableHead>Application</TableHead>
+                              <TableHead>Requester</TableHead>
+                              <TableHead>Status</TableHead>
+                              <TableHead>Requested</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {paginatedRequests.map((r) => {
+                              const certData = isCertRequestData(r.requestData)
+                                ? r.requestData.requestData
+                                : null;
+                              const cn = certData?.certificateRequest?.commonName ?? "—";
+                              const profile = certData?.profileName ?? "—";
+                              const requestAppId =
+                                r.scopeType === ApprovalPolicyScope.PkiApplication ? r.scopeId : null;
+                              const app = requestAppId ? appById.get(requestAppId) : null;
+                              const badge = STATUS_BADGE[r.status as ApprovalRequestStatus] ?? {
+                                label: r.status,
+                                variant: "neutral" as const
+                              };
 
-                            return (
-                              <TableRow
-                                key={r.id}
-                                className="cursor-pointer [&>td]:py-3"
-                                onClick={() =>
-                                  navigate({
-                                    to: "/organizations/$orgId/projects/cert-manager/$projectId/approvals/$approvalRequestId",
-                                    params: {
-                                      orgId: orgId ?? "",
-                                      projectId: projectId ?? "",
-                                      approvalRequestId: r.id
-                                    },
-                                    search: {
-                                      policyType: ApprovalPolicyType.CertRequest,
-                                      from: "root-requests"
-                                    }
-                                  })
-                                }
-                              >
-                                <TableCell isTruncatable className="font-mono">
-                                  {cn}
-                                </TableCell>
-                                <TableCell className="font-mono text-xs">{profile}</TableCell>
-                                <TableCell className="font-mono text-xs">
-                                  {app ? (
-                                    <Link
-                                      to="/organizations/$orgId/projects/cert-manager/$projectId/applications/$applicationName"
-                                      params={{
+                              return (
+                                <TableRow
+                                  key={r.id}
+                                  className="cursor-pointer [&>td]:py-3"
+                                  onClick={() =>
+                                    navigate({
+                                      to: "/organizations/$orgId/projects/cert-manager/$projectId/approvals/$approvalRequestId",
+                                      params: {
                                         orgId: orgId ?? "",
                                         projectId: projectId ?? "",
-                                        applicationName: app.name
-                                      }}
-                                      className="text-foreground hover:text-project"
-                                      onClick={(e) => e.stopPropagation()}
-                                    >
-                                      {app.name}
-                                    </Link>
-                                  ) : (
-                                    <span className="text-accent">—</span>
-                                  )}
-                                </TableCell>
-                                <TableCell>
-                                  <div>{r.requesterName || "—"}</div>
-                                  {r.requesterEmail ? (
-                                    <div className="text-xs text-accent">{r.requesterEmail}</div>
-                                  ) : null}
-                                </TableCell>
-                                <TableCell>
-                                  <Badge variant={badge.variant}>{badge.label}</Badge>
-                                </TableCell>
-                                <TableCell className="text-accent">
-                                  {formatRelative(r.createdAt)}
-                                </TableCell>
-                              </TableRow>
-                            );
-                          })}
-                        </TableBody>
-                      </Table>
+                                        approvalRequestId: r.id
+                                      },
+                                      search: {
+                                        policyType: ApprovalPolicyType.CertRequest,
+                                        from: "root-requests"
+                                      }
+                                    })
+                                  }
+                                >
+                                  <TableCell isTruncatable className="font-mono">
+                                    {cn}
+                                  </TableCell>
+                                  <TableCell className="font-mono text-xs">{profile}</TableCell>
+                                  <TableCell className="font-mono text-xs">
+                                    {app ? (
+                                      <Link
+                                        to="/organizations/$orgId/projects/cert-manager/$projectId/applications/$applicationName"
+                                        params={{
+                                          orgId: orgId ?? "",
+                                          projectId: projectId ?? "",
+                                          applicationName: app.name
+                                        }}
+                                        className="text-foreground hover:text-project"
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        {app.name}
+                                      </Link>
+                                    ) : (
+                                      <span className="text-accent">—</span>
+                                    )}
+                                  </TableCell>
+                                  <TableCell>
+                                    <div>{r.requesterName || "—"}</div>
+                                    {r.requesterEmail ? (
+                                      <div className="text-xs text-accent">{r.requesterEmail}</div>
+                                    ) : null}
+                                  </TableCell>
+                                  <TableCell>
+                                    <Badge variant={badge.variant}>{badge.label}</Badge>
+                                  </TableCell>
+                                  <TableCell className="text-accent">
+                                    {formatRelative(r.createdAt)}
+                                  </TableCell>
+                                </TableRow>
+                              );
+                            })}
+                          </TableBody>
+                        </Table>
+                        <Pagination
+                          count={filtered.length}
+                          page={appPage}
+                          perPage={appPerPage}
+                          onChangePage={(newPage) => setAppPage(newPage)}
+                          onChangePerPage={(newPerPage) => setAppPerPage(newPerPage)}
+                        />
+                      </>
                     )}
                   </CardContent>
                 </Card>
@@ -470,58 +501,67 @@ export const RequestsPage = () => {
                       </Empty>
                     )}
                     {!isSigningRequestsLoading && filteredSigning.length > 0 && (
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Signer</TableHead>
-                            <TableHead>Requester</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead>Requested</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {filteredSigning.map((r) => {
-                            const signingData = getCodeSigningData(r.requestData);
-                            const signerName = signingData?.signerName ?? "—";
-                            const badge = STATUS_BADGE[r.status as ApprovalRequestStatus] ?? {
-                              label: r.status,
-                              variant: "neutral" as const
-                            };
+                      <>
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Signer</TableHead>
+                              <TableHead>Requester</TableHead>
+                              <TableHead>Status</TableHead>
+                              <TableHead>Requested</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {paginatedSigningRequests.map((r) => {
+                              const signingData = getCodeSigningData(r.requestData);
+                              const signerName = signingData?.signerName ?? "—";
+                              const badge = STATUS_BADGE[r.status as ApprovalRequestStatus] ?? {
+                                label: r.status,
+                                variant: "neutral" as const
+                              };
 
-                            return (
-                              <TableRow
-                                key={r.id}
-                                className="cursor-pointer [&>td]:py-3"
-                                onClick={() =>
-                                  navigate({
-                                    to: "/organizations/$orgId/projects/cert-manager/$projectId/approvals/$approvalRequestId",
-                                    params: {
-                                      orgId: orgId ?? "",
-                                      projectId: projectId ?? "",
-                                      approvalRequestId: r.id
-                                    },
-                                    search: {
-                                      policyType: ApprovalPolicyType.CertCodeSigning,
-                                      from: "root-requests"
-                                    }
-                                  })
-                                }
-                              >
-                                <TableCell isTruncatable className="font-mono">
-                                  {signerName}
-                                </TableCell>
-                                <TableCell>{r.requesterName || r.requesterEmail || "—"}</TableCell>
-                                <TableCell>
-                                  <Badge variant={badge.variant}>{badge.label}</Badge>
-                                </TableCell>
-                                <TableCell className="text-accent">
-                                  {formatRelative(r.createdAt)}
-                                </TableCell>
-                              </TableRow>
-                            );
-                          })}
-                        </TableBody>
-                      </Table>
+                              return (
+                                <TableRow
+                                  key={r.id}
+                                  className="cursor-pointer [&>td]:py-3"
+                                  onClick={() =>
+                                    navigate({
+                                      to: "/organizations/$orgId/projects/cert-manager/$projectId/approvals/$approvalRequestId",
+                                      params: {
+                                        orgId: orgId ?? "",
+                                        projectId: projectId ?? "",
+                                        approvalRequestId: r.id
+                                      },
+                                      search: {
+                                        policyType: ApprovalPolicyType.CertCodeSigning,
+                                        from: "root-requests"
+                                      }
+                                    })
+                                  }
+                                >
+                                  <TableCell isTruncatable className="font-mono">
+                                    {signerName}
+                                  </TableCell>
+                                  <TableCell>{r.requesterName || r.requesterEmail || "—"}</TableCell>
+                                  <TableCell>
+                                    <Badge variant={badge.variant}>{badge.label}</Badge>
+                                  </TableCell>
+                                  <TableCell className="text-accent">
+                                    {formatRelative(r.createdAt)}
+                                  </TableCell>
+                                </TableRow>
+                              );
+                            })}
+                          </TableBody>
+                        </Table>
+                        <Pagination
+                          count={filteredSigning.length}
+                          page={signingPage}
+                          perPage={signingPerPage}
+                          onChangePage={(newPage) => setSigningPage(newPage)}
+                          onChangePerPage={(newPerPage) => setSigningPerPage(newPerPage)}
+                        />
+                      </>
                     )}
                   </CardContent>
                 </Card>

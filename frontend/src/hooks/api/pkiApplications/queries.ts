@@ -1,4 +1,4 @@
-import { useQuery, UseQueryOptions } from "@tanstack/react-query";
+import { InfiniteData, useInfiniteQuery, UseInfiniteQueryOptions, useQuery, UseQueryOptions } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 import {
@@ -20,6 +20,7 @@ import {
 export const pkiApplicationKeys = {
   all: ["pki-applications"] as const,
   list: (dto: TListPkiApplicationsDTO) => [...pkiApplicationKeys.all, "list", dto] as const,
+  listInfinite: (dto: TListPkiApplicationsDTO) => [...pkiApplicationKeys.all, "list-infinite", dto] as const,
   byId: (applicationId: string) => [...pkiApplicationKeys.all, "by-id", { applicationId }] as const,
   byName: (name: string) => [...pkiApplicationKeys.all, "by-name", { name }] as const,
   profiles: (applicationId: string) =>
@@ -53,6 +54,40 @@ export const useListPkiApplications = (
         params: dto
       });
       return data;
+    },
+    ...options
+  });
+
+export const useListPkiApplicationsInfinite = (
+  dto: TListPkiApplicationsDTO = {},
+  options?: Omit<
+    UseInfiniteQueryOptions<
+      TListPkiApplicationsResponse,
+      unknown,
+      InfiniteData<TListPkiApplicationsResponse>,
+      TListPkiApplicationsResponse,
+      ReturnType<typeof pkiApplicationKeys.listInfinite>
+    >,
+    "queryKey" | "queryFn"
+  >
+) =>
+  useInfiniteQuery({
+    initialPageParam: 0,
+    queryKey: pkiApplicationKeys.listInfinite(dto),
+    queryFn: async ({ pageParam }) => {
+      const limit = dto.limit ?? 25;
+      const { data } = await apiRequest.get<TListPkiApplicationsResponse>(BASE_URL, {
+        params: {
+          ...dto,
+          limit,
+          offset: pageParam
+        }
+      });
+      return data;
+    },
+    getNextPageParam: (lastPage, pages) => {
+      const nextOffset = pages.length * (dto.limit ?? 25);
+      return nextOffset < lastPage.total ? nextOffset : undefined;
     },
     ...options
   });

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { Check, ChevronsUpDown } from "lucide-react";
 
@@ -17,7 +17,8 @@ import {
   PopoverTrigger,
   ResourceIcon
 } from "@app/components/v3";
-import { useListPkiApplications } from "@app/hooks/api/pkiApplications";
+import { useDebounce } from "@app/hooks";
+import { useGetPkiApplicationByName, useListPkiApplicationsInfinite } from "@app/hooks/api/pkiApplications";
 
 const ApplicationSelectInner = ({
   applicationName,
@@ -30,10 +31,46 @@ const ApplicationSelectInner = ({
 }) => {
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
-  const { data } = useListPkiApplications({ limit: 100 });
-  const applications = data?.applications ?? [];
-  const current = applications.find((a) => a.name === applicationName);
-  const displayName = current?.name ?? applicationName;
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch] = useDebounce(searchQuery, 300);
+  const loaderRef = useRef<HTMLDivElement>(null);
+
+  const { data: currentApp } = useGetPkiApplicationByName(applicationName, {
+    enabled: Boolean(applicationName)
+  });
+  const displayName = currentApp?.name ?? applicationName;
+
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage
+  } = useListPkiApplicationsInfinite({
+    limit: 25,
+    search: debouncedSearch
+  });
+
+  const applications = data?.pages?.flatMap((page) => page?.applications ?? []) ?? [];
+
+  useEffect(() => {
+    if (!open) {
+      setSearchQuery("");
+    }
+  }, [open]);
+
+  useEffect(() => {
+    if (!loaderRef.current) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+          fetchNextPage();
+        }
+      },
+      { threshold: 0.1 }
+    );
+    observer.observe(loaderRef.current);
+    return () => observer.disconnect();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   const handleSelect = (nextName: string) => {
     setOpen(false);
@@ -66,28 +103,41 @@ const ApplicationSelectInner = ({
           </IconButton>
         </PopoverTrigger>
         <PopoverContent align="start" sideOffset={20} className="w-96 p-0">
-          <Command>
-            <CommandInput placeholder="Search applications..." />
+          <Command shouldFilter={false}>
+            <CommandInput
+              placeholder="Search applications..."
+              value={searchQuery}
+              onValueChange={setSearchQuery}
+            />
             <CommandList>
-              <CommandEmpty>No applications found.</CommandEmpty>
-              <CommandGroup heading="Applications">
-                {applications.map((app) => (
-                  <CommandItem
-                    key={app.id}
-                    value={app.name}
-                    onSelect={() => handleSelect(app.name)}
-                    className="gap-2"
-                  >
-                    <Check className={app.name === applicationName ? "opacity-100" : "opacity-0"} />
-                    <div className="flex min-w-0 flex-1 flex-col">
-                      <span className="truncate text-sm">{app.name}</span>
-                      <span className="truncate text-[11px] text-muted">
-                        {app.description || "No description"}
-                      </span>
-                    </div>
-                  </CommandItem>
-                ))}
-              </CommandGroup>
+              {applications.length === 0 && !isFetchingNextPage && (
+                <CommandEmpty>No applications found.</CommandEmpty>
+              )}
+              {applications.length > 0 && (
+                <CommandGroup heading="Applications">
+                  {applications.map((app) => (
+                    <CommandItem
+                      key={app.id}
+                      value={app.name}
+                      onSelect={() => handleSelect(app.name)}
+                      className="gap-2"
+                    >
+                      <Check className={app.name === applicationName ? "opacity-100" : "opacity-0"} />
+                      <div className="flex min-w-0 flex-1 flex-col">
+                        <span className="truncate text-sm">{app.name}</span>
+                        <span className="truncate text-[11px] text-muted">
+                          {app.description || "No description"}
+                        </span>
+                      </div>
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              )}
+              {(hasNextPage || isFetchingNextPage) && (
+                <div ref={loaderRef} className="flex justify-center p-2 text-xs text-muted">
+                  {isFetchingNextPage ? "Loading more..." : ""}
+                </div>
+              )}
             </CommandList>
           </Command>
         </PopoverContent>
