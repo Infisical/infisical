@@ -91,7 +91,8 @@ export enum ApiDocsTags {
   LdapSso = "LDAP SSO",
   Scim = "SCIM",
   Events = "Event Subscriptions",
-  GatewaysV3 = "Gateways"
+  GatewaysV3 = "Gateways",
+  KmipServers = "KMIP Servers"
 }
 
 export const GROUPS = {

@@ -27,7 +27,7 @@ description: "Run the Infisical KMIP server or manage its systemd service"
 
 The Infisical KMIP server provides Key Management Interoperability Protocol (KMIP) support for integration with KMIP-compatible clients. It acts as a proxy between your KMIP clients and Infisical KMS, enabling standardized key management operations.
 
-The server is created as an entity in the Infisical UI and then enrolled from the host where you run it, using either a one-time enrollment **token** or **AWS** authentication. The deploy command (including the enrollment token) can be copied from the server's detail page via **Show deploy command**.
+The server is created in Infisical and then enrolled from the host where you run it, using either a one-time enrollment **token** or **AWS** authentication. The deploy command (including the enrollment token) can be copied from the server's detail page via **Show deploy command**.
 
 The server's certificate configuration (hostnames/IPs, TTL, and key algorithm) is defined on the server entity in the UI. The CLI fetches it on start, so you do not pass it on the command line. To change the certificate, edit the configuration in the UI and restart the server.
 
