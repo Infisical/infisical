@@ -28,6 +28,7 @@ import { registerIdentityProjectAdditionalPrivilegeRouter } from "./identity-pro
 import { registerIdentityTemplateRouter } from "./identity-template-router";
 import { registerInsightsRouter } from "./insights-router";
 import { registerKmipRouter } from "./kmip-router";
+import { registerKmipServerRouter } from "./kmip-server-router";
 import { registerKmipSpecRouter } from "./kmip-spec-router";
 import { registerLdapRouter } from "./ldap-router";
 import { registerLicenseRouter } from "./license-router";
@@ -211,6 +212,7 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
     async (kmipRouter) => {
       await kmipRouter.register(registerKmipRouter);
       await kmipRouter.register(registerKmipSpecRouter, { prefix: "/spec" });
+      await kmipRouter.register(registerKmipServerRouter, { prefix: "/servers" });
     },
     { prefix: "/kmip" }
   );

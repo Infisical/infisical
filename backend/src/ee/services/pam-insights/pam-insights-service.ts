@@ -38,7 +38,7 @@ type TPamInsightsServiceFactoryDep = {
     | "findRotationCandidatesByProject"
   >;
   pamResourceRotationRulesDAL: Pick<TPamResourceRotationRulesDALFactory, "findByResourceIds">;
-  keyStore: Pick<TKeyStoreFactory, "setItemWithExpiry" | "getItem">;
+  keyStore: Pick<TKeyStoreFactory, "setItemWithExpiry" | "getItem" | "ttl">;
 };
 
 export type TPamInsightsServiceFactory = ReturnType<typeof pamInsightsServiceFactory>;

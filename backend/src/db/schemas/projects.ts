@@ -36,7 +36,8 @@ export const ProjectsSchema = z.object({
   deleteAfter: z.date().nullable().optional(),
   softDeletedAt: z.date().nullable().optional(),
   deletedByActorType: z.string().nullable().optional(),
-  deletedByActorId: z.string().uuid().nullable().optional()
+  deletedByActorId: z.string().uuid().nullable().optional(),
+  secretBlindIndexEnabled: z.boolean().default(true)
 });
 
 export type TProjects = z.infer<typeof ProjectsSchema>;

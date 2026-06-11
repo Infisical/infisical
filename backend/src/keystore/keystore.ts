@@ -131,6 +131,7 @@ export const KeyStorePrefixes = {
   SecretManagerCachePattern: "secret-manager:*",
   AuditLogMigrationAlert: "audit-log-migration-alert-last-row-count",
   LicenseCloudPlan: (orgId: string) => `infisical-cloud-plan-${orgId}` as const,
+  LicenseEntitlements: (orgId: string) => `license-entitlements-${orgId}` as const,
   IdentityLockoutState: (identityId: string, authMethod: string, slug: string) =>
     `lockout:identity:${identityId}:${authMethod}:${slug}` as const,
   IdentityLockoutStateByMethodPattern: (identityId: string, authMethod: string) =>
@@ -139,7 +140,10 @@ export const KeyStorePrefixes = {
 
   TelemetryEvent: (event: string, bucketId: string, distinctId: string, uuid: string) =>
     `telemetry-event-${event}-${bucketId}-${distinctId}-${uuid}` as const,
-  TelemetryEventByBucketPattern: (event: string, bucketId: string) => `telemetry-event-${event}-${bucketId}-*` as const
+  TelemetryEventByBucketPattern: (event: string, bucketId: string) => `telemetry-event-${event}-${bucketId}-*` as const,
+
+  AuditLogStreamFlushDebounce: (streamId: string) => `audit-log-stream:${streamId}:flush-debounce` as const,
+  AuditLogIngestConsumerLock: "audit-log-ingest:consumer-lock" as const
 };
 
 export const KeyStoreTtls = {
@@ -157,10 +161,12 @@ export const KeyStoreTtls = {
   EmailSignupOtpInSeconds: 300, // 5 minutes
   EmailSignupResendCooldownInSeconds: 60, // 1 minute
   InsightsCacheInSeconds: 300, // 5 minutes
+  InsightsDuplicationCacheInSeconds: 3600, // 1 hour
   AdminConfigInSeconds: 60,
   InvalidatingCacheInSeconds: 1800, // 30 minutes max lock for cache invalidation job
   AuditLogMigrationAlertInSeconds: 604800, // 7 days
   LicenseCloudPlanInSeconds: 300, // 5 minutes
+  LicenseEntitlementsInSeconds: 1800, // 30 minutes
   AiMcpEndpointOAuthFlowInSeconds: 300, // 5 minutes
   OauthAuthorizationCodeInSeconds: 600, // 10 minutes
   AiMcpServerOAuthSessionInSeconds: 600, // 10 minutes
@@ -449,7 +455,7 @@ export const keyStoreFactory = (
   const listLength = async (key: string) => pickPrimaryOrSecondaryRedis(primaryRedis, redisReadReplicas).llen(key);
 
   // Stream operations
-  const streamAdd = async (key: string, id: string, fieldValue: Record<string, string>, maxLen = 1000000) => {
+  const streamAdd = async (key: string, id: string, fieldValue: Record<string, string>, maxLen = 1_000_000) => {
     const args: string[] = [];
     for (const [field, value] of Object.entries(fieldValue)) {
       args.push(field, value);

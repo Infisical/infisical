@@ -443,6 +443,10 @@ const pamAccessRoute = route(
 const organizationRoutes = route("/organizations/$orgId", [
   route("/projects", "organization/ProjectsPage/route.tsx"),
   route("/projects/$type", "organization/ProjectsPage/ProjectTypePage/route.tsx"),
+  route("/projects/kms/kmip-servers", [
+    index("organization/KmipServersPage/route.tsx"),
+    route("/$kmipServerId", "organization/KmipServersPage/KmipServerDetailsByIDPage/route.tsx")
+  ]),
   route("/access-management", "organization/AccessManagementPage/route.tsx"),
   route("/audit-logs", "organization/AuditLogsPage/route.tsx"),
   route("/billing", "organization/BillingPage/route.tsx"),

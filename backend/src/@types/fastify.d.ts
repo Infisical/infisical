@@ -30,6 +30,7 @@ import { TInsightsServiceFactory } from "@app/ee/services/insights/insights-serv
 import { TKmipClientDALFactory } from "@app/ee/services/kmip/kmip-client-dal";
 import { TKmipOperationServiceFactory } from "@app/ee/services/kmip/kmip-operation-service";
 import { TKmipServiceFactory } from "@app/ee/services/kmip/kmip-service";
+import { TKmipServerServiceFactory } from "@app/ee/services/kmip-server/kmip-server-service";
 import { TLdapConfigServiceFactory } from "@app/ee/services/ldap-config/ldap-config-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TOidcConfigServiceFactory } from "@app/ee/services/oidc/oidc-config-service";
@@ -128,6 +129,7 @@ import { TIdentityUaServiceFactory } from "@app/services/identity-ua/identity-ua
 import { TScopedIdentityV2ServiceFactory } from "@app/services/identity-v2/identity-service";
 import { TIntegrationServiceFactory } from "@app/services/integration/integration-service";
 import { TIntegrationAuthServiceFactory } from "@app/services/integration-auth/integration-auth-service";
+import { TLicenseClientFactory } from "@app/services/license-client";
 import { TMembershipGroupServiceFactory } from "@app/services/membership-group/membership-group-service";
 import { TMembershipIdentityServiceFactory } from "@app/services/membership-identity/membership-identity-service";
 import { TMembershipUserServiceFactory } from "@app/services/membership-user/membership-user-service";
@@ -368,6 +370,7 @@ declare module "fastify" {
       pkiSigner: TSignerServiceFactory;
       secretScanning: TSecretScanningServiceFactory;
       license: TLicenseServiceFactory;
+      licenseClient: TLicenseClientFactory;
       trustedIp: TTrustedIpServiceFactory;
       secretBlindIndex: TSecretBlindIndexServiceFactory;
       telemetry: TTelemetryServiceFactory;
@@ -392,6 +395,7 @@ declare module "fastify" {
       secretSync: TSecretSyncServiceFactory;
       kmip: TKmipServiceFactory;
       kmipOperation: TKmipOperationServiceFactory;
+      kmipServer: TKmipServerServiceFactory;
       gateway: TGatewayServiceFactory;
       secretRotationV2: TSecretRotationV2ServiceFactory;
       microsoftTeams: TMicrosoftTeamsServiceFactory;

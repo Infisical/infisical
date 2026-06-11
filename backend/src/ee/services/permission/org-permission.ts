@@ -44,6 +44,8 @@ export enum OrgPermissionAuditLogsActions {
   Read = "read"
 }
 
+// TODO: remove once KMIP clients are fully migrated to KMIP servers (OrgPermissionKmipServerActions).
+// This only gates the legacy KMIP proxy flow.
 export enum OrgPermissionKmipActions {
   Proxy = "proxy"
 }
@@ -89,6 +91,14 @@ export enum OrgPermissionRelayActions {
   EditRelays = "edit-relays",
   DeleteRelays = "delete-relays",
   RevokeRelayAccess = "revoke-relay-access"
+}
+
+export enum OrgPermissionKmipServerActions {
+  CreateKmipServers = "create-kmip-servers",
+  ListKmipServers = "list-kmip-servers",
+  EditKmipServers = "edit-kmip-servers",
+  DeleteKmipServers = "delete-kmip-servers",
+  RevokeKmipServerAccess = "revoke-kmip-server-access"
 }
 
 export enum OrgPermissionIdentityActions {
@@ -165,6 +175,7 @@ export enum OrgPermissionSubjects {
   ProjectTemplates = "project-templates",
   AppConnections = "app-connections",
   Kmip = "kmip",
+  KmipServer = "kmip-server",
   Gateway = "gateway",
   GatewayPool = "gateway-pool",
   Relay = "relay",
@@ -203,6 +214,7 @@ export type OrgPermissionSet =
   | [OrgPermissionGatewayActions, OrgPermissionSubjects.Gateway]
   | [OrgPermissionGatewayPoolActions, OrgPermissionSubjects.GatewayPool]
   | [OrgPermissionRelayActions, OrgPermissionSubjects.Relay]
+  | [OrgPermissionKmipServerActions, OrgPermissionSubjects.KmipServer]
   | [
       OrgPermissionAppConnectionActions,
       (
@@ -378,6 +390,12 @@ export const OrgPermissionSchema = z.discriminatedUnion("subject", [
     )
   }),
   z.object({
+    subject: z.literal(OrgPermissionSubjects.KmipServer).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionKmipServerActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
     subject: z.literal(OrgPermissionSubjects.EmailDomains).describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionEmailDomainActions).describe(
       "Describe what action an entity can take."
@@ -526,6 +544,12 @@ const buildAdminPermission = () => {
   can(OrgPermissionRelayActions.EditRelays, OrgPermissionSubjects.Relay);
   can(OrgPermissionRelayActions.DeleteRelays, OrgPermissionSubjects.Relay);
   can(OrgPermissionRelayActions.RevokeRelayAccess, OrgPermissionSubjects.Relay);
+
+  can(OrgPermissionKmipServerActions.ListKmipServers, OrgPermissionSubjects.KmipServer);
+  can(OrgPermissionKmipServerActions.CreateKmipServers, OrgPermissionSubjects.KmipServer);
+  can(OrgPermissionKmipServerActions.EditKmipServers, OrgPermissionSubjects.KmipServer);
+  can(OrgPermissionKmipServerActions.DeleteKmipServers, OrgPermissionSubjects.KmipServer);
+  can(OrgPermissionKmipServerActions.RevokeKmipServerAccess, OrgPermissionSubjects.KmipServer);
 
   can(OrgPermissionAdminConsoleAction.AccessAllProjects, OrgPermissionSubjects.AdminConsole);
 

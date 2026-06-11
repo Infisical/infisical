@@ -1,15 +1,20 @@
 export {
+  secretInsightsKeys,
   useGetAuthMethodDistribution,
   useGetCalendarInsights,
   useGetInsightsSummary,
   // useGetSecretAccessLocations,
-  useGetSecretAccessVolume
+  useGetSecretAccessVolume,
+  useGetSecretBlindIndexStatus,
+  useGetSecretsDuplication
 } from "./queries";
 export type {
   TAccessLocation,
   TAuthMethodCount,
   TCalendarReminder,
   TCalendarRotation,
+  TDuplicatedSecretEntry,
+  TDuplicatedSecretGroup,
   TGetAuthMethodDistributionDTO,
   TGetAuthMethodDistributionResponse,
   TGetCalendarInsightsDTO,
@@ -18,6 +23,8 @@ export type {
   TGetSecretAccessLocationsResponse,
   TGetSecretAccessVolumeDTO,
   TGetSecretAccessVolumeResponse,
+  TGetSecretsDuplicationDTO,
+  TGetSecretsDuplicationResponse,
   TSecretAccessVolumeActor,
   TSecretAccessVolumeDay
 } from "./types";
