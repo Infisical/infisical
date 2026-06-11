@@ -317,6 +317,152 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
     }
   });
 
+  server.route({
+    method: "POST",
+    url: "/:accountId/ssh-ca",
+    schema: {
+      operationId: "getOrCreatePamSshCa",
+      params: z.object({ accountId: z.string().uuid() }),
+      response: {
+        200: z.object({ publicKey: z.string() })
+      }
+    },
+    config: { rateLimit: writeLimit },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const result = await server.services.pamAccount.getOrCreateSshCa({
+        accountId: req.params.accountId,
+        projectId: req.internalPamProjectId,
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod
+      });
+
+      if (result.created) {
+        await server.services.auditLog.createAuditLog({
+          ...req.auditLogInfo,
+          orgId: req.permission.orgId,
+          projectId: req.internalPamProjectId,
+          event: {
+            type: EventType.PAM_ACCOUNT_SSH_CA_CREATE,
+            metadata: {
+              accountId: req.params.accountId,
+              keyAlgorithm: result.keyAlgorithm!
+            }
+          }
+        });
+      }
+
+      return { publicKey: result.publicKey };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:accountId/ssh-ca-public-key",
+    schema: {
+      operationId: "getPamSshCaPublicKey",
+      params: z.object({ accountId: z.string().uuid() }),
+      response: {
+        200: z.object({ publicKey: z.string() })
+      }
+    },
+    config: { rateLimit: readLimit },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      return server.services.pamAccount.getSshCaPublicKey(req.params.accountId);
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:accountId/ssh-ca-setup",
+    schema: {
+      operationId: "getPamSshCaSetupScript",
+      params: z.object({ accountId: z.string().uuid() }),
+      response: {
+        200: z.string()
+      }
+    },
+    config: { rateLimit: readLimit },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req, reply) => {
+      const { publicKey: caPublicKey } = await server.services.pamAccount.getSshCaPublicKey(req.params.accountId);
+
+      const setupScript = `#!/bin/bash
+set -e
+
+CA_PUBLIC_KEY="${caPublicKey}"
+CA_FILE="/etc/ssh/infisical_ca.pub"
+SSHD_CONFIG="/etc/ssh/sshd_config"
+
+echo "==> Infisical SSH CA Setup"
+echo ""
+
+if [ "$(id -u)" -ne 0 ]; then
+    echo "Error: This script must be run as root (use sudo)"
+    exit 1
+fi
+
+echo "==> Writing CA public key to \${CA_FILE}..."
+echo "\${CA_PUBLIC_KEY}" > "\${CA_FILE}"
+chmod 644 "\${CA_FILE}"
+echo "    Done."
+
+if grep -q "^TrustedUserCAKeys" "\${SSHD_CONFIG}"; then
+    EXISTING_CA_FILE=$(grep "^TrustedUserCAKeys" "\${SSHD_CONFIG}" | awk '{print $2}')
+    if [ "\${EXISTING_CA_FILE}" = "\${CA_FILE}" ]; then
+        echo "==> TrustedUserCAKeys already configured for \${CA_FILE}"
+    else
+        echo "Warning: TrustedUserCAKeys is already set to \${EXISTING_CA_FILE}"
+        echo "         You may need to manually update sshd_config to use \${CA_FILE}"
+        echo "         or combine multiple CA keys into a single file."
+    fi
+else
+    echo "==> Adding TrustedUserCAKeys to \${SSHD_CONFIG}..."
+    echo "" >> "\${SSHD_CONFIG}"
+    echo "# Infisical SSH CA - Added by setup script" >> "\${SSHD_CONFIG}"
+    echo "TrustedUserCAKeys \${CA_FILE}" >> "\${SSHD_CONFIG}"
+    echo "    Done."
+fi
+
+echo "==> Validating SSH configuration..."
+if sshd -t; then
+    echo "    Configuration is valid."
+else
+    echo "Error: SSH configuration is invalid. Please check \${SSHD_CONFIG}"
+    exit 1
+fi
+
+echo "==> Restarting SSH service..."
+if command -v systemctl &> /dev/null; then
+    if systemctl cat sshd.service &>/dev/null; then
+        systemctl restart sshd
+    elif systemctl cat ssh.service &>/dev/null; then
+        systemctl restart ssh
+    else
+        echo "Warning: Could not find SSH service. Please restart it manually."
+    fi
+elif command -v service &> /dev/null; then
+    service sshd restart 2>/dev/null || service ssh restart
+else
+    echo "Warning: Could not detect init system. Please restart sshd manually."
+fi
+echo "    Done."
+
+echo ""
+echo "==> Setup complete!"
+echo ""
+echo "Your SSH server is now configured to trust certificates signed by the Infisical CA."
+echo ""
+`;
+
+      void reply.header("Content-Type", "text/plain; charset=utf-8");
+      return setupScript;
+    }
+  });
+
   await Promise.all(
     (Object.entries(ACCOUNT_TYPE_CONFIGS) as [TSupportedAccountType, TSupportedConfigValue][]).map(
       ([accountType, config]) =>

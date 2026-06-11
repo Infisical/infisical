@@ -113,6 +113,10 @@ const PageContent = () => {
     );
   }
 
+  if (account.accountType === PamAccountType.SSH) {
+    return <TerminalContent account={account} orgId={orgId!} />;
+  }
+
   return (
     <SessionAccessGate account={account}>
       {({ reason }) => {

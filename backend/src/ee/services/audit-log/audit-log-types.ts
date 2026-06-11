@@ -700,6 +700,7 @@ export enum EventType {
   PAM_ACCOUNT_CREATE = "pam-account-create",
   PAM_ACCOUNT_UPDATE = "pam-account-update",
   PAM_ACCOUNT_DELETE = "pam-account-delete",
+  PAM_ACCOUNT_SSH_CA_CREATE = "pam-account-ssh-ca-create",
   PAM_WEB_ACCESS_SESSION_TICKET_CREATED = "pam-web-access-session-ticket-created",
   APPROVAL_POLICY_CREATE = "approval-policy-create",
   APPROVAL_POLICY_UPDATE = "approval-policy-update",
@@ -5892,6 +5893,14 @@ interface PamAccountDeleteEvent {
   };
 }
 
+interface PamAccountSshCaCreateEvent {
+  type: EventType.PAM_ACCOUNT_SSH_CA_CREATE;
+  metadata: {
+    accountId: string;
+    keyAlgorithm: string;
+  };
+}
+
 interface UpdateCertificateRenewalConfigEvent {
   type: EventType.UPDATE_CERTIFICATE_RENEWAL_CONFIG;
   metadata: {
@@ -7413,6 +7422,7 @@ export type Event =
   | PamAccountCreateEvent
   | PamAccountUpdateEvent
   | PamAccountDeleteEvent
+  | PamAccountSshCaCreateEvent
   | UpdateCertificateRenewalConfigEvent
   | UpdateCertificateMetadataEvent
   | DisableCertificateRenewalConfigEvent

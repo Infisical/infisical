@@ -1,4 +1,7 @@
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { createSshCert, createSshKeyPair } from "@app/ee/services/ssh/ssh-certificate-authority-fns";
+import { SshCertType } from "@app/ee/services/ssh/ssh-certificate-authority-types";
+import { SshCertKeyAlgorithm } from "@app/ee/services/ssh-certificate/ssh-certificate-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
@@ -97,6 +100,32 @@ export const pamSessionServiceFactory = ({
 
     const connectionDetails = await decrypt(session.projectId, account.encryptedConnectionDetails);
     const credentials = await decrypt(session.projectId, account.encryptedCredentials);
+
+    if (credentials.authMethod === "certificate" && account.encryptedCaPrivateKey) {
+      const { decryptor } = await kmsService.createCipherPairWithDataKey({
+        type: KmsDataKey.SecretManager,
+        projectId: session.projectId
+      });
+      const caPrivateKey = decryptor({
+        cipherTextBlob: account.encryptedCaPrivateKey
+      }).toString("utf-8");
+
+      const keyAlgorithm = (account.caKeyAlgorithm as SshCertKeyAlgorithm) || SshCertKeyAlgorithm.ED25519;
+      const { publicKey: clientPublicKey, privateKey: clientPrivateKey } = await createSshKeyPair(keyAlgorithm);
+
+      const username = credentials.username as string;
+      const { signedPublicKey } = await createSshCert({
+        caPrivateKey,
+        clientPublicKey,
+        keyId: `pam-session-${session.id}`,
+        principals: [username],
+        requestedTtl: "8h",
+        certType: SshCertType.USER
+      });
+
+      credentials.privateKey = clientPrivateKey;
+      credentials.certificate = signedPublicKey;
+    }
 
     const sessionStarted = session.status === PamSessionStatus.Starting;
 

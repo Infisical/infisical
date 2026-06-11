@@ -9,6 +9,8 @@ import {
   ResourcePermissionPamResourceActions,
   ResourcePermissionSub
 } from "@app/ee/services/permission/resource-permission";
+import { createSshKeyPair } from "@app/ee/services/ssh/ssh-certificate-authority-fns";
+import { SshCertKeyAlgorithm } from "@app/ee/services/ssh-certificate/ssh-certificate-types";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -407,5 +409,43 @@ export const pamAccountServiceFactory = ({
     }));
   };
 
-  return { list, listAccessible, getById, create, update, deleteAccount };
+  const getOrCreateSshCa = async ({ accountId, projectId, ...ctx }: TGetPamAccountDTO & TActorContext) => {
+    const account = await pamAccountDAL.findByIdWithDetails(accountId);
+    if (!account || account.projectId !== projectId) {
+      throw new NotFoundError({ message: `Account with ID '${accountId}' not found` });
+    }
+
+    await checkAccount(accountId, account.folderId, projectId, ResourcePermissionPamResourceActions.EditAccounts, ctx);
+
+    if (account.caPublicKey) {
+      return { publicKey: account.caPublicKey, created: false };
+    }
+
+    const keyAlgorithm = SshCertKeyAlgorithm.ED25519;
+    const { publicKey, privateKey } = await createSshKeyPair(keyAlgorithm);
+
+    const { encryptor } = await getProjectCipher(projectId);
+    const encryptedCaPrivateKey = encryptor({ plainText: Buffer.from(privateKey) }).cipherTextBlob;
+
+    await pamAccountDAL.updateById(accountId, {
+      encryptedCaPrivateKey,
+      caPublicKey: publicKey,
+      caKeyAlgorithm: keyAlgorithm
+    });
+
+    return { publicKey, created: true, keyAlgorithm };
+  };
+
+  const getSshCaPublicKey = async (accountId: string) => {
+    const account = await pamAccountDAL.findByIdWithDetails(accountId);
+    if (!account) {
+      throw new NotFoundError({ message: `Account with ID '${accountId}' not found` });
+    }
+    if (!account.caPublicKey) {
+      throw new BadRequestError({ message: "SSH CA has not been configured for this account" });
+    }
+    return { publicKey: account.caPublicKey };
+  };
+
+  return { list, listAccessible, getById, create, update, deleteAccount, getOrCreateSshCa, getSshCaPublicKey };
 };
