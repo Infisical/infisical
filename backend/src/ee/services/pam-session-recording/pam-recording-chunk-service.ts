@@ -8,18 +8,15 @@ import { OrgServiceActor } from "@app/lib/types";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
-import { PAM_RECORDING_MAX_CHUNK_BYTES } from "../pam-session-recording-storage/pam-session-recording-storage-constants";
-import { PamRecordingStorageBackend } from "../pam-session-recording-storage/pam-session-recording-storage-enums";
-import { PAM_RECORDING_STORAGE_FACTORY_MAP } from "../pam-session-recording-storage/pam-session-recording-storage-factory";
-import {
-  buildExternalChunkObjectKey,
-  TPamRecordingResolvedConfig
-} from "../pam-session-recording-storage/pam-session-recording-storage-types";
+import { PamSessionStatus } from "../pam/pam-enums";
+import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
 import { ProjectPermissionPamSessionActions, ProjectPermissionSub } from "../permission/project-permission";
-import { TPamSessionDALFactory } from "./pam-session-dal";
-import { PamSessionStatus } from "./pam-session-enums";
-import { TPamSessionEventChunkDALFactory } from "./pam-session-event-chunk-dal";
-import { decryptSessionKey, verifyGatewayUploadToken } from "./pam-session-recording-secrets";
+import { TPamSessionEventChunkDALFactory } from "./pam-recording-chunk-dal";
+import { PAM_RECORDING_MAX_CHUNK_BYTES } from "./pam-recording-constants";
+import { PamRecordingStorageBackend } from "./pam-recording-enums";
+import { decryptSessionKey, verifyGatewayUploadToken } from "./pam-recording-secrets";
+import { PAM_RECORDING_STORAGE_FACTORY_MAP } from "./pam-recording-storage-factory";
+import { buildExternalChunkObjectKey, TPamRecordingResolvedConfig } from "./pam-recording-storage-types";
 
 type TPamSessionChunkServiceFactoryDep = {
   pamSessionDAL: TPamSessionDALFactory;

@@ -7,18 +7,18 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 
-import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
+import { PamSessionStatus } from "../pam/pam-enums";
 import {
   checkAccountAccess,
   getAccessibleResourceIds,
   TActorContext,
   verifyProductMembership
-} from "../pam-membership/pam-permission";
-import { PamRecordingStorageBackend } from "../pam-session-recording-storage/pam-session-recording-storage-enums";
+} from "../pam/pam-permission";
+import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
+import { PamRecordingStorageBackend } from "../pam-session-recording/pam-recording-enums";
+import { generateSessionRecordingSecrets } from "../pam-session-recording/pam-recording-secrets";
 import { ResourcePermissionPamResourceActions } from "../permission/resource-permission";
 import { TPamSessionDALFactory } from "./pam-session-dal";
-import { PamSessionStatus } from "./pam-session-enums";
-import { generateSessionRecordingSecrets } from "./pam-session-recording-secrets";
 
 type TPamSessionServiceFactoryDep = {
   pamSessionDAL: Pick<

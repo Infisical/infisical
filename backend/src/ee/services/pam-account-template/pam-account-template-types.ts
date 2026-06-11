@@ -1,5 +1,5 @@
 import { PamAccountType } from "../pam/pam-enums";
-import { TPamTemplateAccessPolicy, TPamTemplateSettings } from "./pam-template-config-schemas";
+import { TPamTemplateAccessPolicy, TPamTemplateSettings } from "./pam-account-template-schemas";
 
 export type TCreatePamAccountTemplateDTO = {
   projectId: string;

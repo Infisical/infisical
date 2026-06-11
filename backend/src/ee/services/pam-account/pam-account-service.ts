@@ -18,15 +18,15 @@ import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 
-import { TPamAccountTemplateDALFactory } from "../pam-account-template/pam-account-template-dal";
-import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
 import {
   checkAccountAccess,
   checkFolderPermission,
   getAccessibleResourceIds,
   TActorContext,
   verifyProductMembership
-} from "../pam-membership/pam-permission";
+} from "../pam/pam-permission";
+import { TPamAccountTemplateDALFactory } from "../pam-account-template/pam-account-template-dal";
+import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
 import { TPamAccountDALFactory } from "./pam-account-dal";
 import { validateConnectionDetails, validateCredentials } from "./pam-account-schemas";
 import {

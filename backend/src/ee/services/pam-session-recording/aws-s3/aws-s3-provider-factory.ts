@@ -13,16 +13,13 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 
-import {
-  PAM_RECORDING_MAX_CHUNK_BYTES,
-  PAM_RECORDING_PRESIGNED_URL_EXPIRY_SECONDS
-} from "../pam-session-recording-storage-constants";
+import { PAM_RECORDING_MAX_CHUNK_BYTES, PAM_RECORDING_PRESIGNED_URL_EXPIRY_SECONDS } from "../pam-recording-constants";
 import {
   buildExternalChunkObjectKey,
   normalizeKeyPrefix,
   TPamRecordingResolvedConfig,
   TPamRecordingStorageProvider
-} from "../pam-session-recording-storage-types";
+} from "../pam-recording-storage-types";
 
 const buildClient = (config: TPamRecordingResolvedConfig) => {
   if (!config.region || !config.awsCredentials) {

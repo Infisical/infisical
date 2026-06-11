@@ -3,7 +3,7 @@ import slugify from "@sindresorhus/slugify";
 import { Knex } from "knex";
 
 import { PamProductRole, PamResourceRole } from "@app/ee/services/pam/pam-enums";
-import { DEFAULT_ACCOUNT_TEMPLATES } from "@app/ee/services/pam-instance/pam-project-bootstrap";
+import { DEFAULT_ACCOUNT_TEMPLATES } from "@app/ee/services/pam-project/pam-project-bootstrap";
 import { inMemoryKeyStore } from "@app/keystore/memory";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { initLogger, logger } from "@app/lib/logger";

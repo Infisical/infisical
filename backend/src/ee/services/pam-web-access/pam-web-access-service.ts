@@ -11,7 +11,7 @@ import { AuditLogInfo, EventType, TAuditLogServiceFactory } from "@app/ee/servic
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { PamAccountType } from "@app/ee/services/pam/pam-enums";
-import { PamTemplateAccessPolicySchema } from "@app/ee/services/pam-account-template/pam-template-config-schemas";
+import { PamTemplateAccessPolicySchema } from "@app/ee/services/pam-account-template/pam-account-template-schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ResourcePermissionPamResourceActions,
@@ -28,9 +28,9 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
+import { PamSessionStatus } from "../pam/pam-enums";
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
 import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
-import { PamSessionStatus } from "../pam-session/pam-session-enums";
 import { getSessionHandler, isWebAccessSupported } from "./pam-session-handler-registry";
 import {
   DEFAULT_WEB_SESSION_DURATION_MS,

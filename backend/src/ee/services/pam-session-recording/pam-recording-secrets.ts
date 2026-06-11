@@ -3,7 +3,7 @@ import { BadRequestError, InternalServerError } from "@app/lib/errors";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
-import { PAM_RECORDING_AAD_VERSION } from "../pam-session-recording-storage/pam-session-recording-storage-constants";
+import { PAM_RECORDING_AAD_VERSION } from "./pam-recording-constants";
 
 const SESSION_KEY_LENGTH = 32; // AES-256
 const UPLOAD_TOKEN_LENGTH = 32; // 256 random bits

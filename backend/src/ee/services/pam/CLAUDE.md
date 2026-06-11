@@ -8,13 +8,14 @@ All PAM services live under `backend/src/ee/services/pam-*/`:
 
 | Directory | Purpose |
 |---|---|
-| `pam/` | Shared enums (`PamAccountType`, `PamResourceRole`, `PamProductRole`) and this CLAUDE.md |
+| `pam/` | Shared enums (`PamAccountType`, `PamResourceRole`, `PamProductRole`, `PamSessionStatus`), shared permission helpers (`pam-permission.ts`), and this CLAUDE.md |
 | `pam-folder/` | Folder CRUD, folder-level permission checks |
-| `pam-account/` | Account CRUD, credential encryption, gateway attachment |
-| `pam-account-template/` | Account templates (type + access policy + settings), template config schemas |
-| `pam-session/` | Session lifecycle, recording secrets |
-| `pam-session-recording-storage/` | Recording chunk storage + retrieval |
-| `pam-membership/` | Product + resource membership management, shared permission helpers |
+| `pam-account/` | Account CRUD, credential encryption, gateway attachment, SSH CA management |
+| `pam-account-template/` | Account templates (type + access policy + settings), template config schemas (`pam-account-template-schemas.ts`) |
+| `pam-session/` | Session lifecycle (DAL, service, types) |
+| `pam-session-recording/` | Recording chunk storage, retrieval, secrets, and storage providers (`aws-s3/`, `postgres/`) |
+| `pam-membership/` | Product + resource membership management |
+| `pam-project/` | PAM project bootstrap and resolver (formerly `pam-instance/`) |
 | `pam-web-access/` | WebSocket session handlers (Postgres, SSH), ticket-based auth |
 
 Routes live in `backend/src/ee/routes/v1/pam-routers/`.

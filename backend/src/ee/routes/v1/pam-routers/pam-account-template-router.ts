@@ -6,7 +6,7 @@ import { PamAccountType } from "@app/ee/services/pam/pam-enums";
 import {
   PamTemplateAccessPolicySchema,
   PamTemplateSettingsSchema
-} from "@app/ee/services/pam-account-template/pam-template-config-schemas";
+} from "@app/ee/services/pam-account-template/pam-account-template-schemas";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";

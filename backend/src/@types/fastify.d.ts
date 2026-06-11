@@ -36,10 +36,10 @@ import { TOidcConfigServiceFactory } from "@app/ee/services/oidc/oidc-config-ser
 import { TPamAccountServiceFactory } from "@app/ee/services/pam-account/pam-account-service";
 import { TPamAccountTemplateServiceFactory } from "@app/ee/services/pam-account-template/pam-account-template-service";
 import { TPamFolderServiceFactory } from "@app/ee/services/pam-folder/pam-folder-service";
-import { TPamProjectResolverFactory } from "@app/ee/services/pam-instance/pam-project-resolver";
 import { TPamMembershipServiceFactory } from "@app/ee/services/pam-membership/pam-membership-service";
-import { TPamSessionChunkServiceFactory } from "@app/ee/services/pam-session/pam-session-chunk-service";
+import { TPamProjectResolverFactory } from "@app/ee/services/pam-project/pam-project-resolver";
 import { TPamSessionServiceFactory } from "@app/ee/services/pam-session/pam-session-service";
+import { TPamSessionChunkServiceFactory } from "@app/ee/services/pam-session-recording/pam-recording-chunk-service";
 import { TPamWebAccessServiceFactory } from "@app/ee/services/pam-web-access/pam-web-access-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { TPitServiceFactory } from "@app/ee/services/pit/pit-service";

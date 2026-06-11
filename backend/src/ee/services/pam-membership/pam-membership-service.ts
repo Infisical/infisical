@@ -30,7 +30,7 @@ import {
   TUpdatePamFolderMemberDTO,
   TUpdatePamProductMemberDTO
 } from "./pam-membership-types";
-import { TActorContext } from "./pam-permission";
+import { TActorContext } from "../pam/pam-permission";
 
 type TPamMembershipServiceFactoryDep = {
   membershipDAL: Pick<

@@ -13,7 +13,7 @@ import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 
 import { PamProductRole, PamResourceRole } from "../pam/pam-enums";
-import { getAccessibleResourceIds, TActorContext, verifyProductMembership } from "../pam-membership/pam-permission";
+import { getAccessibleResourceIds, TActorContext, verifyProductMembership } from "../pam/pam-permission";
 import { TPamFolderDALFactory } from "./pam-folder-dal";
 import {
   TCreatePamFolderDTO,

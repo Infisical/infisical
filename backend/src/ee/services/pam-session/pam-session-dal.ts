@@ -4,7 +4,7 @@ import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 
-import { PamSessionStatus } from "./pam-session-enums";
+import { PamSessionStatus } from "../pam/pam-enums";
 
 export type TPamSessionDALFactory = ReturnType<typeof pamSessionDALFactory>;
 

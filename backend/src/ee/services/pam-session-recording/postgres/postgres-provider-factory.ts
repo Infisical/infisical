@@ -1,4 +1,4 @@
-import { TPamRecordingStorageProvider } from "../pam-session-recording-storage-types";
+import { TPamRecordingStorageProvider } from "../pam-recording-storage-types";
 
 export const PostgresRecordingStorageProvider: TPamRecordingStorageProvider = () => ({
   validateConfig: async () => {},

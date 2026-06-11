@@ -3,7 +3,7 @@ import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 
 import { PamProductRole } from "../pam/pam-enums";
-import { TActorContext, verifyProductMembership } from "../pam-membership/pam-permission";
+import { TActorContext, verifyProductMembership } from "../pam/pam-permission";
 import { TPamAccountTemplateDALFactory } from "./pam-account-template-dal";
 import {
   TCreatePamAccountTemplateDTO,

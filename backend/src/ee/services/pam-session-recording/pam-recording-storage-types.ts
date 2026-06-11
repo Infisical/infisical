@@ -1,6 +1,6 @@
 import { AWSRegion } from "@app/services/app-connection/app-connection-enums";
 
-import { PamRecordingStorageBackend } from "./pam-session-recording-storage-enums";
+import { PamRecordingStorageBackend } from "./pam-recording-enums";
 
 export type TPamRecordingChunkRef = {
   storageBackend: PamRecordingStorageBackend;
