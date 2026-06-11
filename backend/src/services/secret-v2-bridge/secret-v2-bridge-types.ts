@@ -352,6 +352,7 @@ export type TMoveSecretsDTO = {
   destinationSecretPath: string;
   secretIds: string[];
   shouldOverwrite: boolean;
+  skipPermissionCheck?: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TDuplicateSecretAttributes = {

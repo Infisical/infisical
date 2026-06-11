@@ -2980,7 +2980,8 @@ export const secretV2BridgeServiceFactory = ({
     actor,
     actorId,
     actorAuthMethod,
-    actorOrgId
+    actorOrgId,
+    skipPermissionCheck
   }: TMoveSecretsDTO) => {
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -3037,6 +3038,9 @@ export const secretV2BridgeServiceFactory = ({
       if (secret.isHoneyTokenSecret) {
         throw new BadRequestError({ message: `Cannot move honey token secret: ${secret.key}` });
       }
+
+      // the caller (e.g. folder move) has already pre-authorized the move at the path level
+      if (skipPermissionCheck) return;
 
       for (const sourceAction of sourceActions) {
         if (
@@ -3158,19 +3162,22 @@ export const secretV2BridgeServiceFactory = ({
       }
 
       // permission check whether can create or edit the ones in the destination folder
-      locallyCreatedSecrets.forEach((secret) => {
-        for (const destinationAction of destinationActions) {
-          ForbiddenError.from(permission).throwUnlessCan(
-            destinationAction,
-            subject(ProjectPermissionSub.Secrets, {
-              environment: destinationEnvironment,
-              secretPath: destinationFolder.path,
-              secretName: secret.key,
-              secretTags: secret.tags.map((el) => el.slug)
-            })
-          );
-        }
-      });
+      // (skipped when the caller has already pre-authorized the move at the path level)
+      if (!skipPermissionCheck) {
+        locallyCreatedSecrets.forEach((secret) => {
+          for (const destinationAction of destinationActions) {
+            ForbiddenError.from(permission).throwUnlessCan(
+              destinationAction,
+              subject(ProjectPermissionSub.Secrets, {
+                environment: destinationEnvironment,
+                secretPath: destinationFolder.path,
+                secretName: secret.key,
+                secretTags: secret.tags.map((el) => el.slug)
+              })
+            );
+          }
+        });
+      }
 
       const destinationFolderPolicy = await secretApprovalPolicyService.getSecretApprovalPolicy(
         projectId,

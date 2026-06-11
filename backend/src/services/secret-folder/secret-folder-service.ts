@@ -7,6 +7,7 @@ import { v4 as uuidv4, validate as uuidValidate } from "uuid";
 import { ActionProjectType, TProjectEnvironments, TSecretFolders, TSecretFoldersInsert } from "@app/db/schemas";
 import { TDynamicSecretDALFactory } from "@app/ee/services/dynamic-secret/dynamic-secret-dal";
 import { THoneyTokenDALFactory } from "@app/ee/services/honey-token/honey-token-dal";
+import { validateSecretMovePermissions } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
@@ -1477,9 +1478,9 @@ export const secretFolderServiceFactory = ({
     const pathByFolderId = new Map(subtree.map((f) => [f.id, f.path]));
     const resolvePath = (folderId: string) => pathByFolderId.get(folderId) ?? fallbackPath;
 
-    // sequential early-exit checks, cheapest single-table queries first.
-    const importHit = await secretImportDAL.findImportByFolderIds(folderIds, tx);
-    if (importHit) return { blockingType: "secret_import", blockingPath: resolvePath(importHit.folderId) };
+    // check the secret types to make sure the folder only has personal and shared secrets
+    const importExists = await secretImportDAL.findImportByFolderIds(folderIds, tx);
+    if (importExists) return { blockingType: "secret_import", blockingPath: resolvePath(importExists.folderId) };
 
     const [dynamicSecret] = await dynamicSecretDAL.find({ $in: { folderId: folderIds } }, { limit: 1, tx });
     if (dynamicSecret) return { blockingType: "dynamic_secret", blockingPath: resolvePath(dynamicSecret.folderId) };
@@ -1648,6 +1649,23 @@ export const secretFolderServiceFactory = ({
       return { plan: planEntries };
     });
 
+    // pre-authorize the secret moves for the entire subtree before any folder is created or secret is
+    // moved, so an unauthorized move fails atomically instead of partway through. each folder that holds
+    // secrets is checked once at its own source/destination path (moveSecrets is then told to skip its
+    // per-batch check below). folders without secrets are never moved, so they need no secret-level check.
+    for (const entry of plan) {
+      if (!entry.secretIds.length) {
+        // eslint-disable-next-line no-continue
+        continue;
+      }
+      validateSecretMovePermissions(permission, {
+        sourceEnvironment,
+        sourceSecretPath: entry.sourceAbsPath,
+        destinationEnvironment,
+        destinationSecretPath: entry.destinationAbsPath
+      });
+    }
+
     // 6. recreate the folder tree at the destination (idempotent; manages its own transaction, commits and snapshot).
     await createManyFolders({
       projectId,
@@ -1681,7 +1699,9 @@ export const secretFolderServiceFactory = ({
         actor,
         actorId,
         actorAuthMethod,
-        actorOrgId
+        actorOrgId,
+        // the whole subtree was authorized up front, so skip the redundant per-batch check
+        skipPermissionCheck: true
       });
       // a missing direct update on either side means moveSecrets routed the change through an approval request
       if (!result.isDestinationUpdated || !result.isSourceUpdated) {
