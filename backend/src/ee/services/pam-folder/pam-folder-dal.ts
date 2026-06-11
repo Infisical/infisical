@@ -41,9 +41,9 @@ export const pamFolderDALFactory = (db: TDbClient) => {
   };
 
   const countAccountsByFolderId = async (folderId: string, tx?: Knex) => {
-    const [result] = (await (tx || db.replicaNode())(TableName.PamAccount)
-      .where({ folderId })
-      .count("id as count")) as unknown as [{ count: string }];
+    const [result] = (await (tx || db)(TableName.PamAccount).where({ folderId }).count("id as count")) as unknown as [
+      { count: string }
+    ];
     return Number(result.count);
   };
 

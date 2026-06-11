@@ -137,7 +137,7 @@ export async function up(knex: Knex): Promise<void> {
   await createOnUpdateTrigger(knex, TableName.PamFolder);
 
   await knex.schema.alterTable(TableName.PamAccount, (t) => {
-    t.foreign("folderId").references("id").inTable(TableName.PamFolder).onDelete("CASCADE");
+    t.foreign("folderId").references("id").inTable(TableName.PamFolder).onDelete("RESTRICT");
   });
 
   // Add new columns to accounts
