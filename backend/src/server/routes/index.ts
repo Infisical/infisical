@@ -1975,11 +1975,19 @@ export const registerRoutes = async (
     folderCommitService,
     secretApprovalPolicyService,
     secretV2BridgeDAL,
+    kmsService,
+    secretVersionDAL: secretVersionV2BridgeDAL,
+    secretTagDAL,
+    secretVersionTagDAL: secretVersionTagV2BridgeDAL,
+    resourceMetadataDAL,
+    secretApprovalRequestDAL,
+    secretApprovalRequestSecretDAL,
+    secretQueueService,
     dynamicSecretDAL,
     secretRotationV2DAL,
     honeyTokenDAL,
     secretImportDAL,
-    secretService
+    secretV2BridgeService
   });
 
   const secretSharingService = secretSharingServiceFactory({

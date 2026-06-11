@@ -11,13 +11,16 @@ import { validateSecretMovePermissions } from "@app/ee/services/permission/permi
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
+import { TSecretApprovalRequestDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-dal";
+import { TSecretApprovalRequestSecretDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-secret-dal";
 import { TSecretRotationV2DALFactory } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-dal";
 import { TSecretSnapshotServiceFactory } from "@app/ee/services/secret-snapshot/secret-snapshot-service";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { OrderByDirection, OrgServiceActor } from "@app/lib/types";
 import { ActorType } from "@app/services/auth/auth-type";
-import { TSecretServiceFactory } from "@app/services/secret/secret-service";
+import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { TSecretQueueFactory } from "@app/services/secret/secret-queue";
 import { SecretsOrderBy } from "@app/services/secret/secret-types";
 import { buildFolderPath } from "@app/services/secret-folder/secret-folder-fns";
 
@@ -29,8 +32,15 @@ import {
 } from "../folder-commit/folder-commit-service";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
+import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
+import { TSecretTagDALFactory } from "../secret-tag/secret-tag-dal";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
+import { fnSecretMoveInTransaction } from "../secret-v2-bridge/secret-v2-bridge-fns";
+import { TSecretV2BridgeServiceFactory } from "../secret-v2-bridge/secret-v2-bridge-service";
+import { TFnSecretMoveResult } from "../secret-v2-bridge/secret-v2-bridge-types";
+import { TSecretVersionV2DALFactory } from "../secret-v2-bridge/secret-version-dal";
+import { TSecretVersionV2TagDALFactory } from "../secret-v2-bridge/secret-version-tag-dal";
 import { TSecretFolderDALFactory } from "./secret-folder-dal";
 import {
   TCreateFolderDTO,
@@ -61,13 +71,35 @@ type TSecretFolderServiceFactoryDep = {
   secretApprovalPolicyService: Pick<TSecretApprovalPolicyServiceFactory, "getSecretApprovalPolicy">;
   secretV2BridgeDAL: Pick<
     TSecretV2BridgeDALFactory,
-    "findByFolderIds" | "invalidateSecretCacheByProjectId" | "findOne"
+    | "find"
+    | "findOne"
+    | "delete"
+    | "insertMany"
+    | "bulkUpdate"
+    | "bulkUpdateById"
+    | "upsertSecretReferences"
+    | "updateById"
+    | "findReferencedSecretReferencesBySecretKey"
+    | "updateSecretReferenceEnvAndPath"
+    | "findByFolderIds"
+    | "invalidateSecretCacheByProjectId"
   >;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  secretVersionDAL: Pick<TSecretVersionV2DALFactory, "insertMany" | "findLatestVersionMany">;
+  secretTagDAL: Pick<TSecretTagDALFactory, "saveTagsToSecretV2" | "deleteTagsToSecretV2" | "find">;
+  secretVersionTagDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
+  resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
+  secretApprovalRequestDAL: Pick<TSecretApprovalRequestDALFactory, "create">;
+  secretApprovalRequestSecretDAL: Pick<
+    TSecretApprovalRequestSecretDALFactory,
+    "insertV2Bridge" | "insertApprovalSecretV2Tags"
+  >;
+  secretQueueService: Pick<TSecretQueueFactory, "syncSecrets">;
   dynamicSecretDAL: Pick<TDynamicSecretDALFactory, "findOne" | "find">;
   secretRotationV2DAL: Pick<TSecretRotationV2DALFactory, "existsByFolderIds">;
   honeyTokenDAL: Pick<THoneyTokenDALFactory, "find">;
   secretImportDAL: Pick<TSecretImportDALFactory, "findImportByFolderIds">;
-  secretService: Pick<TSecretServiceFactory, "moveSecrets">;
+  secretV2BridgeService: Pick<TSecretV2BridgeServiceFactory, "dispatchSecretMoveSideEffects">;
 };
 
 export type TSecretFolderServiceFactory = ReturnType<typeof secretFolderServiceFactory>;
@@ -82,11 +114,19 @@ export const secretFolderServiceFactory = ({
   projectDAL,
   secretApprovalPolicyService,
   secretV2BridgeDAL,
+  kmsService,
+  secretVersionDAL,
+  secretTagDAL,
+  secretVersionTagDAL,
+  resourceMetadataDAL,
+  secretApprovalRequestDAL,
+  secretApprovalRequestSecretDAL,
+  secretQueueService,
   dynamicSecretDAL,
   secretRotationV2DAL,
   honeyTokenDAL,
   secretImportDAL,
-  secretService
+  secretV2BridgeService
 }: TSecretFolderServiceFactoryDep) => {
   const createFolder = async ({
     projectId,
@@ -1520,9 +1560,10 @@ export const secretFolderServiceFactory = ({
   };
 
   // moves a folder (and its entire static-secret subtree) to a new path, optionally in a different environment.
-  // strategy: enumerate the source subtree under a row lock, recreate the folder tree at the destination,
-  // move each folder's secrets via secretService.moveSecrets (which handles approval policies, snapshots and syncs),
-  // then delete the emptied source folders. folders left non-empty (e.g. secrets pending approval) are kept in place.
+  // strategy: enumerate the source subtree under a row lock, recreate the folder tree at the destination, then
+  // move every folder's secrets inside one shared transaction via fnSecretMoveInTransaction
+  // (which handles approval policies) so the move is atomic, dispatch the snapshots/syncs once afterwards, and
+  // finally delete the emptied source folders. folders left non-empty (e.g. secrets pending approval) are kept.
   const moveFolder = async ({
     projectId,
     folderId,
@@ -1681,33 +1722,63 @@ export const secretFolderServiceFactory = ({
       }))
     });
 
-    // 7. move secrets folder-by-folder, root first. moveSecrets handles approval policies, snapshots and syncs itself.
-    let hasApprovalRequests = false;
-    for (const entry of plan) {
-      if (!entry.secretIds.length) {
-        // eslint-disable-next-line no-continue
-        continue;
+    // 7. move every folder's secrets inside one shared transaction so the subtree move is atomic: either all
+    // batches commit together or none do (no partial moves on a mid-subtree failure). fnSecretMoveInTransaction
+    // performs the move only — its snapshots and syncs are dispatched once, per affected folder, after commit.
+    // moves run sequentially because they share a single transaction (one connection).
+    const entriesWithSecrets = plan.filter((entry) => entry.secretIds.length > 0);
+    const moveResults: TFnSecretMoveResult[] = [];
+    await folderDAL.transaction(async (tx) => {
+      for (const entry of entriesWithSecrets) {
+        moveResults.push(
+          await fnSecretMoveInTransaction({
+            projectId,
+            sourceEnvironment,
+            sourceSecretPath: entry.sourceAbsPath,
+            destinationEnvironment,
+            destinationSecretPath: entry.destinationAbsPath,
+            secretIds: entry.secretIds,
+            shouldOverwrite,
+            actor,
+            actorId,
+            actorAuthMethod,
+            actorOrgId,
+            // the whole subtree was authorized up front, so skip the redundant per-batch check
+            skipPermissionCheck: true,
+            tx,
+            permissionService,
+            kmsService,
+            folderDAL,
+            secretDAL: secretV2BridgeDAL,
+            secretVersionDAL,
+            secretTagDAL,
+            secretVersionTagDAL,
+            resourceMetadataDAL,
+            folderCommitService,
+            secretApprovalPolicyService,
+            secretApprovalRequestDAL,
+            secretApprovalRequestSecretDAL,
+            secretQueueService
+          })
+        );
       }
-      const result = await secretService.moveSecrets({
-        projectId,
-        sourceEnvironment,
-        sourceSecretPath: entry.sourceAbsPath,
-        destinationEnvironment,
-        destinationSecretPath: entry.destinationAbsPath,
-        secretIds: entry.secretIds,
-        shouldOverwrite,
-        actor,
-        actorId,
-        actorAuthMethod,
-        actorOrgId,
-        // the whole subtree was authorized up front, so skip the redundant per-batch check
-        skipPermissionCheck: true
-      });
-      // a missing direct update on either side means moveSecrets routed the change through an approval request
-      if (!result.isDestinationUpdated || !result.isSourceUpdated) {
-        hasApprovalRequests = true;
-      }
-    }
+    });
+
+    // a missing direct update on either side means that batch was routed through an approval request
+    const hasApprovalRequests = moveResults.some((result) => !result.isDestinationUpdated || !result.isSourceUpdated);
+
+    // snapshot + sync each affected source/destination folder once, now that the whole move has committed
+    await Promise.all(
+      moveResults.map((result) =>
+        secretV2BridgeService.dispatchSecretMoveSideEffects({
+          projectId,
+          orgId: actorOrgId,
+          actor,
+          actorId,
+          ...result
+        })
+      )
+    );
 
     // 8. delete the source folder. secret_folders.parentId and secrets_v2.folderId both cascade on delete, so
     // removing only the source root removes the entire subtree. only delete once the source is fully emptied: if a

@@ -1,9 +1,17 @@
+import { MongoAbility } from "@casl/ability";
 import { Knex } from "knex";
 
 import { SecretType, TSecretsV2, TSecretsV2Insert, TSecretsV2Update } from "@app/db/schemas";
-import { ProjectPermissionSecretActions } from "@app/ee/services/permission/project-permission";
+import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { ProjectPermissionSecretActions, ProjectPermissionSet } from "@app/ee/services/permission/project-permission";
+import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
+import { TSecretApprovalRequestDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-dal";
+import { TSecretApprovalRequestSecretDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-secret-dal";
 import { OrderByDirection, TProjectPermission } from "@app/lib/types";
+import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
+import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
+import { TSecretQueueFactory } from "@app/services/secret/secret-queue";
 import {
   PersonalOverridesBehavior,
   SecretImportReferencesBehavior,
@@ -253,6 +261,75 @@ export type TFnSecretBulkDelete = {
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
   secretVersionDAL: Pick<TSecretVersionV2DALFactory, "findLatestVersionMany">;
 };
+
+// a source/destination folder resolved by folderDAL.findBySecretPath (carries id, path and environment)
+export type TMoveSecretResolvedFolder = NonNullable<Awaited<ReturnType<TSecretFolderDALFactory["findBySecretPath"]>>>;
+
+// performs the two-step move (create/update at destination + delete at source) inside the caller-supplied
+// transaction. does no snapshot/sync/cache-invalidation — the caller runs those after the tx commits.
+export type TFnSecretMove = {
+  projectId: string;
+  sourceEnvironment: string;
+  sourceSecretPath: string;
+  destinationEnvironment: string;
+  destinationSecretPath: string;
+  secretIds: string[];
+  shouldOverwrite: boolean;
+  actor: ActorType;
+  actorId: string;
+  actorOrgId: string;
+  permission: MongoAbility<ProjectPermissionSet>;
+  // when true the per-secret source/destination authorization is skipped (the caller pre-authorized the move)
+  skipPermissionCheck?: boolean;
+  tx: Knex;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath" | "findSecretPathByFolderIds">;
+  secretDAL: Pick<
+    TSecretV2BridgeDALFactory,
+    | "find"
+    | "findOne"
+    | "delete"
+    | "insertMany"
+    | "bulkUpdate"
+    | "bulkUpdateById"
+    | "upsertSecretReferences"
+    | "updateById"
+    | "findReferencedSecretReferencesBySecretKey"
+    | "updateSecretReferenceEnvAndPath"
+  >;
+  secretVersionDAL: Pick<TSecretVersionV2DALFactory, "insertMany" | "findLatestVersionMany">;
+  secretTagDAL: Pick<TSecretTagDALFactory, "saveTagsToSecretV2" | "deleteTagsToSecretV2" | "find">;
+  secretVersionTagDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
+  resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
+  folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
+  secretApprovalPolicyService: Pick<TSecretApprovalPolicyServiceFactory, "getSecretApprovalPolicy">;
+  secretApprovalRequestDAL: Pick<TSecretApprovalRequestDALFactory, "create">;
+  secretApprovalRequestSecretDAL: Pick<
+    TSecretApprovalRequestSecretDALFactory,
+    "insertV2Bridge" | "insertApprovalSecretV2Tags"
+  >;
+  secretQueueService: Pick<TSecretQueueFactory, "syncSecrets">;
+};
+
+export type TFnSecretMoveResult = {
+  isSourceUpdated: boolean;
+  isDestinationUpdated: boolean;
+  sourceFolder: TMoveSecretResolvedFolder;
+  destinationFolder: TMoveSecretResolvedFolder;
+};
+
+export type TFnSecretMoveInTransaction = Omit<TFnSecretMove, "permission"> & {
+  actorAuthMethod: ActorAuthMethod;
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+};
+
+// post-commit side effects for a single move: snapshot + sync the affected source/destination folders.
+export type TDispatchSecretMoveSideEffectsDTO = {
+  projectId: string;
+  orgId: string;
+  actor: ActorType;
+  actorId: string;
+} & TFnSecretMoveResult;
 
 export type THandleReminderDTO = {
   newSecret: TPartialInputSecret;
