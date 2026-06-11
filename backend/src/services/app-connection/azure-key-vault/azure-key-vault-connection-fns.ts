@@ -132,21 +132,22 @@ export const requestWithAzureKeyVaultGateway = async <T>(
 
   return withGatewayProxy(
     async (proxyPort) => {
-      const httpsAgent = new https.Agent({
-        servername: targetHost
-      });
+      const isHttps = url.protocol === "https:";
 
-      url.protocol = "https:";
       url.host = `localhost:${proxyPort}`;
 
       const finalRequestConfig: AxiosRequestConfig = {
         ...requestConfig,
         url: url.toString(),
-        httpsAgent,
         headers: {
           ...requestConfig.headers,
           Host: targetHost
-        }
+        },
+        ...(isHttps && {
+          httpsAgent: new https.Agent({
+            servername: targetHost
+          })
+        })
       };
 
       try {
