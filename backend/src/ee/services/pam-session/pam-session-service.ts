@@ -6,11 +6,12 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
+import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 
 import { PamSessionStatus } from "../pam/pam-enums";
 import {
   checkAccountAccess,
-  getAccessibleResourceIds,
+  getViewSessionsResourceIds,
   TActorContext,
   verifyProductMembership
 } from "../pam/pam-permission";
@@ -27,6 +28,7 @@ type TPamSessionServiceFactoryDep = {
   >;
   pamAccountDAL: Pick<TPamAccountDALFactory, "findByIdWithDetails">;
   membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
+  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 };
@@ -37,6 +39,7 @@ export const pamSessionServiceFactory = ({
   pamSessionDAL,
   pamAccountDAL,
   membershipDAL,
+  membershipRoleDAL,
   permissionService,
   kmsService
 }: TPamSessionServiceFactoryDep) => {
@@ -56,24 +59,35 @@ export const pamSessionServiceFactory = ({
   const listSessions = async (projectId: string, ctx: TActorContext) => {
     await verifyProductMembership(permissionService, projectId, ctx);
 
-    const { folderIds, accountIds } = await getAccessibleResourceIds(membershipDAL, projectId, ctx);
-    if (folderIds.length === 0 && accountIds.length === 0) return [];
+    const { folderIds, accountIds } = await getViewSessionsResourceIds(
+      membershipDAL,
+      membershipRoleDAL,
+      projectId,
+      ctx
+    );
 
-    return pamSessionDAL.findAccessibleByProjectId(projectId, folderIds, accountIds);
+    return pamSessionDAL.findAccessibleByProjectId(projectId, {
+      viewSessionsFolderIds: folderIds,
+      viewSessionsAccountIds: accountIds,
+      userId: ctx.actorId
+    });
   };
 
   const getSessionById = async (sessionId: string, ctx: TActorContext) => {
     const session = await pamSessionDAL.findById(sessionId);
     if (!session || !session.accountId) return null;
 
-    const account = await pamAccountDAL.findByIdWithDetails(session.accountId);
-    await checkAccount(
-      session.accountId,
-      account?.folderId,
-      session.projectId,
-      ResourcePermissionPamResourceActions.ViewSessions,
-      ctx
-    );
+    const isOwnSession = session.userId === ctx.actorId;
+    if (!isOwnSession) {
+      const account = await pamAccountDAL.findByIdWithDetails(session.accountId);
+      await checkAccount(
+        session.accountId,
+        account?.folderId,
+        session.projectId,
+        ResourcePermissionPamResourceActions.ViewSessions,
+        ctx
+      );
+    }
 
     return session;
   };

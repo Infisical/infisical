@@ -15,6 +15,7 @@ import {
   TProjects
 } from "@app/db/schemas";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
+import { PamResourceRole } from "@app/ee/services/pam/pam-enums";
 import {
   applicationAdminPermissions,
   applicationAuditorPermissions,
@@ -135,7 +136,7 @@ const buildProjectPermissionRules = (projectUserRoles: TBuildProjectPermissionDT
   return rules;
 };
 
-const resolveResourceRoleRules = (resourceType: ResourceType, role: string) => {
+export const resolveResourceRoleRules = (resourceType: ResourceType, role: string) => {
   if (resourceType === ResourceType.Signer) {
     switch (role) {
       case ResourceMembershipRole.Admin:
@@ -153,13 +154,13 @@ const resolveResourceRoleRules = (resourceType: ResourceType, role: string) => {
 
   if (resourceType === ResourceType.PamFolder || resourceType === ResourceType.PamAccount) {
     switch (role) {
-      case "admin":
+      case PamResourceRole.Admin:
         return pamResourceAdminPermissions;
-      case "connector":
+      case PamResourceRole.Connector:
         return pamResourceConnectorPermissions;
-      case "requester":
+      case PamResourceRole.Requester:
         return pamResourceRequesterPermissions;
-      case "auditor":
+      case PamResourceRole.Auditor:
         return pamResourceAuditorPermissions;
       default:
         throw new NotFoundError({ name: "PamRoleInvalid", message: `PAM role '${role}' not found` });

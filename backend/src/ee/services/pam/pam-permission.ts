@@ -1,10 +1,12 @@
-import { ForbiddenError } from "@casl/ability";
+import { createMongoAbility, ForbiddenError } from "@casl/ability";
 
 import { ActionProjectType, ResourceType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
+import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 
+import { resolveResourceRoleRules } from "../permission/permission-service";
 import { ResourcePermissionPamResourceActions, ResourcePermissionSub } from "../permission/resource-permission";
 
 export type TActorContext = {
@@ -14,9 +16,20 @@ export type TActorContext = {
   actorAuthMethod: ActorAuthMethod;
 };
 
+const pamRoleCanViewSessions = (role: string): boolean => {
+  try {
+    const rules = resolveResourceRoleRules(ResourceType.PamFolder, role);
+    const ability = createMongoAbility(rules);
+    return ability.can(ResourcePermissionPamResourceActions.ViewSessions, ResourcePermissionSub.PamResource);
+  } catch {
+    return false;
+  }
+};
+
 type TPermissionDep = Pick<TPermissionServiceFactory, "getResourcePermission">;
 type TProjectPermissionDep = Pick<TPermissionServiceFactory, "getProjectPermission">;
 type TMembershipDep = Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
+type TMembershipRoleDep = Pick<TMembershipRoleDALFactory, "find">;
 
 export const verifyProductMembership = async (
   permissionService: TProjectPermissionDep,
@@ -103,6 +116,54 @@ export const getAccessibleResourceIds = async (
 
   const folderIds = folderMemberships.map((m) => m.scopeResourceId).filter((id): id is string => Boolean(id));
   const accountIds = accountMemberships.map((m) => m.scopeResourceId).filter((id): id is string => Boolean(id));
+
+  return { folderIds, accountIds };
+};
+
+export const getViewSessionsResourceIds = async (
+  membershipDAL: TMembershipDep,
+  membershipRoleDAL: TMembershipRoleDep,
+  projectId: string,
+  ctx: TActorContext
+) => {
+  const [folderMemberships, accountMemberships] = await Promise.all([
+    membershipDAL.findResourceMembershipsForActor({
+      projectId,
+      resourceType: ResourceType.PamFolder,
+      actorType: ctx.actor,
+      actorId: ctx.actorId
+    }),
+    membershipDAL.findResourceMembershipsForActor({
+      projectId,
+      resourceType: ResourceType.PamAccount,
+      actorType: ctx.actor,
+      actorId: ctx.actorId
+    })
+  ]);
+
+  const allMemberships = [...folderMemberships, ...accountMemberships];
+  if (allMemberships.length === 0) {
+    return { folderIds: [], accountIds: [] };
+  }
+
+  const roles = await membershipRoleDAL.find({
+    $in: { membershipId: allMemberships.map((m) => m.id) }
+  });
+  const roleByMembershipId = new Map(roles.map((r) => [r.membershipId, r.role]));
+
+  const folderIds = folderMemberships
+    .filter((m) => {
+      const role = roleByMembershipId.get(m.id);
+      return m.scopeResourceId && role && pamRoleCanViewSessions(role);
+    })
+    .map((m) => m.scopeResourceId!);
+
+  const accountIds = accountMemberships
+    .filter((m) => {
+      const role = roleByMembershipId.get(m.id);
+      return m.scopeResourceId && role && pamRoleCanViewSessions(role);
+    })
+    .map((m) => m.scopeResourceId!);
 
   return { folderIds, accountIds };
 };

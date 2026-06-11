@@ -78,8 +78,15 @@ export const pamSessionDALFactory = (db: TDbClient) => {
 
   const findAccessibleByProjectId = async (
     projectId: string,
-    accessibleFolderIds: string[],
-    accessibleAccountIds: string[],
+    {
+      viewSessionsFolderIds,
+      viewSessionsAccountIds,
+      userId
+    }: {
+      viewSessionsFolderIds: string[];
+      viewSessionsAccountIds: string[];
+      userId: string;
+    },
     tx?: Knex
   ) => {
     const sessions = await (tx || db.replicaNode())(TableName.PamSession)
@@ -89,12 +96,15 @@ export const pamSessionDALFactory = (db: TDbClient) => {
       .select(db.ref("name").withSchema(TableName.GatewayV2).as("gatewayName"))
       .select(db.ref("identityId").withSchema(TableName.GatewayV2).as("gatewayIdentityId"))
       .where(`${TableName.PamSession}.projectId`, projectId)
-      .where((builder) => {
-        if (accessibleFolderIds.length > 0) {
-          void builder.whereIn(`${TableName.PamAccount}.folderId`, accessibleFolderIds);
+      .where((top) => {
+        // actor's own sessions are always included regardless of role
+        void top.orWhere(`${TableName.PamSession}.userId`, userId);
+        // actor's role grants ViewSessions on these resources, so all sessions are returned
+        if (viewSessionsFolderIds.length > 0) {
+          void top.orWhereIn(`${TableName.PamAccount}.folderId`, viewSessionsFolderIds);
         }
-        if (accessibleAccountIds.length > 0) {
-          void builder.orWhereIn(`${TableName.PamSession}.accountId`, accessibleAccountIds);
+        if (viewSessionsAccountIds.length > 0) {
+          void top.orWhereIn(`${TableName.PamSession}.accountId`, viewSessionsAccountIds);
         }
       });
 
