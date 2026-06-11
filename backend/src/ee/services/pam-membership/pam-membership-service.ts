@@ -14,6 +14,7 @@ import { TMembershipRoleDALFactory } from "@app/services/membership/membership-r
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { PamProductRole, PamResourceRole } from "../pam/pam-enums";
+import { TActorContext } from "../pam/pam-permission";
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
 import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
 import {
@@ -30,7 +31,6 @@ import {
   TUpdatePamFolderMemberDTO,
   TUpdatePamProductMemberDTO
 } from "./pam-membership-types";
-import { TActorContext } from "../pam/pam-permission";
 
 type TPamMembershipServiceFactoryDep = {
   membershipDAL: Pick<
