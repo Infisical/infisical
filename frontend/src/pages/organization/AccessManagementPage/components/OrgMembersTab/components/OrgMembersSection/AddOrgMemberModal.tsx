@@ -23,7 +23,6 @@ import {
   useGetProjectRoles,
   useGetUserProjects
 } from "@app/hooks/api";
-import { useCertManagerInstanceState } from "@app/hooks/api/certManagerInstance";
 import { ProjectType, ProjectVersion } from "@app/hooks/api/projects/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -51,10 +50,47 @@ const CERT_MANAGER_ROLES = [
   }
 ];
 
+type ProductDefinition = {
+  type: ProjectType;
+  name: string;
+  isSingleton: boolean;
+  roles?: { slug: string; name: string; description: string }[];
+};
+
+const PRODUCT_DEFINITIONS: ProductDefinition[] = [
+  { type: ProjectType.SecretManager, name: "Secrets", isSingleton: false },
+  {
+    type: ProjectType.CertificateManager,
+    name: "Certificate Manager",
+    isSingleton: true,
+    roles: CERT_MANAGER_ROLES
+  },
+  { type: ProjectType.KMS, name: "KMS", isSingleton: false },
+  { type: ProjectType.SSH, name: "SSH", isSingleton: false },
+  { type: ProjectType.SecretScanning, name: "Secret Scanning", isSingleton: false },
+  { type: ProjectType.PAM, name: "PAM", isSingleton: false },
+  { type: ProjectType.AI, name: "AI", isSingleton: false }
+];
+
 const EmailSchema = z.string().email().min(1).trim().toLowerCase();
 
 const addMemberFormSchema = z.object({
   emails: z.string().min(1).trim().toLowerCase(),
+  product: z
+    .object({
+      type: z.nativeEnum(ProjectType),
+      name: z.string(),
+      isSingleton: z.boolean(),
+      roles: z
+        .object({
+          slug: z.string(),
+          name: z.string(),
+          description: z.string()
+        })
+        .array()
+        .optional()
+    })
+    .optional(),
   projects: z
     .array(
       z.object({
@@ -106,20 +142,11 @@ export const AddOrgMemberModal = ({
   const { data: rawProjects, isPending: isProjectsLoading } = useGetUserProjects({
     includeRoles: true
   });
-  const { data: certManagerInstance } = useCertManagerInstanceState();
 
-  const projects = useMemo(() => {
-    if (!rawProjects) return rawProjects;
-    const activeId = certManagerInstance?.activeProjectId ?? null;
-    return rawProjects
-      .filter((p) => {
-        if (p.type !== ProjectType.CertificateManager) return true;
-        return activeId ? p.id === activeId : true;
-      })
-      .map((p) =>
-        p.type === ProjectType.CertificateManager ? { ...p, name: "Certificate Manager" } : p
-      );
-  }, [rawProjects, certManagerInstance?.activeProjectId]);
+  const availableProducts = useMemo(
+    () => PRODUCT_DEFINITIONS.filter((def) => rawProjects?.some((p) => p.type === def.type)),
+    [rawProjects]
+  );
 
   const {
     control,
@@ -132,25 +159,31 @@ export const AddOrgMemberModal = ({
     resolver: zodResolver(addMemberFormSchema)
   });
 
+  const selectedProduct = watch("product");
+  const isSingletonProduct = Boolean(selectedProduct?.isSingleton);
+
+  const productProjects = useMemo(() => {
+    if (!rawProjects || !selectedProduct || selectedProduct.isSingleton) return [];
+    return rawProjects.filter((p) => p.type === selectedProduct.type);
+  }, [rawProjects, selectedProduct]);
+
   const selectedProjects = watch("projects", []);
   const singleSelectedProjectId =
     selectedProjects.length === 1 ? selectedProjects[0].id : undefined;
-  const hasCertManagerSelection = selectedProjects.some(
-    (p) => p.type === ProjectType.CertificateManager
-  );
   const { data: fetchedProjectRoles, isPending: isProjectRolesLoading } = useGetProjectRoles(
     singleSelectedProjectId ?? ""
   );
+
   // eslint-disable-next-line no-nested-ternary
-  const projectRoles = hasCertManagerSelection
-    ? CERT_MANAGER_ROLES
+  const projectRoles = selectedProduct?.roles
+    ? selectedProduct.roles
     : fetchedProjectRoles?.length
       ? fetchedProjectRoles
       : BUILT_IN_PROJECT_ROLES;
 
   useEffect(() => {
     setValue("projectRole", DEFAULT_PROJECT_ROLE);
-  }, [singleSelectedProjectId, hasCertManagerSelection, setValue]);
+  }, [singleSelectedProjectId, selectedProduct?.type, setValue]);
 
   // set initial form role based off org default role
   useEffect(() => {
@@ -168,14 +201,23 @@ export const AddOrgMemberModal = ({
   const onAddMembers = async ({
     emails,
     organizationRole,
+    product,
     projects: projectsToInvite,
     projectRole
   }: TAddMemberForm) => {
     if (!currentOrg?.id) return;
 
-    if (projectsToInvite?.length) {
+    let targetProjects: typeof projectsToInvite = [];
+    if (product?.isSingleton) {
+      const singletonProject = rawProjects?.find((p) => p.type === product.type);
+      if (singletonProject) targetProjects = [singletonProject];
+    } else if (product) {
+      targetProjects = projectsToInvite;
+    }
+
+    if (!isSingletonProduct) {
       // eslint-disable-next-line no-restricted-syntax
-      for (const project of projectsToInvite) {
+      for (const project of targetProjects) {
         if (project.version !== ProjectVersion.V3) {
           createNotification({
             type: "error",
@@ -213,7 +255,7 @@ export const AddOrgMemberModal = ({
     });
 
     await Promise.allSettled(
-      projectsToInvite.map((el) =>
+      targetProjects.map((el) =>
         addUserToProject({
           orgId: currentOrg.id,
           projectId: el.id,
@@ -244,27 +286,13 @@ export const AddOrgMemberModal = ({
 
     reset({
       emails: "",
+      product: undefined,
       projects: [],
       projectRole: DEFAULT_PROJECT_ROLE,
       organizationRole: organizationRoles
         ? findOrgMembershipRole(organizationRoles, currentOrg.defaultMembershipRole)
         : undefined
     });
-  };
-
-  const getGroupHeaderLabel = (type: ProjectType) => {
-    switch (type) {
-      case ProjectType.SecretManager:
-        return "Secrets";
-      case ProjectType.CertificateManager:
-        return "Certificate Manager";
-      case ProjectType.KMS:
-        return "KMS";
-      case ProjectType.SSH:
-        return "SSH";
-      default:
-        return "Other";
-    }
   };
 
   return (
@@ -329,65 +357,100 @@ export const AddOrgMemberModal = ({
 
             <Controller
               control={control}
-              name="projects"
+              name="product"
               render={({ field: { value, onChange }, fieldState: { error } }) => (
                 <FormControl
-                  label="Assign users to projects"
+                  tooltipText="Select which product to grant the users access to."
+                  label="Assign users to a product"
                   isOptional
                   isError={Boolean(error?.message)}
                   errorText={error?.message}
                 >
                   <FilterableSelect
-                    isMulti
-                    value={value}
-                    onChange={onChange}
+                    value={value ?? null}
                     isLoading={isProjectsLoading}
-                    getOptionLabel={(project) => project.name}
-                    getOptionValue={(project) => project.id}
-                    options={projects}
-                    groupBy="type"
-                    getGroupHeaderLabel={getGroupHeaderLabel}
-                    placeholder="Select projects..."
+                    onChange={(option) => {
+                      onChange(option);
+                      setValue("projects", []);
+                      setValue("projectRole", DEFAULT_PROJECT_ROLE);
+                    }}
+                    getOptionLabel={(product) => product.name}
+                    getOptionValue={(product) => product.type}
+                    options={availableProducts}
+                    placeholder="Select a product..."
                   />
                 </FormControl>
               )}
             />
 
-            <Controller
-              control={control}
-              name="projectRole"
-              render={({ field: { value, onChange }, fieldState: { error } }) => (
-                <FormControl
-                  tooltipText={
-                    <>
-                      Select which role to assign to the users in the selected projects.
-                      <br />
-                      <br />
-                      When multiple projects are selected, only built-in roles are available for
-                      selection.
-                      <br />
-                      <br />
-                      You can assign users to additional projects after they&apos;ve been invited.
-                    </>
-                  }
-                  label="Project role"
-                  isError={Boolean(error)}
-                  errorText={error?.message}
-                >
-                  <FilterableSelect
-                    isDisabled={selectedProjects.length === 0}
-                    isLoading={Boolean(singleSelectedProjectId) && isProjectRolesLoading}
-                    value={value}
-                    onChange={onChange}
-                    options={projectRoles ?? []}
-                    getOptionValue={(option) => option.slug}
-                    getOptionLabel={(option) => option.name}
-                    placeholder="Select role..."
-                    components={{ Option: RoleOption }}
-                  />
-                </FormControl>
-              )}
-            />
+            {selectedProduct && !isSingletonProduct && (
+              <Controller
+                control={control}
+                name="projects"
+                render={({ field: { value, onChange }, fieldState: { error } }) => (
+                  <FormControl
+                    label="Assign users to projects"
+                    isOptional
+                    isError={Boolean(error?.message)}
+                    errorText={error?.message}
+                  >
+                    <FilterableSelect
+                      isMulti
+                      value={value}
+                      onChange={onChange}
+                      isLoading={isProjectsLoading}
+                      getOptionLabel={(project) => project.name}
+                      getOptionValue={(project) => project.id}
+                      options={productProjects}
+                      placeholder="Select projects..."
+                    />
+                  </FormControl>
+                )}
+              />
+            )}
+
+            {selectedProduct && (
+              <Controller
+                control={control}
+                name="projectRole"
+                render={({ field: { value, onChange }, fieldState: { error } }) => (
+                  <FormControl
+                    tooltipText={
+                      isSingletonProduct ? (
+                        "Select which role to assign to the users for this product."
+                      ) : (
+                        <>
+                          Select which role to assign to the users in the selected projects.
+                          <br />
+                          <br />
+                          When multiple projects are selected, only built-in roles are available for
+                          selection.
+                          <br />
+                          <br />
+                          You can assign users to additional projects after they&apos;ve been
+                          invited.
+                        </>
+                      )
+                    }
+                    label={isSingletonProduct ? "Product role" : "Project role"}
+                    isError={Boolean(error)}
+                    errorText={error?.message}
+                  >
+                    <FilterableSelect
+                      isDisabled={!isSingletonProduct && selectedProjects.length === 0}
+                      isLoading={Boolean(singleSelectedProjectId) && isProjectRolesLoading}
+                      value={value}
+                      onChange={onChange}
+                      options={projectRoles ?? []}
+                      getOptionValue={(option) => option.slug}
+                      getOptionLabel={(option) => option.name}
+                      placeholder="Select role..."
+                      components={{ Option: RoleOption }}
+                    />
+                  </FormControl>
+                )}
+              />
+            )}
 
             <div className="mt-8 flex items-center">
               <Button
