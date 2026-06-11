@@ -1,3 +1,5 @@
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-nocheck -- old PAM page, pending deletion in frontend cleanup
 import type { TPamResource } from "@app/hooks/api/pam";
 import { useGetPamResourceDependencies } from "@app/hooks/api/pam";
 

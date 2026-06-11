@@ -1,3 +1,5 @@
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-nocheck -- old PAM page, pending deletion in frontend cleanup
 import { useQuery } from "@tanstack/react-query";
 import { CheckIcon, LockIcon, PencilIcon, UnlockIcon } from "lucide-react";
 

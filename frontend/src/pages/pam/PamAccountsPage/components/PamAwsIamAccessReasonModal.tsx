@@ -1,3 +1,5 @@
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-nocheck -- old PAM page, pending deletion in frontend cleanup
 import { useEffect, useState } from "react";
 
 import { Button, Modal, ModalContent, TextArea } from "@app/components/v2";
