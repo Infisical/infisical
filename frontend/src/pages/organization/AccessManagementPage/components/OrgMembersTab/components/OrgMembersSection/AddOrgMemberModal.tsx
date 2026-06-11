@@ -54,11 +54,17 @@ type ProductDefinition = {
   type: ProjectType;
   name: string;
   isSingleton: boolean;
+  roles?: { slug: string; name: string; description: string }[];
 };
 
 const PRODUCT_DEFINITIONS: ProductDefinition[] = [
   { type: ProjectType.SecretManager, name: "Secrets", isSingleton: false },
-  { type: ProjectType.CertificateManager, name: "Certificate Manager", isSingleton: true },
+  {
+    type: ProjectType.CertificateManager,
+    name: "Certificate Manager",
+    isSingleton: true,
+    roles: CERT_MANAGER_ROLES
+  },
   { type: ProjectType.KMS, name: "KMS", isSingleton: false },
   { type: ProjectType.SSH, name: "SSH", isSingleton: false },
   { type: ProjectType.SecretScanning, name: "Secret Scanning", isSingleton: false },
@@ -74,7 +80,15 @@ const addMemberFormSchema = z.object({
     .object({
       type: z.nativeEnum(ProjectType),
       name: z.string(),
-      isSingleton: z.boolean()
+      isSingleton: z.boolean(),
+      roles: z
+        .object({
+          slug: z.string(),
+          name: z.string(),
+          description: z.string()
+        })
+        .array()
+        .optional()
     })
     .optional(),
   projects: z
@@ -161,8 +175,8 @@ export const AddOrgMemberModal = ({
   );
 
   // eslint-disable-next-line no-nested-ternary
-  const projectRoles = isSingletonProduct
-    ? CERT_MANAGER_ROLES
+  const projectRoles = selectedProduct?.roles
+    ? selectedProduct.roles
     : fetchedProjectRoles?.length
       ? fetchedProjectRoles
       : BUILT_IN_PROJECT_ROLES;
@@ -376,6 +390,7 @@ export const AddOrgMemberModal = ({
                 render={({ field: { value, onChange }, fieldState: { error } }) => (
                   <FormControl
                     label="Assign users to projects"
+                    isOptional
                     isError={Boolean(error?.message)}
                     errorText={error?.message}
                   >
