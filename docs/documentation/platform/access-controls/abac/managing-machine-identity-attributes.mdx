@@ -97,20 +97,7 @@ For methods like OIDC, these come as claims in the token and can be made availab
 
 #### Template Helper Functions
 
-In addition to referencing attributes directly, you can use helper functions to transform attribute values within your policy templates. These functions allow you to extract or manipulate parts of an attribute before it is evaluated.
-
-**substr**
-
-Extracts a portion of a string. Accepts a start index and an optional end index (exclusive). If the end index is omitted, the rest of the string is returned.
-
-**Examples:**
-
-Given `identity.auth.aws.arn` = `arn:aws:iam::123456789012:user/example-user`:
-
-```handlebars
-{{ substr identity.auth.aws.arn 0 3 }}   ->  arn
-{{ substr identity.auth.aws.arn 4 }}     ->  aws:iam::123456789012:user/example-user
-```
+In addition to referencing attributes directly, you can use the `stripPrefix` helper function to transform attribute values within your policy templates.
 
 **stripPrefix**
 
