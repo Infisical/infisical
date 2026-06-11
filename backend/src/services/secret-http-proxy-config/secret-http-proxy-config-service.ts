@@ -161,10 +161,7 @@ export const secretHttpProxyConfigServiceFactory = ({
       ProjectPermissionSub.Secrets
     );
 
-    // TODO: join with secrets_v2 and secret_folders to filter by environment + secretPath
-    // For the PoC, fetch all proxy configs and let the broker filter
-    const allConfigs = await secretHttpProxyConfigDAL.find({});
-    return allConfigs;
+    return secretHttpProxyConfigDAL.findByEnvironmentAndPath(projectId, environment, secretPath);
   };
 
   return {

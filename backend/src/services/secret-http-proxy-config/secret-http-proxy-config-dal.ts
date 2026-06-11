@@ -18,9 +18,22 @@ export const secretHttpProxyConfigDALFactory = (db: TDbClient) => {
     return queryDb(TableName.SecretHttpProxyConfig).whereIn("secretId", secretIds).select("*");
   };
 
+  const findByEnvironmentAndPath = async (projectId: string, envSlug: string, secretPath: string, tx?: Knex) => {
+    const queryDb = tx || db.replicaNode();
+    return queryDb(TableName.SecretHttpProxyConfig)
+      .join(TableName.SecretV2, `${TableName.SecretHttpProxyConfig}.secretId`, `${TableName.SecretV2}.id`)
+      .join(TableName.SecretFolder, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
+      .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+      .where(`${TableName.Environment}.projectId`, projectId)
+      .where(`${TableName.Environment}.slug`, envSlug)
+      .where(`${TableName.SecretFolder}.name`, secretPath === "/" ? "root" : secretPath)
+      .select(`${TableName.SecretHttpProxyConfig}.*`);
+  };
+
   return {
     ...orm,
     findBySecretId,
-    findBySecretIds
+    findBySecretIds,
+    findByEnvironmentAndPath
   };
 };

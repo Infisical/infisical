@@ -2,8 +2,7 @@ export enum ProxyAuthType {
   Bearer = "bearer",
   Basic = "basic",
   ApiKey = "api-key",
-  Custom = "custom",
-  Passthrough = "passthrough"
+  Custom = "custom"
 }
 
 export enum SubstitutionSurface {

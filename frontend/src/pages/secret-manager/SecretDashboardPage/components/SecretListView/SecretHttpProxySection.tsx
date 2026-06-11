@@ -35,8 +35,7 @@ const AUTH_TYPE_OPTIONS: { value: ProxyAuthType; label: string; description: str
   { value: ProxyAuthType.Bearer, label: "Bearer", description: "Authorization: Bearer <value>" },
   { value: ProxyAuthType.ApiKey, label: "API Key", description: "Inject value in a named header" },
   { value: ProxyAuthType.Basic, label: "Basic", description: "Authorization: Basic base64(user:pass)" },
-  { value: ProxyAuthType.Custom, label: "Custom", description: "Define a custom header template" },
-  { value: ProxyAuthType.Passthrough, label: "Passthrough", description: "Allow host without injecting" }
+  { value: ProxyAuthType.Custom, label: "Custom", description: "Define a custom header template" }
 ];
 
 const getInjectionPreview = (rule: TProxyRule): string | null => {
@@ -55,8 +54,6 @@ const getInjectionPreview = (rule: TProxyRule): string | null => {
       return rule.headerTemplate
         ? rule.headerTemplate.replace(/\{\{\s*VALUE\s*\}\}/g, "<secret value>")
         : null;
-    case ProxyAuthType.Passthrough:
-      return "No credentials injected (host allowlisted)";
     default:
       return null;
   }

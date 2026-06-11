@@ -633,24 +633,14 @@ export const reshapeBridgeSecret = (
   secretReminderRecipients: secret.secretReminderRecipients || [],
   ...(secretValueHidden
     ? {
-        secretValue:
-          secret.type === SecretType.Personal
-            ? secret.value
-            : proxyPlaceholder || INFISICAL_SECRET_VALUE_HIDDEN_MASK,
-        secretValueHidden: !proxyPlaceholder,
-        secretValueIsPlaceholder: !!proxyPlaceholder
+        secretValue: secret.type === SecretType.Personal ? secret.value : INFISICAL_SECRET_VALUE_HIDDEN_MASK,
+        secretValueHidden: true
       }
-    : proxyPlaceholder
-      ? {
-          secretValue: proxyPlaceholder,
-          secretValueHidden: false,
-          secretValueIsPlaceholder: true
-        }
-      : {
-          secretValue: secret.value || "",
-          secretValueHidden: false,
-          secretValueIsPlaceholder: false
-        })
+    : {
+        secretValue: secret.value || "",
+        secretValueHidden: false
+      }),
+  ...(proxyPlaceholder ? { secretPlaceholder: proxyPlaceholder } : {})
 });
 
 function escapeRegex(str: string): string {

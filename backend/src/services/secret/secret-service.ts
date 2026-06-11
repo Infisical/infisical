@@ -1506,22 +1506,16 @@ export const secretServiceFactory = ({
 
     let decryptedSecrets = secrets.map((el) => decryptSecretRaw({ ...el, secretValueHidden: false }, botKey));
 
-    // Apply placeholder injection for proxy-enabled secrets
-    const shouldInjectPlaceholders = paramsV2.injectPlaceholders === true;
-    if (shouldInjectPlaceholders) {
+    // Attach secretPlaceholder for proxy-enabled secrets
+    if (paramsV2.injectPlaceholders) {
       const secretIds = secrets.map((s) => (s as any)._id || (s as any).id).filter(Boolean) as string[];
       const proxyConfigs = secretIds.length > 0 ? await secretHttpProxyConfigDAL.findBySecretIds(secretIds) : [];
       const placeholderMap = new Map(proxyConfigs.map((c) => [c.secretId, c.placeholder]));
       decryptedSecrets = decryptedSecrets.map((s) => {
         const sId = (s as any)._id || (s as any).id;
         const ph = placeholderMap.get(sId);
-        if (ph) {
-          return { ...s, secretValue: ph, secretValueIsPlaceholder: true };
-        }
-        return { ...s, secretValueIsPlaceholder: false };
+        return ph ? { ...s, secretPlaceholder: ph } : s;
       });
-    } else {
-      decryptedSecrets = decryptedSecrets.map((s) => ({ ...s, secretValueIsPlaceholder: false }));
     }
 
     const filteredSecrets = tagSlugs.length
