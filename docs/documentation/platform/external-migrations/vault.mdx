@@ -129,6 +129,10 @@ KV secrets are imported into a specific **environment** (e.g., Development, Stag
 **First time?** You'll need to [create a project](/documentation/platform/project) first. A project in Infisical typically represents a single application or microservice.
 </Info>
 
+<Warning>
+  If your Vault token is restricted and cannot list a mount from its root, Infisical discovers the available secret paths from the token's resultant ACL (`sys/internal/ui/resultant-acl`). Any path that contains a `+` wildcard (Vault's single-segment wildcard, e.g. `secret/+/db`) cannot be expanded and is **skipped** — those secrets will not be imported. To migrate them, grant the token access to the explicit KV paths instead of relying on `+`.
+</Warning>
+
 **To import secrets from Vault:**
 
 1. Navigate to your project and select a specific environment (e.g., Development, Production)

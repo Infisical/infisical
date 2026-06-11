@@ -733,6 +733,8 @@ class NamespaceHeaderNotSupportedError extends Error {
 
 const isRootNamespace = (namespace: string) => namespace === "/" || namespace === "root" || !namespace;
 
+const isWildcardPath = (path: string) => path.split("/").includes("+");
+
 // Fallback for restricted Vault tokens that lack permission to list a mount from its root.
 // We ask Vault for the resultant ACL of the current token and derive the sub-paths within the
 // given mount that the token is authorized for. These are returned relative to the mount, with the
@@ -741,6 +743,7 @@ const isRootNamespace = (namespace: string) => namespace === "/" || namespace ==
 const listHCVaultAccessiblePathsFromAcl = async (
   namespace: string,
   mountPath: string,
+  kvVersion: "1" | "2",
   instanceUrl: string,
   accessToken: string,
   connection: THCVaultConnection,
@@ -790,6 +793,13 @@ const listHCVaultAccessiblePathsFromAcl = async (
   const nsPrefix = isRootNamespace(namespace) ? "" : `${removeTrailingSlash(namespace)}/`;
   const mountPrefix = `${removeTrailingSlash(mountPath)}/`;
 
+  const stripKvV2Prefix = (path: string): string => {
+    if (kvVersion !== "2") return path;
+    if (path.startsWith("data/")) return path.slice("data/".length);
+    if (path.startsWith("metadata/")) return path.slice("metadata/".length);
+    return path;
+  };
+
   const collectRelativePaths = (paths?: Record<string, { capabilities: string[] }>): string[] => {
     if (!paths) return [];
 
@@ -797,6 +807,7 @@ const listHCVaultAccessiblePathsFromAcl = async (
       .map((path) => (nsPrefix && path.startsWith(nsPrefix) ? path.slice(nsPrefix.length) : path))
       .filter((path) => path.startsWith(mountPrefix))
       .map((path) => path.slice(mountPrefix.length))
+      .map(stripKvV2Prefix)
       .filter((path) => removeTrailingSlash(path).length > 0); // drop the bare mount root (can't list it anyway)
   };
 
@@ -870,7 +881,6 @@ export const listHCVaultSecretPaths = async (
     }
   };
 
-  // Recursive function to get all secret paths in a mount with controlled parallelization
   const recursivelyGetAllPaths = async (
     mountPath: string,
     kvVersion: "1" | "2",
@@ -942,17 +952,25 @@ export const listHCVaultSecretPaths = async (
   // Create concurrency limiter to avoid overwhelming the Vault instance
   const limiter = createConcurrencyLimiter(HC_VAULT_CONCURRENCY_LIMIT);
 
-  // Collect all secret paths from all KV mounts in parallel
-  const allSecretPathsArrays = await Promise.all(
-    kvMounts.map(async (mount) => {
+  // Collect all secret paths from all KV mounts in parallel. Each entry returns the discovered secret
+  // paths plus any paths skipped because they contain a "+" wildcard (only the resultant-ACL fallback
+  // can surface wildcards; the normal listing flow always returns an empty skipped list).
+  const perMountResults = await Promise.all(
+    kvMounts.map(async (mount): Promise<{ secretPaths: string[]; skippedWildcardPaths: string[] }> => {
       const kvVersion = mount.version === "2" ? "2" : "1";
       const cleanMountPath = mount.path.replace(/\/$/, ""); // Remove trailing slash
       try {
-        return await recursivelyGetAllPaths(cleanMountPath, kvVersion, limiter);
+        return {
+          secretPaths: await recursivelyGetAllPaths(cleanMountPath, kvVersion, limiter),
+          skippedWildcardPaths: []
+        };
       } catch (error) {
         // Vault rejected the namespace header (301 on root/"/"), retry the mount without it.
         if (error instanceof NamespaceHeaderNotSupportedError) {
-          return recursivelyGetAllPaths(cleanMountPath, kvVersion, limiter, "", true);
+          return {
+            secretPaths: await recursivelyGetAllPaths(cleanMountPath, kvVersion, limiter, "", true),
+            skippedWildcardPaths: []
+          };
         }
 
         // Restricted tokens may lack permission to list the mount from its root, returning a 403 on the
@@ -961,6 +979,7 @@ export const listHCVaultSecretPaths = async (
           const accessiblePaths = await listHCVaultAccessiblePathsFromAcl(
             namespace,
             cleanMountPath,
+            kvVersion,
             instanceUrl,
             accessToken,
             connection,
@@ -969,17 +988,24 @@ export const listHCVaultSecretPaths = async (
             gatewayDetails
           );
 
-          const directSecretPaths = accessiblePaths
+          // Drop "+" wildcard paths: they can't be listed/recursed. Surface them so the user is informed.
+          const skippedWildcardPaths = accessiblePaths
+            .filter(isWildcardPath)
+            .map((path) => `${cleanMountPath}/${removeTrailingSlash(path)}`);
+          const usablePaths = accessiblePaths.filter((path) => !isWildcardPath(path));
+
+          const directSecretPaths = usablePaths
             .filter((path) => !path.endsWith("/"))
             .map((path) => `${cleanMountPath}/${path}`);
 
-          const folderPaths = accessiblePaths
-            .filter((path) => path.endsWith("/"))
-            .map((path) => removeTrailingSlash(path));
+          const folderPaths = usablePaths.filter((path) => path.endsWith("/")).map((path) => removeTrailingSlash(path));
 
           const recursedSecretPaths = await recurseFromPaths(cleanMountPath, kvVersion, limiter, folderPaths);
 
-          return Array.from(new Set([...directSecretPaths, ...recursedSecretPaths]));
+          return {
+            secretPaths: Array.from(new Set([...directSecretPaths, ...recursedSecretPaths])),
+            skippedWildcardPaths
+          };
         }
 
         throw error;
@@ -987,10 +1013,11 @@ export const listHCVaultSecretPaths = async (
     })
   );
 
-  // Flatten the arrays into a single array
-  const allSecretPaths = allSecretPathsArrays.flat();
-
-  return allSecretPaths;
+  // Flatten across mounts and dedupe both lists
+  return {
+    secretPaths: Array.from(new Set(perMountResults.flatMap((result) => result.secretPaths))),
+    skippedWildcardPaths: Array.from(new Set(perMountResults.flatMap((result) => result.skippedWildcardPaths)))
+  };
 };
 
 const fetchVaultSecretAtPath = async ({

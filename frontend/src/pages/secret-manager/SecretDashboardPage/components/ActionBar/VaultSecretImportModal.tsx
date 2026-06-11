@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { faInfoCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { TriangleAlertIcon } from "lucide-react";
 
 import {
   defaultVaultConnectionId,
@@ -15,6 +16,7 @@ import {
   ModalClose,
   ModalContent
 } from "@app/components/v2";
+import { Alert, AlertDescription, AlertTitle } from "@app/components/v3/generic/Alert";
 import { TAvailableAppConnection } from "@app/hooks/api/appConnections/types";
 import { useGetVaultMounts, useGetVaultSecretPaths } from "@app/hooks/api/migration/queries";
 
@@ -48,12 +50,14 @@ const Content = ({ onClose, environment, secretPath, appConnections, onImport }:
 
   const activeConnectionId = hasAppConnections ? (selectedConnectionId ?? undefined) : undefined;
 
-  const { data: secretPaths, isLoading: isLoadingPaths } = useGetVaultSecretPaths(
+  const { data: vaultSecretPaths, isLoading: isLoadingPaths } = useGetVaultSecretPaths(
     shouldFetchPaths,
     selectedNamespace ?? undefined,
     selectedMountPath ?? undefined,
     activeConnectionId
   );
+  const secretPaths = vaultSecretPaths?.secretPaths;
+  const skippedWildcardPaths = vaultSecretPaths?.skippedWildcardPaths ?? [];
   const { data: mounts, isLoading: isLoadingMounts } = useGetVaultMounts(
     shouldFetchMounts,
     selectedNamespace ?? undefined,
@@ -179,6 +183,17 @@ const Content = ({ onClose, environment, secretPath, appConnections, onImport }:
           </p>
         </>
       </FormControl>
+
+      {skippedWildcardPaths.length > 0 && (
+        <Alert variant="warning" className="mb-4">
+          <TriangleAlertIcon />
+          <AlertTitle>Some paths were skipped</AlertTitle>
+          <AlertDescription>
+            Some paths use a Vault + wildcard and can&apos;t be imported. Grant the token access to
+            explicit paths instead.
+          </AlertDescription>
+        </Alert>
+      )}
 
       <FormControl label="Vault Secret Path" className="mb-6">
         <>
