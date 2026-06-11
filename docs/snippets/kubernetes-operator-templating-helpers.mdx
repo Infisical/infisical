@@ -274,14 +274,12 @@ The Infisical Secrets Operator exposes a wide range of helper functions to make 
   ```
 </Accordion>
 
-<Accordion title="resolveSecretFromPath">
+<Accordion title="secretFrom">
   <Note>This function is only available in `v1beta1` resources (e.g. `InfisicalStaticSecret`).</Note>
 
-  Resolves a secret from a specific folder path within the Infisical project using dot-separated notation.
+  Resolves a secret from a specific folder path within the Infisical project. Takes a path and a secret name as parameters, and returns the secret's value by default. You can optionally use `.Value` or `.SecretPath` accessors on the result -- if omitted, `.Value` is used.
 
-  The path follows the format `folder.subfolder.SECRET_NAME.Value`, where each segment before the secret name represents a folder level, and `.Value` returns the secret's value. You can also access the secret path by using `.SecretPath` instead of `.Value`.
-
-  This is especially useful when multiple secrets share the same key, either from recursive fetches across different paths or from multiple sources. In both cases, the merge strategy only keeps the first occurrence (read more [here](/integrations/platforms/kubernetes/infisical-static-secret-crd#sources)), so `resolveSecretFromPath` lets you explicitly select the one you need by its full path.
+  This is especially useful when multiple secrets share the same key, either from recursive fetches across different paths or from multiple sources. In both cases, the merge strategy only keeps the first occurrence (read more [here](/integrations/platforms/kubernetes/infisical-static-secret-crd#sources)), so `secretFrom` lets you explicitly select the one you need by its full path.
 
   <Note>
     If multiple sources contain a secret with the same name and path, the secret from the first source listed in the `sources` array will be used.
@@ -289,16 +287,20 @@ The Infisical Secrets Operator exposes a wide range of helper functions to make 
 
   **Signature**
   ```go
-  resolveSecretFromPath(path string) string
+  secretFrom(path string, secretName string) string
   ```
 
   **Template usage**
   ```yaml
   template:
     data:
-      DB_PASSWORD: '{{ resolveSecretFromPath "databases.postgres.DB_PASSWORD.Value" }}'
-      STRIPE_API_KEY: '{{ resolveSecretFromPath "services.payments.API_KEY.Value" }}'
-      DATADOG_API_KEY: '{{ resolveSecretFromPath "services.observability.API_KEY.Value" }}'
+      # .Value is implicit when no accessor is specified
+      DB_PASSWORD: '{{ secretFrom "/databases/postgres" "DB_PASSWORD" }}'
+      # Explicit .Value accessor (same result as above)
+      STRIPE_API_KEY: '{{ (secretFrom "/services/payments" "API_KEY").Value }}'
+      # Using .SecretPath to get the folder path instead of the value
+      DATADOG_API_KEY: '{{ (secretFrom "/services/observability" "API_KEY").Value }}'
+      DATADOG_API_KEY_PATH: '{{ (secretFrom "/services/observability" "API_KEY").SecretPath }}'
   ```
 </Accordion>
 
