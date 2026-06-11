@@ -108,6 +108,7 @@ export const registerPkiApplicationRouter = async (server: FastifyZodProvider) =
               .filter(Boolean);
             return ids.length > 0 ? ids : undefined;
           })
+          .pipe(z.array(z.string().uuid()).optional())
       }),
       response: {
         200: z.object({
