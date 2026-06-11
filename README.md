@@ -33,8 +33,7 @@
   </a>
 </h4>
 
-<!-- TODO(readme): Replace this hero screenshot. The current /img/infisical_github_repo2.png is stale (per Tony, 2026-06-11). Drop the new dashboard PNG into /img and point the src below at it. -->
-<img src="/img/infisical_github_repo2.png" width="100%" alt="Dashboard" />
+<img src="/img/infisical_github_repo3.png" width="100%" alt="Infisical secrets management dashboard" />
 
 ## Introduction
 
