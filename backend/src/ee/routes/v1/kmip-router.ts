@@ -287,16 +287,21 @@ export const registerKmipRouter = async (server: FastifyZodProvider) => {
       params: z.object({
         id: z.string()
       }),
-      body: z.object({
-        keyAlgorithm: z.nativeEnum(CertKeyAlgorithm),
-        ttl: z.string().refine((val) => ms(val) > 0, "TTL must be a positive number")
-      }),
+      body: z
+        .object({
+          keyAlgorithm: z.nativeEnum(CertKeyAlgorithm).optional(),
+          ttl: z.string().refine((val) => ms(val) > 0, "TTL must be a positive number"),
+          csr: z.string().trim().min(1, "CSR cannot be empty").max(4096).optional()
+        })
+        .refine((data) => data.csr || data.keyAlgorithm, {
+          message: "Either csr or keyAlgorithm must be provided"
+        }),
       response: {
         200: z.object({
           serialNumber: z.string(),
           certificateChain: z.string(),
           certificate: z.string(),
-          privateKey: z.string()
+          privateKey: z.string().optional()
         })
       }
     },
@@ -321,7 +326,8 @@ export const registerKmipRouter = async (server: FastifyZodProvider) => {
             clientId: req.params.id,
             serialNumber: certificate.serialNumber,
             ttl: req.body.ttl,
-            keyAlgorithm: req.body.keyAlgorithm
+            keyAlgorithm: req.body.keyAlgorithm,
+            isFromCsr: Boolean(req.body.csr)
           }
         }
       });

@@ -13,9 +13,12 @@ import { ActorType } from "@app/services/auth/auth-type";
 import { constructPemChainFromCerts } from "@app/services/certificate/certificate-fns";
 import { CertExtendedKeyUsage, CertKeyAlgorithm, CertKeyUsage } from "@app/services/certificate/certificate-types";
 import {
+  createDistinguishedName,
   createSerialNumber,
+  extractDnParts,
   keyAlgorithmToAlgCfg
 } from "@app/services/certificate-authority/certificate-authority-fns";
+import { extractAlgorithmsFromCSR } from "@app/services/certificate-common/certificate-csr-utils";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
@@ -458,7 +461,8 @@ export const kmipServiceFactory = ({
     actorAuthMethod,
     ttl,
     keyAlgorithm,
-    clientId
+    clientId,
+    csr
   }: TCreateKmipClientCertificateDTO) => {
     const kmipClient = await kmipClientDAL.findById(clientId);
 
@@ -511,24 +515,6 @@ export const kmipServiceFactory = ({
       throw new BadRequestError({ message: "notAfter date is after CA certificate's notAfter date" });
     }
 
-    const alg = keyAlgorithmToAlgCfg(keyAlgorithm);
-    const leafKeys = await crypto.nativeCrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
-
-    const extensions: x509.Extension[] = [
-      new x509.BasicConstraintsExtension(false),
-      await x509.AuthorityKeyIdentifierExtension.create(caCertObj, false),
-      await x509.SubjectKeyIdentifierExtension.create(leafKeys.publicKey),
-      new x509.CertificatePolicyExtension(["2.5.29.32.0"]), // anyPolicy
-      new x509.KeyUsagesExtension(
-        // eslint-disable-next-line no-bitwise
-        x509.KeyUsageFlags[CertKeyUsage.DIGITAL_SIGNATURE] |
-          x509.KeyUsageFlags[CertKeyUsage.KEY_ENCIPHERMENT] |
-          x509.KeyUsageFlags[CertKeyUsage.KEY_AGREEMENT],
-        true
-      ),
-      new x509.ExtendedKeyUsageExtension([x509.ExtendedKeyUsage[CertExtendedKeyUsage.CLIENT_AUTH]], true)
-    ];
-
     const caAlg = keyAlgorithmToAlgCfg(orgKmipCAs.config.caKeyAlgorithm as CertKeyAlgorithm);
 
     const caSkObj = crypto.nativeCrypto.createPrivateKey({
@@ -546,26 +532,113 @@ export const kmipServiceFactory = ({
     );
 
     const serialNumber = createSerialNumber();
-    const leafCert = await x509.X509CertificateGenerator.create({
-      serialNumber,
-      subject: `OU=${kmipClient.projectId},CN=${clientId}`,
-      issuer: caCertObj.subject,
-      notBefore: notBeforeDate,
-      notAfter: notAfterDate,
-      signingKey: caPrivateKey,
-      publicKey: leafKeys.publicKey,
-      signingAlgorithm: alg,
-      extensions
-    });
+    let leafCert: x509.X509Certificate;
+    let effectiveKeyAlgorithm: CertKeyAlgorithm;
+    let privateKeyPem: string | undefined;
 
-    const skLeafObj = crypto.nativeCrypto.KeyObject.from(leafKeys.privateKey);
+    if (csr) {
+      // CSR mode - sign the provided CSR
+      const csrObj = new x509.Pkcs10CertificateRequest(csr);
+
+      // Validate CSR signature
+      const isValid = await csrObj.verify();
+      if (!isValid) {
+        throw new BadRequestError({ message: "Invalid CSR signature" });
+      }
+
+      // Extract key algorithm from CSR
+      const { keyAlgorithm: csrKeyAlgorithm } = extractAlgorithmsFromCSR(csr);
+      effectiveKeyAlgorithm = csrKeyAlgorithm;
+
+      // Extract additional subject fields from CSR (O, L, ST, C) and build DN with proper escaping
+      const dn = extractDnParts(csrObj.subjectName);
+      const subject = createDistinguishedName({
+        commonName: clientId,
+        ou: kmipClient.projectId,
+        organization: dn.organization,
+        locality: dn.locality,
+        province: dn.province,
+        country: dn.country
+      });
+
+      const extensions: x509.Extension[] = [
+        new x509.BasicConstraintsExtension(false),
+        await x509.AuthorityKeyIdentifierExtension.create(caCertObj, false),
+        await x509.SubjectKeyIdentifierExtension.create(csrObj.publicKey),
+        new x509.CertificatePolicyExtension(["2.5.29.32.0"]), // anyPolicy
+        new x509.KeyUsagesExtension(
+          // eslint-disable-next-line no-bitwise
+          x509.KeyUsageFlags[CertKeyUsage.DIGITAL_SIGNATURE] |
+            x509.KeyUsageFlags[CertKeyUsage.KEY_ENCIPHERMENT] |
+            x509.KeyUsageFlags[CertKeyUsage.KEY_AGREEMENT],
+          true
+        ),
+        new x509.ExtendedKeyUsageExtension([x509.ExtendedKeyUsage[CertExtendedKeyUsage.CLIENT_AUTH]], true)
+      ];
+
+      leafCert = await x509.X509CertificateGenerator.create({
+        serialNumber,
+        subject,
+        issuer: caCertObj.subject,
+        notBefore: notBeforeDate,
+        notAfter: notAfterDate,
+        signingKey: caPrivateKey,
+        publicKey: csrObj.publicKey,
+        signingAlgorithm: caAlg,
+        extensions
+      });
+    } else {
+      // Managed mode - server generates key pair (existing behavior)
+      if (!keyAlgorithm) {
+        throw new BadRequestError({ message: "keyAlgorithm is required when not providing a CSR" });
+      }
+      effectiveKeyAlgorithm = keyAlgorithm;
+
+      const alg = keyAlgorithmToAlgCfg(keyAlgorithm);
+      const leafKeys = await crypto.nativeCrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
+
+      const skLeafObj = crypto.nativeCrypto.KeyObject.from(leafKeys.privateKey);
+      privateKeyPem = skLeafObj.export({ format: "pem", type: "pkcs8" }) as string;
+
+      const subject = createDistinguishedName({
+        commonName: clientId,
+        ou: kmipClient.projectId
+      });
+
+      const extensions: x509.Extension[] = [
+        new x509.BasicConstraintsExtension(false),
+        await x509.AuthorityKeyIdentifierExtension.create(caCertObj, false),
+        await x509.SubjectKeyIdentifierExtension.create(leafKeys.publicKey),
+        new x509.CertificatePolicyExtension(["2.5.29.32.0"]), // anyPolicy
+        new x509.KeyUsagesExtension(
+          // eslint-disable-next-line no-bitwise
+          x509.KeyUsageFlags[CertKeyUsage.DIGITAL_SIGNATURE] |
+            x509.KeyUsageFlags[CertKeyUsage.KEY_ENCIPHERMENT] |
+            x509.KeyUsageFlags[CertKeyUsage.KEY_AGREEMENT],
+          true
+        ),
+        new x509.ExtendedKeyUsageExtension([x509.ExtendedKeyUsage[CertExtendedKeyUsage.CLIENT_AUTH]], true)
+      ];
+
+      leafCert = await x509.X509CertificateGenerator.create({
+        serialNumber,
+        subject,
+        issuer: caCertObj.subject,
+        notBefore: notBeforeDate,
+        notAfter: notAfterDate,
+        signingKey: caPrivateKey,
+        publicKey: leafKeys.publicKey,
+        signingAlgorithm: alg,
+        extensions
+      });
+    }
 
     const rootCaCert = new x509.X509Certificate(orgKmipCAs.rootCaCertificate);
     const serverIntermediateCaCert = new x509.X509Certificate(orgKmipCAs.serverIntermediateCaCertificate);
 
     await kmipClientCertificateDAL.create({
       kmipClientId: clientId,
-      keyAlgorithm,
+      keyAlgorithm: effectiveKeyAlgorithm,
       issuedAt: notBeforeDate,
       expiration: notAfterDate,
       serialNumber
@@ -573,10 +646,10 @@ export const kmipServiceFactory = ({
 
     return {
       serialNumber,
-      privateKey: skLeafObj.export({ format: "pem", type: "pkcs8" }) as string,
       certificate: leafCert.toString("pem"),
       certificateChain: constructPemChainFromCerts([serverIntermediateCaCert, rootCaCert]),
-      projectId: kmipClient.projectId
+      projectId: kmipClient.projectId,
+      ...(privateKeyPem && { privateKey: privateKeyPem })
     };
   };
 
