@@ -132,6 +132,7 @@ export const KeyStorePrefixes = {
   AuditLogMigrationAlert: "audit-log-migration-alert-last-row-count",
   LicenseCloudPlan: (orgId: string) => `infisical-cloud-plan-${orgId}` as const,
   LicenseEntitlements: (orgId: string) => `license-entitlements-${orgId}` as const,
+  UsageLastReported: (orgId: string, featureKey: string) => `usage-last-reported-${orgId}-${featureKey}` as const,
   IdentityLockoutState: (identityId: string, authMethod: string, slug: string) =>
     `lockout:identity:${identityId}:${authMethod}:${slug}` as const,
   IdentityLockoutStateByMethodPattern: (identityId: string, authMethod: string) =>

@@ -19,6 +19,8 @@ import { TAppConnectionDALFactory } from "@app/services/app-connection/app-conne
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
+import { MaxResources } from "@app/services/license-client";
+import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
 
 import { TGatewayPoolServiceFactory } from "../gateway-pool/gateway-pool-service";
@@ -68,6 +70,7 @@ type TPamResourceServiceFactoryDep = {
   pamProjectRecordingConfigDAL: {
     findByProjectId: (projectId: string) => Promise<unknown>;
   };
+  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emitForProject">;
 };
 
 export type TPamResourceServiceFactory = ReturnType<typeof pamResourceServiceFactory>;
@@ -83,7 +86,8 @@ export const pamResourceServiceFactory = ({
   gatewayPoolService,
   resourceMetadataDAL,
   appConnectionDAL,
-  pamProjectRecordingConfigDAL
+  pamProjectRecordingConfigDAL,
+  usageMeteringService
 }: TPamResourceServiceFactoryDep) => {
   const assertDomainInProject = async (domainId: string, projectId: string) => {
     const domain = await pamDomainDAL.findById(domainId);
@@ -286,6 +290,8 @@ export const pamResourceServiceFactory = ({
         }
         return { resource: newResource, insertedMetadata: metadataRows };
       });
+
+      usageMeteringService.emitForProject(projectId, MaxResources.key);
 
       return {
         ...(await decryptResource(resource, projectId, kmsService)),
@@ -616,6 +622,7 @@ export const pamResourceServiceFactory = ({
 
     try {
       const deletedResource = await pamResourceDAL.deleteById(id);
+      usageMeteringService.emitForProject(resource.projectId, MaxResources.key);
       return await decryptResource(deletedResource, resource.projectId, kmsService);
     } catch (err) {
       if (
