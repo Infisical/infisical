@@ -1,7 +1,7 @@
 import { createNotification } from "@app/components/notifications";
 import { AUDIT_LOG_STREAM_PROVIDER_MAP } from "@app/helpers/auditLogStreams";
 import { useCreateAuditLogStream, useUpdateAuditLogStream } from "@app/hooks/api";
-import { LogProvider } from "@app/hooks/api/auditLogStreams/enums";
+import { LogProvider, StreamMode } from "@app/hooks/api/auditLogStreams/enums";
 import { TAuditLogStream } from "@app/hooks/api/types";
 import { DiscriminativePick } from "@app/types";
 
@@ -11,6 +11,15 @@ import { CriblProviderAuditLogStreamForm } from "./CriblProviderAuditLogStreamFo
 import { CustomProviderAuditLogStreamForm } from "./CustomProviderAuditLogStreamForm";
 import { DatadogProviderAuditLogStreamForm } from "./DatadogProviderAuditLogStreamForm";
 import { SplunkProviderAuditLogStreamForm } from "./SplunkProviderAuditLogStreamForm";
+
+// Provider forms submit their provider + credentials; the custom form may also submit a
+// one-way streamMode upgrade (single -> batch).
+export type AuditLogStreamFormData = DiscriminativePick<
+  TAuditLogStream,
+  "provider" | "credentials"
+> & {
+  streamMode?: StreamMode;
+};
 
 type FormProps = {
   onComplete: (auditLogStream: TAuditLogStream) => void;
@@ -25,9 +34,7 @@ const CreateForm = ({ provider, onComplete }: CreateFormProps) => {
   const createAuditLogStream = useCreateAuditLogStream();
   const { name: providerName } = AUDIT_LOG_STREAM_PROVIDER_MAP[provider];
 
-  const onSubmit = async (
-    formData: DiscriminativePick<TAuditLogStream, "provider" | "credentials">
-  ) => {
+  const onSubmit = async (formData: AuditLogStreamFormData) => {
     const logStream = await createAuditLogStream.mutateAsync(formData);
     createNotification({
       text: `Successfully created ${providerName} Log Stream`,
@@ -56,9 +63,7 @@ const UpdateForm = ({ auditLogStream, onComplete }: UpdateFormProps) => {
   const updateAuditLogStream = useUpdateAuditLogStream();
   const { name: providerName } = AUDIT_LOG_STREAM_PROVIDER_MAP[auditLogStream.provider];
 
-  const onSubmit = async (
-    formData: DiscriminativePick<TAuditLogStream, "provider" | "credentials">
-  ) => {
+  const onSubmit = async (formData: AuditLogStreamFormData) => {
     const connection = await updateAuditLogStream.mutateAsync({
       auditLogStreamId: auditLogStream.id,
       ...formData

@@ -13,6 +13,7 @@ import {
 
 import { SecretEncryptionAlgo, SecretKeyEncoding } from "@app/db/schemas";
 import { TCreateAuditLogDTO } from "@app/ee/services/audit-log/audit-log-types";
+import { TAuditLogStreamFlushJobData } from "@app/ee/services/audit-log-stream-outbox/audit-log-stream-outbox-types";
 import { PamDiscoverySourceRunTrigger } from "@app/ee/services/pam-discovery/pam-discovery-enums";
 import {
   TSecretRotationRotateSecretsJobPayload,
@@ -108,6 +109,7 @@ export enum QueueName {
   AppConnectionCredentialRotation = "app-connection-credential-rotation",
   AppConnectionCredentialRotationRotate = "app-connection-credential-rotation-rotate",
   AuditLogClickHouseBatch = "audit-log-clickhouse-batch",
+  AuditLogStreamOutbox = "audit-log-stream-outbox",
   PamDiscoveryScan = "pam-discovery-scan",
   CaAutoRenewal = "ca-auto-renewal",
   ProjectHardDelete = "project-hard-delete",
@@ -177,6 +179,7 @@ export enum QueueJobs {
   AppConnectionCredentialRotationRotate = "app-connection-credential-rotation-rotate",
   AppConnectionCredentialRotationSendNotification = "app-connection-credential-rotation-send-notification",
   AuditLogClickHouseBatch = "audit-log-clickhouse-batch-job",
+  AuditLogStreamFlush = "audit-log-stream-flush",
   PamDiscoverySourceRunScan = "pam-discovery-run-scan",
   PamDiscoveryScheduledScan = "pam-discovery-scheduled-scan",
   CaDailyAutoRenewal = "ca-daily-auto-renewal",
@@ -486,6 +489,10 @@ export type TQueueJobTypes = {
   [QueueName.AuditLogClickHouseBatch]: {
     name: QueueJobs.AuditLogClickHouseBatch;
     payload: undefined;
+  };
+  [QueueName.AuditLogStreamOutbox]: {
+    name: QueueJobs.AuditLogStreamFlush;
+    payload: TAuditLogStreamFlushJobData;
   };
   [QueueName.PamDiscoveryScan]:
     | {

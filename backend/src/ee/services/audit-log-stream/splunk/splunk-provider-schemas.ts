@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { LogProvider } from "../audit-log-stream-enums";
+import { LogProvider, StreamMode } from "../audit-log-stream-enums";
 import { BaseProviderSchema } from "../audit-log-stream-schemas";
 
 export const SplunkProviderCredentialsSchema = z.object({
@@ -55,5 +55,6 @@ export const CreateSplunkProviderLogStreamSchema = z.object({
 });
 
 export const UpdateSplunkProviderLogStreamSchema = z.object({
-  credentials: SplunkProviderCredentialsSchema
+  credentials: SplunkProviderCredentialsSchema,
+  streamMode: z.nativeEnum(StreamMode).optional()
 });

@@ -140,6 +140,7 @@ export enum TableName {
   LdapGroupMap = "ldap_group_maps",
   AuditLog = "audit_logs",
   AuditLogStream = "audit_log_streams",
+  AuditLogStreamOutbox = "audit_log_stream_outbox",
   GitAppInstallSession = "git_app_install_sessions",
   GitAppOrg = "git_app_org",
   SecretScanningGitRisk = "secret_scanning_git_risks",

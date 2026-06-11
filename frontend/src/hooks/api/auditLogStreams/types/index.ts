@@ -1,4 +1,4 @@
-import { LogProvider } from "../enums";
+import { LogProvider, StreamMode } from "../enums";
 import { TAzureProviderLogStream } from "./providers/azure-provider";
 import { TCriblProviderLogStream } from "./providers/cribl-provider";
 import { TCustomProviderLogStream } from "./providers/custom-provider";
@@ -26,6 +26,8 @@ export type TCreateAuditLogStreamDTO = Pick<TAuditLogStream, "provider" | "crede
 export type TUpdateAuditLogStreamDTO = Pick<TAuditLogStream, "credentials"> & {
   provider: LogProvider;
   auditLogStreamId: string;
+  // One-way upgrade from "single" to "batch" (custom streams only).
+  streamMode?: StreamMode;
 };
 export type TDeleteAuditLogStreamDTO = {
   provider: LogProvider;

@@ -140,7 +140,10 @@ export const KeyStorePrefixes = {
 
   TelemetryEvent: (event: string, bucketId: string, distinctId: string, uuid: string) =>
     `telemetry-event-${event}-${bucketId}-${distinctId}-${uuid}` as const,
-  TelemetryEventByBucketPattern: (event: string, bucketId: string) => `telemetry-event-${event}-${bucketId}-*` as const
+  TelemetryEventByBucketPattern: (event: string, bucketId: string) => `telemetry-event-${event}-${bucketId}-*` as const,
+
+  AuditLogStreamFlushDebounce: (streamId: string) => `audit-log-stream:${streamId}:flush-debounce` as const,
+  AuditLogIngestConsumerLock: "audit-log-ingest:consumer-lock" as const
 };
 
 export const KeyStoreTtls = {
@@ -452,7 +455,7 @@ export const keyStoreFactory = (
   const listLength = async (key: string) => pickPrimaryOrSecondaryRedis(primaryRedis, redisReadReplicas).llen(key);
 
   // Stream operations
-  const streamAdd = async (key: string, id: string, fieldValue: Record<string, string>, maxLen = 1000000) => {
+  const streamAdd = async (key: string, id: string, fieldValue: Record<string, string>, maxLen = 1_000_000) => {
     const args: string[] = [];
     for (const [field, value] of Object.entries(fieldValue)) {
       args.push(field, value);
