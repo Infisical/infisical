@@ -42,6 +42,8 @@ import { useDebounce } from "@app/hooks";
 import { useMoveSecrets } from "@app/hooks/api";
 import { useGetProjectSecretsQuickSearch } from "@app/hooks/api/dashboard";
 import { ProjectEnv } from "@app/hooks/api/projects/types";
+import { useMoveFolder } from "@app/hooks/api/secretFolders";
+import { TSecretFolder } from "@app/hooks/api/secretFolders/types";
 import { TSecretRotationV2, useMoveSecretRotation } from "@app/hooks/api/secretRotationsV2";
 import { SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
 
@@ -55,6 +57,7 @@ type Props = {
   sourceSecretPath: string;
   secrets: Record<string, Record<string, SecretV3RawSanitized>>;
   rotations: Record<string, Record<string, TSecretRotationV2>>;
+  folders: Record<string, Record<string, TSecretFolder>>;
   onComplete: () => void;
 };
 
@@ -129,6 +132,29 @@ type MoveResults = {
   message: string;
 }[];
 
+// the modal moves secrets, rotations and folders together, so the copy reflects what is actually selected
+const getMoveSelectionCopy = ({
+  secrets,
+  rotations,
+  folders
+}: {
+  secrets: Record<string, unknown>;
+  rotations: Record<string, unknown>;
+  folders: Record<string, unknown>;
+}) => {
+  const hasFolders = Object.keys(folders).length > 0;
+  const hasSecretsOrRotations =
+    Object.keys(secrets).length > 0 || Object.keys(rotations).length > 0;
+
+  if (hasFolders && !hasSecretsOrRotations) {
+    return { title: "Move Folders", action: "Move Folders", noun: "folders" };
+  }
+  if (hasFolders && hasSecretsOrRotations) {
+    return { title: "Move Items", action: "Move Items", noun: "items" };
+  }
+  return { title: "Move Secrets", action: "Move Secrets", noun: "secrets" };
+};
+
 const singleEnvFormSchema = z.object({
   environment: z.string().trim(),
   shouldOverwrite: z.boolean().default(false)
@@ -192,6 +218,7 @@ const SingleEnvContent = ({
   onClose,
   secrets,
   rotations,
+  folders,
   environments,
   visibleEnvs,
   projectId,
@@ -199,8 +226,11 @@ const SingleEnvContent = ({
   sourceSecretPath
 }: ContentProps) => {
   const sourceEnv = visibleEnvs[0];
+  const moveCopy = getMoveSelectionCopy({ secrets, rotations, folders });
+  const showOverwriteOption = Object.keys(secrets).length > 0 || Object.keys(rotations).length > 0;
   const moveSecrets = useMoveSecrets();
   const moveSecretRotation = useMoveSecretRotation();
+  const moveFolder = useMoveFolder();
   const [selectedPath, setSelectedPath] = useState<OptionValue | null>({
     secretPath: "/"
   });
@@ -248,10 +278,14 @@ const SingleEnvContent = ({
       .map((rotationRecord) => rotationRecord[sourceEnv.slug])
       .filter((rotation): rotation is TSecretRotationV2 => Boolean(rotation));
 
-    if (!secretsToMove.length && !rotationsToMove.length) {
+    const foldersToMove = Object.values(folders)
+      .map((folderRecord) => folderRecord[sourceEnv.slug])
+      .filter((folder): folder is TSecretFolder => Boolean(folder));
+
+    if (!secretsToMove.length && !rotationsToMove.length && !foldersToMove.length) {
       createNotification({
         type: "info",
-        text: "No secrets or rotations to move in this environment"
+        text: "Nothing selected to move in this environment"
       });
       return;
     }
@@ -300,6 +334,34 @@ const SingleEnvContent = ({
       }
     }
 
+    const folderFailures: { name: string; message: string }[] = [];
+    let folderSuccessCount = 0;
+    let folderApprovalCount = 0;
+
+    // eslint-disable-next-line no-restricted-syntax
+    for await (const folder of foldersToMove) {
+      try {
+        const result = await moveFolder.mutateAsync({
+          projectId,
+          folderId: folder.id,
+          sourceEnvironment: sourceEnv.slug,
+          sourcePath: sourceSecretPath,
+          destinationEnvironment: data.environment,
+          destinationPath: selectedPath.secretPath,
+          shouldOverwrite: data.shouldOverwrite
+        });
+        folderSuccessCount += 1;
+        if (result.hasApprovalRequests) folderApprovalCount += 1;
+      } catch (error) {
+        let message = (error as Error)?.message ?? "Failed to move folder";
+        if (axios.isAxiosError(error)) {
+          const responseMessage = (error?.response?.data as { message?: string })?.message;
+          if (responseMessage) message = responseMessage;
+        }
+        folderFailures.push({ name: folder.name, message });
+      }
+    }
+
     if (secretsToMove.length) {
       if (isDestinationUpdated && isSourceUpdated) {
         createNotification({
@@ -330,6 +392,27 @@ const SingleEnvContent = ({
         text: `Successfully moved ${rotationSuccessCount} secret rotation${
           rotationSuccessCount === 1 ? "" : "s"
         }`
+      });
+    }
+
+    if (folderSuccessCount > 0) {
+      createNotification({
+        type: folderApprovalCount > 0 ? "info" : "success",
+        text:
+          folderApprovalCount > 0
+            ? `Moved ${folderSuccessCount} folder${
+                folderSuccessCount === 1 ? "" : "s"
+              }. Approval requests were generated for change-policy protected paths.`
+            : `Successfully moved ${folderSuccessCount} folder${folderSuccessCount === 1 ? "" : "s"}`
+      });
+    }
+
+    if (folderFailures.length > 0) {
+      createNotification({
+        type: "error",
+        text: `Failed to move ${folderFailures.length} folder${
+          folderFailures.length === 1 ? "" : "s"
+        }: ${folderFailures.map((f) => f.name).join(", ")}`
       });
     }
 
@@ -381,31 +464,33 @@ const SingleEnvContent = ({
           </FieldDescription>
         </FieldContent>
       </Field>
-      <Controller
-        control={control}
-        name="shouldOverwrite"
-        render={({ field: { onBlur, value, onChange } }) => (
-          <Field className="mt-4">
-            <Field orientation="horizontal">
-              <Checkbox
-                id="overwrite-checkbox"
-                isChecked={value}
-                onCheckedChange={onChange}
-                onBlur={onBlur}
-                variant="project"
-              />
-              <FieldLabel htmlFor="overwrite-checkbox" className="cursor-pointer">
-                Overwrite existing secrets
-              </FieldLabel>
+      {showOverwriteOption && (
+        <Controller
+          control={control}
+          name="shouldOverwrite"
+          render={({ field: { onBlur, value, onChange } }) => (
+            <Field className="mt-4">
+              <Field orientation="horizontal">
+                <Checkbox
+                  id="overwrite-checkbox"
+                  isChecked={value}
+                  onCheckedChange={onChange}
+                  onBlur={onBlur}
+                  variant="project"
+                />
+                <FieldLabel htmlFor="overwrite-checkbox" className="cursor-pointer">
+                  Overwrite existing secrets
+                </FieldLabel>
+              </Field>
+              <FieldDescription>
+                {value
+                  ? "Secrets with conflicting keys at the destination will be overwritten"
+                  : "Secrets with conflicting keys at the destination will not be overwritten"}
+              </FieldDescription>
             </Field>
-            <FieldDescription>
-              {value
-                ? "Secrets with conflicting keys at the destination will be overwritten"
-                : "Secrets with conflicting keys at the destination will not be overwritten"}
-            </FieldDescription>
-          </Field>
-        )}
-      />
+          )}
+        />
+      )}
       <DialogFooter className="mt-6">
         <DialogClose asChild>
           <Button variant="outline" onClick={onClose}>
@@ -418,7 +503,7 @@ const SingleEnvContent = ({
           isDisabled={!destinationSelected || isSubmitting}
           isPending={isSubmitting}
         >
-          Move Secrets
+          {moveCopy.action}
         </Button>
       </DialogFooter>
     </form>
@@ -436,6 +521,7 @@ const MultiEnvContent = ({
   onClose,
   secrets,
   rotations,
+  folders,
   environments,
   projectId,
   projectSlug,
@@ -443,6 +529,9 @@ const MultiEnvContent = ({
 }: ContentProps) => {
   const moveSecrets = useMoveSecrets();
   const moveSecretRotation = useMoveSecretRotation();
+  const moveFolder = useMoveFolder();
+  const moveCopy = getMoveSelectionCopy({ secrets, rotations, folders });
+  const showOverwriteOption = Object.keys(secrets).length > 0 || Object.keys(rotations).length > 0;
   const { permission } = useProjectPermission();
   const [moveResults, setMoveResults] = useState<MoveResults | null>(null);
   const [selectedPath, setSelectedPath] = useState<OptionValue | null>({
@@ -550,13 +639,25 @@ const MultiEnvContent = ({
       })
     );
 
+    const foldersByEnv: Record<string, TSecretFolder[]> = Object.fromEntries(
+      environments.map((env) => [env.slug, []])
+    );
+
+    Object.values(folders).forEach((folderRecord) =>
+      Object.entries(folderRecord).forEach(([env, folder]) => {
+        if (foldersByEnv[env]) foldersByEnv[env].push(folder);
+      })
+    );
+
     // eslint-disable-next-line no-restricted-syntax
     for await (const environment of environments) {
       const envSlug = environment.slug;
 
       const { cannotMoveSecrets, cannotMoveRotations } = moveEligibility[envSlug];
 
-      if (cannotMoveSecrets && cannotMoveRotations) {
+      const foldersToMove = foldersByEnv[envSlug];
+
+      if (cannotMoveSecrets && cannotMoveRotations && !foldersToMove.length) {
         // eslint-disable-next-line no-continue
         continue;
       }
@@ -564,10 +665,10 @@ const MultiEnvContent = ({
       const secretsToMove = cannotMoveSecrets ? [] : secretsByEnv[envSlug];
       const rotationsToMove = cannotMoveRotations ? [] : rotationsByEnv[envSlug];
 
-      if (!secretsToMove.length && !rotationsToMove.length) {
+      if (!secretsToMove.length && !rotationsToMove.length && !foldersToMove.length) {
         results.push({
           name: environment.name,
-          message: "No secrets or rotations selected in environment",
+          message: "Nothing selected in environment",
           status: MoveResult.Info,
           id: environment.id
         });
@@ -660,6 +761,43 @@ const MultiEnvContent = ({
           });
         }
       }
+
+      // eslint-disable-next-line no-restricted-syntax
+      for await (const folder of foldersToMove) {
+        try {
+          const { hasApprovalRequests } = await moveFolder.mutateAsync({
+            projectId,
+            folderId: folder.id,
+            sourceEnvironment: environment.slug,
+            sourcePath: sourceSecretPath,
+            destinationEnvironment: environment.slug,
+            destinationPath: selectedPath.secretPath,
+            shouldOverwrite: data.shouldOverwrite
+          });
+
+          results.push({
+            name: `${environment.name} / ${folder.name}`,
+            message: hasApprovalRequests
+              ? "Folder moved. Approval requests were generated for change-policy protected paths."
+              : "Successfully moved folder",
+            status: hasApprovalRequests ? MoveResult.Info : MoveResult.Success,
+            id: `${environment.id}-folder-${folder.id}`
+          });
+        } catch (error) {
+          let errorMessage = (error as Error)?.message ?? "Failed to move folder";
+          if (axios.isAxiosError(error)) {
+            const responseMessage = (error?.response?.data as { message?: string })?.message;
+            if (responseMessage) errorMessage = responseMessage;
+          }
+
+          results.push({
+            name: `${environment.name} / ${folder.name}`,
+            message: errorMessage,
+            status: MoveResult.Error,
+            id: `${environment.id}-folder-${folder.id}`
+          });
+        }
+      }
     }
 
     setMoveResults(results);
@@ -675,11 +813,11 @@ const MultiEnvContent = ({
     return <MoveResultsView moveResults={moveResults} onComplete={onComplete} />;
   }
 
-  if (moveSecrets.isPending || moveSecretRotation.isPending) {
+  if (moveSecrets.isPending || moveSecretRotation.isPending || moveFolder.isPending) {
     return (
       <div className="flex h-full flex-col items-center justify-center py-2.5">
         <LoaderCircleIcon className="size-8 animate-spin text-accent" />
-        <p className="mt-4 text-sm text-accent">Moving secrets...</p>
+        <p className="mt-4 text-sm text-accent">Moving {moveCopy.noun}...</p>
       </div>
     );
   }
@@ -688,7 +826,9 @@ const MultiEnvContent = ({
     <form onSubmit={handleSubmit(handleFormSubmit)}>
       <Alert variant="info" className="mb-4">
         <InfoIcon />
-        <AlertTitle>Select a single environment to move secrets across environments.</AlertTitle>
+        <AlertTitle>
+          Select a single environment to move {moveCopy.noun} across environments.
+        </AlertTitle>
       </Alert>
       <Field>
         <FieldLabel>Secret Path</FieldLabel>
@@ -717,31 +857,33 @@ const MultiEnvContent = ({
           </AlertDescription>
         </Alert>
       )}
-      <Controller
-        control={control}
-        name="shouldOverwrite"
-        render={({ field: { onBlur, value, onChange } }) => (
-          <Field className="mt-4">
-            <Field orientation="horizontal">
-              <Checkbox
-                id="overwrite-checkbox-multi"
-                isChecked={value}
-                onCheckedChange={onChange}
-                onBlur={onBlur}
-                variant="project"
-              />
-              <FieldLabel htmlFor="overwrite-checkbox-multi" className="cursor-pointer">
-                Overwrite existing secrets
-              </FieldLabel>
+      {showOverwriteOption && (
+        <Controller
+          control={control}
+          name="shouldOverwrite"
+          render={({ field: { onBlur, value, onChange } }) => (
+            <Field className="mt-4">
+              <Field orientation="horizontal">
+                <Checkbox
+                  id="overwrite-checkbox-multi"
+                  isChecked={value}
+                  onCheckedChange={onChange}
+                  onBlur={onBlur}
+                  variant="project"
+                />
+                <FieldLabel htmlFor="overwrite-checkbox-multi" className="cursor-pointer">
+                  Overwrite existing secrets
+                </FieldLabel>
+              </Field>
+              <FieldDescription>
+                {value
+                  ? "Secrets with conflicting keys at the destination will be overwritten"
+                  : "Secrets with conflicting keys at the destination will not be overwritten"}
+              </FieldDescription>
             </Field>
-            <FieldDescription>
-              {value
-                ? "Secrets with conflicting keys at the destination will be overwritten"
-                : "Secrets with conflicting keys at the destination will not be overwritten"}
-            </FieldDescription>
-          </Field>
-        )}
-      />
+          )}
+        />
+      )}
       <DialogFooter className="mt-6">
         <DialogClose asChild>
           <Button variant="outline" onClick={onClose}>
@@ -754,7 +896,7 @@ const MultiEnvContent = ({
           isDisabled={!destinationSelected || isSubmitting}
           isPending={isSubmitting}
         >
-          Move Secrets
+          {moveCopy.action}
         </Button>
       </DialogFooter>
     </form>
@@ -763,6 +905,7 @@ const MultiEnvContent = ({
 
 export const MoveSecretsModal = ({ isOpen, onOpenChange, visibleEnvs, ...props }: Props) => {
   const isSingleEnvMode = visibleEnvs.length === 1;
+  const moveCopy = getMoveSelectionCopy(props);
 
   return (
     <Dialog
@@ -774,11 +917,11 @@ export const MoveSecretsModal = ({ isOpen, onOpenChange, visibleEnvs, ...props }
     >
       <DialogContent className="max-w-xl overflow-visible [&>*]:min-w-0">
         <DialogHeader>
-          <DialogTitle>Move Secrets</DialogTitle>
+          <DialogTitle>{moveCopy.title}</DialogTitle>
           <DialogDescription>
             {isSingleEnvMode
-              ? "Move the selected secrets to a new environment and folder location"
-              : "Move the selected secrets across all environments to a new folder location"}
+              ? `Move the selected ${moveCopy.noun} to a new environment and folder location`
+              : `Move the selected ${moveCopy.noun} across all environments to a new folder location`}
           </DialogDescription>
         </DialogHeader>
         {isSingleEnvMode ? (

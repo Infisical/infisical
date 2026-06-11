@@ -65,6 +65,25 @@ export type TFolderMoveEligibility = {
   blockingPath?: string;
 };
 
+export type TMoveFolderDTO = {
+  folderId: string;
+  destinationEnvironment: string;
+  destinationPath: string;
+  shouldOverwrite?: boolean;
+} & TProjectPermission;
+
+export type TMoveFolderResult = {
+  folderId: string;
+  sourceEnvironment: string;
+  sourcePath: string;
+  destinationEnvironment: string;
+  destinationPath: string;
+  // false when one or more source folders couldn't be emptied (e.g. secrets pending approval), so they're left in place
+  isFullyMoved: boolean;
+  // true when a secret approval policy turned part of the move into an approval request instead of a direct move
+  hasApprovalRequests: boolean;
+};
+
 export type TGetFoldersDeepByEnvsDTO = {
   projectId: string;
   environments: string[];

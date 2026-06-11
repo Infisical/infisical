@@ -1861,22 +1861,6 @@ export const registerRoutes = async (
     secretDAL: secretV2BridgeDAL,
     secretVersionV2BridgeDAL
   });
-  const folderService = secretFolderServiceFactory({
-    permissionService,
-    folderDAL,
-    folderVersionDAL,
-    projectEnvDAL,
-    snapshotService,
-    projectDAL,
-    folderCommitService,
-    secretApprovalPolicyService,
-    secretV2BridgeDAL,
-    dynamicSecretDAL,
-    secretRotationV2DAL,
-    honeyTokenDAL,
-    secretImportDAL
-  });
-
   const secretImportService = secretImportServiceFactory({
     licenseService,
     projectBotService,
@@ -1979,6 +1963,23 @@ export const registerRoutes = async (
     kmsService,
     userGroupMembershipDAL,
     identityGroupMembershipDAL
+  });
+
+  const folderService = secretFolderServiceFactory({
+    permissionService,
+    folderDAL,
+    folderVersionDAL,
+    projectEnvDAL,
+    snapshotService,
+    projectDAL,
+    folderCommitService,
+    secretApprovalPolicyService,
+    secretV2BridgeDAL,
+    dynamicSecretDAL,
+    secretRotationV2DAL,
+    honeyTokenDAL,
+    secretImportDAL,
+    secretService
   });
 
   const secretSharingService = secretSharingServiceFactory({

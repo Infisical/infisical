@@ -521,6 +521,7 @@ export const SelectionPanel = ({
         sourceSecretPath={secretPath}
         secrets={selectedEntries[EntryType.SECRET]}
         rotations={selectedEntries[EntryType.SECRET_ROTATION]}
+        folders={selectedEntries[EntryType.FOLDER]}
         onComplete={resetSelectedEntries}
       />
       <BulkTagDialog
