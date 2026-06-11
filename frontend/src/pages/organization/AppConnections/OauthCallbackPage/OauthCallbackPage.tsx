@@ -210,7 +210,8 @@ export const OAuthCallbackPage = () => {
 
     clearState(AppConnection.AzureKeyVault);
 
-    const { connectionId, name, description, returnUrl, projectId } = formData;
+    const { connectionId, name, description, returnUrl, projectId, gatewayId, gatewayPoolId } =
+      formData;
 
     let connection: TAppConnection;
 
@@ -222,7 +223,9 @@ export const OAuthCallbackPage = () => {
           credentials: {
             code: code as string,
             tenantId: formData.tenantId
-          }
+          },
+          gatewayId,
+          gatewayPoolId
         });
       } else {
         connection = await createAppConnection.mutateAsync({
@@ -234,7 +237,9 @@ export const OAuthCallbackPage = () => {
           credentials: {
             tenantId: formData.tenantId,
             code: code as string
-          }
+          },
+          gatewayId,
+          gatewayPoolId
         });
       }
     } catch {
