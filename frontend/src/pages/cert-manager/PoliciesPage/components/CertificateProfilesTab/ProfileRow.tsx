@@ -5,6 +5,7 @@ import { Link } from "@tanstack/react-router";
 import {
   CheckIcon,
   CopyIcon,
+  CopyPlusIcon,
   InfoIcon,
   MoreHorizontalIcon,
   PencilIcon,
@@ -38,10 +39,11 @@ import { IssuerType, TCertificateProfile } from "@app/hooks/api/certificateProfi
 interface Props {
   profile: TCertificateProfile;
   onEditProfile: (profile: TCertificateProfile) => void;
+  onCloneProfile: (profile: TCertificateProfile) => void;
   onDeleteProfile: (profile: TCertificateProfile) => void;
 }
 
-export const ProfileRow = ({ profile, onEditProfile, onDeleteProfile }: Props) => {
+export const ProfileRow = ({ profile, onEditProfile, onCloneProfile, onDeleteProfile }: Props) => {
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const isInternalCa = !profile.certificateAuthority?.isExternal;
@@ -126,6 +128,24 @@ export const ProfileRow = ({ profile, onEditProfile, onDeleteProfile }: Props) =
               {isIdCopied ? <CheckIcon /> : <CopyIcon />}
               Copy Profile ID
             </DropdownMenuItem>
+            <ProjectPermissionCan
+              I={ProjectPermissionCertificateProfileActions.Create}
+              a={ProjectPermissionSub.CertificateProfiles}
+            >
+              {(isAllowed) =>
+                isAllowed && (
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onCloneProfile(profile);
+                    }}
+                  >
+                    <CopyPlusIcon />
+                    Clone Profile
+                  </DropdownMenuItem>
+                )
+              }
+            </ProjectPermissionCan>
             <ProjectPermissionCan
               I={ProjectPermissionCertificateProfileActions.Edit}
               a={subject(ProjectPermissionSub.CertificateProfiles, { slug: profile.slug })}
