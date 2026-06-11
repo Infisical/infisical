@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, Skeleton } from "@app/c
 import { useOrganization, useOrgPermission } from "@app/context";
 import {
   OrgPermissionAdminConsoleAction,
+  OrgPermissionProjectActions,
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
 import {
@@ -97,6 +98,10 @@ export const ProjectCategoryOverview = () => {
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
   const { permission } = useOrgPermission();
+  const canRequestAccess = permission.can(
+    OrgPermissionProjectActions.RequestAccess,
+    OrgPermissionSubjects.Project
+  );
   const { data: projects = [], isPending: isProjectsLoading } = useGetUserProjects();
   const { data: certManagerInstance } = useCertManagerInstanceState();
   const { data: productStats } = useGetOrgProductStats(currentOrg?.id ?? "");
@@ -197,8 +202,13 @@ export const ProjectCategoryOverview = () => {
             err instanceof Error ? err.message : "Failed to join the Certificate Manager project."
         });
       }
-    } else {
+    } else if (canRequestAccess) {
       setIsRequestAccessOpen(true);
+    } else {
+      createNotification({
+        type: "error",
+        text: "You don't have access to this Certificate Manager project."
+      });
     }
   };
 
