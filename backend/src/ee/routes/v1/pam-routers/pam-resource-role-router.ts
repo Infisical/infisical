@@ -13,6 +13,12 @@ const DEFAULT_RESOURCE_ROLES = [
     description: "Full control of accounts, folders, sessions, and grants"
   },
   {
+    slug: PamResourceRole.Connector,
+    name: "Connector",
+    isDefault: true,
+    description: "Launch sessions and view own session history; cannot view credentials or other users' sessions"
+  },
+  {
     slug: PamResourceRole.Requester,
     name: "Requester",
     isDefault: true,
