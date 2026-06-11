@@ -230,6 +230,7 @@ export * from "./secret-syncs";
 export * from "./secret-tag-junction";
 export * from "./secret-tags";
 export * from "./secret-v2-tag-junction";
+export * from "./secret-http-proxy-configs";
 export * from "./secret-validation-rules";
 export * from "./secret-version-tag-junction";
 export * from "./secret-version-v2-tag-junction";

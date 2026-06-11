@@ -58,6 +58,7 @@ import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
 import { fnSecretsFromImports } from "../secret-import/secret-import-fns";
 import { TSecretTagDALFactory } from "../secret-tag/secret-tag-dal";
+import { TSecretHttpProxyConfigDALFactory } from "../secret-http-proxy-config/secret-http-proxy-config-dal";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { TSecretV2BridgeServiceFactory } from "../secret-v2-bridge/secret-v2-bridge-service";
 import { TGetSecretReferencesTreeDTO } from "../secret-v2-bridge/secret-v2-bridge-types";
@@ -145,6 +146,7 @@ type TSecretServiceFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
   identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find">;
+  secretHttpProxyConfigDAL: Pick<TSecretHttpProxyConfigDALFactory, "findBySecretIds">;
 };
 
 export type TSecretServiceFactory = ReturnType<typeof secretServiceFactory>;
@@ -173,7 +175,8 @@ export const secretServiceFactory = ({
   secretV2BridgeDAL,
   kmsService,
   userGroupMembershipDAL,
-  identityGroupMembershipDAL
+  identityGroupMembershipDAL,
+  secretHttpProxyConfigDAL
 }: TSecretServiceFactoryDep) => {
   const getSecretReference = async (projectId: string) => {
     // if bot key missing means e2e still exist
@@ -1501,7 +1504,26 @@ export const secretServiceFactory = ({
       recursive
     });
 
-    const decryptedSecrets = secrets.map((el) => decryptSecretRaw({ ...el, secretValueHidden: false }, botKey));
+    let decryptedSecrets = secrets.map((el) => decryptSecretRaw({ ...el, secretValueHidden: false }, botKey));
+
+    // Apply placeholder injection for proxy-enabled secrets
+    const shouldInjectPlaceholders = paramsV2.injectPlaceholders === true;
+    if (shouldInjectPlaceholders) {
+      const secretIds = secrets.map((s) => (s as any)._id || (s as any).id).filter(Boolean) as string[];
+      const proxyConfigs = secretIds.length > 0 ? await secretHttpProxyConfigDAL.findBySecretIds(secretIds) : [];
+      const placeholderMap = new Map(proxyConfigs.map((c) => [c.secretId, c.placeholder]));
+      decryptedSecrets = decryptedSecrets.map((s) => {
+        const sId = (s as any)._id || (s as any).id;
+        const ph = placeholderMap.get(sId);
+        if (ph) {
+          return { ...s, secretValue: ph, secretValueIsPlaceholder: true };
+        }
+        return { ...s, secretValueIsPlaceholder: false };
+      });
+    } else {
+      decryptedSecrets = decryptedSecrets.map((s) => ({ ...s, secretValueIsPlaceholder: false }));
+    }
+
     const filteredSecrets = tagSlugs.length
       ? decryptedSecrets.filter((secret) => Boolean(secret.tags?.find((el) => tagSlugs.includes(el.slug))))
       : decryptedSecrets;

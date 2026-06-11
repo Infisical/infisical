@@ -596,7 +596,8 @@ export const reshapeBridgeSecret = (
     rotationId?: string;
     secretReminderRecipients?: TSecretReminderRecipient[];
   },
-  secretValueHidden: boolean
+  secretValueHidden: boolean,
+  proxyPlaceholder?: string | null
 ) => ({
   secretKey: secret.key,
   secretPath,
@@ -632,13 +633,24 @@ export const reshapeBridgeSecret = (
   secretReminderRecipients: secret.secretReminderRecipients || [],
   ...(secretValueHidden
     ? {
-        secretValue: secret.type === SecretType.Personal ? secret.value : INFISICAL_SECRET_VALUE_HIDDEN_MASK,
-        secretValueHidden: true
+        secretValue:
+          secret.type === SecretType.Personal
+            ? secret.value
+            : proxyPlaceholder || INFISICAL_SECRET_VALUE_HIDDEN_MASK,
+        secretValueHidden: !proxyPlaceholder,
+        secretValueIsPlaceholder: !!proxyPlaceholder
       }
-    : {
-        secretValue: secret.value || "",
-        secretValueHidden: false
-      })
+    : proxyPlaceholder
+      ? {
+          secretValue: proxyPlaceholder,
+          secretValueHidden: false,
+          secretValueIsPlaceholder: true
+        }
+      : {
+          secretValue: secret.value || "",
+          secretValueHidden: false,
+          secretValueIsPlaceholder: false
+        })
 });
 
 function escapeRegex(str: string): string {

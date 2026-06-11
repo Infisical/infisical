@@ -54,9 +54,10 @@ export const usePerformSecretApprovalRequestMerge = () => {
   const queryClient = useQueryClient();
 
   return useMutation<object, object, TPerformSecretApprovalRequestMerge>({
-    mutationFn: async ({ id, bypassReason }) => {
+    mutationFn: async ({ id, bypassReason, valueOverrides }) => {
       const { data } = await apiRequest.post(`/api/v1/secret-approval-requests/${id}/merge`, {
-        bypassReason
+        bypassReason,
+        valueOverrides
       });
       return data;
     },

@@ -300,6 +300,7 @@ export enum TableName {
 
   CaSigningConfig = "ca_signing_configs",
   SecretValidationRule = "secret_validation_rules",
+  SecretHttpProxyConfig = "secret_http_proxy_configs",
 
   // Honey Tokens
   HoneyTokenConfig = "honey_token_configs",

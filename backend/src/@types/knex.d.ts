@@ -807,6 +807,11 @@ import {
   TSecretValidationRulesUpdate
 } from "@app/db/schemas/secret-validation-rules";
 import {
+  TSecretHttpProxyConfigs,
+  TSecretHttpProxyConfigsInsert,
+  TSecretHttpProxyConfigsUpdate
+} from "@app/db/schemas/secret-http-proxy-configs";
+import {
   TUserNotifications,
   TUserNotificationsInsert,
   TUserNotificationsUpdate
@@ -1902,6 +1907,11 @@ declare module "knex/types/tables" {
       TSecretValidationRules,
       TSecretValidationRulesInsert,
       TSecretValidationRulesUpdate
+    >;
+    [TableName.SecretHttpProxyConfig]: KnexOriginal.CompositeTableType<
+      TSecretHttpProxyConfigs,
+      TSecretHttpProxyConfigsInsert,
+      TSecretHttpProxyConfigsUpdate
     >;
     [TableName.VaultExternalMigrationConfig]: KnexOriginal.CompositeTableType<
       TVaultExternalMigrationConfigs,

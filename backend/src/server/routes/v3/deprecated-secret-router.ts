@@ -244,6 +244,7 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
         expandSecretReferences: convertStringBoolean().describe(RAW_SECRETS.LIST.expand),
         recursive: convertStringBoolean().describe(RAW_SECRETS.LIST.recursive),
         include_imports: convertStringBoolean().describe(RAW_SECRETS.LIST.includeImports),
+        injectPlaceholders: convertStringBoolean().optional(),
         tagSlugs: z
           .string()
           .describe(RAW_SECRETS.LIST.tagSlugs)
@@ -257,6 +258,7 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
             .extend({
               secretPath: z.string().optional(),
               secretValueHidden: z.boolean(),
+              secretValueIsPlaceholder: z.boolean().optional(),
               secretMetadata: ResourceMetadataWithEncryptionSchema.optional(),
               tags: SanitizedTagSchema.array().optional()
             })
@@ -270,6 +272,7 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
                 .omit({ createdAt: true, updatedAt: true })
                 .extend({
                   secretValueHidden: z.boolean(),
+                  secretValueIsPlaceholder: z.boolean().optional(),
                   secretMetadata: ResourceMetadataWithEncryptionSchema.optional()
                 })
                 .array()
@@ -323,7 +326,8 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
         includeImports: req.query.include_imports,
         recursive: req.query.recursive,
         tagSlugs: req.query.tagSlugs,
-        ifNoneMatch: req.headers["if-none-match"]
+        ifNoneMatch: req.headers["if-none-match"],
+        injectPlaceholders: req.query.injectPlaceholders
       });
 
       const { secrets, imports, etag, notModified } = result;

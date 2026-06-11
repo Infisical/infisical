@@ -110,6 +110,8 @@ import {
   TUpdateManySecretDTO,
   TUpdateSecretDTO
 } from "./secret-v2-bridge-types";
+import { TSecretHttpProxyConfigDALFactory } from "@app/services/secret-http-proxy-config/secret-http-proxy-config-dal";
+
 import { TSecretVersionV2DALFactory } from "./secret-version-dal";
 import { TSecretVersionV2TagDALFactory } from "./secret-version-tag-dal";
 
@@ -150,6 +152,7 @@ type TSecretV2BridgeServiceFactoryDep = {
   >;
   reminderService: Pick<TReminderServiceFactory, "createReminder" | "getReminder">;
   secretValidationRuleService: Pick<TSecretValidationRuleServiceFactory, "validateSecrets">;
+  secretHttpProxyConfigDAL: Pick<TSecretHttpProxyConfigDALFactory, "findBySecretIds">;
 };
 
 export type TSecretV2BridgeServiceFactory = ReturnType<typeof secretV2BridgeServiceFactory>;
@@ -178,7 +181,8 @@ export const secretV2BridgeServiceFactory = ({
   resourceMetadataDAL,
   keyStore,
   reminderService,
-  secretValidationRuleService
+  secretValidationRuleService,
+  secretHttpProxyConfigDAL
 }: TSecretV2BridgeServiceFactoryDep) => {
   const $validateSecretReferences = async (
     projectId: string,
@@ -1191,6 +1195,7 @@ export const secretV2BridgeServiceFactory = ({
       personalOverridesBehavior,
       throwOnMissingReadValuePermission = true,
       ifNoneMatch,
+      injectPlaceholders,
       ...params
     } = dto;
 
@@ -1221,6 +1226,7 @@ export const secretV2BridgeServiceFactory = ({
       secretImportReferencesBehavior,
       viewSecretValue,
       throwOnMissingReadValuePermission,
+      injectPlaceholders,
       ...params
     });
     const etagField = `${actorId}:${permissionFingerprint}:${requestParamsHash}`;
@@ -1367,6 +1373,18 @@ export const secretV2BridgeServiceFactory = ({
       secrets = Array.from(secretMap.values());
     }
 
+    // batch-fetch proxy configs for placeholder injection
+    const proxyPlaceholderMap = new Map<string, string>();
+    if (injectPlaceholders || !viewSecretValue) {
+      const secretIds = secrets.map((s) => s.id);
+      if (secretIds.length > 0) {
+        const proxyConfigs = await secretHttpProxyConfigDAL.findBySecretIds(secretIds);
+        for (const cfg of proxyConfigs) {
+          proxyPlaceholderMap.set(cfg.secretId, cfg.placeholder);
+        }
+      }
+    }
+
     // scott: if any of this changes it also needs to be mirrored in secret rotation for getting dashboard secrets
     const decryptedSecrets = secrets
       .filter((el) => {
@@ -1450,7 +1468,8 @@ export const secretV2BridgeServiceFactory = ({
               ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedComment }).toString()
               : ""
           },
-          secretValueHidden && !isPersonalSecret
+          secretValueHidden && !isPersonalSecret,
+          (secretValueHidden || injectPlaceholders) ? proxyPlaceholderMap.get(secret.id) : undefined
         );
       });
 

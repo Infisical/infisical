@@ -65,6 +65,7 @@ import { SecretV3RawSanitized, WsTag } from "@app/hooks/api/types";
 import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
 import { camelCaseToSpaces } from "@app/lib/fn/string";
 
+import { SecretHttpProxySection } from "./SecretHttpProxySection";
 import { HIDDEN_SECRET_VALUE } from "./SecretItem";
 import { formSchema, SecretActionType, TFormSchema } from "./SecretListView.utils";
 import { SecretVersionItem } from "./SecretVersionItem";
@@ -749,6 +750,10 @@ export const SecretDetailSidebar = ({
                 </FormControl>
               </div>
             </div>
+            <SecretHttpProxySection
+              projectId={currentProject.id}
+              secretId={secret.id}
+            />
             <Controller
               control={control}
               name="comment"

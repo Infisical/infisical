@@ -140,6 +140,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         recursive: convertStringBoolean().describe(RAW_SECRETS.LIST.recursive),
         includePersonalOverrides: convertStringBoolean().describe(RAW_SECRETS.LIST.includePersonalOverrides),
         includeImports: convertStringBoolean(true).describe(RAW_SECRETS.LIST.includeImports),
+        injectPlaceholders: convertStringBoolean().optional(),
         tagSlugs: z
           .string()
           .describe(RAW_SECRETS.LIST.tagSlugs)
@@ -153,6 +154,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
             .extend({
               secretPath: z.string().optional(),
               secretValueHidden: z.boolean(),
+              secretValueIsPlaceholder: z.boolean().optional(),
               secretMetadata: ResourceMetadataWithEncryptionSchema.optional(),
               tags: SanitizedTagSchema.array().optional()
             })
@@ -211,7 +213,8 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         includeImports: req.query.includeImports,
         recursive: req.query.recursive,
         tagSlugs: req.query.tagSlugs,
-        ifNoneMatch: req.headers["if-none-match"]
+        ifNoneMatch: req.headers["if-none-match"],
+        injectPlaceholders: req.query.injectPlaceholders
       });
 
       const { secrets, imports, etag, notModified } = result;

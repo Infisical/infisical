@@ -16,6 +16,7 @@ import {
   HistoryIcon,
   MessageSquareIcon,
   SaveIcon,
+  ShieldIcon,
   TagsIcon,
   TrashIcon,
   Undo2Icon,
@@ -95,6 +96,8 @@ import { SecretCommentForm } from "./SecretCommentForm";
 import { SecretMetadataForm } from "./SecretMetadataForm";
 import { SecretReminderForm } from "./SecretReminderForm";
 import { SecretTagForm } from "./SecretTagForm";
+import { SecretHttpProxySection } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/SecretHttpProxySection";
+
 import { SecretVersionHistory } from "./SecretVersionHistory";
 
 type Props = {
@@ -323,6 +326,7 @@ export const SecretEditTableRow = ({
   const [isVersionHistoryOpen, setIsVersionHistoryOpen] = useState(false);
   const [isAccessInsightsOpen, setIsAccessInsightsOpen] = useState(false);
   const [isSecretReferenceOpen, setIsSecretReferenceOpen] = useState(false);
+  const [isHttpProxyOpen, setIsHttpProxyOpen] = useState(false);
 
   const toggleModal = useCallback(() => {
     setIsModalOpen((prev) => !prev);
@@ -1659,6 +1663,25 @@ export const SecretEditTableRow = ({
                   </TooltipContent>
                 </Tooltip>
                 <Tooltip
+                  open={isCreatable || !secretId ? undefined : false}
+                  disableHoverableContent
+                >
+                  <TooltipTrigger className="block w-full">
+                    <DropdownMenuItem
+                      onClick={() => setIsHttpProxyOpen(true)}
+                      isDisabled={isCreatable || !secretId}
+                    >
+                      <ShieldIcon className="h-4 w-4" />
+                      HTTP Proxy
+                    </DropdownMenuItem>
+                  </TooltipTrigger>
+                  <TooltipContent side="left">
+                    {isCreatable
+                      ? "Create Secret First"
+                      : "Configure HTTP Proxy Settings"}
+                  </TooltipContent>
+                </Tooltip>
+                <Tooltip
                   open={isManagedSecret || isCreatable ? undefined : false}
                   disableHoverableContent
                 >
@@ -1797,6 +1820,32 @@ export const SecretEditTableRow = ({
               environment={environment}
               secretPath={secretPath}
             />
+          )}
+        </SheetContent>
+      </Sheet>
+      <Sheet open={isHttpProxyOpen} onOpenChange={setIsHttpProxyOpen}>
+        <SheetContent onOpenAutoFocus={(e) => e.preventDefault()} className="gap-y-0" side="right">
+          <SheetHeader>
+            <SheetTitle>HTTP Proxy Settings</SheetTitle>
+            <SheetDescription>
+              Configure credential brokering for this secret
+            </SheetDescription>
+          </SheetHeader>
+          <Separator />
+          <div className="bg-container p-4 text-foreground">
+            <p className="truncate">{secretName}</p>
+            <Badge variant="neutral" className="mt-0.5">
+              {environmentName}
+            </Badge>
+          </div>
+          <Separator />
+          {secretId && (
+            <div className="flex-1 overflow-y-auto p-4">
+              <SecretHttpProxySection
+                projectId={currentProject.id}
+                secretId={secretId}
+              />
+            </div>
           )}
         </SheetContent>
       </Sheet>

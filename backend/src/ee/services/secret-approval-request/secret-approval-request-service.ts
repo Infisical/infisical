@@ -66,6 +66,7 @@ import {
 } from "@app/services/secret-v2-bridge/secret-v2-bridge-fns";
 import { TSecretVersionV2DALFactory } from "@app/services/secret-v2-bridge/secret-version-dal";
 import { TSecretVersionV2TagDALFactory } from "@app/services/secret-v2-bridge/secret-version-tag-dal";
+import { TSecretHttpProxyConfigDALFactory } from "@app/services/secret-http-proxy-config/secret-http-proxy-config-dal";
 import { TProjectSlackConfigDALFactory } from "@app/services/slack/project-slack-config-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
@@ -162,6 +163,7 @@ type TSecretApprovalRequestServiceFactoryDep = {
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
+  secretHttpProxyConfigDAL: Pick<TSecretHttpProxyConfigDALFactory, "create">;
 };
 
 export type TSecretApprovalRequestServiceFactory = ReturnType<typeof secretApprovalRequestServiceFactory>;
@@ -196,7 +198,8 @@ export const secretApprovalRequestServiceFactory = ({
   microsoftTeamsService,
   folderCommitService,
   notificationService,
-  telemetryService
+  telemetryService,
+  secretHttpProxyConfigDAL
 }: TSecretApprovalRequestServiceFactoryDep) => {
   const requestCount = async ({
     projectId,
@@ -617,7 +620,8 @@ export const secretApprovalRequestServiceFactory = ({
     actorId,
     actorOrgId,
     actorAuthMethod,
-    bypassReason
+    bypassReason,
+    valueOverrides
   }: TMergeSecretApprovalRequestDTO) => {
     const secretApprovalRequest = await secretApprovalRequestDAL.findById(approvalId);
     if (!secretApprovalRequest)
@@ -756,6 +760,30 @@ export const secretApprovalRequestServiceFactory = ({
           )
         );
 
+        // apply value overrides from reviewer, only for commits with empty values
+        const valueOverrideMap = new Map<string, Buffer>();
+        if (valueOverrides?.length) {
+          for (const override of valueOverrides) {
+            valueOverrideMap.set(
+              override.secretKey,
+              secretManagerEncryptor({ plainText: Buffer.from(override.secretValue) }).cipherTextBlob
+            );
+          }
+        }
+
+        // Resolve value overrides and recompute blind indexes before bulk insert
+        const resolvedCreationInputs = await Promise.all(
+          secretCreationCommits.map(async (el, idx) => {
+            // Only apply override if the commit has no value (empty-value proposal)
+            const override = !el.encryptedValue ? valueOverrideMap.get(el.key) : undefined;
+            const finalValue = override || el.encryptedValue;
+            const blindIndex = override
+              ? await generateSecretBlindIndex(secretManagerDecryptor({ cipherTextBlob: override }))
+              : creationBlindIndexes[idx];
+            return { el, finalValue, blindIndex };
+          })
+        );
+
         const newSecrets = secretCreationCommits.length
           ? await fnSecretV2BridgeBulkInsert({
               tx,
@@ -765,13 +793,13 @@ export const secretApprovalRequestServiceFactory = ({
                 type: actor
               },
               orgId: actorOrgId,
-              inputSecrets: secretCreationCommits.map((el, idx) => {
+              inputSecrets: resolvedCreationInputs.map(({ el, finalValue, blindIndex }) => {
                 return {
                   tagIds: el?.tags.map(({ id }) => id),
                   version: 1,
                   encryptedComment: el.encryptedComment,
-                  encryptedValue: el.encryptedValue,
-                  secretValueBlindIndex: creationBlindIndexes[idx],
+                  encryptedValue: finalValue,
+                  secretValueBlindIndex: blindIndex,
                   skipMultilineEncoding: el.skipMultilineEncoding,
                   key: el.key,
                   secretMetadata: (Array.isArray(el.secretMetadata)
@@ -783,10 +811,10 @@ export const secretApprovalRequestServiceFactory = ({
                       ? Buffer.from(meta.encryptedValue, "base64")
                       : meta.value || ""
                   })),
-                  references: el.encryptedValue
+                  references: finalValue
                     ? getAllSecretReferencesV2Bridge(
                         secretManagerDecryptor({
-                          cipherTextBlob: el.encryptedValue
+                          cipherTextBlob: finalValue
                         }).toString()
                       ).nestedReferences
                     : [],
@@ -847,6 +875,31 @@ export const secretApprovalRequestServiceFactory = ({
               generateSecretBlindIndex,
               tx
             });
+          }
+        }
+
+        // create proxy configs for commits that had proxy config proposals
+        if (newSecrets.length > 0) {
+          const proxyConfigCommits = secretCreationCommits.filter(
+            (el) => (el.internalMetadata as TInternalMetadata)?.type === InternalMetadataType.ProxyConfig
+          );
+          if (proxyConfigCommits.length > 0) {
+            const createdSecretsByKey = new Map(newSecrets.map((s) => [s.key, s]));
+            for (const commit of proxyConfigCommits) {
+              const createdSecret = createdSecretsByKey.get(commit.key);
+              const internalMeta = commit.internalMetadata as TInternalMetadata;
+              if (!createdSecret || internalMeta.type !== InternalMetadataType.ProxyConfig) continue;
+
+              const { payload } = internalMeta;
+              await secretHttpProxyConfigDAL.create(
+                {
+                  secretId: createdSecret.id,
+                  placeholder: payload.placeholder || `__infisical_${alphaNumericNanoId(8)}__`,
+                  rules: JSON.stringify(payload.rules)
+                },
+                tx
+              );
+            }
           }
         }
 
@@ -1826,7 +1879,15 @@ export const secretApprovalRequestServiceFactory = ({
                 : meta.value
             }))
           ),
-          type: SecretType.Shared
+          type: SecretType.Shared,
+          ...(createdSecret.proxyConfig
+            ? {
+                internalMetadata: {
+                  type: InternalMetadataType.ProxyConfig,
+                  payload: createdSecret.proxyConfig
+                } as TInternalMetadata
+              }
+            : {})
         }))
       );
       createdSecrets.forEach(({ tagIds, secretKey }) => {

@@ -27,6 +27,19 @@ export type TApprovalUpdateSecret = Partial<TApprovalCreateSecret> & {
   tagIds?: string[];
 };
 
+export type TProxyConfigProposal = {
+  placeholder?: string;
+  rules: {
+    host: string;
+    authType: string;
+    headerName?: string;
+    prefix?: string;
+    usernameKey?: string;
+    headerTemplate?: string;
+    substitutions?: { key: string; placeholder: string; in?: string[] }[];
+  }[];
+};
+
 export type TApprovalCreateSecretV2Bridge = {
   secretKey: string;
   secretValue?: string;
@@ -38,6 +51,7 @@ export type TApprovalCreateSecretV2Bridge = {
   metadata?: Record<string, string>;
   secretMetadata?: ResourceMetadataWithEncryptionDTO;
   tagIds?: string[];
+  proxyConfig?: TProxyConfigProposal;
 };
 
 export type TApprovalUpdateSecretV2Bridge = Partial<TApprovalCreateSecretV2Bridge> & {
@@ -71,6 +85,7 @@ export type TGenerateSecretApprovalRequestV2BridgeDTO = {
 export type TMergeSecretApprovalRequestDTO = {
   approvalId: string;
   bypassReason?: string;
+  valueOverrides?: { secretKey: string; secretValue: string }[];
 } & Omit<TProjectPermission, "projectId">;
 
 export type TStatusChangeDTO = {
@@ -101,7 +116,8 @@ export type TSecretApprovalDetailsDTO = {
 } & Omit<TProjectPermission, "projectId">;
 
 export enum InternalMetadataType {
-  MoveSecret = "move-secret"
+  MoveSecret = "move-secret",
+  ProxyConfig = "proxy-config"
 }
 
 export type TInternalMetadataMoveSecret = {
@@ -114,4 +130,9 @@ export type TInternalMetadataMoveSecret = {
   };
 };
 
-export type TInternalMetadata = TInternalMetadataMoveSecret;
+export type TInternalMetadataProxyConfig = {
+  type: InternalMetadataType.ProxyConfig;
+  payload: TProxyConfigProposal;
+};
+
+export type TInternalMetadata = TInternalMetadataMoveSecret | TInternalMetadataProxyConfig;

@@ -148,4 +148,5 @@ export type TPerformSecretApprovalRequestMerge = {
   id: string;
   projectId: string;
   bypassReason?: string;
+  valueOverrides?: { secretKey: string; secretValue: string }[];
 };

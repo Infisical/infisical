@@ -473,6 +473,8 @@ import { secretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-
 import { secretV2BridgeServiceFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-service";
 import { secretVersionV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-version-dal";
 import { secretVersionV2TagBridgeDALFactory } from "@app/services/secret-v2-bridge/secret-version-tag-dal";
+import { secretHttpProxyConfigDALFactory } from "@app/services/secret-http-proxy-config/secret-http-proxy-config-dal";
+import { secretHttpProxyConfigServiceFactory } from "@app/services/secret-http-proxy-config/secret-http-proxy-config-service";
 import { secretValidationRuleDALFactory } from "@app/services/secret-validation-rule/secret-validation-rule-dal";
 import { secretValidationRuleServiceFactory } from "@app/services/secret-validation-rule/secret-validation-rule-service";
 import { serviceTokenDALFactory } from "@app/services/service-token/service-token-dal";
@@ -586,6 +588,7 @@ export const registerRoutes = async (
   const secretDAL = secretDALFactory(db);
   const secretTagDAL = secretTagDALFactory(db);
   const secretValidationRuleDAL = secretValidationRuleDALFactory(db);
+  const secretHttpProxyConfigDAL = secretHttpProxyConfigDALFactory(db);
   const folderDAL = secretFolderDALFactory(db);
   const folderVersionDAL = secretFolderVersionDALFactory(db);
   const secretImportDAL = secretImportDALFactory(db);
@@ -1861,6 +1864,11 @@ export const registerRoutes = async (
     secretDAL: secretV2BridgeDAL,
     secretVersionV2BridgeDAL
   });
+  const secretHttpProxyConfigService = secretHttpProxyConfigServiceFactory({
+    secretHttpProxyConfigDAL,
+    secretV2BridgeDAL,
+    permissionService
+  });
   const folderService = secretFolderServiceFactory({
     permissionService,
     folderDAL,
@@ -1914,7 +1922,8 @@ export const registerRoutes = async (
     resourceMetadataDAL,
     reminderService,
     keyStore,
-    secretValidationRuleService
+    secretValidationRuleService,
+    secretHttpProxyConfigDAL
   });
 
   const secretApprovalRequestService = secretApprovalRequestServiceFactory({
@@ -1947,7 +1956,8 @@ export const registerRoutes = async (
     microsoftTeamsService,
     folderCommitService,
     notificationService,
-    telemetryService
+    telemetryService,
+    secretHttpProxyConfigDAL
   });
 
   const secretService = secretServiceFactory({
@@ -1975,7 +1985,8 @@ export const registerRoutes = async (
     secretV2BridgeDAL,
     kmsService,
     userGroupMembershipDAL,
-    identityGroupMembershipDAL
+    identityGroupMembershipDAL,
+    secretHttpProxyConfigDAL
   });
 
   const secretSharingService = secretSharingServiceFactory({
@@ -3619,6 +3630,7 @@ export const registerRoutes = async (
     secretReplication: secretReplicationService,
     secretTag: secretTagService,
     secretValidationRule: secretValidationRuleService,
+    secretHttpProxyConfig: secretHttpProxyConfigService,
     rateLimit: rateLimitService,
     folder: folderService,
     secretImport: secretImportService,

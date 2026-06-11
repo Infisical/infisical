@@ -133,7 +133,15 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
         id: z.string()
       }),
       body: z.object({
-        bypassReason: z.string().max(1000).optional()
+        bypassReason: z.string().max(1000).optional(),
+        valueOverrides: z
+          .array(
+            z.object({
+              secretKey: z.string(),
+              secretValue: z.string()
+            })
+          )
+          .optional()
       }),
       response: {
         200: z.object({
@@ -150,7 +158,8 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
           actorAuthMethod: req.permission.authMethod,
           actorOrgId: req.permission.orgId,
           approvalId: req.params.id,
-          bypassReason: req.body.bypassReason
+          bypassReason: req.body.bypassReason,
+          valueOverrides: req.body.valueOverrides
         });
 
       await server.services.auditLog.createAuditLog({
