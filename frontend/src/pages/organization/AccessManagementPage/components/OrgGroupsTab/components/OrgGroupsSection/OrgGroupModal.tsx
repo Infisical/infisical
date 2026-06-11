@@ -2,19 +2,30 @@ import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { InfoIcon } from "lucide-react";
-import { twMerge } from "tailwind-merge";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
+import { RoleOption } from "@app/components/roles";
 import {
   Button,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Field,
+  FieldError,
+  FieldLabel,
   FilterableSelect,
-  FormControl,
   Input,
-  Modal,
-  ModalContent,
-  Tooltip
-} from "@app/components/v2";
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import { findOrgMembershipRole } from "@app/helpers/roles";
 import { useCreateGroup, useGetOrgRoles, useUpdateGroup } from "@app/hooks/api";
@@ -131,8 +142,8 @@ export const OrgGroupModal = ({
   else if (isSubOrganization) modalTitle = "Add Group to Sub-Organization";
 
   return (
-    <Modal
-      isOpen={popUp?.group?.isOpen}
+    <Dialog
+      open={popUp?.group?.isOpen}
       onOpenChange={(isOpen) => {
         handlePopUpToggle("group", isOpen);
         if (!isOpen) {
@@ -141,49 +152,33 @@ export const OrgGroupModal = ({
         }
       }}
     >
-      <ModalContent
-        bodyClassName="overflow-visible"
-        title={modalTitle}
-        subTitle={
-          showToggle
-            ? "Create a new group or assign an existing one from the parent organization"
-            : undefined
-        }
-      >
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>{modalTitle}</DialogTitle>
+          {showToggle && (
+            <DialogDescription>
+              Create a new group or assign an existing one from the parent organization
+            </DialogDescription>
+          )}
+        </DialogHeader>
+
         {showToggle && (
-          <div className="mb-4 flex items-center justify-center gap-x-2">
-            <div className="flex w-3/4 gap-x-0.5 rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1">
-              <Button
-                variant="outline_bg"
-                onClick={() => setWizardStep(GroupWizardSteps.CreateGroup)}
-                size="xs"
-                className={twMerge(
-                  "min-w-[2.4rem] flex-1 rounded border-none hover:bg-mineshaft-600",
-                  wizardStep === GroupWizardSteps.CreateGroup
-                    ? "bg-mineshaft-500"
-                    : "bg-transparent"
-                )}
-              >
-                Create New
-              </Button>
-              <Button
-                variant="outline_bg"
-                onClick={() => setWizardStep(GroupWizardSteps.LinkGroup)}
-                size="xs"
-                className={twMerge(
-                  "min-w-[2.4rem] flex-1 rounded border-none hover:bg-mineshaft-600",
-                  wizardStep === GroupWizardSteps.LinkGroup ? "bg-mineshaft-500" : "bg-transparent"
-                )}
-              >
-                Assign Existing
-              </Button>
-            </div>
-            <Tooltip
-              className="max-w-sm"
-              position="right"
-              align="start"
-              content={
-                <>
+          <Tabs
+            value={wizardStep}
+            onValueChange={(value) => setWizardStep(value as GroupWizardSteps)}
+          >
+            <div className="flex items-center justify-center gap-2">
+              <TabsList>
+                <TabsTrigger value={GroupWizardSteps.CreateGroup}>Create New</TabsTrigger>
+                <TabsTrigger value={GroupWizardSteps.LinkGroup}>Assign Existing</TabsTrigger>
+              </TabsList>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="inline-flex cursor-default text-mineshaft-400">
+                    <InfoIcon size={16} />
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="right" className="max-w-sm">
                   <p className="mb-2 text-mineshaft-300">
                     You can add groups to your sub-organization in one of two ways:
                   </p>
@@ -199,13 +194,12 @@ export const OrgGroupModal = ({
                       parent level.
                     </li>
                   </ul>
-                </>
-              }
-            >
-              <InfoIcon size={16} className="text-mineshaft-400" />
-            </Tooltip>
-          </div>
+                </TooltipContent>
+              </Tooltip>
+            </div>
+          </Tabs>
         )}
+
         {wizardStep === GroupWizardSteps.LinkGroup ? (
           <OrgGroupLinkForm
             onClose={() => {
@@ -214,66 +208,66 @@ export const OrgGroupModal = ({
             }}
           />
         ) : (
-          <form onSubmit={handleSubmit(onGroupModalSubmit)}>
+          <form onSubmit={handleSubmit(onGroupModalSubmit)} className="flex flex-col gap-4">
             <Controller
               control={control}
               name="name"
               render={({ field, fieldState: { error } }) => (
-                <FormControl label="Name" errorText={error?.message} isError={Boolean(error)}>
-                  <Input {...field} placeholder="Engineering" />
-                </FormControl>
+                <Field>
+                  <FieldLabel htmlFor="name">Name</FieldLabel>
+                  <Input id="name" placeholder="Engineering" isError={Boolean(error)} {...field} />
+                  <FieldError>{error?.message}</FieldError>
+                </Field>
               )}
             />
             <Controller
               control={control}
               name="slug"
               render={({ field, fieldState: { error } }) => (
-                <FormControl label="Slug" errorText={error?.message} isError={Boolean(error)}>
-                  <Input {...field} placeholder="engineering" />
-                </FormControl>
+                <Field>
+                  <FieldLabel htmlFor="slug">Slug</FieldLabel>
+                  <Input id="slug" placeholder="engineering" isError={Boolean(error)} {...field} />
+                  <FieldError>{error?.message}</FieldError>
+                </Field>
               )}
             />
             <Controller
               control={control}
               name="role"
               render={({ field: { onChange, value }, fieldState: { error } }) => (
-                <FormControl
-                  label={`${popUp?.group?.data ? "Update" : ""} Role`}
-                  errorText={error?.message}
-                  isError={Boolean(error)}
-                  className="mt-4"
-                >
+                <Field>
+                  <FieldLabel htmlFor="role">{isCreateMode ? "Role" : "Update Role"}</FieldLabel>
                   <FilterableSelect
+                    inputId="role"
                     options={roles}
                     placeholder="Select role..."
                     onChange={onChange}
                     value={value}
+                    isError={Boolean(error)}
                     getOptionValue={(option) => option.slug}
                     getOptionLabel={(option) => option.name}
+                    components={{ Option: RoleOption }}
                   />
-                </FormControl>
+                  <FieldError>{error?.message}</FieldError>
+                </Field>
               )}
             />
-            <div className="mt-8 flex items-center">
-              <Button
-                className="mr-4"
-                size="sm"
-                type="submit"
-                isLoading={createIsLoading || updateIsLoading}
-              >
-                {!popUp?.group?.data ? "Create" : "Update"}
-              </Button>
-              <Button
-                colorSchema="secondary"
-                variant="plain"
-                onClick={() => handlePopUpClose("group")}
-              >
+            <DialogFooter>
+              <Button variant="ghost" type="button" onClick={() => handlePopUpClose("group")}>
                 Cancel
               </Button>
-            </div>
+              <Button
+                variant="org"
+                type="submit"
+                isPending={createIsLoading || updateIsLoading}
+                isDisabled={createIsLoading || updateIsLoading}
+              >
+                {isCreateMode ? "Create" : "Update"}
+              </Button>
+            </DialogFooter>
           </form>
         )}
-      </ModalContent>
-    </Modal>
+      </DialogContent>
+    </Dialog>
   );
 };
