@@ -367,14 +367,6 @@ const expandLegacyForbidActions = <T extends RawRuleOf<MongoAbility<ProjectPermi
   });
 };
 
-const hbsSubstr = (text: string, start: number, end?: number) => {
-  const textStr = String(text || "");
-  if (!textStr) return textStr;
-
-  const endIndex = end && typeof end === "number" ? end : undefined;
-  return textStr.substring(start, endIndex);
-};
-
 const hbsStripPrefix = (text: string, prefix: string) => {
   const textStr = String(text || "");
   if (!textStr) return textStr;
@@ -385,7 +377,6 @@ const hbsStripPrefix = (text: string, prefix: string) => {
 const handlebarsClient = (() => {
   const hbs = handlebars.create();
 
-  hbs.registerHelper("substr", hbsSubstr);
   hbs.registerHelper("stripPrefix", hbsStripPrefix);
 
   return hbs;

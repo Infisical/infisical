@@ -70,7 +70,7 @@ export const additionalPrivilegeServiceFactory = ({
 
     validateHandlebarTemplate("Additional Privilege Create", JSON.stringify(data.permissions || []), {
       allowedExpressions: (val) => val.includes("identity."),
-      allowedHelpers: ["substr", "stripPrefix"]
+      allowedHelpers: ["stripPrefix"]
     });
 
     if (!data.isTemporary) {
@@ -134,7 +134,7 @@ export const additionalPrivilegeServiceFactory = ({
 
     validateHandlebarTemplate("Additional Privilege Create", JSON.stringify(data.permissions || []), {
       allowedExpressions: (val) => val.includes("identity."),
-      allowedHelpers: ["substr", "stripPrefix"]
+      allowedHelpers: ["stripPrefix"]
     });
 
     const updatedData = { ...existingPrivilege, ...data };

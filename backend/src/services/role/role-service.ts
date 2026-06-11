@@ -104,7 +104,7 @@ export const roleServiceFactory = ({
 
     validateHandlebarTemplate("Role Creation", JSON.stringify(data.permissions || []), {
       allowedExpressions: (val) => val.includes("identity."),
-      allowedHelpers: ["substr", "stripPrefix"]
+      allowedHelpers: ["stripPrefix"]
     });
 
     const role = await roleDAL.create({
@@ -150,7 +150,7 @@ export const roleServiceFactory = ({
 
     validateHandlebarTemplate("Role Update", JSON.stringify(data.permissions || []), {
       allowedExpressions: (val) => val.includes("identity."),
-      allowedHelpers: ["substr", "stripPrefix"]
+      allowedHelpers: ["stripPrefix"]
     });
 
     const role = await roleDAL.updateById(existingRole.id, {
