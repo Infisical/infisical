@@ -91,7 +91,13 @@ export enum ApiDocsTags {
   LdapSso = "LDAP SSO",
   Scim = "SCIM",
   Events = "Event Subscriptions",
-  GatewaysV3 = "Gateways"
+  GatewaysV3 = "Gateways",
+  PamAccounts = "PAM Accounts",
+  PamFolders = "PAM Folders",
+  PamAccountTemplates = "PAM Account Templates",
+  PamSessions = "PAM Sessions",
+  PamMemberships = "PAM Memberships",
+  PamRoles = "PAM Roles"
 }
 
 export const GROUPS = {

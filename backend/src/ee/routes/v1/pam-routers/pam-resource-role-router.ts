@@ -1,6 +1,7 @@
 import z from "zod";
 
 import { PamResourceRole } from "@app/ee/services/pam/pam-enums";
+import { ApiDocsTags } from "@app/lib/api-docs/constants";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -45,12 +46,14 @@ export const registerPamResourceRoleRouter = async (server: FastifyZodProvider) 
     url: "/",
     schema: {
       operationId: "listPamResourceRoles",
-      response: { 200: z.array(ResourceRoleSchema) }
+      description: "List available PAM resource roles",
+      tags: [ApiDocsTags.PamRoles],
+      response: { 200: z.object({ roles: z.array(ResourceRoleSchema) }) }
     },
     config: { rateLimit: readLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async () => {
-      return DEFAULT_RESOURCE_ROLES;
+      return { roles: DEFAULT_RESOURCE_ROLES };
     }
   });
 };

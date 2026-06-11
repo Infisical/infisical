@@ -90,7 +90,7 @@ export const useWebAccessSession = ({
     (terminal: Terminal, ticket: string) => {
       const { protocol, host } = window.location;
       const wsProtocol = protocol === "https:" ? "wss:" : "ws:";
-      const wsUrl = `${wsProtocol}//${host}/api/v1/pam/sessions/${accountId}/web-access?ticket=${encodeURIComponent(ticket)}`;
+      const wsUrl = `${wsProtocol}//${host}/api/v1/pam/accounts/${accountId}/web-access?ticket=${encodeURIComponent(ticket)}`;
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
 
@@ -242,7 +242,7 @@ export const useWebAccessSession = ({
 
     try {
       const { data } = await apiRequest.post<{ ticket: string }>(
-        `/api/v1/pam/sessions/${accountId}/web-access-ticket`,
+        `/api/v1/pam/accounts/${accountId}/web-access-ticket`,
         { reason: submittedReasonRef.current }
       );
       if (containerEl) {
@@ -349,7 +349,7 @@ export const useWebAccessSession = ({
           if (fitAddonRef.current) fitAddonRef.current.fit();
           terminal.reset();
           const { data: retryData } = await apiRequest.post<{ ticket: string }>(
-            `/api/v1/pam/sessions/${accountId}/web-access-ticket`,
+            `/api/v1/pam/accounts/${accountId}/web-access-ticket`,
             { mfaSessionId, reason: submittedReasonRef.current }
           );
           openWebSocket(terminal, retryData.ticket);

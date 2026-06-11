@@ -2,6 +2,7 @@ import z from "zod";
 
 import { PamFoldersSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { ApiDocsTags } from "@app/lib/api-docs/constants";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -23,21 +24,25 @@ export const registerPamFolderRouter = async (server: FastifyZodProvider) => {
     url: "/",
     schema: {
       operationId: "listPamFolders",
+      description: "List all PAM folders in the project",
+      tags: [ApiDocsTags.PamFolders],
       querystring: z.object({
-        search: z.string().optional()
+        search: z.string().optional().describe("Filter folders by name")
       }),
       response: {
-        200: z.array(
-          SanitizedFolderSchema.extend({
-            accountCount: z.number()
-          })
-        )
+        200: z.object({
+          folders: z.array(
+            SanitizedFolderSchema.extend({
+              accountCount: z.number()
+            })
+          )
+        })
       }
     },
     config: { rateLimit: readLimit },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      return server.services.pamFolder.list({
+      const folders = await server.services.pamFolder.list({
         projectId: req.internalPamProjectId,
         search: req.query.search,
         actorId: req.permission.id,
@@ -45,6 +50,7 @@ export const registerPamFolderRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod
       });
+      return { folders };
     }
   });
 
@@ -53,19 +59,23 @@ export const registerPamFolderRouter = async (server: FastifyZodProvider) => {
     url: "/:folderId",
     schema: {
       operationId: "getPamFolderById",
+      description: "Get a PAM folder by ID",
+      tags: [ApiDocsTags.PamFolders],
       params: z.object({
-        folderId: z.string().uuid()
+        folderId: z.string().uuid().describe("The ID of the folder")
       }),
       response: {
-        200: SanitizedFolderSchema.extend({
-          accountCount: z.number()
+        200: z.object({
+          folder: SanitizedFolderSchema.extend({
+            accountCount: z.number()
+          })
         })
       }
     },
     config: { rateLimit: readLimit },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      return server.services.pamFolder.getById({
+      const folder = await server.services.pamFolder.getById({
         folderId: req.params.folderId,
         projectId: req.internalPamProjectId,
         actorId: req.permission.id,
@@ -73,6 +83,7 @@ export const registerPamFolderRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod
       });
+      return { folder };
     }
   });
 
@@ -81,12 +92,14 @@ export const registerPamFolderRouter = async (server: FastifyZodProvider) => {
     url: "/",
     schema: {
       operationId: "createPamFolder",
+      description: "Create a new PAM folder",
+      tags: [ApiDocsTags.PamFolders],
       body: z.object({
-        name: z.string().trim().min(1).max(64),
-        description: z.string().trim().max(256).optional()
+        name: z.string().trim().min(1).max(64).describe("Display name for the folder"),
+        description: z.string().trim().max(256).optional().describe("Optional description")
       }),
       response: {
-        200: SanitizedFolderSchema
+        200: z.object({ folder: SanitizedFolderSchema })
       }
     },
     config: { rateLimit: writeLimit },
@@ -125,7 +138,7 @@ export const registerPamFolderRouter = async (server: FastifyZodProvider) => {
         })
         .catch(() => {});
 
-      return folder;
+      return { folder };
     }
   });
 
@@ -134,15 +147,17 @@ export const registerPamFolderRouter = async (server: FastifyZodProvider) => {
     url: "/:folderId",
     schema: {
       operationId: "updatePamFolder",
+      description: "Update a PAM folder",
+      tags: [ApiDocsTags.PamFolders],
       params: z.object({
-        folderId: z.string().uuid()
+        folderId: z.string().uuid().describe("The ID of the folder")
       }),
       body: z.object({
-        name: z.string().trim().min(1).max(64).optional(),
-        description: z.string().trim().max(256).nullable().optional()
+        name: z.string().trim().min(1).max(64).optional().describe("New display name"),
+        description: z.string().trim().max(256).nullable().optional().describe("New description")
       }),
       response: {
-        200: SanitizedFolderSchema
+        200: z.object({ folder: SanitizedFolderSchema })
       }
     },
     config: { rateLimit: writeLimit },
@@ -171,7 +186,7 @@ export const registerPamFolderRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      return folder;
+      return { folder };
     }
   });
 
@@ -180,11 +195,13 @@ export const registerPamFolderRouter = async (server: FastifyZodProvider) => {
     url: "/:folderId",
     schema: {
       operationId: "deletePamFolder",
+      description: "Delete a PAM folder",
+      tags: [ApiDocsTags.PamFolders],
       params: z.object({
-        folderId: z.string().uuid()
+        folderId: z.string().uuid().describe("The ID of the folder")
       }),
       response: {
-        200: SanitizedFolderSchema
+        200: z.object({ folder: SanitizedFolderSchema })
       }
     },
     config: { rateLimit: writeLimit },
@@ -222,7 +239,7 @@ export const registerPamFolderRouter = async (server: FastifyZodProvider) => {
         })
         .catch(() => {});
 
-      return folder;
+      return { folder };
     }
   });
 };

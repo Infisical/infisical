@@ -118,7 +118,7 @@ export const useDataExplorerSession = ({
     (ticket: string) => {
       const { protocol, host } = window.location;
       const wsProtocol = protocol === "https:" ? "wss:" : "ws:";
-      const wsUrl = `${wsProtocol}//${host}/api/v1/pam/sessions/${accountId}/web-access?ticket=${encodeURIComponent(ticket)}`;
+      const wsUrl = `${wsProtocol}//${host}/api/v1/pam/accounts/${accountId}/web-access?ticket=${encodeURIComponent(ticket)}`;
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
 
@@ -223,7 +223,7 @@ export const useDataExplorerSession = ({
 
       try {
         const { data } = await apiRequest.post<{ ticket: string }>(
-          `/api/v1/pam/sessions/${accountId}/web-access-ticket`,
+          `/api/v1/pam/accounts/${accountId}/web-access-ticket`,
           { mfaSessionId, reason: accessReason }
         );
         openWebSocket(data.ticket);

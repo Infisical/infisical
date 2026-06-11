@@ -53,12 +53,16 @@ const getAccountTypeConfig = (accountType: PamAccountType) => {
   return config;
 };
 
-export const validateConnectionDetails = (accountType: PamAccountType, data: unknown): Record<string, unknown> => {
-  return getAccountTypeConfig(accountType).connectionDetails.parse(data) as Record<string, unknown>;
+export const validateConnectionDetails = (accountType: PamAccountType, data: unknown) => {
+  return getAccountTypeConfig(accountType).connectionDetails.parse(data) as z.output<
+    (typeof ACCOUNT_TYPE_CONFIGS)[TSupportedAccountType]["connectionDetails"]
+  >;
 };
 
-export const validateCredentials = (accountType: PamAccountType, data: unknown): Record<string, unknown> => {
-  return getAccountTypeConfig(accountType).credentials.parse(data) as Record<string, unknown>;
+export const validateCredentials = (accountType: PamAccountType, data: unknown) => {
+  return getAccountTypeConfig(accountType).credentials.parse(data) as z.output<
+    (typeof ACCOUNT_TYPE_CONFIGS)[TSupportedAccountType]["credentials"]
+  >;
 };
 
 export { ACCOUNT_TYPE_CONFIGS };

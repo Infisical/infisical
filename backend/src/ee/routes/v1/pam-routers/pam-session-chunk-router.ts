@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { PamRecordingStorageBackend } from "@app/ee/services/pam-session-recording/pam-recording-enums";
+import { ApiDocsTags } from "@app/lib/api-docs/constants";
 import { BadRequestError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -28,11 +29,13 @@ export const registerPamSessionChunkRouter = async (server: FastifyZodProvider) 
     config: { rateLimit: writeLimit },
     schema: {
       operationId: "pamSessionChunkPresignedPut",
-      params: z.object({ sessionId: z.string().uuid() }),
+      description: "Request a presigned URL for uploading a session recording chunk",
+      tags: [ApiDocsTags.PamSessions],
+      params: z.object({ sessionId: z.string().uuid().describe("The ID of the session") }),
       body: z.object({
-        chunkIndex: z.number().int().nonnegative().max(999999),
-        ciphertextBytes: z.number().int().positive(),
-        isKeyframe: z.boolean().optional()
+        chunkIndex: z.number().int().nonnegative().max(999999).describe("Sequential chunk index"),
+        ciphertextBytes: z.number().int().positive().describe("Size of the encrypted chunk in bytes"),
+        isKeyframe: z.boolean().optional().describe("Whether this chunk is a keyframe")
       }),
       response: {
         200: z.object({
@@ -94,17 +97,19 @@ export const registerPamSessionChunkRouter = async (server: FastifyZodProvider) 
     config: { rateLimit: writeLimit },
     schema: {
       operationId: "pamSessionRecordChunk",
-      params: z.object({ sessionId: z.string().uuid() }),
+      description: "Record a session recording chunk",
+      tags: [ApiDocsTags.PamSessions],
+      params: z.object({ sessionId: z.string().uuid().describe("The ID of the session") }),
       body: z.object({
-        chunkIndex: z.number().int().nonnegative().max(999999),
-        startElapsedMs: z.number(),
-        endElapsedMs: z.number(),
-        ciphertextSha256: z.string(),
-        ciphertextBytes: z.number().int().positive(),
-        iv: z.string(),
-        keyframeObjectKey: z.string().nullable().optional(),
-        keyframeSizeBytes: z.number().int().nonnegative().nullable().optional(),
-        ciphertext: z.string().optional()
+        chunkIndex: z.number().int().nonnegative().max(999999).describe("Sequential chunk index"),
+        startElapsedMs: z.number().describe("Start time offset in milliseconds"),
+        endElapsedMs: z.number().describe("End time offset in milliseconds"),
+        ciphertextSha256: z.string().describe("SHA-256 hash of the ciphertext"),
+        ciphertextBytes: z.number().int().positive().describe("Size of the encrypted chunk in bytes"),
+        iv: z.string().describe("Initialization vector for decryption"),
+        keyframeObjectKey: z.string().nullable().optional().describe("Object key for the keyframe in storage"),
+        keyframeSizeBytes: z.number().int().nonnegative().nullable().optional().describe("Size of the keyframe"),
+        ciphertext: z.string().optional().describe("Base64-encoded ciphertext for inline storage")
       }),
       response: {
         200: z.object({
@@ -173,7 +178,9 @@ export const registerPamSessionChunkRouter = async (server: FastifyZodProvider) 
     config: { rateLimit: readLimit },
     schema: {
       operationId: "pamSessionPlayback",
-      params: z.object({ sessionId: z.string().uuid() }),
+      description: "Get playback data for a session recording",
+      tags: [ApiDocsTags.PamSessions],
+      params: z.object({ sessionId: z.string().uuid().describe("The ID of the session") }),
       response: {
         200: z.object({
           legacy: z.boolean(),
@@ -208,9 +215,11 @@ export const registerPamSessionChunkRouter = async (server: FastifyZodProvider) 
     config: { rateLimit: readLimit },
     schema: {
       operationId: "pamSessionChunkCiphertext",
+      description: "Get the ciphertext for a specific recording chunk",
+      tags: [ApiDocsTags.PamSessions],
       params: z.object({
-        sessionId: z.string().uuid(),
-        chunkIndex: z.coerce.number().int().nonnegative().max(999999)
+        sessionId: z.string().uuid().describe("The ID of the session"),
+        chunkIndex: z.coerce.number().int().nonnegative().max(999999).describe("The chunk index to retrieve")
       })
     },
     onRequest: verifyAuth([AuthMode.JWT]),
@@ -232,6 +241,8 @@ export const registerPamSessionChunkRouter = async (server: FastifyZodProvider) 
     config: { rateLimit: readLimit },
     schema: {
       operationId: "pamSessionRecordingStorageBackends",
+      description: "List available recording storage backends",
+      tags: [ApiDocsTags.PamSessions],
       response: {
         200: z.object({
           backends: z.array(z.string())

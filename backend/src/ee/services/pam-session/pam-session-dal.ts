@@ -81,25 +81,23 @@ export const pamSessionDALFactory = (db: TDbClient) => {
     {
       viewSessionsFolderIds,
       viewSessionsAccountIds,
-      userId
+      userId,
+      offset,
+      limit
     }: {
       viewSessionsFolderIds: string[];
       viewSessionsAccountIds: string[];
       userId: string;
+      offset?: number;
+      limit?: number;
     },
     tx?: Knex
   ) => {
-    const sessions = await (tx || db.replicaNode())(TableName.PamSession)
-      .leftJoin(TableName.GatewayV2, `${TableName.GatewayV2}.id`, `${TableName.PamSession}.gatewayId`)
+    const baseQuery = (tx || db.replicaNode())(TableName.PamSession)
       .leftJoin(TableName.PamAccount, `${TableName.PamAccount}.id`, `${TableName.PamSession}.accountId`)
-      .select(selectAllTableCols(TableName.PamSession))
-      .select(db.ref("name").withSchema(TableName.GatewayV2).as("gatewayName"))
-      .select(db.ref("identityId").withSchema(TableName.GatewayV2).as("gatewayIdentityId"))
       .where(`${TableName.PamSession}.projectId`, projectId)
       .where((top) => {
-        // actor's own sessions are always included regardless of role
         void top.orWhere(`${TableName.PamSession}.userId`, userId);
-        // actor's role grants ViewSessions on these resources, so all sessions are returned
         if (viewSessionsFolderIds.length > 0) {
           void top.orWhereIn(`${TableName.PamAccount}.folderId`, viewSessionsFolderIds);
         }
@@ -108,7 +106,26 @@ export const pamSessionDALFactory = (db: TDbClient) => {
         }
       });
 
-    return sessions;
+    const countQuery = baseQuery
+      .clone()
+      .clearSelect()
+      .count(`${TableName.PamSession}.id as count`)
+      .first<{ count: string }>();
+
+    const dataQuery = baseQuery
+      .clone()
+      .leftJoin(TableName.GatewayV2, `${TableName.GatewayV2}.id`, `${TableName.PamSession}.gatewayId`)
+      .select(selectAllTableCols(TableName.PamSession))
+      .select(db.ref("name").withSchema(TableName.GatewayV2).as("gatewayName"))
+      .select(db.ref("identityId").withSchema(TableName.GatewayV2).as("gatewayIdentityId"))
+      .orderBy(`${TableName.PamSession}.createdAt`, "desc");
+
+    if (limit) void dataQuery.limit(limit);
+    if (offset) void dataQuery.offset(offset);
+
+    const [countResult, sessions] = await Promise.all([countQuery, dataQuery]);
+
+    return { sessions, totalCount: Number(countResult?.count ?? 0) };
   };
 
   return {

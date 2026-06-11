@@ -56,7 +56,11 @@ export const pamSessionServiceFactory = ({
     ctx: TActorContext
   ) => checkAccountAccess(permissionService, accountId, folderId, projectId, action, ctx);
 
-  const listSessions = async (projectId: string, ctx: TActorContext) => {
+  const listSessions = async (
+    projectId: string,
+    ctx: TActorContext,
+    pagination?: { offset?: number; limit?: number }
+  ) => {
     await verifyProductMembership(permissionService, projectId, ctx);
 
     const { folderIds, accountIds } = await getViewSessionsResourceIds(
@@ -69,7 +73,8 @@ export const pamSessionServiceFactory = ({
     return pamSessionDAL.findAccessibleByProjectId(projectId, {
       viewSessionsFolderIds: folderIds,
       viewSessionsAccountIds: accountIds,
-      userId: ctx.actorId
+      userId: ctx.actorId,
+      ...pagination
     });
   };
 

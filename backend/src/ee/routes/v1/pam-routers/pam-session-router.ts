@@ -4,6 +4,7 @@ import z from "zod";
 import { PamSessionsSchema } from "@app/db/schemas";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { PamRecordingStorageBackend } from "@app/ee/services/pam-session-recording/pam-recording-enums";
+import { ApiDocsTags } from "@app/lib/api-docs/constants";
 import { BadRequestError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
@@ -46,22 +47,36 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
     config: { rateLimit: readLimit },
     schema: {
       operationId: "listPamSessions",
+      description: "List PAM sessions for a project",
+      tags: [ApiDocsTags.PamSessions],
       querystring: z.object({
-        projectId: z.string()
+        projectId: z.string().describe("The ID of the project"),
+        offset: z.coerce.number().min(0).default(0).optional().describe("The offset to start from for pagination"),
+        limit: z.coerce
+          .number()
+          .min(1)
+          .max(100)
+          .default(20)
+          .optional()
+          .describe("The number of records to return for pagination")
       }),
       response: {
-        200: z.object({ sessions: SanitizedSessionSchema.array() })
+        200: z.object({ sessions: SanitizedSessionSchema.array(), totalCount: z.number() })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const sessions = await server.services.pamSession.listSessions(req.query.projectId, {
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
-      });
-      return { sessions };
+      const { sessions, totalCount } = await server.services.pamSession.listSessions(
+        req.query.projectId,
+        {
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          actorOrgId: req.permission.orgId,
+          actorAuthMethod: req.permission.authMethod
+        },
+        { offset: req.query.offset, limit: req.query.limit }
+      );
+      return { sessions, totalCount };
     }
   });
 
@@ -71,8 +86,10 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
     config: { rateLimit: readLimit },
     schema: {
       operationId: "getPamSession",
+      description: "Get a PAM session by ID",
+      tags: [ApiDocsTags.PamSessions],
       params: z.object({
-        sessionId: z.string().uuid()
+        sessionId: z.string().uuid().describe("The ID of the session")
       }),
       response: {
         200: z.object({ session: SanitizedSessionSchema })
@@ -94,18 +111,113 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
+    method: "GET",
+    url: "/:sessionId/credentials",
+    config: { rateLimit: readLimit },
+    schema: {
+      operationId: "getPamSessionCredentials",
+      description: "Get connection credentials for a PAM session",
+      tags: [ApiDocsTags.PamSessions],
+      params: z.object({
+        sessionId: z.string().uuid().describe("The ID of the session")
+      }),
+      response: {
+        200: z.object({
+          credentials: z.record(z.unknown()),
+          recording: z
+            .object({
+              sessionKey: z.string(),
+              uploadToken: z.string(),
+              storageBackend: z.nativeEnum(PamRecordingStorageBackend),
+              projectId: z.string(),
+              sessionId: z.string()
+            })
+            .nullable()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.GATEWAY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const result = await server.services.pamSession.getSessionCredentials(req.params.sessionId, req.permission.id);
+
+      if (result.sessionStarted) {
+        await server.services.auditLog.createAuditLog({
+          ...req.auditLogInfo,
+          orgId: req.permission.orgId,
+          projectId: result.projectId,
+          event: {
+            type: EventType.PAM_SESSION_START,
+            metadata: {
+              sessionId: req.params.sessionId,
+              accountName: result.accountName
+            }
+          }
+        });
+      }
+
+      return {
+        credentials: result.credentials,
+        recording: result.recording
+      };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:sessionId/end",
+    config: { rateLimit: writeLimit },
+    schema: {
+      operationId: "endPamSession",
+      description: "End a PAM session",
+      tags: [ApiDocsTags.PamSessions],
+      params: z.object({
+        sessionId: z.string().uuid().describe("The ID of the session")
+      }),
+      response: {
+        200: z.object({ message: z.string() })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.GATEWAY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { projectId, accountName, alreadyEnded } = await server.services.pamSession.endSessionFromGateway(
+        req.params.sessionId,
+        req.permission.id
+      );
+
+      if (!alreadyEnded) {
+        await server.services.auditLog.createAuditLog({
+          ...req.auditLogInfo,
+          orgId: req.permission.orgId,
+          projectId,
+          event: {
+            type: EventType.PAM_SESSION_END,
+            metadata: {
+              sessionId: req.params.sessionId,
+              accountName
+            }
+          }
+        });
+      }
+
+      return { message: "Session ended" };
+    }
+  });
+};
+
+export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => {
+  server.route({
     method: "POST",
     url: "/:accountId/web-access-ticket",
-    config: {
-      rateLimit: writeLimit
-    },
+    config: { rateLimit: writeLimit },
     schema: {
       operationId: "pamSessionWebAccessTicket",
+      description: "Create a web access ticket for a PAM account",
+      tags: [ApiDocsTags.PamSessions],
       params: z.object({
-        accountId: z.string().uuid()
+        accountId: z.string().uuid().describe("The ID of the account")
       }),
       body: z.object({
-        reason: z.string().trim().max(1000).optional()
+        reason: z.string().trim().max(1000).optional().describe("Optional reason for the session")
       }),
       response: {
         200: z.object({ ticket: z.string() })
@@ -146,16 +258,16 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
     url: "/:accountId/web-access",
-    config: {
-      rateLimit: readLimit
-    },
+    config: { rateLimit: readLimit },
     schema: {
       operationId: "pamSessionWebAccess",
+      description: "WebSocket endpoint for web-based access to a PAM account",
+      tags: [ApiDocsTags.PamSessions],
       params: z.object({
-        accountId: z.string().uuid()
+        accountId: z.string().uuid().describe("The ID of the account")
       }),
       querystring: z.object({
-        ticket: z.string()
+        ticket: z.string().describe("WebSocket authentication ticket")
       }),
       response: {
         200: z.object({ message: z.string() })
@@ -255,95 +367,6 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
     },
     handler: async () => {
       return { message: "WebSocket upgrade required" };
-    }
-  });
-
-  server.route({
-    method: "GET",
-    url: "/:sessionId/credentials",
-    config: { rateLimit: readLimit },
-    schema: {
-      operationId: "getPamSessionCredentials",
-      params: z.object({
-        sessionId: z.string().uuid()
-      }),
-      response: {
-        200: z.object({
-          credentials: z.record(z.unknown()),
-          recording: z
-            .object({
-              sessionKey: z.string(),
-              uploadToken: z.string(),
-              storageBackend: z.nativeEnum(PamRecordingStorageBackend),
-              projectId: z.string(),
-              sessionId: z.string()
-            })
-            .nullable()
-        })
-      }
-    },
-    onRequest: verifyAuth([AuthMode.GATEWAY_ACCESS_TOKEN]),
-    handler: async (req) => {
-      const result = await server.services.pamSession.getSessionCredentials(req.params.sessionId, req.permission.id);
-
-      if (result.sessionStarted) {
-        await server.services.auditLog.createAuditLog({
-          ...req.auditLogInfo,
-          orgId: req.permission.orgId,
-          projectId: result.projectId,
-          event: {
-            type: EventType.PAM_SESSION_START,
-            metadata: {
-              sessionId: req.params.sessionId,
-              accountName: result.accountName
-            }
-          }
-        });
-      }
-
-      return {
-        credentials: result.credentials,
-        recording: result.recording
-      };
-    }
-  });
-
-  server.route({
-    method: "POST",
-    url: "/:sessionId/end",
-    config: { rateLimit: writeLimit },
-    schema: {
-      operationId: "endPamSession",
-      params: z.object({
-        sessionId: z.string().uuid()
-      }),
-      response: {
-        200: z.object({ message: z.string() })
-      }
-    },
-    onRequest: verifyAuth([AuthMode.GATEWAY_ACCESS_TOKEN]),
-    handler: async (req) => {
-      const { projectId, accountName, alreadyEnded } = await server.services.pamSession.endSessionFromGateway(
-        req.params.sessionId,
-        req.permission.id
-      );
-
-      if (!alreadyEnded) {
-        await server.services.auditLog.createAuditLog({
-          ...req.auditLogInfo,
-          orgId: req.permission.orgId,
-          projectId,
-          event: {
-            type: EventType.PAM_SESSION_END,
-            metadata: {
-              sessionId: req.params.sessionId,
-              accountName
-            }
-          }
-        });
-      }
-
-      return { message: "Session ended" };
     }
   });
 };

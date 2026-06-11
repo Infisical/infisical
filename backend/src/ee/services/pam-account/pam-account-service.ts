@@ -124,7 +124,7 @@ export const pamAccountServiceFactory = ({
     const { folderIds, accountIds } = await getAccessibleResourceIds(membershipDAL, projectId, ctx);
     if (folderIds.length === 0 && accountIds.length === 0) return [];
 
-    const accounts = await pamAccountDAL.findAccessible(projectId, folderIds, accountIds, {
+    const { accounts } = await pamAccountDAL.findAccessible(projectId, folderIds, accountIds, {
       folderId,
       templateId,
       search
@@ -297,6 +297,12 @@ export const pamAccountServiceFactory = ({
       throw new NotFoundError({ message: `Account with ID '${accountId}' not found` });
     }
 
+    if (existing.accountType !== accountType) {
+      throw new BadRequestError({
+        message: `Account '${accountId}' is type '${existing.accountType}', not '${accountType}'`
+      });
+    }
+
     await checkAccount(accountId, existing.folderId, projectId, ResourcePermissionPamResourceActions.EditAccounts, ctx);
 
     if (folderId) {
@@ -310,6 +316,11 @@ export const pamAccountServiceFactory = ({
       const template = await pamAccountTemplateDAL.findById(templateId);
       if (!template || template.projectId !== projectId) {
         throw new NotFoundError({ message: `Template with ID '${templateId}' not found` });
+      }
+      if (template.type !== accountType) {
+        throw new BadRequestError({
+          message: `Template '${templateId}' is for type '${template.type}', not '${accountType}'`
+        });
       }
     }
 
@@ -386,27 +397,38 @@ export const pamAccountServiceFactory = ({
     });
   };
 
-  const listAccessible = async ({ projectId, ...ctx }: TListAccessibleAccountsDTO & TActorContext) => {
+  const listAccessible = async ({
+    projectId,
+    offset,
+    limit,
+    ...ctx
+  }: TListAccessibleAccountsDTO & TActorContext & { offset?: number; limit?: number }) => {
     await verifyMembership(projectId, ctx);
 
     const { folderIds, accountIds } = await getAccessibleResourceIds(membershipDAL, projectId, ctx);
-    if (folderIds.length === 0 && accountIds.length === 0) return [];
+    if (folderIds.length === 0 && accountIds.length === 0) return { accounts: [], totalCount: 0 };
 
-    const accounts = await pamAccountDAL.findAccessible(projectId, folderIds, accountIds);
+    const { accounts, totalCount } = await pamAccountDAL.findAccessible(projectId, folderIds, accountIds, {
+      offset,
+      limit
+    });
 
-    return accounts.map((a) => ({
-      id: a.id,
-      name: a.name,
-      description: a.description,
-      folderId: a.folderId,
-      folderName: a.folderName,
-      templateId: a.templateId,
-      templateName: a.templateName,
-      accountType: a.accountType,
-      projectId: a.projectId,
-      createdAt: a.createdAt,
-      updatedAt: a.updatedAt
-    }));
+    return {
+      accounts: accounts.map((a) => ({
+        id: a.id,
+        name: a.name,
+        description: a.description,
+        folderId: a.folderId,
+        folderName: a.folderName,
+        templateId: a.templateId,
+        templateName: a.templateName,
+        accountType: a.accountType,
+        projectId: a.projectId,
+        createdAt: a.createdAt,
+        updatedAt: a.updatedAt
+      })),
+      totalCount
+    };
   };
 
   const getOrCreateSshCa = async ({ accountId, projectId, ...ctx }: TGetPamAccountDTO & TActorContext) => {

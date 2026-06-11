@@ -7,6 +7,7 @@ import {
   PamTemplateAccessPolicySchema,
   PamTemplateSettingsSchema
 } from "@app/ee/services/pam-account-template/pam-account-template-schemas";
+import { ApiDocsTags } from "@app/lib/api-docs/constants";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -34,18 +35,20 @@ export const registerPamAccountTemplateRouter = async (server: FastifyZodProvide
     url: "/",
     schema: {
       operationId: "listPamAccountTemplates",
+      description: "List all PAM account templates",
+      tags: [ApiDocsTags.PamAccountTemplates],
       querystring: z.object({
-        search: z.string().optional(),
-        type: z.nativeEnum(PamAccountType).optional()
+        search: z.string().optional().describe("Filter templates by name"),
+        type: z.nativeEnum(PamAccountType).optional().describe("Filter by account type")
       }),
       response: {
-        200: z.array(SanitizedTemplateSchema)
+        200: z.object({ templates: z.array(SanitizedTemplateSchema) })
       }
     },
     config: { rateLimit: readLimit },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      return server.services.pamAccountTemplate.list({
+      const templates = await server.services.pamAccountTemplate.list({
         projectId: req.internalPamProjectId,
         search: req.query.search,
         type: req.query.type,
@@ -54,6 +57,7 @@ export const registerPamAccountTemplateRouter = async (server: FastifyZodProvide
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod
       });
+      return { templates };
     }
   });
 
@@ -62,19 +66,23 @@ export const registerPamAccountTemplateRouter = async (server: FastifyZodProvide
     url: "/:templateId",
     schema: {
       operationId: "getPamAccountTemplateById",
+      description: "Get a PAM account template by ID",
+      tags: [ApiDocsTags.PamAccountTemplates],
       params: z.object({
-        templateId: z.string().uuid()
+        templateId: z.string().uuid().describe("The ID of the template")
       }),
       response: {
-        200: SanitizedTemplateSchema.extend({
-          accountCount: z.number()
+        200: z.object({
+          template: SanitizedTemplateSchema.extend({
+            accountCount: z.number()
+          })
         })
       }
     },
     config: { rateLimit: readLimit },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      return server.services.pamAccountTemplate.getById({
+      const template = await server.services.pamAccountTemplate.getById({
         templateId: req.params.templateId,
         projectId: req.internalPamProjectId,
         actorId: req.permission.id,
@@ -82,6 +90,7 @@ export const registerPamAccountTemplateRouter = async (server: FastifyZodProvide
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod
       });
+      return { template };
     }
   });
 
@@ -90,18 +99,20 @@ export const registerPamAccountTemplateRouter = async (server: FastifyZodProvide
     url: "/",
     schema: {
       operationId: "createPamAccountTemplate",
+      description: "Create a new PAM account template",
+      tags: [ApiDocsTags.PamAccountTemplates],
       body: z.object({
-        name: z.string().trim().min(1).max(64),
-        description: z.string().trim().max(256).optional(),
-        type: z.nativeEnum(PamAccountType),
-        accessPolicy: PamTemplateAccessPolicySchema.optional(),
-        settings: PamTemplateSettingsSchema.optional(),
-        gatewayId: z.string().uuid().optional(),
-        gatewayPoolId: z.string().uuid().optional(),
-        recordingConnectionId: z.string().uuid().optional()
+        name: z.string().trim().min(1).max(64).describe("Display name for the template"),
+        description: z.string().trim().max(256).optional().describe("Optional description"),
+        type: z.nativeEnum(PamAccountType).describe("The account type this template applies to"),
+        accessPolicy: PamTemplateAccessPolicySchema.optional().describe("Access policy configuration"),
+        settings: PamTemplateSettingsSchema.optional().describe("Template settings"),
+        gatewayId: z.string().uuid().optional().describe("Default gateway ID for accounts using this template"),
+        gatewayPoolId: z.string().uuid().optional().describe("Default gateway pool ID"),
+        recordingConnectionId: z.string().uuid().optional().describe("Recording storage connection ID")
       }),
       response: {
-        200: SanitizedTemplateSchema
+        200: z.object({ template: SanitizedTemplateSchema })
       }
     },
     config: { rateLimit: writeLimit },
@@ -141,7 +152,7 @@ export const registerPamAccountTemplateRouter = async (server: FastifyZodProvide
         })
         .catch(() => {});
 
-      return template;
+      return { template };
     }
   });
 
@@ -150,20 +161,22 @@ export const registerPamAccountTemplateRouter = async (server: FastifyZodProvide
     url: "/:templateId",
     schema: {
       operationId: "updatePamAccountTemplate",
+      description: "Update a PAM account template",
+      tags: [ApiDocsTags.PamAccountTemplates],
       params: z.object({
-        templateId: z.string().uuid()
+        templateId: z.string().uuid().describe("The ID of the template")
       }),
       body: z.object({
-        name: z.string().trim().min(1).max(64).optional(),
-        description: z.string().trim().max(256).nullable().optional(),
-        accessPolicy: PamTemplateAccessPolicySchema.optional(),
-        settings: PamTemplateSettingsSchema.optional(),
-        gatewayId: z.string().uuid().nullable().optional(),
-        gatewayPoolId: z.string().uuid().nullable().optional(),
-        recordingConnectionId: z.string().uuid().nullable().optional()
+        name: z.string().trim().min(1).max(64).optional().describe("New display name"),
+        description: z.string().trim().max(256).nullable().optional().describe("New description"),
+        accessPolicy: PamTemplateAccessPolicySchema.optional().describe("Updated access policy"),
+        settings: PamTemplateSettingsSchema.optional().describe("Updated settings"),
+        gatewayId: z.string().uuid().nullable().optional().describe("New gateway ID"),
+        gatewayPoolId: z.string().uuid().nullable().optional().describe("New gateway pool ID"),
+        recordingConnectionId: z.string().uuid().nullable().optional().describe("New recording connection ID")
       }),
       response: {
-        200: SanitizedTemplateSchema
+        200: z.object({ template: SanitizedTemplateSchema })
       }
     },
     config: { rateLimit: writeLimit },
@@ -191,7 +204,7 @@ export const registerPamAccountTemplateRouter = async (server: FastifyZodProvide
         }
       });
 
-      return template;
+      return { template };
     }
   });
 
@@ -200,11 +213,13 @@ export const registerPamAccountTemplateRouter = async (server: FastifyZodProvide
     url: "/:templateId",
     schema: {
       operationId: "deletePamAccountTemplate",
+      description: "Delete a PAM account template",
+      tags: [ApiDocsTags.PamAccountTemplates],
       params: z.object({
-        templateId: z.string().uuid()
+        templateId: z.string().uuid().describe("The ID of the template")
       }),
       response: {
-        200: SanitizedTemplateSchema
+        200: z.object({ template: SanitizedTemplateSchema })
       }
     },
     config: { rateLimit: writeLimit },
@@ -243,7 +258,7 @@ export const registerPamAccountTemplateRouter = async (server: FastifyZodProvide
         })
         .catch(() => {});
 
-      return template;
+      return { template };
     }
   });
 };

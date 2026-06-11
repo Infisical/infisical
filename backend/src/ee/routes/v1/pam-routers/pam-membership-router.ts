@@ -3,6 +3,7 @@ import z from "zod";
 
 import { EventType, TCreateAuditLogDTO } from "@app/ee/services/audit-log/audit-log-types";
 import { PamProductRole, PamResourceRole } from "@app/ee/services/pam/pam-enums";
+import { ApiDocsTags } from "@app/lib/api-docs/constants";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -38,27 +39,6 @@ const actorCtx = (req: {
   actorAuthMethod: req.permission.authMethod
 });
 
-type ResourceMemberConfig = {
-  scopeKey: "folderId" | "accountId";
-  urlPrefix: string;
-  operationPrefix: string;
-  resultSchema: z.ZodObject<z.ZodRawShape>;
-  listMembers: string;
-  addMember: string;
-  updateMemberRole: string;
-  removeMember: string;
-  events: {
-    add: EventType;
-    update: EventType;
-    remove: EventType;
-  };
-  telemetry: {
-    add: PostHogEventTypes;
-    update: PostHogEventTypes;
-    remove: PostHogEventTypes;
-  };
-};
-
 const emitAuditLog = async (
   server: FastifyZodProvider,
   req: FastifyRequest & {
@@ -89,219 +69,52 @@ const emitTelemetry = (
   } as Parameters<typeof server.services.telemetry.sendPostHogEvents>[0]);
 };
 
-/* eslint-disable @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any */
-const registerResourceMemberRoutes = (server: FastifyZodProvider, cfg: ResourceMemberConfig) => {
-  const scopeParam = z.object({ [cfg.scopeKey]: z.string().uuid() });
-  const svc: Record<string, (...args: any[]) => any> = server.services.pamMembership as never;
-
-  server.route({
-    method: "GET",
-    url: `${cfg.urlPrefix}/users`,
-    schema: {
-      operationId: `list${cfg.operationPrefix}Members`,
-      params: scopeParam,
-      response: { 200: z.array(MemberSchema) }
-    },
-    config: { rateLimit: readLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
-    handler: async (req) => {
-      return svc[cfg.listMembers]({
-        ...actorCtx(req),
-        [cfg.scopeKey]: req.params[cfg.scopeKey]
-      });
-    }
-  });
-
-  server.route({
-    method: "POST",
-    url: `${cfg.urlPrefix}/users`,
-    schema: {
-      operationId: `add${cfg.operationPrefix}UserMember`,
-      params: scopeParam,
-      body: z.object({ userId: z.string().uuid(), role: z.nativeEnum(PamResourceRole) }),
-      response: { 200: cfg.resultSchema }
-    },
-    config: { rateLimit: writeLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
-    handler: async (req) => {
-      const scopeId = req.params[cfg.scopeKey];
-      const membership = await svc[cfg.addMember]({
-        ...actorCtx(req),
-        [cfg.scopeKey]: scopeId,
-        userId: req.body.userId,
-        role: req.body.role
-      });
-
-      await emitAuditLog(server, req, cfg.events.add, {
-        [cfg.scopeKey]: scopeId,
-        userId: req.body.userId,
-        role: req.body.role
-      });
-      emitTelemetry(server, req, cfg.telemetry.add);
-      return membership;
-    }
-  });
-
-  server.route({
-    method: "PATCH",
-    url: `${cfg.urlPrefix}/users/:userId`,
-    schema: {
-      operationId: `update${cfg.operationPrefix}UserMemberRole`,
-      params: scopeParam.extend({ userId: z.string().uuid() }),
-      body: z.object({ role: z.nativeEnum(PamResourceRole) }),
-      response: { 200: cfg.resultSchema.omit({ createdAt: true }) }
-    },
-    config: { rateLimit: writeLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
-    handler: async (req) => {
-      const scopeId = req.params[cfg.scopeKey];
-      const membership = await svc[cfg.updateMemberRole]({
-        ...actorCtx(req),
-        [cfg.scopeKey]: scopeId,
-        userId: req.params.userId,
-        role: req.body.role
-      });
-      await emitAuditLog(server, req, cfg.events.update, {
-        [cfg.scopeKey]: scopeId,
-        userId: req.params.userId,
-        role: req.body.role
-      });
-      emitTelemetry(server, req, cfg.telemetry.update);
-      return membership;
-    }
-  });
-
-  server.route({
-    method: "DELETE",
-    url: `${cfg.urlPrefix}/users/:userId`,
-    schema: {
-      operationId: `remove${cfg.operationPrefix}UserMember`,
-      params: scopeParam.extend({ userId: z.string().uuid() }),
-      response: {
-        200: cfg.resultSchema.pick({ membershipId: true, [cfg.scopeKey]: true, userId: true } as Record<string, true>)
-      }
-    },
-    config: { rateLimit: writeLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
-    handler: async (req) => {
-      const scopeId = req.params[cfg.scopeKey];
-      const membership = await svc[cfg.removeMember]({
-        ...actorCtx(req),
-        [cfg.scopeKey]: scopeId,
-        userId: req.params.userId
-      });
-      await emitAuditLog(server, req, cfg.events.remove, { [cfg.scopeKey]: scopeId, userId: req.params.userId });
-      emitTelemetry(server, req, cfg.telemetry.remove);
-      return membership;
-    }
-  });
-
-  server.route({
-    method: "POST",
-    url: `${cfg.urlPrefix}/groups/:groupId`,
-    schema: {
-      operationId: `add${cfg.operationPrefix}GroupMember`,
-      params: scopeParam.extend({ groupId: z.string().uuid() }),
-      body: z.object({ role: z.nativeEnum(PamResourceRole) }),
-      response: { 200: cfg.resultSchema }
-    },
-    config: { rateLimit: writeLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
-    handler: async (req) => {
-      const scopeId = req.params[cfg.scopeKey];
-      const membership = await svc[cfg.addMember]({
-        ...actorCtx(req),
-        [cfg.scopeKey]: scopeId,
-        groupId: req.params.groupId,
-        role: req.body.role
-      });
-      await emitAuditLog(server, req, cfg.events.add, {
-        [cfg.scopeKey]: scopeId,
-        groupId: req.params.groupId,
-        role: req.body.role
-      });
-      emitTelemetry(server, req, cfg.telemetry.add);
-      return membership;
-    }
-  });
-
-  server.route({
-    method: "PATCH",
-    url: `${cfg.urlPrefix}/groups/:groupId`,
-    schema: {
-      operationId: `update${cfg.operationPrefix}GroupMemberRole`,
-      params: scopeParam.extend({ groupId: z.string().uuid() }),
-      body: z.object({ role: z.nativeEnum(PamResourceRole) }),
-      response: { 200: cfg.resultSchema.omit({ createdAt: true }) }
-    },
-    config: { rateLimit: writeLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
-    handler: async (req) => {
-      const scopeId = req.params[cfg.scopeKey];
-      const membership = await svc[cfg.updateMemberRole]({
-        ...actorCtx(req),
-        [cfg.scopeKey]: scopeId,
-        groupId: req.params.groupId,
-        role: req.body.role
-      });
-      await emitAuditLog(server, req, cfg.events.update, {
-        [cfg.scopeKey]: scopeId,
-        groupId: req.params.groupId,
-        role: req.body.role
-      });
-      emitTelemetry(server, req, cfg.telemetry.update);
-      return membership;
-    }
-  });
-
-  server.route({
-    method: "DELETE",
-    url: `${cfg.urlPrefix}/groups/:groupId`,
-    schema: {
-      operationId: `remove${cfg.operationPrefix}GroupMember`,
-      params: scopeParam.extend({ groupId: z.string().uuid() }),
-      response: {
-        200: cfg.resultSchema.pick({ membershipId: true, [cfg.scopeKey]: true, groupId: true } as Record<string, true>)
-      }
-    },
-    config: { rateLimit: writeLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
-    handler: async (req) => {
-      const scopeId = req.params[cfg.scopeKey];
-      const membership = await svc[cfg.removeMember]({
-        ...actorCtx(req),
-        [cfg.scopeKey]: scopeId,
-        groupId: req.params.groupId
-      });
-      await emitAuditLog(server, req, cfg.events.remove, { [cfg.scopeKey]: scopeId, groupId: req.params.groupId });
-      emitTelemetry(server, req, cfg.telemetry.remove);
-      return membership;
-    }
-  });
-};
-/* eslint-enable @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any */
-
-export const registerPamMembershipRouter = async (server: FastifyZodProvider) => {
+export const registerPamProductMembershipRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
     url: "/users",
     schema: {
       operationId: "listPamProductMembers",
-      response: { 200: z.array(MemberSchema) }
+      description: "List user members of the PAM product",
+      tags: [ApiDocsTags.PamMemberships],
+      response: { 200: z.object({ members: z.array(MemberSchema) }) }
     },
     config: { rateLimit: readLimit },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      return server.services.pamMembership.listProductMembers(actorCtx(req));
+      const all = await server.services.pamMembership.listProductMembers(actorCtx(req));
+      return { members: all.filter((m) => m.userId) };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/groups",
+    schema: {
+      operationId: "listPamProductGroupMembers",
+      description: "List group members of the PAM product",
+      tags: [ApiDocsTags.PamMemberships],
+      response: { 200: z.object({ members: z.array(MemberSchema) }) }
+    },
+    config: { rateLimit: readLimit },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const all = await server.services.pamMembership.listProductMembers(actorCtx(req));
+      return { members: all.filter((m) => m.groupId) };
     }
   });
 
   server.route({
     method: "POST",
-    url: "/users",
+    url: "/users/:userId",
     schema: {
       operationId: "addPamProductUserMember",
-      body: z.object({ userId: z.string().uuid(), role: z.nativeEnum(PamProductRole) }),
+      description: "Add a user to the PAM product",
+      tags: [ApiDocsTags.PamMemberships],
+      params: z.object({ userId: z.string().uuid().describe("The ID of the user") }),
+      body: z.object({
+        role: z.nativeEnum(PamProductRole).describe("The role to assign")
+      }),
       response: { 200: MemberResultSchema }
     },
     config: { rateLimit: writeLimit },
@@ -309,12 +122,12 @@ export const registerPamMembershipRouter = async (server: FastifyZodProvider) =>
     handler: async (req) => {
       const membership = await server.services.pamMembership.addProductMember({
         ...actorCtx(req),
-        userId: req.body.userId,
+        userId: req.params.userId,
         role: req.body.role
       });
 
       await emitAuditLog(server, req, EventType.PAM_PRODUCT_MEMBER_ADD, {
-        userId: req.body.userId,
+        userId: req.params.userId,
         role: req.body.role
       });
       emitTelemetry(server, req, PostHogEventTypes.PamProductMemberAdded);
@@ -328,8 +141,10 @@ export const registerPamMembershipRouter = async (server: FastifyZodProvider) =>
     url: "/users/:userId",
     schema: {
       operationId: "updatePamProductUserMemberRole",
-      params: z.object({ userId: z.string().uuid() }),
-      body: z.object({ role: z.nativeEnum(PamProductRole) }),
+      description: "Update a PAM product user member's role",
+      tags: [ApiDocsTags.PamMemberships],
+      params: z.object({ userId: z.string().uuid().describe("The ID of the user") }),
+      body: z.object({ role: z.nativeEnum(PamProductRole).describe("The role to assign") }),
       response: { 200: MemberResultSchema.omit({ createdAt: true }) }
     },
     config: { rateLimit: writeLimit },
@@ -356,7 +171,9 @@ export const registerPamMembershipRouter = async (server: FastifyZodProvider) =>
     url: "/users/:userId",
     schema: {
       operationId: "removePamProductUserMember",
-      params: z.object({ userId: z.string().uuid() }),
+      description: "Remove a user from the PAM product",
+      tags: [ApiDocsTags.PamMemberships],
+      params: z.object({ userId: z.string().uuid().describe("The ID of the user") }),
       response: { 200: MemberResultSchema.pick({ membershipId: true, userId: true }) }
     },
     config: { rateLimit: writeLimit },
@@ -379,8 +196,10 @@ export const registerPamMembershipRouter = async (server: FastifyZodProvider) =>
     url: "/groups/:groupId",
     schema: {
       operationId: "addPamProductGroupMember",
-      params: z.object({ groupId: z.string().uuid() }),
-      body: z.object({ role: z.nativeEnum(PamProductRole) }),
+      description: "Add a group to the PAM product",
+      tags: [ApiDocsTags.PamMemberships],
+      params: z.object({ groupId: z.string().uuid().describe("The ID of the group") }),
+      body: z.object({ role: z.nativeEnum(PamProductRole).describe("The role to assign") }),
       response: { 200: MemberResultSchema }
     },
     config: { rateLimit: writeLimit },
@@ -407,8 +226,10 @@ export const registerPamMembershipRouter = async (server: FastifyZodProvider) =>
     url: "/groups/:groupId",
     schema: {
       operationId: "updatePamProductGroupMemberRole",
-      params: z.object({ groupId: z.string().uuid() }),
-      body: z.object({ role: z.nativeEnum(PamProductRole) }),
+      description: "Update a PAM product group member's role",
+      tags: [ApiDocsTags.PamMemberships],
+      params: z.object({ groupId: z.string().uuid().describe("The ID of the group") }),
+      body: z.object({ role: z.nativeEnum(PamProductRole).describe("The role to assign") }),
       response: { 200: MemberResultSchema.omit({ createdAt: true }) }
     },
     config: { rateLimit: writeLimit },
@@ -435,7 +256,9 @@ export const registerPamMembershipRouter = async (server: FastifyZodProvider) =>
     url: "/groups/:groupId",
     schema: {
       operationId: "removePamProductGroupMember",
-      params: z.object({ groupId: z.string().uuid() }),
+      description: "Remove a group from the PAM product",
+      tags: [ApiDocsTags.PamMemberships],
+      params: z.object({ groupId: z.string().uuid().describe("The ID of the group") }),
       response: { 200: MemberResultSchema.pick({ membershipId: true, groupId: true }) }
     },
     config: { rateLimit: writeLimit },
@@ -452,49 +275,446 @@ export const registerPamMembershipRouter = async (server: FastifyZodProvider) =>
       return membership;
     }
   });
+};
 
+export const registerPamFolderMembershipRouter = async (server: FastifyZodProvider) => {
   const FolderMemberResultSchema = MemberResultSchema.extend({ folderId: z.string().uuid() });
-  const AccountMemberResultSchema = MemberResultSchema.extend({ accountId: z.string().uuid() });
+  const folderParam = z.object({ folderId: z.string().uuid().describe("The ID of the folder") });
 
-  registerResourceMemberRoutes(server, {
-    scopeKey: "folderId",
-    urlPrefix: "/folders/:folderId",
-    operationPrefix: "PamFolder",
-    resultSchema: FolderMemberResultSchema,
-    listMembers: "listFolderMembers",
-    addMember: "addFolderMember",
-    updateMemberRole: "updateFolderMemberRole",
-    removeMember: "removeFolderMember",
-    events: {
-      add: EventType.PAM_FOLDER_MEMBER_ADD,
-      update: EventType.PAM_FOLDER_MEMBER_UPDATE,
-      remove: EventType.PAM_FOLDER_MEMBER_REMOVE
+  server.route({
+    method: "GET",
+    url: "/:folderId/users",
+    schema: {
+      operationId: "listPamFolderMembers",
+      description: "List user members of a folder",
+      tags: [ApiDocsTags.PamMemberships],
+      params: folderParam,
+      response: { 200: z.object({ members: z.array(MemberSchema) }) }
     },
-    telemetry: {
-      add: PostHogEventTypes.PamFolderMemberAdded,
-      update: PostHogEventTypes.PamFolderMemberUpdated,
-      remove: PostHogEventTypes.PamFolderMemberRemoved
+    config: { rateLimit: readLimit },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const all = await server.services.pamMembership.listFolderMembers({
+        ...actorCtx(req),
+        folderId: req.params.folderId
+      });
+      return { members: all.filter((m) => m.userId) };
     }
   });
 
-  registerResourceMemberRoutes(server, {
-    scopeKey: "accountId",
-    urlPrefix: "/accounts/:accountId",
-    operationPrefix: "PamAccount",
-    resultSchema: AccountMemberResultSchema,
-    listMembers: "listAccountMembers",
-    addMember: "addAccountMember",
-    updateMemberRole: "updateAccountMemberRole",
-    removeMember: "removeAccountMember",
-    events: {
-      add: EventType.PAM_ACCOUNT_MEMBER_ADD,
-      update: EventType.PAM_ACCOUNT_MEMBER_UPDATE,
-      remove: EventType.PAM_ACCOUNT_MEMBER_REMOVE
+  server.route({
+    method: "GET",
+    url: "/:folderId/groups",
+    schema: {
+      operationId: "listPamFolderGroupMembers",
+      description: "List group members of a folder",
+      tags: [ApiDocsTags.PamMemberships],
+      params: folderParam,
+      response: { 200: z.object({ members: z.array(MemberSchema) }) }
     },
-    telemetry: {
-      add: PostHogEventTypes.PamAccountMemberAdded,
-      update: PostHogEventTypes.PamAccountMemberUpdated,
-      remove: PostHogEventTypes.PamAccountMemberRemoved
+    config: { rateLimit: readLimit },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const all = await server.services.pamMembership.listFolderMembers({
+        ...actorCtx(req),
+        folderId: req.params.folderId
+      });
+      return { members: all.filter((m) => m.groupId) };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:folderId/users/:userId",
+    schema: {
+      operationId: "addPamFolderUserMember",
+      description: "Add a user to a folder",
+      tags: [ApiDocsTags.PamMemberships],
+      params: folderParam.extend({ userId: z.string().uuid().describe("The ID of the user") }),
+      body: z.object({ role: z.nativeEnum(PamResourceRole).describe("The role to assign") }),
+      response: { 200: FolderMemberResultSchema }
+    },
+    config: { rateLimit: writeLimit },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const membership = await server.services.pamMembership.addFolderMember({
+        ...actorCtx(req),
+        folderId: req.params.folderId,
+        userId: req.params.userId,
+        role: req.body.role
+      });
+      await emitAuditLog(server, req, EventType.PAM_FOLDER_MEMBER_ADD, {
+        folderId: req.params.folderId,
+        userId: req.params.userId,
+        role: req.body.role
+      });
+      emitTelemetry(server, req, PostHogEventTypes.PamFolderMemberAdded);
+      return { ...membership, folderId: req.params.folderId };
+    }
+  });
+
+  server.route({
+    method: "PATCH",
+    url: "/:folderId/users/:userId",
+    schema: {
+      operationId: "updatePamFolderUserMemberRole",
+      description: "Update a user member's role in a folder",
+      tags: [ApiDocsTags.PamMemberships],
+      params: folderParam.extend({ userId: z.string().uuid().describe("The ID of the user") }),
+      body: z.object({ role: z.nativeEnum(PamResourceRole).describe("The role to assign") }),
+      response: { 200: FolderMemberResultSchema.omit({ createdAt: true }) }
+    },
+    config: { rateLimit: writeLimit },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const membership = await server.services.pamMembership.updateFolderMemberRole({
+        ...actorCtx(req),
+        folderId: req.params.folderId,
+        userId: req.params.userId,
+        role: req.body.role
+      });
+      await emitAuditLog(server, req, EventType.PAM_FOLDER_MEMBER_UPDATE, {
+        folderId: req.params.folderId,
+        userId: req.params.userId,
+        role: req.body.role
+      });
+      emitTelemetry(server, req, PostHogEventTypes.PamFolderMemberUpdated);
+      return { ...membership, folderId: req.params.folderId };
+    }
+  });
+
+  server.route({
+    method: "DELETE",
+    url: "/:folderId/users/:userId",
+    schema: {
+      operationId: "removePamFolderUserMember",
+      description: "Remove a user from a folder",
+      tags: [ApiDocsTags.PamMemberships],
+      params: folderParam.extend({ userId: z.string().uuid().describe("The ID of the user") }),
+      response: { 200: FolderMemberResultSchema.pick({ membershipId: true, folderId: true, userId: true }) }
+    },
+    config: { rateLimit: writeLimit },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const membership = await server.services.pamMembership.removeFolderMember({
+        ...actorCtx(req),
+        folderId: req.params.folderId,
+        userId: req.params.userId
+      });
+      await emitAuditLog(server, req, EventType.PAM_FOLDER_MEMBER_REMOVE, {
+        folderId: req.params.folderId,
+        userId: req.params.userId
+      });
+      emitTelemetry(server, req, PostHogEventTypes.PamFolderMemberRemoved);
+      return { ...membership, folderId: req.params.folderId };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:folderId/groups/:groupId",
+    schema: {
+      operationId: "addPamFolderGroupMember",
+      description: "Add a group to a folder",
+      tags: [ApiDocsTags.PamMemberships],
+      params: folderParam.extend({ groupId: z.string().uuid().describe("The ID of the group") }),
+      body: z.object({ role: z.nativeEnum(PamResourceRole).describe("The role to assign") }),
+      response: { 200: FolderMemberResultSchema }
+    },
+    config: { rateLimit: writeLimit },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const membership = await server.services.pamMembership.addFolderMember({
+        ...actorCtx(req),
+        folderId: req.params.folderId,
+        groupId: req.params.groupId,
+        role: req.body.role
+      });
+      await emitAuditLog(server, req, EventType.PAM_FOLDER_MEMBER_ADD, {
+        folderId: req.params.folderId,
+        groupId: req.params.groupId,
+        role: req.body.role
+      });
+      emitTelemetry(server, req, PostHogEventTypes.PamFolderMemberAdded);
+      return { ...membership, folderId: req.params.folderId };
+    }
+  });
+
+  server.route({
+    method: "PATCH",
+    url: "/:folderId/groups/:groupId",
+    schema: {
+      operationId: "updatePamFolderGroupMemberRole",
+      description: "Update a group member's role in a folder",
+      tags: [ApiDocsTags.PamMemberships],
+      params: folderParam.extend({ groupId: z.string().uuid().describe("The ID of the group") }),
+      body: z.object({ role: z.nativeEnum(PamResourceRole).describe("The role to assign") }),
+      response: { 200: FolderMemberResultSchema.omit({ createdAt: true }) }
+    },
+    config: { rateLimit: writeLimit },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const membership = await server.services.pamMembership.updateFolderMemberRole({
+        ...actorCtx(req),
+        folderId: req.params.folderId,
+        groupId: req.params.groupId,
+        role: req.body.role
+      });
+      await emitAuditLog(server, req, EventType.PAM_FOLDER_MEMBER_UPDATE, {
+        folderId: req.params.folderId,
+        groupId: req.params.groupId,
+        role: req.body.role
+      });
+      emitTelemetry(server, req, PostHogEventTypes.PamFolderMemberUpdated);
+      return { ...membership, folderId: req.params.folderId };
+    }
+  });
+
+  server.route({
+    method: "DELETE",
+    url: "/:folderId/groups/:groupId",
+    schema: {
+      operationId: "removePamFolderGroupMember",
+      description: "Remove a group from a folder",
+      tags: [ApiDocsTags.PamMemberships],
+      params: folderParam.extend({ groupId: z.string().uuid().describe("The ID of the group") }),
+      response: { 200: FolderMemberResultSchema.pick({ membershipId: true, folderId: true, groupId: true }) }
+    },
+    config: { rateLimit: writeLimit },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const membership = await server.services.pamMembership.removeFolderMember({
+        ...actorCtx(req),
+        folderId: req.params.folderId,
+        groupId: req.params.groupId
+      });
+      await emitAuditLog(server, req, EventType.PAM_FOLDER_MEMBER_REMOVE, {
+        folderId: req.params.folderId,
+        groupId: req.params.groupId
+      });
+      emitTelemetry(server, req, PostHogEventTypes.PamFolderMemberRemoved);
+      return { ...membership, folderId: req.params.folderId };
+    }
+  });
+};
+
+export const registerPamAccountMembershipRouter = async (server: FastifyZodProvider) => {
+  const AccountMemberResultSchema = MemberResultSchema.extend({ accountId: z.string().uuid() });
+  const accountParam = z.object({ accountId: z.string().uuid().describe("The ID of the account") });
+
+  server.route({
+    method: "GET",
+    url: "/:accountId/users",
+    schema: {
+      operationId: "listPamAccountMembers",
+      description: "List user members of an account",
+      tags: [ApiDocsTags.PamMemberships],
+      params: accountParam,
+      response: { 200: z.object({ members: z.array(MemberSchema) }) }
+    },
+    config: { rateLimit: readLimit },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const all = await server.services.pamMembership.listAccountMembers({
+        ...actorCtx(req),
+        accountId: req.params.accountId
+      });
+      return { members: all.filter((m) => m.userId) };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:accountId/groups",
+    schema: {
+      operationId: "listPamAccountGroupMembers",
+      description: "List group members of an account",
+      tags: [ApiDocsTags.PamMemberships],
+      params: accountParam,
+      response: { 200: z.object({ members: z.array(MemberSchema) }) }
+    },
+    config: { rateLimit: readLimit },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const all = await server.services.pamMembership.listAccountMembers({
+        ...actorCtx(req),
+        accountId: req.params.accountId
+      });
+      return { members: all.filter((m) => m.groupId) };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:accountId/users/:userId",
+    schema: {
+      operationId: "addPamAccountUserMember",
+      description: "Add a user to an account",
+      tags: [ApiDocsTags.PamMemberships],
+      params: accountParam.extend({ userId: z.string().uuid().describe("The ID of the user") }),
+      body: z.object({ role: z.nativeEnum(PamResourceRole).describe("The role to assign") }),
+      response: { 200: AccountMemberResultSchema }
+    },
+    config: { rateLimit: writeLimit },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const membership = await server.services.pamMembership.addAccountMember({
+        ...actorCtx(req),
+        accountId: req.params.accountId,
+        userId: req.params.userId,
+        role: req.body.role
+      });
+      await emitAuditLog(server, req, EventType.PAM_ACCOUNT_MEMBER_ADD, {
+        accountId: req.params.accountId,
+        userId: req.params.userId,
+        role: req.body.role
+      });
+      emitTelemetry(server, req, PostHogEventTypes.PamAccountMemberAdded);
+      return { ...membership, accountId: req.params.accountId };
+    }
+  });
+
+  server.route({
+    method: "PATCH",
+    url: "/:accountId/users/:userId",
+    schema: {
+      operationId: "updatePamAccountUserMemberRole",
+      description: "Update a user member's role in an account",
+      tags: [ApiDocsTags.PamMemberships],
+      params: accountParam.extend({ userId: z.string().uuid().describe("The ID of the user") }),
+      body: z.object({ role: z.nativeEnum(PamResourceRole).describe("The role to assign") }),
+      response: { 200: AccountMemberResultSchema.omit({ createdAt: true }) }
+    },
+    config: { rateLimit: writeLimit },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const membership = await server.services.pamMembership.updateAccountMemberRole({
+        ...actorCtx(req),
+        accountId: req.params.accountId,
+        userId: req.params.userId,
+        role: req.body.role
+      });
+      await emitAuditLog(server, req, EventType.PAM_ACCOUNT_MEMBER_UPDATE, {
+        accountId: req.params.accountId,
+        userId: req.params.userId,
+        role: req.body.role
+      });
+      emitTelemetry(server, req, PostHogEventTypes.PamAccountMemberUpdated);
+      return { ...membership, accountId: req.params.accountId };
+    }
+  });
+
+  server.route({
+    method: "DELETE",
+    url: "/:accountId/users/:userId",
+    schema: {
+      operationId: "removePamAccountUserMember",
+      description: "Remove a user from an account",
+      tags: [ApiDocsTags.PamMemberships],
+      params: accountParam.extend({ userId: z.string().uuid().describe("The ID of the user") }),
+      response: { 200: AccountMemberResultSchema.pick({ membershipId: true, accountId: true, userId: true }) }
+    },
+    config: { rateLimit: writeLimit },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const membership = await server.services.pamMembership.removeAccountMember({
+        ...actorCtx(req),
+        accountId: req.params.accountId,
+        userId: req.params.userId
+      });
+      await emitAuditLog(server, req, EventType.PAM_ACCOUNT_MEMBER_REMOVE, {
+        accountId: req.params.accountId,
+        userId: req.params.userId
+      });
+      emitTelemetry(server, req, PostHogEventTypes.PamAccountMemberRemoved);
+      return { ...membership, accountId: req.params.accountId };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:accountId/groups/:groupId",
+    schema: {
+      operationId: "addPamAccountGroupMember",
+      description: "Add a group to an account",
+      tags: [ApiDocsTags.PamMemberships],
+      params: accountParam.extend({ groupId: z.string().uuid().describe("The ID of the group") }),
+      body: z.object({ role: z.nativeEnum(PamResourceRole).describe("The role to assign") }),
+      response: { 200: AccountMemberResultSchema }
+    },
+    config: { rateLimit: writeLimit },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const membership = await server.services.pamMembership.addAccountMember({
+        ...actorCtx(req),
+        accountId: req.params.accountId,
+        groupId: req.params.groupId,
+        role: req.body.role
+      });
+      await emitAuditLog(server, req, EventType.PAM_ACCOUNT_MEMBER_ADD, {
+        accountId: req.params.accountId,
+        groupId: req.params.groupId,
+        role: req.body.role
+      });
+      emitTelemetry(server, req, PostHogEventTypes.PamAccountMemberAdded);
+      return { ...membership, accountId: req.params.accountId };
+    }
+  });
+
+  server.route({
+    method: "PATCH",
+    url: "/:accountId/groups/:groupId",
+    schema: {
+      operationId: "updatePamAccountGroupMemberRole",
+      description: "Update a group member's role in an account",
+      tags: [ApiDocsTags.PamMemberships],
+      params: accountParam.extend({ groupId: z.string().uuid().describe("The ID of the group") }),
+      body: z.object({ role: z.nativeEnum(PamResourceRole).describe("The role to assign") }),
+      response: { 200: AccountMemberResultSchema.omit({ createdAt: true }) }
+    },
+    config: { rateLimit: writeLimit },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const membership = await server.services.pamMembership.updateAccountMemberRole({
+        ...actorCtx(req),
+        accountId: req.params.accountId,
+        groupId: req.params.groupId,
+        role: req.body.role
+      });
+      await emitAuditLog(server, req, EventType.PAM_ACCOUNT_MEMBER_UPDATE, {
+        accountId: req.params.accountId,
+        groupId: req.params.groupId,
+        role: req.body.role
+      });
+      emitTelemetry(server, req, PostHogEventTypes.PamAccountMemberUpdated);
+      return { ...membership, accountId: req.params.accountId };
+    }
+  });
+
+  server.route({
+    method: "DELETE",
+    url: "/:accountId/groups/:groupId",
+    schema: {
+      operationId: "removePamAccountGroupMember",
+      description: "Remove a group from an account",
+      tags: [ApiDocsTags.PamMemberships],
+      params: accountParam.extend({ groupId: z.string().uuid().describe("The ID of the group") }),
+      response: { 200: AccountMemberResultSchema.pick({ membershipId: true, accountId: true, groupId: true }) }
+    },
+    config: { rateLimit: writeLimit },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const membership = await server.services.pamMembership.removeAccountMember({
+        ...actorCtx(req),
+        accountId: req.params.accountId,
+        groupId: req.params.groupId
+      });
+      await emitAuditLog(server, req, EventType.PAM_ACCOUNT_MEMBER_REMOVE, {
+        accountId: req.params.accountId,
+        groupId: req.params.groupId
+      });
+      emitTelemetry(server, req, PostHogEventTypes.PamAccountMemberRemoved);
+      return { ...membership, accountId: req.params.accountId };
     }
   });
 };

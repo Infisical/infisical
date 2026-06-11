@@ -5881,6 +5881,12 @@ interface PamAccountUpdateEvent {
     accountType: string;
     name?: string;
     description?: string | null;
+    folderId?: string;
+    templateId?: string;
+    gatewayId?: string | null;
+    gatewayPoolId?: string | null;
+    connectionDetailsUpdated?: boolean;
+    credentialsUpdated?: boolean;
   };
 }
 

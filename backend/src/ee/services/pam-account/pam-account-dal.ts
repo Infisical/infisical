@@ -41,10 +41,10 @@ export const pamAccountDALFactory = (db: TDbClient) => {
     projectId: string,
     accessibleFolderIds: string[],
     accessibleAccountIds: string[],
-    filters?: { folderId?: string; templateId?: string; search?: string },
+    filters?: { folderId?: string; templateId?: string; search?: string; offset?: number; limit?: number },
     tx?: Knex
-  ): Promise<TPamAccountListItem[]> => {
-    const qb = (tx || db.replicaNode())(TableName.PamAccount)
+  ) => {
+    const baseQuery = (tx || db.replicaNode())(TableName.PamAccount)
       .join(TableName.PamAccountTemplate, `${TableName.PamAccount}.templateId`, `${TableName.PamAccountTemplate}.id`)
       .leftJoin(TableName.PamFolder, `${TableName.PamAccount}.folderId`, `${TableName.PamFolder}.id`)
       .where(`${TableName.PamAccount}.projectId`, projectId)
@@ -55,7 +55,26 @@ export const pamAccountDALFactory = (db: TDbClient) => {
         if (accessibleAccountIds.length > 0) {
           void builder.orWhereIn(`${TableName.PamAccount}.id`, accessibleAccountIds);
         }
-      })
+      });
+
+    if (filters?.folderId) {
+      void baseQuery.where(`${TableName.PamAccount}.folderId`, filters.folderId);
+    }
+    if (filters?.templateId) {
+      void baseQuery.where(`${TableName.PamAccount}.templateId`, filters.templateId);
+    }
+    if (filters?.search) {
+      void baseQuery.whereILike(`${TableName.PamAccount}.name`, `%${sanitizeSqlLikeString(filters.search)}%`);
+    }
+
+    const countQuery = baseQuery
+      .clone()
+      .clearSelect()
+      .count(`${TableName.PamAccount}.id as count`)
+      .first<{ count: string }>();
+
+    const dataQuery = baseQuery
+      .clone()
       .select(
         `${TableName.PamAccount}.id`,
         `${TableName.PamAccount}.name`,
@@ -71,21 +90,19 @@ export const pamAccountDALFactory = (db: TDbClient) => {
         `${TableName.PamAccountTemplate}.type as accountType`,
         `${TableName.PamAccountTemplate}.name as templateName`,
         `${TableName.PamFolder}.name as folderName`
-      );
-
-    if (filters?.folderId) {
-      void qb.where(`${TableName.PamAccount}.folderId`, filters.folderId);
-    }
-    if (filters?.templateId) {
-      void qb.where(`${TableName.PamAccount}.templateId`, filters.templateId);
-    }
-    if (filters?.search) {
-      void qb.whereILike(`${TableName.PamAccount}.name`, `%${sanitizeSqlLikeString(filters.search)}%`);
-    }
-
-    return qb
+      )
       .orderBy(`${TableName.PamFolder}.name`, "asc")
-      .orderBy(`${TableName.PamAccount}.name`, "asc") as unknown as Promise<TPamAccountListItem[]>;
+      .orderBy(`${TableName.PamAccount}.name`, "asc");
+
+    if (filters?.limit) void dataQuery.limit(filters.limit);
+    if (filters?.offset) void dataQuery.offset(filters.offset);
+
+    const [countResult, accounts] = await Promise.all([countQuery, dataQuery]);
+
+    return {
+      accounts: accounts as unknown as TPamAccountListItem[],
+      totalCount: Number(countResult?.count ?? 0)
+    };
   };
 
   const findByIdWithDetails = async (accountId: string, tx?: Knex): Promise<TPamAccountDetail | null> => {

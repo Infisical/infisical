@@ -4,8 +4,10 @@ import { PamAccountsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { PamAccountType } from "@app/ee/services/pam/pam-enums";
 import { ACCOUNT_TYPE_CONFIGS } from "@app/ee/services/pam-account/pam-account-schemas";
+import { ApiDocsTags } from "@app/lib/api-docs/constants";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
+import { withRoutePrefix } from "@app/server/lib/with-route-prefix";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
@@ -52,23 +54,27 @@ const registerPerTypeEndpoints = (
     url: "/",
     schema: {
       operationId: `create${typeId}PamAccount`,
+      description: `Create a new ${accountType} PAM account`,
+      tags: [ApiDocsTags.PamAccounts],
       body: z.object({
-        name: z.string().trim().min(1).max(64),
-        description: z.string().trim().max(256).optional(),
-        folderId: z.string().uuid(),
-        templateId: z.string().uuid(),
+        name: z.string().trim().min(1).max(64).describe("Display name for the account"),
+        description: z.string().trim().max(256).optional().describe("Optional description of the account"),
+        folderId: z.string().uuid().describe("The ID of the folder to place the account in"),
+        templateId: z.string().uuid().describe("The ID of the account template to use"),
         connectionDetails: config.connectionDetails,
         credentials: config.credentials,
-        gatewayId: z.string().uuid().optional(),
-        gatewayPoolId: z.string().uuid().optional(),
-        recordingConnectionId: z.string().uuid().optional()
+        gatewayId: z.string().uuid().optional().describe("The ID of the gateway to use"),
+        gatewayPoolId: z.string().uuid().optional().describe("The ID of the gateway pool to use"),
+        recordingConnectionId: z.string().uuid().optional().describe("The ID of the recording connection to use")
       }),
       response: {
-        200: BaseAccountFields.extend({
-          accountType: z.string(),
-          folderName: z.string(),
-          templateName: z.string(),
-          connectionDetails: z.unknown()
+        200: z.object({
+          account: BaseAccountFields.extend({
+            accountType: z.string(),
+            folderName: z.string(),
+            templateName: z.string(),
+            connectionDetails: z.record(z.unknown())
+          })
         })
       }
     },
@@ -113,7 +119,7 @@ const registerPerTypeEndpoints = (
         })
         .catch(() => {});
 
-      return account;
+      return { account };
     }
   });
 
@@ -122,20 +128,27 @@ const registerPerTypeEndpoints = (
     url: "/:accountId",
     schema: {
       operationId: `update${typeId}PamAccount`,
-      params: z.object({ accountId: z.string().uuid() }),
+      description: `Update a ${accountType} PAM account`,
+      tags: [ApiDocsTags.PamAccounts],
+      params: z.object({ accountId: z.string().uuid().describe("The ID of the account to update") }),
       body: z.object({
-        name: z.string().trim().min(1).max(64).optional(),
-        description: z.string().trim().max(256).nullable().optional(),
-        folderId: z.string().uuid().optional(),
-        templateId: z.string().uuid().optional(),
+        name: z.string().trim().min(1).max(64).optional().describe("Display name for the account"),
+        description: z.string().trim().max(256).nullable().optional().describe("Optional description of the account"),
+        folderId: z.string().uuid().optional().describe("The ID of the folder to move the account to"),
+        templateId: z.string().uuid().optional().describe("The ID of the account template to use"),
         connectionDetails: config.connectionDetails.optional(),
         credentials: config.credentials.optional(),
-        gatewayId: z.string().uuid().nullable().optional(),
-        gatewayPoolId: z.string().uuid().nullable().optional(),
-        recordingConnectionId: z.string().uuid().nullable().optional()
+        gatewayId: z.string().uuid().nullable().optional().describe("The ID of the gateway to use"),
+        gatewayPoolId: z.string().uuid().nullable().optional().describe("The ID of the gateway pool to use"),
+        recordingConnectionId: z
+          .string()
+          .uuid()
+          .nullable()
+          .optional()
+          .describe("The ID of the recording connection to use")
       }),
       response: {
-        200: BaseAccountFields
+        200: z.object({ account: BaseAccountFields })
       }
     },
     config: { rateLimit: writeLimit },
@@ -161,12 +174,18 @@ const registerPerTypeEndpoints = (
             accountId: account.id,
             accountType,
             name: req.body.name,
-            description: req.body.description
+            description: req.body.description,
+            folderId: req.body.folderId,
+            templateId: req.body.templateId,
+            gatewayId: req.body.gatewayId,
+            gatewayPoolId: req.body.gatewayPoolId,
+            connectionDetailsUpdated: !!req.body.connectionDetails,
+            credentialsUpdated: !!req.body.credentials
           }
         }
       });
 
-      return account;
+      return { account };
     }
   });
 
@@ -175,9 +194,11 @@ const registerPerTypeEndpoints = (
     url: "/:accountId",
     schema: {
       operationId: `delete${typeId}PamAccount`,
-      params: z.object({ accountId: z.string().uuid() }),
+      description: `Delete a ${accountType} PAM account`,
+      tags: [ApiDocsTags.PamAccounts],
+      params: z.object({ accountId: z.string().uuid().describe("The ID of the account to delete") }),
       response: {
-        200: BaseAccountFields
+        200: z.object({ account: BaseAccountFields })
       }
     },
     config: { rateLimit: writeLimit },
@@ -217,7 +238,7 @@ const registerPerTypeEndpoints = (
         })
         .catch(() => {});
 
-      return account;
+      return { account };
     }
   });
 };
@@ -228,19 +249,21 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
     url: "/",
     schema: {
       operationId: "listPamAccounts",
+      description: "List all PAM accounts in the project",
+      tags: [ApiDocsTags.PamAccounts],
       querystring: z.object({
-        folderId: z.string().uuid().optional(),
-        templateId: z.string().uuid().optional(),
-        search: z.string().optional()
+        folderId: z.string().uuid().optional().describe("Filter accounts by folder ID"),
+        templateId: z.string().uuid().optional().describe("Filter accounts by template ID"),
+        search: z.string().optional().describe("Filter accounts by name")
       }),
       response: {
-        200: z.array(SanitizedAccountListItemSchema)
+        200: z.object({ accounts: z.array(SanitizedAccountListItemSchema) })
       }
     },
     config: { rateLimit: readLimit },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      return server.services.pamAccount.list({
+      const accounts = await server.services.pamAccount.list({
         projectId: req.internalPamProjectId,
         folderId: req.query.folderId,
         templateId: req.query.templateId,
@@ -250,6 +273,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod
       });
+      return { accounts };
     }
   });
 
@@ -258,34 +282,46 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
     url: "/accessible",
     schema: {
       operationId: "listAccessiblePamAccounts",
+      description: "List PAM accounts accessible to the current user",
+      tags: [ApiDocsTags.PamAccounts],
+      querystring: z.object({
+        offset: z.coerce.number().min(0).default(0).optional().describe("Number of items to skip"),
+        limit: z.coerce.number().min(1).max(100).default(20).optional().describe("Maximum number of items to return")
+      }),
       response: {
-        200: z.array(
-          SanitizedAccountListItemSchema.pick({
-            id: true,
-            name: true,
-            description: true,
-            folderId: true,
-            projectId: true,
-            templateId: true,
-            createdAt: true,
-            updatedAt: true,
-            folderName: true,
-            templateName: true,
-            accountType: true
-          })
-        )
+        200: z.object({
+          accounts: z.array(
+            SanitizedAccountListItemSchema.pick({
+              id: true,
+              name: true,
+              description: true,
+              folderId: true,
+              projectId: true,
+              templateId: true,
+              createdAt: true,
+              updatedAt: true,
+              folderName: true,
+              templateName: true,
+              accountType: true
+            })
+          ),
+          totalCount: z.number()
+        })
       }
     },
     config: { rateLimit: readLimit },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      return server.services.pamAccount.listAccessible({
+      const { accounts, totalCount } = await server.services.pamAccount.listAccessible({
         projectId: req.internalPamProjectId,
         actorId: req.permission.id,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actorAuthMethod: req.permission.authMethod,
+        offset: req.query.offset,
+        limit: req.query.limit
       });
+      return { accounts, totalCount };
     }
   });
 
@@ -294,19 +330,23 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
     url: "/:accountId",
     schema: {
       operationId: "getPamAccount",
-      params: z.object({ accountId: z.string().uuid() }),
+      description: "Get a PAM account by ID",
+      tags: [ApiDocsTags.PamAccounts],
+      params: z.object({ accountId: z.string().uuid().describe("The ID of the account") }),
       response: {
-        200: SanitizedAccountListItemSchema.extend({
-          templateAccessPolicy: z.unknown().nullable().optional(),
-          templateSettings: z.unknown().nullable().optional(),
-          connectionDetails: z.unknown()
+        200: z.object({
+          account: SanitizedAccountListItemSchema.extend({
+            templateAccessPolicy: z.unknown().nullable().optional(),
+            templateSettings: z.unknown().nullable().optional(),
+            connectionDetails: z.record(z.unknown())
+          })
         })
       }
     },
     config: { rateLimit: readLimit },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      return server.services.pamAccount.getById({
+      const account = await server.services.pamAccount.getById({
         accountId: req.params.accountId,
         projectId: req.internalPamProjectId,
         actorId: req.permission.id,
@@ -314,6 +354,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod
       });
+      return { account };
     }
   });
 
@@ -322,7 +363,9 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
     url: "/:accountId/ssh-ca",
     schema: {
       operationId: "getOrCreatePamSshCa",
-      params: z.object({ accountId: z.string().uuid() }),
+      description: "Get or create an SSH certificate authority for a PAM account",
+      tags: [ApiDocsTags.PamAccounts],
+      params: z.object({ accountId: z.string().uuid().describe("The ID of the account") }),
       response: {
         200: z.object({ publicKey: z.string() })
       }
@@ -363,7 +406,9 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
     url: "/:accountId/ssh-ca-public-key",
     schema: {
       operationId: "getPamSshCaPublicKey",
-      params: z.object({ accountId: z.string().uuid() }),
+      description: "Get the SSH CA public key for a PAM account",
+      tags: [ApiDocsTags.PamAccounts],
+      params: z.object({ accountId: z.string().uuid().describe("The ID of the account") }),
       response: {
         200: z.object({ publicKey: z.string() })
       }
@@ -380,7 +425,9 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
     url: "/:accountId/ssh-ca-setup",
     schema: {
       operationId: "getPamSshCaSetupScript",
-      params: z.object({ accountId: z.string().uuid() }),
+      description: "Get the SSH CA setup script for a PAM account",
+      tags: [ApiDocsTags.PamAccounts],
+      params: z.object({ accountId: z.string().uuid().describe("The ID of the account") }),
       response: {
         200: z.string()
       }
@@ -463,15 +510,12 @@ echo ""
     }
   });
 
-  await Promise.all(
-    (Object.entries(ACCOUNT_TYPE_CONFIGS) as [TSupportedAccountType, TSupportedConfigValue][]).map(
-      ([accountType, config]) =>
-        server.register(
-          async (typeRouter) => {
-            registerPerTypeEndpoints(typeRouter as unknown as FastifyZodProvider, accountType, config);
-          },
-          { prefix: `/${accountType}` }
-        )
-    )
-  );
+  await server.register(async (accountRouter) => {
+    for (const [accountType, config] of Object.entries(ACCOUNT_TYPE_CONFIGS) as [
+      TSupportedAccountType,
+      TSupportedConfigValue
+    ][]) {
+      registerPerTypeEndpoints(withRoutePrefix(accountRouter, `/${accountType}`), accountType, config);
+    }
+  });
 };
