@@ -1,6 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { ActionProjectType, RESOURCE_SCOPE, ResourceType } from "@app/db/schemas";
+import { RESOURCE_SCOPE, ResourceType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ResourcePermissionPamResourceActions,
@@ -8,11 +8,12 @@ import {
 } from "@app/ee/services/permission/resource-permission";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
-import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
+import { ActorType } from "@app/services/auth/auth-type";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 
 import { PamProductRole, PamResourceRole } from "../pam/pam-enums";
+import { getAccessibleResourceIds, TActorContext, verifyProductMembership } from "../pam-membership/pam-permission";
 import { TPamFolderDALFactory } from "./pam-folder-dal";
 import {
   TCreatePamFolderDTO,
@@ -21,13 +22,6 @@ import {
   TListPamFoldersDTO,
   TUpdatePamFolderDTO
 } from "./pam-folder-types";
-
-type TActorContext = {
-  actorId: string;
-  actor: ActorType;
-  actorOrgId: string;
-  actorAuthMethod: ActorAuthMethod;
-};
 
 type TPamFolderServiceFactoryDep = {
   pamFolderDAL: TPamFolderDALFactory;
@@ -47,20 +41,11 @@ export const pamFolderServiceFactory = ({
   membershipRoleDAL,
   permissionService
 }: TPamFolderServiceFactoryDep) => {
-  const verifyProductMembership = async (projectId: string, ctx: TActorContext) => {
-    const { hasRole } = await permissionService.getProjectPermission({
-      actor: ctx.actor,
-      actorId: ctx.actorId,
-      projectId,
-      actorAuthMethod: ctx.actorAuthMethod,
-      actorOrgId: ctx.actorOrgId,
-      actionProjectType: ActionProjectType.PAM
-    });
-    return { hasRole };
-  };
+  const verifyMembership = (projectId: string, ctx: TActorContext) =>
+    verifyProductMembership(permissionService, projectId, ctx);
 
   const verifyProductAdmin = async (projectId: string, ctx: TActorContext) => {
-    const { hasRole } = await verifyProductMembership(projectId, ctx);
+    const { hasRole } = await verifyMembership(projectId, ctx);
     if (!hasRole(PamProductRole.Admin)) {
       throw new ForbiddenRequestError({ message: "Only PAM product admins can perform this action" });
     }
@@ -85,26 +70,9 @@ export const pamFolderServiceFactory = ({
   };
 
   const list = async ({ projectId, search, ...ctx }: TListPamFoldersDTO & TActorContext) => {
-    await verifyProductMembership(projectId, ctx);
+    await verifyMembership(projectId, ctx);
 
-    const [folderMemberships, accountMemberships] = await Promise.all([
-      membershipDAL.findResourceMembershipsForActor({
-        projectId,
-        resourceType: ResourceType.PamFolder,
-        actorType: ctx.actor,
-        actorId: ctx.actorId
-      }),
-      membershipDAL.findResourceMembershipsForActor({
-        projectId,
-        resourceType: ResourceType.PamAccount,
-        actorType: ctx.actor,
-        actorId: ctx.actorId
-      })
-    ]);
-
-    const folderIds = folderMemberships.map((m) => m.scopeResourceId).filter((id): id is string => Boolean(id));
-    const accountIds = accountMemberships.map((m) => m.scopeResourceId).filter((id): id is string => Boolean(id));
-
+    const { folderIds, accountIds } = await getAccessibleResourceIds(membershipDAL, projectId, ctx);
     if (folderIds.length === 0 && accountIds.length === 0) return [];
 
     return pamFolderDAL.findByProjectIdFiltered(projectId, folderIds, { search, accountIds });

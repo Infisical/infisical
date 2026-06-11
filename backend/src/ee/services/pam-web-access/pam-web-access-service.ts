@@ -11,6 +11,7 @@ import { AuditLogInfo, EventType, TAuditLogServiceFactory } from "@app/ee/servic
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { PamAccountType } from "@app/ee/services/pam/pam-enums";
+import { PamTemplateAccessPolicySchema } from "@app/ee/services/pam-account-template/pam-template-config-schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ResourcePermissionPamResourceActions,
@@ -76,6 +77,7 @@ type THandleWebSocketConnectionDTO = {
   actorIp: string;
   actorUserAgent: string;
   reason: string | null | undefined;
+  maxSessionDurationMs?: number;
   preAuthMessages: TEarlyBufferedMsg[];
   preAuthHandler: (raw: Buffer | ArrayBuffer | Buffer[], isBinary: boolean) => void;
 };
@@ -185,6 +187,23 @@ export const pamWebAccessServiceFactory = ({
 
     const trimmedReason = reason?.trim() || null;
 
+    const accessPolicy = account.templateAccessPolicy
+      ? PamTemplateAccessPolicySchema.safeParse(account.templateAccessPolicy)
+      : null;
+    const policy = accessPolicy?.success ? accessPolicy.data : null;
+
+    if (policy?.requireReason && !trimmedReason) {
+      throw new BadRequestError({ message: "A reason is required to access this account" });
+    }
+
+    if (policy?.requireMfa) {
+      throw new BadRequestError({ message: "MFA verification is required to access this account" });
+    }
+
+    const maxSessionDurationMs = policy?.maxSessionDurationSeconds
+      ? policy.maxSessionDurationSeconds * 1000
+      : DEFAULT_WEB_SESSION_DURATION_MS;
+
     await checkLaunchPermission(projectId, accountId, account.folderId, {
       actorId: actor.id,
       actor: actor.type,
@@ -212,7 +231,8 @@ export const pamWebAccessServiceFactory = ({
         actorEmail,
         actorName,
         auditLogInfo,
-        reason: trimmedReason
+        reason: trimmedReason,
+        maxSessionDurationMs
       })
     });
 
@@ -246,6 +266,7 @@ export const pamWebAccessServiceFactory = ({
     actorIp,
     actorUserAgent,
     reason: accessReason,
+    maxSessionDurationMs: policyDurationMs,
     preAuthMessages,
     preAuthHandler
   }: THandleWebSocketConnectionDTO): Promise<void> => {
@@ -389,7 +410,7 @@ export const pamWebAccessServiceFactory = ({
       const credentials = await decrypt(projectId, account.encryptedCredentials);
 
       const user = await userDAL.findById(userId);
-      const sessionDurationMs = DEFAULT_WEB_SESSION_DURATION_MS;
+      const sessionDurationMs = policyDurationMs || DEFAULT_WEB_SESSION_DURATION_MS;
       const expiresAt = new Date(Date.now() + sessionDurationMs);
 
       session = await pamSessionDAL.create({
@@ -403,7 +424,6 @@ export const pamWebAccessServiceFactory = ({
         actorName,
         actorUserAgent,
         projectId,
-        resourceName: account.name,
         accountId: account.id,
         userId,
         gatewayId: effectiveGatewayId,

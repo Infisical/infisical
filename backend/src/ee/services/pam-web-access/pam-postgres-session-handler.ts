@@ -1,7 +1,6 @@
 import crypto from "crypto";
 
 import { PamAccountType } from "@app/ee/services/pam/pam-enums";
-import { PamResource } from "@app/ee/services/pam-resource/pam-resource-enums";
 import { logger } from "@app/lib/logger";
 
 import {
@@ -247,6 +246,6 @@ const handlePostgresSession = async (
 };
 
 registerSessionHandler(PamAccountType.Postgres, {
-  gatewayResourceType: PamResource.Postgres,
+  gatewayResourceType: PamAccountType.Postgres,
   handler: handlePostgresSession
 });

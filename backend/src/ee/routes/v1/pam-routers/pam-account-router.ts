@@ -171,34 +171,6 @@ const registerPerTypeEndpoints = (
   });
 
   server.route({
-    method: "GET",
-    url: "/:accountId",
-    schema: {
-      operationId: `get${typeId}PamAccount`,
-      params: z.object({ accountId: z.string().uuid() }),
-      response: {
-        200: SanitizedAccountListItemSchema.extend({
-          templateAccessPolicy: z.unknown().nullable().optional(),
-          templateSettings: z.unknown().nullable().optional(),
-          connectionDetails: z.unknown()
-        })
-      }
-    },
-    config: { rateLimit: readLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
-    handler: async (req) => {
-      return server.services.pamAccount.getById({
-        accountId: req.params.accountId,
-        projectId: req.internalPamProjectId,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
-      });
-    }
-  });
-
-  server.route({
     method: "DELETE",
     url: "/:accountId",
     schema: {
@@ -308,6 +280,34 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       return server.services.pamAccount.listAccessible({
+        projectId: req.internalPamProjectId,
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod
+      });
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:accountId",
+    schema: {
+      operationId: "getPamAccount",
+      params: z.object({ accountId: z.string().uuid() }),
+      response: {
+        200: SanitizedAccountListItemSchema.extend({
+          templateAccessPolicy: z.unknown().nullable().optional(),
+          templateSettings: z.unknown().nullable().optional(),
+          connectionDetails: z.unknown()
+        })
+      }
+    },
+    config: { rateLimit: readLimit },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      return server.services.pamAccount.getById({
+        accountId: req.params.accountId,
         projectId: req.internalPamProjectId,
         actorId: req.permission.id,
         actor: req.permission.type,

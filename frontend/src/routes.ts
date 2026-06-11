@@ -436,7 +436,7 @@ const pamRoutes = route("/organizations/$orgId/projects/pam/$projectId", [
 ]);
 
 const pamAccessRoute = route(
-  "/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId/access",
+  "/organizations/$orgId/pam/accounts/$accountType/$accountId/access",
   "pam/PamAccountAccessPage/route.tsx"
 );
 

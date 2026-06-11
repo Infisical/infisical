@@ -103,7 +103,10 @@ import { pamFolderDALFactory } from "@app/ee/services/pam-folder/pam-folder-dal"
 import { pamFolderServiceFactory } from "@app/ee/services/pam-folder/pam-folder-service";
 import { pamProjectResolverFactory } from "@app/ee/services/pam-instance/pam-project-resolver";
 import { pamMembershipServiceFactory } from "@app/ee/services/pam-membership/pam-membership-service";
+import { pamSessionChunkServiceFactory } from "@app/ee/services/pam-session/pam-session-chunk-service";
 import { pamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
+import { pamSessionEventChunkDALFactory } from "@app/ee/services/pam-session/pam-session-event-chunk-dal";
+import { pamSessionServiceFactory } from "@app/ee/services/pam-session/pam-session-service";
 import { pamWebAccessServiceFactory } from "@app/ee/services/pam-web-access/pam-web-access-service";
 import { permissionDALFactory } from "@app/ee/services/permission/permission-dal";
 import { permissionServiceFactory } from "@app/ee/services/permission/permission-service";
@@ -1680,6 +1683,22 @@ export const registerRoutes = async (
   });
 
   const pamSessionDAL = pamSessionDALFactory(db);
+  const pamSessionEventChunkDAL = pamSessionEventChunkDALFactory(db);
+
+  const pamSessionService = pamSessionServiceFactory({
+    pamSessionDAL,
+    pamAccountDAL,
+    membershipDAL,
+    permissionService,
+    kmsService
+  });
+
+  const pamSessionChunkService = pamSessionChunkServiceFactory({
+    pamSessionDAL,
+    pamSessionEventChunkDAL,
+    permissionService,
+    kmsService
+  });
 
   const pamWebAccessService = pamWebAccessServiceFactory({
     pamAccountDAL,
@@ -3509,6 +3528,8 @@ export const registerRoutes = async (
     pamFolder: pamFolderService,
     pamAccount: pamAccountService,
     pamMembership: pamMembershipService,
+    pamSession: pamSessionService,
+    pamSessionChunk: pamSessionChunkService,
     pamWebAccess: pamWebAccessService,
     certManagerInstance: certManagerInstanceService,
     certManagerExport: certManagerExportService,

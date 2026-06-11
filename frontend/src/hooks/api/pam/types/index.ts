@@ -42,17 +42,25 @@ export type TPamResource =
   | TWindowsResource
   | TOracleDBResource;
 
-export type TPamAccount =
-  | TPostgresAccount
-  | TMySQLAccount
-  | TMsSQLAccount
-  | TRedisAccount
-  | TMongoDBAccount
-  | TSSHAccount
-  | TAwsIamAccount
-  | TKubernetesAccount
-  | TWindowsAccount
-  | TOracleDBAccount;
+export type TPamAccount = {
+  id: string;
+  name: string;
+  description: string | null;
+  folderId: string;
+  folderName: string | null;
+  templateId: string;
+  templateName: string;
+  templateAccessPolicy: unknown;
+  templateSettings: unknown;
+  accountType: string;
+  projectId: string;
+  gatewayId: string | null;
+  gatewayPoolId: string | null;
+  recordingConnectionId: string | null;
+  connectionDetails: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+};
 
 export type TPamFolder = {
   id: string;

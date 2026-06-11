@@ -1,5 +1,4 @@
 import { PamAccountType } from "@app/ee/services/pam/pam-enums";
-import { PamResource } from "@app/ee/services/pam-resource/pam-resource-enums";
 
 import { TSessionContext, TSessionHandlerResult } from "./pam-web-access-types";
 
@@ -9,7 +8,7 @@ export type TWebAccessHandler = (
 ) => Promise<TSessionHandlerResult>;
 
 type TSessionHandlerEntry = {
-  gatewayResourceType: PamResource;
+  gatewayResourceType: PamAccountType;
   handler: TWebAccessHandler;
 };
 

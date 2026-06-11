@@ -1,3 +1,5 @@
+import { Knex } from "knex";
+
 import { TDbClient } from "@app/db";
 import { TableName, TPamFolders } from "@app/db/schemas";
 import { sanitizeSqlLikeString } from "@app/lib/fn";
@@ -13,10 +15,10 @@ export const pamFolderDALFactory = (db: TDbClient) => {
   const findByProjectIdFiltered = async (
     projectId: string,
     folderIds: string[],
-    filters?: { search?: string; accountIds?: string[] }
+    filters?: { search?: string; accountIds?: string[] },
+    tx?: Knex
   ): Promise<TPamFolderWithCount[]> => {
-    const qb = db
-      .replicaNode()(TableName.PamFolder)
+    const qb = (tx || db.replicaNode())(TableName.PamFolder)
       .leftJoin(TableName.PamAccount, `${TableName.PamAccount}.folderId`, `${TableName.PamFolder}.id`)
       .where(`${TableName.PamFolder}.projectId`, projectId)
       .where((builder) => {
@@ -38,9 +40,8 @@ export const pamFolderDALFactory = (db: TDbClient) => {
       .orderBy(`${TableName.PamFolder}.name`, "asc") as unknown as Promise<TPamFolderWithCount[]>;
   };
 
-  const countAccountsByFolderId = async (folderId: string) => {
-    const [result] = (await db
-      .replicaNode()(TableName.PamAccount)
+  const countAccountsByFolderId = async (folderId: string, tx?: Knex) => {
+    const [result] = (await (tx || db.replicaNode())(TableName.PamAccount)
       .where({ folderId })
       .count("id as count")) as unknown as [{ count: string }];
     return Number(result.count);

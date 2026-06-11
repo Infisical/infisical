@@ -1,7 +1,9 @@
 import type WebSocket from "ws";
 import z from "zod";
 
-import { UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
+import { PamSessionsSchema } from "@app/db/schemas";
+import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
+import { PamRecordingStorageBackend } from "@app/ee/services/pam-session-recording-storage/pam-session-recording-storage-enums";
 import { BadRequestError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
@@ -10,7 +12,87 @@ import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
+const SanitizedSessionSchema = PamSessionsSchema.pick({
+  id: true,
+  projectId: true,
+  accountId: true,
+  accountType: true,
+  accountName: true,
+  userId: true,
+  actorName: true,
+  actorEmail: true,
+  actorIp: true,
+  actorUserAgent: true,
+  status: true,
+  expiresAt: true,
+  startedAt: true,
+  endedAt: true,
+  createdAt: true,
+  updatedAt: true,
+  accessMethod: true,
+  reason: true,
+  gatewayId: true,
+  folderName: true,
+  selectedHost: true
+}).extend({
+  gatewayName: z.string().nullable().optional(),
+  gatewayIdentityId: z.string().nullable().optional()
+});
+
 export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
+  server.route({
+    method: "GET",
+    url: "/",
+    config: { rateLimit: readLimit },
+    schema: {
+      operationId: "listPamSessions",
+      querystring: z.object({
+        projectId: z.string()
+      }),
+      response: {
+        200: z.object({ sessions: SanitizedSessionSchema.array() })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const sessions = await server.services.pamSession.listSessions(req.query.projectId, {
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod
+      });
+      return { sessions };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:sessionId",
+    config: { rateLimit: readLimit },
+    schema: {
+      operationId: "getPamSession",
+      params: z.object({
+        sessionId: z.string().uuid()
+      }),
+      response: {
+        200: z.object({ session: SanitizedSessionSchema })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const session = await server.services.pamSession.getSessionById(req.params.sessionId, {
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod
+      });
+      if (!session) {
+        throw new BadRequestError({ message: "Session not found" });
+      }
+      return { session };
+    }
+  });
+
   server.route({
     method: "POST",
     url: "/:accountId/web-access-ticket",
@@ -128,6 +210,7 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
             actorEmail: z.string(),
             actorName: z.string(),
             reason: z.string().nullable().optional(),
+            maxSessionDurationMs: z.number().optional(),
             auditLogInfo: z.object({
               ipAddress: z.string().optional(),
               userAgent: z.string().optional(),
@@ -161,6 +244,7 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
           actorIp: req.realIp ?? "",
           actorUserAgent: req.headers["user-agent"] ?? "",
           reason: payload.reason,
+          maxSessionDurationMs: payload.maxSessionDurationMs,
           preAuthMessages,
           preAuthHandler
         });
@@ -171,6 +255,95 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
     },
     handler: async () => {
       return { message: "WebSocket upgrade required" };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:sessionId/credentials",
+    config: { rateLimit: readLimit },
+    schema: {
+      operationId: "getPamSessionCredentials",
+      params: z.object({
+        sessionId: z.string().uuid()
+      }),
+      response: {
+        200: z.object({
+          credentials: z.record(z.unknown()),
+          recording: z
+            .object({
+              sessionKey: z.string(),
+              uploadToken: z.string(),
+              storageBackend: z.nativeEnum(PamRecordingStorageBackend),
+              projectId: z.string(),
+              sessionId: z.string()
+            })
+            .nullable()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.GATEWAY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const result = await server.services.pamSession.getSessionCredentials(req.params.sessionId, req.permission.id);
+
+      if (result.sessionStarted) {
+        await server.services.auditLog.createAuditLog({
+          ...req.auditLogInfo,
+          orgId: req.permission.orgId,
+          projectId: result.projectId,
+          event: {
+            type: EventType.PAM_SESSION_START,
+            metadata: {
+              sessionId: req.params.sessionId,
+              accountName: result.accountName
+            }
+          }
+        });
+      }
+
+      return {
+        credentials: result.credentials,
+        recording: result.recording
+      };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:sessionId/end",
+    config: { rateLimit: writeLimit },
+    schema: {
+      operationId: "endPamSession",
+      params: z.object({
+        sessionId: z.string().uuid()
+      }),
+      response: {
+        200: z.object({ message: z.string() })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.GATEWAY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { projectId, accountName, alreadyEnded } = await server.services.pamSession.endSessionFromGateway(
+        req.params.sessionId,
+        req.permission.id
+      );
+
+      if (!alreadyEnded) {
+        await server.services.auditLog.createAuditLog({
+          ...req.auditLogInfo,
+          orgId: req.permission.orgId,
+          projectId,
+          event: {
+            type: EventType.PAM_SESSION_END,
+            metadata: {
+              sessionId: req.params.sessionId,
+              accountName
+            }
+          }
+        });
+      }
+
+      return { message: "Session ended" };
     }
   });
 };

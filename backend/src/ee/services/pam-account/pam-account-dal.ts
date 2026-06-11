@@ -1,3 +1,5 @@
+import { Knex } from "knex";
+
 import { TDbClient } from "@app/db";
 import { TableName, TPamAccounts } from "@app/db/schemas";
 import { sanitizeSqlLikeString } from "@app/lib/fn";
@@ -39,10 +41,10 @@ export const pamAccountDALFactory = (db: TDbClient) => {
     projectId: string,
     accessibleFolderIds: string[],
     accessibleAccountIds: string[],
-    filters?: { folderId?: string; templateId?: string; search?: string }
+    filters?: { folderId?: string; templateId?: string; search?: string },
+    tx?: Knex
   ): Promise<TPamAccountListItem[]> => {
-    const qb = db
-      .replicaNode()(TableName.PamAccount)
+    const qb = (tx || db.replicaNode())(TableName.PamAccount)
       .join(TableName.PamAccountTemplate, `${TableName.PamAccount}.templateId`, `${TableName.PamAccountTemplate}.id`)
       .leftJoin(TableName.PamFolder, `${TableName.PamAccount}.folderId`, `${TableName.PamFolder}.id`)
       .where(`${TableName.PamAccount}.projectId`, projectId)
@@ -86,9 +88,8 @@ export const pamAccountDALFactory = (db: TDbClient) => {
       .orderBy(`${TableName.PamAccount}.name`, "asc") as unknown as Promise<TPamAccountListItem[]>;
   };
 
-  const findByIdWithDetails = async (accountId: string): Promise<TPamAccountDetail | null> => {
-    const rows = (await db
-      .replicaNode()(TableName.PamAccount)
+  const findByIdWithDetails = async (accountId: string, tx?: Knex): Promise<TPamAccountDetail | null> => {
+    const rows = (await (tx || db.replicaNode())(TableName.PamAccount)
       .join(TableName.PamAccountTemplate, `${TableName.PamAccount}.templateId`, `${TableName.PamAccountTemplate}.id`)
       .leftJoin(TableName.PamFolder, `${TableName.PamAccount}.folderId`, `${TableName.PamFolder}.id`)
       .where(`${TableName.PamAccount}.id`, accountId)

@@ -24,7 +24,6 @@ import {
   ProjectPermissionMemberActions,
   ProjectPermissionPamAccountActions,
   ProjectPermissionPamAccountPolicyActions,
-  ProjectPermissionPamDiscoveryActions,
   ProjectPermissionPamInsightsActions,
   ProjectPermissionPamSessionActions,
   ProjectPermissionPkiCertificateInstallationActions,
@@ -79,8 +78,6 @@ const buildAdminPermissionRules = () => {
     ProjectPermissionSub.SshCertificateTemplates,
     ProjectPermissionSub.SshHostGroups,
     ProjectPermissionSub.PamFolders,
-    ProjectPermissionSub.PamResources,
-    ProjectPermissionSub.PamDomains,
     ProjectPermissionSub.McpServers,
     ProjectPermissionSub.McpActivityLogs
   ].forEach((el) => {
@@ -447,17 +444,6 @@ const buildAdminPermissionRules = () => {
     ProjectPermissionSub.PamAccountPolicies
   );
 
-  can(
-    [
-      ProjectPermissionPamDiscoveryActions.Read,
-      ProjectPermissionPamDiscoveryActions.Create,
-      ProjectPermissionPamDiscoveryActions.Edit,
-      ProjectPermissionPamDiscoveryActions.Delete,
-      ProjectPermissionPamDiscoveryActions.RunScan
-    ],
-    ProjectPermissionSub.PamDiscovery
-  );
-
   can([ProjectPermissionPamInsightsActions.Read], ProjectPermissionSub.PamInsights);
 
   can(
@@ -694,18 +680,12 @@ const buildMemberPermissionRules = () => {
 
   can([ProjectPermissionActions.Read], ProjectPermissionSub.PamFolders);
 
-  can([ProjectPermissionActions.Read], ProjectPermissionSub.PamResources);
-
-  can([ProjectPermissionActions.Read], ProjectPermissionSub.PamDomains);
-
   can(
     [ProjectPermissionPamAccountActions.Access, ProjectPermissionPamAccountActions.Read],
     ProjectPermissionSub.PamAccounts
   );
 
   can([ProjectPermissionPamAccountPolicyActions.Read], ProjectPermissionSub.PamAccountPolicies);
-
-  can([ProjectPermissionPamDiscoveryActions.Read], ProjectPermissionSub.PamDiscovery);
 
   can([ProjectPermissionPamInsightsActions.Read], ProjectPermissionSub.PamInsights);
 
@@ -788,15 +768,9 @@ const buildViewerPermissionRules = () => {
 
   can([ProjectPermissionActions.Read], ProjectPermissionSub.PamFolders);
 
-  can([ProjectPermissionActions.Read], ProjectPermissionSub.PamResources);
-
-  can([ProjectPermissionActions.Read], ProjectPermissionSub.PamDomains);
-
   can([ProjectPermissionPamAccountActions.Read], ProjectPermissionSub.PamAccounts);
 
   can([ProjectPermissionPamAccountPolicyActions.Read], ProjectPermissionSub.PamAccountPolicies);
-
-  can([ProjectPermissionPamDiscoveryActions.Read], ProjectPermissionSub.PamDiscovery);
 
   can([ProjectPermissionPamInsightsActions.Read], ProjectPermissionSub.PamInsights);
 

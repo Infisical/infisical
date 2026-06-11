@@ -28,12 +28,12 @@ type Props = {
 };
 
 export const PamDataExplorerPage = ({ reason }: Props = {}) => {
-  const { accountId, projectId, orgId } = useParams({
+  const { accountId, orgId } = useParams({
     strict: false
   }) as {
     accountId: string;
-    projectId: string;
     orgId: string;
+    accountType: string;
   };
 
   const { data: account } = useGetPamAccountById(accountId);
@@ -82,9 +82,7 @@ export const PamDataExplorerPage = ({ reason }: Props = {}) => {
     cancelQuery
   } = useDataExplorerSession({
     accountId,
-    projectId,
     orgId,
-    resourceName: account?.resource?.name ?? "",
     accountName: account?.name ?? "",
     reason,
     onSessionEnd: (endReason?: string) => {
@@ -546,11 +544,6 @@ export const PamDataExplorerPage = ({ reason }: Props = {}) => {
           {tables.length} table{tables.length !== 1 ? "s" : ""}
         </span>
         <div className="flex items-center gap-4">
-          <span>
-            <span className="text-mineshaft-400">Resource:</span>{" "}
-            <span className="text-mineshaft-300">{account?.resource?.name ?? "Database"}</span>
-          </span>
-          <span className="text-mineshaft-500">|</span>
           <span>
             <span className="text-mineshaft-400">Account:</span>{" "}
             <span className="text-mineshaft-300">{account?.name ?? "Account"}</span>

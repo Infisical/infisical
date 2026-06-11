@@ -1,0 +1,163 @@
+import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { KmsDataKey } from "@app/services/kms/kms-types";
+import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
+
+import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
+import {
+  checkAccountAccess,
+  getAccessibleResourceIds,
+  TActorContext,
+  verifyProductMembership
+} from "../pam-membership/pam-permission";
+import { PamRecordingStorageBackend } from "../pam-session-recording-storage/pam-session-recording-storage-enums";
+import { ResourcePermissionPamResourceActions } from "../permission/resource-permission";
+import { TPamSessionDALFactory } from "./pam-session-dal";
+import { PamSessionStatus } from "./pam-session-enums";
+import { generateSessionRecordingSecrets } from "./pam-session-recording-secrets";
+
+type TPamSessionServiceFactoryDep = {
+  pamSessionDAL: Pick<
+    TPamSessionDALFactory,
+    "findAccessibleByProjectId" | "findById" | "findOne" | "endSessionById" | "updateById"
+  >;
+  pamAccountDAL: Pick<TPamAccountDALFactory, "findByIdWithDetails">;
+  membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+};
+
+export type TPamSessionServiceFactory = ReturnType<typeof pamSessionServiceFactory>;
+
+export const pamSessionServiceFactory = ({
+  pamSessionDAL,
+  pamAccountDAL,
+  membershipDAL,
+  permissionService,
+  kmsService
+}: TPamSessionServiceFactoryDep) => {
+  const decrypt = async (projectId: string, blob: Buffer): Promise<Record<string, unknown>> => {
+    const { decryptor } = await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
+    return JSON.parse(decryptor({ cipherTextBlob: blob }).toString("utf-8")) as Record<string, unknown>;
+  };
+
+  const checkAccount = (
+    accountId: string,
+    folderId: string | null | undefined,
+    projectId: string,
+    action: ResourcePermissionPamResourceActions,
+    ctx: TActorContext
+  ) => checkAccountAccess(permissionService, accountId, folderId, projectId, action, ctx);
+
+  const listSessions = async (projectId: string, ctx: TActorContext) => {
+    await verifyProductMembership(permissionService, projectId, ctx);
+
+    const { folderIds, accountIds } = await getAccessibleResourceIds(membershipDAL, projectId, ctx);
+    if (folderIds.length === 0 && accountIds.length === 0) return [];
+
+    return pamSessionDAL.findAccessibleByProjectId(projectId, folderIds, accountIds);
+  };
+
+  const getSessionById = async (sessionId: string, ctx: TActorContext) => {
+    const session = await pamSessionDAL.findById(sessionId);
+    if (!session || !session.accountId) return null;
+
+    const account = await pamAccountDAL.findByIdWithDetails(session.accountId);
+    await checkAccount(
+      session.accountId,
+      account?.folderId,
+      session.projectId,
+      ResourcePermissionPamResourceActions.ViewSessions,
+      ctx
+    );
+
+    return session;
+  };
+
+  // Called by the gateway
+  const getSessionCredentials = async (sessionId: string, gatewayId: string) => {
+    const session = await pamSessionDAL.findOne({ id: sessionId, gatewayId });
+    if (!session) {
+      throw new NotFoundError({ message: "Session not found" });
+    }
+
+    if (session.status !== PamSessionStatus.Starting && session.status !== PamSessionStatus.Active) {
+      throw new BadRequestError({ message: "Session is not active" });
+    }
+
+    if (!session.accountId) {
+      throw new BadRequestError({ message: "Session has no linked account" });
+    }
+
+    const account = await pamAccountDAL.findByIdWithDetails(session.accountId);
+    if (!account) {
+      throw new NotFoundError({ message: "Account not found" });
+    }
+
+    const connectionDetails = await decrypt(session.projectId, account.encryptedConnectionDetails);
+    const credentials = await decrypt(session.projectId, account.encryptedCredentials);
+
+    const sessionStarted = session.status === PamSessionStatus.Starting;
+
+    let recording: {
+      sessionKey: string;
+      uploadToken: string;
+      storageBackend: PamRecordingStorageBackend;
+      projectId: string;
+      sessionId: string;
+    } | null = null;
+
+    if (!session.encryptedSessionKey) {
+      const secrets = await generateSessionRecordingSecrets({
+        projectId: session.projectId,
+        sessionId,
+        kmsService
+      });
+
+      await pamSessionDAL.updateById(sessionId, {
+        encryptedSessionKey: secrets.encryptedSessionKey,
+        gatewayUploadTokenHash: secrets.uploadTokenHash
+      });
+
+      recording = {
+        sessionKey: secrets.sessionKey.toString("base64"),
+        uploadToken: secrets.uploadToken.toString("base64"),
+        storageBackend: PamRecordingStorageBackend.Postgres,
+        projectId: session.projectId,
+        sessionId
+      };
+    }
+
+    return {
+      credentials: { ...connectionDetails, ...credentials },
+      recording,
+      projectId: session.projectId,
+      accountName: session.accountName,
+      sessionStarted
+    };
+  };
+
+  // Called by the gateway
+  const endSessionFromGateway = async (sessionId: string, gatewayId: string) => {
+    const session = await pamSessionDAL.findOne({ id: sessionId, gatewayId });
+    if (!session) {
+      throw new NotFoundError({ message: "Session not found" });
+    }
+
+    const updatedSession = await pamSessionDAL.endSessionById(sessionId);
+
+    return {
+      projectId: session.projectId,
+      accountName: session.accountName,
+      alreadyEnded: !updatedSession
+    };
+  };
+
+  return {
+    listSessions,
+    getSessionById,
+    getSessionCredentials,
+    endSessionFromGateway
+  };
+};

@@ -35,8 +35,6 @@ const totalCountOf = (r: TGatewayConnectedResources | undefined) =>
   r
     ? r.appConnections.length +
       r.dynamicSecrets.length +
-      r.pamResources.length +
-      r.pamDiscoverySources.length +
       r.kubernetesAuths.length +
       r.mcpServers.length +
       r.pkiDiscoveryConfigs.length
@@ -136,60 +134,6 @@ export const GatewayConnectedResourcesSection = ({ gatewayId }: Props) => {
                           orgId: currentOrg.id,
                           projectId: d.projectId,
                           envSlug: d.environmentSlug
-                        }}
-                      />
-                    ))}
-                  </ItemGroup>
-                </AccordionContent>
-              </AccordionItem>
-            )}
-
-            {(resources?.pamResources.length ?? 0) > 0 && (
-              <AccordionItem value="pam-resources">
-                <AccordionTrigger>
-                  <span className="flex-1">PAM Resources</span>
-                  <Badge variant="neutral">{resources?.pamResources.length}</Badge>
-                </AccordionTrigger>
-                <AccordionContent className="px-4 py-3">
-                  <ItemGroup>
-                    {resources?.pamResources.map((r) => (
-                      <ResourceRow
-                        key={r.id}
-                        name={r.name}
-                        subtitle={`${r.resourceType} · ${r.projectName}`}
-                        to="/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId"
-                        params={{
-                          orgId: currentOrg.id,
-                          projectId: r.projectId,
-                          resourceType: r.resourceType,
-                          resourceId: r.id
-                        }}
-                      />
-                    ))}
-                  </ItemGroup>
-                </AccordionContent>
-              </AccordionItem>
-            )}
-
-            {(resources?.pamDiscoverySources.length ?? 0) > 0 && (
-              <AccordionItem value="pam-discovery">
-                <AccordionTrigger>
-                  <span className="flex-1">Discovery Sources</span>
-                  <Badge variant="neutral">{resources?.pamDiscoverySources.length}</Badge>
-                </AccordionTrigger>
-                <AccordionContent className="px-4 py-3">
-                  <ItemGroup>
-                    {resources?.pamDiscoverySources.map((s) => (
-                      <ResourceRow
-                        key={s.id}
-                        name={s.name}
-                        subtitle={`${s.discoveryType} · ${s.projectName}`}
-                        to="/organizations/$orgId/projects/pam/$projectId/discovery/$discoveryType/$discoverySourceId"
-                        params={{
-                          orgId: currentOrg.id,
-                          projectId: s.projectId,
-                          discoveryType: s.discoveryType,
-                          discoverySourceId: s.id
                         }}
                       />
                     ))}

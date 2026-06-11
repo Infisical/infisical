@@ -1,10 +1,9 @@
-import { ActionProjectType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
-import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 
 import { PamProductRole } from "../pam/pam-enums";
+import { TActorContext, verifyProductMembership } from "../pam-membership/pam-permission";
 import { TPamAccountTemplateDALFactory } from "./pam-account-template-dal";
 import {
   TCreatePamAccountTemplateDTO,
@@ -13,13 +12,6 @@ import {
   TListPamAccountTemplatesDTO,
   TUpdatePamAccountTemplateDTO
 } from "./pam-account-template-types";
-
-type TActorContext = {
-  actorId: string;
-  actor: ActorType;
-  actorOrgId: string;
-  actorAuthMethod: ActorAuthMethod;
-};
 
 type TPamAccountTemplateServiceFactoryDep = {
   pamAccountTemplateDAL: TPamAccountTemplateDALFactory;
@@ -32,32 +24,23 @@ export const pamAccountTemplateServiceFactory = ({
   pamAccountTemplateDAL,
   permissionService
 }: TPamAccountTemplateServiceFactoryDep) => {
-  const verifyProductMembership = async (projectId: string, ctx: TActorContext) => {
-    const { hasRole } = await permissionService.getProjectPermission({
-      actor: ctx.actor,
-      actorId: ctx.actorId,
-      projectId,
-      actorAuthMethod: ctx.actorAuthMethod,
-      actorOrgId: ctx.actorOrgId,
-      actionProjectType: ActionProjectType.PAM
-    });
-    return { hasRole };
-  };
+  const verifyMembership = (projectId: string, ctx: TActorContext) =>
+    verifyProductMembership(permissionService, projectId, ctx);
 
   const verifyProductAdmin = async (projectId: string, ctx: TActorContext) => {
-    const { hasRole } = await verifyProductMembership(projectId, ctx);
+    const { hasRole } = await verifyMembership(projectId, ctx);
     if (!hasRole(PamProductRole.Admin)) {
       throw new ForbiddenRequestError({ message: "Only PAM product admins can perform this action" });
     }
   };
 
   const list = async ({ projectId, search, type, ...ctx }: TListPamAccountTemplatesDTO & TActorContext) => {
-    await verifyProductMembership(projectId, ctx);
+    await verifyMembership(projectId, ctx);
     return pamAccountTemplateDAL.findByProjectId(projectId, { search, type });
   };
 
   const getById = async ({ templateId, projectId, ...ctx }: TGetPamAccountTemplateDTO & TActorContext) => {
-    await verifyProductMembership(projectId, ctx);
+    await verifyMembership(projectId, ctx);
 
     const template = await pamAccountTemplateDAL.findById(templateId);
     if (!template || template.projectId !== projectId) {

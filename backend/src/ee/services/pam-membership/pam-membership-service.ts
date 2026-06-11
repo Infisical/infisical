@@ -9,7 +9,6 @@ import {
   ResourcePermissionSub
 } from "@app/ee/services/permission/resource-permission";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
-import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
@@ -31,13 +30,7 @@ import {
   TUpdatePamFolderMemberDTO,
   TUpdatePamProductMemberDTO
 } from "./pam-membership-types";
-
-type TActorContext = {
-  actorId: string;
-  actor: ActorType;
-  actorOrgId: string;
-  actorAuthMethod: ActorAuthMethod;
-};
+import { TActorContext } from "./pam-permission";
 
 type TPamMembershipServiceFactoryDep = {
   membershipDAL: Pick<

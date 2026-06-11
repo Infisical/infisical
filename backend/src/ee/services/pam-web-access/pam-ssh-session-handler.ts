@@ -1,7 +1,6 @@
 import { Client, type ClientChannel, type ConnectConfig } from "ssh2";
 
 import { PamAccountType } from "@app/ee/services/pam/pam-enums";
-import { PamResource } from "@app/ee/services/pam-resource/pam-resource-enums";
 import { logger } from "@app/lib/logger";
 
 import { registerSessionHandler } from "./pam-session-handler-registry";
@@ -131,6 +130,6 @@ const handleSSHSession = async (
 };
 
 registerSessionHandler(PamAccountType.SSH, {
-  gatewayResourceType: PamResource.SSH,
+  gatewayResourceType: PamAccountType.SSH,
   handler: handleSSHSession
 });

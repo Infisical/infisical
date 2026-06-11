@@ -86,6 +86,7 @@ import { Route as pamLayoutImport } from './pages/pam/layout'
 import { Route as kmsLayoutImport } from './pages/kms/layout'
 import { Route as certManagerLayoutImport } from './pages/cert-manager/layout'
 import { Route as aiLayoutImport } from './pages/ai/layout'
+import { Route as pamPamAccountAccessPageRouteImport } from './pages/pam/PamAccountAccessPage/route'
 import { Route as organizationAppConnectionsGitHubManifestCallbackPageRouteImport } from './pages/organization/AppConnections/GitHubManifestCallbackPage/route'
 import { Route as organizationAppConnectionsOauthCallbackPageRouteImport } from './pages/organization/AppConnections/OauthCallbackPage/route'
 import { Route as projectAuditLogsPageRouteSshImport } from './pages/project/AuditLogsPage/route-ssh'
@@ -262,7 +263,6 @@ import { Route as secretManagerIntegrationsAwsParameterStoreConfigurePageRouteIm
 import { Route as secretManagerIntegrationsAwsParameterStoreAuthorizePageRouteImport } from './pages/secret-manager/integrations/AwsParameterStoreAuthorizePage/route'
 import { Route as pamPamDiscoveryDetailPageRouteImport } from './pages/pam/PamDiscoveryDetailPage/route'
 import { Route as certManagerInstallationDetailsByIDPageRouteImport } from './pages/cert-manager/InstallationDetailsByIDPage/route'
-import { Route as pamPamAccountAccessPageRouteImport } from './pages/pam/PamAccountAccessPage/route'
 import { Route as secretManagerIntegrationsVercelOauthCallbackPageRouteImport } from './pages/secret-manager/integrations/VercelOauthCallbackPage/route'
 import { Route as secretManagerSecretSyncDetailsByIDPageRouteImport } from './pages/secret-manager/SecretSyncDetailsByIDPage/route'
 import { Route as secretManagerIntegrationsNetlifyOauthCallbackPageRouteImport } from './pages/secret-manager/integrations/NetlifyOauthCallbackPage/route'
@@ -1094,6 +1094,13 @@ const aiLayoutRoute = aiLayoutImport.update({
   getParentRoute: () =>
     AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsAiProjectIdRoute,
 } as any)
+
+const pamPamAccountAccessPageRouteRoute =
+  pamPamAccountAccessPageRouteImport.update({
+    id: '/organizations/$orgId/pam/accounts/$accountType/$accountId/access',
+    path: '/organizations/$orgId/pam/accounts/$accountType/$accountId/access',
+    getParentRoute: () => middlewaresInjectOrgDetailsRoute,
+  } as any)
 
 const organizationAppConnectionsGitHubManifestCallbackPageRouteRoute =
   organizationAppConnectionsGitHubManifestCallbackPageRouteImport.update({
@@ -2576,13 +2583,6 @@ const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManag
     } as any,
   )
 
-const pamPamAccountAccessPageRouteRoute =
-  pamPamAccountAccessPageRouteImport.update({
-    id: '/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId/access',
-    path: '/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId/access',
-    getParentRoute: () => middlewaresInjectOrgDetailsRoute,
-  } as any)
-
 const secretManagerIntegrationsVercelOauthCallbackPageRouteRoute =
   secretManagerIntegrationsVercelOauthCallbackPageRouteImport.update({
     id: '/vercel/oauth2/callback',
@@ -3346,6 +3346,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/organizations/$orgId/app-connections/github/manifest/callback'
       preLoaderRoute: typeof organizationAppConnectionsGitHubManifestCallbackPageRouteImport
       parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdAppConnectionsImport
+    }
+    '/_authenticate/_inject-org-details/organizations/$orgId/pam/accounts/$accountType/$accountId/access': {
+      id: '/_authenticate/_inject-org-details/organizations/$orgId/pam/accounts/$accountType/$accountId/access'
+      path: '/organizations/$orgId/pam/accounts/$accountType/$accountId/access'
+      fullPath: '/organizations/$orgId/pam/accounts/$accountType/$accountId/access'
+      preLoaderRoute: typeof pamPamAccountAccessPageRouteImport
+      parentRoute: typeof middlewaresInjectOrgDetailsImport
     }
     '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/ai/$projectId/_ai-layout': {
       id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/ai/$projectId/_ai-layout'
@@ -4823,13 +4830,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/organizations/$orgId/projects/secret-management/$projectId/integrations/vercel/oauth2/callback'
       preLoaderRoute: typeof secretManagerIntegrationsVercelOauthCallbackPageRouteImport
       parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManagementProjectIdSecretManagerLayoutIntegrationsImport
-    }
-    '/_authenticate/_inject-org-details/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId/access': {
-      id: '/_authenticate/_inject-org-details/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId/access'
-      path: '/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId/access'
-      fullPath: '/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId/access'
-      preLoaderRoute: typeof pamPamAccountAccessPageRouteImport
-      parentRoute: typeof middlewaresInjectOrgDetailsImport
     }
     '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/commits/$environment/$folderId/$commitId': {
       id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/commits/$environment/$folderId/$commitId'
@@ -6372,6 +6372,7 @@ export interface FileRoutesByFullPath {
   '/organizations/$orgId/secret-manager/$projectId/approval': typeof secretManagerRedirectsRedirectApprovalPageRoute
   '/organizations/$orgId/app-connections/$appConnection/oauth/callback': typeof organizationAppConnectionsOauthCallbackPageRouteRoute
   '/organizations/$orgId/app-connections/github/manifest/callback': typeof organizationAppConnectionsGitHubManifestCallbackPageRouteRoute
+  '/organizations/$orgId/pam/accounts/$accountType/$accountId/access': typeof pamPamAccountAccessPageRouteRoute
   '/organizations/$orgId/projects/ai/$projectId/overview': typeof aiMCPPageRouteRoute
   '/organizations/$orgId/projects/ai/$projectId/settings': typeof aiSettingsPageRouteRoute
   '/organizations/$orgId/projects/cert-manager/$projectId/alerting': typeof certManagerAlertingPageRouteRoute
@@ -6576,7 +6577,6 @@ export interface FileRoutesByFullPath {
   '/organizations/$orgId/projects/secret-management/$projectId/integrations/netlify/oauth2/callback': typeof secretManagerIntegrationsNetlifyOauthCallbackPageRouteRoute
   '/organizations/$orgId/projects/secret-management/$projectId/integrations/secret-syncs/$destination/$syncId': typeof secretManagerSecretSyncDetailsByIDPageRouteRoute
   '/organizations/$orgId/projects/secret-management/$projectId/integrations/vercel/oauth2/callback': typeof secretManagerIntegrationsVercelOauthCallbackPageRouteRoute
-  '/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId/access': typeof pamPamAccountAccessPageRouteRoute
   '/organizations/$orgId/projects/secret-management/$projectId/commits/$environment/$folderId/$commitId': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManagementProjectIdSecretManagerLayoutCommitsEnvironmentFolderIdCommitIdRouteWithChildren
   '/organizations/$orgId/projects/secret-management/$projectId/commits/$environment/$folderId/$commitId/': typeof secretManagerCommitDetailsPageRouteRoute
   '/organizations/$orgId/projects/secret-management/$projectId/commits/$environment/$folderId/$commitId/restore': typeof secretManagerCommitDetailsPageComponentsRollbackPreviewTabRouteRoute
@@ -6660,6 +6660,7 @@ export interface FileRoutesByTo {
   '/organizations/$orgId/secret-manager/$projectId/approval': typeof secretManagerRedirectsRedirectApprovalPageRoute
   '/organizations/$orgId/app-connections/$appConnection/oauth/callback': typeof organizationAppConnectionsOauthCallbackPageRouteRoute
   '/organizations/$orgId/app-connections/github/manifest/callback': typeof organizationAppConnectionsGitHubManifestCallbackPageRouteRoute
+  '/organizations/$orgId/pam/accounts/$accountType/$accountId/access': typeof pamPamAccountAccessPageRouteRoute
   '/organizations/$orgId/projects/ai/$projectId/overview': typeof aiMCPPageRouteRoute
   '/organizations/$orgId/projects/ai/$projectId/settings': typeof aiSettingsPageRouteRoute
   '/organizations/$orgId/projects/cert-manager/$projectId/alerting': typeof certManagerAlertingPageRouteRoute
@@ -6846,7 +6847,6 @@ export interface FileRoutesByTo {
   '/organizations/$orgId/projects/secret-management/$projectId/integrations/netlify/oauth2/callback': typeof secretManagerIntegrationsNetlifyOauthCallbackPageRouteRoute
   '/organizations/$orgId/projects/secret-management/$projectId/integrations/secret-syncs/$destination/$syncId': typeof secretManagerSecretSyncDetailsByIDPageRouteRoute
   '/organizations/$orgId/projects/secret-management/$projectId/integrations/vercel/oauth2/callback': typeof secretManagerIntegrationsVercelOauthCallbackPageRouteRoute
-  '/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId/access': typeof pamPamAccountAccessPageRouteRoute
   '/organizations/$orgId/projects/secret-management/$projectId/commits/$environment/$folderId/$commitId': typeof secretManagerCommitDetailsPageRouteRoute
   '/organizations/$orgId/projects/secret-management/$projectId/commits/$environment/$folderId/$commitId/restore': typeof secretManagerCommitDetailsPageComponentsRollbackPreviewTabRouteRoute
   '/organizations/$orgId/projects/pam/$projectId/domains/$domainType/$domainId/accounts/$accountId': typeof pamPamDomainAccountByIDPageRouteRoute
@@ -6941,6 +6941,7 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/secret-manager/$projectId/approval': typeof secretManagerRedirectsRedirectApprovalPageRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/app-connections/$appConnection/oauth/callback': typeof organizationAppConnectionsOauthCallbackPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/app-connections/github/manifest/callback': typeof organizationAppConnectionsGitHubManifestCallbackPageRouteRoute
+  '/_authenticate/_inject-org-details/organizations/$orgId/pam/accounts/$accountType/$accountId/access': typeof pamPamAccountAccessPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/ai/$projectId/_ai-layout': typeof aiLayoutRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout': typeof certManagerLayoutRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/$projectId/_kms-layout': typeof kmsLayoutRouteWithChildren
@@ -7152,7 +7153,6 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/integrations/netlify/oauth2/callback': typeof secretManagerIntegrationsNetlifyOauthCallbackPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/integrations/secret-syncs/$destination/$syncId': typeof secretManagerSecretSyncDetailsByIDPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/integrations/vercel/oauth2/callback': typeof secretManagerIntegrationsVercelOauthCallbackPageRouteRoute
-  '/_authenticate/_inject-org-details/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId/access': typeof pamPamAccountAccessPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/commits/$environment/$folderId/$commitId': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManagementProjectIdSecretManagerLayoutCommitsEnvironmentFolderIdCommitIdRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/commits/$environment/$folderId/$commitId/': typeof secretManagerCommitDetailsPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/commits/$environment/$folderId/$commitId/restore': typeof secretManagerCommitDetailsPageComponentsRollbackPreviewTabRouteRoute
@@ -7246,6 +7246,7 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/secret-manager/$projectId/approval'
     | '/organizations/$orgId/app-connections/$appConnection/oauth/callback'
     | '/organizations/$orgId/app-connections/github/manifest/callback'
+    | '/organizations/$orgId/pam/accounts/$accountType/$accountId/access'
     | '/organizations/$orgId/projects/ai/$projectId/overview'
     | '/organizations/$orgId/projects/ai/$projectId/settings'
     | '/organizations/$orgId/projects/cert-manager/$projectId/alerting'
@@ -7450,7 +7451,6 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/projects/secret-management/$projectId/integrations/netlify/oauth2/callback'
     | '/organizations/$orgId/projects/secret-management/$projectId/integrations/secret-syncs/$destination/$syncId'
     | '/organizations/$orgId/projects/secret-management/$projectId/integrations/vercel/oauth2/callback'
-    | '/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId/access'
     | '/organizations/$orgId/projects/secret-management/$projectId/commits/$environment/$folderId/$commitId'
     | '/organizations/$orgId/projects/secret-management/$projectId/commits/$environment/$folderId/$commitId/'
     | '/organizations/$orgId/projects/secret-management/$projectId/commits/$environment/$folderId/$commitId/restore'
@@ -7533,6 +7533,7 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/secret-manager/$projectId/approval'
     | '/organizations/$orgId/app-connections/$appConnection/oauth/callback'
     | '/organizations/$orgId/app-connections/github/manifest/callback'
+    | '/organizations/$orgId/pam/accounts/$accountType/$accountId/access'
     | '/organizations/$orgId/projects/ai/$projectId/overview'
     | '/organizations/$orgId/projects/ai/$projectId/settings'
     | '/organizations/$orgId/projects/cert-manager/$projectId/alerting'
@@ -7719,7 +7720,6 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/projects/secret-management/$projectId/integrations/netlify/oauth2/callback'
     | '/organizations/$orgId/projects/secret-management/$projectId/integrations/secret-syncs/$destination/$syncId'
     | '/organizations/$orgId/projects/secret-management/$projectId/integrations/vercel/oauth2/callback'
-    | '/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId/access'
     | '/organizations/$orgId/projects/secret-management/$projectId/commits/$environment/$folderId/$commitId'
     | '/organizations/$orgId/projects/secret-management/$projectId/commits/$environment/$folderId/$commitId/restore'
     | '/organizations/$orgId/projects/pam/$projectId/domains/$domainType/$domainId/accounts/$accountId'
@@ -7812,6 +7812,7 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/secret-manager/$projectId/approval'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/app-connections/$appConnection/oauth/callback'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/app-connections/github/manifest/callback'
+    | '/_authenticate/_inject-org-details/organizations/$orgId/pam/accounts/$accountType/$accountId/access'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/ai/$projectId/_ai-layout'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/$projectId/_kms-layout'
@@ -8023,7 +8024,6 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/integrations/netlify/oauth2/callback'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/integrations/secret-syncs/$destination/$syncId'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/integrations/vercel/oauth2/callback'
-    | '/_authenticate/_inject-org-details/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId/access'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/commits/$environment/$folderId/$commitId'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/commits/$environment/$folderId/$commitId/'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/commits/$environment/$folderId/$commitId/restore'
@@ -8142,7 +8142,7 @@ export const routeTree = rootRoute
         "/_authenticate/_inject-org-details/organization/settings/oauth/callback",
         "/_authenticate/_inject-org-details/organization/app-connections/$appConnection/oauth/callback",
         "/_authenticate/_inject-org-details/organization/app-connections/github/manifest/callback",
-        "/_authenticate/_inject-org-details/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId/access"
+        "/_authenticate/_inject-org-details/organizations/$orgId/pam/accounts/$accountType/$accountId/access"
       ]
     },
     "/_authenticate/personal-settings": {
@@ -8549,6 +8549,10 @@ export const routeTree = rootRoute
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/app-connections/github/manifest/callback": {
       "filePath": "organization/AppConnections/GitHubManifestCallbackPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/app-connections"
+    },
+    "/_authenticate/_inject-org-details/organizations/$orgId/pam/accounts/$accountType/$accountId/access": {
+      "filePath": "pam/PamAccountAccessPage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details"
     },
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/ai/$projectId/_ai-layout": {
       "filePath": "ai/layout.tsx",
@@ -9648,10 +9652,6 @@ export const routeTree = rootRoute
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/integrations/vercel/oauth2/callback": {
       "filePath": "secret-manager/integrations/VercelOauthCallbackPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/integrations"
-    },
-    "/_authenticate/_inject-org-details/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId/access": {
-      "filePath": "pam/PamAccountAccessPage/route.tsx",
-      "parent": "/_authenticate/_inject-org-details"
     },
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/commits/$environment/$folderId/$commitId": {
       "filePath": "",

@@ -1,3 +1,5 @@
+import { Knex } from "knex";
+
 import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas";
 import { sanitizeSqlLikeString } from "@app/lib/fn";
@@ -10,8 +12,12 @@ export type TPamAccountTemplateDALFactory = ReturnType<typeof pamAccountTemplate
 export const pamAccountTemplateDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.PamAccountTemplate);
 
-  const findByProjectId = async (projectId: string, filters?: { search?: string; type?: PamAccountType }) => {
-    const qb = db.replicaNode()(TableName.PamAccountTemplate).where({ projectId });
+  const findByProjectId = async (
+    projectId: string,
+    filters?: { search?: string; type?: PamAccountType },
+    tx?: Knex
+  ) => {
+    const qb = (tx || db.replicaNode())(TableName.PamAccountTemplate).where({ projectId });
 
     if (filters?.search) {
       const sanitized = sanitizeSqlLikeString(filters.search);
@@ -26,9 +32,8 @@ export const pamAccountTemplateDALFactory = (db: TDbClient) => {
     return qb.orderBy("name", "asc");
   };
 
-  const countAccountsByTemplateId = async (templateId: string) => {
-    const [result] = (await db
-      .replicaNode()(TableName.PamAccount)
+  const countAccountsByTemplateId = async (templateId: string, tx?: Knex) => {
+    const [result] = (await (tx || db.replicaNode())(TableName.PamAccount)
       .where({ templateId })
       .count("id as count")) as unknown as [{ count: string }];
     return Number(result.count);

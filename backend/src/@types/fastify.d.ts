@@ -38,6 +38,8 @@ import { TPamAccountTemplateServiceFactory } from "@app/ee/services/pam-account-
 import { TPamFolderServiceFactory } from "@app/ee/services/pam-folder/pam-folder-service";
 import { TPamProjectResolverFactory } from "@app/ee/services/pam-instance/pam-project-resolver";
 import { TPamMembershipServiceFactory } from "@app/ee/services/pam-membership/pam-membership-service";
+import { TPamSessionChunkServiceFactory } from "@app/ee/services/pam-session/pam-session-chunk-service";
+import { TPamSessionServiceFactory } from "@app/ee/services/pam-session/pam-session-service";
 import { TPamWebAccessServiceFactory } from "@app/ee/services/pam-web-access/pam-web-access-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { TPitServiceFactory } from "@app/ee/services/pit/pit-service";
@@ -413,6 +415,8 @@ declare module "fastify" {
       pamFolder: TPamFolderServiceFactory;
       pamAccount: TPamAccountServiceFactory;
       pamMembership: TPamMembershipServiceFactory;
+      pamSession: TPamSessionServiceFactory;
+      pamSessionChunk: TPamSessionChunkServiceFactory;
       pamWebAccess: TPamWebAccessServiceFactory;
       mfaSession: TMfaSessionServiceFactory;
       membershipUser: TMembershipUserServiceFactory;

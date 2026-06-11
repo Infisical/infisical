@@ -76,6 +76,31 @@ export const pamSessionDALFactory = (db: TDbClient) => {
     return sessions;
   };
 
+  const findAccessibleByProjectId = async (
+    projectId: string,
+    accessibleFolderIds: string[],
+    accessibleAccountIds: string[],
+    tx?: Knex
+  ) => {
+    const sessions = await (tx || db.replicaNode())(TableName.PamSession)
+      .leftJoin(TableName.GatewayV2, `${TableName.GatewayV2}.id`, `${TableName.PamSession}.gatewayId`)
+      .leftJoin(TableName.PamAccount, `${TableName.PamAccount}.id`, `${TableName.PamSession}.accountId`)
+      .select(selectAllTableCols(TableName.PamSession))
+      .select(db.ref("name").withSchema(TableName.GatewayV2).as("gatewayName"))
+      .select(db.ref("identityId").withSchema(TableName.GatewayV2).as("gatewayIdentityId"))
+      .where(`${TableName.PamSession}.projectId`, projectId)
+      .where((builder) => {
+        if (accessibleFolderIds.length > 0) {
+          void builder.whereIn(`${TableName.PamAccount}.folderId`, accessibleFolderIds);
+        }
+        if (accessibleAccountIds.length > 0) {
+          void builder.orWhereIn(`${TableName.PamSession}.accountId`, accessibleAccountIds);
+        }
+      });
+
+    return sessions;
+  };
+
   return {
     ...orm,
     findById,
@@ -83,6 +108,7 @@ export const pamSessionDALFactory = (db: TDbClient) => {
     endExpiredWebSessions,
     endSessionById,
     activateSession,
-    findByProjectId
+    findByProjectId,
+    findAccessibleByProjectId
   };
 };

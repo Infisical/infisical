@@ -677,25 +677,10 @@ export enum EventType {
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_ACCESS_VOLUME = "view-insights-secrets-management-access-volume",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_ACCESS_LOCATIONS = "view-insights-secrets-management-access-locations",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_SUMMARY = "view-insights-secrets-management-summary",
-  VIEW_INSIGHTS_PAM_SUMMARY = "view-insights-pam-summary",
-  VIEW_INSIGHTS_PAM_SESSION_ACTIVITY = "view-insights-pam-session-activity",
-  VIEW_INSIGHTS_PAM_TOP_ACTORS = "view-insights-pam-top-actors",
-  VIEW_INSIGHTS_PAM_RESOURCE_BREAKDOWN = "view-insights-pam-resource-breakdown",
-  VIEW_INSIGHTS_PAM_ROTATION_CALENDAR = "view-insights-pam-rotation-calendar",
-
-  PAM_SESSION_CREDENTIALS_GET = "pam-session-credentials-get",
   PAM_SESSION_START = "pam-session-start",
-  PAM_SESSION_LOGS_UPDATE = "pam-session-logs-update",
   PAM_SESSION_END = "pam-session-end",
-  PAM_SESSION_TERMINATE = "pam-session-terminate",
-  PAM_SESSION_GET = "pam-session-get",
-  PAM_SESSION_LIST = "pam-session-list",
-  PAM_SESSION_EVENT_BATCH_UPLOAD = "pam-session-event-batch-upload",
   PAM_SESSION_CHUNK_UPLOAD = "pam-session-chunk-upload",
   PAM_SESSION_UPLOAD_TOKEN_INVALID = "pam-session-upload-token-invalid",
-  PAM_RECORDING_CONFIG_UPDATE = "pam-recording-config-update",
-  PAM_RECORDING_CONFIG_DELETE = "pam-recording-config-delete",
-  PAM_RECORDING_BUCKET_CONNECTION_TEST_FAILED = "pam-recording-bucket-connection-test-failed",
   PAM_ACCOUNT_TEMPLATE_CREATE = "pam-account-template-create",
   PAM_ACCOUNT_TEMPLATE_UPDATE = "pam-account-template-update",
   PAM_ACCOUNT_TEMPLATE_DELETE = "pam-account-template-delete",
@@ -711,21 +696,10 @@ export enum EventType {
   PAM_ACCOUNT_MEMBER_ADD = "pam-account-member-add",
   PAM_ACCOUNT_MEMBER_UPDATE = "pam-account-member-update",
   PAM_ACCOUNT_MEMBER_REMOVE = "pam-account-member-remove",
-  PAM_ACCOUNT_LIST = "pam-account-list",
-  PAM_ACCOUNT_GET = "pam-account-get",
   PAM_ACCOUNT_ACCESS = "pam-account-access",
-  PAM_ACCOUNT_AWS_CONSOLE_URL_GENERATED = "pam-account-aws-console-url-generated",
   PAM_ACCOUNT_CREATE = "pam-account-create",
   PAM_ACCOUNT_UPDATE = "pam-account-update",
   PAM_ACCOUNT_DELETE = "pam-account-delete",
-  PAM_ACCOUNT_CREDENTIAL_ROTATION = "pam-account-credential-rotation",
-  PAM_ACCOUNT_CREDENTIAL_ROTATION_FAILED = "pam-account-credential-rotation-failed",
-  PAM_ACCOUNT_POLICY_CREATE = "pam-account-policy-create",
-  PAM_ACCOUNT_POLICY_UPDATE = "pam-account-policy-update",
-  PAM_ACCOUNT_POLICY_DELETE = "pam-account-policy-delete",
-  PAM_ACCOUNT_POLICY_LIST = "pam-account-policy-list",
-  PAM_ACCOUNT_POLICY_GET = "pam-account-policy-get",
-  PAM_ACCOUNT_READ_CREDENTIALS = "pam-account-read-credentials",
   PAM_WEB_ACCESS_SESSION_TICKET_CREATED = "pam-web-access-session-ticket-created",
   APPROVAL_POLICY_CREATE = "approval-policy-create",
   APPROVAL_POLICY_UPDATE = "approval-policy-update",
@@ -5621,43 +5595,6 @@ interface ViewAuditLogsEvent {
   metadata?: Record<string, unknown>;
 }
 
-interface ViewPamInsightsSummaryEvent {
-  type: EventType.VIEW_INSIGHTS_PAM_SUMMARY;
-  metadata: {
-    projectId: string;
-  };
-}
-
-interface ViewPamInsightsSessionActivityEvent {
-  type: EventType.VIEW_INSIGHTS_PAM_SESSION_ACTIVITY;
-  metadata: {
-    projectId: string;
-  };
-}
-
-interface ViewPamInsightsTopActorsEvent {
-  type: EventType.VIEW_INSIGHTS_PAM_TOP_ACTORS;
-  metadata: {
-    projectId: string;
-  };
-}
-
-interface ViewPamInsightsResourceBreakdownEvent {
-  type: EventType.VIEW_INSIGHTS_PAM_RESOURCE_BREAKDOWN;
-  metadata: {
-    projectId: string;
-  };
-}
-
-interface ViewPamInsightsRotationCalendarEvent {
-  type: EventType.VIEW_INSIGHTS_PAM_ROTATION_CALENDAR;
-  metadata: {
-    projectId: string;
-    month: number;
-    year: number;
-  };
-}
-
 interface ProjectRoleCreateEvent {
   type: EventType.CREATE_PROJECT_ROLE;
   metadata: {
@@ -5735,24 +5672,8 @@ interface OrgRoleDeleteEvent {
   };
 }
 
-interface PamSessionCredentialsGetEvent {
-  type: EventType.PAM_SESSION_CREDENTIALS_GET;
-  metadata: {
-    sessionId: string;
-    accountName: string;
-  };
-}
-
 interface PamSessionStartEvent {
   type: EventType.PAM_SESSION_START;
-  metadata: {
-    sessionId: string;
-    accountName: string;
-  };
-}
-
-interface PamSessionLogsUpdateEvent {
-  type: EventType.PAM_SESSION_LOGS_UPDATE;
   metadata: {
     sessionId: string;
     accountName: string;
@@ -5764,36 +5685,6 @@ interface PamSessionEndEvent {
   metadata: {
     sessionId: string;
     accountName: string;
-  };
-}
-
-interface PamSessionTerminateEvent {
-  type: EventType.PAM_SESSION_TERMINATE;
-  metadata: {
-    sessionId: string;
-    accountName: string;
-  };
-}
-
-interface PamSessionGetEvent {
-  type: EventType.PAM_SESSION_GET;
-  metadata: {
-    sessionId: string;
-  };
-}
-
-interface PamSessionListEvent {
-  type: EventType.PAM_SESSION_LIST;
-  metadata: {
-    count: number;
-  };
-}
-
-interface PamSessionEventBatchUploadEvent {
-  type: EventType.PAM_SESSION_EVENT_BATCH_UPLOAD;
-  metadata: {
-    sessionId: string;
-    startOffset: number;
   };
 }
 
@@ -5812,34 +5703,6 @@ interface PamSessionUploadTokenInvalidEvent {
   metadata: {
     sessionId: string;
     chunkIndex?: number;
-  };
-}
-
-interface PamRecordingConfigUpsertEvent {
-  type: EventType.PAM_RECORDING_CONFIG_UPDATE;
-  metadata: {
-    projectId: string;
-    storageBackend: string;
-    bucket: string;
-    region: string;
-  };
-}
-
-interface PamRecordingConfigDeleteEvent {
-  type: EventType.PAM_RECORDING_CONFIG_DELETE;
-  metadata: {
-    projectId: string;
-  };
-}
-
-interface PamRecordingBucketConnectionTestFailedEvent {
-  type: EventType.PAM_RECORDING_BUCKET_CONNECTION_TEST_FAILED;
-  metadata: {
-    projectId: string;
-    storageBackend: string;
-    bucket: string;
-    region: string;
-    reason: string;
   };
 }
 
@@ -5978,21 +5841,6 @@ interface PamAccountMemberRemoveEvent {
   };
 }
 
-interface PamAccountListEvent {
-  type: EventType.PAM_ACCOUNT_LIST;
-  metadata: {
-    accountCount: number;
-  };
-}
-
-interface PamAccountGetEvent {
-  type: EventType.PAM_ACCOUNT_GET;
-  metadata: {
-    accountId: string;
-    accountName: string;
-  };
-}
-
 interface PamAccountAccessEvent {
   type: EventType.PAM_ACCOUNT_ACCESS;
   metadata: {
@@ -6007,16 +5855,6 @@ interface PamAccountAccessEvent {
 interface PamWebAccessSessionTicketCreatedEvent {
   type: EventType.PAM_WEB_ACCESS_SESSION_TICKET_CREATED;
   metadata: {
-    accountId: string;
-    resourceName: string;
-    accountName: string;
-  };
-}
-
-interface PamAccountAwsConsoleUrlGeneratedEvent {
-  type: EventType.PAM_ACCOUNT_AWS_CONSOLE_URL_GENERATED;
-  metadata: {
-    sessionId: string;
     accountId: string;
     resourceName: string;
     accountName: string;
@@ -6051,82 +5889,6 @@ interface PamAccountDeleteEvent {
     accountId: string;
     accountType: string;
     accountName: string;
-  };
-}
-
-interface PamAccountCredentialRotationEvent {
-  type: EventType.PAM_ACCOUNT_CREDENTIAL_ROTATION;
-  metadata: {
-    accountName: string;
-    accountId: string;
-    resourceId: string;
-    resourceType: string;
-  };
-}
-
-interface PamAccountCredentialRotationFailedEvent {
-  type: EventType.PAM_ACCOUNT_CREDENTIAL_ROTATION_FAILED;
-  metadata: {
-    accountName: string;
-    accountId: string;
-    resourceId: string;
-    resourceType: string;
-    errorMessage: string;
-  };
-}
-
-interface PamAccountPolicyCreateEvent {
-  type: EventType.PAM_ACCOUNT_POLICY_CREATE;
-  metadata: {
-    projectId: string;
-    name: string;
-    description?: string;
-  };
-}
-
-interface PamAccountPolicyUpdateEvent {
-  type: EventType.PAM_ACCOUNT_POLICY_UPDATE;
-  metadata: {
-    policyId: string;
-    projectId: string;
-    name?: string;
-    isActive?: boolean;
-  };
-}
-
-interface PamAccountPolicyDeleteEvent {
-  type: EventType.PAM_ACCOUNT_POLICY_DELETE;
-  metadata: {
-    policyId: string;
-    projectId: string;
-    name: string;
-  };
-}
-
-interface PamAccountPolicyListEvent {
-  type: EventType.PAM_ACCOUNT_POLICY_LIST;
-  metadata: {
-    projectId: string;
-  };
-}
-
-interface PamAccountPolicyGetEvent {
-  type: EventType.PAM_ACCOUNT_POLICY_GET;
-  metadata: {
-    policyId: string;
-    projectId: string;
-  };
-}
-
-interface PamAccountReadCredentialsEvent {
-  type: EventType.PAM_ACCOUNT_READ_CREDENTIALS;
-  metadata: {
-    accountId: string;
-    accountName: string;
-    resourceId?: string | null;
-    resourceType?: string | null;
-    domainId?: string | null;
-    domainType?: string | null;
   };
 }
 
@@ -7619,11 +7381,6 @@ export type Event =
   | ViewInsightsAuthMethodsEvent
   | ViewSecretManagementInsightsSummaryEvent
   | ViewAuditLogsEvent
-  | ViewPamInsightsSummaryEvent
-  | ViewPamInsightsSessionActivityEvent
-  | ViewPamInsightsTopActorsEvent
-  | ViewPamInsightsResourceBreakdownEvent
-  | ViewPamInsightsRotationCalendarEvent
   | ProjectRoleCreateEvent
   | ProjectRoleUpdateEvent
   | ProjectRoleDeleteEvent
@@ -7632,19 +7389,10 @@ export type Event =
   | OrgRoleCreateEvent
   | OrgRoleUpdateEvent
   | OrgRoleDeleteEvent
-  | PamSessionCredentialsGetEvent
   | PamSessionStartEvent
-  | PamSessionLogsUpdateEvent
   | PamSessionEndEvent
-  | PamSessionTerminateEvent
-  | PamSessionGetEvent
-  | PamSessionListEvent
-  | PamSessionEventBatchUploadEvent
   | PamSessionChunkUploadEvent
   | PamSessionUploadTokenInvalidEvent
-  | PamRecordingConfigUpsertEvent
-  | PamRecordingConfigDeleteEvent
-  | PamRecordingBucketConnectionTestFailedEvent
   | PamAccountTemplateCreateEvent
   | PamAccountTemplateUpdateEvent
   | PamAccountTemplateDeleteEvent
@@ -7660,22 +7408,11 @@ export type Event =
   | PamAccountMemberAddEvent
   | PamAccountMemberUpdateEvent
   | PamAccountMemberRemoveEvent
-  | PamAccountListEvent
-  | PamAccountGetEvent
   | PamAccountAccessEvent
-  | PamAccountAwsConsoleUrlGeneratedEvent
   | PamWebAccessSessionTicketCreatedEvent
   | PamAccountCreateEvent
   | PamAccountUpdateEvent
   | PamAccountDeleteEvent
-  | PamAccountCredentialRotationEvent
-  | PamAccountCredentialRotationFailedEvent
-  | PamAccountPolicyCreateEvent
-  | PamAccountPolicyUpdateEvent
-  | PamAccountPolicyDeleteEvent
-  | PamAccountPolicyListEvent
-  | PamAccountPolicyGetEvent
-  | PamAccountReadCredentialsEvent
   | UpdateCertificateRenewalConfigEvent
   | UpdateCertificateMetadataEvent
   | DisableCertificateRenewalConfigEvent

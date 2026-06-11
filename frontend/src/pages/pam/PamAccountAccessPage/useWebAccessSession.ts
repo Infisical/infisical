@@ -7,6 +7,7 @@ import { Readline } from "xterm-readline";
 
 import { apiRequest } from "@app/config/request";
 import { MfaSessionStatus, TMfaSessionStatusResponse } from "@app/hooks/api/mfaSession/types";
+import { PamAccountType } from "@app/hooks/api/pam";
 
 import { DEFAULT_ACCESS_DURATION } from "../constants";
 import { WebSocketServerMessageSchema, WsMessageType } from "./web-access-types";
@@ -15,22 +16,18 @@ import "@xterm/xterm/css/xterm.css";
 
 type UseWebAccessSessionOptions = {
   accountId: string;
-  projectId: string;
   orgId: string;
-  resourceName: string;
   accountName: string;
-  resourceType: string;
+  accountType: string;
   reason?: string;
   onSessionEnd?: () => void;
 };
 
 export const useWebAccessSession = ({
   accountId,
-  projectId,
   orgId,
-  resourceName,
   accountName,
-  resourceType,
+  accountType,
   reason,
   onSessionEnd
 }: UseWebAccessSessionOptions) => {
@@ -83,8 +80,9 @@ export const useWebAccessSession = ({
     },
     []
   );
+
   // TODO: refactor when the list of supported resource type grows
-  const isSSH = resourceType === "ssh";
+  const isSSH = accountType === PamAccountType.SSH;
 
   // --- WebSocket lifecycle (imperative) ---
 
@@ -92,7 +90,7 @@ export const useWebAccessSession = ({
     (terminal: Terminal, ticket: string) => {
       const { protocol, host } = window.location;
       const wsProtocol = protocol === "https:" ? "wss:" : "ws:";
-      const wsUrl = `${wsProtocol}//${host}/api/v1/pam/accounts/${accountId}/web-access?ticket=${encodeURIComponent(ticket)}`;
+      const wsUrl = `${wsProtocol}//${host}/api/v1/pam/sessions/${accountId}/web-access?ticket=${encodeURIComponent(ticket)}`;
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
 
@@ -244,8 +242,8 @@ export const useWebAccessSession = ({
 
     try {
       const { data } = await apiRequest.post<{ ticket: string }>(
-        `/api/v1/pam/accounts/${accountId}/web-access-ticket`,
-        { projectId, reason: submittedReasonRef.current }
+        `/api/v1/pam/sessions/${accountId}/web-access-ticket`,
+        { reason: submittedReasonRef.current }
       );
       if (containerEl) {
         containerEl.style.width = "";
@@ -351,8 +349,8 @@ export const useWebAccessSession = ({
           if (fitAddonRef.current) fitAddonRef.current.fit();
           terminal.reset();
           const { data: retryData } = await apiRequest.post<{ ticket: string }>(
-            `/api/v1/pam/accounts/${accountId}/web-access-ticket`,
-            { projectId, mfaSessionId, reason: submittedReasonRef.current }
+            `/api/v1/pam/sessions/${accountId}/web-access-ticket`,
+            { mfaSessionId, reason: submittedReasonRef.current }
           );
           openWebSocket(terminal, retryData.ticket);
         } catch {
@@ -392,13 +390,11 @@ export const useWebAccessSession = ({
           const { data: approvalData } = await apiRequest.post<{ request: { id: string } }>(
             "/api/v1/approval-policies/pam-access/requests",
             {
-              projectId,
               requestData: {
                 accessDuration:
                   ms(accessDurationMax) < ms(DEFAULT_ACCESS_DURATION)
                     ? accessDurationMax
                     : DEFAULT_ACCESS_DURATION,
-                resourceName,
                 accountName
               },
               justification: justification.trim() || undefined
@@ -407,7 +403,7 @@ export const useWebAccessSession = ({
 
           terminal.write("\r\nApproval request created successfully!\r\n");
 
-          const approvalUrl = `${window.location.origin}/organizations/${orgId}/projects/pam/${projectId}/approvals/${approvalData.request.id}`;
+          const approvalUrl = `${window.location.origin}/organizations/${orgId}/approvals/${approvalData.request.id}`;
           terminal.write(`View details at: ${approvalUrl}\r\n`);
 
           await prompt("\r\nOnce approved, press Enter to reconnect.");
@@ -448,7 +444,7 @@ export const useWebAccessSession = ({
 
       terminal.write("\r\nFailed to connect. Please close and try again.\r\n");
     }
-  }, [accountId, projectId, orgId, resourceName, accountName, containerEl, openWebSocket]);
+  }, [accountId, orgId, accountName, containerEl, openWebSocket]);
 
   const disconnect = useCallback(() => {
     const ws = wsRef.current;

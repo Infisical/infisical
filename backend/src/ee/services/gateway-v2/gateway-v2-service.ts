@@ -31,7 +31,7 @@ import { TSmtpService } from "@app/services/smtp/smtp-service";
 
 import { TAiMcpServerDALFactory } from "../ai-mcp-server/ai-mcp-server-dal";
 import { TDynamicSecretDALFactory } from "../dynamic-secret/dynamic-secret-dal";
-import { PamResource } from "../pam-resource/pam-resource-enums";
+import { PamAccountType } from "../pam/pam-enums";
 import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TPkiDiscoveryConfigDALFactory } from "../pki-discovery/pki-discovery-config-dal";
@@ -495,7 +495,7 @@ export const gatewayV2ServiceFactory = ({
   }: {
     gatewayId: string;
     sessionId: string;
-    resourceType: PamResource;
+    resourceType: PamAccountType;
     duration?: number;
     host: string;
     port?: number;

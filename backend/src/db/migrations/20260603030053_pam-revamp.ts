@@ -488,6 +488,7 @@ export async function up(knex: Knex): Promise<void> {
 
   await knex.schema.alterTable(TableName.PamSession, (t) => {
     t.renameColumn("resourceType", "accountType");
+    t.string("resourceName").nullable().alter();
   });
 }
 
