@@ -3,7 +3,7 @@ import { ForbiddenError } from "@casl/ability";
 import { ActionProjectType, TWebhooksInsert } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
@@ -253,18 +253,30 @@ export const webhookServiceFactory = ({
   };
 
   const getWebhookById = async ({ id, actor, actorId, actorAuthMethod, actorOrgId }: TGetWebhookByIdDTO) => {
-    const webhook = await webhookDAL.findById(id);
-    if (!webhook) throw new NotFoundError({ message: `Webhook with ID '${id}' not found` });
+    // Unauthorized callers get the same 404 as a missing webhook so the endpoint can't be used to enumerate webhook IDs.
+    const notFound = new NotFoundError({ message: `Webhook with ID '${id}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId: webhook.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.Any
-    });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Webhooks);
+    const webhook = await webhookDAL.findById(id);
+    if (!webhook) {
+      throw notFound;
+    }
+
+    try {
+      const { permission } = await permissionService.getProjectPermission({
+        actor,
+        actorId,
+        projectId: webhook.projectId,
+        actorAuthMethod,
+        actorOrgId,
+        actionProjectType: ActionProjectType.Any
+      });
+      ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Webhooks);
+    } catch (error) {
+      if (error instanceof ForbiddenError || error instanceof ForbiddenRequestError) {
+        throw notFound;
+      }
+      throw error;
+    }
 
     const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
