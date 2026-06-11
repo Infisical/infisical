@@ -375,6 +375,7 @@ import { kmskeyDALFactory } from "@app/services/kms/kms-key-dal";
 import { TKmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
 import { kmsServiceFactory } from "@app/services/kms/kms-service";
 import { RootKeyEncryptionStrategy } from "@app/services/kms/kms-types";
+import { licenseClientFactory } from "@app/services/license-client";
 import { applicationMembershipCleanupServiceFactory } from "@app/services/membership/application-membership-cleanup-service";
 import { membershipDALFactory } from "@app/services/membership/membership-dal";
 import { membershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
@@ -781,6 +782,10 @@ export const registerRoutes = async (
     projectDAL,
     envConfig
   });
+
+  // License Server v2 client SDK. Coexists with licenseService during migration - getFeature()
+  // is the single read primitive; falls back to feature defaults until the server is configured.
+  const licenseClient = licenseClientFactory({ envConfig, keyStore });
 
   // Project events SSE service (for clients to subscribe to secret mutation events)
   const projectEventsSSEService = projectEventsSSEServiceFactory({
@@ -3726,6 +3731,7 @@ export const registerRoutes = async (
     pkiTemplate: pkiTemplateService,
     secretScanning: secretScanningService,
     license: licenseService,
+    licenseClient,
     trustedIp: trustedIpService,
     scim: scimService,
     secretBlindIndex: secretBlindIndexService,
