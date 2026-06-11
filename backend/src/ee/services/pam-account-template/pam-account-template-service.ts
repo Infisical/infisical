@@ -4,6 +4,7 @@ import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } 
 
 import { PamProductRole } from "../pam/pam-enums";
 import { TActorContext, verifyProductMembership } from "../pam/pam-permission";
+import { TPamValidatorDeps, validateGatewayAttachment, validateRecordingConnection } from "../pam/pam-validators";
 import { TPamAccountTemplateDALFactory } from "./pam-account-template-dal";
 import {
   TCreatePamAccountTemplateDTO,
@@ -13,17 +14,16 @@ import {
   TUpdatePamAccountTemplateDTO
 } from "./pam-account-template-types";
 
-type TPamAccountTemplateServiceFactoryDep = {
+type TPamAccountTemplateServiceFactoryDep = TPamValidatorDeps & {
   pamAccountTemplateDAL: TPamAccountTemplateDALFactory;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
 };
 
 export type TPamAccountTemplateServiceFactory = ReturnType<typeof pamAccountTemplateServiceFactory>;
 
-export const pamAccountTemplateServiceFactory = ({
-  pamAccountTemplateDAL,
-  permissionService
-}: TPamAccountTemplateServiceFactoryDep) => {
+export const pamAccountTemplateServiceFactory = (deps: TPamAccountTemplateServiceFactoryDep) => {
+  const { pamAccountTemplateDAL, permissionService } = deps;
+
   const verifyMembership = (projectId: string, ctx: TActorContext) =>
     verifyProductMembership(permissionService, projectId, ctx);
 
@@ -64,6 +64,8 @@ export const pamAccountTemplateServiceFactory = ({
     ...ctx
   }: TCreatePamAccountTemplateDTO & TActorContext) => {
     await verifyProductAdmin(projectId, ctx);
+    await validateGatewayAttachment(deps, gatewayId, gatewayPoolId, ctx);
+    await validateRecordingConnection(deps, recordingConnectionId, ctx);
 
     try {
       return await pamAccountTemplateDAL.create({
@@ -101,6 +103,8 @@ export const pamAccountTemplateServiceFactory = ({
     ...ctx
   }: TUpdatePamAccountTemplateDTO & TActorContext) => {
     await verifyProductAdmin(projectId, ctx);
+    await validateGatewayAttachment(deps, gatewayId, gatewayPoolId, ctx);
+    await validateRecordingConnection(deps, recordingConnectionId, ctx);
 
     const existing = await pamAccountTemplateDAL.findById(templateId);
     if (!existing || existing.projectId !== projectId) {

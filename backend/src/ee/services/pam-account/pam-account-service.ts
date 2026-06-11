@@ -1,9 +1,8 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { OrganizationActionScope, RESOURCE_SCOPE, ResourceType } from "@app/db/schemas";
+import { RESOURCE_SCOPE, ResourceType } from "@app/db/schemas";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
-import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ResourcePermissionPamResourceActions,
@@ -13,6 +12,7 @@ import { createSshKeyPair } from "@app/ee/services/ssh/ssh-certificate-authority
 import { SshCertKeyAlgorithm } from "@app/ee/services/ssh-certificate/ssh-certificate-types";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
+import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
@@ -25,6 +25,7 @@ import {
   TActorContext,
   verifyProductMembership
 } from "../pam/pam-permission";
+import { validateGatewayAttachment, validateRecordingConnection } from "../pam/pam-validators";
 import { TPamAccountTemplateDALFactory } from "../pam-account-template/pam-account-template-dal";
 import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
 import { TPamAccountDALFactory } from "./pam-account-dal";
@@ -51,21 +52,22 @@ type TPamAccountServiceFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findOne">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveAttachableGatewayFromPool">;
+  appConnectionDAL: Pick<TAppConnectionDALFactory, "findOne">;
 };
 
 export type TPamAccountServiceFactory = ReturnType<typeof pamAccountServiceFactory>;
 
-export const pamAccountServiceFactory = ({
-  pamAccountDAL,
-  pamFolderDAL,
-  pamAccountTemplateDAL,
-  membershipDAL,
-  membershipRoleDAL,
-  permissionService,
-  kmsService,
-  gatewayV2DAL,
-  gatewayPoolService
-}: TPamAccountServiceFactoryDep) => {
+export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => {
+  const {
+    pamAccountDAL,
+    pamFolderDAL,
+    pamAccountTemplateDAL,
+    membershipDAL,
+    membershipRoleDAL,
+    permissionService,
+    kmsService
+  } = deps;
+
   const getProjectCipher = async (projectId: string) =>
     kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
 
@@ -84,39 +86,6 @@ export const pamAccountServiceFactory = ({
 
   const checkFolder = (folderId: string, projectId: string, ctx: TActorContext) =>
     checkFolderPermission(permissionService, folderId, projectId, ctx);
-
-  const validateGatewayAttachment = async (
-    gwId: string | null | undefined,
-    poolId: string | null | undefined,
-    ctx: TActorContext
-  ) => {
-    if (gwId) {
-      const gw = await gatewayV2DAL.findOne({ id: gwId, orgId: ctx.actorOrgId });
-      if (!gw) {
-        throw new NotFoundError({ message: "Gateway not found in your organization" });
-      }
-
-      const { permission: orgPermission } = await permissionService.getOrgPermission({
-        scope: OrganizationActionScope.Any,
-        actor: ctx.actor,
-        actorId: ctx.actorId,
-        orgId: ctx.actorOrgId,
-        actorAuthMethod: ctx.actorAuthMethod,
-        actorOrgId: ctx.actorOrgId
-      });
-      ForbiddenError.from(orgPermission).throwUnlessCan(
-        OrgPermissionGatewayActions.AttachGateways,
-        OrgPermissionSubjects.Gateway
-      );
-    }
-    if (poolId) {
-      await gatewayPoolService.resolveAttachableGatewayFromPool({
-        poolId,
-        orgId: ctx.actorOrgId,
-        actor: { type: ctx.actor, id: ctx.actorId, authMethod: ctx.actorAuthMethod, orgId: ctx.actorOrgId }
-      });
-    }
-  };
 
   const list = async ({ projectId, folderId, templateId, search, ...ctx }: TListPamAccountsDTO & TActorContext) => {
     await verifyMembership(projectId, ctx);
@@ -222,7 +191,8 @@ export const pamAccountServiceFactory = ({
       });
     }
 
-    await validateGatewayAttachment(gatewayId, gatewayPoolId, ctx);
+    await validateGatewayAttachment(deps, gatewayId, gatewayPoolId, ctx);
+    await validateRecordingConnection(deps, recordingConnectionId, ctx);
 
     const validatedConnectionDetails = validateConnectionDetails(accountType, connectionDetails);
     const validatedCredentials = validateCredentials(accountType, credentials);
@@ -324,7 +294,8 @@ export const pamAccountServiceFactory = ({
       }
     }
 
-    await validateGatewayAttachment(gatewayId, gatewayPoolId, ctx);
+    await validateGatewayAttachment(deps, gatewayId, gatewayPoolId, ctx);
+    await validateRecordingConnection(deps, recordingConnectionId, ctx);
 
     const updateData: Record<string, unknown> = {};
     if (name !== undefined) updateData.name = name;
