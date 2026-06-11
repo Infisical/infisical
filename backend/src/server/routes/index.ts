@@ -1701,6 +1701,7 @@ export const registerRoutes = async (
     licenseService,
     gatewayService,
     gatewayV2Service,
+    gatewayPoolService,
     gatewayDAL,
     gatewayV2DAL,
     auditLogService,

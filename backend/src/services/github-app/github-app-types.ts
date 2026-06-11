@@ -10,6 +10,8 @@ export type TInitiateGitHubManifestDTO = {
   githubHost?: string;
   installState: string;
   projectId?: string;
+  gatewayId?: string;
+  gatewayPoolId?: string;
   orgPermission: OrgServiceActor;
 };
 
@@ -24,6 +26,8 @@ export type TGitHubManifestStatePayload = {
   instanceType: "cloud" | "server";
   githubOrg: string;
   githubHost: string;
+  gatewayId: string | null;
+  gatewayPoolId: string | null;
   installState: string;
 };
 
@@ -49,6 +53,7 @@ export type TResolveGitHubAppInstallationsDTO = {
   host?: string;
   instanceType?: "cloud" | "server";
   gatewayId?: string | null;
+  gatewayPoolId?: string | null;
   projectId?: string;
   orgPermission: OrgServiceActor;
 };
@@ -80,6 +85,8 @@ export const SanitizedGitHubAppSchema = z.object({
   slug: z.string(),
   clientId: z.string().nullable(),
   owner: z.string().nullable(),
+  host: z.string().nullable(),
+  instanceType: z.enum(["cloud", "server"]).nullable(),
   connectionCount: z.number(),
   createdAt: z.date().nullable(),
   updatedAt: z.date().nullable()
