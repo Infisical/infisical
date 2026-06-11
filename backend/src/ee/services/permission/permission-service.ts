@@ -22,6 +22,7 @@ import {
   cryptographicOperatorPermissions,
   pamResourceAdminPermissions,
   pamResourceAuditorPermissions,
+  pamResourceConnectorPermissions,
   pamResourceRequesterPermissions,
   projectAdminApplicationFallbackPermissions,
   projectAdminPermissions,
@@ -154,6 +155,8 @@ const resolveResourceRoleRules = (resourceType: ResourceType, role: string) => {
     switch (role) {
       case "admin":
         return pamResourceAdminPermissions;
+      case "connector":
+        return pamResourceConnectorPermissions;
       case "requester":
         return pamResourceRequesterPermissions;
       case "auditor":

@@ -1141,6 +1141,19 @@ const buildPamResourceAdminPermissionRules = () => {
   return rules;
 };
 
+const buildPamResourceConnectorPermissionRules = () => {
+  const { can, rules } = new AbilityBuilder<MongoAbility<ResourcePermissionSet>>(createMongoAbility);
+  can(
+    [
+      ResourcePermissionPamResourceActions.ReadFolder,
+      ResourcePermissionPamResourceActions.ReadAccounts,
+      ResourcePermissionPamResourceActions.LaunchSessions
+    ],
+    ResourcePermissionSub.PamResource
+  );
+  return rules;
+};
+
 const buildPamResourceRequesterPermissionRules = () => {
   const { can, rules } = new AbilityBuilder<MongoAbility<ResourcePermissionSet>>(createMongoAbility);
   can(
@@ -1160,5 +1173,6 @@ const buildPamResourceAuditorPermissionRules = () => {
 };
 
 export const pamResourceAdminPermissions = buildPamResourceAdminPermissionRules();
+export const pamResourceConnectorPermissions = buildPamResourceConnectorPermissionRules();
 export const pamResourceRequesterPermissions = buildPamResourceRequesterPermissionRules();
 export const pamResourceAuditorPermissions = buildPamResourceAuditorPermissionRules();
