@@ -7,17 +7,17 @@ import {
   PamSessionStatus,
   SessionChannelType
 } from "../enums";
-import { TAwsIamAccount, TAwsIamResource } from "./aws-iam-resource";
+import { TAwsIamResource } from "./aws-iam-resource";
 import { TSessionSummaryConfig } from "./base-resource";
-import { TKubernetesAccount, TKubernetesResource } from "./kubernetes-resource";
-import { TMongoDBAccount, TMongoDBResource } from "./mongodb-resource";
-import { TMsSQLAccount, TMsSQLResource } from "./mssql-resource";
-import { TMySQLAccount, TMySQLResource } from "./mysql-resource";
-import { TOracleDBAccount, TOracleDBResource } from "./oracledb-resource";
-import { TPostgresAccount, TPostgresResource } from "./postgres-resource";
-import { TRedisAccount, TRedisResource } from "./redis-resource";
-import { TSSHAccount, TSSHResource } from "./ssh-resource";
-import { TWindowsAccount, TWindowsResource } from "./windows-server-resource";
+import { TKubernetesResource } from "./kubernetes-resource";
+import { TMongoDBResource } from "./mongodb-resource";
+import { TMsSQLResource } from "./mssql-resource";
+import { TMySQLResource } from "./mysql-resource";
+import { TOracleDBResource } from "./oracledb-resource";
+import { TPostgresResource } from "./postgres-resource";
+import { TRedisResource } from "./redis-resource";
+import { TSSHResource } from "./ssh-resource";
+import { TWindowsResource } from "./windows-server-resource";
 
 export * from "./aws-iam-resource";
 export * from "./kubernetes-resource";
