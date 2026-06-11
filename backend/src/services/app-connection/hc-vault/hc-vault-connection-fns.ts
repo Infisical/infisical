@@ -734,6 +734,7 @@ class NamespaceHeaderNotSupportedError extends Error {
 const isRootNamespace = (namespace: string) => namespace === "/" || namespace === "root" || !namespace;
 
 const isWildcardPath = (path: string) => path.split("/").includes("+");
+const ACL_ALLOWED_CAPABILITIES = ["read", "list"];
 
 // Fallback for restricted Vault tokens that lack permission to list a mount from its root.
 // We ask Vault for the resultant ACL of the current token and derive the sub-paths within the
@@ -803,12 +804,20 @@ const listHCVaultAccessiblePathsFromAcl = async (
   const collectRelativePaths = (paths?: Record<string, { capabilities: string[] }>): string[] => {
     if (!paths) return [];
 
-    return Object.keys(paths)
-      .map((path) => (nsPrefix && path.startsWith(nsPrefix) ? path.slice(nsPrefix.length) : path))
-      .filter((path) => path.startsWith(mountPrefix))
-      .map((path) => path.slice(mountPrefix.length))
-      .map(stripKvV2Prefix)
-      .filter((path) => removeTrailingSlash(path).length > 0); // drop the bare mount root (can't list it anyway)
+    return (
+      Object.entries(paths)
+        // Vault's "deny" capability overrides everything; only keep paths we can actually read or list.
+        .filter(
+          ([, { capabilities }]) =>
+            !capabilities.includes("deny") && capabilities.some((cap) => ACL_ALLOWED_CAPABILITIES.includes(cap))
+        )
+        .map(([path]) => path)
+        .map((path) => (nsPrefix && path.startsWith(nsPrefix) ? path.slice(nsPrefix.length) : path))
+        .filter((path) => path.startsWith(mountPrefix))
+        .map((path) => path.slice(mountPrefix.length))
+        .map(stripKvV2Prefix)
+        .filter((path) => removeTrailingSlash(path).length > 0)
+    ); // drop the bare mount root (can't list it anyway)
   };
 
   const relativePaths = [...collectRelativePaths(data.data.exact_paths), ...collectRelativePaths(data.data.glob_paths)];
