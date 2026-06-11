@@ -831,8 +831,6 @@ export const listHCVaultSecretPaths = async (
       path = secretPath ? `${mountPath}/${secretPath}` : mountPath;
     }
 
-    logger.info(path, "Path!!!");
-
     try {
       const { data } = await requestWithHCVaultGateway<{
         data: {
@@ -971,8 +969,6 @@ export const listHCVaultSecretPaths = async (
             gatewayDetails
           );
 
-          // ACL entries without a trailing slash are concrete secret paths, so we append them directly
-          // (no listing/recursion needed). Entries with a trailing slash are folders we recurse into.
           const directSecretPaths = accessiblePaths
             .filter((path) => !path.endsWith("/"))
             .map((path) => `${cleanMountPath}/${path}`);
