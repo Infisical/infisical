@@ -68,13 +68,24 @@ export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET="<client-secret>"`
   };
 };
 
-// The SunPKCS11 config jarsigner needs.
-export const jarsignerConfigSnippet: Snippet = {
-  language: "bash",
-  code: `cat > infisical-pkcs11.cfg <<EOF
+export const jarsignerConfigSnippet = (os: OS): Snippet => {
+  if (os === "windows") {
+    return {
+      language: "powershell",
+      code: `@"
 name = Infisical
-library = /path/to/libinfisical-pkcs11.so
+library = C:/path/to/libinfisical-pkcs11.dll
+"@ | Set-Content infisical-pkcs11.cfg`
+    };
+  }
+  const ext = os === "macos" ? "dylib" : "so";
+  return {
+    language: "bash",
+    code: `cat > infisical-pkcs11.cfg <<EOF
+name = Infisical
+library = /path/to/libinfisical-pkcs11.${ext}
 EOF`
+  };
 };
 
 export const pkcs11SignSnippet = (

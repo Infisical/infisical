@@ -384,7 +384,7 @@ export const ConnectToSignerDrawer = ({ signer, isOpen, onOpenChange }: Props) =
                           <p className="text-xs text-muted">
                             First, point a SunPKCS11 config at the module:
                           </p>
-                          <CommandBlock snippet={jarsignerConfigSnippet} />
+                          <CommandBlock snippet={jarsignerConfigSnippet(os)} />
                         </>
                       )}
                       <CommandBlock snippet={pkcs11SignSnippet(tool, name, keyAlgorithm)} />
