@@ -472,7 +472,6 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
           sourcePath: z.string(),
           destinationEnvironment: z.string(),
           destinationPath: z.string(),
-          isFullyMoved: z.boolean(),
           hasApprovalRequests: z.boolean()
         })
       }
@@ -502,7 +501,6 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
             sourcePath: result.sourcePath,
             destinationEnvironment: result.destinationEnvironment,
             destinationPath: result.destinationPath,
-            isFullyMoved: result.isFullyMoved,
             hasApprovalRequests: result.hasApprovalRequests
           }
         }

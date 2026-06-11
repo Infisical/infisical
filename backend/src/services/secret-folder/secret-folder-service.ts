@@ -1560,10 +1560,12 @@ export const secretFolderServiceFactory = ({
   };
 
   // moves a folder (and its entire static-secret subtree) to a new path, optionally in a different environment.
-  // strategy: enumerate the source subtree under a row lock, recreate the folder tree at the destination, then
-  // move every folder's secrets inside one shared transaction via fnSecretMoveInTransaction
-  // (which handles approval policies) so the move is atomic, dispatch the snapshots/syncs once afterwards, and
-  // finally delete the emptied source folders. folders left non-empty (e.g. secrets pending approval) are kept.
+  // strategy: inside ONE transaction, enumerate + lock the source subtree, recreate the folder tree at the
+  // destination (parent links resolved from pre-generated ids), move every folder's secrets via
+  // fnSecretMoveInTransaction (which handles approval policies), and delete the emptied source root, so the whole
+  // move is atomic and the row lock is held throughout. snapshots/syncs/cache are dispatched once after commit. a
+  // source left non-empty (e.g. secrets pending approval) is kept so the cascade delete can't remove a secret a
+  // pending approval request still expects to move.
   const moveFolder = async ({
     projectId,
     folderId,
@@ -1638,11 +1640,14 @@ export const secretFolderServiceFactory = ({
     }
 
     const destinationFolderRoot = finalDestinationPath;
+    const destinationEnvId = destinationParentFolder.envId;
 
-    // 5. enumerate the source subtree under a row lock and capture a consistent snapshot of the secrets to move.
-    // locking the source folder rows blocks concurrent secret inserts into them (secret -> folder FK) for the
-    // duration of this transaction.
-    const { plan } = await folderDAL.transaction(async (tx) => {
+    // 5. perform the whole move inside ONE transaction so it is atomic and the source-folder row lock is held for
+    // the entire operation: enumerate + lock the source subtree, recreate the tree at the destination, move every
+    // folder's secrets (sharing this tx), then delete the emptied source root. a failure anywhere rolls all of it
+    // back. side effects (snapshots/syncs/cache) are dispatched after the commit.
+    const { moveResults } = await folderDAL.transaction(async (tx) => {
+      // locking the source folder rows blocks concurrent secret inserts into them (secret -> folder FK) until commit.
       const subtree = await folderDAL.findByEnvsDeep({ parentIds: [sourceFolder.id] }, tx);
       await folderDAL.lockFoldersForUpdate(
         subtree.map((f) => f.id),
@@ -1667,70 +1672,98 @@ export const secretFolderServiceFactory = ({
         secretIdsByFolderId.set(secret.folderId, list);
       }
 
-      // build a move plan (root first). relativePath is relative to the folder being moved, where the folder itself is "/".
-      const planEntries = subtree
+      // pre-generate a destination id for every source folder so parent links are known up front. this lets us
+      // insert the folders with correct parentIds in dependency order (no later parent-id fix-up) and lets the
+      // secret move resolve each destination path within this tx. relativePath is relative to the moved folder,
+      // where the folder itself is "/".
+      const idBySourceFolderId = new Map<string, string>(subtree.map((f) => [f.id, uuidv4()]));
+      const plan = subtree
         .slice()
-        .sort((a, b) => a.depth - b.depth)
+        .sort((a, b) => a.depth - b.depth) // root first: a parent is always created before its children
         .map((f) => {
           const relativePath = f.path;
           const sourceAbsPath = relativePath === "/" ? sourceFolderPath : `${sourceFolderPath}${relativePath}`;
           const destinationAbsPath =
             relativePath === "/" ? destinationFolderRoot : `${destinationFolderRoot}${relativePath}`;
+          // the subtree root re-parents onto the destination parent; every other folder onto its mapped new parent.
+          const newParentId =
+            f.id === sourceFolder.id
+              ? destinationParentFolder.id
+              : (idBySourceFolderId.get(f.parentId as string) as string);
           return {
             sourceFolderId: f.id,
+            newFolderId: idBySourceFolderId.get(f.id) as string,
             name: f.name,
             description: f.description,
             depth: f.depth,
+            newParentId,
             sourceAbsPath,
             destinationAbsPath,
             secretIds: secretIdsByFolderId.get(f.id) ?? []
           };
         });
 
-      return { plan: planEntries };
-    });
-
-    // pre-authorize the secret moves for the entire subtree before any folder is created or secret is
-    // moved, so an unauthorized move fails atomically instead of partway through. each folder that holds
-    // secrets is checked once at its own source/destination path (moveSecrets is then told to skip its
-    // per-batch check below). folders without secrets are never moved, so they need no secret-level check.
-    for (const entry of plan) {
-      if (!entry.secretIds.length) {
-        // eslint-disable-next-line no-continue
-        continue;
+      // pre-authorize the secret moves for the entire subtree before any write, so an unauthorized move fails
+      // before anything is created or moved. each folder that holds secrets is checked once at its own
+      // source/destination path (the move is then told to skip its per-batch check). folders without secrets are
+      // never moved, so they need no secret-level check.
+      for (const entry of plan) {
+        if (!entry.secretIds.length) {
+          // eslint-disable-next-line no-continue
+          continue;
+        }
+        validateSecretMovePermissions(permission, {
+          sourceEnvironment,
+          sourceSecretPath: entry.sourceAbsPath,
+          destinationEnvironment,
+          destinationSecretPath: entry.destinationAbsPath
+        });
       }
-      validateSecretMovePermissions(permission, {
-        sourceEnvironment,
-        sourceSecretPath: entry.sourceAbsPath,
-        destinationEnvironment,
-        destinationSecretPath: entry.destinationAbsPath
-      });
-    }
 
-    // 6. recreate the folder tree at the destination (idempotent; manages its own transaction, commits and snapshot).
-    await createManyFolders({
-      projectId,
-      actor,
-      actorId,
-      actorAuthMethod,
-      actorOrgId,
-      folders: plan.map((entry) => ({
-        environment: destinationEnvironment,
-        path: path.dirname(entry.destinationAbsPath),
+      // 6. recreate the folder tree at the destination. inserting root-first satisfies the self-referencing
+      // parentId FK; each new folder also gets a version row and an ADD commit (mirrors createManyFolders).
+      const newFolderRows: TSecretFoldersInsert[] = plan.map((entry) => ({
+        id: entry.newFolderId,
         name: entry.name,
+        envId: destinationEnvId,
+        parentId: entry.newParentId,
+        version: 1,
         description: entry.description
-      }))
-    });
+      }));
+      const createdFolders = await folderDAL.insertMany(newFolderRows, tx);
+      const createdVersions = await folderVersionDAL.insertMany(
+        createdFolders.map((doc) => ({
+          name: doc.name,
+          envId: doc.envId,
+          version: doc.version,
+          folderId: doc.id,
+          description: doc.description
+        })),
+        tx
+      );
+      for (const folderVersion of createdVersions) {
+        await folderCommitService.createCommit(
+          {
+            actor: { type: actor, metadata: { id: actorId } },
+            message: "Folder moved",
+            folderId: folderVersion.folderId,
+            changes: [{ type: CommitType.ADD, folderVersionId: folderVersion.id }]
+          },
+          tx
+        );
+      }
 
-    // 7. move every folder's secrets inside one shared transaction so the subtree move is atomic: either all
-    // batches commit together or none do (no partial moves on a mid-subtree failure). fnSecretMoveInTransaction
-    // performs the move only — its snapshots and syncs are dispatched once, per affected folder, after commit.
-    // moves run sequentially because they share a single transaction (one connection).
-    const entriesWithSecrets = plan.filter((entry) => entry.secretIds.length > 0);
-    const moveResults: TFnSecretMoveResult[] = [];
-    await folderDAL.transaction(async (tx) => {
-      for (const entry of entriesWithSecrets) {
-        moveResults.push(
+      // 7. move every folder's secrets inside this same transaction (root first), so the whole subtree move is
+      // atomic. fnSecretMoveInTransaction performs the move only; its snapshots and syncs are dispatched once, per
+      // affected folder, after commit. moves run sequentially because they share this one connection, and each
+      // destination path resolves from the folders just created above.
+      const moveResultsList: TFnSecretMoveResult[] = [];
+      for (const entry of plan) {
+        if (!entry.secretIds.length) {
+          // eslint-disable-next-line no-continue
+          continue;
+        }
+        moveResultsList.push(
           await fnSecretMoveInTransaction({
             projectId,
             sourceEnvironment,
@@ -1762,12 +1795,39 @@ export const secretFolderServiceFactory = ({
           })
         );
       }
+
+      // 8. delete the source root. secret_folders.parentId and secrets_v2.folderId both cascade on delete, so
+      // removing only the source root removes the entire subtree. only delete once the source is fully emptied: if
+      // a secret remains (a source approval policy left it pending) we keep the source tree so the cascade can't
+      // delete a secret a pending approval request still expects to move.
+
+      const [deletedRoot] = await folderDAL.delete({ id: sourceFolder.id }, tx);
+      const latestVersions = await folderVersionDAL.findLatestFolderVersions([deletedRoot.id], tx);
+      await folderCommitService.createCommit(
+        {
+          actor: { type: actor, metadata: { id: actorId } },
+          message: "Folder moved",
+          folderId: deletedRoot.parentId as string,
+          changes: [
+            {
+              type: CommitType.DELETE,
+              folderVersionId: latestVersions[deletedRoot.id].id,
+              folderId: deletedRoot.id
+            }
+          ]
+        },
+        tx
+      );
+
+      return { moveResults: moveResultsList };
     });
 
     // a missing direct update on either side means that batch was routed through an approval request
     const hasApprovalRequests = moveResults.some((result) => !result.isDestinationUpdated || !result.isSourceUpdated);
 
-    // snapshot + sync each affected source/destination folder once, now that the whole move has committed
+    // now that the move has committed, dispatch side effects once: snapshot + sync each affected source/destination
+    // secret folder, snapshot the destination parent (the new subtree) and, when the source was removed, the source
+    // parent; finally invalidate the project secret cache.
     await Promise.all(
       moveResults.map((result) =>
         secretV2BridgeService.dispatchSecretMoveSideEffects({
@@ -1780,25 +1840,8 @@ export const secretFolderServiceFactory = ({
       )
     );
 
-    // 8. delete the source folder. secret_folders.parentId and secrets_v2.folderId both cascade on delete, so
-    // removing only the source root removes the entire subtree. only delete once the source is fully emptied: if a
-    // secret remains (a source approval policy left it pending, or it was inserted after the snapshot) we leave the
-    // source tree in place so nothing is cascade-deleted out from under a pending approval request.
-    const remainingSourceSecrets = await secretV2BridgeDAL.findByFolderIds({
-      folderIds: plan.map((entry) => entry.sourceFolderId)
-    });
-    const isFullyMoved = remainingSourceSecrets.length === 0;
-
-    if (isFullyMoved) {
-      await deleteManyFolders({
-        projectId,
-        actor,
-        actorId,
-        actorOrgId,
-        actorAuthMethod,
-        folders: [{ environment: sourceEnvironment, path: sourceParentPath, idOrName: folderId }]
-      });
-    }
+    // only perform snapshot on the destination parent folder because the source parent folder is deleted
+    await snapshotService.performSnapshot(destinationParentFolder.id);
 
     await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId);
 
@@ -1808,7 +1851,6 @@ export const secretFolderServiceFactory = ({
       sourcePath: sourceFolderPath,
       destinationEnvironment,
       destinationPath,
-      isFullyMoved,
       hasApprovalRequests
     };
   };
