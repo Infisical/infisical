@@ -6,6 +6,10 @@ description: "Use jarsigner, cosign, osslsigncode, and other standard signing to
 
 The Infisical **PKCS#11 module** is a small native library (`.so`, `.dylib`, or `.dll`) that exposes your Infisical [Signers](/documentation/platform/pki/code-signing/signers) to any tool that supports the [PKCS#11 v2.40 standard](https://www.oasis-open.org/standard/pkcs-11-v2-40/). Tools like `jarsigner`, `osslsigncode`, `cosign`, `apksigner`, `openssl`, and `gpg` work without modification. They make their usual PKCS#11 calls; the module forwards them to Infisical and returns the signature.
 
+<Note>
+  Signing on Windows with `signtool`? Use the [Windows KSP](/documentation/platform/pki/code-signing/windows-ksp) instead.
+</Note>
+
 <Info>
   Before installing the module, ensure a Product Admin has created a [Signer](/documentation/platform/pki/code-signing/signers) and added the machine identity (or user) you plan to authenticate as. If the Signer has an [approval policy](/documentation/platform/pki/code-signing/approvals), you'll also need [active access](/documentation/platform/pki/code-signing/approvals#access-lifecycle).
 </Info>

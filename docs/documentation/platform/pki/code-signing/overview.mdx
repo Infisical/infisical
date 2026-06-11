@@ -6,7 +6,7 @@ description: "Sign software artifacts with managed code-signing certificates, ce
 
 Code Signing is where teams digitally sign software (JARs, container images, Windows installers, Android APKs, Linux packages, scripts). Within Code Signing, you can:
 
-- **Sign artifacts** through any tool that supports PKCS#11, or directly via the [Sign API](/api-reference/endpoints/code-signing/signers/sign)
+- **Sign artifacts** through any tool that supports PKCS#11, with native Windows `signtool`, or directly via the [Sign API](/api-reference/endpoints/code-signing/signers/sign)
 - **Require approvals** before signatures are produced, with per-approval limits on count and time
 - **Manage who can sign** with per-Signer roles for users, machine identities, and groups
 - **Track every signing operation** in a full audit trail
@@ -55,7 +55,7 @@ sequenceDiagram
 1. A Product Admin creates a [Signer](/documentation/platform/pki/code-signing/signers) and picks the CA that issues its certificate.
 2. The Admin adds [members](/documentation/platform/pki/code-signing/signers#members) (users, machine identities, or groups) and picks a role for each.
 3. Optionally, the Admin attaches an [approval policy](/documentation/platform/pki/code-signing/approvals) so signing requires sign-off.
-4. Operators sign through the [PKCS#11 module](/documentation/platform/pki/code-signing/pkcs11-module) or the [Sign API](/api-reference/endpoints/code-signing/signers/sign). Infisical produces the signature and records an audit entry on the Signer.
+4. Operators sign through the [PKCS#11 module](/documentation/platform/pki/code-signing/pkcs11-module), the [Windows KSP](/documentation/platform/pki/code-signing/windows-ksp) (`signtool`), or the [Sign API](/api-reference/endpoints/code-signing/signers/sign). Infisical produces the signature and records an audit entry on the Signer.
 
 ## Signer roles
 
