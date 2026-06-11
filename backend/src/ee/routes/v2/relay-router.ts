@@ -53,9 +53,12 @@ const RelayWithAuthMethodSchema = SanitizedRelaySchema.extend({
 const AwsAuthMethodInputSchema = z
   .object({
     method: z.literal(ResourceAuthMethodType.Aws),
-    stsEndpoint: z.string().trim().min(1).default("https://sts.amazonaws.com/"),
+    stsEndpoint: z.string().trim().min(1).max(255).default("https://sts.amazonaws.com/"),
     allowedPrincipalArns: validatePrincipalArns,
-    allowedAccountIds: validateAccountIds
+    allowedAccountIds: validateAccountIds.refine(
+      (val) => val.length <= 2048,
+      "Allowed account IDs must be at most 2048 characters"
+    )
   })
   .refine((data) => data.allowedPrincipalArns.trim().length > 0 || data.allowedAccountIds.trim().length > 0, {
     message: "At least one of allowedPrincipalArns or allowedAccountIds must be set",
@@ -310,7 +313,7 @@ export const registerRelayV2Router = async (server: FastifyZodProvider) => {
     schema: {
       params: z.object({ relayId: z.string().uuid() }),
       response: {
-        200: z.object({ method: z.string(), deletedTokenCount: z.number() })
+        200: z.object({ method: z.string() })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
@@ -329,13 +332,12 @@ export const registerRelayV2Router = async (server: FastifyZodProvider) => {
             resourceType: "relay",
             resourceId: req.params.relayId,
             method: result.method,
-            resourceName: result.resourceName,
-            deletedTokenCount: result.deletedTokenCount
+            resourceName: result.resourceName
           }
         }
       });
 
-      return { method: result.method, deletedTokenCount: result.deletedTokenCount };
+      return { method: result.method };
     }
   });
 

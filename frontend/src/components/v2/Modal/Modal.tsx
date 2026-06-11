@@ -45,7 +45,7 @@ export const ModalContent = forwardRef<HTMLDivElement, ModalContentProps>(
         ref={forwardedRef}
         onPointerDownOutside={(e) => {
           const target = e.target as HTMLElement;
-          const toastElement = target.closest('[class*="Toastify"]');
+          const toastElement = target.closest("[data-sonner-toast]");
           if (toastElement) {
             e.preventDefault();
             return;

@@ -352,8 +352,12 @@ export const registerKmipRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
+    // Legacy machine-identity servers only. Enrollment-based servers use POST /kmip/servers/connect,
+    // which reads the cert config from the stored server entity instead of the request body.
     onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
+      const { hostnamesOrIps } = req.body;
+
       const configs = await server.services.kmip.registerServer({
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -369,7 +373,7 @@ export const registerKmipRouter = async (server: FastifyZodProvider) => {
           type: EventType.REGISTER_KMIP_SERVER,
           metadata: {
             serverCertificateSerialNumber: configs.serverCertificateSerialNumber,
-            hostnamesOrIps: req.body.hostnamesOrIps,
+            hostnamesOrIps,
             commonName: req.body.commonName ?? "kmip-server",
             keyAlgorithm: req.body.keyAlgorithm,
             ttl: req.body.ttl

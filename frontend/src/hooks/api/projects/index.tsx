@@ -1,6 +1,7 @@
 export {
   useAddGroupToWorkspace,
   useDeleteGroupFromWorkspace,
+  useEnableSecretBlindIndex,
   useLeaveProject,
   useMigrateProjectToV3,
   useRequestProjectAccess,

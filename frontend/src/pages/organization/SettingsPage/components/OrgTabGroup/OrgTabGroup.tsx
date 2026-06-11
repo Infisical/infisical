@@ -1,7 +1,10 @@
-import { useNavigate, useSearch } from "@tanstack/react-router";
+import { Helmet } from "react-helmet";
+import { useTranslation } from "react-i18next";
+import { Link, useNavigate, useSearch } from "@tanstack/react-router";
+import { InfoIcon } from "lucide-react";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
-import { TabPanel, Tabs } from "@app/components/v2";
+import { PageHeader, TabPanel, Tabs } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useSubscription } from "@app/context";
 import { usePopUp } from "@app/hooks/usePopUp";
@@ -10,6 +13,7 @@ import { AuditLogStreamsTab } from "../AuditLogStreamTab";
 import { ExternalMigrationsTab } from "../ExternalMigrationsTab";
 import { OrgEncryptionTab } from "../OrgEncryptionTab";
 import { OrgGeneralTab } from "../OrgGeneralTab";
+import { OrgOauthClientsTab } from "../OrgOauthClientsTab";
 import { OrgProductSettingsTab } from "../OrgProductSettingsTab";
 import { OrgProvisioningTab } from "../OrgProvisioningTab";
 import { OrgSecurityTab } from "../OrgSecurityTab";
@@ -19,6 +23,7 @@ import { OrgWorkflowIntegrationTab } from "../OrgWorkflowIntegrationTab";
 import { ProjectTemplatesTab } from "../ProjectTemplatesTab";
 
 export const OrgTabGroup = () => {
+  const { t } = useTranslation();
   const search = useSearch({
     from: ROUTE_PATHS.Organization.SettingsPage.id
   });
@@ -59,6 +64,11 @@ export const OrgTabGroup = () => {
     },
     { name: "Audit Log Streams", key: "tag-audit-log-streams", component: AuditLogStreamsTab },
     {
+      name: "OAuth Applications",
+      key: "oauth-applications",
+      component: OrgOauthClientsTab
+    },
+    {
       name: "External Migrations",
       key: "tab-external-migrations",
       component: ExternalMigrationsTab
@@ -83,14 +93,17 @@ export const OrgTabGroup = () => {
   ];
 
   const visibleTabs = tabs.filter((el) => !el.isHidden);
-  const defaultTab = visibleTabs.find((t) => !t.requiresFeature)?.key ?? visibleTabs[0].key;
+  const defaultTab = visibleTabs.find((item) => !item.requiresFeature)?.key ?? visibleTabs[0].key;
   const selectedTab = search.selectedTab
-    ? (visibleTabs.find((t) => t.key === search.selectedTab && !t.requiresFeature)?.key ??
+    ? (visibleTabs.find((item) => item.key === search.selectedTab && !item.requiresFeature)?.key ??
       defaultTab)
     : defaultTab;
+  const selectedTabName = visibleTabs.find((item) => item.key === selectedTab)?.name;
+  const settingsTitle = `${isSubOrganization ? "Sub-Organization" : "Organization"} Settings`;
+  const pageTitle = selectedTabName ? `${selectedTabName} - ${settingsTitle}` : settingsTitle;
 
   const handleTabChange = (key: string) => {
-    const tab = visibleTabs.find((t) => t.key === key);
+    const tab = visibleTabs.find((item) => item.key === key);
     if (tab?.requiresFeature) {
       handlePopUpOpen("upgradePlan");
       return;
@@ -104,6 +117,26 @@ export const OrgTabGroup = () => {
 
   return (
     <>
+      <Helmet>
+        <title>{t("common.head-title", { title: pageTitle })}</title>
+      </Helmet>
+      <PageHeader
+        scope={isSubOrganization ? "namespace" : "org"}
+        description={`Configure ${isSubOrganization ? "sub-" : ""}organization-wide settings`}
+        title={selectedTabName ?? settingsTitle}
+      >
+        {isSubOrganization && (
+          <Link
+            to="/organizations/$orgId/settings"
+            params={{
+              orgId: currentOrg.rootOrgId ?? ""
+            }}
+            className="flex items-center gap-x-1.5 text-xs whitespace-nowrap text-neutral hover:underline"
+          >
+            <InfoIcon size={12} /> Looking for root organization settings?
+          </Link>
+        )}
+      </PageHeader>
       <Tabs orientation="vertical" value={selectedTab} onValueChange={handleTabChange}>
         {visibleTabs
           .filter((tab) => !tab.requiresFeature)

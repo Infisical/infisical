@@ -20,12 +20,15 @@ import { SearchResourceOperators } from "@app/lib/search-resource/search";
 import { isDisposableEmail, sanitizeEmail, validateEmail } from "@app/lib/validator";
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
+import { TApprovalPolicyDALFactory } from "../approval-policy/approval-policy-dal";
 import { AuthMethod } from "../auth/auth-type";
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
+import { TApplicationMembershipCleanupServiceFactory } from "../membership/application-membership-cleanup-service";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TOrgDALFactory } from "../org/org-dal";
 import { deleteOrgMembershipsFn } from "../org/org-fns";
 import { isCustomOrgRole } from "../org/org-role-fns";
+import { ApplicationMemberKind } from "../pki-application/pki-application-types";
 import { TProjectAccessRequestDALFactory } from "../project/project-access-request-dal";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectKeyDALFactory } from "../project-key/project-key-dal";
@@ -70,6 +73,11 @@ type TMembershipUserServiceFactoryDep = {
   projectDAL: TProjectDALFactory;
   additionalPrivilegeDAL: TAdditionalPrivilegeDALFactory;
   projectAccessRequestDAL: TProjectAccessRequestDALFactory;
+  applicationMembershipCleanupService: Pick<
+    TApplicationMembershipCleanupServiceFactory,
+    "cleanupActorApplicationMemberships"
+  >;
+  approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "deleteUserStepApproversInProjects">;
 };
 
 export type TMembershipUserServiceFactory = ReturnType<typeof membershipUserServiceFactory>;
@@ -89,7 +97,9 @@ export const membershipUserServiceFactory = ({
   userGroupMembershipDAL,
   projectDAL,
   additionalPrivilegeDAL,
-  projectAccessRequestDAL
+  projectAccessRequestDAL,
+  applicationMembershipCleanupService,
+  approvalPolicyDAL
 }: TMembershipUserServiceFactoryDep) => {
   const scopeFactory = {
     [AccessScope.Organization]: newOrgMembershipUserFactory({
@@ -502,7 +512,8 @@ export const membershipUserServiceFactory = ({
           membershipUserDAL,
           userGroupMembershipDAL,
           membershipRoleDAL,
-          additionalPrivilegeDAL
+          additionalPrivilegeDAL,
+          approvalPolicyDAL
         });
         return doc;
       }
@@ -521,6 +532,15 @@ export const membershipUserServiceFactory = ({
           {
             actorUserId: dto.selector.userId,
             projectId: dto.scopeData.projectId
+          },
+          tx
+        );
+
+        await applicationMembershipCleanupService.cleanupActorApplicationMemberships(
+          {
+            projectId: dto.scopeData.projectId,
+            actorKind: ApplicationMemberKind.User,
+            actorId: dto.selector.userId
           },
           tx
         );

@@ -186,12 +186,15 @@ export enum TableName {
   KmipOrgConfig = "kmip_org_configs",
   KmipOrgServerCertificates = "kmip_org_server_certificates",
   KmipClientCertificates = "kmip_client_certificates",
+  KmipServer = "kmip_servers",
   SecretRotationV2 = "secret_rotations_v2",
   SecretRotationV2SecretMapping = "secret_rotation_v2_secret_mappings",
   MicrosoftTeamsIntegrations = "microsoft_teams_integrations",
   ProjectMicrosoftTeamsConfigs = "project_microsoft_teams_configs",
   SecretReminderRecipients = "secret_reminder_recipients", // TODO(Carlos): Remove this in the future after migrating to the new reminder recipients table
   GithubOrgSyncConfig = "github_org_sync_configs",
+  GitHubApp = "github_apps",
+  GitHubAppConnection = "github_app_connections",
   FolderCommit = "folder_commits",
   FolderCommitChanges = "folder_commit_changes",
   FolderCheckpoint = "folder_checkpoints",
@@ -298,6 +301,9 @@ export enum TableName {
 
   CaSigningConfig = "ca_signing_configs",
   SecretValidationRule = "secret_validation_rules",
+
+  // OAuth 2.0 authorization server (Infisical as an OAuth provider)
+  OauthClient = "oauth_clients",
 
   // Honey Tokens
   HoneyTokenConfig = "honey_token_configs",

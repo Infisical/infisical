@@ -1,4 +1,4 @@
-import { useParams } from "@tanstack/react-router";
+import { useLocation, useParams } from "@tanstack/react-router";
 
 import { Sidebar, SidebarContent, SidebarFooter, SidebarTrigger } from "@app/components/v3";
 import { useOrganization } from "@app/context";
@@ -18,8 +18,12 @@ export const OrgSidebar = () => {
       type: (el as { type?: string })?.type
     })
   });
+  const { pathname } = useLocation();
   const isInsideProject = Boolean(projectId);
-  const projectType = typeSlug ? urlSlugToProjectType(typeSlug) : null;
+  // The org-wide KMIP servers pages live at a literal /projects/<type>/kmip-servers path with no
+  // $type route param, so fall back to parsing the product slug from the pathname.
+  const effectiveTypeSlug = typeSlug ?? pathname.match(/\/projects\/([^/]+)\/kmip-servers/)?.[1];
+  const projectType = effectiveTypeSlug ? urlSlugToProjectType(effectiveTypeSlug) : null;
   const isOnProjectTypeListing =
     !isInsideProject && Boolean(projectType) && hasIntermediateProjectsView(projectType!);
   const { isSubOrganization } = useOrganization();

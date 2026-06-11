@@ -412,6 +412,7 @@ const envSchema = z
     INF_APP_CONNECTION_GITHUB_APP_PRIVATE_KEY: zpStr(z.string().optional()),
     INF_APP_CONNECTION_GITHUB_APP_SLUG: zpStr(z.string().optional()),
     INF_APP_CONNECTION_GITHUB_APP_ID: zpStr(z.string().optional()),
+    INF_APP_CONNECTION_GITHUB_APP_HOST: zpStr(z.string().optional()),
 
     // github radar app
     INF_APP_CONNECTION_GITHUB_RADAR_APP_CLIENT_ID: zpStr(z.string().optional()),
@@ -496,6 +497,10 @@ const envSchema = z
 
     /* Go Sidecar ----------------------------------------------------------------------------- */
     GOLANG_SIDECAR_URL: zpStr(z.string().optional()),
+    GO_SIDECAR_SHADOW_ENABLED: zodStrBool.default("false"),
+    GO_SIDECAR_SHADOW_SAMPLE_RATE: z.coerce.number().min(0).max(100).default(10),
+    GO_SIDECAR_BINARY_PATH: zpStr(z.string().optional()),
+    GO_SIDECAR_SPAWN_ENABLED: zodStrBool.default("false"),
 
     /* INTERNAL ----------------------------------------------------------------------------- */
     INTERNAL_REGION: zpStr(z.enum(["us", "eu"]).optional())
@@ -811,6 +816,11 @@ export const overwriteSchema: {
       {
         key: "INF_APP_CONNECTION_GITHUB_APP_PRIVATE_KEY",
         description: "The Private Key of your GitHub application."
+      },
+      {
+        key: "INF_APP_CONNECTION_GITHUB_APP_HOST",
+        description:
+          "The hostname of the GitHub instance used by the shared GitHub App (e.g. github.example.com for GitHub Enterprise Server). Defaults to github.com. Must be set when the shared app is registered on a GHES instance."
       }
     ]
   },

@@ -1,12 +1,6 @@
 import { Knex } from "knex";
 
-import {
-  AccessScope,
-  ProjectMembershipRole,
-  RESOURCE_SCOPE,
-  TemporaryPermissionMode,
-  TMembershipRolesInsert
-} from "@app/db/schemas";
+import { AccessScope, ProjectMembershipRole, TemporaryPermissionMode, TMembershipRolesInsert } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
@@ -18,8 +12,11 @@ import { getIdentityActiveLockoutAuthMethods } from "@app/services/identity/iden
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
 import { TIdentityDALFactory } from "../identity/identity-dal";
+import { TApplicationMembershipCleanupServiceFactory } from "../membership/application-membership-cleanup-service";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TOrgDALFactory } from "../org/org-dal";
+import { ApplicationMemberKind } from "../pki-application/pki-application-types";
+import { TProjectDALFactory } from "../project/project-dal";
 import { TRoleDALFactory } from "../role/role-dal";
 import { TMembershipIdentityDALFactory } from "./membership-identity-dal";
 import {
@@ -44,6 +41,11 @@ type TMembershipIdentityServiceFactoryDep = {
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
   identityDAL: Pick<TIdentityDALFactory, "findById">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  applicationMembershipCleanupService: Pick<
+    TApplicationMembershipCleanupServiceFactory,
+    "cleanupActorApplicationMemberships"
+  >;
+  projectDAL: Pick<TProjectDALFactory, "findById">;
   keyStore: Pick<TKeyStoreFactory, "getKeysByPattern" | "getItem">;
 };
 
@@ -58,6 +60,8 @@ export const membershipIdentityServiceFactory = ({
   additionalPrivilegeDAL,
   identityDAL,
   licenseService,
+  applicationMembershipCleanupService,
+  projectDAL,
   keyStore
 }: TMembershipIdentityServiceFactoryDep) => {
   const scopeFactory = {
@@ -70,7 +74,8 @@ export const membershipIdentityServiceFactory = ({
       membershipIdentityDAL,
       orgDAL,
       permissionService,
-      identityDAL
+      identityDAL,
+      projectDAL
     })
   };
 
@@ -336,11 +341,11 @@ export const membershipIdentityServiceFactory = ({
       if (scopeData.scope === AccessScope.Project) {
         const projectScopeFields = scopeDatabaseFields as { scopeProjectId?: string };
         if (projectScopeFields.scopeProjectId) {
-          await membershipIdentityDAL.delete(
+          await applicationMembershipCleanupService.cleanupActorApplicationMemberships(
             {
-              scope: RESOURCE_SCOPE,
-              scopeProjectId: projectScopeFields.scopeProjectId,
-              actorIdentityId: dto.selector.identityId
+              projectId: projectScopeFields.scopeProjectId,
+              actorKind: ApplicationMemberKind.Identity,
+              actorId: dto.selector.identityId
             },
             tx
           );

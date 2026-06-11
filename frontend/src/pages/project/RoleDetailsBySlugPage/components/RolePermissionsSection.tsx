@@ -128,6 +128,10 @@ export const renderConditionalComponents = (
       return <McpEndpointPermissionConditions isDisabled={isDisabled} />;
     }
 
+    if (subject === ProjectPermissionSub.HoneyTokens) {
+      return <GeneralPermissionConditions isDisabled={isDisabled} type={subject} />;
+    }
+
     if (subject === ProjectPermissionSub.SecretRotation) {
       return <SecretRotationPermissionConditions isDisabled={isDisabled} />;
     }

@@ -88,12 +88,19 @@ export const KeyStorePrefixes = {
   UserMfaUnlockEmailSent: (userId: string) => `user-mfa-unlock-email-sent:${userId}` as const,
   UsedTotpCode: (userId: string, code: string) => `used-totp-code:${userId}:${code}` as const,
   UsedAccountRecoveryToken: (userId: string, jti: string) => `used-account-recovery-token:${userId}:${jti}` as const,
+  UsedGitHubManifestState: (jti: string) => `used-github-manifest-state:${jti}` as const,
+  GitHubManifestNameLock: (orgId: string, projectId: string | null, name: string) =>
+    `github-manifest-name-lock:${orgId}:${projectId ?? "org"}:${name}` as const,
+  UsedGitHubInstallationsToken: (jti: string) => `used-github-installations-token:${jti}` as const,
 
   AiMcpServerOAuth: (sessionId: string) => `ai-mcp-server-oauth:${sessionId}` as const,
 
   // AI MCP Endpoint OAuth
   AiMcpEndpointOAuthClient: (clientId: string) => `ai-mcp-endpoint-oauth-client:${clientId}` as const,
   AiMcpEndpointOAuthCode: (clientId: string, code: string) => `ai-mcp-endpoint-oauth-code:${clientId}:${code}` as const,
+
+  // OAuth 2.0 authorization server (Infisical as an OAuth provider)
+  OauthAuthorizationCode: (code: string) => `oauth-authorization-code:${code}` as const,
 
   // Project SSE Connection Rate Limiting
   ProjectSSEConnectionsSet: (projectId: string) => `project-sse-connections:${projectId}` as const,
@@ -150,11 +157,13 @@ export const KeyStoreTtls = {
   EmailSignupOtpInSeconds: 300, // 5 minutes
   EmailSignupResendCooldownInSeconds: 60, // 1 minute
   InsightsCacheInSeconds: 300, // 5 minutes
+  InsightsDuplicationCacheInSeconds: 3600, // 1 hour
   AdminConfigInSeconds: 60,
   InvalidatingCacheInSeconds: 1800, // 30 minutes max lock for cache invalidation job
   AuditLogMigrationAlertInSeconds: 604800, // 7 days
   LicenseCloudPlanInSeconds: 300, // 5 minutes
   AiMcpEndpointOAuthFlowInSeconds: 300, // 5 minutes
+  OauthAuthorizationCodeInSeconds: 600, // 10 minutes
   AiMcpServerOAuthSessionInSeconds: 600, // 10 minutes
   DashboardCacheInSeconds: 600, // 10 minutes
   ProjectEnvironmentOperationMarkerInSeconds: 10,
