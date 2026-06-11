@@ -278,8 +278,8 @@ export const bootstrapPamProject = async (
       projectId: project.id,
       name: template.name,
       type: template.type,
-      accessPolicy: JSON.stringify(template.accessPolicy),
-      settings: JSON.stringify(template.settings)
+      accessPolicy: template.accessPolicy,
+      settings: template.settings
     });
   }
 

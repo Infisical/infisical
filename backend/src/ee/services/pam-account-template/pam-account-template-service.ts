@@ -73,8 +73,8 @@ export const pamAccountTemplateServiceFactory = (deps: TPamAccountTemplateServic
         name,
         description,
         type,
-        accessPolicy: accessPolicy ? JSON.stringify(accessPolicy) : undefined,
-        settings: settings ? JSON.stringify(settings) : undefined,
+        accessPolicy: accessPolicy ?? undefined,
+        settings: settings ?? undefined,
         gatewayId,
         gatewayPoolId,
         recordingConnectionId
@@ -114,8 +114,8 @@ export const pamAccountTemplateServiceFactory = (deps: TPamAccountTemplateServic
     const updateData: Record<string, unknown> = {};
     if (name !== undefined) updateData.name = name;
     if (description !== undefined) updateData.description = description;
-    if (accessPolicy !== undefined) updateData.accessPolicy = JSON.stringify(accessPolicy);
-    if (settings !== undefined) updateData.settings = JSON.stringify(settings);
+    if (accessPolicy !== undefined) updateData.accessPolicy = accessPolicy;
+    if (settings !== undefined) updateData.settings = settings;
     if (gatewayId !== undefined) updateData.gatewayId = gatewayId;
     if (gatewayPoolId !== undefined) updateData.gatewayPoolId = gatewayPoolId;
     if (recordingConnectionId !== undefined) updateData.recordingConnectionId = recordingConnectionId;

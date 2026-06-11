@@ -32,8 +32,8 @@ const seedDefaultTemplates = async (knex: Knex, projectId: string) => {
         projectId,
         name: template.name,
         type: template.type,
-        accessPolicy: JSON.stringify(template.accessPolicy),
-        settings: JSON.stringify(template.settings)
+        accessPolicy: template.accessPolicy,
+        settings: template.settings
       })
       .onConflict(["projectId", "name"])
       .ignore();
