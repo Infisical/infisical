@@ -19,6 +19,7 @@ import { registerCamundaConnectionRouter } from "./camunda-connection-router";
 import { registerChecklyConnectionRouter } from "./checkly-connection-router";
 import { registerCircleCIConnectionRouter } from "./circleci-connection-router";
 import { registerCloudflareConnectionRouter } from "./cloudflare-connection-router";
+import { registerConvexConnectionRouter } from "./convex-connection-router";
 import { registerDatabricksConnectionRouter } from "./databricks-connection-router";
 import { registerDatadogConnectionRouter } from "./datadog-connection-router";
 import { registerDbtConnectionRouter } from "./dbt-connection-router";
@@ -140,5 +141,6 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.Salesforce]: registerSalesforceConnectionRouter,
     [AppConnection.Snowflake]: registerSnowflakeConnectionRouter,
     [AppConnection.Datadog]: registerDatadogConnectionRouter,
-    [AppConnection.F5BigIp]: registerF5BigIpConnectionRouter
+    [AppConnection.F5BigIp]: registerF5BigIpConnectionRouter,
+    [AppConnection.Convex]: registerConvexConnectionRouter
   };

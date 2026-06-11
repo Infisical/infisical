@@ -18,7 +18,8 @@ export enum SecretRotation {
   HpIloLocalAccount = "hp-ilo-local-account",
   SupabaseApiKey = "supabase-api-key",
   SalesforceOauthCredentials = "salesforce-oauth-credentials",
-  DatadogApplicationKeySecret = "datadog-application-key-secret"
+  DatadogApplicationKeySecret = "datadog-application-key-secret",
+  ConvexAccessKey = "convex-access-key"
 }
 
 export enum SecretRotationStatus {

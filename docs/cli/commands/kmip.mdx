@@ -6,18 +6,19 @@ description: "Run the Infisical KMIP server or manage its systemd service"
 <Tabs>
   <Tab title="Start KMIP server">
     ```bash
-    infisical kmip start \
-      --identity-client-id=<client-id> \
-      --identity-client-secret=<client-secret> \
-      --hostnames-or-ips=<hostnames-or-ips>
+    infisical kmip start <server-name> \
+      --enroll-method=token \
+      --token=<enrollment-token> \
+      --domain=<your-infisical-domain>
     ```
   </Tab>
   <Tab title="Start as background daemon (Linux only)">
     ```bash
-    sudo infisical kmip systemd install \
-      --identity-client-id=<client-id> \
-      --identity-client-secret=<client-secret> \
-      --hostnames-or-ips=<hostnames-or-ips>
+    sudo infisical kmip systemd install <server-name> \
+      --enroll-method=token \
+      --token=<enrollment-token> \
+      --domain=<your-infisical-domain>
+    sudo systemctl start infisical-kmip
     ```
   </Tab>
 </Tabs>
@@ -26,64 +27,84 @@ description: "Run the Infisical KMIP server or manage its systemd service"
 
 The Infisical KMIP server provides Key Management Interoperability Protocol (KMIP) support for integration with KMIP-compatible clients. It acts as a proxy between your KMIP clients and Infisical KMS, enabling standardized key management operations.
 
+The server is created in Infisical and then enrolled from the host where you run it, using either a one-time enrollment **token** or **AWS** authentication. The deploy command (including the enrollment token) can be copied from the server's detail page via **Show deploy command**.
+
+The server's certificate configuration (hostnames/IPs, TTL, and key algorithm) is defined on the server entity in the UI. The CLI fetches it on start, so you do not pass it on the command line. To change the certificate, edit the configuration in the UI and restart the server.
+
 For detailed information about KMIP integration, PKI setup, and client configuration, see the [KMIP Integration Guide](/documentation/platform/kms/kmip).
 
 ## Subcommands & flags
 
 <AccordionGroup>
 <Accordion title="infisical kmip start" defaultOpen="true">
-  Run the Infisical KMIP server in the foreground. The server authenticates to Infisical using a machine identity and proxies KMIP requests to Infisical KMS.
+  Run the Infisical KMIP server in the foreground. The server enrolls with Infisical, listens for KMIP client connections, and proxies KMIP operations to Infisical KMS.
 
 ```bash
-infisical kmip start \
-  --identity-client-id=<client-id> \
-  --identity-client-secret=<client-secret> \
-  --hostnames-or-ips=<hostnames-or-ips>
+infisical kmip start <server-name> \
+  --enroll-method=token \
+  --token=<enrollment-token> \
+  --domain=<your-infisical-domain>
 ```
 
 Once started, the KMIP server will:
 
-- Authenticate to Infisical using the provided machine identity credentials
+- Authenticate to Infisical using the enrollment method you provide
 - Listen for incoming KMIP client connections
-- Proxy KMIP operations (Create, Get, Activate, Revoke, etc.) to Infisical KMS
+- Forward KMIP operations (Create, Get, Activate, Revoke, etc.) to Infisical KMS
 - Handle mTLS authentication for KMIP clients
+
+### Arguments
+
+`<server-name>` (required): the name of the KMIP server, passed as the first positional argument. The name scopes where enrollment state is stored locally, so use the same value across restarts. You can alternatively supply it with the `--server-name` flag or the `INFISICAL_KMIP_SERVER_NAME` environment variable instead of positionally.
 
 ### Flags
 
   <AccordionGroup>
-  <Accordion title="--identity-client-id">
-    The client ID of the machine identity for Universal Auth authentication.
+  <Accordion title="--enroll-method">
+    The enrollment method used to authenticate the KMIP server: `token` or `aws`.
 
     ```bash
     # Example
-    infisical kmip start --identity-client-id=<client-id> --identity-client-secret=<client-secret> --hostnames-or-ips=<hostnames-or-ips>
+    infisical kmip start <server-name> --enroll-method=token --token=<enrollment-token>
     ```
 
-    You may also set this via the environment variable `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID`.
+    You may also set this via the environment variable `INFISICAL_KMIP_ENROLL_METHOD`.
 
   </Accordion>
 
-  <Accordion title="--identity-client-secret">
-    The client secret of the machine identity for Universal Auth authentication.
+  <Accordion title="--token">
+    The one-time enrollment token (when `--enroll-method=token`). Generate it from the KMIP server's detail page via **Show deploy command**. Tokens are single-use and expire after 1 hour.
+
+    On restart, the CLI reuses the long-lived access token it stored at enrollment, so the token is only needed for the initial deployment.
 
     ```bash
     # Example
-    infisical kmip start --identity-client-id=<client-id> --identity-client-secret=<client-secret> --hostnames-or-ips=<hostnames-or-ips>
+    infisical kmip start <server-name> --enroll-method=token --token=<enrollment-token>
     ```
-
-    You may also set this via the environment variable `INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET`.
 
   </Accordion>
 
-  <Accordion title="--hostnames-or-ips">
-    Comma-separated list of hostnames or IP addresses for the KMIP server certificate. These should match how clients will connect to the server.
+  <Accordion title="--kmip-server-id">
+    The KMIP server ID (when `--enroll-method=aws`). The server signs an `sts:GetCallerIdentity` request on every start and authenticates against the allowlist configured on the server entity.
 
     ```bash
     # Example
-    infisical kmip start --identity-client-id=<client-id> --identity-client-secret=<client-secret> --hostnames-or-ips="kmip.example.com,10.0.1.50"
+    infisical kmip start <server-name> --enroll-method=aws --kmip-server-id=<kmip-server-id>
     ```
 
-    You may also set this via the environment variable `INFISICAL_KMIP_HOSTNAMES_OR_IPS`.
+    You may also set this via the environment variable `INFISICAL_KMIP_SERVER_ID`.
+
+  </Accordion>
+
+  <Accordion title="--server-name">
+    Alternative to passing the server name as the positional argument (`infisical kmip start <server-name>`), which is the recommended form. The name is required, so supply it either positionally, via this flag, or via the environment variable. It scopes where enrollment state is stored locally, so use the same value across restarts.
+
+    ```bash
+    # Example (equivalent to: infisical kmip start production-kmip --enroll-method=token --token=<enrollment-token>)
+    infisical kmip start --server-name="production-kmip" --enroll-method=token --token=<enrollment-token>
+    ```
+
+    You may also set this via the environment variable `INFISICAL_KMIP_SERVER_NAME`.
 
   </Accordion>
 
@@ -92,7 +113,7 @@ Once started, the KMIP server will:
 
     ```bash
     # Example
-    infisical kmip start --domain=https://app.your-domain.com --identity-client-id=<client-id> --identity-client-secret=<client-secret> --hostnames-or-ips=<hostnames-or-ips>
+    infisical kmip start <server-name> --domain=https://app.your-domain.com --enroll-method=token --token=<enrollment-token>
     ```
 
     You may also set this via the environment variable `INFISICAL_API_URL`.
@@ -100,38 +121,42 @@ Once started, the KMIP server will:
   </Accordion>
 
   <Accordion title="--listen-address">
-    The address for the KMIP server to listen on. Default: `localhost:5696`.
+    The address for the KMIP server to listen on. Default: `localhost:5696`. To accept connections from other hosts, bind to all interfaces (`0.0.0.0:5696`) or a specific interface.
 
     ```bash
     # Example - listen on all interfaces
-    infisical kmip start --listen-address="0.0.0.0:5696" --identity-client-id=<client-id> --identity-client-secret=<client-secret> --hostnames-or-ips=<hostnames-or-ips>
+    infisical kmip start <server-name> --listen-address="0.0.0.0:5696" --enroll-method=token --token=<enrollment-token>
     ```
 
     You may also set this via the environment variable `INFISICAL_KMIP_LISTEN_ADDRESS`.
 
   </Accordion>
 
-  <Accordion title="--server-name">
-    The name of the KMIP server. Default: `kmip-server`.
-
-    ```bash
-    # Example
-    infisical kmip start --server-name="production-kmip" --identity-client-id=<client-id> --identity-client-secret=<client-secret> --hostnames-or-ips=<hostnames-or-ips>
-    ```
-
-    You may also set this via the environment variable `INFISICAL_KMIP_SERVER_NAME`.
-
-  </Accordion>
-
-  <Accordion title="--certificate-ttl">
+  <Accordion title="--certificate-ttl (legacy machine-identity servers only)">
     The TTL duration for the server certificate. Default: `1y`.
 
+    This flag applies only to legacy machine-identity KMIP servers. For servers enrolled via token or AWS, the certificate TTL is configured on the server entity in the UI and read on start, so this flag is ignored.
+
     ```bash
     # Example
-    infisical kmip start --certificate-ttl="6m" --identity-client-id=<client-id> --identity-client-secret=<client-secret> --hostnames-or-ips=<hostnames-or-ips>
+    infisical kmip start <server-name> --certificate-ttl="6m" --enroll-method=token --token=<enrollment-token>
     ```
 
     You may also set this via the environment variable `INFISICAL_KMIP_CERTIFICATE_TTL`.
+
+  </Accordion>
+
+  <Accordion title="--hostnames-or-ips (legacy machine-identity servers only)">
+    Comma-separated list of hostnames or IP addresses that KMIP clients will use to reach the server. These become the Subject Alternative Names (SANs) of the server's TLS certificate, so they must match how clients connect.
+
+    This flag applies only to legacy machine-identity KMIP servers. For servers enrolled via token or AWS, the hostnames/IPs are configured on the server entity in the UI and read on start, so this flag is ignored.
+
+    ```bash
+    # Example
+    infisical kmip start <server-name> --hostnames-or-ips="kmip.example.com,10.0.1.50" --enroll-method=token --token=<enrollment-token>
+    ```
+
+    You may also set this via the environment variable `INFISICAL_KMIP_HOSTNAMES_OR_IPS`.
 
   </Accordion>
   </AccordionGroup>
@@ -142,11 +167,14 @@ Once started, the KMIP server will:
   Install and enable the KMIP server as a systemd service. This command must be run with sudo on Linux.
 
 ```bash
-sudo infisical kmip systemd install \
-  --identity-client-id=<client-id> \
-  --identity-client-secret=<client-secret> \
-  --hostnames-or-ips=<hostnames-or-ips>
+sudo infisical kmip systemd install <server-name> \
+  --enroll-method=token \
+  --token=<enrollment-token> \
+  --domain=<your-infisical-domain>
+sudo systemctl start infisical-kmip
 ```
+
+For token enrollment, the single-use token is exchanged for a long-lived access token at install time and persisted to the service config; the service reuses it on every restart. For AWS enrollment, no token is stored and the server re-authenticates via STS on each start.
 
 ### Requirements
 
@@ -156,98 +184,14 @@ sudo infisical kmip systemd install \
 
 ### What it does
 
-1. Creates a config file at `/etc/infisical/kmip.conf` with the provided credentials and settings
+1. Creates a config file at `/etc/infisical/kmip.conf` with the provided enrollment settings
 2. Creates a systemd service file at `/etc/systemd/system/infisical-kmip.service`
 3. Reloads the systemd daemon
 4. Enables the service to start on boot
 
-### Flags
+### Arguments & Flags
 
-  <AccordionGroup>
-  <Accordion title="--identity-client-id (required)">
-    The client ID of the machine identity for Universal Auth authentication.
-
-    ```bash
-    # Example
-    sudo infisical kmip systemd install --identity-client-id=<client-id> --identity-client-secret=<client-secret> --hostnames-or-ips=<hostnames-or-ips>
-    ```
-
-    You may also set this via the environment variable `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID`.
-
-  </Accordion>
-
-  <Accordion title="--identity-client-secret (required)">
-    The client secret of the machine identity for Universal Auth authentication.
-
-    ```bash
-    # Example
-    sudo infisical kmip systemd install --identity-client-id=<client-id> --identity-client-secret=<client-secret> --hostnames-or-ips=<hostnames-or-ips>
-    ```
-
-    You may also set this via the environment variable `INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET`.
-
-  </Accordion>
-
-  <Accordion title="--hostnames-or-ips (required)">
-    Comma-separated list of hostnames or IP addresses for the KMIP server certificate.
-
-    ```bash
-    # Example
-    sudo infisical kmip systemd install --identity-client-id=<client-id> --identity-client-secret=<client-secret> --hostnames-or-ips="kmip.example.com,10.0.1.50"
-    ```
-
-    You may also set this via the environment variable `INFISICAL_KMIP_HOSTNAMES_OR_IPS`.
-
-  </Accordion>
-
-  <Accordion title="--domain">
-    Domain of your self-hosted Infisical instance. If not specified, defaults to Infisical Cloud.
-
-    ```bash
-    # Example
-    sudo infisical kmip systemd install --domain=https://app.your-domain.com --identity-client-id=<client-id> --identity-client-secret=<client-secret> --hostnames-or-ips=<hostnames-or-ips>
-    ```
-
-    You may also set this via the environment variable `INFISICAL_API_URL`.
-
-  </Accordion>
-
-  <Accordion title="--listen-address">
-    The address for the KMIP server to listen on. Default: `localhost:5696`.
-
-    ```bash
-    # Example
-    sudo infisical kmip systemd install --listen-address="0.0.0.0:5696" --identity-client-id=<client-id> --identity-client-secret=<client-secret> --hostnames-or-ips=<hostnames-or-ips>
-    ```
-
-    You may also set this via the environment variable `INFISICAL_KMIP_LISTEN_ADDRESS`.
-
-  </Accordion>
-
-  <Accordion title="--server-name">
-    The name of the KMIP server. Default: `kmip-server`.
-
-    ```bash
-    # Example
-    sudo infisical kmip systemd install --server-name="production-kmip" --identity-client-id=<client-id> --identity-client-secret=<client-secret> --hostnames-or-ips=<hostnames-or-ips>
-    ```
-
-    You may also set this via the environment variable `INFISICAL_KMIP_SERVER_NAME`.
-
-  </Accordion>
-
-  <Accordion title="--certificate-ttl">
-    The TTL duration for the server certificate. Default: `1y`.
-
-    ```bash
-    # Example
-    sudo infisical kmip systemd install --certificate-ttl="6m" --identity-client-id=<client-id> --identity-client-secret=<client-secret> --hostnames-or-ips=<hostnames-or-ips>
-    ```
-
-    You may also set this via the environment variable `INFISICAL_KMIP_CERTIFICATE_TTL`.
-
-  </Accordion>
-  </AccordionGroup>
+Like `infisical kmip start`, this command takes the `<server-name>` as a required positional argument (or via `--server-name` / `INFISICAL_KMIP_SERVER_NAME`). It accepts the same flags as `infisical kmip start` (documented above): `--enroll-method`, `--token`, `--kmip-server-id`, `--server-name`, `--domain`, `--listen-address`, and (for legacy machine-identity servers only) `--hostnames-or-ips` and `--certificate-ttl`.
 
 ### Service Details
 

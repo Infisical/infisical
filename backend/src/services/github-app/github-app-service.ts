@@ -5,6 +5,7 @@ import { ActionProjectType, OrganizationActionScope } from "@app/db/schemas";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayDALFactory } from "@app/ee/services/gateway/gateway-dal";
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
+import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
@@ -24,6 +25,7 @@ import { crypto } from "@app/lib/crypto";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { OrgServiceActor } from "@app/lib/types";
 import { safeRequest } from "@app/lib/validator/safe-request";
 import {
   assertPlatformGitHubHostAllowed,
@@ -67,6 +69,10 @@ type TGitHubAppServiceFactoryDep = {
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
+  gatewayPoolService: Pick<
+    TGatewayPoolServiceFactory,
+    "resolveAttachableGatewayFromPool" | "resolveEffectiveGatewayId"
+  >;
   gatewayDAL: Pick<TGatewayDALFactory, "find">;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "find">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
@@ -83,6 +89,7 @@ export const gitHubAppServiceFactory = ({
   licenseService,
   gatewayService,
   gatewayV2Service,
+  gatewayPoolService,
   gatewayDAL,
   gatewayV2DAL,
   auditLogService,
@@ -126,6 +133,59 @@ export const gitHubAppServiceFactory = ({
     }
   };
 
+  // Validates that the actor may attach the given gateway and that it exists for the org.
+  // Mirrors the gateway checks in resolveUserInstallations so the manifest exchange can route
+  // through a gateway when the GitHub host (e.g. a private GitHub Enterprise Server) isn't
+  // directly reachable from the Infisical backend.
+  const assertGatewayUsable = async (gatewayId: string, orgPermission: OrgServiceActor) => {
+    const plan = await licenseService.getPlan(orgPermission.orgId);
+    if (!plan.gateway) {
+      throw new BadRequestError({
+        message:
+          "Your current plan does not support gateway usage with app connections. Please upgrade your plan or contact Infisical Sales for assistance."
+      });
+    }
+
+    const { permission } = await permissionService.getOrgPermission({
+      actor: orgPermission.type,
+      actorId: orgPermission.id,
+      orgId: orgPermission.orgId,
+      actorAuthMethod: orgPermission.authMethod,
+      actorOrgId: orgPermission.orgId,
+      scope: OrganizationActionScope.Any
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionGatewayActions.AttachGateways,
+      OrgPermissionSubjects.Gateway
+    );
+
+    const [gateway] = await gatewayDAL.find({ id: gatewayId, orgId: orgPermission.orgId });
+    const [gatewayV2] = await gatewayV2DAL.find({ id: gatewayId, orgId: orgPermission.orgId });
+    if (!gateway && !gatewayV2) {
+      throw new NotFoundError({
+        message: `Gateway with ID ${gatewayId} not found for org`
+      });
+    }
+  };
+
+  const assertGatewayConfigUsable = async (
+    { gatewayId, gatewayPoolId }: { gatewayId?: string | null; gatewayPoolId?: string | null },
+    orgPermission: OrgServiceActor
+  ) => {
+    if (gatewayId) {
+      await assertGatewayUsable(gatewayId, orgPermission);
+      return;
+    }
+    if (gatewayPoolId) {
+      await gatewayPoolService.resolveAttachableGatewayFromPool({
+        poolId: gatewayPoolId,
+        orgId: orgPermission.orgId,
+        actor: orgPermission
+      });
+    }
+  };
+
   const listGitHubApps = async ({ orgPermission, projectId }: TListGitHubAppsDTO): Promise<TSanitizedGitHubApp[]> => {
     await checkAppConnectionPermission({
       actor: orgPermission,
@@ -163,6 +223,8 @@ export const gitHubAppServiceFactory = ({
       slug: app.slug,
       clientId: app.clientId,
       owner: app.owner ?? null,
+      host: app.host ?? null,
+      instanceType: app.instanceType === "server" ? "server" : "cloud",
       connectionCount: countByAppId.get(app.id) ?? 0,
       createdAt: app.createdAt,
       updatedAt: app.updatedAt
@@ -171,7 +233,8 @@ export const gitHubAppServiceFactory = ({
     const {
       INF_APP_CONNECTION_GITHUB_APP_ID,
       INF_APP_CONNECTION_GITHUB_APP_SLUG,
-      INF_APP_CONNECTION_GITHUB_APP_CLIENT_ID
+      INF_APP_CONNECTION_GITHUB_APP_CLIENT_ID,
+      INF_APP_CONNECTION_GITHUB_APP_HOST
     } = getConfig();
 
     const sharedApp: TSanitizedGitHubApp | null =
@@ -185,6 +248,8 @@ export const gitHubAppServiceFactory = ({
             slug: INF_APP_CONNECTION_GITHUB_APP_SLUG,
             clientId: INF_APP_CONNECTION_GITHUB_APP_CLIENT_ID ?? null,
             owner: null,
+            host: INF_APP_CONNECTION_GITHUB_APP_HOST ?? null,
+            instanceType: null,
             connectionCount: countByAppId.get(null) ?? 0,
             createdAt: null,
             updatedAt: null
@@ -303,6 +368,8 @@ export const gitHubAppServiceFactory = ({
         slug: existing.slug,
         clientId: existing.clientId,
         owner: existing.owner ?? null,
+        host: existing.host ?? null,
+        instanceType: existing.instanceType === "server" ? "server" : "cloud",
         connectionCount: 0,
         createdAt: existing.createdAt,
         updatedAt: existing.updatedAt
@@ -343,6 +410,8 @@ export const gitHubAppServiceFactory = ({
     githubHost,
     installState,
     projectId,
+    gatewayId,
+    gatewayPoolId,
     orgPermission
   }: TInitiateGitHubManifestDTO) => {
     await checkAppConnectionPermission({
@@ -354,6 +423,8 @@ export const gitHubAppServiceFactory = ({
     });
 
     assertPlatformGitHubHostAllowed(githubHost);
+
+    await assertGatewayConfigUsable({ gatewayId, gatewayPoolId }, orgPermission);
 
     const existing = await gitHubAppDAL.findOne({
       orgId: orgPermission.orgId,
@@ -386,6 +457,8 @@ export const gitHubAppServiceFactory = ({
         instanceType,
         githubOrg: githubOrg ?? "",
         githubHost: githubHost ?? "",
+        gatewayId: gatewayId ?? null,
+        gatewayPoolId: gatewayPoolId ?? null,
         installState
       } satisfies TGitHubManifestStatePayload,
       AUTH_SECRET,
@@ -447,6 +520,8 @@ export const gitHubAppServiceFactory = ({
       instanceType,
       githubOrg,
       githubHost,
+      gatewayId = null,
+      gatewayPoolId = null,
       installState
     } = statePayload;
 
@@ -503,18 +578,46 @@ export const gitHubAppServiceFactory = ({
           const apiBaseUrl = await getGitHubInstanceApiUrl({
             credentials: { host: githubHost || undefined, instanceType }
           });
-          const { data } = await safeRequest.post<TGitHubAppManifestResponse>(
-            `https://${apiBaseUrl}/app-manifests/${encodeURIComponent(code)}/conversions`,
-            {},
-            {
-              headers: {
-                Accept: "application/vnd.github+json",
-                "X-GitHub-Api-Version": "2022-11-28"
-              }
+
+          const requestConfig: AxiosRequestConfig & { url: string } = {
+            url: `https://${apiBaseUrl}/app-manifests/${encodeURIComponent(code)}/conversions`,
+            method: "POST",
+            data: {},
+            headers: {
+              Accept: "application/vnd.github+json",
+              "X-GitHub-Api-Version": "2022-11-28"
             }
-          );
+          };
+
+          const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({ gatewayId, gatewayPoolId });
+
+          const { data } = effectiveGatewayId
+            ? await requestWithGitHubGateway<TGitHubAppManifestResponse>(
+                { gatewayId: effectiveGatewayId },
+                gatewayService,
+                gatewayV2Service,
+                requestConfig,
+                await getGitHubGatewayConnectionDetails(effectiveGatewayId, apiBaseUrl, gatewayV2Service)
+              )
+            : await safeRequest.request<TGitHubAppManifestResponse>(requestConfig);
           manifestResponse = data;
-        } catch {
+        } catch (err) {
+          logger.error(
+            {
+              ...sanitizeGitHubAxiosError(err),
+              orgId,
+              projectId,
+              instanceType,
+              host: githubHost || "github.com",
+              gatewayId,
+              gatewayPoolId
+            },
+            `Failed to exchange GitHub App manifest code [orgId=${orgId}] [projectId=${
+              projectId ?? "null"
+            }] [instanceType=${instanceType}] [host=${githubHost || "github.com"}] [gatewayId=${
+              gatewayId ?? "null"
+            }] [gatewayPoolId=${gatewayPoolId ?? "null"}]`
+          );
           throw new BadRequestError({
             message:
               "Failed to exchange GitHub App manifest code. The code may be expired or invalid. Please try registering the GitHub App again."
@@ -627,6 +730,7 @@ export const gitHubAppServiceFactory = ({
     gitHubAppId,
     instanceType,
     gatewayId,
+    gatewayPoolId,
     projectId,
     orgPermission
   }: TResolveGitHubAppInstallationsDTO): Promise<{
@@ -673,28 +777,9 @@ export const gitHubAppServiceFactory = ({
       );
     }
 
-    if (gatewayId) {
-      const plan = await licenseService.getPlan(orgPermission.orgId);
-      if (!plan.gateway) {
-        throw new BadRequestError({
-          message:
-            "Your current plan does not support gateway usage with app connections. Please upgrade your plan or contact Infisical Sales for assistance."
-        });
-      }
+    await assertGatewayConfigUsable({ gatewayId, gatewayPoolId }, orgPermission);
 
-      ForbiddenError.from(orgScopedPermission).throwUnlessCan(
-        OrgPermissionGatewayActions.AttachGateways,
-        OrgPermissionSubjects.Gateway
-      );
-
-      const [gateway] = await gatewayDAL.find({ id: gatewayId, orgId: orgPermission.orgId });
-      const [gatewayV2] = await gatewayV2DAL.find({ id: gatewayId, orgId: orgPermission.orgId });
-      if (!gateway && !gatewayV2) {
-        throw new NotFoundError({
-          message: `Gateway with ID ${gatewayId} not found for org`
-        });
-      }
-    }
+    const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({ gatewayId, gatewayPoolId });
 
     const { SITE_URL } = getConfig();
     if (!SITE_URL) {
@@ -732,9 +817,9 @@ export const gitHubAppServiceFactory = ({
       requestConfig: AxiosRequestConfig & { url: string },
       gatewayConnectionDetails?: Awaited<ReturnType<typeof getGitHubGatewayConnectionDetails>>
     ): Promise<AxiosResponse<T>> =>
-      gatewayId
+      effectiveGatewayId
         ? requestWithGitHubGateway<T>(
-            { gatewayId },
+            { gatewayId: effectiveGatewayId },
             gatewayService,
             gatewayV2Service,
             requestConfig,
@@ -742,8 +827,8 @@ export const gitHubAppServiceFactory = ({
           )
         : safeRequest.request<T>(requestConfig);
 
-    const oauthGatewayConnectionDetails = gatewayId
-      ? await getGitHubGatewayConnectionDetails(gatewayId, oauthHost, gatewayV2Service)
+    const oauthGatewayConnectionDetails = effectiveGatewayId
+      ? await getGitHubGatewayConnectionDetails(effectiveGatewayId, oauthHost, gatewayV2Service)
       : undefined;
 
     let tokenData: GithubTokenRespData;
@@ -777,8 +862,8 @@ export const gitHubAppServiceFactory = ({
       credentials: { host: effectiveHost, instanceType: effectiveInstanceType }
     });
 
-    const apiGatewayConnectionDetails = gatewayId
-      ? await getGitHubGatewayConnectionDetails(gatewayId, apiBaseUrl, gatewayV2Service)
+    const apiGatewayConnectionDetails = effectiveGatewayId
+      ? await getGitHubGatewayConnectionDetails(effectiveGatewayId, apiBaseUrl, gatewayV2Service)
       : undefined;
 
     const installations = await listGitHubUserInstallations(apiBaseUrl, tokenData.access_token, (requestConfig) =>

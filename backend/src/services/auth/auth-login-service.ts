@@ -52,7 +52,7 @@ import { TTotpServiceFactory } from "../totp/totp-service";
 import { TUserDALFactory } from "../user/user-dal";
 import { TUserAliasDALFactory } from "../user-alias/user-alias-dal";
 import { UserAliasType } from "../user-alias/user-alias-types";
-import { enforceUserLockStatus, verifyCaptcha } from "./auth-fns";
+import { enforceUserLockStatus, getRequiredMfaMethod, verifyCaptcha } from "./auth-fns";
 import {
   TLoginClientProofDTO,
   TLoginGenServerPublicKeyDTO,
@@ -162,25 +162,6 @@ export const authLoginServiceFactory = ({
         }
       })
       .catch((err) => throwIfSmtpError(err, "Failed to send MFA code email"));
-  };
-
-  /*
-   * Private
-   * Determines the required MFA method based on org enforcement vs user preference.
-   */
-  const getRequiredMfaMethod = (
-    org: { enforceMfa?: boolean | null; selectedMfaMethod?: string | null },
-    user: { isMfaEnabled?: boolean | null; selectedMfaMethod?: string | null }
-  ): { isMfaRequired: boolean; requiredMfaMethod: MfaMethod } => {
-    const isOrgMfaEnforced = Boolean(org.enforceMfa);
-    const isUserMfaEnabled = Boolean(user.isMfaEnabled);
-    const isMfaRequired = isOrgMfaEnforced || isUserMfaEnabled;
-
-    const requiredMfaMethod = isOrgMfaEnforced
-      ? ((org.selectedMfaMethod as MfaMethod) ?? MfaMethod.EMAIL)
-      : ((user.selectedMfaMethod as MfaMethod) ?? MfaMethod.EMAIL);
-
-    return { isMfaRequired, requiredMfaMethod };
   };
 
   /*

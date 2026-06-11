@@ -3,6 +3,7 @@ package secret
 import (
 	"context"
 	"log/slog"
+	"sort"
 
 	"github.com/google/uuid"
 
@@ -150,6 +151,10 @@ func (h *Handler) listSecrets(ctx context.Context, opts *listSecretsInternalOpts
 			for _, sec := range secretMap {
 				filtered = append(filtered, *sec)
 			}
+			// Sort by key to maintain consistent ordering (map iteration is random in Go)
+			sort.Slice(filtered, func(i, j int) bool {
+				return filtered[i].Secret.Key < filtered[j].Secret.Key
+			})
 			return filtered
 		default:
 			return secrets
@@ -161,10 +166,11 @@ func (h *Handler) listSecrets(ctx context.Context, opts *listSecretsInternalOpts
 	// 6. Build response
 	response := h.buildListSecretsResponse(result, opts.ProjectID, opts.IncludeImports)
 
-	// 7. Audit log
-	if err := h.createGetSecretsAuditLog(ctx, opts.ProjectID, opts.Environment, opts.SecretPath, len(response.Secrets)); err != nil {
-		return nil, err
-	}
+	// TODO: Re-enable audit logging once Go backend is primary
+	// // 7. Audit log
+	// if err := h.createGetSecretsAuditLog(ctx, opts.ProjectID, opts.Environment, opts.SecretPath, len(response.Secrets)); err != nil {
+	// 	return nil, err
+	// }
 
 	return response, nil
 }
@@ -274,8 +280,8 @@ func (h *Handler) ListSecretsRawV3(ctx context.Context, opts *ListSecretsRawV3Se
 		Recursive:                 fn.ValueOr(q.Recursive, false),
 		ViewSecretValue:           fn.ValueOr(q.ViewSecretValue, true),
 		ExpandSecretReferences:    fn.ValueOr(q.ExpandSecretReferences, true),
-		IncludeImports:            fn.ValueOr(q.IncludeImports, true),
-		PersonalOverridesBehavior: PersonalOverridesIncludeAll, // V3 default
+		IncludeImports:            fn.ValueOr(q.IncludeImports, false), // V3 defaults to false (unlike V4)
+		PersonalOverridesBehavior: PersonalOverridesIncludeAll,         // V3 default
 		TagSlugs:                  parseTagSlugs(q.TagSlugs),
 		MetadataFilter:            parseMetadataFilter(q.MetadataFilter),
 	})
@@ -337,9 +343,9 @@ func (h *Handler) buildSecretRaw(ps *secretsvc.ProcessedSecret, projectID string
 		})
 	}
 
-	isRotated := sec.IsRotatedSecret()
+	isRotatedSecret := new(sec.IsRotatedSecret())
 	var rotationID *string
-	if isRotated {
+	if sec.IsRotatedSecret() {
 		rid := sec.GetRotationID().String()
 		rotationID = &rid
 	}
@@ -366,7 +372,7 @@ func (h *Handler) buildSecretRaw(ps *secretsvc.ProcessedSecret, projectID string
 		Tags:                  tags,
 		SecretMetadata:        metadata,
 		SkipMultilineEncoding: skipMultilineEncoding,
-		IsRotatedSecret:       &isRotated,
+		IsRotatedSecret:       isRotatedSecret,
 		RotationID:            rotationID,
 	}
 
@@ -386,8 +392,6 @@ func (h *Handler) buildImportSecretRaw(ps *secretsvc.ProcessedSecret, projectID 
 		})
 	}
 
-	isRotated := sec.IsRotatedSecret()
-
 	raw := ImportSecretRaw{
 		ID:                sec.ID.String(),
 		UnderscoreID:      sec.ID.String(),
@@ -400,13 +404,13 @@ func (h *Handler) buildImportSecretRaw(ps *secretsvc.ProcessedSecret, projectID 
 		SecretComment:     ps.Comment,
 		SecretValueHidden: ps.ValueHidden,
 		SecretMetadata:    metadata,
-		IsRotatedSecret:   &isRotated,
 	}
 
 	if sec.SkipMultilineEncoding.Valid {
 		raw.SkipMultilineEncoding = &sec.SkipMultilineEncoding.V
 	}
-	if isRotated {
+	raw.IsRotatedSecret = new(sec.IsRotatedSecret())
+	if sec.IsRotatedSecret() {
 		rid := sec.GetRotationID().String()
 		raw.RotationID = &rid
 	}

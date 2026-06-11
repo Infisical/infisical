@@ -1,0 +1,115 @@
+---
+title: "Convex Access Key Rotation"
+description: "Learn how to automatically rotate Convex access keys."
+---
+
+<Note>
+  **Rotation Type: [Dual-Phase](/documentation/platform/secret-rotation/overview#dual-phase-rotation)**
+
+  This rotation maintains two active credential sets with overlapping validity, ensuring zero-downtime during rotation cycles.
+</Note>
+
+## Prerequisites
+
+- Create a [Convex Connection](/integrations/app-connections/convex) with a personal access token
+
+## Create a Convex Access Key Rotation in Infisical
+
+<Tabs>
+    <Tab title="Infisical UI">
+        1. Navigate to your Secret Manager Project's Dashboard and select **Add Secret Rotation** from the actions dropdown.
+        ![Secret Manager Dashboard](/images/secret-rotations-v2/generic/add-secret-rotation.png)
+
+        2. Select the **Convex Access Key** option.
+        ![Select Convex Access Key](/images/secret-rotations-v2/convex/01-select-type.png)
+
+        3. Select the **Convex Connection** to use and configure the rotation behavior. Then click **Next**.
+        ![Rotation Configuration](/images/secret-rotations-v2/convex/02-configuration.png)
+
+            - **Convex Connection** - the connection that will create and delete access keys during rotation.
+            - **Rotation Interval** - the interval, in days, that once elapsed will trigger a rotation.
+            - **Rotate At** - the local time of day when rotation should occur once the interval has elapsed.
+            - **Auto-Rotation Enabled** - whether secrets should automatically be rotated once the rotation interval has elapsed. Disable this option to manually rotate secrets or pause secret rotation.
+
+        4. Set the access key parameters. Then click **Next**.
+        ![Rotation Parameters](/images/secret-rotations-v2/convex/03-parameters.png)
+
+            - **Name Prefix** - a prefix used when naming the generated access keys in Convex (e.g. `infisical`). A timestamp is appended to ensure uniqueness.
+
+        5. Specify the secret name that the rotated access key will be mapped to. Then click **Next**.
+        ![Rotation Secrets Mapping](/images/secret-rotations-v2/convex/04-mappings.png)
+
+            - **Access Key** - the name of the secret that the rotated Convex access key will be mapped to.
+
+        6. Give your rotation a name and description (optional). Then click **Next**.
+        ![Rotation Details](/images/secret-rotations-v2/convex/05-details.png)
+
+            - **Name** - the name of the secret rotation configuration. Must be slug-friendly.
+            - **Description** (optional) - a description of this rotation configuration.
+
+        7. Review your configuration, then click **Create Secret Rotation**.
+        ![Rotation Review](/images/secret-rotations-v2/convex/06-review.png)
+
+        8. Your **Convex Access Key** rotation is created. The current access key is available as a secret at the mapped path.
+        ![Rotation Created](/images/secret-rotations-v2/convex/07-created.png)
+    </Tab>
+    <Tab title="API">
+        To create a Convex Access Key Rotation, make an API request to the [Create Convex
+        Access Key Rotation](/api-reference/endpoints/secret-rotations/convex-access-key/create) API endpoint.
+
+        ### Sample request
+
+        ```bash Request
+        curl --request POST \
+        --url https://us.infisical.com/api/v2/secret-rotations/convex-access-key \
+        --header 'Content-Type: application/json' \
+        --data '{
+            "name": "my-convex-rotation",
+            "projectId": "<project-id>",
+            "description": "Convex access key rotation",
+            "connectionId": "<convex-connection-id>",
+            "environment": "dev",
+            "secretPath": "/",
+            "isAutoRotationEnabled": true,
+            "rotationInterval": 30,
+            "rotateAtUtc": {
+                "hours": 0,
+                "minutes": 0
+            },
+            "parameters": {
+                "namePrefix": "infisical"
+            },
+            "secretsMapping": {
+                "accessKey": "CONVEX_ACCESS_KEY"
+            }
+        }'
+        ```
+
+        ### Sample response
+
+        ```bash Response
+        {
+            "secretRotation": {
+                "id": "<rotation-id>",
+                "name": "my-convex-rotation",
+                "description": "Convex access key rotation",
+                "secretsMapping": {
+                    "accessKey": "CONVEX_ACCESS_KEY"
+                },
+                "isAutoRotationEnabled": true,
+                "activeIndex": 0,
+                "connectionId": "<convex-connection-id>",
+                "rotationInterval": 30,
+                "rotateAtUtc": {
+                    "hours": 0,
+                    "minutes": 0
+                },
+                "type": "convex-access-key",
+                "parameters": {
+                    "namePrefix": "infisical"
+                }
+            }
+        }
+        ```
+    </Tab>
+</Tabs>
