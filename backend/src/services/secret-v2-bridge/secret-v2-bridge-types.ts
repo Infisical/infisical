@@ -279,8 +279,6 @@ export type TFnSecretMove = {
   actorId: string;
   actorOrgId: string;
   permission: MongoAbility<ProjectPermissionSet>;
-  // when true the per-secret source/destination authorization is skipped (the caller pre-authorized the move)
-  skipPermissionCheck?: boolean;
   tx: Knex;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath" | "findSecretPathByFolderIds">;
@@ -432,7 +430,6 @@ export type TMoveSecretsDTO = {
   destinationSecretPath: string;
   secretIds: string[];
   shouldOverwrite: boolean;
-  skipPermissionCheck?: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TDuplicateSecretAttributes = {

@@ -2983,8 +2983,7 @@ export const secretServiceFactory = ({
     actorId,
     actorAuthMethod,
     actorOrgId,
-    projectId: inputProjectId,
-    skipPermissionCheck
+    projectId: inputProjectId
   }: TMoveSecretsDTO) => {
     let project;
     if (projectSlug) {
@@ -3014,8 +3013,7 @@ export const secretServiceFactory = ({
         actor,
         actorId,
         actorAuthMethod,
-        actorOrgId,
-        skipPermissionCheck
+        actorOrgId
       });
     }
 
@@ -3068,15 +3066,13 @@ export const secretServiceFactory = ({
     }
 
     // a move is delete-at-source + create/edit-at-destination. this is path-scoped, so it is checked
-    // once for the whole batch rather than per secret (skipped when the caller has pre-authorized).
-    if (!skipPermissionCheck) {
-      validateSecretMovePermissions(permission, {
-        sourceEnvironment,
-        sourceSecretPath,
-        destinationEnvironment,
-        destinationSecretPath
-      });
-    }
+    // once for the whole batch rather than per secret.
+    validateSecretMovePermissions(permission, {
+      sourceEnvironment,
+      sourceSecretPath,
+      destinationEnvironment,
+      destinationSecretPath
+    });
 
     const decryptedSourceSecrets = sourceSecrets.map((secret) => ({
       ...secret,

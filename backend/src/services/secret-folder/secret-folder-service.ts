@@ -1537,6 +1537,34 @@ export const secretFolderServiceFactory = ({
     return null;
   };
 
+  const $getFolderMovePolicyBlock = async ({
+    projectId,
+    environment,
+    rootFolderPath,
+    subtree
+  }: {
+    projectId: string;
+    environment: string;
+    rootFolderPath: string;
+    subtree: { path: string }[];
+  }) => {
+    const toSourceAbsPath = (f: { path: string }) => (f.path === "/" ? rootFolderPath : `${rootFolderPath}${f.path}`);
+    const subtreeAbsPaths = subtree.map(toSourceAbsPath);
+
+    const policyByPath = await secretApprovalPolicyService.getSecretApprovalPolicyByPaths(
+      projectId,
+      environment,
+      subtreeAbsPaths
+    );
+
+    // report the first blocked path in subtree order, matching the previous per-folder behavior.
+    for (const blockedPath of subtreeAbsPaths) {
+      const policy = policyByPath.get(blockedPath);
+      if (policy) return { blockedPath, policyName: policy.name };
+    }
+    return null;
+  };
+
   // checks whether a folder (and its entire recursive subtree) can be moved.
   const getFolderMoveEligibility = async ({
     actor,
@@ -1551,7 +1579,21 @@ export const secretFolderServiceFactory = ({
     const block = await folderDAL.transaction(async (tx) => {
       // parent folder + full recursive subtree (with paths); reserved folders are already excluded.
       const subtree = await folderDAL.findByEnvsDeep({ parentIds: [folder.id] }, tx);
-      return $getFolderMoveBlock(subtree, folder.path, tx);
+
+      const secretBlock = await $getFolderMoveBlock(subtree, folder.path, tx);
+      if (secretBlock) return secretBlock;
+
+      const policyBlock = await $getFolderMovePolicyBlock({
+        projectId: folder.projectId,
+        environment: folder.environment.envSlug,
+        rootFolderPath: folder.path,
+        subtree
+      });
+      if (policyBlock) {
+        return { blockingType: "secret_approval_policy" as const, blockingPath: policyBlock.blockedPath };
+      }
+
+      return null;
     });
 
     return {
@@ -1585,6 +1627,13 @@ export const secretFolderServiceFactory = ({
     const sourceFolderPath = sourceFolder.path;
     const folderName = sourceFolder.name;
     const sourceParentPath = path.dirname(sourceFolderPath);
+
+    // check if the folder is in the same project
+    if (projectId !== sourceFolder.projectId) {
+      throw new BadRequestError({
+        message: "The provided project ID does not match the source folder's project ID"
+      });
+    }
 
     // 2. permission: a move is create-at-destination + delete-at-source (secret-level perms are enforced in moveSecrets)
     const { permission } = await permissionService.getProjectPermission({
@@ -1671,23 +1720,17 @@ export const secretFolderServiceFactory = ({
       const toSourceAbsPath = (f: { path: string }) =>
         f.path === "/" ? sourceFolderPath : `${sourceFolderPath}${f.path}`;
 
-      // block the move if any folder in the source subtree is governed by a secret approval policy. resolve all
-      // subtree paths in a single batched lookup rather than one query per folder.
-      const subtreeAbsPaths = subtree.map(toSourceAbsPath);
-      const policyByPath = await secretApprovalPolicyService.getSecretApprovalPolicyByPaths(
+      const policyBlock = await $getFolderMovePolicyBlock({
         projectId,
-        sourceEnvironment,
-        subtreeAbsPaths
-      );
-      // report the first blocked path in subtree order, matching the previous per-folder behavior.
-      for (const blockedPath of subtreeAbsPaths) {
-        const policy = policyByPath.get(blockedPath);
-        if (policy) {
-          throw new BadRequestError({
-            message: `Cannot move folder '${folderName}'. The folder at path '${blockedPath}' is protected by the secret approval policy '${policy.name}'. Folders governed by a secret approval policy cannot be moved. If you need to move this folder, please disable the secret approval policy for the path '${blockedPath}'`,
-            name: "MoveFolderProtectedByPolicy"
-          });
-        }
+        environment: sourceEnvironment,
+        rootFolderPath: sourceFolderPath,
+        subtree
+      });
+      if (policyBlock) {
+        throw new BadRequestError({
+          message: `Cannot move folder '${folderName}'. The folder at path '${policyBlock.blockedPath}' is protected by the secret approval policy '${policyBlock.policyName}'. Folders governed by a secret approval policy cannot be moved. If you need to move this folder, please disable the secret approval policy for the path '${policyBlock.blockedPath}'`,
+          name: "MoveFolderProtectedByPolicy"
+        });
       }
 
       const subtreeSecrets = await secretV2BridgeDAL.findByFolderIds({ folderIds: subtree.map((f) => f.id), tx });
@@ -1801,8 +1844,6 @@ export const secretFolderServiceFactory = ({
             actorId,
             actorAuthMethod,
             actorOrgId,
-            // the whole subtree was authorized up front, so skip the redundant per-batch check
-            skipPermissionCheck: true,
             tx,
             permissionService,
             kmsService,

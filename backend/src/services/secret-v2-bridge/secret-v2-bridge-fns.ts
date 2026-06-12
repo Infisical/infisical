@@ -1480,8 +1480,7 @@ export const createRelativeImportExpander = ({
 // moves a batch of secrets from one folder to another inside the caller-supplied transaction.
 // performs the two-step move (create/update at destination, then delete at source) plus reference
 // updates, but does NOT snapshot/sync/invalidate the cache — the caller runs those after the tx
-// commits. permission authorization is skipped entirely when skipPermissionCheck is set (the caller
-// has already authorized the move at the path level).
+// commits.
 export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveResult> => {
   const {
     projectId,
@@ -1495,7 +1494,6 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
     actorId,
     actorOrgId,
     permission,
-    skipPermissionCheck,
     tx,
     kmsService,
     folderDAL,
@@ -1561,9 +1559,6 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
     if (secret.isHoneyTokenSecret) {
       throw new BadRequestError({ message: `Cannot move honey token secret: ${secret.key}` });
     }
-
-    // the caller (e.g. folder move) has already pre-authorized the move at the path level
-    if (skipPermissionCheck) return;
 
     for (const sourceAction of sourceActions) {
       if (
@@ -1678,22 +1673,19 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
   }
 
   // permission check whether can create or edit the ones in the destination folder
-  // (skipped when the caller has already pre-authorized the move at the path level)
-  if (!skipPermissionCheck) {
-    locallyCreatedSecrets.forEach((secret) => {
-      for (const destinationAction of destinationActions) {
-        ForbiddenError.from(permission).throwUnlessCan(
-          destinationAction,
-          subject(ProjectPermissionSub.Secrets, {
-            environment: destinationEnvironment,
-            secretPath: destinationFolder.path,
-            secretName: secret.key,
-            secretTags: secret.tags.map((el) => el.slug)
-          })
-        );
-      }
-    });
-  }
+  locallyCreatedSecrets.forEach((secret) => {
+    for (const destinationAction of destinationActions) {
+      ForbiddenError.from(permission).throwUnlessCan(
+        destinationAction,
+        subject(ProjectPermissionSub.Secrets, {
+          environment: destinationEnvironment,
+          secretPath: destinationFolder.path,
+          secretName: secret.key,
+          secretTags: secret.tags.map((el) => el.slug)
+        })
+      );
+    }
+  });
 
   const destinationFolderPolicy = await secretApprovalPolicyService.getSecretApprovalPolicy(
     projectId,
@@ -1979,8 +1971,7 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
 
 // performs the move within a caller-supplied transaction and returns the result without side effects.
 // external callers (e.g. folder move) use this to run several moves inside one transaction, then call
-// dispatchSecretMoveSideEffects + invalidateSecretCacheByProjectId afterwards. the project-permission
-// lookup still runs; per-secret authorization is skipped when skipPermissionCheck is set.
+// dispatchSecretMoveSideEffects + invalidateSecretCacheByProjectId afterwards.
 export const fnSecretMoveInTransaction = async (dto: TFnSecretMoveInTransaction): Promise<TFnSecretMoveResult> => {
   const { actorAuthMethod, permissionService, ...fnSecretMoveDTO } = dto;
 

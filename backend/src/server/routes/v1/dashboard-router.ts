@@ -1893,7 +1893,9 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         200: z.object({
           canMove: z.boolean(),
           folderName: z.string(),
-          blockingType: z.enum(["dynamic_secret", "secret_rotation", "honey_token", "secret_import"]).optional(),
+          blockingType: z
+            .enum(["dynamic_secret", "secret_rotation", "honey_token", "secret_import", "secret_approval_policy"])
+            .optional(),
           blockingPath: z.string().optional()
         })
       }
