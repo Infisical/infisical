@@ -61,7 +61,7 @@ export type TTelemetryServiceFactoryDep = {
     "incrementBy" | "deleteItemsByKeyIn" | "setItemWithExpiry" | "setItemWithExpiryNX" | "getKeysByPattern" | "getItems"
   >;
   licenseService: Pick<TLicenseServiceFactory, "getInstanceType" | "getPlan">;
-  orgDAL: Pick<TOrgDALFactory, "findOrgById">;
+  orgDAL: Pick<TOrgDALFactory, "findOrgById" | "findFirstOrgMemberEmail">;
 };
 
 const getBucketForDistinctId = (distinctId: string): string => {
@@ -238,6 +238,18 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
       properties.seat_count = plan.membersUsed;
     } catch (error) {
       logger.error(error, "Failed to fetch org plan for PostHog group properties");
+    }
+
+    try {
+      const email = await orgDAL.findFirstOrgMemberEmail(orgId);
+      if (email) {
+        const domain = email.split("@")[1];
+        if (domain) {
+          properties.domain = domain.toLowerCase();
+        }
+      }
+    } catch (error) {
+      logger.error(error, "Failed to fetch org domain for PostHog group properties");
     }
 
     return properties;
