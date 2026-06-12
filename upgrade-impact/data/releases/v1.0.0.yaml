@@ -1,0 +1,65 @@
+version: v1.0.0
+releasedAt: 2026-06-11T10:53:16-03:00
+sourceTag: v1.0.0
+previousTag: v0.160.12
+impactLevel: medium
+summary: GHES shared GitHub App deployments must set a new host variable.
+  Startup also applies additive database migrations for new GitHub, OAuth, KMIP,
+  and project metadata tables.
+requiresDbMigration: true
+breakingChanges:
+  - title: GitHub App host setting
+    description: Shared GitHub App flows now use only the server-side host setting.
+      GHES deployments without INF_APP_CONNECTION_GITHUB_APP_HOST will resolve
+      to github.com and GitHub App connection flows will fail.
+    action: Set INF_APP_CONNECTION_GITHUB_APP_HOST to your GHES hostname before
+      upgrading. Leave it unset for github.com deployments.
+    confidence: medium
+    evidence:
+      - type: release
+        ref: v1.0.0
+        url: https://github.com/Infisical/infisical/releases/tag/v1.0.0
+        description: Documents GHES host requirement
+dbSchemaChanges:
+  - title: Platform startup migrations
+    description: Startup adds new tables and columns for GitHub Apps, GitHub app
+      connections, OAuth clients, KMIP server auth and cert config, and project
+      secret blind index settings.
+    action: No manual action required; Infisical runs this migration during startup.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20260529204743_create-github-apps.ts
+        path: backend/src/db/migrations/20260529204743_create-github-apps.ts
+      - type: file
+        ref: backend/src/db/migrations/20260604120000_create-github-app-connections.ts
+        path: backend/src/db/migrations/20260604120000_create-github-app-connections.ts
+      - type: file
+        ref: backend/src/db/migrations/20260605000000_create-oauth-clients.ts
+        path: backend/src/db/migrations/20260605000000_create-oauth-clients.ts
+      - type: file
+        ref: backend/src/db/migrations/20260605120000_kmip-server-cert-config.ts
+        path: backend/src/db/migrations/20260605120000_kmip-server-cert-config.ts
+configChanges:
+  - title: GitHub App host variable
+    description: A new backend environment variable binds the shared GitHub App to
+      one host. Existing GHES shared GitHub App setups need this value to keep
+      OAuth and installation exchange working.
+    action: Add INF_APP_CONNECTION_GITHUB_APP_HOST with your GHES hostname if your
+      shared GitHub App is registered on GHES.
+    confidence: medium
+    evidence:
+      - type: release
+        ref: v1.0.0
+        url: https://github.com/Infisical/infisical/releases/tag/v1.0.0
+        description: Lists required environment variable
+deploymentNotes: []
+knownIssues: []
+generatedBy:
+  generator: "@infisical/upgrade-impact"
+  generatorVersion: "1"
+  model: gpt-5.4
+  generatedAt: 2026-06-11T15:13:45.015Z
+  sourceRange:
+    from: v0.160.12
+    to: v1.0.0
