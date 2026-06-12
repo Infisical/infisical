@@ -42,8 +42,8 @@ export const AwsParameterStoreSyncFields = () => {
                   <Info />
                 </TooltipTrigger>
                 <TooltipContent className="max-w-md">
-                  If a STS endpoint is set in the app connection, the region must match the STS
-                  endpoint region.
+                  If the app connection being used has a custom STS endpoint configured, the
+                  selected region must match the STS region configured on the app connection.
                 </TooltipContent>
               </Tooltip>
             </FieldLabel>
