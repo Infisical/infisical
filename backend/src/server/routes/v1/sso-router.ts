@@ -75,7 +75,7 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
           // Google maps its email_verified claim onto emails[0].verified (a string "true"/"false"
           // per the userinfo response, occasionally a boolean); when verified we skip our own
           // email verification.
-            const isEmailVerifiedByProvider = String(profile?.emails?.[0]?.verified) === "true";
+          const isEmailVerifiedByProvider = String(profile?.emails?.[0]?.verified) === "true";
 
           try {
             const loginResult = await server.services.login.oauth2Login({
