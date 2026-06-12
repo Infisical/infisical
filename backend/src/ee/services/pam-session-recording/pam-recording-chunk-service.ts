@@ -1,3 +1,5 @@
+import RE2 from "re2";
+
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -179,7 +181,7 @@ export const pamSessionChunkServiceFactory = ({
       });
     }
 
-    const BASE64_RE = /^[A-Za-z0-9+/]*={0,2}$/;
+    const BASE64_RE = new RE2(/^[A-Za-z0-9+/]*={0,2}$/);
     if (!BASE64_RE.test(ciphertextSha256Base64) || !BASE64_RE.test(ivBase64)) {
       throw new BadRequestError({ message: "Invalid base64 in chunk metadata" });
     }

@@ -1,3 +1,4 @@
+import RE2 from "re2";
 import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
@@ -129,7 +130,7 @@ export const registerPamSessionChunkRouter = async (server: FastifyZodProvider) 
 
       let ciphertextBuf: Buffer | undefined;
       if (req.body.ciphertext) {
-        const BASE64_RE = /^[A-Za-z0-9+/]*={0,2}$/;
+        const BASE64_RE = new RE2(/^[A-Za-z0-9+/]*={0,2}$/);
         if (!BASE64_RE.test(req.body.ciphertext)) {
           throw new BadRequestError({ message: "ciphertext must be valid base64" });
         }
