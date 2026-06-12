@@ -4,7 +4,6 @@ import { PamAccountType } from "@app/ee/services/pam/pam-enums";
 import { logger } from "@app/lib/logger";
 
 import { registerSessionHandler } from "../pam-session-handler-registry";
-import { SshClientMessageSchema, SshClientMessageType } from "./pam-ssh-ws-types";
 import { parseClientMessage, resolveEndReason } from "../pam-web-access-fns";
 import {
   SessionEndReason,
@@ -12,6 +11,7 @@ import {
   TSessionContext,
   TSessionHandlerResult
 } from "../pam-web-access-types";
+import { SshClientMessageSchema, SshClientMessageType } from "./pam-ssh-ws-types";
 
 const handleSSHSession = async (
   ctx: TSessionContext,
@@ -130,6 +130,6 @@ const handleSSHSession = async (
 };
 
 registerSessionHandler(PamAccountType.SSH, {
-  gatewayResourceType: PamAccountType.SSH,
+  gatewayAccountType: PamAccountType.SSH,
   handler: handleSSHSession
 });

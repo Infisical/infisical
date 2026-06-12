@@ -488,14 +488,14 @@ export const gatewayV2ServiceFactory = ({
     gatewayId,
     sessionId,
     duration,
-    resourceType,
+    accountType,
     host,
     port,
     actorMetadata
   }: {
     gatewayId: string;
     sessionId: string;
-    resourceType: PamAccountType;
+    accountType: PamAccountType;
     duration?: number;
     host: string;
     port?: number;
@@ -582,7 +582,7 @@ export const gatewayV2ServiceFactory = ({
       Buffer.from(
         JSON.stringify({
           sessionId,
-          resourceType
+          accountType
         })
       )
     );

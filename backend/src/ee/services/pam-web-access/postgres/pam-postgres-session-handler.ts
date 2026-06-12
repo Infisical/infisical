@@ -3,6 +3,14 @@ import crypto from "crypto";
 import { PamAccountType } from "@app/ee/services/pam/pam-enums";
 import { logger } from "@app/lib/logger";
 
+import { registerSessionHandler } from "../pam-session-handler-registry";
+import { parseClientMessage } from "../pam-web-access-fns";
+import {
+  SessionEndReason,
+  TerminalServerMessageType,
+  TSessionContext,
+  TSessionHandlerResult
+} from "../pam-web-access-types";
 import {
   createPostgresConnectionController,
   type TPostgresConnectionController
@@ -14,14 +22,6 @@ import {
   PostgresServerMessageType,
   type TPostgresCorrelatedServerMessage
 } from "./pam-postgres-ws-types";
-import { registerSessionHandler } from "../pam-session-handler-registry";
-import { parseClientMessage } from "../pam-web-access-fns";
-import {
-  SessionEndReason,
-  TerminalServerMessageType,
-  TSessionContext,
-  TSessionHandlerResult
-} from "../pam-web-access-types";
 
 const MAX_CONNECTIONS_PER_WS = 20;
 
@@ -246,6 +246,6 @@ const handlePostgresSession = async (
 };
 
 registerSessionHandler(PamAccountType.Postgres, {
-  gatewayResourceType: PamAccountType.Postgres,
+  gatewayAccountType: PamAccountType.Postgres,
   handler: handlePostgresSession
 });

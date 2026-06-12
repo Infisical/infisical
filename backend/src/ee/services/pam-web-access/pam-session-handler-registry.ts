@@ -8,7 +8,7 @@ export type TWebAccessHandler = (
 ) => Promise<TSessionHandlerResult>;
 
 type TSessionHandlerEntry = {
-  gatewayResourceType: PamAccountType;
+  gatewayAccountType: PamAccountType;
   handler: TWebAccessHandler;
 };
 

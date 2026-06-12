@@ -435,7 +435,7 @@ export const pamWebAccessServiceFactory = ({
       const certs = await gatewayV2Service.getPAMConnectionDetails({
         gatewayId: effectiveGatewayId,
         sessionId: session.id,
-        resourceType: handlerEntry.gatewayResourceType,
+        accountType: handlerEntry.gatewayAccountType,
         host: connectionDetails.host,
         port: connectionDetails.port,
         duration: sessionDurationMs,
