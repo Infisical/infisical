@@ -110,8 +110,7 @@ export const subOrgServiceFactory = ({
       await bootstrapPamProject(
         {
           orgId: org.id,
-          adminUserIds: permission.type === ActorType.USER ? [permission.id] : [],
-          adminIdentityIds: permission.type === ActorType.IDENTITY ? [permission.id] : []
+          adminUserIds: permission.type === ActorType.USER ? [permission.id] : []
         },
         { projectDAL, membershipDAL, membershipRoleDAL },
         tx

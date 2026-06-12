@@ -20,7 +20,6 @@ type TBootstrapDeps = {
 type TBootstrapInput = {
   orgId: string;
   adminUserIds?: string[];
-  adminIdentityIds?: string[];
 };
 
 export type TDefaultTemplate = {
@@ -203,7 +202,7 @@ export const DEFAULT_ACCOUNT_TEMPLATES: TDefaultTemplate[] = [
 ];
 
 export const bootstrapPamProject = async (
-  { orgId, adminUserIds = [], adminIdentityIds = [] }: TBootstrapInput,
+  { orgId, adminUserIds = [] }: TBootstrapInput,
   { projectDAL, membershipDAL, membershipRoleDAL }: TBootstrapDeps,
   tx: Knex
 ): Promise<{ project: TProjects; created: boolean }> => {
