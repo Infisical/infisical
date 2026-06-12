@@ -39,12 +39,21 @@ type ContentProps = {
   onImport: (vaultPaths: string[], namespace: string, connectionId: string) => void;
 };
 
+// Cap the rendered path length so every badge stays a predictable size. Longer
+// paths are truncated from the start with a leading ellipsis so the meaningful
+// tail (including the wildcard `+`) stays visible.
+const MAX_PATH_LENGTH = 30;
+
 const renderWildcardPath = (path: string) => {
+  const isTruncated = path.length > MAX_PATH_LENGTH;
+  const visiblePath = isTruncated ? path.slice(path.length - MAX_PATH_LENGTH) : path;
+
   let position = 0;
 
   return (
-    <span>
-      {path.split(/(\+)/).map((part) => {
+    <span title={path}>
+      {isTruncated && "…"}
+      {visiblePath.split(/(\+)/).map((part) => {
         const key = `${path}-${position}`;
         position += part.length;
 
@@ -252,7 +261,7 @@ const Content = ({ onClose, environment, secretPath, appConnections, onImport }:
               paths. In Vault, update the policy on the App role or token behind this App Connection
               to grant access to absolute paths instead.
             </p>
-            <div className="mt-2 flex flex-wrap items-center gap-1">
+            <div className="mt-2 flex flex-col items-start gap-1">
               {skippedWildcardPaths.slice(0, 3).map((path) => (
                 <Badge key={path} variant="warning" className="font-mono text-foreground/80">
                   {renderWildcardPath(path)}
@@ -267,7 +276,7 @@ const Content = ({ onClose, environment, secretPath, appConnections, onImport }:
                         <Badge
                           key={path}
                           variant="warning"
-                          className="w-full justify-start font-mono text-foreground/80"
+                          className="font-mono text-foreground/80"
                         >
                           {renderWildcardPath(path)}
                         </Badge>
