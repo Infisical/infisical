@@ -16,11 +16,11 @@ export type TActorContext = {
   actorAuthMethod: ActorAuthMethod;
 };
 
-const pamRoleCanViewSessions = (role: string): boolean => {
+const pamRoleHasAction = (role: string, action: ResourcePermissionPamResourceActions): boolean => {
   try {
     const rules = resolveResourceRoleRules(ResourceType.PamFolder, role);
     const ability = createMongoAbility(rules);
-    return ability.can(ResourcePermissionPamResourceActions.ViewSessions, ResourcePermissionSub.PamResource);
+    return ability.can(action, ResourcePermissionSub.PamResource);
   } catch {
     return false;
   }
@@ -120,10 +120,11 @@ export const getAccessibleResourceIds = async (
   return { folderIds, accountIds };
 };
 
-export const getViewSessionsResourceIds = async (
+export const getResourceIdsWithActions = async (
   membershipDAL: TMembershipDep,
   membershipRoleDAL: TMembershipRoleDep,
   projectId: string,
+  actions: ResourcePermissionPamResourceActions[],
   ctx: TActorContext
 ) => {
   const [folderMemberships, accountMemberships] = await Promise.all([
@@ -154,14 +155,14 @@ export const getViewSessionsResourceIds = async (
   const folderIds = folderMemberships
     .filter((m) => {
       const role = roleByMembershipId.get(m.id);
-      return m.scopeResourceId && role && pamRoleCanViewSessions(role);
+      return m.scopeResourceId && role && actions.some((a) => pamRoleHasAction(role, a));
     })
     .map((m) => m.scopeResourceId!);
 
   const accountIds = accountMemberships
     .filter((m) => {
       const role = roleByMembershipId.get(m.id);
-      return m.scopeResourceId && role && pamRoleCanViewSessions(role);
+      return m.scopeResourceId && role && actions.some((a) => pamRoleHasAction(role, a));
     })
     .map((m) => m.scopeResourceId!);
 

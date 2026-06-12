@@ -16,7 +16,7 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 import { PamAccessMethod, PamAccountType, PamSessionStatus } from "../pam/pam-enums";
 import {
   checkAccountAccess,
-  getViewSessionsResourceIds,
+  getResourceIdsWithActions,
   TActorContext,
   verifyProductMembership
 } from "../pam/pam-permission";
@@ -83,10 +83,11 @@ export const pamSessionServiceFactory = ({
   ) => {
     await verifyProductMembership(permissionService, projectId, ctx);
 
-    const { folderIds, accountIds } = await getViewSessionsResourceIds(
+    const { folderIds, accountIds } = await getResourceIdsWithActions(
       membershipDAL,
       membershipRoleDAL,
       projectId,
+      [ResourcePermissionPamResourceActions.ViewSessions],
       ctx
     );
 

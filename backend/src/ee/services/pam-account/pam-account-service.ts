@@ -22,7 +22,7 @@ import { PamAccountType } from "../pam/pam-enums";
 import {
   checkAccountAccess,
   checkFolderPermission,
-  getAccessibleResourceIds,
+  getResourceIdsWithActions,
   TActorContext,
   verifyProductMembership
 } from "../pam/pam-permission";
@@ -50,7 +50,7 @@ type TPamAccountServiceFactoryDep = {
   pamFolderDAL: Pick<TPamFolderDALFactory, "findById">;
   pamAccountTemplateDAL: Pick<TPamAccountTemplateDALFactory, "findById">;
   membershipDAL: Pick<TMembershipDALFactory, "find" | "delete" | "findResourceMembershipsForActor">;
-  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "delete">;
+  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "delete" | "find">;
   permissionService: Pick<
     TPermissionServiceFactory,
     "getProjectPermission" | "getResourcePermission" | "getOrgPermission"
@@ -96,7 +96,13 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
   const list = async ({ projectId, folderId, templateId, search, ...ctx }: TListPamAccountsDTO & TActorContext) => {
     await verifyMembership(projectId, ctx);
 
-    const { folderIds, accountIds } = await getAccessibleResourceIds(membershipDAL, projectId, ctx);
+    const { folderIds, accountIds } = await getResourceIdsWithActions(
+      membershipDAL,
+      membershipRoleDAL,
+      projectId,
+      [ResourcePermissionPamResourceActions.ReadAccounts],
+      ctx
+    );
     if (folderIds.length === 0 && accountIds.length === 0) return [];
 
     const { accounts } = await pamAccountDAL.findAccessible(projectId, folderIds, accountIds, {
@@ -382,7 +388,13 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
   }: TListAccessibleAccountsDTO & TActorContext & { offset?: number; limit?: number }) => {
     await verifyMembership(projectId, ctx);
 
-    const { folderIds, accountIds } = await getAccessibleResourceIds(membershipDAL, projectId, ctx);
+    const { folderIds, accountIds } = await getResourceIdsWithActions(
+      membershipDAL,
+      membershipRoleDAL,
+      projectId,
+      [ResourcePermissionPamResourceActions.LaunchSessions, ResourcePermissionPamResourceActions.ViewCredentials],
+      ctx
+    );
     if (folderIds.length === 0 && accountIds.length === 0) return { accounts: [], totalCount: 0 };
 
     const { accounts, totalCount } = await pamAccountDAL.findAccessible(projectId, folderIds, accountIds, {
