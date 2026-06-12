@@ -37,6 +37,11 @@ import { SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
 import { DiscriminativePick } from "@app/types";
 
 import {
+  TConvexAccessKeyRotation,
+  TConvexAccessKeyRotationGeneratedCredentialsResponse,
+  TConvexAccessKeyRotationOption
+} from "./convex-access-key-rotation";
+import {
   TDatadogApplicationKeySecretRotation,
   TDatadogApplicationKeySecretRotationGeneratedCredentialsResponse,
   TDatadogApplicationKeySecretRotationOption
@@ -121,6 +126,7 @@ export type TSecretRotationV2 = (
   | TSupabaseApiKeyRotation
   | TSalesforceOauthCredentialsRotation
   | TDatadogApplicationKeySecretRotation
+  | TConvexAccessKeyRotation
 ) & {
   secrets: (SecretV3RawSanitized | null)[];
 };
@@ -142,7 +148,8 @@ export type TSecretRotationV2Option =
   | THpIloRotationOption
   | TSupabaseApiKeyRotationOption
   | TSalesforceOauthCredentialsRotationOption
-  | TDatadogApplicationKeySecretRotationOption;
+  | TDatadogApplicationKeySecretRotationOption
+  | TConvexAccessKeyRotationOption;
 
 export type TListSecretRotationV2Options = { secretRotationOptions: TSecretRotationV2Option[] };
 
@@ -168,7 +175,8 @@ export type TViewSecretRotationGeneratedCredentialsResponse =
   | THpIloRotationGeneratedCredentialsResponse
   | TSupabaseApiKeyRotationGeneratedCredentialsResponse
   | TSalesforceOauthCredentialsRotationGeneratedCredentialsResponse
-  | TDatadogApplicationKeySecretRotationGeneratedCredentialsResponse;
+  | TDatadogApplicationKeySecretRotationGeneratedCredentialsResponse
+  | TConvexAccessKeyRotationGeneratedCredentialsResponse;
 
 export type TCreateSecretRotationV2DTO = DiscriminativePick<
   TSecretRotationV2,
@@ -243,6 +251,7 @@ export type TSecretRotationOptionMap = {
   [SecretRotation.SupabaseApiKey]: TSupabaseApiKeyRotationOption;
   [SecretRotation.SalesforceOauthCredentials]: TSalesforceOauthCredentialsRotationOption;
   [SecretRotation.DatadogApplicationKeySecret]: TDatadogApplicationKeySecretRotationOption;
+  [SecretRotation.ConvexAccessKey]: TConvexAccessKeyRotationOption;
 };
 
 export type TSecretRotationGeneratedCredentialsResponseMap = {
@@ -266,6 +275,7 @@ export type TSecretRotationGeneratedCredentialsResponseMap = {
   [SecretRotation.SupabaseApiKey]: TSupabaseApiKeyRotationGeneratedCredentialsResponse;
   [SecretRotation.SalesforceOauthCredentials]: TSalesforceOauthCredentialsRotationGeneratedCredentialsResponse;
   [SecretRotation.DatadogApplicationKeySecret]: TDatadogApplicationKeySecretRotationGeneratedCredentialsResponse;
+  [SecretRotation.ConvexAccessKey]: TConvexAccessKeyRotationGeneratedCredentialsResponse;
 };
 
 // Unified type for local account reconciliation (Unix/Linux, Windows, and HP iLO)

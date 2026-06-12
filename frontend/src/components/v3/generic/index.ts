@@ -10,6 +10,7 @@ export * from "./Card";
 export * from "./Checkbox";
 export * from "./ColorPicker";
 export * from "./Command";
+export * from "./CopyButton";
 export * from "./DataGrid";
 export * from "./Detail";
 export * from "./Dialog";

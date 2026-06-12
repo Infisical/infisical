@@ -91,7 +91,8 @@ export enum ApiDocsTags {
   LdapSso = "LDAP SSO",
   Scim = "SCIM",
   Events = "Event Subscriptions",
-  GatewaysV3 = "Gateways"
+  GatewaysV3 = "Gateways",
+  KmipServers = "KMIP Servers"
 }
 
 export const GROUPS = {
@@ -2663,6 +2664,7 @@ export const AppConnections = {
       description: `An optional description for the ${appName} Connection.`,
       credentials: `The credentials used to connect with ${appName}.`,
       method: `The method used to authenticate with ${appName}.`,
+      stsEndpoint: `An optional custom endpoint URL for the AWS STS API to use when connecting with ${appName}.`,
       isPlatformManagedCredentials: `Whether or not the ${appName} Connection credentials should be managed by Infisical. Once enabled this cannot be reversed.`,
       projectId: `The ID of the project to create the ${appName} Connection in.`,
       isAutoRotationEnabled: `Whether or not automatic credential rotation is enabled for the ${appName} Connection.`,
@@ -2677,6 +2679,7 @@ export const AppConnections = {
       description: `The updated description of the ${appName} Connection.`,
       credentials: `The credentials used to connect with ${appName}.`,
       method: `The method used to authenticate with ${appName}.`,
+      stsEndpoint: `An optional custom endpoint URL for the AWS STS API to use when connecting with ${appName}.`,
       isPlatformManagedCredentials: `Whether or not the ${appName} Connection credentials should be managed by Infisical. Once enabled this cannot be reversed.`,
       isAutoRotationEnabled: `Whether or not automatic credential rotation is enabled for the ${appName} Connection.`,
       rotation: `The updated credential rotation configuration for the ${appName} Connection.`
@@ -2886,6 +2889,10 @@ export const AppConnections = {
     },
     ANTHROPIC: {
       apiKey: "The Anthropic API key used to authenticate with the Anthropic API."
+    },
+    CONVEX: {
+      accessToken: "The Convex deploy key or access token used to authenticate with the Convex API.",
+      instanceUrl: "The Convex API instance URL. Defaults to 'https://api.convex.dev' if not provided."
     },
     OVH: {
       privateKey:
@@ -3389,6 +3396,9 @@ export const SecretRotations = {
     },
     DATADOG_APPLICATION_KEY_SECRET: {
       serviceAccountId: "The ID of the Datadog service account to rotate the application key for."
+    },
+    CONVEX_ACCESS_KEY: {
+      namePrefix: "A prefix to use when naming the generated Convex access key."
     }
   },
   SECRETS_MAPPING: {
@@ -3460,6 +3470,9 @@ export const SecretRotations = {
     DATADOG_APPLICATION_KEY_SECRET: {
       applicationKeyId: "The name of the secret that the rotated Datadog application key ID will be mapped to.",
       applicationKey: "The name of the secret that the rotated Datadog application key value will be mapped to."
+    },
+    CONVEX_ACCESS_KEY: {
+      accessKey: "The name of the secret that the rotated Convex access key will be mapped to."
     }
   }
 };

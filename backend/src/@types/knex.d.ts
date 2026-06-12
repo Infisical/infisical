@@ -287,6 +287,9 @@ import {
   TKmipOrgServerCertificates,
   TKmipOrgServerCertificatesInsert,
   TKmipOrgServerCertificatesUpdate,
+  TKmipServers,
+  TKmipServersInsert,
+  TKmipServersUpdate,
   TKmsKeys,
   TKmsKeysInsert,
   TKmsKeysUpdate,
@@ -308,6 +311,9 @@ import {
   TMemberships,
   TMembershipsInsert,
   TMembershipsUpdate,
+  TOauthClients,
+  TOauthClientsInsert,
+  TOauthClientsUpdate,
   TOidcConfigs,
   TOidcConfigsInsert,
   TOidcConfigsUpdate,
@@ -1371,6 +1377,7 @@ declare module "knex/types/tables" {
     >;
     [TableName.EmailDomains]: KnexOriginal.CompositeTableType<TEmailDomains, TEmailDomainsInsert, TEmailDomainsUpdate>;
     [TableName.SamlConfig]: KnexOriginal.CompositeTableType<TSamlConfigs, TSamlConfigsInsert, TSamlConfigsUpdate>;
+    [TableName.OauthClient]: KnexOriginal.CompositeTableType<TOauthClients, TOauthClientsInsert, TOauthClientsUpdate>;
     [TableName.OidcConfig]: KnexOriginal.CompositeTableType<TOidcConfigs, TOidcConfigsInsert, TOidcConfigsUpdate>;
     [TableName.LdapConfig]: KnexOriginal.CompositeTableType<TLdapConfigs, TLdapConfigsInsert, TLdapConfigsUpdate>;
     [TableName.LdapGroupMap]: KnexOriginal.CompositeTableType<
@@ -1531,6 +1538,7 @@ declare module "knex/types/tables" {
       TKmipClientCertificatesInsert,
       TKmipClientCertificatesUpdate
     >;
+    [TableName.KmipServer]: KnexOriginal.CompositeTableType<TKmipServers, TKmipServersInsert, TKmipServersUpdate>;
     [TableName.Gateway]: KnexOriginal.CompositeTableType<TGateways, TGatewaysInsert, TGatewaysUpdate>;
     [TableName.ProjectGateway]: KnexOriginal.CompositeTableType<
       TProjectGateways,

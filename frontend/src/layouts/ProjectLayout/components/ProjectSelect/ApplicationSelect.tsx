@@ -18,6 +18,7 @@ import {
   ResourceIcon
 } from "@app/components/v3";
 import { useListPkiApplications } from "@app/hooks/api/pkiApplications";
+import { useDebounce } from "@app/hooks/useDebounce";
 
 const ApplicationSelectInner = ({
   applicationName,
@@ -29,11 +30,13 @@ const ApplicationSelectInner = ({
   orgId: string;
 }) => {
   const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const [debouncedSearch] = useDebounce(search);
   const navigate = useNavigate();
-  const { data: applications = [] } = useListPkiApplications();
+  const { data } = useListPkiApplications({ search: debouncedSearch || undefined, limit: 20 });
+  const applications = data?.applications ?? [];
 
-  const current = applications.find((a) => a.name === applicationName);
-  const displayName = current?.name ?? applicationName;
+  const displayName = applicationName;
 
   const handleSelect = (nextName: string) => {
     setOpen(false);
@@ -66,8 +69,12 @@ const ApplicationSelectInner = ({
           </IconButton>
         </PopoverTrigger>
         <PopoverContent align="start" sideOffset={20} className="w-96 p-0">
-          <Command>
-            <CommandInput placeholder="Search applications..." />
+          <Command shouldFilter={false}>
+            <CommandInput
+              placeholder="Search applications..."
+              value={search}
+              onValueChange={setSearch}
+            />
             <CommandList>
               <CommandEmpty>No applications found.</CommandEmpty>
               <CommandGroup heading="Applications">

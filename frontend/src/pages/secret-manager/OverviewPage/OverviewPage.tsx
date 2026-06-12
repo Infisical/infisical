@@ -524,7 +524,8 @@ const OverviewPageContent = () => {
   });
 
   const canReadSecrets = singleVisibleEnv
-    ? permission.can(ProjectPermissionSecretActions.DescribeSecret, secretSubject)
+    ? permission.can(ProjectPermissionSecretActions.DescribeSecret, secretSubject) ||
+      permission.can(ProjectPermissionSecretActions.DescribeAndReadValue, secretSubject)
     : true;
 
   const canEditSecrets = singleVisibleEnv

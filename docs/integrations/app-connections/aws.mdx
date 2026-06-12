@@ -505,6 +505,13 @@ Infisical supports two methods for connecting to AWS.
                         3. Select the **Assume Role** method option and provide the **AWS IAM Role ARN** obtained from the previous step and press **Connect to AWS**.
                         ![Create AWS Connection](/images/app-connections/aws/create-assume-role-method.png)
 
+                        <Note>
+                            The optional **STS Endpoint URL** field lets you override the default AWS STS endpoint that Infisical
+                            calls to assume the role. Provide an HTTPS URL (for example a VPC PrivateLink, GovCloud, China, FIPS,
+                            or region-pinned STS endpoint) when the default `https://sts.amazonaws.com` is not reachable or desired.
+                            Leave it blank to use AWS's default endpoint resolution.
+                        </Note>
+
                         4. Your **AWS Connection** is now available for use.
                         ![Assume Role AWS Connection](/images/app-connections/aws/assume-role-connection.png)
                     </Tab>
@@ -524,6 +531,7 @@ Infisical supports two methods for connecting to AWS.
                                     "projectId": "7ffbb072-2575-495a-b5b0-127f88caef78",
                                     "credentials": {
                                         "roleArn": "...",
+                                        "stsEndpoint": "https://sts.amazonaws.com"
                                     }
                                 }'
                         ```
