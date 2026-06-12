@@ -176,6 +176,81 @@ describe("Auth OAuth Signup V3 (provider-attested email verification)", () => {
         .first();
       expect(attackerAlias?.isEmailVerified).toBe(false);
     });
+
+    test("an unverified alias cannot be flipped to verified to take over the attached account", async () => {
+      // Two-step stale-alias takeover (the OAuth analogue of the SAML stale-alias guard):
+      // 1) an attacker provider identity asserts the victim's email UNVERIFIED, backfilling an
+      //    unverified alias onto the victim via the email fallback (no session is issued);
+      // 2) the attacker switches their provider email to one they control and re-logs in VERIFIED.
+      // The asserted email no longer matches the victim account, so the alias is stale and must not
+      // be promoted: no session, and the victim's email/username are left untouched.
+      const victimEmail = `oauth-victim-${crypto.randomUUID()}@localhost.local`;
+      const attackerEmail = `oauth-attacker-${crypto.randomUUID()}@localhost.local`;
+      const attackerExternalId = `github-attacker-${crypto.randomUUID()}`;
+
+      const [victim] = await getDb()(TableName.Users)
+        .insert({
+          username: victimEmail,
+          email: victimEmail,
+          isAccepted: true,
+          isEmailVerified: true,
+          isGhost: false,
+          authMethods: [AuthMethod.EMAIL]
+        })
+        .returning("*");
+      createdUserIds.push(victim.id);
+
+      // Step 1: seed an unverified alias on the victim by asserting their email unverified.
+      const seed = await oauthLogin({
+        email: victimEmail,
+        isEmailVerifiedByProvider: false,
+        authMethod: AuthMethod.GITHUB,
+        providerUserId: attackerExternalId
+      });
+      expect(seed.result).toBe(ProviderAuthResult.SIGNUP_REQUIRED);
+      expect(seed.user.id).toBe(victim.id);
+
+      const seededAlias = await getDb()(TableName.UserAliases)
+        .where({ userId: victim.id, externalId: attackerExternalId })
+        .first();
+      expect(seededAlias?.isEmailVerified).toBe(false);
+
+      smtp().clear();
+
+      // Step 2: same provider identity, now asserting an attacker-controlled VERIFIED email.
+      const takeover = await oauthLogin({
+        email: attackerEmail,
+        isEmailVerifiedByProvider: true,
+        authMethod: AuthMethod.GITHUB,
+        providerUserId: attackerExternalId
+      });
+
+      // No session: the stale alias is not promoted.
+      expect(takeover.result).toBe(ProviderAuthResult.SIGNUP_REQUIRED);
+      expect(takeover.didCompleteSignup).toBe(false);
+
+      // The victim account is untouched: the attacker could neither overwrite the email/username nor
+      // scribble on the profile (names), link their auth method, or flip a verified flag.
+      const victimAfter = await findUser(victim.id);
+      expect(victimAfter?.username).toBe(victimEmail);
+      expect(victimAfter?.email).toBe(victimEmail);
+      expect(victimAfter?.authMethods).not.toContain(AuthMethod.GITHUB);
+      expect(victimAfter?.authMethods).toEqual([AuthMethod.EMAIL]);
+      expect(victimAfter?.firstName ?? null).toBeNull();
+      expect(victimAfter?.lastName ?? null).toBeNull();
+      expect(victimAfter?.isGitHubVerified ?? false).toBe(false);
+
+      // The alias stays unverified and never adopts the attacker's email.
+      const aliasAfter = await getDb()(TableName.UserAliases)
+        .where({ userId: victim.id, externalId: attackerExternalId })
+        .first();
+      expect(aliasAfter?.isEmailVerified).toBe(false);
+      expect(aliasAfter?.emails ?? []).not.toContain(attackerEmail);
+
+      // The verification code went to the victim's real inbox, never to the attacker's address.
+      expect(findEmailTo(attackerEmail)).toBeUndefined();
+      expect(findEmailTo(victimEmail)).toBeDefined();
+    });
   });
 
   describe("provider verified the email -> a session is issued directly, no completion step", () => {

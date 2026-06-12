@@ -50,7 +50,7 @@ import { LoginMethod } from "../super-admin/super-admin-types";
 import { TTotpServiceFactory } from "../totp/totp-service";
 import { TUserDALFactory } from "../user/user-dal";
 import { TUserAliasDALFactory } from "../user-alias/user-alias-dal";
-import { ensureSsoAccountVerified } from "../user-alias/user-alias-fns";
+import { ensureSsoAccountVerified, isStaleSsoAlias } from "../user-alias/user-alias-fns";
 import { UserAliasType } from "../user-alias/user-alias-types";
 import { enforceUserLockStatus, getRequiredMfaMethod, verifyCaptcha } from "./auth-fns";
 import {
@@ -1017,8 +1017,22 @@ export const authLoginServiceFactory = ({
         return newUser;
       });
     } else {
+      // Whether this login is trusted to mutate the matched account (link an auth method, overwrite
+      // profile names, change the email / verified flags). The account was resolved either by a
+      // stable provider alias (isNewAlias === false) or by an unverified email fallback (true):
+      //  - alias match: trusted unless the alias is stale, i.e. still-unverified and the asserted
+      //    email matches none of the account's known emails. A legacy/backfilled alias can point at
+      //    another user's account, and a provider-verified email only proves the caller owns *that*
+      //    email, not the aliased account, so a stale alias must never mutate it.
+      //  - email-fallback match: the asserted email IS the account's username, so trust it only when
+      //    the provider verified that email; an unverified assertion doesn't prove control of it.
+      const isTrustedForAccount =
+        existingAlias && !isNewAlias
+          ? !isStaleSsoAlias({ user, userAlias: existingAlias, assertedEmail: sanitizedEmail })
+          : isEmailVerifiedByProvider;
+
       const isLinkingRequired = !user?.authMethods?.includes(authMethod);
-      if (isLinkingRequired) {
+      if (isLinkingRequired && isTrustedForAccount) {
         // we update the names here because upon org invitation, the names are set to be NULL
         // if user is signing up with SSO after invitation, their names should be set based on their SSO profile
         user = await userDAL.updateById(user.id, {
@@ -1032,7 +1046,12 @@ export const authLoginServiceFactory = ({
         });
       }
 
-      if (existingAlias && user.email !== sanitizedEmail) {
+      // A provider-driven email change renames the account and marks the alias verified, so only do
+      // it for a trusted login (see isTrustedForAccount above). For a stale alias this is skipped,
+      // letting the stale-alias guard below decline promotion and fall through to the email-
+      // verification flow (no session). With existingAlias set, isTrustedForAccount reduces to "the
+      // alias is not stale".
+      if (existingAlias && user.email !== sanitizedEmail && isTrustedForAccount) {
         const conflictingUser = await userDAL.findOne({ username: sanitizedEmail });
         if (conflictingUser && conflictingUser.id !== user.id) {
           throw new BadRequestError({
