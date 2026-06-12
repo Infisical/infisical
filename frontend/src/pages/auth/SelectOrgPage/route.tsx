@@ -45,9 +45,18 @@ export const Route = createFileRoute("/_restrict-login-signup/login/select-organ
     // Provider-verified OAuth signups complete server-side and land here directly, bypassing the
     // signup page that normally pushes this conversion event. Fire it before any auto-select
     // redirect so the common single-org case is still counted (cloud only).
-    if (search.signup_completed && isInfisicalCloud()) {
-      window.dataLayer = window.dataLayer || [];
-      window.dataLayer.push({ event: "signup_completed" });
+    if (search.signup_completed) {
+      if (isInfisicalCloud()) {
+        window.dataLayer = window.dataLayer || [];
+        window.dataLayer.push({ event: "signup_completed" });
+      }
+      // Consume the one-shot param so refresh/back-nav can't re-fire the conversion event
+      // (search middlewares never run on the initial document load, so it must be stripped here).
+      throw redirect({
+        to: "/login/select-organization",
+        search: { ...search, signup_completed: undefined },
+        replace: true
+      });
     }
 
     // Skip auto-select for MFA pending or force flag
