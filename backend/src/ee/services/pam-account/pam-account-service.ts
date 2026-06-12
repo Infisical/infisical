@@ -18,6 +18,7 @@ import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 
+import { PamAccountType } from "../pam/pam-enums";
 import {
   checkAccountAccess,
   checkFolderPermission,
@@ -29,7 +30,12 @@ import { validateGatewayAttachment, validateRecordingConnection } from "../pam/p
 import { TPamAccountTemplateDALFactory } from "../pam-account-template/pam-account-template-dal";
 import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
 import { TPamAccountDALFactory } from "./pam-account-dal";
-import { validateConnectionDetails, validateCredentials } from "./pam-account-schemas";
+import {
+  parseInternalMetadata,
+  type TSshInternalMetadata,
+  validateConnectionDetails,
+  validateCredentials
+} from "./pam-account-schemas";
 import {
   TCreatePamAccountDTO,
   TDeletePamAccountDTO,
@@ -402,6 +408,11 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     };
   };
 
+  const decryptInternalMetadata = async (projectId: string, blob: Buffer | null | undefined) => {
+    if (!blob) return null;
+    return decrypt(projectId, blob);
+  };
+
   const getOrCreateSshCa = async ({ accountId, projectId, ...ctx }: TGetPamAccountDTO & TActorContext) => {
     const account = await pamAccountDAL.findByIdWithDetails(accountId);
     if (!account || account.projectId !== projectId) {
@@ -410,20 +421,26 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
 
     await checkAccount(accountId, account.folderId, projectId, ResourcePermissionPamResourceActions.EditAccounts, ctx);
 
-    if (account.caPublicKey) {
-      return { publicKey: account.caPublicKey, created: false };
+    const existing = parseInternalMetadata(
+      account.accountType as PamAccountType,
+      await decryptInternalMetadata(projectId, account.encryptedInternalMetadata)
+    );
+
+    if (existing?.caPublicKey) {
+      return { publicKey: existing.caPublicKey, created: false };
     }
 
     const keyAlgorithm = SshCertKeyAlgorithm.ED25519;
     const { publicKey, privateKey } = await createSshKeyPair(keyAlgorithm);
 
-    const { encryptor } = await getProjectCipher(projectId);
-    const encryptedCaPrivateKey = encryptor({ plainText: Buffer.from(privateKey) }).cipherTextBlob;
+    const metadata: TSshInternalMetadata = {
+      caPublicKey: publicKey,
+      caKeyAlgorithm: keyAlgorithm,
+      caPrivateKey: privateKey
+    };
 
     await pamAccountDAL.updateById(accountId, {
-      encryptedCaPrivateKey,
-      caPublicKey: publicKey,
-      caKeyAlgorithm: keyAlgorithm
+      encryptedInternalMetadata: await encrypt(projectId, metadata)
     });
 
     return { publicKey, created: true, keyAlgorithm };
@@ -434,10 +451,16 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     if (!account) {
       throw new NotFoundError({ message: `Account with ID '${accountId}' not found` });
     }
-    if (!account.caPublicKey) {
+
+    const metadata = parseInternalMetadata(
+      account.accountType as PamAccountType,
+      await decryptInternalMetadata(account.projectId!, account.encryptedInternalMetadata)
+    );
+
+    if (!metadata?.caPublicKey) {
       throw new BadRequestError({ message: "SSH CA has not been configured for this account" });
     }
-    return { publicKey: account.caPublicKey };
+    return { publicKey: metadata.caPublicKey };
   };
 
   return { list, listAccessible, getById, create, update, deleteAccount, getOrCreateSshCa, getSshCaPublicKey };

@@ -402,10 +402,6 @@ export async function up(knex: Knex): Promise<void> {
     t.uuid("templateId").notNullable().alter();
     t.binary("encryptedConnectionDetails").notNullable().alter();
     t.unique(["folderId", "name"]);
-    // SSH CA for certificate-based auth
-    t.binary("encryptedCaPrivateKey").nullable();
-    t.text("caPublicKey").nullable();
-    t.string("caKeyAlgorithm").nullable();
     // Make retained old columns nullable so new accounts can be created without them
     t.string("projectId", 36).nullable().alter();
     t.uuid("resourceId").nullable().alter();

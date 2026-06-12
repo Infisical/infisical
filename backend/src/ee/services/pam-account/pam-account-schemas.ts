@@ -39,9 +39,19 @@ const ACCOUNT_TYPE_CONFIGS = {
         privateKey: z.string().trim().min(1).max(5000)
       }),
       z.object({ authMethod: z.literal("certificate"), username: z.string().trim().min(1) })
-    ])
+    ]),
+    internalMetadata: z.object({
+      caPrivateKey: z.string(),
+      caPublicKey: z.string(),
+      caKeyAlgorithm: z.string()
+    })
   }
-} as const satisfies Partial<Record<PamAccountType, { connectionDetails: z.ZodTypeAny; credentials: z.ZodTypeAny }>>;
+} as const satisfies Partial<
+  Record<
+    PamAccountType,
+    { connectionDetails: z.ZodTypeAny; credentials: z.ZodTypeAny; internalMetadata?: z.ZodTypeAny }
+  >
+>;
 
 type TSupportedAccountType = keyof typeof ACCOUNT_TYPE_CONFIGS;
 
@@ -66,3 +76,13 @@ export const validateCredentials = (accountType: PamAccountType, data: unknown) 
 };
 
 export { ACCOUNT_TYPE_CONFIGS };
+
+export type TSshInternalMetadata = z.infer<(typeof ACCOUNT_TYPE_CONFIGS)[PamAccountType.SSH]["internalMetadata"]>;
+
+export const parseInternalMetadata = (accountType: PamAccountType, data: unknown): TSshInternalMetadata | null => {
+  if (accountType === PamAccountType.SSH) {
+    const result = ACCOUNT_TYPE_CONFIGS[PamAccountType.SSH].internalMetadata.safeParse(data);
+    return result.success ? result.data : null;
+  }
+  return null;
+};

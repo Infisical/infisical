@@ -32,10 +32,7 @@ export const PamAccountsSchema = z.object({
   encryptedInternalMetadata: zodBuffer.nullable().optional(),
   gatewayId: z.string().uuid().nullable().optional(),
   gatewayPoolId: z.string().uuid().nullable().optional(),
-  recordingConnectionId: z.string().uuid().nullable().optional(),
-  encryptedCaPrivateKey: zodBuffer.nullable().optional(),
-  caPublicKey: z.string().nullable().optional(),
-  caKeyAlgorithm: z.string().nullable().optional()
+  recordingConnectionId: z.string().uuid().nullable().optional()
 });
 
 export type TPamAccounts = z.infer<typeof PamAccountsSchema>;

@@ -8,7 +8,7 @@ import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 
-import { PamSessionStatus } from "../pam/pam-enums";
+import { PamAccountType, PamSessionStatus } from "../pam/pam-enums";
 import {
   checkAccountAccess,
   getViewSessionsResourceIds,
@@ -16,6 +16,7 @@ import {
   verifyProductMembership
 } from "../pam/pam-permission";
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
+import { parseInternalMetadata } from "../pam-account/pam-account-schemas";
 import { PamRecordingStorageBackend } from "../pam-session-recording/pam-recording-enums";
 import { generateSessionRecordingSecrets } from "../pam-session-recording/pam-recording-secrets";
 import { ResourcePermissionPamResourceActions } from "../permission/resource-permission";
@@ -120,30 +121,29 @@ export const pamSessionServiceFactory = ({
     const connectionDetails = await decrypt(session.projectId, account.encryptedConnectionDetails);
     const credentials = await decrypt(session.projectId, account.encryptedCredentials);
 
-    if (credentials.authMethod === "certificate" && account.encryptedCaPrivateKey) {
-      const { decryptor } = await kmsService.createCipherPairWithDataKey({
-        type: KmsDataKey.SecretManager,
-        projectId: session.projectId
-      });
-      const caPrivateKey = decryptor({
-        cipherTextBlob: account.encryptedCaPrivateKey
-      }).toString("utf-8");
+    if (credentials.authMethod === "certificate" && account.encryptedInternalMetadata) {
+      const internalMetadata = parseInternalMetadata(
+        account.accountType as PamAccountType,
+        await decrypt(session.projectId, account.encryptedInternalMetadata)
+      );
 
-      const keyAlgorithm = (account.caKeyAlgorithm as SshCertKeyAlgorithm) || SshCertKeyAlgorithm.ED25519;
-      const { publicKey: clientPublicKey, privateKey: clientPrivateKey } = await createSshKeyPair(keyAlgorithm);
+      if (internalMetadata?.caPrivateKey) {
+        const keyAlgorithm = (internalMetadata.caKeyAlgorithm as SshCertKeyAlgorithm) || SshCertKeyAlgorithm.ED25519;
+        const { publicKey: clientPublicKey, privateKey: clientPrivateKey } = await createSshKeyPair(keyAlgorithm);
 
-      const username = credentials.username as string;
-      const { signedPublicKey } = await createSshCert({
-        caPrivateKey,
-        clientPublicKey,
-        keyId: `pam-session-${session.id}`,
-        principals: [username],
-        requestedTtl: "8h",
-        certType: SshCertType.USER
-      });
+        const username = credentials.username as string;
+        const { signedPublicKey } = await createSshCert({
+          caPrivateKey: internalMetadata.caPrivateKey,
+          clientPublicKey,
+          keyId: `pam-session-${session.id}`,
+          principals: [username],
+          requestedTtl: "8h",
+          certType: SshCertType.USER
+        });
 
-      credentials.privateKey = clientPrivateKey;
-      credentials.certificate = signedPublicKey;
+        credentials.privateKey = clientPrivateKey;
+        credentials.certificate = signedPublicKey;
+      }
     }
 
     const sessionStarted = session.status === PamSessionStatus.Starting;
