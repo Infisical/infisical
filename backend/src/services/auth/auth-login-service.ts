@@ -1020,15 +1020,20 @@ export const authLoginServiceFactory = ({
       // Whether this login is trusted to mutate the matched account (link an auth method, overwrite
       // profile names, change the email / verified flags). The account was resolved either by a
       // stable provider alias (isNewAlias === false) or by an unverified email fallback (true):
-      //  - alias match: trusted unless the alias is stale, i.e. still-unverified and the asserted
-      //    email matches none of the account's known emails. A legacy/backfilled alias can point at
-      //    another user's account, and a provider-verified email only proves the caller owns *that*
-      //    email, not the aliased account, so a stale alias must never mutate it.
+      //  - alias match: trusted only when the alias is not stale AND control of the email is proven
+      //    in this login, i.e. the alias is already verified or the provider verified the asserted
+      //    email. A still-unverified alias is NOT trusted on a matching email alone: an attacker can
+      //    plant such an alias (email-fallback backfill) under their own externalId for the victim's
+      //    email, and knowing the email is not proof of owning it. (Stale = still-unverified and the
+      //    asserted email matches none of the account's known emails; even a provider-verified email
+      //    proves only that the caller owns *that* email, not the aliased account, so a stale alias
+      //    must never mutate it.)
       //  - email-fallback match: the asserted email IS the account's username, so trust it only when
       //    the provider verified that email; an unverified assertion doesn't prove control of it.
       const isTrustedForAccount =
         existingAlias && !isNewAlias
-          ? !isStaleSsoAlias({ user, userAlias: existingAlias, assertedEmail: sanitizedEmail })
+          ? !isStaleSsoAlias({ user, userAlias: existingAlias, assertedEmail: sanitizedEmail }) &&
+            (existingAlias.isEmailVerified || isEmailVerifiedByProvider)
           : isEmailVerifiedByProvider;
 
       const isLinkingRequired = !user?.authMethods?.includes(authMethod);
@@ -1049,8 +1054,8 @@ export const authLoginServiceFactory = ({
       // A provider-driven email change renames the account and marks the alias verified, so only do
       // it for a trusted login (see isTrustedForAccount above). For a stale alias this is skipped,
       // letting the stale-alias guard below decline promotion and fall through to the email-
-      // verification flow (no session). With existingAlias set, isTrustedForAccount reduces to "the
-      // alias is not stale".
+      // verification flow (no session). With existingAlias set, isTrustedForAccount requires the
+      // alias to be non-stale AND already verified or provider-verified in this login.
       if (existingAlias && user.email !== sanitizedEmail && isTrustedForAccount) {
         const conflictingUser = await userDAL.findOne({ username: sanitizedEmail });
         if (conflictingUser && conflictingUser.id !== user.id) {
@@ -1109,20 +1114,12 @@ export const authLoginServiceFactory = ({
       }
     }
 
-    // Skip our own email verification when the provider already verified the email, or when the
-    // user previously verified it through this provider (persisted user-level flag). The user-level
-    // flag is per account, not per provider-identity, so it is only trusted for an existing alias: a
-    // brand-new alias (email-fallback backfill) for a different externalId must prove the email via
-    // the provider. Otherwise a new provider account asserting an existing user's provider-unverified
-    // email would inherit the flag and mint a session as that user.
-    let isAliasVerified = false;
-    if (authMethod === AuthMethod.GOOGLE) {
-      isAliasVerified = isEmailVerifiedByProvider || (!isNewAlias && Boolean(user.isGoogleVerified));
-    } else if (authMethod === AuthMethod.GITHUB) {
-      isAliasVerified = isEmailVerifiedByProvider || (!isNewAlias && Boolean(user.isGitHubVerified));
-    } else if (authMethod === AuthMethod.GITLAB) {
-      isAliasVerified = isEmailVerifiedByProvider || (!isNewAlias && Boolean(user.isGitLabVerified));
-    }
+    // Promote an as-yet-unverified alias ONLY when the provider attests the email in THIS login. The
+    // account-level isXVerified flag is per account, not per provider-identity, so it must not promote
+    // an unverified alias: an attacker can plant an unverified alias (email-fallback backfill) for the
+    // victim's email under their own externalId, and inheriting the flag on a later login would mint a
+    // session as the victim. An already-verified alias stays trusted via existingAlias.isEmailVerified.
+    const isAliasVerified = isEmailVerifiedByProvider;
     // Self-healing backfill: create alias for existing users found by email fallback
     if (isNewAlias) {
       try {
