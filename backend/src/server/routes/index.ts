@@ -1701,6 +1701,7 @@ export const registerRoutes = async (
   const pamSessionChunkService = pamSessionChunkServiceFactory({
     pamSessionDAL,
     pamSessionEventChunkDAL,
+    pamAccountDAL,
     permissionService,
     kmsService
   });

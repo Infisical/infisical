@@ -1,6 +1,3 @@
-import { ForbiddenError } from "@casl/ability";
-
-import { ActionProjectType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -9,8 +6,10 @@ import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 import { PamSessionStatus } from "../pam/pam-enums";
+import { checkAccountAccess, TActorContext } from "../pam/pam-permission";
+import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
 import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
-import { ProjectPermissionPamSessionActions, ProjectPermissionSub } from "../permission/project-permission";
+import { ResourcePermissionPamResourceActions } from "../permission/resource-permission";
 import { TPamSessionEventChunkDALFactory } from "./pam-recording-chunk-dal";
 import { PAM_RECORDING_MAX_CHUNK_BYTES } from "./pam-recording-constants";
 import { PamRecordingStorageBackend } from "./pam-recording-enums";
@@ -21,7 +20,8 @@ import { buildExternalChunkObjectKey, TPamRecordingResolvedConfig } from "./pam-
 type TPamSessionChunkServiceFactoryDep = {
   pamSessionDAL: TPamSessionDALFactory;
   pamSessionEventChunkDAL: TPamSessionEventChunkDALFactory;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  pamAccountDAL: Pick<TPamAccountDALFactory, "findByIdWithDetails">;
+  permissionService: Pick<TPermissionServiceFactory, "getResourcePermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 };
 
@@ -39,9 +39,39 @@ const resolveRecordingConfig = async (projectId: string): Promise<TPamRecordingR
 export const pamSessionChunkServiceFactory = ({
   pamSessionDAL,
   pamSessionEventChunkDAL,
+  pamAccountDAL,
   permissionService,
   kmsService
 }: TPamSessionChunkServiceFactoryDep) => {
+  const checkSessionViewAccess = async (
+    session: { accountId?: string | null; projectId: string },
+    actor: OrgServiceActor
+  ) => {
+    if (!session.accountId) {
+      throw new NotFoundError({ message: "Session has no associated account" });
+    }
+
+    const account = await pamAccountDAL.findByIdWithDetails(session.accountId);
+    if (!account) {
+      throw new NotFoundError({ message: "Account not found" });
+    }
+
+    const ctx: TActorContext = {
+      actorId: actor.id,
+      actor: actor.type,
+      actorOrgId: actor.orgId,
+      actorAuthMethod: actor.authMethod
+    };
+
+    await checkAccountAccess(
+      permissionService,
+      session.accountId,
+      account.folderId,
+      session.projectId,
+      ResourcePermissionPamResourceActions.ViewSessions,
+      ctx
+    );
+  };
   const requestPresignedPut = async (
     {
       sessionId,
@@ -219,18 +249,7 @@ export const pamSessionChunkServiceFactory = ({
     const session = await pamSessionDAL.findById(sessionId);
     if (!session) throw new NotFoundError({ message: `Session ${sessionId} not found` });
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorAuthMethod: actor.authMethod,
-      actorId: actor.id,
-      actorOrgId: actor.orgId,
-      projectId: session.projectId,
-      actionProjectType: ActionProjectType.PAM
-    });
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionPamSessionActions.Read,
-      ProjectPermissionSub.PamSessions
-    );
+    await checkSessionViewAccess(session, actor);
 
     const sessionComplete = session.status !== PamSessionStatus.Active && session.status !== PamSessionStatus.Starting;
 
@@ -292,18 +311,7 @@ export const pamSessionChunkServiceFactory = ({
     const session = await pamSessionDAL.findById(sessionId);
     if (!session) throw new NotFoundError({ message: `Session ${sessionId} not found` });
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorAuthMethod: actor.authMethod,
-      actorId: actor.id,
-      actorOrgId: actor.orgId,
-      projectId: session.projectId,
-      actionProjectType: ActionProjectType.PAM
-    });
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionPamSessionActions.Read,
-      ProjectPermissionSub.PamSessions
-    );
+    await checkSessionViewAccess(session, actor);
 
     const chunk = await pamSessionEventChunkDAL.findByChunkIndex(sessionId, chunkIndex);
     if (!chunk) throw new NotFoundError({ message: `Chunk ${chunkIndex} not found` });
