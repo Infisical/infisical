@@ -416,7 +416,14 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
     config: { rateLimit: readLimit },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      return server.services.pamAccount.getSshCaPublicKey(req.params.accountId);
+      return server.services.pamAccount.getSshCaPublicKey({
+        accountId: req.params.accountId,
+        projectId: req.internalPamProjectId,
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod
+      });
     }
   });
 
@@ -435,7 +442,14 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
     config: { rateLimit: readLimit },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req, reply) => {
-      const { publicKey: caPublicKey } = await server.services.pamAccount.getSshCaPublicKey(req.params.accountId);
+      const { publicKey: caPublicKey } = await server.services.pamAccount.getSshCaPublicKey({
+        accountId: req.params.accountId,
+        projectId: req.internalPamProjectId,
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod
+      });
 
       const setupScript = `#!/bin/bash
 set -e

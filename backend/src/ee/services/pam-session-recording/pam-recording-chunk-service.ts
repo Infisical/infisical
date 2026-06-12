@@ -82,7 +82,7 @@ export const pamSessionChunkServiceFactory = ({
     if (!config || config.backend === PamRecordingStorageBackend.Postgres) {
       throw new BadRequestError({
         message:
-          "Project is not configured for object-storage recordings. Gateway should POST ciphertext to /chunks instead."
+          "Account is not configured for object-storage recordings. Gateway should POST ciphertext to /chunks instead."
       });
     }
 

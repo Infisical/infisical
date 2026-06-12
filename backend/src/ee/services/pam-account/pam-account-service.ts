@@ -446,15 +446,17 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     return { publicKey, created: true, keyAlgorithm };
   };
 
-  const getSshCaPublicKey = async (accountId: string) => {
+  const getSshCaPublicKey = async ({ accountId, projectId, ...ctx }: TGetPamAccountDTO & TActorContext) => {
     const account = await pamAccountDAL.findByIdWithDetails(accountId);
-    if (!account) {
+    if (!account || account.projectId !== projectId) {
       throw new NotFoundError({ message: `Account with ID '${accountId}' not found` });
     }
 
+    await checkAccount(accountId, account.folderId, projectId, ResourcePermissionPamResourceActions.EditAccounts, ctx);
+
     const metadata = parseInternalMetadata(
       account.accountType as PamAccountType,
-      await decryptInternalMetadata(account.projectId!, account.encryptedInternalMetadata)
+      await decryptInternalMetadata(projectId, account.encryptedInternalMetadata)
     );
 
     if (!metadata?.caPublicKey) {
