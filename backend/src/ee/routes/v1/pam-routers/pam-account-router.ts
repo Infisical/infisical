@@ -4,6 +4,10 @@ import { PamAccountsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { PamAccountType } from "@app/ee/services/pam/pam-enums";
 import { ACCOUNT_TYPE_CONFIGS } from "@app/ee/services/pam-account/pam-account-schemas";
+import {
+  PamTemplateAccessPolicySchema,
+  PamTemplateSettingsSchema
+} from "@app/ee/services/pam-account-template/pam-account-template-schemas";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
@@ -33,6 +37,22 @@ const SanitizedAccountListItemSchema = BaseAccountFields.extend({
   folderName: z.string().nullable().optional(),
   templateName: z.string(),
   accountType: z.string()
+});
+
+type TConnectionDetailsSchema = (typeof ACCOUNT_TYPE_CONFIGS)[keyof typeof ACCOUNT_TYPE_CONFIGS]["connectionDetails"];
+
+const ConnectionDetailsSchema = z.union(
+  Object.values(ACCOUNT_TYPE_CONFIGS).map((c) => c.connectionDetails) as [
+    TConnectionDetailsSchema,
+    TConnectionDetailsSchema,
+    ...TConnectionDetailsSchema[]
+  ]
+);
+
+const SanitizedAccountDetailSchema = SanitizedAccountListItemSchema.extend({
+  templateAccessPolicy: PamTemplateAccessPolicySchema.nullable().optional(),
+  templateSettings: PamTemplateSettingsSchema.nullable().optional(),
+  connectionDetails: ConnectionDetailsSchema
 });
 
 const toPascalCase = (s: string) =>
@@ -333,11 +353,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
       params: z.object({ accountId: z.string().uuid().describe("The ID of the account") }),
       response: {
         200: z.object({
-          account: SanitizedAccountListItemSchema.extend({
-            templateAccessPolicy: z.unknown().nullable().optional(),
-            templateSettings: z.unknown().nullable().optional(),
-            connectionDetails: z.record(z.unknown())
-          })
+          account: SanitizedAccountDetailSchema
         })
       }
     },
@@ -352,7 +368,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod
       });
-      return { account };
+      return { account } as unknown as { account: z.infer<typeof SanitizedAccountDetailSchema> };
     }
   });
 
