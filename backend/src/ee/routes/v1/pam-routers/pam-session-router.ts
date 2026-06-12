@@ -274,6 +274,10 @@ export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => 
       }
     },
     wsHandler: async (connection: WebSocket, req) => {
+      const PRE_AUTH_MAX_MESSAGES = 10;
+      const PRE_AUTH_MAX_BYTES = 64 * 1024;
+      let preAuthBytes = 0;
+
       const preAuthMessages: { data: Buffer; isBinary: boolean }[] = [];
       const preAuthHandler = (raw: Buffer | ArrayBuffer | Buffer[], isBinary: boolean) => {
         let buf: Buffer;
@@ -284,6 +288,14 @@ export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => 
         } else {
           buf = Buffer.from(raw);
         }
+
+        preAuthBytes += buf.byteLength;
+        if (preAuthMessages.length >= PRE_AUTH_MAX_MESSAGES || preAuthBytes > PRE_AUTH_MAX_BYTES) {
+          connection.off("message", preAuthHandler);
+          connection.close(4008, "Pre-auth buffer exceeded");
+          return;
+        }
+
         preAuthMessages.push({ data: buf, isBinary });
       };
       connection.on("message", preAuthHandler);
