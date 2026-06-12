@@ -50,6 +50,7 @@ import { LoginMethod } from "../super-admin/super-admin-types";
 import { TTotpServiceFactory } from "../totp/totp-service";
 import { TUserDALFactory } from "../user/user-dal";
 import { TUserAliasDALFactory } from "../user-alias/user-alias-dal";
+import { ensureSsoAccountVerified } from "../user-alias/user-alias-fns";
 import { UserAliasType } from "../user-alias/user-alias-types";
 import { enforceUserLockStatus, getRequiredMfaMethod, verifyCaptcha } from "./auth-fns";
 import {
@@ -862,6 +863,10 @@ export const authLoginServiceFactory = ({
       }
     }
 
+    // Captured before any mutation so we can tell whether this login is what completed the
+    // user's signup (used by the caller to fire signup telemetry exactly once per account).
+    const wasUserAcceptedBeforeLogin = Boolean(user?.isAccepted);
+
     const serverCfg = await getServerCfg();
 
     if (serverCfg.enabledLoginMethods && user) {
@@ -934,8 +939,9 @@ export const authLoginServiceFactory = ({
             username: sanitizedEmail,
             email: sanitizedEmail,
             // when the provider already verified the email we skip our own verification step
+            // and complete the signup immediately (same as the SAML/OIDC enforced flow)
             isEmailVerified: isEmailVerifiedByProvider,
-            isAccepted: false,
+            isAccepted: isEmailVerifiedByProvider,
             ...(authMethod === AuthMethod.GOOGLE && { isGoogleVerified: isEmailVerifiedByProvider }),
             ...(authMethod === AuthMethod.GITHUB && { isGitHubVerified: isEmailVerifiedByProvider }),
             ...(authMethod === AuthMethod.GITLAB && { isGitLabVerified: isEmailVerifiedByProvider }),
@@ -1043,7 +1049,7 @@ export const authLoginServiceFactory = ({
             tx
           );
 
-          await userAliasDAL.updateById(
+          existingAlias = await userAliasDAL.updateById(
             existingAlias.id,
             {
               emails: [sanitizedEmail],
@@ -1087,33 +1093,47 @@ export const authLoginServiceFactory = ({
       isAliasVerified = isEmailVerifiedByProvider || Boolean(user.isGitLabVerified);
     }
     // Self-healing backfill: create alias for existing users found by email fallback
-    let aliasId = existingAlias?.id;
     if (isNewAlias) {
       try {
-        const newAlias = await userAliasDAL.create({
+        existingAlias = await userAliasDAL.create({
           userId: user.id,
           aliasType,
           externalId: providerUserId,
           emails: [sanitizedEmail],
           isEmailVerified: isAliasVerified
         });
-        aliasId = newAlias.id;
       } catch (err) {
-        // Swallow duplicate key errors from the unique index (race condition: concurrent login already created the alias)
+        // Duplicate key error from the unique index (race condition: concurrent login already
+        // created the alias), so recover the existing row instead
         if (err instanceof DatabaseError && (err.error as { code: string })?.code === "23505") {
           logger.warn(`OAuth alias backfill for user ${user.id} skipped: alias already exists`);
+          existingAlias = await userAliasDAL.findOne({ externalId: providerUserId, aliasType });
         } else {
           throw err;
         }
       }
     }
 
+    // Provider attested the email (or it was verified previously): promote the user + alias to
+    // verified/accepted so a real session is issued, exactly like the SAML/OIDC enforced flow.
+    // The alias.isEmailVerified term also heals the legacy "alias verified but user never
+    // accepted" state, which would otherwise dead-end (no code is ever issued for it below).
+    if (existingAlias && (isAliasVerified || existingAlias.isEmailVerified)) {
+      ({ user, userAlias: existingAlias } = await ensureSsoAccountVerified({
+        user,
+        userAlias: existingAlias,
+        assertedEmail: sanitizedEmail,
+        userDAL,
+        userAliasDAL
+      }));
+    }
+
     // Send verification email for OAuth providers that haven't verified the user's email
-    if (!isAliasVerified && user.email && aliasId) {
+    if (user.email && existingAlias && !existingAlias.isEmailVerified) {
       const verificationCode = await tokenService.createTokenForUser({
         type: TokenType.TOKEN_EMAIL_VERIFICATION,
         userId: user.id,
-        aliasId
+        aliasId: existingAlias.id
       });
 
       await smtpService.sendMail({
@@ -1129,15 +1149,29 @@ export const authLoginServiceFactory = ({
     const callbackResult = await processProviderCallback({
       user,
       authMethod,
-      isEmailVerified: isAliasVerified,
-      aliasId,
+      // alias-based on purpose: if the promotion above was declined (stale alias) we must fall
+      // back to the signup/verification flow rather than mint a session off a user-level flag
+      isEmailVerified: Boolean(existingAlias?.isEmailVerified),
+      aliasId: existingAlias?.id,
       ip,
       userAgent,
       organizationId: orgId || undefined,
       callbackPort
     });
 
-    return { ...callbackResult, user: { ...user, hashedPassword: null }, orgId, orgName };
+    // True when this login is the one that completed the account (fresh provider-verified
+    // signup, resumed signup, or an invited user's first verified OAuth login); the caller
+    // uses it to fire signup telemetry that complete-account would otherwise have sent.
+    const didCompleteSignup = !wasUserAcceptedBeforeLogin && Boolean(user.isAccepted);
+
+    return {
+      ...callbackResult,
+      user: { ...user, hashedPassword: null },
+      didCompleteSignup,
+      authMethod,
+      orgId,
+      orgName
+    };
   };
 
   /*

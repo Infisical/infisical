@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import ReactCodeInput from "react-code-input";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
@@ -79,10 +79,10 @@ export const SignupSsoPage = () => {
     SecurityClient.setSignupToken(token);
   }, [token]);
 
-  const completeSignup = async (verificationCode: string) => {
+  const handleSubmit = async () => {
     const { token: accessToken } = await completeAccountSignup.mutateAsync({
       type: "alias",
-      code: verificationCode,
+      code,
       hubspotUtk: getHubSpotUtk()
     });
 
@@ -109,28 +109,6 @@ export const SignupSsoPage = () => {
     }
   };
 
-  const handleSubmit = async () => {
-    await completeSignup(code);
-  };
-
-  // When the OAuth provider already verified the email, no code is issued — finish signup automatically.
-  const hasAutoCompleted = useRef(false);
-  const autoCompleteSignup = () =>
-    completeSignup("").catch(() => {
-      createNotification({
-        text: "Failed to complete sign-up. Please try again.",
-        type: "error"
-      });
-    });
-
-  useEffect(() => {
-    if (decoded.isEmailVerified && !hasAutoCompleted.current) {
-      hasAutoCompleted.current = true;
-      autoCompleteSignup();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [decoded.isEmailVerified]);
-
   const handleResendCode = async () => {
     try {
       await sendEmailVerificationCode(token);
@@ -145,13 +123,6 @@ export const SignupSsoPage = () => {
       });
     }
   };
-
-  let cardTitle = "We've sent a verification code to";
-  if (decoded.isEmailVerified) {
-    cardTitle = completeAccountSignup.isError
-      ? "Couldn't finish your sign-up"
-      : "Finishing your sign-up";
-  }
 
   return (
     <div className="relative flex max-h-screen min-h-screen flex-col overflow-y-auto bg-linear-to-tr from-card via-bunker-900 to-card px-4">
@@ -174,92 +145,65 @@ export const SignupSsoPage = () => {
             <Card className="mx-auto w-full max-w-md items-stretch gap-0 p-6">
               <CardHeader className="mb-2 gap-2">
                 <CardTitle className="bg-linear-to-b from-white to-bunker-200 bg-clip-text text-center text-[1.55rem] font-medium text-transparent">
-                  {cardTitle}
+                  We&apos;ve sent a verification code to
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-md my-1 flex justify-center font-medium text-foreground">
                   {decoded.email}
                 </p>
-                {decoded.isEmailVerified ? (
-                  <>
-                    <p className="mt-4 flex justify-center text-center text-sm text-label">
-                      {completeAccountSignup.isError
-                        ? "We couldn't finish setting up your account. Please try again."
-                        : "Your email is already verified. Just a moment while we finish setting up your account…"}
-                    </p>
-                    {completeAccountSignup.isError && (
-                      <div className="mt-4 w-full">
-                        <Button
-                          type="button"
-                          onClick={autoCompleteSignup}
-                          variant="project"
-                          size="lg"
-                          isFullWidth
-                          isPending={completeAccountSignup.isPending}
-                          isDisabled={completeAccountSignup.isPending}
-                        >
-                          Try again
-                        </Button>
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <>
-                    <div className="mx-auto hidden w-max min-w-[20rem] md:block">
-                      <ReactCodeInput
-                        name=""
-                        inputMode="tel"
-                        type="text"
-                        fields={6}
-                        onChange={setCode}
-                        {...codeInputStyle}
-                        className="code-input-v3 mt-6 mb-2"
-                      />
-                    </div>
-                    <div className="mx-auto mt-4 block w-max md:hidden">
-                      <ReactCodeInput
-                        name=""
-                        inputMode="tel"
-                        type="text"
-                        fields={6}
-                        onChange={setCode}
-                        {...codeInputStylePhone}
-                        className="code-input-v3 mt-2 mb-2"
-                      />
-                    </div>
-                    {completeAccountSignup.isError && (
-                      <FieldError>Oops. Your code is wrong. Please try again.</FieldError>
-                    )}
-                    <div className="mt-4 w-full">
-                      <Button
-                        type="submit"
-                        onClick={handleSubmit}
-                        variant="project"
-                        size="lg"
-                        isFullWidth
-                        isPending={completeAccountSignup.isPending}
-                        isDisabled={completeAccountSignup.isPending}
-                      >
-                        Verify
-                      </Button>
-                    </div>
-                    <div className="mt-6 flex flex-col items-center gap-2 text-xs text-label">
-                      <div className="flex flex-row items-baseline gap-1">
-                        <button
-                          disabled={completeAccountSignup.isPending}
-                          onClick={handleResendCode}
-                          type="button"
-                        >
-                          <span className="cursor-pointer duration-200 hover:text-foreground hover:underline hover:decoration-project/45 hover:underline-offset-2">
-                            Don&apos;t see the code? Resend
-                          </span>
-                        </button>
-                      </div>
-                      <p className="text-label">Make sure to check your spam inbox.</p>
-                    </div>
-                  </>
+                <div className="mx-auto hidden w-max min-w-[20rem] md:block">
+                  <ReactCodeInput
+                    name=""
+                    inputMode="tel"
+                    type="text"
+                    fields={6}
+                    onChange={setCode}
+                    {...codeInputStyle}
+                    className="code-input-v3 mt-6 mb-2"
+                  />
+                </div>
+                <div className="mx-auto mt-4 block w-max md:hidden">
+                  <ReactCodeInput
+                    name=""
+                    inputMode="tel"
+                    type="text"
+                    fields={6}
+                    onChange={setCode}
+                    {...codeInputStylePhone}
+                    className="code-input-v3 mt-2 mb-2"
+                  />
+                </div>
+                {completeAccountSignup.isError && (
+                  <FieldError>Oops. Your code is wrong. Please try again.</FieldError>
                 )}
+                <div className="mt-4 w-full">
+                  <Button
+                    type="submit"
+                    onClick={handleSubmit}
+                    variant="project"
+                    size="lg"
+                    isFullWidth
+                    isPending={completeAccountSignup.isPending}
+                    isDisabled={completeAccountSignup.isPending}
+                  >
+                    Verify
+                  </Button>
+                </div>
+                <div className="mt-6 flex flex-col items-center gap-2 text-xs text-label">
+                  <div className="flex flex-row items-baseline gap-1">
+                    <button
+                      disabled={completeAccountSignup.isPending}
+                      onClick={handleResendCode}
+                      type="button"
+                    >
+                      <span className="cursor-pointer duration-200 hover:text-foreground hover:underline hover:decoration-project/45 hover:underline-offset-2">
+                        Don&apos;t see the code? Resend
+                      </span>
+                    </button>
+                  </div>
+                  <p className="text-label">Make sure to check your spam inbox.</p>
+                </div>
               </CardContent>
             </Card>
           </div>

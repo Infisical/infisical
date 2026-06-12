@@ -6,6 +6,7 @@ import { Knex } from "knex";
 import { TableName } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
 import { AuthMethod, AuthTokenType, ProviderAuthResult } from "@app/services/auth/auth-type";
+import { UserAliasType } from "@app/services/user-alias/user-alias-types";
 
 import { TTestSmtpService } from "../../mocks/smtp";
 
@@ -21,14 +22,20 @@ const findEmailTo = (recipient: string) =>
 
 // Drives the OAuth login the way each passport strategy does, varying only the provider's
 // email-verification signal. authMethod defaults to Google; pass GITHUB/GITLAB to assert the
-// per-provider flag is set.
-const oauthLogin = (opts: { email: string; isEmailVerifiedByProvider: boolean; authMethod?: AuthMethod }) =>
+// per-provider flag is set. Pin providerUserId to simulate repeat logins from the same
+// provider account.
+const oauthLogin = (opts: {
+  email: string;
+  isEmailVerifiedByProvider: boolean;
+  authMethod?: AuthMethod;
+  providerUserId?: string;
+}) =>
   getServices().login.oauth2Login({
     email: opts.email,
     firstName: "OAuth",
     lastName: "Test",
     authMethod: opts.authMethod ?? AuthMethod.GOOGLE,
-    providerUserId: `oauth-${crypto.randomUUID()}`,
+    providerUserId: opts.providerUserId ?? `oauth-${crypto.randomUUID()}`,
     isEmailVerifiedByProvider: opts.isEmailVerifiedByProvider,
     ip: "127.0.0.1",
     userAgent: "test-agent"
@@ -41,6 +48,9 @@ const completeAccount = (signupToken: string, code: string) =>
     headers: { authorization: `Bearer ${signupToken}` },
     body: { type: "alias", code }
   });
+
+const findUser = (id: string) => getDb()(TableName.Users).where({ id }).first();
+const findAlias = (userId: string) => getDb()(TableName.UserAliases).where({ userId }).first();
 
 describe("Auth OAuth Signup V3 (provider-attested email verification)", () => {
   const createdUserIds: string[] = [];
@@ -66,24 +76,27 @@ describe("Auth OAuth Signup V3 (provider-attested email verification)", () => {
 
       expect(result.result).toBe(ProviderAuthResult.SIGNUP_REQUIRED);
       expect(result.signupToken).toBeDefined();
+      expect(result.didCompleteSignup).toBe(false);
       createdUserIds.push(result.user.id);
 
       const decoded = decode(result.signupToken) as Record<string, unknown>;
       expect(decoded.authTokenType).toBe(AuthTokenType.SIGNUP_TOKEN);
       expect(decoded.isEmailVerified).toBe(false);
+      expect(decoded.aliasId).toBeDefined();
 
       // a verification code email must have been sent
       const verificationEmail = findEmailTo(email);
       expect(verificationEmail).toBeDefined();
       expect((verificationEmail?.substitutions as Record<string, string>)?.code).toBeDefined();
 
-      // and the user is persisted as unverified
-      const user = await getDb()(TableName.Users).where({ id: result.user.id }).first();
+      // and the user is persisted as unverified and not accepted
+      const user = await findUser(result.user.id);
       expect(user?.isEmailVerified).toBe(false);
+      expect(user?.isAccepted).toBe(false);
       expect(user?.isGoogleVerified ?? false).toBe(false);
     });
 
-    test("completion rejects a wrong code and accepts the emailed code", async () => {
+    test("completion rejects wrong and empty codes and accepts the emailed code", async () => {
       const email = `oauth-code-${crypto.randomUUID()}@localhost.local`;
       const result = await oauthLogin({ email, isEmailVerifiedByProvider: false });
       createdUserIds.push(result.user.id);
@@ -94,47 +107,74 @@ describe("Auth OAuth Signup V3 (provider-attested email verification)", () => {
       const wrong = await completeAccount(result.signupToken, "000000");
       expect(wrong.statusCode).toBeGreaterThanOrEqual(400);
 
+      // an empty code must never bypass verification
+      const empty = await completeAccount(result.signupToken, "");
+      expect(empty.statusCode).toBeGreaterThanOrEqual(400);
+
       const ok = await completeAccount(result.signupToken, code);
       expect(ok.statusCode).toBe(200);
 
-      const user = await getDb()(TableName.Users).where({ id: result.user.id }).first();
+      const user = await findUser(result.user.id);
       expect(user?.isEmailVerified).toBe(true);
       expect(user?.isAccepted).toBe(true);
     });
+
+    test("repeat login after completion returns a session without a signup signal", async () => {
+      const email = `oauth-repeat-${crypto.randomUUID()}@localhost.local`;
+      const providerUserId = `oauth-${crypto.randomUUID()}`;
+
+      const first = await oauthLogin({ email, isEmailVerifiedByProvider: false, providerUserId });
+      createdUserIds.push(first.user.id);
+      const code = (findEmailTo(email)?.substitutions as Record<string, string>)?.code;
+      expect(code).toBeDefined();
+      const completion = await completeAccount(first.signupToken, code);
+      expect(completion.statusCode).toBe(200);
+
+      const second = await oauthLogin({ email, isEmailVerifiedByProvider: false, providerUserId });
+      expect(second.result).toBe(ProviderAuthResult.SESSION);
+      expect(second.didCompleteSignup).toBe(false);
+    });
   });
 
-  describe("provider verified the email -> our verification is skipped", () => {
-    test("new user gets a verified token, no verification email, and a verified user record", async () => {
+  describe("provider verified the email -> a session is issued directly, no completion step", () => {
+    test("new user gets a session, a fully accepted account, and no verification email", async () => {
       const email = `oauth-verified-${crypto.randomUUID()}@localhost.local`;
 
       const result = await oauthLogin({ email, isEmailVerifiedByProvider: true });
-
-      expect(result.result).toBe(ProviderAuthResult.SIGNUP_REQUIRED);
       createdUserIds.push(result.user.id);
 
-      const decoded = decode(result.signupToken) as Record<string, unknown>;
-      expect(decoded.isEmailVerified).toBe(true);
+      expect(result.result).toBe(ProviderAuthResult.SESSION);
+      expect(typeof result.tokens.access).toBe("string");
+      expect(typeof result.tokens.refresh).toBe("string");
+      expect(result.signupToken).toBeUndefined();
+      expect(result.didCompleteSignup).toBe(true);
+
+      const decodedAccess = decode(result.tokens.access) as Record<string, unknown>;
+      expect(decodedAccess.authTokenType).toBe(AuthTokenType.ACCESS_TOKEN);
 
       // no verification email should have been sent
       expect(findEmailTo(email)).toBeUndefined();
 
-      const user = await getDb()(TableName.Users).where({ id: result.user.id }).first();
-      expect(user?.isEmailVerified).toBe(true);
-      expect(user?.isGoogleVerified).toBe(true);
-    });
-
-    test("completion succeeds with no code (validation skipped) and accepts the account", async () => {
-      const email = `oauth-verified-complete-${crypto.randomUUID()}@localhost.local`;
-      const result = await oauthLogin({ email, isEmailVerifiedByProvider: true });
-      createdUserIds.push(result.user.id);
-
-      const res = await completeAccount(result.signupToken, "");
-      expect(res.statusCode).toBe(200);
-      expect(res.json()).toHaveProperty("token");
-
-      const user = await getDb()(TableName.Users).where({ id: result.user.id }).first();
+      const user = await findUser(result.user.id);
       expect(user?.isAccepted).toBe(true);
       expect(user?.isEmailVerified).toBe(true);
+      expect(user?.isGoogleVerified).toBe(true);
+
+      const alias = await findAlias(result.user.id);
+      expect(alias?.isEmailVerified).toBe(true);
+    });
+
+    test("repeat verified login returns a session without a duplicate signup signal", async () => {
+      const email = `oauth-verified-repeat-${crypto.randomUUID()}@localhost.local`;
+      const providerUserId = `oauth-${crypto.randomUUID()}`;
+
+      const first = await oauthLogin({ email, isEmailVerifiedByProvider: true, providerUserId });
+      createdUserIds.push(first.user.id);
+      expect(first.didCompleteSignup).toBe(true);
+
+      const second = await oauthLogin({ email, isEmailVerifiedByProvider: true, providerUserId });
+      expect(second.result).toBe(ProviderAuthResult.SESSION);
+      expect(second.didCompleteSignup).toBe(false);
     });
 
     test("GitHub sets the GitHub-specific verified flag", async () => {
@@ -142,9 +182,58 @@ describe("Auth OAuth Signup V3 (provider-attested email verification)", () => {
       const result = await oauthLogin({ email, isEmailVerifiedByProvider: true, authMethod: AuthMethod.GITHUB });
       createdUserIds.push(result.user.id);
 
+      expect(result.result).toBe(ProviderAuthResult.SESSION);
       expect(findEmailTo(email)).toBeUndefined();
-      const user = await getDb()(TableName.Users).where({ id: result.user.id }).first();
+      const user = await findUser(result.user.id);
       expect(user?.isGitHubVerified).toBe(true);
+    });
+
+    test("a verified login completes a previously abandoned unverified signup", async () => {
+      const email = `oauth-resumed-${crypto.randomUUID()}@localhost.local`;
+      const providerUserId = `oauth-${crypto.randomUUID()}`;
+
+      const first = await oauthLogin({ email, isEmailVerifiedByProvider: false, providerUserId });
+      createdUserIds.push(first.user.id);
+      expect(first.result).toBe(ProviderAuthResult.SIGNUP_REQUIRED);
+
+      smtp().clear();
+
+      const second = await oauthLogin({ email, isEmailVerifiedByProvider: true, providerUserId });
+      expect(second.result).toBe(ProviderAuthResult.SESSION);
+      expect(second.didCompleteSignup).toBe(true);
+      expect(findEmailTo(email)).toBeUndefined();
+
+      const user = await findUser(first.user.id);
+      expect(user?.isAccepted).toBe(true);
+      expect(user?.isEmailVerified).toBe(true);
+      const alias = await findAlias(first.user.id);
+      expect(alias?.isEmailVerified).toBe(true);
+    });
+
+    test("an existing accepted user without an alias gets a session and a verified backfilled alias", async () => {
+      const email = `oauth-backfill-${crypto.randomUUID()}@localhost.local`;
+      const [existingUser] = await getDb()(TableName.Users)
+        .insert({
+          username: email,
+          email,
+          isAccepted: true,
+          isEmailVerified: true,
+          isGhost: false,
+          authMethods: [AuthMethod.EMAIL]
+        })
+        .returning("*");
+      createdUserIds.push(existingUser.id);
+
+      const result = await oauthLogin({ email, isEmailVerifiedByProvider: true });
+
+      expect(result.result).toBe(ProviderAuthResult.SESSION);
+      // the account was already accepted, so this login must not look like a signup
+      expect(result.didCompleteSignup).toBe(false);
+      expect(result.user.id).toBe(existingUser.id);
+
+      const alias = await findAlias(existingUser.id);
+      expect(alias?.aliasType).toBe(UserAliasType.GOOGLE);
+      expect(alias?.isEmailVerified).toBe(true);
     });
   });
 });

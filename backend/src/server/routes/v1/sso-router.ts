@@ -34,6 +34,7 @@ import { addAuthOriginDomainCookie } from "@app/server/lib/cookie";
 import { AuthMethod, ProviderAuthResult } from "@app/services/auth/auth-type";
 import { OrgAuthMethod } from "@app/services/org/org-types";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const passport = new Authenticator({ key: "sso", userProperty: "passportUser" });
 
@@ -457,6 +458,32 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
     const cbPort = passportResult.callbackPort;
 
     if (passportResult.result === ProviderAuthResult.SESSION) {
+      // This login completed the user's signup (provider-verified email), so it never goes
+      // through complete-account; fire the signup telemetry that route would have sent.
+      if (passportResult.didCompleteSignup) {
+        const { user } = passportResult;
+        if (user.email) {
+          void server.services.telemetry.sendLoopsEvent(user.email, user.firstName || "", user.lastName || "");
+          void server.services.telemetry.sendHubSpotSignupEvent(
+            user.email,
+            passportResult.authMethod,
+            user.firstName || "",
+            user.lastName || "",
+            typeof req.cookies?.hubspotutk === "string" ? req.cookies.hubspotutk.slice(0, 512) : undefined
+          );
+        }
+        void server.services.telemetry.sendPostHogEvents({
+          event: PostHogEventTypes.UserSignedUp,
+          distinctId: user.username ?? "",
+          ...(passportResult.orgId ? { organizationId: passportResult.orgId } : {}),
+          properties: {
+            username: user.username,
+            email: user.email ?? "",
+            signupMethod: passportResult.authMethod
+          }
+        });
+      }
+
       void res.setCookie("jid", passportResult.tokens.refresh, {
         httpOnly: true,
         path: "/api",
