@@ -157,7 +157,7 @@ export const pamSessionServiceFactory = ({
           clientPublicKey,
           keyId: `pam-session-${session.id}`,
           principals: [username],
-          requestedTtl: `${PamTemplateAccessPolicySchema.parse(account.templateAccessPolicy).maxSessionDurationSeconds}s`,
+          requestedTtl: `${PamTemplateAccessPolicySchema.safeParse(account.templateAccessPolicy).data?.maxSessionDurationSeconds ?? DEFAULT_SESSION_DURATION_MS / 1000}s`,
           certType: SshCertType.USER
         });
 
