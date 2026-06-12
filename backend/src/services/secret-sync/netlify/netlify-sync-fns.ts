@@ -41,55 +41,89 @@ export const NetlifySyncFns = {
 
     const config = secretSync.destinationConfig;
 
-    const params = {
+    const baseParams = {
       account_id: config.accountId,
-      context_name: config.context,
       site_id: config.siteId
+    }
+
+    const params = {
+      ...baseParams,
+      context_name: config.context,
     };
 
-    const variables = await NetlifyPublicAPI.getVariables(secretSync.connection, params);
+    const variables = await NetlifyPublicAPI.getVariables(secretSync.connection, baseParams);
+    const existingInNetlify = Object.fromEntries(variables.map((variable) => [variable.key, variable]));
 
-    const existing = Object.fromEntries(variables.map((variable) => [variable.key, variable]));
+    const variablesToCreate = Object.keys(secretMap).filter((key) => !existingInNetlify[key]);
+    const variablesToUpdate = Object.keys(secretMap).filter((key) => existingInNetlify[key]);
+    const variablesToDelete = disableSecretDeletion
+      ? []
+      : // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+        Object.keys(existingInNetlify).filter(
+          (key) =>
+            !secretMap[key] &&
+            matchesSchema(key, environment?.slug || "", keySchema) &&
+            existingInNetlify[key].values.some((v) => v.context === config.context)
+        );
 
-    for await (const key of Object.keys(secretMap)) {
+    for await (const key of variablesToCreate) {
       try {
-        const entry = secretMap[key];
-
-        await NetlifyPublicAPI.upsertVariable(secretSync.connection, params, {
+        await NetlifyPublicAPI.createVariable(secretSync.connection, params, {
           key,
           is_secret: false,
-          values: [
-            {
-              value: entry.value,
-              context: config.context
-            }
-          ]
+          values: [{ context: config.context, value: secretMap[key].value }]
         });
       } catch (error) {
-        throw new SecretSyncError({
-          error,
-          secretKey: key
-        });
+        throw new SecretSyncError({ error, secretKey: key });
       }
     }
 
-    if (disableSecretDeletion) return;
-
-    for await (const key of Object.keys(existing)) {
+    for await (const key of variablesToUpdate) {
       try {
-        // eslint-disable-next-line no-continue, @typescript-eslint/no-unsafe-argument
-        if (!matchesSchema(key, environment?.slug || "", keySchema)) continue;
+        const existingVar = existingInNetlify[key];
 
-        if (!secretMap[key]) {
-          await NetlifyPublicAPI.deleteVariable(secretSync.connection, params, {
-            key
+        if (existingVar.is_secret) {
+          await NetlifyPublicAPI.deleteVariable(secretSync.connection, params, { key });
+          await NetlifyPublicAPI.createVariable(secretSync.connection, params, {
+            key,
+            is_secret: false,
+            // We don't merge existing values from other contexts here because secrets are returned with 
+            // masked values. So it would be replaced as *******
+            values: [
+              { context: config.context, value: secretMap[key].value }
+            ]
+          });
+        } else {
+          const mergedValues = [
+            ...existingVar.values.filter((v) => v.context !== config.context),
+            { context: config.context, value: secretMap[key].value }
+          ];
+          await NetlifyPublicAPI.updateVariable(secretSync.connection, params, {
+            key,
+            is_secret: false,
+            values: mergedValues
           });
         }
       } catch (error) {
-        throw new SecretSyncError({
-          error,
-          secretKey: key
-        });
+        throw new SecretSyncError({ error, secretKey: key });
+      }
+    }
+
+    for await (const key of variablesToDelete) {
+      try {
+        const variable = existingInNetlify[key];
+        const remainingValues = variable.values.filter((v) => v.context !== config.context);
+
+        if (remainingValues.length > 0) {
+          await NetlifyPublicAPI.updateVariable(secretSync.connection, params, {
+            key,
+            values: remainingValues
+          });
+        } else {
+          await NetlifyPublicAPI.deleteVariable(secretSync.connection, params, { key });
+        }
+      } catch (error) {
+        throw new SecretSyncError({ error, secretKey: key });
       }
     }
   },
@@ -97,22 +131,34 @@ export const NetlifySyncFns = {
   async removeSecrets(secretSync: TNetlifySyncWithCredentials, secretMap: TSecretMap) {
     const config = secretSync.destinationConfig;
 
-    const params = {
+    const baseParams = {
       account_id: config.accountId,
-      context_name: config.context,
       site_id: config.siteId
     };
 
-    const variables = await NetlifyPublicAPI.getVariables(secretSync.connection, params);
+    const params = {
+      ...baseParams,
+      context_name: config.context
+    };
+
+    const variables = await NetlifyPublicAPI.getVariables(secretSync.connection, baseParams);
 
     const existingSecrets = Object.fromEntries(variables.map((variable) => [variable.key, variable]));
 
     for await (const secret of Object.keys(existingSecrets)) {
       try {
         if (secret in secretMap) {
-          await NetlifyPublicAPI.deleteVariable(secretSync.connection, params, {
-            key: secret
-          });
+          const variable = existingSecrets[secret];
+          const remainingValues = variable.values.filter((v) => v.context !== config.context);
+
+          if (remainingValues.length > 0) {
+            await NetlifyPublicAPI.updateVariable(secretSync.connection, params, {
+              key: secret,
+              values: remainingValues
+            });
+          } else {
+            await NetlifyPublicAPI.deleteVariable(secretSync.connection, params, { key: secret });
+          }
         }
       } catch (error) {
         throw new SecretSyncError({
