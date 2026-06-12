@@ -8,13 +8,10 @@ import {
   CopyIcon,
   HouseIcon,
   MonitorCheckIcon,
-  MonitorIcon,
   RefreshCwIcon,
   ServerCrashIcon,
-  ServerIcon,
   ShieldCheckIcon,
-  TriangleAlertIcon,
-  ZapIcon
+  TriangleAlertIcon
 } from "lucide-react";
 
 import { AuthPageBackground } from "@app/components/auth/AuthPageBackground";
@@ -188,7 +185,7 @@ export const ErrorPage = ({ error }: ErrorComponentProps) => {
           </div>
         </div>
         <div className="flex flex-col border-t border-border bg-bunker-800/50 md:border-t-0 md:border-l">
-          <div className="flex items-center justify-between gap-2 border-b border-border px-6 py-4">
+          <div className="flex items-center justify-between gap-2 border-b border-border py-4 pr-5 pl-6">
             <div className="flex items-center gap-2.5 text-muted">
               <ActivityIcon className="size-4" />
               <span className="text-xs font-medium tracking-[0.2em] uppercase">What We Know</span>
@@ -197,8 +194,9 @@ export const ErrorPage = ({ error }: ErrorComponentProps) => {
               variant="outline"
               size="xs"
               onClick={() => {
-                navigator.clipboard.writeText(errorReport);
-                setCopyLabel("Copied");
+                navigator.clipboard.writeText(errorReport).then(() => {
+                  setCopyLabel("Copied");
+                });
               }}
             >
               {isCopied ? <CheckIcon /> : <CopyIcon />}
