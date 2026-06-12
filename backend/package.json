@@ -52,7 +52,6 @@
     "seed:new": "tsx ./scripts/create-seed-file.ts",
     "seed": "knex --knexfile ./dist/db/knexfile.ts --client pg seed:run",
     "seed-dev": "knex --knexfile ./src/db/knexfile.ts --client pg seed:run",
-    "seed:folder-move": "tsx ./scripts/seed-folder-move-fixtures.ts",
     "db:reset": "npm run migration:rollback -- --all && npm run migration:latest",
     "email:dev": "email dev --dir src/services/smtp/emails",
     "validate-upgrade-path": "tsx ./scripts/validate-upgrade-path-file.ts"
