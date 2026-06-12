@@ -23,7 +23,7 @@ export type TCreateTokenForUserDTO = {
 
 export type TCreateTokensForUsersResult = {
   userId: string;
-  orgId?: string;
+  orgId: string;
   token: string;
 }[];
 
