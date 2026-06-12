@@ -119,7 +119,10 @@ export const getResourceIdsWithActions = async (
     })
   ]);
 
-  const allMemberships = [...folderMemberships, ...accountMemberships];
+  const activeFolderMemberships = folderMemberships.filter((m) => m.isActive);
+  const activeAccountMemberships = accountMemberships.filter((m) => m.isActive);
+
+  const allMemberships = [...activeFolderMemberships, ...activeAccountMemberships];
   if (allMemberships.length === 0) {
     return { folderIds: [], accountIds: [] };
   }
@@ -127,7 +130,11 @@ export const getResourceIdsWithActions = async (
   const roles = await membershipRoleDAL.find({
     $in: { membershipId: allMemberships.map((m) => m.id) }
   });
-  const roleByMembershipId = new Map(roles.map((r) => [r.membershipId, r.role]));
+  const now = new Date();
+  const activeRoles = roles.filter(
+    (r) => !r.isTemporary || (r.temporaryAccessEndTime && now < new Date(r.temporaryAccessEndTime))
+  );
+  const roleByMembershipId = new Map(activeRoles.map((r) => [r.membershipId, r.role]));
 
   const roleMatchesActions = (role: string) => {
     if (actions.allOf && !actions.allOf.every((a) => pamRoleHasAction(role, a))) return false;
@@ -135,14 +142,14 @@ export const getResourceIdsWithActions = async (
     return true;
   };
 
-  const folderIds = folderMemberships
+  const folderIds = activeFolderMemberships
     .filter((m) => {
       const role = roleByMembershipId.get(m.id);
       return m.scopeResourceId && role && roleMatchesActions(role);
     })
     .map((m) => m.scopeResourceId!);
 
-  const accountIds = accountMemberships
+  const accountIds = activeAccountMemberships
     .filter((m) => {
       const role = roleByMembershipId.get(m.id);
       return m.scopeResourceId && role && roleMatchesActions(role);
