@@ -600,15 +600,7 @@ export const pamMembershipServiceFactory = ({
       throw new NotFoundError({ message: `Folder with ID '${folderId}' not found` });
     }
 
-    await permissionService.getResourcePermission({
-      actor: ctx.actor,
-      actorId: ctx.actorId,
-      projectId,
-      resourceType: ResourceType.PamFolder,
-      resourceId: folderId,
-      actorAuthMethod: ctx.actorAuthMethod,
-      actorOrgId: ctx.actorOrgId
-    });
+    await checkManageMembers(projectId, { type: ResourceType.PamFolder, id: folderId }, ctx);
 
     return listResourceMembers(projectId, ResourceType.PamFolder, folderId);
   };
@@ -647,43 +639,11 @@ export const pamMembershipServiceFactory = ({
       throw new NotFoundError({ message: `Account with ID '${accountId}' not found` });
     }
 
-    let hasAccess = false;
-    if (account.folderId) {
-      try {
-        const { permission } = await permissionService.getResourcePermission({
-          actor: ctx.actor,
-          actorId: ctx.actorId,
-          projectId,
-          resourceType: ResourceType.PamFolder,
-          resourceId: account.folderId,
-          actorAuthMethod: ctx.actorAuthMethod,
-          actorOrgId: ctx.actorOrgId
-        });
-        ForbiddenError.from(permission).throwUnlessCan(
-          ResourcePermissionPamResourceActions.ReadAccounts,
-          ResourcePermissionSub.PamResource
-        );
-        hasAccess = true;
-      } catch {
-        // fall through to account-level check
-      }
-    }
-
-    if (!hasAccess) {
-      const { permission } = await permissionService.getResourcePermission({
-        actor: ctx.actor,
-        actorId: ctx.actorId,
-        projectId,
-        resourceType: ResourceType.PamAccount,
-        resourceId: accountId,
-        actorAuthMethod: ctx.actorAuthMethod,
-        actorOrgId: ctx.actorOrgId
-      });
-      ForbiddenError.from(permission).throwUnlessCan(
-        ResourcePermissionPamResourceActions.ReadAccounts,
-        ResourcePermissionSub.PamResource
-      );
-    }
+    await checkManageMembers(
+      projectId,
+      { type: ResourceType.PamAccount, id: accountId, parentFolderId: account.folderId },
+      ctx
+    );
 
     return listResourceMembers(projectId, ResourceType.PamAccount, accountId);
   };
