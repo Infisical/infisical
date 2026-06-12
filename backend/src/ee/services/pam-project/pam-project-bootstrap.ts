@@ -249,29 +249,6 @@ export const bootstrapPamProject = async (
     );
   }
 
-  for (const identityId of adminIdentityIds) {
-    // eslint-disable-next-line no-await-in-loop
-    const membership = await membershipDAL.create(
-      {
-        scope: AccessScope.Project,
-        scopeOrgId: orgId,
-        scopeProjectId: project.id,
-        actorIdentityId: identityId,
-        isActive: true
-      },
-      tx
-    );
-
-    // eslint-disable-next-line no-await-in-loop
-    await membershipRoleDAL.create(
-      {
-        membershipId: membership.id,
-        role: ProjectMembershipRole.Admin
-      },
-      tx
-    );
-  }
-
   for (const template of DEFAULT_ACCOUNT_TEMPLATES) {
     // eslint-disable-next-line no-await-in-loop
     await tx(TableName.PamAccountTemplate).insert({
