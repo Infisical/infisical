@@ -9,13 +9,17 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { ProjectPermissionInsightsActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { TSecretRotationV2DALFactory } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-dal";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
-import { withCache } from "@app/lib/cache/with-cache";
+import { getCacheTtl, withCache } from "@app/lib/cache/with-cache";
 import { BadRequestError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
 import { ActorType } from "@app/services/auth/auth-type";
+import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { KmsDataKey } from "@app/services/kms/kms-types";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { TReminderDALFactory } from "@app/services/reminder/reminder-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
+import { containsSecretReference } from "@app/services/secret-v2-bridge/secret-reference-fns";
 import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
@@ -24,7 +28,8 @@ import {
   TGetAccessVolumeDTO,
   TGetAuthMethodDistributionDTO,
   TGetInsightsCalendarDTO,
-  TGetInsightsSummaryDTO
+  TGetInsightsSummaryDTO,
+  TGetSecretsDuplicationDTO
 } from "./insights-types";
 
 type TInsightsServiceFactoryDep = {
@@ -34,10 +39,15 @@ type TInsightsServiceFactoryDep = {
   secretRotationV2DAL: Pick<TSecretRotationV2DALFactory, "findByProjectAndDateRange" | "findByProject">;
   reminderDAL: Pick<TReminderDALFactory, "findByProjectAndDateRange">;
   folderDAL: Pick<TSecretFolderDALFactory, "findSecretPathByFolderIds">;
-  secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "findStaleByProject" | "countStaleByProject">;
+  secretV2BridgeDAL: Pick<
+    TSecretV2BridgeDALFactory,
+    "findStaleByProject" | "countStaleByProject" | "findDuplicatedSecretValues"
+  >;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
+  projectDAL: Pick<TProjectDALFactory, "findById">;
   userDAL: Pick<TUserDALFactory, "find">;
-  keyStore: Pick<TKeyStoreFactory, "setItemWithExpiry" | "getItem">;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  keyStore: Pick<TKeyStoreFactory, "setItemWithExpiry" | "getItem" | "ttl">;
 };
 
 export type TInsightsServiceFactory = ReturnType<typeof insightsServiceFactory>;
@@ -85,7 +95,9 @@ export const insightsServiceFactory = ({
   folderDAL,
   secretV2BridgeDAL,
   projectBotService,
+  projectDAL,
   userDAL,
+  kmsService,
   keyStore
 }: TInsightsServiceFactoryDep) => {
   const fetchReminders = async (projectId: string, startDate: Date, endDate: Date) => {
@@ -488,11 +500,77 @@ export const insightsServiceFactory = ({
     });
   };
 
+  const getSecretsDuplication = async (dto: TGetSecretsDuplicationDTO, actorDto: OrgServiceActor) => {
+    await checkInsightsPermission(permissionService, licenseService, dto.projectId, actorDto);
+
+    const cacheKey = KeyStorePrefixes.InsightsCache(dto.projectId, "secrets-duplication");
+
+    const project = await projectDAL.findById(dto.projectId);
+
+    if (!project.secretBlindIndexEnabled) {
+      return {
+        result: {
+          secretBlindIndexEnabled: false,
+          groups: []
+        }
+      };
+    }
+
+    const result = await withCache({
+      keyStore,
+      key: cacheKey,
+      ttlSeconds: KeyStoreTtls.InsightsDuplicationCacheInSeconds,
+      fetcher: async () => {
+        const rawGroups = await secretV2BridgeDAL.findDuplicatedSecretValues(dto.projectId);
+
+        const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
+          type: KmsDataKey.SecretManager,
+          projectId: dto.projectId
+        });
+
+        const filteredGroups = rawGroups.filter((g) => {
+          if (!g.secrets.length) return false;
+          const firstSecret = g.secrets[0];
+          if (!firstSecret.encryptedValue) return true;
+          const decryptedValue = secretManagerDecryptor({ cipherTextBlob: firstSecret.encryptedValue }).toString();
+          return !containsSecretReference(decryptedValue);
+        });
+
+        const folderIds = [...new Set(filteredGroups.flatMap((g) => g.secrets.map((s) => s.folderId)))];
+        const foldersWithPath = folderIds.length
+          ? await folderDAL.findSecretPathByFolderIds(dto.projectId, folderIds)
+          : [];
+        const folderRecord: Record<string, string> = {};
+        foldersWithPath.forEach((f) => {
+          if (f) folderRecord[f.id] = f.path;
+        });
+
+        const groups = filteredGroups.map((g) => ({
+          secrets: g.secrets.map((s) => ({
+            key: s.key,
+            environment: {
+              name: s.environmentName,
+              slug: s.environment
+            },
+            secretPath: folderRecord[s.folderId] ?? "/"
+          }))
+        }));
+
+        return { secretBlindIndexEnabled: true as const, groups };
+      }
+    });
+
+    const remainingTTL = await getCacheTtl(keyStore, cacheKey);
+
+    return { result, remainingTTL };
+  };
+
   return {
     getCalendar,
     getAccessVolume,
     // getAccessLocations,
     getAuthMethodDistribution,
-    getSummary
+    getSummary,
+    getSecretsDuplication
   };
 };

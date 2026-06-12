@@ -186,10 +186,11 @@ func (h *Handler) getSecretByName(ctx context.Context, opts *getSecretByNameInte
 	// 6. Build response
 	secretRaw := h.buildSecretRaw(secret, opts.ProjectID)
 
-	// 7. Audit log
-	if err := h.createGetSecretAuditLog(ctx, opts.ProjectID, opts.Environment, opts.SecretPath, &secretRaw); err != nil {
-		return nil, err
-	}
+	// TODO: Re-enable audit logging once Go backend is primary
+	// // 7. Audit log
+	// if err := h.createGetSecretAuditLog(ctx, opts.ProjectID, opts.Environment, opts.SecretPath, &secretRaw); err != nil {
+	// 	return nil, err
+	// }
 
 	return &getSecretByNameResponse{Secret: secretRaw}, nil
 }
@@ -276,7 +277,7 @@ func (h *Handler) GetSecretByNameRawV3(ctx context.Context, opts *GetSecretByNam
 		UserID:                 getUserID(identity),
 		ViewSecretValue:        fn.ValueOr(q.ViewSecretValue, true),
 		ExpandSecretReferences: fn.ValueOr(q.ExpandSecretReferences, true),
-		IncludeImports:         fn.ValueOr(q.IncludeImports, true),
+		IncludeImports:         fn.ValueOr(q.IncludeImports, false), // V3 defaults to false (unlike V4)
 	})
 	if err != nil {
 		return nil, err
@@ -287,7 +288,7 @@ func (h *Handler) GetSecretByNameRawV3(ctx context.Context, opts *GetSecretByNam
 	}), nil
 }
 
-func (h *Handler) createGetSecretAuditLog(ctx context.Context, projectID, env, secretPath string, sec *SecretRaw) error {
+func (h *Handler) CreateGetSecretAuditLog(ctx context.Context, projectID, env, secretPath string, sec *SecretRaw) error {
 	identity, err := auth.IdentityFromContext(ctx)
 	if err != nil {
 		return errutil.NotFound("Identity not found in context").WithErr(err)

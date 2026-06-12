@@ -277,6 +277,7 @@ export enum EventType {
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_ACCESS_LOCATIONS = "view-insights-secrets-management-access-locations",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_SUMMARY = "view-insights-secrets-management-summary",
   VIEW_INSIGHTS_AUTH_METHODS = "view-insights-auth-methods",
+  VIEW_INSIGHTS_SECRETS_DUPLICATION = "view-insights-secrets-duplication",
 
   CREATE_PROJECT_ROLE = "create-project-role",
   UPDATE_PROJECT_ROLE = "update-project-role",
@@ -422,5 +423,9 @@ export enum EventType {
   RELAY_CREATE = "relay-create",
   RELAY_UPDATE = "relay-update",
   RELAY_DELETE = "relay-delete",
-  RELAY_ENROLLMENT_TOKEN_CREATE = "relay-enrollment-token-create"
+  RELAY_ENROLLMENT_TOKEN_CREATE = "relay-enrollment-token-create",
+  KMIP_SERVER_CREATE = "kmip-server-create",
+  KMIP_SERVER_UPDATE = "kmip-server-update",
+  KMIP_SERVER_DELETE = "kmip-server-delete",
+  KMIP_SERVER_ENROLLMENT_TOKEN_CREATE = "kmip-server-enrollment-token-create"
 }

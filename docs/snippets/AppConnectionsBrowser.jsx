@@ -494,6 +494,14 @@ export const AppConnectionsBrowser = () => {
       description:
         "Learn how to connect Datadog to pull secrets from Infisical.",
       category: "Monitoring",
+    },
+    {
+      name: "Convex",
+      slug: "convex",
+      path: "/integrations/app-connections/convex",
+      description:
+        "Learn how to connect Convex to manage and rotate access keys with Infisical.",
+      category: "SaaS",
     }
   ].sort(function (a, b) {
     return a.name.toLowerCase().localeCompare(b.name.toLowerCase());

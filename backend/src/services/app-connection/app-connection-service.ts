@@ -86,6 +86,7 @@ import { ValidateCircleCIConnectionCredentialsSchema } from "./circleci";
 import { circleciConnectionService } from "./circleci/circleci-connection-service";
 import { ValidateCloudflareConnectionCredentialsSchema } from "./cloudflare/cloudflare-connection-schema";
 import { cloudflareConnectionService } from "./cloudflare/cloudflare-connection-service";
+import { ValidateConvexConnectionCredentialsSchema } from "./convex";
 import { TAppConnectionCredentialRotationServiceFactory } from "./credential-rotation";
 import { ValidateDatabricksConnectionCredentialsSchema } from "./databricks";
 import { databricksConnectionService } from "./databricks/databricks-connection-service";
@@ -265,7 +266,8 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.Salesforce]: ValidateSalesforceConnectionCredentialsSchema,
   [AppConnection.Snowflake]: ValidateSnowflakeConnectionCredentialsSchema,
   [AppConnection.Datadog]: ValidateDatadogConnectionCredentialsSchema,
-  [AppConnection.F5BigIp]: ValidateF5BigIpConnectionCredentialsSchema
+  [AppConnection.F5BigIp]: ValidateF5BigIpConnectionCredentialsSchema,
+  [AppConnection.Convex]: ValidateConvexConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({

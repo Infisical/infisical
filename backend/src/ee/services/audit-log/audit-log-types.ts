@@ -93,12 +93,30 @@ export type TCreateAuditLogDTO = {
     | EstAccountActor
     | ScepAccountActor
     | GatewayActor
-    | RelayActor;
+    | RelayActor
+    | KmipServerActor;
   orgId?: string;
   projectId?: string;
 } & BaseAuthData;
 
 export type AuditLogInfo = Pick<TCreateAuditLogDTO, "userAgent" | "userAgentType" | "ipAddress" | "actor">;
+
+// What `pushToLog` writes to the Redis ingest stream. We pin `id` and `createdAt` at
+// push time so a consumer retry (reprocessing the same batch after a failed insert)
+// re-inserts byte-identical rows instead of regenerating ids and creating duplicates.
+// `createdAt`/`expiresAt` are ISO strings for JSON round-tripping through the stream.
+//
+// org/plan/retention are also resolved at push time and travel with the entry, so the
+// consumer persists it with no further DB lookups: `orgId` is the resolved org (never
+// undefined for a streamed entry), `expiresAt` is the precomputed TTL boundary, and
+// `projectName` is captured for project-scoped events (Postgres-only at insert time).
+export type TAuditLogStreamEntry = TCreateAuditLogDTO & {
+  id: string;
+  createdAt: string;
+  orgId: string;
+  expiresAt: string;
+  projectName?: string;
+};
 
 export type TAuditLogServiceFactory = {
   createAuditLog: (data: TCreateAuditLogDTO) => Promise<void>;
@@ -677,6 +695,14 @@ export enum EventType {
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_ACCESS_VOLUME = "view-insights-secrets-management-access-volume",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_ACCESS_LOCATIONS = "view-insights-secrets-management-access-locations",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_SUMMARY = "view-insights-secrets-management-summary",
+  VIEW_INSIGHTS_SECRETS_DUPLICATION = "view-insights-secrets-duplication",
+  VIEW_INSIGHTS_PAM_SUMMARY = "view-insights-pam-summary",
+  VIEW_INSIGHTS_PAM_SESSION_ACTIVITY = "view-insights-pam-session-activity",
+  VIEW_INSIGHTS_PAM_TOP_ACTORS = "view-insights-pam-top-actors",
+  VIEW_INSIGHTS_PAM_RESOURCE_BREAKDOWN = "view-insights-pam-resource-breakdown",
+  VIEW_INSIGHTS_PAM_ROTATION_CALENDAR = "view-insights-pam-rotation-calendar",
+
+  PAM_SESSION_CREDENTIALS_GET = "pam-session-credentials-get",
   PAM_SESSION_START = "pam-session-start",
   PAM_SESSION_END = "pam-session-end",
   PAM_SESSION_CHUNK_UPLOAD = "pam-session-chunk-upload",
@@ -820,6 +846,14 @@ export enum EventType {
   EXTERNAL_MIGRATION_CREATE = "external-migration-create",
   EXTERNAL_MIGRATION_UPDATE = "external-migration-update",
   EXTERNAL_MIGRATION_DELETE = "external-migration-delete",
+
+  // OAuth 2.0 authorization server clients
+  CREATE_OAUTH_CLIENT = "create-oauth-client",
+  UPDATE_OAUTH_CLIENT = "update-oauth-client",
+  DELETE_OAUTH_CLIENT = "delete-oauth-client",
+  ROTATE_OAUTH_CLIENT_SECRET = "rotate-oauth-client-secret",
+  OAUTH_CLIENT_AUTHORIZE = "oauth-client-authorize",
+
   // Email Domains
   CREATE_EMAIL_DOMAIN = "create-email-domain",
   VERIFY_EMAIL_DOMAIN = "verify-email-domain",
@@ -839,6 +873,11 @@ export enum EventType {
   RELAY_UPDATE = "relay-update",
   RELAY_DELETE = "relay-delete",
   RELAY_ENROLLMENT_TOKEN_CREATE = "relay-enrollment-token-create",
+
+  KMIP_SERVER_CREATE = "kmip-server-create",
+  KMIP_SERVER_UPDATE = "kmip-server-update",
+  KMIP_SERVER_DELETE = "kmip-server-delete",
+  KMIP_SERVER_ENROLLMENT_TOKEN_CREATE = "kmip-server-enrollment-token-create",
 
   // Gateway Pools
   GATEWAY_POOL_CREATE = "gateway-pool-create",
@@ -868,7 +907,8 @@ export const ACTOR_TYPE_TO_METADATA_ID_KEY: Partial<Record<ActorType, string>> =
   [ActorType.EST_ACCOUNT]: "profileId",
   [ActorType.SCEP_ACCOUNT]: "profileId",
   [ActorType.GATEWAY]: "gatewayId",
-  [ActorType.RELAY]: "relayId"
+  [ActorType.RELAY]: "relayId",
+  [ActorType.KMIP_SERVER]: "kmipServerId"
 };
 
 export const filterableSecretEvents: EventType[] = [
@@ -940,6 +980,10 @@ interface RelayActorMetadata {
   relayId: string;
 }
 
+interface KmipServerActorMetadata {
+  kmipServerId: string;
+}
+
 export interface UserActor {
   type: ActorType.USER;
   metadata: UserActorMetadata;
@@ -1004,6 +1048,11 @@ export interface RelayActor {
   metadata: RelayActorMetadata;
 }
 
+export interface KmipServerActor {
+  type: ActorType.KMIP_SERVER;
+  metadata: KmipServerActorMetadata;
+}
+
 export type Actor =
   | UserActor
   | ServiceActor
@@ -1016,7 +1065,8 @@ export type Actor =
   | EstAccountActor
   | ScepAccountActor
   | GatewayActor
-  | RelayActor;
+  | RelayActor
+  | KmipServerActor;
 
 interface GetSecretsEvent {
   type: EventType.GET_SECRETS;
@@ -4993,8 +5043,9 @@ interface CreateKmipClientCertificateEvent {
   metadata: {
     clientId: string;
     ttl: string;
-    keyAlgorithm: string;
+    keyAlgorithm?: string;
     serialNumber: string;
+    isFromCsr: boolean;
   };
 }
 
@@ -5586,6 +5637,13 @@ interface ViewInsightsAuthMethodsEvent {
 
 interface ViewSecretManagementInsightsSummaryEvent {
   type: EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_SUMMARY;
+  metadata: {
+    projectId: string;
+  };
+}
+
+interface ViewInsightsSecretsDuplicationEvent {
+  type: EventType.VIEW_INSIGHTS_SECRETS_DUPLICATION;
   metadata: {
     projectId: string;
   };
@@ -6700,6 +6758,50 @@ interface ExternalMigrationDeleteEvent {
     provider: string;
   };
 }
+interface CreateOauthClientEvent {
+  type: EventType.CREATE_OAUTH_CLIENT;
+  metadata: {
+    clientDbId: string;
+    clientId: string;
+    name: string;
+  };
+}
+
+interface UpdateOauthClientEvent {
+  type: EventType.UPDATE_OAUTH_CLIENT;
+  metadata: {
+    clientDbId: string;
+    clientId: string;
+    name: string;
+  };
+}
+
+interface DeleteOauthClientEvent {
+  type: EventType.DELETE_OAUTH_CLIENT;
+  metadata: {
+    clientDbId: string;
+    clientId: string;
+    name: string;
+  };
+}
+
+interface RotateOauthClientSecretEvent {
+  type: EventType.ROTATE_OAUTH_CLIENT_SECRET;
+  metadata: {
+    clientDbId: string;
+    clientId: string;
+    name: string;
+  };
+}
+
+interface OauthClientAuthorizeEvent {
+  type: EventType.OAUTH_CLIENT_AUTHORIZE;
+  metadata: {
+    clientId: string;
+    clientName: string;
+  };
+}
+
 interface CreateEmailDomainEvent {
   type: EventType.CREATE_EMAIL_DOMAIN;
   metadata: {
@@ -6749,7 +6851,7 @@ interface GatewayEnrollEvent {
 }
 
 type ResourceAuthMethodKind = "aws" | "token";
-type ResourceAuthMethodResourceType = "gateway" | "relay";
+type ResourceAuthMethodResourceType = "gateway" | "relay" | "kmip";
 
 interface ResourceAuthMethodLoginEvent {
   type: EventType.RESOURCE_AUTH_METHOD_LOGIN;
@@ -6797,7 +6899,6 @@ interface ResourceAuthMethodRevokeEvent {
     resourceId: string;
     method: ResourceAuthMethodKind;
     resourceName: string;
-    deletedTokenCount: number;
   };
 }
 
@@ -6828,6 +6929,38 @@ interface RelayDeleteEvent {
 
 interface RelayEnrollmentTokenCreateEvent {
   type: EventType.RELAY_ENROLLMENT_TOKEN_CREATE;
+  metadata: {
+    tokenId: string;
+    name: string;
+  };
+}
+
+interface KmipServerCreateEvent {
+  type: EventType.KMIP_SERVER_CREATE;
+  metadata: {
+    kmipServerId: string;
+    name: string;
+  };
+}
+
+interface KmipServerUpdateEvent {
+  type: EventType.KMIP_SERVER_UPDATE;
+  metadata: {
+    kmipServerId: string;
+    name: string;
+  };
+}
+
+interface KmipServerDeleteEvent {
+  type: EventType.KMIP_SERVER_DELETE;
+  metadata: {
+    kmipServerId: string;
+    name: string;
+  };
+}
+
+interface KmipServerEnrollmentTokenCreateEvent {
+  type: EventType.KMIP_SERVER_ENROLLMENT_TOKEN_CREATE;
   metadata: {
     tokenId: string;
     name: string;
@@ -7395,6 +7528,7 @@ export type Event =
   | ViewSecretManagementInsightsAccessLocationsEvent
   | ViewInsightsAuthMethodsEvent
   | ViewSecretManagementInsightsSummaryEvent
+  | ViewInsightsSecretsDuplicationEvent
   | ViewAuditLogsEvent
   | ProjectRoleCreateEvent
   | ProjectRoleUpdateEvent
@@ -7513,6 +7647,11 @@ export type Event =
   | ExternalMigrationCreateEvent
   | ExternalMigrationUpdateEvent
   | ExternalMigrationDeleteEvent
+  | CreateOauthClientEvent
+  | UpdateOauthClientEvent
+  | DeleteOauthClientEvent
+  | RotateOauthClientSecretEvent
+  | OauthClientAuthorizeEvent
   | CreateEmailDomainEvent
   | VerifyEmailDomainEvent
   | DeleteEmailDomainEvent
@@ -7527,6 +7666,10 @@ export type Event =
   | RelayUpdateEvent
   | RelayDeleteEvent
   | RelayEnrollmentTokenCreateEvent
+  | KmipServerCreateEvent
+  | KmipServerUpdateEvent
+  | KmipServerDeleteEvent
+  | KmipServerEnrollmentTokenCreateEvent
   | GatewayPoolCreateEvent
   | GatewayPoolUpdateEvent
   | GatewayPoolDeleteEvent

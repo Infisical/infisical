@@ -56,6 +56,14 @@ USER non-root-user
 ## BACKEND
 ##
 
+# Go sidecar build (parallel stage)
+FROM golang:1.26-trixie AS go-builder
+WORKDIR /app
+COPY backend-go/go.mod backend-go/go.sum ./
+RUN go mod download
+COPY backend-go/ .
+RUN CGO_ENABLED=1 GOOS=linux go build -ldflags="-s -w" -o /go-sidecar ./cmd/infisical/main.go
+
 # Oracle Instant Client (parallel stage — downloads while other stages build)
 FROM debian:trixie-slim AS oracle
 RUN apt-get update && apt-get install -y unzip wget ca-certificates \
@@ -249,8 +257,8 @@ ENV CAPTCHA_SITE_KEY=$CAPTCHA_SITE_KEY
 WORKDIR /
 
 COPY --from=backend-runner /app /backend
-
 COPY --from=frontend-runner /app ./backend/frontend-build
+COPY --from=go-builder /go-sidecar /backend/go-sidecar
 
 # Make export-assets script executable for CDN asset extraction
 RUN chmod +x /backend/scripts/export-assets.sh

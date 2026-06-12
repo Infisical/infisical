@@ -6,10 +6,20 @@ import { createNotification } from "@app/components/notifications";
 import { CertManagerNotConfiguredModal } from "@app/components/projects/CertManagerNotConfiguredModal";
 import { CertManagerSelectInstanceModal } from "@app/components/projects/CertManagerSelectInstanceModal";
 import { RequestProjectAccessModal } from "@app/components/projects/RequestProjectAccessModal";
-import { Card, CardContent, CardDescription, CardHeader, Skeleton } from "@app/components/v3";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  Skeleton,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { useOrganization, useOrgPermission } from "@app/context";
 import {
   OrgPermissionAdminConsoleAction,
+  OrgPermissionProjectActions,
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
 import {
@@ -97,6 +107,10 @@ export const ProjectCategoryOverview = () => {
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
   const { permission } = useOrgPermission();
+  const canRequestAccess = permission.can(
+    OrgPermissionProjectActions.RequestAccess,
+    OrgPermissionSubjects.Project
+  );
   const { data: projects = [], isPending: isProjectsLoading } = useGetUserProjects();
   const { data: certManagerInstance } = useCertManagerInstanceState();
   const { data: productStats } = useGetOrgProductStats(currentOrg?.id ?? "");
@@ -114,6 +128,17 @@ export const ProjectCategoryOverview = () => {
     () => certManagerInstance?.projects ?? [],
     [certManagerInstance?.projects]
   );
+
+  const isOrgAdmin = permission.can(
+    OrgPermissionAdminConsoleAction.AccessAllProjects,
+    OrgPermissionSubjects.AdminConsole
+  );
+  const isCertManagerMember = useMemo(
+    () => cmInstances.some((instance) => projects.some((project) => project.id === instance.id)),
+    [cmInstances, projects]
+  );
+  const isCertManagerAccessBlocked =
+    cmInstances.length > 0 && !isOrgAdmin && !canRequestAccess && !isCertManagerMember;
 
   const certManagerActiveProjectId = useMemo(() => {
     const cookieValue = currentOrg?.id ? getCertManagerActiveProjectCookie(currentOrg.id) : null;
@@ -182,10 +207,6 @@ export const ProjectCategoryOverview = () => {
       navigateToCertManager(projectId);
       return;
     }
-    const isOrgAdmin = permission.can(
-      OrgPermissionAdminConsoleAction.AccessAllProjects,
-      OrgPermissionSubjects.AdminConsole
-    );
     if (isOrgAdmin) {
       try {
         await orgAdminAccessProject.mutateAsync({ projectId });
@@ -197,8 +218,13 @@ export const ProjectCategoryOverview = () => {
             err instanceof Error ? err.message : "Failed to join the Certificate Manager project."
         });
       }
-    } else {
+    } else if (canRequestAccess) {
       setIsRequestAccessOpen(true);
+    } else {
+      createNotification({
+        type: "error",
+        text: "You don't have access to this Certificate Manager project."
+      });
     }
   };
 
@@ -278,17 +304,8 @@ export const ProjectCategoryOverview = () => {
             titleUnderlineClassName
           } = PRODUCT_STYLES[type];
 
-          return (
-            <Card
-              key={type}
-              role="button"
-              tabIndex={0}
-              onClick={() => handleTileClick(type)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleTileClick(type);
-              }}
-              className={`group h-auto cursor-pointer rounded-md transition-all duration-200 ease-out hover:scale-[1.01] ${cardClassName}`}
-            >
+          const tileBody = (
+            <>
               <CardHeader>
                 <div className="flex items-start gap-3">
                   <div
@@ -327,6 +344,37 @@ export const ProjectCategoryOverview = () => {
                   </div>
                 )}
               </CardContent>
+            </>
+          );
+
+          if (type === ProjectType.CertificateManager && isCertManagerAccessBlocked) {
+            return (
+              <Tooltip key={type}>
+                <TooltipTrigger asChild>
+                  <div aria-disabled className="cursor-not-allowed">
+                    <Card className="h-auto rounded-md opacity-50">{tileBody}</Card>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent>
+                  You don&apos;t have access to Certificate Manager. Ask an organization admin for
+                  access.
+                </TooltipContent>
+              </Tooltip>
+            );
+          }
+
+          return (
+            <Card
+              key={type}
+              role="button"
+              tabIndex={0}
+              onClick={() => handleTileClick(type)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleTileClick(type);
+              }}
+              className={`group h-auto cursor-pointer rounded-md transition-all duration-200 ease-out hover:scale-[1.01] ${cardClassName}`}
+            >
+              {tileBody}
             </Card>
           );
         })}

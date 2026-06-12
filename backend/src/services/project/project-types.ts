@@ -73,6 +73,8 @@ export type TToggleProjectDeleteProtectionDTO = {
   hasDeleteProtection: boolean;
 } & TProjectPermission;
 
+export type TEnableSecretBlindIndexDTO = TProjectPermission;
+
 export type TUpdateProjectVersionLimitDTO = {
   pitVersionLimit: number;
   workspaceSlug: string;

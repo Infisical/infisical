@@ -497,6 +497,11 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
           }
         }
 
+        // Always attach orgId as a flat property so aggregated events are filterable by organization
+        if (key.org) {
+          properties.orgId = key.org;
+        }
+
         postHog.capture({
           event: `${eventType} aggregated`,
           distinctId: key.id,

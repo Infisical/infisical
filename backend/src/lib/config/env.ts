@@ -318,6 +318,9 @@ const envSchema = z
     LICENSE_SERVER_KEY: zpStr(z.string().optional()),
     LICENSE_KEY: zpStr(z.string().optional()),
     LICENSE_KEY_OFFLINE: zpStr(z.string().optional()),
+    LICENSE_SERVER_V2_ENABLED: zodStrBool.default("false"),
+    LICENSE_SERVER_V2_URL: zpStr(z.string().optional()),
+    LICENSE_SERVER_V2_SERVICE_KEY: zpStr(z.string().optional()),
 
     // GENERIC
     STANDALONE_MODE: z
@@ -497,6 +500,10 @@ const envSchema = z
 
     /* Go Sidecar ----------------------------------------------------------------------------- */
     GOLANG_SIDECAR_URL: zpStr(z.string().optional()),
+    GO_SIDECAR_SHADOW_ENABLED: zodStrBool.default("false"),
+    GO_SIDECAR_SHADOW_SAMPLE_RATE: z.coerce.number().min(0).max(100).default(10),
+    GO_SIDECAR_BINARY_PATH: zpStr(z.string().optional()),
+    GO_SIDECAR_SPAWN_ENABLED: zodStrBool.default("false"),
 
     /* INTERNAL ----------------------------------------------------------------------------- */
     INTERNAL_REGION: zpStr(z.enum(["us", "eu"]).optional())
@@ -513,6 +520,7 @@ const envSchema = z
     DB_READ_REPLICAS: data.DB_READ_REPLICAS
       ? databaseReadReplicaSchema.parse(JSON.parse(data.DB_READ_REPLICAS))
       : undefined,
+    // Inferred from the legacy license server key; needs a new signal once License Server v2 fully replaces it.
     isCloud: Boolean(data.LICENSE_SERVER_KEY),
     isSmtpConfigured: Boolean(data.SMTP_HOST),
     isRedisConfigured: Boolean(data.REDIS_URL || data.REDIS_SENTINEL_HOSTS || data.REDIS_CLUSTER_HOSTS),

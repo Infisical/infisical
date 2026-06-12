@@ -48,6 +48,9 @@ type Props = {
   onChange: (app: TGitHubApp | null) => void;
   host?: string;
   instanceType?: "cloud" | "server";
+  // Name of the gateway/pool the parent form will route the app creation through, when one is
+  // selected. Surfaced in the create view so the user knows how Infisical reaches GitHub.
+  gatewayLabel?: string | null;
   // Kicks off the GitHub App manifest creation flow on the parent form (redirects to GitHub).
   // Returns false when the parent form is invalid so we can return to the list view.
   onCreateApp: (params: { name: string; githubOrg: string }) => Promise<boolean> | void;
@@ -65,6 +68,7 @@ export const GitHubAppSelector = ({
   onChange,
   host,
   instanceType,
+  gatewayLabel,
   onCreateApp,
   isCreating,
   projectId
@@ -226,7 +230,7 @@ export const GitHubAppSelector = ({
                 onClick={(e) => {
                   e.stopPropagation();
                   window.open(
-                    buildGitHubAppUrl(app.slug, host, instanceType),
+                    buildGitHubAppUrl(app.slug, app.host, app.instanceType ?? instanceType),
                     "_blank",
                     "noopener,noreferrer"
                   );
@@ -367,7 +371,9 @@ export const GitHubAppSelector = ({
                   className="mb-1"
                   helperText={
                     <>
-                      github.com/apps/
+                      {`${buildGitHubHostUrl(host).replace("https://", "")}/${
+                        instanceType === "server" ? "github-apps" : "apps"
+                      }/`}
                       <span className="font-mono text-mineshaft-200">
                         {GITHUB_APP_NAME_PREFIX}
                         {newAppName.trim() ? slugify(newAppName, { lowercase: true }) : "your-app"}
@@ -397,8 +403,20 @@ export const GitHubAppSelector = ({
                 <div className="mt-3 flex items-start gap-2 rounded-md border border-mineshaft-500 bg-mineshaft-700/40 px-3 py-2.5 text-xs leading-relaxed text-mineshaft-300">
                   <FontAwesomeIcon icon={faCircleInfo} className="mt-0.5 text-mineshaft-400" />
                   <span>
-                    You&apos;ll be redirected to GitHub to complete the private app setup. GitHub
-                    fails the setup if you&apos;re signed out, so{" "}
+                    The app will be created on{" "}
+                    <span className="font-medium text-mineshaft-100">
+                      {buildGitHubHostUrl(host).replace("https://", "")}
+                    </span>
+                    {gatewayLabel ? (
+                      <>
+                        {" "}
+                        through the{" "}
+                        <span className="font-medium text-mineshaft-100">{gatewayLabel}</span>{" "}
+                        gateway
+                      </>
+                    ) : null}
+                    . You&apos;ll be redirected to complete the private app setup. GitHub fails the
+                    setup if you&apos;re signed out, so{" "}
                     <a
                       href={`${buildGitHubHostUrl(host)}/login`}
                       target="_blank"
@@ -457,7 +475,11 @@ export const GitHubAppSelector = ({
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     window.open(
-                                      buildGitHubAppUrl(sharedApp.slug, host, instanceType),
+                                      buildGitHubAppUrl(
+                                        sharedApp.slug,
+                                        sharedApp.host,
+                                        sharedApp.instanceType ?? instanceType
+                                      ),
                                       "_blank",
                                       "noopener,noreferrer"
                                     );

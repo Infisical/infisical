@@ -41,9 +41,6 @@ export const registerKmipSpecRouter = async (server: FastifyZodProvider) => {
       });
     }
 
-    // TODO: assert that server certificate used is not revoked
-    // TODO: assert that client certificate used is not revoked
-
     const kmipClient = await server.store.kmipClient.findByProjectAndClientId(projectId, clientId);
 
     if (!kmipClient) {
@@ -57,6 +54,16 @@ export const registerKmipSpecRouter = async (server: FastifyZodProvider) => {
         message: "Client specified in the request does not belong in the organization"
       });
     }
+
+    // Bind the request to certificates this org actually issued: the caller (a KMIP server access
+    // token) supplies the client identity in headers, so verify the presented client cert serial
+    // belongs to this client before acting as it.
+    await server.services.kmip.validateKmipSessionCertificates({
+      orgId: req.permission.orgId,
+      kmipClientId: kmipClient.id,
+      clientCertificateSerialNumber: clientCertSerialNumber,
+      serverCertificateSerialNumber: serverCertSerialNumber
+    });
 
     req.kmipUser = {
       projectId,
@@ -80,7 +87,7 @@ export const registerKmipSpecRouter = async (server: FastifyZodProvider) => {
         200: KmsKeysSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.KMIP_SERVER_ACCESS_TOKEN]),
     handler: async (req) => {
       const object = await server.services.kmipOperation.create({
         ...req.kmipUser,
@@ -133,7 +140,7 @@ export const registerKmipSpecRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.KMIP_SERVER_ACCESS_TOKEN]),
     handler: async (req) => {
       const object = await server.services.kmipOperation.get({
         ...req.kmipUser,
@@ -187,7 +194,7 @@ export const registerKmipSpecRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.KMIP_SERVER_ACCESS_TOKEN]),
     handler: async (req) => {
       const object = await server.services.kmipOperation.getAttributes({
         ...req.kmipUser,
@@ -236,7 +243,7 @@ export const registerKmipSpecRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.KMIP_SERVER_ACCESS_TOKEN]),
     handler: async (req) => {
       const object = await server.services.kmipOperation.destroy({
         ...req.kmipUser,
@@ -286,7 +293,7 @@ export const registerKmipSpecRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.KMIP_SERVER_ACCESS_TOKEN]),
     handler: async (req) => {
       const object = await server.services.kmipOperation.activate({
         ...req.kmipUser,
@@ -336,7 +343,7 @@ export const registerKmipSpecRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.KMIP_SERVER_ACCESS_TOKEN]),
     handler: async (req) => {
       const object = await server.services.kmipOperation.revoke({
         ...req.kmipUser,
@@ -392,7 +399,7 @@ export const registerKmipSpecRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.KMIP_SERVER_ACCESS_TOKEN]),
     handler: async (req) => {
       const objects = await server.services.kmipOperation.locate({
         ...req.kmipUser,
@@ -445,7 +452,7 @@ export const registerKmipSpecRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.KMIP_SERVER_ACCESS_TOKEN]),
     handler: async (req) => {
       const object = await server.services.kmipOperation.register({
         ...req.kmipUser,

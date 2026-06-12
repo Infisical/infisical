@@ -4,17 +4,23 @@ import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 
-import { AUDIT_LOG_STREAM_TIMEOUT } from "../../audit-log/audit-log-queue";
-import { TLogStreamFactoryStreamLog, TLogStreamFactoryValidateCredentials } from "../audit-log-stream-types";
+import { AUDIT_LOG_STREAM_BATCH_TIMEOUT, AUDIT_LOG_STREAM_TIMEOUT } from "../../audit-log/audit-log-queue";
+import {
+  TLogStreamFactoryBatchStreamLog,
+  TLogStreamFactoryGetProviderBatchLimit,
+  TLogStreamFactoryValidateCredentials
+} from "../audit-log-stream-types";
 import { TAzureProviderCredentials } from "./azure-provider-types";
 
+function buildAzureEvent(event: { createdAt?: Date | string } & Record<string, unknown>) {
+  return {
+    ...event,
+    TimeGenerated: (event.createdAt ? new Date(event.createdAt) : new Date()).toISOString()
+  };
+}
+
 function createPayload(event: { createdAt?: Date | string } & Record<string, unknown>) {
-  return [
-    {
-      ...event,
-      TimeGenerated: (event.createdAt ? new Date(event.createdAt) : new Date()).toISOString()
-    }
-  ];
+  return [buildAzureEvent(event)];
 }
 
 async function getAzureToken(tenantId: string, clientId: string, clientSecret: string) {
@@ -67,7 +73,12 @@ export const AzureProviderFactory = () => {
     return credentials;
   };
 
-  const streamLog: TLogStreamFactoryStreamLog<TAzureProviderCredentials> = async ({ credentials, auditLog }) => {
+  const batchStreamLog: TLogStreamFactoryBatchStreamLog<TAzureProviderCredentials> = async ({
+    credentials,
+    auditLogs
+  }) => {
+    if (auditLogs.length === 0) return;
+
     const { tenantId, clientId, clientSecret, dceUrl, dcrId, cltName } = credentials;
 
     await blockLocalAndPrivateIpAddresses(dceUrl);
@@ -81,16 +92,22 @@ export const AzureProviderFactory = () => {
 
     await request.post(
       `${dceUrl}/dataCollectionRules/${dcrId}/streams/Custom-${cltName}_CL?api-version=2023-01-01`,
-      createPayload(auditLog),
+      auditLogs.map(buildAzureEvent),
       {
         headers: streamHeaders,
-        timeout: AUDIT_LOG_STREAM_TIMEOUT
+        timeout: AUDIT_LOG_STREAM_BATCH_TIMEOUT
       }
     );
   };
 
+  const getProviderBatchLimit: TLogStreamFactoryGetProviderBatchLimit = () => ({
+    maxLogs: 400,
+    maxBytes: 700 * 1024
+  });
+
   return {
     validateCredentials,
-    streamLog
+    batchStreamLog,
+    getProviderBatchLimit
   };
 };

@@ -13,6 +13,8 @@ import {
 
 import { SecretEncryptionAlgo, SecretKeyEncoding } from "@app/db/schemas";
 import { TCreateAuditLogDTO } from "@app/ee/services/audit-log/audit-log-types";
+import { TAuditLogStreamFlushJobData } from "@app/ee/services/audit-log-stream-outbox/audit-log-stream-outbox-types";
+import { PamDiscoverySourceRunTrigger } from "@app/ee/services/pam-discovery/pam-discovery-enums";
 import {
   TSecretRotationRotateSecretsJobPayload,
   TSecretRotationSendNotificationJobPayload
@@ -106,9 +108,12 @@ export enum QueueName {
   AppConnectionCredentialRotation = "app-connection-credential-rotation",
   AppConnectionCredentialRotationRotate = "app-connection-credential-rotation-rotate",
   AuditLogClickHouseBatch = "audit-log-clickhouse-batch",
+  AuditLogStreamOutbox = "audit-log-stream-outbox",
+  PamDiscoveryScan = "pam-discovery-scan",
   CaAutoRenewal = "ca-auto-renewal",
   ProjectHardDelete = "project-hard-delete",
-  SignerAutoRenewal = "signer-auto-renewal"
+  SignerAutoRenewal = "signer-auto-renewal",
+  SecretBlindIndexMigration = "secret-blind-index-migration"
 }
 
 export enum QueueJobs {
@@ -171,6 +176,9 @@ export enum QueueJobs {
   AppConnectionCredentialRotationRotate = "app-connection-credential-rotation-rotate",
   AppConnectionCredentialRotationSendNotification = "app-connection-credential-rotation-send-notification",
   AuditLogClickHouseBatch = "audit-log-clickhouse-batch-job",
+  AuditLogStreamFlush = "audit-log-stream-flush",
+  PamDiscoverySourceRunScan = "pam-discovery-run-scan",
+  PamDiscoveryScheduledScan = "pam-discovery-scheduled-scan",
   CaDailyAutoRenewal = "ca-daily-auto-renewal",
   CaVenafiInstall = "ca-venafi-install-job",
   CaAdcsInstall = "ca-adcs-install-job",
@@ -179,13 +187,21 @@ export enum QueueJobs {
   DigiCertOrderPolling = "digicert-order-polling-job",
   GoDaddyOrderPolling = "godaddy-order-polling-job",
   ProjectHardDelete = "project-hard-delete-job",
-  SignerDailyAutoRenewal = "signer-daily-auto-renewal"
+  SignerDailyAutoRenewal = "signer-daily-auto-renewal",
+  SecretBlindIndexMigration = "secret-blind-index-migration"
+}
+
+export enum JobState {
+  NotFound = "not-found",
+  Pending = "pending",
+  Completed = "completed",
+  Failed = "failed"
 }
 
 export type TQueueOptions = {
   jobId: string;
-  removeOnComplete?: boolean | { count: number };
-  removeOnFail?: boolean | { count: number };
+  removeOnComplete?: boolean | { count: number } | { age: number };
+  removeOnFail?: boolean | { count: number } | { age: number };
   attempts?: number;
   delay?: number;
   backoff?: {
@@ -467,6 +483,19 @@ export type TQueueJobTypes = {
     name: QueueJobs.AuditLogClickHouseBatch;
     payload: undefined;
   };
+  [QueueName.AuditLogStreamOutbox]: {
+    name: QueueJobs.AuditLogStreamFlush;
+    payload: TAuditLogStreamFlushJobData;
+  };
+  [QueueName.PamDiscoveryScan]:
+    | {
+        name: QueueJobs.PamDiscoverySourceRunScan;
+        payload: { discoverySourceId: string; triggeredBy: PamDiscoverySourceRunTrigger };
+      }
+    | {
+        name: QueueJobs.PamDiscoveryScheduledScan;
+        payload: undefined;
+      };
   [QueueName.CaAutoRenewal]:
     | {
         name: QueueJobs.CaDailyAutoRenewal;
@@ -487,6 +516,10 @@ export type TQueueJobTypes = {
   [QueueName.SignerAutoRenewal]: {
     name: QueueJobs.SignerDailyAutoRenewal;
     payload: undefined;
+  };
+  [QueueName.SecretBlindIndexMigration]: {
+    name: QueueJobs.SecretBlindIndexMigration;
+    payload: { projectId: string };
   };
 };
 
@@ -578,6 +611,10 @@ export type TQueueServiceFactory = {
   ) => Promise<void>;
   removeJobScheduler: <T extends QueueName>(name: T, schedulerId: string) => Promise<void>;
   getJobSchedulers: (name: QueueName, start?: number, end?: number) => Promise<JobSchedulerJson[]>;
+  getJob: <T extends QueueName>(
+    name: T,
+    jobId: string
+  ) => Promise<Job<TQueueJobTypes[T]["payload"], void, string> | undefined>;
 };
 
 export const queueServiceFactory = (redisCfg: TRedisConfigKeys): TQueueServiceFactory => {
@@ -960,6 +997,13 @@ export const queueServiceFactory = (redisCfg: TRedisConfigKeys): TQueueServiceFa
     return q.getJobSchedulers(startOffset, endOffset);
   };
 
+  const getJob: TQueueServiceFactory["getJob"] = async (name, jobId) => {
+    const q = queueContainer[name];
+    if (!q) return undefined;
+    const job = await q.getJob(jobId);
+    return job ?? undefined;
+  };
+
   return {
     start,
     listen,
@@ -975,6 +1019,7 @@ export const queueServiceFactory = (redisCfg: TRedisConfigKeys): TQueueServiceFa
     getDelayedJobs,
     upsertJobScheduler,
     removeJobScheduler,
-    getJobSchedulers
+    getJobSchedulers,
+    getJob
   };
 };

@@ -48,6 +48,12 @@ import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
+import {
+  applyOauthScopeToOrgRules,
+  applyOauthScopeToProjectRules,
+  isValidOauthScope,
+  OauthScope
+} from "@app/services/oauth-client/oauth-scope";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TRoleDALFactory } from "@app/services/role/role-dal";
 import { TServiceTokenDALFactory } from "@app/services/service-token/service-token-dal";
@@ -76,6 +82,16 @@ import {
   ProjectPermissionSet,
   ProjectPermissionSub
 } from "./project-permission";
+
+// Returns the delegated OAuth scopes for the current request, or undefined when this is not an
+// OAuth-delegated request. The distinction matters: a returned array (even empty) means scope
+// narrowing applies, while undefined means a first-party session / background job is untouched.
+const getDelegatedOauthScopes = (): OauthScope[] | undefined => {
+  const raw = requestContext.get(RequestContextKey.OauthScopes);
+  if (!raw) return undefined;
+  // The scopes were validated at consent time, but re-coerce defensively against the catalog.
+  return raw.filter(isValidOauthScope);
+};
 
 const buildOrgPermissionRules = (orgUserRoles: TBuildOrgPermissionDTO) => {
   const rules = orgUserRoles
@@ -322,13 +338,14 @@ export const permissionServiceFactory = ({
 
       const hasRole = (role: string) => membershipsHaveActiveRole(permissionData, role);
 
-      const permission = createMongoAbility<OrgPermissionSet>(buildOrgPermissionRules(permissionFromRoles), {
+      const fullPermission = createMongoAbility<OrgPermissionSet>(buildOrgPermissionRules(permissionFromRoles), {
         conditionsMatcher
       });
 
-      const canBypassSso = permission.can(OrgPermissionSsoActions.BypassSsoEnforcement, OrgPermissionSubjects.Sso);
+      const canBypassSso = fullPermission.can(OrgPermissionSsoActions.BypassSsoEnforcement, OrgPermissionSubjects.Sso);
 
-      // SSO enforcement applies only to users
+      // SSO enforcement applies only to users. Evaluate it against the full ability — SSO bypass is a
+      // property of the user's roles, not of what an OAuth client was delegated.
       if (actor === ActorType.USER) {
         validateOrgSSO(
           actorAuthMethod,
@@ -338,6 +355,14 @@ export const permissionServiceFactory = ({
           canBypassSso
         );
       }
+
+      // Delegated OAuth tokens get a scope-narrowed ability; first-party sessions get the full one.
+      const oauthScopes = getDelegatedOauthScopes();
+      const permission = oauthScopes
+        ? createMongoAbility<OrgPermissionSet>(applyOauthScopeToOrgRules(fullPermission.rules, oauthScopes), {
+            conditionsMatcher
+          })
+        : fullPermission;
 
       return {
         permission,
@@ -670,7 +695,19 @@ export const permissionServiceFactory = ({
 
     requestContext.set(RequestContextKey.ProjectDetails, payload.projectDetailsCtx);
     requestContext.set(RequestContextKey.IdentityPermissionMetadata, payload.identityPermissionMetadataCtx);
-    return payload.result;
+
+    // Narrow the ability for delegated OAuth tokens. Applied here, outside the (cross-request) cache
+    // boundary, so the cached payload always holds the full ability and only this request is scoped.
+    const oauthScopes = getDelegatedOauthScopes();
+    if (!oauthScopes) return payload.result;
+
+    return {
+      ...payload.result,
+      permission: createMongoAbility<ProjectPermissionSet>(
+        applyOauthScopeToProjectRules(payload.result.permission.rules, oauthScopes),
+        { conditionsMatcher }
+      )
+    };
   };
 
   const getResourcePermission: TPermissionServiceFactory["getResourcePermission"] = async ({
@@ -704,6 +741,19 @@ export const permissionServiceFactory = ({
     });
 
     return requestMemoize(memoKey, async () => {
+      // The v1 OAuth scope catalog does not cover resource-level (e.g. cert-manager) memberships, so
+      // a delegated token receives an empty resource ability — any ForbiddenError.from(...) check on
+      // it fails. This keeps the strict deny-by-default contract for anything outside granted scopes.
+      const oauthScopes = getDelegatedOauthScopes();
+      if (oauthScopes) {
+        return {
+          permission: createMongoAbility<ResourcePermissionSet>([], { conditionsMatcher }),
+          memberships: [],
+          hasRole: () => false,
+          isImplicitAdmin: false
+        };
+      }
+
       let isProjectAdmin = false;
       let isProjectMember = false;
       try {

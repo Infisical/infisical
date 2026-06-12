@@ -210,7 +210,8 @@ export const OAuthCallbackPage = () => {
 
     clearState(AppConnection.AzureKeyVault);
 
-    const { connectionId, name, description, returnUrl, projectId } = formData;
+    const { connectionId, name, description, returnUrl, projectId, gatewayId, gatewayPoolId } =
+      formData;
 
     let connection: TAppConnection;
 
@@ -222,7 +223,9 @@ export const OAuthCallbackPage = () => {
           credentials: {
             code: code as string,
             tenantId: formData.tenantId
-          }
+          },
+          gatewayId,
+          gatewayPoolId
         });
       } else {
         connection = await createAppConnection.mutateAsync({
@@ -234,7 +237,9 @@ export const OAuthCallbackPage = () => {
           credentials: {
             tenantId: formData.tenantId,
             code: code as string
-          }
+          },
+          gatewayId,
+          gatewayPoolId
         });
       }
     } catch {
@@ -424,8 +429,16 @@ export const OAuthCallbackPage = () => {
 
     clearState(AppConnection.GitHub);
 
-    const { connectionId, name, description, returnUrl, gatewayId, credentials, projectId } =
-      formData;
+    const {
+      connectionId,
+      name,
+      description,
+      returnUrl,
+      gatewayId,
+      gatewayPoolId,
+      credentials,
+      projectId
+    } = formData;
 
     const storedGitHubAppId = (credentials as { gitHubAppId?: string | null } | undefined)
       ?.gitHubAppId;
@@ -438,6 +451,7 @@ export const OAuthCallbackPage = () => {
           ...(credentials?.instanceType && { instanceType: credentials.instanceType }),
           ...(credentials?.host && { host: credentials.host }),
           ...(gatewayId && { gatewayId }),
+          ...(gatewayPoolId && { gatewayPoolId }),
           ...(projectId && { projectId })
         });
         setGitHubPicker({ ...result, formData });
@@ -478,7 +492,8 @@ export const OAuthCallbackPage = () => {
           app: AppConnection.GitHub,
           connectionId,
           credentials: isAppMethod ? appCredentials : oauthCredentials,
-          gatewayId
+          gatewayId,
+          gatewayPoolId
         });
       } else {
         connection = await createAppConnection.mutateAsync({
@@ -490,12 +505,14 @@ export const OAuthCallbackPage = () => {
             ? {
                 method: GitHubConnectionMethod.App,
                 credentials: appCredentials,
-                gatewayId
+                gatewayId,
+                gatewayPoolId
               }
             : {
                 method: GitHubConnectionMethod.OAuth,
                 credentials: oauthCredentials,
-                gatewayId
+                gatewayId,
+                gatewayPoolId
               })
         });
       }
@@ -523,8 +540,16 @@ export const OAuthCallbackPage = () => {
     if (!gitHubPicker) return;
 
     const { installationsToken, formData } = gitHubPicker;
-    const { connectionId, name, description, returnUrl, gatewayId, credentials, projectId } =
-      formData;
+    const {
+      connectionId,
+      name,
+      description,
+      returnUrl,
+      gatewayId,
+      gatewayPoolId,
+      credentials,
+      projectId
+    } = formData;
     const gitHubAppId = (credentials as { gitHubAppId?: string | null } | undefined)?.gitHubAppId;
 
     setPickedInstallationId(selectedInstallationId);
@@ -545,7 +570,8 @@ export const OAuthCallbackPage = () => {
           app: AppConnection.GitHub,
           connectionId,
           credentials: appCredentials,
-          gatewayId
+          gatewayId,
+          gatewayPoolId
         });
       } else {
         connection = await createAppConnection.mutateAsync({
@@ -555,7 +581,8 @@ export const OAuthCallbackPage = () => {
           projectId,
           method: GitHubConnectionMethod.App,
           credentials: appCredentials,
-          gatewayId
+          gatewayId,
+          gatewayPoolId
         });
       }
 

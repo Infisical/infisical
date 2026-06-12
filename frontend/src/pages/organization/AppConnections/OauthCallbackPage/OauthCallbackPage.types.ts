@@ -19,7 +19,10 @@ type BaseFormData = {
 };
 
 export type GitHubFormData = BaseFormData &
-  Pick<TGitHubConnection, "name" | "method" | "description" | "gatewayId" | "credentials"> & {
+  Pick<
+    TGitHubConnection,
+    "name" | "method" | "description" | "gatewayId" | "gatewayPoolId" | "credentials"
+  > & {
     appSlug?: string;
   };
 
@@ -30,7 +33,10 @@ export type GitLabFormData = BaseFormData &
   Pick<TGitLabConnection, "name" | "method" | "description" | "credentials">;
 
 export type AzureKeyVaultFormData = BaseFormData &
-  Pick<TAzureKeyVaultConnection, "name" | "method" | "description"> &
+  Pick<
+    TAzureKeyVaultConnection,
+    "name" | "method" | "description" | "gatewayId" | "gatewayPoolId"
+  > &
   Pick<TAzureKeyVaultConnection["credentials"], "tenantId">;
 
 export type AzureAppConfigurationFormData = BaseFormData &

@@ -248,6 +248,15 @@ export const secretImportServiceFactory = ({
       });
     }
 
+    // check if user has permission to import from target path when source is changing
+    if (data.environment || data.path) {
+      const newSourcePath = data.path || secImpDoc.importPath;
+      throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
+        environment: importedEnv.slug,
+        secretPath: newSourcePath
+      });
+    }
+
     const sourceFolder = await folderDAL.findBySecretPath(
       projectId,
       importedEnv.slug,

@@ -140,6 +140,7 @@ export enum TableName {
   LdapGroupMap = "ldap_group_maps",
   AuditLog = "audit_logs",
   AuditLogStream = "audit_log_streams",
+  AuditLogStreamOutbox = "audit_log_stream_outbox",
   GitAppInstallSession = "git_app_install_sessions",
   GitAppOrg = "git_app_org",
   SecretScanningGitRisk = "secret_scanning_git_risks",
@@ -186,6 +187,7 @@ export enum TableName {
   KmipOrgConfig = "kmip_org_configs",
   KmipOrgServerCertificates = "kmip_org_server_certificates",
   KmipClientCertificates = "kmip_client_certificates",
+  KmipServer = "kmip_servers",
   SecretRotationV2 = "secret_rotations_v2",
   SecretRotationV2SecretMapping = "secret_rotation_v2_secret_mappings",
   MicrosoftTeamsIntegrations = "microsoft_teams_integrations",
@@ -301,6 +303,9 @@ export enum TableName {
 
   CaSigningConfig = "ca_signing_configs",
   SecretValidationRule = "secret_validation_rules",
+
+  // OAuth 2.0 authorization server (Infisical as an OAuth provider)
+  OauthClient = "oauth_clients",
 
   // Honey Tokens
   HoneyTokenConfig = "honey_token_configs",

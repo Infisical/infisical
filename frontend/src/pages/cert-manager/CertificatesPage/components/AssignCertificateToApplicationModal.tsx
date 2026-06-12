@@ -1,8 +1,15 @@
 import { useEffect, useState } from "react";
+import { Check, ChevronsUpDown } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -12,14 +19,13 @@ import {
   Field,
   FieldContent,
   FieldLabel,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
+  Popover,
+  PopoverContent,
+  PopoverTrigger
 } from "@app/components/v3";
 import { useAssignCertificateToApplication } from "@app/hooks/api/certificates";
 import { useListPkiApplications } from "@app/hooks/api/pkiApplications";
+import { useDebounce } from "@app/hooks/useDebounce";
 
 type Props = {
   isOpen: boolean;
@@ -28,20 +34,33 @@ type Props = {
 };
 
 export const AssignCertificateToApplicationModal = ({ isOpen, onClose, certificateId }: Props) => {
-  const [selectedApplicationId, setSelectedApplicationId] = useState<string>("");
-  const { data: applications = [], isPending } = useListPkiApplications(undefined, {
-    enabled: isOpen
-  });
+  const [selectedApplication, setSelectedApplication] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+  const [popoverOpen, setPopoverOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const [debouncedSearch] = useDebounce(search);
+  const { data, isPending } = useListPkiApplications(
+    { search: debouncedSearch || undefined, limit: 20 },
+    {
+      enabled: isOpen
+    }
+  );
+  const applications = data?.applications ?? [];
   const assign = useAssignCertificateToApplication();
 
   useEffect(() => {
-    if (!isOpen) setSelectedApplicationId("");
+    if (!isOpen) {
+      setSelectedApplication(null);
+      setSearch("");
+    }
   }, [isOpen]);
 
   const handleSubmit = async () => {
-    if (!selectedApplicationId) return;
+    if (!selectedApplication) return;
     try {
-      await assign.mutateAsync({ certificateId, applicationId: selectedApplicationId });
+      await assign.mutateAsync({ certificateId, applicationId: selectedApplication.id });
       createNotification({ type: "success", text: "Certificate assigned to Application" });
       onClose();
     } catch (err) {
@@ -64,28 +83,55 @@ export const AssignCertificateToApplicationModal = ({ isOpen, onClose, certifica
         <Field>
           <FieldLabel>Application</FieldLabel>
           <FieldContent>
-            <Select
-              value={selectedApplicationId}
-              onValueChange={setSelectedApplicationId}
-              disabled={isPending || applications.length === 0}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue
-                  placeholder={
-                    applications.length === 0
-                      ? "No applications available"
-                      : "Select an application"
-                  }
-                />
-              </SelectTrigger>
-              <SelectContent>
-                {applications.map((app) => (
-                  <SelectItem key={app.id} value={app.id}>
-                    {app.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Popover open={popoverOpen} onOpenChange={setPopoverOpen} modal>
+              <PopoverTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  role="combobox"
+                  className="w-full justify-between font-normal"
+                >
+                  <span className={selectedApplication ? "" : "text-muted"}>
+                    {selectedApplication ? selectedApplication.name : "Select an application"}
+                  </span>
+                  <ChevronsUpDown className="size-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="start" className="w-[var(--radix-popover-trigger-width)] p-0">
+                <Command shouldFilter={false}>
+                  <CommandInput
+                    placeholder="Search applications..."
+                    value={search}
+                    onValueChange={setSearch}
+                  />
+                  <CommandList>
+                    <CommandEmpty>
+                      {isPending ? "Loading applications..." : "No applications found."}
+                    </CommandEmpty>
+                    <CommandGroup>
+                      {applications.map((app) => (
+                        <CommandItem
+                          key={app.id}
+                          value={app.id}
+                          onSelect={() => {
+                            setSelectedApplication({ id: app.id, name: app.name });
+                            setPopoverOpen(false);
+                          }}
+                          className="gap-2"
+                        >
+                          <Check
+                            className={
+                              selectedApplication?.id === app.id ? "opacity-100" : "opacity-0"
+                            }
+                          />
+                          <span className="truncate">{app.name}</span>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </FieldContent>
         </Field>
 
@@ -97,7 +143,7 @@ export const AssignCertificateToApplicationModal = ({ isOpen, onClose, certifica
             type="button"
             variant="project"
             isPending={assign.isPending}
-            isDisabled={!selectedApplicationId || assign.isPending}
+            isDisabled={!selectedApplication || assign.isPending}
             onClick={handleSubmit}
           >
             Assign

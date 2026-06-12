@@ -43,6 +43,9 @@ import { auditLogQueueServiceFactory } from "@app/ee/services/audit-log/audit-lo
 import { auditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-service";
 import { auditLogStreamDALFactory } from "@app/ee/services/audit-log-stream/audit-log-stream-dal";
 import { auditLogStreamServiceFactory } from "@app/ee/services/audit-log-stream/audit-log-stream-service";
+import { auditLogStreamOutboxDALFactory } from "@app/ee/services/audit-log-stream-outbox/audit-log-stream-outbox-dal";
+import { auditLogStreamOutboxQueueFactory } from "@app/ee/services/audit-log-stream-outbox/audit-log-stream-outbox-queue";
+import { auditLogStreamOutboxServiceFactory } from "@app/ee/services/audit-log-stream-outbox/audit-log-stream-outbox-service";
 import { certificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
 import { certificateAuthorityCrlServiceFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-service";
 import { certificateEstServiceFactory } from "@app/ee/services/certificate-est/certificate-est-service";
@@ -88,6 +91,8 @@ import { kmipOperationServiceFactory } from "@app/ee/services/kmip/kmip-operatio
 import { kmipOrgConfigDALFactory } from "@app/ee/services/kmip/kmip-org-config-dal";
 import { kmipOrgServerCertificateDALFactory } from "@app/ee/services/kmip/kmip-org-server-certificate-dal";
 import { kmipServiceFactory } from "@app/ee/services/kmip/kmip-service";
+import { kmipServerDALFactory } from "@app/ee/services/kmip-server/kmip-server-dal";
+import { kmipServerServiceFactory } from "@app/ee/services/kmip-server/kmip-server-service";
 import { ldapConfigDALFactory } from "@app/ee/services/ldap-config/ldap-config-dal";
 import { ldapConfigServiceFactory } from "@app/ee/services/ldap-config/ldap-config-service";
 import { ldapGroupMapDALFactory } from "@app/ee/services/ldap-config/ldap-group-map-dal";
@@ -356,6 +361,7 @@ import { kmskeyDALFactory } from "@app/services/kms/kms-key-dal";
 import { TKmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
 import { kmsServiceFactory } from "@app/services/kms/kms-service";
 import { RootKeyEncryptionStrategy } from "@app/services/kms/kms-types";
+import { licenseClientFactory } from "@app/services/license-client";
 import { applicationMembershipCleanupServiceFactory } from "@app/services/membership/application-membership-cleanup-service";
 import { membershipDALFactory } from "@app/services/membership/membership-dal";
 import { membershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
@@ -372,6 +378,8 @@ import { projectMicrosoftTeamsConfigDALFactory } from "@app/services/microsoft-t
 import { notificationQueueServiceFactory } from "@app/services/notification/notification-queue";
 import { notificationServiceFactory } from "@app/services/notification/notification-service";
 import { userNotificationDALFactory } from "@app/services/notification/user-notification-dal";
+import { oauthClientDALFactory } from "@app/services/oauth-client/oauth-client-dal";
+import { oauthClientServiceFactory } from "@app/services/oauth-client/oauth-client-service";
 import { offlineUsageReportDALFactory } from "@app/services/offline-usage-report/offline-usage-report-dal";
 import { offlineUsageReportServiceFactory } from "@app/services/offline-usage-report/offline-usage-report-service";
 import { incidentContactDALFactory } from "@app/services/org/incident-contacts-dal";
@@ -496,7 +504,9 @@ import { injectAuditLogInfo } from "../plugins/audit-log";
 import { injectAssumePrivilege } from "../plugins/auth/inject-assume-privilege";
 import { injectIdentity } from "../plugins/auth/inject-identity";
 import { injectPermission } from "../plugins/auth/inject-permission";
-import { forwardToGoSidecar } from "../plugins/go-sidecar-forwarding";
+import { goSidecarPlugin } from "../plugins/go-sidecar";
+// import { forwardToGoSidecar } from "../plugins/go-sidecar-forwarding";
+import { shadowToGoSidecar } from "../plugins/go-sidecar-shadowing";
 import { injectPamProjectId } from "../plugins/inject-pam-project-id";
 import { injectRateLimits } from "../plugins/inject-rate-limits";
 import { forwardWritesToPrimary } from "../plugins/primary-forwarding-mode";
@@ -617,6 +627,7 @@ export const registerRoutes = async (
 
   const auditLogDAL = auditLogDALFactory(auditLogDb ?? db);
   const auditLogStreamDAL = auditLogStreamDALFactory(db);
+  const auditLogStreamOutboxDAL = auditLogStreamOutboxDALFactory(db);
   const trustedIpDAL = trustedIpDALFactory(db);
   const telemetryDAL = telemetryDALFactory(db);
   const appConnectionDAL = appConnectionDALFactory(db);
@@ -758,6 +769,10 @@ export const registerRoutes = async (
     envConfig
   });
 
+  // License Server v2 client SDK. Coexists with licenseService during migration - getFeature()
+  // is the single read primitive; falls back to feature defaults until the server is configured.
+  const licenseClient = licenseClientFactory({ envConfig, keyStore });
+
   // Project events SSE service (for clients to subscribe to secret mutation events)
   const projectEventsSSEService = projectEventsSSEServiceFactory({
     projectEventsService,
@@ -772,6 +787,16 @@ export const registerRoutes = async (
   const applicationMembershipCleanupService = applicationMembershipCleanupServiceFactory({
     membershipDAL,
     approvalPolicyDAL
+  });
+
+  const oauthClientDAL = oauthClientDALFactory(db);
+  const oauthClientService = oauthClientServiceFactory({
+    oauthClientDAL,
+    permissionService,
+    keyStore,
+    tokenService,
+    orgDAL,
+    userDAL
   });
 
   const membershipUserService = membershipUserServiceFactory({
@@ -881,12 +906,26 @@ export const registerRoutes = async (
     kmsService
   });
 
+  const auditLogStreamOutboxService = auditLogStreamOutboxServiceFactory({
+    auditLogStreamOutboxDAL,
+    auditLogStreamDAL,
+    kmsService,
+    keyStore,
+    queueService
+  });
+
+  const auditLogStreamOutboxQueue = auditLogStreamOutboxQueueFactory({
+    queueService,
+    cronJob,
+    auditLogStreamOutboxService
+  });
+
   const auditLogQueue = await auditLogQueueServiceFactory({
     auditLogDAL,
     queueService,
     projectDAL,
     licenseService,
-    auditLogStreamService,
+    auditLogStreamOutboxService,
     clickhouseClient: clickhouse,
     keyStore
   });
@@ -1307,7 +1346,10 @@ export const registerRoutes = async (
 
   const projectQueueService = projectQueueFactory({
     queueService,
+    keyStore,
     secretDAL,
+    secretV2BridgeDAL,
+    kmsService,
     folderDAL,
     projectDAL,
     orgDAL,
@@ -1376,6 +1418,7 @@ export const registerRoutes = async (
   const orgRelayConfigDAL = orgRelayConfigDalFactory(db);
   const relayDAL = relayDalFactory(db);
   const gatewayV2DAL = gatewayV2DalFactory(db);
+  const kmipServerDAL = kmipServerDALFactory(db);
   const resourceTokenAuthDAL = resourceTokenAuthDALFactory(db);
   const resourceAuthMethodDAL = resourceAuthMethodDALFactory(db);
   const resourceAwsAuthDAL = resourceAwsAuthDALFactory(db);
@@ -1617,6 +1660,7 @@ export const registerRoutes = async (
     resourceTokenAuthDAL,
     gatewayV2DAL,
     relayDAL,
+    kmipServerDAL,
     identityDAL,
     permissionService
   });
@@ -1633,6 +1677,12 @@ export const registerRoutes = async (
     userDAL,
     resourceAuthMethodService,
     gatewayV2DAL
+  });
+
+  const kmipServerService = kmipServerServiceFactory({
+    kmipServerDAL,
+    permissionService,
+    resourceAuthMethodService
   });
 
   const gatewayV2Service = gatewayV2ServiceFactory({
@@ -1737,6 +1787,7 @@ export const registerRoutes = async (
     licenseService,
     gatewayService,
     gatewayV2Service,
+    gatewayPoolService,
     gatewayDAL,
     gatewayV2DAL,
     auditLogService,
@@ -2719,7 +2770,9 @@ export const registerRoutes = async (
     folderDAL,
     secretV2BridgeDAL,
     projectBotService,
+    projectDAL,
     userDAL,
+    kmsService,
     keyStore
   });
 
@@ -3437,6 +3490,7 @@ export const registerRoutes = async (
   projectEnvQueue.init();
   projectCleanupQueue.init();
   healthAlert.init();
+  auditLogStreamOutboxQueue.init();
   pkiSyncCleanup.init();
   pkiDiscoveryQueue.startPkiDiscoveryScanQueue();
   dailyReminderQueueService.startDailyRemindersJob();
@@ -3471,6 +3525,7 @@ export const registerRoutes = async (
     subOrganization: subOrgService,
     oidc: oidcService,
     authToken: tokenService,
+    oauthClient: oauthClientService,
     superAdmin: superAdminService,
     offlineUsageReport: offlineUsageReportService,
     orgProductStats: orgProductStatsService,
@@ -3566,6 +3621,7 @@ export const registerRoutes = async (
     pkiTemplate: pkiTemplateService,
     secretScanning: secretScanningService,
     license: licenseService,
+    licenseClient,
     trustedIp: trustedIpService,
     scim: scimService,
     secretBlindIndex: secretBlindIndexService,
@@ -3587,6 +3643,7 @@ export const registerRoutes = async (
     secretSync: secretSyncService,
     kmip: kmipService,
     kmipOperation: kmipOperationService,
+    kmipServer: kmipServerService,
     gateway: gatewayService,
     relay: relayService,
     gatewayV2: gatewayV2Service,
@@ -3667,10 +3724,37 @@ export const registerRoutes = async (
     user: userDAL,
     kmipClient: kmipClientDAL
   });
-  if (envConfig.GOLANG_SIDECAR_URL) {
-    logger.info(`Go sidecar is configured: ${envConfig.GOLANG_SIDECAR_URL}`);
-    await server.register(forwardToGoSidecar, { sidecarUrl: envConfig.GOLANG_SIDECAR_URL });
+
+  // Spawn Go sidecar as subprocess (must be registered before shadowing plugin)
+  if (envConfig.GO_SIDECAR_SPAWN_ENABLED) {
+    logger.info(`Go sidecar spawn enabled: ${envConfig.GO_SIDECAR_BINARY_PATH || "./go-sidecar"}`);
+    await server.register(goSidecarPlugin, {
+      enabled: true,
+      binaryPath: envConfig.GO_SIDECAR_BINARY_PATH,
+      env: {
+        // Pass through relevant env vars to Go sidecar
+        DB_CONNECTION_URI: envConfig.DB_CONNECTION_URI,
+        REDIS_URL: envConfig.REDIS_URL || "",
+        ENCRYPTION_KEY: envConfig.ENCRYPTION_KEY || "",
+        AUTH_SECRET: envConfig.AUTH_SECRET || ""
+      }
+    });
   }
+
+  if (envConfig.GOLANG_SIDECAR_URL && envConfig.GO_SIDECAR_SHADOW_ENABLED) {
+    logger.info(
+      `Go sidecar shadowing enabled: ${envConfig.GOLANG_SIDECAR_URL} [sampleRate=${envConfig.GO_SIDECAR_SHADOW_SAMPLE_RATE}%]`
+    );
+    await server.register(shadowToGoSidecar, {
+      sidecarUrl: envConfig.GOLANG_SIDECAR_URL,
+      sampleRate: envConfig.GO_SIDECAR_SHADOW_SAMPLE_RATE
+    });
+  }
+  // Forwarding plugin disabled in favor of shadowing
+  // if (envConfig.GOLANG_SIDECAR_URL) {
+  //   logger.info(`Go sidecar is configured: ${envConfig.GOLANG_SIDECAR_URL}`);
+  //   await server.register(forwardToGoSidecar, { sidecarUrl: envConfig.GOLANG_SIDECAR_URL });
+  // }
 
   const shouldForwardWritesToPrimaryInstance = Boolean(envConfig.INFISICAL_PRIMARY_INSTANCE_URL);
   if (shouldForwardWritesToPrimaryInstance) {
