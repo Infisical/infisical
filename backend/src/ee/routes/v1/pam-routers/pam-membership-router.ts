@@ -106,33 +106,54 @@ export const registerPamProductMembershipRouter = async (server: FastifyZodProvi
 
   server.route({
     method: "POST",
-    url: "/users/:userId",
+    url: "/users",
     schema: {
-      operationId: "addPamProductUserMember",
-      description: "Add a user to the PAM product",
+      operationId: "addPamProductUserMembers",
+      description: "Add users to the PAM product by userId or email",
       tags: [ApiDocsTags.PamMemberships],
-      params: z.object({ userId: z.string().uuid().describe("The ID of the user") }),
-      body: z.object({
-        role: z.nativeEnum(PamProductRole).describe("The role to assign")
-      }),
-      response: { 200: MemberResultSchema }
+      body: z
+        .object({
+          userIds: z.string().uuid().array().default([]).describe("User IDs to add"),
+          emails: z
+            .string()
+            .email()
+            .array()
+            .default([])
+            .refine((val) => val.every((el) => el === el.toLowerCase()), "Email must be lowercase")
+            .describe("User emails to resolve and add"),
+          role: z.nativeEnum(PamProductRole).describe("The role to assign")
+        })
+        .refine((val) => val.userIds.length + val.emails.length > 0, {
+          message: "Provide at least one userId or email."
+        }),
+      response: {
+        200: z.object({
+          memberships: z.array(MemberResultSchema),
+          skipped: z.array(z.string()),
+          unresolved: z.array(z.string())
+        })
+      }
     },
     config: { rateLimit: writeLimit },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const membership = await server.services.pamMembership.addProductMember({
+      const result = await server.services.pamMembership.addProductUserMembers({
         ...actorCtx(req),
-        userId: req.params.userId,
+        userIds: req.body.userIds,
+        emails: req.body.emails,
         role: req.body.role
       });
 
-      await emitAuditLog(server, req, EventType.PAM_PRODUCT_MEMBER_ADD, {
-        userId: req.params.userId,
-        role: req.body.role
-      });
-      emitTelemetry(server, req, PostHogEventTypes.PamProductMemberAdded);
+      for (const m of result.memberships) {
+        // eslint-disable-next-line no-await-in-loop
+        await emitAuditLog(server, req, EventType.PAM_PRODUCT_MEMBER_ADD, {
+          userId: m.userId,
+          role: m.role
+        });
+        emitTelemetry(server, req, PostHogEventTypes.PamProductMemberAdded);
+      }
 
-      return membership;
+      return result;
     }
   });
 

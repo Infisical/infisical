@@ -21,6 +21,7 @@ import {
   TAddPamAccountMemberDTO,
   TAddPamFolderMemberDTO,
   TAddPamProductMemberDTO,
+  TAddPamProductUserMembersDTO,
   TListPamAccountMembersDTO,
   TListPamFolderMembersDTO,
   TListPamProductMembersDTO,
@@ -40,7 +41,7 @@ type TPamMembershipServiceFactoryDep = {
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "find" | "delete" | "update">;
   pamFolderDAL: Pick<TPamFolderDALFactory, "findById">;
   pamAccountDAL: Pick<TPamAccountDALFactory, "findById">;
-  userDAL: Pick<TUserDALFactory, "findById">;
+  userDAL: Pick<TUserDALFactory, "findById" | "find">;
   groupDAL: Pick<TGroupDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
 };
@@ -268,6 +269,99 @@ export const pamMembershipServiceFactory = ({
         createdAt: membership.createdAt
       };
     });
+  };
+
+  const addProductUserMembers = async ({
+    projectId,
+    userIds,
+    emails,
+    role,
+    ...ctx
+  }: TAddPamProductUserMembersDTO & TActorContext) => {
+    await checkProductAdmin(projectId, ctx);
+
+    if (!VALID_PRODUCT_ROLES.includes(role)) {
+      throw new BadRequestError({
+        message: `Invalid product role '${role}'. Expected: ${VALID_PRODUCT_ROLES.join(", ")}`
+      });
+    }
+
+    const usersByEmail = emails.length ? await userDAL.find({ $in: { username: emails } }) : [];
+    const userByEmail = new Map(usersByEmail.map((u) => [u.username, u]));
+    const unresolved = emails.filter((e) => !userByEmail.has(e));
+
+    const candidates: { userId: string; label: string }[] = [];
+    const seen = new Set<string>();
+    for (const id of userIds) {
+      if (!seen.has(id)) {
+        seen.add(id);
+        candidates.push({ userId: id, label: id });
+      }
+    }
+    for (const email of emails) {
+      const user = userByEmail.get(email);
+      if (user && !seen.has(user.id)) {
+        seen.add(user.id);
+        candidates.push({ userId: user.id, label: email });
+      }
+    }
+
+    const existing = await membershipDAL.find({
+      scope: AccessScope.Project,
+      scopeProjectId: projectId
+    });
+    const alreadyAttached = new Set(existing.map((m) => m.actorUserId).filter((v): v is string => Boolean(v)));
+    const skipped: string[] = [];
+
+    const orgMemberships = candidates.length
+      ? await membershipDAL.find({
+          scope: AccessScope.Organization,
+          scopeOrgId: ctx.actorOrgId,
+          isActive: true,
+          $in: { actorUserId: candidates.map((c) => c.userId) }
+        })
+      : [];
+    const orgMemberIds = new Set(orgMemberships.map((m) => m.actorUserId));
+
+    const toCreate = candidates.filter((c) => {
+      if (!orgMemberIds.has(c.userId)) {
+        unresolved.push(c.label);
+        return false;
+      }
+      if (alreadyAttached.has(c.userId)) {
+        skipped.push(c.label);
+        return false;
+      }
+      return true;
+    });
+
+    const memberships = await membershipDAL.transaction(async (tx) => {
+      const results: { membershipId: string; userId: string; role: string; createdAt: Date }[] = [];
+      for (const { userId } of toCreate) {
+        // eslint-disable-next-line no-await-in-loop
+        const membership = await membershipDAL.create(
+          {
+            scope: AccessScope.Project,
+            scopeOrgId: ctx.actorOrgId,
+            scopeProjectId: projectId,
+            actorUserId: userId,
+            isActive: true
+          },
+          tx
+        );
+        // eslint-disable-next-line no-await-in-loop
+        const membershipRole = await membershipRoleDAL.create({ membershipId: membership.id, role }, tx);
+        results.push({
+          membershipId: membership.id,
+          userId,
+          role: membershipRole.role,
+          createdAt: membership.createdAt
+        });
+      }
+      return results;
+    });
+
+    return { memberships, skipped, unresolved };
   };
 
   const assertNotLastAdmin = async (projectId: string, membershipId: string, tx?: Knex) => {
@@ -617,6 +711,7 @@ export const pamMembershipServiceFactory = ({
   return {
     listProductMembers,
     addProductMember,
+    addProductUserMembers,
     updateProductMemberRole,
     removeProductMember,
     listFolderMembers,

@@ -11,6 +11,13 @@ export type TAddPamProductMemberDTO = {
   role: PamProductRole;
 };
 
+export type TAddPamProductUserMembersDTO = {
+  projectId: string;
+  userIds: string[];
+  emails: string[];
+  role: PamProductRole;
+};
+
 export type TUpdatePamProductMemberDTO = {
   projectId: string;
   userId?: string;
