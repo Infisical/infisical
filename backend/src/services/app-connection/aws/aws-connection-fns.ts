@@ -63,11 +63,14 @@ export const getAwsConnectionConfig = async (appConnection: TAwsConnectionConfig
     case AwsConnectionMethod.AssumeRole: {
       const client = new STSClient({
         region: getStsSigningRegion(credentials.stsEndpoint) ?? region,
-        useFipsEndpoint: crypto.isFipsModeEnabled(),
         sha256: CustomAWSHasher,
         // only override the endpoint when explicitly set; otherwise preserve the SDK's
         // default region/FIPS endpoint resolution so existing connections are unaffected
-        ...(credentials.stsEndpoint ? { endpoint: credentials.stsEndpoint } : {}),
+        ...(credentials.stsEndpoint
+          ? { endpoint: credentials.stsEndpoint }
+          : {
+              useFipsEndpoint: crypto.isFipsModeEnabled()
+            }),
         credentials:
           appCfg.INF_APP_CONNECTION_AWS_ACCESS_KEY_ID && appCfg.INF_APP_CONNECTION_AWS_SECRET_ACCESS_KEY
             ? {
