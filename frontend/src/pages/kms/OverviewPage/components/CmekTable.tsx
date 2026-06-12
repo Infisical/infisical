@@ -14,6 +14,7 @@ import {
   LockIcon,
   PencilIcon,
   PlusIcon,
+  RotateCwIcon,
   SearchIcon,
   TrashIcon,
   UnlockIcon
@@ -96,6 +97,7 @@ import { CmekSignModal } from "./CmekSignModal";
 import { CmekVerifyModal } from "./CmekVerifyModal";
 import { DeleteCmekModal } from "./DeleteCmekModal";
 import { cmekKeysToExportJSON, downloadJSON } from "./jsonExport";
+import { RotateCmekModal } from "./RotateCmekModal";
 
 const getStatusBadgeProps = (
   isDisabled: boolean
@@ -166,6 +168,7 @@ export const CmekTable = () => {
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
     "upsertKey",
     "deleteKey",
+    "rotateKey",
     "encryptData",
     "decryptData",
     "signData",
@@ -630,6 +633,15 @@ export const CmekTable = () => {
                                   <PencilIcon className="mr-2 size-4" />
                                   Edit Key
                                 </DropdownMenuItem>
+                                {keyUsage === KmsKeyUsage.ENCRYPT_DECRYPT && (
+                                  <DropdownMenuItem
+                                    onClick={() => handlePopUpOpen("rotateKey", cmek)}
+                                    isDisabled={cannotEditKey || isDisabled}
+                                  >
+                                    <RotateCwIcon className="mr-2 size-4" />
+                                    Rotate Key
+                                  </DropdownMenuItem>
+                                )}
                                 <DropdownMenuItem
                                   onClick={() => handleDisableCmek(cmek)}
                                   isDisabled={cannotEditKey}
@@ -685,6 +697,11 @@ export const CmekTable = () => {
         isOpen={popUp.upsertKey.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upsertKey", isOpen)}
         cmek={popUp.upsertKey.data as TCmek | null}
+      />
+      <RotateCmekModal
+        isOpen={popUp.rotateKey.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("rotateKey", isOpen)}
+        cmek={popUp.rotateKey.data as TCmek}
       />
       <CmekEncryptModal
         isOpen={popUp.encryptData.isOpen}

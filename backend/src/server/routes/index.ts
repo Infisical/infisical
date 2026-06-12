@@ -374,6 +374,7 @@ import { integrationServiceFactory } from "@app/services/integration/integration
 import { integrationAuthDALFactory } from "@app/services/integration-auth/integration-auth-dal";
 import { integrationAuthServiceFactory } from "@app/services/integration-auth/integration-auth-service";
 import { internalKmsDALFactory } from "@app/services/kms/internal-kms-dal";
+import { internalKmsKeyVersionDALFactory } from "@app/services/kms/internal-kms-key-version-dal";
 import { kmskeyDALFactory } from "@app/services/kms/kms-key-dal";
 import { TKmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
 import { kmsServiceFactory } from "@app/services/kms/kms-service";
@@ -707,6 +708,7 @@ export const registerRoutes = async (
 
   const kmsDAL = kmskeyDALFactory(db);
   const internalKmsDAL = internalKmsDALFactory(db);
+  const internalKmsKeyVersionDAL = internalKmsKeyVersionDALFactory(db);
   const externalKmsDAL = externalKmsDALFactory(db);
 
   const slackIntegrationDAL = slackIntegrationDALFactory(db);
@@ -889,6 +891,7 @@ export const registerRoutes = async (
     kmsRootConfigDAL,
     kmsDAL,
     internalKmsDAL,
+    internalKmsKeyVersionDAL,
     orgDAL,
     projectDAL,
     hsmService,

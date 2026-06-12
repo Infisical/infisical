@@ -125,6 +125,34 @@ export const cmekServiceFactory = ({
     }
   };
 
+  const rotateCmekById = async (keyId: string, actor: OrgServiceActor) => {
+    const key = await kmsDAL.findCmekById(keyId);
+
+    if (!key) throw new NotFoundError({ message: `Key with ID ${keyId} not found` });
+
+    if (!key.projectId || key.isReserved) throw new BadRequestError({ message: "Key is not customer managed" });
+
+    if (key.isDisabled) throw new BadRequestError({ message: "Key is disabled" });
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      projectId: key.projectId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.KMS
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.Edit, ProjectPermissionSub.Cmek);
+
+    const { version } = await kmsService.rotateKmsKey(keyId);
+
+    return {
+      ...key,
+      version
+    };
+  };
+
   const deleteCmekById = async (keyId: string, actor: OrgServiceActor) => {
     const key = await kmsDAL.findCmekById(keyId);
 
@@ -606,6 +634,7 @@ export const cmekServiceFactory = ({
   return {
     createCmek,
     updateCmekById,
+    rotateCmekById,
     deleteCmekById,
     listCmeksByProjectId,
     cmekEncrypt,

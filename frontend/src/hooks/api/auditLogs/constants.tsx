@@ -143,6 +143,7 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.READ_SHARED_SECRET]: "Read shared secret",
   [EventType.CREATE_CMEK]: "Create KMS key",
   [EventType.UPDATE_CMEK]: "Update KMS key",
+  [EventType.ROTATE_CMEK]: "Rotate KMS key",
   [EventType.DELETE_CMEK]: "Delete KMS key",
   [EventType.GET_CMEKS]: "List KMS keys",
   [EventType.GET_CMEK]: "Get KMS key",
