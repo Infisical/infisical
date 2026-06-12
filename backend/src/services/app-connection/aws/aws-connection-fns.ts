@@ -22,8 +22,13 @@ import { TAwsConnectionConfig } from "./aws-connection-types";
 // vpce-0abc.sts.eu-west-1.vpce.amazonaws.com), so parse it out of the host. Returns undefined for the
 // global endpoint (sts.amazonaws.com) and non-AWS hosts (e.g. LocalStack), where the caller's region
 // is used and region scoping isn't enforced.
-const getStsSigningRegion = (stsEndpoint?: string): string | undefined => {
-  if (!stsEndpoint) return undefined;
+const getStsSigningRegion = (stsEndpoint?: string) => {
+  if (!stsEndpoint) {
+    return {
+      region: null,
+      isValidEndpoint: false
+    };
+  }
 
   try {
     const { hostname } = new URL(stsEndpoint);
@@ -33,9 +38,22 @@ const getStsSigningRegion = (stsEndpoint?: string): string | undefined => {
     const region = stsLabelIndex === -1 ? undefined : labels[stsLabelIndex + 1];
 
     // the global endpoint (sts.amazonaws.com) has the domain in the region position, not a region
-    return region === "amazonaws" ? undefined : region;
+    if (region === "amazonaws") {
+      return {
+        region: null,
+        isValidEndpoint: false
+      };
+    }
+
+    return {
+      region,
+      isValidEndpoint: true
+    };
   } catch {
-    return undefined;
+    return {
+      region: null,
+      isValidEndpoint: false
+    };
   }
 };
 
@@ -61,12 +79,14 @@ export const getAwsConnectionConfig = async (appConnection: TAwsConnectionConfig
 
   switch (method) {
     case AwsConnectionMethod.AssumeRole: {
+      const stsRegion = getStsSigningRegion(credentials.stsEndpoint);
+
       const client = new STSClient({
-        region: getStsSigningRegion(credentials.stsEndpoint) ?? region,
+        region: stsRegion.region || region,
         sha256: CustomAWSHasher,
         // only override the endpoint when explicitly set; otherwise preserve the SDK's
         // default region/FIPS endpoint resolution so existing connections are unaffected
-        ...(credentials.stsEndpoint
+        ...(credentials.stsEndpoint && stsRegion.isValidEndpoint
           ? { endpoint: credentials.stsEndpoint }
           : {
               useFipsEndpoint: crypto.isFipsModeEnabled()
@@ -139,7 +159,7 @@ export const validateAwsConnectionCredentials = async (appConnection: TAwsConnec
     appConnection.method === AwsConnectionMethod.AssumeRole ? appConnection.credentials.stsEndpoint : undefined;
   const stsRegion = getStsSigningRegion(stsEndpoint);
 
-  if (stsEndpoint && (!stsRegion || !(Object.values(AWSRegion) as string[]).includes(stsRegion))) {
+  if (stsEndpoint && (!stsRegion.region || !(Object.values(AWSRegion) as string[]).includes(stsRegion.region))) {
     throw new BadRequestError({
       message: `STS endpoint must target a supported AWS region. "${stsEndpoint}" does not resolve to a supported region.`
     });
@@ -149,9 +169,9 @@ export const validateAwsConnectionCredentials = async (appConnection: TAwsConnec
     const awsConfig = await getAwsConnectionConfig(appConnection);
 
     const sts = new STSClient({
-      region: stsRegion ?? awsConfig.region,
+      region: stsRegion.region ?? awsConfig.region,
       credentials: awsConfig.credentials,
-      ...(stsEndpoint ? { endpoint: stsEndpoint } : {})
+      ...(stsEndpoint && stsRegion.isValidEndpoint ? { endpoint: stsEndpoint } : {})
     });
 
     await sts.send(new GetCallerIdentityCommand({}));
@@ -229,7 +249,7 @@ export const awsSyncPreSaveTransformDestinationConfig: TPreSaveTransformDestinat
     });
   }
 
-  if (region !== stsRegion) {
+  if (region !== stsRegion.region) {
     throw new BadRequestError({
       message: `Secret sync region "${region}" must match the AWS connection's STS endpoint region from the app connection. Update the sync region or the connection's STS endpoint.`
     });
