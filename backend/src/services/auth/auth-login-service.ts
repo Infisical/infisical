@@ -1135,7 +1135,11 @@ export const authLoginServiceFactory = ({
         // created the alias), so recover the existing row instead
         if (err instanceof DatabaseError && (err.error as { code: string })?.code === "23505") {
           logger.warn(`OAuth alias backfill for user ${user.id} skipped: alias already exists`);
-          existingAlias = await userAliasDAL.findOne({ externalId: providerUserId, aliasType });
+          const recoveredAlias = await userAliasDAL.findOne({ externalId: providerUserId, aliasType });
+          if (!recoveredAlias || recoveredAlias.userId !== user.id) {
+            throw new BadRequestError({ message: "Unable to complete login; please retry.", name: "Oauth 2 login" });
+          }
+          existingAlias = recoveredAlias;
         } else {
           throw err;
         }
