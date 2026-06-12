@@ -2972,7 +2972,8 @@ export const secretV2BridgeServiceFactory = ({
     sourceFolder,
     destinationFolder,
     isSourceUpdated,
-    isDestinationUpdated
+    isDestinationUpdated,
+    skipSourceSnapshot = false
   }: TDispatchSecretMoveSideEffectsDTO) => {
     if (isDestinationUpdated) {
       await snapshotService.performSnapshot(destinationFolder.id);
@@ -2996,7 +2997,11 @@ export const secretV2BridgeServiceFactory = ({
     }
 
     if (isSourceUpdated) {
-      await snapshotService.performSnapshot(sourceFolder.id);
+      // a folder move deletes the source folder before dispatching side effects, so snapshotting it would
+      // only hit a NotFoundError; the sync still runs so secret imports referencing the path re-resolve.
+      if (!skipSourceSnapshot) {
+        await snapshotService.performSnapshot(sourceFolder.id);
+      }
       await secretQueueService.syncSecrets({
         projectId,
         orgId,

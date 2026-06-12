@@ -1,6 +1,7 @@
 import { createSecretV2, getSecretsV2 } from "e2e-test/testUtils/secrets";
 
 import { seedData1 } from "@app/db/seed-data";
+import { ApproverType } from "@app/ee/services/access-approval-policy/access-approval-policy-types";
 
 const createFolder = async (dto: { path: string; name: string }) => {
   const res = await testServer.inject({
@@ -197,7 +198,7 @@ const createFolderInEnv = async (dto: { path: string; name: string; environment:
       authorization: `Bearer ${jwtAuthToken}`
     },
     body: {
-      projectId: seedData1.project.id,
+      projectId: seedData1.projectV3.id,
       environment: dto.environment,
       name: dto.name,
       path: dto.path
@@ -215,7 +216,7 @@ const getFolders = async (dto: { path: string; environment: string }) => {
       authorization: `Bearer ${jwtAuthToken}`
     },
     query: {
-      projectId: seedData1.project.id,
+      projectId: seedData1.projectV3.id,
       environment: dto.environment,
       path: dto.path
     }
@@ -232,7 +233,7 @@ const deleteFolderInEnv = async (dto: { path: string; id: string; environment: s
       authorization: `Bearer ${jwtAuthToken}`
     },
     body: {
-      projectId: seedData1.project.id,
+      projectId: seedData1.projectV3.id,
       environment: dto.environment,
       path: dto.path,
       forceDelete: dto.forceDelete ?? false
@@ -255,7 +256,7 @@ const moveFolder = async (dto: {
       authorization: `Bearer ${jwtAuthToken}`
     },
     body: {
-      projectId: seedData1.project.id,
+      projectId: seedData1.projectV3.id,
       folderId: dto.folderId,
       destinationEnvironment: dto.destinationEnvironment,
       destinationPath: dto.destinationPath,
@@ -269,7 +270,7 @@ describe("Secret Folder Move Router", async () => {
 
   const addSecret = (secretPath: string, key: string, environment = sourceEnv) =>
     createSecretV2({
-      workspaceId: seedData1.project.id,
+      workspaceId: seedData1.projectV3.id,
       environmentSlug: environment,
       secretPath,
       key,
@@ -279,12 +280,60 @@ describe("Secret Folder Move Router", async () => {
 
   const secretKeysAt = async (secretPath: string, environment: string) => {
     const { secrets } = await getSecretsV2({
-      workspaceId: seedData1.project.id,
+      workspaceId: seedData1.projectV3.id,
       environmentSlug: environment,
       secretPath,
       authToken: jwtAuthToken
     });
     return secrets.map((secret) => secret.secretKey);
+  };
+
+  const createSecretApprovalPolicy = async (dto: { name: string; secretPath: string }) => {
+    const res = await testServer.inject({
+      method: "POST",
+      url: `/api/v1/secret-approvals`,
+      headers: {
+        authorization: `Bearer ${jwtAuthToken}`
+      },
+      body: {
+        workspaceId: seedData1.projectV3.id,
+        environment: sourceEnv,
+        name: dto.name,
+        secretPath: dto.secretPath,
+        approvers: [{ id: seedData1.id, type: ApproverType.User }],
+        approvals: 1
+      }
+    });
+    expect(res.statusCode).toBe(200);
+    return res.json().approval as { id: string };
+  };
+
+  const deleteSecretApprovalPolicy = async (id: string) => {
+    const res = await testServer.inject({
+      method: "DELETE",
+      url: `/api/v1/secret-approvals/${id}`,
+      headers: {
+        authorization: `Bearer ${jwtAuthToken}`
+      }
+    });
+    expect(res.statusCode).toBe(200);
+  };
+
+  const listOpenApprovalRequests = async () => {
+    const res = await testServer.inject({
+      method: "GET",
+      url: `/api/v1/secret-approval-requests`,
+      headers: {
+        authorization: `Bearer ${jwtAuthToken}`
+      },
+      query: {
+        projectId: seedData1.projectV3.id,
+        environment: sourceEnv,
+        status: "open"
+      }
+    });
+    expect(res.statusCode).toBe(200);
+    return res.json().approvals as { commits: { op: string; secretId?: string | null }[] }[];
   };
 
   test("Move a folder subtree (secrets at every level) within the same environment", async () => {
@@ -305,7 +354,6 @@ describe("Secret Folder Move Router", async () => {
     });
     expect(res.statusCode).toBe(200);
     const payload = res.json();
-    expect(payload.isFullyMoved).toBe(true);
     expect(payload.hasApprovalRequests).toBe(false);
 
     // every secret now lives under the destination subtree
@@ -331,7 +379,6 @@ describe("Secret Folder Move Router", async () => {
     });
     expect(res.statusCode).toBe(200);
     const payload = res.json();
-    expect(payload.isFullyMoved).toBe(true);
     expect(payload.sourceEnvironment).toBe(sourceEnv);
     expect(payload.destinationEnvironment).toBe(crossEnv);
 
@@ -366,6 +413,67 @@ describe("Secret Folder Move Router", async () => {
     const rootFolders = await getFolders({ path: "/", environment: sourceEnv });
     expect(rootFolders.map((folder) => folder.name)).toContain("move-conflict");
 
+    await deleteFolderInEnv({ path: "/", id: srcRoot.id, environment: sourceEnv, forceDelete: true });
+    await deleteFolderInEnv({ path: "/", id: destParent.id, environment: sourceEnv, forceDelete: true });
+  });
+
+  test("Keeps folders with secrets pending a source approval policy and removes deletable siblings", async () => {
+    // /policy-src holds a plain secret; /policy-src/protected is covered by a source approval policy;
+    // /policy-src/plain is an ordinary sibling. Moving /policy-src to /policy-dest should copy every secret to
+    // the destination, delete the unprotected source folders, but KEEP /policy-src (its ancestor chain) and
+    // /policy-src/protected, because removing the protected secret is pending an approval request. The old code
+    // cascade-deleted the whole source subtree, orphaning that approval request.
+    const srcRoot = await createFolderInEnv({ path: "/", name: "policy-src", environment: sourceEnv });
+    await createFolderInEnv({ path: "/policy-src", name: "protected", environment: sourceEnv });
+    await createFolderInEnv({ path: "/policy-src", name: "plain", environment: sourceEnv });
+    const destParent = await createFolderInEnv({ path: "/", name: "policy-dest", environment: sourceEnv });
+
+    await addSecret("/policy-src", "ROOT_SECRET");
+    await addSecret("/policy-src/protected", "PROTECTED_SECRET");
+    await addSecret("/policy-src/plain", "PLAIN_SECRET");
+
+    const policy = await createSecretApprovalPolicy({
+      name: "move-protected-policy",
+      secretPath: "/policy-src/protected"
+    });
+
+    const res = await moveFolder({
+      folderId: srcRoot.id,
+      destinationEnvironment: sourceEnv,
+      destinationPath: "/policy-dest"
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().hasApprovalRequests).toBe(true);
+
+    // every secret is copied to the destination subtree
+    expect(await secretKeysAt("/policy-dest/policy-src", sourceEnv)).toContain("ROOT_SECRET");
+    expect(await secretKeysAt("/policy-dest/policy-src/protected", sourceEnv)).toContain("PROTECTED_SECRET");
+    expect(await secretKeysAt("/policy-dest/policy-src/plain", sourceEnv)).toContain("PLAIN_SECRET");
+
+    // the moved root husk is retained at the source because it is an ancestor of the protected folder
+    const rootFolders = await getFolders({ path: "/", environment: sourceEnv });
+    expect(rootFolders.map((folder) => folder.name)).toContain("policy-src");
+
+    // the protected subfolder is kept (its secret is pending approval); the unprotected sibling is deleted
+    const srcChildNames = (await getFolders({ path: "/policy-src", environment: sourceEnv })).map(
+      (folder) => folder.name
+    );
+    expect(srcChildNames).toContain("protected");
+    expect(srcChildNames).not.toContain("plain");
+
+    // the protected secret still physically exists at the source, so its approval request is not orphaned
+    expect(await secretKeysAt("/policy-src/protected", sourceEnv)).toContain("PROTECTED_SECRET");
+    // the husk root no longer holds its own secret (it was moved directly, no source policy there)
+    expect(await secretKeysAt("/policy-src", sourceEnv)).not.toContain("ROOT_SECRET");
+
+    // a DELETE approval request exists for the source removal and still resolves to a live secret id
+    const approvals = await listOpenApprovalRequests();
+    const deleteApproval = approvals.find((approval) => approval.commits.some((commit) => commit.op === "delete"));
+    expect(deleteApproval).toBeDefined();
+    expect(deleteApproval!.commits.some((commit) => commit.op === "delete" && Boolean(commit.secretId))).toBe(true);
+
+    // cleanup: removing the policy first so $checkFolderPolicy no longer blocks the retained source tree delete
+    await deleteSecretApprovalPolicy(policy.id);
     await deleteFolderInEnv({ path: "/", id: srcRoot.id, environment: sourceEnv, forceDelete: true });
     await deleteFolderInEnv({ path: "/", id: destParent.id, environment: sourceEnv, forceDelete: true });
   });

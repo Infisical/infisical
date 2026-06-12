@@ -90,6 +90,5 @@ export type TMoveFolderResponse = {
   sourcePath: string;
   destinationEnvironment: string;
   destinationPath: string;
-  isFullyMoved: boolean;
   hasApprovalRequests: boolean;
 };
