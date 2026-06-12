@@ -244,11 +244,11 @@ const Content = ({ onClose, environment, secretPath, appConnections, onImport }:
             {skippedWildcardPaths.length} secret path
             {skippedWildcardPaths.length > 1 ? "s are" : " is"} unavailable
           </AlertTitle>
-          <AlertDescription>
+          <AlertDescription className="text-sm">
             <p>
               {skippedWildcardPaths.length} secret path
               {skippedWildcardPaths.length > 1 ? "s are" : " is"} not available for selection. Vault
-              imports don&apos;t support wildcard <code className="text-yellow-500/80">+</code>{" "}
+              imports don&apos;t support wildcard (<code className="text-yellow-500/80">+</code>){" "}
               paths. In Vault, update the policy on the App role or token behind this App Connection
               to grant access to absolute paths instead.
             </p>
