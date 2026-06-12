@@ -113,7 +113,7 @@ Old tables, columns, and code kept temporarily so data can be recovered if the m
 
 ### Stale queue cleanup entries
 
-`backend/src/queue/queue-service.ts` stale queue list includes `pam-account-rotation` and `pam-session-ai-summary`. These ensure existing Redis instances get cleaned up on deploy. Remove them from the list after all deployments have booted at least once with the new code.
+`backend/src/queue/queue-service.ts` stale queue list includes `pam-account-rotation`, `pam-session-ai-summary`, and `pam-discovery-scan`. These ensure existing Redis instances get cleaned up on deploy. Remove them from the list after all deployments have booted at least once with the new code.
 
 ### Tables to drop
 
