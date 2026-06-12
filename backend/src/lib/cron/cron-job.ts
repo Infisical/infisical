@@ -12,6 +12,7 @@ export const CronJobName = {
   HealthAlert: "health-alert",
   DailyReminders: "daily-reminders",
   DailyResourceCleanup: "daily-resource-cleanup",
+  DailyResourceNotification: "daily-resource-notification",
   FrequentResourceCleanup: "frequent-resource-cleanup",
   CertificateCleanup: "certificate-cleanup",
   CertificateV3AutoRenewal: "certificate-v3-auto-renewal",

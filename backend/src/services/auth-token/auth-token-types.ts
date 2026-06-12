@@ -21,6 +21,12 @@ export type TCreateTokenForUserDTO = {
   payload?: string;
 };
 
+export type TCreateTokensForUsersResult = {
+  userId: string;
+  orgId: string;
+  token: string;
+}[];
+
 export type TCreateOrgInviteTokenDTO = {
   userId: string;
   orgId: string;
