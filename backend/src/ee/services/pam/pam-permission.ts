@@ -124,7 +124,10 @@ export const getResourceIdsWithActions = async (
   membershipDAL: TMembershipDep,
   membershipRoleDAL: TMembershipRoleDep,
   projectId: string,
-  actions: ResourcePermissionPamResourceActions[],
+  actions: {
+    allOf?: ResourcePermissionPamResourceActions[];
+    anyOf?: ResourcePermissionPamResourceActions[];
+  },
   ctx: TActorContext
 ) => {
   const [folderMemberships, accountMemberships] = await Promise.all([
@@ -152,17 +155,23 @@ export const getResourceIdsWithActions = async (
   });
   const roleByMembershipId = new Map(roles.map((r) => [r.membershipId, r.role]));
 
+  const roleMatchesActions = (role: string) => {
+    if (actions.allOf && !actions.allOf.every((a) => pamRoleHasAction(role, a))) return false;
+    if (actions.anyOf && !actions.anyOf.some((a) => pamRoleHasAction(role, a))) return false;
+    return true;
+  };
+
   const folderIds = folderMemberships
     .filter((m) => {
       const role = roleByMembershipId.get(m.id);
-      return m.scopeResourceId && role && actions.some((a) => pamRoleHasAction(role, a));
+      return m.scopeResourceId && role && roleMatchesActions(role);
     })
     .map((m) => m.scopeResourceId!);
 
   const accountIds = accountMemberships
     .filter((m) => {
       const role = roleByMembershipId.get(m.id);
-      return m.scopeResourceId && role && actions.some((a) => pamRoleHasAction(role, a));
+      return m.scopeResourceId && role && roleMatchesActions(role);
     })
     .map((m) => m.scopeResourceId!);
 

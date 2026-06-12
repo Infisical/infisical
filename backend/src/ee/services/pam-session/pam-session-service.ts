@@ -87,7 +87,7 @@ export const pamSessionServiceFactory = ({
       membershipDAL,
       membershipRoleDAL,
       projectId,
-      [ResourcePermissionPamResourceActions.ViewSessions],
+      { allOf: [ResourcePermissionPamResourceActions.ViewSessions] },
       ctx
     );
 

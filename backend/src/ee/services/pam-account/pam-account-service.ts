@@ -100,7 +100,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       membershipDAL,
       membershipRoleDAL,
       projectId,
-      [ResourcePermissionPamResourceActions.ReadAccounts],
+      { allOf: [ResourcePermissionPamResourceActions.ReadAccounts] },
       ctx
     );
     if (folderIds.length === 0 && accountIds.length === 0) return [];
@@ -392,7 +392,13 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       membershipDAL,
       membershipRoleDAL,
       projectId,
-      [ResourcePermissionPamResourceActions.LaunchSessions, ResourcePermissionPamResourceActions.ViewCredentials],
+      {
+        allOf: [ResourcePermissionPamResourceActions.ReadAccounts],
+        anyOf: [
+          ResourcePermissionPamResourceActions.LaunchSessions,
+          ResourcePermissionPamResourceActions.ViewCredentials
+        ]
+      },
       ctx
     );
     if (folderIds.length === 0 && accountIds.length === 0) return { accounts: [], totalCount: 0 };
