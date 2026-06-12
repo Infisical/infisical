@@ -17,6 +17,7 @@ import {
 } from "../pam/pam-permission";
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
 import { parseInternalMetadata } from "../pam-account/pam-account-schemas";
+import { PamTemplateAccessPolicySchema } from "../pam-account-template/pam-account-template-schemas";
 import { PamRecordingStorageBackend } from "../pam-session-recording/pam-recording-enums";
 import { generateSessionRecordingSecrets } from "../pam-session-recording/pam-recording-secrets";
 import { ResourcePermissionPamResourceActions } from "../permission/resource-permission";
@@ -137,7 +138,7 @@ export const pamSessionServiceFactory = ({
           clientPublicKey,
           keyId: `pam-session-${session.id}`,
           principals: [username],
-          requestedTtl: "8h",
+          requestedTtl: `${PamTemplateAccessPolicySchema.parse(account.templateAccessPolicy).maxSessionDurationSeconds}s`,
           certType: SshCertType.USER
         });
 
