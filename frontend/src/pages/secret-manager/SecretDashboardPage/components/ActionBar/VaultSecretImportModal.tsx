@@ -14,8 +14,10 @@ import {
   FormControl,
   Modal,
   ModalClose,
-  ModalContent
+  ModalContent,
+  Tooltip
 } from "@app/components/v2";
+import { Badge } from "@app/components/v3";
 import { Alert, AlertDescription, AlertTitle } from "@app/components/v3/generic/Alert";
 import { TAvailableAppConnection } from "@app/hooks/api/appConnections/types";
 import { useGetVaultMounts, useGetVaultSecretPaths } from "@app/hooks/api/migration/queries";
@@ -35,6 +37,27 @@ type ContentProps = {
   secretPath: string;
   appConnections: TAvailableAppConnection[];
   onImport: (vaultPaths: string[], namespace: string, connectionId: string) => void;
+};
+
+const renderWildcardPath = (path: string) => {
+  let position = 0;
+
+  return (
+    <span>
+      {path.split(/(\+)/).map((part) => {
+        const key = `${path}-${position}`;
+        position += part.length;
+
+        return part === "+" ? (
+          <code key={key} className="text-yellow-500/80">
+            +
+          </code>
+        ) : (
+          part
+        );
+      })}
+    </span>
+  );
 };
 
 const Content = ({ onClose, environment, secretPath, appConnections, onImport }: ContentProps) => {
@@ -184,17 +207,6 @@ const Content = ({ onClose, environment, secretPath, appConnections, onImport }:
         </>
       </FormControl>
 
-      {skippedWildcardPaths.length > 0 && (
-        <Alert variant="warning" className="mb-4">
-          <TriangleAlertIcon />
-          <AlertTitle>Some paths were skipped</AlertTitle>
-          <AlertDescription>
-            Some paths use a Vault + wildcard and can&apos;t be imported. Grant the token access to
-            explicit paths instead.
-          </AlertDescription>
-        </Alert>
-      )}
-
       <FormControl label="Vault Secret Path" className="mb-6">
         <>
           <FilterableSelect
@@ -224,6 +236,39 @@ const Content = ({ onClose, environment, secretPath, appConnections, onImport }:
           </p>
         </>
       </FormControl>
+
+      {skippedWildcardPaths.length > 0 && (
+        <Alert variant="warning" className="mb-4">
+          <TriangleAlertIcon />
+          <AlertTitle>
+            {skippedWildcardPaths.length} secret path
+            {skippedWildcardPaths.length > 1 ? "s are" : " is"} unavailable
+          </AlertTitle>
+          <AlertDescription>
+            <p>
+              {skippedWildcardPaths.length} secret path
+              {skippedWildcardPaths.length > 1 ? "s are" : " is"} not available for selection. Vault
+              imports don&apos;t support wildcard <code className="text-yellow-500/80">+</code>{" "}
+              paths. In Vault, update the policy on the App role or token behind this App Connection
+              to grant access to absolute paths instead.
+            </p>
+            <div className="mt-2 flex flex-wrap items-center gap-1">
+              {skippedWildcardPaths.slice(0, 3).map((path) => (
+                <Badge key={path} variant="neutral">
+                  {renderWildcardPath(path)}
+                </Badge>
+              ))}
+              {skippedWildcardPaths.length > 3 && (
+                <Tooltip content={skippedWildcardPaths.slice(3).join(", ")}>
+                  <Badge variant="neutral" className="cursor-default text-yellow-500/80">
+                    +{skippedWildcardPaths.length - 3} more
+                  </Badge>
+                </Tooltip>
+              )}
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
 
       <div className="mt-8 flex space-x-4">
         <Button
