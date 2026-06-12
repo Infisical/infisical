@@ -14,14 +14,14 @@ import {
   PostgresServerMessageType,
   type TPostgresCorrelatedServerMessage
 } from "./pam-postgres-ws-types";
-import { registerSessionHandler } from "./pam-session-handler-registry";
-import { parseClientMessage } from "./pam-web-access-fns";
+import { registerSessionHandler } from "../pam-session-handler-registry";
+import { parseClientMessage } from "../pam-web-access-fns";
 import {
   SessionEndReason,
   TerminalServerMessageType,
   TSessionContext,
   TSessionHandlerResult
-} from "./pam-web-access-types";
+} from "../pam-web-access-types";
 
 const MAX_CONNECTIONS_PER_WS = 20;
 

@@ -1,5 +1,5 @@
-import "./pam-postgres-session-handler";
-import "./pam-ssh-session-handler";
+import "./postgres/pam-postgres-session-handler";
+import "./ssh/pam-ssh-session-handler";
 
 import net from "node:net";
 

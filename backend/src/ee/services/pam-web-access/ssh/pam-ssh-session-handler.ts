@@ -3,15 +3,15 @@ import { Client, type ClientChannel, type ConnectConfig } from "ssh2";
 import { PamAccountType } from "@app/ee/services/pam/pam-enums";
 import { logger } from "@app/lib/logger";
 
-import { registerSessionHandler } from "./pam-session-handler-registry";
+import { registerSessionHandler } from "../pam-session-handler-registry";
 import { SshClientMessageSchema, SshClientMessageType } from "./pam-ssh-ws-types";
-import { parseClientMessage, resolveEndReason } from "./pam-web-access-fns";
+import { parseClientMessage, resolveEndReason } from "../pam-web-access-fns";
 import {
   SessionEndReason,
   TerminalServerMessageType,
   TSessionContext,
   TSessionHandlerResult
-} from "./pam-web-access-types";
+} from "../pam-web-access-types";
 
 const handleSSHSession = async (
   ctx: TSessionContext,
