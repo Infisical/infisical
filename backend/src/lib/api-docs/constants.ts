@@ -2215,6 +2215,13 @@ export const CERTIFICATES = {
     revokedAt: "The date and time when the certificate was revoked.",
     serialNumberRes: "The serial number of the revoked certificate."
   },
+  REVOKE_BY_THUMBPRINT: {
+    thumbprint:
+      "The SHA-1 or SHA-256 thumbprint (fingerprint) of the certificate to revoke. Colons and casing are ignored.",
+    revocationReason: "The reason for revoking the certificate.",
+    revokedAt: "The date and time when the certificate was revoked.",
+    serialNumberRes: "The serial number of the revoked certificate."
+  },
   DELETE: {
     id: "The ID of the certificate to delete.",
     serialNumber: "The serial number of the certificate to delete."

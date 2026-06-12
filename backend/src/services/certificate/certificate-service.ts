@@ -42,9 +42,11 @@ import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/res
 import { expandInternalCa, getCaCertChain, rebuildCaCrl } from "../certificate-authority/certificate-authority-fns";
 import { validatePqcLicense } from "../certificate-common/certificate-utils";
 import {
+  CertificateThumbprintAlgorithm,
   extractCertificateFields,
   generatePkcs12FromCertificate,
   getCertificateCredentials,
+  normalizeThumbprint,
   parseCertificateBody,
   revocationReasonToCrlCode,
   splitPemChain
@@ -415,13 +417,42 @@ export const certificateServiceFactory = ({
   const revokeCert = async ({
     id,
     serialNumber,
+    thumbprint,
     revocationReason,
     actorId,
     actorAuthMethod,
     actor,
     actorOrgId
   }: TRevokeCertDTO) => {
-    const cert = id ? await certificateDAL.findById(id) : await certificateDAL.findOne({ serialNumber });
+    let cert: Awaited<ReturnType<typeof certificateDAL.findById>> | undefined;
+    if (id) {
+      cert = await certificateDAL.findById(id);
+    } else if (serialNumber) {
+      cert = await certificateDAL.findOne({ serialNumber });
+    } else if (thumbprint) {
+      const { algorithm, fingerprint } = normalizeThumbprint(thumbprint);
+      const filter =
+        algorithm === CertificateThumbprintAlgorithm.SHA1
+          ? { fingerprintSha1: fingerprint }
+          : { fingerprintSha256: fingerprint };
+
+      const matches = await certificateDAL.find(filter, { limit: 2 });
+      if (matches.length > 1) {
+        throw new BadRequestError({
+          message:
+            "Multiple certificates match the provided thumbprint. Revoke by certificate ID or serial number instead"
+        });
+      }
+      [cert] = matches;
+    } else {
+      throw new BadRequestError({
+        message: "Must provide a certificate ID, serial number, or thumbprint to revoke"
+      });
+    }
+
+    if (!cert) {
+      throw new NotFoundError({ message: "Certificate not found" });
+    }
 
     if (!cert.caId) {
       throw new BadRequestError({

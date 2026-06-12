@@ -1689,6 +1689,70 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
+    method: "POST",
+    url: "/revoke-by-thumbprint",
+    config: {
+      rateLimit: writeLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      hide: false,
+      operationId: "revokeCertificateByThumbprint",
+      tags: [ApiDocsTags.PkiCertificates],
+      description: "Revoke a certificate by its SHA-1 or SHA-256 thumbprint",
+      body: z.object({
+        thumbprint: z.string().trim().min(1).describe(CERTIFICATES.REVOKE_BY_THUMBPRINT.thumbprint),
+        revocationReason: z.nativeEnum(CrlReason).describe(CERTIFICATES.REVOKE_BY_THUMBPRINT.revocationReason)
+      }),
+      response: {
+        200: z.object({
+          message: z.string().trim(),
+          serialNumber: z.string().trim().describe(CERTIFICATES.REVOKE_BY_THUMBPRINT.serialNumberRes),
+          revokedAt: z.date().describe(CERTIFICATES.REVOKE_BY_THUMBPRINT.revokedAt)
+        })
+      }
+    },
+    handler: async (req) => {
+      const { revokedAt, cert, ca } = await server.services.certificate.revokeCert({
+        thumbprint: req.body.thumbprint,
+        revocationReason: req.body.revocationReason,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: ca.projectId,
+        event: {
+          type: EventType.REVOKE_CERT,
+          metadata: {
+            certId: cert.id,
+            cn: cert.commonName,
+            serialNumber: cert.serialNumber
+          }
+        }
+      });
+
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.CertificateRevoked,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          orgId: req.permission.orgId
+        }
+      });
+
+      return {
+        message: "Successfully revoked certificate",
+        serialNumber: cert.serialNumber,
+        revokedAt
+      };
+    }
+  });
+
+  server.route({
     method: "DELETE",
     url: "/:id",
     config: {
