@@ -95,7 +95,20 @@ import { licenseDALFactory } from "@app/ee/services/license/license-dal";
 import { licenseServiceFactory } from "@app/ee/services/license/license-service";
 import { oidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
 import { oidcConfigServiceFactory } from "@app/ee/services/oidc/oidc-config-service";
-import { pamProjectResolverFactory } from "@app/ee/services/pam-instance/pam-project-resolver";
+import { pamAccountDALFactory } from "@app/ee/services/pam-account/pam-account-dal";
+import { pamAccountServiceFactory } from "@app/ee/services/pam-account/pam-account-service";
+import { pamAccountTemplateDALFactory } from "@app/ee/services/pam-account-template/pam-account-template-dal";
+import { pamAccountTemplateServiceFactory } from "@app/ee/services/pam-account-template/pam-account-template-service";
+import { pamFolderDALFactory } from "@app/ee/services/pam-folder/pam-folder-dal";
+import { pamFolderServiceFactory } from "@app/ee/services/pam-folder/pam-folder-service";
+import { pamMembershipServiceFactory } from "@app/ee/services/pam-membership/pam-membership-service";
+import { pamProjectResolverFactory } from "@app/ee/services/pam-project/pam-project-resolver";
+import { pamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
+import { pamSessionExpirationServiceFactory } from "@app/ee/services/pam-session/pam-session-expiration-queue";
+import { pamSessionServiceFactory } from "@app/ee/services/pam-session/pam-session-service";
+import { pamSessionEventChunkDALFactory } from "@app/ee/services/pam-session-recording/pam-recording-chunk-dal";
+import { pamSessionChunkServiceFactory } from "@app/ee/services/pam-session-recording/pam-recording-chunk-service";
+import { pamWebAccessServiceFactory } from "@app/ee/services/pam-web-access/pam-web-access-service";
 import { permissionDALFactory } from "@app/ee/services/permission/permission-dal";
 import { permissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { pitServiceFactory } from "@app/ee/services/pit/pit-service";
@@ -484,6 +497,7 @@ import { injectAssumePrivilege } from "../plugins/auth/inject-assume-privilege";
 import { injectIdentity } from "../plugins/auth/inject-identity";
 import { injectPermission } from "../plugins/auth/inject-permission";
 import { forwardToGoSidecar } from "../plugins/go-sidecar-forwarding";
+import { injectPamProjectId } from "../plugins/inject-pam-project-id";
 import { injectRateLimits } from "../plugins/inject-rate-limits";
 import { forwardWritesToPrimary } from "../plugins/primary-forwarding-mode";
 import { registerV1Routes } from "./v1";
@@ -1513,6 +1527,27 @@ export const registerRoutes = async (
     keyStore
   });
 
+  const pamAccountTemplateDAL = pamAccountTemplateDALFactory(db);
+  const pamFolderDAL = pamFolderDALFactory(db);
+  const pamAccountDAL = pamAccountDALFactory(db);
+
+  const pamFolderService = pamFolderServiceFactory({
+    pamFolderDAL,
+    membershipDAL,
+    membershipRoleDAL,
+    permissionService
+  });
+
+  const pamMembershipService = pamMembershipServiceFactory({
+    membershipDAL,
+    membershipRoleDAL,
+    pamFolderDAL,
+    pamAccountDAL,
+    userDAL,
+    groupDAL,
+    permissionService
+  });
+
   const certManagerInstanceService = certManagerInstanceServiceFactory({
     db,
     orgDAL,
@@ -1629,6 +1664,69 @@ export const registerRoutes = async (
     pkiDiscoveryConfigDAL,
     appConnectionDAL,
     dynamicSecretDAL
+  });
+
+  const pamAccountTemplateService = pamAccountTemplateServiceFactory({
+    pamAccountTemplateDAL,
+    permissionService,
+    gatewayV2DAL,
+    gatewayPoolService,
+    appConnectionDAL
+  });
+
+  const pamAccountService = pamAccountServiceFactory({
+    pamAccountDAL,
+    pamFolderDAL,
+    pamAccountTemplateDAL,
+    membershipDAL,
+    membershipRoleDAL,
+    permissionService,
+    kmsService,
+    gatewayV2DAL,
+    gatewayPoolService,
+    appConnectionDAL
+  });
+
+  const pamSessionDAL = pamSessionDALFactory(db);
+  const pamSessionEventChunkDAL = pamSessionEventChunkDALFactory(db);
+
+  const pamSessionExpirationService = pamSessionExpirationServiceFactory({
+    queueService,
+    pamSessionDAL
+  });
+
+  const pamSessionService = pamSessionServiceFactory({
+    pamSessionDAL,
+    pamAccountDAL,
+    pamFolderDAL,
+    membershipDAL,
+    membershipRoleDAL,
+    permissionService,
+    kmsService,
+    gatewayV2Service,
+    gatewayPoolService,
+    userDAL,
+    pamSessionExpirationService
+  });
+
+  const pamSessionChunkService = pamSessionChunkServiceFactory({
+    pamSessionDAL,
+    pamSessionEventChunkDAL,
+    pamAccountDAL,
+    permissionService,
+    kmsService
+  });
+
+  const pamWebAccessService = pamWebAccessServiceFactory({
+    pamAccountDAL,
+    permissionService,
+    auditLogService,
+    tokenService,
+    pamSessionDAL,
+    gatewayV2Service,
+    gatewayPoolService,
+    kmsService,
+    userDAL
   });
 
   const gitHubAppService = gitHubAppServiceFactory({
@@ -3351,6 +3449,7 @@ export const registerRoutes = async (
   certificateV3Queue.init();
   digicertCaQueue.init();
   digicertRevocationSyncQueue.init();
+  pamSessionExpirationService.init();
   godaddyCaQueue.init();
   caAutoRenewalQueue.startDailyAutoRenewalJob();
   signerAutoRenewalQueue.start();
@@ -3443,6 +3542,13 @@ export const registerRoutes = async (
     pkiApplicationEnrollment: pkiApplicationEnrollmentService,
     certManagerProjectResolver,
     pamProjectResolver,
+    pamAccountTemplate: pamAccountTemplateService,
+    pamFolder: pamFolderService,
+    pamAccount: pamAccountService,
+    pamMembership: pamMembershipService,
+    pamSession: pamSessionService,
+    pamSessionChunk: pamSessionChunkService,
+    pamWebAccess: pamWebAccessService,
     certManagerInstance: certManagerInstanceService,
     certManagerExport: certManagerExportService,
     certificateAuthorityCrl: certificateAuthorityCrlService,
@@ -3576,6 +3682,7 @@ export const registerRoutes = async (
   await server.register(injectIdentity, { shouldForwardWritesToPrimaryInstance });
   await server.register(injectAssumePrivilege);
   await server.register(injectPermission);
+  await server.register(injectPamProjectId);
   await server.register(injectRateLimits);
   await server.register(injectAuditLogInfo);
 

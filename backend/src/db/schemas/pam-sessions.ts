@@ -14,7 +14,7 @@ export const PamSessionsSchema = z.object({
   projectId: z.string(),
   accountId: z.string().uuid().nullable().optional(),
   accountType: z.string(),
-  resourceName: z.string(),
+  resourceName: z.string().nullable().optional(),
   accountName: z.string(),
   userId: z.string().uuid().nullable().optional(),
   actorName: z.string(),

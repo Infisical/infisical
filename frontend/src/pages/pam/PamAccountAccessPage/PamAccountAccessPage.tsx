@@ -2,26 +2,18 @@ import { useState } from "react";
 import { Helmet } from "react-helmet";
 import { useParams } from "@tanstack/react-router";
 
-import {
-  PamResourceType,
-  TPamAccount,
-  useGetPamAccountById,
-  useGetPamResourceById
-} from "@app/hooks/api/pam";
+import { PamAccountType, TPamAccount, useGetPamAccountById } from "@app/hooks/api/pam";
 import { PamDataExplorerPage } from "@app/pages/pam/PamDataExplorerPage/PamDataExplorerPage";
 
-import { RdpContent } from "./RdpContent";
-import { ReasonGate } from "./ReasonGate";
+import { SessionAccessGate } from "./ReasonGate";
 import { useWebAccessSession } from "./useWebAccessSession";
 
 const TerminalContent = ({
   account,
-  projectId,
   orgId,
   reason
 }: {
   account: TPamAccount;
-  projectId: string;
   orgId: string;
   reason?: string;
 }) => {
@@ -29,11 +21,9 @@ const TerminalContent = ({
 
   const { containerRef, isConnected, disconnect, reconnect } = useWebAccessSession({
     accountId: account.id,
-    projectId,
     orgId,
-    resourceName: account?.resource?.name ?? "",
-    accountName: account?.name ?? "",
-    resourceType: account?.resource?.resourceType ?? "",
+    accountName: account.name,
+    accountType: account.accountType,
     reason,
     onSessionEnd: () => setSessionEnded(true)
   });
@@ -86,11 +76,6 @@ const TerminalContent = ({
         </span>
         <div className="flex items-center gap-4">
           <span>
-            <span className="text-mineshaft-400">Resource:</span>{" "}
-            <span className="text-mineshaft-300">{account.resource?.name}</span>
-          </span>
-          <span className="text-mineshaft-500">|</span>
-          <span>
             <span className="text-mineshaft-400">Account:</span>{" "}
             <span className="text-mineshaft-300">{account.name}</span>
           </span>
@@ -105,27 +90,12 @@ const PageContent = () => {
     strict: false
   }) as {
     accountId?: string;
-    projectId?: string;
     orgId?: string;
-    resourceType?: string;
-    resourceId?: string;
+    accountType?: string;
   };
 
-  const {
-    accountId,
-    projectId,
-    orgId,
-    resourceType: routeResourceType,
-    resourceId: routeResourceId
-  } = params;
+  const { accountId, orgId } = params;
   const { data: account, isPending } = useGetPamAccountById(accountId);
-
-  const isDomainAccount = !!account && !account.resourceId;
-  const { data: domainResource } = useGetPamResourceById(
-    routeResourceType as PamResourceType,
-    routeResourceId,
-    { enabled: isDomainAccount && !!routeResourceType && !!routeResourceId }
-  );
 
   if (isPending) {
     return (
@@ -143,41 +113,19 @@ const PageContent = () => {
     );
   }
 
-  const effectiveResourceType = account.resource?.resourceType ?? routeResourceType;
-
-  // SSH uses inline terminal prompts for reason — bypass the upfront ReasonGate so the
-  // approval prompt and reason prompt render in the same terminal stream, in order.
-  if (account.resource?.resourceType === PamResourceType.SSH) {
-    return <TerminalContent account={account} projectId={projectId!} orgId={orgId!} />;
+  if (account.accountType === PamAccountType.SSH) {
+    return <TerminalContent account={account} orgId={orgId!} />;
   }
 
   return (
-    <ReasonGate account={account}>
-      {(reason) => {
-        if (account.resource?.resourceType === PamResourceType.Postgres) {
+    <SessionAccessGate account={account}>
+      {({ reason }) => {
+        if (account.accountType === PamAccountType.Postgres) {
           return <PamDataExplorerPage reason={reason} />;
         }
-        if (effectiveResourceType === PamResourceType.Windows) {
-          return (
-            <RdpContent
-              account={account}
-              projectId={projectId!}
-              resourceId={account.resource?.id ?? routeResourceId ?? ""}
-              resourceName={account.resource?.name ?? domainResource?.name ?? ""}
-              reason={reason}
-            />
-          );
-        }
-        return (
-          <TerminalContent
-            account={account}
-            projectId={projectId!}
-            orgId={orgId!}
-            reason={reason}
-          />
-        );
+        return <TerminalContent account={account} orgId={orgId!} reason={reason} />;
       }}
-    </ReasonGate>
+    </SessionAccessGate>
   );
 };
 

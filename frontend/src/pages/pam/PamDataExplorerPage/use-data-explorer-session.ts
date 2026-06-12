@@ -42,9 +42,7 @@ type ApprovalState = {
 
 type UseDataExplorerSessionOptions = {
   accountId: string;
-  projectId: string;
   orgId: string;
-  resourceName: string;
   accountName: string;
   reason?: string;
   onSessionEnd?: (reason?: string) => void;
@@ -72,9 +70,7 @@ type QueryResult = {
 
 export const useDataExplorerSession = ({
   accountId,
-  projectId,
   orgId,
-  resourceName,
   accountName,
   reason: accessReason,
   onSessionEnd,
@@ -228,7 +224,7 @@ export const useDataExplorerSession = ({
       try {
         const { data } = await apiRequest.post<{ ticket: string }>(
           `/api/v1/pam/accounts/${accountId}/web-access-ticket`,
-          { projectId, mfaSessionId, reason: accessReason }
+          { mfaSessionId, reason: accessReason }
         );
         openWebSocket(data.ticket);
       } catch (err: unknown) {
@@ -279,7 +275,7 @@ export const useDataExplorerSession = ({
         readyRejectRef.current?.(new Error("Failed to connect"));
       }
     },
-    [accountId, projectId, accessReason, openWebSocket]
+    [accountId, accessReason, openWebSocket]
   );
 
   const disconnect = useCallback(() => {
@@ -350,14 +346,12 @@ export const useDataExplorerSession = ({
         const { data: approvalData } = await apiRequest.post<{ request: { id: string } }>(
           "/api/v1/approval-policies/pam-access/requests",
           {
-            projectId,
             requestData: {
               accessDuration:
                 approvalState.accessDurationMax &&
                 ms(approvalState.accessDurationMax) < ms(DEFAULT_ACCESS_DURATION)
                   ? approvalState.accessDurationMax
                   : DEFAULT_ACCESS_DURATION,
-              resourceName,
               accountName
             },
             justification: justification?.trim() || undefined
@@ -381,11 +375,11 @@ export const useDataExplorerSession = ({
         );
       }
     },
-    [approvalState, projectId, resourceName, accountName]
+    [approvalState, accountName]
   );
 
   const approvalRequestUrl = approvalState?.approvalRequestId
-    ? `${window.location.origin}/organizations/${orgId}/projects/pam/${projectId}/approvals/${approvalState.approvalRequestId}`
+    ? `${window.location.origin}/organizations/${orgId}/approvals/${approvalState.approvalRequestId}`
     : undefined;
 
   // --- Request helpers ---

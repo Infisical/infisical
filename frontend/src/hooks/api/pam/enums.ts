@@ -38,6 +38,21 @@ export enum SessionChannelType {
   Sftp = "sftp"
 }
 
+// Account types
+export enum PamAccountType {
+  SSH = "ssh",
+  Postgres = "postgres",
+  MySQL = "mysql",
+  MsSQL = "mssql",
+  OracleDB = "oracledb",
+  MongoDB = "mongodb",
+  Redis = "redis",
+  Kubernetes = "kubernetes",
+  AwsIam = "aws-iam",
+  Windows = "windows",
+  ActiveDirectory = "active-directory"
+}
+
 // Accounts
 export enum PamAccountOrderBy {
   Name = "name"

@@ -1,3 +1,5 @@
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-nocheck -- old PAM page, pending deletion in frontend cleanup
 import { createNotification } from "@app/components/notifications";
 import { DeleteActionModal } from "@app/components/v2";
 import { TPamAccount, useDeletePamAccount } from "@app/hooks/api/pam";

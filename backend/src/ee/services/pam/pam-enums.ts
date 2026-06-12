@@ -12,8 +12,9 @@ export enum PamAccountType {
   ActiveDirectory = "active-directory"
 }
 
-export enum PamFolderRole {
+export enum PamResourceRole {
   Admin = "admin",
+  Connector = "connector",
   Requester = "requester",
   Auditor = "auditor"
 }
@@ -23,7 +24,14 @@ export enum PamProductRole {
   Member = "member"
 }
 
-export enum PamRecordingStorageBackend {
-  Postgres = "postgres",
-  AwsS3 = "aws-s3"
+export enum PamSessionStatus {
+  Starting = "starting",
+  Active = "active",
+  Ended = "ended",
+  Terminated = "terminated"
+}
+
+export enum PamAccessMethod {
+  Web = "web",
+  Cli = "cli"
 }

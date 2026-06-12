@@ -13,7 +13,6 @@ import {
 
 import { SecretEncryptionAlgo, SecretKeyEncoding } from "@app/db/schemas";
 import { TCreateAuditLogDTO } from "@app/ee/services/audit-log/audit-log-types";
-import { PamDiscoverySourceRunTrigger } from "@app/ee/services/pam-discovery/pam-discovery-enums";
 import {
   TSecretRotationRotateSecretsJobPayload,
   TSecretRotationSendNotificationJobPayload
@@ -102,13 +101,11 @@ export enum QueueName {
   SecretScanningV2 = "secret-scanning-v2",
   UserNotification = "user-notification",
   PamSessionExpiration = "pam-session-expiration",
-  PamSessionAiSummary = "pam-session-ai-summary",
   PkiAcmeChallengeValidation = "pki-acme-challenge-validation",
   PkiDiscoveryScan = "pki-discovery-scan",
   AppConnectionCredentialRotation = "app-connection-credential-rotation",
   AppConnectionCredentialRotationRotate = "app-connection-credential-rotation-rotate",
   AuditLogClickHouseBatch = "audit-log-clickhouse-batch",
-  PamDiscoveryScan = "pam-discovery-scan",
   CaAutoRenewal = "ca-auto-renewal",
   ProjectHardDelete = "project-hard-delete",
   SignerAutoRenewal = "signer-auto-renewal"
@@ -166,9 +163,7 @@ export enum QueueJobs {
   UserNotification = "user-notification-job",
   HealthAlert = "health-alert",
   CertificateV3DailyAutoRenewal = "certificate-v3-daily-auto-renewal",
-  PamAccountRotation = "pam-account-rotation",
   PamSessionExpiration = "pam-session-expiration",
-  PamSessionAiSummary = "pam-session-ai-summary-job",
   PkiAcmeChallengeValidation = "pki-acme-challenge-validation",
   PkiDiscoveryRunScan = "pki-discovery-run-scan",
   PkiDiscoveryScheduledScan = "pki-discovery-scheduled-scan",
@@ -176,8 +171,6 @@ export enum QueueJobs {
   AppConnectionCredentialRotationRotate = "app-connection-credential-rotation-rotate",
   AppConnectionCredentialRotationSendNotification = "app-connection-credential-rotation-send-notification",
   AuditLogClickHouseBatch = "audit-log-clickhouse-batch-job",
-  PamDiscoverySourceRunScan = "pam-discovery-run-scan",
-  PamDiscoveryScheduledScan = "pam-discovery-scheduled-scan",
   CaDailyAutoRenewal = "ca-daily-auto-renewal",
   CaVenafiInstall = "ca-venafi-install-job",
   CaAdcsInstall = "ca-adcs-install-job",
@@ -444,10 +437,6 @@ export type TQueueJobTypes = {
     name: QueueJobs.PamSessionExpiration;
     payload: { sessionId: string };
   };
-  [QueueName.PamSessionAiSummary]: {
-    name: QueueJobs.PamSessionAiSummary;
-    payload: { sessionId: string; projectId: string };
-  };
   [QueueName.PkiAcmeChallengeValidation]: {
     name: QueueJobs.PkiAcmeChallengeValidation;
     payload: { challengeId: string };
@@ -478,15 +467,6 @@ export type TQueueJobTypes = {
     name: QueueJobs.AuditLogClickHouseBatch;
     payload: undefined;
   };
-  [QueueName.PamDiscoveryScan]:
-    | {
-        name: QueueJobs.PamDiscoverySourceRunScan;
-        payload: { discoverySourceId: string; triggeredBy: PamDiscoverySourceRunTrigger };
-      }
-    | {
-        name: QueueJobs.PamDiscoveryScheduledScan;
-        payload: undefined;
-      };
   [QueueName.CaAutoRenewal]:
     | {
         name: QueueJobs.CaDailyAutoRenewal;
@@ -655,6 +635,7 @@ export const queueServiceFactory = (redisCfg: TRedisConfigKeys): TQueueServiceFa
       "certificate-cleanup",
       "pki-sync-cleanup",
       "pam-account-rotation",
+      "pam-session-ai-summary",
       "daily-pki-alert-v2-processing",
       "daily-expiring-pki-item-alert",
       "telemtry-self-hosted-stats", // note: typo from original enum value
@@ -680,7 +661,6 @@ export const queueServiceFactory = (redisCfg: TRedisConfigKeys): TQueueServiceFa
     const staleSchedulersInActiveQueues: Array<{ queueName: string; schedulerId: string }> = [
       { queueName: "pki-subscriber", schedulerId: `${JOB_SCHEDULER_PREFIX}:pki-subscriber` },
       { queueName: "pki-discovery-scan", schedulerId: `${JOB_SCHEDULER_PREFIX}:pki-discovery-scheduled-scan` },
-      { queueName: "pam-discovery-scan", schedulerId: `${JOB_SCHEDULER_PREFIX}:pam-discovery-scheduled-scan` },
       { queueName: "secret-rotation-v2", schedulerId: `${JOB_SCHEDULER_PREFIX}:secret-rotation-v2-cron` },
       {
         queueName: "app-connection-credential-rotation",

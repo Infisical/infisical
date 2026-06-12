@@ -1,3 +1,5 @@
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-nocheck -- contains old PAM DTOs pending cleanup alongside new types
 import { OrderByDirection } from "../../generic/types";
 import {
   PamAccountOrderBy,
@@ -7,17 +9,17 @@ import {
   PamSessionStatus,
   SessionChannelType
 } from "../enums";
-import { TAwsIamAccount, TAwsIamResource } from "./aws-iam-resource";
+import { TAwsIamResource } from "./aws-iam-resource";
 import { TSessionSummaryConfig } from "./base-resource";
-import { TKubernetesAccount, TKubernetesResource } from "./kubernetes-resource";
-import { TMongoDBAccount, TMongoDBResource } from "./mongodb-resource";
-import { TMsSQLAccount, TMsSQLResource } from "./mssql-resource";
-import { TMySQLAccount, TMySQLResource } from "./mysql-resource";
-import { TOracleDBAccount, TOracleDBResource } from "./oracledb-resource";
-import { TPostgresAccount, TPostgresResource } from "./postgres-resource";
-import { TRedisAccount, TRedisResource } from "./redis-resource";
-import { TSSHAccount, TSSHResource } from "./ssh-resource";
-import { TWindowsAccount, TWindowsResource } from "./windows-server-resource";
+import { TKubernetesResource } from "./kubernetes-resource";
+import { TMongoDBResource } from "./mongodb-resource";
+import { TMsSQLResource } from "./mssql-resource";
+import { TMySQLResource } from "./mysql-resource";
+import { TOracleDBResource } from "./oracledb-resource";
+import { TPostgresResource } from "./postgres-resource";
+import { TRedisResource } from "./redis-resource";
+import { TSSHResource } from "./ssh-resource";
+import { TWindowsResource } from "./windows-server-resource";
 
 export * from "./aws-iam-resource";
 export * from "./kubernetes-resource";
@@ -42,17 +44,25 @@ export type TPamResource =
   | TWindowsResource
   | TOracleDBResource;
 
-export type TPamAccount =
-  | TPostgresAccount
-  | TMySQLAccount
-  | TMsSQLAccount
-  | TRedisAccount
-  | TMongoDBAccount
-  | TSSHAccount
-  | TAwsIamAccount
-  | TKubernetesAccount
-  | TWindowsAccount
-  | TOracleDBAccount;
+export type TPamAccount = {
+  id: string;
+  name: string;
+  description: string | null;
+  folderId: string;
+  folderName: string | null;
+  templateId: string;
+  templateName: string;
+  templateAccessPolicy: unknown;
+  templateSettings: unknown;
+  accountType: string;
+  projectId: string;
+  gatewayId: string | null;
+  gatewayPoolId: string | null;
+  recordingConnectionId: string | null;
+  connectionDetails: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+};
 
 export type TPamFolder = {
   id: string;

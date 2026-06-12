@@ -33,6 +33,7 @@ import { registerLdapRouter } from "./ldap-router";
 import { registerLicenseRouter } from "./license-router";
 import { registerOidcRouter } from "./oidc-router";
 import { registerOrgRoleRouter } from "./org-role-router";
+import { registerPamRouters } from "./pam-routers";
 import { registerPITRouter } from "./pit-router";
 import { registerPkiAcmeRouter } from "./pki-acme-router";
 import { registerPkiDiscoveryRouter } from "./pki-discovery-router";
@@ -204,4 +205,6 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
     },
     { prefix: "/ai" }
   );
+
+  await server.register(registerPamRouters, { prefix: "/pam" });
 };

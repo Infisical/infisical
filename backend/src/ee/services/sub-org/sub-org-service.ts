@@ -2,7 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import slugify from "@sindresorhus/slugify";
 
 import { AccessScope, OrganizationActionScope, OrgMembershipRole, OrgMembershipStatus } from "@app/db/schemas";
-import { bootstrapPamProject } from "@app/ee/services/pam-instance/pam-project-bootstrap";
+import { bootstrapPamProject } from "@app/ee/services/pam-project/pam-project-bootstrap";
 import { BadRequestError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
 import { bootstrapCertManagerProject } from "@app/services/cert-manager-instance/cert-manager-project-bootstrap";
@@ -110,8 +110,7 @@ export const subOrgServiceFactory = ({
       await bootstrapPamProject(
         {
           orgId: org.id,
-          adminUserIds: permission.type === ActorType.USER ? [permission.id] : [],
-          adminIdentityIds: permission.type === ActorType.IDENTITY ? [permission.id] : []
+          adminUserIds: permission.type === ActorType.USER ? [permission.id] : []
         },
         { projectDAL, membershipDAL, membershipRoleDAL },
         tx

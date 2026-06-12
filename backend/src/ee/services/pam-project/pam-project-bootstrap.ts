@@ -7,8 +7,9 @@ import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
-import { PamAccountType, PamRecordingStorageBackend } from "../pam/pam-enums";
-import { TPamTemplateAccessPolicy, TPamTemplateSettings } from "../pam/pam-template-config-schemas";
+import { PamAccountType } from "../pam/pam-enums";
+import { TPamTemplateAccessPolicy, TPamTemplateSettings } from "../pam-account-template/pam-account-template-schemas";
+import { PamRecordingStorageBackend } from "../pam-session-recording/pam-recording-enums";
 
 type TBootstrapDeps = {
   projectDAL: Pick<TProjectDALFactory, "create" | "findOne">;
@@ -19,7 +20,6 @@ type TBootstrapDeps = {
 type TBootstrapInput = {
   orgId: string;
   adminUserIds?: string[];
-  adminIdentityIds?: string[];
 };
 
 export type TDefaultTemplate = {
@@ -202,7 +202,7 @@ export const DEFAULT_ACCOUNT_TEMPLATES: TDefaultTemplate[] = [
 ];
 
 export const bootstrapPamProject = async (
-  { orgId, adminUserIds = [], adminIdentityIds = [] }: TBootstrapInput,
+  { orgId, adminUserIds = [] }: TBootstrapInput,
   { projectDAL, membershipDAL, membershipRoleDAL }: TBootstrapDeps,
   tx: Knex
 ): Promise<{ project: TProjects; created: boolean }> => {
@@ -248,37 +248,14 @@ export const bootstrapPamProject = async (
     );
   }
 
-  for (const identityId of adminIdentityIds) {
-    // eslint-disable-next-line no-await-in-loop
-    const membership = await membershipDAL.create(
-      {
-        scope: AccessScope.Project,
-        scopeOrgId: orgId,
-        scopeProjectId: project.id,
-        actorIdentityId: identityId,
-        isActive: true
-      },
-      tx
-    );
-
-    // eslint-disable-next-line no-await-in-loop
-    await membershipRoleDAL.create(
-      {
-        membershipId: membership.id,
-        role: ProjectMembershipRole.Admin
-      },
-      tx
-    );
-  }
-
   for (const template of DEFAULT_ACCOUNT_TEMPLATES) {
     // eslint-disable-next-line no-await-in-loop
     await tx(TableName.PamAccountTemplate).insert({
       projectId: project.id,
       name: template.name,
       type: template.type,
-      accessPolicy: JSON.stringify(template.accessPolicy),
-      settings: JSON.stringify(template.settings)
+      accessPolicy: template.accessPolicy,
+      settings: template.settings
     });
   }
 

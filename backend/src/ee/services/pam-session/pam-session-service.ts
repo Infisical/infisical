@@ -1,0 +1,394 @@
+import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
+import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
+import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { createSshCert, createSshKeyPair } from "@app/ee/services/ssh/ssh-certificate-authority-fns";
+import { SshCertType } from "@app/ee/services/ssh/ssh-certificate-authority-types";
+import { SshCertKeyAlgorithm } from "@app/ee/services/ssh-certificate/ssh-certificate-types";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { ms } from "@app/lib/ms";
+import { ActorType } from "@app/services/auth/auth-type";
+import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { KmsDataKey } from "@app/services/kms/kms-types";
+import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
+import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
+import { TUserDALFactory } from "@app/services/user/user-dal";
+
+import { PamAccessMethod, PamAccountType, PamSessionStatus } from "../pam/pam-enums";
+import {
+  checkAccountAccess,
+  getResourceIdsWithActions,
+  TActorContext,
+  verifyProductMembership
+} from "../pam/pam-permission";
+import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
+import { extractGatewayTarget, parseInternalMetadata } from "../pam-account/pam-account-schemas";
+import { PamTemplateAccessPolicySchema } from "../pam-account-template/pam-account-template-schemas";
+import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
+import { PamRecordingStorageBackend } from "../pam-session-recording/pam-recording-enums";
+import { generateSessionRecordingSecrets } from "../pam-session-recording/pam-recording-secrets";
+import { ResourcePermissionPamResourceActions } from "../permission/resource-permission";
+import { DEFAULT_SESSION_DURATION_MS } from "./pam-session-constants";
+import { TPamSessionDALFactory } from "./pam-session-dal";
+import { TPamSessionExpirationServiceFactory } from "./pam-session-expiration-queue";
+
+type TPamSessionServiceFactoryDep = {
+  pamSessionDAL: Pick<
+    TPamSessionDALFactory,
+    "findAccessibleByProjectId" | "findById" | "findOne" | "create" | "endSessionById" | "updateById"
+  >;
+  pamAccountDAL: Pick<TPamAccountDALFactory, "findByIdWithDetails" | "findOne">;
+  pamFolderDAL: Pick<TPamFolderDALFactory, "findOne">;
+  membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
+  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find">;
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
+  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
+  userDAL: Pick<TUserDALFactory, "findById">;
+  pamSessionExpirationService: Pick<TPamSessionExpirationServiceFactory, "scheduleSessionExpiration">;
+};
+
+export type TPamSessionServiceFactory = ReturnType<typeof pamSessionServiceFactory>;
+
+export const pamSessionServiceFactory = ({
+  pamSessionDAL,
+  pamAccountDAL,
+  pamFolderDAL,
+  membershipDAL,
+  membershipRoleDAL,
+  permissionService,
+  kmsService,
+  gatewayV2Service,
+  gatewayPoolService,
+  userDAL,
+  pamSessionExpirationService
+}: TPamSessionServiceFactoryDep) => {
+  const decrypt = async (projectId: string, blob: Buffer): Promise<Record<string, unknown>> => {
+    const { decryptor } = await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
+    return JSON.parse(decryptor({ cipherTextBlob: blob }).toString("utf-8")) as Record<string, unknown>;
+  };
+
+  const checkAccount = (
+    accountId: string,
+    folderId: string | null | undefined,
+    projectId: string,
+    action: ResourcePermissionPamResourceActions,
+    ctx: TActorContext
+  ) => checkAccountAccess(permissionService, accountId, folderId, projectId, action, ctx);
+
+  const listSessions = async (
+    projectId: string,
+    ctx: TActorContext,
+    pagination?: { offset?: number; limit?: number }
+  ) => {
+    await verifyProductMembership(permissionService, projectId, ctx);
+
+    const { folderIds, accountIds } = await getResourceIdsWithActions(
+      membershipDAL,
+      membershipRoleDAL,
+      projectId,
+      { allOf: [ResourcePermissionPamResourceActions.ViewSessions] },
+      ctx
+    );
+
+    return pamSessionDAL.findAccessibleByProjectId(projectId, {
+      viewSessionsFolderIds: folderIds,
+      viewSessionsAccountIds: accountIds,
+      userId: ctx.actorId,
+      ...pagination
+    });
+  };
+
+  const getSessionById = async (sessionId: string, ctx: TActorContext) => {
+    const session = await pamSessionDAL.findById(sessionId);
+    if (!session || !session.accountId) return null;
+
+    const isOwnSession = session.userId === ctx.actorId;
+    if (!isOwnSession) {
+      const account = await pamAccountDAL.findByIdWithDetails(session.accountId);
+      await checkAccount(
+        session.accountId,
+        account?.folderId,
+        session.projectId,
+        ResourcePermissionPamResourceActions.ViewSessions,
+        ctx
+      );
+    }
+
+    return session;
+  };
+
+  // Called by the gateway
+  const getSessionCredentials = async (sessionId: string, gatewayId: string) => {
+    const session = await pamSessionDAL.findOne({ id: sessionId, gatewayId });
+    if (!session) {
+      throw new NotFoundError({ message: "Session not found" });
+    }
+
+    if (session.status !== PamSessionStatus.Starting && session.status !== PamSessionStatus.Active) {
+      throw new BadRequestError({ message: "Session is not active" });
+    }
+
+    if (!session.accountId) {
+      throw new BadRequestError({ message: "Session has no linked account" });
+    }
+
+    const account = await pamAccountDAL.findByIdWithDetails(session.accountId);
+    if (!account) {
+      throw new NotFoundError({ message: "Account not found" });
+    }
+
+    const connectionDetails = await decrypt(session.projectId, account.encryptedConnectionDetails);
+    const credentials = await decrypt(session.projectId, account.encryptedCredentials);
+
+    if (credentials.authMethod === "certificate" && account.encryptedInternalMetadata) {
+      const internalMetadata = parseInternalMetadata(
+        account.accountType as PamAccountType,
+        await decrypt(session.projectId, account.encryptedInternalMetadata)
+      );
+
+      if (internalMetadata?.caPrivateKey) {
+        const keyAlgorithm = (internalMetadata.caKeyAlgorithm as SshCertKeyAlgorithm) || SshCertKeyAlgorithm.ED25519;
+        const { publicKey: clientPublicKey, privateKey: clientPrivateKey } = await createSshKeyPair(keyAlgorithm);
+
+        const username = credentials.username as string;
+        const { signedPublicKey } = await createSshCert({
+          caPrivateKey: internalMetadata.caPrivateKey,
+          clientPublicKey,
+          keyId: `pam-session-${session.id}`,
+          principals: [username],
+          requestedTtl: `${PamTemplateAccessPolicySchema.safeParse(account.templateAccessPolicy).data?.maxSessionDurationSeconds ?? DEFAULT_SESSION_DURATION_MS / 1000}s`,
+          certType: SshCertType.USER
+        });
+
+        credentials.privateKey = clientPrivateKey;
+        credentials.certificate = signedPublicKey;
+      }
+    }
+
+    const sessionStarted = session.status === PamSessionStatus.Starting;
+
+    let recording: {
+      sessionKey: string;
+      uploadToken: string;
+      storageBackend: PamRecordingStorageBackend;
+      projectId: string;
+      sessionId: string;
+    } | null = null;
+
+    if (!session.encryptedSessionKey) {
+      const secrets = await generateSessionRecordingSecrets({
+        projectId: session.projectId,
+        sessionId,
+        kmsService
+      });
+
+      await pamSessionDAL.updateById(sessionId, {
+        encryptedSessionKey: secrets.encryptedSessionKey,
+        gatewayUploadTokenHash: secrets.uploadTokenHash
+      });
+
+      recording = {
+        sessionKey: secrets.sessionKey.toString("base64"),
+        uploadToken: secrets.uploadToken.toString("base64"),
+        storageBackend: PamRecordingStorageBackend.Postgres,
+        projectId: session.projectId,
+        sessionId
+      };
+    }
+
+    return {
+      credentials: { ...connectionDetails, ...credentials },
+      recording,
+      projectId: session.projectId,
+      accountName: session.accountName,
+      sessionStarted
+    };
+  };
+
+  // Called by the gateway
+  const endSessionFromGateway = async (sessionId: string, gatewayId: string) => {
+    const session = await pamSessionDAL.findOne({ id: sessionId, gatewayId });
+    if (!session) {
+      throw new NotFoundError({ message: "Session not found" });
+    }
+
+    const updatedSession = await pamSessionDAL.endSessionById(sessionId);
+
+    return {
+      projectId: session.projectId,
+      accountName: session.accountName,
+      alreadyEnded: !updatedSession
+    };
+  };
+
+  const resolveAccountByPath = async (projectId: string, path: string) => {
+    const separatorIdx = path.indexOf("/");
+    if (separatorIdx === -1) {
+      throw new BadRequestError({
+        message: "Path must be in the format 'folderName/accountName'"
+      });
+    }
+
+    const folderName = path.slice(0, separatorIdx);
+    const accountName = path.slice(separatorIdx + 1);
+    if (!folderName || !accountName) {
+      throw new BadRequestError({
+        message: "Path must be in the format 'folderName/accountName'"
+      });
+    }
+
+    const folder = await pamFolderDAL.findOne({ projectId, name: folderName });
+    if (!folder) {
+      throw new NotFoundError({ message: `Folder '${folderName}' not found` });
+    }
+
+    const accountRow = await pamAccountDAL.findOne({ folderId: folder.id, name: accountName });
+    if (!accountRow) {
+      throw new NotFoundError({ message: `Account '${accountName}' not found in folder '${folderName}'` });
+    }
+
+    const account = await pamAccountDAL.findByIdWithDetails(accountRow.id);
+    if (!account) {
+      throw new NotFoundError({ message: `Account '${accountName}' not found` });
+    }
+
+    return account;
+  };
+
+  const access = async ({
+    path,
+    projectId,
+    actor,
+    actorEmail,
+    actorName,
+    actorIp,
+    actorUserAgent,
+    reason,
+    duration
+  }: {
+    path: string;
+    projectId: string;
+    actor: TActorContext;
+    actorEmail: string;
+    actorName: string;
+    actorIp: string;
+    actorUserAgent: string;
+    reason?: string;
+    duration?: string;
+  }) => {
+    const account = await resolveAccountByPath(projectId, path);
+
+    const trimmedReason = reason?.trim() || null;
+
+    const accessPolicy = account.templateAccessPolicy
+      ? PamTemplateAccessPolicySchema.safeParse(account.templateAccessPolicy)
+      : null;
+    const policy = accessPolicy?.success ? accessPolicy.data : null;
+
+    if (policy?.requireReason && !trimmedReason) {
+      throw new BadRequestError({ message: "A reason is required to access this account" });
+    }
+
+    if (policy?.requireMfa) {
+      throw new BadRequestError({ message: "MFA verification is required to access this account" });
+    }
+
+    const maxDurationMs = policy?.maxSessionDurationSeconds
+      ? policy.maxSessionDurationSeconds * 1000
+      : DEFAULT_SESSION_DURATION_MS;
+
+    let sessionDurationMs = maxDurationMs;
+    if (duration) {
+      const parsed = ms(duration);
+      if (!parsed || parsed <= 0) {
+        throw new BadRequestError({ message: "Invalid duration format" });
+      }
+      sessionDurationMs = Math.min(parsed, maxDurationMs);
+    }
+
+    await checkAccount(
+      account.id,
+      account.folderId,
+      projectId,
+      ResourcePermissionPamResourceActions.LaunchSessions,
+      actor
+    );
+
+    const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
+      gatewayId: account.gatewayId,
+      gatewayPoolId: account.gatewayPoolId
+    });
+    if (!effectiveGatewayId) {
+      throw new BadRequestError({ message: "Gateway not configured for this account" });
+    }
+
+    const rawConnectionDetails = await decrypt(projectId, account.encryptedConnectionDetails);
+    const gatewayTarget = extractGatewayTarget(account.accountType as PamAccountType, rawConnectionDetails);
+
+    const user = await userDAL.findById(actor.actorId);
+    const expiresAt = new Date(Date.now() + sessionDurationMs);
+
+    const session = await pamSessionDAL.create({
+      status: PamSessionStatus.Starting,
+      accessMethod: PamAccessMethod.Cli,
+      expiresAt,
+      accountName: account.name,
+      accountType: account.accountType,
+      actorEmail,
+      actorIp,
+      actorName,
+      actorUserAgent,
+      projectId,
+      accountId: account.id,
+      userId: actor.actorId,
+      gatewayId: effectiveGatewayId,
+      reason: trimmedReason,
+      folderName: account.folderName,
+      selectedHost: gatewayTarget.host
+    });
+
+    await pamSessionExpirationService.scheduleSessionExpiration(session.id, expiresAt);
+
+    const certs = await gatewayV2Service.getPAMConnectionDetails({
+      gatewayId: effectiveGatewayId,
+      sessionId: session.id,
+      accountType: account.accountType as PamAccountType,
+      host: gatewayTarget.host,
+      port: gatewayTarget.port,
+      duration: sessionDurationMs,
+      actorMetadata: {
+        id: actor.actorId,
+        type: ActorType.USER,
+        name: user?.email ?? ""
+      }
+    });
+
+    if (!certs) {
+      throw new BadRequestError({ message: "Failed to obtain gateway connection details" });
+    }
+
+    return {
+      sessionId: session.id,
+      accountId: account.id,
+      accountType: account.accountType as PamAccountType,
+      accountName: account.name,
+      sessionDurationMs,
+      relayHost: certs.relayHost,
+      relayClientCertificate: certs.relay.clientCertificate,
+      relayClientPrivateKey: certs.relay.clientPrivateKey,
+      relayServerCertificateChain: certs.relay.serverCertificateChain,
+      gatewayClientCertificate: certs.gateway.clientCertificate,
+      gatewayClientPrivateKey: certs.gateway.clientPrivateKey,
+      gatewayServerCertificateChain: certs.gateway.serverCertificateChain
+    };
+  };
+
+  return {
+    access,
+    listSessions,
+    getSessionById,
+    getSessionCredentials,
+    endSessionFromGateway
+  };
+};
