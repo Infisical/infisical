@@ -80,7 +80,7 @@ export const registerPamProductMembershipRouter = async (server: FastifyZodProvi
       response: { 200: z.object({ members: z.array(MemberSchema) }) }
     },
     config: { rateLimit: readLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const all = await server.services.pamMembership.listProductMembers(actorCtx(req));
       return { members: all.filter((m) => m.userId) };
@@ -97,7 +97,7 @@ export const registerPamProductMembershipRouter = async (server: FastifyZodProvi
       response: { 200: z.object({ members: z.array(MemberSchema) }) }
     },
     config: { rateLimit: readLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const all = await server.services.pamMembership.listProductMembers(actorCtx(req));
       return { members: all.filter((m) => m.groupId) };
@@ -135,7 +135,7 @@ export const registerPamProductMembershipRouter = async (server: FastifyZodProvi
       }
     },
     config: { rateLimit: writeLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const result = await server.services.pamMembership.addProductUserMembers({
         ...actorCtx(req),
@@ -169,7 +169,7 @@ export const registerPamProductMembershipRouter = async (server: FastifyZodProvi
       response: { 200: MemberResultSchema.omit({ createdAt: true }) }
     },
     config: { rateLimit: writeLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const membership = await server.services.pamMembership.updateProductMemberRole({
         ...actorCtx(req),
@@ -198,7 +198,7 @@ export const registerPamProductMembershipRouter = async (server: FastifyZodProvi
       response: { 200: MemberResultSchema.pick({ membershipId: true, userId: true }) }
     },
     config: { rateLimit: writeLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const membership = await server.services.pamMembership.removeProductMember({
         ...actorCtx(req),
@@ -224,7 +224,7 @@ export const registerPamProductMembershipRouter = async (server: FastifyZodProvi
       response: { 200: MemberResultSchema }
     },
     config: { rateLimit: writeLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const membership = await server.services.pamMembership.addProductMember({
         ...actorCtx(req),
@@ -254,7 +254,7 @@ export const registerPamProductMembershipRouter = async (server: FastifyZodProvi
       response: { 200: MemberResultSchema.omit({ createdAt: true }) }
     },
     config: { rateLimit: writeLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const membership = await server.services.pamMembership.updateProductMemberRole({
         ...actorCtx(req),
@@ -283,7 +283,7 @@ export const registerPamProductMembershipRouter = async (server: FastifyZodProvi
       response: { 200: MemberResultSchema.pick({ membershipId: true, groupId: true }) }
     },
     config: { rateLimit: writeLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const membership = await server.services.pamMembership.removeProductMember({
         ...actorCtx(req),
@@ -313,7 +313,7 @@ export const registerPamFolderMembershipRouter = async (server: FastifyZodProvid
       response: { 200: z.object({ members: z.array(MemberSchema) }) }
     },
     config: { rateLimit: readLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const all = await server.services.pamMembership.listFolderMembers({
         ...actorCtx(req),
@@ -334,7 +334,7 @@ export const registerPamFolderMembershipRouter = async (server: FastifyZodProvid
       response: { 200: z.object({ members: z.array(MemberSchema) }) }
     },
     config: { rateLimit: readLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const all = await server.services.pamMembership.listFolderMembers({
         ...actorCtx(req),
@@ -356,7 +356,7 @@ export const registerPamFolderMembershipRouter = async (server: FastifyZodProvid
       response: { 200: FolderMemberResultSchema }
     },
     config: { rateLimit: writeLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const membership = await server.services.pamMembership.addFolderMember({
         ...actorCtx(req),
@@ -386,7 +386,7 @@ export const registerPamFolderMembershipRouter = async (server: FastifyZodProvid
       response: { 200: FolderMemberResultSchema.omit({ createdAt: true }) }
     },
     config: { rateLimit: writeLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const membership = await server.services.pamMembership.updateFolderMemberRole({
         ...actorCtx(req),
@@ -415,7 +415,7 @@ export const registerPamFolderMembershipRouter = async (server: FastifyZodProvid
       response: { 200: FolderMemberResultSchema.pick({ membershipId: true, folderId: true, userId: true }) }
     },
     config: { rateLimit: writeLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const membership = await server.services.pamMembership.removeFolderMember({
         ...actorCtx(req),
@@ -443,7 +443,7 @@ export const registerPamFolderMembershipRouter = async (server: FastifyZodProvid
       response: { 200: FolderMemberResultSchema }
     },
     config: { rateLimit: writeLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const membership = await server.services.pamMembership.addFolderMember({
         ...actorCtx(req),
@@ -473,7 +473,7 @@ export const registerPamFolderMembershipRouter = async (server: FastifyZodProvid
       response: { 200: FolderMemberResultSchema.omit({ createdAt: true }) }
     },
     config: { rateLimit: writeLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const membership = await server.services.pamMembership.updateFolderMemberRole({
         ...actorCtx(req),
@@ -502,7 +502,7 @@ export const registerPamFolderMembershipRouter = async (server: FastifyZodProvid
       response: { 200: FolderMemberResultSchema.pick({ membershipId: true, folderId: true, groupId: true }) }
     },
     config: { rateLimit: writeLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const membership = await server.services.pamMembership.removeFolderMember({
         ...actorCtx(req),
@@ -534,7 +534,7 @@ export const registerPamAccountMembershipRouter = async (server: FastifyZodProvi
       response: { 200: z.object({ members: z.array(MemberSchema) }) }
     },
     config: { rateLimit: readLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const all = await server.services.pamMembership.listAccountMembers({
         ...actorCtx(req),
@@ -555,7 +555,7 @@ export const registerPamAccountMembershipRouter = async (server: FastifyZodProvi
       response: { 200: z.object({ members: z.array(MemberSchema) }) }
     },
     config: { rateLimit: readLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const all = await server.services.pamMembership.listAccountMembers({
         ...actorCtx(req),
@@ -577,7 +577,7 @@ export const registerPamAccountMembershipRouter = async (server: FastifyZodProvi
       response: { 200: AccountMemberResultSchema }
     },
     config: { rateLimit: writeLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const membership = await server.services.pamMembership.addAccountMember({
         ...actorCtx(req),
@@ -607,7 +607,7 @@ export const registerPamAccountMembershipRouter = async (server: FastifyZodProvi
       response: { 200: AccountMemberResultSchema.omit({ createdAt: true }) }
     },
     config: { rateLimit: writeLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const membership = await server.services.pamMembership.updateAccountMemberRole({
         ...actorCtx(req),
@@ -636,7 +636,7 @@ export const registerPamAccountMembershipRouter = async (server: FastifyZodProvi
       response: { 200: AccountMemberResultSchema.pick({ membershipId: true, accountId: true, userId: true }) }
     },
     config: { rateLimit: writeLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const membership = await server.services.pamMembership.removeAccountMember({
         ...actorCtx(req),
@@ -664,7 +664,7 @@ export const registerPamAccountMembershipRouter = async (server: FastifyZodProvi
       response: { 200: AccountMemberResultSchema }
     },
     config: { rateLimit: writeLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const membership = await server.services.pamMembership.addAccountMember({
         ...actorCtx(req),
@@ -694,7 +694,7 @@ export const registerPamAccountMembershipRouter = async (server: FastifyZodProvi
       response: { 200: AccountMemberResultSchema.omit({ createdAt: true }) }
     },
     config: { rateLimit: writeLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const membership = await server.services.pamMembership.updateAccountMemberRole({
         ...actorCtx(req),
@@ -723,7 +723,7 @@ export const registerPamAccountMembershipRouter = async (server: FastifyZodProvi
       response: { 200: AccountMemberResultSchema.pick({ membershipId: true, accountId: true, groupId: true }) }
     },
     config: { rateLimit: writeLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const membership = await server.services.pamMembership.removeAccountMember({
         ...actorCtx(req),

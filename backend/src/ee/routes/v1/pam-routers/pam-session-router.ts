@@ -65,7 +65,7 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
         200: z.object({ sessions: SanitizedSessionSchema.array(), totalCount: z.number() })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const { sessions, totalCount } = await server.services.pamSession.listSessions(
         req.query.projectId,
@@ -96,7 +96,7 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
         200: z.object({ session: SanitizedSessionSchema })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const session = await server.services.pamSession.getSessionById(req.params.sessionId, {
         actor: req.permission.type,

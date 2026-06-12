@@ -47,7 +47,7 @@ export const registerPamSessionChunkRouter = async (server: FastifyZodProvider) 
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.GATEWAY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.GATEWAY_ACCESS_TOKEN]),
     handler: async (req) => {
       const uploadToken = req.headers[GATEWAY_TOKEN_HEADER];
       if (typeof uploadToken !== "string" || !uploadToken) {
@@ -119,7 +119,7 @@ export const registerPamSessionChunkRouter = async (server: FastifyZodProvider) 
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.GATEWAY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.GATEWAY_ACCESS_TOKEN]),
     handler: async (req) => {
       const uploadToken = req.headers[GATEWAY_TOKEN_HEADER];
       if (typeof uploadToken !== "string" || !uploadToken) {
@@ -250,7 +250,7 @@ export const registerPamSessionChunkRouter = async (server: FastifyZodProvider) 
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.GATEWAY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.GATEWAY_ACCESS_TOKEN]),
     handler: async () => ({
       backends: Object.values(PamRecordingStorageBackend)
     })
