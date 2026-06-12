@@ -4,7 +4,7 @@ import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 
-import { PamSessionStatus } from "../pam/pam-enums";
+import { PamAccessMethod, PamSessionStatus } from "../pam/pam-enums";
 
 export type TPamSessionDALFactory = ReturnType<typeof pamSessionDALFactory>;
 
@@ -27,7 +27,7 @@ export const pamSessionDALFactory = (db: TDbClient) => {
     const result = await (tx || db.replicaNode())(TableName.PamSession)
       .where("userId", userId)
       .where("projectId", projectId)
-      .where("accessMethod", "web")
+      .where("accessMethod", PamAccessMethod.Web)
       .whereIn("status", [PamSessionStatus.Starting, PamSessionStatus.Active])
       .count("id as count")
       .first();
@@ -40,7 +40,7 @@ export const pamSessionDALFactory = (db: TDbClient) => {
     const updatedCount = await (tx || db)(TableName.PamSession)
       .where("userId", userId)
       .where("projectId", projectId)
-      .where("accessMethod", "web")
+      .where("accessMethod", PamAccessMethod.Web)
       .whereIn("status", [PamSessionStatus.Active, PamSessionStatus.Starting])
       .where("expiresAt", "<", now)
       .update({ status: PamSessionStatus.Ended, endedAt: now });

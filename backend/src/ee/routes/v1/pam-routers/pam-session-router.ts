@@ -3,6 +3,7 @@ import z from "zod";
 
 import { PamSessionsSchema } from "@app/db/schemas";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
+import { PamAccountType } from "@app/ee/services/pam/pam-enums";
 import { PamRecordingStorageBackend } from "@app/ee/services/pam-session-recording/pam-recording-enums";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
 import { BadRequestError } from "@app/lib/errors";
@@ -205,6 +206,102 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
 };
 
 export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => {
+  server.route({
+    method: "POST",
+    url: "/access",
+    config: { rateLimit: writeLimit },
+    schema: {
+      operationId: "pamAccountAccess",
+      description: "Access a PAM account by path and obtain gateway connection details",
+      tags: [ApiDocsTags.PamSessions],
+      body: z.object({
+        path: z.string().trim().min(3).describe("Account path in the format 'folderName/accountName'"),
+        reason: z.string().trim().max(1000).optional().describe("Optional reason for the session"),
+        duration: z
+          .string()
+          .trim()
+          .optional()
+          .describe("Session duration (e.g. '1h', '30m'). Capped at the account's max session duration.")
+      }),
+      response: {
+        200: z.object({
+          sessionId: z.string().describe("The ID of the created session"),
+          accountType: z.nativeEnum(PamAccountType).describe("The account type"),
+          relayHost: z.string().describe("The relay host to connect to"),
+          relayClientCertificate: z.string().describe("Client certificate for the relay connection"),
+          relayClientPrivateKey: z.string().describe("Client private key for the relay connection"),
+          relayServerCertificateChain: z.string().describe("Server certificate chain for the relay connection"),
+          gatewayClientCertificate: z.string().describe("Client certificate for the gateway connection"),
+          gatewayClientPrivateKey: z.string().describe("Client private key for the gateway connection"),
+          gatewayServerCertificateChain: z.string().describe("Server certificate chain for the gateway connection")
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      if (req.auth.authMode !== AuthMode.JWT) {
+        throw new BadRequestError({ message: "Account access requires JWT authentication" });
+      }
+
+      const result = await server.services.pamSession.access({
+        path: req.body.path,
+        projectId: req.internalPamProjectId,
+        actor: {
+          actorId: req.permission.id,
+          actor: req.permission.type,
+          actorOrgId: req.permission.orgId,
+          actorAuthMethod: req.permission.authMethod
+        },
+        actorEmail: req.auth.user.email ?? "",
+        actorName: `${req.auth.user.firstName ?? ""} ${req.auth.user.lastName ?? ""}`.trim(),
+        actorIp: req.realIp ?? "",
+        actorUserAgent: req.headers["user-agent"] ?? "",
+        reason: req.body.reason,
+        duration: req.body.duration
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: req.internalPamProjectId,
+        event: {
+          type: EventType.PAM_ACCOUNT_ACCESS,
+          metadata: {
+            accountId: result.accountId,
+            resourceName: result.accountName,
+            accountName: result.accountName,
+            reason: req.body.reason
+          }
+        }
+      });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.PamAccountAccessed,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            accountType: result.accountType,
+            orgId: req.permission.orgId,
+            duration: result.sessionDurationMs
+          }
+        })
+        .catch(() => {});
+
+      return {
+        sessionId: result.sessionId,
+        accountType: result.accountType,
+        relayHost: result.relayHost,
+        relayClientCertificate: result.relayClientCertificate,
+        relayClientPrivateKey: result.relayClientPrivateKey,
+        relayServerCertificateChain: result.relayServerCertificateChain,
+        gatewayClientCertificate: result.gatewayClientCertificate,
+        gatewayClientPrivateKey: result.gatewayClientPrivateKey,
+        gatewayServerCertificateChain: result.gatewayServerCertificateChain
+      };
+    }
+  });
+
   server.route({
     method: "POST",
     url: "/:accountId/web-access-ticket",

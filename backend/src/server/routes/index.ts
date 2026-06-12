@@ -104,6 +104,7 @@ import { pamFolderServiceFactory } from "@app/ee/services/pam-folder/pam-folder-
 import { pamMembershipServiceFactory } from "@app/ee/services/pam-membership/pam-membership-service";
 import { pamProjectResolverFactory } from "@app/ee/services/pam-project/pam-project-resolver";
 import { pamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
+import { pamSessionExpirationServiceFactory } from "@app/ee/services/pam-session/pam-session-expiration-queue";
 import { pamSessionServiceFactory } from "@app/ee/services/pam-session/pam-session-service";
 import { pamSessionEventChunkDALFactory } from "@app/ee/services/pam-session-recording/pam-recording-chunk-dal";
 import { pamSessionChunkServiceFactory } from "@app/ee/services/pam-session-recording/pam-recording-chunk-service";
@@ -1689,13 +1690,23 @@ export const registerRoutes = async (
   const pamSessionDAL = pamSessionDALFactory(db);
   const pamSessionEventChunkDAL = pamSessionEventChunkDALFactory(db);
 
+  const pamSessionExpirationService = pamSessionExpirationServiceFactory({
+    queueService,
+    pamSessionDAL
+  });
+
   const pamSessionService = pamSessionServiceFactory({
     pamSessionDAL,
     pamAccountDAL,
+    pamFolderDAL,
     membershipDAL,
     membershipRoleDAL,
     permissionService,
-    kmsService
+    kmsService,
+    gatewayV2Service,
+    gatewayPoolService,
+    userDAL,
+    pamSessionExpirationService
   });
 
   const pamSessionChunkService = pamSessionChunkServiceFactory({
@@ -3438,6 +3449,7 @@ export const registerRoutes = async (
   certificateV3Queue.init();
   digicertCaQueue.init();
   digicertRevocationSyncQueue.init();
+  pamSessionExpirationService.init();
   godaddyCaQueue.init();
   caAutoRenewalQueue.startDailyAutoRenewalJob();
   signerAutoRenewalQueue.start();

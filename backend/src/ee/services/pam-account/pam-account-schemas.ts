@@ -77,6 +77,26 @@ export const validateCredentials = (accountType: PamAccountType, data: unknown) 
 
 export { ACCOUNT_TYPE_CONFIGS };
 
+export type TGatewayTarget = { host: string; port?: number };
+
+export const extractGatewayTarget = (
+  accountType: PamAccountType,
+  rawConnectionDetails: Record<string, unknown>
+): TGatewayTarget => {
+  const validated = validateConnectionDetails(accountType, rawConnectionDetails);
+
+  switch (accountType) {
+    case PamAccountType.SSH:
+    case PamAccountType.Postgres:
+      return {
+        host: (validated as { host: string; port: number }).host,
+        port: (validated as { host: string; port: number }).port
+      };
+    default:
+      throw new Error(`No gateway target extraction defined for account type '${accountType}'`);
+  }
+};
+
 export type TSshInternalMetadata = z.infer<(typeof ACCOUNT_TYPE_CONFIGS)[PamAccountType.SSH]["internalMetadata"]>;
 
 export const parseInternalMetadata = (accountType: PamAccountType, data: unknown): TSshInternalMetadata | null => {

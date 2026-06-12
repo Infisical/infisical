@@ -30,3 +30,8 @@ export enum PamSessionStatus {
   Ended = "ended",
   Terminated = "terminated"
 }
+
+export enum PamAccessMethod {
+  Web = "web",
+  Cli = "cli"
+}

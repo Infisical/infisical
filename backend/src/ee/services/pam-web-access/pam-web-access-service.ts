@@ -28,8 +28,9 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
-import { PamSessionStatus } from "../pam/pam-enums";
+import { PamAccessMethod, PamSessionStatus } from "../pam/pam-enums";
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
+import { extractGatewayTarget } from "../pam-account/pam-account-schemas";
 import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
 import { getSessionHandler, isWebAccessSupported } from "./pam-session-handler-registry";
 import {
@@ -403,10 +404,8 @@ export const pamWebAccessServiceFactory = ({
         return;
       }
 
-      const connectionDetails = (await decrypt(projectId, account.encryptedConnectionDetails)) as {
-        host: string;
-        port: number;
-      };
+      const rawConnectionDetails = await decrypt(projectId, account.encryptedConnectionDetails);
+      const gatewayTarget = extractGatewayTarget(account.accountType as PamAccountType, rawConnectionDetails);
       const credentials = await decrypt(projectId, account.encryptedCredentials);
 
       const user = await userDAL.findById(userId);
@@ -415,7 +414,7 @@ export const pamWebAccessServiceFactory = ({
 
       session = await pamSessionDAL.create({
         status: PamSessionStatus.Starting,
-        accessMethod: "web",
+        accessMethod: PamAccessMethod.Web,
         expiresAt,
         accountName,
         accountType: account.accountType,
@@ -429,15 +428,15 @@ export const pamWebAccessServiceFactory = ({
         gatewayId: effectiveGatewayId,
         reason: accessReason?.trim() || null,
         folderName: account.folderName,
-        selectedHost: connectionDetails.host
+        selectedHost: gatewayTarget.host
       });
 
       const certs = await gatewayV2Service.getPAMConnectionDetails({
         gatewayId: effectiveGatewayId,
         sessionId: session.id,
         accountType: handlerEntry.gatewayAccountType,
-        host: connectionDetails.host,
-        port: connectionDetails.port,
+        host: gatewayTarget.host,
+        port: gatewayTarget.port,
         duration: sessionDurationMs,
         actorMetadata: {
           id: userId,
@@ -488,7 +487,7 @@ export const pamWebAccessServiceFactory = ({
 
       try {
         handlerResult = await handlerEntry.handler(ctx, {
-          connectionDetails: connectionDetails as Record<string, unknown>,
+          connectionDetails: rawConnectionDetails,
           credentials
         });
       } finally {
