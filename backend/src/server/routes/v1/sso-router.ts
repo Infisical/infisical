@@ -22,7 +22,7 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
-import { fetchGithubEmails, fetchGithubUser } from "@app/lib/requests/github";
+import { fetchGithubEmails, fetchGithubUser, selectGithubLoginEmail } from "@app/lib/requests/github";
 import {
   AuthAttemptAuthMethod,
   AuthAttemptAuthResult,
@@ -72,6 +72,11 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
               name: "OauthGoogleRegister"
             });
 
+          // Google maps its email_verified claim onto emails[0].verified (a string "true"/"false"
+          // per the userinfo response, occasionally a boolean); when verified we skip our own
+          // email verification.
+            const isEmailVerifiedByProvider = String(profile?.emails?.[0]?.verified) === "true";
+
           try {
             const loginResult = await server.services.login.oauth2Login({
               email,
@@ -81,6 +86,7 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
               callbackPort,
               orgSlug,
               providerUserId: profile.id,
+              isEmailVerifiedByProvider,
               ip: requestContext.get("ip") || "",
               userAgent: requestContext.get("userAgent") || ""
             });
@@ -166,9 +172,9 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
         async (req: any, accessToken: string, _refreshToken: string, _profile: any, done: Function) => {
           const authMetricStartTime = performance.now();
           const ghEmails = await fetchGithubEmails(accessToken);
-          const { email } = ghEmails.filter((gitHubEmail) => gitHubEmail.primary && gitHubEmail.verified)[0];
-
-          if (!email) throw new Error("No primary email found");
+          const selectedEmail = selectGithubLoginEmail(ghEmails);
+          if (!selectedEmail) throw new Error("No email found for GitHub account");
+          const { email, isEmailVerifiedByProvider } = selectedEmail;
 
           try {
             // profile does not get automatically populated so we need to manually fetch user info
@@ -183,6 +189,7 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
               authMethod: AuthMethod.GITHUB,
               callbackPort,
               providerUserId: String(githubUser.id),
+              isEmailVerifiedByProvider,
               ip: requestContext.get("ip") || "",
               userAgent: requestContext.get("userAgent") || ""
             });
@@ -266,6 +273,12 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
         async (req: any, _accessToken: string, _refreshToken: string, profile: any, cb: any) => {
           const authMetricStartTime = performance.now();
           const email = profile.emails[0].value;
+          // GitLab's /user API exposes confirmed_at as a non-empty ISO timestamp when the email is
+          // confirmed, or null otherwise (it is not a boolean). Treat a present, non-empty string as
+          // verified rather than coercing with Boolean(), so no non-string truthy value can slip in.
+          // eslint-disable-next-line no-underscore-dangle
+          const confirmedAt = profile?._json?.confirmed_at as unknown;
+          const isEmailVerifiedByProvider = typeof confirmedAt === "string" && confirmedAt.length > 0;
 
           try {
             const callbackPort = req.session.get("callbackPort");
@@ -277,6 +290,7 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
               authMethod: AuthMethod.GITLAB,
               callbackPort,
               providerUserId: String(profile.id),
+              isEmailVerifiedByProvider,
               ip: requestContext.get("ip") || "",
               userAgent: requestContext.get("userAgent") || ""
             });

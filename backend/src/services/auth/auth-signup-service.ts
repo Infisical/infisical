@@ -238,16 +238,21 @@ export const authSignupServiceFactory = ({
       // Determine rejection before token validation, but don't throw yet
       const shouldReject = !user || !decodedToken.aliasId || !userAlias;
 
-      // Always validate the verification code so the bcrypt cost is incurred
-      // Use dummy userId when rejecting so the work is still performed
-      try {
-        await tokenService.validateTokenForUser({
-          type: TokenType.TOKEN_EMAIL_VERIFICATION,
-          userId: shouldReject ? DUMMY_USER_ID : user.id,
-          code: dto.code
-        });
-      } catch {
-        throw new BadRequestError({ message: "Invalid token" });
+      // When the OAuth provider already verified the email, the signed signup token carries
+      // isEmailVerified=true and no verification code was ever issued, so skip code validation.
+      // The signed token itself is the proof of the provider's verification.
+      if (!decodedToken.isEmailVerified) {
+        // Always validate the verification code so the bcrypt cost is incurred
+        // Use dummy userId when rejecting so the work is still performed
+        try {
+          await tokenService.validateTokenForUser({
+            type: TokenType.TOKEN_EMAIL_VERIFICATION,
+            userId: shouldReject ? DUMMY_USER_ID : user.id,
+            code: dto.code
+          });
+        } catch {
+          throw new BadRequestError({ message: "Invalid token" });
+        }
       }
 
       if (shouldReject) {

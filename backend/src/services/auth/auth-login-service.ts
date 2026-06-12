@@ -838,6 +838,7 @@ export const authLoginServiceFactory = ({
     callbackPort,
     orgSlug,
     providerUserId,
+    isEmailVerifiedByProvider,
     ip,
     userAgent
   }: TOauthLoginDTO) => {
@@ -932,8 +933,12 @@ export const authLoginServiceFactory = ({
           {
             username: sanitizedEmail,
             email: sanitizedEmail,
-            isEmailVerified: false,
+            // when the provider already verified the email we skip our own verification step
+            isEmailVerified: isEmailVerifiedByProvider,
             isAccepted: false,
+            ...(authMethod === AuthMethod.GOOGLE && { isGoogleVerified: isEmailVerifiedByProvider }),
+            ...(authMethod === AuthMethod.GITHUB && { isGitHubVerified: isEmailVerifiedByProvider }),
+            ...(authMethod === AuthMethod.GITLAB && { isGitLabVerified: isEmailVerifiedByProvider }),
             firstName,
             lastName,
             authMethods: [authMethod],
@@ -990,7 +995,7 @@ export const authLoginServiceFactory = ({
             externalId: providerUserId,
             emails: [sanitizedEmail],
             orgId: orgId || null,
-            isEmailVerified: false
+            isEmailVerified: isEmailVerifiedByProvider
           },
           tx
         );
@@ -1005,7 +1010,11 @@ export const authLoginServiceFactory = ({
         user = await userDAL.updateById(user.id, {
           authMethods: [...(user.authMethods || []), authMethod],
           firstName,
-          lastName
+          lastName,
+          // trust the provider's verification of the email when linking a new SSO method
+          ...(authMethod === AuthMethod.GOOGLE && { isGoogleVerified: isEmailVerifiedByProvider }),
+          ...(authMethod === AuthMethod.GITHUB && { isGitHubVerified: isEmailVerifiedByProvider }),
+          ...(authMethod === AuthMethod.GITLAB && { isGitLabVerified: isEmailVerifiedByProvider })
         });
       }
 
@@ -1025,10 +1034,11 @@ export const authLoginServiceFactory = ({
             {
               username: sanitizedEmail,
               email: sanitizedEmail,
-              // reverify email verification status on login
-              isGitHubVerified: authMethod !== AuthMethod.GITHUB && user?.isGitHubVerified,
-              isGoogleVerified: authMethod !== AuthMethod.GOOGLE && user?.isGoogleVerified,
-              isGitLabVerified: authMethod !== AuthMethod.GITLAB && user?.isGitLabVerified
+              // the email changed at the provider: trust the provider's verification of the new
+              // email for the current method, and preserve the other providers' statuses
+              isGitHubVerified: authMethod === AuthMethod.GITHUB ? isEmailVerifiedByProvider : user?.isGitHubVerified,
+              isGoogleVerified: authMethod === AuthMethod.GOOGLE ? isEmailVerifiedByProvider : user?.isGoogleVerified,
+              isGitLabVerified: authMethod === AuthMethod.GITLAB ? isEmailVerifiedByProvider : user?.isGitLabVerified
             },
             tx
           );
@@ -1036,7 +1046,8 @@ export const authLoginServiceFactory = ({
           await userAliasDAL.updateById(
             existingAlias.id,
             {
-              emails: [sanitizedEmail]
+              emails: [sanitizedEmail],
+              isEmailVerified: isEmailVerifiedByProvider
             },
             tx
           );
@@ -1065,14 +1076,15 @@ export const authLoginServiceFactory = ({
       }
     }
 
-    // Use user-level provider verification flags
+    // Skip our own email verification when the provider already verified the email, or when the
+    // user previously verified it through this provider (persisted user-level flag).
     let isAliasVerified = false;
     if (authMethod === AuthMethod.GOOGLE) {
-      isAliasVerified = Boolean(user.isGoogleVerified);
+      isAliasVerified = isEmailVerifiedByProvider || Boolean(user.isGoogleVerified);
     } else if (authMethod === AuthMethod.GITHUB) {
-      isAliasVerified = Boolean(user.isGitHubVerified);
+      isAliasVerified = isEmailVerifiedByProvider || Boolean(user.isGitHubVerified);
     } else if (authMethod === AuthMethod.GITLAB) {
-      isAliasVerified = Boolean(user.isGitLabVerified);
+      isAliasVerified = isEmailVerifiedByProvider || Boolean(user.isGitLabVerified);
     }
     // Self-healing backfill: create alias for existing users found by email fallback
     let aliasId = existingAlias?.id;
