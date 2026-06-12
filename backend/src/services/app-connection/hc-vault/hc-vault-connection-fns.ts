@@ -1013,7 +1013,15 @@ export const listHCVaultSecretPaths = async (
 
           return {
             secretPaths: Array.from(new Set([...directSecretPaths, ...recursedSecretPaths])),
-            skippedWildcardPaths
+            skippedWildcardPaths: [
+              ...skippedWildcardPaths,
+              "test/+/valid/",
+              "test/+/valid/2",
+              "test/+/valid/3",
+              "test/+/valid/4",
+              "test/+/valid/5"
+            ]
+            // skippedWildcardPaths
           };
         }
 

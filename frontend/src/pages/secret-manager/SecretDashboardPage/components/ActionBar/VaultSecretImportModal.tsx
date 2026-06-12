@@ -49,7 +49,7 @@ const renderWildcardPath = (path: string) => {
         position += part.length;
 
         return part === "+" ? (
-          <code key={key} className="text-yellow-500/80">
+          <code key={key} className="font-semibold text-warning">
             +
           </code>
         ) : (
@@ -254,13 +254,28 @@ const Content = ({ onClose, environment, secretPath, appConnections, onImport }:
             </p>
             <div className="mt-2 flex flex-wrap items-center gap-1">
               {skippedWildcardPaths.slice(0, 3).map((path) => (
-                <Badge key={path} variant="neutral">
+                <Badge key={path} variant="warning" className="font-mono text-foreground/80">
                   {renderWildcardPath(path)}
                 </Badge>
               ))}
               {skippedWildcardPaths.length > 3 && (
-                <Tooltip content={skippedWildcardPaths.slice(3).join(", ")}>
-                  <Badge variant="neutral" className="cursor-default text-yellow-500/80">
+                <Tooltip
+                  className="max-w-sm p-2"
+                  content={
+                    <div className="flex flex-col gap-1">
+                      {skippedWildcardPaths.slice(3).map((path) => (
+                        <Badge
+                          key={path}
+                          variant="warning"
+                          className="w-full justify-start font-mono text-foreground/80"
+                        >
+                          {renderWildcardPath(path)}
+                        </Badge>
+                      ))}
+                    </div>
+                  }
+                >
+                  <Badge variant="warning" className="cursor-default font-mono">
                     +{skippedWildcardPaths.length - 3} more
                   </Badge>
                 </Tooltip>
