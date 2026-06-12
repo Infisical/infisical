@@ -14,7 +14,6 @@ import {
 import { SecretEncryptionAlgo, SecretKeyEncoding } from "@app/db/schemas";
 import { TCreateAuditLogDTO } from "@app/ee/services/audit-log/audit-log-types";
 import { TAuditLogStreamFlushJobData } from "@app/ee/services/audit-log-stream-outbox/audit-log-stream-outbox-types";
-import { PamDiscoverySourceRunTrigger } from "@app/ee/services/pam-discovery/pam-discovery-enums";
 import {
   TSecretRotationRotateSecretsJobPayload,
   TSecretRotationSendNotificationJobPayload
@@ -109,7 +108,6 @@ export enum QueueName {
   AppConnectionCredentialRotationRotate = "app-connection-credential-rotation-rotate",
   AuditLogClickHouseBatch = "audit-log-clickhouse-batch",
   AuditLogStreamOutbox = "audit-log-stream-outbox",
-  PamDiscoveryScan = "pam-discovery-scan",
   CaAutoRenewal = "ca-auto-renewal",
   ProjectHardDelete = "project-hard-delete",
   SignerAutoRenewal = "signer-auto-renewal",
@@ -177,8 +175,6 @@ export enum QueueJobs {
   AppConnectionCredentialRotationSendNotification = "app-connection-credential-rotation-send-notification",
   AuditLogClickHouseBatch = "audit-log-clickhouse-batch-job",
   AuditLogStreamFlush = "audit-log-stream-flush",
-  PamDiscoverySourceRunScan = "pam-discovery-run-scan",
-  PamDiscoveryScheduledScan = "pam-discovery-scheduled-scan",
   CaDailyAutoRenewal = "ca-daily-auto-renewal",
   CaVenafiInstall = "ca-venafi-install-job",
   CaAdcsInstall = "ca-adcs-install-job",
@@ -487,15 +483,6 @@ export type TQueueJobTypes = {
     name: QueueJobs.AuditLogStreamFlush;
     payload: TAuditLogStreamFlushJobData;
   };
-  [QueueName.PamDiscoveryScan]:
-    | {
-        name: QueueJobs.PamDiscoverySourceRunScan;
-        payload: { discoverySourceId: string; triggeredBy: PamDiscoverySourceRunTrigger };
-      }
-    | {
-        name: QueueJobs.PamDiscoveryScheduledScan;
-        payload: undefined;
-      };
   [QueueName.CaAutoRenewal]:
     | {
         name: QueueJobs.CaDailyAutoRenewal;
@@ -673,6 +660,7 @@ export const queueServiceFactory = (redisCfg: TRedisConfigKeys): TQueueServiceFa
       "pki-sync-cleanup",
       "pam-account-rotation",
       "pam-session-ai-summary",
+      "pam-discovery-scan",
       "daily-pki-alert-v2-processing",
       "daily-expiring-pki-item-alert",
       "telemtry-self-hosted-stats", // note: typo from original enum value
