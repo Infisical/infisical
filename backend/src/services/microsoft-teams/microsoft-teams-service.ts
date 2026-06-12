@@ -133,7 +133,9 @@ export const microsoftTeamsServiceFactory = ({
       }
 
       if (lastKnownUpdatedAt.getTime() === serverCfg.updatedAt.getTime()) {
-        logger.info("No changes to Microsoft Teams integration configuration, skipping sync");
+        // Demoted from info — this fires every poll cycle while idle and dominates
+        // self-hosted log volume / outbound TX.
+        logger.debug("No changes to Microsoft Teams integration configuration, skipping sync");
         return;
       }
 
