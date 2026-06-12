@@ -44,11 +44,11 @@ export const NetlifySyncFns = {
     const baseParams = {
       account_id: config.accountId,
       site_id: config.siteId
-    }
+    };
 
     const params = {
       ...baseParams,
-      context_name: config.context,
+      context_name: config.context
     };
 
     const variables = await NetlifyPublicAPI.getVariables(secretSync.connection, baseParams);
@@ -87,11 +87,9 @@ export const NetlifySyncFns = {
           await NetlifyPublicAPI.createVariable(secretSync.connection, params, {
             key,
             is_secret: false,
-            // We don't merge existing values from other contexts here because secrets are returned with 
+            // We don't merge existing values from other contexts here because secrets are returned with
             // masked values. So it would be replaced as *******
-            values: [
-              { context: config.context, value: secretMap[key].value }
-            ]
+            values: [{ context: config.context, value: secretMap[key].value }]
           });
         } else {
           const mergedValues = [
@@ -114,7 +112,9 @@ export const NetlifySyncFns = {
         const variable = existingInNetlify[key];
         const remainingValues = variable.values.filter((v) => v.context !== config.context);
 
-        if (remainingValues.length > 0) {
+        // We skip updating variables in case of `is_secret`, otherwise we override the
+        // correct value with a masked one.
+        if (remainingValues.length > 0 && !variable.is_secret) {
           await NetlifyPublicAPI.updateVariable(secretSync.connection, params, {
             key,
             values: remainingValues
@@ -151,7 +151,9 @@ export const NetlifySyncFns = {
           const variable = existingSecrets[secret];
           const remainingValues = variable.values.filter((v) => v.context !== config.context);
 
-          if (remainingValues.length > 0) {
+          // We skip updating variables in case of `is_secret`, otherwise we override the
+          // correct value with a masked one.
+          if (remainingValues.length > 0 && !variable.is_secret) {
             await NetlifyPublicAPI.updateVariable(secretSync.connection, params, {
               key: secret,
               values: remainingValues

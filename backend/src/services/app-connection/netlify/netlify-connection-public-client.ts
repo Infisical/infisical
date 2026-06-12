@@ -94,23 +94,30 @@ class NetlifyPublicClient {
     }
   }
 
-  async getVariables(
-    connection: TNetlifyConnectionConfig,
-    { account_id, ...params }: NetlifyParams,
-    limit: number = 50,
-    page: number = 1
-  ) {
-    const res = await this.send<TNetlifyVariable[]>(connection, {
-      method: "GET",
-      url: `/accounts/${account_id}/env`,
-      params: {
-        ...params,
-        limit,
-        page
-      }
-    });
+  async getVariables(connection: TNetlifyConnectionConfig, { account_id, ...params }: NetlifyParams) {
+    const PAGE_SIZE = 100;
+    const allVariables: TNetlifyVariable[] = [];
+    let page = 1;
 
-    return res;
+    // eslint-disable-next-line no-constant-condition, @typescript-eslint/no-unnecessary-condition
+    while (true) {
+      const res = await this.send<TNetlifyVariable[]>(connection, {
+        method: "GET",
+        url: `/accounts/${account_id}/env`,
+        params: {
+          ...params,
+          limit: PAGE_SIZE,
+          page
+        }
+      });
+
+      allVariables.push(...res);
+
+      if (res.length < PAGE_SIZE) break;
+      page += 1;
+    }
+
+    return allVariables;
   }
 
   async createVariable(
