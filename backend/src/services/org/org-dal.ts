@@ -464,6 +464,7 @@ export const orgDALFactory = (db: TDbClient) => {
         .where({ isGhost: false })
         .whereNotNull(`${TableName.Users}.email`)
         .select(db.ref("email").withSchema(TableName.Users))
+        .orderBy(`${TableName.Membership}.createdAt`, "asc")
         .first();
 
       return row?.email ?? null;

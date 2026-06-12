@@ -38,6 +38,27 @@ const AGGREGATION_BREAKDOWN_DIMENSIONS: Partial<Record<PostHogEventTypes, string
   [PostHogEventTypes.PkiSyncExecuted]: ["destination"]
 };
 
+// Common free/personal email providers excluded from org domain derivation
+const FREE_EMAIL_PROVIDERS = new Set([
+  "gmail.com",
+  "googlemail.com",
+  "outlook.com",
+  "hotmail.com",
+  "live.com",
+  "yahoo.com",
+  "icloud.com",
+  "me.com",
+  "mac.com",
+  "aol.com",
+  "protonmail.com",
+  "proton.me",
+  "mail.com",
+  "zoho.com",
+  "yandex.com",
+  "gmx.com",
+  "gmx.net"
+]);
+
 // Bucket configuration
 const TELEMETRY_BUCKET_COUNT = 30;
 const TELEMETRY_BUCKET_NAMES = Array.from(
@@ -243,9 +264,9 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
     try {
       const email = await orgDAL.findFirstOrgMemberEmail(orgId);
       if (email) {
-        const domain = email.split("@")[1];
-        if (domain) {
-          properties.domain = domain.toLowerCase();
+        const domain = email.split("@")[1]?.toLowerCase();
+        if (domain && !FREE_EMAIL_PROVIDERS.has(domain)) {
+          properties.domain = domain;
         }
       }
     } catch (error) {
