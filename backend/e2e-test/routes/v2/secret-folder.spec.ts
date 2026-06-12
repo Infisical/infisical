@@ -319,23 +319,6 @@ describe("Secret Folder Move Router", async () => {
     expect(res.statusCode).toBe(200);
   };
 
-  const listOpenApprovalRequests = async () => {
-    const res = await testServer.inject({
-      method: "GET",
-      url: `/api/v1/secret-approval-requests`,
-      headers: {
-        authorization: `Bearer ${jwtAuthToken}`
-      },
-      query: {
-        projectId: seedData1.projectV3.id,
-        environment: sourceEnv,
-        status: "open"
-      }
-    });
-    expect(res.statusCode).toBe(200);
-    return res.json().approvals as { commits: { op: string; secretId?: string | null }[] }[];
-  };
-
   test("Move a folder subtree (secrets at every level) within the same environment", async () => {
     // build /move-src -> /level1 -> /level2 with a secret at each level
     const srcRoot = await createFolderInEnv({ path: "/", name: "move-src", environment: sourceEnv });
@@ -417,20 +400,15 @@ describe("Secret Folder Move Router", async () => {
     await deleteFolderInEnv({ path: "/", id: destParent.id, environment: sourceEnv, forceDelete: true });
   });
 
-  test("Keeps folders with secrets pending a source approval policy and removes deletable siblings", async () => {
-    // /policy-src holds a plain secret; /policy-src/protected is covered by a source approval policy;
-    // /policy-src/plain is an ordinary sibling. Moving /policy-src to /policy-dest should copy every secret to
-    // the destination, delete the unprotected source folders, but KEEP /policy-src (its ancestor chain) and
-    // /policy-src/protected, because removing the protected secret is pending an approval request. The old code
-    // cascade-deleted the whole source subtree, orphaning that approval request.
+  test("Blocks moving a folder whose subtree is governed by a source approval policy", async () => {
+    // /policy-src/protected is covered by a source approval policy. Folders governed by a secret approval policy
+    // cannot be moved, so the whole move is rejected up front and the source subtree is left untouched.
     const srcRoot = await createFolderInEnv({ path: "/", name: "policy-src", environment: sourceEnv });
     await createFolderInEnv({ path: "/policy-src", name: "protected", environment: sourceEnv });
-    await createFolderInEnv({ path: "/policy-src", name: "plain", environment: sourceEnv });
     const destParent = await createFolderInEnv({ path: "/", name: "policy-dest", environment: sourceEnv });
 
     await addSecret("/policy-src", "ROOT_SECRET");
     await addSecret("/policy-src/protected", "PROTECTED_SECRET");
-    await addSecret("/policy-src/plain", "PLAIN_SECRET");
 
     const policy = await createSecretApprovalPolicy({
       name: "move-protected-policy",
@@ -442,37 +420,19 @@ describe("Secret Folder Move Router", async () => {
       destinationEnvironment: sourceEnv,
       destinationPath: "/policy-dest"
     });
-    expect(res.statusCode).toBe(200);
-    expect(res.json().hasApprovalRequests).toBe(true);
+    expect(res.statusCode).toBe(400);
+    expect(res.json().message).toContain("secret approval policy");
 
-    // every secret is copied to the destination subtree
-    expect(await secretKeysAt("/policy-dest/policy-src", sourceEnv)).toContain("ROOT_SECRET");
-    expect(await secretKeysAt("/policy-dest/policy-src/protected", sourceEnv)).toContain("PROTECTED_SECRET");
-    expect(await secretKeysAt("/policy-dest/policy-src/plain", sourceEnv)).toContain("PLAIN_SECRET");
-
-    // the moved root husk is retained at the source because it is an ancestor of the protected folder
+    // the source subtree and its secrets are untouched because the move was rejected up front
     const rootFolders = await getFolders({ path: "/", environment: sourceEnv });
     expect(rootFolders.map((folder) => folder.name)).toContain("policy-src");
-
-    // the protected subfolder is kept (its secret is pending approval); the unprotected sibling is deleted
-    const srcChildNames = (await getFolders({ path: "/policy-src", environment: sourceEnv })).map(
-      (folder) => folder.name
-    );
-    expect(srcChildNames).toContain("protected");
-    expect(srcChildNames).not.toContain("plain");
-
-    // the protected secret still physically exists at the source, so its approval request is not orphaned
+    expect(await secretKeysAt("/policy-src", sourceEnv)).toContain("ROOT_SECRET");
     expect(await secretKeysAt("/policy-src/protected", sourceEnv)).toContain("PROTECTED_SECRET");
-    // the husk root no longer holds its own secret (it was moved directly, no source policy there)
-    expect(await secretKeysAt("/policy-src", sourceEnv)).not.toContain("ROOT_SECRET");
 
-    // a DELETE approval request exists for the source removal and still resolves to a live secret id
-    const approvals = await listOpenApprovalRequests();
-    const deleteApproval = approvals.find((approval) => approval.commits.some((commit) => commit.op === "delete"));
-    expect(deleteApproval).toBeDefined();
-    expect(deleteApproval!.commits.some((commit) => commit.op === "delete" && Boolean(commit.secretId))).toBe(true);
+    // nothing was copied to the destination
+    expect(await getFolders({ path: "/policy-dest", environment: sourceEnv })).toHaveLength(0);
 
-    // cleanup: removing the policy first so $checkFolderPolicy no longer blocks the retained source tree delete
+    // cleanup: removing the policy first so $checkFolderPolicy no longer blocks the source tree delete
     await deleteSecretApprovalPolicy(policy.id);
     await deleteFolderInEnv({ path: "/", id: srcRoot.id, environment: sourceEnv, forceDelete: true });
     await deleteFolderInEnv({ path: "/", id: destParent.id, environment: sourceEnv, forceDelete: true });

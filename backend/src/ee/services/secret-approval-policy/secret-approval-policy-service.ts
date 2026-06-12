@@ -595,32 +595,27 @@ export const secretApprovalPolicyServiceFactory = ({
     return sapPolicies;
   };
 
-  const getSecretApprovalPolicy = async (projectId: string, environment: string, path: string) => {
-    const secretPath = removeTrailingSlash(path);
+  const findEnvPolicies = async (projectId: string, environment: string) => {
     const env = await projectEnvDAL.findOne({ slug: environment, projectId });
     if (!env) {
       throw new NotFoundError({
         message: `Environment with slug '${environment}' not found in project with ID ${projectId}`
       });
     }
-
-    const policies = await secretApprovalPolicyDAL.find({ deletedAt: null }, { envId: env.id });
-    if (!policies.length) return;
-    return resolvePolicyForPath(policies, secretPath);
+    return secretApprovalPolicyDAL.find({ deletedAt: null }, { envId: env.id });
   };
 
-  // batched variant of getSecretApprovalPolicy: resolves the env + fetches policies once, then matches every supplied
-  // path in memory. returns a Map keyed by the original input path, containing only paths governed by a policy.
-  const getSecretApprovalPolicyByPaths = async (projectId: string, environment: string, secretPaths: string[]) => {
-    const env = await projectEnvDAL.findOne({ slug: environment, projectId });
-    if (!env) {
-      throw new NotFoundError({
-        message: `Environment with slug '${environment}' not found in project with ID ${projectId}`
-      });
-    }
+  const getSecretApprovalPolicy = async (projectId: string, environment: string, path: string) => {
+    const policies = await findEnvPolicies(projectId, environment);
+    if (!policies.length) return;
+    return resolvePolicyForPath(policies, removeTrailingSlash(path));
+  };
 
+  // batched variant of getSecretApprovalPolicy: fetches the env policies once, then matches every supplied path in
+  // memory. returns a Map keyed by the original input path, containing only paths governed by a policy.
+  const getSecretApprovalPolicyByPaths = async (projectId: string, environment: string, secretPaths: string[]) => {
     const policyByPath = new Map<string, Awaited<ReturnType<typeof secretApprovalPolicyDAL.find>>[number]>();
-    const policies = await secretApprovalPolicyDAL.find({ deletedAt: null }, { envId: env.id });
+    const policies = await findEnvPolicies(projectId, environment);
     if (!policies.length) return policyByPath;
 
     for (const path of secretPaths) {
