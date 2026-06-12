@@ -462,11 +462,14 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
       // through complete-account; fire the signup telemetry that route would have sent.
       if (passportResult.didCompleteSignup) {
         const { user } = passportResult;
+        // An invited user completing signup via a provider-verified email is tagged as an invite for
+        // parity with the complete-account route that this provider-verified flow bypasses.
+        const signupMethod = passportResult.wasInvited ? "invite" : passportResult.authMethod;
         if (user.email) {
           void server.services.telemetry.sendLoopsEvent(user.email, user.firstName || "", user.lastName || "");
           void server.services.telemetry.sendHubSpotSignupEvent(
             user.email,
-            passportResult.authMethod,
+            signupMethod,
             user.firstName || "",
             user.lastName || "",
             typeof req.cookies?.hubspotutk === "string" ? req.cookies.hubspotutk.slice(0, 512) : undefined
@@ -479,7 +482,8 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
           properties: {
             username: user.username,
             email: user.email ?? "",
-            signupMethod: passportResult.authMethod
+            ...(passportResult.wasInvited ? { attributionSource: "Team Invite" } : {}),
+            signupMethod
           }
         });
       }
@@ -494,6 +498,9 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
       const sessionUrl = new URL("/login/select-organization", appCfg.SITE_URL);
       if (isAdminLogin) sessionUrl.searchParams.set("isAdminLogin", isAdminLogin);
       if (cbPort) sessionUrl.searchParams.set("callback_port", String(cbPort));
+      // Provider-verified signups never render the signup page that pushes the GTM conversion event,
+      // so flag the org-selection page to fire it on arrival.
+      if (passportResult.didCompleteSignup) sessionUrl.searchParams.set("signup_completed", "true");
       return res.redirect(sessionUrl.toString());
     }
 

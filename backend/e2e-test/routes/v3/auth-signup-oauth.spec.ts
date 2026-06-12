@@ -134,6 +134,48 @@ describe("Auth OAuth Signup V3 (provider-attested email verification)", () => {
       expect(second.result).toBe(ProviderAuthResult.SESSION);
       expect(second.didCompleteSignup).toBe(false);
     });
+
+    test("a brand-new alias must not inherit a user-level provider flag for a provider-unverified email", async () => {
+      // The victim previously completed a verified GitHub login, so their per-account GitHub flag is
+      // set. authMethods already includes GitHub, so this login takes the email-fallback backfill
+      // path (a new alias for a different externalId) rather than the link path.
+      const email = `oauth-flag-inherit-${crypto.randomUUID()}@localhost.local`;
+      const [victim] = await getDb()(TableName.Users)
+        .insert({
+          username: email,
+          email,
+          isAccepted: true,
+          isEmailVerified: true,
+          isGhost: false,
+          isGitHubVerified: true,
+          authMethods: [AuthMethod.GITHUB]
+        })
+        .returning("*");
+      createdUserIds.push(victim.id);
+
+      // A different GitHub account lists the victim's email as UNVERIFIED.
+      const attackerExternalId = `github-attacker-${crypto.randomUUID()}`;
+      const result = await oauthLogin({
+        email,
+        isEmailVerifiedByProvider: false,
+        authMethod: AuthMethod.GITHUB,
+        providerUserId: attackerExternalId
+      });
+
+      // No session off the inherited flag: our own verification is still required.
+      expect(result.result).toBe(ProviderAuthResult.SIGNUP_REQUIRED);
+      expect(result.signupToken).toBeDefined();
+      expect(result.didCompleteSignup).toBe(false);
+
+      // The verification code goes to the real inbox owner, who alone can complete it.
+      expect(findEmailTo(email)).toBeDefined();
+
+      // The backfilled alias for the new identity stays unverified.
+      const attackerAlias = await getDb()(TableName.UserAliases)
+        .where({ userId: victim.id, externalId: attackerExternalId })
+        .first();
+      expect(attackerAlias?.isEmailVerified).toBe(false);
+    });
   });
 
   describe("provider verified the email -> a session is issued directly, no completion step", () => {

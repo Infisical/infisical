@@ -867,6 +867,14 @@ export const authLoginServiceFactory = ({
     // user's signup (used by the caller to fire signup telemetry exactly once per account).
     const wasUserAcceptedBeforeLogin = Boolean(user?.isAccepted);
 
+    // Mirror complete-account's invite detection: a not-yet-accepted user who already has an org
+    // membership was invited (the inviter created it), versus an organic signup that has none yet.
+    // Only meaningful when this login completes the signup, so skip the read for accepted users.
+    const wasInvited =
+      !wasUserAcceptedBeforeLogin && user
+        ? (await orgDAL.findMembership({ actorUserId: user.id, scope: AccessScope.Organization })).length > 0
+        : false;
+
     const serverCfg = await getServerCfg();
 
     if (serverCfg.enabledLoginMethods && user) {
@@ -1083,14 +1091,18 @@ export const authLoginServiceFactory = ({
     }
 
     // Skip our own email verification when the provider already verified the email, or when the
-    // user previously verified it through this provider (persisted user-level flag).
+    // user previously verified it through this provider (persisted user-level flag). The user-level
+    // flag is per account, not per provider-identity, so it is only trusted for an existing alias: a
+    // brand-new alias (email-fallback backfill) for a different externalId must prove the email via
+    // the provider. Otherwise a new provider account asserting an existing user's provider-unverified
+    // email would inherit the flag and mint a session as that user.
     let isAliasVerified = false;
     if (authMethod === AuthMethod.GOOGLE) {
-      isAliasVerified = isEmailVerifiedByProvider || Boolean(user.isGoogleVerified);
+      isAliasVerified = isEmailVerifiedByProvider || (!isNewAlias && Boolean(user.isGoogleVerified));
     } else if (authMethod === AuthMethod.GITHUB) {
-      isAliasVerified = isEmailVerifiedByProvider || Boolean(user.isGitHubVerified);
+      isAliasVerified = isEmailVerifiedByProvider || (!isNewAlias && Boolean(user.isGitHubVerified));
     } else if (authMethod === AuthMethod.GITLAB) {
-      isAliasVerified = isEmailVerifiedByProvider || Boolean(user.isGitLabVerified);
+      isAliasVerified = isEmailVerifiedByProvider || (!isNewAlias && Boolean(user.isGitLabVerified));
     }
     // Self-healing backfill: create alias for existing users found by email fallback
     if (isNewAlias) {
@@ -1168,6 +1180,8 @@ export const authLoginServiceFactory = ({
       ...callbackResult,
       user: { ...user, hashedPassword: null },
       didCompleteSignup,
+      // meaningful only alongside didCompleteSignup: tags the completed signup as an invite
+      wasInvited,
       authMethod,
       orgId,
       orgName
