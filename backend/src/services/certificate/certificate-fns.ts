@@ -201,8 +201,8 @@ export enum CertificateThumbprintAlgorithm {
 /**
  * Normalize a user-supplied certificate thumbprint into the colon-delimited fingerprint format
  * stored on the certificate (e.g., "1A:2F:..."). Accepts thumbprints with or without colons,
- * whitespace, or "0x" prefixes, in any case. Returns the matching algorithm based on digest length
- * (40 hex chars => SHA-1, 64 hex chars => SHA-256).
+ * whitespace, or other separators, in any case. Returns the matching algorithm based on digest
+ * length (40 hex chars => SHA-1, 64 hex chars => SHA-256).
  */
 export const normalizeThumbprint = (thumbprint: string) => {
   const hex = thumbprint.replace(new RE2("[^a-fA-F0-9]", "g"), "");

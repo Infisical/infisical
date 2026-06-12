@@ -78,6 +78,7 @@ type TCertificateServiceFactoryDep = {
     | "deleteById"
     | "update"
     | "find"
+    | "findByThumbprintInOrg"
     | "transaction"
     | "create"
     | "findById"
@@ -431,12 +432,14 @@ export const certificateServiceFactory = ({
       cert = await certificateDAL.findOne({ serialNumber });
     } else if (thumbprint) {
       const { algorithm, fingerprint } = normalizeThumbprint(thumbprint);
-      const filter =
-        algorithm === CertificateThumbprintAlgorithm.SHA1
-          ? { fingerprintSha1: fingerprint }
-          : { fingerprintSha256: fingerprint };
+      const column = algorithm === CertificateThumbprintAlgorithm.SHA1 ? "fingerprintSha1" : "fingerprintSha256";
 
-      const matches = await certificateDAL.find(filter, { limit: 2 });
+      const matches = await certificateDAL.findByThumbprintInOrg({
+        orgId: actorOrgId,
+        column,
+        fingerprint,
+        limit: 2
+      });
       if (matches.length > 1) {
         throw new BadRequestError({
           message:
