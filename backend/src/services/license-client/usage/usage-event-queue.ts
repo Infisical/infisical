@@ -47,7 +47,7 @@ export const usageEventQueueFactory = ({
 
     const value = await metered.count(orgId);
 
-    const lastReportedKey = KeyStorePrefixes.UsageLastReported(orgId, featureKey);
+    const lastReportedKey = KeyStorePrefixes.LicenseUsageLastReported(orgId, featureKey);
     const lastReported = await keyStore.getItem(lastReportedKey);
     if (lastReported !== null && Number(lastReported) === value) {
       return;
@@ -66,7 +66,7 @@ export const usageEventQueueFactory = ({
       }
     ]);
 
-    await keyStore.setItemWithExpiry(lastReportedKey, KeyStoreTtls.UsageLastReportedInSeconds, String(value));
+    await keyStore.setItemWithExpiry(lastReportedKey, KeyStoreTtls.LicenseUsageLastReportedInSeconds, String(value));
   };
 
   // Self-hosted true-up: online instances also report event-driven, so this is a periodic backstop
@@ -107,7 +107,7 @@ export const usageEventQueueFactory = ({
 
     const appCfg = getConfig();
     cronJob.register({
-      name: CronJobName.UsageFlush,
+      name: CronJobName.LicenseUsageFlush,
       pattern: "*/30 * * * *",
       runHashTtlS: 60 * 60,
       enabled: !appCfg.isCloud,

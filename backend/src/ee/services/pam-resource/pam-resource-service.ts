@@ -19,7 +19,7 @@ import { TAppConnectionDALFactory } from "@app/services/app-connection/app-conne
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
-import { MaxResources } from "@app/services/license-client";
+import { MaxPamResources } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
 
@@ -291,7 +291,7 @@ export const pamResourceServiceFactory = ({
         return { resource: newResource, insertedMetadata: metadataRows };
       });
 
-      usageMeteringService.emitForProject(projectId, MaxResources.key);
+      usageMeteringService.emitForProject(projectId, MaxPamResources.key);
 
       return {
         ...(await decryptResource(resource, projectId, kmsService)),
@@ -622,7 +622,7 @@ export const pamResourceServiceFactory = ({
 
     try {
       const deletedResource = await pamResourceDAL.deleteById(id);
-      usageMeteringService.emitForProject(resource.projectId, MaxResources.key);
+      usageMeteringService.emitForProject(resource.projectId, MaxPamResources.key);
       return await decryptResource(deletedResource, resource.projectId, kmsService);
     } catch (err) {
       if (

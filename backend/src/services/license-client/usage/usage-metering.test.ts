@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 import { QueueJobs, QueueName } from "@app/queue";
 
 import { featureReaderFactory } from "../feature-reader";
-import { MaxActiveCerts, MaxIdentities, MaxInternalCas, MaxResources } from "../features";
+import { MaxActiveCerts, MaxIdentities, MaxInternalCas, MaxPamResources } from "../features";
 import { buildMeteredFeatures } from "./usage-counters";
 import { usageEventQueueFactory } from "./usage-event-queue";
 import { usageMeteringServiceFactory } from "./usage-metering-service";
@@ -97,14 +97,14 @@ describe("usageMeteringService.emitForProject (project-scoped)", () => {
       envConfig: { LICENSE_SERVER_V2_ENABLED: true }
     });
 
-    svc.emitForProject(PROJECT_ID, MaxResources.key);
+    svc.emitForProject(PROJECT_ID, MaxPamResources.key);
     await flushAsync();
 
     expect(findById).toHaveBeenCalledWith(PROJECT_ID);
     expect(queue).toHaveBeenCalledTimes(1);
     const [, , data, opts] = queue.mock.calls[0] as unknown as TQueueCall;
-    expect(data).toEqual({ orgId: ORG_ID, featureKey: MaxResources.key });
-    expect(opts.jobId).toBe(`usage-event:${ORG_ID}:${MaxResources.key}`);
+    expect(data).toEqual({ orgId: ORG_ID, featureKey: MaxPamResources.key });
+    expect(opts.jobId).toBe(`usage-event:${ORG_ID}:${MaxPamResources.key}`);
   });
 
   test("does not enqueue when the project is missing (e.g. soft-deleted)", async () => {
@@ -115,7 +115,7 @@ describe("usageMeteringService.emitForProject (project-scoped)", () => {
       envConfig: { LICENSE_SERVER_V2_ENABLED: true }
     });
 
-    svc.emitForProject(PROJECT_ID, MaxResources.key);
+    svc.emitForProject(PROJECT_ID, MaxPamResources.key);
     await flushAsync();
 
     expect(queue).not.toHaveBeenCalled();
@@ -130,7 +130,7 @@ describe("usageMeteringService.emitForProject (project-scoped)", () => {
       envConfig: { LICENSE_SERVER_V2_ENABLED: false }
     });
 
-    svc.emitForProject(PROJECT_ID, MaxResources.key);
+    svc.emitForProject(PROJECT_ID, MaxPamResources.key);
     await flushAsync();
 
     expect(findById).not.toHaveBeenCalled();
@@ -170,13 +170,13 @@ describe("buildMeteredFeatures", () => {
 
     const byKey = Object.fromEntries(metered.map((m) => [m.feature.key, m.count]));
     expect(Object.keys(byKey).sort()).toEqual(
-      [MaxIdentities.key, MaxInternalCas.key, MaxActiveCerts.key, MaxResources.key].sort()
+      [MaxIdentities.key, MaxInternalCas.key, MaxActiveCerts.key, MaxPamResources.key].sort()
     );
 
     expect(await byKey[MaxIdentities.key](ORG_ID)).toBe(7);
     expect(await byKey[MaxInternalCas.key](ORG_ID)).toBe(1);
     expect(await byKey[MaxActiveCerts.key](ORG_ID)).toBe(2);
-    expect(await byKey[MaxResources.key](ORG_ID)).toBe(3);
+    expect(await byKey[MaxPamResources.key](ORG_ID)).toBe(3);
     expect(licenseDAL.countOrgUsersAndIdentities).toHaveBeenCalledWith(ORG_ID);
   });
 });
@@ -227,12 +227,12 @@ describe("usageEventQueue.handleUsageEvent (worker)", () => {
       value: 42,
       source: "test-region"
     });
-    expect(keyStore.store.get(`usage-last-reported-${ORG_ID}-${MaxIdentities.key}`)).toBe("42");
+    expect(keyStore.store.get(`license-usage-last-reported-${ORG_ID}-${MaxIdentities.key}`)).toBe("42");
   });
 
   test("skips the report when the count is unchanged", async () => {
     const keyStore = createFakeKeyStore();
-    keyStore.store.set(`usage-last-reported-${ORG_ID}-${MaxIdentities.key}`, "42");
+    keyStore.store.set(`license-usage-last-reported-${ORG_ID}-${MaxIdentities.key}`, "42");
     const { queue, reportSnapshots } = buildQueue({ keyStore });
 
     await queue.handleUsageEvent(ORG_ID, MaxIdentities.key);

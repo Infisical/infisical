@@ -1,7 +1,7 @@
 import { TLicenseDALFactory } from "@app/ee/services/license/license-dal";
 
 import { TFeatureCounterFn, TLimitFeatureDescriptor } from "../feature";
-import { MaxActiveCerts, MaxIdentities, MaxInternalCas, MaxResources } from "../features";
+import { MaxActiveCerts, MaxIdentities, MaxInternalCas, MaxPamResources } from "../features";
 import { TUsageCounterDALFactory } from "./usage-counter-dal";
 
 export type TMeteredFeature = {
@@ -20,5 +20,5 @@ export const buildMeteredFeatures = ({ licenseDAL, usageCounterDAL }: TBuildMete
   { feature: MaxIdentities, count: (orgId) => licenseDAL.countOrgUsersAndIdentities(orgId) },
   { feature: MaxInternalCas, count: (orgId) => usageCounterDAL.countInternalCas(orgId) },
   { feature: MaxActiveCerts, count: (orgId) => usageCounterDAL.countActiveCerts(orgId) },
-  { feature: MaxResources, count: (orgId) => usageCounterDAL.countPamResources(orgId) }
+  { feature: MaxPamResources, count: (orgId) => usageCounterDAL.countPamResources(orgId) }
 ];
