@@ -50,7 +50,8 @@ const FOLDER_MOVE_BLOCKING_LABEL: Record<FolderMoveBlockingType, string> = {
   dynamic_secret: "dynamic secret",
   secret_rotation: "secret rotation",
   honey_token: "honey token",
-  secret_import: "secret import"
+  secret_import: "secret import",
+  secret_approval_policy: "secret approval policy"
 };
 
 // brief, capped summary of which selected folders can't be moved and why, for the Move button tooltip

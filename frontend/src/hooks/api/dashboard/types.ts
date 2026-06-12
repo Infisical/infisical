@@ -187,7 +187,8 @@ export type FolderMoveBlockingType =
   | "dynamic_secret"
   | "secret_rotation"
   | "honey_token"
-  | "secret_import";
+  | "secret_import"
+  | "secret_approval_policy";
 
 export type FolderMoveEligibilityResponse = {
   canMove: boolean;
