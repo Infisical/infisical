@@ -20,6 +20,7 @@ import {
   FilterableSelect,
   Input,
   Tabs,
+  TabsContent,
   TabsList,
   TabsTrigger,
   Tooltip,
@@ -141,6 +142,67 @@ export const OrgGroupModal = ({
   if (!isCreateMode) modalTitle = "Update Group";
   else if (isSubOrganization) modalTitle = "Add Group to Sub-Organization";
 
+  const createGroupForm = (
+    <form onSubmit={handleSubmit(onGroupModalSubmit)} className="flex flex-col gap-4">
+      <Controller
+        control={control}
+        name="name"
+        render={({ field, fieldState: { error } }) => (
+          <Field>
+            <FieldLabel htmlFor="name">Name</FieldLabel>
+            <Input id="name" placeholder="Engineering" isError={Boolean(error)} {...field} />
+            <FieldError>{error?.message}</FieldError>
+          </Field>
+        )}
+      />
+      <Controller
+        control={control}
+        name="slug"
+        render={({ field, fieldState: { error } }) => (
+          <Field>
+            <FieldLabel htmlFor="slug">Slug</FieldLabel>
+            <Input id="slug" placeholder="engineering" isError={Boolean(error)} {...field} />
+            <FieldError>{error?.message}</FieldError>
+          </Field>
+        )}
+      />
+      <Controller
+        control={control}
+        name="role"
+        render={({ field: { onChange, value }, fieldState: { error } }) => (
+          <Field>
+            <FieldLabel htmlFor="role">{isCreateMode ? "Role" : "Update Role"}</FieldLabel>
+            <FilterableSelect
+              inputId="role"
+              options={roles}
+              placeholder="Select role..."
+              onChange={onChange}
+              value={value}
+              isError={Boolean(error)}
+              getOptionValue={(option) => option.slug}
+              getOptionLabel={(option) => option.name}
+              components={{ Option: RoleOption }}
+            />
+            <FieldError>{error?.message}</FieldError>
+          </Field>
+        )}
+      />
+      <DialogFooter>
+        <Button variant="ghost" type="button" onClick={() => handlePopUpClose("group")}>
+          Cancel
+        </Button>
+        <Button
+          variant="org"
+          type="submit"
+          isPending={createIsLoading || updateIsLoading}
+          isDisabled={createIsLoading || updateIsLoading}
+        >
+          {isCreateMode ? "Create" : "Update"}
+        </Button>
+      </DialogFooter>
+    </form>
+  );
+
   return (
     <Dialog
       open={popUp?.group?.isOpen}
@@ -162,7 +224,7 @@ export const OrgGroupModal = ({
           )}
         </DialogHeader>
 
-        {showToggle && (
+        {showToggle ? (
           <Tabs
             value={wizardStep}
             onValueChange={(value) => setWizardStep(value as GroupWizardSteps)}
@@ -197,75 +259,18 @@ export const OrgGroupModal = ({
                 </TooltipContent>
               </Tooltip>
             </div>
+            <TabsContent value={GroupWizardSteps.CreateGroup}>{createGroupForm}</TabsContent>
+            <TabsContent value={GroupWizardSteps.LinkGroup}>
+              <OrgGroupLinkForm
+                onClose={() => {
+                  handlePopUpClose("group");
+                  setWizardStep(GroupWizardSteps.CreateGroup);
+                }}
+              />
+            </TabsContent>
           </Tabs>
-        )}
-
-        {wizardStep === GroupWizardSteps.LinkGroup ? (
-          <OrgGroupLinkForm
-            onClose={() => {
-              handlePopUpClose("group");
-              setWizardStep(GroupWizardSteps.CreateGroup);
-            }}
-          />
         ) : (
-          <form onSubmit={handleSubmit(onGroupModalSubmit)} className="flex flex-col gap-4">
-            <Controller
-              control={control}
-              name="name"
-              render={({ field, fieldState: { error } }) => (
-                <Field>
-                  <FieldLabel htmlFor="name">Name</FieldLabel>
-                  <Input id="name" placeholder="Engineering" isError={Boolean(error)} {...field} />
-                  <FieldError>{error?.message}</FieldError>
-                </Field>
-              )}
-            />
-            <Controller
-              control={control}
-              name="slug"
-              render={({ field, fieldState: { error } }) => (
-                <Field>
-                  <FieldLabel htmlFor="slug">Slug</FieldLabel>
-                  <Input id="slug" placeholder="engineering" isError={Boolean(error)} {...field} />
-                  <FieldError>{error?.message}</FieldError>
-                </Field>
-              )}
-            />
-            <Controller
-              control={control}
-              name="role"
-              render={({ field: { onChange, value }, fieldState: { error } }) => (
-                <Field>
-                  <FieldLabel htmlFor="role">{isCreateMode ? "Role" : "Update Role"}</FieldLabel>
-                  <FilterableSelect
-                    inputId="role"
-                    options={roles}
-                    placeholder="Select role..."
-                    onChange={onChange}
-                    value={value}
-                    isError={Boolean(error)}
-                    getOptionValue={(option) => option.slug}
-                    getOptionLabel={(option) => option.name}
-                    components={{ Option: RoleOption }}
-                  />
-                  <FieldError>{error?.message}</FieldError>
-                </Field>
-              )}
-            />
-            <DialogFooter>
-              <Button variant="ghost" type="button" onClick={() => handlePopUpClose("group")}>
-                Cancel
-              </Button>
-              <Button
-                variant="org"
-                type="submit"
-                isPending={createIsLoading || updateIsLoading}
-                isDisabled={createIsLoading || updateIsLoading}
-              >
-                {isCreateMode ? "Create" : "Update"}
-              </Button>
-            </DialogFooter>
-          </form>
+          createGroupForm
         )}
       </DialogContent>
     </Dialog>
