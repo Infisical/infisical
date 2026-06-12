@@ -12,6 +12,7 @@ import {
   SelectItem
 } from "@app/components/v2";
 import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
+import { TServerConfig } from "@app/hooks/api/admin/types";
 import { AwsConnectionMethod, TAwsConnection } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 
@@ -23,6 +24,7 @@ import {
 type Props = {
   appConnection?: TAwsConnection;
   onSubmit: (formData: FormData) => Promise<void>;
+  serverConfig: TServerConfig;
 };
 
 const rootSchema = genericAppConnectionFieldsSchema.extend({
@@ -55,7 +57,7 @@ const formSchema = z.discriminatedUnion("method", [
 
 type FormData = z.infer<typeof formSchema>;
 
-export const AwsConnectionForm = ({ appConnection, onSubmit }: Props) => {
+export const AwsConnectionForm = ({ appConnection, onSubmit, serverConfig }: Props) => {
   const isUpdate = Boolean(appConnection);
 
   const form = useForm<FormData>({
@@ -142,7 +144,23 @@ export const AwsConnectionForm = ({ appConnection, onSubmit }: Props) => {
                   isError={Boolean(error?.message)}
                   label="STS Endpoint URL"
                   isOptional
-                  tooltipText="Override the default AWS STS endpoint Infisical calls to assume the role. Useful for VPC (PrivateLink), GovCloud, China, FIPS, or region-pinned endpoints. Leave blank to use the default AWS STS endpoint."
+                  tooltipText={
+                    <div>
+                      <p>
+                        Override the default AWS STS endpoint Infisical calls to assume the role.
+                        Useful for VPC (PrivateLink), GovCloud, China, FIPS, or region-pinned
+                        endpoints. Leave blank to use the default AWS STS endpoint.
+                      </p>
+                      {serverConfig.fipsEnabled && (
+                        <p className="mt-2">
+                          Your Infisical instance is running in FIPS mode. By default, Infisical
+                          uses the FIPS-compliant AWS STS endpoint. Setting a custom STS endpoint
+                          URL here will override that default and use your configured endpoint
+                          instead, so ensure the endpoint you provide is FIPS-compliant.
+                        </p>
+                      )}
+                    </div>
+                  }
                 >
                   <Input
                     placeholder="https://sts.amazonaws.com"
