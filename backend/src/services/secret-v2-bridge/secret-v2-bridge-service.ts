@@ -1629,6 +1629,22 @@ export const secretV2BridgeServiceFactory = ({
       }
     });
 
+    if (injectPlaceholders || !viewSecretValue) {
+      const allImportedSecretIds = importedSecrets.flatMap((imp) => imp.secrets.map((s) => s._id || s.id));
+      if (allImportedSecretIds.length > 0) {
+        const importProxyConfigs = await secretHttpProxyConfigDAL.findBySecretIds(allImportedSecretIds as string[]);
+        if (importProxyConfigs.length > 0) {
+          const importPlaceholderMap = new Map(importProxyConfigs.map((c) => [c.secretId, c.placeholder]));
+          for (const imp of importedSecrets) {
+            imp.secrets = imp.secrets.map((s) => {
+              const ph = importPlaceholderMap.get((s._id || s.id) as string);
+              return ph ? { ...s, secretPlaceholder: ph } : s;
+            });
+          }
+        }
+      }
+    }
+
     const payload = { secrets: decryptedSecrets, imports: importedSecrets };
     const encryptedUpdatedCachedSecrets = secretManagerEncryptor({
       plainText: Buffer.from(JSON.stringify(payload))
@@ -1737,7 +1753,8 @@ export const secretV2BridgeServiceFactory = ({
     viewSecretValue,
     includeImports,
     expandSecretReferences: shouldExpandSecretReferences,
-    expandPersonalOverrides
+    expandPersonalOverrides,
+    injectPlaceholders
   }: TGetASecretDTO) => {
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -1942,6 +1959,14 @@ export const secretV2BridgeServiceFactory = ({
       secretValueHidden = false;
     }
 
+    let proxyPlaceholder: string | undefined;
+    if (injectPlaceholders || secretValueHidden) {
+      const proxyConfigs = await secretHttpProxyConfigDAL.findBySecretIds([secret.id]);
+      if (proxyConfigs.length > 0) {
+        proxyPlaceholder = proxyConfigs[0].placeholder;
+      }
+    }
+
     return reshapeBridgeSecret(
       projectId,
       environment,
@@ -1963,7 +1988,8 @@ export const secretV2BridgeServiceFactory = ({
           ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedComment }).toString()
           : ""
       },
-      secretValueHidden
+      secretValueHidden,
+      proxyPlaceholder
     );
   };
 

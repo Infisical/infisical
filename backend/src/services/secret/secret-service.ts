@@ -1649,7 +1649,8 @@ export const secretServiceFactory = ({
     actorAuthMethod,
     secretName,
     includeImports,
-    version
+    version,
+    injectPlaceholders
   }: TGetASecretRawDTO) => {
     const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
     if (shouldUseSecretV2Bridge) {
@@ -1667,7 +1668,8 @@ export const secretServiceFactory = ({
         expandSecretReferences,
         expandPersonalOverrides,
         type,
-        secretName
+        secretName,
+        injectPlaceholders
       });
 
       return secret;

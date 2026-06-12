@@ -439,12 +439,14 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
         type: z.nativeEnum(SecretType).default(SecretType.Shared).describe(RAW_SECRETS.GET.type),
         viewSecretValue: convertStringBoolean(true).describe(RAW_SECRETS.GET.viewSecretValue),
         expandSecretReferences: convertStringBoolean().describe(RAW_SECRETS.GET.expand),
-        include_imports: convertStringBoolean().describe(RAW_SECRETS.GET.includeImports)
+        include_imports: convertStringBoolean().describe(RAW_SECRETS.GET.includeImports),
+        injectPlaceholders: convertStringBoolean().optional()
       }),
       response: {
         200: z.object({
           secret: secretRawSchema.extend({
             secretValueHidden: z.boolean(),
+            secretPlaceholder: z.string().optional(),
             secretPath: z.string(),
             tags: SanitizedTagSchema.array().optional(),
             secretMetadata: ResourceMetadataWithEncryptionSchema.optional()
@@ -495,7 +497,8 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
         secretName: req.params.secretName,
         type: req.query.type,
         includeImports: req.query.include_imports,
-        version: req.query.version
+        version: req.query.version,
+        injectPlaceholders: req.query.injectPlaceholders
       });
 
       await server.services.auditLog.createAuditLog({

@@ -78,6 +78,7 @@ export type TGetASecretDTO = {
   version?: number;
   projectId: string;
   viewSecretValue: boolean;
+  injectPlaceholders?: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TCreateSecretDTO = TProjectPermission & {

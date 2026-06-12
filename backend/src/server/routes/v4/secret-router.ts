@@ -168,6 +168,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
                 .omit({ createdAt: true, updatedAt: true })
                 .extend({
                   secretValueHidden: z.boolean(),
+                  secretPlaceholder: z.string().optional(),
                   secretMetadata: ResourceMetadataWithEncryptionSchema.optional()
                 })
                 .array()
@@ -327,12 +328,14 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         type: z.nativeEnum(SecretType).default(SecretType.Shared).describe(RAW_SECRETS.GET.type),
         viewSecretValue: convertStringBoolean(true).describe(RAW_SECRETS.GET.viewSecretValue),
         expandSecretReferences: convertStringBoolean(true).describe(RAW_SECRETS.GET.expand),
-        includeImports: convertStringBoolean(true).describe(RAW_SECRETS.GET.includeImports)
+        includeImports: convertStringBoolean(true).describe(RAW_SECRETS.GET.includeImports),
+        injectPlaceholders: convertStringBoolean().optional()
       }),
       response: {
         200: z.object({
           secret: secretRawSchema.extend({
             secretValueHidden: z.boolean(),
+            secretPlaceholder: z.string().optional(),
             secretPath: z.string(),
             tags: SanitizedTagSchema.array().optional(),
             secretMetadata: ResourceMetadataWithEncryptionSchema.optional()
@@ -372,7 +375,8 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         secretName: req.params.secretName,
         type: req.query.type,
         includeImports: req.query.includeImports,
-        version: req.query.version
+        version: req.query.version,
+        injectPlaceholders: req.query.injectPlaceholders
       });
 
       await server.services.auditLog.createAuditLog({

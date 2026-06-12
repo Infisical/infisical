@@ -1,8 +1,9 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName } from "@app/db/schemas";
-import { ormify } from "@app/lib/knex";
+import { TableName, TSecretFolders } from "@app/db/schemas";
+import { ormify, selectAllTableCols } from "@app/lib/knex";
+import { buildChildrenMap, resolvePathToFolder } from "@app/services/secret-folder/secret-folder-fns";
 
 export type TSecretHttpProxyConfigDALFactory = ReturnType<typeof secretHttpProxyConfigDALFactory>;
 
@@ -20,13 +21,24 @@ export const secretHttpProxyConfigDALFactory = (db: TDbClient) => {
 
   const findByEnvironmentAndPath = async (projectId: string, envSlug: string, secretPath: string, tx?: Knex) => {
     const queryDb = tx || db.replicaNode();
-    return queryDb(TableName.SecretHttpProxyConfig)
-      .join(TableName.SecretV2, `${TableName.SecretHttpProxyConfig}.secretId`, `${TableName.SecretV2}.id`)
-      .join(TableName.SecretFolder, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
+
+    const allFolders = await queryDb(TableName.SecretFolder)
       .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
       .where(`${TableName.Environment}.projectId`, projectId)
       .where(`${TableName.Environment}.slug`, envSlug)
-      .where(`${TableName.SecretFolder}.name`, secretPath === "/" ? "root" : secretPath)
+      .select(selectAllTableCols(TableName.SecretFolder)) as TSecretFolders[];
+
+    if (!allFolders.length) return [];
+
+    const pathSegments = secretPath.split("/").filter(Boolean);
+    const childrenMap = buildChildrenMap(allFolders);
+    const targetFolder = resolvePathToFolder(childrenMap, pathSegments);
+
+    if (!targetFolder) return [];
+
+    return queryDb(TableName.SecretHttpProxyConfig)
+      .join(TableName.SecretV2, `${TableName.SecretHttpProxyConfig}.secretId`, `${TableName.SecretV2}.id`)
+      .where(`${TableName.SecretV2}.folderId`, targetFolder.id)
       .select(`${TableName.SecretHttpProxyConfig}.*`);
   };
 
