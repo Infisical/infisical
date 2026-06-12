@@ -115,15 +115,18 @@ export const SignupSsoPage = () => {
 
   // When the OAuth provider already verified the email, no code is issued — finish signup automatically.
   const hasAutoCompleted = useRef(false);
+  const autoCompleteSignup = () =>
+    completeSignup("").catch(() => {
+      createNotification({
+        text: "Failed to complete sign-up. Please try again.",
+        type: "error"
+      });
+    });
+
   useEffect(() => {
     if (decoded.isEmailVerified && !hasAutoCompleted.current) {
       hasAutoCompleted.current = true;
-      completeSignup("").catch(() => {
-        createNotification({
-          text: "Failed to complete sign-up. Please try again.",
-          type: "error"
-        });
-      });
+      autoCompleteSignup();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [decoded.isEmailVerified]);
@@ -142,6 +145,13 @@ export const SignupSsoPage = () => {
       });
     }
   };
+
+  let cardTitle = "We've sent a verification code to";
+  if (decoded.isEmailVerified) {
+    cardTitle = completeAccountSignup.isError
+      ? "Couldn't finish your sign-up"
+      : "Finishing your sign-up";
+  }
 
   return (
     <div className="relative flex max-h-screen min-h-screen flex-col overflow-y-auto bg-linear-to-tr from-card via-bunker-900 to-card px-4">
@@ -164,9 +174,7 @@ export const SignupSsoPage = () => {
             <Card className="mx-auto w-full max-w-md items-stretch gap-0 p-6">
               <CardHeader className="mb-2 gap-2">
                 <CardTitle className="bg-linear-to-b from-white to-bunker-200 bg-clip-text text-center text-[1.55rem] font-medium text-transparent">
-                  {decoded.isEmailVerified
-                    ? "Finishing your sign-up"
-                    : "We've sent a verification code to"}
+                  {cardTitle}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -174,10 +182,28 @@ export const SignupSsoPage = () => {
                   {decoded.email}
                 </p>
                 {decoded.isEmailVerified ? (
-                  <p className="mt-4 flex justify-center text-center text-sm text-label">
-                    Your email is already verified. Just a moment while we finish setting up your
-                    account…
-                  </p>
+                  <>
+                    <p className="mt-4 flex justify-center text-center text-sm text-label">
+                      {completeAccountSignup.isError
+                        ? "We couldn't finish setting up your account. Please try again."
+                        : "Your email is already verified. Just a moment while we finish setting up your account…"}
+                    </p>
+                    {completeAccountSignup.isError && (
+                      <div className="mt-4 w-full">
+                        <Button
+                          type="button"
+                          onClick={autoCompleteSignup}
+                          variant="project"
+                          size="lg"
+                          isFullWidth
+                          isPending={completeAccountSignup.isPending}
+                          isDisabled={completeAccountSignup.isPending}
+                        >
+                          Try again
+                        </Button>
+                      </div>
+                    )}
+                  </>
                 ) : (
                   <>
                     <div className="mx-auto hidden w-max min-w-[20rem] md:block">
