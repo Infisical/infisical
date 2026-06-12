@@ -136,5 +136,9 @@ export const createNotification = (
   });
 };
 
+// Imperatively dismiss a toast by the id returned from `createNotification`. Keeps the
+// sonner dependency encapsulated in this module.
+export const dismissNotification = (id: string | number) => toast.dismiss(id);
+
 // All styling/position/close-button config lives in the v3 Toaster itself.
 export const NotificationContainer = () => <Toaster />;

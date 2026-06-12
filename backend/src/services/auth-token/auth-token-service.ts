@@ -196,7 +196,11 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
   const revokeMySessionById = async (userId: string, sessionId: string) =>
     tokenDAL.deleteTokenSession({ userId, id: sessionId });
 
-  const validateRefreshToken = async (refreshToken?: string) => {
+  // Revokes every token session created under the given userAgent (across all users/IPs). Used to
+  // invalidate all OAuth access/refresh tokens issued for a client when that client is deleted.
+  const revokeSessionsByUserAgent = async (userAgent: string) => tokenDAL.deleteTokenSession({ userAgent });
+
+  const validateRefreshToken = async (refreshToken?: string, opts?: { allowOauthClientToken?: boolean }) => {
     const appCfg = getConfig();
     if (!refreshToken) {
       throw new NotFoundError({
@@ -210,6 +214,13 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
     if (decodedToken.authTokenType !== AuthTokenType.REFRESH_TOKEN) {
       throw new UnauthorizedError({
         message: "The token provided is not a refresh token",
+        name: "InvalidToken"
+      });
+    }
+
+    if (decodedToken.oauthClientId && !opts?.allowOauthClientToken) {
+      throw new UnauthorizedError({
+        message: "This refresh token can only be used at the OAuth token endpoint",
         name: "InvalidToken"
       });
     }
@@ -481,6 +492,7 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
     getTokenSessionByUser,
     revokeAllMySessions,
     revokeMySessionById,
+    revokeSessionsByUserAgent,
     validateRefreshToken,
     rotateRefreshToken,
     fnValidateJwtIdentity,

@@ -367,7 +367,8 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
         orgMembershipId: z.string().trim()
       }),
       body: z.object({
-        schemas: z.array(z.string()),
+        // Optional: unused here (only Operations is read), and some IdPs (e.g. Authentik) omit it.
+        schemas: z.array(z.string()).optional(),
         Operations: z.array(
           z.union([
             z.object({
@@ -414,7 +415,8 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
           .array(
             z.object({
               value: z.string(),
-              display: z.string()
+              // Optional per SCIM (RFC 7643 §4.2) and unused here; some IdPs (e.g. Authentik) omit it.
+              display: z.string().optional()
             })
           )
           .optional()
@@ -511,7 +513,8 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
         members: z.array(
           z.object({
             value: z.string(),
-            display: z.string()
+            // Optional per SCIM (RFC 7643 §4.2) and unused here; some IdPs (e.g. Authentik) omit it.
+            display: z.string().optional()
           })
         )
       }),
@@ -539,7 +542,8 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
         groupId: z.string().trim()
       }),
       body: z.object({
-        schemas: z.array(z.string()),
+        // Optional: unused here (only Operations is read), and some IdPs (e.g. Authentik) omit it.
+        schemas: z.array(z.string()).optional(),
         Operations: z.array(
           z.union([
             z.object({

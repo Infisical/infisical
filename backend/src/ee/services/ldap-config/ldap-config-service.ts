@@ -731,7 +731,7 @@ export const ldapConfigServiceFactory = ({
       }));
     }
 
-    if (user.email && !userAlias.isEmailVerified) {
+    if (user.email && (!userAlias.isEmailVerified || !user.isAccepted)) {
       const token = await tokenService.createTokenForUser({
         type: TokenType.TOKEN_EMAIL_VERIFICATION,
         userId: user.id,

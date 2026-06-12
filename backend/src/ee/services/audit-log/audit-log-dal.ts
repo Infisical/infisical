@@ -3,9 +3,10 @@ import knex from "knex";
 import { v4 as uuidv4 } from "uuid";
 
 import { TDbClient } from "@app/db";
-import { TableName, TAuditLogs } from "@app/db/schemas";
+import { TableName, TAuditLogs, TAuditLogsInsert } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { DatabaseError, GatewayTimeoutError } from "@app/lib/errors";
+import { chunkArray } from "@app/lib/fn";
 import { ormify, selectAllTableCols, TOrmify } from "@app/lib/knex";
 import { logger } from "@app/lib/logger";
 import { ActorType } from "@app/services/auth/auth-type";
@@ -23,6 +24,7 @@ type TAggregateQuery = {
 export interface TAuditLogDALFactory extends Omit<TOrmify<TableName.AuditLog>, "find"> {
   pruneAuditLog: () => Promise<void>;
   getApproximateRowCount: () => Promise<number>;
+  batchCreate: (logs: TAuditLogsInsert[]) => Promise<void>;
   find: (
     arg: Omit<TFindQuery, "actor" | "eventType"> & {
       actorId?: string | undefined;
@@ -61,6 +63,7 @@ type TFindQuery = {
 const QUERY_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
 const AUDIT_LOG_PRUNE_BATCH_SIZE = 10000;
 const MAX_RETRY_ON_FAILURE = 3;
+const AUDIT_LOG_BATCH_INSERT_CHUNK_SIZE = 1000;
 
 export const auditLogDALFactory = (db: TDbClient) => {
   const auditLogOrm = ormify(db, TableName.AuditLog);
@@ -264,6 +267,22 @@ export const auditLogDALFactory = (db: TDbClient) => {
     return auditLogOrm.create(tx);
   };
 
+  const batchCreate: TAuditLogDALFactory["batchCreate"] = async (logs) => {
+    if (logs.length === 0) return;
+    if (getConfig().DISABLE_POSTGRES_AUDIT_LOG_STORAGE) return;
+
+    try {
+      await db.transaction(async (tx) => {
+        for (const chunk of chunkArray(logs, AUDIT_LOG_BATCH_INSERT_CHUNK_SIZE)) {
+          // eslint-disable-next-line no-await-in-loop
+          await tx(TableName.AuditLog).insert(chunk).onConflict().ignore();
+        }
+      });
+    } catch (error) {
+      throw new DatabaseError({ error, name: "auditLogBulkInsert" });
+    }
+  };
+
   const countByDateAndActor = async (
     {
       orgId,
@@ -364,6 +383,7 @@ export const auditLogDALFactory = (db: TDbClient) => {
   return {
     ...auditLogOrm,
     create,
+    batchCreate,
     pruneAuditLog,
     getApproximateRowCount,
     find,

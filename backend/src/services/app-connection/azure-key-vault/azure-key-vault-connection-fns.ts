@@ -1,9 +1,18 @@
 /* eslint-disable no-case-declarations */
-import { AxiosError, AxiosResponse } from "axios";
+import { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
+import https from "https";
 
+import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
+import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
+import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
+import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { BadRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
+import { GatewayProxyProtocol, withGatewayProxy } from "@app/lib/gateway";
+import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
+import { logger } from "@app/lib/logger";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import {
   decryptAppConnectionCredentials,
   encryptAppConnectionCredentials,
@@ -23,6 +32,149 @@ import {
   TAzureKeyVaultConnectionConfig,
   TAzureKeyVaultConnectionCredentials
 } from "./azure-key-vault-connection-types";
+
+/**
+ * Proxies an Azure Key Vault data-plane request through a gateway when the connection has one
+ * configured, otherwise sends it directly. Mirrors `requestWithHCVaultGateway`.
+ *
+ * Note: this is only for vault data-plane calls (e.g. https://<vault>.vault.azure.net), which can
+ * sit behind an Azure Private Link. Azure AD token requests (login.microsoftonline.com) are public
+ * and are not routed through the gateway.
+ */
+export const requestWithAzureKeyVaultGateway = async <T>(
+  connection: { gatewayId?: string | null; gatewayPoolId?: string | null },
+  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
+  requestConfig: AxiosRequestConfig,
+  gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">
+): Promise<AxiosResponse<T>> => {
+  const { gatewayId: directGatewayId, gatewayPoolId } = connection;
+
+  if (gatewayPoolId && !gatewayPoolService) {
+    throw new BadRequestError({
+      message: "Pool-backed connections require gatewayPoolService at the call site"
+    });
+  }
+
+  const gatewayId =
+    gatewayPoolId && gatewayPoolService
+      ? await gatewayPoolService.resolveEffectiveGatewayId({ gatewayId: directGatewayId, gatewayPoolId })
+      : directGatewayId;
+
+  const url = new URL(requestConfig.url as string);
+  await blockLocalAndPrivateIpAddresses(url.toString(), Boolean(gatewayId));
+
+  // If gateway isn't set up, don't proxy the request
+  if (!gatewayId) {
+    return request.request(requestConfig);
+  }
+
+  const [targetHost] = await verifyHostInputValidity({ host: url.hostname, isGateway: true, isDynamicSecret: false });
+  // port is empty string when using the protocol's default port (443 for https, 80 for http)
+  // eslint-disable-next-line no-nested-ternary
+  const targetPort = url.port ? Number(url.port) : url.protocol === "https:" ? 443 : 80;
+
+  // try gateway v2 first, then fall back to gateway v1
+  const gatewayConnectionDetailsV2 = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
+    gatewayId,
+    targetHost,
+    targetPort
+  });
+
+  if (gatewayConnectionDetailsV2) {
+    return withGatewayV2Proxy(
+      async (proxyPort) => {
+        const isHttps = url.protocol === "https:";
+
+        url.host = `localhost:${proxyPort}`;
+
+        const finalRequestConfig: AxiosRequestConfig = {
+          ...requestConfig,
+          url: url.toString(),
+          headers: {
+            ...requestConfig.headers,
+            Host: targetHost
+          },
+          ...(isHttps && {
+            httpsAgent: new https.Agent({
+              servername: targetHost
+            })
+          })
+        };
+
+        try {
+          return await request.request(finalRequestConfig);
+        } catch (error) {
+          if (error instanceof AxiosError) {
+            logger.error(
+              {
+                error,
+                message: error.message,
+                data: (error.response as undefined | { data: unknown })?.data,
+                url: url.toString()
+              },
+              "Error during Azure Key Vault gateway v2 request:"
+            );
+          }
+          throw error;
+        }
+      },
+      {
+        protocol: GatewayProxyProtocol.Tcp,
+        relayHost: gatewayConnectionDetailsV2.relayHost,
+        gateway: gatewayConnectionDetailsV2.gateway,
+        relay: gatewayConnectionDetailsV2.relay
+      }
+    );
+  }
+
+  const gatewayConnectionDetailsV1 = await gatewayService.fnGetGatewayClientTlsByGatewayId(gatewayId);
+
+  return withGatewayProxy(
+    async (proxyPort) => {
+      const isHttps = url.protocol === "https:";
+
+      url.host = `localhost:${proxyPort}`;
+
+      const finalRequestConfig: AxiosRequestConfig = {
+        ...requestConfig,
+        url: url.toString(),
+        headers: {
+          ...requestConfig.headers,
+          Host: targetHost
+        },
+        ...(isHttps && {
+          httpsAgent: new https.Agent({
+            servername: targetHost
+          })
+        })
+      };
+
+      try {
+        return await request.request(finalRequestConfig);
+      } catch (error) {
+        if (error instanceof AxiosError) {
+          logger.error(
+            {
+              error,
+              message: error.message,
+              data: (error.response as undefined | { data: unknown })?.data,
+              url: url.toString()
+            },
+            "Error during Azure Key Vault gateway v1 request:"
+          );
+        }
+        throw error;
+      }
+    },
+    {
+      relayDetails: gatewayConnectionDetailsV1,
+      protocol: GatewayProxyProtocol.Tcp,
+      targetHost,
+      targetPort
+    }
+  );
+};
 
 export const getAzureConnectionAccessToken = async (
   connectionId: string,

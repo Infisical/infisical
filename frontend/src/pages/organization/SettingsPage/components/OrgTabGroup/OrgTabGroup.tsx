@@ -13,6 +13,7 @@ import { AuditLogStreamsTab } from "../AuditLogStreamTab";
 import { ExternalMigrationsTab } from "../ExternalMigrationsTab";
 import { OrgEncryptionTab } from "../OrgEncryptionTab";
 import { OrgGeneralTab } from "../OrgGeneralTab";
+import { OrgOauthClientsTab } from "../OrgOauthClientsTab";
 import { OrgProductSettingsTab } from "../OrgProductSettingsTab";
 import { OrgProvisioningTab } from "../OrgProvisioningTab";
 import { OrgSecurityTab } from "../OrgSecurityTab";
@@ -62,6 +63,11 @@ export const OrgTabGroup = () => {
       component: OrgWorkflowIntegrationTab
     },
     { name: "Audit Log Streams", key: "tag-audit-log-streams", component: AuditLogStreamsTab },
+    {
+      name: "OAuth Applications",
+      key: "oauth-applications",
+      component: OrgOauthClientsTab
+    },
     {
       name: "External Migrations",
       key: "tab-external-migrations",

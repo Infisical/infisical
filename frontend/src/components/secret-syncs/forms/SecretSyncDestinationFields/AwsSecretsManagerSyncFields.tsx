@@ -37,7 +37,18 @@ export const AwsSecretsManagerSyncFields = () => {
       <Controller
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>Region</FieldLabel>
+            <FieldLabel>
+              Region
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-md">
+                  If the app connection being used has a custom STS endpoint configured, the
+                  selected region must match the STS region configured on the app connection.
+                </TooltipContent>
+              </Tooltip>
+            </FieldLabel>
             <FieldContent>
               <AwsRegionSelect value={value} onChange={onChange} />
               <FieldError errors={[error]} />

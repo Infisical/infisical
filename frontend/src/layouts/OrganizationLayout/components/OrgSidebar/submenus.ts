@@ -16,6 +16,7 @@ import {
   HardDrive,
   IdCardLanyard,
   Key,
+  KeyRound,
   Lock,
   MapPin,
   Plug,
@@ -152,6 +153,7 @@ export const getOrgSettingsSubmenu = ({
     { label: "Encryption", icon: Lock, tab: "tab-org-encryption" },
     { label: "Workflow Integrations", icon: Plug, tab: "workflow-integrations" },
     { label: "Audit Log Streams", icon: FileText, tab: "tag-audit-log-streams" },
+    { label: "OAuth Applications", icon: KeyRound, tab: "oauth-applications" },
     { label: "External Migrations", icon: Database, tab: "tab-external-migrations" },
     { label: "Project Templates", icon: FolderCog, tab: "project-templates" },
     { label: "Product Settings", icon: ClipboardList, tab: "product-settings" },
@@ -181,8 +183,8 @@ export const NETWORKING_SUBMENU: Submenu = {
   pathSuffix: "networking",
   defaultTab: "gateways",
   items: [
-    { label: "Gateways", icon: DoorOpen, tab: "gateways" },
-    { label: "Relays", icon: Route, tab: "relays" }
+    { label: "Gateways", icon: DoorOpen, tab: "gateways", activeMatch: /\/networking\/gateways\// },
+    { label: "Relays", icon: Route, tab: "relays", activeMatch: /\/networking\/relays\// }
   ]
 };
 
