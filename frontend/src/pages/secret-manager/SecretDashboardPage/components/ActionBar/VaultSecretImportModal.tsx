@@ -253,7 +253,7 @@ const Content = ({ onClose, environment, secretPath, appConnections, onImport }:
             {skippedWildcardPaths.length} secret path
             {skippedWildcardPaths.length > 1 ? "s are" : " is"} unavailable
           </AlertTitle>
-          <AlertDescription className="text-sm">
+          <AlertDescription>
             <p>
               {skippedWildcardPaths.length} secret path
               {skippedWildcardPaths.length > 1 ? "s are" : " is"} not available for selection. Vault
