@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { ErrorComponentProps, Link } from "@tanstack/react-router";
 import { AxiosError } from "axios";
 import {
@@ -39,12 +39,23 @@ const TONES = {
 };
 
 export const ErrorPage = ({ error }: ErrorComponentProps) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  // Errors thrown in nested routes render inside the app layout chrome (sidebar,
+  // header), where the full-screen vault backdrop doesn't fit
+  const [isFullScreen, setIsFullScreen] = useState(false);
   const [occurredAt] = useState(
     () => `${new Date().toISOString().slice(0, 19).replace("T", " ")} UTC`
   );
   const [copyLabel, isCopied, setCopyLabel] = useTimedReset<string>({
     initialState: "Copy Report"
   });
+
+  useLayoutEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    setIsFullScreen(rect.top < 2 && rect.left < 2 && window.innerWidth - rect.width < 4);
+  }, []);
 
   if (
     error instanceof AxiosError &&
@@ -133,8 +144,15 @@ export const ErrorPage = ({ error }: ErrorComponentProps) => {
     .join("\n");
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center bg-linear-to-tr from-card via-bunker-900 to-card p-4">
-      <AuthPageBackground />
+    <div
+      ref={containerRef}
+      className={`relative flex items-center justify-center p-4 ${
+        isFullScreen
+          ? "min-h-screen bg-linear-to-tr from-card via-bunker-900 to-card"
+          : "min-h-full"
+      }`}
+    >
+      {isFullScreen && <AuthPageBackground />}
       <Card className="relative z-10 grid w-full max-w-4xl gap-0 overflow-hidden p-0 md:grid-cols-2">
         <div className="flex flex-col p-8">
           <img alt="Infisical" src="/images/logotransparent.png" className="h-5 self-start" />
