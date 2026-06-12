@@ -23,6 +23,7 @@ import {
   SettingsIcon,
   TrashIcon
 } from "lucide-react";
+import picomatch from "picomatch";
 import { twMerge } from "tailwind-merge";
 
 import {
@@ -478,7 +479,10 @@ const OverviewPageContent = () => {
     const selectedEnvSlug = visibleEnvs[0].slug;
     return (
       openApprovalRequests?.approvals?.filter(
-        (req) => req.policy?.secretPath === secretPath && req.environment === selectedEnvSlug
+        (req) =>
+          req.policy?.secretPath &&
+          req.environment === selectedEnvSlug &&
+          picomatch.isMatch(secretPath, req.policy.secretPath, { strictSlashes: false })
       ).length ?? 0
     );
   }, [canApproveAny, pendingApprovalsCount, openApprovalRequests, visibleEnvs, secretPath]);
