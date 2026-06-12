@@ -68,7 +68,10 @@ type TSecretFolderServiceFactoryDep = {
   folderVersionDAL: Pick<TSecretFolderVersionDALFactory, "findLatestFolderVersions" | "create" | "insertMany" | "find">;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug">;
-  secretApprovalPolicyService: Pick<TSecretApprovalPolicyServiceFactory, "getSecretApprovalPolicy">;
+  secretApprovalPolicyService: Pick<
+    TSecretApprovalPolicyServiceFactory,
+    "getSecretApprovalPolicy" | "getSecretApprovalPolicyByPaths"
+  >;
   secretV2BridgeDAL: Pick<
     TSecretV2BridgeDALFactory,
     | "find"
@@ -1616,37 +1619,37 @@ export const secretFolderServiceFactory = ({
       }
     }
 
-    // 4. the destination parent must exist and must not already contain a folder of the same name
-    const destinationParentFolder = await folderDAL.findBySecretPath(
-      projectId,
-      destinationEnvironment,
-      destinationPath
-    );
-    if (!destinationParentFolder) {
-      throw new NotFoundError({
-        message: `Destination folder with path '${destinationPath}' in environment '${destinationEnvironment}' not found`
-      });
-    }
-    const finalDestinationPath = path.join(destinationPath, folderName);
-    const existingDestinationFolder = await folderDAL.findBySecretPath(
-      projectId,
-      destinationEnvironment,
-      finalDestinationPath
-    );
-    if (existingDestinationFolder) {
-      throw new BadRequestError({
-        message: `A folder named '${folderName}' already exists at path '${destinationPath}' in environment '${destinationEnvironment}'`
-      });
-    }
-
-    const destinationFolderRoot = finalDestinationPath;
-    const destinationEnvId = destinationParentFolder.envId;
-
-    // 5. perform the whole move inside ONE transaction so it is atomic and the source-folder row lock is held for
+    // 4. perform the whole move inside ONE transaction so it is atomic and the source-folder row lock is held for
     // the entire operation: enumerate + lock the source subtree, recreate the tree at the destination, move every
     // folder's secrets (sharing this tx), then tear down the source selectively. a failure anywhere rolls all of
     // it back. side effects (snapshots/syncs/cache) are dispatched after the commit.
-    const { moveResults, keptFolderIds } = await folderDAL.transaction(async (tx) => {
+    const { moveResults, keptFolderIds, destinationParentFolderId } = await folderDAL.transaction(async (tx) => {
+      const destinationParentFolder = await folderDAL.findBySecretPath(
+        projectId,
+        destinationEnvironment,
+        destinationPath,
+        tx
+      );
+      if (!destinationParentFolder) {
+        throw new NotFoundError({
+          message: `Destination folder with path '${destinationPath}' in environment '${destinationEnvironment}' not found`
+        });
+      }
+      const finalDestinationPath = path.join(destinationPath, folderName);
+      const existingDestinationFolder = await folderDAL.findBySecretPath(
+        projectId,
+        destinationEnvironment,
+        finalDestinationPath,
+        tx
+      );
+      if (existingDestinationFolder) {
+        throw new BadRequestError({
+          message: `A folder named '${folderName}' already exists at path '${destinationPath}' in environment '${destinationEnvironment}'`
+        });
+      }
+
+      const destinationFolderRoot = finalDestinationPath;
+      const destinationEnvId = destinationParentFolder.envId;
       // locking the source folder rows blocks concurrent secret inserts into them (secret -> folder FK) until commit.
       const subtree = await folderDAL.findByEnvsDeep({ parentIds: [sourceFolder.id] }, tx);
       await folderDAL.lockFoldersForUpdate(
@@ -1663,6 +1666,26 @@ export const secretFolderServiceFactory = ({
             " "
           )} at path '${block.blockingPath}'. Only folders that contain exclusively static secrets can be moved.`
         });
+      }
+
+      // block the move if any folder in the source subtree is governed by a secret approval policy. resolve all
+      // subtree paths in a single batched lookup rather than one query per folder.
+      const subtreeAbsPaths = subtree.map((f) => (f.path === "/" ? sourceFolderPath : `${sourceFolderPath}${f.path}`));
+      const policyByPath = await secretApprovalPolicyService.getSecretApprovalPolicyByPaths(
+        projectId,
+        sourceEnvironment,
+        subtreeAbsPaths
+      );
+      if (policyByPath.size) {
+        // report the first blocked path in subtree order, matching the previous per-folder behavior.
+        const blockedPath = subtreeAbsPaths.find((p) => policyByPath.has(p));
+        if (blockedPath) {
+          const policy = policyByPath.get(blockedPath)!;
+          throw new BadRequestError({
+            message: `Cannot move folder '${folderName}'. The folder at path '${blockedPath}' is protected by the secret approval policy '${policy.name}'. Folders governed by a secret approval policy cannot be moved. If you need to move this folder, please disable the secret approval policy for the path '${blockedPath}'`,
+            name: "MoveFolderProtectedByPolicy"
+          });
+        }
       }
 
       const subtreeSecrets = await secretV2BridgeDAL.findByFolderIds({ folderIds: subtree.map((f) => f.id), tx });
@@ -1849,7 +1872,11 @@ export const secretFolderServiceFactory = ({
         );
       }
 
-      return { moveResults: moveResultsList, keptFolderIds: keptSourceFolderIds };
+      return {
+        moveResults: moveResultsList,
+        keptFolderIds: keptSourceFolderIds,
+        destinationParentFolderId: destinationParentFolder.id
+      };
     });
 
     // a missing direct update on either side means that batch was routed through an approval request
@@ -1873,7 +1900,7 @@ export const secretFolderServiceFactory = ({
     );
 
     // snapshot the destination parent folder so the newly created subtree is captured.
-    await snapshotService.performSnapshot(destinationParentFolder.id);
+    await snapshotService.performSnapshot(destinationParentFolderId);
 
     await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId);
 
