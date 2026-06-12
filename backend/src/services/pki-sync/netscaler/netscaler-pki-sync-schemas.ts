@@ -29,6 +29,9 @@ export const NetScalerPkiSyncOptionsSchema = z.object({
 
         const testName = schema
           .replace(new RE2("\\{\\{certificateId\\}\\}", "g"), "test-cert-id")
+          .replace(new RE2("\\{\\{profileId\\}\\}", "g"), "test-profile-id")
+          .replace(new RE2("\\{\\{commonName\\}\\}", "g"), "test-common-name")
+          .replace(new RE2("\\{\\{friendlyName\\}\\}", "g"), "test-friendly-name")
           .replace(new RE2("\\{\\{environment\\}\\}", "g"), "test-env");
 
         const hasForbiddenChars = NETSCALER_NAMING.FORBIDDEN_CHARACTERS.split("").some((char) =>
@@ -39,7 +42,7 @@ export const NetScalerPkiSyncOptionsSchema = z.object({
       },
       {
         message:
-          "Certificate name schema must include the {{certificateId}} placeholder and result in names that contain only alphanumeric characters, hyphens (-), underscores (_), and periods (.) and be 1-255 characters long for NetScaler"
+          "Certificate name schema must include the {{certificateId}} placeholder and result in names that contain only alphanumeric characters, hyphens (-), underscores (_), and periods (.) and be 1-255 characters long for NetScaler. Available placeholders: {{certificateId}}, {{profileId}}, {{commonName}}, {{friendlyName}}, {{environment}}"
       }
     )
 });
