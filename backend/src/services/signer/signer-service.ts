@@ -1132,7 +1132,10 @@ export const signerServiceFactory = ({
 
         if (!matchingGrant) {
           throw new ForbiddenRequestError({
-            message: "Signing requires approval. Get approval before signing.",
+            message:
+              `Signing with signer '${signer.name}' requires approved access, but none is currently active. ` +
+              `Access may not have been requested or approved yet, may have expired, or may have reached its signature limit. ` +
+              `Request and approve signing access for this signer, then try again.`,
             name: "ApprovalRequired"
           });
         }

@@ -4,6 +4,8 @@ import {
   ChevronLeftIcon,
   CopyIcon,
   FileSignatureIcon,
+  HardDriveIcon,
+  KeyRoundIcon,
   MonitorIcon,
   TerminalIcon
 } from "lucide-react";
@@ -32,6 +34,7 @@ import {
   SignerPermissionSub,
   useSignerPermission
 } from "@app/context/SignerPermissionContext";
+import { getAuthToken } from "@app/hooks/api/reactQuery";
 import { TSigner, useExportSignerCertificate } from "@app/hooks/api/signers";
 
 import { PkiDocsUrls } from "../../../pki-docs-urls";
@@ -47,6 +50,7 @@ import {
   pkcs11InstallSnippet,
   pkcs11SignSnippet,
   Pkcs11Tool,
+  SignerAuth,
   Snippet
 } from "./snippets";
 
@@ -57,6 +61,13 @@ type Props = {
 };
 
 type Method = "pkcs11" | "ksp";
+type AuthMethod = "token" | "machine-identity";
+
+const STEP_TITLES: Record<1 | 2 | 3, string> = {
+  1: "Choose a tool",
+  2: "Authentication",
+  3: "Install & sign"
+};
 
 const CommandBlock = ({ snippet }: { snippet: Snippet }) => {
   const [copied, setCopied] = useState(false);
@@ -169,11 +180,46 @@ const SubStep = ({
   </div>
 );
 
+const AuthOptionCard = ({
+  icon,
+  title,
+  description,
+  isSelected,
+  onSelect
+}: {
+  icon: ReactNode;
+  title: string;
+  description: string;
+  isSelected: boolean;
+  onSelect: () => void;
+}) => (
+  <button
+    type="button"
+    aria-pressed={isSelected}
+    onClick={onSelect}
+    className={cn(
+      "flex items-start gap-3 rounded-lg border p-4 text-left transition",
+      isSelected
+        ? "border-project bg-project/10 ring-1 ring-project"
+        : "border-border bg-card hover:bg-container-hover"
+    )}
+  >
+    <div className="flex size-8 flex-none items-center justify-center rounded-md bg-container text-foreground">
+      {icon}
+    </div>
+    <div className="min-w-0">
+      <p className="font-medium text-foreground">{title}</p>
+      <p className="mt-1 text-sm text-accent">{description}</p>
+    </div>
+  </button>
+);
+
 export const ConnectToSignerDrawer = ({ signer, isOpen, onOpenChange }: Props) => {
-  const [step, setStep] = useState<1 | 2>(1);
+  const [step, setStep] = useState<1 | 2 | 3>(1);
   const [method, setMethod] = useState<Method>("ksp");
   const [os, setOs] = useState<OS>("linux");
   const [tool, setTool] = useState<Pkcs11Tool>("jarsigner");
+  const [authMethod, setAuthMethod] = useState<AuthMethod>("token");
 
   useEffect(() => {
     if (isOpen) setStep(1);
@@ -192,39 +238,74 @@ export const ConnectToSignerDrawer = ({ signer, isOpen, onOpenChange }: Props) =
     isOpen && method === "ksp" && canExportCert
   );
 
+  const auth: SignerAuth =
+    authMethod === "token"
+      ? { mode: "token", token: getAuthToken() || "<your-access-token>" }
+      : { mode: "machine-identity" };
+
+  const authNote =
+    authMethod === "token" ? (
+      <p className="mt-2 text-xs text-yellow-600">
+        This uses your personal access token, which expires, so this setup is temporary. For
+        unattended or CI/CD signing, use a machine identity instead.
+      </p>
+    ) : (
+      <p className="mt-2 text-xs text-accent">
+        Replace <span className="font-mono">&lt;client-id&gt;</span> and{" "}
+        <span className="font-mono">&lt;client-secret&gt;</span> with your Machine Identity&apos;s
+        Universal Auth credentials.
+      </p>
+    );
+
   const rightDocHref =
     method === "ksp" ? PkiDocsUrls.codeSigning.windowsKsp : PkiDocsUrls.codeSigning.pkcs11Module;
 
-  const rightPanel =
-    step === 1 ? (
-      <>
-        <p className="mt-4 text-sm font-semibold text-foreground">What this step does</p>
-        <p className="mt-2 text-sm leading-relaxed text-muted">
-          Pick the tool you already sign with.{" "}
-          <span className="font-medium">Standard signing tools</span> like jarsigner, osslsigncode,
-          and cosign work on Linux, macOS, and Windows.{" "}
-          <span className="font-medium">Windows signtool</span> is native Authenticode signing on
-          Windows. Either way, the private key stays in Infisical.
-        </p>
-      </>
-    ) : (
+  const renderRightPanel = () => {
+    if (step === 1) {
+      return (
+        <>
+          <p className="mt-4 text-sm font-semibold text-foreground">What this step does</p>
+          <p className="mt-2 text-sm leading-relaxed text-muted">
+            Pick the tool you already sign with.{" "}
+            <span className="font-medium">Standard signing tools</span> like jarsigner,
+            osslsigncode, and cosign work on Linux, macOS, and Windows.{" "}
+            <span className="font-medium">Windows signtool</span> is native Authenticode signing on
+            Windows. Either way, the private key stays in Infisical.
+          </p>
+        </>
+      );
+    }
+    if (step === 2) {
+      return (
+        <>
+          <p className="mt-4 text-sm font-semibold text-foreground">What this step does</p>
+          <p className="mt-2 text-sm leading-relaxed text-muted">
+            Choose how the signing machine logs in to Infisical.{" "}
+            <span className="font-medium">Your own access token</span> is quickest, but it is
+            temporary because tokens expire. A <span className="font-medium">machine identity</span>{" "}
+            is best for unattended or CI/CD signing.
+          </p>
+        </>
+      );
+    }
+    return (
       <>
         <p className="mt-4 text-sm font-semibold text-foreground">What this step does</p>
         {method === "ksp" ? (
           <p className="mt-2 text-sm leading-relaxed text-muted">
-            Download and register the Key Storage Provider once per machine, set your Machine
-            Identity credentials, then sign with <span className="font-mono text-xs">signtool</span>
-            . The Signer is selected by name with <span className="font-mono text-xs">/kc</span>.
+            Download and register the Key Storage Provider once per machine, set your credentials,
+            then sign with <span className="font-mono text-xs">signtool</span>. The Signer is
+            selected by name with <span className="font-mono text-xs">/kc</span>.
           </p>
         ) : (
           <p className="mt-2 text-sm leading-relaxed text-muted">
-            Download the module, point a config file at it, and set your Machine Identity
-            credentials. Then run your tool against this Signer by name:{" "}
-            <span className="font-mono text-xs">{name}</span>.
+            Download the module, point a config file at it, and set your credentials. Then run your
+            tool against this Signer by name: <span className="font-mono text-xs">{name}</span>.
           </p>
         )}
       </>
     );
+  };
 
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
@@ -235,11 +316,12 @@ export const ConnectToSignerDrawer = ({ signer, isOpen, onOpenChange }: Props) =
           </div>
           <div className="flex-1">
             <SheetTitle className="flex items-center gap-2 text-lg">
-              How to sign with {name}
+              Set up signing for {name}
               <DocumentationLinkBadge href={PkiDocsUrls.codeSigning.connect} />
             </SheetTitle>
             <SheetDescription>
-              Set up your machine to sign with this Signer using the tool you already use.
+              Sign with this Signer using the tool you already use. Your signing key never leaves
+              Infisical.
             </SheetDescription>
           </div>
         </SheetHeader>
@@ -253,18 +335,19 @@ export const ConnectToSignerDrawer = ({ signer, isOpen, onOpenChange }: Props) =
               activeStep={step - 1}
               orientation="vertical"
               onStepChange={(i) => {
-                if (i < step - 1) setStep((i + 1) as 1 | 2);
+                if (i < step - 1) setStep((i + 1) as 1 | 2 | 3);
               }}
             >
               <StepperList>
                 <StepperStep index={0} title="Choose a tool" description="What you sign with" />
-                <StepperStep index={1} title="Install & sign" description="Set up your machine" />
+                <StepperStep index={1} title="Authentication" description="How you log in" />
+                <StepperStep index={2} title="Install & sign" description="Set up your machine" />
               </StepperList>
             </Stepper>
           </aside>
 
           <div className="flex min-w-0 flex-1 flex-col overflow-y-auto px-8 py-6">
-            {step === 1 ? (
+            {step === 1 && (
               <>
                 <h2 className="text-lg font-semibold text-foreground">Choose your signing tool</h2>
                 <p className="mt-1 mb-6 text-sm text-muted">
@@ -290,13 +373,40 @@ export const ConnectToSignerDrawer = ({ signer, isOpen, onOpenChange }: Props) =
                   />
                 </div>
               </>
-            ) : (
+            )}
+            {step === 2 && (
+              <>
+                <h2 className="text-lg font-semibold text-foreground">
+                  Choose how to authenticate
+                </h2>
+                <p className="mt-1 mb-6 text-sm text-muted">
+                  Pick how the machine running the signing tool proves who it is to Infisical.
+                </p>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <AuthOptionCard
+                    icon={<KeyRoundIcon className="size-4" />}
+                    title="Use my credentials"
+                    description="Sign as yourself with your own Infisical access token. Quickest to set up, but temporary because the token expires."
+                    isSelected={authMethod === "token"}
+                    onSelect={() => setAuthMethod("token")}
+                  />
+                  <AuthOptionCard
+                    icon={<HardDriveIcon className="size-4" />}
+                    title="Use a machine identity"
+                    description="Authenticate with a Machine Identity's Universal Auth credentials. Best for CI/CD and unattended signing."
+                    isSelected={authMethod === "machine-identity"}
+                    onSelect={() => setAuthMethod("machine-identity")}
+                  />
+                </div>
+              </>
+            )}
+            {step === 3 && (
               <>
                 <h2 className="text-lg font-semibold text-foreground">Install &amp; sign</h2>
                 <p className="mt-1 mb-6 text-sm text-muted">
                   {method === "ksp"
-                    ? `Set up Microsoft signtool via the Infisical Key Storage Provider to sign with ${name}.`
-                    : `Set up jarsigner, osslsigncode, or any PKCS#11-compatible tool to sign with ${name}.`}
+                    ? "Install the Infisical Key Storage Provider, then sign with Microsoft signtool."
+                    : "Install the Infisical PKCS#11 module, then sign with jarsigner, osslsigncode, or any PKCS#11 tool."}
                 </p>
 
                 {method === "ksp" ? (
@@ -304,28 +414,33 @@ export const ConnectToSignerDrawer = ({ signer, isOpen, onOpenChange }: Props) =
                     <SubStep
                       index={1}
                       title="Download the provider"
-                      description="Download the Key Storage Provider DLL (Windows x86_64)."
+                      description="Download the Key Storage Provider DLL for 64-bit Windows."
                     >
                       <CommandBlock snippet={kspDownloadSnippet()} />
                     </SubStep>
                     <SubStep
                       index={2}
                       title="Register with Windows"
-                      description="Registers the provider (a few registry entries) and copies the DLL into System32. Run as Administrator, once per machine, then reboot so Windows loads it. Signing also needs signtool, included with the Windows SDK."
+                      description="Copies the DLL into System32 and adds the registry entries. Run as Administrator once per machine, then reboot so Windows loads it. Signing also needs signtool, from the Windows SDK."
                     >
                       <CommandBlock snippet={kspRegisterSnippet()} />
                     </SubStep>
                     <SubStep
                       index={3}
                       title="Configure"
-                      description="Create the config file and set your Machine Identity credentials."
+                      description={
+                        authMethod === "token"
+                          ? "Point the provider at Infisical with your access token."
+                          : "Create the config file and set the Machine Identity credentials."
+                      }
                     >
-                      <CommandBlock snippet={kspConfigureSnippet(serverUrl)} />
+                      <CommandBlock snippet={kspConfigureSnippet(serverUrl, auth)} />
+                      {authNote}
                     </SubStep>
                     <SubStep
                       index={4}
                       title="Add the Signer's certificate"
-                      description="This Signer's certificate is filled in below. Run it to write the file; signtool reads it with /f."
+                      description="The certificate is filled in below. Run this to save it; signtool reads it with /f."
                     >
                       {canExportCert ? (
                         <CommandBlock snippet={kspCertSnippet(name, signerCert?.certificatePem)} />
@@ -363,9 +478,14 @@ export const ConnectToSignerDrawer = ({ signer, isOpen, onOpenChange }: Props) =
                     <SubStep
                       index={2}
                       title="Configure"
-                      description="Create a config file and set your Machine Identity credentials as environment variables."
+                      description={
+                        authMethod === "token"
+                          ? "Create a config file and set your access token as an environment variable."
+                          : "Create a config file and set the Machine Identity credentials as environment variables."
+                      }
                     >
-                      <CommandBlock snippet={pkcs11ConfigureSnippet(os, serverUrl)} />
+                      <CommandBlock snippet={pkcs11ConfigureSnippet(os, serverUrl, auth)} />
+                      {authNote}
                     </SubStep>
                     <SubStep
                       index={3}
@@ -399,28 +519,28 @@ export const ConnectToSignerDrawer = ({ signer, isOpen, onOpenChange }: Props) =
             <div className="mb-auto">
               <div className="flex items-center justify-between gap-2">
                 <p className="text-[11px] font-medium tracking-wider text-muted uppercase">
-                  Step {step} · {step === 1 ? "Choose a tool" : "Install & sign"}
+                  Step {step} · {STEP_TITLES[step]}
                 </p>
                 <DocumentationLinkBadge
-                  href={step === 1 ? PkiDocsUrls.codeSigning.connect : rightDocHref}
+                  href={step === 3 ? rightDocHref : PkiDocsUrls.codeSigning.connect}
                 />
               </div>
-              {rightPanel}
+              {renderRightPanel()}
             </div>
           </aside>
         </div>
 
         <SheetFooter className="flex-row items-center justify-between border-t">
-          <span className="text-sm text-muted">Step {step} of 2</span>
+          <span className="text-sm text-muted">Step {step} of 3</span>
           <div className="flex gap-2">
-            {step === 2 && (
-              <Button variant="outline" onClick={() => setStep(1)}>
+            {step > 1 && (
+              <Button variant="outline" onClick={() => setStep((step - 1) as 1 | 2 | 3)}>
                 <ChevronLeftIcon />
                 Back
               </Button>
             )}
-            {step === 1 ? (
-              <Button variant="project" onClick={() => setStep(2)}>
+            {step < 3 ? (
+              <Button variant="project" onClick={() => setStep((step + 1) as 1 | 2 | 3)}>
                 Continue
               </Button>
             ) : (

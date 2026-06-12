@@ -151,7 +151,7 @@ export const SigningOperationsTable = ({ signer, signerId, projectId }: Props) =
           <CardDescription>Trail of signing operations on this signer.</CardDescription>
           <CardAction>
             <Button variant="neutral" size="sm" onClick={() => setIsConnectOpen(true)}>
-              How to sign
+              Set up signing
             </Button>
           </CardAction>
         </CardHeader>

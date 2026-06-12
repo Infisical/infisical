@@ -8,6 +8,21 @@ export type Snippet = {
 export type OS = "linux" | "macos" | "windows";
 export type Pkcs11Tool = "jarsigner" | "osslsigncode" | "pkcs11-tool";
 
+export type SignerAuth = { mode: "token"; token: string } | { mode: "machine-identity" };
+
+const credLines = (auth: SignerAuth, shell: "powershell" | "bash"): string => {
+  if (shell === "powershell") {
+    return auth.mode === "token"
+      ? `$env:INFISICAL_TOKEN = "${auth.token}"`
+      : `$env:INFISICAL_UNIVERSAL_AUTH_CLIENT_ID = "<client-id>"
+$env:INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET = "<client-secret>"`;
+  }
+  return auth.mode === "token"
+    ? `export INFISICAL_TOKEN="${auth.token}"`
+    : `export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID="<client-id>"
+export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET="<client-secret>"`;
+};
+
 const PKCS11_RELEASES = "https://github.com/Infisical/infisical-pkcs-11/releases/latest/download";
 const KSP_RELEASES = "https://github.com/Infisical/infisical-ksp/releases/latest/download";
 
@@ -48,23 +63,21 @@ Expand-Archive libinfisical-pkcs11.zip -DestinationPath . -Force`
   }
 };
 
-export const pkcs11ConfigureSnippet = (os: OS, serverUrl: string): Snippet => {
+export const pkcs11ConfigureSnippet = (os: OS, serverUrl: string, auth: SignerAuth): Snippet => {
   if (os === "windows") {
     return {
       language: "powershell",
       code: `New-Item -ItemType Directory -Force -Path "$env:ProgramData\\Infisical" | Out-Null
 '{ "server_url": "${serverUrl}" }' | Set-Content "$env:ProgramData\\Infisical\\pkcs11.conf"
-$env:INFISICAL_PKCS11_CONFIG = "$env:ProgramData\\Infisical\\pkcs11.conf"
-$env:INFISICAL_UNIVERSAL_AUTH_CLIENT_ID = "<client-id>"
-$env:INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET = "<client-secret>"`
+$env:INFISICAL_CONFIG = "$env:ProgramData\\Infisical\\pkcs11.conf"
+${credLines(auth, "powershell")}`
     };
   }
   return {
     language: "bash",
     code: `sudo mkdir -p /etc/infisical
 echo '{ "server_url": "${serverUrl}" }' | sudo tee /etc/infisical/pkcs11.conf > /dev/null
-export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID="<client-id>"
-export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET="<client-secret>"`
+${credLines(auth, "bash")}`
   };
 };
 
@@ -145,12 +158,11 @@ $cur = @((Get-ItemProperty $iface).Providers)
 if ($cur -notcontains $prov) { Set-ItemProperty -Path $iface -Name Providers -Value ($cur + $prov) }`
 });
 
-export const kspConfigureSnippet = (serverUrl: string): Snippet => ({
+export const kspConfigureSnippet = (serverUrl: string, auth: SignerAuth): Snippet => ({
   language: "powershell",
   code: `New-Item -ItemType Directory -Force -Path "$env:ProgramData\\Infisical" | Out-Null
 '{ "server_url": "${serverUrl}" }' | Set-Content "$env:ProgramData\\Infisical\\config.json"
-$env:INFISICAL_UNIVERSAL_AUTH_CLIENT_ID = "<client-id>"
-$env:INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET = "<client-secret>"`
+${credLines(auth, "powershell")}`
 });
 
 export const kspCertSnippet = (signerName: string, certPem?: string): Snippet => {
