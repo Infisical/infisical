@@ -16,7 +16,7 @@ export const rotationSchema = z.object({
 });
 
 export const genericAppConnectionFieldsSchema = z.object({
-  name: slugSchema({ min: 1, max: 64, field: "Name" }),
+  name: z.any(),
   description: z.string().trim().max(256, "Description cannot exceed 256 characters").nullish(),
   gatewayId: z
     .string()
