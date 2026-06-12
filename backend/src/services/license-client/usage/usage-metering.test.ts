@@ -29,7 +29,7 @@ const createFakeKeyStore = () => {
   const store = new Map<string, string>();
   return {
     getItem: vi.fn(async (key: string) => store.get(key) ?? null),
-    setItem: vi.fn(async (key: string, value: string | number | Buffer) => {
+    setItemWithExpiry: vi.fn(async (key: string, _ttl: number | string, value: string | number | Buffer) => {
       store.set(key, String(value));
       return "OK" as const;
     }),
@@ -185,22 +185,24 @@ describe("usageEventQueue.handleUsageEvent (worker)", () => {
   const meteredFeatures = [{ feature: MaxIdentities, count: vi.fn(async () => 42) }];
 
   const buildQueue = (
-    overrides: { usageReporter?: unknown; keyStore?: ReturnType<typeof createFakeKeyStore> } = {}
+    overrides: { usageReporter?: unknown; keyStore?: ReturnType<typeof createFakeKeyStore>; orgFind?: unknown } = {}
   ) => {
     const reportSnapshots = vi.fn(async () => {});
     const keyStore = overrides.keyStore ?? createFakeKeyStore();
     const usageReporter = overrides.usageReporter === undefined ? { reportSnapshots } : overrides.usageReporter;
+    const emit = vi.fn();
+    const find = overrides.orgFind ?? vi.fn(async () => []);
     const queue = usageEventQueueFactory({
       queueService: { start: vi.fn() },
       cronJob: { register: vi.fn(), start: vi.fn(), stop: vi.fn() } as never,
       keyStore,
-      orgDAL: { find: vi.fn(async () => []) },
-      usageMeteringService: { emit: vi.fn() },
+      orgDAL: { find } as never,
+      usageMeteringService: { emit },
       meteredFeatures,
       usageReporter: usageReporter as never,
       source: "test-region"
     });
-    return { queue, reportSnapshots, keyStore };
+    return { queue, reportSnapshots, keyStore, emit, find };
   };
 
   beforeEach(() => {
@@ -241,6 +243,27 @@ describe("usageEventQueue.handleUsageEvent (worker)", () => {
     const { queue, reportSnapshots } = buildQueue();
     await queue.handleUsageEvent(ORG_ID, "not_a_meter");
     expect(reportSnapshots).not.toHaveBeenCalled();
+  });
+
+  test("flushAllOrgs pages through orgs and emits per meter", async () => {
+    const fullPage = Array.from({ length: 500 }, (_, i) => ({ id: `org-${i}` }));
+    const lastPage = [{ id: "org-500" }];
+    const orgFind = vi.fn().mockResolvedValueOnce(fullPage).mockResolvedValueOnce(lastPage);
+    const { queue, emit } = buildQueue({ orgFind });
+
+    await queue.flushAllOrgs();
+
+    expect(orgFind).toHaveBeenCalledTimes(2); // stops after the partial page
+    expect(orgFind).toHaveBeenNthCalledWith(1, {}, { limit: 500, offset: 0 });
+    expect(orgFind).toHaveBeenNthCalledWith(2, {}, { limit: 500, offset: 500 });
+    expect(emit).toHaveBeenCalledTimes(501); // 501 orgs x 1 metered feature
+  });
+
+  test("flushAllOrgs no-ops when the reporter is null", async () => {
+    const { queue, emit, find } = buildQueue({ usageReporter: null });
+    await queue.flushAllOrgs();
+    expect(find).not.toHaveBeenCalled();
+    expect(emit).not.toHaveBeenCalled();
   });
 });
 

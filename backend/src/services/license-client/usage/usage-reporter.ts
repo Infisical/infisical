@@ -53,5 +53,18 @@ export const buildUsageReporter = (
     return null;
   }
 
+  // Don't forward the service-key bearer to a non-HTTPS or malformed destination.
+  let parsedUrl: URL;
+  try {
+    parsedUrl = new URL(serverUrl);
+  } catch {
+    logger.warn("usage-reporter: LICENSE_SERVER_V2_URL is not a valid URL; usage reporting disabled");
+    return null;
+  }
+  if (parsedUrl.protocol !== "https:") {
+    logger.warn("usage-reporter: LICENSE_SERVER_V2_URL must use https; usage reporting disabled");
+    return null;
+  }
+
   return usageReporterFactory(serverUrl, envConfig.LICENSE_SERVER_V2_SERVICE_KEY);
 };

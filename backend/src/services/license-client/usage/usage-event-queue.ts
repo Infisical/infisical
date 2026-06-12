@@ -1,4 +1,4 @@
-import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
+import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { logger } from "@app/lib/logger";
@@ -12,7 +12,7 @@ import { TUsageReporter } from "./usage-reporter";
 type TUsageEventQueueFactoryDep = {
   queueService: Pick<TQueueServiceFactory, "start">;
   cronJob: TCronJobFactory;
-  keyStore: Pick<TKeyStoreFactory, "getItem" | "setItem">;
+  keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry">;
   orgDAL: Pick<TOrgDALFactory, "find">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
   meteredFeatures: TMeteredFeature[];
@@ -66,7 +66,7 @@ export const usageEventQueueFactory = ({
       }
     ]);
 
-    await keyStore.setItem(lastReportedKey, String(value));
+    await keyStore.setItemWithExpiry(lastReportedKey, KeyStoreTtls.UsageLastReportedInSeconds, String(value));
   };
 
   // Self-hosted true-up: online instances also report event-driven, so this is a periodic backstop
@@ -76,11 +76,21 @@ export const usageEventQueueFactory = ({
       return;
     }
 
-    const orgs = await orgDAL.find({});
-    for (const org of orgs) {
-      for (const metered of meteredFeatures) {
-        usageMeteringService.emit(org.id, metered.feature.key);
+    // Page through orgs so a large self-hosted deployment doesn't materialize the whole table.
+    const batchSize = 500;
+    let offset = 0;
+    for (;;) {
+      // eslint-disable-next-line no-await-in-loop
+      const orgs = await orgDAL.find({}, { limit: batchSize, offset });
+      for (const org of orgs) {
+        for (const metered of meteredFeatures) {
+          usageMeteringService.emit(org.id, metered.feature.key);
+        }
       }
+      if (orgs.length < batchSize) {
+        break;
+      }
+      offset += batchSize;
     }
   };
 
