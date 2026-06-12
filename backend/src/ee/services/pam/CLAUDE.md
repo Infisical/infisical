@@ -32,7 +32,7 @@ All PAM services import from this module rather than duplicating permission logi
 - **`verifyProductMembership(permissionService, projectId, ctx)`** — confirms the actor is a member of the PAM project. Returns `{ hasRole }` for checking product-level roles (Admin/Member).
 - **`checkFolderPermission(permissionService, folderId, projectId, ctx)`** — checks resource-scoped permission on a folder. Returns `{ permission }` for `throwUnlessCan` calls.
 - **`checkAccountAccess(permissionService, accountId, folderId, projectId, action, ctx)`** — tries folder-level permission first (if the account has a folder), falls back to direct account-level permission. This is the standard pattern for any account-scoped action.
-- **`getAccessibleResourceIds(membershipDAL, projectId, ctx)`** — returns `{ folderIds, accountIds }` the actor has resource memberships on. Used by list endpoints to scope queries.
+- **`getResourceIdsWithActions(membershipDAL, membershipRoleDAL, projectId, actions, ctx)`** — returns `{ folderIds, accountIds }` filtered to resources where the actor's role grants the specified actions. `actions` is `{ allOf?: [...], anyOf?: [...] }` where `allOf` requires every action and `anyOf` requires at least one.
 
 Services create thin local wrappers that bind their own `permissionService` dependency:
 ```ts

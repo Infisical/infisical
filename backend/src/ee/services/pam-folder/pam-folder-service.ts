@@ -13,7 +13,7 @@ import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 
 import { PamProductRole, PamResourceRole } from "../pam/pam-enums";
-import { getAccessibleResourceIds, TActorContext, verifyProductMembership } from "../pam/pam-permission";
+import { getResourceIdsWithActions, TActorContext, verifyProductMembership } from "../pam/pam-permission";
 import { TPamFolderDALFactory } from "./pam-folder-dal";
 import {
   TCreatePamFolderDTO,
@@ -29,7 +29,7 @@ type TPamFolderServiceFactoryDep = {
     TMembershipDALFactory,
     "create" | "find" | "delete" | "findResourceMembershipsForActor" | "transaction"
   >;
-  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "delete">;
+  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "delete" | "find">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
 };
 
@@ -72,7 +72,13 @@ export const pamFolderServiceFactory = ({
   const list = async ({ projectId, search, ...ctx }: TListPamFoldersDTO & TActorContext) => {
     await verifyMembership(projectId, ctx);
 
-    const { folderIds, accountIds } = await getAccessibleResourceIds(membershipDAL, projectId, ctx);
+    const { folderIds, accountIds } = await getResourceIdsWithActions(
+      membershipDAL,
+      membershipRoleDAL,
+      projectId,
+      { allOf: [ResourcePermissionPamResourceActions.ReadFolder] },
+      ctx
+    );
     if (folderIds.length === 0 && accountIds.length === 0) return [];
 
     return pamFolderDAL.findByProjectIdFiltered(projectId, folderIds, { search, accountIds });

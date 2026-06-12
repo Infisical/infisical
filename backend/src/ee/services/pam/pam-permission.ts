@@ -94,32 +94,6 @@ export const checkAccountAccess = async (
   ForbiddenError.from(permission).throwUnlessCan(action, ResourcePermissionSub.PamResource);
 };
 
-export const getAccessibleResourceIds = async (
-  membershipDAL: TMembershipDep,
-  projectId: string,
-  ctx: TActorContext
-) => {
-  const [folderMemberships, accountMemberships] = await Promise.all([
-    membershipDAL.findResourceMembershipsForActor({
-      projectId,
-      resourceType: ResourceType.PamFolder,
-      actorType: ctx.actor,
-      actorId: ctx.actorId
-    }),
-    membershipDAL.findResourceMembershipsForActor({
-      projectId,
-      resourceType: ResourceType.PamAccount,
-      actorType: ctx.actor,
-      actorId: ctx.actorId
-    })
-  ]);
-
-  const folderIds = folderMemberships.map((m) => m.scopeResourceId).filter((id): id is string => Boolean(id));
-  const accountIds = accountMemberships.map((m) => m.scopeResourceId).filter((id): id is string => Boolean(id));
-
-  return { folderIds, accountIds };
-};
-
 export const getResourceIdsWithActions = async (
   membershipDAL: TMembershipDep,
   membershipRoleDAL: TMembershipRoleDep,
