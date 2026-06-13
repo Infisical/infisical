@@ -12,10 +12,16 @@ import {
   ModalContent,
   Select,
   SelectItem,
-  Switch,
   TextArea
 } from "@app/components/v2";
-import { Badge } from "@app/components/v3";
+import {
+  Badge,
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldTitle,
+  Switch
+} from "@app/components/v3";
 import { useProject, useSubscription } from "@app/context";
 import { keyUsageDefaultOption, kmsKeyUsageOptions } from "@app/helpers/kms";
 import {
@@ -232,11 +238,21 @@ const CmekForm = ({ onComplete, cmek }: FormProps) => {
           control={control}
           name="isExportable"
           render={({ field: { onChange, value } }) => (
-            <FormControl helperText="When disabled, the key material can never be exported from Infisical. This cannot be changed after the key is created.">
-              <Switch id="is-exportable" isChecked={value} onCheckedChange={onChange}>
-                Allow Export
-              </Switch>
-            </FormControl>
+            <Field orientation="horizontal" className="mb-6">
+              <FieldContent>
+                <FieldTitle>Allow Export</FieldTitle>
+                <FieldDescription>
+                  Allow users with the export permission to export this key&apos;s material. This
+                  cannot be changed after the key is created.
+                </FieldDescription>
+              </FieldContent>
+              <Switch
+                id="is-exportable"
+                variant="project"
+                checked={value}
+                onCheckedChange={onChange}
+              />
+            </Field>
           )}
         />
       )}
