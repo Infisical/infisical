@@ -2,9 +2,7 @@ import { FolderPlusIcon, LayersIcon, PlusIcon, SearchIcon } from "lucide-react";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
-  Badge,
   Button,
-  DocumentationLinkBadge,
   Empty,
   EmptyContent,
   EmptyDescription,
