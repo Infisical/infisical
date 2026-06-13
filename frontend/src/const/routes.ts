@@ -397,46 +397,17 @@ export const ROUTE_PATHS = Object.freeze({
     )
   },
   Pam: {
-    ResourcesPage: setRoute(
-      "/organizations/$orgId/projects/pam/$projectId/resources/",
-      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/resources/"
-    ),
-    SettingsPage: setRoute(
-      "/organizations/$orgId/projects/pam/$projectId/settings",
-      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/settings"
-    ),
     SessionsPage: setRoute(
       "/organizations/$orgId/projects/pam/$projectId/sessions",
       "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/sessions/"
-    ),
-    ApprovalRequestDetailPage: setRoute(
-      "/organizations/$orgId/projects/pam/$projectId/approvals/$approvalRequestId",
-      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/approvals/$approvalRequestId"
     ),
     PamSessionByIDPage: setRoute(
       "/organizations/$orgId/projects/pam/$projectId/sessions/$sessionId",
       "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/sessions/$sessionId"
     ),
-    PamResourceByIDPage: setRoute(
-      "/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId",
-      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/resources/$resourceType/$resourceId"
-    ),
-    PamAccountByIDPage: setRoute(
-      "/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId",
-      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/resources/$resourceType/$resourceId/accounts/$accountId"
-    ),
     PamAccountAccessPage: setRoute(
       "/organizations/$orgId/pam/accounts/$accountType/$accountId/access",
       "/_authenticate/_inject-org-details/organizations/$orgId/pam/accounts/$accountType/$accountId/access"
-    ),
-
-    DiscoveryPage: setRoute(
-      "/organizations/$orgId/projects/pam/$projectId/discovery",
-      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/discovery/"
-    ),
-    PamDiscoveryByIDPage: setRoute(
-      "/organizations/$orgId/projects/pam/$projectId/discovery/$discoveryType/$discoverySourceId",
-      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/discovery/$discoveryType/$discoverySourceId"
     )
   },
   Public: {

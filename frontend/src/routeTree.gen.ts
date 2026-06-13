@@ -121,9 +121,6 @@ import { Route as secretManagerOverviewPageRouteImport } from './pages/secret-ma
 import { Route as secretManagerInsightsPageRouteImport } from './pages/secret-manager/InsightsPage/route'
 import { Route as secretManagerSecretApprovalsPageRouteImport } from './pages/secret-manager/SecretApprovalsPage/route'
 import { Route as secretManagerIPAllowlistPageRouteImport } from './pages/secret-manager/IPAllowlistPage/route'
-import { Route as pamSettingsPageRouteImport } from './pages/pam/SettingsPage/route'
-import { Route as pamInsightsPageRouteImport } from './pages/pam/InsightsPage/route'
-import { Route as pamPamAccountPoliciesPageRouteImport } from './pages/pam/PamAccountPoliciesPage/route'
 import { Route as kmsSettingsPageRouteImport } from './pages/kms/SettingsPage/route'
 import { Route as kmsOverviewPageRouteImport } from './pages/kms/OverviewPage/route'
 import { Route as kmsKmipPageRouteImport } from './pages/kms/KmipPage/route'
@@ -171,7 +168,6 @@ import { Route as secretManagerSecretDashboardPageRouteImport } from './pages/se
 import { Route as secretManagerIntegrationsSelectIntegrationAuthPageRouteImport } from './pages/secret-manager/integrations/SelectIntegrationAuthPage/route'
 import { Route as secretManagerIntegrationsDetailsByIDPageRouteImport } from './pages/secret-manager/IntegrationsDetailsByIDPage/route'
 import { Route as pamPamSessionsByIDPageRouteImport } from './pages/pam/PamSessionsByIDPage/route'
-import { Route as pamApprovalRequestDetailPageRouteImport } from './pages/pam/ApprovalRequestDetailPage/route'
 import { Route as certManagerPkiSubscriberDetailsByIDPageRouteImport } from './pages/cert-manager/PkiSubscriberDetailsByIDPage/route'
 import { Route as certManagerPkiSyncDetailsByIDPageRouteImport } from './pages/cert-manager/PkiSyncDetailsByIDPage/route'
 import { Route as certManagerDiscoveryDetailsByIDPageRouteImport } from './pages/cert-manager/DiscoveryDetailsByIDPage/route'
@@ -187,10 +183,6 @@ import { Route as aiMCPEndpointDetailPageRouteImport } from './pages/ai/MCPEndpo
 import { Route as secretScanningSecretScanningDataSourcesPageRouteImport } from './pages/secret-scanning/SecretScanningDataSourcesPage/route'
 import { Route as secretManagerIntegrationsListPageRouteImport } from './pages/secret-manager/IntegrationsListPage/route'
 import { Route as pamPamSessionsPageRouteImport } from './pages/pam/PamSessionsPage/route'
-import { Route as pamPamResourcesPageRouteImport } from './pages/pam/PamResourcesPage/route'
-import { Route as pamPamDomainsPageRouteImport } from './pages/pam/PamDomainsPage/route'
-import { Route as pamPamDiscoveryPageRouteImport } from './pages/pam/PamDiscoveryPage/route'
-import { Route as pamApprovalsPageRouteImport } from './pages/pam/ApprovalsPage/route'
 import { Route as certManagerPkiSubscribersPageRouteImport } from './pages/cert-manager/PkiSubscribersPage/route'
 import { Route as certManagerIntegrationsListPageRouteImport } from './pages/cert-manager/IntegrationsListPage/route'
 import { Route as certManagerDiscoveryPageRouteImport } from './pages/cert-manager/DiscoveryPage/route'
@@ -264,7 +256,6 @@ import { Route as secretManagerIntegrationsAwsSecretManagerConfigurePageRouteImp
 import { Route as secretManagerIntegrationsAwsSecretManagerAuthorizePageRouteImport } from './pages/secret-manager/integrations/AwsSecretManagerAuthorizePage/route'
 import { Route as secretManagerIntegrationsAwsParameterStoreConfigurePageRouteImport } from './pages/secret-manager/integrations/AwsParameterStoreConfigurePage/route'
 import { Route as secretManagerIntegrationsAwsParameterStoreAuthorizePageRouteImport } from './pages/secret-manager/integrations/AwsParameterStoreAuthorizePage/route'
-import { Route as pamPamDiscoveryDetailPageRouteImport } from './pages/pam/PamDiscoveryDetailPage/route'
 import { Route as certManagerInstallationDetailsByIDPageRouteImport } from './pages/cert-manager/InstallationDetailsByIDPage/route'
 import { Route as secretManagerIntegrationsVercelOauthCallbackPageRouteImport } from './pages/secret-manager/integrations/VercelOauthCallbackPage/route'
 import { Route as secretManagerSecretSyncDetailsByIDPageRouteImport } from './pages/secret-manager/SecretSyncDetailsByIDPage/route'
@@ -277,12 +268,8 @@ import { Route as secretManagerIntegrationsBitbucketOauthCallbackPageRouteImport
 import { Route as secretManagerIntegrationsAzureKeyVaultOauthCallbackPageRouteImport } from './pages/secret-manager/integrations/AzureKeyVaultOauthCallbackPage/route'
 import { Route as secretManagerIntegrationsAzureAppConfigurationOauthCallbackPageRouteImport } from './pages/secret-manager/integrations/AzureAppConfigurationOauthCallbackPage/route'
 import { Route as secretManagerCommitsPageRouteImport } from './pages/secret-manager/CommitsPage/route'
-import { Route as pamPamResourceByIDPageRouteImport } from './pages/pam/PamResourceByIDPage/route'
-import { Route as pamPamDomainByIDPageRouteImport } from './pages/pam/PamDomainByIDPage/route'
 import { Route as secretManagerCommitDetailsPageComponentsRollbackPreviewTabRouteImport } from './pages/secret-manager/CommitDetailsPage/components/RollbackPreviewTab/route'
 import { Route as secretManagerCommitDetailsPageRouteImport } from './pages/secret-manager/CommitDetailsPage/route'
-import { Route as pamPamAccountByIDPageRouteImport } from './pages/pam/PamAccountByIDPage/route'
-import { Route as pamPamDomainAccountByIDPageRouteImport } from './pages/pam/PamDomainAccountByIDPage/route'
 
 // Create Virtual Routes
 
@@ -369,22 +356,6 @@ const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectI
   createFileRoute(
     '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/sessions',
   )()
-const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutResourcesImport =
-  createFileRoute(
-    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/resources',
-  )()
-const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutDomainsImport =
-  createFileRoute(
-    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/domains',
-  )()
-const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutDiscoveryImport =
-  createFileRoute(
-    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/discovery',
-  )()
-const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutApprovalsImport =
-  createFileRoute(
-    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/approvals',
-  )()
 const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsCertManagerProjectIdCertManagerLayoutSubscribersImport =
   createFileRoute(
     '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/subscribers',
@@ -417,25 +388,9 @@ const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManag
   createFileRoute(
     '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/commits/$environment/$folderId',
   )()
-const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutResourcesResourceTypeResourceIdImport =
-  createFileRoute(
-    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/resources/$resourceType/$resourceId',
-  )()
-const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutDomainsDomainTypeDomainIdImport =
-  createFileRoute(
-    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/domains/$domainType/$domainId',
-  )()
 const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManagementProjectIdSecretManagerLayoutCommitsEnvironmentFolderIdCommitIdImport =
   createFileRoute(
     '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/commits/$environment/$folderId/$commitId',
-  )()
-const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutResourcesResourceTypeResourceIdAccountsAccountIdImport =
-  createFileRoute(
-    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/resources/$resourceType/$resourceId/accounts/$accountId',
-  )()
-const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutDomainsDomainTypeDomainIdAccountsAccountIdImport =
-  createFileRoute(
-    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/domains/$domainType/$domainId/accounts/$accountId',
   )()
 
 // Create/Update Routes
@@ -1240,48 +1195,12 @@ const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectI
     } as any,
   )
 
-const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutResourcesRoute =
-  AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutResourcesImport.update(
-    {
-      id: '/resources',
-      path: '/resources',
-      getParentRoute: () => pamLayoutRoute,
-    } as any,
-  )
-
-const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutDomainsRoute =
-  AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutDomainsImport.update(
-    {
-      id: '/domains',
-      path: '/domains',
-      getParentRoute: () => pamLayoutRoute,
-    } as any,
-  )
-
-const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutDiscoveryRoute =
-  AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutDiscoveryImport.update(
-    {
-      id: '/discovery',
-      path: '/discovery',
-      getParentRoute: () => pamLayoutRoute,
-    } as any,
-  )
-
 const projectAuditLogsPageRoutePamRoute =
   projectAuditLogsPageRoutePamImport.update({
     id: '/audit-logs',
     path: '/audit-logs',
     getParentRoute: () => pamLayoutRoute,
   } as any)
-
-const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutApprovalsRoute =
-  AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutApprovalsImport.update(
-    {
-      id: '/approvals',
-      path: '/approvals',
-      getParentRoute: () => pamLayoutRoute,
-    } as any,
-  )
 
 const projectAccessControlPageRoutePamRoute =
   projectAccessControlPageRoutePamImport.update({
@@ -1480,25 +1399,6 @@ const secretManagerIPAllowlistPageRouteRoute =
     id: '/allowlist',
     path: '/allowlist',
     getParentRoute: () => secretManagerLayoutRoute,
-  } as any)
-
-const pamSettingsPageRouteRoute = pamSettingsPageRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => pamLayoutRoute,
-} as any)
-
-const pamInsightsPageRouteRoute = pamInsightsPageRouteImport.update({
-  id: '/insights',
-  path: '/insights',
-  getParentRoute: () => pamLayoutRoute,
-} as any)
-
-const pamPamAccountPoliciesPageRouteRoute =
-  pamPamAccountPoliciesPageRouteImport.update({
-    id: '/account-policies',
-    path: '/account-policies',
-    getParentRoute: () => pamLayoutRoute,
   } as any)
 
 const kmsSettingsPageRouteRoute = kmsSettingsPageRouteImport.update({
@@ -1827,14 +1727,6 @@ const pamPamSessionsByIDPageRouteRoute =
       AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutSessionsRoute,
   } as any)
 
-const pamApprovalRequestDetailPageRouteRoute =
-  pamApprovalRequestDetailPageRouteImport.update({
-    id: '/$approvalRequestId',
-    path: '/$approvalRequestId',
-    getParentRoute: () =>
-      AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutApprovalsRoute,
-  } as any)
-
 const certManagerPkiSubscriberDetailsByIDPageRouteRoute =
   certManagerPkiSubscriberDetailsByIDPageRouteImport.update({
     id: '/$subscriberName',
@@ -1949,34 +1841,6 @@ const pamPamSessionsPageRouteRoute = pamPamSessionsPageRouteImport.update({
     AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutSessionsRoute,
 } as any)
 
-const pamPamResourcesPageRouteRoute = pamPamResourcesPageRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () =>
-    AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutResourcesRoute,
-} as any)
-
-const pamPamDomainsPageRouteRoute = pamPamDomainsPageRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () =>
-    AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutDomainsRoute,
-} as any)
-
-const pamPamDiscoveryPageRouteRoute = pamPamDiscoveryPageRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () =>
-    AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutDiscoveryRoute,
-} as any)
-
-const pamApprovalsPageRouteRoute = pamApprovalsPageRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () =>
-    AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutApprovalsRoute,
-} as any)
-
 const certManagerPkiSubscribersPageRouteRoute =
   certManagerPkiSubscribersPageRouteImport.update({
     id: '/',
@@ -2039,26 +1903,6 @@ const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManag
       id: '/commits/$environment/$folderId',
       path: '/commits/$environment/$folderId',
       getParentRoute: () => secretManagerLayoutRoute,
-    } as any,
-  )
-
-const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutResourcesResourceTypeResourceIdRoute =
-  AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutResourcesResourceTypeResourceIdImport.update(
-    {
-      id: '/$resourceType/$resourceId',
-      path: '/$resourceType/$resourceId',
-      getParentRoute: () =>
-        AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutResourcesRoute,
-    } as any,
-  )
-
-const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutDomainsDomainTypeDomainIdRoute =
-  AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutDomainsDomainTypeDomainIdImport.update(
-    {
-      id: '/$domainType/$domainId',
-      path: '/$domainType/$domainId',
-      getParentRoute: () =>
-        AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutDomainsRoute,
     } as any,
   )
 
@@ -2596,14 +2440,6 @@ const secretManagerIntegrationsAwsParameterStoreAuthorizePageRouteRoute =
       AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManagementProjectIdSecretManagerLayoutIntegrationsRoute,
   } as any)
 
-const pamPamDiscoveryDetailPageRouteRoute =
-  pamPamDiscoveryDetailPageRouteImport.update({
-    id: '/$discoveryType/$discoverySourceId',
-    path: '/$discoveryType/$discoverySourceId',
-    getParentRoute: () =>
-      AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutDiscoveryRoute,
-  } as any)
-
 const certManagerInstallationDetailsByIDPageRouteRoute =
   certManagerInstallationDetailsByIDPageRouteImport.update({
     id: '/installations/$installationId',
@@ -2712,41 +2548,6 @@ const secretManagerCommitsPageRouteRoute =
       AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManagementProjectIdSecretManagerLayoutCommitsEnvironmentFolderIdRoute,
   } as any)
 
-const pamPamResourceByIDPageRouteRoute =
-  pamPamResourceByIDPageRouteImport.update({
-    id: '/',
-    path: '/',
-    getParentRoute: () =>
-      AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutResourcesResourceTypeResourceIdRoute,
-  } as any)
-
-const pamPamDomainByIDPageRouteRoute = pamPamDomainByIDPageRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () =>
-    AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutDomainsDomainTypeDomainIdRoute,
-} as any)
-
-const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutResourcesResourceTypeResourceIdAccountsAccountIdRoute =
-  AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutResourcesResourceTypeResourceIdAccountsAccountIdImport.update(
-    {
-      id: '/accounts/$accountId',
-      path: '/accounts/$accountId',
-      getParentRoute: () =>
-        AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutResourcesResourceTypeResourceIdRoute,
-    } as any,
-  )
-
-const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutDomainsDomainTypeDomainIdAccountsAccountIdRoute =
-  AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutDomainsDomainTypeDomainIdAccountsAccountIdImport.update(
-    {
-      id: '/accounts/$accountId',
-      path: '/accounts/$accountId',
-      getParentRoute: () =>
-        AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutDomainsDomainTypeDomainIdRoute,
-    } as any,
-  )
-
 const secretManagerCommitDetailsPageComponentsRollbackPreviewTabRouteRoute =
   secretManagerCommitDetailsPageComponentsRollbackPreviewTabRouteImport.update({
     id: '/restore',
@@ -2761,23 +2562,6 @@ const secretManagerCommitDetailsPageRouteRoute =
     path: '/',
     getParentRoute: () =>
       AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManagementProjectIdSecretManagerLayoutCommitsEnvironmentFolderIdCommitIdRoute,
-  } as any)
-
-const pamPamAccountByIDPageRouteRoute = pamPamAccountByIDPageRouteImport.update(
-  {
-    id: '/',
-    path: '/',
-    getParentRoute: () =>
-      AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutResourcesResourceTypeResourceIdAccountsAccountIdRoute,
-  } as any,
-)
-
-const pamPamDomainAccountByIDPageRouteRoute =
-  pamPamDomainAccountByIDPageRouteImport.update({
-    id: '/',
-    path: '/',
-    getParentRoute: () =>
-      AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutDomainsDomainTypeDomainIdAccountsAccountIdRoute,
   } as any)
 
 // Populate the FileRoutesByPath interface
@@ -3554,27 +3338,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof kmsSettingsPageRouteImport
       parentRoute: typeof kmsLayoutImport
     }
-    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/account-policies': {
-      id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/account-policies'
-      path: '/account-policies'
-      fullPath: '/organizations/$orgId/projects/pam/$projectId/account-policies'
-      preLoaderRoute: typeof pamPamAccountPoliciesPageRouteImport
-      parentRoute: typeof pamLayoutImport
-    }
-    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/insights': {
-      id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/insights'
-      path: '/insights'
-      fullPath: '/organizations/$orgId/projects/pam/$projectId/insights'
-      preLoaderRoute: typeof pamInsightsPageRouteImport
-      parentRoute: typeof pamLayoutImport
-    }
-    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/settings': {
-      id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/settings'
-      path: '/settings'
-      fullPath: '/organizations/$orgId/projects/pam/$projectId/settings'
-      preLoaderRoute: typeof pamSettingsPageRouteImport
-      parentRoute: typeof pamLayoutImport
-    }
     '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/allowlist': {
       id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/allowlist'
       path: '/allowlist'
@@ -3764,39 +3527,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof projectAccessControlPageRoutePamImport
       parentRoute: typeof pamLayoutImport
     }
-    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/approvals': {
-      id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/approvals'
-      path: '/approvals'
-      fullPath: '/organizations/$orgId/projects/pam/$projectId/approvals'
-      preLoaderRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutApprovalsImport
-      parentRoute: typeof pamLayoutImport
-    }
     '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/audit-logs': {
       id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/audit-logs'
       path: '/audit-logs'
       fullPath: '/organizations/$orgId/projects/pam/$projectId/audit-logs'
       preLoaderRoute: typeof projectAuditLogsPageRoutePamImport
-      parentRoute: typeof pamLayoutImport
-    }
-    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/discovery': {
-      id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/discovery'
-      path: '/discovery'
-      fullPath: '/organizations/$orgId/projects/pam/$projectId/discovery'
-      preLoaderRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutDiscoveryImport
-      parentRoute: typeof pamLayoutImport
-    }
-    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/domains': {
-      id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/domains'
-      path: '/domains'
-      fullPath: '/organizations/$orgId/projects/pam/$projectId/domains'
-      preLoaderRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutDomainsImport
-      parentRoute: typeof pamLayoutImport
-    }
-    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/resources': {
-      id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/resources'
-      path: '/resources'
-      fullPath: '/organizations/$orgId/projects/pam/$projectId/resources'
-      preLoaderRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutResourcesImport
       parentRoute: typeof pamLayoutImport
     }
     '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/sessions': {
@@ -3925,34 +3660,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof certManagerPkiSubscribersPageRouteImport
       parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsCertManagerProjectIdCertManagerLayoutSubscribersImport
     }
-    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/approvals/': {
-      id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/approvals/'
-      path: '/'
-      fullPath: '/organizations/$orgId/projects/pam/$projectId/approvals/'
-      preLoaderRoute: typeof pamApprovalsPageRouteImport
-      parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutApprovalsImport
-    }
-    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/discovery/': {
-      id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/discovery/'
-      path: '/'
-      fullPath: '/organizations/$orgId/projects/pam/$projectId/discovery/'
-      preLoaderRoute: typeof pamPamDiscoveryPageRouteImport
-      parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutDiscoveryImport
-    }
-    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/domains/': {
-      id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/domains/'
-      path: '/'
-      fullPath: '/organizations/$orgId/projects/pam/$projectId/domains/'
-      preLoaderRoute: typeof pamPamDomainsPageRouteImport
-      parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutDomainsImport
-    }
-    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/resources/': {
-      id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/resources/'
-      path: '/'
-      fullPath: '/organizations/$orgId/projects/pam/$projectId/resources/'
-      preLoaderRoute: typeof pamPamResourcesPageRouteImport
-      parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutResourcesImport
-    }
     '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/sessions/': {
       id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/sessions/'
       path: '/'
@@ -4057,13 +3764,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/organizations/$orgId/projects/cert-manager/$projectId/subscribers/$subscriberName'
       preLoaderRoute: typeof certManagerPkiSubscriberDetailsByIDPageRouteImport
       parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsCertManagerProjectIdCertManagerLayoutSubscribersImport
-    }
-    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/approvals/$approvalRequestId': {
-      id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/approvals/$approvalRequestId'
-      path: '/$approvalRequestId'
-      fullPath: '/organizations/$orgId/projects/pam/$projectId/approvals/$approvalRequestId'
-      preLoaderRoute: typeof pamApprovalRequestDetailPageRouteImport
-      parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutApprovalsImport
     }
     '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/sessions/$sessionId': {
       id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/sessions/$sessionId'
@@ -4316,13 +4016,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/organizations/$orgId/projects/cert-manager/$projectId/discovery/installations/$installationId'
       preLoaderRoute: typeof certManagerInstallationDetailsByIDPageRouteImport
       parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsCertManagerProjectIdCertManagerLayoutDiscoveryImport
-    }
-    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/discovery/$discoveryType/$discoverySourceId': {
-      id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/discovery/$discoveryType/$discoverySourceId'
-      path: '/$discoveryType/$discoverySourceId'
-      fullPath: '/organizations/$orgId/projects/pam/$projectId/discovery/$discoveryType/$discoverySourceId'
-      preLoaderRoute: typeof pamPamDiscoveryDetailPageRouteImport
-      parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutDiscoveryImport
     }
     '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/integrations/aws-parameter-store/authorize': {
       id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/integrations/aws-parameter-store/authorize'
@@ -4786,40 +4479,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof secretScanningSecretScanningDataSourceByIdPageRouteImport
       parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretScanningProjectIdSecretScanningLayoutDataSourcesImport
     }
-    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/domains/$domainType/$domainId': {
-      id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/domains/$domainType/$domainId'
-      path: '/$domainType/$domainId'
-      fullPath: '/organizations/$orgId/projects/pam/$projectId/domains/$domainType/$domainId'
-      preLoaderRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutDomainsDomainTypeDomainIdImport
-      parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutDomainsImport
-    }
-    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/resources/$resourceType/$resourceId': {
-      id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/resources/$resourceType/$resourceId'
-      path: '/$resourceType/$resourceId'
-      fullPath: '/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId'
-      preLoaderRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutResourcesResourceTypeResourceIdImport
-      parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutResourcesImport
-    }
     '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/commits/$environment/$folderId': {
       id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/commits/$environment/$folderId'
       path: '/commits/$environment/$folderId'
       fullPath: '/organizations/$orgId/projects/secret-management/$projectId/commits/$environment/$folderId'
       preLoaderRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManagementProjectIdSecretManagerLayoutCommitsEnvironmentFolderIdImport
       parentRoute: typeof secretManagerLayoutImport
-    }
-    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/domains/$domainType/$domainId/': {
-      id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/domains/$domainType/$domainId/'
-      path: '/'
-      fullPath: '/organizations/$orgId/projects/pam/$projectId/domains/$domainType/$domainId/'
-      preLoaderRoute: typeof pamPamDomainByIDPageRouteImport
-      parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutDomainsDomainTypeDomainIdImport
-    }
-    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/resources/$resourceType/$resourceId/': {
-      id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/resources/$resourceType/$resourceId/'
-      path: '/'
-      fullPath: '/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/'
-      preLoaderRoute: typeof pamPamResourceByIDPageRouteImport
-      parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutResourcesResourceTypeResourceIdImport
     }
     '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/commits/$environment/$folderId/': {
       id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/commits/$environment/$folderId/'
@@ -4918,34 +4583,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/organizations/$orgId/projects/secret-management/$projectId/commits/$environment/$folderId/$commitId/restore'
       preLoaderRoute: typeof secretManagerCommitDetailsPageComponentsRollbackPreviewTabRouteImport
       parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManagementProjectIdSecretManagerLayoutCommitsEnvironmentFolderIdCommitIdImport
-    }
-    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/domains/$domainType/$domainId/accounts/$accountId': {
-      id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/domains/$domainType/$domainId/accounts/$accountId'
-      path: '/accounts/$accountId'
-      fullPath: '/organizations/$orgId/projects/pam/$projectId/domains/$domainType/$domainId/accounts/$accountId'
-      preLoaderRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutDomainsDomainTypeDomainIdAccountsAccountIdImport
-      parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutDomainsDomainTypeDomainIdImport
-    }
-    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/resources/$resourceType/$resourceId/accounts/$accountId': {
-      id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/resources/$resourceType/$resourceId/accounts/$accountId'
-      path: '/accounts/$accountId'
-      fullPath: '/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId'
-      preLoaderRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutResourcesResourceTypeResourceIdAccountsAccountIdImport
-      parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutResourcesResourceTypeResourceIdImport
-    }
-    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/domains/$domainType/$domainId/accounts/$accountId/': {
-      id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/domains/$domainType/$domainId/accounts/$accountId/'
-      path: '/'
-      fullPath: '/organizations/$orgId/projects/pam/$projectId/domains/$domainType/$domainId/accounts/$accountId/'
-      preLoaderRoute: typeof pamPamDomainAccountByIDPageRouteImport
-      parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutDomainsDomainTypeDomainIdAccountsAccountIdImport
-    }
-    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/resources/$resourceType/$resourceId/accounts/$accountId/': {
-      id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/resources/$resourceType/$resourceId/accounts/$accountId/'
-      path: '/'
-      fullPath: '/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId/'
-      preLoaderRoute: typeof pamPamAccountByIDPageRouteImport
-      parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutResourcesResourceTypeResourceIdAccountsAccountIdImport
     }
   }
 }
@@ -5324,136 +4961,6 @@ const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsKmsKmipServ
     AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsKmsKmipServersRouteChildren,
   )
 
-interface AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutApprovalsRouteChildren {
-  pamApprovalsPageRouteRoute: typeof pamApprovalsPageRouteRoute
-  pamApprovalRequestDetailPageRouteRoute: typeof pamApprovalRequestDetailPageRouteRoute
-}
-
-const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutApprovalsRouteChildren: AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutApprovalsRouteChildren =
-  {
-    pamApprovalsPageRouteRoute: pamApprovalsPageRouteRoute,
-    pamApprovalRequestDetailPageRouteRoute:
-      pamApprovalRequestDetailPageRouteRoute,
-  }
-
-const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutApprovalsRouteWithChildren =
-  AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutApprovalsRoute._addFileChildren(
-    AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutApprovalsRouteChildren,
-  )
-
-interface AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutDiscoveryRouteChildren {
-  pamPamDiscoveryPageRouteRoute: typeof pamPamDiscoveryPageRouteRoute
-  pamPamDiscoveryDetailPageRouteRoute: typeof pamPamDiscoveryDetailPageRouteRoute
-}
-
-const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutDiscoveryRouteChildren: AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutDiscoveryRouteChildren =
-  {
-    pamPamDiscoveryPageRouteRoute: pamPamDiscoveryPageRouteRoute,
-    pamPamDiscoveryDetailPageRouteRoute: pamPamDiscoveryDetailPageRouteRoute,
-  }
-
-const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutDiscoveryRouteWithChildren =
-  AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutDiscoveryRoute._addFileChildren(
-    AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutDiscoveryRouteChildren,
-  )
-
-interface AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutDomainsDomainTypeDomainIdAccountsAccountIdRouteChildren {
-  pamPamDomainAccountByIDPageRouteRoute: typeof pamPamDomainAccountByIDPageRouteRoute
-}
-
-const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutDomainsDomainTypeDomainIdAccountsAccountIdRouteChildren: AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutDomainsDomainTypeDomainIdAccountsAccountIdRouteChildren =
-  {
-    pamPamDomainAccountByIDPageRouteRoute:
-      pamPamDomainAccountByIDPageRouteRoute,
-  }
-
-const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutDomainsDomainTypeDomainIdAccountsAccountIdRouteWithChildren =
-  AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutDomainsDomainTypeDomainIdAccountsAccountIdRoute._addFileChildren(
-    AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutDomainsDomainTypeDomainIdAccountsAccountIdRouteChildren,
-  )
-
-interface AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutDomainsDomainTypeDomainIdRouteChildren {
-  pamPamDomainByIDPageRouteRoute: typeof pamPamDomainByIDPageRouteRoute
-  AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutDomainsDomainTypeDomainIdAccountsAccountIdRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutDomainsDomainTypeDomainIdAccountsAccountIdRouteWithChildren
-}
-
-const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutDomainsDomainTypeDomainIdRouteChildren: AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutDomainsDomainTypeDomainIdRouteChildren =
-  {
-    pamPamDomainByIDPageRouteRoute: pamPamDomainByIDPageRouteRoute,
-    AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutDomainsDomainTypeDomainIdAccountsAccountIdRoute:
-      AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutDomainsDomainTypeDomainIdAccountsAccountIdRouteWithChildren,
-  }
-
-const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutDomainsDomainTypeDomainIdRouteWithChildren =
-  AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutDomainsDomainTypeDomainIdRoute._addFileChildren(
-    AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutDomainsDomainTypeDomainIdRouteChildren,
-  )
-
-interface AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutDomainsRouteChildren {
-  pamPamDomainsPageRouteRoute: typeof pamPamDomainsPageRouteRoute
-  AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutDomainsDomainTypeDomainIdRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutDomainsDomainTypeDomainIdRouteWithChildren
-}
-
-const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutDomainsRouteChildren: AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutDomainsRouteChildren =
-  {
-    pamPamDomainsPageRouteRoute: pamPamDomainsPageRouteRoute,
-    AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutDomainsDomainTypeDomainIdRoute:
-      AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutDomainsDomainTypeDomainIdRouteWithChildren,
-  }
-
-const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutDomainsRouteWithChildren =
-  AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutDomainsRoute._addFileChildren(
-    AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutDomainsRouteChildren,
-  )
-
-interface AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutResourcesResourceTypeResourceIdAccountsAccountIdRouteChildren {
-  pamPamAccountByIDPageRouteRoute: typeof pamPamAccountByIDPageRouteRoute
-}
-
-const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutResourcesResourceTypeResourceIdAccountsAccountIdRouteChildren: AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutResourcesResourceTypeResourceIdAccountsAccountIdRouteChildren =
-  {
-    pamPamAccountByIDPageRouteRoute: pamPamAccountByIDPageRouteRoute,
-  }
-
-const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutResourcesResourceTypeResourceIdAccountsAccountIdRouteWithChildren =
-  AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutResourcesResourceTypeResourceIdAccountsAccountIdRoute._addFileChildren(
-    AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutResourcesResourceTypeResourceIdAccountsAccountIdRouteChildren,
-  )
-
-interface AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutResourcesResourceTypeResourceIdRouteChildren {
-  pamPamResourceByIDPageRouteRoute: typeof pamPamResourceByIDPageRouteRoute
-  AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutResourcesResourceTypeResourceIdAccountsAccountIdRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutResourcesResourceTypeResourceIdAccountsAccountIdRouteWithChildren
-}
-
-const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutResourcesResourceTypeResourceIdRouteChildren: AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutResourcesResourceTypeResourceIdRouteChildren =
-  {
-    pamPamResourceByIDPageRouteRoute: pamPamResourceByIDPageRouteRoute,
-    AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutResourcesResourceTypeResourceIdAccountsAccountIdRoute:
-      AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutResourcesResourceTypeResourceIdAccountsAccountIdRouteWithChildren,
-  }
-
-const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutResourcesResourceTypeResourceIdRouteWithChildren =
-  AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutResourcesResourceTypeResourceIdRoute._addFileChildren(
-    AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutResourcesResourceTypeResourceIdRouteChildren,
-  )
-
-interface AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutResourcesRouteChildren {
-  pamPamResourcesPageRouteRoute: typeof pamPamResourcesPageRouteRoute
-  AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutResourcesResourceTypeResourceIdRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutResourcesResourceTypeResourceIdRouteWithChildren
-}
-
-const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutResourcesRouteChildren: AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutResourcesRouteChildren =
-  {
-    pamPamResourcesPageRouteRoute: pamPamResourcesPageRouteRoute,
-    AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutResourcesResourceTypeResourceIdRoute:
-      AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutResourcesResourceTypeResourceIdRouteWithChildren,
-  }
-
-const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutResourcesRouteWithChildren =
-  AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutResourcesRoute._addFileChildren(
-    AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutResourcesRouteChildren,
-  )
-
 interface AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutSessionsRouteChildren {
   pamPamSessionsPageRouteRoute: typeof pamPamSessionsPageRouteRoute
   pamPamSessionsByIDPageRouteRoute: typeof pamPamSessionsByIDPageRouteRoute
@@ -5471,15 +4978,8 @@ const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectI
   )
 
 interface pamLayoutRouteChildren {
-  pamPamAccountPoliciesPageRouteRoute: typeof pamPamAccountPoliciesPageRouteRoute
-  pamInsightsPageRouteRoute: typeof pamInsightsPageRouteRoute
-  pamSettingsPageRouteRoute: typeof pamSettingsPageRouteRoute
   projectAccessControlPageRoutePamRoute: typeof projectAccessControlPageRoutePamRoute
-  AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutApprovalsRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutApprovalsRouteWithChildren
   projectAuditLogsPageRoutePamRoute: typeof projectAuditLogsPageRoutePamRoute
-  AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutDiscoveryRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutDiscoveryRouteWithChildren
-  AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutDomainsRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutDomainsRouteWithChildren
-  AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutResourcesRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutResourcesRouteWithChildren
   AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutSessionsRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutSessionsRouteWithChildren
   projectGroupDetailsByIDPageRoutePamRoute: typeof projectGroupDetailsByIDPageRoutePamRoute
   projectIdentityDetailsByIDPageRoutePamRoute: typeof projectIdentityDetailsByIDPageRoutePamRoute
@@ -5488,19 +4988,8 @@ interface pamLayoutRouteChildren {
 }
 
 const pamLayoutRouteChildren: pamLayoutRouteChildren = {
-  pamPamAccountPoliciesPageRouteRoute: pamPamAccountPoliciesPageRouteRoute,
-  pamInsightsPageRouteRoute: pamInsightsPageRouteRoute,
-  pamSettingsPageRouteRoute: pamSettingsPageRouteRoute,
   projectAccessControlPageRoutePamRoute: projectAccessControlPageRoutePamRoute,
-  AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutApprovalsRoute:
-    AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutApprovalsRouteWithChildren,
   projectAuditLogsPageRoutePamRoute: projectAuditLogsPageRoutePamRoute,
-  AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutDiscoveryRoute:
-    AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutDiscoveryRouteWithChildren,
-  AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutDomainsRoute:
-    AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutDomainsRouteWithChildren,
-  AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutResourcesRoute:
-    AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutResourcesRouteWithChildren,
   AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutSessionsRoute:
     AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutSessionsRouteWithChildren,
   projectGroupDetailsByIDPageRoutePamRoute:
@@ -6480,9 +5969,6 @@ export interface FileRoutesByFullPath {
   '/organizations/$orgId/projects/kms/$projectId/kmip': typeof kmsKmipPageRouteRoute
   '/organizations/$orgId/projects/kms/$projectId/overview': typeof kmsOverviewPageRouteRoute
   '/organizations/$orgId/projects/kms/$projectId/settings': typeof kmsSettingsPageRouteRoute
-  '/organizations/$orgId/projects/pam/$projectId/account-policies': typeof pamPamAccountPoliciesPageRouteRoute
-  '/organizations/$orgId/projects/pam/$projectId/insights': typeof pamInsightsPageRouteRoute
-  '/organizations/$orgId/projects/pam/$projectId/settings': typeof pamSettingsPageRouteRoute
   '/organizations/$orgId/projects/secret-management/$projectId/allowlist': typeof secretManagerIPAllowlistPageRouteRoute
   '/organizations/$orgId/projects/secret-management/$projectId/approval': typeof secretManagerSecretApprovalsPageRouteRoute
   '/organizations/$orgId/projects/secret-management/$projectId/insights': typeof secretManagerInsightsPageRouteRoute
@@ -6510,11 +5996,7 @@ export interface FileRoutesByFullPath {
   '/organizations/$orgId/projects/kms/$projectId/access-management': typeof projectAccessControlPageRouteKmsRoute
   '/organizations/$orgId/projects/kms/$projectId/audit-logs': typeof projectAuditLogsPageRouteKmsRoute
   '/organizations/$orgId/projects/pam/$projectId/access-management': typeof projectAccessControlPageRoutePamRoute
-  '/organizations/$orgId/projects/pam/$projectId/approvals': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutApprovalsRouteWithChildren
   '/organizations/$orgId/projects/pam/$projectId/audit-logs': typeof projectAuditLogsPageRoutePamRoute
-  '/organizations/$orgId/projects/pam/$projectId/discovery': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutDiscoveryRouteWithChildren
-  '/organizations/$orgId/projects/pam/$projectId/domains': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutDomainsRouteWithChildren
-  '/organizations/$orgId/projects/pam/$projectId/resources': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutResourcesRouteWithChildren
   '/organizations/$orgId/projects/pam/$projectId/sessions': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutSessionsRouteWithChildren
   '/organizations/$orgId/projects/secret-management/$projectId/access-management': typeof projectAccessControlPageRouteSecretManagerRoute
   '/organizations/$orgId/projects/secret-management/$projectId/app-connections': typeof projectAppConnectionsPageRouteSecretManagerRoute
@@ -6533,10 +6015,6 @@ export interface FileRoutesByFullPath {
   '/organizations/$orgId/projects/cert-manager/$projectId/discovery/': typeof certManagerDiscoveryPageRouteRoute
   '/organizations/$orgId/projects/cert-manager/$projectId/integrations/': typeof certManagerIntegrationsListPageRouteRoute
   '/organizations/$orgId/projects/cert-manager/$projectId/subscribers/': typeof certManagerPkiSubscribersPageRouteRoute
-  '/organizations/$orgId/projects/pam/$projectId/approvals/': typeof pamApprovalsPageRouteRoute
-  '/organizations/$orgId/projects/pam/$projectId/discovery/': typeof pamPamDiscoveryPageRouteRoute
-  '/organizations/$orgId/projects/pam/$projectId/domains/': typeof pamPamDomainsPageRouteRoute
-  '/organizations/$orgId/projects/pam/$projectId/resources/': typeof pamPamResourcesPageRouteRoute
   '/organizations/$orgId/projects/pam/$projectId/sessions/': typeof pamPamSessionsPageRouteRoute
   '/organizations/$orgId/projects/secret-management/$projectId/integrations/': typeof secretManagerIntegrationsListPageRouteRoute
   '/organizations/$orgId/projects/secret-scanning/$projectId/data-sources/': typeof secretScanningSecretScanningDataSourcesPageRouteRoute
@@ -6552,7 +6030,6 @@ export interface FileRoutesByFullPath {
   '/organizations/$orgId/projects/cert-manager/$projectId/discovery/$discoveryId': typeof certManagerDiscoveryDetailsByIDPageRouteRoute
   '/organizations/$orgId/projects/cert-manager/$projectId/integrations/$syncId': typeof certManagerPkiSyncDetailsByIDPageRouteRoute
   '/organizations/$orgId/projects/cert-manager/$projectId/subscribers/$subscriberName': typeof certManagerPkiSubscriberDetailsByIDPageRouteRoute
-  '/organizations/$orgId/projects/pam/$projectId/approvals/$approvalRequestId': typeof pamApprovalRequestDetailPageRouteRoute
   '/organizations/$orgId/projects/pam/$projectId/sessions/$sessionId': typeof pamPamSessionsByIDPageRouteRoute
   '/organizations/$orgId/projects/secret-management/$projectId/integrations/$integrationId': typeof secretManagerIntegrationsDetailsByIDPageRouteRoute
   '/organizations/$orgId/projects/secret-management/$projectId/integrations/select-integration-auth': typeof secretManagerIntegrationsSelectIntegrationAuthPageRouteRoute
@@ -6589,7 +6066,6 @@ export interface FileRoutesByFullPath {
   '/organizations/$orgId/projects/ssh/$projectId/members/$membershipId': typeof projectMemberDetailsByIDPageRouteSshRoute
   '/organizations/$orgId/projects/ssh/$projectId/roles/$roleSlug': typeof projectRoleDetailsBySlugPageRouteSshRoute
   '/organizations/$orgId/projects/cert-manager/$projectId/discovery/installations/$installationId': typeof certManagerInstallationDetailsByIDPageRouteRoute
-  '/organizations/$orgId/projects/pam/$projectId/discovery/$discoveryType/$discoverySourceId': typeof pamPamDiscoveryDetailPageRouteRoute
   '/organizations/$orgId/projects/secret-management/$projectId/integrations/aws-parameter-store/authorize': typeof secretManagerIntegrationsAwsParameterStoreAuthorizePageRouteRoute
   '/organizations/$orgId/projects/secret-management/$projectId/integrations/aws-parameter-store/create': typeof secretManagerIntegrationsAwsParameterStoreConfigurePageRouteRoute
   '/organizations/$orgId/projects/secret-management/$projectId/integrations/aws-secret-manager/authorize': typeof secretManagerIntegrationsAwsSecretManagerAuthorizePageRouteRoute
@@ -6656,11 +6132,7 @@ export interface FileRoutesByFullPath {
   '/organizations/$orgId/projects/secret-management/$projectId/integrations/windmill/authorize': typeof secretManagerIntegrationsWindmillAuthorizePageRouteRoute
   '/organizations/$orgId/projects/secret-management/$projectId/integrations/windmill/create': typeof secretManagerIntegrationsWindmillConfigurePageRouteRoute
   '/organizations/$orgId/projects/secret-scanning/$projectId/data-sources/$type/$dataSourceId': typeof secretScanningSecretScanningDataSourceByIdPageRouteRoute
-  '/organizations/$orgId/projects/pam/$projectId/domains/$domainType/$domainId': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutDomainsDomainTypeDomainIdRouteWithChildren
-  '/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutResourcesResourceTypeResourceIdRouteWithChildren
   '/organizations/$orgId/projects/secret-management/$projectId/commits/$environment/$folderId': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManagementProjectIdSecretManagerLayoutCommitsEnvironmentFolderIdRouteWithChildren
-  '/organizations/$orgId/projects/pam/$projectId/domains/$domainType/$domainId/': typeof pamPamDomainByIDPageRouteRoute
-  '/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/': typeof pamPamResourceByIDPageRouteRoute
   '/organizations/$orgId/projects/secret-management/$projectId/commits/$environment/$folderId/': typeof secretManagerCommitsPageRouteRoute
   '/organizations/$orgId/projects/secret-management/$projectId/integrations/azure-app-configuration/oauth2/callback': typeof secretManagerIntegrationsAzureAppConfigurationOauthCallbackPageRouteRoute
   '/organizations/$orgId/projects/secret-management/$projectId/integrations/azure-key-vault/oauth2/callback': typeof secretManagerIntegrationsAzureKeyVaultOauthCallbackPageRouteRoute
@@ -6675,10 +6147,6 @@ export interface FileRoutesByFullPath {
   '/organizations/$orgId/projects/secret-management/$projectId/commits/$environment/$folderId/$commitId': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManagementProjectIdSecretManagerLayoutCommitsEnvironmentFolderIdCommitIdRouteWithChildren
   '/organizations/$orgId/projects/secret-management/$projectId/commits/$environment/$folderId/$commitId/': typeof secretManagerCommitDetailsPageRouteRoute
   '/organizations/$orgId/projects/secret-management/$projectId/commits/$environment/$folderId/$commitId/restore': typeof secretManagerCommitDetailsPageComponentsRollbackPreviewTabRouteRoute
-  '/organizations/$orgId/projects/pam/$projectId/domains/$domainType/$domainId/accounts/$accountId': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutDomainsDomainTypeDomainIdAccountsAccountIdRouteWithChildren
-  '/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutResourcesResourceTypeResourceIdAccountsAccountIdRouteWithChildren
-  '/organizations/$orgId/projects/pam/$projectId/domains/$domainType/$domainId/accounts/$accountId/': typeof pamPamDomainAccountByIDPageRouteRoute
-  '/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId/': typeof pamPamAccountByIDPageRouteRoute
 }
 
 export interface FileRoutesByTo {
@@ -6771,9 +6239,6 @@ export interface FileRoutesByTo {
   '/organizations/$orgId/projects/kms/$projectId/kmip': typeof kmsKmipPageRouteRoute
   '/organizations/$orgId/projects/kms/$projectId/overview': typeof kmsOverviewPageRouteRoute
   '/organizations/$orgId/projects/kms/$projectId/settings': typeof kmsSettingsPageRouteRoute
-  '/organizations/$orgId/projects/pam/$projectId/account-policies': typeof pamPamAccountPoliciesPageRouteRoute
-  '/organizations/$orgId/projects/pam/$projectId/insights': typeof pamInsightsPageRouteRoute
-  '/organizations/$orgId/projects/pam/$projectId/settings': typeof pamSettingsPageRouteRoute
   '/organizations/$orgId/projects/secret-management/$projectId/allowlist': typeof secretManagerIPAllowlistPageRouteRoute
   '/organizations/$orgId/projects/secret-management/$projectId/approval': typeof secretManagerSecretApprovalsPageRouteRoute
   '/organizations/$orgId/projects/secret-management/$projectId/insights': typeof secretManagerInsightsPageRouteRoute
@@ -6809,10 +6274,6 @@ export interface FileRoutesByTo {
   '/organizations/$orgId/projects/cert-manager/$projectId/discovery': typeof certManagerDiscoveryPageRouteRoute
   '/organizations/$orgId/projects/cert-manager/$projectId/integrations': typeof certManagerIntegrationsListPageRouteRoute
   '/organizations/$orgId/projects/cert-manager/$projectId/subscribers': typeof certManagerPkiSubscribersPageRouteRoute
-  '/organizations/$orgId/projects/pam/$projectId/approvals': typeof pamApprovalsPageRouteRoute
-  '/organizations/$orgId/projects/pam/$projectId/discovery': typeof pamPamDiscoveryPageRouteRoute
-  '/organizations/$orgId/projects/pam/$projectId/domains': typeof pamPamDomainsPageRouteRoute
-  '/organizations/$orgId/projects/pam/$projectId/resources': typeof pamPamResourcesPageRouteRoute
   '/organizations/$orgId/projects/pam/$projectId/sessions': typeof pamPamSessionsPageRouteRoute
   '/organizations/$orgId/projects/secret-management/$projectId/integrations': typeof secretManagerIntegrationsListPageRouteRoute
   '/organizations/$orgId/projects/secret-scanning/$projectId/data-sources': typeof secretScanningSecretScanningDataSourcesPageRouteRoute
@@ -6828,7 +6289,6 @@ export interface FileRoutesByTo {
   '/organizations/$orgId/projects/cert-manager/$projectId/discovery/$discoveryId': typeof certManagerDiscoveryDetailsByIDPageRouteRoute
   '/organizations/$orgId/projects/cert-manager/$projectId/integrations/$syncId': typeof certManagerPkiSyncDetailsByIDPageRouteRoute
   '/organizations/$orgId/projects/cert-manager/$projectId/subscribers/$subscriberName': typeof certManagerPkiSubscriberDetailsByIDPageRouteRoute
-  '/organizations/$orgId/projects/pam/$projectId/approvals/$approvalRequestId': typeof pamApprovalRequestDetailPageRouteRoute
   '/organizations/$orgId/projects/pam/$projectId/sessions/$sessionId': typeof pamPamSessionsByIDPageRouteRoute
   '/organizations/$orgId/projects/secret-management/$projectId/integrations/$integrationId': typeof secretManagerIntegrationsDetailsByIDPageRouteRoute
   '/organizations/$orgId/projects/secret-management/$projectId/integrations/select-integration-auth': typeof secretManagerIntegrationsSelectIntegrationAuthPageRouteRoute
@@ -6865,7 +6325,6 @@ export interface FileRoutesByTo {
   '/organizations/$orgId/projects/ssh/$projectId/members/$membershipId': typeof projectMemberDetailsByIDPageRouteSshRoute
   '/organizations/$orgId/projects/ssh/$projectId/roles/$roleSlug': typeof projectRoleDetailsBySlugPageRouteSshRoute
   '/organizations/$orgId/projects/cert-manager/$projectId/discovery/installations/$installationId': typeof certManagerInstallationDetailsByIDPageRouteRoute
-  '/organizations/$orgId/projects/pam/$projectId/discovery/$discoveryType/$discoverySourceId': typeof pamPamDiscoveryDetailPageRouteRoute
   '/organizations/$orgId/projects/secret-management/$projectId/integrations/aws-parameter-store/authorize': typeof secretManagerIntegrationsAwsParameterStoreAuthorizePageRouteRoute
   '/organizations/$orgId/projects/secret-management/$projectId/integrations/aws-parameter-store/create': typeof secretManagerIntegrationsAwsParameterStoreConfigurePageRouteRoute
   '/organizations/$orgId/projects/secret-management/$projectId/integrations/aws-secret-manager/authorize': typeof secretManagerIntegrationsAwsSecretManagerAuthorizePageRouteRoute
@@ -6932,8 +6391,6 @@ export interface FileRoutesByTo {
   '/organizations/$orgId/projects/secret-management/$projectId/integrations/windmill/authorize': typeof secretManagerIntegrationsWindmillAuthorizePageRouteRoute
   '/organizations/$orgId/projects/secret-management/$projectId/integrations/windmill/create': typeof secretManagerIntegrationsWindmillConfigurePageRouteRoute
   '/organizations/$orgId/projects/secret-scanning/$projectId/data-sources/$type/$dataSourceId': typeof secretScanningSecretScanningDataSourceByIdPageRouteRoute
-  '/organizations/$orgId/projects/pam/$projectId/domains/$domainType/$domainId': typeof pamPamDomainByIDPageRouteRoute
-  '/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId': typeof pamPamResourceByIDPageRouteRoute
   '/organizations/$orgId/projects/secret-management/$projectId/commits/$environment/$folderId': typeof secretManagerCommitsPageRouteRoute
   '/organizations/$orgId/projects/secret-management/$projectId/integrations/azure-app-configuration/oauth2/callback': typeof secretManagerIntegrationsAzureAppConfigurationOauthCallbackPageRouteRoute
   '/organizations/$orgId/projects/secret-management/$projectId/integrations/azure-key-vault/oauth2/callback': typeof secretManagerIntegrationsAzureKeyVaultOauthCallbackPageRouteRoute
@@ -6947,8 +6404,6 @@ export interface FileRoutesByTo {
   '/organizations/$orgId/projects/secret-management/$projectId/integrations/vercel/oauth2/callback': typeof secretManagerIntegrationsVercelOauthCallbackPageRouteRoute
   '/organizations/$orgId/projects/secret-management/$projectId/commits/$environment/$folderId/$commitId': typeof secretManagerCommitDetailsPageRouteRoute
   '/organizations/$orgId/projects/secret-management/$projectId/commits/$environment/$folderId/$commitId/restore': typeof secretManagerCommitDetailsPageComponentsRollbackPreviewTabRouteRoute
-  '/organizations/$orgId/projects/pam/$projectId/domains/$domainType/$domainId/accounts/$accountId': typeof pamPamDomainAccountByIDPageRouteRoute
-  '/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId': typeof pamPamAccountByIDPageRouteRoute
 }
 
 export interface FileRoutesById {
@@ -7063,9 +6518,6 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/$projectId/_kms-layout/kmip': typeof kmsKmipPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/$projectId/_kms-layout/overview': typeof kmsOverviewPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/$projectId/_kms-layout/settings': typeof kmsSettingsPageRouteRoute
-  '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/account-policies': typeof pamPamAccountPoliciesPageRouteRoute
-  '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/insights': typeof pamInsightsPageRouteRoute
-  '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/settings': typeof pamSettingsPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/allowlist': typeof secretManagerIPAllowlistPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/approval': typeof secretManagerSecretApprovalsPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/insights': typeof secretManagerInsightsPageRouteRoute
@@ -7093,11 +6545,7 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/$projectId/_kms-layout/access-management': typeof projectAccessControlPageRouteKmsRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/$projectId/_kms-layout/audit-logs': typeof projectAuditLogsPageRouteKmsRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/access-management': typeof projectAccessControlPageRoutePamRoute
-  '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/approvals': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutApprovalsRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/audit-logs': typeof projectAuditLogsPageRoutePamRoute
-  '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/discovery': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutDiscoveryRouteWithChildren
-  '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/domains': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutDomainsRouteWithChildren
-  '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/resources': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutResourcesRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/sessions': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutSessionsRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/access-management': typeof projectAccessControlPageRouteSecretManagerRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/app-connections': typeof projectAppConnectionsPageRouteSecretManagerRoute
@@ -7116,10 +6564,6 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/discovery/': typeof certManagerDiscoveryPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/integrations/': typeof certManagerIntegrationsListPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/subscribers/': typeof certManagerPkiSubscribersPageRouteRoute
-  '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/approvals/': typeof pamApprovalsPageRouteRoute
-  '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/discovery/': typeof pamPamDiscoveryPageRouteRoute
-  '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/domains/': typeof pamPamDomainsPageRouteRoute
-  '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/resources/': typeof pamPamResourcesPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/sessions/': typeof pamPamSessionsPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/integrations/': typeof secretManagerIntegrationsListPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-scanning/$projectId/_secret-scanning-layout/data-sources/': typeof secretScanningSecretScanningDataSourcesPageRouteRoute
@@ -7135,7 +6579,6 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/discovery/$discoveryId': typeof certManagerDiscoveryDetailsByIDPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/integrations/$syncId': typeof certManagerPkiSyncDetailsByIDPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/subscribers/$subscriberName': typeof certManagerPkiSubscriberDetailsByIDPageRouteRoute
-  '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/approvals/$approvalRequestId': typeof pamApprovalRequestDetailPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/sessions/$sessionId': typeof pamPamSessionsByIDPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/integrations/$integrationId': typeof secretManagerIntegrationsDetailsByIDPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/integrations/select-integration-auth': typeof secretManagerIntegrationsSelectIntegrationAuthPageRouteRoute
@@ -7172,7 +6615,6 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/ssh/$projectId/_ssh-layout/members/$membershipId': typeof projectMemberDetailsByIDPageRouteSshRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/ssh/$projectId/_ssh-layout/roles/$roleSlug': typeof projectRoleDetailsBySlugPageRouteSshRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/discovery/installations/$installationId': typeof certManagerInstallationDetailsByIDPageRouteRoute
-  '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/discovery/$discoveryType/$discoverySourceId': typeof pamPamDiscoveryDetailPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/integrations/aws-parameter-store/authorize': typeof secretManagerIntegrationsAwsParameterStoreAuthorizePageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/integrations/aws-parameter-store/create': typeof secretManagerIntegrationsAwsParameterStoreConfigurePageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/integrations/aws-secret-manager/authorize': typeof secretManagerIntegrationsAwsSecretManagerAuthorizePageRouteRoute
@@ -7239,11 +6681,7 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/integrations/windmill/authorize': typeof secretManagerIntegrationsWindmillAuthorizePageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/integrations/windmill/create': typeof secretManagerIntegrationsWindmillConfigurePageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-scanning/$projectId/_secret-scanning-layout/data-sources/$type/$dataSourceId': typeof secretScanningSecretScanningDataSourceByIdPageRouteRoute
-  '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/domains/$domainType/$domainId': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutDomainsDomainTypeDomainIdRouteWithChildren
-  '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/resources/$resourceType/$resourceId': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutResourcesResourceTypeResourceIdRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/commits/$environment/$folderId': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManagementProjectIdSecretManagerLayoutCommitsEnvironmentFolderIdRouteWithChildren
-  '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/domains/$domainType/$domainId/': typeof pamPamDomainByIDPageRouteRoute
-  '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/resources/$resourceType/$resourceId/': typeof pamPamResourceByIDPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/commits/$environment/$folderId/': typeof secretManagerCommitsPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/integrations/azure-app-configuration/oauth2/callback': typeof secretManagerIntegrationsAzureAppConfigurationOauthCallbackPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/integrations/azure-key-vault/oauth2/callback': typeof secretManagerIntegrationsAzureKeyVaultOauthCallbackPageRouteRoute
@@ -7258,10 +6696,6 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/commits/$environment/$folderId/$commitId': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManagementProjectIdSecretManagerLayoutCommitsEnvironmentFolderIdCommitIdRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/commits/$environment/$folderId/$commitId/': typeof secretManagerCommitDetailsPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/commits/$environment/$folderId/$commitId/restore': typeof secretManagerCommitDetailsPageComponentsRollbackPreviewTabRouteRoute
-  '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/domains/$domainType/$domainId/accounts/$accountId': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutDomainsDomainTypeDomainIdAccountsAccountIdRouteWithChildren
-  '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/resources/$resourceType/$resourceId/accounts/$accountId': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutResourcesResourceTypeResourceIdAccountsAccountIdRouteWithChildren
-  '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/domains/$domainType/$domainId/accounts/$accountId/': typeof pamPamDomainAccountByIDPageRouteRoute
-  '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/resources/$resourceType/$resourceId/accounts/$accountId/': typeof pamPamAccountByIDPageRouteRoute
 }
 
 export interface FileRouteTypes {
@@ -7365,9 +6799,6 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/projects/kms/$projectId/kmip'
     | '/organizations/$orgId/projects/kms/$projectId/overview'
     | '/organizations/$orgId/projects/kms/$projectId/settings'
-    | '/organizations/$orgId/projects/pam/$projectId/account-policies'
-    | '/organizations/$orgId/projects/pam/$projectId/insights'
-    | '/organizations/$orgId/projects/pam/$projectId/settings'
     | '/organizations/$orgId/projects/secret-management/$projectId/allowlist'
     | '/organizations/$orgId/projects/secret-management/$projectId/approval'
     | '/organizations/$orgId/projects/secret-management/$projectId/insights'
@@ -7395,11 +6826,7 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/projects/kms/$projectId/access-management'
     | '/organizations/$orgId/projects/kms/$projectId/audit-logs'
     | '/organizations/$orgId/projects/pam/$projectId/access-management'
-    | '/organizations/$orgId/projects/pam/$projectId/approvals'
     | '/organizations/$orgId/projects/pam/$projectId/audit-logs'
-    | '/organizations/$orgId/projects/pam/$projectId/discovery'
-    | '/organizations/$orgId/projects/pam/$projectId/domains'
-    | '/organizations/$orgId/projects/pam/$projectId/resources'
     | '/organizations/$orgId/projects/pam/$projectId/sessions'
     | '/organizations/$orgId/projects/secret-management/$projectId/access-management'
     | '/organizations/$orgId/projects/secret-management/$projectId/app-connections'
@@ -7418,10 +6845,6 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/projects/cert-manager/$projectId/discovery/'
     | '/organizations/$orgId/projects/cert-manager/$projectId/integrations/'
     | '/organizations/$orgId/projects/cert-manager/$projectId/subscribers/'
-    | '/organizations/$orgId/projects/pam/$projectId/approvals/'
-    | '/organizations/$orgId/projects/pam/$projectId/discovery/'
-    | '/organizations/$orgId/projects/pam/$projectId/domains/'
-    | '/organizations/$orgId/projects/pam/$projectId/resources/'
     | '/organizations/$orgId/projects/pam/$projectId/sessions/'
     | '/organizations/$orgId/projects/secret-management/$projectId/integrations/'
     | '/organizations/$orgId/projects/secret-scanning/$projectId/data-sources/'
@@ -7437,7 +6860,6 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/projects/cert-manager/$projectId/discovery/$discoveryId'
     | '/organizations/$orgId/projects/cert-manager/$projectId/integrations/$syncId'
     | '/organizations/$orgId/projects/cert-manager/$projectId/subscribers/$subscriberName'
-    | '/organizations/$orgId/projects/pam/$projectId/approvals/$approvalRequestId'
     | '/organizations/$orgId/projects/pam/$projectId/sessions/$sessionId'
     | '/organizations/$orgId/projects/secret-management/$projectId/integrations/$integrationId'
     | '/organizations/$orgId/projects/secret-management/$projectId/integrations/select-integration-auth'
@@ -7474,7 +6896,6 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/projects/ssh/$projectId/members/$membershipId'
     | '/organizations/$orgId/projects/ssh/$projectId/roles/$roleSlug'
     | '/organizations/$orgId/projects/cert-manager/$projectId/discovery/installations/$installationId'
-    | '/organizations/$orgId/projects/pam/$projectId/discovery/$discoveryType/$discoverySourceId'
     | '/organizations/$orgId/projects/secret-management/$projectId/integrations/aws-parameter-store/authorize'
     | '/organizations/$orgId/projects/secret-management/$projectId/integrations/aws-parameter-store/create'
     | '/organizations/$orgId/projects/secret-management/$projectId/integrations/aws-secret-manager/authorize'
@@ -7541,11 +6962,7 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/projects/secret-management/$projectId/integrations/windmill/authorize'
     | '/organizations/$orgId/projects/secret-management/$projectId/integrations/windmill/create'
     | '/organizations/$orgId/projects/secret-scanning/$projectId/data-sources/$type/$dataSourceId'
-    | '/organizations/$orgId/projects/pam/$projectId/domains/$domainType/$domainId'
-    | '/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId'
     | '/organizations/$orgId/projects/secret-management/$projectId/commits/$environment/$folderId'
-    | '/organizations/$orgId/projects/pam/$projectId/domains/$domainType/$domainId/'
-    | '/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/'
     | '/organizations/$orgId/projects/secret-management/$projectId/commits/$environment/$folderId/'
     | '/organizations/$orgId/projects/secret-management/$projectId/integrations/azure-app-configuration/oauth2/callback'
     | '/organizations/$orgId/projects/secret-management/$projectId/integrations/azure-key-vault/oauth2/callback'
@@ -7560,10 +6977,6 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/projects/secret-management/$projectId/commits/$environment/$folderId/$commitId'
     | '/organizations/$orgId/projects/secret-management/$projectId/commits/$environment/$folderId/$commitId/'
     | '/organizations/$orgId/projects/secret-management/$projectId/commits/$environment/$folderId/$commitId/restore'
-    | '/organizations/$orgId/projects/pam/$projectId/domains/$domainType/$domainId/accounts/$accountId'
-    | '/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId'
-    | '/organizations/$orgId/projects/pam/$projectId/domains/$domainType/$domainId/accounts/$accountId/'
-    | '/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -7655,9 +7068,6 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/projects/kms/$projectId/kmip'
     | '/organizations/$orgId/projects/kms/$projectId/overview'
     | '/organizations/$orgId/projects/kms/$projectId/settings'
-    | '/organizations/$orgId/projects/pam/$projectId/account-policies'
-    | '/organizations/$orgId/projects/pam/$projectId/insights'
-    | '/organizations/$orgId/projects/pam/$projectId/settings'
     | '/organizations/$orgId/projects/secret-management/$projectId/allowlist'
     | '/organizations/$orgId/projects/secret-management/$projectId/approval'
     | '/organizations/$orgId/projects/secret-management/$projectId/insights'
@@ -7693,10 +7103,6 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/projects/cert-manager/$projectId/discovery'
     | '/organizations/$orgId/projects/cert-manager/$projectId/integrations'
     | '/organizations/$orgId/projects/cert-manager/$projectId/subscribers'
-    | '/organizations/$orgId/projects/pam/$projectId/approvals'
-    | '/organizations/$orgId/projects/pam/$projectId/discovery'
-    | '/organizations/$orgId/projects/pam/$projectId/domains'
-    | '/organizations/$orgId/projects/pam/$projectId/resources'
     | '/organizations/$orgId/projects/pam/$projectId/sessions'
     | '/organizations/$orgId/projects/secret-management/$projectId/integrations'
     | '/organizations/$orgId/projects/secret-scanning/$projectId/data-sources'
@@ -7712,7 +7118,6 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/projects/cert-manager/$projectId/discovery/$discoveryId'
     | '/organizations/$orgId/projects/cert-manager/$projectId/integrations/$syncId'
     | '/organizations/$orgId/projects/cert-manager/$projectId/subscribers/$subscriberName'
-    | '/organizations/$orgId/projects/pam/$projectId/approvals/$approvalRequestId'
     | '/organizations/$orgId/projects/pam/$projectId/sessions/$sessionId'
     | '/organizations/$orgId/projects/secret-management/$projectId/integrations/$integrationId'
     | '/organizations/$orgId/projects/secret-management/$projectId/integrations/select-integration-auth'
@@ -7749,7 +7154,6 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/projects/ssh/$projectId/members/$membershipId'
     | '/organizations/$orgId/projects/ssh/$projectId/roles/$roleSlug'
     | '/organizations/$orgId/projects/cert-manager/$projectId/discovery/installations/$installationId'
-    | '/organizations/$orgId/projects/pam/$projectId/discovery/$discoveryType/$discoverySourceId'
     | '/organizations/$orgId/projects/secret-management/$projectId/integrations/aws-parameter-store/authorize'
     | '/organizations/$orgId/projects/secret-management/$projectId/integrations/aws-parameter-store/create'
     | '/organizations/$orgId/projects/secret-management/$projectId/integrations/aws-secret-manager/authorize'
@@ -7816,8 +7220,6 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/projects/secret-management/$projectId/integrations/windmill/authorize'
     | '/organizations/$orgId/projects/secret-management/$projectId/integrations/windmill/create'
     | '/organizations/$orgId/projects/secret-scanning/$projectId/data-sources/$type/$dataSourceId'
-    | '/organizations/$orgId/projects/pam/$projectId/domains/$domainType/$domainId'
-    | '/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId'
     | '/organizations/$orgId/projects/secret-management/$projectId/commits/$environment/$folderId'
     | '/organizations/$orgId/projects/secret-management/$projectId/integrations/azure-app-configuration/oauth2/callback'
     | '/organizations/$orgId/projects/secret-management/$projectId/integrations/azure-key-vault/oauth2/callback'
@@ -7831,8 +7233,6 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/projects/secret-management/$projectId/integrations/vercel/oauth2/callback'
     | '/organizations/$orgId/projects/secret-management/$projectId/commits/$environment/$folderId/$commitId'
     | '/organizations/$orgId/projects/secret-management/$projectId/commits/$environment/$folderId/$commitId/restore'
-    | '/organizations/$orgId/projects/pam/$projectId/domains/$domainType/$domainId/accounts/$accountId'
-    | '/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId'
   id:
     | '__root__'
     | '/'
@@ -7945,9 +7345,6 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/$projectId/_kms-layout/kmip'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/$projectId/_kms-layout/overview'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/$projectId/_kms-layout/settings'
-    | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/account-policies'
-    | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/insights'
-    | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/settings'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/allowlist'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/approval'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/insights'
@@ -7975,11 +7372,7 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/$projectId/_kms-layout/access-management'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/$projectId/_kms-layout/audit-logs'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/access-management'
-    | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/approvals'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/audit-logs'
-    | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/discovery'
-    | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/domains'
-    | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/resources'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/sessions'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/access-management'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/app-connections'
@@ -7998,10 +7391,6 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/discovery/'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/integrations/'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/subscribers/'
-    | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/approvals/'
-    | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/discovery/'
-    | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/domains/'
-    | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/resources/'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/sessions/'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/integrations/'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-scanning/$projectId/_secret-scanning-layout/data-sources/'
@@ -8017,7 +7406,6 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/discovery/$discoveryId'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/integrations/$syncId'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/subscribers/$subscriberName'
-    | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/approvals/$approvalRequestId'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/sessions/$sessionId'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/integrations/$integrationId'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/integrations/select-integration-auth'
@@ -8054,7 +7442,6 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/ssh/$projectId/_ssh-layout/members/$membershipId'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/ssh/$projectId/_ssh-layout/roles/$roleSlug'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/discovery/installations/$installationId'
-    | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/discovery/$discoveryType/$discoverySourceId'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/integrations/aws-parameter-store/authorize'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/integrations/aws-parameter-store/create'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/integrations/aws-secret-manager/authorize'
@@ -8121,11 +7508,7 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/integrations/windmill/authorize'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/integrations/windmill/create'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-scanning/$projectId/_secret-scanning-layout/data-sources/$type/$dataSourceId'
-    | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/domains/$domainType/$domainId'
-    | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/resources/$resourceType/$resourceId'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/commits/$environment/$folderId'
-    | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/domains/$domainType/$domainId/'
-    | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/resources/$resourceType/$resourceId/'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/commits/$environment/$folderId/'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/integrations/azure-app-configuration/oauth2/callback'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/integrations/azure-key-vault/oauth2/callback'
@@ -8140,10 +7523,6 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/commits/$environment/$folderId/$commitId'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/commits/$environment/$folderId/$commitId/'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/commits/$environment/$folderId/$commitId/restore'
-    | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/domains/$domainType/$domainId/accounts/$accountId'
-    | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/resources/$resourceType/$resourceId/accounts/$accountId'
-    | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/domains/$domainType/$domainId/accounts/$accountId/'
-    | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/resources/$resourceType/$resourceId/accounts/$accountId/'
   fileRoutesById: FileRoutesById
 }
 
@@ -8757,15 +8136,8 @@ export const routeTree = rootRoute
       "filePath": "pam/layout.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId",
       "children": [
-        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/account-policies",
-        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/insights",
-        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/settings",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/access-management",
-        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/approvals",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/audit-logs",
-        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/discovery",
-        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/domains",
-        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/resources",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/sessions",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/groups/$groupId",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/identities/$identityId",
@@ -8875,18 +8247,6 @@ export const routeTree = rootRoute
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/$projectId/_kms-layout/settings": {
       "filePath": "kms/SettingsPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/$projectId/_kms-layout"
-    },
-    "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/account-policies": {
-      "filePath": "pam/PamAccountPoliciesPage/route.tsx",
-      "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout"
-    },
-    "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/insights": {
-      "filePath": "pam/InsightsPage/route.tsx",
-      "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout"
-    },
-    "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/settings": {
-      "filePath": "pam/SettingsPage/route.tsx",
-      "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout"
     },
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/allowlist": {
       "filePath": "secret-manager/IPAllowlistPage/route.tsx",
@@ -9024,41 +8384,9 @@ export const routeTree = rootRoute
       "filePath": "project/AccessControlPage/route-pam.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout"
     },
-    "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/approvals": {
-      "filePath": "",
-      "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout",
-      "children": [
-        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/approvals/",
-        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/approvals/$approvalRequestId"
-      ]
-    },
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/audit-logs": {
       "filePath": "project/AuditLogsPage/route-pam.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout"
-    },
-    "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/discovery": {
-      "filePath": "",
-      "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout",
-      "children": [
-        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/discovery/",
-        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/discovery/$discoveryType/$discoverySourceId"
-      ]
-    },
-    "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/domains": {
-      "filePath": "",
-      "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout",
-      "children": [
-        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/domains/",
-        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/domains/$domainType/$domainId"
-      ]
-    },
-    "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/resources": {
-      "filePath": "",
-      "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout",
-      "children": [
-        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/resources/",
-        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/resources/$resourceType/$resourceId"
-      ]
     },
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/sessions": {
       "filePath": "",
@@ -9220,22 +8548,6 @@ export const routeTree = rootRoute
       "filePath": "cert-manager/PkiSubscribersPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/subscribers"
     },
-    "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/approvals/": {
-      "filePath": "pam/ApprovalsPage/route.tsx",
-      "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/approvals"
-    },
-    "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/discovery/": {
-      "filePath": "pam/PamDiscoveryPage/route.tsx",
-      "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/discovery"
-    },
-    "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/domains/": {
-      "filePath": "pam/PamDomainsPage/route.tsx",
-      "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/domains"
-    },
-    "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/resources/": {
-      "filePath": "pam/PamResourcesPage/route.tsx",
-      "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/resources"
-    },
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/sessions/": {
       "filePath": "pam/PamSessionsPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/sessions"
@@ -9295,10 +8607,6 @@ export const routeTree = rootRoute
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/subscribers/$subscriberName": {
       "filePath": "cert-manager/PkiSubscriberDetailsByIDPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/subscribers"
-    },
-    "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/approvals/$approvalRequestId": {
-      "filePath": "pam/ApprovalRequestDetailPage/route.tsx",
-      "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/approvals"
     },
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/sessions/$sessionId": {
       "filePath": "pam/PamSessionsByIDPage/route.tsx",
@@ -9443,10 +8751,6 @@ export const routeTree = rootRoute
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/discovery/installations/$installationId": {
       "filePath": "cert-manager/InstallationDetailsByIDPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/discovery"
-    },
-    "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/discovery/$discoveryType/$discoverySourceId": {
-      "filePath": "pam/PamDiscoveryDetailPage/route.tsx",
-      "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/discovery"
     },
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/integrations/aws-parameter-store/authorize": {
       "filePath": "secret-manager/integrations/AwsParameterStoreAuthorizePage/route.tsx",
@@ -9712,22 +9016,6 @@ export const routeTree = rootRoute
       "filePath": "secret-scanning/SecretScanningDataSourceByIdPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-scanning/$projectId/_secret-scanning-layout/data-sources"
     },
-    "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/domains/$domainType/$domainId": {
-      "filePath": "",
-      "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/domains",
-      "children": [
-        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/domains/$domainType/$domainId/",
-        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/domains/$domainType/$domainId/accounts/$accountId"
-      ]
-    },
-    "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/resources/$resourceType/$resourceId": {
-      "filePath": "",
-      "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/resources",
-      "children": [
-        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/resources/$resourceType/$resourceId/",
-        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/resources/$resourceType/$resourceId/accounts/$accountId"
-      ]
-    },
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/commits/$environment/$folderId": {
       "filePath": "",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout",
@@ -9735,14 +9023,6 @@ export const routeTree = rootRoute
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/commits/$environment/$folderId/",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/commits/$environment/$folderId/$commitId"
       ]
-    },
-    "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/domains/$domainType/$domainId/": {
-      "filePath": "pam/PamDomainByIDPage/route.tsx",
-      "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/domains/$domainType/$domainId"
-    },
-    "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/resources/$resourceType/$resourceId/": {
-      "filePath": "pam/PamResourceByIDPage/route.tsx",
-      "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/resources/$resourceType/$resourceId"
     },
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/commits/$environment/$folderId/": {
       "filePath": "secret-manager/CommitsPage/route.tsx",
@@ -9803,28 +9083,6 @@ export const routeTree = rootRoute
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/commits/$environment/$folderId/$commitId/restore": {
       "filePath": "secret-manager/CommitDetailsPage/components/RollbackPreviewTab/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/commits/$environment/$folderId/$commitId"
-    },
-    "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/domains/$domainType/$domainId/accounts/$accountId": {
-      "filePath": "",
-      "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/domains/$domainType/$domainId",
-      "children": [
-        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/domains/$domainType/$domainId/accounts/$accountId/"
-      ]
-    },
-    "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/resources/$resourceType/$resourceId/accounts/$accountId": {
-      "filePath": "",
-      "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/resources/$resourceType/$resourceId",
-      "children": [
-        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/resources/$resourceType/$resourceId/accounts/$accountId/"
-      ]
-    },
-    "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/domains/$domainType/$domainId/accounts/$accountId/": {
-      "filePath": "pam/PamDomainAccountByIDPage/route.tsx",
-      "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/domains/$domainType/$domainId/accounts/$accountId"
-    },
-    "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/resources/$resourceType/$resourceId/accounts/$accountId/": {
-      "filePath": "pam/PamAccountByIDPage/route.tsx",
-      "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/resources/$resourceType/$resourceId/accounts/$accountId"
     }
   }
 }

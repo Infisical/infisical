@@ -21,8 +21,6 @@ import {
   CERT_INTEGRATIONS_SUBMENU,
   INTEGRATIONS_SUBMENU,
   MCP_SUBMENU,
-  PAM_APPROVALS_SUBMENU,
-  PAM_SETTINGS_SUBMENU,
   PROJECT_ACCESS_CONTROL_SUBMENU,
   SECRET_MANAGER_ACCESS_CONTROL_SUBMENU,
   SECRET_SCANNING_SETTINGS_SUBMENU,
@@ -98,12 +96,9 @@ export const ProjectNav = () => {
       return SM_SETTINGS_SUBMENU;
     if (isOnProjectSettings && currentProject.type === ProjectType.SecretScanning)
       return SECRET_SCANNING_SETTINGS_SUBMENU;
-    if (isOnProjectSettings && currentProject.type === ProjectType.PAM) return PAM_SETTINGS_SUBMENU;
     if (isOnMcpOverview) return MCP_SUBMENU;
     if (isOnCertPolicies) return CERT_CERTIFICATES_SUBMENU;
     if (isOnCertApprovals) return CERT_APPROVALS_SUBMENU;
-    if (currentProject.type === ProjectType.PAM && pathname.includes("/approvals"))
-      return PAM_APPROVALS_SUBMENU;
     if (isOnApproval && !isCertManager) return smApprovalsSubmenu;
     return null;
   };

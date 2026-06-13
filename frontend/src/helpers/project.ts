@@ -117,7 +117,7 @@ export const getProjectHomePage = (type: ProjectType, environments: ProjectEnv[]
     case ProjectType.SecretScanning:
       return `/organizations/$orgId/projects/${type}/$projectId/data-sources` as const;
     case ProjectType.PAM:
-      return `/organizations/$orgId/projects/${type}/$projectId/resources` as const;
+      return `/organizations/$orgId/projects/${type}/$projectId/sessions` as const;
     default:
       return `/organizations/$orgId/projects/${type}/$projectId/overview` as const;
   }

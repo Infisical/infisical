@@ -1,4 +1,3 @@
-// Resources
 export enum PamResourceType {
   Postgres = "postgres",
   MySQL = "mysql",
@@ -20,11 +19,12 @@ export enum PamResourceType {
   Windows = "windows"
 }
 
-export enum PamResourceOrderBy {
-  Name = "name"
+export enum SessionChannelType {
+  Terminal = "terminal",
+  Exec = "exec",
+  Sftp = "sftp"
 }
 
-// Sessions
 export enum PamSessionStatus {
   Starting = "starting",
   Active = "active",
@@ -32,13 +32,6 @@ export enum PamSessionStatus {
   Terminated = "terminated"
 }
 
-export enum SessionChannelType {
-  Terminal = "terminal",
-  Exec = "exec",
-  Sftp = "sftp"
-}
-
-// Account types
 export enum PamAccountType {
   SSH = "ssh",
   Postgres = "postgres",
@@ -53,7 +46,6 @@ export enum PamAccountType {
   ActiveDirectory = "active-directory"
 }
 
-// Accounts
 export enum PamAccountOrderBy {
   Name = "name"
 }
@@ -61,11 +53,4 @@ export enum PamAccountOrderBy {
 export enum PamAccountView {
   Flat = "flat",
   Nested = "nested"
-}
-
-export enum PamAccountRotationStatus {
-  Rotating = "rotating",
-  Success = "success",
-  PartialSuccess = "partial-success",
-  Failed = "failed"
 }
