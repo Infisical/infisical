@@ -4302,6 +4302,7 @@ interface CreateCmekEvent {
     name: string;
     description?: string;
     encryptionAlgorithm: SymmetricKeyAlgorithm | AsymmetricKeyAlgorithm;
+    isExportable?: boolean;
   };
 }
 

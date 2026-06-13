@@ -152,7 +152,7 @@ export const CmekTable = () => {
     setSelectedKeyIds([]);
   }, [page]);
 
-  const selectableKeys = keys.filter((k) => !k.isDisabled);
+  const selectableKeys = keys.filter((k) => !k.isDisabled && k.isExportable);
   const isPageSelected =
     selectableKeys.length > 0 && selectableKeys.every((k) => selectedKeyIds.includes(k.id));
   const isPageIndeterminate =
@@ -464,6 +464,7 @@ export const CmekTable = () => {
                       description,
                       encryptionAlgorithm,
                       isDisabled,
+                      isExportable,
                       keyUsage
                     } = cmek;
                     const { variant, label } = getStatusBadgeProps(isDisabled);
@@ -472,9 +473,10 @@ export const CmekTable = () => {
                     const isAsymmetricKey = Object.values(AsymmetricKeyAlgorithm).includes(
                       encryptionAlgorithm as AsymmetricKeyAlgorithm
                     );
+                    // unexportable asymmetric keys can still surface their public key in the export modal
                     const cannotExportKey = isAsymmetricKey
-                      ? cannotExportPrivateKey && cannotReadKey
-                      : cannotExportPrivateKey;
+                      ? (cannotExportPrivateKey || !isExportable) && cannotReadKey
+                      : cannotExportPrivateKey || !isExportable;
 
                     return (
                       <TableRow
@@ -484,7 +486,7 @@ export const CmekTable = () => {
                         onMouseLeave={() => setCopyCipherText("")}
                       >
                         <TableCell>
-                          {isDisabled ? (
+                          {isDisabled || !isExportable ? (
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <span className="inline-flex">
@@ -496,7 +498,11 @@ export const CmekTable = () => {
                                   />
                                 </span>
                               </TooltipTrigger>
-                              <TooltipContent>Disabled keys cannot be exported</TooltipContent>
+                              <TooltipContent>
+                                {isDisabled
+                                  ? "Disabled keys cannot be exported"
+                                  : "This key was created as non-exportable"}
+                              </TooltipContent>
                             </Tooltip>
                           ) : (
                             <Checkbox
@@ -568,7 +574,21 @@ export const CmekTable = () => {
                         </TableCell>
                         <TableCell className="uppercase">{encryptionAlgorithm}</TableCell>
                         <TableCell>
-                          <Badge variant={variant}>{label}</Badge>
+                          <div className="flex items-center gap-1">
+                            <Badge variant={variant}>{label}</Badge>
+                            {!isExportable && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="inline-flex">
+                                    <Badge variant="neutral">Non-Exportable</Badge>
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  The key material of this key can never be exported
+                                </TooltipContent>
+                              </Tooltip>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell>{version}</TableCell>
                         <TableCell>

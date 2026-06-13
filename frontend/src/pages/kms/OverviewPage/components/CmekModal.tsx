@@ -12,6 +12,7 @@ import {
   ModalContent,
   Select,
   SelectItem,
+  Switch,
   TextArea
 } from "@app/components/v2";
 import { Badge } from "@app/components/v3";
@@ -32,7 +33,8 @@ const formSchema = z.object({
   name: slugSchema({ min: 1, max: 32, field: "Name" }),
   description: z.string().max(500).optional(),
   encryptionAlgorithm: z.enum(AllowedEncryptionKeyAlgorithms),
-  keyUsage: z.nativeEnum(KmsKeyUsage)
+  keyUsage: z.nativeEnum(KmsKeyUsage),
+  isExportable: z.boolean()
 });
 
 export type FormData = z.infer<typeof formSchema>;
@@ -68,7 +70,8 @@ const CmekForm = ({ onComplete, cmek }: FormProps) => {
       name: cmek?.name,
       description: cmek?.description,
       encryptionAlgorithm: SymmetricKeyAlgorithm.AES_GCM_256,
-      keyUsage: KmsKeyUsage.ENCRYPT_DECRYPT
+      keyUsage: KmsKeyUsage.ENCRYPT_DECRYPT,
+      isExportable: cmek?.isExportable ?? true
     }
   });
 
@@ -76,7 +79,8 @@ const CmekForm = ({ onComplete, cmek }: FormProps) => {
     encryptionAlgorithm,
     name,
     description,
-    keyUsage
+    keyUsage,
+    isExportable
   }: FormData) => {
     const mutation = isUpdate
       ? updateCmek.mutateAsync({ keyId: cmek.id, projectId, name, description })
@@ -85,7 +89,10 @@ const CmekForm = ({ onComplete, cmek }: FormProps) => {
           name,
           description,
           keyUsage,
-          encryptionAlgorithm: encryptionAlgorithm as AsymmetricKeyAlgorithm | SymmetricKeyAlgorithm
+          encryptionAlgorithm: encryptionAlgorithm as
+            | AsymmetricKeyAlgorithm
+            | SymmetricKeyAlgorithm,
+          isExportable
         });
 
     await mutation;
@@ -220,6 +227,19 @@ const CmekForm = ({ onComplete, cmek }: FormProps) => {
           {...register("description")}
         />
       </FormControl>
+      {!isUpdate && (
+        <Controller
+          control={control}
+          name="isExportable"
+          render={({ field: { onChange, value } }) => (
+            <FormControl helperText="When disabled, the key material can never be exported from Infisical. This cannot be changed after the key is created.">
+              <Switch id="is-exportable" isChecked={value} onCheckedChange={onChange}>
+                Allow Export
+              </Switch>
+            </FormControl>
+          )}
+        />
+      )}
       <div className="flex items-center">
         <Button
           className="mr-4"

@@ -49,6 +49,7 @@ type ParsedKey = {
   keyMaterial?: string;
   privateKey?: string;
   publicKey?: string;
+  isExportable?: boolean;
 };
 
 type ValidationError = {
@@ -109,6 +110,9 @@ const validateEntry = (entry: unknown, index: number): ValidationError | null =>
   }
   if (!e.algorithm || typeof e.algorithm !== "string") {
     return { index, message: '"algorithm" is required' };
+  }
+  if (e.isExportable !== undefined && typeof e.isExportable !== "boolean") {
+    return { index, message: '"isExportable" must be a boolean' };
   }
   if (e.keyType === "encrypt-decrypt") {
     const validSymmetric = Object.values(SymmetricKeyAlgorithm) as string[];
@@ -239,7 +243,8 @@ export const CmekBulkImportModal = ({ isOpen, onOpenChange, projectId }: Props) 
           name: k.name,
           keyUsage: k.keyType as KmsKeyUsage,
           encryptionAlgorithm: k.algorithm as never,
-          keyMaterial: k.keyType === "sign-verify" ? (k.privateKey ?? "") : (k.keyMaterial ?? "")
+          keyMaterial: k.keyType === "sign-verify" ? (k.privateKey ?? "") : (k.keyMaterial ?? ""),
+          isExportable: k.isExportable
         }))
       });
       if (errors.length === 0) {
