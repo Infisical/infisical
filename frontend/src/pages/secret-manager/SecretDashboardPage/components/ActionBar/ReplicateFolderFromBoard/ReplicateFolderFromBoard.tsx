@@ -85,7 +85,7 @@ export const ReplicateFolderFromBoard = ({
   const { data: accessibleSecrets } = useGetAccessibleSecrets({
     projectId,
     secretPath: "/",
-    environment: selectedEnvSlug.slug,
+    environment: selectedEnvSlug?.slug,
     recursive: true,
     filterByAction: shouldIncludeValues
       ? ProjectPermissionSecretActions.ReadValue

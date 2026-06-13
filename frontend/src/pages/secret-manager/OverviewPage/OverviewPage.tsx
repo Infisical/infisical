@@ -124,6 +124,7 @@ import {
   useToggle
 } from "@app/hooks";
 import {
+  projectKeys,
   useCreateFolder,
   useCreateSecretBatch,
   useCreateSecretV3,
@@ -189,6 +190,7 @@ import {
   useSecretRotationOverview
 } from "@app/hooks/utils";
 import { RequestAccessModal } from "@app/pages/secret-manager/SecretApprovalsPage/components/AccessApprovalRequest/components/RequestAccessModal";
+import { AddEnvironmentModal } from "@app/pages/secret-manager/SettingsPage/components/EnvironmentSection/AddEnvironmentModal";
 
 import { CreateDynamicSecretForm } from "../SecretDashboardPage/components/ActionBar/CreateDynamicSecretForm";
 import { CreateSecretImportForm } from "../SecretDashboardPage/components/ActionBar/CreateSecretImportForm";
@@ -402,6 +404,9 @@ const OverviewPageContent = () => {
   }, []);
 
   const userAvailableEnvs = currentProject?.environments || [];
+  const isMoreEnvironmentsAllowed = subscription?.environmentLimit
+    ? userAvailableEnvs.length < subscription.environmentLimit
+    : true;
   const userAvailableDynamicSecretEnvs = userAvailableEnvs.filter((env) =>
     permission.can(
       ProjectPermissionDynamicSecretActions.CreateRootCredential,
@@ -554,19 +559,23 @@ const OverviewPageContent = () => {
       environments: (userAvailableEnvs || []).map(({ slug }) => slug)
     });
 
-  const importedSecretsFlat = useMemo(
-    () =>
-      secretImports?.flatMap(({ data }, index) =>
-        (data ?? []).map((item) => ({
+  const importedSecretsFlat = useMemo(() => {
+    if (!userAvailableEnvs.length) return [];
+
+    return (
+      secretImports?.flatMap(({ data }, index) => {
+        const sourceEnv = userAvailableEnvs[index]?.slug;
+        if (!sourceEnv) return [];
+
+        return (data ?? []).map((item) => ({
           environment: item.environment,
           secretPath: item.secretPath,
-          sourceEnv: userAvailableEnvs[index].slug,
+          sourceEnv,
           secrets: item.secrets
-        }))
-      ) ?? [],
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [(secretImports || []).map((response) => response.data)]
-  );
+        }));
+      }) ?? []
+    );
+  }, [secretImports, userAvailableEnvs]);
 
   const isFilteredByResources = Object.values(filter).some(Boolean);
   const activeTagSlugs = useMemo(
@@ -813,7 +822,8 @@ const OverviewPageContent = () => {
     "confirmDisableBatchMode",
     "editHoneyToken",
     "revokeHoneyToken",
-    "viewHoneyTokenCredentials"
+    "viewHoneyTokenCredentials",
+    "createEnvironment"
   ] as const);
 
   const [detailsDrawerHoneyTokenId, setDetailsDrawerHoneyTokenId] = useState<string | null>(null);
@@ -2433,6 +2443,7 @@ const OverviewPageContent = () => {
   const isTableFiltered = isFilteredByResources;
 
   const tableView = (() => {
+    if (userAvailableEnvs.length === 0) return "no-environments" as const;
     if (isTagFilterEmpty) return "tag-filter-empty" as const;
     if (isTableEmpty) {
       const cannotCreate = permission.cannot(
@@ -2715,6 +2726,20 @@ const OverviewPageContent = () => {
                   </AlertTitle>
                 </Alert>
               ) : null)}
+            {tableView === "no-environments" && (
+              <EmptyResourceDisplay
+                variant="no-environments"
+                onAddEnvironment={() => {
+                  if (isMoreEnvironmentsAllowed) {
+                    handlePopUpOpen("createEnvironment");
+                  } else {
+                    handlePopUpOpen("upgradePlan", {
+                      text: "Your current plan does not include access to adding custom environments. To unlock this feature, please upgrade to Infisical Pro plan."
+                    });
+                  }
+                }}
+              />
+            )}
             {tableView === "tag-filter-empty" && <EmptyResourceDisplay isFiltered />}
             {tableView === "filter-empty" && (
               <EmptyResourceDisplay isFiltered={isTableFiltered || Boolean(searchFilter)} />
@@ -3524,6 +3549,15 @@ const OverviewPageContent = () => {
           text={popUp.upgradePlan.data?.text}
         />
       )}
+      <AddEnvironmentModal
+        isOpen={popUp.createEnvironment.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("createEnvironment", isOpen)}
+        onComplete={async () => {
+          await queryClient.refetchQueries({
+            queryKey: projectKeys.getProjectById(projectId)
+          });
+        }}
+      />
       <CreateSecretRotationV2Modal
         secretPath={secretPath}
         environments={userAvailableSecretRotationEnvs}
