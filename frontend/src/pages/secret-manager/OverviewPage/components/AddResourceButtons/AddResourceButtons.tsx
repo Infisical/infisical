@@ -154,7 +154,7 @@ export function AddResourceButtons({
                   </DropdownMenuItem>
                 </TooltipTrigger>
                 <TooltipContent side="left">
-                  {!isAllowed ? "Access Denied" : "Access restricted"}
+                  {!isAllowed ? "Access Restricted" : "Access restricted"}
                 </TooltipContent>
               </Tooltip>
             )}
