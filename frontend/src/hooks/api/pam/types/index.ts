@@ -1,6 +1,7 @@
 import { OrderByDirection } from "../../generic/types";
 import {
   PamAccountOrderBy,
+  PamAccountType,
   PamAccountView,
   PamResourceType,
   PamSessionStatus,
@@ -19,7 +20,7 @@ export type TPamAccount = {
   templateName: string;
   templateAccessPolicy: unknown;
   templateSettings: unknown;
-  accountType: string;
+  accountType: PamAccountType;
   projectId: string;
   gatewayId: string | null;
   gatewayPoolId: string | null;
@@ -44,7 +45,7 @@ export type TPamAccountTemplate = {
   projectId: string;
   name: string;
   description?: string | null;
-  accountType: string;
+  accountType: PamAccountType;
   accessPolicy: unknown;
   settings: unknown;
   createdAt: string;
@@ -126,6 +127,27 @@ export type TPamSessionLogsPage = {
   logs: TPamSessionLog[];
   hasMore: boolean;
   batchCount: number;
+};
+
+export type TAccessiblePamAccount = {
+  id: string;
+  name: string;
+  description: string | null;
+  folderId: string | null;
+  templateId: string;
+  folderName: string | null;
+  templateName: string;
+  accountType: PamAccountType;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type TListAccessiblePamAccountsDTO = {
+  offset?: number;
+  limit?: number;
+  search?: string;
+  folderId?: string;
+  accountType?: string;
 };
 
 // Account DTOs

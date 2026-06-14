@@ -1,0 +1,107 @@
+import { Link } from "@tanstack/react-router";
+import { FolderOpen, Globe, Rocket, Terminal } from "lucide-react";
+
+import { Badge, Button } from "@app/components/v3";
+import { Sheet, SheetContent } from "@app/components/v3/generic/Sheet";
+import { useOrganization } from "@app/context";
+import { PAM_ACCOUNT_TYPE_MAP, TAccessiblePamAccount } from "@app/hooks/api/pam";
+
+import { AccountPlatformIcon } from "./AccountPlatformIcon";
+
+type Props = {
+  account: TAccessiblePamAccount | null;
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+};
+
+export const LaunchSessionSheet = ({ account, isOpen, onOpenChange }: Props) => {
+  const { currentOrg } = useOrganization();
+
+  if (!account) return null;
+
+  const typeName = PAM_ACCOUNT_TYPE_MAP[account.accountType]?.name ?? account.accountType;
+
+  return (
+    <Sheet open={isOpen} onOpenChange={onOpenChange}>
+      <SheetContent className="flex w-full !max-w-5xl flex-row gap-0 p-0" side="right">
+        <div className="flex w-[280px] shrink-0 flex-col border-r border-border bg-mineshaft-700/30 p-6">
+          <div className="mb-3 flex size-14 items-center justify-center rounded-md border border-border bg-mineshaft-800 p-2.5">
+            <AccountPlatformIcon accountType={account.accountType} size={32} />
+          </div>
+          <h3 className="text-base font-semibold text-foreground">{account.name}</h3>
+          {account.folderName && (
+            <p className="mt-0.5 flex items-center gap-1 text-xs text-muted">
+              <FolderOpen className="size-3" />
+              {account.folderName}
+            </p>
+          )}
+          <Badge variant="pam" className="mt-2.5 w-fit">
+            {typeName}
+          </Badge>
+          <div className="mt-4 border-t border-border pt-4">
+            {account.description && (
+              <div>
+                <p className="text-xs text-muted">Description</p>
+                <p className="mt-0.5 text-sm text-foreground">{account.description}</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="flex flex-1 flex-col">
+          <div className="flex items-center gap-4 border-b border-border px-6 pt-1">
+            <button
+              type="button"
+              className="relative cursor-pointer border-b-2 border-product-pam px-1 pt-2 pb-2 text-sm font-medium text-foreground"
+            >
+              <span className="flex items-center gap-1.5">
+                <Rocket className="size-3.5" />
+                Launch
+              </span>
+            </button>
+          </div>
+
+          <div className="flex-1 p-6">
+            <p className="mb-3 text-sm font-medium text-foreground">Launch method</p>
+            <div className="flex gap-3">
+              <div className="flex flex-1 items-start gap-3 rounded-md border border-product-pam/40 bg-product-pam/5 p-3.5">
+                <Globe className="mt-0.5 size-5 shrink-0 text-foreground" />
+                <div className="text-left">
+                  <p className="text-sm font-medium text-foreground">Browser</p>
+                  <p className="text-xs text-muted">Connect directly from your browser.</p>
+                </div>
+              </div>
+              <div className="relative flex flex-1 items-start gap-3 rounded-md border border-border p-3.5 opacity-50">
+                <Terminal className="mt-0.5 size-5 shrink-0 text-foreground" />
+                <div className="text-left">
+                  <p className="text-sm font-medium text-foreground">CLI</p>
+                  <p className="text-xs text-muted">Use a custom client with the Infisical CLI.</p>
+                </div>
+                <Badge variant="warning" className="absolute top-2 right-2">
+                  Coming soon
+                </Badge>
+              </div>
+            </div>
+
+            <p className="mt-5 mb-2.5 text-sm text-foreground">Launch browser client</p>
+
+            <Button variant="pam" className="w-full" asChild>
+              <Link
+                to="/organizations/$orgId/pam/accounts/$accountType/$accountId/access"
+                params={{
+                  orgId: currentOrg.id,
+                  accountType: account.accountType,
+                  accountId: account.id
+                }}
+                target="_blank"
+              >
+                <Rocket className="size-4" />
+                Open Terminal client
+              </Link>
+            </Button>
+          </div>
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+};

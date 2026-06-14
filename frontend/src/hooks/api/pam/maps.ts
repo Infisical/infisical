@@ -1,4 +1,4 @@
-import { PamResourceType } from "./enums";
+import { PamAccountType, PamResourceType } from "./enums";
 
 export const PAM_RESOURCE_TYPE_MAP: Record<
   PamResourceType,
@@ -22,4 +22,21 @@ export const PAM_RESOURCE_TYPE_MAP: Record<
   [PamResourceType.DynamoDB]: { name: "DynamoDB", image: "DynamoDB.png", size: 55 },
   [PamResourceType.AwsIam]: { name: "AWS IAM", image: "Amazon Web Services.png" },
   [PamResourceType.Windows]: { name: "Windows Server", image: "Windows.png" }
+};
+
+export const PAM_ACCOUNT_TYPE_MAP: Record<
+  PamAccountType,
+  { name: string; image: string; size?: number }
+> = {
+  [PamAccountType.Postgres]: { name: "PostgreSQL", image: "Postgres.png" },
+  [PamAccountType.MySQL]: { name: "MySQL", image: "MySql.png" },
+  [PamAccountType.SSH]: { name: "SSH", image: "SSH.png" },
+  [PamAccountType.Kubernetes]: { name: "Kubernetes", image: "Kubernetes.png" },
+  [PamAccountType.OracleDB]: { name: "OracleDB", image: "Oracle.png", size: 55 },
+  [PamAccountType.MsSQL]: { name: "Microsoft SQL Server", image: "MsSql.png" },
+  [PamAccountType.Redis]: { name: "Redis", image: "Redis.png" },
+  [PamAccountType.MongoDB]: { name: "MongoDB", image: "MongoDB.png" },
+  [PamAccountType.AwsIam]: { name: "AWS IAM", image: "Amazon Web Services.png" },
+  [PamAccountType.Windows]: { name: "Windows Server", image: "Windows.png" },
+  [PamAccountType.ActiveDirectory]: { name: "Active Directory", image: "Windows.png" }
 };

@@ -3,7 +3,14 @@ import { useQuery, UseQueryOptions } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
-import { TListPamAccountsDTO, TPamAccount, TPamSession, TPamSessionLogsPage } from "./types";
+import {
+  TAccessiblePamAccount,
+  TListAccessiblePamAccountsDTO,
+  TListPamAccountsDTO,
+  TPamAccount,
+  TPamSession,
+  TPamSessionLogsPage
+} from "./types";
 
 export const pamKeys = {
   all: ["pam"] as const,
@@ -15,12 +22,49 @@ export const pamKeys = {
     projectId,
     params
   ],
+  listAccessibleAccounts: (params?: TListAccessiblePamAccountsDTO) => [
+    ...pamKeys.account(),
+    "accessible",
+    params
+  ],
   getAccount: (accountId: string) => [...pamKeys.account(), "get", accountId],
   getSession: (sessionId: string) => [...pamKeys.session(), "get", sessionId],
   listSessions: (projectId: string) => [...pamKeys.session(), "list", projectId]
 };
 
-// Accounts
+// Accessible Accounts (user-facing)
+type TListAccessiblePamAccountsResponse = {
+  accounts: TAccessiblePamAccount[];
+  totalCount: number;
+};
+
+export const useListAccessiblePamAccounts = (
+  params?: TListAccessiblePamAccountsDTO,
+  options?: Omit<
+    UseQueryOptions<
+      TListAccessiblePamAccountsResponse,
+      unknown,
+      TListAccessiblePamAccountsResponse,
+      ReturnType<typeof pamKeys.listAccessibleAccounts>
+    >,
+    "queryKey" | "queryFn"
+  >
+) => {
+  return useQuery({
+    queryKey: pamKeys.listAccessibleAccounts(params),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<TListAccessiblePamAccountsResponse>(
+        "/api/v1/pam/accounts/accessible",
+        { params }
+      );
+      return data;
+    },
+    placeholderData: (prev) => prev,
+    ...options
+  });
+};
+
+// Accounts (admin)
 type TListPamAccountsResponse = {
   accounts: TPamAccount[];
   totalCount: number;
@@ -63,9 +107,11 @@ export const useGetPamAccountById = (
   return useQuery({
     queryKey: pamKeys.getAccount(accountId || ""),
     queryFn: async () => {
-      const { data } = await apiRequest.get<TPamAccount>(`/api/v1/pam/accounts/${accountId}`);
+      const { data } = await apiRequest.get<{ account: TPamAccount }>(
+        `/api/v1/pam/accounts/${accountId}`
+      );
 
-      return data;
+      return data.account;
     },
     enabled: !!accountId && (options?.enabled ?? true),
     ...options
