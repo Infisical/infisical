@@ -214,20 +214,33 @@ export const GcpIamInputForm = ({
                   >
                     <div className="space-y-2">
                       {fields.map((field, index) => (
-                        <div key={field.id} className="flex items-center space-x-2">
-                          <Input
-                            {...control.register(`provider.tokenScopes.${index}`)}
-                            placeholder="https://www.googleapis.com/auth/cloud-platform"
-                            className="grow"
-                          />
-                          <IconButton
-                            onClick={() => remove(index)}
-                            variant="outline_bg"
-                            ariaLabel="Remove scope"
-                          >
-                            <FontAwesomeIcon icon={faTrash} />
-                          </IconButton>
-                        </div>
+                        <Controller
+                          key={field.id}
+                          control={control}
+                          name={`provider.tokenScopes.${index}`}
+                          render={({ field: itemField, fieldState: { error: itemError } }) => (
+                            <FormControl
+                              isError={Boolean(itemError?.message)}
+                              errorText={itemError?.message}
+                              className="mb-0"
+                            >
+                              <div className="flex items-center space-x-2">
+                                <Input
+                                  {...itemField}
+                                  placeholder="https://www.googleapis.com/auth/cloud-platform"
+                                  className="grow"
+                                />
+                                <IconButton
+                                  onClick={() => remove(index)}
+                                  variant="outline_bg"
+                                  ariaLabel="Remove scope"
+                                >
+                                  <FontAwesomeIcon icon={faTrash} />
+                                </IconButton>
+                              </div>
+                            </FormControl>
+                          )}
+                        />
                       ))}
                       <Button variant="outline_bg" onClick={() => append("")} type="button">
                         Add Scope
