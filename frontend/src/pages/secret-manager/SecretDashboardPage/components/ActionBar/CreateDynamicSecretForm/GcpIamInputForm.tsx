@@ -1,5 +1,5 @@
 import { Controller, FieldValues, useFieldArray, useForm } from "react-hook-form";
-import { faTrash } from "@fortawesome/free-solid-svg-icons";
+import { faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import ms from "ms";
@@ -210,41 +210,49 @@ export const GcpIamInputForm = ({
                     label="Token Scopes"
                     isError={Boolean(error?.message)}
                     errorText={error?.message}
-                    helperText="OAuth scopes granted to the generated access token. Scopes can only be narrowed after issuance, never widened."
                   >
-                    <div className="space-y-2">
+                    <div className="flex flex-col space-y-2">
                       {fields.map((field, index) => (
-                        <Controller
-                          key={field.id}
-                          control={control}
-                          name={`provider.tokenScopes.${index}`}
-                          render={({ field: itemField, fieldState: { error: itemError } }) => (
-                            <FormControl
-                              isError={Boolean(itemError?.message)}
-                              errorText={itemError?.message}
-                              className="mb-0"
-                            >
-                              <div className="flex items-center space-x-2">
-                                <Input
-                                  {...itemField}
-                                  placeholder="https://www.googleapis.com/auth/cloud-platform"
-                                  className="grow"
-                                />
-                                <IconButton
-                                  onClick={() => remove(index)}
-                                  variant="outline_bg"
-                                  ariaLabel="Remove scope"
+                        <div key={field.id} className="flex items-end space-x-2">
+                          <div className="grow">
+                            <Controller
+                              control={control}
+                              name={`provider.tokenScopes.${index}`}
+                              render={({ field: itemField, fieldState: { error: itemError } }) => (
+                                <FormControl
+                                  isError={Boolean(itemError?.message)}
+                                  errorText={itemError?.message}
+                                  className="mb-0 grow"
                                 >
-                                  <FontAwesomeIcon icon={faTrash} />
-                                </IconButton>
-                              </div>
-                            </FormControl>
-                          )}
-                        />
+                                  <Input
+                                    {...itemField}
+                                    placeholder="https://www.googleapis.com/auth/cloud-platform"
+                                  />
+                                </FormControl>
+                              )}
+                            />
+                          </div>
+                          <IconButton
+                            ariaLabel="Remove scope"
+                            className="bottom-0.5 h-9"
+                            variant="outline_bg"
+                            onClick={() => remove(index)}
+                          >
+                            <FontAwesomeIcon icon={faTrash} />
+                          </IconButton>
+                        </div>
                       ))}
-                      <Button variant="outline_bg" onClick={() => append("")} type="button">
-                        Add Scope
-                      </Button>
+                      <div>
+                        <Button
+                          leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                          size="xs"
+                          variant="outline_bg"
+                          onClick={() => append("")}
+                          type="button"
+                        >
+                          Add Scope
+                        </Button>
+                      </div>
                     </div>
                   </FormControl>
                 )}
