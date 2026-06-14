@@ -92,22 +92,20 @@ export const SecretTagForm = ({
   const watchedTags = watch("tags");
   const debounceTimer = useRef<ReturnType<typeof setTimeout>>();
 
-  const initialTagsRef = useRef(tags?.map((tag) => ({ id: tag.id, slug: tag.slug })) ?? []);
+  const isInitialRenderRef = useRef(true);
 
   useEffect(() => {
     if (!isBatchMode) return () => {};
 
     if (debounceTimer.current) clearTimeout(debounceTimer.current);
 
+    if (isInitialRenderRef.current) {
+      isInitialRenderRef.current = false;
+      return () => {};
+    }
+
     debounceTimer.current = setTimeout(() => {
-      const normalized = watchedTags.map((t) => ({ id: t.value, slug: t.label }));
-      const initialIds = initialTagsRef.current.map((t) => t.id).sort();
-      const normalizedIds = normalized.map((t) => t.id).sort();
-      const hasChanged =
-        normalizedIds.length !== initialIds.length ||
-        normalizedIds.some((id, i) => id !== initialIds[i]);
-      if (!hasChanged) return;
-      onTagsChange?.(normalized);
+      onTagsChange?.(watchedTags.map((t) => ({ id: t.value, slug: t.label })));
     }, 500);
 
     return () => {
