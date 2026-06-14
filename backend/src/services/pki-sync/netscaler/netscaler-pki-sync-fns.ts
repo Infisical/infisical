@@ -176,6 +176,7 @@ const createOrUpdateCertKey = async (
       });
     } catch (addError: unknown) {
       if (addError instanceof AxiosError && addError.response?.status === 409) {
+        logger.info(`NetScaler certkey "${certKeyName}" already exists, treating as success`);
         return;
       }
       throw addError;
