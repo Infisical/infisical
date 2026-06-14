@@ -7,6 +7,7 @@ import {
   OrganizationActionScope,
   OrgMembershipRole,
   OrgMembershipStatus,
+  ProjectType,
   TableName,
   TOidcConfigs,
   TSamlConfigs
@@ -202,10 +203,17 @@ export const orgServiceFactory = ({
     }
 
     const data = hasSubOrg && subOrg ? subOrg : org;
-    if (!data.userTokenExpiration) {
-      return { ...data, userTokenExpiration: appCfg.JWT_REFRESH_LIFETIME };
-    }
-    return data;
+
+    const pamProjects = await projectDAL.find(
+      { orgId: rootOrgId, type: ProjectType.PAM },
+      { sort: [["createdAt", "desc"]], limit: 1 }
+    );
+
+    return {
+      ...data,
+      userTokenExpiration: data.userTokenExpiration || appCfg.JWT_REFRESH_LIFETIME,
+      pamProjectId: pamProjects[0]?.id ?? null
+    };
   };
 
   /*

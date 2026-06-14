@@ -393,8 +393,9 @@ const secretScanningRoutes = route("/organizations/$orgId/projects/secret-scanni
   ])
 ]);
 
-const pamRoutes = route("/organizations/$orgId/projects/pam/$projectId", [
+const pamRoutes = route("/organizations/$orgId/pam", [
   layout("pam-layout", "pam/layout.tsx", [
+    route("/access", [index("pam/PamAccessPage/route.tsx")]),
     route("/sessions", [
       index("pam/PamSessionsPage/route.tsx"),
       route("/$sessionId", "pam/PamSessionsByIDPage/route.tsx")

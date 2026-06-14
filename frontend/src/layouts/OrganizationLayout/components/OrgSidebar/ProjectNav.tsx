@@ -122,9 +122,12 @@ export const ProjectNav = () => {
   const handleSubmenuOpen = (submenu: Submenu) => {
     setActiveSubmenu(submenu);
     const typePath = PROJECT_TYPE_PATH[currentProject.type];
+    const isPam = currentProject.type === ProjectType.PAM;
     navigate({
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      to: `/organizations/$orgId/projects/${typePath}/$projectId/${submenu.pathSuffix}` as any,
+      to: isPam
+        ? (`/organizations/$orgId/pam/${submenu.pathSuffix}` as any)
+        : (`/organizations/$orgId/projects/${typePath}/$projectId/${submenu.pathSuffix}` as any),
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       params: { orgId: currentOrg.id, projectId: currentProject.id } as any,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
