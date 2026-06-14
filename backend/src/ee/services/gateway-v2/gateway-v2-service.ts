@@ -582,7 +582,7 @@ export const gatewayV2ServiceFactory = ({
       Buffer.from(
         JSON.stringify({
           sessionId,
-          accountType
+          resourceType: accountType // "resourceType" name needed to support current CLI version
         })
       )
     );

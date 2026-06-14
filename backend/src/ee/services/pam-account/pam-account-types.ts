@@ -48,4 +48,7 @@ export type TListPamAccountsDTO = {
 
 export type TListAccessibleAccountsDTO = {
   projectId: string;
+  search?: string;
+  folderId?: string;
+  accountType?: string;
 };

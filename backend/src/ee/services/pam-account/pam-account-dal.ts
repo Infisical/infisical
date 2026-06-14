@@ -41,7 +41,14 @@ export const pamAccountDALFactory = (db: TDbClient) => {
     projectId: string,
     accessibleFolderIds: string[],
     accessibleAccountIds: string[],
-    filters?: { folderId?: string; templateId?: string; search?: string; offset?: number; limit?: number },
+    filters?: {
+      folderId?: string;
+      templateId?: string;
+      accountType?: string;
+      search?: string;
+      offset?: number;
+      limit?: number;
+    },
     tx?: Knex
   ) => {
     const baseQuery = (tx || db.replicaNode())(TableName.PamAccount)
@@ -62,6 +69,9 @@ export const pamAccountDALFactory = (db: TDbClient) => {
     }
     if (filters?.templateId) {
       void baseQuery.where(`${TableName.PamAccount}.templateId`, filters.templateId);
+    }
+    if (filters?.accountType) {
+      void baseQuery.where(`${TableName.PamAccountTemplate}.type`, filters.accountType);
     }
     if (filters?.search) {
       void baseQuery.whereILike(`${TableName.PamAccount}.name`, `%${sanitizeSqlLikeString(filters.search)}%`);

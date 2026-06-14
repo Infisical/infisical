@@ -305,7 +305,10 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
       tags: [ApiDocsTags.PamAccounts],
       querystring: z.object({
         offset: z.coerce.number().min(0).default(0).optional().describe("Number of items to skip"),
-        limit: z.coerce.number().min(1).max(100).default(20).optional().describe("Maximum number of items to return")
+        limit: z.coerce.number().min(1).max(100).default(20).optional().describe("Maximum number of items to return"),
+        search: z.string().trim().optional().describe("Filter accounts by name (case-insensitive partial match)"),
+        folderId: z.string().uuid().optional().describe("Filter accounts by folder ID"),
+        accountType: z.nativeEnum(PamAccountType).optional().describe("Filter accounts by platform type")
       }),
       response: {
         200: z.object({
@@ -337,7 +340,10 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod,
         offset: req.query.offset,
-        limit: req.query.limit
+        limit: req.query.limit,
+        search: req.query.search,
+        folderId: req.query.folderId,
+        accountType: req.query.accountType
       });
       return { accounts, totalCount };
     }

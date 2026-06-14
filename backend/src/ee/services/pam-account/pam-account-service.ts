@@ -384,6 +384,9 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     projectId,
     offset,
     limit,
+    search,
+    folderId,
+    accountType,
     ...ctx
   }: TListAccessibleAccountsDTO & TActorContext & { offset?: number; limit?: number }) => {
     await verifyMembership(projectId, ctx);
@@ -405,7 +408,10 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
 
     const { accounts, totalCount } = await pamAccountDAL.findAccessible(projectId, folderIds, accountIds, {
       offset,
-      limit
+      limit,
+      search,
+      folderId,
+      accountType
     });
 
     return {
