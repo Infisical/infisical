@@ -110,18 +110,6 @@ const saveNetScalerConfig = async (session: TNetScalerSession): Promise<void> =>
   });
 };
 
-const deleteFile = async (session: TNetScalerSession, filename: string): Promise<void> => {
-  try {
-    await session.makeRequest({
-      method: "DELETE",
-      url: `${session.baseUrl}/systemfile/${encodeURIComponent(filename)}?args=filelocation:${encodeURIComponent("/nsconfig/ssl")}`,
-      headers: session.headers
-    });
-  } catch {
-    // Ignore errors if file doesn't exist
-  }
-};
-
 const uploadFileToNetScaler = async (
   session: TNetScalerSession,
   filename: string,
@@ -129,40 +117,19 @@ const uploadFileToNetScaler = async (
 ): Promise<void> => {
   const contentBase64 = Buffer.from(fileContent).toString("base64");
 
-  try {
-    await session.makeRequest({
-      method: "POST",
-      url: `${session.baseUrl}/systemfile`,
-      data: {
-        systemfile: {
-          filename,
-          filelocation: "/nsconfig/ssl",
-          filecontent: contentBase64,
-          fileencoding: "BASE64"
-        }
-      },
-      headers: session.headers
-    });
-  } catch (error: unknown) {
-    if (error instanceof AxiosError && error.response?.status === 409) {
-      await deleteFile(session, filename);
-      await session.makeRequest({
-        method: "POST",
-        url: `${session.baseUrl}/systemfile`,
-        data: {
-          systemfile: {
-            filename,
-            filelocation: "/nsconfig/ssl",
-            filecontent: contentBase64,
-            fileencoding: "BASE64"
-          }
-        },
-        headers: session.headers
-      });
-      return;
-    }
-    throw error;
-  }
+  await session.makeRequest({
+    method: "POST",
+    url: `${session.baseUrl}/systemfile?override=yes`,
+    data: {
+      systemfile: {
+        filename,
+        filelocation: "/nsconfig/ssl",
+        filecontent: contentBase64,
+        fileencoding: "BASE64"
+      }
+    },
+    headers: session.headers
+  });
 };
 
 const createOrUpdateCertKey = async (
@@ -185,19 +152,34 @@ const createOrUpdateCertKey = async (
       },
       headers: session.headers
     });
-  } catch {
-    await session.makeRequest({
-      method: "POST",
-      url: `${session.baseUrl}/sslcertkey`,
-      data: {
-        sslcertkey: {
-          certkey: certKeyName,
-          cert: `/nsconfig/ssl/${certFilename}`,
-          key: `/nsconfig/ssl/${keyFilename}`
-        }
-      },
-      headers: session.headers
-    });
+  } catch (changeError: unknown) {
+    const isNotFound =
+      changeError instanceof AxiosError &&
+      (changeError.response?.data as { errorcode?: number })?.errorcode === 1540;
+
+    if (!isNotFound) {
+      throw changeError;
+    }
+
+    try {
+      await session.makeRequest({
+        method: "POST",
+        url: `${session.baseUrl}/sslcertkey`,
+        data: {
+          sslcertkey: {
+            certkey: certKeyName,
+            cert: `/nsconfig/ssl/${certFilename}`,
+            key: `/nsconfig/ssl/${keyFilename}`
+          }
+        },
+        headers: session.headers
+      });
+    } catch (addError: unknown) {
+      if (addError instanceof AxiosError && addError.response?.status === 409) {
+        return;
+      }
+      throw addError;
+    }
   }
 };
 
