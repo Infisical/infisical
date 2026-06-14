@@ -1,0 +1,98 @@
+---
+title: "Folders"
+sidebarTitle: "Folders"
+description: "Organize accounts and control who can access them."
+---
+
+Folders are how you organize accounts in PAM. Instead of having a flat list of every database and server, you group related accounts together — by team, environment, region, or whatever makes sense for your organization.
+
+But folders aren't just for organization. They're also how you control access. When you grant someone access to a folder, they can access every account inside it.
+
+## Creating a Folder
+
+<Steps>
+  <Step title="Navigate to Folders">
+    Go to **Privileged Access Management → Folders** and click **Create Folder**.
+  </Step>
+  <Step title="Configure the folder">
+    | Field | Description |
+    |-------|-------------|
+    | **Name** | A unique name (e.g., `prod-databases`, `platform-team`) |
+    | **Description** | Optional context about what this folder contains |
+    
+    Click **Create**.
+  </Step>
+</Steps>
+
+Once created, you can start adding accounts to it. But first, you'll probably want to set up who can manage this folder.
+
+## Managing Access
+
+Access to a folder is controlled through **memberships**. You assign users or groups a role, and that role determines what they can do.
+
+### Adding Members
+
+<Steps>
+  <Step title="Open the folder">
+    Click on the folder to open its detail page.
+  </Step>
+  <Step title="Go to Memberships">
+    Click the **Memberships** tab.
+  </Step>
+  <Step title="Add a member">
+    Click **Add Member** and configure:
+    
+    | Field | Description |
+    |-------|-------------|
+    | **User/Group** | Who you're granting access to |
+    | **Role** | What they can do (see roles below) |
+    | **Expires** | Optional expiration date for temporary access |
+    
+    Click **Add**.
+  </Step>
+</Steps>
+
+### Roles
+
+| Role | What they can do |
+|------|------------------|
+| **Admin** | Full control — create/edit/delete accounts, manage memberships, connect to accounts, view all sessions |
+| **Connector** | Connect to accounts, view their own sessions |
+| **Requester** | Request access to accounts |
+| **Auditor** | View all sessions and logs (read-only) |
+
+When you assign a role on a folder, it applies to **all accounts** inside that folder. This is the main way to grant access — you don't have to set up permissions on each account individually.
+
+### Time-Bound Access
+
+For contractors or temporary team members, set an expiration when adding the membership. The access is automatically revoked when it expires — no manual cleanup needed.
+
+### Groups vs Individual Users
+
+You can grant access to individual users or to groups:
+- **Individual users** — straightforward, easy to audit
+- **Groups** — access follows group membership; when someone joins or leaves the group, their folder access updates automatically
+
+Groups are managed at the organization level and can sync from identity providers like Okta or Azure AD.
+
+## What's Inside a Folder
+
+The folder detail page shows:
+- **Accounts** — all accounts in this folder
+- **Memberships** — who has access
+- **Activity** — recent actions
+
+From here you can add new accounts, manage existing ones, or adjust who has access.
+
+## Next Steps
+
+Now that you have a folder, you'll want to add accounts to it. But before that, you might want to set up templates to define what rules apply to those accounts.
+
+<CardGroup cols={2}>
+  <Card title="Templates" icon="layer-group" href="/documentation/platform/pam/templates/overview">
+    Define session rules before adding accounts.
+  </Card>
+  <Card title="Accounts" icon="user-lock" href="/documentation/platform/pam/accounts/overview">
+    Add databases and servers to your folder.
+  </Card>
+</CardGroup>

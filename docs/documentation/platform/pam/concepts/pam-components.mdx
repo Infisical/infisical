@@ -1,0 +1,85 @@
+---
+title: "Core Components"
+sidebarTitle: "PAM Components"
+description: "Understand how Infisical PAM is structured."
+---
+
+Let's say you want to give your platform team secure access to your production databases. Here's how you'd set that up in Infisical PAM.
+
+## Start with Accounts
+
+An **account** represents a single database or server you want to manage. You provide the connection details (host, port, database) and credentials (username, password), and Infisical stores them securely.
+
+For example, you might create an account called `orders-db` for your orders database, and another called `users-db` for your users database.
+
+But you probably don't want these accounts floating around individually — you want to organize them.
+
+## Organize with Folders
+
+**Folders** group related accounts together. You might create a folder called `prod-databases` and put both `orders-db` and `users-db` inside it.
+
+Folders serve two purposes:
+1. **Organization** — keep related accounts together
+2. **Access control** — when you grant someone access to a folder, they get access to everything inside it
+
+So if you grant your platform team access to the `prod-databases` folder, they can connect to both databases. You don't have to grant access to each account individually.
+
+Now, you might want different rules for how people connect to these databases — maybe production databases should require MFA, while development databases don't. That's where templates come in.
+
+## Define Rules with Templates
+
+**Templates** define the rules that apply when someone connects to an account:
+- How long can they stay connected?
+- Do they need to provide a reason?
+- Do they need to complete MFA?
+- Should the session be recorded?
+
+Every account uses a template. Infisical provides default templates (`postgres`, `ssh`) with sensible settings, so you can start creating accounts immediately.
+
+When you need different rules, create a custom template. For example, you might create a `prod-postgres` template that requires MFA and limits sessions to 4 hours, while keeping the default `postgres` template for development databases.
+
+The key insight: **templates define rules, folders define access**. You can have accounts in the same folder using different templates (different rules, same team access), or accounts in different folders using the same template (same rules, different team access).
+
+## Control Access with Memberships
+
+**Memberships** determine who can access what. You assign a user or group a **role** on a folder or account.
+
+The roles are:
+- **Admin** — full control (create accounts, manage access, connect)
+- **Connector** — can connect to accounts
+- **Requester** — can request access to accounts
+- **Auditor** — can view sessions and logs (read-only)
+
+When you assign a membership on a folder, it applies to all accounts inside. For most cases, this is all you need — grant your team access to a folder and they can reach everything in it.
+
+For exceptions (like giving a contractor access to just one database), you can assign a membership directly on an individual account.
+
+## Putting It All Together
+
+Back to our example: giving your platform team secure access to production databases.
+
+1. **Create a template** called `prod-postgres` with your production rules (4-hour sessions, MFA required, recording enabled) — or use the default if it fits your needs
+2. **Create a folder** called `prod-databases`
+3. **Add accounts** to the folder (`orders-db`, `users-db`), each using the `prod-postgres` template
+4. **Grant your team access** by assigning them the Connector role on the `prod-databases` folder
+
+Now your team can connect to any database in that folder, and every session follows your production rules.
+
+## Next Steps
+
+You now understand the building blocks. The next step is to actually set them up:
+
+<CardGroup cols={2}>
+  <Card title="Create Folders" icon="folder-tree" href="/documentation/platform/pam/folders/overview">
+    Set up folders to organize your accounts.
+  </Card>
+  <Card title="Create Templates" icon="layer-group" href="/documentation/platform/pam/templates/overview">
+    Define rules for your sessions.
+  </Card>
+  <Card title="Add Accounts" icon="user-lock" href="/documentation/platform/pam/accounts/overview">
+    Add your databases and servers.
+  </Card>
+  <Card title="Manage Access" icon="shield-halved" href="/documentation/platform/pam/concepts/access-control">
+    Learn more about roles and permissions.
+  </Card>
+</CardGroup>

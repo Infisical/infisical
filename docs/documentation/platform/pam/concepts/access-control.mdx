@@ -1,0 +1,89 @@
+---
+title: "Access Control"
+sidebarTitle: "Access Control"
+description: "Understand how permissions work in Infisical PAM."
+---
+
+Access control in PAM happens at two levels. First, someone needs to be added to PAM itself — that's **product membership**. Then, they need access to specific folders or accounts — that's **resource membership**.
+
+## Product Membership
+
+Before anyone can do anything in PAM, they need to be added as a product member. This is the "entry ticket" to PAM.
+
+There are two product roles:
+
+| Role | What they see |
+|------|---------------|
+| **Product Admin** | Everything — all folders, all accounts, all settings |
+| **Product Member** | Only folders and accounts they've been granted access to |
+
+Product Admins set up the structure (create folders, create templates) and decide who gets access to what. Product Members only see what they've been explicitly granted.
+
+<Note>
+Organization Admins can always access PAM as Product Admins without being explicitly added.
+</Note>
+
+### Adding Product Members
+
+1. Go to **Privileged Access Management → Access Control**
+2. Click **Add Member**
+3. Select a user or group
+4. Choose **Product Admin** or **Product Member**
+5. Click **Add**
+
+## Resource Membership
+
+Once someone is a product member, they still need access to specific folders or accounts. This is done through **resource memberships** — assigning them a role on a folder or account.
+
+### Roles
+
+| Role | What they can do |
+|------|------------------|
+| **Admin** | Full control — create/edit/delete accounts, manage memberships, connect, view all sessions |
+| **Connector** | Connect to accounts, view their own sessions |
+| **Requester** | Request access to accounts |
+| **Auditor** | View all sessions and logs (read-only) |
+
+### Folder vs Account Memberships
+
+You can assign roles at two levels:
+
+**Folder memberships** apply to all accounts in the folder. This is the primary way to grant access — if someone needs access to a set of accounts, grant them a role on the folder.
+
+**Account memberships** apply to a single account. Use this for exceptions — a contractor who needs just one database, or temporary elevated access to a specific account.
+
+### How to Assign Memberships
+
+For folders:
+1. Open the folder and go to **Memberships**
+2. Click **Add Member**
+3. Select user/group, role, and optional expiration
+4. Click **Add**
+
+For accounts:
+1. Open the account and go to **Memberships**
+2. Same process as above
+
+## Putting It Together
+
+Here's a typical setup:
+
+1. **Product Admin** adds the Platform team lead as a Product Member
+2. **Product Admin** creates a `prod-databases` folder
+3. **Product Admin** grants the team lead **Admin** on that folder
+4. **Team lead** (now a folder Admin) adds accounts to the folder
+5. **Team lead** grants the rest of the team **Connector** on the folder
+6. **Team members** can now connect to any account in the folder
+
+The Product Admin sets up the structure. The folder Admin manages day-to-day access within their scope. Team members connect to what they need.
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Folders" icon="folder-tree" href="/documentation/platform/pam/folders/overview">
+    Create folders and manage folder memberships.
+  </Card>
+  <Card title="Accounts" icon="user-lock" href="/documentation/platform/pam/accounts/overview">
+    Add accounts and manage account memberships.
+  </Card>
+</CardGroup>

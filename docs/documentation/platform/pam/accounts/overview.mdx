@@ -1,0 +1,100 @@
+---
+title: "Accounts"
+sidebarTitle: "Overview"
+description: "Manage credentials for databases and servers."
+---
+
+Accounts are the databases and servers you want to manage through PAM. Each account stores the connection details and credentials needed to connect — hostname, port, username, password, and so on.
+
+When users connect to an account, they never see the actual credentials. The connection is proxied, credentials are injected automatically, and everything is recorded.
+
+## Account Types
+
+PAM currently supports two account types:
+
+| Type | What it connects to |
+|------|---------------------|
+| [**PostgreSQL**](/documentation/platform/pam/accounts/postgresql) | PostgreSQL databases |
+| [**SSH**](/documentation/platform/pam/accounts/ssh) | Linux/Unix servers |
+
+Each type has specific connection details — PostgreSQL accounts need a database name, SSH accounts need an authentication method. See the type-specific pages for details.
+
+## Adding an Account
+
+Accounts live inside folders. To add one:
+
+<Steps>
+  <Step title="Open the folder">
+    Go to **Folders** and click on the folder where you want to add the account.
+  </Step>
+  <Step title="Click Add Account">
+    Click **Add Account** and select the account type (PostgreSQL or SSH).
+  </Step>
+  <Step title="Select a template">
+    Choose which template this account should use. The template determines the session rules (duration, MFA, recording).
+  </Step>
+  <Step title="Enter connection details">
+    Provide the hostname, port, and other connection information.
+  </Step>
+  <Step title="Enter credentials">
+    Provide the username and password (or SSH key/certificate settings).
+  </Step>
+  <Step title="Save">
+    Click **Create**. Infisical validates the connection before saving.
+  </Step>
+</Steps>
+
+If validation fails, check that the credentials are correct and that the account is reachable from your Gateway.
+
+## Connecting to an Account
+
+Once an account exists, users with access can connect in two ways:
+
+### Web Access
+
+Click **Access** on the account and select **Connect in Browser**. This opens:
+- **PostgreSQL** — a Data Explorer for browsing tables and a SQL Terminal for running queries
+- **SSH** — an interactive terminal
+
+### CLI Access
+
+Run the CLI command to start a local proxy:
+
+```bash
+infisical pam access /<folder>/<account>
+```
+
+Then connect with your preferred client (psql, pgAdmin, ssh) against `localhost`. The proxy handles authentication automatically.
+
+**Flags:**
+
+| Flag | What it does |
+|------|--------------|
+| `--port` | Specify the local port |
+| `--reason` | Provide a reason (if required by the template) |
+
+## Direct Account Memberships
+
+Most access is granted at the folder level — if you have access to the folder, you have access to all accounts in it.
+
+But sometimes you need to grant access to just one account. For that, use direct account memberships:
+
+1. Open the account and go to the **Memberships** tab
+2. Click **Add Member**
+3. Select the user/group, role, and optional expiration
+4. Click **Add**
+
+Direct memberships are for exceptions — a contractor who needs one specific database, or temporary elevated access to a single account.
+
+## Next Steps
+
+For detailed instructions on creating and connecting to specific account types:
+
+<CardGroup cols={2}>
+  <Card title="PostgreSQL Accounts" icon="database" href="/documentation/platform/pam/accounts/postgresql">
+    Database connection details and Web Access features.
+  </Card>
+  <Card title="SSH Accounts" icon="terminal" href="/documentation/platform/pam/accounts/ssh">
+    Authentication methods and certificate setup.
+  </Card>
+</CardGroup>
