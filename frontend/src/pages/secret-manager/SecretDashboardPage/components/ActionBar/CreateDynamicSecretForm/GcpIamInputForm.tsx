@@ -1,4 +1,4 @@
-import { Controller, FieldValues, useFieldArray, useForm } from "react-hook-form";
+import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -28,7 +28,9 @@ const formSchema = z
   .object({
     provider: z.object({
       serviceAccountEmail: z.string().email().trim().min(1, "Service account email required"),
-      tokenScopes: z.array(z.string().trim().min(1)).min(1, "At least one scope is required")
+      tokenScopes: z
+        .array(z.object({ value: z.string().trim().min(1, "Scope is required") }))
+        .min(1, "At least one scope is required")
     }),
     defaultTTL: z.string().superRefine(validateTTL),
     maxTTL: z
@@ -44,7 +46,7 @@ const formSchema = z
     path: ["maxTTL"],
     message: "Max TTL must be greater than or equal to Default TTL"
   });
-type TForm = z.infer<typeof formSchema> & FieldValues;
+type TForm = z.infer<typeof formSchema>;
 
 type Props = {
   onCompleted: () => void;
@@ -73,8 +75,8 @@ export const GcpIamInputForm = ({
       environment: isSingleEnvironmentMode && environments.length > 0 ? environments[0] : undefined,
       provider: {
         tokenScopes: [
-          "https://www.googleapis.com/auth/iam",
-          "https://www.googleapis.com/auth/cloud-platform"
+          { value: "https://www.googleapis.com/auth/iam" },
+          { value: "https://www.googleapis.com/auth/cloud-platform" }
         ]
       }
     }
@@ -100,7 +102,8 @@ export const GcpIamInputForm = ({
       provider: {
         type: DynamicSecretProviders.GcpIam,
         inputs: {
-          ...provider
+          ...provider,
+          tokenScopes: [...new Set(provider.tokenScopes.map((scope) => scope.value))]
         }
       },
       maxTTL,
@@ -217,7 +220,7 @@ export const GcpIamInputForm = ({
                           <div className="grow">
                             <Controller
                               control={control}
-                              name={`provider.tokenScopes.${index}`}
+                              name={`provider.tokenScopes.${index}.value`}
                               render={({ field: itemField, fieldState: { error: itemError } }) => (
                                 <FormControl
                                   isError={Boolean(itemError?.message)}
@@ -247,7 +250,7 @@ export const GcpIamInputForm = ({
                           leftIcon={<FontAwesomeIcon icon={faPlus} />}
                           size="xs"
                           variant="outline_bg"
-                          onClick={() => append("")}
+                          onClick={() => append({ value: "" })}
                           type="button"
                         >
                           Add Scope

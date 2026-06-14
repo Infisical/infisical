@@ -108,7 +108,7 @@ The Infisical GCP IAM dynamic secret allows you to generate GCP service account 
        		The email tied to the service account created in earlier steps.
     	</ParamField>
     	<ParamField path="Token Scopes" type="string[]" default="https://www.googleapis.com/auth/iam, https://www.googleapis.com/auth/cloud-platform">
-       		The OAuth scopes granted to the generated access token. Defaults to the `iam` and `cloud-platform` scopes. Add scopes such as `https://www.googleapis.com/auth/drive.readonly` to access Google APIs outside `cloud-platform`'s coverage.
+       		The OAuth scopes granted to the generated access token. Defaults to `https://www.googleapis.com/auth/iam` and `https://www.googleapis.com/auth/cloud-platform` scopes. You can add additional scopes such as `https://www.googleapis.com/auth/drive`.
     	</ParamField>
   </Step>
   <Step title="Click `Submit`">

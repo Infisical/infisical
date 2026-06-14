@@ -38,7 +38,7 @@ export const GcpIamProvider = (): TDynamicProviderFns => {
       targetPrincipal: serviceAccountEmail,
       lifetime: ttl,
       delegates: [],
-      targetScopes: tokenScopes
+      targetScopes: [...new Set(tokenScopes)]
     });
 
     let tokenResponse: GetAccessTokenResponse | undefined;

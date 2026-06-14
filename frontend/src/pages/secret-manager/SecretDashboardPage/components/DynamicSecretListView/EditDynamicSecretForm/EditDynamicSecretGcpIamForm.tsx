@@ -1,4 +1,4 @@
-import { Controller, FieldValues, useFieldArray, useForm } from "react-hook-form";
+import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -28,7 +28,9 @@ const formSchema = z
   .object({
     inputs: z.object({
       serviceAccountEmail: z.string().email().trim().min(1, "Service account email required"),
-      tokenScopes: z.array(z.string().trim().min(1)).min(1, "At least one scope is required")
+      tokenScopes: z
+        .array(z.object({ value: z.string().trim().min(1, "Scope is required") }))
+        .min(1, "At least one scope is required")
     }),
     defaultTTL: z.string().superRefine(validateTTL),
     maxTTL: z
@@ -43,7 +45,7 @@ const formSchema = z
     path: ["maxTTL"],
     message: "Max TTL must be greater than or equal to Default TTL"
   });
-type TForm = z.infer<typeof formSchema> & FieldValues;
+type TForm = z.infer<typeof formSchema>;
 
 type Props = {
   onClose: () => void;
@@ -70,11 +72,14 @@ export const EditDynamicSecretGcpIamForm = ({
       maxTTL: dynamicSecret.maxTTL,
       newName: dynamicSecret.name,
       inputs: {
-        ...(dynamicSecret.inputs as TForm["inputs"]),
-        tokenScopes: (dynamicSecret.inputs as TForm["inputs"]).tokenScopes ?? [
-          "https://www.googleapis.com/auth/iam",
-          "https://www.googleapis.com/auth/cloud-platform"
-        ]
+        serviceAccountEmail: (dynamicSecret.inputs as { serviceAccountEmail: string })
+          .serviceAccountEmail,
+        tokenScopes: (
+          (dynamicSecret.inputs as { tokenScopes?: string[] }).tokenScopes ?? [
+            "https://www.googleapis.com/auth/iam",
+            "https://www.googleapis.com/auth/cloud-platform"
+          ]
+        ).map((value) => ({ value }))
       }
     }
   });
@@ -97,7 +102,10 @@ export const EditDynamicSecretGcpIamForm = ({
       data: {
         maxTTL: maxTTL || undefined,
         defaultTTL,
-        inputs,
+        inputs: {
+          ...inputs,
+          tokenScopes: [...new Set(inputs.tokenScopes.map((scope) => scope.value))]
+        },
         newName: newName === dynamicSecret.name ? undefined : newName
       }
     });
@@ -194,7 +202,7 @@ export const EditDynamicSecretGcpIamForm = ({
                         <div className="grow">
                           <Controller
                             control={control}
-                            name={`inputs.tokenScopes.${index}`}
+                            name={`inputs.tokenScopes.${index}.value`}
                             render={({ field: itemField, fieldState: { error: itemError } }) => (
                               <FormControl
                                 isError={Boolean(itemError?.message)}
@@ -224,7 +232,7 @@ export const EditDynamicSecretGcpIamForm = ({
                         leftIcon={<FontAwesomeIcon icon={faPlus} />}
                         size="xs"
                         variant="outline_bg"
-                        onClick={() => append("")}
+                        onClick={() => append({ value: "" })}
                         type="button"
                       >
                         Add Scope
