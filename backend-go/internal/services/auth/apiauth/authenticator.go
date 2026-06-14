@@ -218,7 +218,7 @@ func (a Authenticator) validateJWT(ctx context.Context, token string) (*auth.Ide
 				// findOrgByID returns (nil, nil) on pgx.ErrNoRows. The org row can be
 				// missing if it was deleted between JWT issue and validation; without
 				// this guard `org.Name` below panics.
-				return nil, errutil.BadRequest("Organization %s not found", claims.OrganizationID).WithErrf("validateJWT(orgId=%s): organization not found", claims.OrganizationID)
+				return nil, errutil.NotFound("Organization %s not found", claims.OrganizationID).WithErrf("validateJWT(orgId=%s): organization not found", claims.OrganizationID)
 			}
 
 			orgMembership, err := a.findEffectiveOrgMembership(ctx, auth.ActorTypeUser, user.ID, claims.OrganizationID, "accepted")
