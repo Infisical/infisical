@@ -138,15 +138,27 @@ export function AddResourceButtons({
             </TooltipTrigger>
             <TooltipContent side="left">Access restricted</TooltipContent>
           </Tooltip>
-          <Tooltip open={!isHoneyTokenAvailable ? undefined : false}>
-            <TooltipTrigger className="block w-full">
-              <DropdownMenuItem onClick={onAddHoneyToken} isDisabled={!isHoneyTokenAvailable}>
-                <HexagonIcon className="text-yellow" />
-                Add Honey Token
-              </DropdownMenuItem>
-            </TooltipTrigger>
-            <TooltipContent side="left">Access restricted</TooltipContent>
-          </Tooltip>
+          <ProjectPermissionCan
+            I={ProjectPermissionActions.Create}
+            a={ProjectPermissionSub.HoneyTokens}
+          >
+            {(isAllowed) => (
+              <Tooltip open={!isHoneyTokenAvailable || !isAllowed ? undefined : false}>
+                <TooltipTrigger className="block w-full">
+                  <DropdownMenuItem
+                    onClick={onAddHoneyToken}
+                    isDisabled={!isHoneyTokenAvailable || !isAllowed}
+                  >
+                    <HexagonIcon className="text-yellow" />
+                    Add Honey Token
+                  </DropdownMenuItem>
+                </TooltipTrigger>
+                <TooltipContent side="left">
+                  {!isAllowed ? "Access Denied" : "Access restricted"}
+                </TooltipContent>
+              </Tooltip>
+            )}
+          </ProjectPermissionCan>
           <DropdownMenuSeparator />
           <DropdownMenuLabel>BULK</DropdownMenuLabel>
           <Tooltip open={!isSecretImportAvailable || !isSingleEnvSelected ? undefined : false}>
