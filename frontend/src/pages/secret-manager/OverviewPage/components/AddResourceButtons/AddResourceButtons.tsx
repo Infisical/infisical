@@ -17,6 +17,8 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
   IconButton,
   Tooltip,
@@ -95,6 +97,7 @@ export function AddResourceButtons({
           </IconButton>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
+          <DropdownMenuLabel>NEW</DropdownMenuLabel>
           <ProjectPermissionCan
             I={ProjectPermissionActions.Create}
             a={ProjectPermissionSub.SecretFolders}
@@ -144,6 +147,8 @@ export function AddResourceButtons({
             </TooltipTrigger>
             <TooltipContent side="left">Access restricted</TooltipContent>
           </Tooltip>
+          <DropdownMenuSeparator />
+          <DropdownMenuLabel>BULK</DropdownMenuLabel>
           <Tooltip open={!isSecretImportAvailable || !isSingleEnvSelected ? undefined : false}>
             <TooltipTrigger className="block w-full">
               <DropdownMenuItem
@@ -199,6 +204,12 @@ export function AddResourceButtons({
               </Tooltip>
             )}
           </ProjectPermissionCan>
+          {(hasVaultConnection || hasDopplerConnection) && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel>IMPORT FROM</DropdownMenuLabel>
+            </>
+          )}
           {hasVaultConnection && (
             <ProjectPermissionCan
               I={ProjectPermissionActions.Create}
