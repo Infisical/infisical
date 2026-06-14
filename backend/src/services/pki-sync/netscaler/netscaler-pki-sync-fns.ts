@@ -154,8 +154,7 @@ const createOrUpdateCertKey = async (
     });
   } catch (changeError: unknown) {
     const isNotFound =
-      changeError instanceof AxiosError &&
-      (changeError.response?.data as { errorcode?: number })?.errorcode === 1540;
+      changeError instanceof AxiosError && (changeError.response?.data as { errorcode?: number })?.errorcode === 1540;
 
     if (!isNotFound) {
       throw changeError;
