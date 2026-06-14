@@ -3407,19 +3407,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof organizationAppConnectionsGitHubManifestCallbackPageRouteImport
       parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdAppConnectionsImport
     }
-    '/_authenticate/_inject-org-details/organizations/$orgId/pam/accounts/$accountType/$accountId/access': {
-      id: '/_authenticate/_inject-org-details/organizations/$orgId/pam/accounts/$accountType/$accountId/access'
-      path: '/organizations/$orgId/pam/accounts/$accountType/$accountId/access'
-      fullPath: '/organizations/$orgId/pam/accounts/$accountType/$accountId/access'
-      preLoaderRoute: typeof pamPamAccountAccessPageRouteImport
-      parentRoute: typeof middlewaresInjectOrgDetailsImport
-    }
     '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/kmip-servers/$kmipServerId': {
       id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/kmip-servers/$kmipServerId'
       path: '/$kmipServerId'
       fullPath: '/organizations/$orgId/projects/kms/kmip-servers/$kmipServerId'
       preLoaderRoute: typeof organizationKmipServersPageKmipServerDetailsByIDPageRouteImport
       parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsKmsKmipServersImport
+    }
+    '/_authenticate/_inject-org-details/organizations/$orgId/pam/accounts/$accountType/$accountId/access': {
+      id: '/_authenticate/_inject-org-details/organizations/$orgId/pam/accounts/$accountType/$accountId/access'
+      path: '/organizations/$orgId/pam/accounts/$accountType/$accountId/access'
+      fullPath: '/organizations/$orgId/pam/accounts/$accountType/$accountId/access'
+      preLoaderRoute: typeof pamPamAccountAccessPageRouteImport
+      parentRoute: typeof middlewaresInjectOrgDetailsImport
     }
     '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/ai/$projectId/_ai-layout': {
       id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/ai/$projectId/_ai-layout'
@@ -6466,8 +6466,8 @@ export interface FileRoutesByFullPath {
   '/organizations/$orgId/projects/kms/kmip-servers/': typeof organizationKmipServersPageRouteRoute
   '/organizations/$orgId/app-connections/$appConnection/oauth/callback': typeof organizationAppConnectionsOauthCallbackPageRouteRoute
   '/organizations/$orgId/app-connections/github/manifest/callback': typeof organizationAppConnectionsGitHubManifestCallbackPageRouteRoute
-  '/organizations/$orgId/pam/accounts/$accountType/$accountId/access': typeof pamPamAccountAccessPageRouteRoute
   '/organizations/$orgId/projects/kms/kmip-servers/$kmipServerId': typeof organizationKmipServersPageKmipServerDetailsByIDPageRouteRoute
+  '/organizations/$orgId/pam/accounts/$accountType/$accountId/access': typeof pamPamAccountAccessPageRouteRoute
   '/organizations/$orgId/projects/ai/$projectId/overview': typeof aiMCPPageRouteRoute
   '/organizations/$orgId/projects/ai/$projectId/settings': typeof aiSettingsPageRouteRoute
   '/organizations/$orgId/projects/cert-manager/$projectId/alerting': typeof certManagerAlertingPageRouteRoute
@@ -6757,8 +6757,8 @@ export interface FileRoutesByTo {
   '/organizations/$orgId/projects/kms/kmip-servers': typeof organizationKmipServersPageRouteRoute
   '/organizations/$orgId/app-connections/$appConnection/oauth/callback': typeof organizationAppConnectionsOauthCallbackPageRouteRoute
   '/organizations/$orgId/app-connections/github/manifest/callback': typeof organizationAppConnectionsGitHubManifestCallbackPageRouteRoute
-  '/organizations/$orgId/pam/accounts/$accountType/$accountId/access': typeof pamPamAccountAccessPageRouteRoute
   '/organizations/$orgId/projects/kms/kmip-servers/$kmipServerId': typeof organizationKmipServersPageKmipServerDetailsByIDPageRouteRoute
+  '/organizations/$orgId/pam/accounts/$accountType/$accountId/access': typeof pamPamAccountAccessPageRouteRoute
   '/organizations/$orgId/projects/ai/$projectId/overview': typeof aiMCPPageRouteRoute
   '/organizations/$orgId/projects/ai/$projectId/settings': typeof aiSettingsPageRouteRoute
   '/organizations/$orgId/projects/cert-manager/$projectId/alerting': typeof certManagerAlertingPageRouteRoute
@@ -7042,8 +7042,8 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/kmip-servers/': typeof organizationKmipServersPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/app-connections/$appConnection/oauth/callback': typeof organizationAppConnectionsOauthCallbackPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/app-connections/github/manifest/callback': typeof organizationAppConnectionsGitHubManifestCallbackPageRouteRoute
-  '/_authenticate/_inject-org-details/organizations/$orgId/pam/accounts/$accountType/$accountId/access': typeof pamPamAccountAccessPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/kmip-servers/$kmipServerId': typeof organizationKmipServersPageKmipServerDetailsByIDPageRouteRoute
+  '/_authenticate/_inject-org-details/organizations/$orgId/pam/accounts/$accountType/$accountId/access': typeof pamPamAccountAccessPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/ai/$projectId/_ai-layout': typeof aiLayoutRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout': typeof certManagerLayoutRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/$projectId/_kms-layout': typeof kmsLayoutRouteWithChildren
@@ -7351,8 +7351,8 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/projects/kms/kmip-servers/'
     | '/organizations/$orgId/app-connections/$appConnection/oauth/callback'
     | '/organizations/$orgId/app-connections/github/manifest/callback'
-    | '/organizations/$orgId/pam/accounts/$accountType/$accountId/access'
     | '/organizations/$orgId/projects/kms/kmip-servers/$kmipServerId'
+    | '/organizations/$orgId/pam/accounts/$accountType/$accountId/access'
     | '/organizations/$orgId/projects/ai/$projectId/overview'
     | '/organizations/$orgId/projects/ai/$projectId/settings'
     | '/organizations/$orgId/projects/cert-manager/$projectId/alerting'
@@ -7641,8 +7641,8 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/projects/kms/kmip-servers'
     | '/organizations/$orgId/app-connections/$appConnection/oauth/callback'
     | '/organizations/$orgId/app-connections/github/manifest/callback'
-    | '/organizations/$orgId/pam/accounts/$accountType/$accountId/access'
     | '/organizations/$orgId/projects/kms/kmip-servers/$kmipServerId'
+    | '/organizations/$orgId/pam/accounts/$accountType/$accountId/access'
     | '/organizations/$orgId/projects/ai/$projectId/overview'
     | '/organizations/$orgId/projects/ai/$projectId/settings'
     | '/organizations/$orgId/projects/cert-manager/$projectId/alerting'
@@ -7924,8 +7924,8 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/kmip-servers/'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/app-connections/$appConnection/oauth/callback'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/app-connections/github/manifest/callback'
-    | '/_authenticate/_inject-org-details/organizations/$orgId/pam/accounts/$accountType/$accountId/access'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/kmip-servers/$kmipServerId'
+    | '/_authenticate/_inject-org-details/organizations/$orgId/pam/accounts/$accountType/$accountId/access'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/ai/$projectId/_ai-layout'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/$projectId/_kms-layout'
@@ -8681,13 +8681,13 @@ export const routeTree = rootRoute
       "filePath": "organization/AppConnections/GitHubManifestCallbackPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/app-connections"
     },
-    "/_authenticate/_inject-org-details/organizations/$orgId/pam/accounts/$accountType/$accountId/access": {
-      "filePath": "pam/PamAccountAccessPage/route.tsx",
-      "parent": "/_authenticate/_inject-org-details"
-    },
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/kmip-servers/$kmipServerId": {
       "filePath": "organization/KmipServersPage/KmipServerDetailsByIDPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/kmip-servers"
+    },
+    "/_authenticate/_inject-org-details/organizations/$orgId/pam/accounts/$accountType/$accountId/access": {
+      "filePath": "pam/PamAccountAccessPage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details"
     },
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/ai/$projectId/_ai-layout": {
       "filePath": "ai/layout.tsx",
