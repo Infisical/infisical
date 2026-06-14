@@ -1,11 +1,13 @@
-import { Controller, useForm } from "react-hook-form";
+import { Controller, FieldValues, useFieldArray, useForm } from "react-hook-form";
+import { faTrash } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import ms from "ms";
 import { z } from "zod";
 
 import { TtlFormLabel } from "@app/components/features";
 import { createNotification } from "@app/components/notifications";
-import { Button, FormControl, Input } from "@app/components/v2";
+import { Button, FormControl, IconButton, Input } from "@app/components/v2";
 import { useUpdateDynamicSecret } from "@app/hooks/api";
 import { TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
 
@@ -25,7 +27,8 @@ const validateTTL = (val: string, ctx: z.RefinementCtx) => {
 const formSchema = z
   .object({
     inputs: z.object({
-      serviceAccountEmail: z.string().email().trim().min(1, "Service account email required")
+      serviceAccountEmail: z.string().email().trim().min(1, "Service account email required"),
+      tokenScopes: z.array(z.string().trim().min(1)).min(1, "At least one scope is required")
     }),
     defaultTTL: z.string().superRefine(validateTTL),
     maxTTL: z
@@ -40,7 +43,7 @@ const formSchema = z
     path: ["maxTTL"],
     message: "Max TTL must be greater than or equal to Default TTL"
   });
-type TForm = z.infer<typeof formSchema>;
+type TForm = z.infer<typeof formSchema> & FieldValues;
 
 type Props = {
   onClose: () => void;
@@ -67,9 +70,18 @@ export const EditDynamicSecretGcpIamForm = ({
       maxTTL: dynamicSecret.maxTTL,
       newName: dynamicSecret.name,
       inputs: {
-        ...(dynamicSecret.inputs as TForm["inputs"])
+        ...(dynamicSecret.inputs as TForm["inputs"]),
+        tokenScopes: (dynamicSecret.inputs as TForm["inputs"]).tokenScopes ?? [
+          "https://www.googleapis.com/auth/iam",
+          "https://www.googleapis.com/auth/cloud-platform"
+        ]
       }
     }
+  });
+
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: "inputs.tokenScopes"
   });
 
   const updateDynamicSecret = useUpdateDynamicSecret();
@@ -163,6 +175,41 @@ export const EditDynamicSecretGcpIamForm = ({
                   errorText={error?.message}
                 >
                   <Input {...field} />
+                </FormControl>
+              )}
+            />
+
+            <Controller
+              control={control}
+              name="inputs.tokenScopes"
+              render={({ fieldState: { error } }) => (
+                <FormControl
+                  label="Token Scopes"
+                  isError={Boolean(error?.message)}
+                  errorText={error?.message}
+                  helperText="OAuth scopes granted to the generated access token. Scopes can only be narrowed after issuance, never widened."
+                >
+                  <div className="space-y-2">
+                    {fields.map((field, index) => (
+                      <div key={field.id} className="flex items-center space-x-2">
+                        <Input
+                          {...control.register(`inputs.tokenScopes.${index}`)}
+                          placeholder="https://www.googleapis.com/auth/cloud-platform"
+                          className="grow"
+                        />
+                        <IconButton
+                          onClick={() => remove(index)}
+                          variant="outline_bg"
+                          ariaLabel="Remove scope"
+                        >
+                          <FontAwesomeIcon icon={faTrash} />
+                        </IconButton>
+                      </div>
+                    ))}
+                    <Button variant="outline_bg" onClick={() => append("")} type="button">
+                      Add Scope
+                    </Button>
+                  </div>
                 </FormControl>
               )}
             />
