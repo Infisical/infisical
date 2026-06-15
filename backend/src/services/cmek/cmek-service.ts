@@ -314,7 +314,6 @@ export const cmekServiceFactory = ({
     if (!key) throw new NotFoundError({ message: `Key with ID "${keyId}" not found` });
     if (!key.projectId || key.isReserved) throw new BadRequestError({ message: "Key is not customer managed" });
     if (key.isDisabled) throw new BadRequestError({ message: "Key is disabled" });
-    if (!key.isExportable) throw new BadRequestError({ message: "Key is not exportable" });
 
     const { permission } = await permissionService.getProjectPermission({
       actor: actor.type,
@@ -329,6 +328,8 @@ export const cmekServiceFactory = ({
       ProjectPermissionCmekActions.ExportPrivateKey,
       ProjectPermissionSub.Cmek
     );
+
+    if (!key.isExportable) throw new BadRequestError({ message: "You are not allowed to export this key" });
 
     const keyMaterial = await kmsService.getKeyMaterial({ kmsId: keyId });
 
@@ -358,7 +359,6 @@ export const cmekServiceFactory = ({
       if (!key.projectId || key.isReserved)
         throw new BadRequestError({ message: `Key with ID "${key.id}" is not customer managed` });
       if (key.isDisabled) throw new BadRequestError({ message: `Key with ID "${key.id}" is disabled` });
-      if (!key.isExportable) throw new BadRequestError({ message: `Key with ID "${key.id}" is not exportable` });
       projectIds.add(key.projectId);
     }
 
@@ -379,6 +379,10 @@ export const cmekServiceFactory = ({
       ProjectPermissionCmekActions.ExportPrivateKey,
       ProjectPermissionSub.Cmek
     );
+
+    for (const key of keys) {
+      if (!key.isExportable) throw new BadRequestError({ message: "You are not allowed to export this key" });
+    }
 
     const bulkMaterials = await kmsService.getBulkKeyMaterial({ kmsIds: keys.map((k) => k.id) });
 

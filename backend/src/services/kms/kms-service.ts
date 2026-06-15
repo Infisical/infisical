@@ -385,7 +385,7 @@ export const kmsServiceFactory = ({
 
     if (!kmsDoc.isExportable) {
       throw new BadRequestError({
-        message: "Cannot get key material for non-exportable key"
+        message: "You are not allowed to export this key"
       });
     }
 
@@ -406,7 +406,7 @@ export const kmsServiceFactory = ({
         throw new BadRequestError({ message: `Cannot get key material for external key [kmsId=${kmsDoc.id}]` });
       }
       if (!kmsDoc.isExportable) {
-        throw new BadRequestError({ message: `Cannot get key material for non-exportable key [kmsId=${kmsDoc.id}]` });
+        throw new BadRequestError({ message: `You are not allowed to export this key [kmsId=${kmsDoc.id}]` });
       }
 
       const keyCipher = symmetricCipherService(SymmetricKeyAlgorithm.AES_GCM_256);
