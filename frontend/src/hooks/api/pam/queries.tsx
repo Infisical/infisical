@@ -41,7 +41,8 @@ export const pamKeys = {
   getAccount: (accountId: string) => [...pamKeys.account(), "get", accountId],
   getSession: (sessionId: string) => [...pamKeys.session(), "get", sessionId],
   listSessions: (projectId: string) => [...pamKeys.session(), "list", projectId],
-  folderPermissions: (folderId: string) => [...pamKeys.all, "folder-permissions", folderId] as const,
+  folderPermissions: (folderId: string) =>
+    [...pamKeys.all, "folder-permissions", folderId] as const,
   accountPermissions: (accountId: string) =>
     [...pamKeys.all, "account-permissions", accountId] as const
 };
