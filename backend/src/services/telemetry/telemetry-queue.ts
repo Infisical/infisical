@@ -72,6 +72,7 @@ export const telemetryQueueServiceFactory = ({
       name: CronJobName.TelemetryAggregatedEvents,
       pattern: "*/5 * * * *",
       runHashTtlS: 60 * 60,
+      handlerTimeoutMs: 30 * 60_000,
       handler: async () => {
         await telemetryService.processAggregatedEvents();
       }
