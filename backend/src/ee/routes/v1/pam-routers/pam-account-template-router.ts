@@ -9,6 +9,7 @@ import {
 } from "@app/ee/services/pam-account-template/pam-account-template-schemas";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -102,7 +103,7 @@ export const registerPamAccountTemplateRouter = async (server: FastifyZodProvide
       description: "Create a new PAM account template",
       tags: [ApiDocsTags.PamAccountTemplates],
       body: z.object({
-        name: z.string().trim().min(1).max(64).describe("Display name for the template"),
+        name: slugSchema({ field: "Name" }).describe("Name for the template"),
         description: z.string().trim().max(256).optional().describe("Optional description"),
         type: z.nativeEnum(PamAccountType).describe("The account type this template applies to"),
         accessPolicy: PamTemplateAccessPolicySchema.optional().describe("Access policy configuration"),
@@ -167,7 +168,7 @@ export const registerPamAccountTemplateRouter = async (server: FastifyZodProvide
         templateId: z.string().uuid().describe("The ID of the template")
       }),
       body: z.object({
-        name: z.string().trim().min(1).max(64).optional().describe("New display name"),
+        name: slugSchema({ field: "Name" }).optional().describe("New name"),
         description: z.string().trim().max(256).nullable().optional().describe("New description"),
         accessPolicy: PamTemplateAccessPolicySchema.optional().describe("Updated access policy"),
         settings: PamTemplateSettingsSchema.optional().describe("Updated settings"),

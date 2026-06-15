@@ -10,6 +10,7 @@ import {
 } from "@app/ee/services/pam-account-template/pam-account-template-schemas";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { withRoutePrefix } from "@app/server/lib/with-route-prefix";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -76,7 +77,7 @@ const registerPerTypeEndpoints = (
       description: `Create a new ${accountType} PAM account`,
       tags: [ApiDocsTags.PamAccounts],
       body: z.object({
-        name: z.string().trim().min(1).max(64).describe("Display name for the account"),
+        name: slugSchema({ field: "Name" }).describe("Name for the account"),
         description: z.string().trim().max(256).optional().describe("Optional description of the account"),
         folderId: z.string().uuid().describe("The ID of the folder to place the account in"),
         templateId: z.string().uuid().describe("The ID of the account template to use"),
@@ -151,7 +152,7 @@ const registerPerTypeEndpoints = (
       tags: [ApiDocsTags.PamAccounts],
       params: z.object({ accountId: z.string().uuid().describe("The ID of the account to update") }),
       body: z.object({
-        name: z.string().trim().min(1).max(64).optional().describe("Display name for the account"),
+        name: slugSchema({ field: "Name" }).optional().describe("New name for the account"),
         description: z.string().trim().max(256).nullable().optional().describe("Optional description of the account"),
         folderId: z.string().uuid().optional().describe("The ID of the folder to move the account to"),
         templateId: z.string().uuid().optional().describe("The ID of the account template to use"),

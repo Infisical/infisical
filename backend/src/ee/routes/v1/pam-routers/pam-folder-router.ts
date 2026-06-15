@@ -3,6 +3,7 @@ import z from "zod";
 import { PamFoldersSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
+import { slugSchema } from "@app/server/lib/schemas";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -95,7 +96,7 @@ export const registerPamFolderRouter = async (server: FastifyZodProvider) => {
       description: "Create a new PAM folder",
       tags: [ApiDocsTags.PamFolders],
       body: z.object({
-        name: z.string().trim().min(1).max(64).describe("Display name for the folder"),
+        name: slugSchema({ field: "Name" }).describe("Name for the folder"),
         description: z.string().trim().max(256).optional().describe("Optional description")
       }),
       response: {
@@ -153,7 +154,7 @@ export const registerPamFolderRouter = async (server: FastifyZodProvider) => {
         folderId: z.string().uuid().describe("The ID of the folder")
       }),
       body: z.object({
-        name: z.string().trim().min(1).max(64).optional().describe("New display name"),
+        name: slugSchema({ field: "Name" }).optional().describe("New name"),
         description: z.string().trim().max(256).nullable().optional().describe("New description")
       }),
       response: {
