@@ -87,7 +87,9 @@ export const PamAccessPage = () => {
   const folderGroups = useMemo(() => {
     const query = searchInput.toLowerCase().trim();
     const filtered = query
-      ? allAccounts.filter((a) => a.name.toLowerCase().includes(query))
+      ? allAccounts.filter(
+          (a) => a.name.toLowerCase().includes(query) || a.folderName?.toLowerCase().includes(query)
+        )
       : allAccounts;
 
     const groups = new Map<string, TAccessiblePamAccount[]>();

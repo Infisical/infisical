@@ -74,7 +74,12 @@ export const pamAccountDALFactory = (db: TDbClient) => {
       void baseQuery.where(`${TableName.PamAccountTemplate}.type`, filters.accountType);
     }
     if (filters?.search) {
-      void baseQuery.whereILike(`${TableName.PamAccount}.name`, `%${sanitizeSqlLikeString(filters.search)}%`);
+      const pattern = `%${sanitizeSqlLikeString(filters.search)}%`;
+      void baseQuery.where((qb) => {
+        void qb
+          .whereILike(`${TableName.PamAccount}.name`, pattern)
+          .orWhereILike(`${TableName.PamFolder}.name`, pattern);
+      });
     }
 
     const countQuery = baseQuery
