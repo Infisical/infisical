@@ -14,10 +14,11 @@ import {
   TBitbucketWorkspace
 } from "./bitbucket-connection-types";
 
-const ensureBitbucketRateLimitNotExceeded = (error: unknown) => {
+const ensureBitbucketRateLimitNotExceeded = (error: unknown): never => {
   if (error instanceof AxiosError && error.response?.status === HttpStatusCode.TooManyRequests) {
     throw new BadRequestError({
-      message: "Request to Bitbucket was blocked due to rate limiting. Bitbucket's rate limit window is 1 hour. Please try again later."
+      message:
+        "Request to Bitbucket was blocked due to rate limiting. Bitbucket's rate limit window is 1 hour. Please try again later."
     });
   }
   throw error;
@@ -159,7 +160,7 @@ export const listBitbucketRepositories = async (appConnection: TBitbucketConnect
 
     return reposByProject.flat();
   } catch (error) {
-    ensureBitbucketRateLimitNotExceeded(error);
+    return ensureBitbucketRateLimitNotExceeded(error);
   }
 };
 
@@ -185,12 +186,9 @@ export const listBitbucketEnvironments = async (
   try {
     while (hasNextPage && iterationCount < 10) {
       // eslint-disable-next-line no-await-in-loop
-      const { data }: { data: { values: TBitbucketEnvironment[]; next: string } } = await request.get(
-        environmentsUrl,
-        {
-          headers
-        }
-      );
+      const { data }: { data: { values: TBitbucketEnvironment[]; next: string } } = await request.get(environmentsUrl, {
+        headers
+      });
 
       if (data?.values.length > 0) {
         environments.push(...data.values);
