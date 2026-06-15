@@ -3,10 +3,17 @@ import {
   PamAccountOrderBy,
   PamAccountType,
   PamAccountView,
+  PamResourcePermissionActions,
+  PamResourcePermissionSub,
   PamResourceType,
   PamSessionStatus,
   SessionChannelType
 } from "../enums";
+
+export type PamFolderPermissionSet = [
+  PamResourcePermissionActions,
+  PamResourcePermissionSub.PamResource
+];
 
 // New model types
 

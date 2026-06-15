@@ -57,6 +57,48 @@ export const registerPamFolderRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "GET",
+    url: "/:folderId/permissions",
+    config: { rateLimit: readLimit },
+    schema: {
+      operationId: "getPamFolderPermissions",
+      description: "Get the caller's effective resource permissions on this folder.",
+      tags: [ApiDocsTags.PamFolders],
+      params: z.object({
+        folderId: z.string().uuid().describe("The ID of the folder")
+      }),
+      response: {
+        200: z.object({
+          data: z.object({
+            permissions: z.any().array(),
+            memberships: z
+              .object({
+                id: z.string(),
+                actorUserId: z.string().nullish(),
+                actorIdentityId: z.string().nullish(),
+                actorGroupId: z.string().nullish(),
+                roles: z.object({ role: z.string(), customRoleSlug: z.string().nullish() }).array()
+              })
+              .array()
+          })
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const data = await server.services.pamFolder.getFolderPermissions({
+        folderId: req.params.folderId,
+        projectId: req.internalPamProjectId,
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod
+      });
+      return { data };
+    }
+  });
+
+  server.route({
+    method: "GET",
     url: "/:folderId",
     schema: {
       operationId: "getPamFolderById",

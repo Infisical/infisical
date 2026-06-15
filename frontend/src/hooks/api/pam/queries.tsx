@@ -7,8 +7,13 @@ import {
 } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
+import {
+  createResourcePermissionQueryHook,
+  ResourcePermissionResponse
+} from "@app/helpers/resourcePermissions";
 
 import {
+  PamFolderPermissionSet,
   TAccessiblePamAccount,
   TListAccessiblePamAccountsDTO,
   TListPamAccountsDTO,
@@ -35,8 +40,35 @@ export const pamKeys = {
   ],
   getAccount: (accountId: string) => [...pamKeys.account(), "get", accountId],
   getSession: (sessionId: string) => [...pamKeys.session(), "get", sessionId],
-  listSessions: (projectId: string) => [...pamKeys.session(), "list", projectId]
+  listSessions: (projectId: string) => [...pamKeys.session(), "list", projectId],
+  folderPermissions: (folderId: string) => [...pamKeys.all, "folder-permissions", folderId] as const,
+  accountPermissions: (accountId: string) =>
+    [...pamKeys.all, "account-permissions", accountId] as const
 };
+
+const fetchFolderPermissions = async (folderId: string) => {
+  const { data } = await apiRequest.get<{
+    data: ResourcePermissionResponse<PamFolderPermissionSet>;
+  }>(`/api/v1/pam/folders/${folderId}/permissions`);
+  return data.data;
+};
+
+export const usePamFolderPermission = createResourcePermissionQueryHook<PamFolderPermissionSet>({
+  queryKey: (folderId) => pamKeys.folderPermissions(folderId),
+  fetchFn: fetchFolderPermissions
+});
+
+const fetchAccountPermissions = async (accountId: string) => {
+  const { data } = await apiRequest.get<{
+    data: ResourcePermissionResponse<PamFolderPermissionSet>;
+  }>(`/api/v1/pam/accounts/${accountId}/permissions`);
+  return data.data;
+};
+
+export const usePamAccountPermission = createResourcePermissionQueryHook<PamFolderPermissionSet>({
+  queryKey: (accountId) => pamKeys.accountPermissions(accountId),
+  fetchFn: fetchAccountPermissions
+});
 
 // Accessible Accounts (user-facing)
 type TListAccessiblePamAccountsResponse = {

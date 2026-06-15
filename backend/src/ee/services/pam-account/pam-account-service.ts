@@ -1,4 +1,5 @@
-import { ForbiddenError } from "@casl/ability";
+import { createMongoAbility, ForbiddenError, MongoAbility, MongoQuery, RawRuleOf } from "@casl/ability";
+import { packRules } from "@casl/ability/extra";
 
 import { RESOURCE_SCOPE, ResourceType } from "@app/db/schemas";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
@@ -6,12 +7,14 @@ import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ResourcePermissionPamResourceActions,
+  ResourcePermissionSet,
   ResourcePermissionSub
 } from "@app/ee/services/permission/resource-permission";
+import { conditionsMatcher } from "@app/lib/casl";
 import { createSshKeyPair } from "@app/ee/services/ssh/ssh-certificate-authority-fns";
 import { SshCertKeyAlgorithm } from "@app/ee/services/ssh-certificate/ssh-certificate-types";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
-import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
@@ -395,13 +398,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       membershipDAL,
       membershipRoleDAL,
       projectId,
-      {
-        allOf: [ResourcePermissionPamResourceActions.ReadAccounts],
-        anyOf: [
-          ResourcePermissionPamResourceActions.LaunchSessions,
-          ResourcePermissionPamResourceActions.ViewCredentials
-        ]
-      },
+      { allOf: [ResourcePermissionPamResourceActions.ReadAccounts] },
       ctx
     );
     if (folderIds.length === 0 && accountIds.length === 0) return { accounts: [], totalCount: 0 };
@@ -489,5 +486,71 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     return { publicKey: metadata.caPublicKey };
   };
 
-  return { list, listAccessible, getById, create, update, deleteAccount, getOrCreateSshCa, getSshCaPublicKey };
+  const getAccountPermissions = async ({ accountId, projectId, ...ctx }: TGetPamAccountDTO & TActorContext) => {
+    const account = await pamAccountDAL.findById(accountId);
+    if (!account || account.projectId !== projectId) {
+      throw new NotFoundError({ message: `Account with ID '${accountId}' not found` });
+    }
+
+    const allRules: RawRuleOf<MongoAbility<ResourcePermissionSet, MongoQuery>>[] = [];
+    const allMemberships: Awaited<ReturnType<typeof permissionService.getResourcePermission>>["memberships"] = [];
+
+    if (account.folderId) {
+      try {
+        const folderResult = await permissionService.getResourcePermission({
+          actor: ctx.actor,
+          actorId: ctx.actorId,
+          projectId,
+          resourceType: ResourceType.PamFolder,
+          resourceId: account.folderId,
+          actorAuthMethod: ctx.actorAuthMethod,
+          actorOrgId: ctx.actorOrgId
+        });
+        allRules.push(...folderResult.permission.rules);
+        allMemberships.push(...folderResult.memberships);
+      } catch (err) {
+        if (!(err instanceof ForbiddenRequestError)) throw err;
+      }
+    }
+
+    try {
+      const accountResult = await permissionService.getResourcePermission({
+        actor: ctx.actor,
+        actorId: ctx.actorId,
+        projectId,
+        resourceType: ResourceType.PamAccount,
+        resourceId: accountId,
+        actorAuthMethod: ctx.actorAuthMethod,
+        actorOrgId: ctx.actorOrgId
+      });
+      allRules.push(...accountResult.permission.rules);
+      allMemberships.push(...accountResult.memberships);
+    } catch (err) {
+      if (!(err instanceof ForbiddenRequestError)) throw err;
+    }
+
+    const mergedPermission = createMongoAbility<ResourcePermissionSet>(allRules, { conditionsMatcher });
+
+    ForbiddenError.from(mergedPermission).throwUnlessCan(
+      ResourcePermissionPamResourceActions.ReadAccounts,
+      ResourcePermissionSub.PamResource
+    );
+
+    return {
+      permissions: packRules(mergedPermission.rules),
+      memberships: allMemberships
+    };
+  };
+
+  return {
+    list,
+    listAccessible,
+    getById,
+    create,
+    update,
+    deleteAccount,
+    getOrCreateSshCa,
+    getSshCaPublicKey,
+    getAccountPermissions
+  };
 };
