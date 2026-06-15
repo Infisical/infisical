@@ -205,7 +205,7 @@ export const orgServiceFactory = ({
     const data = hasSubOrg && subOrg ? subOrg : org;
 
     const pamProjects = await projectDAL.find(
-      { orgId: rootOrgId, type: ProjectType.PAM },
+      { orgId: data.id, type: ProjectType.PAM },
       { sort: [["createdAt", "desc"]], limit: 1 }
     );
 
