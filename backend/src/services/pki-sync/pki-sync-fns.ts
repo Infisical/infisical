@@ -26,6 +26,7 @@ import { F5_BIG_IP_PKI_SYNC_LIST_OPTION } from "./f5-big-ip/f5-big-ip-pki-sync-c
 import { f5BigIpPkiSyncFactory } from "./f5-big-ip/f5-big-ip-pki-sync-fns";
 import { NETSCALER_PKI_SYNC_LIST_OPTION } from "./netscaler/netscaler-pki-sync-constants";
 import { netScalerPkiSyncFactory } from "./netscaler/netscaler-pki-sync-fns";
+import { UUID_NAME_REGEX_FRAGMENT } from "./pki-sync-certificate-name-fns";
 import { PkiSync } from "./pki-sync-enums";
 import { TCertificateMap, TPkiSyncWithCredentials } from "./pki-sync-types";
 
@@ -107,10 +108,10 @@ export const matchesCertificateNameSchema = (name: string, schema?: string): boo
     .replace(new RE2("\\{\\{commonName\\}\\}", "g"), COMMON_NAME_TOKEN);
 
   const pattern = escapeNameSchemaRegex(tokenized)
-    .replace(new RE2(CERT_ID_TOKEN, "g"), "[0-9a-f]{32}")
-    .replace(new RE2(PROFILE_ID_TOKEN, "g"), "[0-9a-f]{32}")
-    .replace(new RE2(APP_ID_TOKEN, "g"), "[0-9a-f]{32}")
-    .replace(new RE2(COMMON_NAME_TOKEN, "g"), ".*");
+    .replace(new RE2(CERT_ID_TOKEN, "g"), UUID_NAME_REGEX_FRAGMENT)
+    .replace(new RE2(PROFILE_ID_TOKEN, "g"), UUID_NAME_REGEX_FRAGMENT)
+    .replace(new RE2(APP_ID_TOKEN, "g"), UUID_NAME_REGEX_FRAGMENT)
+    .replace(new RE2(COMMON_NAME_TOKEN, "g"), "[a-zA-Z0-9._-]*");
 
   return new RE2(`^${pattern}$`).test(name);
 };

@@ -20,6 +20,11 @@ import { TCertificateDALFactory } from "@app/services/certificate/certificate-da
 import { TCertificateSyncDALFactory } from "@app/services/certificate-sync/certificate-sync-dal";
 import { CertificateSyncStatus } from "@app/services/certificate-sync/certificate-sync-enums";
 import { createConnectionQueue, RateLimitConfig } from "@app/services/connection-queue";
+import {
+  certificateNameSchemaHasFreeTextPlaceholder,
+  sanitizeCertificateNameValue
+} from "@app/services/pki-sync/pki-sync-certificate-name-fns";
+import { PkiSync } from "@app/services/pki-sync/pki-sync-enums";
 import { matchesCertificateNameSchema } from "@app/services/pki-sync/pki-sync-fns";
 import { TCertificateMap, TPkiSyncWithCredentials } from "@app/services/pki-sync/pki-sync-types";
 
@@ -271,10 +276,20 @@ export const awsSecretsManagerPkiSyncFactory = ({
       let targetSecretName = certName;
       if (syncOptions?.certificateNameSchema) {
         const extendedCertData = certData as Record<string, unknown>;
-        const safeCommonName = typeof extendedCertData.commonName === "string" ? extendedCertData.commonName : "";
+        const safeCommonName = sanitizeCertificateNameValue(
+          typeof extendedCertData.commonName === "string" ? extendedCertData.commonName : "",
+          PkiSync.AwsSecretsManager
+        );
+        const profileId =
+          typeof extendedCertData.profileId === "string" && extendedCertData.profileId
+            ? extendedCertData.profileId
+            : certificateId;
+        const applicationId = typeof pkiSync.applicationId === "string" ? pkiSync.applicationId : "";
 
         targetSecretName = syncOptions.certificateNameSchema
           .replace(new RE2("\\{\\{certificateId\\}\\}", "g"), certificateId)
+          .replace(new RE2("\\{\\{profileId\\}\\}", "g"), profileId)
+          .replace(new RE2("\\{\\{applicationId\\}\\}", "g"), applicationId)
           .replace(new RE2("\\{\\{commonName\\}\\}", "g"), safeCommonName);
       } else {
         targetSecretName = `${AWS_SECRETS_MANAGER_PKI_SYNC_DEFAULTS.INFISICAL_PREFIX}${certificateId}`;
@@ -443,8 +458,17 @@ export const awsSecretsManagerPkiSyncFactory = ({
     }
 
     if (canRemoveCertificates) {
+      const trackedExternalIds = new Set(
+        existingSyncRecords.map((record) => record.externalIdentifier).filter((id): id is string => Boolean(id))
+      );
+      const allowPatternCleanup = !certificateNameSchemaHasFreeTextPlaceholder(syncOptions?.certificateNameSchema);
+
       for (const [secretName] of Object.entries(existingSecrets)) {
         if (!activeExternalIdentifiers.has(secretName)) {
+          if (!allowPatternCleanup && !trackedExternalIds.has(secretName)) {
+            // eslint-disable-next-line no-continue
+            continue;
+          }
           try {
             await withRateLimitRetry(
               () =>

@@ -448,8 +448,8 @@ export const PkiSyncOptionsFields = ({ destination }: Props) => {
                   </ul>
                   <span className="mt-1 text-xs text-bunker-300">
                     The schema must include <code>{"{{certificateId}}"}</code> to guarantee a unique
-                    name per certificate. Values that resolve to characters not allowed by the
-                    destination will be rejected at sync time.
+                    name per certificate. Characters not allowed by the destination (e.g. dots in a
+                    common name for Azure Key Vault) are automatically replaced with hyphens.
                   </span>
                 </div>
                 {syncOption?.forbiddenCharacters && syncOption.forbiddenCharacters.length > 0 && (

@@ -76,4 +76,17 @@ describe("matchesCertificateNameSchema (managed-certificate detection for cleanu
     // {{environment}} is treated as a literal now, so a name where it was substituted with 'global' won't match.
     expect(matchesCertificateNameSchema(`global-${HEX}`, "{{environment}}-{{certificateId}}")).toBe(false);
   });
+
+  test("matches UUIDs whether dash-stripped or raw (AWS Secrets Manager stores the dashed form)", () => {
+    const dashed = "550e8400-e29b-41d4-a716-446655440000";
+    expect(matchesCertificateNameSchema(`infisical-${HEX}`, "infisical-{{certificateId}}")).toBe(true);
+    expect(matchesCertificateNameSchema(`infisical-${dashed}`, "infisical-{{certificateId}}")).toBe(true);
+  });
+
+  test("common-name slot uses a constrained charset, not a greedy .*", () => {
+    const schema = "{{commonName}}-{{certificateId}}";
+    // a value containing characters outside the sanitized set (e.g. a space) must not match
+    expect(matchesCertificateNameSchema(`weird name-${HEX}`, schema)).toBe(false);
+    expect(matchesCertificateNameSchema(`weird/name-${HEX}`, schema)).toBe(false);
+  });
 });

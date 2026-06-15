@@ -25,11 +25,16 @@ const NAME_VALUE_DISALLOWED_CHARS: Partial<Record<PkiSync, RE2>> = {
   [PkiSync.F5BigIp]: new RE2("[^a-zA-Z0-9._-]", "g")
 };
 
-const sanitizeNameValue = (value: string, destination?: PkiSync): string => {
+export const sanitizeCertificateNameValue = (value: string, destination?: PkiSync): string => {
   if (!value || !destination) return value;
   const disallowed = NAME_VALUE_DISALLOWED_CHARS[destination];
   return disallowed ? value.replace(disallowed, "-") : value;
 };
+
+export const UUID_NAME_REGEX_FRAGMENT = "[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}";
+
+export const certificateNameSchemaHasFreeTextPlaceholder = (schema?: string): boolean =>
+  Boolean(schema && schema.includes("{{commonName}}"));
 
 export type TCertificateNameSchemaData = {
   certificateId: string;
@@ -63,7 +68,7 @@ export const compileCertificateNameSchema = (
     certificateId,
     profileId,
     applicationId,
-    commonName: sanitizeNameValue(data.commonName || "", destination)
+    commonName: sanitizeCertificateNameValue(data.commonName || "", destination)
   });
 };
 

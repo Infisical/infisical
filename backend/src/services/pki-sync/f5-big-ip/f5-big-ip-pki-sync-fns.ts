@@ -17,7 +17,10 @@ import { TCertificateSyncDALFactory } from "@app/services/certificate-sync/certi
 import { CertificateSyncStatus } from "@app/services/certificate-sync/certificate-sync-enums";
 import { TCertificateMap } from "@app/services/pki-sync/pki-sync-types";
 
-import { compileCertificateNameSchema } from "../pki-sync-certificate-name-fns";
+import {
+  certificateNameSchemaHasFreeTextPlaceholder,
+  compileCertificateNameSchema
+} from "../pki-sync-certificate-name-fns";
 import { PkiSync } from "../pki-sync-enums";
 import { PkiSyncError } from "../pki-sync-errors";
 import { TPkiSyncWithCredentials } from "../pki-sync-types";
@@ -1009,16 +1012,18 @@ export const f5BigIpPkiSyncFactory = ({
               }
             }
 
-            const managedCertNamePattern = buildManagedCertNamePattern(certificateNameSchema);
             const partitionCandidates: string[] = [];
-            for (const certName of existingCertNames) {
-              if (
-                managedCertNamePattern.test(certName) &&
-                !activeExternalIdentifiers.has(certName) &&
-                !certNamesToRemove.has(certName) &&
-                !certName.endsWith(F5_BIG_IP_CHAIN_SUFFIX)
-              ) {
-                partitionCandidates.push(certName);
+            if (!certificateNameSchemaHasFreeTextPlaceholder(certificateNameSchema)) {
+              const managedCertNamePattern = buildManagedCertNamePattern(certificateNameSchema);
+              for (const certName of existingCertNames) {
+                if (
+                  managedCertNamePattern.test(certName) &&
+                  !activeExternalIdentifiers.has(certName) &&
+                  !certNamesToRemove.has(certName) &&
+                  !certName.endsWith(F5_BIG_IP_CHAIN_SUFFIX)
+                ) {
+                  partitionCandidates.push(certName);
+                }
               }
             }
 

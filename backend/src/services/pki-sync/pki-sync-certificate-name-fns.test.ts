@@ -1,4 +1,9 @@
-import { buildCertificateNameSchemaTestName, compileCertificateNameSchema } from "./pki-sync-certificate-name-fns";
+import {
+  buildCertificateNameSchemaTestName,
+  certificateNameSchemaHasFreeTextPlaceholder,
+  compileCertificateNameSchema,
+  sanitizeCertificateNameValue
+} from "./pki-sync-certificate-name-fns";
 import { PkiSync } from "./pki-sync-enums";
 
 const CERT_ID = "550e8400-e29b-41d4-a716-446655440000";
@@ -123,5 +128,32 @@ describe("buildCertificateNameSchemaTestName", () => {
     // The leftover braces are forbidden characters for every destination, so validation fails.
     expect(testName).toContain("{{environment}}");
     expect(testName).toContain("{{friendlyName}}");
+  });
+});
+
+describe("sanitizeCertificateNameValue", () => {
+  test("replaces destination-forbidden characters with hyphens", () => {
+    // AWS Secrets Manager forbids dots/spaces/wildcards in its charset
+    expect(sanitizeCertificateNameValue("app.example.com", PkiSync.AwsSecretsManager)).toBe("app-example-com");
+    expect(sanitizeCertificateNameValue("*.example.com", PkiSync.AwsSecretsManager)).toBe("--example-com");
+  });
+
+  test("preserves dots for destinations that allow them (NetScaler/F5)", () => {
+    expect(sanitizeCertificateNameValue("app.example.com", PkiSync.NetScaler)).toBe("app.example.com");
+  });
+
+  test("no-op without a destination", () => {
+    expect(sanitizeCertificateNameValue("app.example.com")).toBe("app.example.com");
+  });
+});
+
+describe("certificateNameSchemaHasFreeTextPlaceholder", () => {
+  test("true only for schemas containing the free-text {{commonName}} placeholder", () => {
+    expect(certificateNameSchemaHasFreeTextPlaceholder("{{commonName}}-{{certificateId}}")).toBe(true);
+    expect(certificateNameSchemaHasFreeTextPlaceholder("Infisical-{{certificateId}}")).toBe(false);
+    expect(certificateNameSchemaHasFreeTextPlaceholder("{{profileId}}-{{applicationId}}-{{certificateId}}")).toBe(
+      false
+    );
+    expect(certificateNameSchemaHasFreeTextPlaceholder(undefined)).toBe(false);
   });
 });
