@@ -45,7 +45,49 @@ const ScimGroupSchema = z.object({
   })
 });
 
+// SCIM /ServiceProviderConfig response per RFC 7644 §5. Describes which SCIM
+// capabilities Infisical's implementation supports so clients (Authentik etc.)
+// can negotiate without trial-and-error. Static — recompute when the supported
+// feature set actually changes.
+const ScimServiceProviderConfig = {
+  schemas: ["urn:ietf:params:scim:schemas:core:2.0:ServiceProviderConfig"],
+  documentationUri: "https://infisical.com/docs/documentation/platform/scim/overview",
+  patch: { supported: true },
+  bulk: { supported: false, maxOperations: 0, maxPayloadSize: 0 },
+  filter: { supported: true, maxResults: 200 },
+  changePassword: { supported: false },
+  sort: { supported: false },
+  etag: { supported: false },
+  authenticationSchemes: [
+    {
+      name: "OAuth Bearer Token",
+      description: "Authentication scheme using the OAuth Bearer Token Standard",
+      specUri: "http://www.rfc-editor.org/info/rfc6750",
+      type: "oauthbearertoken",
+      primary: true
+    }
+  ],
+  meta: {
+    resourceType: "ServiceProviderConfig",
+    location: "/api/v1/scim/ServiceProviderConfig"
+  }
+};
+
 export const registerScimRouter = async (server: FastifyZodProvider) => {
+  server.route({
+    url: "/ServiceProviderConfig",
+    method: "GET",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      response: {
+        200: z.any()
+      }
+    },
+    handler: async () => ScimServiceProviderConfig
+  });
+
   server.route({
     url: "/scim-tokens",
     method: "POST",
