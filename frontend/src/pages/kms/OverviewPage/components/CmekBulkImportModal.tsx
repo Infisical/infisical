@@ -11,6 +11,7 @@ import {
   Alert,
   AlertDescription,
   AlertTitle,
+  Badge,
   Button,
   Dialog,
   DialogClose,
@@ -359,7 +360,8 @@ export const CmekBulkImportModal = ({ isOpen, onOpenChange, projectId }: Props) 
   "name": "...",
   "keyType": "encrypt-decrypt",
   "algorithm": "...",
-  "keyMaterial": "<base64>"
+  "keyMaterial": "<base64>",
+  "isExportable": true  // optional, default: true
 }
 
 // Sign/Verify key
@@ -368,8 +370,14 @@ export const CmekBulkImportModal = ({ isOpen, onOpenChange, projectId }: Props) 
   "keyType": "sign-verify",
   "algorithm": "...",
   "privateKey": "<base64>",
-  "publicKey": "<base64>"
+  "publicKey": "<base64>",
+  "isExportable": true  // optional, default: true
 }`}</pre>
+                <p className="mt-2">
+                  Set <code className="rounded bg-card px-1 py-0.5">isExportable</code> to{" "}
+                  <code className="rounded bg-card px-1 py-0.5">false</code> to permanently prevent
+                  the key material from being exported. This cannot be changed after import.
+                </p>
               </AccordionContent>
             </AccordionItem>
           </Accordion>
@@ -399,6 +407,9 @@ export const CmekBulkImportModal = ({ isOpen, onOpenChange, projectId }: Props) 
               </TableHead>
               <TableHead className="bg-container shadow-[inset_0_-1px_0_var(--color-border)]">
                 Algorithm
+              </TableHead>
+              <TableHead className="bg-container shadow-[inset_0_-1px_0_var(--color-border)]">
+                Export
               </TableHead>
             </TableRow>
           </TableHeader>
@@ -439,6 +450,13 @@ export const CmekBulkImportModal = ({ isOpen, onOpenChange, projectId }: Props) 
                   </TableCell>
                   <TableCell isTruncatable className="w-1/4 max-w-0 uppercase">
                     <p className="truncate">{renderFieldValue(key.algorithm)}</p>
+                  </TableCell>
+                  <TableCell>
+                    {key.isExportable === false ? (
+                      <Badge variant="neutral">Non-Exportable</Badge>
+                    ) : (
+                      <span className="text-foreground/40">Default</span>
+                    )}
                   </TableCell>
                 </TableRow>
               );
