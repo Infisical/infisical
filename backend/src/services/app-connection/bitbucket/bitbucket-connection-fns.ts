@@ -1,4 +1,4 @@
-import { AxiosError } from "axios";
+import { AxiosError, HttpStatusCode } from "axios";
 
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
@@ -13,6 +13,15 @@ import {
   TBitbucketRepo,
   TBitbucketWorkspace
 } from "./bitbucket-connection-types";
+
+const ensureBitbucketRateLimitNotExceeded = (error: unknown) => {
+  if (error instanceof AxiosError && error.response?.status === HttpStatusCode.TooManyRequests) {
+    throw new BadRequestError({
+      message: "Request to Bitbucket was blocked due to rate limiting. Please try again later."
+    });
+  }
+  throw error;
+};
 
 export const getBitbucketConnectionListItem = () => {
   return {
@@ -75,15 +84,19 @@ export const listBitbucketWorkspaces = async (appConnection: TBitbucketConnectio
   let iterationCount = 0;
 
   // Limit to 10 iterations, fetching at most 10 * 100 = 1000 workspaces
-  while (nextUrl && iterationCount < 10) {
-    // eslint-disable-next-line no-await-in-loop
-    const { data }: { data: BitbucketWorkspacesResponse } = await request.get<BitbucketWorkspacesResponse>(nextUrl, {
-      headers
-    });
+  try {
+    while (nextUrl && iterationCount < 10) {
+      // eslint-disable-next-line no-await-in-loop
+      const { data }: { data: BitbucketWorkspacesResponse } = await request.get<BitbucketWorkspacesResponse>(nextUrl, {
+        headers
+      });
 
-    allWorkspaces = allWorkspaces.concat(data.values.map((membership) => ({ slug: membership.workspace.slug })));
-    nextUrl = data.next;
-    iterationCount += 1;
+      allWorkspaces = allWorkspaces.concat(data.values.map((membership) => ({ slug: membership.workspace.slug })));
+      nextUrl = data.next;
+      iterationCount += 1;
+    }
+  } catch (error) {
+    ensureBitbucketRateLimitNotExceeded(error);
   }
 
   return allWorkspaces;
@@ -102,13 +115,17 @@ const paginateBitbucketRequest = async <T>(url: string, headers: Record<string, 
   let nextUrl: string | undefined = url;
   let iterationCount = 0;
 
-  while (nextUrl && iterationCount < BITBUCKET_MAX_PAGES) {
-    // eslint-disable-next-line no-await-in-loop
-    const { data }: { data: BitbucketPaginatedResponse<T> } = await request.get(nextUrl, { headers });
+  try {
+    while (nextUrl && iterationCount < BITBUCKET_MAX_PAGES) {
+      // eslint-disable-next-line no-await-in-loop
+      const { data }: { data: BitbucketPaginatedResponse<T> } = await request.get(nextUrl, { headers });
 
-    allItems = allItems.concat(data.values);
-    nextUrl = data.next;
-    iterationCount += 1;
+      allItems = allItems.concat(data.values);
+      nextUrl = data.next;
+      iterationCount += 1;
+    }
+  } catch (error) {
+    ensureBitbucketRateLimitNotExceeded(error);
   }
 
   return allItems;
@@ -124,22 +141,26 @@ export const listBitbucketRepositories = async (appConnection: TBitbucketConnect
 
   const encodedSlug = encodeURIComponent(workspaceSlug);
 
-  // Fetch repos per-project to avoid Bitbucket's 1,000-result pagination cap
-  const projects = await paginateBitbucketRequest<{ key: string }>(
-    `${IntegrationUrls.BITBUCKET_API_URL}/2.0/workspaces/${encodedSlug}/projects?pagelen=${BITBUCKET_PAGE_SIZE}`,
-    headers
-  );
+  try {
+    // Fetch repos per-project to avoid Bitbucket's 1,000-result pagination cap
+    const projects = await paginateBitbucketRequest<{ key: string }>(
+      `${IntegrationUrls.BITBUCKET_API_URL}/2.0/workspaces/${encodedSlug}/projects?pagelen=${BITBUCKET_PAGE_SIZE}`,
+      headers
+    );
 
-  const reposByProject = await Promise.all(
-    projects.map((project) =>
-      paginateBitbucketRequest<TBitbucketRepo>(
-        `${IntegrationUrls.BITBUCKET_API_URL}/2.0/repositories/${encodedSlug}?pagelen=${BITBUCKET_PAGE_SIZE}&sort=slug&q=project.key="${encodeURIComponent(project.key)}"`,
-        headers
+    const reposByProject = await Promise.all(
+      projects.map((project) =>
+        paginateBitbucketRequest<TBitbucketRepo>(
+          `${IntegrationUrls.BITBUCKET_API_URL}/2.0/repositories/${encodedSlug}?pagelen=${BITBUCKET_PAGE_SIZE}&sort=slug&q=project.key="${encodeURIComponent(project.key)}"`,
+          headers
+        )
       )
-    )
-  );
+    );
 
-  return reposByProject.flat();
+    return reposByProject.flat();
+  } catch (error) {
+    ensureBitbucketRateLimitNotExceeded(error);
+  }
 };
 
 export const listBitbucketEnvironments = async (
@@ -161,22 +182,29 @@ export const listBitbucketEnvironments = async (
 
   let iterationCount = 0;
   // Limit to 10 iterations, fetching at most 10 * 100 = 1000 environments
-  while (hasNextPage && iterationCount < 10) {
-    // eslint-disable-next-line no-await-in-loop
-    const { data }: { data: { values: TBitbucketEnvironment[]; next: string } } = await request.get(environmentsUrl, {
-      headers
-    });
+  try {
+    while (hasNextPage && iterationCount < 10) {
+      // eslint-disable-next-line no-await-in-loop
+      const { data }: { data: { values: TBitbucketEnvironment[]; next: string } } = await request.get(
+        environmentsUrl,
+        {
+          headers
+        }
+      );
 
-    if (data?.values.length > 0) {
-      environments.push(...data.values);
-    }
+      if (data?.values.length > 0) {
+        environments.push(...data.values);
+      }
 
-    if (data.next) {
-      environmentsUrl = data.next;
-    } else {
-      hasNextPage = false;
+      if (data.next) {
+        environmentsUrl = data.next;
+      } else {
+        hasNextPage = false;
+      }
+      iterationCount += 1;
     }
-    iterationCount += 1;
+  } catch (error) {
+    ensureBitbucketRateLimitNotExceeded(error);
   }
 
   return environments;
