@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
-import { FolderOpen, Layers, Search } from "lucide-react";
+import { FolderOpen, Layers, Loader2, Search } from "lucide-react";
 
 import { PageHeader } from "@app/components/v2";
 import {
@@ -14,7 +14,6 @@ import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
-  Pagination,
   Select,
   SelectContent,
   SelectItem,
@@ -23,14 +22,10 @@ import {
 } from "@app/components/v3";
 import { Skeleton } from "@app/components/v3/generic/Skeleton";
 import {
-  getUserTablePreference,
-  PreferenceKey,
-  setUserTablePreference
-} from "@app/helpers/userTablePreferences";
-import {
   PAM_ACCOUNT_TYPE_MAP,
   TAccessiblePamAccount,
-  useListAccessiblePamAccounts
+  useListAccessiblePamAccounts,
+  useListAccessiblePamFolders
 } from "@app/hooks/api/pam";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { PamSheetAction, usePamSheetState } from "@app/hooks/usePamSheetState";
@@ -50,56 +45,50 @@ export const PamAccessPage = () => {
   const [selectedAccountType, setSelectedAccountType] = useState<string>("");
   const [selectedFolderId, setSelectedFolderId] = useState<string>("");
 
-  const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(() =>
-    getUserTablePreference("pamAccessTable", PreferenceKey.PerPage, 20)
-  );
-
   const debounceTimer = useRef<ReturnType<typeof setTimeout>>();
 
   useEffect(() => {
     debounceTimer.current = setTimeout(() => {
       setDebouncedSearch(searchInput.trim());
-      setPage(1);
     }, DEBOUNCE_MS);
     return () => clearTimeout(debounceTimer.current);
   }, [searchInput]);
 
-  const { data, isLoading } = useListAccessiblePamAccounts({
-    limit: perPage,
-    offset: (page - 1) * perPage,
-    search: debouncedSearch || undefined,
-    accountType: selectedAccountType || undefined,
-    folderId: selectedFolderId || undefined
-  });
-
-  const knownFoldersRef = useRef(new Map<string, string>());
-
-  const folderOptions = useMemo(() => {
-    const accounts = data?.accounts ?? [];
-    accounts.forEach((a) => {
-      if (a.folderId && a.folderName) {
-        knownFoldersRef.current.set(a.folderId, a.folderName);
-      }
+  const { data, isLoading, hasNextPage, isFetchingNextPage, fetchNextPage } =
+    useListAccessiblePamAccounts({
+      search: debouncedSearch || undefined,
+      accountType: selectedAccountType || undefined,
+      folderId: selectedFolderId || undefined
     });
-    return Array.from(knownFoldersRef.current.entries())
-      .map(([id, name]) => ({ id, name }))
-      .sort((a, b) => a.name.localeCompare(b.name));
-  }, [data?.accounts]);
+
+  const allAccounts = useMemo(() => data?.pages.flatMap((p) => p.accounts) ?? [], [data?.pages]);
+
+  const scrollSentinelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = scrollSentinelRef.current;
+    if (!el || !hasNextPage) return undefined;
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting && !isFetchingNextPage) fetchNextPage();
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+  const { data: folderOptions = [] } = useListAccessiblePamFolders();
 
   const sheetAccount = useMemo(() => {
     if (!selectedAccountId) return null;
-    return (data?.accounts ?? []).find((a) => a.id === selectedAccountId) ?? null;
-  }, [selectedAccountId, data?.accounts]);
+    return allAccounts.find((a) => a.id === selectedAccountId) ?? null;
+  }, [selectedAccountId, allAccounts]);
 
   const hasActiveFilters = searchInput.trim() || selectedAccountType || selectedFolderId;
 
   const folderGroups = useMemo(() => {
-    const accounts = data?.accounts ?? [];
     const query = searchInput.toLowerCase().trim();
     const filtered = query
-      ? accounts.filter((a) => a.name.toLowerCase().includes(query))
-      : accounts;
+      ? allAccounts.filter((a) => a.name.toLowerCase().includes(query))
+      : allAccounts;
 
     const groups = new Map<string, TAccessiblePamAccount[]>();
     filtered.forEach((account) => {
@@ -112,7 +101,7 @@ export const PamAccessPage = () => {
       }
     });
     return Array.from(groups.entries()).sort(([a], [b]) => a.localeCompare(b));
-  }, [data?.accounts, searchInput]);
+  }, [allAccounts, searchInput]);
 
   return (
     <>
@@ -142,7 +131,6 @@ export const PamAccessPage = () => {
               value={selectedAccountType}
               onValueChange={(val) => {
                 setSelectedAccountType(val === "all" ? "" : val);
-                setPage(1);
               }}
             >
               <SelectTrigger>
@@ -167,7 +155,6 @@ export const PamAccessPage = () => {
               value={selectedFolderId}
               onValueChange={(val) => {
                 setSelectedFolderId(val === "all" ? "" : val);
-                setPage(1);
               }}
             >
               <SelectTrigger>
@@ -216,20 +203,13 @@ export const PamAccessPage = () => {
                 onLaunch={(account) => openSheet(PamSheetAction.Launch, account.id)}
               />
             ))}
+            {isFetchingNextPage && (
+              <div className="flex justify-center py-3">
+                <Loader2 className="size-5 animate-spin text-muted" />
+              </div>
+            )}
+            <div ref={scrollSentinelRef} />
           </CardContent>
-          {(data?.totalCount ?? 0) > 0 && (
-            <Pagination
-              count={data?.totalCount ?? 0}
-              page={page}
-              perPage={perPage}
-              onChangePage={setPage}
-              onChangePerPage={(newPerPage) => {
-                setPerPage(newPerPage);
-                setUserTablePreference("pamAccessTable", PreferenceKey.PerPage, newPerPage);
-                setPage(1);
-              }}
-            />
-          )}
         </Card>
       </div>
 

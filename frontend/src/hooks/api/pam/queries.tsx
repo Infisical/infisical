@@ -1,5 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { useQuery, UseQueryOptions } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useInfiniteQuery,
+  useQuery,
+  UseQueryOptions
+} from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
@@ -16,6 +21,7 @@ export const pamKeys = {
   all: ["pam"] as const,
   account: () => [...pamKeys.all, "account"] as const,
   session: () => [...pamKeys.all, "session"] as const,
+  accessibleFolders: () => [...pamKeys.account(), "accessible-folders"] as const,
   listAccounts: ({ projectId, ...params }: TListPamAccountsDTO) => [
     ...pamKeys.account(),
     "list",
@@ -38,29 +44,45 @@ type TListAccessiblePamAccountsResponse = {
   totalCount: number;
 };
 
+const ACCESSIBLE_ACCOUNTS_PAGE_SIZE = 50;
+
 export const useListAccessiblePamAccounts = (
-  params?: TListAccessiblePamAccountsDTO,
-  options?: Omit<
-    UseQueryOptions<
-      TListAccessiblePamAccountsResponse,
-      unknown,
-      TListAccessiblePamAccountsResponse,
-      ReturnType<typeof pamKeys.listAccessibleAccounts>
-    >,
-    "queryKey" | "queryFn"
-  >
+  filters?: Omit<TListAccessiblePamAccountsDTO, "offset" | "limit">
 ) => {
-  return useQuery({
-    queryKey: pamKeys.listAccessibleAccounts(params),
-    queryFn: async () => {
+  return useInfiniteQuery({
+    queryKey: pamKeys.listAccessibleAccounts(filters),
+    queryFn: async ({ pageParam = 0 }) => {
       const { data } = await apiRequest.get<TListAccessiblePamAccountsResponse>(
         "/api/v1/pam/accounts/accessible",
-        { params }
+        { params: { ...filters, offset: pageParam, limit: ACCESSIBLE_ACCOUNTS_PAGE_SIZE } }
       );
       return data;
     },
-    placeholderData: (prev) => prev,
-    ...options
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, allPages) => {
+      const fetched = allPages.reduce((sum, p) => sum + p.accounts.length, 0);
+      return fetched < lastPage.totalCount ? fetched : undefined;
+    },
+    placeholderData: keepPreviousData
+  });
+};
+
+// Accessible Folders (user-facing)
+type TAccessiblePamFolder = {
+  id: string;
+  name: string;
+  accountCount: number;
+};
+
+export const useListAccessiblePamFolders = () => {
+  return useQuery({
+    queryKey: pamKeys.accessibleFolders(),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ folders: TAccessiblePamFolder[] }>(
+        "/api/v1/pam/folders"
+      );
+      return data.folders;
+    }
   });
 };
 
