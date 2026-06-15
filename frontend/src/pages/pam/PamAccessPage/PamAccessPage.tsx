@@ -191,7 +191,7 @@ export const PamAccessPage = () => {
                   <EmptyDescription>
                     {hasActiveFilters
                       ? "Try adjusting your search or filters."
-                      : "You don't have access to any accounts yet. Ask an admin to grant you access."}
+                      : "You don't have access to any accounts yet."}
                   </EmptyDescription>
                 </EmptyHeader>
               </Empty>
