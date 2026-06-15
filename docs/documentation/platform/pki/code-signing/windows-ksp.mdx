@@ -106,7 +106,7 @@ $env:INFISICAL_TOKEN = "<your-access-token>"
 ```
 
 <Warning>
-  Access tokens expire, so this access is **temporary**. The plug-in does not refresh the token; once it expires, signing fails until you supply a new one. This is handy for signing as yourself or for a quick one-off, but for unattended or CI/CD signing use a machine identity, which the plug-in re-authenticates automatically.
+  JWT tokens expire, so this access is **temporary**. The plug-in does not refresh the token; once it expires, signing fails until you supply a new one. This is handy for signing as yourself or for a quick one-off, but for unattended or CI/CD signing use a machine identity with Universal Auth (client ID and secret), which the plug-in re-authenticates automatically.
 </Warning>
 
 ### Configuration reference
@@ -133,7 +133,7 @@ $env:INFISICAL_TOKEN = "<your-access-token>"
 | `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID` | The machine identity's client ID. Wins over the config file. |
 | `INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET` | The machine identity's secret. Wins over the config file. |
 | `INFISICAL_TOKEN` | An Infisical access token (a user or machine identity token). Selects token auth; used instead of the client ID/secret. |
-| `INFISICAL_SERVER_URL` | Sets `server_url`. |
+| `INFISICAL_SERVER_URL` | The Infisical instance URL. Sets `server_url` (and overrides the config file). |
 | `INFISICAL_CONFIG` | Path to the config file (default `%ProgramData%\Infisical\config.json`). |
 
 <Note>

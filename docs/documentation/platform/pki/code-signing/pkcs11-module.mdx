@@ -94,7 +94,7 @@ export INFISICAL_TOKEN="<your-access-token>"
 ```
 
 <Warning>
-  Access tokens expire, so this access is **temporary**. The module does not refresh the token; once it expires, signing fails until you supply a new one. This is handy for signing as yourself or for a quick one-off; for unattended or CI/CD signing use a machine identity, which the module re-authenticates automatically.
+  JWT tokens expire, so this access is **temporary**. The module does not refresh the token; once it expires, signing fails until you supply a new one. This is handy for signing as yourself or for a quick one-off; for unattended or CI/CD signing use a machine identity with Universal Auth (client ID and secret), which the module re-authenticates automatically.
 </Warning>
 
 If you put the config somewhere other than `/etc/infisical/pkcs11.conf`:
@@ -129,7 +129,7 @@ export INFISICAL_CONFIG=/path/to/your/pkcs11.conf
 | `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID` | Machine identity client ID. Overrides config. |
 | `INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET` | Machine identity client secret. Overrides config. |
 | `INFISICAL_TOKEN` | An Infisical access token (a user or machine identity token). Selects token auth; used instead of the client ID/secret. |
-| `INFISICAL_SERVER_URL` | Override `server_url`. |
+| `INFISICAL_SERVER_URL` | The Infisical instance URL. Sets `server_url` (and overrides the config file). |
 | `INFISICAL_CONFIG` | Path to the config file (default `/etc/infisical/pkcs11.conf`). |
 
 <Note>

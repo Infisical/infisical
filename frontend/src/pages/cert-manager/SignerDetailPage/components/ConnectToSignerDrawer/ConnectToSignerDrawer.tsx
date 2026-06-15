@@ -60,8 +60,15 @@ type Props = {
   onOpenChange: (open: boolean) => void;
 };
 
-type Method = "pkcs11" | "ksp";
-type AuthMethod = "token" | "machine-identity";
+enum Method {
+  Pkcs11 = "pkcs11",
+  Ksp = "ksp"
+}
+
+enum AuthMethod {
+  Token = "token",
+  MachineIdentity = "machine-identity"
+}
 
 const STEP_TITLES: Record<1 | 2 | 3, string> = {
   1: "Choose a tool",
@@ -216,10 +223,10 @@ const AuthOptionCard = ({
 
 export const ConnectToSignerDrawer = ({ signer, isOpen, onOpenChange }: Props) => {
   const [step, setStep] = useState<1 | 2 | 3>(1);
-  const [method, setMethod] = useState<Method>("ksp");
+  const [method, setMethod] = useState<Method>(Method.Ksp);
   const [os, setOs] = useState<OS>("linux");
   const [tool, setTool] = useState<Pkcs11Tool>("jarsigner");
-  const [authMethod, setAuthMethod] = useState<AuthMethod>("token");
+  const [authMethod, setAuthMethod] = useState<AuthMethod>(AuthMethod.Token);
 
   useEffect(() => {
     if (isOpen) setStep(1);
@@ -235,16 +242,16 @@ export const ConnectToSignerDrawer = ({ signer, isOpen, onOpenChange }: Props) =
 
   const { data: signerCert } = useExportSignerCertificate(
     signer.id,
-    isOpen && method === "ksp" && canExportCert
+    isOpen && method === Method.Ksp && canExportCert
   );
 
   const auth: SignerAuth =
-    authMethod === "token"
+    authMethod === AuthMethod.Token
       ? { mode: "token", token: getAuthToken() || "<your-access-token>" }
       : { mode: "machine-identity" };
 
   const authNote =
-    authMethod === "token" ? (
+    authMethod === AuthMethod.Token ? (
       <p className="mt-2 text-xs text-yellow-600">
         This uses your personal access token, which expires, so this setup is temporary. For
         unattended or CI/CD signing, use a machine identity instead.
@@ -258,7 +265,9 @@ export const ConnectToSignerDrawer = ({ signer, isOpen, onOpenChange }: Props) =
     );
 
   const rightDocHref =
-    method === "ksp" ? PkiDocsUrls.codeSigning.windowsKsp : PkiDocsUrls.codeSigning.pkcs11Module;
+    method === Method.Ksp
+      ? PkiDocsUrls.codeSigning.windowsKsp
+      : PkiDocsUrls.codeSigning.pkcs11Module;
 
   const renderRightPanel = () => {
     if (step === 1) {
@@ -291,7 +300,7 @@ export const ConnectToSignerDrawer = ({ signer, isOpen, onOpenChange }: Props) =
     return (
       <>
         <p className="mt-4 text-sm font-semibold text-foreground">What this step does</p>
-        {method === "ksp" ? (
+        {method === Method.Ksp ? (
           <p className="mt-2 text-sm leading-relaxed text-muted">
             Download and register the Key Storage Provider once per machine, set your credentials,
             then sign with <span className="font-mono text-xs">signtool</span>. The Signer is
@@ -320,8 +329,7 @@ export const ConnectToSignerDrawer = ({ signer, isOpen, onOpenChange }: Props) =
               <DocumentationLinkBadge href={PkiDocsUrls.codeSigning.connect} />
             </SheetTitle>
             <SheetDescription>
-              Sign with this Signer using the tool you already use. Your signing key never leaves
-              Infisical.
+              Sign with this Signer using the tool you already use.
             </SheetDescription>
           </div>
         </SheetHeader>
@@ -360,16 +368,16 @@ export const ConnectToSignerDrawer = ({ signer, isOpen, onOpenChange }: Props) =
                     title="Standard signing tools"
                     description="jarsigner, osslsigncode, cosign, and other common tools. Uses the Infisical PKCS#11 module."
                     platforms={["Linux", "macOS", "Windows"]}
-                    isSelected={method === "pkcs11"}
-                    onSelect={() => setMethod("pkcs11")}
+                    isSelected={method === Method.Pkcs11}
+                    onSelect={() => setMethod(Method.Pkcs11)}
                   />
                   <MethodCard
                     icon={<MonitorIcon className="size-5" />}
                     title="Windows signtool"
                     description="Native Windows Authenticode signing with Microsoft signtool. Uses the Infisical Key Storage Provider."
                     platforms={["Windows"]}
-                    isSelected={method === "ksp"}
-                    onSelect={() => setMethod("ksp")}
+                    isSelected={method === Method.Ksp}
+                    onSelect={() => setMethod(Method.Ksp)}
                   />
                 </div>
               </>
@@ -377,25 +385,25 @@ export const ConnectToSignerDrawer = ({ signer, isOpen, onOpenChange }: Props) =
             {step === 2 && (
               <>
                 <h2 className="text-lg font-semibold text-foreground">
-                  Choose how to authenticate
+                  Choose how you authenticate
                 </h2>
                 <p className="mt-1 mb-6 text-sm text-muted">
-                  Pick how the machine running the signing tool proves who it is to Infisical.
+                  Pick how the signing tool proves who it is to Infisical during signing operations.
                 </p>
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <AuthOptionCard
                     icon={<KeyRoundIcon className="size-4" />}
                     title="Use my credentials"
                     description="Sign as yourself with your own Infisical access token. Quickest to set up, but temporary because the token expires."
-                    isSelected={authMethod === "token"}
-                    onSelect={() => setAuthMethod("token")}
+                    isSelected={authMethod === AuthMethod.Token}
+                    onSelect={() => setAuthMethod(AuthMethod.Token)}
                   />
                   <AuthOptionCard
                     icon={<HardDriveIcon className="size-4" />}
                     title="Use a machine identity"
                     description="Authenticate with a Machine Identity's Universal Auth credentials. Best for CI/CD and unattended signing."
-                    isSelected={authMethod === "machine-identity"}
-                    onSelect={() => setAuthMethod("machine-identity")}
+                    isSelected={authMethod === AuthMethod.MachineIdentity}
+                    onSelect={() => setAuthMethod(AuthMethod.MachineIdentity)}
                   />
                 </div>
               </>
@@ -404,12 +412,12 @@ export const ConnectToSignerDrawer = ({ signer, isOpen, onOpenChange }: Props) =
               <>
                 <h2 className="text-lg font-semibold text-foreground">Install &amp; sign</h2>
                 <p className="mt-1 mb-6 text-sm text-muted">
-                  {method === "ksp"
+                  {method === Method.Ksp
                     ? "Install the Infisical Key Storage Provider, then sign with Microsoft signtool."
                     : "Install the Infisical PKCS#11 module, then sign with jarsigner, osslsigncode, or any PKCS#11 tool."}
                 </p>
 
-                {method === "ksp" ? (
+                {method === Method.Ksp ? (
                   <div className="space-y-5">
                     <SubStep
                       index={1}
@@ -429,9 +437,9 @@ export const ConnectToSignerDrawer = ({ signer, isOpen, onOpenChange }: Props) =
                       index={3}
                       title="Configure"
                       description={
-                        authMethod === "token"
-                          ? "Point the provider at Infisical with your access token."
-                          : "Create the config file and set the Machine Identity credentials."
+                        authMethod === AuthMethod.Token
+                          ? "Set your Infisical address and access token as environment variables."
+                          : "Set your Infisical address and Machine Identity credentials as environment variables."
                       }
                     >
                       <CommandBlock snippet={kspConfigureSnippet(serverUrl, auth)} />
@@ -479,9 +487,9 @@ export const ConnectToSignerDrawer = ({ signer, isOpen, onOpenChange }: Props) =
                       index={2}
                       title="Configure"
                       description={
-                        authMethod === "token"
-                          ? "Create a config file and set your access token as an environment variable."
-                          : "Create a config file and set the Machine Identity credentials as environment variables."
+                        authMethod === AuthMethod.Token
+                          ? "Set your Infisical address and access token as environment variables."
+                          : "Set your Infisical address and Machine Identity credentials as environment variables."
                       }
                     >
                       <CommandBlock snippet={pkcs11ConfigureSnippet(os, serverUrl, auth)} />

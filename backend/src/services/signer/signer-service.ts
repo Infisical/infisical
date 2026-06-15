@@ -1135,7 +1135,7 @@ export const signerServiceFactory = ({
             message:
               `Signing with signer '${signer.name}' requires approved access, but none is currently active. ` +
               `Access may not have been requested or approved yet, may have expired, or may have reached its signature limit. ` +
-              `Request and approve signing access for this signer, then try again.`,
+              `Request signing access for this signer and try again once it's approved.`,
             name: "ApprovalRequired"
           });
         }
