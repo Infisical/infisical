@@ -1635,6 +1635,13 @@ export const secretFolderServiceFactory = ({
       });
     }
 
+    // check if the source folder is not root
+    if (!sourceFolder.parentId) {
+      throw new BadRequestError({
+        message: "Cannot move the root folder"
+      });
+    }
+
     // 2. permission: a move is create-at-destination + delete-at-source (secret-level perms are enforced in moveSecrets)
     const { permission } = await permissionService.getProjectPermission({
       actor,
