@@ -1,4 +1,3 @@
-// Resources
 export enum PamResourceType {
   Postgres = "postgres",
   MySQL = "mysql",
@@ -20,11 +19,12 @@ export enum PamResourceType {
   Windows = "windows"
 }
 
-export enum PamResourceOrderBy {
-  Name = "name"
+export enum SessionChannelType {
+  Terminal = "terminal",
+  Exec = "exec",
+  Sftp = "sftp"
 }
 
-// Sessions
 export enum PamSessionStatus {
   Starting = "starting",
   Active = "active",
@@ -32,13 +32,6 @@ export enum PamSessionStatus {
   Terminated = "terminated"
 }
 
-export enum SessionChannelType {
-  Terminal = "terminal",
-  Exec = "exec",
-  Sftp = "sftp"
-}
-
-// Account types
 export enum PamAccountType {
   SSH = "ssh",
   Postgres = "postgres",
@@ -53,7 +46,6 @@ export enum PamAccountType {
   ActiveDirectory = "active-directory"
 }
 
-// Accounts
 export enum PamAccountOrderBy {
   Name = "name"
 }
@@ -63,9 +55,26 @@ export enum PamAccountView {
   Nested = "nested"
 }
 
-export enum PamAccountRotationStatus {
-  Rotating = "rotating",
-  Success = "success",
-  PartialSuccess = "partial-success",
-  Failed = "failed"
+export enum PamResourcePermissionSub {
+  PamResource = "pam-resource"
+}
+
+export enum PamResourcePermissionActions {
+  ReadFolder = "read-folder",
+  EditFolder = "edit-folder",
+  DeleteFolder = "delete-folder",
+  ReadAccounts = "read-accounts",
+  CreateAccounts = "create-accounts",
+  EditAccounts = "edit-accounts",
+  DeleteAccounts = "delete-accounts",
+  LaunchSessions = "launch-sessions",
+  ViewSessions = "view-sessions",
+  TerminateSessions = "terminate-sessions",
+  ViewCredentials = "view-credentials",
+  RequestAccess = "request-access",
+  ApproveRequests = "approve-requests",
+  ManagePolicies = "manage-policies",
+  ManageRotation = "manage-rotation",
+  ManageMembers = "manage-members",
+  ViewAuditLogs = "view-audit-logs"
 }

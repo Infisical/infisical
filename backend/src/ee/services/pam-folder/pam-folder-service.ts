@@ -1,4 +1,5 @@
 import { ForbiddenError } from "@casl/ability";
+import { packRules } from "@casl/ability/extra";
 
 import { RESOURCE_SCOPE, ResourceType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -76,7 +77,7 @@ export const pamFolderServiceFactory = ({
       membershipDAL,
       membershipRoleDAL,
       projectId,
-      { allOf: [ResourcePermissionPamResourceActions.ReadFolder] },
+      { anyOf: [ResourcePermissionPamResourceActions.ReadFolder, ResourcePermissionPamResourceActions.ReadAccounts] },
       ctx
     );
     if (folderIds.length === 0 && accountIds.length === 0) return [];
@@ -190,5 +191,32 @@ export const pamFolderServiceFactory = ({
     });
   };
 
-  return { list, getById, create, update, deleteFolder };
+  const getFolderPermissions = async ({ folderId, projectId, ...ctx }: TGetPamFolderDTO & TActorContext) => {
+    const folder = await pamFolderDAL.findById(folderId);
+    if (!folder || folder.projectId !== projectId) {
+      throw new NotFoundError({ message: `Folder with ID '${folderId}' not found` });
+    }
+
+    const { permission, memberships } = await permissionService.getResourcePermission({
+      actor: ctx.actor,
+      actorId: ctx.actorId,
+      projectId,
+      resourceType: ResourceType.PamFolder,
+      resourceId: folderId,
+      actorAuthMethod: ctx.actorAuthMethod,
+      actorOrgId: ctx.actorOrgId
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ResourcePermissionPamResourceActions.ReadFolder,
+      ResourcePermissionSub.PamResource
+    );
+
+    return {
+      permissions: packRules(permission.rules),
+      memberships
+    };
+  };
+
+  return { list, getById, create, update, deleteFolder, getFolderPermissions };
 };

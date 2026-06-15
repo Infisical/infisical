@@ -10,6 +10,7 @@ import {
 } from "@app/ee/services/pam-account-template/pam-account-template-schemas";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { withRoutePrefix } from "@app/server/lib/with-route-prefix";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -76,7 +77,7 @@ const registerPerTypeEndpoints = (
       description: `Create a new ${accountType} PAM account`,
       tags: [ApiDocsTags.PamAccounts],
       body: z.object({
-        name: z.string().trim().min(1).max(64).describe("Display name for the account"),
+        name: slugSchema({ field: "Name" }).describe("Name for the account"),
         description: z.string().trim().max(256).optional().describe("Optional description of the account"),
         folderId: z.string().uuid().describe("The ID of the folder to place the account in"),
         templateId: z.string().uuid().describe("The ID of the account template to use"),
@@ -151,7 +152,7 @@ const registerPerTypeEndpoints = (
       tags: [ApiDocsTags.PamAccounts],
       params: z.object({ accountId: z.string().uuid().describe("The ID of the account to update") }),
       body: z.object({
-        name: z.string().trim().min(1).max(64).optional().describe("Display name for the account"),
+        name: slugSchema({ field: "Name" }).optional().describe("New name for the account"),
         description: z.string().trim().max(256).nullable().optional().describe("Optional description of the account"),
         folderId: z.string().uuid().optional().describe("The ID of the folder to move the account to"),
         templateId: z.string().uuid().optional().describe("The ID of the account template to use"),
@@ -305,7 +306,10 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
       tags: [ApiDocsTags.PamAccounts],
       querystring: z.object({
         offset: z.coerce.number().min(0).default(0).optional().describe("Number of items to skip"),
-        limit: z.coerce.number().min(1).max(100).default(20).optional().describe("Maximum number of items to return")
+        limit: z.coerce.number().min(1).max(100).default(20).optional().describe("Maximum number of items to return"),
+        search: z.string().trim().optional().describe("Filter accounts by name (case-insensitive partial match)"),
+        folderId: z.string().uuid().optional().describe("Filter accounts by folder ID"),
+        accountType: z.nativeEnum(PamAccountType).optional().describe("Filter accounts by platform type")
       }),
       response: {
         200: z.object({
@@ -337,9 +341,53 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod,
         offset: req.query.offset,
-        limit: req.query.limit
+        limit: req.query.limit,
+        search: req.query.search,
+        folderId: req.query.folderId,
+        accountType: req.query.accountType
       });
       return { accounts, totalCount };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:accountId/permissions",
+    config: { rateLimit: readLimit },
+    schema: {
+      operationId: "getPamAccountPermissions",
+      description:
+        "Get the caller's effective resource permissions on this account, merging folder-level and direct account-level roles.",
+      tags: [ApiDocsTags.PamAccounts],
+      params: z.object({ accountId: z.string().uuid().describe("The ID of the account") }),
+      response: {
+        200: z.object({
+          data: z.object({
+            permissions: z.any().array(),
+            memberships: z
+              .object({
+                id: z.string(),
+                actorUserId: z.string().nullish(),
+                actorIdentityId: z.string().nullish(),
+                actorGroupId: z.string().nullish(),
+                roles: z.object({ role: z.string(), customRoleSlug: z.string().nullish() }).array()
+              })
+              .array()
+          })
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const data = await server.services.pamAccount.getAccountPermissions({
+        accountId: req.params.accountId,
+        projectId: req.internalPamProjectId,
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod
+      });
+      return { data };
     }
   });
 

@@ -108,7 +108,7 @@ const PageContent = () => {
   if (!account) {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-[#0d1117]">
-        <p className="text-mineshaft-300">Could not find PAM Account with ID {accountId}</p>
+        <p className="text-mineshaft-300">Could not find account with ID {accountId}</p>
       </div>
     );
   }

@@ -35,7 +35,8 @@ const badgeVariants = cva(
         project:
           "bg-project/15 text-project border-project/10 border [a&,button&]:hover:bg-project/35",
         org: "bg-org/15 border  border-org/10 text-org [a&,button&]:hover:bg-org/35",
-        "sub-org": "bg-sub-org/15 border-sub-org/10 text-sub-org [a&,button&]:hover:bg-sub-org/35"
+        "sub-org": "bg-sub-org/15 border-sub-org/10 text-sub-org [a&,button&]:hover:bg-sub-org/35",
+        pam: "bg-product-pam/15 border-product-pam/10 text-product-pam [a&,button&]:hover:bg-product-pam/35"
       }
     },
     defaultVariants: {
