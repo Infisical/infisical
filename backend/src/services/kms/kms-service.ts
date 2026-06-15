@@ -207,6 +207,10 @@ export const kmsServiceFactory = ({
         throw new BadRequestError({ message: "Reserved Infisical-managed KMS keys cannot be rotated." });
       }
 
+      if (kmsDoc.isDisabled) {
+        throw new BadRequestError({ message: "Key is disabled" });
+      }
+
       if ((kmsDoc.keyUsage as KmsKeyUsage) !== KmsKeyUsage.ENCRYPT_DECRYPT) {
         throw new BadRequestError({
           message:
@@ -478,8 +482,11 @@ export const kmsServiceFactory = ({
       const preferred = attempt(keyMaterialByVersion.get(preferredVersion));
       if (preferred) return preferred;
 
-      const current = attempt(kmsKey);
-      if (current) return current;
+      // skip when preferred already was the current material (seeded under currentKeyVersion)
+      if (preferredVersion !== currentKeyVersion) {
+        const current = attempt(kmsKey);
+        if (current) return current;
+      }
 
       await $loadArchivedVersions();
       for (let version = currentKeyVersion - 1; version >= 1; version -= 1) {
