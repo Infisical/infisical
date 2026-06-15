@@ -215,7 +215,6 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
     }
   });
 
-  // rotate KMS key
   server.route({
     method: "POST",
     url: "/keys/:keyId/rotate",

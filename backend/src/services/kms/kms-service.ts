@@ -191,9 +191,6 @@ export const kmsServiceFactory = ({
   const rotateKmsKey = async (kmsKeyId: string, tx?: Knex) => {
     const keyCipher = symmetricCipherService(SymmetricKeyAlgorithm.AES_GCM_256);
 
-    // All validation reads run inside the rotation transaction (primary, not a lagging replica) so the guards
-    // and the FOR UPDATE-locked row can't drift, and the encryption algorithm used to size the new material is
-    // read from the same locked row that gets updated.
     const dbQuery = async (db: Knex) => {
       const kmsDoc = await kmsDAL.findByIdWithAssociatedKms(kmsKeyId, db);
       if (!kmsDoc) {
@@ -206,9 +203,6 @@ export const kmsServiceFactory = ({
         });
       }
 
-      // Reserved keys (org/project defaults) back the platform data-key paths, including the Go backend which has
-      // no v02 support. Rotation is only ever exposed for customer-managed keys; this engine-level guard prevents
-      // any present or future caller from pushing reserved-key blobs onto the v02 format.
       if (kmsDoc.isReserved) {
         throw new BadRequestError({ message: "Reserved Infisical-managed KMS keys cannot be rotated." });
       }
@@ -229,7 +223,7 @@ export const kmsServiceFactory = ({
       const newKeyMaterial = crypto.randomBytes(getByteLengthForSymmetricEncryptionAlgorithm(encryptionAlgorithm));
       const encryptedNewKeyMaterial = keyCipher.encrypt(newKeyMaterial, ROOT_ENCRYPTION_KEY);
 
-      // archive the current material BEFORE overwriting it; this ordering is the data-loss guard
+      // archive the current material BEFORE overwriting it
       await internalKmsKeyVersionDAL.create(
         {
           internalKmsId: internalKms.id,
@@ -453,8 +447,6 @@ export const kmsServiceFactory = ({
     const currentKeyVersion = kmsDoc.internalKms?.version as number; // NOT NULL, defaults to 1
     const kmsKey = keyCipher.decrypt(kmsDoc.internalKms?.encryptedKey as Buffer, ROOT_ENCRYPTION_KEY);
 
-    // The current version's material lives only on internal_kms (never the archive table), so seed the cache
-    // with it. Archived versions are loaded lazily, in a single query, and only when the current material fails.
     const keyMaterialByVersion = new Map<number, Buffer>([[currentKeyVersion, kmsKey]]);
     let archivedVersionsLoaded = false;
     const $loadArchivedVersions = async () => {
@@ -514,9 +506,6 @@ export const kmsServiceFactory = ({
         const decrypted = await $tryDecryptWithAnyMaterial(cipherTextBlob, embeddedVersion);
         if (decrypted) return decrypted;
 
-        // Correctly framed v02 that no available material can authenticate (e.g. a replica that has not yet
-        // replicated freshly-rotated material). Surface a real crypto error on the correct byte range rather than
-        // mangling it through the legacy path.
         return dataCipher.decrypt(cipherTextBlob, kmsKey);
       }
 
