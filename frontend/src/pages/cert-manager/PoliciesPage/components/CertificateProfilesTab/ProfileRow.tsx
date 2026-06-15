@@ -129,24 +129,6 @@ export const ProfileRow = ({ profile, onEditProfile, onCloneProfile, onDeletePro
               Copy Profile ID
             </DropdownMenuItem>
             <ProjectPermissionCan
-              I={ProjectPermissionCertificateProfileActions.Create}
-              a={ProjectPermissionSub.CertificateProfiles}
-            >
-              {(isAllowed) =>
-                isAllowed && (
-                  <DropdownMenuItem
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onCloneProfile(profile);
-                    }}
-                  >
-                    <CopyPlusIcon />
-                    Clone Profile
-                  </DropdownMenuItem>
-                )
-              }
-            </ProjectPermissionCan>
-            <ProjectPermissionCan
               I={ProjectPermissionCertificateProfileActions.Edit}
               a={subject(ProjectPermissionSub.CertificateProfiles, { slug: profile.slug })}
             >
@@ -160,6 +142,24 @@ export const ProfileRow = ({ profile, onEditProfile, onCloneProfile, onDeletePro
                   >
                     <PencilIcon />
                     Edit Profile
+                  </DropdownMenuItem>
+                )
+              }
+            </ProjectPermissionCan>
+            <ProjectPermissionCan
+              I={ProjectPermissionCertificateProfileActions.Create}
+              a={ProjectPermissionSub.CertificateProfiles}
+            >
+              {(isAllowed) =>
+                isAllowed && (
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onCloneProfile(profile);
+                    }}
+                  >
+                    <CopyPlusIcon />
+                    Clone Profile
                   </DropdownMenuItem>
                 )
               }
