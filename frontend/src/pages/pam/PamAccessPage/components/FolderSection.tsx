@@ -19,6 +19,7 @@ export const FolderSection = ({ folderName, accounts, onLaunch }: Props) => {
           <div className="flex flex-1 items-center gap-2">
             <Folder className="size-4 text-product-pam" />
             <span className="text-sm font-medium">{folderName}</span>
+            <span className="text-xs text-muted">({accounts.length})</span>
           </div>
           <ChevronDown className="size-4 shrink-0 rotate-90 text-label transition-transform duration-200 [[data-state=open]>&]:rotate-0" />
         </AccordionTrigger>

@@ -14,7 +14,7 @@ export const AccountRow = ({ account, onLaunch }: Props) => {
   const typeName = PAM_ACCOUNT_TYPE_MAP[account.accountType]?.name ?? account.accountType;
 
   return (
-    <div className="flex items-center gap-3 border-b border-border px-4 py-2 last:border-b-0 hover:bg-container-hover">
+    <div className="flex items-center gap-3 border-b border-border px-4 py-2 last:border-b-0">
       <AccountPlatformIcon accountType={account.accountType} size={24} />
       <span className="truncate text-sm text-foreground">{account.name}</span>
       <Badge variant="info">{typeName}</Badge>

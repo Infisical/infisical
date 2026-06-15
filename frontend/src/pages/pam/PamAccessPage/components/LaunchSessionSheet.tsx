@@ -49,18 +49,6 @@ export const LaunchSessionSheet = ({ account, isOpen, onOpenChange }: Props) => 
         </div>
 
         <div className="flex flex-1 flex-col">
-          <div className="flex items-center gap-4 border-b border-border px-6 pt-1">
-            <button
-              type="button"
-              className="relative cursor-pointer border-b-2 border-product-pam px-1 pt-2 pb-2 text-sm font-medium text-foreground"
-            >
-              <span className="flex items-center gap-1.5">
-                <Rocket className="size-3.5" />
-                Launch
-              </span>
-            </button>
-          </div>
-
           <div className="flex-1 p-6">
             <p className="mb-3 text-sm font-medium text-foreground">Launch method</p>
             <div className="flex gap-3">
