@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { faInfoCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { TriangleAlertIcon } from "lucide-react";
@@ -19,6 +19,7 @@ import {
 } from "@app/components/v2";
 import { Badge } from "@app/components/v3";
 import { Alert, AlertDescription, AlertTitle } from "@app/components/v3/generic/Alert";
+import { useBadgeOverflow } from "@app/components/v3/generic/DataGrid/hooks/use-badge-overflow";
 import { TAvailableAppConnection } from "@app/hooks/api/appConnections/types";
 import { useGetVaultMounts, useGetVaultSecretPaths } from "@app/hooks/api/migration/queries";
 
@@ -43,6 +44,9 @@ type ContentProps = {
 // paths are truncated from the start with a leading ellipsis so the meaningful
 // tail (including the wildcard `+`) stays visible.
 const MAX_PATH_LENGTH = 30;
+
+const getDisplayPath = (path: string) =>
+  path.length > MAX_PATH_LENGTH ? `…${path.slice(path.length - MAX_PATH_LENGTH)}` : path;
 
 const renderWildcardPath = (path: string) => {
   const isTruncated = path.length > MAX_PATH_LENGTH;
@@ -97,6 +101,17 @@ const Content = ({ onClose, environment, secretPath, appConnections, onImport }:
   );
 
   const kvMounts = mounts?.filter((mount) => mount.type === "kv" || mount.type.startsWith("kv"));
+
+  const badgeContainerRef = useRef<HTMLDivElement>(null);
+  const { visibleItems: visibleSkippedPaths, hiddenCount } = useBadgeOverflow({
+    items: skippedWildcardPaths,
+    getLabel: (path) => getDisplayPath(path),
+    containerRef: badgeContainerRef,
+    lineCount: 3,
+    className: "font-mono",
+    overflowBadgeWidth: 60
+  });
+  const hiddenSkippedPaths = skippedWildcardPaths.slice(visibleSkippedPaths.length);
 
   const handleConnectionChange = (id: string) => {
     setSelectedConnectionId(id);
@@ -261,19 +276,20 @@ const Content = ({ onClose, environment, secretPath, appConnections, onImport }:
               paths. In Vault, update the policy on the App role or token behind this App Connection
               to grant access to absolute paths instead.
             </p>
-            <div className="mt-2 flex flex-col items-start gap-1">
-              {skippedWildcardPaths.slice(0, 3).map((path) => (
+            <div ref={badgeContainerRef} className="mt-2 flex flex-wrap items-start gap-1">
+              {visibleSkippedPaths.map((path) => (
                 <Badge key={path} variant="warning" className="font-mono text-foreground/80">
                   {renderWildcardPath(path)}
                 </Badge>
               ))}
-              {skippedWildcardPaths.length > 3 && (
+              {hiddenCount > 0 && (
                 <Tooltip
                   className="max-w-sm p-2"
                   content={
-                    <div className="flex flex-col gap-1">
-                      {skippedWildcardPaths.slice(3).map((path) => (
+                    <div className="flex flex-wrap gap-1">
+                      {hiddenSkippedPaths.map((path) => (
                         <Badge
+                          isTruncatable
                           key={path}
                           variant="warning"
                           className="font-mono text-foreground/80"
@@ -285,7 +301,7 @@ const Content = ({ onClose, environment, secretPath, appConnections, onImport }:
                   }
                 >
                   <Badge variant="warning" className="cursor-default font-mono">
-                    +{skippedWildcardPaths.length - 3} more
+                    +{hiddenCount} more
                   </Badge>
                 </Tooltip>
               )}
