@@ -17,7 +17,7 @@ import {
 const ensureBitbucketRateLimitNotExceeded = (error: unknown) => {
   if (error instanceof AxiosError && error.response?.status === HttpStatusCode.TooManyRequests) {
     throw new BadRequestError({
-      message: "Request to Bitbucket was blocked due to rate limiting. Please try again later."
+      message: "Request to Bitbucket was blocked due to rate limiting. Bitbucket's rate limit window is 1 hour. Please try again later."
     });
   }
   throw error;
