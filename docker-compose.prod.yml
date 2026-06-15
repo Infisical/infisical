@@ -3,13 +3,15 @@ version: "3"
 services:
   backend:
     container_name: infisical-backend
+    build:
+      context: .
+      dockerfile: Dockerfile.standalone-infisical
     restart: unless-stopped
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_started
-    image: infisical/infisical:latest # PIN THIS TO A SPECIFIC TAG
     pull_policy: always
     env_file: .env
     ports:

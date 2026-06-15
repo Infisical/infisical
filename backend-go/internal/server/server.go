@@ -79,14 +79,26 @@ func (s *Server) Listen(ctx context.Context, addr string, wg *sync.WaitGroup, er
 	})
 }
 
+type statusRecorder struct {
+	http.ResponseWriter
+	statusCode int
+}
+
+func (r *statusRecorder) WriteHeader(code int) {
+	r.statusCode = code
+	r.ResponseWriter.WriteHeader(code)
+}
+
 func requestLogger(next http.Handler, logger *slog.Logger) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
-		next.ServeHTTP(w, r)
-		logger.InfoContext(r.Context(), "request",
+		recorder := &statusRecorder{ResponseWriter: w, statusCode: http.StatusOK}
+		next.ServeHTTP(recorder, r)
+		logger.InfoContext(r.Context(), "request completed",
 			slog.String("reqId", requestid.FromContext(r.Context())),
 			slog.String("method", r.Method),
 			slog.String("path", r.URL.Path),
+			slog.Int("statusCode", recorder.statusCode),
 			slog.String("duration", time.Since(start).String()),
 			slog.String("remote", r.RemoteAddr),
 		)

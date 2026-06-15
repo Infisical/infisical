@@ -220,7 +220,7 @@ func (h *Handler) GetSecretByNameV4(ctx context.Context, opts *GetSecretByNameV4
 	response, err := h.getSecretByName(ctx, &getSecretByNameInternalOpts{
 		ProjectID:              q.ProjectID,
 		Environment:            q.Environment,
-		SecretPath:             fn.ValueOr(q.SecretPath, "/"),
+		SecretPath:             fn.RemoveTrailingSlash(fn.ValueOr(q.SecretPath, "/")),
 		SecretName:             p.SecretName,
 		SecretType:             getSecretType(identity, secretType),
 		UserID:                 getUserID(identity),
@@ -271,7 +271,7 @@ func (h *Handler) GetSecretByNameRawV3(ctx context.Context, opts *GetSecretByNam
 	response, err := h.getSecretByName(ctx, &getSecretByNameInternalOpts{
 		ProjectID:              projectID,
 		Environment:            env,
-		SecretPath:             fn.ValueOr(q.SecretPath, "/"),
+		SecretPath:             fn.RemoveTrailingSlash(fn.ValueOr(q.SecretPath, "/")),
 		SecretName:             p.SecretName,
 		SecretType:             getSecretType(identity, secretType),
 		UserID:                 getUserID(identity),
