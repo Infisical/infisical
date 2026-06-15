@@ -55,7 +55,7 @@ const hbsLowercase = (text: string) => {
   return textStr.toLowerCase();
 };
 
-const compileUsernameTemplate = ({
+export const compileUsernameTemplate = ({
   usernameTemplate,
   randomUsername,
   identity,
@@ -109,10 +109,18 @@ const compileUsernameTemplate = ({
       : {})
   };
 
-  const result = hbs.compile(usernameTemplate)(context);
+  const compiled = hbs.compile(usernameTemplate)(context);
+  const result = options?.toUpperCase ? compiled.toUpperCase() : compiled;
 
-  if (options?.toUpperCase) {
-    return result.toUpperCase();
+  // A generated username must be a plain identifier (letters, digits, underscore,
+  // hyphen; max 128 chars) so it stays valid and portable across every provider's
+  // statement template. Reject anything else rather than silently rewriting it.
+  const safeUsernamePattern = new RE2("^[A-Za-z0-9_-]{1,128}$");
+  if (result && !safeUsernamePattern.test(result)) {
+    throw new BadRequestError({
+      message:
+        "Generated username contains unsupported characters; only letters, digits, underscore and hyphen are allowed"
+    });
   }
 
   return result;
