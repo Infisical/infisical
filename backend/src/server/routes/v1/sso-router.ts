@@ -22,7 +22,7 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
-import { fetchGithubEmails, fetchGithubUser } from "@app/lib/requests/github";
+import { fetchGithubEmails, fetchGithubUser, selectGithubLoginEmail } from "@app/lib/requests/github";
 import {
   AuthAttemptAuthMethod,
   AuthAttemptAuthResult,
@@ -34,6 +34,7 @@ import { addAuthOriginDomainCookie } from "@app/server/lib/cookie";
 import { AuthMethod, ProviderAuthResult } from "@app/services/auth/auth-type";
 import { OrgAuthMethod } from "@app/services/org/org-types";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const passport = new Authenticator({ key: "sso", userProperty: "passportUser" });
 
@@ -72,6 +73,11 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
               name: "OauthGoogleRegister"
             });
 
+          // Google maps its email_verified claim onto emails[0].verified (a string "true"/"false"
+          // per the userinfo response, occasionally a boolean); when verified we skip our own
+          // email verification.
+          const isEmailVerifiedByProvider = String(profile?.emails?.[0]?.verified) === "true";
+
           try {
             const loginResult = await server.services.login.oauth2Login({
               email,
@@ -81,6 +87,7 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
               callbackPort,
               orgSlug,
               providerUserId: profile.id,
+              isEmailVerifiedByProvider,
               ip: requestContext.get("ip") || "",
               userAgent: requestContext.get("userAgent") || ""
             });
@@ -166,9 +173,9 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
         async (req: any, accessToken: string, _refreshToken: string, _profile: any, done: Function) => {
           const authMetricStartTime = performance.now();
           const ghEmails = await fetchGithubEmails(accessToken);
-          const { email } = ghEmails.filter((gitHubEmail) => gitHubEmail.primary && gitHubEmail.verified)[0];
-
-          if (!email) throw new Error("No primary email found");
+          const selectedEmail = selectGithubLoginEmail(ghEmails);
+          if (!selectedEmail) throw new Error("No email found for GitHub account");
+          const { email, isEmailVerifiedByProvider } = selectedEmail;
 
           try {
             // profile does not get automatically populated so we need to manually fetch user info
@@ -183,6 +190,7 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
               authMethod: AuthMethod.GITHUB,
               callbackPort,
               providerUserId: String(githubUser.id),
+              isEmailVerifiedByProvider,
               ip: requestContext.get("ip") || "",
               userAgent: requestContext.get("userAgent") || ""
             });
@@ -266,6 +274,12 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
         async (req: any, _accessToken: string, _refreshToken: string, profile: any, cb: any) => {
           const authMetricStartTime = performance.now();
           const email = profile.emails[0].value;
+          // GitLab's /user API exposes confirmed_at as a non-empty ISO timestamp when the email is
+          // confirmed, or null otherwise (it is not a boolean). Treat a present, non-empty string as
+          // verified rather than coercing with Boolean(), so no non-string truthy value can slip in.
+          // eslint-disable-next-line no-underscore-dangle
+          const confirmedAt = profile?._json?.confirmed_at as unknown;
+          const isEmailVerifiedByProvider = typeof confirmedAt === "string" && confirmedAt.length > 0;
 
           try {
             const callbackPort = req.session.get("callbackPort");
@@ -277,6 +291,7 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
               authMethod: AuthMethod.GITLAB,
               callbackPort,
               providerUserId: String(profile.id),
+              isEmailVerifiedByProvider,
               ip: requestContext.get("ip") || "",
               userAgent: requestContext.get("userAgent") || ""
             });
@@ -443,6 +458,36 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
     const cbPort = passportResult.callbackPort;
 
     if (passportResult.result === ProviderAuthResult.SESSION) {
+      // This login completed the user's signup (provider-verified email), so it never goes
+      // through complete-account; fire the signup telemetry that route would have sent.
+      if (passportResult.didCompleteSignup) {
+        const { user } = passportResult;
+        // An invited user completing signup via a provider-verified email is tagged as an invite for
+        // parity with the complete-account route that this provider-verified flow bypasses.
+        const signupMethod = passportResult.wasInvited ? "invite" : passportResult.authMethod;
+        if (user.email) {
+          void server.services.telemetry.sendLoopsEvent(user.email, user.firstName || "", user.lastName || "");
+          void server.services.telemetry.sendHubSpotSignupEvent(
+            user.email,
+            signupMethod,
+            user.firstName || "",
+            user.lastName || "",
+            typeof req.cookies?.hubspotutk === "string" ? req.cookies.hubspotutk.slice(0, 512) : undefined
+          );
+        }
+        void server.services.telemetry.sendPostHogEvents({
+          event: PostHogEventTypes.UserSignedUp,
+          distinctId: user.username ?? "",
+          ...(passportResult.orgId ? { organizationId: passportResult.orgId } : {}),
+          properties: {
+            username: user.username,
+            email: user.email ?? "",
+            ...(passportResult.wasInvited ? { attributionSource: "Team Invite" } : {}),
+            signupMethod
+          }
+        });
+      }
+
       void res.setCookie("jid", passportResult.tokens.refresh, {
         httpOnly: true,
         path: "/api",
@@ -453,6 +498,9 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
       const sessionUrl = new URL("/login/select-organization", appCfg.SITE_URL);
       if (isAdminLogin) sessionUrl.searchParams.set("isAdminLogin", isAdminLogin);
       if (cbPort) sessionUrl.searchParams.set("callback_port", String(cbPort));
+      // Provider-verified signups never render the signup page that pushes the GTM conversion event,
+      // so flag the org-selection page to fire it on arrival.
+      if (passportResult.didCompleteSignup) sessionUrl.searchParams.set("signup_completed", "true");
       return res.redirect(sessionUrl.toString());
     }
 

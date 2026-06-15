@@ -156,6 +156,7 @@ export const useGetVaultSecretPaths = (
 
       const { data } = await apiRequest.get<{
         secretPaths: string[];
+        skippedWildcardPaths: string[];
       }>("/api/v3/external-migration/vault/secret-paths", {
         params: {
           namespace,
@@ -164,7 +165,7 @@ export const useGetVaultSecretPaths = (
         }
       });
 
-      return data.secretPaths;
+      return data;
     },
     enabled: enabled && !!namespace && !!mountPath && !!connectionId
   });

@@ -14,7 +14,7 @@ export const GcpIamProvider = (): TDynamicProviderFns => {
     return providerInputs;
   };
 
-  const $getToken = async (serviceAccountEmail: string, ttl: number): Promise<string> => {
+  const $getToken = async (serviceAccountEmail: string, ttl: number, tokenScopes: string[]): Promise<string> => {
     const appCfg = getConfig();
     if (!appCfg.INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL) {
       throw new InternalServerError({
@@ -38,7 +38,7 @@ export const GcpIamProvider = (): TDynamicProviderFns => {
       targetPrincipal: serviceAccountEmail,
       lifetime: ttl,
       delegates: [],
-      targetScopes: ["https://www.googleapis.com/auth/iam", "https://www.googleapis.com/auth/cloud-platform"]
+      targetScopes: [...new Set(tokenScopes)]
     });
 
     let tokenResponse: GetAccessTokenResponse | undefined;
@@ -67,7 +67,7 @@ export const GcpIamProvider = (): TDynamicProviderFns => {
   const validateConnection = async (inputs: unknown) => {
     const providerInputs = await validateProviderInputs(inputs);
     try {
-      await $getToken(providerInputs.serviceAccountEmail, 10);
+      await $getToken(providerInputs.serviceAccountEmail, 10, providerInputs.tokenScopes);
       return true;
     } catch (err) {
       const sanitizedErrorMessage = sanitizeString({
@@ -89,7 +89,7 @@ export const GcpIamProvider = (): TDynamicProviderFns => {
       const now = Math.floor(Date.now() / 1000);
       const ttl = Math.max(Math.floor(expireAt / 1000) - now, 0);
 
-      const token = await $getToken(providerInputs.serviceAccountEmail, ttl);
+      const token = await $getToken(providerInputs.serviceAccountEmail, ttl, providerInputs.tokenScopes);
       const entityId = alphaNumericNanoId(32);
 
       return { entityId, data: { SERVICE_ACCOUNT_EMAIL: providerInputs.serviceAccountEmail, TOKEN: token } };

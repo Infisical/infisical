@@ -103,7 +103,8 @@ export const roleServiceFactory = ({
     if (existingRole) throw new BadRequestError({ message: `Role with ${data.slug} already exists` });
 
     validateHandlebarTemplate("Role Creation", JSON.stringify(data.permissions || []), {
-      allowedExpressions: (val) => val.includes("identity.")
+      allowedExpressions: (val) => val.includes("identity."),
+      allowedHelpers: ["stripPrefix"]
     });
 
     const role = await roleDAL.create({
@@ -148,7 +149,8 @@ export const roleServiceFactory = ({
     }
 
     validateHandlebarTemplate("Role Update", JSON.stringify(data.permissions || []), {
-      allowedExpressions: (val) => val.includes("identity.")
+      allowedExpressions: (val) => val.includes("identity."),
+      allowedHelpers: ["stripPrefix"]
     });
 
     const role = await roleDAL.updateById(existingRole.id, {

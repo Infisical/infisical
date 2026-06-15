@@ -27,7 +27,7 @@ export const goSidecarPlugin = fp(async (server, opts: GoSidecarOpts) => {
   const startSidecar = () => {
     if (shuttingDown) return;
 
-    logger.info({ binaryPath }, "Starting Go sidecar");
+    logger.info({ binaryPath }, "go-sidecar: Starting Go sidecar");
 
     sidecar = spawn(binaryPath, [], {
       stdio: ["ignore", "inherit", "inherit"],
@@ -40,7 +40,7 @@ export const goSidecarPlugin = fp(async (server, opts: GoSidecarOpts) => {
     });
 
     sidecar.on("error", (err) => {
-      logger.error({ err }, "Go sidecar failed to start");
+      logger.error({ err }, "go-sidecar: Go sidecar failed to start");
     });
 
     sidecar.on("exit", (code, signal) => {
@@ -50,28 +50,28 @@ export const goSidecarPlugin = fp(async (server, opts: GoSidecarOpts) => {
       }
 
       if (shuttingDown) {
-        logger.info("Go sidecar stopped during shutdown");
+        logger.info("go-sidecar: Go sidecar stopped during shutdown");
         return;
       }
 
-      logger.error({ code, signal, restartCount }, "Go sidecar exited unexpectedly");
+      logger.error({ code, signal, restartCount }, "go-sidecar: Go sidecar exited unexpectedly");
 
       if (restartCount >= maxRestarts) {
-        logger.error({ maxRestarts }, "Go sidecar max restarts reached, giving up");
+        logger.error({ maxRestarts }, "go-sidecar: Go sidecar max restarts reached, giving up");
         return;
       }
 
       const delay = Math.min(baseDelayMs * 2 ** restartCount, maxDelayMs);
       restartCount += 1;
 
-      logger.info({ delayMs: delay, restartCount }, "Scheduling Go sidecar restart");
+      logger.info({ delayMs: delay, restartCount }, "go-sidecar: Scheduling Go sidecar restart");
       setTimeout(startSidecar, delay);
     });
 
     // Reset restart count after healthy running period
     healthTimer = setTimeout(() => {
       if (sidecar && !sidecar.killed) {
-        logger.info("Go sidecar healthy, resetting restart count");
+        logger.info("go-sidecar: Go sidecar healthy, resetting restart count");
         restartCount = 0;
       }
     }, healthyThresholdMs);
@@ -85,7 +85,7 @@ export const goSidecarPlugin = fp(async (server, opts: GoSidecarOpts) => {
       clearTimeout(healthTimer);
     }
     if (sidecar && !sidecar.killed) {
-      logger.info("Stopping Go sidecar");
+      logger.info("go-sidecar: Stopping Go sidecar");
       sidecar.kill();
     }
   });

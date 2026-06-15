@@ -327,9 +327,17 @@ export const ROUTE_PATHS = Object.freeze({
       "/organizations/$orgId/projects/cert-manager/$projectId/ca/$caId",
       "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/ca/$caId"
     ),
+    CertificateProfilesPage: setRoute(
+      "/organizations/$orgId/projects/cert-manager/$projectId/certificate-profiles",
+      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/certificate-profiles/"
+    ),
     CertificateProfileDetailsByIDPage: setRoute(
       "/organizations/$orgId/projects/cert-manager/$projectId/certificate-profiles/$profileId",
       "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/certificate-profiles/$profileId"
+    ),
+    CertificatePoliciesPage: setRoute(
+      "/organizations/$orgId/projects/cert-manager/$projectId/certificate-policies",
+      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/certificate-policies/"
     ),
     CertificatePolicyDetailsByIDPage: setRoute(
       "/organizations/$orgId/projects/cert-manager/$projectId/certificate-policies/$policyId",

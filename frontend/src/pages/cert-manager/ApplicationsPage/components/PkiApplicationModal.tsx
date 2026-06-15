@@ -183,12 +183,11 @@ export const PkiApplicationModal = ({ popUp, handlePopUpToggle }: Props) => {
                     Select the profiles this application can issue certificates from.{" "}
                     {!profilesLoading && !profileOptions.length && (
                       <Link
-                        to="/organizations/$orgId/projects/cert-manager/$projectId/settings"
+                        to="/organizations/$orgId/projects/cert-manager/$projectId/certificate-profiles"
                         params={{ orgId: orgId ?? "", projectId: projectId ?? "" }}
-                        search={{ selectedTab: "certificate-profiles" }}
                         className="underline hover:text-yellow-400"
                       >
-                        Create one in Settings
+                        Create one in Certificate Profiles
                       </Link>
                     )}
                   </FieldDescription>

@@ -12,6 +12,22 @@ description: "Learn how to rollback secrets and configurations to any snapshot w
 
 Infisical's point-in-time recovery functionality allows secrets to be rolled back to any point in time for any given [folder](./folder) or [environment](/documentation/platform/project#project-environments).
 
+The short video below walks through secret versioning and point-in-time recovery, covering how Infisical keeps a history of every secret change and how to roll back to a previous state.
+
+<br />
+
+<div style={{ position: "relative", paddingBottom: "56.25%", height: 0, overflow: "hidden", maxWidth: "100%" }}>
+  <iframe
+    src="https://www.youtube.com/embed/tWVQcx4XiAA"
+    title="YouTube video player"
+    style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", border: 0 }}
+    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+    allowfullscreen
+  ></iframe>
+</div>
+
+<br />
+
 <Tabs>
   <Tab title="Commits Interface">
     ## Understanding Commits
@@ -59,7 +75,7 @@ Infisical's point-in-time recovery functionality allows secrets to be rolled bac
     - Lists all secrets that were added, updated, or removed
     - Shows the complete secret configuration including:
       - Secret key and value
-      - Comments, tags  and metadata
+      - Comments, tags, and metadata
       - Encoding settings (e.g., skipMultilineEncoding)
     - Values are displayed with appropriate masking for security
 

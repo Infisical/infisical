@@ -1,5 +1,6 @@
 /* eslint-disable no-nested-ternary */
 import { ForbiddenError, MongoAbility, PureAbility, RawRuleOf, subject } from "@casl/ability";
+import handlebars from "handlebars";
 import { z } from "zod";
 
 import { TOrganizations } from "@app/db/schemas";
@@ -366,11 +367,27 @@ const expandLegacyForbidActions = <T extends RawRuleOf<MongoAbility<ProjectPermi
   });
 };
 
+const hbsStripPrefix = (text: string, prefix: string) => {
+  const textStr = String(text || "");
+  if (!textStr) return textStr;
+
+  return textStr.startsWith(prefix) ? textStr.substring(prefix.length) : textStr;
+};
+
+const handlebarsClient = (() => {
+  const hbs = handlebars.create();
+
+  hbs.registerHelper("stripPrefix", hbsStripPrefix);
+
+  return hbs;
+})();
+
 export {
   assertPermissionBoundary,
   constructPermissionErrorMessage,
   escapeHandlebarsMissingDict,
   expandLegacyForbidActions,
+  handlebarsClient,
   isAuthMethodSaml,
   validateOrgSSO,
   validatePrivilegeChangeOperation
