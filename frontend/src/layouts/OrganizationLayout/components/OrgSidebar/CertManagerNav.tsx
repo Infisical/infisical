@@ -152,7 +152,7 @@ export const CertManagerNav = ({
     },
     {
       label: "Certificate Policies",
-      icon: Shield,
+      icon: ShieldCheck,
       pathSuffix: "certificate-policies",
       exactPath: true,
       activeMatch: (pathname, search) =>
