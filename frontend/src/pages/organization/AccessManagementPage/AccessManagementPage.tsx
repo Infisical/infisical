@@ -7,7 +7,7 @@ import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { InfoIcon } from "lucide-react";
 
 import { OrgPermissionGuardBanner } from "@app/components/permissions/OrgPermissionCan";
-import { Button, PageHeader, TabPanel, Tabs } from "@app/components/v2";
+import { Button, PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
   OrgPermissionActions,
@@ -74,6 +74,7 @@ export const AccessManagementPage = () => {
     }
   ];
 
+  const visibleTabSections = tabSections.filter((el) => !el.isHidden);
   const selectedTabSection = tabSections.find((tab) => tab.key === selectedTab);
   const isSelectedTabRestricted = !selectedTabSection || selectedTabSection.isHidden;
 
@@ -125,17 +126,30 @@ export const AccessManagementPage = () => {
           isOpen={isUpgradePrivilegeSystemModalOpen}
           onOpenChange={setIsUpgradePrivilegeSystemModalOpen}
         />
-        {isSelectedTabRestricted ? (
+        {visibleTabSections.length === 0 ? (
           <OrgPermissionGuardBanner />
         ) : (
-          <Tabs orientation="vertical" value={selectedTab} onValueChange={updateSelectedTab}>
-            {tabSections
-              .filter((el) => !el.isHidden)
-              .map(({ key, component: Component }) => (
+          <Tabs value={selectedTab} onValueChange={updateSelectedTab}>
+            <TabList>
+              {visibleTabSections.map(({ key, label }) => (
+                <Tab
+                  variant={isSubOrganization ? "namespace" : "org"}
+                  value={key}
+                  key={`org-access-tab-${key}`}
+                >
+                  {label}
+                </Tab>
+              ))}
+            </TabList>
+            {isSelectedTabRestricted ? (
+              <OrgPermissionGuardBanner />
+            ) : (
+              visibleTabSections.map(({ key, component: Component }) => (
                 <TabPanel value={key} key={`org-access-tab-panel-${key}`}>
                   <Component />
                 </TabPanel>
-              ))}
+              ))
+            )}
           </Tabs>
         )}
       </div>

@@ -32,8 +32,8 @@ export const ROUTE_PATHS = Object.freeze({
       )
     },
     SecretSharing: setRoute(
-      "/organizations/$orgId/secret-sharing",
-      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/secret-sharing/"
+      "/organizations/$orgId/projects/secret-management/secret-sharing",
+      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/secret-sharing/"
     ),
     ProjectsPage: setRoute(
       "/organizations/$orgId/projects",
@@ -62,6 +62,18 @@ export const ROUTE_PATHS = Object.freeze({
     RoleByIDPage: setRoute(
       "/organizations/$orgId/roles/$roleId",
       "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/roles/$roleId"
+    ),
+    IntegrationsPage: setRoute(
+      "/organizations/$orgId/integrations",
+      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/integrations"
+    ),
+    AuditLogsPage: setRoute(
+      "/organizations/$orgId/audit-logs",
+      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/audit-logs"
+    ),
+    SsoPage: setRoute(
+      "/organizations/$orgId/sso",
+      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/sso"
     ),
     AppConnections: {
       OauthCallbackPage: setRoute(
