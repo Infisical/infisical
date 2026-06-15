@@ -76,8 +76,12 @@ export const authSignupServiceFactory = ({
       }
     }
 
-    // Case sensitive email resolution
-    const existingUser = await userDAL.findOne({ username: sanitizedEmail });
+    // Case sensitive email resolution.
+    // Use a transaction so the read hits the primary — replica lag right after
+    // a hard-delete of the previous account would otherwise return the stale
+    // row with isAccepted=true and silently send the "account exists" email
+    // instead of starting a fresh signup. See #6034.
+    const existingUser = await userDAL.transaction(async (tx) => userDAL.findOne({ username: sanitizedEmail }, tx));
     if (existingUser?.isAccepted) {
       // Send informational email for existing accounts instead of throwing error to prevent user enumeration vulnerability
       const appCfg = getConfig();
