@@ -76,7 +76,10 @@ export const AccessManagementPage = () => {
 
   const visibleTabSections = tabSections.filter((el) => !el.isHidden);
   const selectedTabSection = tabSections.find((tab) => tab.key === selectedTab);
-  const isSelectedTabRestricted = !selectedTabSection || selectedTabSection.isHidden;
+  // A tab that exists but is permission-hidden is restricted (show the guard banner); an unknown
+  // tab falls back to the first visible tab instead of showing the banner.
+  const isSelectedTabRestricted = Boolean(selectedTabSection?.isHidden);
+  const activeTab = selectedTabSection ? selectedTab : (visibleTabSections[0]?.key ?? selectedTab);
 
   return (
     <div className="mx-auto flex flex-col justify-between bg-bunker-800 text-white">
@@ -129,7 +132,7 @@ export const AccessManagementPage = () => {
         {visibleTabSections.length === 0 ? (
           <OrgPermissionGuardBanner />
         ) : (
-          <Tabs value={selectedTab} onValueChange={updateSelectedTab}>
+          <Tabs value={activeTab} onValueChange={updateSelectedTab}>
             <TabList>
               {visibleTabSections.map(({ key, label }) => (
                 <Tab

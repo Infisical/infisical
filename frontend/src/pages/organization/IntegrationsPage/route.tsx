@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, stripSearchParams } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
 
@@ -8,7 +8,7 @@ import { IntegrationsListPageTabs } from "@app/types/integrations";
 import { IntegrationsPage } from "./IntegrationsPage";
 
 const IntegrationsPageQuerySchema = z.object({
-  selectedTab: z.string().catch(IntegrationsListPageTabs.AppConnections),
+  selectedTab: z.string().catch("").default(IntegrationsListPageTabs.AppConnections),
   error: z.string().optional(),
   success: z.string().optional(),
   connectionId: z.string().optional(),
@@ -21,6 +21,9 @@ export const Route = createFileRoute(
 )({
   component: IntegrationsPage,
   validateSearch: zodValidator(IntegrationsPageQuerySchema),
+  search: {
+    middlewares: [stripSearchParams({ selectedTab: "" })]
+  },
   context: () => ({
     breadcrumbs: [
       {

@@ -1,11 +1,11 @@
-import { createFileRoute, stripSearchParams } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
 
 import { AuditLogsPage } from "./AuditLogsPage";
 
 const AuditLogsPageQueryParams = z.object({
-  selectedTab: z.string().catch("").default("audit-logs")
+  selectedTab: z.string().catch("audit-logs")
 });
 
 export const Route = createFileRoute(
@@ -13,9 +13,6 @@ export const Route = createFileRoute(
 )({
   component: AuditLogsPage,
   validateSearch: zodValidator(AuditLogsPageQueryParams),
-  search: {
-    middlewares: [stripSearchParams({ selectedTab: "" })]
-  },
   context: () => ({
     breadcrumbs: [
       {

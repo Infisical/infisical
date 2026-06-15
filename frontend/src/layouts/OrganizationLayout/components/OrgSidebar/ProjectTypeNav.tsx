@@ -10,7 +10,7 @@ import {
   SidebarMenuItem
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
-import { urlSlugToProjectType } from "@app/helpers/project";
+import { parseProjectSlugFromPath, urlSlugToProjectType } from "@app/helpers/project";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
 export const ProjectTypeNav = () => {
@@ -24,8 +24,7 @@ export const ProjectTypeNav = () => {
 
   // KMIP servers and Secret Sharing live at literal /projects/<slug>/<resource> paths (no $type
   // param), so fall back to parsing the product slug out of the pathname when it's absent.
-  const typeSlug =
-    paramTypeSlug ?? pathname.match(/\/projects\/([^/]+)\/(?:kmip-servers|secret-sharing)/)?.[1];
+  const typeSlug = paramTypeSlug ?? parseProjectSlugFromPath(pathname);
   const isKms = typeSlug === ProjectType.KMS;
   // Secret Manager's URL slug ("secret-management") differs from the enum value ("secret-manager"),
   // so resolve through the helper rather than comparing the slug directly.

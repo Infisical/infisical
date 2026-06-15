@@ -2,7 +2,11 @@ import { useLocation, useParams } from "@tanstack/react-router";
 
 import { Sidebar, SidebarContent, SidebarFooter, SidebarTrigger } from "@app/components/v3";
 import { useOrganization } from "@app/context";
-import { hasIntermediateProjectsView, urlSlugToProjectType } from "@app/helpers/project";
+import {
+  hasIntermediateProjectsView,
+  parseProjectSlugFromPath,
+  urlSlugToProjectType
+} from "@app/helpers/project";
 
 import { OrgNav } from "./OrgNav";
 import { ProjectNav } from "./ProjectNav";
@@ -20,10 +24,9 @@ export const OrgSidebar = () => {
   });
   const { pathname } = useLocation();
   const isInsideProject = Boolean(projectId);
-  // The org-wide KMIP servers and Secret Sharing pages live at literal /projects/<type>/<resource>
+  // The org-wide KMIP servers and Secret Sharing pages live at literal /projects/<slug>/<resource>
   // paths with no $type route param, so fall back to parsing the product slug from the pathname.
-  const effectiveTypeSlug =
-    typeSlug ?? pathname.match(/\/projects\/([^/]+)\/(?:kmip-servers|secret-sharing)/)?.[1];
+  const effectiveTypeSlug = typeSlug ?? parseProjectSlugFromPath(pathname);
   const projectType = effectiveTypeSlug ? urlSlugToProjectType(effectiveTypeSlug) : null;
   const isOnProjectTypeListing =
     !isInsideProject && Boolean(projectType) && hasIntermediateProjectsView(projectType!);
