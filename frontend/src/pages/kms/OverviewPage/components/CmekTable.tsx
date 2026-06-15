@@ -439,6 +439,7 @@ export const CmekTable = () => {
                   <TableHead>Algorithm</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Version</TableHead>
+                  <TableHead className="w-5" />
                   <TableHead className="w-12" />
                 </TableRow>
               </TableHeader>
@@ -447,7 +448,7 @@ export const CmekTable = () => {
                   Array.from({ length: 5 }).map((_, i) => (
                     // eslint-disable-next-line react/no-array-index-key
                     <TableRow key={`skeleton-${i}`}>
-                      {Array.from({ length: 8 }).map((__, j) => (
+                      {Array.from({ length: 9 }).map((__, j) => (
                         // eslint-disable-next-line react/no-array-index-key
                         <TableCell key={j}>
                           <Skeleton className="h-4 w-full" />
@@ -574,23 +575,21 @@ export const CmekTable = () => {
                         </TableCell>
                         <TableCell className="uppercase">{encryptionAlgorithm}</TableCell>
                         <TableCell>
-                          <div className="flex items-center gap-1">
-                            <Badge variant={variant}>{label}</Badge>
-                            {!isExportable && (
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <span className="inline-flex">
-                                    <Badge variant="neutral">Non-Exportable</Badge>
-                                  </span>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  The key material of this key can never be exported
-                                </TooltipContent>
-                              </Tooltip>
-                            )}
-                          </div>
+                          <Badge variant={variant}>{label}</Badge>
                         </TableCell>
                         <TableCell>{version}</TableCell>
+                        <TableCell>
+                          {!isExportable && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <LockIcon className="size-4 text-muted" />
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                This key was created as non-exportable
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
+                        </TableCell>
                         <TableCell>
                           <div className="flex justify-end">
                             <DropdownMenu>

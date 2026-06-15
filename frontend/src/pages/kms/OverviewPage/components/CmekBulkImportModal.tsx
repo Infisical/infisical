@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import slugify from "@sindresorhus/slugify";
-import { AlertTriangleIcon, CircleXIcon, InfoIcon, UploadIcon } from "lucide-react";
+import { AlertTriangleIcon, CircleXIcon, InfoIcon, LockIcon, UploadIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -11,7 +11,6 @@ import {
   Alert,
   AlertDescription,
   AlertTitle,
-  Badge,
   Button,
   Dialog,
   DialogClose,
@@ -408,9 +407,7 @@ export const CmekBulkImportModal = ({ isOpen, onOpenChange, projectId }: Props) 
               <TableHead className="bg-container shadow-[inset_0_-1px_0_var(--color-border)]">
                 Algorithm
               </TableHead>
-              <TableHead className="bg-container shadow-[inset_0_-1px_0_var(--color-border)]">
-                Export
-              </TableHead>
+              <TableHead className="w-5 bg-container shadow-[inset_0_-1px_0_var(--color-border)]" />
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -452,10 +449,13 @@ export const CmekBulkImportModal = ({ isOpen, onOpenChange, projectId }: Props) 
                     <p className="truncate">{renderFieldValue(key.algorithm)}</p>
                   </TableCell>
                   <TableCell>
-                    {key.isExportable === false ? (
-                      <Badge variant="neutral">Non-Exportable</Badge>
-                    ) : (
-                      <span className="text-foreground/40">Default</span>
+                    {key.isExportable === false && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <LockIcon className="size-4 text-muted" />
+                        </TooltipTrigger>
+                        <TooltipContent>Non-exportable</TooltipContent>
+                      </Tooltip>
                     )}
                   </TableCell>
                 </TableRow>
