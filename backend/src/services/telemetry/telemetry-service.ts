@@ -534,12 +534,7 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
         const batch = TELEMETRY_BUCKET_NAMES.slice(i, i + BUCKET_CONCURRENCY);
         // eslint-disable-next-line no-await-in-loop
         const results = await Promise.all(
-          batch.map((bucketId) =>
-            processBucketEvents(eventType, bucketId).catch((error) => {
-              logger.error(error, `Failed to process bucket ${bucketId} for ${eventType}`);
-              return 0;
-            })
-          )
+          batch.map((bucketId) => processBucketEvents(eventType, bucketId))
         );
         totalProcessed += results.reduce((sum, n) => sum + n, 0);
       }
