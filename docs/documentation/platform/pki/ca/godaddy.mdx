@@ -19,7 +19,7 @@ Infisical can issue Domain Validated (DV) TLS certificates directly from [GoDadd
 
 ## Set up the certificate policy
 
-GoDaddy needs a **server-certificate policy that uses RSA**. The built-in `TLS Server Certificate` preset allows both ECDSA and RSA, so you can start from it and select RSA, or create a custom policy in **Settings → Certificate Policies → Create Policy**. Either way, configure:
+GoDaddy needs a **server-certificate policy that uses RSA**. The built-in `TLS Server Certificate` preset allows both ECDSA and RSA, so you can start from it and select RSA, or create a custom policy in **Certificate Policies → Create Policy**. Either way, configure:
 
 - **Key algorithm:** RSA 2048 (RSA 3072/4096 also work), not ECDSA (the preset selects ECDSA by default)
 - **Signature algorithm:** RSA-SHA256
@@ -38,7 +38,7 @@ Then create a [certificate profile](/documentation/platform/pki/settings/profile
         Follow the [GoDaddy App Connection guide](/integrations/app-connections/godaddy) to store your GoDaddy API key and secret in Infisical.
       </Step>
       <Step title="Create the External CA">
-        In **Certificate Manager**, go to **Settings → Certificate Authorities**, click **Create CA** in the External Certificate Authorities section, choose **GoDaddy** as the type, and fill out the form:
+        In **Certificate Manager**, go to **Certificate Authorities**, click **Create CA** in the External Certificate Authorities section, choose **GoDaddy** as the type, and fill out the form:
 
         - **App Connection**: the GoDaddy connection you created
         - **Product**: `DV SSL`

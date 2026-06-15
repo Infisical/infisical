@@ -1177,9 +1177,8 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                             <p className="-mt-2 mb-4 text-xs text-yellow-500">
                               No certificate authorities available.{" "}
                               <Link
-                                to="/organizations/$orgId/projects/cert-manager/$projectId/settings"
+                                to="/organizations/$orgId/projects/cert-manager/$projectId/certificate-authorities"
                                 params={{ orgId: orgId ?? "", projectId: projectId ?? "" }}
-                                search={{ selectedTab: "certificate-authorities" }}
                                 className="underline hover:text-yellow-400"
                               >
                                 Create one in Certificate Authorities

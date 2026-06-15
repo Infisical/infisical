@@ -42,6 +42,7 @@ export type NavItem = {
   search?: Record<string, string>;
   /** When true, this item is also active when the path matches but search keys are absent from the URL */
   isDefaultSearch?: boolean;
+  exactPath?: boolean;
 };
 
 export type OrgNavItem = {
