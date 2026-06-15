@@ -64,7 +64,8 @@ const formSchema = z
     type: z.nativeEnum(WebhookType).describe("Type").default(WebhookType.GENERAL),
     enabledEvents: z.record(z.nativeEnum(WebhookEvent), z.boolean()).default({
       [WebhookEvent.SecretModified]: true,
-      [WebhookEvent.SecretRotationFailed]: true
+      [WebhookEvent.SecretRotationFailed]: true,
+      [WebhookEvent.HoneyTokenTriggered]: true
     })
   })
   .superRefine((data, ctx) => {
@@ -105,7 +106,8 @@ export const AddWebhookForm = ({
       type: WebhookType.GENERAL,
       enabledEvents: {
         [WebhookEvent.SecretModified]: true,
-        [WebhookEvent.SecretRotationFailed]: true
+        [WebhookEvent.SecretRotationFailed]: true,
+        [WebhookEvent.HoneyTokenTriggered]: true
       }
     }
   });
@@ -177,7 +179,8 @@ export const AddWebhookForm = ({
         type: WebhookType.GENERAL,
         enabledEvents: {
           [WebhookEvent.SecretModified]: true,
-          [WebhookEvent.SecretRotationFailed]: true
+          [WebhookEvent.SecretRotationFailed]: true,
+          [WebhookEvent.HoneyTokenTriggered]: true
         },
         environment: environments?.[0]?.slug,
         secretPath: ""
