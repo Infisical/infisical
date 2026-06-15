@@ -521,23 +521,20 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
     }
   };
 
+  const BUCKET_CONCURRENCY = 5;
+
   const processAggregatedEvents = async () => {
     if (!postHog) return;
 
     for (const eventType of POSTHOG_AGGREGATED_EVENTS) {
       let totalProcessed = 0;
-
       logger.info(`Starting bucket processing for ${eventType}`);
 
-      // Process each bucket sequentially to control memory usage
-      for (const bucketId of TELEMETRY_BUCKET_NAMES) {
-        try {
-          // eslint-disable-next-line no-await-in-loop
-          const processed = await processBucketEvents(eventType, bucketId);
-          totalProcessed += processed;
-        } catch (error) {
-          logger.error(error, `Failed to process bucket ${bucketId} for ${eventType}`);
-        }
+      for (let i = 0; i < TELEMETRY_BUCKET_NAMES.length; i += BUCKET_CONCURRENCY) {
+        const batch = TELEMETRY_BUCKET_NAMES.slice(i, i + BUCKET_CONCURRENCY);
+        // eslint-disable-next-line no-await-in-loop
+        const results = await Promise.all(batch.map((bucketId) => processBucketEvents(eventType, bucketId)));
+        totalProcessed += results.reduce((sum, n) => sum + n, 0);
       }
 
       logger.info(`Completed processing ${totalProcessed} total events for ${eventType}`);
