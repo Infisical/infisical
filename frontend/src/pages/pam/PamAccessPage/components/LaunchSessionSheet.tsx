@@ -96,7 +96,7 @@ export const LaunchSessionSheet = ({ account, isOpen, onOpenChange }: Props) => 
                 target="_blank"
               >
                 <Rocket className="size-4" />
-                Open Terminal client
+                Connect in Browser
               </Link>
             </Button>
           </div>
