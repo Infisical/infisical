@@ -55,6 +55,12 @@ const hbsLowercase = (text: string) => {
   return textStr.toLowerCase();
 };
 
+// Normalizes a value (identity name, user email, dynamic secret name) to a plain database
+// identifier: letters, digits, underscore and hyphen, with everything else folded to underscore
+// and the length capped at 63 chars (Postgres' identifier length limit).
+export const toSafeUsername = (raw: string): string =>
+  new RE2("[^a-zA-Z0-9_-]", "g").replace(raw, "_").slice(0, 63) || "inf_user";
+
 export const compileUsernameTemplate = ({
   usernameTemplate,
   randomUsername,
@@ -95,7 +101,7 @@ export const compileUsernameTemplate = ({
     ...(dynamicSecret
       ? {
           dynamicSecret: {
-            name: dynamicSecret.name,
+            name: toSafeUsername(dynamicSecret.name),
             type: dynamicSecret.type
           }
         }
@@ -116,7 +122,7 @@ export const compileUsernameTemplate = ({
   // hyphen; max 128 chars) so it stays valid and portable across every provider's
   // statement template. Reject anything else rather than silently rewriting it.
   const safeUsernamePattern = new RE2("^[A-Za-z0-9_-]{1,128}$");
-  if (result && !safeUsernamePattern.test(result)) {
+  if (!safeUsernamePattern.test(result)) {
     throw new BadRequestError({
       message:
         "Generated username contains unsupported characters; only letters, digits, underscore and hyphen are allowed"

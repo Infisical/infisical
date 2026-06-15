@@ -27,6 +27,7 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TDynamicSecretDALFactory } from "../dynamic-secret/dynamic-secret-dal";
 import { DynamicSecretProviders, TDynamicProviderFns } from "../dynamic-secret/providers/models";
+import { toSafeUsername } from "../dynamic-secret/providers/templateUtils";
 import { TDynamicSecretLeaseDALFactory } from "./dynamic-secret-lease-dal";
 import { TDynamicSecretLeaseQueueServiceFactory } from "./dynamic-secret-lease-queue";
 import {
@@ -34,12 +35,6 @@ import {
   TDynamicSecretLeaseConfig,
   TDynamicSecretLeaseServiceFactory
 } from "./dynamic-secret-lease-types";
-
-// Normalizes a value (identity name / email) to a plain database identifier: letters, digits,
-// underscore and hyphen, with everything else folded to underscore and the length capped at 63
-// chars (Postgres' identifier length limit). Exported for testing.
-export const toSafeUsername = (raw: string): string =>
-  new RE2("[^a-zA-Z0-9_-]", "g").replace(raw, "_").slice(0, 63) || "inf_user";
 
 type TDynamicSecretLeaseServiceFactoryDep = {
   dynamicSecretLeaseDAL: TDynamicSecretLeaseDALFactory;
