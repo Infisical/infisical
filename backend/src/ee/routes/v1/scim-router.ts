@@ -507,7 +507,11 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
         groupId: z.string().trim()
       }),
       body: z.object({
-        schemas: z.array(z.string()),
+        // Optional per RFC 7644 §3.4.2 — the server can infer the resource schema
+        // from the endpoint on PUT, and unused here. Some IdPs (e.g. Authentik)
+        // omit it; PATCH /Groups already treats this field as optional for the
+        // same reason.
+        schemas: z.array(z.string()).optional(),
         id: z.string().trim(),
         displayName: z.string().trim(),
         members: z.array(
