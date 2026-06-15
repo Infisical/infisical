@@ -23,6 +23,7 @@ import {
   SettingsIcon,
   TrashIcon
 } from "lucide-react";
+import picomatch from "picomatch";
 import { twMerge } from "tailwind-merge";
 
 import {
@@ -471,6 +472,25 @@ const OverviewPageContent = () => {
 
   const visibleEnvs = filteredEnvs.length ? filteredEnvs : userAvailableEnvs;
   const singleVisibleEnv = visibleEnvs.length === 1 ? visibleEnvs[0] : null;
+
+  const relevantPendingApprovalsCount = useMemo(() => {
+    // Reviewers see project-wide pending requests (existing behavior).
+    if (canApproveAny) return pendingApprovalsCount;
+
+    // Requesters only see requests at the specific environment + path they're viewing,
+    // so only when a single environment is selected.
+    if (visibleEnvs.length !== 1) return 0;
+
+    const selectedEnvSlug = visibleEnvs[0].slug;
+    return (
+      openApprovalRequests?.approvals?.filter(
+        (req) =>
+          req.policy?.secretPath &&
+          req.environment === selectedEnvSlug &&
+          picomatch.isMatch(secretPath, req.policy.secretPath, { strictSlashes: false })
+      ).length ?? 0
+    );
+  }, [canApproveAny, pendingApprovalsCount, openApprovalRequests, visibleEnvs, secretPath]);
 
   const {
     data: { count: singleEnvCommitCount, folderId: singleEnvFolderId } = {
@@ -2649,14 +2669,15 @@ const OverviewPageContent = () => {
             </div>
           </CardHeader>
           <CardContent>
-            {pendingApprovalsCount > 0 && (
+            {relevantPendingApprovalsCount > 0 && (
               <Alert variant="info" className="-mt-2 mb-3 py-1.5">
                 <AlertTitle className="flex items-center gap-3">
                   <InfoIcon className="size-4 shrink-0 text-info" />
                   <span>
-                    {pendingApprovalsCount} secret change request
-                    {pendingApprovalsCount === 1 ? "" : "s"} pending approval
-                    {!canApproveAny && ". Waiting for a reviewer"}
+                    You have {relevantPendingApprovalsCount} pending secret change request
+                    {relevantPendingApprovalsCount === 1 ? "" : "s"}.
+                    {!canApproveAny &&
+                      " Once approved, your changes will be applied to this folder."}
                   </span>
                   {canApproveAny && (
                     <Link
@@ -2750,7 +2771,7 @@ const OverviewPageContent = () => {
                   <div className="absolute top-2 right-3 z-50 mb-4 flex items-center justify-end gap-2">
                     {isProtectedBranch && (
                       <Tooltip>
-                        <TooltipTrigger>
+                        <TooltipTrigger asChild>
                           <Badge variant="info">
                             <LockIcon />
                             Protected
