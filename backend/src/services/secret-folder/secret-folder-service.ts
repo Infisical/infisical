@@ -1636,7 +1636,7 @@ export const secretFolderServiceFactory = ({
     }
 
     // check if the source folder is not root
-    if (!sourceFolder.parentId) {
+    if (sourceFolderPath === "/" || !sourceFolder.parentId) {
       throw new BadRequestError({
         message: "Cannot move the root folder"
       });
