@@ -24,9 +24,6 @@ export type TGatewayPoolConnectedResources = {
     identityName: string | null;
   }[];
   pkiDiscoveryConfigs: ConnectedProjectResource[];
-  pamDomains: ConnectedProjectResource[];
-  pamResources: (ConnectedProjectResource & { resourceType: string })[];
-  pamDiscoverySources: (ConnectedProjectResource & { discoveryType: string })[];
   appConnections: {
     id: string;
     name: string;
