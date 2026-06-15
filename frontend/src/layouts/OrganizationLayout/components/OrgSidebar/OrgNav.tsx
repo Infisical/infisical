@@ -37,6 +37,7 @@ export const OrgNav = () => {
   const groups: OrgNavGroup[] = [
     {
       label: "General",
+      collapsible: false,
       items: [
         {
           label: "Home",
@@ -97,6 +98,7 @@ export const OrgNav = () => {
             <SidebarCollapsibleGroup
               key={group.label}
               label={group.label}
+              collapsible={group.collapsible}
               defaultOpen={group.defaultOpen}
             >
               <OrgNavList items={group.items} onOpenSubmenu={handleOpenSettings} />

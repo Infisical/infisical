@@ -64,4 +64,6 @@ export type OrgNavGroup = {
   label: string;
   items: OrgNavItem[];
   defaultOpen?: boolean;
+  /** When false, the group is always expanded and its label is not clickable. */
+  collapsible?: boolean;
 };

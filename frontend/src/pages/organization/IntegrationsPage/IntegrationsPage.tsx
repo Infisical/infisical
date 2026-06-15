@@ -13,7 +13,6 @@ import {
 import { withPermission } from "@app/hoc";
 import { AppConnectionsTable } from "@app/pages/organization/AppConnections/AppConnectionsPage/components";
 import { ExternalMigrationsTab } from "@app/pages/organization/SettingsPage/components/ExternalMigrationsTab";
-import { OrgEncryptionTab } from "@app/pages/organization/SettingsPage/components/OrgEncryptionTab";
 import { OrgOauthClientsTab } from "@app/pages/organization/SettingsPage/components/OrgOauthClientsTab";
 import { OrgWorkflowIntegrationTab } from "@app/pages/organization/SettingsPage/components/OrgWorkflowIntegrationTab";
 import { IntegrationsListPageTabs } from "@app/types/integrations";
@@ -53,7 +52,6 @@ export const IntegrationsPage = () => {
       label: "App Connections",
       component: AppConnectionsTab
     },
-    { key: "encryption", label: "Encryption", component: OrgEncryptionTab },
     {
       key: "workflow-integrations",
       label: "Workflow Integrations",

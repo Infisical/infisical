@@ -7,6 +7,7 @@ import { PageHeader, TabPanel, Tabs } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useSubscription } from "@app/context";
 
+import { OrgEncryptionTab } from "../OrgEncryptionTab";
 import { OrgGeneralTab } from "../OrgGeneralTab";
 import { OrgProductSettingsTab } from "../OrgProductSettingsTab";
 import { OrgSecurityTab } from "../OrgSecurityTab";
@@ -28,6 +29,11 @@ export const OrgTabGroup = () => {
       key: "tab-org-security",
       component: OrgSecurityTab,
       isHidden: isSubOrganization
+    },
+    {
+      name: "Encryption",
+      key: "tab-org-encryption",
+      component: OrgEncryptionTab
     },
     {
       name: "Project Templates",

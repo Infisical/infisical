@@ -11,7 +11,6 @@ const SettingsPageQueryParams = z.object({
 // These tabs moved to dedicated pages; keep old deep links (bookmarks, backend
 // redirects like the Slack install and SCIM setup flows) working.
 const MOVED_SETTINGS_TABS: Record<string, { to: string; selectedTab: string }> = {
-  "tab-org-encryption": { to: "/organizations/$orgId/integrations", selectedTab: "encryption" },
   "workflow-integrations": {
     to: "/organizations/$orgId/integrations",
     selectedTab: "workflow-integrations"

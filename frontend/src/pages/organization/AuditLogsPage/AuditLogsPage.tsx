@@ -25,7 +25,7 @@ export const AuditLogsPage = () => {
 
   const tabs = [
     { key: AuditLogsPageTabs.AuditLogs, label: "Audit Logs", component: AuditLogsTab },
-    { key: AuditLogsPageTabs.Streams, label: "Streams", component: AuditLogStreamsTab }
+    { key: AuditLogsPageTabs.Streams, label: "External Log Streams", component: AuditLogStreamsTab }
   ];
 
   const activeTab = tabs.some((tab) => tab.key === selectedTab)
