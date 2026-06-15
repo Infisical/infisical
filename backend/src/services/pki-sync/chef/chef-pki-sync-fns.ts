@@ -35,8 +35,7 @@ const isInfisicalManagedCertificate = (certificateName: string, pkiSync: TPkiSyn
   const certificateNameSchema = syncOptions?.certificateNameSchema;
 
   if (certificateNameSchema) {
-    const environment = CHEF_PKI_SYNC_DEFAULTS.DEFAULT_ENVIRONMENT;
-    return matchesCertificateNameSchema(certificateName, environment, certificateNameSchema);
+    return matchesCertificateNameSchema(certificateName, certificateNameSchema);
   }
 
   return certificateName.startsWith(CHEF_PKI_SYNC_DEFAULTS.INFISICAL_PREFIX);

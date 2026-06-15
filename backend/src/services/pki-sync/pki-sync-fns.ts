@@ -1,4 +1,4 @@
-import handlebars from "handlebars";
+import RE2 from "re2";
 import { z, ZodSchema } from "zod";
 
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
@@ -89,84 +89,30 @@ export const parsePkiSyncErrorMessage = (error: unknown): string => {
   return "An unknown error occurred during PKI sync operation";
 };
 
-export const applyCertificateNameSchema = (
-  certificateMap: TCertificateMap,
-  environment: string,
-  schema?: string
-): TCertificateMap => {
-  if (!schema) return certificateMap;
+const escapeNameSchemaRegex = (value: string): string =>
+  value.replace(new RE2("[\\\\^$.*+?()\\[\\]{}|/]", "g"), "\\$&");
 
-  const processedCertificateMap: TCertificateMap = {};
-
-  for (const [certificateId, value] of Object.entries(certificateMap)) {
-    const newName = handlebars.compile(schema)({
-      certificateId,
-      environment
-    });
-
-    processedCertificateMap[newName] = value;
-  }
-
-  return processedCertificateMap;
-};
-
-export const stripCertificateNameSchema = (
-  certificateMap: TCertificateMap,
-  environment: string,
-  schema?: string
-): TCertificateMap => {
-  if (!schema) return certificateMap;
-
-  const compiledSchemaPattern = handlebars.compile(schema)({
-    certificateId: "{{certificateId}}",
-    environment
-  });
-
-  const parts = compiledSchemaPattern.split("{{certificateId}}");
-  const prefix = parts[0];
-  const suffix = parts[parts.length - 1];
-
-  const strippedMap: TCertificateMap = {};
-
-  for (const [name, value] of Object.entries(certificateMap)) {
-    if (!name.startsWith(prefix) || !name.endsWith(suffix)) {
-      // eslint-disable-next-line no-continue
-      continue;
-    }
-
-    const strippedName = name.slice(prefix.length, name.length - suffix.length);
-    strippedMap[strippedName] = value;
-  }
-
-  return strippedMap;
-};
-
-export const matchesCertificateNameSchema = (name: string, environment: string, schema?: string): boolean => {
+export const matchesCertificateNameSchema = (name: string, schema?: string): boolean => {
   if (!schema) return true;
 
-  const compiledSchemaPattern = handlebars.compile(schema)({
-    certificateId: "{{certificateId}}",
-    environment
-  });
+  const CERT_ID_TOKEN = "__INFISICAL_CERT_ID_PLACEHOLDER__";
+  const PROFILE_ID_TOKEN = "__INFISICAL_PROFILE_ID_PLACEHOLDER__";
+  const APP_ID_TOKEN = "__INFISICAL_APP_ID_PLACEHOLDER__";
+  const COMMON_NAME_TOKEN = "__INFISICAL_COMMON_NAME_PLACEHOLDER__";
 
-  if (!compiledSchemaPattern.includes("{{certificateId}}")) {
-    return name === compiledSchemaPattern;
-  }
+  const tokenized = schema
+    .replace(new RE2("\\{\\{certificateId\\}\\}", "g"), CERT_ID_TOKEN)
+    .replace(new RE2("\\{\\{profileId\\}\\}", "g"), PROFILE_ID_TOKEN)
+    .replace(new RE2("\\{\\{applicationId\\}\\}", "g"), APP_ID_TOKEN)
+    .replace(new RE2("\\{\\{commonName\\}\\}", "g"), COMMON_NAME_TOKEN);
 
-  const parts = compiledSchemaPattern.split("{{certificateId}}");
-  const prefix = parts[0];
-  const suffix = parts[parts.length - 1];
+  const pattern = escapeNameSchemaRegex(tokenized)
+    .replace(new RE2(CERT_ID_TOKEN, "g"), "[0-9a-f]{32}")
+    .replace(new RE2(PROFILE_ID_TOKEN, "g"), "[0-9a-f]{32}")
+    .replace(new RE2(APP_ID_TOKEN, "g"), "[0-9a-f]{32}")
+    .replace(new RE2(COMMON_NAME_TOKEN, "g"), ".*");
 
-  if (prefix === "" && suffix === "") return true;
-
-  // If prefix is empty, name must end with suffix
-  if (prefix === "") return name.endsWith(suffix);
-
-  // If suffix is empty, name must start with prefix
-  if (suffix === "") return name.startsWith(prefix);
-
-  // Name must start with prefix and end with suffix
-  return name.startsWith(prefix) && name.endsWith(suffix);
+  return new RE2(`^${pattern}$`).test(name);
 };
 
 const checkPkiSyncDestination = (pkiSync: TPkiSyncWithCredentials, destination: PkiSync): void => {

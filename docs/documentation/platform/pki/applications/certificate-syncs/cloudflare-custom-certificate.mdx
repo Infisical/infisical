@@ -32,7 +32,7 @@ Deploy custom SSL certificates to your Cloudflare zones. Certificates synced to 
 
         4. Configure the **Sync Options**:
             - **Enable Removal of Expired/Revoked Certificates**: Remove certificates from the destination if they are no longer active.
-            - **Certificate Name Schema**: Customize certificate names using `{{certificateId}}` placeholder.
+            - **Certificate Name Schema**: Customize certificate names using placeholders such as `{{certificateId}}`, `{{commonName}}`, `{{profileId}}`, and `{{applicationId}}`. Must include `{{certificateId}}`. See [Certificate Name Schema](/documentation/platform/pki/applications/certificate-syncs/overview#certificate-name-schema) for the full placeholder reference.
             - **Auto-Sync Enabled**: Automatically sync certificates when changes occur.
 
         5. Configure the **Details**:

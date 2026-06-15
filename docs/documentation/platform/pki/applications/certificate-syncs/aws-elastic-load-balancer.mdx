@@ -34,7 +34,7 @@ Deploy certificates directly to your AWS Application Load Balancers (ALBs) and N
             - **Enable Removal of Expired/Revoked Certificates**: Remove certificates from listeners and ACM when no longer active.
             - **Preserve ARN on Renewal**: Keep the same ARN when renewing instead of creating a new certificate.
             - **Include Root CA**: Include the Root CA certificate in the chain.
-            - **Certificate Name Schema**: Customize ACM tags using `{{certificateId}}` placeholder.
+            - **Certificate Name Schema**: Customize ACM tags using placeholders such as `{{certificateId}}`, `{{commonName}}`, `{{profileId}}`, and `{{applicationId}}`. Must include `{{certificateId}}`. See [Certificate Name Schema](/documentation/platform/pki/applications/certificate-syncs/overview#certificate-name-schema) for the full placeholder reference.
             - **Auto-Sync Enabled**: Automatically sync certificates when changes occur.
 
         5. Configure the **Details**:

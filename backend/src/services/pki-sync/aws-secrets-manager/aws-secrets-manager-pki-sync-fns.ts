@@ -53,8 +53,7 @@ const isInfisicalManagedCertificate = (secretName: string, pkiSync: TPkiSyncWith
   const certificateNameSchema = syncOptions?.certificateNameSchema;
 
   if (certificateNameSchema) {
-    const environment = AWS_SECRETS_MANAGER_PKI_SYNC_DEFAULTS.DEFAULT_ENVIRONMENT;
-    return matchesCertificateNameSchema(secretName, environment, certificateNameSchema);
+    return matchesCertificateNameSchema(secretName, certificateNameSchema);
   }
 
   return secretName.startsWith(AWS_SECRETS_MANAGER_PKI_SYNC_DEFAULTS.INFISICAL_PREFIX);

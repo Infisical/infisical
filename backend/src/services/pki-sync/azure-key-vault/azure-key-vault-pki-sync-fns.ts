@@ -43,8 +43,7 @@ const isInfisicalManagedCertificate = (certificateName: string, pkiSync: TPkiSyn
   const certificateNameSchema = syncOptions?.certificateNameSchema;
 
   if (certificateNameSchema) {
-    const environment = "global";
-    return matchesCertificateNameSchema(certificateName, environment, certificateNameSchema);
+    return matchesCertificateNameSchema(certificateName, certificateNameSchema);
   }
 
   return certificateName.startsWith("Infisical-PKI-Sync-");

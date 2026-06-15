@@ -1,6 +1,5 @@
 /* eslint-disable no-await-in-loop */
 import { AxiosError, AxiosRequestConfig } from "axios";
-import handlebars from "handlebars";
 import RE2 from "re2";
 
 import { TCertificateSyncs } from "@app/db/schemas";
@@ -14,6 +13,8 @@ import { TCertificateSyncDALFactory } from "@app/services/certificate-sync/certi
 import { CertificateSyncStatus } from "@app/services/certificate-sync/certificate-sync-enums";
 import { TCertificateMap } from "@app/services/pki-sync/pki-sync-types";
 
+import { compileCertificateNameSchema } from "../pki-sync-certificate-name-fns";
+import { PkiSync } from "../pki-sync-enums";
 import { PkiSyncError } from "../pki-sync-errors";
 import { TPkiSyncWithCredentials } from "../pki-sync-types";
 import { TNetScalerPkiSyncConfig } from "./netscaler-pki-sync-types";
@@ -282,21 +283,29 @@ const removeNetScalerCertificate = async (
 
 const escapeRegex = (s: string) => s.replace(new RE2("[\\\\^$.*+?()\\[\\]{}|/]", "g"), "\\$&");
 
-const buildManagedCertNamePattern = (certificateNameSchema: string | undefined): RE2 => {
+export const buildManagedCertNamePattern = (certificateNameSchema: string | undefined): RE2 => {
   if (!certificateNameSchema) {
     return new RE2("^Infisical-[0-9a-f]{32}(-[a-zA-Z0-9]*)?$");
   }
 
   const CERT_ID_TOKEN = "__INFISICAL_CERT_ID_PLACEHOLDER__";
-  const ENV_TOKEN = "__INFISICAL_ENV_PLACEHOLDER__";
+  const PROFILE_ID_TOKEN = "__INFISICAL_PROFILE_ID_PLACEHOLDER__";
+  const APP_ID_TOKEN = "__INFISICAL_APP_ID_PLACEHOLDER__";
+  const COMMON_NAME_TOKEN = "__INFISICAL_COMMON_NAME_PLACEHOLDER__";
 
   const tokenized = certificateNameSchema
     .replace(new RE2("\\{\\{certificateId\\}\\}", "g"), CERT_ID_TOKEN)
-    .replace(new RE2("\\{\\{environment\\}\\}", "g"), ENV_TOKEN);
+    .replace(new RE2("\\{\\{profileId\\}\\}", "g"), PROFILE_ID_TOKEN)
+    .replace(new RE2("\\{\\{applicationId\\}\\}", "g"), APP_ID_TOKEN)
+    .replace(new RE2("\\{\\{commonName\\}\\}", "g"), COMMON_NAME_TOKEN);
 
+  // {{certificateId}}, {{profileId}}, and {{applicationId}} resolve to dash-stripped UUIDs (32 hex chars).
+  // {{commonName}} is arbitrary, so match any run of NetScaler-safe characters.
   const pattern = escapeRegex(tokenized)
     .replace(new RE2(CERT_ID_TOKEN, "g"), "[0-9a-f]{32}")
-    .replace(new RE2(ENV_TOKEN, "g"), "global");
+    .replace(new RE2(PROFILE_ID_TOKEN, "g"), "[0-9a-f]{32}")
+    .replace(new RE2(APP_ID_TOKEN, "g"), "[0-9a-f]{32}")
+    .replace(new RE2(COMMON_NAME_TOKEN, "g"), "[a-zA-Z0-9._-]*");
 
   return new RE2(`^${pattern}$`);
 };
@@ -432,10 +441,16 @@ export const netScalerPkiSyncFactory = ({
               } else if (certificate?.renewedFromCertificateId && !preserveItemOnRenewal) {
                 const certIdClean = certificateId.replace(new RE2("-", "g"), "");
                 if (certificateNameSchema) {
-                  targetCertKeyName = handlebars.compile(certificateNameSchema)({
-                    certificateId: certIdClean,
-                    environment: "global"
-                  });
+                  targetCertKeyName = compileCertificateNameSchema(
+                    certificateNameSchema,
+                    {
+                      certificateId,
+                      profileId: certData.profileId,
+                      applicationId: pkiSync.applicationId,
+                      commonName: certData.commonName
+                    },
+                    PkiSync.NetScaler
+                  );
                 } else {
                   targetCertKeyName = `Infisical-${certIdClean}`;
                 }
