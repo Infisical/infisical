@@ -33,7 +33,7 @@ export const Option = <T,>({ isSelected, children, ...props }: OptionProps<T>) =
   <components.Option isSelected={isSelected} {...props}>
     <div className="flex cursor-pointer flex-row items-center justify-between">
       <p className="truncate">{children}</p>
-      {isSelected && <CheckIcon className="ml-2 size-4" />}
+      {isSelected && <CheckIcon className="ml-2 size-4 shrink-0" />}
     </div>
   </components.Option>
 );
