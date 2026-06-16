@@ -115,7 +115,9 @@ const NewProjectForm = ({ onOpenChange, projectType: fixedProjectType }: NewProj
     OrgPermissionSubjects.ProjectTemplates
   );
 
+  const canReadKms = permission.can(OrgPermissionActions.Read, OrgPermissionSubjects.Kms);
   const canCreateKms = permission.can(OrgPermissionActions.Create, OrgPermissionSubjects.Kms);
+  const canAddExternalKms = canReadKms && canCreateKms;
 
   const {
     control,
@@ -139,7 +141,7 @@ const NewProjectForm = ({ onOpenChange, projectType: fixedProjectType }: NewProj
   });
 
   const { data: externalKmsList } = useGetExternalKmsList(currentOrg.id, {
-    enabled: permission.can(OrgPermissionActions.Read, OrgPermissionSubjects.Kms)
+    enabled: canReadKms
   });
 
   useEffect(() => {
@@ -149,7 +151,7 @@ const NewProjectForm = ({ onOpenChange, projectType: fixedProjectType }: NewProj
   }, [errors]);
 
   const handleAddExternalKms = () => {
-    if (subscription && !subscription.externalKms) {
+    if (!subscription?.externalKms) {
       handlePopUpOpen("upgradePlan", { isEnterpriseFeature: true });
       return;
     }
@@ -360,7 +362,7 @@ const NewProjectForm = ({ onOpenChange, projectType: fixedProjectType }: NewProj
                           </SelectItem>
                         ))}
                         <SelectSeparator />
-                        {canCreateKms ? (
+                        {canAddExternalKms ? (
                           <SelectItem value={ADD_EXTERNAL_KMS_OPTION} key="kms-add-external">
                             <span className="flex items-center gap-2 text-accent">
                               <Plus />
