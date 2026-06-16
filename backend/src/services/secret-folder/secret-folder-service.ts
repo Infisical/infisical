@@ -1600,6 +1600,24 @@ export const secretFolderServiceFactory = ({
       rootFolderPath: folder.path
     };
 
+    const destinationParentPath = destinationPath ?? "/";
+    const canActorAccessDestination =
+      !!destinationEnvironment &&
+      (permission.can(
+        ProjectPermissionActions.Create,
+        subject(ProjectPermissionSub.SecretFolders, {
+          environment: destinationEnvironment,
+          secretPath: destinationParentPath
+        })
+      ) ||
+        permission.can(
+          ProjectPermissionActions.Read,
+          subject(ProjectPermissionSub.SecretFolders, {
+            environment: destinationEnvironment,
+            secretPath: destinationParentPath
+          })
+        ));
+
     // run every read inside a transaction so it hits the primary database rather than a read replica
     const { sourceBlock, destinationBlock } = await folderDAL.transaction(async (tx) => {
       // parent folder + full recursive subtree (with paths); reserved folders are already excluded.
@@ -1611,21 +1629,18 @@ export const secretFolderServiceFactory = ({
           projectId: folder.projectId,
           sourceEnvironment: folder.environment.envSlug,
           sourceFolderPath: folder.path,
-          // the destination scan runs without an access scope so it always detects a governing policy. the
-          // subtree is re-rooted at the moved folder's final location (parent + name), matching the path
-          // moveFolder uses (destinationFolderRoot), so the pre-check and the move evaluate the same paths.
-          destination: destinationEnvironment
-            ? { environment: destinationEnvironment, path: path.join(destinationPath ?? "/", folder.name) }
-            : undefined,
+          destination:
+            destinationEnvironment && canActorAccessDestination
+              ? { environment: destinationEnvironment, path: path.join(destinationParentPath, folder.name) }
+              : undefined,
           accessScope
         },
         tx
       );
     });
 
-    // the destination block is always detected (so the modal can block the move in every case); the policy's
-    // path/name are disclosed only when the actor may read that path, matching assertFolderMoveAllowed's gating.
     const readableDestinationBlock =
+      canActorAccessDestination &&
       destinationBlock &&
       destinationEnvironment &&
       canActorReadBlock(permission, destinationEnvironment, "secret_approval_policy", destinationBlock.blockingAbsPath)
@@ -1637,7 +1652,7 @@ export const secretFolderServiceFactory = ({
       folderName: folder.name,
       blockingType: sourceBlock?.blockingType,
       blockingPath: sourceBlock?.blockingPath,
-      destinationBlocked: destinationEnvironment ? Boolean(destinationBlock) : undefined,
+      destinationBlocked: destinationEnvironment ? !canActorAccessDestination || Boolean(destinationBlock) : undefined,
       destinationBlockingPath: readableDestinationBlock?.blockingPath,
       destinationPolicyName: readableDestinationBlock?.policyName
     };
