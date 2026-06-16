@@ -4,6 +4,7 @@ import { Link, useSearch } from "@tanstack/react-router";
 import { InfoIcon } from "lucide-react";
 
 import { PageHeader, TabPanel, Tabs } from "@app/components/v2";
+import { Alert, AlertDescription, AlertTitle } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useSubscription } from "@app/context";
 
@@ -86,6 +87,32 @@ export const OrgTabGroup = () => {
           </Link>
         )}
       </PageHeader>
+      <Alert variant="info" className="mb-6">
+        <InfoIcon />
+        <AlertTitle>Some Settings Have Moved</AlertTitle>
+        <AlertDescription>
+          <p>
+            Audit log streams now live under{" "}
+            <Link
+              to="/organizations/$orgId/audit-logs"
+              params={{ orgId: currentOrg.id }}
+              search={{ selectedTab: "streams" }}
+              className="underline hover:opacity-80"
+            >
+              Audit Logs
+            </Link>
+            , and workflow integrations, OAuth applications, and external migrations have moved to{" "}
+            <Link
+              to="/organizations/$orgId/integrations"
+              params={{ orgId: currentOrg.id }}
+              className="underline hover:opacity-80"
+            >
+              Integrations
+            </Link>
+            .
+          </p>
+        </AlertDescription>
+      </Alert>
       <Tabs orientation="vertical" value={selectedTab}>
         {visibleTabs
           .filter((tab) => !tab.requiresFeature)
