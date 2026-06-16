@@ -163,27 +163,6 @@ export default function InitialSignupStep({
               </span>
             </Link>
           </div>
-          <p className="mt-4 text-center text-xs text-pretty text-label">
-            By signing up, you agree to our{" "}
-            <a
-              href="https://infisical.com/terms/cloud"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="cursor-pointer underline underline-offset-2 duration-200 hover:text-foreground hover:decoration-project/45"
-            >
-              Terms of Service
-            </a>{" "}
-            and{" "}
-            <a
-              href="https://infisical.com/privacy"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="cursor-pointer underline underline-offset-2 duration-200 hover:text-foreground hover:decoration-project/45"
-            >
-              Privacy Policy
-            </a>
-            .
-          </p>
           <a
             href="https://infisical.com/talk-to-us?utm_source=signup&utm_medium=referral"
             target="_blank"
@@ -200,6 +179,27 @@ export default function InitialSignupStep({
           </a>
         </CardContent>
       </Card>
+      <p className="mt-4 w-full max-w-sm text-center text-xs text-pretty text-label">
+        By signing up, you agree to our{" "}
+        <a
+          href="https://infisical.com/terms/cloud"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="cursor-pointer underline underline-offset-2 duration-200 hover:text-foreground hover:decoration-project/45"
+        >
+          Terms of Service
+        </a>{" "}
+        and{" "}
+        <a
+          href="https://infisical.com/privacy"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="cursor-pointer underline underline-offset-2 duration-200 hover:text-foreground hover:decoration-project/45"
+        >
+          Privacy Policy
+        </a>
+        .
+      </p>
     </div>
   );
 }
