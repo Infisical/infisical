@@ -84,6 +84,7 @@ export const ProjectNav = () => {
     if (isLegacyView || hasApplicationContext || isFromRootRequests || hasSignerContext)
       return null;
     if (isCertManager && (isOnAccessControl || pathname.includes("/discovery"))) return null;
+    if (currentProject.type === ProjectType.PAM) return null;
     if (isOnAccessControl) {
       if (currentProject.type === ProjectType.SecretManager)
         return SECRET_MANAGER_ACCESS_CONTROL_SUBMENU;
