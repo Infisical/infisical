@@ -38,12 +38,13 @@ export const NoOrgPage = () => {
       try {
         organization = await createOrg({ name: PERSONAL_ORG_NAME });
       } catch {
-        // Nothing was created, so let the user create an org manually.
+        // Nothing was created, so reset both guards and let the user create an org manually.
         createNotification({
           text: "Couldn't create your organization automatically. Please create one below.",
           type: "error"
         });
         setFailed(true);
+        hasRun.current = false;
         sessionStorage.removeItem(CREATION_STARTED_KEY);
         return;
       }
