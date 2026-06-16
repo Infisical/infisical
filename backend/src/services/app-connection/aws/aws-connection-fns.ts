@@ -117,28 +117,25 @@ export const getAwsConnectionConfig = async (appConnection: TAwsConnectionConfig
       }
 
       let assumeRes;
+      let lastErr: unknown;
       for (const externalId of externalIds) {
-        const command = new AssumeRoleCommand({
-          RoleArn: credentials.roleArn,
-          RoleSessionName: `infisical-app-connection-${crypto.nativeCrypto.randomUUID()}`,
-          DurationSeconds: 900, // 15 mins
-          ExternalId: externalId
-        });
-
         try {
+          const command = new AssumeRoleCommand({
+            RoleArn: credentials.roleArn,
+            RoleSessionName: `infisical-app-connection-${crypto.nativeCrypto.randomUUID()}`,
+            DurationSeconds: 900, // 15 mins
+            ExternalId: externalId
+          });
           // eslint-disable-next-line no-await-in-loop
           assumeRes = await client.send(command);
+          lastErr = undefined;
           break;
         } catch (err) {
-          if (externalId !== externalIds[externalIds.length - 1]) {
-            logger.info(
-              `AssumeRole with ExternalId failed, trying next candidate [roleArn=${credentials.roleArn}]`
-            );
-            continue;
-          }
-          throw err;
+          lastErr = err;
+          logger.info(`AssumeRole with ExternalId failed, trying next candidate [roleArn=${credentials.roleArn}]`);
         }
       }
+      if (lastErr) throw lastErr;
 
       if (!assumeRes?.Credentials?.AccessKeyId || !assumeRes?.Credentials?.SecretAccessKey) {
         throw new BadRequestError({ message: "Failed to assume role - verify credentials and role configuration" });
