@@ -38,6 +38,24 @@ const redactPasswords = (e: unknown, credentials: TSqlCredentialsRotationGenerat
   return redactedMessage;
 };
 
+const validateRotationUsernames = (
+  connectionUsername: string,
+  host: string,
+  rotationUsername1: string,
+  rotationUsername2: string
+) => {
+  const connectionRoleUsername = getRoleUsernameForHost(connectionUsername, host);
+  const rotationRoleUsername1 = getRoleUsernameForHost(rotationUsername1, host);
+  const rotationRoleUsername2 = getRoleUsernameForHost(rotationUsername2, host);
+
+  if (rotationRoleUsername1 === connectionRoleUsername || rotationRoleUsername2 === connectionRoleUsername) {
+    throw new BadRequestError({
+      message:
+        "Rotation username cannot be the same as the connection username. The connection credentials are used to execute rotation operations and changing their password would break the connection."
+    });
+  }
+};
+
 const ORACLE_PASSWORD_REQUIREMENTS = {
   ...DEFAULT_PASSWORD_REQUIREMENTS,
   length: 30
@@ -67,12 +85,7 @@ export const sqlCredentialsRotationFactory: TRotationFactory<
     secretsMapping
   } = secretRotation;
 
-  if (username1 === connection.credentials.username || username2 === connection.credentials.username) {
-    throw new BadRequestError({
-      message:
-        "Rotation username cannot be the same as the connection username. The connection credentials are used to execute rotation operations and changing their password would break the connection."
-    });
-  }
+  validateRotationUsernames(connection.credentials.username, connection.credentials.host, username1, username2);
 
   const defaultPasswordRequirement =
     connection.app === AppConnection.OracleDB ? ORACLE_PASSWORD_REQUIREMENTS : DEFAULT_PASSWORD_REQUIREMENTS;
