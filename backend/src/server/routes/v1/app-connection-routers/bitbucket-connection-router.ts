@@ -50,7 +50,11 @@ export const registerBitbucketConnectionRouter = async (server: FastifyZodProvid
         query: { search }
       } = req;
 
-      const workspaces = await server.services.appConnection.bitbucket.listWorkspaces(connectionId, req.permission, search);
+      const workspaces = await server.services.appConnection.bitbucket.listWorkspaces(
+        connectionId,
+        req.permission,
+        search
+      );
 
       return { workspaces };
     }
