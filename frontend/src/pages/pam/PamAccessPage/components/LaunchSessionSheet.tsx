@@ -30,8 +30,8 @@ export const LaunchSessionSheet = ({ account, isOpen, onOpenChange }: Props) => 
   const typeName = PAM_ACCOUNT_TYPE_MAP[account.accountType]?.name ?? account.accountType;
   const cliCommand = `infisical pam access ${account.folderName}/${account.name}`;
 
-  const handleCopyCommand = () => {
-    navigator.clipboard.writeText(cliCommand);
+  const handleCopyCommand = async () => {
+    await navigator.clipboard.writeText(cliCommand);
     createNotification({
       text: "Command copied to clipboard",
       type: "success"
