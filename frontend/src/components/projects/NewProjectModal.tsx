@@ -360,7 +360,7 @@ const NewProjectForm = ({ onOpenChange, projectType: fixedProjectType }: NewProj
                           </SelectItem>
                         ))}
                         <SelectSeparator />
-                        {!canCreateKms ? (
+                        {canCreateKms ? (
                           <SelectItem value={ADD_EXTERNAL_KMS_OPTION} key="kms-add-external">
                             <span className="flex items-center gap-2 text-accent">
                               <Plus />
