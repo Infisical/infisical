@@ -63,7 +63,7 @@ Remove the old Cloudsmith source first, then re-run the repository setup script 
     sed -i '/cloudsmith.*infisical/d' /etc/apk/repositories
 
     # Add new repository and install
-    wget -qO- 'https://artifacts-cli.infisical.com/setup.apk.sh' | sh
+    wget -qO- 'https://artifacts-cli.infisical.com/setup.apk.sh' | sudo sh
     apk update && apk add infisical
     ```
   </Tab>
