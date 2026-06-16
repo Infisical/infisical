@@ -43,9 +43,14 @@ export const BitbucketSyncFields = () => {
     });
 
   const { data: repositories = [], isPending: isRepositoriesLoading } =
-    useBitbucketConnectionListRepositories(connectionId, workspace ?? "", debouncedRepoSearch || undefined, {
-      enabled: Boolean(connectionId) && Boolean(workspace)
-    });
+    useBitbucketConnectionListRepositories(
+      connectionId,
+      workspace ?? "",
+      debouncedRepoSearch || undefined,
+      {
+        enabled: Boolean(connectionId) && Boolean(workspace)
+      }
+    );
 
   const { data: environments = [], isPending: isEnvironmentsLoading } =
     useBitbucketConnectionListEnvironments(connectionId, workspace ?? "", repository ?? "", {
@@ -86,9 +91,7 @@ export const BitbucketSyncFields = () => {
                 getOptionLabel={(option) => option.slug}
                 getOptionValue={(option) => option.slug}
                 noOptionsMessage={({ inputValue }) =>
-                  inputValue
-                    ? "No workspaces found matching your search."
-                    : "No workspaces found."
+                  inputValue ? "No workspaces found matching your search." : "No workspaces found."
                 }
               />
               <FieldError errors={[error]} />

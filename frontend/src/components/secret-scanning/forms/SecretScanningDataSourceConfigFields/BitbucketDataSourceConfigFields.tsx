@@ -109,9 +109,7 @@ export const BitbucketDataSourceConfigFields = () => {
               getOptionLabel={(option) => option.slug}
               getOptionValue={(option) => option.slug}
               noOptionsMessage={({ inputValue }) =>
-                inputValue
-                  ? "No workspaces found matching your search."
-                  : "No workspaces found."
+                inputValue ? "No workspaces found matching your search." : "No workspaces found."
               }
             />
           </FormControl>

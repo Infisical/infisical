@@ -86,9 +86,9 @@ export const listBitbucketWorkspaces = async (appConnection: TBitbucketConnectio
   let allWorkspaces: TBitbucketWorkspace[] = [];
 
   const baseUrl = new URL(`${IntegrationUrls.BITBUCKET_API_URL}/2.0/user/workspaces`);
-  baseUrl.searchParams.set("pagelen", BITBUCKET_PAGE_SIZE);
+  baseUrl.searchParams.set("pagelen", BITBUCKET_PAGE_SIZE.toString());
   if (search) {
-    baseUrl.searchParams.set("q", `slug ~ "${search}"`);
+    baseUrl.searchParams.set("q", `slug ~ "${search.replace(/"/g, "")}"`);
   }
 
   const endpoint = baseUrl.toString();
@@ -150,7 +150,7 @@ export const listBitbucketRepositories = async (
       const baseUrl = new URL(`${IntegrationUrls.BITBUCKET_API_URL}/2.0/repositories/${encodedSlug}`);
       baseUrl.searchParams.set("pagelen", String(BITBUCKET_PAGE_SIZE));
       baseUrl.searchParams.set("sort", "slug");
-      baseUrl.searchParams.set("q", `name ~ "${search}"`);
+      baseUrl.searchParams.set("q", `name ~ "${search.replace(/"/g, "")}"`);
 
       const { data } = await request.get<BitbucketPaginatedResponse<TBitbucketRepo>>(baseUrl.toString(), { headers });
       return data.values;
