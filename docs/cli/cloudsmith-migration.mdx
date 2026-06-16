@@ -43,7 +43,7 @@ Remove the old Cloudsmith source first, then re-run the repository setup script 
 
     # Add new repository and install
     curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | sudo -E bash
-    sudo apt-get install -y infisical
+    sudo apt-get update && sudo apt-get install -y infisical
     ```
   </Tab>
   <Tab title="RHEL / CentOS / Fedora (yum/dnf)">
@@ -64,7 +64,7 @@ Remove the old Cloudsmith source first, then re-run the repository setup script 
 
     # Add new repository and install
     wget -qO- 'https://artifacts-cli.infisical.com/setup.apk.sh' | sh
-    apk add infisical
+    apk update && apk add infisical
     ```
   </Tab>
 </Tabs>
