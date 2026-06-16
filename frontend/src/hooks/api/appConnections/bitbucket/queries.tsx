@@ -14,10 +14,10 @@ import {
 
 const bitbucketConnectionKeys = {
   all: [...appConnectionKeys.all, "bitbucket"] as const,
-  listWorkspaces: (connectionId: string, search?: string) =>
-    [...bitbucketConnectionKeys.all, "workspaces", connectionId, { search }] as const,
   listRepos: (connectionId: string, workspaceSlug: string, search?: string) =>
     [...bitbucketConnectionKeys.all, "repos", connectionId, workspaceSlug, { search }] as const,
+  listWorkspaces: (connectionId: string, search?: string) =>
+    [...bitbucketConnectionKeys.all, "workspaces", connectionId, { search }] as const,
   listEnvironments: (connectionId: string, workspaceSlug: string, repoSlug: string) =>
     [...bitbucketConnectionKeys.all, "environments", connectionId, workspaceSlug, repoSlug] as const
 };
