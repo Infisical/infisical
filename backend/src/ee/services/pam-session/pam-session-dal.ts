@@ -2,6 +2,7 @@ import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas";
+import { sanitizeSqlLikeString } from "@app/lib/fn";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 
 import { PamAccessMethod, PamSessionStatus } from "../pam/pam-enums";
@@ -120,7 +121,7 @@ export const pamSessionDALFactory = (db: TDbClient) => {
       });
 
     if (search) {
-      const term = `%${search}%`;
+      const term = `%${sanitizeSqlLikeString(search)}%`;
       void baseQuery.where((qb) => {
         void qb
           .orWhereILike(`${TableName.PamSession}.accountName`, term)

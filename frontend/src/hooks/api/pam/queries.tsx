@@ -321,6 +321,7 @@ export const useListPamSessions = (
 
       return data;
     },
+    refetchInterval: 30_000,
     placeholderData: (prev) => prev
   });
 };
