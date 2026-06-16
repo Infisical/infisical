@@ -36,6 +36,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   Empty,
+  EmptyDescription,
   EmptyHeader,
   EmptyTitle,
   IconButton,
