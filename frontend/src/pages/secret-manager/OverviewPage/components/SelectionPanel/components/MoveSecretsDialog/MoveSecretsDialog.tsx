@@ -41,6 +41,8 @@ import {
 import { useDebounce } from "@app/hooks";
 import { useMoveSecrets } from "@app/hooks/api";
 import { useGetProjectSecretsQuickSearch } from "@app/hooks/api/dashboard";
+import { useGetFoldersMoveEligibility } from "@app/hooks/api/dashboard/queries";
+import { FolderMoveBlockingType } from "@app/hooks/api/dashboard/types";
 import { ProjectEnv } from "@app/hooks/api/projects/types";
 import { useMoveFolder } from "@app/hooks/api/secretFolders";
 import { TSecretFolder } from "@app/hooks/api/secretFolders/types";
@@ -903,9 +905,117 @@ const MultiEnvContent = ({
   );
 };
 
+// when a folder cannot be moved the backend tells us which resource blocks it (and where), so we can
+// surface the concrete action the user needs to take to unblock the move.
+const formatFolderMoveBlock = ({
+  blockingType,
+  blockingPath
+}: {
+  blockingType?: FolderMoveBlockingType;
+  blockingPath?: string;
+}) => {
+  if (!blockingType) {
+    return "This folder contains a resource you don't have permission to view, so it cannot be moved.";
+  }
+
+  const at = blockingPath ? ` at "${blockingPath}"` : "";
+
+  switch (blockingType) {
+    case "secret_rotation":
+      return `A secret rotation exists${at}. Delete the rotation to move this folder.`;
+    case "dynamic_secret":
+      return `A dynamic secret exists${at}. Delete the dynamic secret to move this folder.`;
+    case "honey_token":
+      return `A honey token exists${at}. Delete the honey token to move this folder.`;
+    case "secret_import":
+      return `A secret import exists${at}. Remove the import to move this folder.`;
+    case "secret_approval_policy":
+    default:
+      return `A secret approval policy applies${at}. Remove or adjust the policy to move this folder.`;
+  }
+};
+
+const FolderMoveBlockedView = ({
+  blockedFolders,
+  onClose
+}: {
+  blockedFolders: {
+    folderName: string;
+    blockingType?: FolderMoveBlockingType;
+    blockingPath?: string;
+  }[];
+  onClose: () => void;
+}) => {
+  return (
+    <div className="w-full">
+      <Alert variant="danger">
+        <CircleAlertIcon />
+        <AlertTitle>This folder can&apos;t be moved</AlertTitle>
+        <AlertDescription>
+          <ul className="list-disc pl-4">
+            {blockedFolders.map((folder) => (
+              <li key={folder.folderName}>{formatFolderMoveBlock(folder)}</li>
+            ))}
+          </ul>
+        </AlertDescription>
+      </Alert>
+      <DialogFooter className="mt-6">
+        <DialogClose asChild>
+          <Button variant="outline" onClick={onClose}>
+            Close
+          </Button>
+        </DialogClose>
+      </DialogFooter>
+    </div>
+  );
+};
+
 export const MoveSecretsModal = ({ isOpen, onOpenChange, visibleEnvs, ...props }: Props) => {
+  const { folders } = props;
   const isSingleEnvMode = visibleEnvs.length === 1;
   const moveCopy = getMoveSelectionCopy(props);
+
+  // only check eligibility while the modal is open, so selecting a folder never triggers the call
+  const folderIds = isOpen
+    ? Object.values(folders).flatMap((perEnv) => Object.values(perEnv).map((folder) => folder.id))
+    : [];
+  const hasFolders = folderIds.length > 0;
+
+  const { isChecking, canMove, blockedFolders } = useGetFoldersMoveEligibility(folderIds);
+
+  const renderContent = () => {
+    if (hasFolders && isChecking) {
+      return (
+        <div className="flex h-full flex-col items-center justify-center py-2.5">
+          <LoaderCircleIcon className="size-8 animate-spin text-accent" />
+          <p className="mt-4 text-sm text-accent">Checking whether this folder can be moved...</p>
+        </div>
+      );
+    }
+
+    if (hasFolders && !canMove) {
+      return (
+        <FolderMoveBlockedView
+          blockedFolders={blockedFolders}
+          onClose={() => onOpenChange(false)}
+        />
+      );
+    }
+
+    if (isSingleEnvMode) {
+      return (
+        <SingleEnvContent
+          {...props}
+          visibleEnvs={visibleEnvs}
+          onClose={() => onOpenChange(false)}
+        />
+      );
+    }
+
+    return (
+      <MultiEnvContent {...props} visibleEnvs={visibleEnvs} onClose={() => onOpenChange(false)} />
+    );
+  };
 
   return (
     <Dialog
@@ -924,19 +1034,7 @@ export const MoveSecretsModal = ({ isOpen, onOpenChange, visibleEnvs, ...props }
               : `Move the selected ${moveCopy.noun} across all environments to a new folder location`}
           </DialogDescription>
         </DialogHeader>
-        {isSingleEnvMode ? (
-          <SingleEnvContent
-            {...props}
-            visibleEnvs={visibleEnvs}
-            onClose={() => onOpenChange(false)}
-          />
-        ) : (
-          <MultiEnvContent
-            {...props}
-            visibleEnvs={visibleEnvs}
-            onClose={() => onOpenChange(false)}
-          />
-        )}
+        {renderContent()}
       </DialogContent>
     </Dialog>
   );

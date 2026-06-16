@@ -15,12 +15,7 @@ import {
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { usePopUp } from "@app/hooks";
 import { useDeleteSecretBatch } from "@app/hooks/api";
-import { useGetFoldersMoveEligibility } from "@app/hooks/api/dashboard/queries";
-import {
-  FolderMoveBlockingType,
-  ProjectSecretsImportedBy,
-  UsedBySecretSyncs
-} from "@app/hooks/api/dashboard/types";
+import { ProjectSecretsImportedBy, UsedBySecretSyncs } from "@app/hooks/api/dashboard/types";
 import { TDashboardHoneyToken } from "@app/hooks/api/honeyTokens/types";
 import { ProjectEnv } from "@app/hooks/api/projects/types";
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
@@ -45,39 +40,6 @@ export enum EntryType {
   SECRET_ROTATION = "secretRotation",
   HONEY_TOKEN = "honeyToken"
 }
-
-const FOLDER_MOVE_BLOCKING_LABEL: Record<FolderMoveBlockingType, string> = {
-  dynamic_secret: "dynamic secret",
-  secret_rotation: "secret rotation",
-  honey_token: "honey token",
-  secret_import: "secret import",
-  secret_approval_policy: "secret approval policy"
-};
-
-// brief, capped summary of which selected folders can't be moved and why, for the Move button tooltip
-const formatBlockedFolders = (
-  blocked: { folderName: string; blockingType?: FolderMoveBlockingType; blockingPath?: string }[]
-) => {
-  const MAX = 3;
-
-  // single folder reads as a sentence: Cannot move "api-keys". It has a dynamic secret.
-  if (blocked.length === 1) {
-    const [folder] = blocked;
-    return folder.blockingType
-      ? `Cannot move "${folder.folderName}". It has a ${FOLDER_MOVE_BLOCKING_LABEL[folder.blockingType]}${folder.blockingPath ? ` at path "${folder.blockingPath}"` : ""}.`
-      : `Cannot move "${folder.folderName}".`;
-  }
-
-  // multiple folders: one short clause each, capped to keep the tooltip brief
-  const describe = (folder: { folderName: string; blockingType?: FolderMoveBlockingType }) =>
-    folder.blockingType
-      ? `"${folder.folderName}" has a ${FOLDER_MOVE_BLOCKING_LABEL[folder.blockingType]}`
-      : `"${folder.folderName}" can't be moved`;
-
-  const shown = blocked.slice(0, MAX).map(describe);
-  const extra = blocked.length - shown.length;
-  return `Cannot move: ${shown.join(", ")}${extra > 0 ? `, and ${extra} more` : ""}.`;
-};
 
 type Props = {
   secretPath: string;
@@ -340,40 +302,15 @@ export const SelectionPanel = ({
   const areFoldersSelected = Boolean(Object.keys(selectedEntries[EntryType.FOLDER]).length);
   const areRotationsSelected = selectedRotationCount > 0;
 
-  // every selected folder (one entry per environment it exists in) must be checked independently,
-  // since a folder's contents can differ across environments.
-  const selectedFolderIds = useMemo(
-    () =>
-      Object.values(selectedEntries[EntryType.FOLDER]).flatMap((perEnv) =>
-        Object.values(perEnv).map((folder) => folder.id)
-      ),
-    [selectedEntries]
-  );
-
-  const {
-    isChecking: isCheckingFolderMove,
-    canMove: canMoveSelectedFolders,
-    blockedFolders
-  } = useGetFoldersMoveEligibility(selectedFolderIds);
-
   const hasHoneyTokenSelected = isHoneyTokenSelected || Boolean(selectedHoneyTokenCount);
 
-  // a folder can only be moved if its entire subtree contains nothing but plain static secrets
-  const isFolderMoveBlocked =
-    areFoldersSelected && !isCheckingFolderMove && !canMoveSelectedFolders;
+  // folders are moved one at a time from the inline row action, so bulk move only handles
+  // secrets and rotations
+  const hasMovableSelection = selectedKeysCount > 0 || selectedRotationCount > 0;
+  const shouldShowMove = shouldShowDelete && hasMovableSelection;
 
-  const isMoveDisabled = hasHoneyTokenSelected || isCheckingFolderMove || isFolderMoveBlocked;
-
-  let moveDisabledReason = "";
-  if (hasHoneyTokenSelected) {
-    moveDisabledReason = "Moving honey tokens is not supported";
-  } else if (isCheckingFolderMove) {
-    moveDisabledReason = "Checking whether the selected folder can be moved…";
-  } else if (isFolderMoveBlocked) {
-    moveDisabledReason = blockedFolders.length
-      ? formatBlockedFolders(blockedFolders)
-      : "This folder cannot be moved";
-  }
+  const isMoveDisabled = hasHoneyTokenSelected;
+  const moveDisabledReason = hasHoneyTokenSelected ? "Moving honey tokens is not supported" : "";
 
   const isDeleteDisabled = areRotationsSelected || isManagedSecretSelected;
   let deleteDisabledReason = "Rotated or honey token secrets cannot be deleted via multi-select";
@@ -458,12 +395,11 @@ export const SelectionPanel = ({
               <TooltipContent>Access denied</TooltipContent>
             </Tooltip>
           )}
-          {shouldShowDelete && (
+          {shouldShowMove && (
             <Tooltip open={isMoveDisabled ? undefined : false}>
               <TooltipTrigger>
                 <Button
                   isDisabled={isMoveDisabled}
-                  isPending={isCheckingFolderMove}
                   variant="project"
                   className="ml-2"
                   onClick={() => handlePopUpOpen("bulkMoveSecrets")}
@@ -522,7 +458,7 @@ export const SelectionPanel = ({
         sourceSecretPath={secretPath}
         secrets={selectedEntries[EntryType.SECRET]}
         rotations={selectedEntries[EntryType.SECRET_ROTATION]}
-        folders={selectedEntries[EntryType.FOLDER]}
+        folders={{}}
         onComplete={resetSelectedEntries}
       />
       <BulkTagDialog
