@@ -111,17 +111,18 @@ const getDeploymentType = (
 export const telemetryServiceFactory = ({ keyStore, licenseService, orgDAL }: TTelemetryServiceFactoryDep) => {
   const appCfg = getConfig();
 
-  let cachedInstanceId: string | undefined;
-  const getInstanceId = async (): Promise<string | undefined> => {
-    if (appCfg.INFISICAL_CLOUD) return undefined;
-    if (cachedInstanceId) return cachedInstanceId;
-    try {
-      const { instanceId } = await getServerCfg();
-      cachedInstanceId = instanceId;
-      return instanceId;
-    } catch {
-      return undefined;
+  let instanceIdPromise: Promise<string | undefined> | undefined;
+  const getInstanceId = (): Promise<string | undefined> => {
+    if (appCfg.INFISICAL_CLOUD) return Promise.resolve(undefined);
+    if (!instanceIdPromise) {
+      instanceIdPromise = getServerCfg()
+        .then(({ instanceId }) => instanceId)
+        .catch(() => {
+          instanceIdPromise = undefined;
+          return undefined;
+        });
     }
+    return instanceIdPromise;
   };
 
   if (appCfg.isProductionMode && !appCfg.TELEMETRY_ENABLED) {

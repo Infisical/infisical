@@ -1,7 +1,9 @@
 import { TDbClient } from "@app/db";
-import { TableName } from "@app/db/schemas";
+import { AccessScope, OrgMembershipRole, ProjectMembershipRole, TableName } from "@app/db/schemas";
 import { HEARTBEAT_BUFFER_SECONDS } from "@app/ee/services/gateway-v2/gateway-v2-constants";
 import { DatabaseError } from "@app/lib/errors";
+
+const BUILT_IN_ROLE_SLUGS = [...Object.values(OrgMembershipRole), ...Object.values(ProjectMembershipRole)] as string[];
 
 export type TTelemetryDALFactory = ReturnType<typeof telemetryDALFactory>;
 
@@ -91,8 +93,18 @@ export const telemetryDALFactory = (db: TDbClient) => {
         countTable(db, TableName.AuditLogStream),
         countTable(db, TableName.SecretRotationV2),
         countTable(db, TableName.Webhook),
-        countTable(db, TableName.ProjectRoles),
-        countTable(db, TableName.OrgRoles),
+        (async () => {
+          const result = (
+            await db(TableName.Role).whereNotNull("projectId").whereNotIn("slug", BUILT_IN_ROLE_SLUGS).count().first()
+          )?.count as string;
+          return parseInt(result || "0", 10);
+        })(),
+        (async () => {
+          const result = (
+            await db(TableName.Role).whereNull("projectId").whereNotIn("slug", BUILT_IN_ROLE_SLUGS).count().first()
+          )?.count as string;
+          return parseInt(result || "0", 10);
+        })(),
         countTable(db, TableName.KmipClient),
         countTable(db, TableName.SshHost),
         countTable(db, TableName.SshCertificateAuthority),
@@ -173,10 +185,10 @@ export const telemetryDALFactory = (db: TDbClient) => {
       const organizations = organizationRows.length;
       const organizationNames = organizationRows.map(({ name }) => name);
 
-      const orgUserResult = await db.raw<{ rows: { orgId: string; count: string }[] }>(
-        `SELECT "orgId", COUNT(*)::text AS count FROM ${TableName.OrgMembership} GROUP BY "orgId"`
+      const orgUserResult = await db.raw<{ rows: { scopeOrgId: string; count: string }[] }>(
+        `SELECT "scopeOrgId", COUNT(*)::text AS count FROM ${TableName.Membership} WHERE scope = '${AccessScope.Organization}' AND "actorUserId" IS NOT NULL AND status = 'accepted' GROUP BY "scopeOrgId"`
       );
-      const orgUserMap = new Map(orgUserResult.rows.map((r) => [r.orgId, parseInt(r.count, 10)]));
+      const orgUserMap = new Map(orgUserResult.rows.map((r) => [r.scopeOrgId, parseInt(r.count, 10)]));
 
       const orgProjectResult = await db.raw<{ rows: { orgId: string; count: string }[] }>(
         `SELECT "orgId", COUNT(*)::text AS count FROM ${TableName.Project} GROUP BY "orgId"`
