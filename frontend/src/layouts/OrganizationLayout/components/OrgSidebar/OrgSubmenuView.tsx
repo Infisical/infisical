@@ -1,4 +1,5 @@
 import {
+  AppWindow,
   ChevronLeft,
   Cog,
   KeyRound,
@@ -39,6 +40,11 @@ export const OrgSettingsSubmenuView = ({ onBack }: { onBack: () => void }) => {
       icon: ShieldUser,
       pathSuffix: "sso",
       hidden: isSubOrganization
+    },
+    {
+      label: "OAuth Applications",
+      icon: AppWindow,
+      pathSuffix: "oauth-applications"
     },
     {
       label: "Networking",

@@ -55,6 +55,7 @@ import { Route as organizationSecretSharingPageSecretSharingRedirectRouteImport 
 import { Route as adminResourceOverviewPageRouteImport } from './pages/admin/ResourceOverviewPage/route'
 import { Route as organizationSsoPageRouteImport } from './pages/organization/SsoPage/route'
 import { Route as organizationProjectsPageRouteImport } from './pages/organization/ProjectsPage/route'
+import { Route as organizationOauthApplicationsPageRouteImport } from './pages/organization/OauthApplicationsPage/route'
 import { Route as organizationIntegrationsPageRouteImport } from './pages/organization/IntegrationsPage/route'
 import { Route as organizationBillingPageRouteImport } from './pages/organization/BillingPage/route'
 import { Route as organizationAuditLogsPageRouteImport } from './pages/organization/AuditLogsPage/route'
@@ -793,6 +794,14 @@ const organizationProjectsPageRouteRoute =
   organizationProjectsPageRouteImport.update({
     id: '/projects',
     path: '/projects',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdRoute,
+  } as any)
+
+const organizationOauthApplicationsPageRouteRoute =
+  organizationOauthApplicationsPageRouteImport.update({
+    id: '/oauth-applications',
+    path: '/oauth-applications',
     getParentRoute: () =>
       AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdRoute,
   } as any)
@@ -3182,6 +3191,13 @@ declare module '@tanstack/react-router' {
       path: '/integrations'
       fullPath: '/organizations/$orgId/integrations'
       preLoaderRoute: typeof organizationIntegrationsPageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdImport
+    }
+    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/oauth-applications': {
+      id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/oauth-applications'
+      path: '/oauth-applications'
+      fullPath: '/organizations/$orgId/oauth-applications'
+      preLoaderRoute: typeof organizationOauthApplicationsPageRouteImport
       parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdImport
     }
     '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects': {
@@ -6291,6 +6307,7 @@ interface AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdRouteChildren {
   organizationAuditLogsPageRouteRoute: typeof organizationAuditLogsPageRouteRoute
   organizationBillingPageRouteRoute: typeof organizationBillingPageRouteRoute
   organizationIntegrationsPageRouteRoute: typeof organizationIntegrationsPageRouteRoute
+  organizationOauthApplicationsPageRouteRoute: typeof organizationOauthApplicationsPageRouteRoute
   organizationProjectsPageRouteRoute: typeof organizationProjectsPageRouteRouteWithChildren
   organizationSsoPageRouteRoute: typeof organizationSsoPageRouteRoute
   AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdAppConnectionsRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdAppConnectionsRouteWithChildren
@@ -6312,6 +6329,8 @@ const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdRouteChildren: Auth
     organizationBillingPageRouteRoute: organizationBillingPageRouteRoute,
     organizationIntegrationsPageRouteRoute:
       organizationIntegrationsPageRouteRoute,
+    organizationOauthApplicationsPageRouteRoute:
+      organizationOauthApplicationsPageRouteRoute,
     organizationProjectsPageRouteRoute:
       organizationProjectsPageRouteRouteWithChildren,
     organizationSsoPageRouteRoute: organizationSsoPageRouteRoute,
@@ -6588,6 +6607,7 @@ export interface FileRoutesByFullPath {
   '/organizations/$orgId/audit-logs': typeof organizationAuditLogsPageRouteRoute
   '/organizations/$orgId/billing': typeof organizationBillingPageRouteRoute
   '/organizations/$orgId/integrations': typeof organizationIntegrationsPageRouteRoute
+  '/organizations/$orgId/oauth-applications': typeof organizationOauthApplicationsPageRouteRoute
   '/organizations/$orgId/projects': typeof organizationProjectsPageRouteRouteWithChildren
   '/organizations/$orgId/sso': typeof organizationSsoPageRouteRoute
   '/admin/resources/overview': typeof adminResourceOverviewPageRouteRoute
@@ -6891,6 +6911,7 @@ export interface FileRoutesByTo {
   '/organizations/$orgId/audit-logs': typeof organizationAuditLogsPageRouteRoute
   '/organizations/$orgId/billing': typeof organizationBillingPageRouteRoute
   '/organizations/$orgId/integrations': typeof organizationIntegrationsPageRouteRoute
+  '/organizations/$orgId/oauth-applications': typeof organizationOauthApplicationsPageRouteRoute
   '/organizations/$orgId/projects': typeof organizationProjectsPageRouteRouteWithChildren
   '/organizations/$orgId/sso': typeof organizationSsoPageRouteRoute
   '/admin/resources/overview': typeof adminResourceOverviewPageRouteRoute
@@ -7176,6 +7197,7 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/audit-logs': typeof organizationAuditLogsPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/billing': typeof organizationBillingPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/integrations': typeof organizationIntegrationsPageRouteRoute
+  '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/oauth-applications': typeof organizationOauthApplicationsPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects': typeof organizationProjectsPageRouteRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/sso': typeof organizationSsoPageRouteRoute
   '/_authenticate/_inject-org-details/admin/_admin-layout/resources/overview': typeof adminResourceOverviewPageRouteRoute
@@ -7492,6 +7514,7 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/audit-logs'
     | '/organizations/$orgId/billing'
     | '/organizations/$orgId/integrations'
+    | '/organizations/$orgId/oauth-applications'
     | '/organizations/$orgId/projects'
     | '/organizations/$orgId/sso'
     | '/admin/resources/overview'
@@ -7794,6 +7817,7 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/audit-logs'
     | '/organizations/$orgId/billing'
     | '/organizations/$orgId/integrations'
+    | '/organizations/$orgId/oauth-applications'
     | '/organizations/$orgId/projects'
     | '/organizations/$orgId/sso'
     | '/admin/resources/overview'
@@ -8077,6 +8101,7 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/audit-logs'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/billing'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/integrations'
+    | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/oauth-applications'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/sso'
     | '/_authenticate/_inject-org-details/admin/_admin-layout/resources/overview'
@@ -8632,6 +8657,7 @@ export const routeTree = rootRoute
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/audit-logs",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/billing",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/integrations",
+        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/oauth-applications",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/sso",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/app-connections",
@@ -8659,6 +8685,10 @@ export const routeTree = rootRoute
     },
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/integrations": {
       "filePath": "organization/IntegrationsPage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId"
+    },
+    "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/oauth-applications": {
+      "filePath": "organization/OauthApplicationsPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId"
     },
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects": {

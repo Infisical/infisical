@@ -17,8 +17,9 @@ export const OrgNav = () => {
   const { pathname } = useLocation();
   const navigate = useNavigate();
 
-  // /settings, /sso and /networking all live under the settings submenu.
-  const isOnSettingsArea = /\/organizations\/[^/]+\/(settings|sso|networking)(\/|$)/.test(pathname);
+  // /settings, /sso, /networking and /oauth-applications all live under the settings submenu.
+  const isOnSettingsArea =
+    /\/organizations\/[^/]+\/(settings|sso|networking|oauth-applications)(\/|$)/.test(pathname);
   const [showSettings, setShowSettings] = useState(isOnSettingsArea);
 
   useEffect(() => {
