@@ -13,6 +13,7 @@ import { BadRequestError } from "@app/lib/errors";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import {
   executeWithPotentialGateway,
+  getRoleUsernameForHost,
   SQL_CONNECTION_ALTER_LOGIN_STATEMENT
 } from "@app/services/app-connection/shared/sql";
 import { generatePasswordWithConstraints } from "@app/services/secret-validation-rule/secret-validation-rule-password-generator";
@@ -139,7 +140,7 @@ export const sqlCredentialsRotationFactory: TRotationFactory<
         await tx.raw(query);
       }
     } else {
-      const filteredUsername = username.substring(0, username.indexOf("."));
+      const filteredUsername = getRoleUsernameForHost(username, connection.credentials.host);
       await tx.raw(...SQL_CONNECTION_ALTER_LOGIN_STATEMENT[connection.app]({ username: filteredUsername, password }));
     }
   };
