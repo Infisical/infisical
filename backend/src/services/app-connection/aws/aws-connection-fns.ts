@@ -102,22 +102,45 @@ export const getAwsConnectionConfig = async (appConnection: TAwsConnectionConfig
       });
 
       // v1 (legacy) always used orgId; v2+ uses projectId when available, orgId otherwise.
-      // Certificate Manager projects don't expose "project" to users, so always use orgId.
-      let externalId = orgId;
-      if ((version ?? 1) >= 2 && projectType !== ProjectType.CertificateManager) {
-        externalId = projectId ?? orgId;
+      // Certificate Manager projects try projectId first for backwards compatibility,
+      // then fall back to orgId (the recommended ExternalID for cert manager going forward).
+      const externalIds: string[] = [];
+      if ((version ?? 1) >= 2) {
+        if (projectType === ProjectType.CertificateManager) {
+          if (projectId) externalIds.push(projectId);
+          externalIds.push(orgId);
+        } else {
+          externalIds.push(projectId ?? orgId);
+        }
+      } else {
+        externalIds.push(orgId);
       }
 
-      const command = new AssumeRoleCommand({
-        RoleArn: credentials.roleArn,
-        RoleSessionName: `infisical-app-connection-${crypto.nativeCrypto.randomUUID()}`,
-        DurationSeconds: 900, // 15 mins
-        ExternalId: externalId
-      });
+      let assumeRes;
+      for (const externalId of externalIds) {
+        const command = new AssumeRoleCommand({
+          RoleArn: credentials.roleArn,
+          RoleSessionName: `infisical-app-connection-${crypto.nativeCrypto.randomUUID()}`,
+          DurationSeconds: 900, // 15 mins
+          ExternalId: externalId
+        });
 
-      const assumeRes = await client.send(command);
+        try {
+          // eslint-disable-next-line no-await-in-loop
+          assumeRes = await client.send(command);
+          break;
+        } catch (err) {
+          if (externalId !== externalIds[externalIds.length - 1]) {
+            logger.info(
+              `AssumeRole with ExternalId failed, trying next candidate [roleArn=${credentials.roleArn}]`
+            );
+            continue;
+          }
+          throw err;
+        }
+      }
 
-      if (!assumeRes.Credentials?.AccessKeyId || !assumeRes.Credentials?.SecretAccessKey) {
+      if (!assumeRes?.Credentials?.AccessKeyId || !assumeRes?.Credentials?.SecretAccessKey) {
         throw new BadRequestError({ message: "Failed to assume role - verify credentials and role configuration" });
       }
 
