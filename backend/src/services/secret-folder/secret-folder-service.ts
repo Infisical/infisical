@@ -1839,10 +1839,38 @@ export const secretFolderServiceFactory = ({
           };
         });
 
+      // pre-authorize folder create/delete across the entire subtree before any write. a move recreates each
+      // folder at its destination parent and removes it from its source parent, so the actor needs Delete at every
+      // source parent path and Create at every destination parent path. paths are deduped because subtree siblings
+      // share a parent. folder permissions are path-scoped (glob conditions can differ per nested path), so the
+      // root-only check performed before the transaction is not sufficient.
+      const checkedSourceParents = new Set<string>();
+      const checkedDestinationParents = new Set<string>();
+      for (const entry of plan) {
+        const sourceParent = path.dirname(entry.sourceAbsPath);
+        if (!checkedSourceParents.has(sourceParent)) {
+          checkedSourceParents.add(sourceParent);
+          ForbiddenError.from(permission).throwUnlessCan(
+            ProjectPermissionActions.Delete,
+            subject(ProjectPermissionSub.SecretFolders, { environment: sourceEnvironment, secretPath: sourceParent })
+          );
+        }
+        const destinationParent = path.dirname(entry.destinationAbsPath);
+        if (!checkedDestinationParents.has(destinationParent)) {
+          checkedDestinationParents.add(destinationParent);
+          ForbiddenError.from(permission).throwUnlessCan(
+            ProjectPermissionActions.Create,
+            subject(ProjectPermissionSub.SecretFolders, {
+              environment: destinationEnvironment,
+              secretPath: destinationParent
+            })
+          );
+        }
+      }
+
       // pre-authorize the secret moves for the entire subtree before any write, so an unauthorized move fails
       // before anything is created or moved. each folder that holds secrets is checked once at its own
-      // source/destination path (the move is then told to skip its per-batch check). folders without secrets are
-      // never moved, so they need no secret-level check.
+      // source/destination path.
       for (const entry of plan) {
         if (!entry.secretIds.length) {
           // eslint-disable-next-line no-continue

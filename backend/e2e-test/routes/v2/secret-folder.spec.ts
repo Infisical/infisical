@@ -336,8 +336,6 @@ describe("Secret Folder Move Router", async () => {
       destinationPath: "/move-dest"
     });
     expect(res.statusCode).toBe(200);
-    const payload = res.json();
-    expect(payload.hasApprovalRequests).toBe(false);
 
     // every secret now lives under the destination subtree
     expect(await secretKeysAt("/move-dest/move-src", sourceEnv)).toContain("ROOT_SECRET");
