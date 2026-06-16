@@ -476,7 +476,7 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const result = await server.services.folder.moveFolder({
         actorId: req.permission.id,

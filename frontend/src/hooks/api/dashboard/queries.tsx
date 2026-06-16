@@ -576,12 +576,20 @@ export const useGetFoldersMoveEligibility = (folderIds: string[]) =>
       // the same folder name can appear once per environment, so dedupe by name. the UI only needs
       // to surface which folder is blocked and why (type), not the per-folder path.
       const seen = new Set<string>();
-      const blockedFolders: { folderName: string; blockingType?: FolderMoveBlockingType }[] = [];
+      const blockedFolders: {
+        folderName: string;
+        blockingType?: FolderMoveBlockingType;
+        blockingPath?: string;
+      }[] = [];
       results.forEach((result) => {
         const { data } = result;
         if (data && !data.canMove && !seen.has(data.folderName)) {
           seen.add(data.folderName);
-          blockedFolders.push({ folderName: data.folderName, blockingType: data.blockingType });
+          blockedFolders.push({
+            folderName: data.folderName,
+            blockingType: data.blockingType,
+            blockingPath: data.blockingPath
+          });
         }
       });
 

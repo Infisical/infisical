@@ -1920,6 +1920,11 @@ export const secretFolderServiceFactory = ({
         description: entry.description
       }));
       const createdFolders = await folderDAL.insertMany(newFolderRows, tx);
+
+      const newParentIdByNewFolderId = new Map<string, string>(
+        plan.map((entry) => [entry.newFolderId, entry.newParentId])
+      );
+
       const createdVersions = await folderVersionDAL.insertMany(
         createdFolders.map((doc) => ({
           name: doc.name,
@@ -1935,7 +1940,7 @@ export const secretFolderServiceFactory = ({
           {
             actor: { type: actor, metadata: { id: actorId } },
             message: "Folder moved",
-            folderId: folderVersion.folderId,
+            folderId: newParentIdByNewFolderId.get(folderVersion.folderId) as string,
             changes: [{ type: CommitType.ADD, folderVersionId: folderVersion.id }]
           },
           tx

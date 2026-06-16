@@ -56,7 +56,7 @@ const FOLDER_MOVE_BLOCKING_LABEL: Record<FolderMoveBlockingType, string> = {
 
 // brief, capped summary of which selected folders can't be moved and why, for the Move button tooltip
 const formatBlockedFolders = (
-  blocked: { folderName: string; blockingType?: FolderMoveBlockingType }[]
+  blocked: { folderName: string; blockingType?: FolderMoveBlockingType; blockingPath?: string }[]
 ) => {
   const MAX = 3;
 
@@ -64,7 +64,7 @@ const formatBlockedFolders = (
   if (blocked.length === 1) {
     const [folder] = blocked;
     return folder.blockingType
-      ? `Cannot move "${folder.folderName}". It has a ${FOLDER_MOVE_BLOCKING_LABEL[folder.blockingType]}.`
+      ? `Cannot move "${folder.folderName}". It has a ${FOLDER_MOVE_BLOCKING_LABEL[folder.blockingType]}${folder.blockingPath ? ` at path "${folder.blockingPath}"` : ""}.`
       : `Cannot move "${folder.folderName}".`;
   }
 
