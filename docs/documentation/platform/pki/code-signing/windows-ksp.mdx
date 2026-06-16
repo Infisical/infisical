@@ -114,7 +114,7 @@ $env:INFISICAL_TOKEN = "<your-access-token>"
 | Field | Required | Default | Description |
 |-------|----------|---------|-------------|
 | `server_url` | Yes | None | Your Infisical address. Must start with `http://` (local testing) or `https://`. |
-| `auth.method` | No | `universal-auth` | How to log in: `universal-auth` (machine identity) or `token` (an access token used directly). |
+| `auth.method` | No | inferred | How to log in: `universal-auth` (machine identity) or `token` (an access token used directly). Inferred from the credentials when unset (a token means `token`, otherwise `universal-auth`). |
 | `auth.client_id` | No | None | The machine identity's client ID, for `universal-auth`. Prefer the environment variable. |
 | `auth.client_secret` | No | None | The machine identity's secret, for `universal-auth`. Prefer the environment variable. |
 | `auth.token` | No | None | An Infisical access token, for `token` auth. Prefer the environment variable. |

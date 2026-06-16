@@ -108,7 +108,7 @@ export INFISICAL_CONFIG=/path/to/your/pkcs11.conf
 | Field | Required | Default | Description |
 |-------|----------|---------|-------------|
 | `server_url` | Yes | None | Infisical server URL. Must use `http://` (local dev) or `https://`. |
-| `auth.method` | No | `universal-auth` | Authentication method: `universal-auth` or `token`. |
+| `auth.method` | No | inferred | Authentication method: `universal-auth` or `token`. Inferred from the credentials when unset (a token means `token`, otherwise `universal-auth`). |
 | `auth.client_id` | No | None | Machine identity client ID, for `universal-auth`. Prefer the env var. |
 | `auth.client_secret` | No | None | Machine identity client secret, for `universal-auth`. Prefer the env var. |
 | `auth.token` | No | None | An Infisical access token, for `token` auth. Prefer the env var. |
