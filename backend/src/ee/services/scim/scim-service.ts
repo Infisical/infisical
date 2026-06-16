@@ -300,7 +300,13 @@ export const scimServiceFactory = ({
     filter,
     orgId
   }) => {
-    const org = await requestMemoize(requestMemoKeys.orgFindById(orgId), () => orgDAL.findById(orgId));
+    const org = await requestMemoize(requestMemoKeys.orgFindOrgById(orgId), () => orgDAL.findOrgById(orgId));
+
+    if (!org)
+      throw new ScimRequestError({
+        detail: "Organization not found",
+        status: 404
+      });
 
     if (!org.scimEnabled)
       throw new ScimRequestError({
@@ -313,7 +319,7 @@ export const scimServiceFactory = ({
       ...(limit && { limit })
     };
 
-    const users = await orgDAL.findMembershipWithScimFilter(orgId, filter, findOpts);
+    const users = await orgDAL.findMembershipWithScimFilter(orgId, filter, org.orgAuthMethod, findOpts);
 
     const scimUsers = users.map(
       ({ id, externalId, username, firstName, lastName, email, isActive, createdAt, updatedAt }) =>
