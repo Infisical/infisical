@@ -30,7 +30,8 @@ import {
   ShieldUser,
   User,
   Users,
-  Video
+  Video,
+  Webhook
 } from "lucide-react";
 
 import { SubOrgIcon } from "@app/components/v3";
@@ -109,7 +110,7 @@ export const SM_SETTINGS_SUBMENU: Submenu = {
     { label: "Secrets Management", icon: FileKey, tab: "tab-secret-general" },
     { label: "Encryption", icon: Lock, tab: "tab-project-encryption" },
     { label: "Workflow Integrations", icon: Plug, tab: "tab-workflow-integrations" },
-    { label: "Webhooks", icon: Cable, tab: "tab-project-webhooks" }
+    { label: "Webhooks", icon: Webhook, tab: "tab-project-webhooks" }
   ]
 };
 

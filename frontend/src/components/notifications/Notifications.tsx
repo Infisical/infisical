@@ -9,7 +9,7 @@ import { Toaster } from "@app/components/v3/generic/Toast";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3/generic/Tooltip";
 import { useTimedReset } from "@app/hooks";
 
-export type NotificationType = "success" | "error" | "info" | "warning" | "default";
+export type NotificationType = "success" | "error" | "info" | "warning" | "loading" | "default";
 
 export type TNotification = {
   title?: string;
@@ -100,6 +100,7 @@ const toastByType = {
   error: toast.error,
   info: toast.info,
   warning: toast.warning,
+  loading: toast.loading,
   default: toast.message
 } satisfies Record<NotificationType, typeof toast.message>;
 
@@ -120,7 +121,7 @@ export const createNotification = (
   const hasBody = Boolean(bodyText || children || callToAction || copyActions);
 
   const duration =
-    options.autoClose === false
+    type === "loading" || options.autoClose === false
       ? Infinity
       : (options.duration ?? options.autoClose ?? (type === "error" ? 8000 : 3000));
 
