@@ -13,6 +13,7 @@ import { RequestContextKey } from "@app/lib/request-context/request-context-keys
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
+import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 
 import { HubSpotSignupMethod, PostHogEventTypes, TPostHogEvent, TSecretModifiedEvent } from "./telemetry-types";
 
@@ -109,6 +110,19 @@ const getDeploymentType = (
 
 export const telemetryServiceFactory = ({ keyStore, licenseService, orgDAL }: TTelemetryServiceFactoryDep) => {
   const appCfg = getConfig();
+
+  let cachedInstanceId: string | undefined;
+  const getInstanceId = async (): Promise<string | undefined> => {
+    if (appCfg.INFISICAL_CLOUD) return undefined;
+    if (cachedInstanceId) return cachedInstanceId;
+    try {
+      const { instanceId } = await getServerCfg();
+      cachedInstanceId = instanceId;
+      return instanceId;
+    } catch {
+      return undefined;
+    }
+  };
 
   if (appCfg.isProductionMode && !appCfg.TELEMETRY_ENABLED) {
     // eslint-disable-next-line
@@ -328,7 +342,11 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
       // `anonymous-<shareId>` keys used by unauthenticated public secret
       // shares) from inflating the person count while preserving event
       // counts, funnels, and breakdowns.
-      const properties = event.anonymous ? { ...event.properties, $process_person_profile: false } : event.properties;
+      const instanceId = await getInstanceId();
+      const baseProperties = event.anonymous
+        ? { ...event.properties, $process_person_profile: false }
+        : event.properties;
+      const properties = instanceId ? { ...baseProperties, instanceId } : baseProperties;
 
       postHog.capture({
         event: event.event,
@@ -500,6 +518,12 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
         // Always attach orgId as a flat property so aggregated events are filterable by organization
         if (key.org) {
           properties.orgId = key.org;
+        }
+
+        // eslint-disable-next-line no-await-in-loop
+        const instanceId = await getInstanceId();
+        if (instanceId) {
+          properties.instanceId = instanceId;
         }
 
         postHog.capture({
