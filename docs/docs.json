@@ -1044,7 +1044,8 @@
               },
               "cli/scanning-overview",
               "cli/project-config",
-              "cli/faq"
+              "cli/faq",
+              "cli/cloudsmith-migration"
             ]
           }
         ]
