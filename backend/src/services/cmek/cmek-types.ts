@@ -13,6 +13,7 @@ export type TCreateCmekDTO = {
   description?: string;
   encryptionAlgorithm: TCmekKeyEncryptionAlgorithm;
   keyUsage: KmsKeyUsage;
+  isExportable?: boolean;
 };
 
 export type TUpdabteCmekByIdDTO = {
@@ -66,6 +67,7 @@ export type TCmekBulkImportKeyEntry = {
   algorithm: TCmekKeyEncryptionAlgorithm;
   keyUsage: KmsKeyUsage;
   keyMaterial: string;
+  isExportable?: boolean;
 };
 
 export type TCmekBulkImportKeysDTO = {

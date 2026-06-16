@@ -2482,7 +2482,9 @@ export const KMS = {
     name: "The name of the key to be created. Must be slug-friendly.",
     description: "An optional description of the key.",
     encryptionAlgorithm: "The algorithm to use when performing cryptographic operations with the key.",
-    type: "The type of key to be created, either encrypt-decrypt or sign-verify, based on your intended use for the key."
+    type: "The type of key to be created, either encrypt-decrypt or sign-verify, based on your intended use for the key.",
+    isExportable:
+      "Whether the raw key material can be exported after creation. When set to false, the key can never be exported regardless of permissions. This cannot be changed after creation."
   },
   UPDATE_KEY: {
     keyId: "The ID of the key to be updated.",

@@ -152,7 +152,7 @@ export const CmekTable = () => {
     setSelectedKeyIds([]);
   }, [page]);
 
-  const selectableKeys = keys.filter((k) => !k.isDisabled);
+  const selectableKeys = keys.filter((k) => !k.isDisabled && k.isExportable);
   const isPageSelected =
     selectableKeys.length > 0 && selectableKeys.every((k) => selectedKeyIds.includes(k.id));
   const isPageIndeterminate =
@@ -439,6 +439,7 @@ export const CmekTable = () => {
                   <TableHead>Algorithm</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Version</TableHead>
+                  <TableHead className="w-5" />
                   <TableHead className="w-12" />
                 </TableRow>
               </TableHeader>
@@ -447,7 +448,7 @@ export const CmekTable = () => {
                   Array.from({ length: 5 }).map((_, i) => (
                     // eslint-disable-next-line react/no-array-index-key
                     <TableRow key={`skeleton-${i}`}>
-                      {Array.from({ length: 8 }).map((__, j) => (
+                      {Array.from({ length: 9 }).map((__, j) => (
                         // eslint-disable-next-line react/no-array-index-key
                         <TableCell key={j}>
                           <Skeleton className="h-4 w-full" />
@@ -464,6 +465,7 @@ export const CmekTable = () => {
                       description,
                       encryptionAlgorithm,
                       isDisabled,
+                      isExportable,
                       keyUsage
                     } = cmek;
                     const { variant, label } = getStatusBadgeProps(isDisabled);
@@ -472,9 +474,10 @@ export const CmekTable = () => {
                     const isAsymmetricKey = Object.values(AsymmetricKeyAlgorithm).includes(
                       encryptionAlgorithm as AsymmetricKeyAlgorithm
                     );
+                    // unexportable asymmetric keys can still surface their public key in the export modal
                     const cannotExportKey = isAsymmetricKey
-                      ? cannotExportPrivateKey && cannotReadKey
-                      : cannotExportPrivateKey;
+                      ? (cannotExportPrivateKey || !isExportable) && cannotReadKey
+                      : cannotExportPrivateKey || !isExportable;
 
                     return (
                       <TableRow
@@ -484,7 +487,7 @@ export const CmekTable = () => {
                         onMouseLeave={() => setCopyCipherText("")}
                       >
                         <TableCell>
-                          {isDisabled ? (
+                          {isDisabled || !isExportable ? (
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <span className="inline-flex">
@@ -496,7 +499,11 @@ export const CmekTable = () => {
                                   />
                                 </span>
                               </TooltipTrigger>
-                              <TooltipContent>Disabled keys cannot be exported</TooltipContent>
+                              <TooltipContent>
+                                {isDisabled
+                                  ? "Disabled keys cannot be exported"
+                                  : "This key was created as non-exportable"}
+                              </TooltipContent>
                             </Tooltip>
                           ) : (
                             <Checkbox
@@ -571,6 +578,18 @@ export const CmekTable = () => {
                           <Badge variant={variant}>{label}</Badge>
                         </TableCell>
                         <TableCell>{version}</TableCell>
+                        <TableCell>
+                          {!isExportable && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <LockIcon className="size-4 text-muted" />
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                This key was created as non-exportable
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
+                        </TableCell>
                         <TableCell>
                           <div className="flex justify-end">
                             <DropdownMenu>
