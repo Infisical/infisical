@@ -163,43 +163,45 @@ export default function InitialSignupStep({
               </span>
             </Link>
           </div>
-          <a
-            href="https://infisical.com/talk-to-us?utm_source=signup&utm_medium=referral"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-6 flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-project/35 bg-project/5 px-4 py-3 transition-colors hover:border-project/40 hover:bg-project/10"
-          >
-            <span className="min-w-0 flex-1 text-xs text-foreground/75">
-              Have a complex company use case?{" "}
-              <span className="font-medium">
-                Get <span className="text-white/90">Enterprise grade</span> assistance
-              </span>
-            </span>
-            <CircleChevronRightIcon className="size-4.5 opacity-75" />
-          </a>
+          <p className="mt-4 text-center text-xs text-pretty text-label">
+            By signing up, you agree to our{" "}
+            <a
+              href="https://infisical.com/terms/cloud"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="cursor-pointer underline underline-offset-2 duration-200 hover:text-foreground hover:decoration-project/45"
+            >
+              Terms of Service
+            </a>{" "}
+            and{" "}
+            <a
+              href="https://infisical.com/privacy"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="cursor-pointer underline underline-offset-2 duration-200 hover:text-foreground hover:decoration-project/45"
+            >
+              Privacy Policy
+            </a>
+            .
+          </p>
         </CardContent>
       </Card>
-      <p className="mt-4 w-full max-w-sm text-center text-xs text-pretty text-label">
-        By signing up, you agree to our{" "}
+      <div className="mt-6 w-full max-w-sm rounded-lg bg-background">
         <a
-          href="https://infisical.com/terms/cloud"
+          href="https://infisical.com/talk-to-us?utm_source=signup&utm_medium=referral"
           target="_blank"
           rel="noopener noreferrer"
-          className="cursor-pointer underline underline-offset-2 duration-200 hover:text-foreground hover:decoration-project/45"
+          className="flex w-full cursor-pointer items-center justify-between gap-3 rounded-lg border border-project/35 bg-project/10 px-4 py-3 text-foreground transition-colors hover:border-project/40 hover:bg-project/15"
         >
-          Terms of Service
-        </a>{" "}
-        and{" "}
-        <a
-          href="https://infisical.com/privacy"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="cursor-pointer underline underline-offset-2 duration-200 hover:text-foreground hover:decoration-project/45"
-        >
-          Privacy Policy
+          <span className="min-w-0 flex-1 text-xs text-foreground/75">
+            Have a complex company use case?{" "}
+            <span className="font-medium">
+              Get <span className="text-white/90">Enterprise grade</span> assistance
+            </span>
+          </span>
+          <CircleChevronRightIcon className="size-4.5 opacity-75" />
         </a>
-        .
-      </p>
+      </div>
     </div>
   );
 }
