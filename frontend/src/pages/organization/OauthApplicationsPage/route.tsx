@@ -1,6 +1,8 @@
-import { createFileRoute, stripSearchParams } from "@tanstack/react-router";
+import { createFileRoute, redirect, stripSearchParams } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
+
+import { fetchOrganizationById, organizationKeys } from "@app/hooks/api/organization/queries";
 
 import { OauthApplicationsPage } from "./OauthApplicationsPage";
 
@@ -17,11 +19,26 @@ export const Route = createFileRoute(
   search: {
     middlewares: [stripSearchParams({ selectedTab: "" })]
   },
-  context: () => ({
-    breadcrumbs: [
-      {
-        label: "OAuth Applications"
-      }
-    ]
-  })
+  beforeLoad: async ({ context, params }) => {
+    const org = await context.queryClient.ensureQueryData({
+      queryKey: organizationKeys.getOrgById(context.organizationId),
+      queryFn: () => fetchOrganizationById(context.organizationId)
+    });
+
+    // OAuth applications are root-org only; sub-orgs must not reach this page via direct URL or moved-tab redirects.
+    if (org.rootOrgId && org.id !== org.rootOrgId) {
+      throw redirect({
+        to: "/organizations/$orgId/settings",
+        params: { orgId: params.orgId }
+      });
+    }
+
+    return {
+      breadcrumbs: [
+        {
+          label: "OAuth Applications"
+        }
+      ]
+    };
+  }
 });

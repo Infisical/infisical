@@ -44,7 +44,8 @@ export const OrgSettingsSubmenuView = ({ onBack }: { onBack: () => void }) => {
     {
       label: "OAuth Applications",
       icon: AppWindow,
-      pathSuffix: "oauth-applications"
+      pathSuffix: "oauth-applications",
+      hidden: isSubOrganization
     },
     {
       label: "Networking",
