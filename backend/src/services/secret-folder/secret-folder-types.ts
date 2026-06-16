@@ -56,6 +56,13 @@ export type TGetFolderByIdDTO = {
   id: string;
 } & Omit<TProjectPermission, "projectId">;
 
+// eligibility can optionally be checked against a destination; when provided, the result also reports whether the
+// destination is governed by a secret approval policy (a move into such a path is rejected by moveFolder).
+export type TGetFolderMoveEligibilityDTO = TGetFolderByIdDTO & {
+  destinationEnvironment?: string;
+  destinationPath?: string;
+};
+
 export type TFolderMoveBlockingType =
   | "dynamic_secret"
   | "secret_rotation"
@@ -68,6 +75,11 @@ export type TFolderMoveEligibility = {
   folderName: string;
   blockingType?: TFolderMoveBlockingType;
   blockingPath?: string;
+  // present only when a destination was supplied to the eligibility check
+  destinationBlocked?: boolean;
+  // the destination policy's path/name are disclosed only when the actor may read that path
+  destinationBlockingPath?: string;
+  destinationPolicyName?: string;
 };
 
 export type TMoveFolderDTO = {
@@ -83,8 +95,6 @@ export type TMoveFolderResult = {
   sourcePath: string;
   destinationEnvironment: string;
   destinationPath: string;
-  // true when a secret approval policy turned part of the move into an approval request instead of a direct move
-  hasApprovalRequests: boolean;
 };
 
 export type TGetFoldersDeepByEnvsDTO = {

@@ -195,4 +195,16 @@ export type FolderMoveEligibilityResponse = {
   folderName: string;
   blockingType?: FolderMoveBlockingType;
   blockingPath?: string;
+  // present only when the eligibility check was given a destination
+  destinationBlocked?: boolean;
+  // the destination policy's path/name are disclosed only when the actor may read that path
+  destinationBlockingPath?: string;
+  destinationPolicyName?: string;
+};
+
+export type TFolderMoveDestinationCheck = {
+  folderId: string;
+  folderName: string;
+  destinationEnvironment: string;
+  destinationPath: string;
 };

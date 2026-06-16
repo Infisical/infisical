@@ -38,11 +38,19 @@ import {
   ProjectPermissionSecretActions,
   ProjectPermissionSecretRotationActions
 } from "@app/context/ProjectPermissionContext/types";
+import { removeTrailingSlash } from "@app/helpers/string";
 import { useDebounce } from "@app/hooks";
 import { useMoveSecrets } from "@app/hooks/api";
 import { useGetProjectSecretsQuickSearch } from "@app/hooks/api/dashboard";
-import { useGetFoldersMoveEligibility } from "@app/hooks/api/dashboard/queries";
-import { FolderMoveBlockingType } from "@app/hooks/api/dashboard/types";
+import {
+  FolderMoveBlockedDestination,
+  useGetFoldersMoveDestinationEligibility,
+  useGetFoldersMoveEligibility
+} from "@app/hooks/api/dashboard/queries";
+import {
+  FolderMoveBlockingType,
+  TFolderMoveDestinationCheck
+} from "@app/hooks/api/dashboard/types";
 import { ProjectEnv } from "@app/hooks/api/projects/types";
 import { useMoveFolder } from "@app/hooks/api/secretFolders";
 import { TSecretFolder } from "@app/hooks/api/secretFolders/types";
@@ -68,6 +76,80 @@ type ContentProps = Omit<Props, "isOpen" | "onOpenChange"> & {
 };
 
 type OptionValue = { secretPath: string };
+
+const joinSecretPath = (basePath: string, name: string) =>
+  basePath === "/" ? `/${name}` : `${basePath}/${name}`;
+
+// mirrors the backend cyclic-move rule: a folder cannot be moved into itself or one of its own subfolders.
+const isPathInsideFolder = (destinationPath: string, folderPath: string) =>
+  destinationPath === folderPath || destinationPath.startsWith(`${folderPath}/`);
+
+type MovedFolder = {
+  folderId: string;
+  folderName: string;
+  sourceEnv: string;
+  destinationEnvironment: string;
+};
+
+// builds the per-folder destination checks and flags a self/cyclic move. a self-move is only possible within the
+// same environment, and is detected purely client-side; when detected we drop the checks so no server call fires
+// (the backend would reject the move outright).
+const buildDestinationTargets = ({
+  movedFolders,
+  sourceSecretPath,
+  destinationPath
+}: {
+  movedFolders: MovedFolder[];
+  sourceSecretPath: string;
+  destinationPath?: string;
+}): { checks: TFolderMoveDestinationCheck[]; isSelfMove: boolean } => {
+  if (!destinationPath) return { checks: [], isSelfMove: false };
+
+  const destination = removeTrailingSlash(destinationPath);
+  const base = removeTrailingSlash(sourceSecretPath);
+  let isSelfMove = false;
+  const checks: TFolderMoveDestinationCheck[] = [];
+
+  movedFolders.forEach(({ folderId, folderName, sourceEnv, destinationEnvironment }) => {
+    if (
+      destinationEnvironment === sourceEnv &&
+      isPathInsideFolder(destination, joinSecretPath(base, folderName))
+    ) {
+      isSelfMove = true;
+    }
+    checks.push({ folderId, folderName, destinationEnvironment, destinationPath: destination });
+  });
+
+  return { checks: isSelfMove ? [] : checks, isSelfMove };
+};
+
+// memoizes the destination checks for the moved folders and runs the destination approval-policy eligibility
+// query, returning what the move form needs to gate submit. shared by the single- and multi-environment content
+// so the wiring lives in one place.
+const useDestinationMoveGuard = ({
+  movedFolders,
+  sourceSecretPath,
+  destinationPath
+}: {
+  movedFolders: MovedFolder[];
+  sourceSecretPath: string;
+  destinationPath?: string;
+}) => {
+  const { checks, isSelfMove } = useMemo(
+    () => buildDestinationTargets({ movedFolders, sourceSecretPath, destinationPath }),
+    [movedFolders, sourceSecretPath, destinationPath]
+  );
+
+  const { isChecking, isDestinationBlocked, blockedDestinations } =
+    useGetFoldersMoveDestinationEligibility(checks);
+
+  return {
+    isSelfMove,
+    isCheckingDestination: isChecking,
+    isDestinationBlocked,
+    blockedDestinations
+  };
+};
 
 const FolderPathSelect = ({
   environments,
@@ -215,6 +297,76 @@ const MoveResultsView = ({
   );
 };
 
+const formatBlockedDestination = (
+  blocked: FolderMoveBlockedDestination,
+  envNameBySlug: Map<string, string>
+) => {
+  const envName =
+    envNameBySlug.get(blocked.destinationEnvironment) ?? blocked.destinationEnvironment;
+  if (blocked.policyName && blocked.blockingPath) {
+    return `${envName}: the path "${blocked.blockingPath}" is governed by the secret approval policy "${blocked.policyName}", so "${blocked.folderName}" cannot be moved there.`;
+  }
+  return `${envName}: the destination is governed by a secret approval policy, so "${blocked.folderName}" cannot be moved there.`;
+};
+
+// surfaces the two destination-side reasons a move is blocked: a cyclic/self move (client-side) and a destination
+// governed by a secret approval policy (server-side, with a fail-closed "could not verify" fallback).
+const MoveBlockAlerts = ({
+  isSelfMove,
+  isDestinationBlocked,
+  blockedDestinations,
+  environments
+}: {
+  isSelfMove: boolean;
+  isDestinationBlocked: boolean;
+  blockedDestinations: FolderMoveBlockedDestination[];
+  environments: ProjectEnv[];
+}) => {
+  if (!isSelfMove && !isDestinationBlocked) return null;
+
+  const envNameBySlug = new Map(environments.map((env) => [env.slug, env.name]));
+
+  if (isSelfMove) {
+    return (
+      <Alert variant="danger" className="mt-4">
+        <CircleAlertIcon />
+        <AlertTitle>This move is not allowed</AlertTitle>
+        <AlertDescription>
+          You cannot move a folder into itself or one of its own subfolders.
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
+  if (blockedDestinations.length === 0) {
+    return (
+      <Alert variant="danger" className="mt-4">
+        <CircleAlertIcon />
+        <AlertTitle>Could not verify the destination</AlertTitle>
+        <AlertDescription>
+          We could not verify whether the destination allows this move. Please try again.
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
+  return (
+    <Alert variant="danger" className="mt-4">
+      <CircleAlertIcon />
+      <AlertTitle>The destination is protected by a secret approval policy</AlertTitle>
+      <AlertDescription>
+        <ul className="list-disc pl-4">
+          {blockedDestinations.map((blocked) => (
+            <li key={`${blocked.folderName}:${blocked.destinationEnvironment}`}>
+              {formatBlockedDestination(blocked, envNameBySlug)}
+            </li>
+          ))}
+        </ul>
+      </AlertDescription>
+    </Alert>
+  );
+};
+
 const SingleEnvContent = ({
   onComplete,
   onClose,
@@ -259,6 +411,29 @@ const SingleEnvContent = ({
   const destinationSelected =
     Boolean(selectedPath?.secretPath) &&
     (sourceSecretPath !== selectedPath?.secretPath || selectedEnvironment !== sourceEnv.slug);
+
+  // a single-env move relocates every selected folder (taken from the source environment) to the chosen
+  // destination environment.
+  const movedFolders = useMemo<MovedFolder[]>(
+    () =>
+      Object.values(folders)
+        .map((folderRecord) => folderRecord[sourceEnv.slug])
+        .filter((folder): folder is TSecretFolder => Boolean(folder))
+        .map((folder) => ({
+          folderId: folder.id,
+          folderName: folder.name,
+          sourceEnv: sourceEnv.slug,
+          destinationEnvironment: selectedEnvironment
+        })),
+    [folders, sourceEnv.slug, selectedEnvironment]
+  );
+
+  const { isSelfMove, isCheckingDestination, isDestinationBlocked, blockedDestinations } =
+    useDestinationMoveGuard({
+      movedFolders,
+      sourceSecretPath,
+      destinationPath: destinationSelected ? selectedPath?.secretPath : undefined
+    });
 
   const handleFormSubmit = async (data: TSingleEnvFormSchema) => {
     if (!selectedPath) {
@@ -466,6 +641,12 @@ const SingleEnvContent = ({
           </FieldDescription>
         </FieldContent>
       </Field>
+      <MoveBlockAlerts
+        isSelfMove={isSelfMove}
+        isDestinationBlocked={isDestinationBlocked}
+        blockedDestinations={blockedDestinations}
+        environments={environments}
+      />
       {showOverwriteOption && (
         <Controller
           control={control}
@@ -502,7 +683,13 @@ const SingleEnvContent = ({
         <Button
           type="submit"
           variant="project"
-          isDisabled={!destinationSelected || isSubmitting}
+          isDisabled={
+            !destinationSelected ||
+            isSubmitting ||
+            isSelfMove ||
+            isCheckingDestination ||
+            isDestinationBlocked
+          }
           isPending={isSubmitting}
         >
           {moveCopy.action}
@@ -579,6 +766,30 @@ const MultiEnvContent = ({
 
   const destinationSelected =
     Boolean(selectedPath?.secretPath) && sourceSecretPath !== selectedPath?.secretPath;
+
+  // a multi-env move relocates each folder within its own environment, so the destination environment of
+  // every check is that folder's source environment.
+  const movedFolders = useMemo<MovedFolder[]>(() => {
+    const result: MovedFolder[] = [];
+    Object.values(folders).forEach((folderRecord) =>
+      Object.entries(folderRecord).forEach(([envSlug, folder]) => {
+        result.push({
+          folderId: folder.id,
+          folderName: folder.name,
+          sourceEnv: envSlug,
+          destinationEnvironment: envSlug
+        });
+      })
+    );
+    return result;
+  }, [folders]);
+
+  const { isSelfMove, isCheckingDestination, isDestinationBlocked, blockedDestinations } =
+    useDestinationMoveGuard({
+      movedFolders,
+      sourceSecretPath,
+      destinationPath: destinationSelected ? selectedPath?.secretPath : undefined
+    });
 
   const environmentsToBeSkipped = useMemo(() => {
     if (!destinationSelected) return [];
@@ -859,6 +1070,12 @@ const MultiEnvContent = ({
           </AlertDescription>
         </Alert>
       )}
+      <MoveBlockAlerts
+        isSelfMove={isSelfMove}
+        isDestinationBlocked={isDestinationBlocked}
+        blockedDestinations={blockedDestinations}
+        environments={environments}
+      />
       {showOverwriteOption && (
         <Controller
           control={control}
@@ -895,7 +1112,13 @@ const MultiEnvContent = ({
         <Button
           type="submit"
           variant="project"
-          isDisabled={!destinationSelected || isSubmitting}
+          isDisabled={
+            !destinationSelected ||
+            isSubmitting ||
+            isSelfMove ||
+            isCheckingDestination ||
+            isDestinationBlocked
+          }
           isPending={isSubmitting}
         >
           {moveCopy.action}

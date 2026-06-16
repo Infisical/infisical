@@ -15,6 +15,7 @@ import {
   FolderMoveEligibilityResponse,
   TDashboardProjectSecretsQuickSearch,
   TDashboardProjectSecretsQuickSearchResponse,
+  TFolderMoveDestinationCheck,
   TGetAccessibleSecretsDTO,
   TGetDashboardProjectSecretsByKeys,
   TGetDashboardProjectSecretsDetailsDTO,
@@ -88,7 +89,19 @@ export const dashboardKeys = {
       isOverride
     ] as const,
   getFolderMoveEligibility: (folderId: string) =>
-    [...dashboardKeys.all(), "folder-move-eligibility", folderId] as const
+    [...dashboardKeys.all(), "folder-move-eligibility", folderId] as const,
+  getFolderMoveDestinationEligibility: ({
+    folderId,
+    destinationEnvironment,
+    destinationPath
+  }: TFolderMoveDestinationCheck) =>
+    [
+      ...dashboardKeys.all(),
+      "folder-move-destination-eligibility",
+      folderId,
+      destinationEnvironment,
+      destinationPath
+    ] as const
 };
 
 export const fetchProjectSecretsOverview = async ({
@@ -550,9 +563,20 @@ export const useGetSecretValue = (
   });
 };
 
-export const fetchFolderMoveEligibility = async (folderId: string) => {
+export const fetchFolderMoveEligibility = async (
+  folderId: string,
+  destination?: { destinationEnvironment: string; destinationPath: string }
+) => {
   const { data } = await apiRequest.get<FolderMoveEligibilityResponse>(
-    `/api/v1/dashboard/folder/move-check/${folderId}`
+    `/api/v1/dashboard/folder/move-check/${folderId}`,
+    {
+      params: destination
+        ? {
+            destinationEnvironment: destination.destinationEnvironment,
+            destinationPath: destination.destinationPath
+          }
+        : undefined
+    }
   );
 
   return data;
@@ -594,5 +618,58 @@ export const useGetFoldersMoveEligibility = (folderIds: string[]) =>
       });
 
       return { isChecking, canMove, blockedFolders };
+    }
+  });
+
+export type FolderMoveBlockedDestination = {
+  folderName: string;
+  destinationEnvironment: string;
+  blockingPath?: string;
+  policyName?: string;
+};
+
+// fans out a per-(folder, destination) check to see whether the chosen destination is governed by a secret
+// approval policy. the move is blocked when any check reports destinationBlocked, and fail-closed on error (the
+// backend move would reject it anyway), so the modal never enables a move it cannot complete.
+export const useGetFoldersMoveDestinationEligibility = (checks: TFolderMoveDestinationCheck[]) =>
+  useQueries({
+    queries: checks.map((check) => ({
+      queryKey: dashboardKeys.getFolderMoveDestinationEligibility(check),
+      queryFn: () =>
+        fetchFolderMoveEligibility(check.folderId, {
+          destinationEnvironment: check.destinationEnvironment,
+          destinationPath: check.destinationPath
+        }),
+      enabled: Boolean(check.folderId && check.destinationEnvironment)
+    })),
+    combine: (results) => {
+      const isChecking = results.some((result) => result.isLoading);
+      const hasError = results.some((result) => result.isError);
+
+      // dedupe by folder + destination environment, since the same folder name can be blocked in one
+      // environment but not another (relevant for the multi-environment move).
+      const seen = new Set<string>();
+      const blockedDestinations: FolderMoveBlockedDestination[] = [];
+      results.forEach((result, index) => {
+        const check = checks[index];
+        if (!check) return;
+        const { data } = result;
+        if (result.isSuccess && data?.destinationBlocked) {
+          const key = `${check.folderName}:${check.destinationEnvironment}`;
+          if (!seen.has(key)) {
+            seen.add(key);
+            blockedDestinations.push({
+              folderName: check.folderName,
+              destinationEnvironment: check.destinationEnvironment,
+              blockingPath: data.destinationBlockingPath,
+              policyName: data.destinationPolicyName
+            });
+          }
+        }
+      });
+
+      const isDestinationBlocked = hasError || blockedDestinations.length > 0;
+
+      return { isChecking, isDestinationBlocked, blockedDestinations, hasError };
     }
   });

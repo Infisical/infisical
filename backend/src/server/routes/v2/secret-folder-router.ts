@@ -500,8 +500,7 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
             sourceEnvironment: result.sourceEnvironment,
             sourcePath: result.sourcePath,
             destinationEnvironment: result.destinationEnvironment,
-            destinationPath: result.destinationPath,
-            hasApprovalRequests: result.hasApprovalRequests
+            destinationPath: result.destinationPath
           }
         }
       });

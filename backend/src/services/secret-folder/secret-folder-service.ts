@@ -25,6 +25,7 @@ import { SecretsOrderBy } from "@app/services/secret/secret-types";
 import {
   assertFolderMoveAllowed,
   buildFolderPath,
+  canActorReadBlock,
   checkFolderMoveBlock,
   checkFolderMovePolicyBlock,
   TFolderMoveAccessScope
@@ -57,6 +58,7 @@ import {
   TGetFolderByIdDTO,
   TGetFolderByPathDTO,
   TGetFolderDTO,
+  TGetFolderMoveEligibilityDTO,
   TGetFoldersDeepByEnvsDTO,
   TMoveFolderDTO,
   TMoveFolderResult,
@@ -1568,14 +1570,18 @@ export const secretFolderServiceFactory = ({
     return { sourceBlock, destinationBlock };
   };
 
-  // checks whether a folder (and its entire recursive subtree) can be moved.
+  // checks whether a folder (and its entire recursive subtree) can be moved. when a destination is supplied, it
+  // also reports whether the destination is governed by a secret approval policy (a move into such a path is
+  // rejected by moveFolder), so the caller can block the move before attempting it.
   const getFolderMoveEligibility = async ({
     actor,
     actorId,
     actorOrgId,
     actorAuthMethod,
-    id
-  }: TGetFolderByIdDTO): Promise<TFolderMoveEligibility> => {
+    id,
+    destinationEnvironment,
+    destinationPath
+  }: TGetFolderMoveEligibilityDTO): Promise<TFolderMoveEligibility> => {
     const folder = await getFolderById({ actor, actorId, actorOrgId, actorAuthMethod, id });
 
     // resolve the actor's ability so subtree disclosure is gated by per-path read permission. this is
@@ -1595,28 +1601,45 @@ export const secretFolderServiceFactory = ({
     };
 
     // run every read inside a transaction so it hits the primary database rather than a read replica
-    const block = await folderDAL.transaction(async (tx) => {
+    const { sourceBlock, destinationBlock } = await folderDAL.transaction(async (tx) => {
       // parent folder + full recursive subtree (with paths); reserved folders are already excluded.
       const subtree = await folderDAL.findByEnvsDeep({ parentIds: [folder.id] }, tx);
 
-      const { sourceBlock } = await $getFolderMoveBlocks(
+      return $getFolderMoveBlocks(
         {
           subtree,
           projectId: folder.projectId,
           sourceEnvironment: folder.environment.envSlug,
           sourceFolderPath: folder.path,
+          // the destination scan runs without an access scope so it always detects a governing policy. the
+          // subtree is re-rooted at the moved folder's final location (parent + name), matching the path
+          // moveFolder uses (destinationFolderRoot), so the pre-check and the move evaluate the same paths.
+          destination: destinationEnvironment
+            ? { environment: destinationEnvironment, path: path.join(destinationPath ?? "/", folder.name) }
+            : undefined,
           accessScope
         },
         tx
       );
-      return sourceBlock;
     });
 
+    // the destination block is always detected (so the modal can block the move in every case); the policy's
+    // path/name are disclosed only when the actor may read that path, matching assertFolderMoveAllowed's gating.
+    const readableDestinationBlock =
+      destinationBlock &&
+      destinationEnvironment &&
+      canActorReadBlock(permission, destinationEnvironment, "secret_approval_policy", destinationBlock.blockingAbsPath)
+        ? destinationBlock
+        : undefined;
+
     return {
-      canMove: !block,
+      canMove: !sourceBlock,
       folderName: folder.name,
-      blockingType: block?.blockingType,
-      blockingPath: block?.blockingPath
+      blockingType: sourceBlock?.blockingType,
+      blockingPath: sourceBlock?.blockingPath,
+      destinationBlocked: destinationEnvironment ? Boolean(destinationBlock) : undefined,
+      destinationBlockingPath: readableDestinationBlock?.blockingPath,
+      destinationPolicyName: readableDestinationBlock?.policyName
     };
   };
 
@@ -1743,7 +1766,7 @@ export const secretFolderServiceFactory = ({
           projectId,
           sourceEnvironment,
           sourceFolderPath,
-          destination: { environment: destinationEnvironment, path: destinationPath }
+          destination: { environment: destinationEnvironment, path: destinationFolderRoot }
         },
         tx
       );
@@ -1925,9 +1948,6 @@ export const secretFolderServiceFactory = ({
       };
     });
 
-    // a missing direct update on either side means that batch was routed through an approval request
-    const hasApprovalRequests = moveResults.some((result) => !result.isDestinationUpdated || !result.isSourceUpdated);
-
     // now that the move has committed, dispatch side effects once: snapshot + sync each affected source/destination
     // secret folder, then snapshot the destination parent (the new subtree); finally invalidate the project secret
     // cache. the source root was deleted above, so its source snapshot is always skipped (the sync still runs so
@@ -1955,8 +1975,7 @@ export const secretFolderServiceFactory = ({
       sourceEnvironment,
       sourcePath: sourceFolderPath,
       destinationEnvironment,
-      destinationPath,
-      hasApprovalRequests
+      destinationPath
     };
   };
 
