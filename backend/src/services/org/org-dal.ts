@@ -845,7 +845,7 @@ export const orgDALFactory = (db: TDbClient) => {
   > => {
     try {
       // Determine alias type from org auth method (default to saml for backwards compatibility)
-      const aliasType = orgAuthMethod === "oidc" ? "oidc" : "saml";
+      const aliasType = orgAuthMethod === OrgAuthMethod.OIDC ? OrgAuthMethod.OIDC : OrgAuthMethod.SAML;
 
       // Subquery to get only the latest alias per user for the org's auth method
       const latestAliasSubquery = (tx || db.replicaNode())(TableName.UserAliases)
