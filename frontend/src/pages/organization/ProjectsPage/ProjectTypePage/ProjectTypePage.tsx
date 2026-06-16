@@ -586,7 +586,7 @@ const MyProjectsForType = ({
   return (
     <Card
       className={twMerge(
-        projectsViewMode === ProjectsViewMode.GRID ? "border-transparent bg-transparent" : "",
+        projectsViewMode === ProjectsViewMode.GRID ? "border-transparent bg-transparent p-0" : "",
         "transition-all duration-100"
       )}
     >
