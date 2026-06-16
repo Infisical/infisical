@@ -437,4 +437,38 @@ describe("Secret Folder Move Router", async () => {
     await deleteFolderInEnv({ path: "/", id: srcRoot.id, environment: sourceEnv, forceDelete: true });
     await deleteFolderInEnv({ path: "/", id: destParent.id, environment: sourceEnv, forceDelete: true });
   });
+
+  test("Blocks moving a folder when the destination path is governed by an approval policy", async () => {
+    // /move-into-policy holds only static secrets and is freely movable, but the destination it would land at
+    // (/policy-dest-guard/move-into-policy) is covered by an approval policy. Moving into a policy-governed path
+    // would create the folder's secrets there directly, bypassing the policy, so the move is rejected up front.
+    const srcRoot = await createFolderInEnv({ path: "/", name: "move-into-policy", environment: sourceEnv });
+    await addSecret("/move-into-policy", "ROOT_SECRET");
+    const destParent = await createFolderInEnv({ path: "/", name: "policy-dest-guard", environment: sourceEnv });
+
+    const policy = await createSecretApprovalPolicy({
+      name: "move-dest-protected-policy",
+      secretPath: "/policy-dest-guard/move-into-policy"
+    });
+
+    const res = await moveFolder({
+      folderId: srcRoot.id,
+      destinationEnvironment: sourceEnv,
+      destinationPath: "/policy-dest-guard"
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().message).toContain("secret approval policy");
+
+    // the source subtree and its secret are untouched because the move was rejected up front
+    const rootFolders = await getFolders({ path: "/", environment: sourceEnv });
+    expect(rootFolders.map((folder) => folder.name)).toContain("move-into-policy");
+    expect(await secretKeysAt("/move-into-policy", sourceEnv)).toContain("ROOT_SECRET");
+
+    // nothing was copied to the destination
+    expect(await getFolders({ path: "/policy-dest-guard", environment: sourceEnv })).toHaveLength(0);
+
+    await deleteSecretApprovalPolicy(policy.id);
+    await deleteFolderInEnv({ path: "/", id: srcRoot.id, environment: sourceEnv, forceDelete: true });
+    await deleteFolderInEnv({ path: "/", id: destParent.id, environment: sourceEnv, forceDelete: true });
+  });
 });

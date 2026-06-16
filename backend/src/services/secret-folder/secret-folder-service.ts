@@ -1,5 +1,5 @@
 /* eslint-disable no-await-in-loop */
-import { ForbiddenError, MongoAbility, subject } from "@casl/ability";
+import { ForbiddenError, subject } from "@casl/ability";
 import { Knex } from "knex";
 import path from "path";
 import { v4 as uuidv4, validate as uuidValidate } from "uuid";
@@ -9,14 +9,7 @@ import { TDynamicSecretDALFactory } from "@app/ee/services/dynamic-secret/dynami
 import { THoneyTokenDALFactory } from "@app/ee/services/honey-token/honey-token-dal";
 import { validateSecretMovePermissions } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import {
-  ProjectPermissionActions,
-  ProjectPermissionDynamicSecretActions,
-  ProjectPermissionHoneyTokenActions,
-  ProjectPermissionSecretRotationActions,
-  ProjectPermissionSet,
-  ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
 import { TSecretApprovalRequestDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-dal";
 import { TSecretApprovalRequestSecretDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-secret-dal";
@@ -29,7 +22,13 @@ import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TSecretQueueFactory } from "@app/services/secret/secret-queue";
 import { SecretsOrderBy } from "@app/services/secret/secret-types";
-import { buildFolderPath } from "@app/services/secret-folder/secret-folder-fns";
+import {
+  assertFolderMoveAllowed,
+  buildFolderPath,
+  checkFolderMoveBlock,
+  checkFolderMovePolicyBlock,
+  TFolderMoveAccessScope
+} from "@app/services/secret-folder/secret-folder-fns";
 
 import {
   ChangeType,
@@ -54,7 +53,6 @@ import {
   TCreateManyFoldersDTO,
   TDeleteFolderDTO,
   TDeleteManyFoldersDTO,
-  TFolderMoveBlockingType,
   TFolderMoveEligibility,
   TGetFolderByIdDTO,
   TGetFolderByPathDTO,
@@ -113,30 +111,6 @@ type TSecretFolderServiceFactoryDep = {
 };
 
 export type TSecretFolderServiceFactory = ReturnType<typeof secretFolderServiceFactory>;
-
-// read permission used to decide whether an actor is allowed to learn that a given blocking resource
-// exists at a folder path. used to avoid disclosing subtree contents (e.g. honey tokens) to actors
-// without access while still scanning the full subtree to enforce move correctness.
-const FOLDER_MOVE_BLOCK_PERMISSION: Record<TFolderMoveBlockingType, { action: string; subject: ProjectPermissionSub }> =
-  {
-    secret_import: { action: ProjectPermissionActions.Read, subject: ProjectPermissionSub.SecretImports },
-    dynamic_secret: {
-      action: ProjectPermissionDynamicSecretActions.ReadRootCredential,
-      subject: ProjectPermissionSub.DynamicSecrets
-    },
-    honey_token: { action: ProjectPermissionHoneyTokenActions.Read, subject: ProjectPermissionSub.HoneyTokens },
-    secret_rotation: {
-      action: ProjectPermissionSecretRotationActions.Read,
-      subject: ProjectPermissionSub.SecretRotation
-    },
-    secret_approval_policy: { action: ProjectPermissionActions.Read, subject: ProjectPermissionSub.SecretFolders }
-  };
-
-type TFolderMoveAccessScope = {
-  permission: MongoAbility<ProjectPermissionSet>;
-  environment: string;
-  rootFolderPath: string;
-};
 
 export const secretFolderServiceFactory = ({
   folderDAL,
@@ -1539,114 +1513,59 @@ export const secretFolderServiceFactory = ({
     return folder;
   };
 
-  const $canActorReadBlock = (
-    permission: MongoAbility<ProjectPermissionSet>,
-    environment: string,
-    blockingType: TFolderMoveBlockingType,
-    secretPath: string
-  ) => {
-    const { action, subject: sub } = FOLDER_MOVE_BLOCK_PERMISSION[blockingType];
-    return (permission as MongoAbility).can(action, subject(sub, { environment, secretPath }));
+  // dependencies shared by the folder-move block scan in both the eligibility check and the move itself.
+  const folderMoveBlockDeps = {
+    secretImportDAL,
+    dynamicSecretDAL,
+    honeyTokenDAL,
+    secretRotationV2DAL,
+    secretApprovalPolicyService
   };
 
-  const $getFolderMoveBlock = async (
-    subtree: { id: string; path: string }[],
-    fallbackPath: string,
-    tx: Knex,
-    accessScope?: TFolderMoveAccessScope
-  ): Promise<{ blockingType: TFolderMoveBlockingType; blockingPath: string } | null> => {
-    const folderIds = subtree.map((f) => f.id);
-    if (!folderIds.length) return null;
+  // computes the reasons a folder subtree cannot be moved, shared by the read-only eligibility check and the
+  // actual move. it scans the source subtree for non-static-secret resources and for source paths governed by a
+  // secret approval policy (combined into `sourceBlock`), and — when a destination is provided — also checks the
+  // destination paths for a governing policy (`destinationBlock`); a folder cannot be moved INTO a path governed
+  // by a policy since the move would create its secrets there, bypassing the approval the policy requires. pass
+  // `accessScope` to limit reporting to paths the actor may read; omit it (the move path) to always detect a block
+  // and gate only the resulting message.
+  const $getFolderMoveBlocks = async (
+    {
+      subtree,
+      projectId,
+      sourceEnvironment,
+      sourceFolderPath,
+      destination,
+      accessScope
+    }: {
+      subtree: { id: string; path: string }[];
+      projectId: string;
+      sourceEnvironment: string;
+      sourceFolderPath: string;
+      destination?: { environment: string; path: string };
+      accessScope?: TFolderMoveAccessScope;
+    },
+    tx: Knex
+  ) => {
+    const secretTypeBlock = await checkFolderMoveBlock(
+      { subtree, rootFolderPath: sourceFolderPath, accessScope },
+      folderMoveBlockDeps,
+      tx
+    );
+    const sourcePolicyBlock = await checkFolderMovePolicyBlock(
+      { subtree, projectId, environment: sourceEnvironment, rootFolderPath: sourceFolderPath, accessScope },
+      folderMoveBlockDeps
+    );
+    const sourceBlock = secretTypeBlock ?? sourcePolicyBlock;
 
-    const pathByFolderId = new Map(subtree.map((f) => [f.id, f.path]));
-    const resolvePath = (folderId: string) => pathByFolderId.get(folderId) ?? fallbackPath;
-
-    // compute each folder's absolute path once up front, then reuse it across the per-type readability filters.
-    // when the root being scanned is "/", its prefix is dropped so child paths stay "/child" rather than "//child".
-    const absPathByFolderId = accessScope
-      ? new Map(
-          subtree.map((f) => {
-            const prefix = accessScope.rootFolderPath === "/" ? "" : accessScope.rootFolderPath;
-            return [f.id, f.path === "/" ? accessScope.rootFolderPath : `${prefix}${f.path}`];
-          })
+    const destinationBlock = destination
+      ? await checkFolderMovePolicyBlock(
+          { subtree, projectId, environment: destination.environment, rootFolderPath: destination.path },
+          folderMoveBlockDeps
         )
       : null;
 
-    const folderIdsForType = (blockingType: TFolderMoveBlockingType) => {
-      if (!accessScope || !absPathByFolderId) return folderIds;
-      return folderIds.filter((folderId) =>
-        $canActorReadBlock(
-          accessScope.permission,
-          accessScope.environment,
-          blockingType,
-          absPathByFolderId.get(folderId) ?? fallbackPath
-        )
-      );
-    };
-
-    // check the secret types to make sure the folder only has personal and shared secrets
-    const importFolderIds = folderIdsForType("secret_import");
-    if (importFolderIds.length) {
-      const importExists = await secretImportDAL.findImportByFolderIds(importFolderIds, tx);
-      if (importExists) return { blockingType: "secret_import", blockingPath: resolvePath(importExists.folderId) };
-    }
-
-    const dynamicFolderIds = folderIdsForType("dynamic_secret");
-    if (dynamicFolderIds.length) {
-      const [dynamicSecret] = await dynamicSecretDAL.find({ $in: { folderId: dynamicFolderIds } }, { limit: 1, tx });
-      if (dynamicSecret) return { blockingType: "dynamic_secret", blockingPath: resolvePath(dynamicSecret.folderId) };
-    }
-
-    const honeyTokenFolderIds = folderIdsForType("honey_token");
-    if (honeyTokenFolderIds.length) {
-      const [honeyToken] = await honeyTokenDAL.find({ $in: { folderId: honeyTokenFolderIds } }, { limit: 1, tx });
-      if (honeyToken) return { blockingType: "honey_token", blockingPath: resolvePath(honeyToken.folderId) };
-    }
-
-    const rotationFolderIds = folderIdsForType("secret_rotation");
-    if (rotationFolderIds.length) {
-      const rotation = await secretRotationV2DAL.existsByFolderIds(rotationFolderIds, tx);
-      if (rotation) return { blockingType: "secret_rotation", blockingPath: resolvePath(rotation.folderId) };
-    }
-
-    return null;
-  };
-
-  const $getFolderMovePolicyBlock = async ({
-    projectId,
-    environment,
-    rootFolderPath,
-    subtree,
-    accessScope
-  }: {
-    projectId: string;
-    environment: string;
-    rootFolderPath: string;
-    subtree: { path: string }[];
-    accessScope?: TFolderMoveAccessScope;
-  }) => {
-    const toSourceAbsPath = (f: { path: string }) => (f.path === "/" ? rootFolderPath : `${rootFolderPath}${f.path}`);
-    let subtreeAbsPaths = subtree.map(toSourceAbsPath);
-
-    // only consider paths the actor is allowed to read, so policy presence at inaccessible paths isn't disclosed.
-    if (accessScope) {
-      subtreeAbsPaths = subtreeAbsPaths.filter((secretPath) =>
-        $canActorReadBlock(accessScope.permission, accessScope.environment, "secret_approval_policy", secretPath)
-      );
-    }
-
-    const policyByPath = await secretApprovalPolicyService.getSecretApprovalPolicyByPaths(
-      projectId,
-      environment,
-      subtreeAbsPaths
-    );
-
-    // report the first blocked path in subtree order, matching the previous per-folder behavior.
-    for (const blockedPath of subtreeAbsPaths) {
-      const policy = policyByPath.get(blockedPath);
-      if (policy) return { blockedPath, policyName: policy.name };
-    }
-    return null;
+    return { sourceBlock, destinationBlock };
   };
 
   // checks whether a folder (and its entire recursive subtree) can be moved.
@@ -1680,21 +1599,17 @@ export const secretFolderServiceFactory = ({
       // parent folder + full recursive subtree (with paths); reserved folders are already excluded.
       const subtree = await folderDAL.findByEnvsDeep({ parentIds: [folder.id] }, tx);
 
-      const secretBlock = await $getFolderMoveBlock(subtree, folder.path, tx, accessScope);
-      if (secretBlock) return secretBlock;
-
-      const policyBlock = await $getFolderMovePolicyBlock({
-        projectId: folder.projectId,
-        environment: folder.environment.envSlug,
-        rootFolderPath: folder.path,
-        subtree,
-        accessScope
-      });
-      if (policyBlock) {
-        return { blockingType: "secret_approval_policy" as const, blockingPath: policyBlock.blockedPath };
-      }
-
-      return null;
+      const { sourceBlock } = await $getFolderMoveBlocks(
+        {
+          subtree,
+          projectId: folder.projectId,
+          sourceEnvironment: folder.environment.envSlug,
+          sourceFolderPath: folder.path,
+          accessScope
+        },
+        tx
+      );
+      return sourceBlock;
     });
 
     return {
@@ -1710,7 +1625,8 @@ export const secretFolderServiceFactory = ({
   // destination (parent links resolved from pre-generated ids), move every folder's secrets via
   // fnSecretMoveInTransaction, then delete the emptied source root, so the whole move is atomic and the row lock is
   // held throughout. snapshots/syncs/cache are dispatched once after commit. a folder whose subtree is governed by a
-  // source secret approval policy is rejected up front, so the source is always fully emptied before the delete.
+  // source secret approval policy is rejected up front, so the source is always fully emptied before the delete; a
+  // move into a destination governed by a secret approval policy is likewise rejected up front.
   const moveFolder = async ({
     projectId,
     folderId,
@@ -1817,40 +1733,34 @@ export const secretFolderServiceFactory = ({
       const toSourceAbsPath = (f: { path: string }) =>
         f.path === "/" ? sourceFolderPath : `${sourceFolderPath}${f.path}`;
 
-      // check if the folder contain only static secrets. the scan covers the full subtree (no access scope) so a
-      // block always prevents the move, but the error message only reveals the offending path/type when the actor
-      // is allowed to read it. otherwise it stays generic so inaccessible subtree contents aren't disclosed.
-      const block = await $getFolderMoveBlock(subtree, sourceFolderPath, tx);
-      if (block) {
-        const blockAbsPath = toSourceAbsPath({ path: block.blockingPath });
-        if ($canActorReadBlock(permission, sourceEnvironment, block.blockingType, blockAbsPath)) {
-          throw new BadRequestError({
-            message: `Cannot move folder '${folderName}'. It contains a ${block.blockingType.replace(
-              "_",
-              " "
-            )} at path '${block.blockingPath}'. Only folders that contain exclusively static secrets can be moved.`
-          });
-        }
-        throw new BadRequestError({
-          message: `Cannot move folder '${folderName}'. It contains resources that cannot be moved. Only folders that contain exclusively static secrets can be moved.`
+      // the source subtree must contain only static secrets and must not be governed by a secret approval policy, and
+      // the destination must not be governed by one either. the scan covers the full subtree (no access scope) so a
+      // block always prevents the move; the thrown message only reveals the offending path/type when the actor is
+      // allowed to read it, otherwise it stays generic.
+      const { sourceBlock, destinationBlock } = await $getFolderMoveBlocks(
+        {
+          subtree,
+          projectId,
+          sourceEnvironment,
+          sourceFolderPath,
+          destination: { environment: destinationEnvironment, path: destinationPath }
+        },
+        tx
+      );
+      if (sourceBlock) {
+        assertFolderMoveAllowed(sourceBlock, {
+          permission,
+          environment: sourceEnvironment,
+          folderName,
+          scope: "source"
         });
       }
-
-      const policyBlock = await $getFolderMovePolicyBlock({
-        projectId,
-        environment: sourceEnvironment,
-        rootFolderPath: sourceFolderPath,
-        subtree
-      });
-      if (policyBlock) {
-        if ($canActorReadBlock(permission, sourceEnvironment, "secret_approval_policy", policyBlock.blockedPath)) {
-          throw new BadRequestError({
-            message: `Cannot move folder '${folderName}'. The folder at path '${policyBlock.blockedPath}' is protected by the secret approval policy '${policyBlock.policyName}'. Folders governed by a secret approval policy cannot be moved. If you need to move this folder, please disable the secret approval policy for the path '${policyBlock.blockedPath}'`,
-            name: "MoveFolderProtectedByPolicy"
-          });
-        }
-        throw new BadRequestError({
-          message: `Cannot move folder '${folderName}'. It contains resources that cannot be moved. Only folders that contain exclusively static secrets can be moved.`
+      if (destinationBlock) {
+        assertFolderMoveAllowed(destinationBlock, {
+          permission,
+          environment: destinationEnvironment,
+          folderName,
+          scope: "destination"
         });
       }
 
