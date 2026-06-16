@@ -1,4 +1,4 @@
-import { gaxios, Impersonated, JWT } from "google-auth-library";
+import { ExternalAccountClient, gaxios, Impersonated, JWT } from "google-auth-library";
 import { GetAccessTokenResponse } from "google-auth-library/build/src/auth/oauth2client";
 
 import { getConfig } from "@app/lib/config/env";
@@ -27,6 +27,38 @@ export const getGcpConnectionListItem = () => {
   };
 };
 
+export const buildGcpSourceCredential = (credentialJson: string) => {
+  const scopes = ["https://www.googleapis.com/auth/cloud-platform"];
+
+  const credJson = JSON.parse(credentialJson) as {
+    type?: string;
+    client_email?: string;
+    private_key?: string;
+  };
+
+  if (credJson.type === "external_account") {
+    const externalClient = ExternalAccountClient.fromJSON({
+      ...credJson,
+      scopes
+    } as Parameters<typeof ExternalAccountClient.fromJSON>[0]);
+
+    if (!externalClient) {
+      throw new InternalServerError({
+        message:
+          "Failed to initialize GCP external account credentials. Verify the workload identity federation configuration."
+      });
+    }
+
+    return externalClient;
+  }
+
+  return new JWT({
+    email: credJson.client_email,
+    key: credJson.private_key,
+    scopes
+  });
+};
+
 export const getGcpConnectionAuthToken = async (appConnection: TGcpConnectionConfig) => {
   const appCfg = getConfig();
   if (!appCfg.INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL) {
@@ -37,16 +69,7 @@ export const getGcpConnectionAuthToken = async (appConnection: TGcpConnectionCon
     });
   }
 
-  const credJson = JSON.parse(appCfg.INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL) as {
-    client_email: string;
-    private_key: string;
-  };
-
-  const sourceClient = new JWT({
-    email: credJson.client_email,
-    key: credJson.private_key,
-    scopes: ["https://www.googleapis.com/auth/cloud-platform"]
-  });
+  const sourceClient = buildGcpSourceCredential(appCfg.INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL);
 
   const impersonatedCredentials = new Impersonated({
     sourceClient,

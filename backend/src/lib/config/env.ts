@@ -794,7 +794,8 @@ export const overwriteSchema: {
     fields: [
       {
         key: "INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL",
-        description: "The GCP Service Account JSON credentials."
+        description:
+          'The GCP credentials JSON used as the impersonation source. Accepts either a service account key (type "service_account") or a workload identity federation config (type "external_account"). For external_account, the referenced credential source (file, URL, or metadata endpoint) must be reachable from the instance.'
       }
     ]
   },
