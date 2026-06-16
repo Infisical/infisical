@@ -23,7 +23,7 @@ Use GnuPG with the Infisical PKCS#11 module via `gnupg-pkcs11-scd` to sign git c
 
 Configure the Infisical PKCS#11 module with your machine identity credentials. Without this, the signing commands below fail with an auth error.
 
-Create `/etc/infisical/pkcs11.conf` (or set `INFISICAL_PKCS11_CONFIG` to point elsewhere):
+Create `/etc/infisical/pkcs11.conf` (or set `INFISICAL_CONFIG` to point elsewhere):
 
 ```yaml
 auth:
@@ -203,7 +203,7 @@ For CI pipelines, configure the GPG agent in non-interactive mode. You need to c
 ```bash
 export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID="${INFISICAL_CLIENT_ID}"
 export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET="${INFISICAL_CLIENT_SECRET}"
-export INFISICAL_PKCS11_CONFIG="/path/to/pkcs11.conf"
+export INFISICAL_CONFIG="/path/to/pkcs11.conf"
 
 # Set up ephemeral GPG home directory
 export GNUPGHOME=$(mktemp -d)

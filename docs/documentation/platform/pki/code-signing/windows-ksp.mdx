@@ -1,0 +1,232 @@
+---
+title: "Windows KSP"
+sidebarTitle: "Windows KSP"
+description: "Sign Windows executables, DLLs, and MSIs with Microsoft signtool, using a signing key kept in Infisical."
+---
+
+Code signing adds a tamper-proof seal to your software, so Windows and your users can trust that it really came from you and has not been changed.
+
+The Infisical **Windows KSP** lets Microsoft's standard signing tool, `signtool`, add that seal to your `.exe`, `.dll`, and `.msi` files, using a signing key that stays locked inside Infisical. It is a small plug-in for Windows' built-in cryptography system, called [Cryptography API: Next Generation (CNG)](https://learn.microsoft.com/en-us/windows/win32/seccng/cng-portal). "KSP" is short for **Key Storage Provider**, which is just Windows' name for a plug-in that supplies signing keys.
+
+Here is what happens when you sign a file: `signtool` hands the plug-in a short fingerprint of the file, the plug-in sends that fingerprint to Infisical, Infisical signs it and sends the signature back, and `signtool` attaches the signature to your file. Your private signing key never leaves Infisical.
+
+This is the Windows version of the [PKCS#11 module](/documentation/platform/pki/code-signing/pkcs11-module). Both use the same Infisical [Signers](/documentation/platform/pki/code-signing/signers) behind the scenes. Use the PKCS#11 module for cross-platform tools like `jarsigner`, `osslsigncode`, and `cosign`. Use the Windows KSP when you sign with `signtool`.
+
+## Before you start
+
+You authenticate as a member of the Signer, using either a **Machine Identity** or your own Infisical **access token**. To use a Machine Identity, set it up once in Infisical:
+
+1. **Create a Machine Identity** and enable **[Universal Auth](/documentation/platform/identities/universal-auth)** on it, then copy its **Client ID** and **Client Secret**. The provider uses these to authenticate, and you will set them in [Configuration](#configuration) below.
+2. **Add the identity to the Signer** with the Administrator or Operator role, from the Signer's **Members** tab. Auditors cannot sign.
+3. If the Signer has an [approval policy](/documentation/platform/pki/code-signing/approvals), get [active signing access](/documentation/platform/pki/code-signing/approvals#access-lifecycle) before signing.
+
+<Note>
+  To sign as yourself instead, use your own access token (see [Configuration](#configuration)). You still need to be a member of the Signer with the Administrator or Operator role.
+</Note>
+
+<Info>
+  The [Signer](/documentation/platform/pki/code-signing/signers) itself is created by a Product Admin. If you do not have one yet, create it first.
+</Info>
+
+## Requirements
+
+- A 64-bit Windows computer (Windows 10/11 or Windows Server 2016 and later) where you are an **Administrator**. Setting up the plug-in changes a system-wide Windows setting, which needs admin rights.
+- **`signtool`**, Microsoft's signing tool, which comes with the [Windows SDK](https://developer.microsoft.com/windows/downloads/windows-sdk/). Most setups use the 64-bit `signtool`; there is also a 32-bit build, with a matching plug-in. The two plug-in files are `infisical-ksp.dll` (64-bit) and `infisical-ksp-x86.dll` (32-bit). Use the one that matches the `signtool` you run.
+
+## Installation
+
+Download the plug-in file from the [releases page](https://github.com/Infisical/infisical-ksp/releases) into the folder you are working in. Most people use the 64-bit `signtool`, so get `infisical-ksp.dll`:
+
+```powershell
+Invoke-WebRequest `
+  -Uri "https://github.com/Infisical/infisical-ksp/releases/latest/download/infisical-ksp.dll" `
+  -OutFile "infisical-ksp.dll"
+```
+
+<Note>
+  Signing with the 32-bit `signtool`? Download `infisical-ksp-x86.dll` instead, and see the 32-bit note under [Register the provider](#register-the-provider).
+</Note>
+
+## Register the provider
+
+Registering means telling Windows the plug-in exists, so `signtool` can find it. This copies the file into a Windows system folder and adds a few entries to the Windows registry (the database of system settings). Open **PowerShell as Administrator**, go to the folder that holds `infisical-ksp.dll`, and run:
+
+```powershell
+$prov = "Infisical Key Storage Provider"
+$base = "HKLM:\SYSTEM\CurrentControlSet\Control\Cryptography"
+Copy-Item .\infisical-ksp.dll "$env:windir\System32\infisical-ksp.dll" -Force
+New-Item -Path "$base\Providers\$prov\UM\00010001" -Force | Out-Null
+New-ItemProperty -Path "$base\Providers\$prov\UM" -Name Image -PropertyType String -Value "infisical-ksp.dll" -Force | Out-Null
+Set-ItemProperty -Path "$base\Providers\$prov\UM\00010001" -Name "(default)" -Value "CRYPT_KEY_STORAGE_INTERFACE"
+New-ItemProperty -Path "$base\Providers\$prov\UM\00010001" -Name Flags -PropertyType DWord -Value 0x10000 -Force | Out-Null
+New-ItemProperty -Path "$base\Providers\$prov\UM\00010001" -Name Functions -PropertyType MultiString -Value @("KEY_STORAGE") -Force | Out-Null
+$iface = "$base\Configuration\Local\Default\00010001\KEY_STORAGE"
+$cur = @((Get-ItemProperty $iface).Providers)
+if ($cur -notcontains $prov) { Set-ItemProperty -Path $iface -Name Providers -Value ($cur + $prov) }
+```
+
+<Note>
+  **Using the 32-bit `signtool`?** It loads plug-ins from `SysWOW64` instead of `System32`, so also place the 32-bit file there under the same name. The registry entries above are shared by both, so you do not repeat them: `Copy-Item .\infisical-ksp-x86.dll "$env:windir\SysWOW64\infisical-ksp.dll" -Force`.
+</Note>
+
+<Warning>
+  **Restart the computer once after this step.** Windows keeps a saved list of its plug-ins and only notices a newly added one after a reboot.
+</Warning>
+
+## Configuration
+
+The plug-in needs your Infisical address and the login it should use. The simplest setup is environment variables only, with no config file. This is the machine identity your admin added to the Signer:
+
+```powershell
+$env:INFISICAL_SERVER_URL = "https://app.infisical.com"
+$env:INFISICAL_UNIVERSAL_AUTH_CLIENT_ID = "<machine-identity-client-id>"
+$env:INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET = "<machine-identity-client-secret>"
+```
+
+If you prefer a config file, create one at `%ProgramData%\Infisical\config.json` (or point `INFISICAL_CONFIG` at a different location) with at least your Infisical address, and keep credentials in environment variables:
+
+```json
+{
+  "server_url": "https://app.infisical.com",
+  "log_level": "info"
+}
+```
+
+<Note>
+  You can also put these credentials inside the config file (`auth.client_id` and `auth.client_secret`), but environment variables are safer, because the secret will not get saved into your code or log files. Whatever runs `signtool` must have these variables set: for a build pipeline that is the build job, and for hands-on use it is the same PowerShell window.
+</Note>
+
+#### Sign with an access token instead
+
+Instead of a machine identity, you can hand the plug-in an Infisical access token directly, either your own or a machine identity's. Set `INFISICAL_TOKEN` and the plug-in uses it as-is:
+
+```powershell
+$env:INFISICAL_SERVER_URL = "https://app.infisical.com"
+$env:INFISICAL_TOKEN = "<your-access-token>"
+```
+
+<Warning>
+  JWT tokens expire, so this access is **temporary**. The plug-in does not refresh the token; once it expires, signing fails until you supply a new one. This is handy for signing as yourself or for a quick one-off, but for unattended or CI/CD signing use a machine identity with Universal Auth (client ID and secret), which the plug-in re-authenticates automatically.
+</Warning>
+
+### Configuration reference
+
+| Field | Required | Default | Description |
+|-------|----------|---------|-------------|
+| `server_url` | Yes | None | Your Infisical address. Must start with `http://` (local testing) or `https://`. |
+| `auth.method` | No | inferred | How to log in: `universal-auth` (machine identity) or `token` (an access token used directly). Inferred from the credentials when unset (a token means `token`, otherwise `universal-auth`). |
+| `auth.client_id` | No | None | The machine identity's client ID, for `universal-auth`. Prefer the environment variable. |
+| `auth.client_secret` | No | None | The machine identity's secret, for `universal-auth`. Prefer the environment variable. |
+| `auth.token` | No | None | An Infisical access token, for `token` auth. Prefer the environment variable. |
+| `tls.ca_cert_path` | No | None | Path to a custom CA file, for self-hosted Infisical that uses a private CA. |
+| `tls.skip_verify` | No | `false` | Skip checking the server's TLS certificate. For local testing only, never in production. |
+| `cache.token_ttl_seconds` | No | `300` | How long to reuse a login token before logging in again. |
+| `cache.cert_ttl_seconds` | No | `3600` | How long to reuse a downloaded certificate. |
+| `cache.signer_ttl_seconds` | No | `300` | How long to reuse the list of Signers. |
+| `log_level` | No | `info` | How much detail to log: `trace`, `debug`, `info`, `warn`, or `error`. |
+| `log_file` | No | `%ProgramData%\Infisical\ksp.log` | Where to write the log. `signtool` has no window to print to, so the plug-in writes here by default. |
+
+### Environment variable reference
+
+| Variable | Description |
+|----------|-------------|
+| `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID` | The machine identity's client ID. Wins over the config file. |
+| `INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET` | The machine identity's secret. Wins over the config file. |
+| `INFISICAL_TOKEN` | An Infisical access token (a user or machine identity token). Selects token auth; used instead of the client ID/secret. |
+| `INFISICAL_SERVER_URL` | The Infisical instance URL. Sets `server_url` (and overrides the config file). |
+| `INFISICAL_CONFIG` | Path to the config file (default `%ProgramData%\Infisical\config.json`). |
+
+<Note>
+  If a value is set both as an environment variable and in the config file, the environment variable wins.
+</Note>
+
+## Sign with signtool
+
+First, put the Signer's certificate on the computer. A certificate is the public half of your signing identity, so it is safe to share. In Infisical, open the Signer and use **Export certificate** to download it, or paste it in:
+
+```powershell
+$certPem = @"
+-----BEGIN CERTIFICATE-----
+...paste the certificate here...
+-----END CERTIFICATE-----
+"@
+Set-Content -Path "$env:ProgramData\Infisical\demo-signer.cer" -Value $certPem -Encoding ascii
+```
+
+Then sign your file. `/kc` picks the Signer by name, and `/f` points to the certificate file you just saved:
+
+```powershell
+signtool sign /fd SHA256 `
+  /f "$env:ProgramData\Infisical\demo-signer.cer" `
+  /csp "Infisical Key Storage Provider" /kc "demo-signer" `
+  MyApp.exe
+```
+
+<Note>
+  Add a timestamp so the signature stays valid even after the certificate expires (recommended for anything you ship). Put `/tr <timestamp-url> /td SHA256` before the file name, using any [RFC 3161](https://www.rfc-editor.org/rfc/rfc3161) timestamp service.
+</Note>
+
+### Verify
+
+Check that the file is signed:
+
+```powershell
+signtool verify /pa /v MyApp.exe
+```
+
+<Note>
+  If your certificate comes from your own private CA (instead of one Windows already trusts), `signtool verify` shows the warning `A certificate chain could not be built to a trusted root authority` (`0x800B010A`). The signature is still valid; Windows just does not recognize who issued the certificate. To clear the warning, add your CA to the computer's Trusted Root store.
+</Note>
+
+## Troubleshooting
+
+The plug-in writes a log to `%ProgramData%\Infisical\ksp.log`. `signtool` itself only shows a short error code, so this log is the best place to see what actually went wrong and how to fix it. For more detail, set `log_level` to `debug`.
+
+<AccordionGroup>
+  <Accordion title="signtool says 'Invalid provider specified' right after setup">
+    Windows has not picked up the new plug-in yet. **Restart the computer once** and try again.
+  </Accordion>
+  <Accordion title="Access denied (HTTP 403 in the log)">
+    Your identity is not allowed to sign yet. Either it needs approved access to sign, or it must be a member of the Signer with the Administrator or Operator role (Auditors cannot sign). Fix the access (see [Approvals](/documentation/platform/pki/code-signing/approvals)), then run the same command again.
+  </Accordion>
+  <Accordion title="HTTP 401 in the log">
+    The login is missing or wrong. Set `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID` and `INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET`, and check that the identity is a member of the Signer.
+  </Accordion>
+  <Accordion title="Cannot reach Infisical / connection refused">
+    A network or TLS problem. Check that `server_url` is correct and that the computer can reach it. For self-hosted Infisical with a private CA, set `tls.ca_cert_path` to the CA file.
+  </Accordion>
+  <Accordion title="'signtool' is not recognized">
+    `signtool` is not installed or is not on your `PATH`. Install the Windows SDK, or open a Developer Command Prompt, so Windows can find `signtool`.
+  </Accordion>
+</AccordionGroup>
+
+## Uninstall
+
+To remove the provider, run this in an **Administrator** PowerShell, then **restart the computer** (Windows keeps the provider in its cached list until a reboot):
+
+```powershell
+$prov = "Infisical Key Storage Provider"
+$base = "HKLM:\SYSTEM\CurrentControlSet\Control\Cryptography"
+Remove-Item "$base\Providers\$prov" -Recurse -Force -ErrorAction SilentlyContinue
+$iface = "$base\Configuration\Local\Default\00010001\KEY_STORAGE"
+$cur = @((Get-ItemProperty $iface -ErrorAction SilentlyContinue).Providers) | Where-Object { $_ -ne $prov }
+Set-ItemProperty -Path $iface -Name Providers -Value $cur
+Remove-Item "$env:windir\System32\infisical-ksp.dll" -Force -ErrorAction SilentlyContinue
+Remove-Item "$env:windir\SysWOW64\infisical-ksp.dll" -Force -ErrorAction SilentlyContinue
+```
+
+This deletes the registry entries and removes the DLL from `System32`. Your `%ProgramData%\Infisical` config and log files are left in place; delete that folder too if you no longer need them.
+
+## What's next
+
+<CardGroup cols={3}>
+  <Card title="Cross-platform signing" icon="terminal" href="/documentation/platform/pki/code-signing/pkcs11-module">
+    The PKCS#11 module for jarsigner, osslsigncode, cosign, and more.
+  </Card>
+  <Card title="Manage Signers" icon="signature" href="/documentation/platform/pki/code-signing/signers">
+    Create and configure Signers.
+  </Card>
+  <Card title="Approvals" icon="shield-check" href="/documentation/platform/pki/code-signing/approvals">
+    Require review before signing.
+  </Card>
+</CardGroup>
