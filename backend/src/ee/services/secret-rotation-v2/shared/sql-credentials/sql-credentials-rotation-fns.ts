@@ -129,9 +129,11 @@ export const sqlCredentialsRotationFactory: TRotationFactory<
   };
 
   const $executeQuery = async (tx: Knex, username: string, password: string) => {
+    const filteredUsername = getRoleUsernameForHost(username, connection.credentials.host);
+
     if (userProvidedRotationStatement) {
       const revokeStatement = handlebars.compile(userProvidedRotationStatement)({
-        username,
+        username: filteredUsername,
         password,
         database: connection.credentials.database
       });
@@ -140,7 +142,6 @@ export const sqlCredentialsRotationFactory: TRotationFactory<
         await tx.raw(query);
       }
     } else {
-      const filteredUsername = getRoleUsernameForHost(username, connection.credentials.host);
       await tx.raw(...SQL_CONNECTION_ALTER_LOGIN_STATEMENT[connection.app]({ username: filteredUsername, password }));
     }
   };

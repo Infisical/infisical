@@ -264,10 +264,10 @@ export const validateSqlConnectionCredentials = async (
 // the correct branch, but the underlying DB role is just `<user>`. Strip the branch suffix for
 // role-level statements (ALTER USER / ALTER LOGIN). Only applies to PlanetScale hosts so that
 // legitimate dotted usernames on other providers are left untouched.
-const PLANETSCALE_HOST_SUFFIX = "psdb.cloud";
+const PLANETSCALE_HOST_SUFFIX = ".psdb.cloud";
 
 export const getRoleUsernameForHost = (username: string, host: string) => {
-  const isPlanetScaleHost = host.toLowerCase().includes(PLANETSCALE_HOST_SUFFIX);
+  const isPlanetScaleHost = host.toLowerCase().endsWith(PLANETSCALE_HOST_SUFFIX);
   if (isPlanetScaleHost && username.includes(".")) {
     return username.slice(0, username.indexOf("."));
   }
