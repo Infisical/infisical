@@ -16,6 +16,10 @@ Deploy certificates directly to your AWS Application Load Balancers (ALBs) and N
   - **ACM:** `acm:ListCertificates`, `acm:DescribeCertificate`, `acm:ImportCertificate`, `acm:DeleteCertificate`, `acm:ListTagsForCertificate`
   - **ELB:** `elasticloadbalancing:DescribeLoadBalancers`, `elasticloadbalancing:DescribeListeners`, `elasticloadbalancing:DescribeListenerCertificates`, `elasticloadbalancing:AddListenerCertificates`, `elasticloadbalancing:RemoveListenerCertificates`, `elasticloadbalancing:ModifyListener`
 
+<Tip>
+  If your AWS Connection uses the **Assume Role** method, the External ID for connections created within a Certificate Manager Application is the **Project ID** of the project the Application belongs to. You can find this in your project settings. See the [AWS Connection docs](/integrations/app-connections/aws) for details on configuring the External ID in your IAM role trust policy.
+</Tip>
+
 ## Create an ELB Sync
 
 <Tabs>
