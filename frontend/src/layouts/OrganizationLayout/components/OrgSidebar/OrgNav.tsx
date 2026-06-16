@@ -27,6 +27,10 @@ export const OrgNav = () => {
 
   const handleOpenSettings = () => {
     setShowSettings(true);
+    // Already on a settings-area URL (e.g. after collapsing via "< Settings"):
+    // re-navigating would push a duplicate same-URL history entry, so just
+    // re-expand the sub-nav.
+    if (isOnSettingsArea) return;
     navigate({
       to: "/organizations/$orgId/settings",
       params: { orgId: currentOrg.id },
