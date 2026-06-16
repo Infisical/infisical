@@ -851,9 +851,7 @@ export const appConnectionServiceFactory = ({
           } Connection with method ${getAppConnectionMethodName(method)}`
         });
 
-      const updateProject = appConnection.projectId
-        ? await projectDAL.findProjectById(appConnection.projectId)
-        : null;
+      const updateProject = appConnection.projectId ? await projectDAL.findProjectById(appConnection.projectId) : null;
 
       updatedCredentials = await validateAppConnectionCredentials(
         {
@@ -1163,7 +1161,7 @@ export const appConnectionServiceFactory = ({
 
     const connection = await decryptAppConnection(appConnection, kmsService);
 
-    return { ...connection, projectType: connectionProject?.type } as T;
+    return { ...connection, projectType: connectionProject?.type } as unknown as T;
   };
 
   const validateAppConnectionUsageById = async (

@@ -2,12 +2,12 @@ import { AssumeRoleCommand, GetCallerIdentityCommand, STSClient, STSServiceExcep
 import { AxiosError } from "axios";
 import { z } from "zod";
 
+import { ProjectType } from "@app/db/schemas";
 import { CustomAWSHasher } from "@app/lib/aws/hashing";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { ProjectType } from "@app/db/schemas";
 import { AppConnection, AWSRegion } from "@app/services/app-connection/app-connection-enums";
 import { decryptAppConnectionCredentials } from "@app/services/app-connection/app-connection-fns";
 import { TAppConnectionRaw } from "@app/services/app-connection/app-connection-types";
@@ -103,10 +103,10 @@ export const getAwsConnectionConfig = async (appConnection: TAwsConnectionConfig
 
       // v1 (legacy) always used orgId; v2+ uses projectId when available, orgId otherwise.
       // Certificate Manager projects don't expose "project" to users, so always use orgId.
-      const externalId =
-        (version ?? 1) >= 2
-          ? (projectType === ProjectType.CertificateManager ? orgId : (projectId ?? orgId))
-          : orgId;
+      let externalId = orgId;
+      if ((version ?? 1) >= 2 && projectType !== ProjectType.CertificateManager) {
+        externalId = projectId ?? orgId;
+      }
 
       const command = new AssumeRoleCommand({
         RoleArn: credentials.roleArn,
