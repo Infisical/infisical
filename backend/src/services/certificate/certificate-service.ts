@@ -289,6 +289,9 @@ export const certificateServiceFactory = ({
     actorOrgId
   }: TGetCertPrivateKeyDTO) => {
     const cert = id ? await certificateDAL.findById(id) : await certificateDAL.findOne({ serialNumber });
+    if (!cert) {
+      throw new NotFoundError({ message: "Certificate not found" });
+    }
 
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -342,6 +345,9 @@ export const certificateServiceFactory = ({
    */
   const deleteCert = async ({ id, serialNumber, actorId, actorAuthMethod, actor, actorOrgId }: TDeleteCertDTO) => {
     const cert = id ? await certificateDAL.findById(id) : await certificateDAL.findOne({ serialNumber });
+    if (!cert) {
+      throw new NotFoundError({ message: "Certificate not found" });
+    }
 
     const metadataRows = await resourceMetadataDAL.find({ certificateId: cert.id });
     const certMetadata = metadataRows.map(({ key, value }) => ({ key, value: value || "" }));
@@ -428,6 +434,9 @@ export const certificateServiceFactory = ({
     actorOrgId
   }: TRevokeCertDTO) => {
     const cert = id ? await certificateDAL.findById(id) : await certificateDAL.findOne({ serialNumber });
+    if (!cert) {
+      throw new NotFoundError({ message: "Certificate not found" });
+    }
 
     if (!cert.caId) {
       throw new BadRequestError({
@@ -579,6 +588,9 @@ export const certificateServiceFactory = ({
    */
   const getCertBody = async ({ id, serialNumber, actorId, actorAuthMethod, actor, actorOrgId }: TGetCertBodyDTO) => {
     const cert = id ? await certificateDAL.findById(id) : await certificateDAL.findOne({ serialNumber });
+    if (!cert) {
+      throw new NotFoundError({ message: "Certificate not found" });
+    }
 
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -940,6 +952,9 @@ export const certificateServiceFactory = ({
     actorOrgId
   }: TGetCertBundleDTO) => {
     const cert = id ? await certificateDAL.findById(id) : await certificateDAL.findOne({ serialNumber });
+    if (!cert) {
+      throw new NotFoundError({ message: "Certificate not found" });
+    }
 
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -1084,6 +1099,9 @@ export const certificateServiceFactory = ({
       throw new BadRequestError({ message: "Alias is required for PKCS12 keystore generation" });
     }
     const cert = id ? await certificateDAL.findById(id) : await certificateDAL.findOne({ serialNumber });
+    if (!cert) {
+      throw new NotFoundError({ message: "Certificate not found" });
+    }
 
     const { permission } = await permissionService.getProjectPermission({
       actor,
