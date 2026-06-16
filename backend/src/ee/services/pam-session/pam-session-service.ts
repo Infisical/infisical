@@ -1,3 +1,5 @@
+import net from "net";
+
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -5,6 +7,9 @@ import { createSshCert, createSshKeyPair } from "@app/ee/services/ssh/ssh-certif
 import { SshCertType } from "@app/ee/services/ssh/ssh-certificate-authority-types";
 import { SshCertKeyAlgorithm } from "@app/ee/services/ssh-certificate/ssh-certificate-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { GatewayProxyProtocol } from "@app/lib/gateway/types";
+import { createGatewayConnection, createRelayConnection } from "@app/lib/gateway-v2/gateway-v2";
+import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -394,7 +399,6 @@ export const pamSessionServiceFactory = ({
     };
   };
 
-  // TODO: when CLI sessions are supported, send a GatewayProxyProtocol.PamSessionCancellation ALPN signal to drop the gateway connection
   const terminateSession = async (sessionId: string, ctx: TActorContext) => {
     const session = await pamSessionDAL.findById(sessionId);
     if (!session) {
@@ -421,6 +425,49 @@ export const pamSessionServiceFactory = ({
     const updated = await pamSessionDAL.terminateSessionById(sessionId);
     if (!updated) {
       throw new BadRequestError({ message: "Session could not be terminated" });
+    }
+
+    if (session.gatewayId) {
+      void (async () => {
+        let relayConn: net.Socket | null = null;
+        try {
+          const user = await userDAL.findById(ctx.actorId);
+          const certs = await gatewayV2Service.getPAMConnectionDetails({
+            gatewayId: session.gatewayId!,
+            sessionId,
+            accountType: session.accountType as PamAccountType,
+            host: "0.0.0.0",
+            port: 0,
+            actorMetadata: { id: ctx.actorId, type: ActorType.USER, name: user?.email ?? "" }
+          });
+          if (!certs) {
+            logger.error(
+              { sessionId, gatewayId: session.gatewayId },
+              `Failed to get gateway [gatewayId=${session.gatewayId}] connection details for PAM session [sessionId=${sessionId}] termination`
+            );
+            return;
+          }
+          relayConn = await createRelayConnection({
+            relayHost: certs.relayHost,
+            clientCertificate: certs.relay.clientCertificate,
+            clientPrivateKey: certs.relay.clientPrivateKey,
+            serverCertificateChain: certs.relay.serverCertificateChain
+          });
+          const cancelConn = await createGatewayConnection(
+            relayConn,
+            certs.gateway,
+            GatewayProxyProtocol.PamSessionCancellation
+          );
+          cancelConn.end();
+        } catch (err) {
+          logger.error(
+            { sessionId, err },
+            `Session [sessionId=${sessionId}] termination ALPN signal failed (best-effort)`
+          );
+        } finally {
+          relayConn?.destroy();
+        }
+      })();
     }
 
     return { session: updated, projectId: session.projectId, accountName: session.accountName };
