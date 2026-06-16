@@ -324,6 +324,7 @@ export const pamSessionServiceFactory = ({
     }
 
     const rawConnectionDetails = await decrypt(projectId, account.encryptedConnectionDetails);
+    const rawCredentials = await decrypt(projectId, account.encryptedCredentials);
     const gatewayTarget = extractGatewayTarget(account.accountType as PamAccountType, rawConnectionDetails);
 
     const user = await userDAL.findById(actor.actorId);
@@ -368,11 +369,20 @@ export const pamSessionServiceFactory = ({
       throw new BadRequestError({ message: "Failed to obtain gateway connection details" });
     }
 
+    const metadata: Record<string, string> = {
+      username: rawCredentials.username as string
+    };
+
+    if (account.accountType === PamAccountType.Postgres) {
+      metadata.database = rawConnectionDetails.database as string;
+    }
+
     return {
       sessionId: session.id,
       accountId: account.id,
       accountType: account.accountType as PamAccountType,
       accountName: account.name,
+      metadata,
       sessionDurationMs,
       relayHost: certs.relayHost,
       relayClientCertificate: certs.relay.clientCertificate,

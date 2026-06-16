@@ -227,6 +227,7 @@ export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => 
         200: z.object({
           sessionId: z.string().describe("The ID of the created session"),
           accountType: z.nativeEnum(PamAccountType).describe("The account type"),
+          metadata: z.record(z.string()).optional().describe("Account-type-specific metadata (e.g., username)"),
           relayHost: z.string().describe("The relay host to connect to"),
           relayClientCertificate: z.string().describe("Client certificate for the relay connection"),
           relayClientPrivateKey: z.string().describe("Client private key for the relay connection"),
@@ -291,6 +292,7 @@ export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => 
       return {
         sessionId: result.sessionId,
         accountType: result.accountType,
+        metadata: result.metadata,
         relayHost: result.relayHost,
         relayClientCertificate: result.relayClientCertificate,
         relayClientPrivateKey: result.relayClientPrivateKey,
