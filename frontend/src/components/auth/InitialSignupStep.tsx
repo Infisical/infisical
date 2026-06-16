@@ -15,10 +15,7 @@ import {
   CardHeader,
   CardTitle,
   FieldError,
-  Input,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger
+  Input
 } from "@app/components/v3";
 import { useServerConfig } from "@app/context";
 import { preserveHubSpotUtk } from "@app/helpers/utmTracking";
@@ -79,6 +76,53 @@ export default function InitialSignupStep({
           </CardAction>
         </CardHeader>
         <CardContent>
+          <div className="flex w-full flex-col gap-2">
+            {shouldDisplaySignupMethod(LoginMethod.GITHUB) && (
+              <Button
+                aria-label="Continue with GitHub"
+                variant="project"
+                size="lg"
+                isFullWidth
+                onClick={() => handleSocialSignup(LoginMethod.GITHUB)}
+              >
+                <FontAwesomeIcon icon={faGithub} className="!size-4" />
+                Continue with GitHub
+              </Button>
+            )}
+            {shouldDisplaySignupMethod(LoginMethod.GOOGLE) && (
+              <Button
+                aria-label={t("signup.continue-with-google")}
+                variant="outline"
+                size="lg"
+                isFullWidth
+                onClick={() => handleSocialSignup(LoginMethod.GOOGLE)}
+              >
+                <FontAwesomeIcon icon={faGoogle} className="!size-4" />
+                {t("signup.continue-with-google")}
+              </Button>
+            )}
+            {shouldDisplaySignupMethod(LoginMethod.GITLAB) && (
+              <Button
+                aria-label="Continue with GitLab"
+                variant="outline"
+                size="lg"
+                isFullWidth
+                onClick={() => handleSocialSignup(LoginMethod.GITLAB)}
+              >
+                <FontAwesomeIcon icon={faGitlab} className="!size-4" />
+                Continue with GitLab
+              </Button>
+            )}
+          </div>
+          {(!config.enabledLoginMethods ||
+            (shouldDisplaySignupMethod(LoginMethod.EMAIL) &&
+              config.enabledLoginMethods.length > 1)) && (
+            <div className="my-4 flex w-full flex-row items-center py-2">
+              <div className="w-full border-t border-mineshaft-400/60" />
+              <span className="mx-2 text-xs text-mineshaft-400">or</span>
+              <div className="w-full border-t border-mineshaft-400/60" />
+            </div>
+          )}
           {shouldDisplaySignupMethod(LoginMethod.EMAIL) && (
             <>
               <div className="w-full">
@@ -98,7 +142,7 @@ export default function InitialSignupStep({
                 <Button
                   type="submit"
                   onClick={handleEmailSignup}
-                  variant="project"
+                  variant="outline"
                   size="lg"
                   isFullWidth
                   isDisabled={isPending}
@@ -109,71 +153,6 @@ export default function InitialSignupStep({
               </div>
             </>
           )}
-          {(!config.enabledLoginMethods ||
-            (shouldDisplaySignupMethod(LoginMethod.EMAIL) &&
-              config.enabledLoginMethods.length > 1)) && (
-            <div className="my-4 flex w-full flex-row items-center py-2">
-              <div className="w-full border-t border-mineshaft-400/60" />
-              <span className="mx-2 text-xs text-mineshaft-400">or</span>
-              <div className="w-full border-t border-mineshaft-400/60" />
-            </div>
-          )}
-          <div className="flex w-full gap-2">
-            {shouldDisplaySignupMethod(LoginMethod.GOOGLE) && (
-              <Tooltip disableHoverableContent>
-                <TooltipTrigger asChild>
-                  <div className="relative w-full">
-                    <Button
-                      aria-label={t("signup.continue-with-google")}
-                      variant="outline"
-                      size="lg"
-                      isFullWidth
-                      onClick={() => handleSocialSignup(LoginMethod.GOOGLE)}
-                    >
-                      <FontAwesomeIcon icon={faGoogle} className="!size-4" />
-                    </Button>
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent side="top">{t("signup.continue-with-google")}</TooltipContent>
-              </Tooltip>
-            )}
-            {shouldDisplaySignupMethod(LoginMethod.GITHUB) && (
-              <Tooltip disableHoverableContent>
-                <TooltipTrigger asChild>
-                  <div className="relative w-full">
-                    <Button
-                      aria-label="Continue with GitHub"
-                      variant="outline"
-                      size="lg"
-                      isFullWidth
-                      onClick={() => handleSocialSignup(LoginMethod.GITHUB)}
-                    >
-                      <FontAwesomeIcon icon={faGithub} className="!size-4" />
-                    </Button>
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent side="top">Continue with GitHub</TooltipContent>
-              </Tooltip>
-            )}
-            {shouldDisplaySignupMethod(LoginMethod.GITLAB) && (
-              <Tooltip disableHoverableContent>
-                <TooltipTrigger asChild>
-                  <div className="relative w-full">
-                    <Button
-                      aria-label="Continue with GitLab"
-                      variant="outline"
-                      size="lg"
-                      isFullWidth
-                      onClick={() => handleSocialSignup(LoginMethod.GITLAB)}
-                    >
-                      <FontAwesomeIcon icon={faGitlab} className="!size-4" />
-                    </Button>
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent side="top">Continue with GitLab</TooltipContent>
-              </Tooltip>
-            )}
-          </div>
           <div className="mt-6 flex flex-row justify-center text-xs text-label">
             <Link to="/login">
               <span className="cursor-pointer duration-200 hover:text-foreground hover:underline hover:decoration-project/45 hover:underline-offset-2">
