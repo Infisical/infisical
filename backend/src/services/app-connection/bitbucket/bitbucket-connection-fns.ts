@@ -14,6 +14,9 @@ import {
   TBitbucketWorkspace
 } from "./bitbucket-connection-types";
 
+const BITBUCKET_MAX_PAGES = 10;
+const BITBUCKET_PAGE_SIZE = 100;
+
 const ensureBitbucketRateLimitNotExceeded = (error: unknown): never => {
   if (error instanceof AxiosError && error.response?.status === HttpStatusCode.TooManyRequests) {
     throw new BadRequestError({
@@ -72,7 +75,7 @@ interface BitbucketWorkspacesResponse {
   next?: string;
 }
 
-export const listBitbucketWorkspaces = async (appConnection: TBitbucketConnection) => {
+export const listBitbucketWorkspaces = async (appConnection: TBitbucketConnection, search?: string) => {
   const { email, apiToken } = appConnection.credentials;
 
   const headers = {
@@ -81,21 +84,20 @@ export const listBitbucketWorkspaces = async (appConnection: TBitbucketConnectio
   };
 
   let allWorkspaces: TBitbucketWorkspace[] = [];
-  let nextUrl: string | undefined = `${IntegrationUrls.BITBUCKET_API_URL}/2.0/user/workspaces?pagelen=100`;
-  let iterationCount = 0;
 
-  // Limit to 10 iterations, fetching at most 10 * 100 = 1000 workspaces
+  const baseUrl = new URL(`${IntegrationUrls.BITBUCKET_API_URL}/2.0/user/workspaces`);
+  baseUrl.searchParams.set("pagelen", BITBUCKET_PAGE_SIZE);
+  if (search) {
+    baseUrl.searchParams.set("q", `slug ~ "${search}"`);
+  }
+
+  const endpoint = baseUrl.toString();
   try {
-    while (nextUrl && iterationCount < 10) {
-      // eslint-disable-next-line no-await-in-loop
-      const { data }: { data: BitbucketWorkspacesResponse } = await request.get<BitbucketWorkspacesResponse>(nextUrl, {
-        headers
-      });
+    const { data }: { data: BitbucketWorkspacesResponse } = await request.get<BitbucketWorkspacesResponse>(endpoint, {
+      headers
+    });
 
-      allWorkspaces = allWorkspaces.concat(data.values.map((membership) => ({ slug: membership.workspace.slug })));
-      nextUrl = data.next;
-      iterationCount += 1;
-    }
+    allWorkspaces = allWorkspaces.concat(data.values.map((membership) => ({ slug: membership.workspace.slug })));
   } catch (error) {
     ensureBitbucketRateLimitNotExceeded(error);
   }
@@ -107,9 +109,6 @@ interface BitbucketPaginatedResponse<T> {
   values: T[];
   next?: string;
 }
-
-const BITBUCKET_MAX_PAGES = 10;
-const BITBUCKET_PAGE_SIZE = 100;
 
 const paginateBitbucketRequest = async <T>(url: string, headers: Record<string, string>): Promise<T[]> => {
   let allItems: T[] = [];
@@ -132,7 +131,11 @@ const paginateBitbucketRequest = async <T>(url: string, headers: Record<string, 
   return allItems;
 };
 
-export const listBitbucketRepositories = async (appConnection: TBitbucketConnection, workspaceSlug: string) => {
+export const listBitbucketRepositories = async (
+  appConnection: TBitbucketConnection,
+  workspaceSlug: string,
+  search?: string
+) => {
   const { email, apiToken } = appConnection.credentials;
 
   const headers = {
@@ -143,6 +146,16 @@ export const listBitbucketRepositories = async (appConnection: TBitbucketConnect
   const encodedSlug = encodeURIComponent(workspaceSlug);
 
   try {
+    if (search) {
+      const baseUrl = new URL(`${IntegrationUrls.BITBUCKET_API_URL}/2.0/repositories/${encodedSlug}`);
+      baseUrl.searchParams.set("pagelen", String(BITBUCKET_PAGE_SIZE));
+      baseUrl.searchParams.set("sort", "slug");
+      baseUrl.searchParams.set("q", `name ~ "${search}"`);
+
+      const { data } = await request.get<BitbucketPaginatedResponse<TBitbucketRepo>>(baseUrl.toString(), { headers });
+      return data.values;
+    }
+
     // Fetch repos per-project to avoid Bitbucket's 1,000-result pagination cap
     const projects = await paginateBitbucketRequest<{ key: string }>(
       `${IntegrationUrls.BITBUCKET_API_URL}/2.0/workspaces/${encodedSlug}/projects?pagelen=${BITBUCKET_PAGE_SIZE}`,
@@ -176,34 +189,8 @@ export const listBitbucketEnvironments = async (
     Accept: "application/json"
   };
 
-  const environments: TBitbucketEnvironment[] = [];
-  let hasNextPage = true;
-
-  let environmentsUrl = `${IntegrationUrls.BITBUCKET_API_URL}/2.0/repositories/${encodeURIComponent(workspaceSlug)}/${encodeURIComponent(repositorySlug)}/environments?pagelen=100`;
-
-  let iterationCount = 0;
-  // Limit to 10 iterations, fetching at most 10 * 100 = 1000 environments
-  try {
-    while (hasNextPage && iterationCount < 10) {
-      // eslint-disable-next-line no-await-in-loop
-      const { data }: { data: { values: TBitbucketEnvironment[]; next: string } } = await request.get(environmentsUrl, {
-        headers
-      });
-
-      if (data?.values.length > 0) {
-        environments.push(...data.values);
-      }
-
-      if (data.next) {
-        environmentsUrl = data.next;
-      } else {
-        hasNextPage = false;
-      }
-      iterationCount += 1;
-    }
-  } catch (error) {
-    ensureBitbucketRateLimitNotExceeded(error);
-  }
-
-  return environments;
+  return paginateBitbucketRequest<TBitbucketEnvironment>(
+    `${IntegrationUrls.BITBUCKET_API_URL}/2.0/repositories/${encodeURIComponent(workspaceSlug)}/${encodeURIComponent(repositorySlug)}/environments?pagelen=${BITBUCKET_PAGE_SIZE}`,
+    headers
+  );
 };
