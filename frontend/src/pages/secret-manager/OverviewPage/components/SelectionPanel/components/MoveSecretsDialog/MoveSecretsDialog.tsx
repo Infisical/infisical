@@ -304,9 +304,9 @@ const formatBlockedDestination = (
   const envName =
     envNameBySlug.get(blocked.destinationEnvironment) ?? blocked.destinationEnvironment;
   if (blocked.policyName && blocked.blockingPath) {
-    return `${envName}: the path "${blocked.blockingPath}" is governed by the secret approval policy "${blocked.policyName}", so "${blocked.folderName}" cannot be moved there.`;
+    return `At environment ${envName} the path "${blocked.blockingPath}" is governed by the secret approval policy "${blocked.policyName}", so "${blocked.folderName}" cannot be moved there.`;
   }
-  return `${envName}: the destination is governed by a secret approval policy, so "${blocked.folderName}" cannot be moved there.`;
+  return `At environment ${envName} the destination is governed by a secret approval policy, so "${blocked.folderName}" cannot be moved there.`;
 };
 
 // surfaces the two destination-side reasons a move is blocked: a cyclic/self move (client-side) and a destination
