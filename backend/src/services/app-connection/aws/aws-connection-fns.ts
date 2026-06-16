@@ -135,7 +135,7 @@ export const getAwsConnectionConfig = async (appConnection: TAwsConnectionConfig
           logger.info(`AssumeRole with ExternalId failed, trying next candidate [roleArn=${credentials.roleArn}]`);
         }
       }
-      if (lastErr) throw lastErr;
+      if (lastErr) throw lastErr as Error;
 
       if (!assumeRes?.Credentials?.AccessKeyId || !assumeRes?.Credentials?.SecretAccessKey) {
         throw new BadRequestError({ message: "Failed to assume role - verify credentials and role configuration" });
