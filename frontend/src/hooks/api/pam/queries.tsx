@@ -40,7 +40,10 @@ export const pamKeys = {
   ],
   getAccount: (accountId: string) => [...pamKeys.account(), "get", accountId],
   getSession: (sessionId: string) => [...pamKeys.session(), "get", sessionId],
-  listSessions: (projectId: string) => [...pamKeys.session(), "list", projectId],
+  listSessions: (
+    projectId: string,
+    params?: { offset?: number; limit?: number; search?: string; status?: string }
+  ) => [...pamKeys.session(), "list", projectId, params],
   folderPermissions: (folderId: string) =>
     [...pamKeys.all, "folder-permissions", folderId] as const,
   accountPermissions: (accountId: string) =>
@@ -300,22 +303,24 @@ export const useGetPamSessionLogs = (sessionId: string, isActive: boolean, enabl
   return { logs, isLoading, hasMore, loadMore, isLoadingMore };
 };
 
+type TListPamSessionsResponse = {
+  sessions: TPamSession[];
+  totalCount: number;
+};
+
 export const useListPamSessions = (
   projectId: string,
-  options?: Omit<
-    UseQueryOptions<TPamSession[], unknown, TPamSession[], ReturnType<typeof pamKeys.listSessions>>,
-    "queryKey" | "queryFn"
-  >
+  params?: { offset?: number; limit?: number; search?: string; status?: string }
 ) => {
   return useQuery({
-    queryKey: pamKeys.listSessions(projectId),
+    queryKey: pamKeys.listSessions(projectId, params),
     queryFn: async () => {
-      const { data } = await apiRequest.get<{ sessions: TPamSession[] }>("/api/v1/pam/sessions", {
-        params: { projectId }
+      const { data } = await apiRequest.get<TListPamSessionsResponse>("/api/v1/pam/sessions", {
+        params: { projectId, ...params }
       });
 
-      return data.sessions;
+      return data;
     },
-    ...options
+    placeholderData: (prev) => prev
   });
 };

@@ -1,4 +1,4 @@
-import { FileText, KeyRound, Shield } from "lucide-react";
+import { FileText, KeyRound, Shield, Video } from "lucide-react";
 
 import { SidebarCollapsibleGroup } from "@app/components/v3";
 
@@ -6,11 +6,10 @@ import { ProjectNavList } from "./ProjectNavLink";
 import type { NavItem, Submenu } from "./types";
 
 export const PamNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Submenu) => void }) => {
-  const topItems: NavItem[] = [
-    { label: "Access", icon: KeyRound, pathSuffix: "access" }
-  ];
+  const topItems: NavItem[] = [{ label: "Access", icon: KeyRound, pathSuffix: "access" }];
 
   const monitorItems: NavItem[] = [
+    { label: "Sessions", icon: Video, pathSuffix: "sessions" },
     { label: "Audit Logs", icon: FileText, pathSuffix: "audit-logs" }
   ];
 

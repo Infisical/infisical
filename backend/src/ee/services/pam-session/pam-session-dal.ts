@@ -56,6 +56,15 @@ export const pamSessionDALFactory = (db: TDbClient) => {
     return updated;
   };
 
+  const terminateSessionById = async (sessionId: string, tx?: Knex) => {
+    const [updated] = await (tx || db)(TableName.PamSession)
+      .where("id", sessionId)
+      .whereIn("status", [PamSessionStatus.Active, PamSessionStatus.Starting])
+      .update({ status: PamSessionStatus.Terminated, endedAt: new Date() })
+      .returning("*");
+    return updated;
+  };
+
   const activateSession = async (sessionId: string, tx?: Knex) => {
     const [updated] = await (tx || db)(TableName.PamSession)
       .where("id", sessionId)
@@ -83,13 +92,17 @@ export const pamSessionDALFactory = (db: TDbClient) => {
       viewSessionsAccountIds,
       userId,
       offset,
-      limit
+      limit,
+      search,
+      status
     }: {
       viewSessionsFolderIds: string[];
       viewSessionsAccountIds: string[];
       userId: string;
       offset?: number;
       limit?: number;
+      search?: string;
+      status?: string;
     },
     tx?: Knex
   ) => {
@@ -105,6 +118,21 @@ export const pamSessionDALFactory = (db: TDbClient) => {
           void top.orWhereIn(`${TableName.PamSession}.accountId`, viewSessionsAccountIds);
         }
       });
+
+    if (search) {
+      const term = `%${search}%`;
+      void baseQuery.where((qb) => {
+        void qb
+          .orWhereILike(`${TableName.PamSession}.accountName`, term)
+          .orWhereILike(`${TableName.PamSession}.actorName`, term)
+          .orWhereILike(`${TableName.PamSession}.actorEmail`, term)
+          .orWhereILike(`${TableName.PamSession}.folderName`, term);
+      });
+    }
+
+    if (status) {
+      void baseQuery.where(`${TableName.PamSession}.status`, status);
+    }
 
     const countQuery = baseQuery
       .clone()
@@ -134,6 +162,7 @@ export const pamSessionDALFactory = (db: TDbClient) => {
     countActiveWebSessions,
     endExpiredWebSessions,
     endSessionById,
+    terminateSessionById,
     activateSession,
     findByProjectId,
     findAccessibleByProjectId
