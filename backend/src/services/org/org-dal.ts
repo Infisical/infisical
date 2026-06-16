@@ -830,7 +830,7 @@ export const orgDALFactory = (db: TDbClient) => {
     orgId: string,
     scimFilter: string | undefined,
     orgAuthMethod: string | undefined,
-    { offset, limit, sort, tx }: TFindOpt<TMemberships> = {}
+    { offset, limit, sort, tx, membershipId }: TFindOpt<TMemberships> & { membershipId?: string } = {}
   ): Promise<
     (TMemberships & {
       email: string | null;
@@ -866,9 +866,16 @@ export const orgDALFactory = (db: TDbClient) => {
         .where(`${TableName.Membership}.scope`, AccessScope.Organization)
         .whereNotNull(`${TableName.Membership}.actorUserId`)
         .where((qb) => {
+          // Direct membership ID filter (safe, parameterized)
+          if (membershipId) {
+            void qb.where(`${TableName.Membership}.id`, membershipId);
+          }
+          // SCIM filter parsing (for list queries from external IdPs)
           if (scimFilter) {
             void generateKnexQueryFromScim(qb, scimFilter, (attrPath) => {
               switch (attrPath) {
+                case "id":
+                  return `${TableName.Membership}.id`;
                 case "active":
                   return `${TableName.Membership}.isActive`;
                 case "userName":

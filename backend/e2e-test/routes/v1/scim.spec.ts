@@ -397,6 +397,149 @@ describe("SCIM v1 Router", () => {
     });
   });
 
+  describe("GET /Users/:id - Single user lookup consistency", () => {
+    test("should return the same userName as GET /Users list endpoint", async () => {
+      const db = getDb();
+      const uniqueId = crypto.randomUUID().slice(0, 8);
+      const email = `scim-single-${uniqueId}@${TEST_DOMAIN}`;
+      const externalId = `ext-single-${uniqueId}`;
+
+      // Create user via SCIM API
+      const createRes = await testServer.inject({
+        method: "POST",
+        url: "/api/v1/scim/Users",
+        headers: {
+          authorization: `Bearer ${scimToken}`
+        },
+        body: {
+          schemas: ["urn:ietf:params:scim:schemas:core:2.0:User"],
+          userName: externalId,
+          name: {
+            givenName: "Test",
+            familyName: "User"
+          },
+          emails: [{ primary: true, value: email }],
+          active: true
+        }
+      });
+
+      expect(createRes.statusCode).toBe(200);
+      const createdUser = JSON.parse(createRes.payload);
+      const membershipId = createdUser.id;
+
+      // Track for cleanup
+      const [membership] = await db(TableName.Membership).where({ id: membershipId }).select("actorUserId");
+      if (membership?.actorUserId) {
+        createdUserIds.push(membership.actorUserId);
+      }
+      createdMembershipIds.push(membershipId);
+
+      // Get user from list endpoint
+      const listRes = await testServer.inject({
+        method: "GET",
+        url: "/api/v1/scim/Users",
+        headers: {
+          authorization: `Bearer ${scimToken}`
+        }
+      });
+
+      expect(listRes.statusCode).toBe(200);
+      const listPayload = JSON.parse(listRes.payload);
+      const userFromList = listPayload.Resources.find((r: { id: string }) => r.id === membershipId);
+      expect(userFromList).toBeDefined();
+
+      // Get same user from single-user endpoint
+      const singleRes = await testServer.inject({
+        method: "GET",
+        url: `/api/v1/scim/Users/${membershipId}`,
+        headers: {
+          authorization: `Bearer ${scimToken}`
+        }
+      });
+
+      expect(singleRes.statusCode).toBe(200);
+      const userFromSingle = JSON.parse(singleRes.payload);
+
+      // Both endpoints should return the same userName
+      expect(userFromSingle.userName).toBe(userFromList.userName);
+      expect(userFromSingle.userName).toBe(externalId);
+    });
+
+    test("should return consistent userName even with multiple aliases", async () => {
+      const db = getDb();
+      const uniqueId = crypto.randomUUID().slice(0, 8);
+      const email = `scim-multi-alias-${uniqueId}@${TEST_DOMAIN}`;
+      const externalId = `ext-multi-${uniqueId}`;
+
+      // Create user via SCIM API
+      const createRes = await testServer.inject({
+        method: "POST",
+        url: "/api/v1/scim/Users",
+        headers: {
+          authorization: `Bearer ${scimToken}`
+        },
+        body: {
+          schemas: ["urn:ietf:params:scim:schemas:core:2.0:User"],
+          userName: externalId,
+          name: {
+            givenName: "Multi",
+            familyName: "Alias"
+          },
+          emails: [{ primary: true, value: email }],
+          active: true
+        }
+      });
+
+      expect(createRes.statusCode).toBe(200);
+      const createdUser = JSON.parse(createRes.payload);
+      const membershipId = createdUser.id;
+
+      // Track for cleanup
+      const [membership] = await db(TableName.Membership).where({ id: membershipId }).select("actorUserId");
+      if (membership?.actorUserId) {
+        createdUserIds.push(membership.actorUserId);
+
+        // Add duplicate aliases directly to DB to simulate the bug scenario
+        const latestExternalId = `latest-${uniqueId}`;
+        await db(TableName.UserAliases).insert({
+          userId: membership.actorUserId,
+          orgId: ORG_ID,
+          aliasType: "saml",
+          externalId: latestExternalId
+        });
+      }
+      createdMembershipIds.push(membershipId);
+
+      // Get user from list endpoint
+      const listRes = await testServer.inject({
+        method: "GET",
+        url: "/api/v1/scim/Users",
+        headers: {
+          authorization: `Bearer ${scimToken}`
+        }
+      });
+
+      expect(listRes.statusCode).toBe(200);
+      const listPayload = JSON.parse(listRes.payload);
+      const userFromList = listPayload.Resources.find((r: { id: string }) => r.id === membershipId);
+
+      // Get same user from single-user endpoint
+      const singleRes = await testServer.inject({
+        method: "GET",
+        url: `/api/v1/scim/Users/${membershipId}`,
+        headers: {
+          authorization: `Bearer ${scimToken}`
+        }
+      });
+
+      expect(singleRes.statusCode).toBe(200);
+      const userFromSingle = JSON.parse(singleRes.payload);
+
+      // Both endpoints MUST return the same userName - this was the bug
+      expect(userFromSingle.userName).toBe(userFromList.userName);
+    });
+  });
+
   describe("GET /ServiceProviderConfig", () => {
     test("should return valid ServiceProviderConfig per RFC 7643", async () => {
       const res = await testServer.inject({
