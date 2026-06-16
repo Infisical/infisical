@@ -1672,8 +1672,9 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
     });
   }
 
-  // permission check whether can create or edit the ones in the destination folder
-  locallyCreatedSecrets.forEach((secret) => {
+  const secretsToApplyAtDestination = locallyCreatedSecrets.concat(locallyUpdatedSecrets);
+
+  for (const secret of secretsToApplyAtDestination) {
     for (const destinationAction of destinationActions) {
       ForbiddenError.from(permission).throwUnlessCan(
         destinationAction,
@@ -1685,7 +1686,7 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
         })
       );
     }
-  });
+  }
 
   const destinationFolderPolicy = await secretApprovalPolicyService.getSecretApprovalPolicy(
     projectId,
@@ -1716,8 +1717,7 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
       tx
     );
 
-    const secretsForApproval = locallyCreatedSecrets.concat(locallyUpdatedSecrets);
-    const commits = secretsForApproval.map((doc) => {
+    const commits = secretsToApplyAtDestination.map((doc) => {
       const { operation } = doc;
       const localSecret = destinationSecretsGroupedByKey[doc.key]?.[0];
 
@@ -1751,7 +1751,7 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
     const approvalCommits = await secretApprovalRequestSecretDAL.insertV2Bridge(commits, tx);
 
     const approvalCommitsGroupedByKey = groupBy(approvalCommits, (i) => i.key);
-    const approvalSecretTags = secretsForApproval.flatMap((doc) =>
+    const approvalSecretTags = secretsToApplyAtDestination.flatMap((doc) =>
       doc.tags.map((tag) => ({
         secretId: approvalCommitsGroupedByKey[doc.key][0].id,
         tagId: tag.id
