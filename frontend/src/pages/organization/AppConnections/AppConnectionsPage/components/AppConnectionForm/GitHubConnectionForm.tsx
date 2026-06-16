@@ -352,13 +352,7 @@ export const GitHubConnectionForm = ({ appConnection, projectId, onSubmit }: Pro
 
         storeConnectionFormData(formData, installState, targetApp?.id ?? undefined, slug);
 
-        if (targetApp?.clientId) {
-          window.location.assign(
-            `${githubHost}/login/oauth/authorize?client_id=${targetApp.clientId}&state=${installState}&redirect_uri=${window.location.origin}/organization/app-connections/github/oauth/callback`
-          );
-          break;
-        }
-
+        // Always use GitHub's install flow: the user selects the account + repos on GitHub's own UI,
         window.location.assign(
           buildGitHubAppInstallUrl(
             slug ?? "",

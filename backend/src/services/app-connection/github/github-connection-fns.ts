@@ -6,7 +6,6 @@ import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
-import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { request as httpRequest } from "@app/lib/config/request";
 import { crypto } from "@app/lib/crypto";
@@ -123,38 +122,6 @@ export const resolveGitHubAppCredentials = async (
     host: sharedAppHost,
     instanceType: null
   };
-};
-
-export type TGitHubAppInstallationsTokenPayload = {
-  jti: string;
-  orgId: string;
-  actorId: string;
-  gitHubAppId: string | null;
-  host: string;
-  instanceType: "cloud" | "server";
-  installationIds: string[];
-};
-
-export const GITHUB_APP_INSTALLATIONS_TOKEN_TTL = "10m";
-
-export const signGitHubAppInstallationsToken = (payload: TGitHubAppInstallationsTokenPayload) => {
-  const { AUTH_SECRET } = getConfig();
-  return crypto.jwt().sign(payload, AUTH_SECRET, { expiresIn: GITHUB_APP_INSTALLATIONS_TOKEN_TTL });
-};
-
-export const releaseGitHubInstallationsTokenClaim = async (
-  installationsToken: string,
-  keyStore: Pick<TKeyStoreFactory, "deleteItem">
-) => {
-  try {
-    const { AUTH_SECRET } = getConfig();
-    const payload = crypto.jwt().verify(installationsToken, AUTH_SECRET) as TGitHubAppInstallationsTokenPayload;
-    if (payload.jti) {
-      await keyStore.deleteItem(KeyStorePrefixes.UsedGitHubInstallationsToken(payload.jti));
-    }
-  } catch {
-    // ignore — the claim will expire on its TTL if it can't be released here
-  }
 };
 
 export const getGitHubConnectionListItem = () => {
@@ -796,10 +763,7 @@ export const validateGitHubConnectionCredentials = async (
   config: TGitHubConnectionConfig,
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
-  deps: TGitHubAppCredentialResolverDeps & {
-    keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX">;
-    actorId?: string;
-  }
+  deps: TGitHubAppCredentialResolverDeps
 ) => {
   const { credentials, method } = config;
 
@@ -821,73 +785,6 @@ export const validateGitHubConnectionCredentials = async (
     if (credentials.gitHubAppId) {
       mutableCredentials.instanceType = resolvedAppCredentials.instanceType ?? "cloud";
     }
-  }
-
-  if (method === GitHubConnectionMethod.App && credentials.installationsToken) {
-    const { AUTH_SECRET } = getConfig();
-
-    let tokenPayload: TGitHubAppInstallationsTokenPayload & { exp: number };
-    try {
-      tokenPayload = crypto
-        .jwt()
-        .verify(credentials.installationsToken, AUTH_SECRET) as TGitHubAppInstallationsTokenPayload & { exp: number };
-    } catch {
-      throw new BadRequestError({
-        message: "Invalid or expired GitHub installation token. Please reconnect and try again."
-      });
-    }
-
-    if (!tokenPayload.jti || !Array.isArray(tokenPayload.installationIds)) {
-      throw new BadRequestError({
-        message: "Invalid or expired GitHub installation token. Please reconnect and try again."
-      });
-    }
-
-    if (tokenPayload.orgId !== config.orgId || (deps.actorId && tokenPayload.actorId !== deps.actorId)) {
-      throw new ForbiddenRequestError({
-        message: "GitHub installation token does not belong to this actor or organization."
-      });
-    }
-
-    if ((tokenPayload.gitHubAppId ?? null) !== (credentials.gitHubAppId ?? null)) {
-      throw new BadRequestError({
-        message: "GitHub installation token was issued for a different GitHub App."
-      });
-    }
-
-    if (!tokenPayload.installationIds.includes(credentials.installationId)) {
-      throw new ForbiddenRequestError({
-        message: "User does not have access to the provided installation"
-      });
-    }
-
-    const boundHost = credentials.gitHubAppId
-      ? (resolvedAppCredentials!.host ?? undefined)
-      : tokenPayload.host || undefined;
-    const boundInstanceType = credentials.gitHubAppId
-      ? (resolvedAppCredentials!.instanceType ?? "cloud")
-      : tokenPayload.instanceType;
-
-    assertPlatformGitHubHostAllowed(boundHost);
-
-    const ttlSeconds = Math.max(1, tokenPayload.exp - Math.floor(Date.now() / 1000));
-    const claimed = await deps.keyStore.setItemWithExpiryNX(
-      KeyStorePrefixes.UsedGitHubInstallationsToken(tokenPayload.jti),
-      ttlSeconds,
-      "1"
-    );
-    if (!claimed) {
-      throw new BadRequestError({
-        message: "This GitHub installation token has already been used. Please reconnect and try again."
-      });
-    }
-
-    return {
-      installationId: credentials.installationId,
-      gitHubAppId: credentials.gitHubAppId ?? null,
-      instanceType: boundInstanceType,
-      host: boundHost
-    };
   }
 
   if (method === GitHubConnectionMethod.App && !credentials.code) {

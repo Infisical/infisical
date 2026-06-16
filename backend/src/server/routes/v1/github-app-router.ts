@@ -110,57 +110,6 @@ export const registerGitHubAppRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    method: "POST",
-    url: "/resolve-installations",
-    config: {
-      rateLimit: writeLimit
-    },
-    onRequest: verifyAuth([AuthMode.JWT]),
-    schema: {
-      body: z
-        .object({
-          code: z.string().trim().min(1),
-          gitHubAppId: z.string().uuid().optional(),
-          host: z.string().trim().optional(),
-          instanceType: z.enum(["cloud", "server"]).optional(),
-          gatewayId: z.string().uuid().optional(),
-          gatewayPoolId: z.string().uuid().optional(),
-          projectId: z.string().optional()
-        })
-        .refine((data) => !(data.gatewayId && data.gatewayPoolId), {
-          message: "Cannot specify both a gateway and a gateway pool",
-          path: ["gatewayPoolId"]
-        }),
-      response: {
-        200: z.object({
-          installations: z
-            .object({
-              id: z.string(),
-              accountLogin: z.string(),
-              accountType: z.string()
-            })
-            .array(),
-          installationsToken: z.string()
-        })
-      }
-    },
-    handler: async (req) => {
-      const result = await server.services.gitHubApp.resolveUserInstallations({
-        orgPermission: req.permission,
-        code: req.body.code,
-        gitHubAppId: req.body.gitHubAppId,
-        host: req.body.host,
-        instanceType: req.body.instanceType,
-        gatewayId: req.body.gatewayId,
-        gatewayPoolId: req.body.gatewayPoolId,
-        projectId: req.body.projectId
-      });
-
-      return result;
-    }
-  });
-
-  server.route({
     method: "DELETE",
     url: "/:id",
     config: {
