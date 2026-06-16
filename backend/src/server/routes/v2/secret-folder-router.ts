@@ -471,8 +471,7 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
           sourceEnvironment: z.string(),
           sourcePath: z.string(),
           destinationEnvironment: z.string(),
-          destinationPath: z.string(),
-          hasApprovalRequests: z.boolean()
+          destinationPath: z.string()
         })
       }
     },
@@ -486,8 +485,7 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
         projectId: req.body.projectId,
         folderId: req.body.folderId,
         destinationEnvironment: req.body.destinationEnvironment,
-        destinationPath: req.body.destinationPath,
-        shouldOverwrite: req.body.shouldOverwrite
+        destinationPath: req.body.destinationPath
       });
 
       await server.services.auditLog.createAuditLog({
