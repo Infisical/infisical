@@ -42,6 +42,11 @@ export default function InitialSignupStep({
   const shouldDisplaySignupMethod = (method: LoginMethod) =>
     !config.enabledLoginMethods || config.enabledLoginMethods.includes(method);
 
+  const hasSsoSignupMethod =
+    shouldDisplaySignupMethod(LoginMethod.GITHUB) ||
+    shouldDisplaySignupMethod(LoginMethod.GOOGLE) ||
+    shouldDisplaySignupMethod(LoginMethod.GITLAB);
+
   const handleEmailSignup = async () => {
     const isValid = z.string().email().safeParse(email);
 
@@ -114,9 +119,7 @@ export default function InitialSignupStep({
               </Button>
             )}
           </div>
-          {(!config.enabledLoginMethods ||
-            (shouldDisplaySignupMethod(LoginMethod.EMAIL) &&
-              config.enabledLoginMethods.length > 1)) && (
+          {hasSsoSignupMethod && shouldDisplaySignupMethod(LoginMethod.EMAIL) && (
             <div className="my-4 flex w-full flex-row items-center py-2">
               <div className="w-full border-t border-mineshaft-400/60" />
               <span className="mx-2 text-xs text-mineshaft-400">or</span>
