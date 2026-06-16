@@ -22,6 +22,8 @@ import { SecretSharingType } from "@app/services/secret-sharing/secret-sharing-t
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { SanitizedSecretSharingSchema } from "../sanitizedSchemas";
+import { sanitizeEmail } from "@app/lib/validator";
+import { unique } from "@app/lib/fn";
 
 const ALLOWED_IMAGE_CONTENT_TYPES = ["image/png", "image/jpeg"];
 const MAX_IMAGE_SIZE = 1 * 1024 * 1024; // 1MB
@@ -289,8 +291,8 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
             .email()
             .array()
             .max(100)
+            .transform((val) => unique(val.map((el) => sanitizeEmail(el))))
             .optional()
-            .transform((val) => (val ? [...new Set(val)] : undefined))
             .describe(SECRET_SHARING.CREATE.authorizedEmails),
           allowExternalEmails: z.boolean().optional().describe(SECRET_SHARING.CREATE.allowExternalEmails)
         })
