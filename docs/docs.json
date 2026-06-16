@@ -3103,7 +3103,6 @@
                       "api-reference/endpoints/certificates/renew",
                       "api-reference/endpoints/certificates/update-config",
                       "api-reference/endpoints/certificates/revoke",
-                      "api-reference/endpoints/certificates/revoke-by-thumbprint",
                       "api-reference/endpoints/certificates/delete",
                       "api-reference/endpoints/certificates/cert-body",
                       "api-reference/endpoints/certificates/bundle",

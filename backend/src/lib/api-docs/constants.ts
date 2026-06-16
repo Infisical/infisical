@@ -2208,16 +2208,9 @@ export const CERTIFICATES = {
     serialNumber: "The serial number of the certificate to get."
   },
   REVOKE: {
-    id: "The ID of the certificate to revoke.",
+    id: "The ID or SHA-1/SHA-256 thumbprint of the certificate to revoke. Thumbprint colons and casing are ignored.",
     serialNumber:
       "The serial number of the certificate to revoke. The revoked certificate will be added to the certificate revocation list (CRL) of the CA.",
-    revocationReason: "The reason for revoking the certificate.",
-    revokedAt: "The date and time when the certificate was revoked.",
-    serialNumberRes: "The serial number of the revoked certificate."
-  },
-  REVOKE_BY_THUMBPRINT: {
-    thumbprint:
-      "The SHA-1 or SHA-256 thumbprint (fingerprint) of the certificate to revoke. Colons and casing are ignored.",
     revocationReason: "The reason for revoking the certificate.",
     revokedAt: "The date and time when the certificate was revoked.",
     serialNumberRes: "The serial number of the revoked certificate."
