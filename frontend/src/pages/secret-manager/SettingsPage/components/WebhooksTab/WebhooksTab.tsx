@@ -210,7 +210,7 @@ export const WebhooksTab = withProjectPermission(
             <Empty className="border">
               <EmptyHeader>
                 <EmptyTitle>No webhooks found</EmptyTitle>
-                <EmptyTitle>Add a webhook to get started.</EmptyTitle>
+                <EmptyDescription>Add a webhook to get started.</EmptyDescription>
               </EmptyHeader>
             </Empty>
           ) : (
