@@ -357,9 +357,13 @@ export function FolderBreadcrumb({ secretPath = "", onResetSearch }: Props) {
               size="xs"
               className="shrink-0"
               aria-label="Copy folder path"
-              onClick={() => {
-                navigator.clipboard.writeText(fullPath);
-                setIsCopied(true);
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(fullPath);
+                  setIsCopied(true);
+                } catch {
+                  // clipboard unavailable (denied or insecure context); keep the un-copied state
+                }
               }}
             >
               {isCopied ? <Check /> : <Copy />}
