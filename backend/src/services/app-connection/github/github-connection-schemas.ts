@@ -24,33 +24,22 @@ export const GitHubConnectionOAuthInputCredentialsSchema = z.union([
   })
 ]);
 
-export const GitHubConnectionAppInputCredentialsSchema = z
-  .union([
-    z.object({
-      code: z.string().trim().min(1, "GitHub App code required").optional(),
-      installationsToken: z.string().trim().min(1).optional(),
-      installationId: z.string().min(1, "GitHub App Installation ID required"),
-      gitHubAppId: z.string().uuid().nullish(),
-      instanceType: z.literal("server"),
-      host: z.string().trim().min(1, "Host is required for server instance type")
-    }),
-    z.object({
-      code: z.string().trim().min(1, "GitHub App code required").optional(),
-      installationsToken: z.string().trim().min(1).optional(),
-      installationId: z.string().min(1, "GitHub App Installation ID required"),
-      gitHubAppId: z.string().uuid().nullish(),
-      instanceType: z.literal("cloud").optional(),
-      host: z.string().trim().optional()
-    })
-  ])
-  .superRefine((credentials, ctx) => {
-    if (Boolean(credentials.code) === Boolean(credentials.installationsToken)) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Exactly one of code or installationsToken must be provided"
-      });
-    }
-  });
+export const GitHubConnectionAppInputCredentialsSchema = z.union([
+  z.object({
+    code: z.string().trim().min(1, "GitHub App code required"),
+    installationId: z.string().min(1, "GitHub App Installation ID required"),
+    gitHubAppId: z.string().uuid().nullish(),
+    instanceType: z.literal("server"),
+    host: z.string().trim().min(1, "Host is required for server instance type")
+  }),
+  z.object({
+    code: z.string().trim().min(1, "GitHub App code required"),
+    installationId: z.string().min(1, "GitHub App Installation ID required"),
+    gitHubAppId: z.string().uuid().nullish(),
+    instanceType: z.literal("cloud").optional(),
+    host: z.string().trim().optional()
+  })
+]);
 
 export const GitHubConnectionPatInputCredentialsSchema = z.union([
   z.object({

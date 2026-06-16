@@ -19,8 +19,7 @@ export type TGitHubConnection = TRootAppConnection & { app: AppConnection.GitHub
     | {
         method: GitHubConnectionMethod.App;
         credentials: {
-          code?: string;
-          installationsToken?: string;
+          code: string;
           installationId: string;
           gitHubAppId?: string | null;
           instanceType?: "cloud" | "server";

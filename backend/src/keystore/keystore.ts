@@ -91,7 +91,6 @@ export const KeyStorePrefixes = {
   UsedGitHubManifestState: (jti: string) => `used-github-manifest-state:${jti}` as const,
   GitHubManifestNameLock: (orgId: string, projectId: string | null, name: string) =>
     `github-manifest-name-lock:${orgId}:${projectId ?? "org"}:${name}` as const,
-  UsedGitHubInstallationsToken: (jti: string) => `used-github-installations-token:${jti}` as const,
 
   AiMcpServerOAuth: (sessionId: string) => `ai-mcp-server-oauth:${sessionId}` as const,
 
