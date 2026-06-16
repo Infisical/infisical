@@ -283,8 +283,10 @@ export const transferSqlConnectionCredentialsToPlatform = async (
   try {
     return await executeWithPotentialGateway(config, gatewayService, gatewayV2Service, (client) => {
       return client.transaction(async (tx) => {
+        const filteredUsername = credentials.username.substring(0, credentials.username.indexOf("."));
+
         await tx.raw(
-          ...SQL_CONNECTION_ALTER_LOGIN_STATEMENT[app]({ username: credentials.username, password: newPassword })
+          ...SQL_CONNECTION_ALTER_LOGIN_STATEMENT[app]({ username: filteredUsername, password: newPassword })
         );
         return callback({
           ...credentials,

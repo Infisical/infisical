@@ -139,7 +139,8 @@ export const sqlCredentialsRotationFactory: TRotationFactory<
         await tx.raw(query);
       }
     } else {
-      await tx.raw(...SQL_CONNECTION_ALTER_LOGIN_STATEMENT[connection.app]({ username, password }));
+      const filteredUsername = username.substring(0, username.indexOf("."));
+      await tx.raw(...SQL_CONNECTION_ALTER_LOGIN_STATEMENT[connection.app]({ username: filteredUsername, password }));
     }
   };
 
