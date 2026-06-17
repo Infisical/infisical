@@ -91,9 +91,17 @@ export const SecretTagForm = ({
   // In batch mode, debounce tag changes to parent form
   const watchedTags = watch("tags");
   const debounceTimer = useRef<ReturnType<typeof setTimeout>>();
+  const isFirstRun = useRef(true);
 
   useEffect(() => {
     if (!isBatchMode) return () => {};
+
+    // Skip the initial mount so we don't propagate the form's defaultValues back
+    // to the parent. Only actual user interactions should trigger onTagsChange.
+    if (isFirstRun.current) {
+      isFirstRun.current = false;
+      return () => {};
+    }
 
     if (debounceTimer.current) {
       clearTimeout(debounceTimer.current);
