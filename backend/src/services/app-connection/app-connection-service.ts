@@ -483,9 +483,9 @@ export const appConnectionServiceFactory = ({
       scope: OrganizationActionScope.Any
     });
 
-    if (projectId) {
-      const project = await projectDAL.findProjectById(projectId);
+    const project = projectId ? await projectDAL.findProjectById(projectId) : null;
 
+    if (projectId) {
       if (!project) throw new BadRequestError({ message: `Could not find project with ID ${projectId}` });
 
       const { permission } = await permissionService.getProjectPermission({
@@ -567,7 +567,8 @@ export const appConnectionServiceFactory = ({
         orgId: actor.orgId,
         projectId,
         version: 2,
-        gatewayId: validationGatewayId
+        gatewayId: validationGatewayId,
+        projectType: project?.type
       } as TAppConnectionConfig,
       gatewayService,
       gatewayV2Service,
@@ -841,6 +842,8 @@ export const appConnectionServiceFactory = ({
           } Connection with method ${getAppConnectionMethodName(method)}`
         });
 
+      const updateProject = appConnection.projectId ? await projectDAL.findProjectById(appConnection.projectId) : null;
+
       updatedCredentials = await validateAppConnectionCredentials(
         {
           app,
@@ -849,7 +852,8 @@ export const appConnectionServiceFactory = ({
           version: appConnection.version,
           credentials: credentialsToValidate,
           method,
-          gatewayId: validationGatewayId
+          gatewayId: validationGatewayId,
+          projectType: updateProject?.type
         } as TAppConnectionConfig,
         gatewayService,
         gatewayV2Service,
@@ -1137,9 +1141,13 @@ export const appConnectionServiceFactory = ({
         } Connection with ID ${connectionId} cannot be used to connect to ${APP_CONNECTION_NAME_MAP[app]}`
       });
 
+    const connectionProject = appConnection.projectId
+      ? await projectDAL.findProjectById(appConnection.projectId)
+      : null;
+
     const connection = await decryptAppConnection(appConnection, kmsService);
 
-    return connection as T;
+    return { ...connection, projectType: connectionProject?.type } as unknown as T;
   };
 
   const validateAppConnectionUsageById = async (
