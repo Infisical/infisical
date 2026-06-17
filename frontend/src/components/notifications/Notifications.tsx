@@ -73,13 +73,13 @@ const NotificationBody = ({
     {(callToAction || copyActions) && (
       <div
         className={twMerge(
-          "mt-2 flex h-7 w-full flex-row items-end gap-2",
+          "mt-2 flex h-5 w-full flex-row items-end gap-2",
           callToAction ? "justify-between" : "justify-end"
         )}
       >
         {callToAction}
         {copyActions && (
-          <div className="flex h-7 flex-row items-center gap-2">
+          <div className="flex h-5 flex-row items-center gap-2">
             {copyActions.map((action) => (
               <div className="flex flex-row items-center gap-1.5" key={`copy-${action.name}`}>
                 {action.label && (

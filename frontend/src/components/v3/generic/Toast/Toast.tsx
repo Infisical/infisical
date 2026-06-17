@@ -23,7 +23,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
       }}
       toastOptions={{
         classNames: {
-          toast: "!pointer-events-auto !items-start !rounded-md !pl-5",
+          toast: "!pointer-events-auto !items-start !rounded-md !pl-5 !py-3",
           icon: "!mt-0.5",
           title: "!text-sm !font-medium !text-foreground whitespace-pre-line",
           description: "!text-xs !text-foreground/75 whitespace-pre-line",
