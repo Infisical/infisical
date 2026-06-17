@@ -1,8 +1,15 @@
-import { describe, expect, it } from "vitest";
+import { webcrypto } from "node:crypto";
 
-import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
+import * as x509 from "@peculiar/x509";
+import { beforeAll, describe, expect, it } from "vitest";
 
-import { buildCrlDistributionPointUrls, signatureAlgorithmToAlgCfg } from "./certificate-authority-fns";
+import { CertKeyAlgorithm, TAltNameType } from "@app/services/certificate/certificate-types";
+
+import {
+  buildCrlDistributionPointUrls,
+  createSubjectAltNameExtension,
+  signatureAlgorithmToAlgCfg
+} from "./certificate-authority-fns";
 
 // Helper to access properties on the union return type
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -235,5 +242,57 @@ describe("buildCrlDistributionPointUrls", () => {
   it("should include managed URL when disableManagedUrl is undefined", () => {
     const result = buildCrlDistributionPointUrls(managedUrl, null, undefined);
     expect(result).toEqual([managedUrl]);
+  });
+});
+
+describe("createSubjectAltNameExtension (RFC 5280 §4.1.2.6)", () => {
+  const sans = [{ type: TAltNameType.DNS, value: "svc.example" }];
+
+  it("marks the SAN extension critical when the subject DN is empty", () => {
+    const ext = createSubjectAltNameExtension(sans, "");
+    expect(ext.critical).toBe(true);
+  });
+
+  it("leaves the SAN extension non-critical when the subject DN is present", () => {
+    const ext = createSubjectAltNameExtension(sans, "CN=svc.example");
+    expect(ext.critical).toBe(false);
+  });
+});
+
+describe("issued leaf conforms to RFC 5280 §4.1.2.6", () => {
+  beforeAll(() => {
+    x509.cryptoProvider.set(webcrypto as Crypto);
+  });
+
+  const buildLeaf = async (subject: string) => {
+    const alg = { name: "ECDSA", namedCurve: "P-256", hash: "SHA-256" };
+    const keys = (await webcrypto.subtle.generateKey(alg, true, ["sign", "verify"])) as CryptoKeyPair;
+    const leaf = await x509.X509CertificateGenerator.create({
+      serialNumber: "01",
+      subject,
+      issuer: "CN=Test CA",
+      notBefore: new Date(),
+      notAfter: new Date(Date.now() + 24 * 60 * 60 * 1000),
+      signingKey: keys.privateKey,
+      publicKey: keys.publicKey,
+      signingAlgorithm: alg,
+      extensions: [createSubjectAltNameExtension([{ type: TAltNameType.DNS, value: "svc.example" }], subject)]
+    });
+    // re-parse from PEM so we assert on the encoded DER, not the in-memory object
+    return new x509.X509Certificate(leaf.toString("pem"));
+  };
+
+  it("issues an empty-subject leaf with a CRITICAL subjectAltName", async () => {
+    const leaf = await buildLeaf("");
+    expect(leaf.subject).toBe("");
+    const san = leaf.getExtension(x509.SubjectAlternativeNameExtension);
+    expect(san?.critical).toBe(true);
+  });
+
+  it("issues a leaf carrying a subject DN with a non-critical subjectAltName", async () => {
+    const leaf = await buildLeaf("CN=svc.example");
+    expect(leaf.subject).toBe("CN=svc.example");
+    const san = leaf.getExtension(x509.SubjectAlternativeNameExtension);
+    expect(san?.critical).toBe(false);
   });
 });

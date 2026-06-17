@@ -65,6 +65,7 @@ import {
   buildCrlDistributionPointUrls,
   createDistinguishedName,
   createSerialNumber,
+  createSubjectAltNameExtension,
   expandInternalCa,
   extractDnParts,
   getCaCertChain, // TODO: consider rename
@@ -1970,8 +1971,8 @@ export const internalCertificateAuthorityServiceFactory = ({
           return altNameType;
         });
 
-      const altNamesExtension = new x509.SubjectAlternativeNameExtension(altNamesArray, false);
-      extensions.push(altNamesExtension);
+      // RFC 5280 §4.1.2.6: SAN must be critical when the subject DN is empty.
+      extensions.push(createSubjectAltNameExtension(altNamesArray, csrObj.subject));
     }
 
     if (certificateTemplate) {
@@ -2424,9 +2425,6 @@ export const internalCertificateAuthorityServiceFactory = ({
           }
           return altNameType;
         });
-
-      const altNamesExtension = new x509.SubjectAlternativeNameExtension(altNamesArray, false);
-      extensions.push(altNamesExtension);
     } else {
       // attempt to read from CSR if altNames is not explicitly provided
       const sanExtension = csrObj.extensions.find((ext) => ext.type === "2.5.29.17");
@@ -2450,8 +2448,8 @@ export const internalCertificateAuthorityServiceFactory = ({
     }
 
     if (altNamesArray.length) {
-      const altNamesExtension = new x509.SubjectAlternativeNameExtension(altNamesArray, false);
-      extensions.push(altNamesExtension);
+      // RFC 5280 §4.1.2.6: SAN must be critical when the subject DN is empty.
+      extensions.push(createSubjectAltNameExtension(altNamesArray, subjectOverride || csrObj.subject));
     }
 
     if (certificateTemplate) {
