@@ -66,6 +66,8 @@ const catalogProductSchema = z
     name: z.string(),
     description: z.string().optional(),
     tagline: z.string().optional(),
+    icon: z.string().optional(),
+    color: z.string().optional(),
     model: z.string(),
     addon: z.boolean(),
     dimensions: z.array(catalogDimensionSchema),
@@ -107,6 +109,19 @@ export const sessionResponseSchema = z
   })
   .passthrough();
 
+// The cloud-plan FeatureSet carries plan caps; the server nulls a limit when it is effectively
+// unlimited. Used counts come back zeroed and are overlaid by this app, so we ignore them.
+export const cloudPlanResponseSchema = z
+  .object({
+    currentPlan: z
+      .object({
+        memberLimit: z.number().nullish(),
+        identityLimit: z.number().nullish()
+      })
+      .passthrough()
+  })
+  .passthrough();
+
 export type TEntitlementFeature = z.infer<typeof entitlementFeatureSchema>;
 export type TEntitlementsResponse = z.infer<typeof entitlementsResponseSchema>;
 export type TCatalogProduct = z.infer<typeof catalogProductSchema>;
@@ -114,6 +129,7 @@ export type TCatalogResponse = z.infer<typeof catalogResponseSchema>;
 export type TSubscriptionItem = z.infer<typeof subscriptionItemSchema>;
 export type TSubscriptionResponse = z.infer<typeof subscriptionResponseSchema>;
 export type TSessionResponse = z.infer<typeof sessionResponseSchema>;
+export type TCloudPlanResponse = z.infer<typeof cloudPlanResponseSchema>;
 
 export type TCheckoutLineItem = {
   productId: string;
@@ -136,6 +152,7 @@ export type TLicenseClientBackend = {
   fetchEntitlements: (orgId: string) => Promise<TEntitlementsResponse>;
   fetchCatalog: () => Promise<TCatalogResponse>;
   fetchSubscription: (orgId: string) => Promise<TSubscriptionResponse | null>;
+  fetchCloudPlan: (orgId: string) => Promise<TCloudPlanResponse | null>;
   createCheckoutSession: (orgId: string, payload: TCreateCheckoutPayload) => Promise<TSessionResponse>;
   createPortalSession: (orgId: string, payload: TCreatePortalPayload) => Promise<TSessionResponse>;
 };

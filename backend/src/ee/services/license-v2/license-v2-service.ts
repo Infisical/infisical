@@ -35,22 +35,16 @@ type TLicenseV2ServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseClient: Pick<
     TLicenseClientFactory,
-    "getEntitlements" | "getCatalog" | "getSubscription" | "createCheckout" | "createPortal"
+    "getEntitlements" | "getCatalog" | "getSubscription" | "getCloudPlan" | "createCheckout" | "createPortal"
   >;
 };
 
 export type TLicenseV2ServiceFactory = ReturnType<typeof licenseV2ServiceFactory>;
 
-// Presentation metadata the license server does not provide, keyed by the server's real product ids.
-const PRODUCT_PRESENTATION: Record<string, { icon: string; color: string }> = {
-  secrets_management: { icon: "IconKey", color: "#457d91" },
-  cert_management: { icon: "IconShieldCheck", color: "#4c6081" },
-  pam: { icon: "IconLock", color: "#694c81" },
-  secrets_scanning: { icon: "IconScan", color: "#a6702b" },
-  boost: { icon: "IconZap", color: "#a4873e" }
-};
-
-const DEFAULT_PRESENTATION = { icon: "IconBox", color: "#6b7280" };
+// Used only when the catalog omits presentation for a product; the icon name resolves to a generic
+// glyph on the client.
+const FALLBACK_ICON = "box";
+const FALLBACK_COLOR = "#6b7280";
 
 const CATALOG_MODELS: BillingV2Model[] = ["seat", "usage", "limit", "flat"];
 
@@ -118,8 +112,6 @@ const findPaidSelfServePlan = (product: TCatalogProduct) =>
   product.plans.find((plan) => plan.selfServe === true && plan.tier !== "free" && plan.prices.length > 0);
 
 const toCatalogProduct = (product: TCatalogProduct): BillingV2CatalogProduct => {
-  const presentation = PRODUCT_PRESENTATION[product.id] ?? DEFAULT_PRESENTATION;
-
   const paidSelfServePlan = findPaidSelfServePlan(product);
   const salesLedPlan = product.plans.find((plan) => plan.salesLed === true);
 
@@ -187,8 +179,8 @@ const toCatalogProduct = (product: TCatalogProduct): BillingV2CatalogProduct => 
   return {
     id: product.id,
     name: product.name,
-    icon: presentation.icon,
-    color: presentation.color,
+    icon: product.icon || FALLBACK_ICON,
+    color: product.color || FALLBACK_COLOR,
     model: toModel(product.model),
     addon: product.addon,
     desc: product.description ?? "",
@@ -337,6 +329,18 @@ export const licenseV2ServiceFactory = ({
 
     const members = await orgDAL.countAllOrgMembers(orgId);
 
+    // Plan caps come from the license server (a null limit means genuinely unlimited). Used counts
+    // are overlaid here; a missing plan leaves limits unknown.
+    let memberLimit: number | null = null;
+    let identityLimit: number | null = null;
+    try {
+      const cloudPlan = await licenseClient.getCloudPlan(orgId);
+      memberLimit = cloudPlan?.currentPlan.memberLimit ?? null;
+      identityLimit = cloudPlan?.currentPlan.identityLimit ?? null;
+    } catch (error) {
+      logger.error(error, `billing-v2: failed to read cloud plan [orgId=${orgId}]`);
+    }
+
     // Name the plan from the subscription's tier so enterprise/trial orgs aren't all labelled "Pro".
     let planName = "Free";
     if (subState !== "no-subscription") {
@@ -358,9 +362,9 @@ export const licenseV2ServiceFactory = ({
       interval,
       usage: {
         members,
-        memberLimit: null,
+        memberLimit,
         identities: 0,
-        identityLimit: null
+        identityLimit
       },
       payment: null,
       billingDetails: null,

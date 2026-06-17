@@ -2,10 +2,12 @@ import jwt from "jsonwebtoken";
 
 import {
   catalogResponseSchema,
+  cloudPlanResponseSchema,
   entitlementsResponseSchema,
   sessionResponseSchema,
   subscriptionResponseSchema,
   TCatalogResponse,
+  TCloudPlanResponse,
   TCreateCheckoutPayload,
   TCreatePortalPayload,
   TEntitlementsResponse,
@@ -17,6 +19,7 @@ import {
 const ENTITLEMENTS_PATH = "/v1/entitlements";
 const PRODUCTS_PATH = "/v1/products";
 const SUBSCRIPTION_PATH = "/v1/subscription";
+const CLOUD_PLAN_PATH = "/v1/cloud-plan";
 const CHECKOUT_SESSION_PATH = "/v1/billing/checkout-session";
 const PORTAL_SESSION_PATH = "/v1/billing/portal-session";
 
@@ -94,6 +97,26 @@ export const licenseServerBackend = (serverUrl: string, signingKey: string): TLi
       return null;
     }
     return parsed.data;
+  },
+
+  // 404 means the org has no license/plan yet; treat as "no plan" so the usage meter falls back to
+  // unknown limits. Other non-2xx statuses are real errors and surface.
+  fetchCloudPlan: async (orgId: string): Promise<TCloudPlanResponse | null> => {
+    const url = new URL(CLOUD_PLAN_PATH, serverUrl);
+    url.searchParams.set("org_id", orgId);
+    const res = await fetch(url, {
+      method: "GET",
+      headers: { Authorization: `Bearer ${mintServiceToken(signingKey)}` },
+      redirect: "manual"
+    });
+    if (res.status === 404) {
+      return null;
+    }
+    if (!res.ok) {
+      throw new Error(`license server responded with ${res.status}`);
+    }
+    const body: unknown = await res.json();
+    return cloudPlanResponseSchema.parse(body);
   },
 
   createCheckoutSession: async (orgId: string, payload: TCreateCheckoutPayload): Promise<TSessionResponse> => {

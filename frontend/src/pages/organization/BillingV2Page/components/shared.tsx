@@ -1,4 +1,5 @@
 import {
+  faAward,
   faBolt,
   faBox,
   faKey,
@@ -12,14 +13,16 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Badge } from "@app/components/v3";
 import { BillingV2CatalogProduct } from "@app/hooks/api";
 
-// Maps the catalog icon name (license-server presentation metadata) to a FontAwesome glyph.
+// Maps the catalog icon token (license-server presentation metadata) to a FontAwesome glyph.
+// Tokens mirror the license server's icon vocabulary; unknown tokens fall back to faBox.
 const ICON_BY_NAME: Record<string, IconDefinition> = {
-  IconKey: faKey,
-  IconShieldCheck: faShieldHalved,
-  IconLock: faLock,
-  IconScan: faMagnifyingGlass,
-  IconZap: faBolt,
-  IconBox: faBox
+  lock: faLock,
+  shield: faShieldHalved,
+  award: faAward,
+  scan_line: faMagnifyingGlass,
+  zap: faBolt,
+  key: faKey,
+  box: faBox
 };
 
 type MeterTone = "ok" | "near" | "full";
