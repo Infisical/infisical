@@ -15,7 +15,6 @@ import {
   TFindOpt
 } from "@app/lib/knex";
 import { OrderByDirection } from "@app/lib/types";
-import { SecretsOrderBy } from "@app/services/secret/secret-types";
 import type { TFindSecretsByFolderIdsFilter } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
 
 export const SecretServiceCacheKeys = {
@@ -684,10 +683,8 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
             void bd.whereNull(`${TableName.SecretRotationV2SecretMapping}.secretId`);
           }
         })
-        .orderBy(
-          filters?.orderBy === SecretsOrderBy.Name ? "key" : "id",
-          filters?.orderDirection ?? OrderByDirection.ASC
-        );
+        // Always order by key (name) to match the Go sidecar's ordering.
+        .orderBy("key", filters?.orderDirection ?? OrderByDirection.ASC);
 
       let secs: Awaited<typeof query>;
 
@@ -1086,6 +1083,11 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
           );
         })
         .leftJoin(TableName.ResourceMetadata, `${TableName.SecretV2}.id`, `${TableName.ResourceMetadata}.secretId`)
+        .leftJoin(
+          TableName.SecretRotationV2SecretMapping,
+          `${TableName.SecretV2}.id`,
+          `${TableName.SecretRotationV2SecretMapping}.secretId`
+        )
         .select(selectAllTableCols(TableName.SecretV2))
         .select(db.ref("id").withSchema(TableName.SecretTag).as("tagId"))
         .select(db.ref("color").withSchema(TableName.SecretTag).as("tagColor"))
@@ -1096,12 +1098,19 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
           db.ref("value").withSchema(TableName.ResourceMetadata).as("metadataValue"),
           db.ref("encryptedValue").withSchema(TableName.ResourceMetadata).as("metadataEncryptedValue")
         )
-        .select(db.ref("projectId").withSchema(TableName.Environment).as("projectId"));
+        .select(db.ref("projectId").withSchema(TableName.Environment).as("projectId"))
+        .select(db.ref("rotationId").withSchema(TableName.SecretRotationV2SecretMapping));
 
       const docs = sqlNestRelationships({
         data: rawDocs,
         key: "id",
-        parentMapper: (el) => ({ _id: el.id, projectId: el.projectId, ...SecretsV2Schema.parse(el) }),
+        parentMapper: (el) => ({
+          _id: el.id,
+          projectId: el.projectId,
+          ...SecretsV2Schema.parse(el),
+          isRotatedSecret: Boolean(el.rotationId),
+          rotationId: el.rotationId
+        }),
         childrenMapper: [
           {
             key: "tagId",

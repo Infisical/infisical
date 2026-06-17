@@ -2,8 +2,6 @@ package apiauth
 
 import (
 	"context"
-	"encoding/json"
-	"errors"
 	"net"
 	"net/http"
 	"strings"
@@ -83,7 +81,7 @@ func (a *ApiAuthenticator) RequireAuth(opts ...AuthOption) func(http.Handler) ht
 
 			token := extractBearerToken(r)
 			if token == "" {
-				writeUnauthorized(w, "Missing authorization header")
+				a.errorHandler.HandleError(w, r, http.StatusUnauthorized, errutil.Unauthorized("Missing authorization header"))
 				return
 			}
 
@@ -96,7 +94,7 @@ func (a *ApiAuthenticator) RequireAuth(opts ...AuthOption) func(http.Handler) ht
 			switch classifiedMode {
 			case auth.AuthModeServiceToken:
 				if !cfg.allowedModes[ServiceTokenAuth] {
-					writeUnauthorized(w, "Authentication method not allowed for this endpoint")
+					a.errorHandler.HandleError(w, r, http.StatusUnauthorized, errutil.Unauthorized("Authentication method not allowed for this endpoint"))
 					return
 				}
 				identity, err = a.ValidateServiceToken(ctx, token)
@@ -104,7 +102,7 @@ func (a *ApiAuthenticator) RequireAuth(opts ...AuthOption) func(http.Handler) ht
 
 			case auth.AuthModeJWT:
 				if !cfg.allowedModes[JWTAuth] && !cfg.allowedModes[IdentityAccessTokenAuth] {
-					writeUnauthorized(w, "Authentication method not allowed for this endpoint")
+					a.errorHandler.HandleError(w, r, http.StatusUnauthorized, errutil.Unauthorized("Authentication method not allowed for this endpoint"))
 					return
 				}
 				var authMode auth.AuthMode
@@ -112,27 +110,22 @@ func (a *ApiAuthenticator) RequireAuth(opts ...AuthOption) func(http.Handler) ht
 				actualMode, _ = mapClassifiedMode(authMode)
 
 			default:
-				writeUnauthorized(w, "Unsupported authentication method")
+				a.errorHandler.HandleError(w, r, http.StatusUnauthorized, errutil.Unauthorized("Unsupported authentication method"))
 				return
 			}
 
 			if err != nil {
-				var httpErr *errutil.Error
-				if errors.As(err, &httpErr) {
-					writeUnauthorized(w, httpErr.Message)
-				} else {
-					writeUnauthorized(w, "Authentication failed")
-				}
+				a.errorHandler.HandleError(w, r, http.StatusUnauthorized, err)
 				return
 			}
 
 			if identity == nil {
-				writeUnauthorized(w, "Authentication failed")
+				a.errorHandler.HandleError(w, r, http.StatusUnauthorized, errutil.Unauthorized("Authentication failed"))
 				return
 			}
 
 			if !cfg.allowedModes[actualMode] {
-				writeUnauthorized(w, "Authentication method not allowed for this endpoint")
+				a.errorHandler.HandleError(w, r, http.StatusUnauthorized, errutil.Unauthorized("Authentication method not allowed for this endpoint"))
 				return
 			}
 
@@ -243,14 +236,4 @@ func mapClassifiedMode(mode auth.AuthMode) (AuthMode, bool) {
 	default:
 		return 0, false
 	}
-}
-
-// writeUnauthorized writes a 401 response with the error message.
-func writeUnauthorized(w http.ResponseWriter, message string) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusUnauthorized)
-	_ = json.NewEncoder(w).Encode(map[string]string{
-		"code":    "UnauthorizedError",
-		"message": message,
-	})
 }

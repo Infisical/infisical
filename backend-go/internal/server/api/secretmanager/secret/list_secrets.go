@@ -227,7 +227,7 @@ func (h *Handler) ListSecretsV4(ctx context.Context, opts *ListSecretsV4ServiceR
 	response, err := h.listSecrets(ctx, &listSecretsInternalOpts{
 		ProjectID:                 q.ProjectID,
 		Environment:               q.Environment,
-		SecretPath:                fn.ValueOr(q.SecretPath, "/"),
+		SecretPath:                fn.RemoveTrailingSlash(fn.ValueOr(q.SecretPath, "/")),
 		UserID:                    getUserID(identity),
 		Recursive:                 fn.ValueOr(q.Recursive, false),
 		ViewSecretValue:           fn.ValueOr(q.ViewSecretValue, true),
@@ -275,7 +275,7 @@ func (h *Handler) ListSecretsRawV3(ctx context.Context, opts *ListSecretsRawV3Se
 	response, err := h.listSecrets(ctx, &listSecretsInternalOpts{
 		ProjectID:                 projectID,
 		Environment:               env,
-		SecretPath:                fn.ValueOr(q.SecretPath, "/"),
+		SecretPath:                fn.RemoveTrailingSlash(fn.ValueOr(q.SecretPath, "/")),
 		UserID:                    getUserID(identity),
 		Recursive:                 fn.ValueOr(q.Recursive, false),
 		ViewSecretValue:           fn.ValueOr(q.ViewSecretValue, true),
@@ -328,8 +328,8 @@ func (h *Handler) buildSecretRaw(ps *secretsvc.ProcessedSecret, projectID string
 			Slug: tag.Slug,
 			Name: tag.Slug,
 		}
-		if tag.Color != "" {
-			t.Color = &tag.Color
+		if tag.Color.Valid {
+			t.Color = &tag.Color.V
 		}
 		tags = append(tags, t)
 	}
@@ -374,6 +374,14 @@ func (h *Handler) buildSecretRaw(ps *secretsvc.ProcessedSecret, projectID string
 		SkipMultilineEncoding: skipMultilineEncoding,
 		IsRotatedSecret:       isRotatedSecret,
 		RotationID:            rotationID,
+	}
+
+	if sec.ReminderNote.Valid {
+		raw.SecretReminderNote = &sec.ReminderNote.V
+	}
+	if sec.ReminderRepeatDays.Valid {
+		repeatDays := int(sec.ReminderRepeatDays.V)
+		raw.SecretReminderRepeatDays = &repeatDays
 	}
 
 	return raw
