@@ -30,7 +30,8 @@ const ROLE_OPTIONS = [
   {
     value: "admin",
     label: "Admin",
-    description: "Full administrative access: manage accounts, account templates, settings, and access control."
+    description:
+      "Full administrative access: manage accounts, account templates, settings, and access control."
   },
   {
     value: "member",
@@ -141,8 +142,8 @@ export const AddGroupModal = ({ isOpen, onOpenChange }: Props) => {
         ) : (
           <div className="flex flex-col gap-4">
             <p className="text-sm text-muted">
-              All organization groups have already been added. Create a new group at the organization
-              level first.
+              All organization groups have already been added. Create a new group at the
+              organization level first.
             </p>
             <Button
               variant="outline"

@@ -27,7 +27,8 @@ const ROLE_OPTIONS = [
   {
     value: "admin",
     label: "Admin",
-    description: "Full administrative access: manage accounts, account templates, settings, and access control."
+    description:
+      "Full administrative access: manage accounts, account templates, settings, and access control."
   },
   {
     value: "member",

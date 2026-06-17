@@ -4,7 +4,7 @@ import z from "zod";
 import { PamSessionsSchema } from "@app/db/schemas";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { PamAccountType, PamSessionStatus } from "@app/ee/services/pam/pam-enums";
-import { SessionLogsPageSchema } from "@app/ee/services/pam-session/pam-session-log-schemas";
+import { SessionLogsPageSchema, TSessionLogsPage } from "@app/ee/services/pam-session/pam-session-log-schemas";
 import { PamRecordingStorageBackend } from "@app/ee/services/pam-session-recording/pam-recording-enums";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
 import { BadRequestError } from "@app/lib/errors";
@@ -144,7 +144,7 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
         actorId: req.permission.id,
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod
-      });
+      }) as Promise<TSessionLogsPage>;
     }
   });
 

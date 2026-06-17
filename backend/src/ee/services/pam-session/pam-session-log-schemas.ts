@@ -45,3 +45,5 @@ export const SessionLogsPageSchema = z.object({
   hasMore: z.boolean(),
   batchCount: z.number()
 });
+
+export type TSessionLogsPage = z.infer<typeof SessionLogsPageSchema>;

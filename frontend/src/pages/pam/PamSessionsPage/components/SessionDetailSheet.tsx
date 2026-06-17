@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
-import { ChevronRightIcon, ClipboardListIcon, SearchIcon, SquareIcon, TerminalIcon } from "lucide-react";
+import {
+  ChevronRightIcon,
+  ClipboardListIcon,
+  SearchIcon,
+  SquareIcon,
+  TerminalIcon
+} from "lucide-react";
 
 import {
   Badge,
@@ -64,31 +70,22 @@ const LogEntry = ({ log }: { log: TPamSessionLog }) => {
   const [overflows, setOverflows] = useState(false);
   const text = getLogText(log);
 
-  const textRef = useCallback((node: HTMLParagraphElement | null) => {
-    if (node && !expanded) {
-      setOverflows(node.scrollWidth > node.clientWidth);
-    }
-  }, [expanded]);
+  const textRef = useCallback(
+    (node: HTMLParagraphElement | null) => {
+      if (node && !expanded) {
+        setOverflows(node.scrollWidth > node.clientWidth);
+      }
+    },
+    [expanded]
+  );
 
   if (!text) return null;
 
   const destructive = isDestructiveQuery(text);
   const toggleExpand = overflows ? () => setExpanded((prev) => !prev) : undefined;
 
-  return (
-    <div
-      className={`border-b border-border px-4 py-3 transition-colors hover:bg-white/[0.06] ${overflows ? "cursor-pointer" : "cursor-default"}`}
-      role={overflows ? "button" : undefined}
-      tabIndex={overflows ? 0 : undefined}
-      onClick={toggleExpand}
-      onKeyDown={
-        overflows
-          ? (e) => {
-              if (e.key === "Enter" || e.key === " ") setExpanded((prev) => !prev);
-            }
-          : undefined
-      }
-    >
+  const content = (
+    <>
       <p className="mb-1 text-xs text-muted">
         {format(new Date(log.timestamp), "M/d/yyyy, h:mm:ss a")}
       </p>
@@ -100,11 +97,29 @@ const LogEntry = ({ log }: { log: TPamSessionLog }) => {
         )}
         <p
           ref={textRef}
-          className={`font-mono text-xs ${expanded ? "whitespace-pre-wrap break-all" : "truncate"} ${destructive ? "text-red-400" : ""}`}
+          className={`font-mono text-xs ${expanded ? "break-all whitespace-pre-wrap" : "truncate"} ${destructive ? "text-red-400" : ""}`}
         >
           {text}
         </p>
       </div>
+    </>
+  );
+
+  if (overflows) {
+    return (
+      <button
+        type="button"
+        className="w-full cursor-pointer border-b border-border px-4 py-3 text-left transition-colors hover:bg-white/[0.06]"
+        onClick={toggleExpand}
+      >
+        {content}
+      </button>
+    );
+  }
+
+  return (
+    <div className="border-b border-border px-4 py-3">
+      {content}
     </div>
   );
 };
@@ -221,7 +236,12 @@ export const SessionDetailSheet = ({ session, isOpen, onOpenChange, onTerminate 
               <InfoRow label="IP Address" value={session.actorIp} />
               {session.reason && <InfoRow label="Reason" value={session.reason} />}
               {session.status === PamSessionStatus.Active && canTerminate && (
-                <Button variant="danger" size="sm" className="mt-2 w-full" onClick={handleTerminate}>
+                <Button
+                  variant="danger"
+                  size="sm"
+                  className="mt-2 w-full"
+                  onClick={handleTerminate}
+                >
                   <SquareIcon className="mr-1.5 size-3.5" />
                   Terminate session
                 </Button>
@@ -272,10 +292,7 @@ export const SessionDetailSheet = ({ session, isOpen, onOpenChange, onTerminate 
                   {!isLogsLoading && filteredLogs.length > 0 && (
                     <div>
                       {filteredLogs.map((log, i) => (
-                        <LogEntry
-                          key={`log-${log.timestamp}-${i + 1}`}
-                          log={log}
-                        />
+                        <LogEntry key={`log-${log.timestamp}-${i + 1}`} log={log} />
                       ))}
                       {hasMore && (
                         <div className="flex justify-center p-3">
