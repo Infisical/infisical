@@ -65,6 +65,12 @@ export const IdentityTlsCertAuthContent = ({ identityId }: ViewAuthMethodProps) 
           .map((cn) => cn.trim())
           .join(", ")}
       </IdentityAuthFieldDisplay>
+      <IdentityAuthFieldDisplay className="col-span-2" label="Allowed Subject Alternative Names">
+        {data.allowedSubjectAltNames
+          ?.split(",")
+          .map((san) => san.trim())
+          .join(", ")}
+      </IdentityAuthFieldDisplay>
     </div>
   );
 };

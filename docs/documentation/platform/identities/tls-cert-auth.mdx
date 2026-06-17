@@ -35,7 +35,7 @@ To be more specific:
 
 1. The client sends a TLS request with the client certificate to Infisical at the `/api/v1/auth/tls-cert-auth/login` endpoint.
 2. Infisical verifies the incoming request using the provided CA certificate.
-3. Infisical checks the user's properties against set criteria such as Allowed Common Names.
+3. Infisical checks the user's properties against set criteria such as Allowed Common Names and Allowed Subject Alternative Names.
 4. If all checks pass, Infisical returns a short-lived access token that the client can use to make authenticated requests to the Infisical API.
 
 <Accordion title="TLS with Load Balancer/Proxy">
@@ -95,6 +95,7 @@ Here's some information about each field:
 
 - **CA Certificate:** A PEM encoded CA Certificate used to validate incoming TLS request client certificate.
 - **Allowed Common Names:** A comma separated list of client certificate common names allowed.
+- **Allowed Subject Alternative Names:** A comma separated list of client certificate subject alternative names (SANs) allowed. This is useful for SPIFFE X.509-SVID setups that do not use JWT-SVID: provide the SPIRE trust bundle as the CA Certificate and authorize on the SPIFFE ID carried in the certificate's URI SAN (e.g. `spiffe://example.org/svc`), where the Subject Common Name is typically empty. When both Allowed Common Names and Allowed Subject Alternative Names are set, the certificate must satisfy both checks. Leave empty to skip SAN validation.
 - **Access Token TTL (default is `2592000` equivalent to 30 days):** The lifetime for an access token in seconds. This value will be referenced at renewal time.
 - **Access Token Max TTL (default is `2592000` equivalent to 30 days):** The maximum lifetime for an access token in seconds. This value will be referenced at renewal time.
 - **Access Token Max Number of Uses (default is `0`):** The maximum number of times that an access token can be used; a value of `0` implies an infinite number of uses.

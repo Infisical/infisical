@@ -72,6 +72,27 @@ const parseSubjectDetails = (data: string) => {
   return values;
 };
 
+// Node's X509Certificate.subjectAltName returns a comma-separated string where
+// each entry is prefixed by its SAN type, e.g.
+//   "DNS:svc.example.com, URI:spiffe://example.org/svc, IP Address:10.0.0.1"
+// In SPIFFE X.509-SVID setups the identity lives in the URI SAN (the SPIFFE ID)
+// and the Subject is empty, so CN matching alone cannot authorize the workload.
+const parseSubjectAltNames = (subjectAltName?: string): string[] => {
+  if (!subjectAltName) return [];
+  return subjectAltName
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+    .flatMap((entry) => {
+      const separatorIdx = entry.indexOf(":");
+      if (separatorIdx === -1) return [entry];
+      const value = entry.slice(separatorIdx + 1).trim();
+      // Expose both the raw value and the type-prefixed form so admins can
+      // configure either "spiffe://example.org/svc" or "URI:spiffe://example.org/svc".
+      return value ? [value, entry] : [entry];
+    });
+};
+
 export const identityTlsCertAuthServiceFactory = ({
   identityDAL,
   identityAccessTokenDAL,
@@ -175,6 +196,26 @@ export const identityTlsCertAuthServiceFactory = ({
             message: "Access denied: TLS Certificate Auth common name not allowed.",
             detail: {
               reasonCode: "common_name_not_allowed",
+              identityId: identity.id,
+              orgId: identity.orgId,
+              identityName: identity.name
+            }
+          });
+        }
+      }
+
+      if (identityTlsCertAuth.allowedSubjectAltNames) {
+        const certificateSubjectAltNames = parseSubjectAltNames(clientCertificateX509.subjectAltName);
+        const isValidSubjectAltName = identityTlsCertAuth.allowedSubjectAltNames
+          .split(",")
+          .map((san) => san.trim())
+          .filter(Boolean)
+          .some((allowedSan) => certificateSubjectAltNames.includes(allowedSan));
+        if (!isValidSubjectAltName) {
+          throw new UnauthorizedError({
+            message: "Access denied: TLS Certificate Auth subject alternative name not allowed.",
+            detail: {
+              reasonCode: "subject_alt_name_not_allowed",
               identityId: identity.id,
               orgId: identity.orgId,
               identityName: identity.name
@@ -321,7 +362,8 @@ export const identityTlsCertAuthServiceFactory = ({
     actorOrgId,
     isActorSuperAdmin,
     caCertificate,
-    allowedCommonNames
+    allowedCommonNames,
+    allowedSubjectAltNames
   }) => {
     await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
 
@@ -405,6 +447,7 @@ export const identityTlsCertAuthServiceFactory = ({
           identityId: identityMembershipOrg.identity.id,
           accessTokenMaxTTL,
           allowedCommonNames,
+          allowedSubjectAltNames,
           accessTokenTTL,
           encryptedCaCertificate: encryptor({ plainText: Buffer.from(caCertificate) }).cipherTextBlob,
           accessTokenNumUsesLimit,
@@ -421,6 +464,7 @@ export const identityTlsCertAuthServiceFactory = ({
     identityId,
     caCertificate,
     allowedCommonNames,
+    allowedSubjectAltNames,
     accessTokenTTL,
     accessTokenMaxTTL,
     accessTokenNumUsesLimit,
@@ -508,6 +552,7 @@ export const identityTlsCertAuthServiceFactory = ({
 
     const updatedTlsCertAuth = await identityTlsCertAuthDAL.updateById(identityTlsCertAuth.id, {
       allowedCommonNames,
+      allowedSubjectAltNames,
       encryptedCaCertificate: caCertificate
         ? encryptor({ plainText: Buffer.from(caCertificate) }).cipherTextBlob
         : undefined,
