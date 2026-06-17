@@ -361,7 +361,7 @@ export const getWebhookPayload = (event: TWebhookPayloads) => {
                       { title: "Environment Name", value: environmentName || "" },
                       { title: "Secret Path", value: secretPath || "" },
                       { title: "AWS Event", value: eventName || "" },
-                      { title: "Source IP", value: sourceIp || "" },
+                      { title: "Source IP", value: sourceIp || "Unknown" },
                       { title: "AWS Region", value: awsRegion || "" }
                     ]
                   }
