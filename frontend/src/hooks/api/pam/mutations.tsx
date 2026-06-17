@@ -20,8 +20,8 @@ export const useCreatePamFolder = () => {
 
       return data.folder;
     },
-    onSuccess: ({ projectId }) => {
-      queryClient.invalidateQueries({ queryKey: pamKeys.listAccounts({ projectId }) });
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: pamKeys.account() });
     }
   });
 };
@@ -37,8 +37,8 @@ export const useUpdatePamFolder = () => {
 
       return data.folder;
     },
-    onSuccess: ({ projectId }) => {
-      queryClient.invalidateQueries({ queryKey: pamKeys.listAccounts({ projectId }) });
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: pamKeys.account() });
     }
   });
 };
@@ -53,8 +53,8 @@ export const useDeletePamFolder = () => {
 
       return data.folder;
     },
-    onSuccess: ({ projectId }) => {
-      queryClient.invalidateQueries({ queryKey: pamKeys.listAccounts({ projectId }) });
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: pamKeys.account() });
     }
   });
 };
@@ -69,8 +69,8 @@ export const useTerminatePamSession = () => {
 
       return data.session;
     },
-    onSuccess: (_, { projectId, sessionId }) => {
-      queryClient.invalidateQueries({ queryKey: pamKeys.listSessions(projectId) });
+    onSuccess: (_, { sessionId }) => {
+      queryClient.invalidateQueries({ queryKey: pamKeys.session() });
       queryClient.invalidateQueries({ queryKey: pamKeys.getSession(sessionId) });
     }
   });

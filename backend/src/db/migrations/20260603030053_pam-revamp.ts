@@ -415,6 +415,18 @@ export async function up(knex: Knex): Promise<void> {
     t.string("selectedHost").nullable();
   });
 
+  // Backfill folderName on existing sessions from account -> folder join
+  await knex(TableName.PamSession)
+    .whereNull("folderName")
+    .whereNotNull("accountId")
+    .update({
+      folderName: knex(TableName.PamAccount)
+        .join(TableName.PamFolder, `${TableName.PamAccount}.folderId`, `${TableName.PamFolder}.id`)
+        .whereRaw(`${TableName.PamAccount}.id = ${TableName.PamSession}."accountId"`)
+        .select(`${TableName.PamFolder}.name`)
+        .first() as unknown as string
+    });
+
   // Re-encrypt session data from old project key to new consolidated project key
   const SESSION_KEY_LENGTH = 32;
   const AAD_LENGTH = 32;

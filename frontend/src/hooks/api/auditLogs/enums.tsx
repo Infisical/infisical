@@ -302,6 +302,7 @@ export enum EventType {
 
   PAM_SESSION_START = "pam-session-start",
   PAM_SESSION_END = "pam-session-end",
+  PAM_SESSION_TERMINATE = "pam-session-terminate",
   PAM_ACCOUNT_TEMPLATE_CREATE = "pam-account-template-create",
   PAM_ACCOUNT_TEMPLATE_UPDATE = "pam-account-template-update",
   PAM_ACCOUNT_TEMPLATE_DELETE = "pam-account-template-delete",

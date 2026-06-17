@@ -17,7 +17,6 @@ import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const SanitizedTemplateSchema = PamAccountTemplatesSchema.pick({
   id: true,
-  projectId: true,
   name: true,
   description: true,
   type: true,

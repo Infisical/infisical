@@ -28,7 +28,6 @@ export type TPamAccount = {
   templateAccessPolicy: unknown;
   templateSettings: unknown;
   accountType: PamAccountType;
-  projectId: string;
   gatewayId: string | null;
   gatewayPoolId: string | null;
   recordingConnectionId: string | null;
@@ -39,7 +38,6 @@ export type TPamAccount = {
 
 export type TPamFolder = {
   id: string;
-  projectId: string;
   parentId?: string | null;
   name: string;
   description?: string | null;
@@ -49,7 +47,6 @@ export type TPamFolder = {
 
 export type TPamAccountTemplate = {
   id: string;
-  projectId: string;
   name: string;
   description?: string | null;
   accountType: PamAccountType;
@@ -105,12 +102,15 @@ export type TPamSessionAiInsights = {
 
 export type TPamSession = {
   id: string;
-  projectId: string;
   accountId?: string | null;
+  accountType?: PamAccountType | null;
   resourceId?: string | null;
   resourceType: PamResourceType;
   resourceName: string;
   accountName: string;
+  folderName?: string | null;
+  selectedHost?: string | null;
+  accessMethod?: string | null;
   userId?: string | null;
   actorName: string;
   actorEmail: string;
@@ -169,10 +169,9 @@ export type TListPamAccountsDTO = {
   search?: string;
 };
 
-export type TCreatePamFolderDTO = Pick<
-  TPamFolder,
-  "name" | "description" | "parentId" | "projectId"
->;
+export type TCreatePamFolderDTO = Pick<TPamFolder, "name" | "description" | "parentId"> & {
+  projectId: string;
+};
 
 export type TUpdatePamFolderDTO = Partial<Pick<TPamFolder, "name" | "description">> & {
   folderId: string;

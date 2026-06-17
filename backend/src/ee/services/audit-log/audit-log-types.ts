@@ -705,6 +705,7 @@ export enum EventType {
   PAM_SESSION_CREDENTIALS_GET = "pam-session-credentials-get",
   PAM_SESSION_START = "pam-session-start",
   PAM_SESSION_END = "pam-session-end",
+  PAM_SESSION_TERMINATE = "pam-session-terminate",
   PAM_SESSION_CHUNK_UPLOAD = "pam-session-chunk-upload",
   PAM_SESSION_UPLOAD_TOKEN_INVALID = "pam-session-upload-token-invalid",
   PAM_ACCOUNT_TEMPLATE_CREATE = "pam-account-template-create",
@@ -5747,6 +5748,14 @@ interface PamSessionEndEvent {
   };
 }
 
+interface PamSessionTerminateEvent {
+  type: EventType.PAM_SESSION_TERMINATE;
+  metadata: {
+    sessionId: string;
+    accountName: string;
+  };
+}
+
 interface PamSessionChunkUploadEvent {
   type: EventType.PAM_SESSION_CHUNK_UPLOAD;
   metadata: {
@@ -7540,6 +7549,7 @@ export type Event =
   | OrgRoleDeleteEvent
   | PamSessionStartEvent
   | PamSessionEndEvent
+  | PamSessionTerminateEvent
   | PamSessionChunkUploadEvent
   | PamSessionUploadTokenInvalidEvent
   | PamAccountTemplateCreateEvent

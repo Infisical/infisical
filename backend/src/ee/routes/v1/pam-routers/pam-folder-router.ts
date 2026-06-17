@@ -12,7 +12,6 @@ import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const SanitizedFolderSchema = PamFoldersSchema.pick({
   id: true,
-  projectId: true,
   name: true,
   description: true,
   createdAt: true,
