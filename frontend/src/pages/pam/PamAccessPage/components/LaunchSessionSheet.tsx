@@ -1,12 +1,19 @@
+import { useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { FolderOpen, Globe, Rocket, Terminal } from "lucide-react";
+import { Copy, FolderOpen, Globe, Rocket, Terminal } from "lucide-react";
 
-import { Badge, Button } from "@app/components/v3";
+import { createNotification } from "@app/components/notifications";
+import { Badge, Button, IconButton } from "@app/components/v3";
 import { Sheet, SheetContent } from "@app/components/v3/generic/Sheet";
 import { useOrganization } from "@app/context";
 import { PAM_ACCOUNT_TYPE_MAP, TAccessiblePamAccount } from "@app/hooks/api/pam";
 
 import { AccountPlatformIcon } from "./AccountPlatformIcon";
+
+enum LaunchMethod {
+  Browser = "browser",
+  CLI = "cli"
+}
 
 type Props = {
   account: TAccessiblePamAccount | null;
@@ -16,10 +23,20 @@ type Props = {
 
 export const LaunchSessionSheet = ({ account, isOpen, onOpenChange }: Props) => {
   const { currentOrg } = useOrganization();
+  const [launchMethod, setLaunchMethod] = useState<LaunchMethod>(LaunchMethod.Browser);
 
   if (!account) return null;
 
   const typeName = PAM_ACCOUNT_TYPE_MAP[account.accountType]?.name ?? account.accountType;
+  const cliCommand = `infisical pam access ${account.folderName}/${account.name}`;
+
+  const handleCopyCommand = async () => {
+    await navigator.clipboard.writeText(cliCommand);
+    createNotification({
+      text: "Command copied to clipboard",
+      type: "success"
+    });
+  };
 
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
@@ -52,41 +69,76 @@ export const LaunchSessionSheet = ({ account, isOpen, onOpenChange }: Props) => 
           <div className="flex-1 p-6">
             <p className="mb-3 text-sm font-medium text-foreground">Launch method</p>
             <div className="flex gap-3">
-              <div className="flex flex-1 items-start gap-3 rounded-md border border-product-pam/40 bg-product-pam/5 p-3.5">
+              <button
+                type="button"
+                onClick={() => setLaunchMethod(LaunchMethod.Browser)}
+                className={`flex flex-1 cursor-pointer items-start gap-3 rounded-md border p-3.5 transition-colors ${
+                  launchMethod === LaunchMethod.Browser
+                    ? "border-product-pam/40 bg-product-pam/5"
+                    : "hover:border-muted-foreground/30 border-border"
+                }`}
+              >
                 <Globe className="mt-0.5 size-5 shrink-0 text-foreground" />
                 <div className="text-left">
                   <p className="text-sm font-medium text-foreground">Browser</p>
                   <p className="text-xs text-muted">Connect directly from your browser.</p>
                 </div>
-              </div>
-              <div className="relative flex flex-1 items-start gap-3 rounded-md border border-border p-3.5 opacity-50">
+              </button>
+              <button
+                type="button"
+                onClick={() => setLaunchMethod(LaunchMethod.CLI)}
+                className={`flex flex-1 cursor-pointer items-start gap-3 rounded-md border p-3.5 transition-colors ${
+                  launchMethod === LaunchMethod.CLI
+                    ? "border-product-pam/40 bg-product-pam/5"
+                    : "hover:border-muted-foreground/30 border-border"
+                }`}
+              >
                 <Terminal className="mt-0.5 size-5 shrink-0 text-foreground" />
                 <div className="text-left">
                   <p className="text-sm font-medium text-foreground">CLI</p>
-                  <p className="text-xs text-muted">Use a custom client with the Infisical CLI.</p>
+                  <p className="text-xs text-muted">Proxy locally via the Infisical CLI.</p>
                 </div>
-                <Badge variant="warning" className="absolute top-2 right-2">
-                  Coming soon
-                </Badge>
-              </div>
+              </button>
             </div>
 
-            <p className="mt-5 mb-2.5 text-sm text-foreground">Launch browser client</p>
+            {launchMethod === LaunchMethod.Browser && (
+              <>
+                <p className="mt-5 mb-2.5 text-sm text-foreground">Launch browser client</p>
+                <Button variant="pam" className="w-full" asChild>
+                  <Link
+                    to="/organizations/$orgId/pam/accounts/$accountType/$accountId/access"
+                    params={{
+                      orgId: currentOrg.id,
+                      accountType: account.accountType,
+                      accountId: account.id
+                    }}
+                    target="_blank"
+                  >
+                    <Rocket className="size-4" />
+                    Connect in Browser
+                  </Link>
+                </Button>
+              </>
+            )}
 
-            <Button variant="pam" className="w-full" asChild>
-              <Link
-                to="/organizations/$orgId/pam/accounts/$accountType/$accountId/access"
-                params={{
-                  orgId: currentOrg.id,
-                  accountType: account.accountType,
-                  accountId: account.id
-                }}
-                target="_blank"
-              >
-                <Rocket className="size-4" />
-                Connect in Browser
-              </Link>
-            </Button>
+            {launchMethod === LaunchMethod.CLI && (
+              <>
+                <p className="mt-5 mb-2.5 text-sm text-foreground">Run this command</p>
+                <div className="flex items-center justify-between rounded-md border border-border bg-mineshaft-800 px-4 py-3">
+                  <code className="font-mono text-sm text-foreground">
+                    <span className="text-product-pam">$</span> {cliCommand}
+                  </code>
+                  <IconButton
+                    variant="ghost"
+                    aria-label="Copy command"
+                    onClick={handleCopyCommand}
+                    className="text-muted hover:text-foreground"
+                  >
+                    <Copy className="size-4" />
+                  </IconButton>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </SheetContent>
