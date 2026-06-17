@@ -424,7 +424,7 @@ export async function up(knex: Knex): Promise<void> {
         .join(TableName.PamFolder, `${TableName.PamAccount}.folderId`, `${TableName.PamFolder}.id`)
         .whereRaw(`${TableName.PamAccount}.id = ${TableName.PamSession}."accountId"`)
         .select(`${TableName.PamFolder}.name`)
-        .first()
+        .first() as unknown as string
     });
 
   // Re-encrypt session data from old project key to new consolidated project key

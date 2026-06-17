@@ -30,12 +30,12 @@ const ROLE_OPTIONS = [
   {
     value: "admin",
     label: "Admin",
-    description: "Full access to all sections including settings, templates, and access control."
+    description: "Full administrative access: manage accounts, account templates, settings, and access control."
   },
   {
     value: "member",
     label: "Member",
-    description: "Can only view Access page."
+    description: "Access limited to assigned folders and accounts."
   }
 ];
 
