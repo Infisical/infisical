@@ -3410,6 +3410,21 @@ export const secretV2BridgeServiceFactory = ({
           tx
         );
 
+        // personal overrides are stored as separate rows keyed by (folderId, key, userId) with no
+        // foreign key back to their shared secret, so deleting the shared secrets above leaves them
+        // orphaned in the source folder. Remove them explicitly to mirror the shared -> personal
+        // cleanup that secretDAL.deleteMany performs for a regular secret deletion.
+        await secretDAL.delete(
+          {
+            $in: {
+              key: decryptedSourceSecrets.map(({ key }) => key)
+            },
+            type: SecretType.Personal,
+            folderId: sourceFolder.id
+          },
+          tx
+        );
+
         isSourceUpdated = true;
       }
 
