@@ -41,7 +41,7 @@ import { TMembershipIdentityDALFactory } from "../membership-identity/membership
 import { TOrgDALFactory } from "../org/org-dal";
 import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/super-admin-fns";
 import { TIdentityTlsCertAuthDALFactory } from "./identity-tls-cert-auth-dal";
-import { parseSubjectAltNames, parseSubjectDetails } from "./identity-tls-cert-auth-fns";
+import { isSubjectAltNameAllowed, parseSubjectDetails } from "./identity-tls-cert-auth-fns";
 import { TIdentityTlsCertAuthServiceFactory } from "./identity-tls-cert-auth-types";
 
 type TIdentityTlsCertAuthServiceFactoryDep = {
@@ -174,12 +174,10 @@ export const identityTlsCertAuthServiceFactory = ({
       }
 
       if (identityTlsCertAuth.allowedSubjectAltNames) {
-        const certificateSubjectAltNames = parseSubjectAltNames(clientCertificateX509.subjectAltName);
-        const isValidSubjectAltName = identityTlsCertAuth.allowedSubjectAltNames
-          .split(",")
-          .map((san) => san.trim())
-          .filter(Boolean)
-          .some((allowedSan) => certificateSubjectAltNames.includes(allowedSan));
+        const isValidSubjectAltName = isSubjectAltNameAllowed(
+          identityTlsCertAuth.allowedSubjectAltNames,
+          clientCertificateX509.subjectAltName
+        );
         if (!isValidSubjectAltName) {
           throw new UnauthorizedError({
             message: "Access denied: TLS Certificate Auth subject alternative name not allowed.",
