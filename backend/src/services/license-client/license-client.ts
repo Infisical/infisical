@@ -8,14 +8,7 @@ import { entitlementResolverFactory } from "./license-client-cache";
 import { TCreateCheckoutPayload, TCreatePortalPayload, TLicenseClientBackend } from "./license-client-types";
 
 type TLicenseClientFactoryDep = {
-  envConfig: Pick<
-    TEnvConfig,
-    | "LICENSE_SERVER_V2_ENABLED"
-    | "LICENSE_SERVER_V2_URL"
-    | "LICENSE_SERVER_V2_SERVICE_KEY"
-    | "LICENSE_SERVER_V2_ISSUER"
-    | "LICENSE_SERVER_V2_AUDIENCE"
-  >;
+  envConfig: Pick<TEnvConfig, "LICENSE_SERVER_V2_ENABLED" | "LICENSE_SERVER_V2_URL" | "LICENSE_SERVER_V2_SERVICE_KEY">;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry">;
 };
 
@@ -30,11 +23,9 @@ const buildBackend = (envConfig: TLicenseClientFactoryDep["envConfig"]): TLicens
 
   const serverUrl = envConfig.LICENSE_SERVER_V2_URL;
   const hmacSecret = envConfig.LICENSE_SERVER_V2_SERVICE_KEY;
-  const issuer = envConfig.LICENSE_SERVER_V2_ISSUER;
-  const audience = envConfig.LICENSE_SERVER_V2_AUDIENCE;
-  if (!serverUrl || !hmacSecret || !issuer || !audience) {
+  if (!serverUrl || !hmacSecret) {
     logger.warn(
-      "license-client: enabled but LICENSE_SERVER_V2_URL / _SERVICE_KEY / _ISSUER / _AUDIENCE is missing; serving feature fallbacks"
+      "license-client: enabled but LICENSE_SERVER_V2_URL / _SERVICE_KEY is missing; serving feature fallbacks"
     );
     return null;
   }
@@ -52,7 +43,7 @@ const buildBackend = (envConfig: TLicenseClientFactoryDep["envConfig"]): TLicens
     return null;
   }
 
-  return licenseServerBackend(serverUrl, { hmacSecret, issuer, audience });
+  return licenseServerBackend(serverUrl, hmacSecret);
 };
 
 export const licenseClientFactory = ({ envConfig, keyStore }: TLicenseClientFactoryDep) => {

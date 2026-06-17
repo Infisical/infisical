@@ -321,8 +321,6 @@ const envSchema = z
     LICENSE_SERVER_V2_ENABLED: zodStrBool.default("false"),
     LICENSE_SERVER_V2_URL: zpStr(z.string().optional()),
     LICENSE_SERVER_V2_SERVICE_KEY: zpStr(z.string().optional()),
-    LICENSE_SERVER_V2_ISSUER: zpStr(z.string().optional()),
-    LICENSE_SERVER_V2_AUDIENCE: zpStr(z.string().optional()),
 
     // GENERIC
     STANDALONE_MODE: z

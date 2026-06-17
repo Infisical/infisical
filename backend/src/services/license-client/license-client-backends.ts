@@ -20,30 +20,30 @@ const SUBSCRIPTION_PATH = "/v1/subscription";
 const CHECKOUT_SESSION_PATH = "/v1/billing/checkout-session";
 const PORTAL_SESSION_PATH = "/v1/billing/portal-session";
 
-export type TLicenseServerAuth = {
-  hmacSecret: string;
-  issuer: string;
-  audience: string;
-};
+// Issuer/audience/subject are a fixed contract with the license server (it validates them against
+// its own configured values), not per-deployment config, so they live here rather than in env.
+const SERVICE_TOKEN_ISSUER = "infisical";
+const SERVICE_TOKEN_AUDIENCE = "license-server";
+const SERVICE_TOKEN_SUBJECT = "infisical-cloud";
 
-// The license server validates a short-lived HS256 service JWT (iss/aud/exp/sub), not the raw secret.
-// Mint a fresh token per request; signing is cheap and entitlement results are cached upstream.
-const mintServiceToken = (auth: TLicenseServerAuth): string =>
-  jwt.sign({}, auth.hmacSecret, {
+// The license server validates a short-lived HS256 service JWT (iss/aud/exp/sub) signed with the
+// shared service key. Mint a fresh token per request; signing is cheap and results are cached upstream.
+const mintServiceToken = (hmacSecret: string): string =>
+  jwt.sign({}, hmacSecret, {
     algorithm: "HS256",
-    issuer: auth.issuer,
-    audience: auth.audience,
-    subject: "infisical-cloud",
+    issuer: SERVICE_TOKEN_ISSUER,
+    audience: SERVICE_TOKEN_AUDIENCE,
+    subject: SERVICE_TOKEN_SUBJECT,
     expiresIn: "2m"
   });
 
-export const licenseServerBackend = (serverUrl: string, auth: TLicenseServerAuth): TLicenseClientBackend => ({
+export const licenseServerBackend = (serverUrl: string, hmacSecret: string): TLicenseClientBackend => ({
   fetchEntitlements: async (orgId: string): Promise<TEntitlementsResponse> => {
     const url = new URL(ENTITLEMENTS_PATH, serverUrl);
     url.searchParams.set("org_id", orgId);
     const res = await fetch(url, {
       method: "GET",
-      headers: { Authorization: `Bearer ${mintServiceToken(auth)}` },
+      headers: { Authorization: `Bearer ${mintServiceToken(hmacSecret)}` },
       redirect: "manual"
     });
     if (!res.ok) {
@@ -57,7 +57,7 @@ export const licenseServerBackend = (serverUrl: string, auth: TLicenseServerAuth
     const url = new URL(PRODUCTS_PATH, serverUrl);
     const res = await fetch(url, {
       method: "GET",
-      headers: { Authorization: `Bearer ${mintServiceToken(auth)}` },
+      headers: { Authorization: `Bearer ${mintServiceToken(hmacSecret)}` },
       redirect: "manual"
     });
     if (!res.ok) {
@@ -75,7 +75,7 @@ export const licenseServerBackend = (serverUrl: string, auth: TLicenseServerAuth
     url.searchParams.set("org_id", orgId);
     const res = await fetch(url, {
       method: "GET",
-      headers: { Authorization: `Bearer ${mintServiceToken(auth)}` },
+      headers: { Authorization: `Bearer ${mintServiceToken(hmacSecret)}` },
       redirect: "manual"
     });
     if (res.status === 404) {
@@ -101,7 +101,7 @@ export const licenseServerBackend = (serverUrl: string, auth: TLicenseServerAuth
     url.searchParams.set("org_id", orgId);
     const res = await fetch(url, {
       method: "POST",
-      headers: { Authorization: `Bearer ${mintServiceToken(auth)}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${mintServiceToken(hmacSecret)}`, "Content-Type": "application/json" },
       body: JSON.stringify(payload),
       redirect: "manual"
     });
@@ -117,7 +117,7 @@ export const licenseServerBackend = (serverUrl: string, auth: TLicenseServerAuth
     url.searchParams.set("org_id", orgId);
     const res = await fetch(url, {
       method: "POST",
-      headers: { Authorization: `Bearer ${mintServiceToken(auth)}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${mintServiceToken(hmacSecret)}`, "Content-Type": "application/json" },
       body: JSON.stringify(payload),
       redirect: "manual"
     });
