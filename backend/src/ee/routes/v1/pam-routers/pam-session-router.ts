@@ -139,12 +139,18 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      return server.services.pamSession.getSessionLogs(req.params.sessionId, req.query.offset, req.query.limit, {
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
-      }) as Promise<TSessionLogsPage>;
+      const result = await server.services.pamSession.getSessionLogs(
+        req.params.sessionId,
+        req.query.offset,
+        req.query.limit,
+        {
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          actorOrgId: req.permission.orgId,
+          actorAuthMethod: req.permission.authMethod
+        }
+      );
+      return result as TSessionLogsPage;
     }
   });
 

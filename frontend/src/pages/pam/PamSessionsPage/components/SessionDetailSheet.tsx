@@ -117,11 +117,7 @@ const LogEntry = ({ log }: { log: TPamSessionLog }) => {
     );
   }
 
-  return (
-    <div className="border-b border-border px-4 py-3">
-      {content}
-    </div>
-  );
+  return <div className="border-b border-border px-4 py-3">{content}</div>;
 };
 
 const InfoRow = ({ label, value }: { label: string; value: string | null | undefined }) => (
