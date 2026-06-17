@@ -418,7 +418,7 @@ export const TLS_CERT_AUTH = {
     allowedCommonNames:
       "The comma-separated list of trusted common names that are allowed to authenticate with Infisical.",
     allowedSubjectAltNames:
-      "The comma-separated list of trusted subject alternative names (e.g. SPIFFE IDs such as spiffe://example.org/svc) that are allowed to authenticate with Infisical.",
+      "The comma-separated list of trusted subject alternative names (SANs) that are allowed to authenticate with Infisical.",
     caCertificate: "The PEM-encoded CA certificate to validate client certificates.",
     accessTokenTTL: "The lifetime for an access token in seconds.",
     accessTokenMaxTTL: "The maximum lifetime for an access token in seconds.",
@@ -430,7 +430,7 @@ export const TLS_CERT_AUTH = {
     allowedCommonNames:
       "The comma-separated list of trusted common names that are allowed to authenticate with Infisical.",
     allowedSubjectAltNames:
-      "The comma-separated list of trusted subject alternative names (e.g. SPIFFE IDs such as spiffe://example.org/svc) that are allowed to authenticate with Infisical.",
+      "The comma-separated list of trusted subject alternative names (SANs) that are allowed to authenticate with Infisical.",
     caCertificate: "The PEM-encoded CA certificate to validate client certificates.",
     accessTokenTTL: "The new lifetime for an access token in seconds.",
     accessTokenMaxTTL: "The new maximum lifetime for an access token in seconds.",

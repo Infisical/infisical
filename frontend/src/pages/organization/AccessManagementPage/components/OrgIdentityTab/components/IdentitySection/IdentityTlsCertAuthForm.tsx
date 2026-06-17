@@ -267,10 +267,9 @@ export const IdentityTlsCertAuthForm = ({
                         <InfoIcon className="size-3.5 text-muted" />
                       </TooltipTrigger>
                       <TooltipContent className="max-w-md">
-                        Comma separated subject alternative names allowed to authenticate against
-                        the identity. Useful for SPIFFE X.509-SVIDs, where the identity is carried
-                        in the URI SAN (e.g. spiffe://example.org/svc) rather than the common name.
-                        Leave empty to skip SAN validation.
+                        Comma separated subject alternative names (SANs) allowed to authenticate
+                        against the identity. Supports DNS, URI, and IP SANs. Leave empty to skip
+                        SAN validation.
                       </TooltipContent>
                     </Tooltip>
                   </FieldLabel>
