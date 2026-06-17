@@ -48,7 +48,10 @@ export const UserNameSection = (): JSX.Element => {
           defaultValue=""
           render={({ field, fieldState: { error } }) => (
             <FormControl isError={Boolean(error)} errorText={error?.message}>
-              <Input placeholder={`${user?.firstName ?? ""} ${user?.lastName ?? ""}`.trim()} {...field} />
+              <Input
+                placeholder={`${user?.firstName ?? ""} ${user?.lastName ?? ""}`.trim()}
+                {...field}
+              />
             </FormControl>
           )}
           control={control}

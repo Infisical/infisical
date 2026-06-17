@@ -308,8 +308,8 @@ export const OrgMembersSection = () => {
                     <p className={userId === member.user.id ? "line-through" : ""}>
                       {member.user.firstName || member.user.lastName ? (
                         <>
-                          {`${`${member.user.firstName} ${member.user.lastName}`.trim()} `}(
-                          <span className="break-all">{email}</span>)
+                          {`${`${member.user.firstName ?? ""} ${member.user.lastName ?? ""}`.trim()} `}
+                          (<span className="break-all">{email}</span>)
                         </>
                       ) : (
                         <span className="break-all">{email}</span>

@@ -434,7 +434,7 @@ export const ServerAdminsTable = () => {
                       <p>
                         {user.firstName || user.lastName ? (
                           <>
-                            {`${`${user.firstName} ${user.lastName}`.trim()} `}(
+                            {`${`${user.firstName ?? ""} ${user.lastName ?? ""}`.trim()} `}(
                             <span className="break-all">{email}</span>)
                           </>
                         ) : (
