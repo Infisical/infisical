@@ -102,16 +102,14 @@ async function getSecrets(input: { destination: TRenderSyncWithCredentials["dest
       const { workflowId } = input.destination;
       const res = await makeRequestWithRetry(() =>
         request.request<{
-          workflow: {
-            envVars: { key: string; value: string }[];
-          };
+          envVars: { key: string; value: string }[];
         }>({
           ...req,
           url: `/workflows/${workflowId}`
         })
       );
 
-      return (res.data.workflow.envVars ?? []).map((item) => ({
+      return (res.data.envVars ?? []).map((item) => ({
         key: item.key,
         value: item.value
       }));

@@ -29,7 +29,11 @@ const RenderSyncDestinationConfigSchema = z.discriminatedUnion("scope", [
   }),
   z.object({
     scope: z.literal(RenderSyncScope.Workflow).describe(SecretSyncs.DESTINATION_CONFIG.RENDER.scope),
-    workflowId: z.string().min(1, "Workflow ID is required").describe(SecretSyncs.DESTINATION_CONFIG.RENDER.workflowId),
+    workflowId: z
+      .string()
+      .min(1, "Workflow ID is required")
+      .regex(/^[a-zA-Z0-9-]+$/, "Workflow ID may only contain alphanumeric characters and hyphens")
+      .describe(SecretSyncs.DESTINATION_CONFIG.RENDER.workflowId),
     type: z.nativeEnum(RenderSyncType).describe(SecretSyncs.DESTINATION_CONFIG.RENDER.type)
   })
 ]);
