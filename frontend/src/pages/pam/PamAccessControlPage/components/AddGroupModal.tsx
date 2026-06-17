@@ -72,7 +72,7 @@ export const AddGroupModal = ({ isOpen, onOpenChange }: Props) => {
         groupId: selectedGroup.id,
         role: selectedRole
       });
-      createNotification({ text: "Group added to project", type: "success" });
+      createNotification({ text: "Group added", type: "success" });
       handleClose();
     } catch {
       createNotification({ text: "Failed to add group", type: "error" });
@@ -84,7 +84,7 @@ export const AddGroupModal = ({ isOpen, onOpenChange }: Props) => {
       <DialogContent className="overflow-visible sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>Add Group</DialogTitle>
-          <DialogDescription>Add an existing organization group to this project.</DialogDescription>
+          <DialogDescription>Add an existing organization group.</DialogDescription>
         </DialogHeader>
 
         {availableGroups.length ? (
@@ -141,8 +141,8 @@ export const AddGroupModal = ({ isOpen, onOpenChange }: Props) => {
         ) : (
           <div className="flex flex-col gap-4">
             <p className="text-sm text-muted">
-              All organization groups are already added to this project. Create a new group at the
-              organization level first.
+              All organization groups have already been added. Create a new group at the organization
+              level first.
             </p>
             <Button
               variant="outline"

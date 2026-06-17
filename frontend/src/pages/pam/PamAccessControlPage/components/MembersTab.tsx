@@ -230,7 +230,7 @@ export const MembersTab = () => {
         onChange={(isOpen) => {
           if (!isOpen) setMemberToRemove(null);
         }}
-        title={`Remove ${memberToRemove ? getDisplayName(memberToRemove) : "member"} from the project?`}
+        title={`Remove ${memberToRemove ? getDisplayName(memberToRemove) : "member"}?`}
         deleteKey="remove"
         buttonText="Remove"
         onDeleteApproved={handleRemoveMember}

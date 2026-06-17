@@ -118,17 +118,14 @@ export const pamSessionServiceFactory = ({
     const session = await pamSessionDAL.findById(sessionId);
     if (!session || !session.accountId) return null;
 
-    const isOwnSession = session.userId === ctx.actorId;
-    if (!isOwnSession) {
-      const account = await pamAccountDAL.findByIdWithDetails(session.accountId);
-      await checkAccount(
-        session.accountId,
-        account?.folderId,
-        session.projectId,
-        ResourcePermissionPamResourceActions.ViewSessions,
-        ctx
-      );
-    }
+    const account = await pamAccountDAL.findByIdWithDetails(session.accountId);
+    await checkAccount(
+      session.accountId,
+      account?.folderId,
+      session.projectId,
+      ResourcePermissionPamResourceActions.ViewSessions,
+      ctx
+    );
 
     return session;
   };
@@ -483,17 +480,14 @@ export const pamSessionServiceFactory = ({
       return { logs: [], hasMore: false, batchCount: 0 };
     }
 
-    const isOwnSession = session.userId === ctx.actorId;
-    if (!isOwnSession) {
-      const account = await pamAccountDAL.findByIdWithDetails(session.accountId);
-      await checkAccount(
-        session.accountId,
-        account?.folderId,
-        session.projectId,
-        ResourcePermissionPamResourceActions.ViewSessions,
-        ctx
-      );
-    }
+    const account = await pamAccountDAL.findByIdWithDetails(session.accountId);
+    await checkAccount(
+      session.accountId,
+      account?.folderId,
+      session.projectId,
+      ResourcePermissionPamResourceActions.ViewSessions,
+      ctx
+    );
 
     if (!session.encryptedSessionKey) {
       return { logs: [], hasMore: false, batchCount: 0 };

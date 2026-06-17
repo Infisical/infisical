@@ -63,7 +63,7 @@ export const GroupsTab = () => {
         projectId: currentProject.id,
         groupId: groupToRemove.group.id
       });
-      createNotification({ text: "Group removed from project", type: "success" });
+      createNotification({ text: "Group removed", type: "success" });
     } catch {
       createNotification({ text: "Failed to remove group", type: "error" });
     } finally {
@@ -177,7 +177,7 @@ export const GroupsTab = () => {
                               }}
                             >
                               <Trash2Icon className="mr-2 size-4" />
-                              Remove from project
+                              Remove
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -206,7 +206,7 @@ export const GroupsTab = () => {
         onChange={(isOpen) => {
           if (!isOpen) setGroupToRemove(null);
         }}
-        title={`Remove ${groupToRemove?.group.name ?? "group"} from the project?`}
+        title={`Remove ${groupToRemove?.group.name ?? "group"}?`}
         deleteKey="remove"
         buttonText="Remove"
         onDeleteApproved={handleDeleteGroup}

@@ -1,10 +1,8 @@
 import { useMemo, useState } from "react";
-import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
-  CreatableSelect,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -15,13 +13,7 @@ import {
   FieldLabel,
   FilterableSelect
 } from "@app/components/v3";
-import {
-  OrgPermissionActions,
-  OrgPermissionSubjects,
-  useOrganization,
-  useOrgPermission,
-  useProject
-} from "@app/context";
+import { useOrganization, useProject } from "@app/context";
 import { useAddUserToWsNonE2EE, useGetOrgUsers, useGetWorkspaceUsers } from "@app/hooks/api";
 
 type Props = {
@@ -32,7 +24,6 @@ type Props = {
 type SelectOption = {
   label: string;
   value: string;
-  isNewInvitee?: boolean;
 };
 
 const ROLE_OPTIONS = [
@@ -51,7 +42,6 @@ const ROLE_OPTIONS = [
 export const InviteMemberModal = ({ isOpen, onOpenChange }: Props) => {
   const { currentProject } = useProject();
   const { currentOrg } = useOrganization();
-  const { permission: orgPermission } = useOrgPermission();
   const { mutateAsync: addUser, isPending } = useAddUserToWsNonE2EE();
 
   const [selectedUsers, setSelectedUsers] = useState<SelectOption[]>([]);
@@ -59,11 +49,6 @@ export const InviteMemberModal = ({ isOpen, onOpenChange }: Props) => {
 
   const { data: members } = useGetWorkspaceUsers(currentProject.id);
   const { data: orgUsers } = useGetOrgUsers(currentOrg.id);
-
-  const canInviteNewMembers = orgPermission.can(
-    OrgPermissionActions.Create,
-    OrgPermissionSubjects.Member
-  );
 
   const availableUsers = useMemo(() => {
     const wsUsernames = new Set(members?.map((m) => m.user.username));
@@ -87,10 +72,7 @@ export const InviteMemberModal = ({ isOpen, onOpenChange }: Props) => {
   const handleSubmit = async () => {
     if (!selectedUsers.length) return;
 
-    const existingMembers = selectedUsers.filter((u) => !u.isNewInvitee);
-    const newInvitees = selectedUsers.filter((u) => u.isNewInvitee).map((u) => u.value);
-
-    const existingUsernames = existingMembers
+    const usernames = selectedUsers
       .map((selection) => {
         const orgUser = orgUsers?.find((ou) => ou.id === selection.value);
         return orgUser?.user.username || orgUser?.user.email;
@@ -99,7 +81,7 @@ export const InviteMemberModal = ({ isOpen, onOpenChange }: Props) => {
 
     try {
       await addUser({
-        usernames: [...existingUsernames, ...newInvitees],
+        usernames,
         orgId: currentOrg.id,
         projectId: currentProject.id,
         projectType: currentProject.type,
@@ -120,9 +102,7 @@ export const InviteMemberModal = ({ isOpen, onOpenChange }: Props) => {
       <DialogContent className="overflow-visible sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>Add Member</DialogTitle>
-          <DialogDescription>
-            Users will receive an email with instructions to gain access.
-          </DialogDescription>
+          <DialogDescription>Add existing organization members.</DialogDescription>
         </DialogHeader>
 
         <div className="flex flex-col gap-5">
@@ -130,46 +110,14 @@ export const InviteMemberModal = ({ isOpen, onOpenChange }: Props) => {
             <FieldLabel>
               Users <span className="text-product-pam">*</span>
             </FieldLabel>
-            {canInviteNewMembers ? (
-              <CreatableSelect
-                /* eslint-disable-next-line react/no-unstable-nested-components */
-                noOptionsMessage={() => (
-                  <>
-                    {availableUsers.length === 0 && (
-                      <p>All organization members are already assigned to this project.</p>
-                    )}
-                    <p>Invite new users to your organization by typing out their email address.</p>
-                  </>
-                )}
-                onCreateOption={(inputValue) =>
-                  setSelectedUsers((prev) => [
-                    ...prev,
-                    { label: inputValue, value: inputValue, isNewInvitee: true }
-                  ])
-                }
-                formatCreateLabel={(inputValue) => `Invite "${inputValue}"`}
-                isValidNewOption={(input) =>
-                  Boolean(input) &&
-                  z.string().email().safeParse(input).success &&
-                  !orgUsers
-                    ?.flatMap(({ user }) => [user.email, user.username].filter(Boolean))
-                    .includes(input)
-                }
-                placeholder="Add one or more users..."
-                isMulti
-                options={availableUsers}
-                value={selectedUsers}
-                onChange={(val) => setSelectedUsers(val as SelectOption[])}
-              />
-            ) : (
-              <FilterableSelect
-                placeholder="Add one or more users..."
-                isMulti
-                options={availableUsers}
-                value={selectedUsers}
-                onChange={(val) => setSelectedUsers(val as SelectOption[])}
-              />
-            )}
+            <FilterableSelect
+              placeholder="Select one or more users..."
+              isMulti
+              options={availableUsers}
+              value={selectedUsers}
+              onChange={(val) => setSelectedUsers(val as SelectOption[])}
+              noOptionsMessage={() => "All organization members have already been added."}
+            />
           </Field>
 
           <Field>

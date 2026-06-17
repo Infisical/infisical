@@ -100,7 +100,7 @@ export const MemberDetailSheet = ({ member, isOpen, onOpenChange }: Props) => {
             </p>
             {isSelf ? (
               <p className="text-sm text-muted">
-                You cannot modify your own membership. Ask a project admin to make changes.
+                You cannot modify your own membership. Ask an admin to make changes.
               </p>
             ) : (
               <ProjectPermissionCan

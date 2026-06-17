@@ -30,16 +30,42 @@ import { useProject } from "@app/context";
 import {
   PAM_ACCOUNT_TYPE_MAP,
   PamAccountType,
+  PamResourcePermissionActions,
+  PamResourcePermissionSub,
   PamSessionStatus,
   useListPamSessions,
   useTerminatePamSession
 } from "@app/hooks/api/pam";
+import { usePamAccountPermission } from "@app/hooks/api/pam/queries";
 import { TPamSession } from "@app/hooks/api/pam/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { useDebounce } from "@app/hooks/useDebounce";
 
 import { SessionDetailSheet } from "./components/SessionDetailSheet";
 import { capitalize, formatDuration, STATUS_BADGE } from "./constants";
+
+const TerminateCell = ({
+  session,
+  onTerminate
+}: {
+  session: TPamSession;
+  onTerminate: (session: TPamSession, e?: React.MouseEvent) => void;
+}) => {
+  const { data: perm } = usePamAccountPermission(session.accountId ?? "");
+  const canTerminate = perm?.permission.can(
+    PamResourcePermissionActions.TerminateSessions,
+    PamResourcePermissionSub.PamResource
+  );
+
+  if (session.status !== PamSessionStatus.Active || !canTerminate) return null;
+
+  return (
+    <Button variant="danger" size="xs" onClick={(e) => onTerminate(session, e)}>
+      <SquareIcon className="mr-1 size-3" />
+      Terminate
+    </Button>
+  );
+};
 
 export const PamSessionsPage = () => {
   const { t } = useTranslation();
@@ -214,16 +240,7 @@ export const PamSessionsPage = () => {
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    {session.status === PamSessionStatus.Active && (
-                      <Button
-                        variant="danger"
-                        size="xs"
-                        onClick={(e) => requestTerminate(session, e)}
-                      >
-                        <SquareIcon className="mr-1 size-3" />
-                        Terminate
-                      </Button>
-                    )}
+                    <TerminateCell session={session} onTerminate={requestTerminate} />
                   </TableCell>
                 </TableRow>
               );

@@ -19,9 +19,12 @@ import {
 import {
   PAM_ACCOUNT_TYPE_MAP,
   PamAccountType,
+  PamResourcePermissionActions,
+  PamResourcePermissionSub,
   PamSessionStatus,
   useGetPamSessionLogs
 } from "@app/hooks/api/pam";
+import { usePamAccountPermission } from "@app/hooks/api/pam/queries";
 import { TPamSession, TPamSessionLog } from "@app/hooks/api/pam/types";
 
 import { capitalize, formatDuration, STATUS_BADGE } from "../constants";
@@ -120,6 +123,12 @@ export const SessionDetailSheet = ({ session, isOpen, onOpenChange, onTerminate 
     setLogSearch("");
   }, [session?.id]);
 
+  const { data: accountPerm } = usePamAccountPermission(session?.accountId ?? "");
+  const canTerminate = accountPerm?.permission.can(
+    PamResourcePermissionActions.TerminateSessions,
+    PamResourcePermissionSub.PamResource
+  );
+
   const {
     logs,
     isLoading: isLogsLoading,
@@ -211,7 +220,7 @@ export const SessionDetailSheet = ({ session, isOpen, onOpenChange, onTerminate 
               <InfoRow label="Duration" value={formatDuration(session)} />
               <InfoRow label="IP Address" value={session.actorIp} />
               {session.reason && <InfoRow label="Reason" value={session.reason} />}
-              {session.status === PamSessionStatus.Active && (
+              {session.status === PamSessionStatus.Active && canTerminate && (
                 <Button variant="danger" size="sm" className="mt-2 w-full" onClick={handleTerminate}>
                   <SquareIcon className="mr-1.5 size-3.5" />
                   Terminate session
