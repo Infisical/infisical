@@ -33,7 +33,12 @@ const HttpResponseEventSchema = z.object({
   body: z.string().optional()
 });
 
-const SessionLogSchema = z.union([CommandLogSchema, SessionEventSchema, HttpRequestEventSchema, HttpResponseEventSchema]);
+const SessionLogSchema = z.union([
+  CommandLogSchema,
+  SessionEventSchema,
+  HttpRequestEventSchema,
+  HttpResponseEventSchema
+]);
 
 export const SessionLogsPageSchema = z.object({
   logs: z.array(SessionLogSchema),
