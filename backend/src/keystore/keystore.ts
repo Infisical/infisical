@@ -133,6 +133,8 @@ export const KeyStorePrefixes = {
   AuditLogMigrationAlert: "audit-log-migration-alert-last-row-count",
   LicenseCloudPlan: (orgId: string) => `infisical-cloud-plan-${orgId}` as const,
   LicenseEntitlements: (orgId: string) => `license-entitlements-${orgId}` as const,
+  LicenseUsageLastReported: (orgId: string, featureKey: string) =>
+    `license-usage-last-reported-${orgId}-${featureKey}` as const,
   IdentityLockoutState: (identityId: string, authMethod: string, slug: string) =>
     `lockout:identity:${identityId}:${authMethod}:${slug}` as const,
   IdentityLockoutStateByMethodPattern: (identityId: string, authMethod: string) =>
@@ -169,6 +171,7 @@ export const KeyStoreTtls = {
   LicenseCloudPlanInSeconds: 300, // 5 minutes
   PamDefaultProjectInSeconds: 300, // 5 minutes
   LicenseEntitlementsInSeconds: 1800, // 30 minutes
+  LicenseUsageLastReportedInSeconds: 7776000, // 90 days (~3 billing cycles) so orphaned meter keys self-clean
   AiMcpEndpointOAuthFlowInSeconds: 300, // 5 minutes
   OauthAuthorizationCodeInSeconds: 600, // 10 minutes
   AiMcpServerOAuthSessionInSeconds: 600, // 10 minutes

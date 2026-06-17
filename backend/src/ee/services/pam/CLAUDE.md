@@ -8,7 +8,7 @@ All PAM services live under `backend/src/ee/services/pam-*/`:
 
 | Directory | Purpose |
 |---|---|
-| `pam/` | Shared enums (`PamAccountType`, `PamResourceRole`, `PamProductRole`, `PamSessionStatus`), shared permission helpers (`pam-permission.ts`), and this CLAUDE.md |
+| `pam/` | Shared enums (`PamAccountType`, `PamResourceRole`, `PamProductRole`, `PamSessionStatus`, `PamAccessMethod`), shared permission helpers (`pam-permission.ts`), validators (`pam-validators.ts`), and this CLAUDE.md |
 | `pam-folder/` | Folder CRUD, folder-level permission checks |
 | `pam-account/` | Account CRUD, credential encryption, gateway attachment, SSH CA management |
 | `pam-account-template/` | Account templates (type + access policy + settings), template config schemas (`pam-account-template-schemas.ts`) |
@@ -24,15 +24,15 @@ Routes live in `backend/src/ee/routes/v1/pam-routers/`.
 
 PAM uses a two-tier permission system: product membership + resource membership.
 
-### Shared Helpers (`pam-membership/pam-permission.ts`)
+### Shared Helpers (`pam/pam-permission.ts`)
 
 All PAM services import from this module rather than duplicating permission logic.
 
-- **`TActorContext`** — standard actor fields: `{ actorId, actor, actorOrgId, actorAuthMethod }`
-- **`verifyProductMembership(permissionService, projectId, ctx)`** — confirms the actor is a member of the PAM project. Returns `{ hasRole }` for checking product-level roles (Admin/Member).
-- **`checkFolderPermission(permissionService, folderId, projectId, ctx)`** — checks resource-scoped permission on a folder. Returns `{ permission }` for `throwUnlessCan` calls.
-- **`checkAccountAccess(permissionService, accountId, folderId, projectId, action, ctx)`** — tries folder-level permission first (if the account has a folder), falls back to direct account-level permission. This is the standard pattern for any account-scoped action.
-- **`getResourceIdsWithActions(membershipDAL, membershipRoleDAL, projectId, actions, ctx)`** — returns `{ folderIds, accountIds }` filtered to resources where the actor's role grants the specified actions. `actions` is `{ allOf?: [...], anyOf?: [...] }` where `allOf` requires every action and `anyOf` requires at least one.
+- **`TActorContext`** -- standard actor fields: `{ actorId, actor, actorOrgId, actorAuthMethod }`
+- **`verifyProductMembership(permissionService, projectId, ctx)`** -- confirms the actor is a member of the PAM project. Returns `{ hasRole }` for checking product-level roles (Admin/Member).
+- **`checkFolderPermission(permissionService, folderId, projectId, ctx)`** -- checks resource-scoped permission on a folder. Returns `{ permission }` for `throwUnlessCan` calls.
+- **`checkAccountAccess(permissionService, accountId, folderId, projectId, action, ctx)`** -- tries folder-level permission first (if the account has a folder), falls back to direct account-level permission. This is the standard pattern for any account-scoped action.
+- **`getResourceIdsWithActions(membershipDAL, membershipRoleDAL, projectId, actions, ctx)`** -- returns `{ folderIds, accountIds }` filtered to resources where the actor's role grants the specified actions. `actions` is `{ allOf?: [...], anyOf?: [...] }` where `allOf` requires every action and `anyOf` requires at least one. Filters out inactive memberships (`isActive: false`) and expired temporary roles (`isTemporary: true` with past `temporaryAccessEndTime`).
 
 Services create thin local wrappers that bind their own `permissionService` dependency:
 ```ts
@@ -40,10 +40,34 @@ const verifyMembership = (projectId, ctx) => verifyProductMembership(permissionS
 const checkAccount = (accountId, folderId, projectId, action, ctx) => checkAccountAccess(permissionService, ...);
 ```
 
+### Permission Enforcement Per Endpoint
+
+Every list/mutation endpoint checks action-level permissions, not just membership:
+
+| Endpoint | Required Permission |
+|---|---|
+| List folders | `ReadFolder` (via `getResourceIdsWithActions`) |
+| List accounts | `ReadAccounts` (via `getResourceIdsWithActions`) |
+| List accessible accounts | `ReadAccounts` AND (`LaunchSessions` OR `ViewCredentials`) |
+| List sessions | `ViewSessions` (via `getResourceIdsWithActions`) |
+| List folder/account members | `ManageMembers` (via `checkManageMembers`) |
+| Get account by ID | `ReadAccounts` (via `checkAccountAccess`) |
+| Launch session / web access | `LaunchSessions` (via `checkAccountAccess`) |
+| View recording | `ViewSessions` (via `checkAccountAccess`) |
+| Create account | `CreateAccounts` (via folder permission) |
+| Edit/delete account | `EditAccounts`/`DeleteAccounts` (via `checkAccountAccess`) |
+| Edit/delete folder | `EditFolder`/`DeleteFolder` (via folder permission) |
+| Template list/getById | Product membership only (templates are project-wide config) |
+| Template create/update/delete | Product Admin |
+
+### Auth Modes
+
+All PAM endpoints use `AuthMode.JWT` only (user access). `IDENTITY_ACCESS_TOKEN` is not supported. Gateway-facing endpoints (chunk upload, session credentials) use `AuthMode.GATEWAY_ACCESS_TOKEN`.
+
 ### Roles
 
 - **Product roles** (`PamProductRole`): `Admin`, `Member`
-- **Resource roles** (`PamResourceRole`): `Admin`, `Requester`, `Auditor`
+- **Resource roles** (`PamResourceRole`): `Admin`, `Requester`, `Auditor`, `Connector`
 
 Resource memberships are scoped to either a `PamFolder` or a `PamAccount` via the generic membership system (`ResourceType.PamFolder` / `ResourceType.PamAccount`).
 
@@ -51,13 +75,21 @@ Resource memberships are scoped to either a `PamFolder` or a `PamAccount` via th
 
 Defined in `pam/pam-enums.ts` as `PamAccountType`. Validation schemas per type live in `pam-account/pam-account-schemas.ts` in the `ACCOUNT_TYPE_CONFIGS` map.
 
+### Key Helpers
+
+- **`extractGatewayTarget(accountType, rawConnectionDetails)`** -- validated extraction of `{ host, port }` from decrypted connection details, dispatched by account type. Use this instead of raw type casts.
+- **`PamAccessMethod`** enum (`Web`, `Cli`) -- use instead of hardcoded `"web"`/`"cli"` strings.
+
 ### Adding a New Account Type
 
 1. Add the enum value to `PamAccountType` in `pam/pam-enums.ts`
 2. Add `connectionDetails` and `credentials` Zod schemas to `ACCOUNT_TYPE_CONFIGS` in `pam-account/pam-account-schemas.ts`
-3. If it supports web access: add a session handler in `pam-web-access/` and register it in `pam-session-handler-registry.ts`
-4. Add the corresponding frontend enum value and any UI components
-5. Update `PamAccountType` on the frontend enum in `frontend/src/hooks/api/pam/enums.ts`
+3. Add a case to `extractGatewayTarget` in `pam-account-schemas.ts`
+4. If it supports web access: add a session handler in `pam-web-access/` and register it in `pam-session-handler-registry.ts`
+5. Add the corresponding frontend enum value and any UI components
+6. Update `PamAccountType` on the frontend enum in `frontend/src/hooks/api/pam/enums.ts`
+
+The router's `ConnectionDetailsSchema` and `SanitizedAccountDetailSchema` auto-derive from `ACCOUNT_TYPE_CONFIGS`, so no router changes are needed for new types.
 
 ## Session Lifecycle
 
@@ -65,6 +97,8 @@ Defined in `pam/pam-enums.ts` as `PamAccountType`. Validation schemas per type l
 - Orphaned sessions (accountId is null) are excluded from all queries: `listSessions` filters them at the SQL level via joins, `getSessionById` returns null
 - Active sessions track `status` (Starting -> Active -> Ended) with timestamps
 - Recording secrets are generated on first credential fetch and stored encrypted on the session row
+- Sessions accept an optional `duration` parameter (parsed by `ms()`) capped at the template's `maxSessionDurationSeconds`. Default is 1 hour (`DEFAULT_SESSION_DURATION_MS`).
+- Session expiration is enforced via a BullMQ delayed job (`pamSessionExpirationService`). The job is scheduled at session creation time and calls `endSessionById` when it fires.
 
 ## DAL Conventions
 
@@ -79,7 +113,7 @@ Old tables, columns, and code kept temporarily so data can be recovered if the m
 
 ### Stale queue cleanup entries
 
-`backend/src/queue/queue-service.ts` stale queue list includes `pam-account-rotation` and `pam-session-ai-summary`. These ensure existing Redis instances get cleaned up on deploy. Remove them from the list after all deployments have booted at least once with the new code.
+`backend/src/queue/queue-service.ts` stale queue list includes `pam-account-rotation`, `pam-session-ai-summary`, and `pam-discovery-scan`. These ensure existing Redis instances get cleaned up on deploy. Remove them from the list after all deployments have booted at least once with the new code.
 
 ### Tables to drop
 

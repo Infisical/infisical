@@ -27,6 +27,8 @@ import { TCertificateAuthoritySecretDALFactory } from "@app/services/certificate
 import { TCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/certificate-authority-service";
 import { TCertificateSyncDALFactory } from "@app/services/certificate-sync/certificate-sync-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { MaxActiveCerts } from "@app/services/license-client";
+import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TPkiAlertV2QueueServiceFactory } from "@app/services/pki-alert-v2/pki-alert-v2-queue";
 import { PkiAlertEventType } from "@app/services/pki-alert-v2/pki-alert-v2-types";
 import { TPkiApplicationDALFactory } from "@app/services/pki-application/pki-application-dal";
@@ -101,6 +103,7 @@ type TCertificateServiceFactoryDep = {
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find">;
   pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emitForProject">;
 };
 
 export type TCertificateServiceFactory = ReturnType<typeof certificateServiceFactory>;
@@ -125,7 +128,8 @@ export const certificateServiceFactory = ({
   resourceMetadataDAL,
   pkiAlertV2Queue,
   pkiApplicationDAL,
-  licenseService
+  licenseService,
+  usageMeteringService
 }: TCertificateServiceFactoryDep) => {
   const $canActOnCertViaApplication = async (
     cert: { applicationId?: string | null; projectId: string },
@@ -402,6 +406,8 @@ export const certificateServiceFactory = ({
       pkiSyncQueue
     });
 
+    usageMeteringService.emitForProject(cert.projectId, MaxActiveCerts.key);
+
     return {
       deletedCert
     };
@@ -516,6 +522,8 @@ export const certificateServiceFactory = ({
         revocationReason: revocationReasonToCrlCode(revocationReason)
       }
     );
+
+    usageMeteringService.emitForProject(ca.projectId, MaxActiveCerts.key);
 
     // Trigger auto sync for PKI syncs connected to this certificate
     await triggerAutoSyncForCertificate(cert.id, {
@@ -907,6 +915,8 @@ export const certificateServiceFactory = ({
         throw error;
       }
     });
+
+    usageMeteringService.emitForProject(projectId, MaxActiveCerts.key);
 
     return {
       certificate: certificatePem,

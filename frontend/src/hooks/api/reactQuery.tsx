@@ -58,7 +58,8 @@ function ValidationErrorModal({
         }
       }}
     >
-      <DialogContent className="sm:max-w-2xl">
+      {/* z-[70] keeps this dialog above v2 Modals (z-[60]) hosting the form that errored */}
+      <DialogContent className="z-[70] sm:max-w-2xl" overlayClassName="z-[70]">
         <DialogHeader>
           <DialogTitle>Validation Error Details</DialogTitle>
           <DialogDescription>These fields did not pass validation.</DialogDescription>
@@ -144,7 +145,8 @@ export const onRequestError = (error: unknown) => {
                 Show more
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-2xl">
+            {/* z-[70] keeps this dialog above v2 Modals (z-[60]) hosting the form that errored */}
+            <DialogContent className="z-[70] sm:max-w-2xl" overlayClassName="z-[70]">
               <DialogHeader>
                 <DialogTitle>Validation Rules</DialogTitle>
                 <DialogDescription>Please review the allowed rules below.</DialogDescription>

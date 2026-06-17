@@ -362,6 +362,13 @@ import { TKmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal"
 import { kmsServiceFactory } from "@app/services/kms/kms-service";
 import { RootKeyEncryptionStrategy } from "@app/services/kms/kms-types";
 import { licenseClientFactory } from "@app/services/license-client";
+import {
+  buildMeteredFeatures,
+  buildUsageReporter,
+  usageCounterDALFactory,
+  usageEventQueueFactory,
+  usageMeteringServiceFactory
+} from "@app/services/license-client/usage";
 import { applicationMembershipCleanupServiceFactory } from "@app/services/membership/application-membership-cleanup-service";
 import { membershipDALFactory } from "@app/services/membership/membership-dal";
 import { membershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
@@ -772,6 +779,28 @@ export const registerRoutes = async (
   // License Server v2 client SDK. Coexists with licenseService during migration - getFeature()
   // is the single read primitive; falls back to feature defaults until the server is configured.
   const licenseClient = licenseClientFactory({ envConfig, keyStore });
+
+  // Usage metering: counts the 5 metered features and reports them to the License Server. Inert
+  // until LICENSE_SERVER_V2_ENABLED is on (the emitter no-ops, the worker no-ops without a reporter).
+  const usageCounterDAL = usageCounterDALFactory(db);
+  const meteredFeatures = buildMeteredFeatures({ licenseDAL, usageCounterDAL });
+  meteredFeatures.forEach(({ feature, count }) => licenseClient.registerCounter(feature, count));
+  const usageReporter = buildUsageReporter(envConfig);
+  const usageMeteringService = usageMeteringServiceFactory({ queueService, projectDAL, envConfig });
+  let usageSource = "self-hosted";
+  if (envConfig.isCloud) {
+    usageSource = "cloud";
+  }
+  const usageEventQueue = usageEventQueueFactory({
+    queueService,
+    cronJob,
+    keyStore,
+    orgDAL,
+    usageMeteringService,
+    meteredFeatures,
+    usageReporter,
+    source: usageSource
+  });
 
   // Project events SSE service (for clients to subscribe to secret mutation events)
   const projectEventsSSEService = projectEventsSSEServiceFactory({
@@ -1748,6 +1777,7 @@ export const registerRoutes = async (
   const pamSessionService = pamSessionServiceFactory({
     pamSessionDAL,
     pamAccountDAL,
+    pamSessionEventChunkDAL,
     pamFolderDAL,
     membershipDAL,
     membershipRoleDAL,
@@ -2205,7 +2235,8 @@ export const registerRoutes = async (
     keyStore,
     orgDAL,
     membershipIdentityDAL,
-    membershipRoleDAL
+    membershipRoleDAL,
+    usageMeteringService
   });
 
   const identityAccessTokenService = identityAccessTokenServiceFactory({
@@ -2854,7 +2885,8 @@ export const registerRoutes = async (
     kmsService,
     permissionService,
     licenseService,
-    caSigningConfigDAL
+    caSigningConfigDAL,
+    usageMeteringService
   });
 
   const caAutoRenewalQueue = caAutoRenewalQueueFactory({
@@ -2894,7 +2926,8 @@ export const registerRoutes = async (
     certificateRequestDAL,
     resourceMetadataDAL,
     gatewayV2Service,
-    gatewayPoolService
+    gatewayPoolService,
+    usageMeteringService
   });
 
   const certificateEstService = certificateEstServiceFactory({
@@ -2955,7 +2988,8 @@ export const registerRoutes = async (
     resourceMetadataDAL,
     pkiAlertV2Queue,
     pkiApplicationDAL,
-    licenseService
+    licenseService,
+    usageMeteringService
   });
 
   const digicertCaFns = DigiCertCertificateAuthorityFns({
@@ -3489,6 +3523,7 @@ export const registerRoutes = async (
   dailyResourceCleanUp.init();
   projectEnvQueue.init();
   projectCleanupQueue.init();
+  usageEventQueue.init();
   healthAlert.init();
   auditLogStreamOutboxQueue.init();
   pkiSyncCleanup.init();

@@ -3,7 +3,8 @@ import z from "zod";
 
 import { PamSessionsSchema } from "@app/db/schemas";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
-import { PamAccountType } from "@app/ee/services/pam/pam-enums";
+import { PamAccountType, PamSessionStatus } from "@app/ee/services/pam/pam-enums";
+import { SessionLogsPageSchema, TSessionLogsPage } from "@app/ee/services/pam-session/pam-session-log-schemas";
 import { PamRecordingStorageBackend } from "@app/ee/services/pam-session-recording/pam-recording-enums";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
 import { BadRequestError } from "@app/lib/errors";
@@ -16,7 +17,6 @@ import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const SanitizedSessionSchema = PamSessionsSchema.pick({
   id: true,
-  projectId: true,
   accountId: true,
   accountType: true,
   accountName: true,
@@ -34,6 +34,7 @@ const SanitizedSessionSchema = PamSessionsSchema.pick({
   accessMethod: true,
   reason: true,
   gatewayId: true,
+  resourceName: true,
   folderName: true,
   selectedHost: true
 }).extend({
@@ -59,7 +60,13 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
           .max(100)
           .default(20)
           .optional()
-          .describe("The number of records to return for pagination")
+          .describe("The number of records to return for pagination"),
+        search: z
+          .string()
+          .trim()
+          .optional()
+          .describe("Search by account name, actor name, actor email, or folder name"),
+        status: z.nativeEnum(PamSessionStatus).optional().describe("Filter by session status")
       }),
       response: {
         200: z.object({ sessions: SanitizedSessionSchema.array(), totalCount: z.number() })
@@ -75,7 +82,7 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
           actorOrgId: req.permission.orgId,
           actorAuthMethod: req.permission.authMethod
         },
-        { offset: req.query.offset, limit: req.query.limit }
+        { offset: req.query.offset, limit: req.query.limit, search: req.query.search, status: req.query.status }
       );
       return { sessions, totalCount };
     }
@@ -108,6 +115,42 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
         throw new BadRequestError({ message: "Session not found" });
       }
       return { session };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:sessionId/logs",
+    config: { rateLimit: readLimit },
+    schema: {
+      operationId: "getPamSessionLogs",
+      description: "Get paginated logs for a PAM session",
+      tags: [ApiDocsTags.PamSessions],
+      params: z.object({
+        sessionId: z.string().uuid().describe("The ID of the session")
+      }),
+      querystring: z.object({
+        offset: z.coerce.number().int().nonnegative().default(0),
+        limit: z.coerce.number().int().min(1).max(100).default(20)
+      }),
+      response: {
+        200: SessionLogsPageSchema
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const result = await server.services.pamSession.getSessionLogs(
+        req.params.sessionId,
+        req.query.offset,
+        req.query.limit,
+        {
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          actorOrgId: req.permission.orgId,
+          actorAuthMethod: req.permission.authMethod
+        }
+      );
+      return result as TSessionLogsPage;
     }
   });
 
@@ -203,6 +246,50 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
       return { message: "Session ended" };
     }
   });
+
+  server.route({
+    method: "POST",
+    url: "/:sessionId/terminate",
+    config: { rateLimit: writeLimit },
+    schema: {
+      operationId: "terminatePamSession",
+      description: "Terminate an active PAM session",
+      tags: [ApiDocsTags.PamSessions],
+      params: z.object({
+        sessionId: z.string().uuid().describe("The ID of the session")
+      }),
+      response: {
+        200: z.object({ session: SanitizedSessionSchema })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const { session, projectId, accountName } = await server.services.pamSession.terminateSession(
+        req.params.sessionId,
+        {
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          actorOrgId: req.permission.orgId,
+          actorAuthMethod: req.permission.authMethod
+        }
+      );
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId,
+        event: {
+          type: EventType.PAM_SESSION_TERMINATE,
+          metadata: {
+            sessionId: req.params.sessionId,
+            accountName
+          }
+        }
+      });
+
+      return { session };
+    }
+  });
 };
 
 export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => {
@@ -227,6 +314,7 @@ export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => 
         200: z.object({
           sessionId: z.string().describe("The ID of the created session"),
           accountType: z.nativeEnum(PamAccountType).describe("The account type"),
+          metadata: z.record(z.string()).optional().describe("Account-type-specific metadata (e.g., username)"),
           relayHost: z.string().describe("The relay host to connect to"),
           relayClientCertificate: z.string().describe("Client certificate for the relay connection"),
           relayClientPrivateKey: z.string().describe("Client private key for the relay connection"),
@@ -291,6 +379,7 @@ export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => 
       return {
         sessionId: result.sessionId,
         accountType: result.accountType,
+        metadata: result.metadata,
         relayHost: result.relayHost,
         relayClientCertificate: result.relayClientCertificate,
         relayClientPrivateKey: result.relayClientPrivateKey,

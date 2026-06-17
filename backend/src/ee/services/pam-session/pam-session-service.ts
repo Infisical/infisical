@@ -1,3 +1,5 @@
+import net from "net";
+
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -5,6 +7,9 @@ import { createSshCert, createSshKeyPair } from "@app/ee/services/ssh/ssh-certif
 import { SshCertType } from "@app/ee/services/ssh/ssh-certificate-authority-types";
 import { SshCertKeyAlgorithm } from "@app/ee/services/ssh-certificate/ssh-certificate-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { GatewayProxyProtocol } from "@app/lib/gateway/types";
+import { createGatewayConnection, createRelayConnection } from "@app/lib/gateway-v2/gateway-v2";
+import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -24,19 +29,28 @@ import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
 import { extractGatewayTarget, parseInternalMetadata } from "../pam-account/pam-account-schemas";
 import { PamTemplateAccessPolicySchema } from "../pam-account-template/pam-account-template-schemas";
 import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
+import { TPamSessionEventChunkDALFactory } from "../pam-session-recording/pam-recording-chunk-dal";
 import { PamRecordingStorageBackend } from "../pam-session-recording/pam-recording-enums";
-import { generateSessionRecordingSecrets } from "../pam-session-recording/pam-recording-secrets";
+import { decryptSessionKey, generateSessionRecordingSecrets } from "../pam-session-recording/pam-recording-secrets";
 import { ResourcePermissionPamResourceActions } from "../permission/resource-permission";
 import { DEFAULT_SESSION_DURATION_MS } from "./pam-session-constants";
 import { TPamSessionDALFactory } from "./pam-session-dal";
 import { TPamSessionExpirationServiceFactory } from "./pam-session-expiration-queue";
+import { decryptChunks } from "./pam-session-fns";
 
 type TPamSessionServiceFactoryDep = {
   pamSessionDAL: Pick<
     TPamSessionDALFactory,
-    "findAccessibleByProjectId" | "findById" | "findOne" | "create" | "endSessionById" | "updateById"
+    | "findAccessibleByProjectId"
+    | "findById"
+    | "findOne"
+    | "create"
+    | "endSessionById"
+    | "terminateSessionById"
+    | "updateById"
   >;
   pamAccountDAL: Pick<TPamAccountDALFactory, "findByIdWithDetails" | "findOne">;
+  pamSessionEventChunkDAL: Pick<TPamSessionEventChunkDALFactory, "findBySessionIdPaginated">;
   pamFolderDAL: Pick<TPamFolderDALFactory, "findOne">;
   membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find">;
@@ -53,6 +67,7 @@ export type TPamSessionServiceFactory = ReturnType<typeof pamSessionServiceFacto
 export const pamSessionServiceFactory = ({
   pamSessionDAL,
   pamAccountDAL,
+  pamSessionEventChunkDAL,
   pamFolderDAL,
   membershipDAL,
   membershipRoleDAL,
@@ -79,7 +94,7 @@ export const pamSessionServiceFactory = ({
   const listSessions = async (
     projectId: string,
     ctx: TActorContext,
-    pagination?: { offset?: number; limit?: number }
+    pagination?: { offset?: number; limit?: number; search?: string; status?: string }
   ) => {
     await verifyProductMembership(permissionService, projectId, ctx);
 
@@ -103,17 +118,14 @@ export const pamSessionServiceFactory = ({
     const session = await pamSessionDAL.findById(sessionId);
     if (!session || !session.accountId) return null;
 
-    const isOwnSession = session.userId === ctx.actorId;
-    if (!isOwnSession) {
-      const account = await pamAccountDAL.findByIdWithDetails(session.accountId);
-      await checkAccount(
-        session.accountId,
-        account?.folderId,
-        session.projectId,
-        ResourcePermissionPamResourceActions.ViewSessions,
-        ctx
-      );
-    }
+    const account = await pamAccountDAL.findByIdWithDetails(session.accountId);
+    await checkAccount(
+      session.accountId,
+      account?.folderId,
+      session.projectId,
+      ResourcePermissionPamResourceActions.ViewSessions,
+      ctx
+    );
 
     return session;
   };
@@ -324,6 +336,7 @@ export const pamSessionServiceFactory = ({
     }
 
     const rawConnectionDetails = await decrypt(projectId, account.encryptedConnectionDetails);
+    const rawCredentials = await decrypt(projectId, account.encryptedCredentials);
     const gatewayTarget = extractGatewayTarget(account.accountType as PamAccountType, rawConnectionDetails);
 
     const user = await userDAL.findById(actor.actorId);
@@ -368,11 +381,20 @@ export const pamSessionServiceFactory = ({
       throw new BadRequestError({ message: "Failed to obtain gateway connection details" });
     }
 
+    const metadata: Record<string, string> = {
+      username: rawCredentials.username as string
+    };
+
+    if (account.accountType === PamAccountType.Postgres) {
+      metadata.database = rawConnectionDetails.database as string;
+    }
+
     return {
       sessionId: session.id,
       accountId: account.id,
       accountType: account.accountType as PamAccountType,
       accountName: account.name,
+      metadata,
       sessionDurationMs,
       relayHost: certs.relayHost,
       relayClientCertificate: certs.relay.clientCertificate,
@@ -384,11 +406,129 @@ export const pamSessionServiceFactory = ({
     };
   };
 
+  const terminateSession = async (sessionId: string, ctx: TActorContext) => {
+    const session = await pamSessionDAL.findById(sessionId);
+    if (!session) {
+      throw new NotFoundError({ message: "Session not found" });
+    }
+
+    if (session.status !== PamSessionStatus.Active && session.status !== PamSessionStatus.Starting) {
+      throw new BadRequestError({ message: "Session is not active" });
+    }
+
+    if (!session.accountId) {
+      throw new BadRequestError({ message: "Session has no linked account" });
+    }
+
+    const account = await pamAccountDAL.findByIdWithDetails(session.accountId);
+    await checkAccount(
+      session.accountId,
+      account?.folderId,
+      session.projectId,
+      ResourcePermissionPamResourceActions.TerminateSessions,
+      ctx
+    );
+
+    const updated = await pamSessionDAL.terminateSessionById(sessionId);
+    if (!updated) {
+      throw new BadRequestError({ message: "Session could not be terminated" });
+    }
+
+    if (session.gatewayId) {
+      void (async () => {
+        let relayConn: net.Socket | null = null;
+        try {
+          const user = await userDAL.findById(ctx.actorId);
+          const certs = await gatewayV2Service.getPAMConnectionDetails({
+            gatewayId: session.gatewayId!,
+            sessionId,
+            accountType: session.accountType as PamAccountType,
+            host: "0.0.0.0",
+            port: 0,
+            actorMetadata: { id: ctx.actorId, type: ActorType.USER, name: user?.email ?? "" }
+          });
+          if (!certs) {
+            logger.error(
+              { sessionId, gatewayId: session.gatewayId },
+              `Failed to get gateway [gatewayId=${session.gatewayId}] connection details for PAM session [sessionId=${sessionId}] termination`
+            );
+            return;
+          }
+          relayConn = await createRelayConnection({
+            relayHost: certs.relayHost,
+            clientCertificate: certs.relay.clientCertificate,
+            clientPrivateKey: certs.relay.clientPrivateKey,
+            serverCertificateChain: certs.relay.serverCertificateChain
+          });
+          const cancelConn = await createGatewayConnection(
+            relayConn,
+            certs.gateway,
+            GatewayProxyProtocol.PamSessionCancellation
+          );
+          cancelConn.end();
+        } catch (err) {
+          logger.error(
+            { sessionId, err },
+            `Session [sessionId=${sessionId}] termination ALPN signal failed (best-effort)`
+          );
+        } finally {
+          relayConn?.destroy();
+        }
+      })();
+    }
+
+    return { session: updated, projectId: session.projectId, accountName: session.accountName };
+  };
+
+  const getSessionLogs = async (sessionId: string, offset: number, limit: number, ctx: TActorContext) => {
+    const session = await pamSessionDAL.findById(sessionId);
+    if (!session) {
+      throw new NotFoundError({ message: "Session not found" });
+    }
+
+    if (!session.accountId) {
+      return { logs: [], hasMore: false, batchCount: 0 };
+    }
+
+    const account = await pamAccountDAL.findByIdWithDetails(session.accountId);
+    await checkAccount(
+      session.accountId,
+      account?.folderId,
+      session.projectId,
+      ResourcePermissionPamResourceActions.ViewSessions,
+      ctx
+    );
+
+    if (!session.encryptedSessionKey) {
+      return { logs: [], hasMore: false, batchCount: 0 };
+    }
+
+    const sessionKey = await decryptSessionKey({
+      projectId: session.projectId,
+      sessionId,
+      encryptedSessionKey: session.encryptedSessionKey,
+      kmsService
+    });
+
+    const chunks = await pamSessionEventChunkDAL.findBySessionIdPaginated(sessionId, {
+      offset,
+      limit: limit + 1
+    });
+
+    const hasMore = chunks.length > limit;
+    const pageChunks = hasMore ? chunks.slice(0, limit) : chunks;
+    const logs = pageChunks.length > 0 ? decryptChunks(pageChunks, sessionKey, session.projectId, sessionId) : [];
+
+    return { logs, hasMore, batchCount: pageChunks.length };
+  };
+
   return {
     access,
     listSessions,
     getSessionById,
     getSessionCredentials,
-    endSessionFromGateway
+    getSessionLogs,
+    endSessionFromGateway,
+    terminateSession
   };
 };

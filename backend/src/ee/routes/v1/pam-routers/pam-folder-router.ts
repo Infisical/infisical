@@ -4,6 +4,7 @@ import { PamFoldersSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -11,7 +12,6 @@ import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const SanitizedFolderSchema = PamFoldersSchema.pick({
   id: true,
-  projectId: true,
   name: true,
   description: true,
   createdAt: true,
@@ -56,6 +56,48 @@ export const registerPamFolderRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "GET",
+    url: "/:folderId/permissions",
+    config: { rateLimit: readLimit },
+    schema: {
+      operationId: "getPamFolderPermissions",
+      description: "Get the caller's effective resource permissions on this folder.",
+      tags: [ApiDocsTags.PamFolders],
+      params: z.object({
+        folderId: z.string().uuid().describe("The ID of the folder")
+      }),
+      response: {
+        200: z.object({
+          data: z.object({
+            permissions: z.any().array(),
+            memberships: z
+              .object({
+                id: z.string(),
+                actorUserId: z.string().nullish(),
+                actorIdentityId: z.string().nullish(),
+                actorGroupId: z.string().nullish(),
+                roles: z.object({ role: z.string(), customRoleSlug: z.string().nullish() }).array()
+              })
+              .array()
+          })
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const data = await server.services.pamFolder.getFolderPermissions({
+        folderId: req.params.folderId,
+        projectId: req.internalPamProjectId,
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod
+      });
+      return { data };
+    }
+  });
+
+  server.route({
+    method: "GET",
     url: "/:folderId",
     schema: {
       operationId: "getPamFolderById",
@@ -95,7 +137,7 @@ export const registerPamFolderRouter = async (server: FastifyZodProvider) => {
       description: "Create a new PAM folder",
       tags: [ApiDocsTags.PamFolders],
       body: z.object({
-        name: z.string().trim().min(1).max(64).describe("Display name for the folder"),
+        name: slugSchema({ field: "Name" }).describe("Name for the folder"),
         description: z.string().trim().max(256).optional().describe("Optional description")
       }),
       response: {
@@ -153,7 +195,7 @@ export const registerPamFolderRouter = async (server: FastifyZodProvider) => {
         folderId: z.string().uuid().describe("The ID of the folder")
       }),
       body: z.object({
-        name: z.string().trim().min(1).max(64).optional().describe("New display name"),
+        name: slugSchema({ field: "Name" }).optional().describe("New name"),
         description: z.string().trim().max(256).nullable().optional().describe("New description")
       }),
       response: {

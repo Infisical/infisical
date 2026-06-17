@@ -304,14 +304,14 @@ const certManagerRoutes = route("/organizations/$orgId/projects/cert-manager/$pr
       route("/$approvalRequestId", "cert-manager/ApprovalRequestDetailPage/route.tsx")
     ]),
     route("/ca/$caId", "cert-manager/CertAuthDetailsByIDPage/route.tsx"),
-    route(
-      "/certificate-profiles/$profileId",
-      "cert-manager/CertificateProfileDetailsByIDPage/route.tsx"
-    ),
-    route(
-      "/certificate-policies/$policyId",
-      "cert-manager/CertificatePolicyDetailsByIDPage/route.tsx"
-    ),
+    route("/certificate-profiles", [
+      index("cert-manager/CertificateProfilesPage/route.tsx"),
+      route("/$profileId", "cert-manager/CertificateProfileDetailsByIDPage/route.tsx")
+    ]),
+    route("/certificate-policies", [
+      index("cert-manager/CertificatePoliciesPage/route.tsx"),
+      route("/$policyId", "cert-manager/CertificatePolicyDetailsByIDPage/route.tsx")
+    ]),
     route("/certificates/$certificateId", "cert-manager/CertificateDetailsByIDPage/route.tsx"),
     route("/pki-collections/$collectionId", "cert-manager/PkiCollectionDetailsByIDPage/routes.tsx"),
     route("/integrations", [
@@ -393,38 +393,11 @@ const secretScanningRoutes = route("/organizations/$orgId/projects/secret-scanni
   ])
 ]);
 
-const pamRoutes = route("/organizations/$orgId/projects/pam/$projectId", [
+const pamRoutes = route("/organizations/$orgId/pam", [
   layout("pam-layout", "pam/layout.tsx", [
-    route("/sessions", [
-      index("pam/PamSessionsPage/route.tsx"),
-      route("/$sessionId", "pam/PamSessionsByIDPage/route.tsx")
-    ]),
-    route("/resources", [
-      index("pam/PamResourcesPage/route.tsx"),
-      route("/$resourceType/$resourceId", [
-        index("pam/PamResourceByIDPage/route.tsx"),
-        route("/accounts/$accountId", [index("pam/PamAccountByIDPage/route.tsx")])
-      ])
-    ]),
-    route("/domains", [
-      index("pam/PamDomainsPage/route.tsx"),
-      route("/$domainType/$domainId", [
-        index("pam/PamDomainByIDPage/route.tsx"),
-        route("/accounts/$accountId", [index("pam/PamDomainAccountByIDPage/route.tsx")])
-      ])
-    ]),
-    route("/discovery", [
-      index("pam/PamDiscoveryPage/route.tsx"),
-      route("/$discoveryType/$discoverySourceId", "pam/PamDiscoveryDetailPage/route.tsx")
-    ]),
+    route("/access", [index("pam/PamAccessPage/route.tsx")]),
+    route("/sessions", "pam/PamSessionsPage/route.tsx"),
     route("/audit-logs", "project/AuditLogsPage/route-pam.tsx"),
-    route("/insights", "pam/InsightsPage/route.tsx"),
-    route("/settings", "pam/SettingsPage/route.tsx"),
-    route("/account-policies", "pam/PamAccountPoliciesPage/route.tsx"),
-    route("/approvals", [
-      index("pam/ApprovalsPage/route.tsx"),
-      route("/$approvalRequestId", "pam/ApprovalRequestDetailPage/route.tsx")
-    ]),
 
     // Access Management
     route("/access-management", "project/AccessControlPage/route-pam.tsx"),

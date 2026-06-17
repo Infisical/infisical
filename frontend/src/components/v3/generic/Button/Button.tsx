@@ -33,7 +33,8 @@ const buttonVariants = cva(
         warning:
           "border-warning/25 bg-warning/10 text-foreground hover:bg-warning/15 hover:border-warning/30 data-[state=open]:bg-warning/15 data-[state=open]:border-warning/30",
         danger:
-          "border-danger/25 bg-danger/10 text-foreground hover:bg-danger/15 hover:border-danger/30 data-[state=open]:bg-danger/15 data-[state=open]:border-danger/30"
+          "border-danger/25 bg-danger/10 text-foreground hover:bg-danger/15 hover:border-danger/30 data-[state=open]:bg-danger/15 data-[state=open]:border-danger/30",
+        pam: "border-product-pam/25 bg-product-pam/10 text-foreground hover:bg-product-pam/15 hover:border-product-pam/30 data-[state=open]:bg-product-pam/15 data-[state=open]:border-product-pam/30"
       },
       size: {
         xs: "h-7 px-2 text-xs rounded-sm [&>svg]:size-3 gap-1.5",

@@ -1,53 +1,36 @@
-import {
-  ActivityIcon,
-  BookCheck,
-  Database,
-  FileText,
-  Globe,
-  ScrollText,
-  Search,
-  Settings,
-  Shield,
-  Video
-} from "lucide-react";
+import { FileText, KeyRound, Shield, Video } from "lucide-react";
+
+import { SidebarCollapsibleGroup } from "@app/components/v3";
 
 import { ProjectNavList } from "./ProjectNavLink";
-import {
-  PAM_APPROVALS_SUBMENU,
-  PAM_SETTINGS_SUBMENU,
-  PROJECT_ACCESS_CONTROL_SUBMENU
-} from "./submenus";
 import type { NavItem, Submenu } from "./types";
 
 export const PamNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Submenu) => void }) => {
-  const items: NavItem[] = [
-    { label: "Resources", icon: Database, pathSuffix: "resources" },
-    { label: "Discovery", icon: Search, pathSuffix: "discovery", activeMatch: /\/discovery\// },
+  const topItems: NavItem[] = [{ label: "Access", icon: KeyRound, pathSuffix: "access" }];
+
+  const monitorItems: NavItem[] = [
     { label: "Sessions", icon: Video, pathSuffix: "sessions" },
-    { label: "Domains", icon: Globe, pathSuffix: "domains" },
-    { label: "Account Policies", icon: ScrollText, pathSuffix: "account-policies" },
-    {
-      label: "Approvals",
-      icon: BookCheck,
-      pathSuffix: "approvals",
-      activeMatch: /\/approvals\//,
-      submenu: PAM_APPROVALS_SUBMENU
-    },
+    { label: "Audit Logs", icon: FileText, pathSuffix: "audit-logs" }
+  ];
+
+  const configureItems: NavItem[] = [
     {
       label: "Access Control",
       icon: Shield,
       pathSuffix: "access-management",
-      activeMatch: /\/groups\/|\/identities\/|\/members\/|\/roles\//,
-      submenu: PROJECT_ACCESS_CONTROL_SUBMENU
-    },
-    { label: "Insights", icon: ActivityIcon, pathSuffix: "insights" },
-    { label: "Audit Logs", icon: FileText, pathSuffix: "audit-logs" },
-    {
-      label: "Settings",
-      icon: Settings,
-      pathSuffix: "settings",
-      submenu: PAM_SETTINGS_SUBMENU
+      activeMatch: /\/access-management|\/groups\/|\/identities\/|\/members\/|\/roles\//
     }
   ];
-  return <ProjectNavList items={items} onSubmenuOpen={onSubmenuOpen} />;
+
+  return (
+    <>
+      <ProjectNavList items={topItems} onSubmenuOpen={onSubmenuOpen} />
+      <SidebarCollapsibleGroup label="Monitor">
+        <ProjectNavList items={monitorItems} onSubmenuOpen={onSubmenuOpen} />
+      </SidebarCollapsibleGroup>
+      <SidebarCollapsibleGroup label="Configure">
+        <ProjectNavList items={configureItems} onSubmenuOpen={onSubmenuOpen} />
+      </SidebarCollapsibleGroup>
+    </>
+  );
 };

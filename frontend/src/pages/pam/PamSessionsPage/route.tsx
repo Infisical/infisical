@@ -1,10 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-import { PamSessionPage } from "./PamSessionsPage";
+import { PamSessionsPage } from "./PamSessionsPage";
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/sessions/"
+  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/sessions"
 )({
+  component: PamSessionsPage,
   beforeLoad: ({ context }) => {
     return {
       breadcrumbs: [
@@ -14,6 +15,5 @@ export const Route = createFileRoute(
         }
       ]
     };
-  },
-  component: PamSessionPage
+  }
 });

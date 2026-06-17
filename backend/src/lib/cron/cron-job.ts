@@ -12,6 +12,7 @@ export const CronJobName = {
   HealthAlert: "health-alert",
   DailyReminders: "daily-reminders",
   DailyResourceCleanup: "daily-resource-cleanup",
+  DailyResourceNotification: "daily-resource-notification",
   FrequentResourceCleanup: "frequent-resource-cleanup",
   CertificateCleanup: "certificate-cleanup",
   CertificateV3AutoRenewal: "certificate-v3-auto-renewal",
@@ -35,7 +36,8 @@ export const CronJobName = {
   SignerDailyAutoRenewal: "signer-daily-auto-renewal",
   SignerIssuancePolling: "signer-issuance-polling",
   AuditLogStreamOutboxStaleClaimSweeper: "audit-log-stream-outbox-stale-claim-sweeper",
-  AuditLogStreamOutboxCleanup: "audit-log-stream-outbox-cleanup"
+  AuditLogStreamOutboxCleanup: "audit-log-stream-outbox-cleanup",
+  LicenseUsageFlush: "license-usage-flush"
 } as const;
 
 // ── tuning constants ──────────────────────────────────────────────────────────

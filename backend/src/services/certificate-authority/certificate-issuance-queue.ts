@@ -437,7 +437,12 @@ export const certificateIssuanceQueueFactory = ({
           const [, generatedCsr] = await acme.crypto.createCsr(
             {
               altNames: altNames ? altNames.map((san) => san.value) : [],
-              commonName: commonName || ""
+              commonName: commonName || "",
+              organization: organization || undefined,
+              organizationUnit: organizationalUnit || undefined,
+              country: country || undefined,
+              state: state || undefined,
+              locality: locality || undefined
             },
             skLeaf
           );
