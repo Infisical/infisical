@@ -7,6 +7,16 @@ import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 import { SECRET_SYNC_NAME_MAP } from "../secret-sync-maps";
 import { TTriggerDevEnvVar, TTriggerDevSyncWithCredentials } from "./trigger-dev-sync-types";
 
+const MAX_RETRIES = 5;
+
+const sleep = async () =>
+  new Promise((resolve) => {
+    setTimeout(resolve, 60000);
+  });
+
+const isRateLimitError = (error: unknown) =>
+  (error as { response?: { status?: number } })?.response?.status === 429;
+
 const getEnvVarsBaseUrl = async (secretSync: TTriggerDevSyncWithCredentials) => {
   const {
     connection,
@@ -18,51 +28,85 @@ const getEnvVarsBaseUrl = async (secretSync: TTriggerDevSyncWithCredentials) => 
   return `${instanceUrl}/api/v1/projects/${encodeURIComponent(projectRef)}/envvars/${encodeURIComponent(environment)}`;
 };
 
-const listTriggerDevEnvVars = async (secretSync: TTriggerDevSyncWithCredentials): Promise<TTriggerDevEnvVar[]> => {
+const listTriggerDevEnvVars = async (
+  secretSync: TTriggerDevSyncWithCredentials,
+  attempt = 0
+): Promise<TTriggerDevEnvVar[]> => {
   const baseUrl = await getEnvVarsBaseUrl(secretSync);
   const { apiKey } = secretSync.connection.credentials;
 
-  const { data } = await request.get<TTriggerDevEnvVar[]>(baseUrl, {
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      Accept: "application/json"
-    }
-  });
+  try {
+    const { data } = await request.get<TTriggerDevEnvVar[]>(baseUrl, {
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        Accept: "application/json"
+      }
+    });
 
-  return data;
+    return data;
+  } catch (error) {
+    if (isRateLimitError(error) && attempt < MAX_RETRIES) {
+      await sleep();
+      return listTriggerDevEnvVars(secretSync, attempt + 1);
+    }
+    throw error;
+  }
 };
 
 const importTriggerDevEnvVars = async (
   secretSync: TTriggerDevSyncWithCredentials,
-  variables: Record<string, string>
-) => {
+  variables: Record<string, string>,
+  attempt = 0
+): Promise<void> => {
   const baseUrl = await getEnvVarsBaseUrl(secretSync);
   const { apiKey } = secretSync.connection.credentials;
   // Default to marking synced variables as secret in Trigger.dev (they originate from a secrets manager)
   const isSecret = secretSync.syncOptions.markAsSecret ?? true;
 
-  await request.post(
-    `${baseUrl}/import`,
-    { variables, override: true, isSecret },
-    {
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json"
+  try {
+    await request.post(
+      `${baseUrl}/import`,
+      { variables, override: true, isSecret },
+      {
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json"
+        }
       }
+    );
+  } catch (error) {
+    if (isRateLimitError(error) && attempt < MAX_RETRIES) {
+      await sleep();
+      await importTriggerDevEnvVars(secretSync, variables, attempt + 1);
+      return;
     }
-  );
+    throw error;
+  }
 };
 
-const deleteTriggerDevEnvVar = async (secretSync: TTriggerDevSyncWithCredentials, key: string) => {
+const deleteTriggerDevEnvVar = async (
+  secretSync: TTriggerDevSyncWithCredentials,
+  key: string,
+  attempt = 0
+): Promise<void> => {
   const baseUrl = await getEnvVarsBaseUrl(secretSync);
   const { apiKey } = secretSync.connection.credentials;
 
-  await request.delete(`${baseUrl}/${encodeURIComponent(key)}`, {
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      Accept: "application/json"
+  try {
+    await request.delete(`${baseUrl}/${encodeURIComponent(key)}`, {
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        Accept: "application/json"
+      }
+    });
+  } catch (error) {
+    if (isRateLimitError(error) && attempt < MAX_RETRIES) {
+      await sleep();
+      await deleteTriggerDevEnvVar(secretSync, key, attempt + 1);
+      return;
     }
-  });
+    throw error;
+  }
 };
 
 export const TriggerDevSyncFns = {
