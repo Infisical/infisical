@@ -1,9 +1,26 @@
+import { faArrowRight, faCheck, faUpRightFromSquare } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+
+import {
+  Badge,
+  Button,
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from "@app/components/v3";
 import { BillingV2Cadence, BillingV2CatalogProduct, BillingV2Entitlement } from "@app/hooks/api";
 
-import { cadenceWord, fmtMoney, fmtMoney2, unitPrice } from "../billing-v2-data";
-import { IconArrowRight, IconCheck, IconExternal, IconPlus, IconX } from "../icons";
-import { Button } from "./primitives";
-import { ProductIcon } from "./shared";
+import { cadenceWord, fmtMoney, unitPrice } from "../billing-v2-data";
+import { ActiveBadge, ProductIcon } from "./shared";
 
 type ProPriceParts = { amt: string; unit: string } | null;
 
@@ -24,19 +41,15 @@ const proPriceParts = (prod: BillingV2CatalogProduct, cad: BillingV2Cadence): Pr
   if (cad === "annual") {
     suffix = "yr";
   }
-  return { amt: fmtMoney2(unitPrice(d, cad)), unit: `/ ${d.noun} / ${suffix}` };
+  return { amt: fmtMoney(unitPrice(d, cad), 2), unit: `/ ${d.noun} / ${suffix}` };
 };
 
-export const CmpCell = (v: string | boolean) => {
+const CmpCell = (v: string | boolean) => {
   if (v === true) {
-    return (
-      <span className="cmp-check">
-        <IconCheck size={15} stroke={2.5} />
-      </span>
-    );
+    return <FontAwesomeIcon icon={faCheck} className="text-success" />;
   }
   if (v === false) {
-    return <span className="cmp-dash">—</span>;
+    return <span className="text-mineshaft-500">—</span>;
   }
   return v;
 };
@@ -56,21 +69,12 @@ const EntitlementSummary = ({ entitlement }: EntitlementSummaryProps) => {
     }
   }
   return (
-    <div className="sheet-usage">
-      <div className="su-top">
-        <span className="su-lbl">Your plan</span>
-        {entitled ? (
-          <span className="badge badge-success" style={{ gap: 5 }}>
-            <span className="dot" />
-            Active
-          </span>
-        ) : (
-          <span className="badge badge-neutral">Not in your plan</span>
-        )}
+    <div className="rounded-lg border border-border bg-card p-4">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <span className="text-xs font-medium text-mineshaft-300">Your plan</span>
+        {entitled ? <ActiveBadge /> : <Badge variant="neutral">Not in your plan</Badge>}
       </div>
-      <div className="tier-desc" style={{ flex: "none" }}>
-        {detail}
-      </div>
+      <div className="text-xs text-mineshaft-300">{detail}</div>
     </div>
   );
 };
@@ -90,79 +94,83 @@ const PlansView = ({ prod, entitlement, cadence }: PlansViewProps) => {
     <>
       <EntitlementSummary entitlement={entitlement} />
 
-      <div className={`tier-cards ${hasEnt ? "" : "single"}`}>
-        <div className={`tier-card ${entitled ? "current" : "featured"}`}>
-          <div className="tier-top">
-            <span className="tier-name">Pro</span>
+      <div className={`grid gap-3.5 ${hasEnt ? "sm:grid-cols-2" : "grid-cols-1"}`}>
+        <div
+          className={`flex flex-col gap-3.5 rounded-xl border p-[18px] ${
+            entitled ? "border-mineshaft-500 bg-mineshaft-700/40" : "border-org/40 bg-org/5"
+          }`}
+        >
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[15px] font-semibold text-foreground">Pro</span>
             {entitled ? (
-              <span className="badge badge-outline" style={{ gap: 5 }}>
-                <IconCheck size={11} stroke={2.5} style={{ color: "#2ecc71" }} />
+              <Badge variant="outline">
+                <FontAwesomeIcon icon={faCheck} className="text-success" />
                 Current plan
-              </span>
+              </Badge>
             ) : (
-              <span className="badge badge-org">Self-serve</span>
+              <Badge variant="org">Self-serve</Badge>
             )}
           </div>
           {pp ? (
-            <div className="tier-price">
-              <span className="tp-amt">{pp.amt}</span>
-              <span className="tp-unit">{pp.unit}</span>
+            <div className="flex flex-wrap items-baseline gap-1.5">
+              <span className="text-2xl font-semibold text-foreground">{pp.amt}</span>
+              <span className="text-xs text-mineshaft-400">{pp.unit}</span>
             </div>
           ) : null}
-          {prod.pro?.proFeature ? <div className="tier-desc">{prod.pro.proFeature}</div> : null}
+          {prod.pro?.proFeature ? (
+            <div className="text-xs text-mineshaft-300">{prod.pro.proFeature}</div>
+          ) : null}
         </div>
 
         {hasEnt && prod.enterprise ? (
-          <div className="tier-card">
-            <div className="tier-top">
-              <span className="tier-name">Enterprise</span>
-              <span className="badge badge-info">Sales-led</span>
+          <div className="flex flex-col gap-3.5 rounded-xl border border-border bg-card p-[18px]">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[15px] font-semibold text-foreground">Enterprise</span>
+              <Badge variant="info">Sales-led</Badge>
             </div>
-            <div className="tier-price">
-              <span className="tp-amt">Custom</span>
+            <div className="flex items-baseline">
+              <span className="text-2xl font-semibold text-foreground">Custom</span>
             </div>
-            <div className="tier-desc">{prod.enterprise.feature}</div>
+            <div className="text-xs text-mineshaft-300">{prod.enterprise.feature}</div>
           </div>
         ) : null}
       </div>
 
       {hasEnt && prod.compare ? (
         <div>
-          <div className="cmp-h">Compare plans</div>
-          <div className="cmp-wrap">
-            <table className="cmp-table">
-              <thead>
-                <tr>
-                  <th aria-label="Feature" />
-                  <th className="col">
-                    <span className="ch-name org">Pro</span>
-                  </th>
-                  <th className="col ent">
-                    <span className="ch-name ent">Enterprise</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {prod.compare.map((row) => (
-                  <tr key={row.label}>
-                    <td className="feat">{row.label}</td>
-                    <td className="col">{CmpCell(row.pro)}</td>
-                    <td className="col ent">{CmpCell(row.ent)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="mb-3 text-xs font-semibold tracking-wide text-mineshaft-400 uppercase">
+            Compare plans
           </div>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead aria-label="Feature" />
+                <TableHead className="text-center text-org">Pro</TableHead>
+                <TableHead className="text-center text-info">Enterprise</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {prod.compare.map((row) => (
+                <TableRow key={row.label}>
+                  <TableCell className="text-mineshaft-200">{row.label}</TableCell>
+                  <TableCell className="text-center">{CmpCell(row.pro)}</TableCell>
+                  <TableCell className="text-center">{CmpCell(row.ent)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </div>
       ) : null}
 
       {!(hasEnt && prod.compare) && prod.includes ? (
         <div>
-          <div className="cmp-h">What&apos;s included</div>
-          <div className="incl-list">
+          <div className="mb-3 text-xs font-semibold tracking-wide text-mineshaft-400 uppercase">
+            What&apos;s included
+          </div>
+          <div className="grid gap-x-5 gap-y-2.5 sm:grid-cols-2">
             {prod.includes.map((f) => (
-              <div className="incl-item" key={f}>
-                <IconCheck className="ci-ico" size={14} stroke={2.25} />
+              <div className="flex items-start gap-2 text-xs text-mineshaft-200" key={f}>
+                <FontAwesomeIcon icon={faCheck} className="mt-0.5 shrink-0 text-success" />
                 {f}
               </div>
             ))}
@@ -178,6 +186,7 @@ type ProductSheetProps = {
   prod?: BillingV2CatalogProduct;
   entitlement?: BillingV2Entitlement;
   cadence: BillingV2Cadence;
+  manageMode: "checkout" | "portal";
   redirecting?: boolean;
   onClose: () => void;
   onManage: (prodId: string) => void;
@@ -189,6 +198,7 @@ export const ProductSheet = ({
   prod,
   entitlement,
   cadence,
+  manageMode,
   redirecting,
   onClose,
   onManage,
@@ -202,91 +212,74 @@ export const ProductSheet = ({
   const selfServe = Boolean(prod.pro?.planKey);
 
   let primaryCta = null;
-  if (entitled) {
+  if (entitled || (selfServe && manageMode === "portal")) {
     primaryCta = (
-      <Button variant="org" onClick={() => onManage(prodId)} loading={redirecting}>
+      <Button variant="org" onClick={() => onManage(prodId)} isPending={redirecting}>
         Manage in Stripe
-        <IconExternal size={14} />
+        <FontAwesomeIcon icon={faUpRightFromSquare} />
       </Button>
     );
   } else if (selfServe) {
     primaryCta = (
-      <Button variant="org" onClick={() => onManage(prodId)} loading={redirecting}>
-        <IconPlus size={14} />
-        Activate in Stripe
+      <Button variant="org" onClick={() => onManage(prodId)} isPending={redirecting}>
+        Continue to Checkout
       </Button>
     );
   } else if (prod.enterprise) {
     primaryCta = (
       <Button variant="info" onClick={() => onContact(prod)}>
         Contact sales
-        <IconArrowRight size={14} />
-      </Button>
-    );
-  }
-
-  // A product with both a self-serve tier and an Enterprise tier keeps a sales path alongside checkout.
-  let secondaryCta = null;
-  if (!entitled && selfServe && prod.enterprise) {
-    secondaryCta = (
-      <Button variant="info" onClick={() => onContact(prod)} disabled={redirecting}>
-        Contact sales
-        <IconArrowRight size={14} />
+        <FontAwesomeIcon icon={faArrowRight} />
       </Button>
     );
   }
 
   return (
-    // eslint-disable-next-line jsx-a11y/no-static-element-interactions
-    <div
-      className="sheet-backdrop"
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget && !redirecting) {
+    <Sheet
+      open
+      onOpenChange={(open) => {
+        if (!open && !redirecting) {
           onClose();
         }
       }}
     >
-      <div className="sheet" role="dialog" aria-modal="true">
-        <div className="sheet-head">
+      <SheetContent
+        side="right"
+        className={`w-full p-0 sm:max-w-3xl ${redirecting ? "[&>button]:hidden" : ""}`}
+        onEscapeKeyDown={(e) => {
+          if (redirecting) {
+            e.preventDefault();
+          }
+        }}
+        onPointerDownOutside={(e) => {
+          if (redirecting) {
+            e.preventDefault();
+          }
+        }}
+      >
+        <SheetHeader className="flex-row items-start gap-3.5 border-b pr-12">
           <ProductIcon product={prod} size={40} />
-          <div className="sh-titles">
-            <div className="sheet-title">
+          <div className="min-w-0 flex-1">
+            <SheetTitle className="flex flex-wrap items-center gap-2 text-base">
               {prod.name}
-              {entitled ? (
-                <span className="badge badge-success" style={{ gap: 5 }}>
-                  <span className="dot" />
-                  Active
-                </span>
-              ) : null}
-              {prod.addon ? <span className="badge badge-neutral">Add-on</span> : null}
-            </div>
-            <div className="sheet-sub">{prod.tagline || prod.desc}</div>
+              {entitled ? <ActiveBadge /> : null}
+              {prod.addon ? <Badge variant="neutral">Add-on</Badge> : null}
+            </SheetTitle>
+            <SheetDescription className="mt-1">{prod.tagline || prod.desc}</SheetDescription>
           </div>
-          {!redirecting ? (
-            <button
-              type="button"
-              className="icon-btn"
-              onClick={onClose}
-              aria-label="Close"
-              style={{ marginTop: -2, marginRight: -6 }}
-            >
-              <IconX size={17} />
-            </button>
-          ) : null}
-        </div>
+        </SheetHeader>
 
-        <div className="sheet-body">
+        <div className="flex flex-1 flex-col gap-6 overflow-y-auto p-5">
           <PlansView prod={prod} entitlement={entitlement} cadence={cadence} />
         </div>
 
-        <div className="sheet-foot">
-          <Button variant="outline" onClick={onClose} disabled={redirecting}>
+        <SheetFooter className="flex-row justify-end border-t">
+          <Button variant="outline" onClick={onClose} isDisabled={redirecting}>
             Close
           </Button>
-          {secondaryCta}
           {primaryCta}
-        </div>
-      </div>
-    </div>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
   );
 };

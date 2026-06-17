@@ -1,27 +1,26 @@
+import {
+  faBolt,
+  faBox,
+  faKey,
+  faLock,
+  faMagnifyingGlass,
+  faShieldHalved,
+  IconDefinition
+} from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+
+import { Badge } from "@app/components/v3";
 import { BillingV2CatalogProduct } from "@app/hooks/api";
 
-import {
-  IconBox,
-  IconKey,
-  IconLock,
-  IconProps,
-  IconScan,
-  IconShieldCheck,
-  IconZap
-} from "../icons";
-
-type IconComponent = (props: IconProps) => JSX.Element;
-
-const ICON_BY_NAME: Record<string, IconComponent> = {
-  IconKey,
-  IconShieldCheck,
-  IconLock,
-  IconScan,
-  IconZap,
-  IconBox
+// Maps the catalog icon name (license-server presentation metadata) to a FontAwesome glyph.
+const ICON_BY_NAME: Record<string, IconDefinition> = {
+  IconKey: faKey,
+  IconShieldCheck: faShieldHalved,
+  IconLock: faLock,
+  IconScan: faMagnifyingGlass,
+  IconZap: faBolt,
+  IconBox: faBox
 };
-
-type StatusType = "trialing" | "past-due" | "suspended" | "active";
 
 type MeterTone = "ok" | "near" | "full";
 
@@ -30,50 +29,35 @@ type ProductIconProps = {
   size?: number;
 };
 
-// Tinted product icon tile (follows the design-system tint pattern).
+// Tinted product icon tile. The tint is per-product brand metadata from the API, so it stays inline.
 export const ProductIcon = ({ product, size = 38 }: ProductIconProps) => {
-  const Glyph = ICON_BY_NAME[product.icon] || IconBox;
-  const c = product.color;
+  const glyph = ICON_BY_NAME[product.icon] ?? faBox;
+  const { color } = product;
   return (
     <div
-      className="prod-ico"
+      className="flex shrink-0 items-center justify-center rounded-lg border"
       style={{
         width: size,
         height: size,
-        background: `color-mix(in srgb, ${c} 14%, transparent)`,
-        borderColor: `color-mix(in srgb, ${c} 30%, transparent)`,
-        color: c
+        background: `color-mix(in srgb, ${color} 14%, transparent)`,
+        borderColor: `color-mix(in srgb, ${color} 30%, transparent)`,
+        color
       }}
     >
-      <Glyph size={Math.round(size * 0.5)} stroke={1.75} />
+      <FontAwesomeIcon icon={glyph} style={{ fontSize: Math.round(size * 0.45) }} />
     </div>
   );
 };
 
-type StatusBadgeProps = {
-  status: StatusType;
-};
+export const ActiveBadge = () => (
+  <Badge variant="success">
+    <span className="size-1.5 rounded-full bg-current" />
+    Active
+  </Badge>
+);
 
-export const StatusBadge = ({ status }: StatusBadgeProps) => {
-  if (status === "trialing") {
-    return <span className="badge badge-info">Trial</span>;
-  }
-  if (status === "past-due") {
-    return <span className="badge badge-warning">Past due</span>;
-  }
-  if (status === "suspended") {
-    return <span className="badge badge-danger">Suspended</span>;
-  }
-  return (
-    <span className="badge badge-success" style={{ gap: 5 }}>
-      <span className="dot" />
-      Active
-    </span>
-  );
-};
-
-// Usage level to meter color. A null limit is unlimited (no bar, no alarm).
-export const meterTone = (used: number, limit: number | null): MeterTone => {
+// A null limit is unlimited (no bar, no alarm).
+const meterTone = (used: number, limit: number | null): MeterTone => {
   if (!limit || limit <= 2) {
     return "ok";
   }
@@ -87,13 +71,24 @@ export const meterTone = (used: number, limit: number | null): MeterTone => {
   return "ok";
 };
 
+const FILL_TONE: Record<MeterTone, string> = {
+  ok: "bg-org",
+  near: "bg-warning",
+  full: "bg-danger"
+};
+
+const COUNT_TONE: Record<MeterTone, string> = {
+  ok: "text-foreground",
+  near: "text-warning",
+  full: "text-danger"
+};
+
 type LimitMeterProps = {
   label: string;
   used: number;
   limit: number | null;
 };
 
-// A single real usage meter: label, used/limit bar. Null limit renders "Unlimited" with no bar.
 export const LimitMeter = ({ label, used, limit }: LimitMeterProps) => {
   const tone = meterTone(used, limit);
   let pct = 0;
@@ -101,21 +96,24 @@ export const LimitMeter = ({ label, used, limit }: LimitMeterProps) => {
     pct = Math.min(100, Math.round((used / limit) * 100));
   }
   return (
-    <div className="meter">
-      <div className="meter-top">
-        <span className="meter-label">{label}</span>
-        <span className={`meter-count tone-${tone}`}>
+    <div className="flex flex-col gap-1.5">
+      <div className="flex items-baseline justify-between gap-2.5">
+        <span className="text-xs text-mineshaft-300">{label}</span>
+        <span className={`text-xs tabular-nums ${COUNT_TONE[tone]}`}>
           {used.toLocaleString()}
           {limit === null ? (
-            <span className="meter-cap"> / Unlimited</span>
+            <span className="text-mineshaft-400"> / Unlimited</span>
           ) : (
-            <span className="meter-cap"> / {limit.toLocaleString()}</span>
+            <span className="text-mineshaft-400"> / {limit.toLocaleString()}</span>
           )}
         </span>
       </div>
       {limit !== null && limit > 0 && (
-        <div className="meter-track">
-          <div className={`meter-fill tone-${tone}`} style={{ width: `${pct}%` }} />
+        <div className="h-1.5 overflow-hidden rounded-full bg-mineshaft-600">
+          <div
+            className={`h-full rounded-full transition-all ${FILL_TONE[tone]}`}
+            style={{ width: `${pct}%` }}
+          />
         </div>
       )}
     </div>

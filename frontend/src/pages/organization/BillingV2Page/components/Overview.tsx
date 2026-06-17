@@ -1,3 +1,38 @@
+import { ReactNode } from "react";
+import {
+  faArrowRight,
+  faBagShopping,
+  faCalendar,
+  faCircleExclamation,
+  faCircleInfo,
+  faCreditCard,
+  faRotate,
+  faTriangleExclamation,
+  faUpRightFromSquare,
+  IconDefinition
+} from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+  Badge,
+  Button,
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Skeleton,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from "@app/components/v3";
 import {
   BillingV2CatalogProduct,
   BillingV2Entitlement,
@@ -6,19 +41,7 @@ import {
 } from "@app/hooks/api";
 
 import { fmtMoney, intervalWord } from "../billing-v2-data";
-import {
-  IconAlert,
-  IconAlertCircle,
-  IconArrowRight,
-  IconCalendar,
-  IconCreditCard,
-  IconExternal,
-  IconInfo,
-  IconRefresh,
-  IconShoppingBag
-} from "../icons";
-import { Button, Card, Skeleton } from "./primitives";
-import { LimitMeter, ProductIcon, StatusBadge } from "./shared";
+import { ActiveBadge, LimitMeter, ProductIcon } from "./shared";
 
 export type BillingV2Mode = "self-serve" | "managed";
 export type BillingV2RenderState =
@@ -38,7 +61,28 @@ type BannerProps = {
   onManageSubscription: () => void;
 };
 
-// Banners (managed info / dunning).
+type Dunning = {
+  variant: "warning" | "danger";
+  icon: IconDefinition;
+  title: string;
+  body: string;
+};
+
+const DUNNING: Partial<Record<BillingV2RenderState, Dunning>> = {
+  "past-due": {
+    variant: "warning",
+    icon: faTriangleExclamation,
+    title: "We couldn't process your last payment",
+    body: "Update your payment method to avoid losing access. Your products are still active while we retry."
+  },
+  suspended: {
+    variant: "danger",
+    icon: faCircleExclamation,
+    title: "Your subscription is suspended",
+    body: "A payment kept failing and access is paused. Complete payment to restore access to your products."
+  }
+};
+
 const Banner = ({
   mode,
   subState,
@@ -48,97 +92,81 @@ const Banner = ({
 }: BannerProps) => {
   if (mode === "managed") {
     return (
-      <div className="banner banner-info">
-        <IconInfo className="b-ico" />
-        <div className="b-body">
-          <div className="b-title">Your plan is managed by your account team</div>
-          <div className="b-text">
-            Products and limits on this organization are set by contract. Contact your account
-            manager to make changes.
-          </div>
-        </div>
-      </div>
+      <Alert variant="info">
+        <FontAwesomeIcon icon={faCircleInfo} />
+        <AlertTitle>Your plan is managed by your account team</AlertTitle>
+        <AlertDescription>
+          Products and limits on this organization are set by contract. Contact your account manager
+          to make changes.
+        </AlertDescription>
+      </Alert>
     );
   }
-  if (subState === "past-due") {
-    return (
-      <div className="banner banner-warning">
-        <IconAlert className="b-ico" />
-        <div className="b-body">
-          <div className="b-title">We couldn&apos;t process your last payment</div>
-          <div className="b-text">
-            Update your payment method to avoid losing access. Your products are still active while
-            we retry.
-          </div>
-          {canManage && (
-            <div className="b-actions">
-              <Button variant="warning" size="sm" onClick={onUpdatePayment}>
-                <IconCreditCard size={14} />
-                Update payment method
-              </Button>
-              <Button variant="outline" size="sm" onClick={onManageSubscription}>
-                Manage subscription
-              </Button>
-            </div>
-          )}
-        </div>
-      </div>
-    );
+
+  const dunning = DUNNING[subState];
+  if (!dunning) {
+    return null;
   }
-  if (subState === "suspended") {
-    return (
-      <div className="banner banner-danger">
-        <IconAlertCircle className="b-ico" />
-        <div className="b-body">
-          <div className="b-title">Your subscription is suspended</div>
-          <div className="b-text">
-            A payment kept failing and access is paused. Complete payment to restore access to your
-            products.
+
+  return (
+    <Alert variant={dunning.variant}>
+      <FontAwesomeIcon icon={dunning.icon} />
+      <AlertTitle>{dunning.title}</AlertTitle>
+      <AlertDescription>
+        {dunning.body}
+        {canManage && (
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button variant={dunning.variant} size="sm" onClick={onUpdatePayment}>
+              <FontAwesomeIcon icon={faCreditCard} />
+              Update payment method
+            </Button>
+            <Button variant="outline" size="sm" onClick={onManageSubscription}>
+              Manage subscription
+            </Button>
           </div>
-          {canManage && (
-            <div className="b-actions">
-              <Button variant="danger" size="sm" onClick={onUpdatePayment}>
-                <IconCreditCard size={14} />
-                Update payment method
-              </Button>
-              <Button variant="outline" size="sm" onClick={onManageSubscription}>
-                Manage subscription
-              </Button>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
-  return null;
+        )}
+      </AlertDescription>
+    </Alert>
+  );
 };
 
-// Loading skeleton.
+const CardEmpty = ({ children }: { children: ReactNode }) => (
+  <div className="py-7 text-center text-sm text-mineshaft-400">{children}</div>
+);
+
 const OverviewSkeleton = () => (
-  <div className="stack">
-    <Card noPad>
-      <div style={{ padding: 22, display: "flex", gap: 40 }}>
+  <div className="flex flex-col gap-4">
+    <Card className="p-0">
+      <div className="flex gap-10 p-6">
         {[0, 1, 2].map((i) => (
-          <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", gap: 10 }}>
-            <Skeleton w="50%" h={10} />
-            <Skeleton w="70%" h={22} />
+          <div key={i} className="flex flex-1 flex-col gap-2.5">
+            <Skeleton className="h-2.5 w-1/2" />
+            <Skeleton className="h-5 w-2/3" />
           </div>
         ))}
       </div>
     </Card>
-    <Card title={<Skeleton w={130} h={16} />}>
-      {[0, 1].map((i) => (
-        <div key={i} className="prod-item">
-          <div className="prod-row">
-            <Skeleton w={38} h={38} r={8} />
-            <div className="prod-main" style={{ gap: 8 }}>
-              <Skeleton w="40%" h={14} />
-              <Skeleton w="25%" h={11} />
+    <Card>
+      <CardHeader>
+        <CardTitle>
+          <Skeleton className="h-4 w-32" />
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-col">
+        {[0, 1].map((i) => (
+          <div
+            key={i}
+            className="flex items-center gap-4 border-t border-border py-4 first:border-t-0"
+          >
+            <Skeleton className="size-[38px] rounded-lg" />
+            <div className="flex flex-1 flex-col gap-2">
+              <Skeleton className="h-3.5 w-2/5" />
+              <Skeleton className="h-2.5 w-1/4" />
             </div>
-            <Skeleton w={80} h={14} />
+            <Skeleton className="h-3.5 w-20" />
           </div>
-        </div>
-      ))}
+        ))}
+      </CardContent>
     </Card>
   </div>
 );
@@ -149,14 +177,16 @@ type ErrorPanelProps = {
 
 const ErrorPanel = ({ onRetry }: ErrorPanelProps) => (
   <Card>
-    <div className="err-panel">
-      <IconAlertCircle className="e-ico" size={30} />
-      <div className="e-title">Couldn&apos;t load your subscription</div>
-      <div className="e-text">
+    <div className="flex flex-col items-center gap-3 px-7 py-10 text-center">
+      <FontAwesomeIcon icon={faCircleExclamation} className="text-3xl text-danger" />
+      <div className="text-base font-semibold text-foreground">
+        Couldn&apos;t load your subscription
+      </div>
+      <div className="max-w-[40ch] text-sm text-mineshaft-300">
         There was a problem reaching the billing service. Your products are unaffected.
       </div>
       <Button variant="outline" size="sm" onClick={onRetry}>
-        <IconRefresh size={14} />
+        <FontAwesomeIcon icon={faRotate} />
         Try again
       </Button>
     </div>
@@ -166,23 +196,22 @@ const ErrorPanel = ({ onRetry }: ErrorPanelProps) => (
 type GetStartedProps = {
   onGetStarted: () => void;
   canManage: boolean;
-  loading?: boolean;
 };
 
-const GetStarted = ({ onGetStarted, canManage, loading }: GetStartedProps) => (
+const GetStarted = ({ onGetStarted, canManage }: GetStartedProps) => (
   <Card>
-    <div className="getstarted">
-      <div className="gs-ico">
-        <IconShoppingBag size={26} />
+    <div className="flex flex-col items-center gap-4 px-7 py-12 text-center">
+      <div className="flex size-[54px] items-center justify-center rounded-xl border border-org/25 bg-org/10 text-2xl text-org">
+        <FontAwesomeIcon icon={faBagShopping} />
       </div>
-      <div className="gs-title">Start your subscription</div>
-      <div className="gs-text">
+      <div className="text-lg font-semibold text-foreground">Start your subscription</div>
+      <div className="max-w-[42ch] text-sm text-mineshaft-300">
         Pick the products your team needs and check out securely. You can change or cancel any time.
       </div>
       {canManage && (
-        <Button variant="org" size="lg" onClick={onGetStarted} loading={loading}>
+        <Button variant="org" size="lg" onClick={onGetStarted}>
           Get started
-          <IconArrowRight size={15} />
+          <FontAwesomeIcon icon={faArrowRight} />
         </Button>
       )}
     </div>
@@ -193,56 +222,53 @@ type SummaryCardProps = {
   overview: BillingV2Overview;
 };
 
-type StatusBadgeStatus = "trialing" | "past-due" | "suspended" | "active";
-
-const summaryStatus = (subState: BillingV2RenderState): StatusBadgeStatus => {
+const StatusBadge = ({ subState }: { subState: BillingV2RenderState }) => {
   if (subState === "trialing") {
-    return "trialing";
+    return <Badge variant="info">Trial</Badge>;
   }
   if (subState === "past-due") {
-    return "past-due";
+    return <Badge variant="warning">Past due</Badge>;
   }
   if (subState === "suspended") {
-    return "suspended";
+    return <Badge variant="danger">Suspended</Badge>;
   }
-  return "active";
+  return <ActiveBadge />;
 };
 
 const recurringLabel = (overview: BillingV2Overview): string => {
-  if (overview.subState === "no-subscription") {
-    return "No subscription";
-  }
-  if (overview.recurringAmount === null || overview.recurringAmount === 0) {
+  if (!overview.recurringAmount) {
     return "Free";
   }
   return `${fmtMoney(overview.recurringAmount)} / ${intervalWord(overview.interval)}`;
 };
 
 const SummaryCard = ({ overview }: SummaryCardProps) => (
-  <Card noPad>
-    <div className="summary">
-      <div className="summary-top">
-        <div className="summary-metric">
-          <span className="lbl">Status</span>
-          <span className="val" style={{ display: "flex", alignItems: "center", gap: 9 }}>
-            <StatusBadge status={summaryStatus(overview.subState)} />
-          </span>
-          <span className="sub">{overview.planName}</span>
-        </div>
-        <div className="summary-metric">
-          <span className="lbl">Next billing date</span>
-          <span className="val" style={{ display: "flex", alignItems: "center", gap: 9 }}>
-            <IconCalendar size={19} stroke={1.75} style={{ color: "#30b3ff" }} />
-            {overview.nextBillingDate || "—"}
-          </span>
-          <span className="sub">All products renew together</span>
-        </div>
-        <div className="summary-metric">
-          <span className="lbl">Recurring total</span>
-          <div className="cost-block">
-            <span className="cost-mtd">{recurringLabel(overview)}</span>
-          </div>
-        </div>
+  <Card className="overflow-hidden p-0">
+    <div className="flex flex-wrap items-stretch">
+      <div className="flex min-w-[180px] flex-1 flex-col gap-2 border-r border-border p-6">
+        <span className="text-xs font-medium tracking-wide text-mineshaft-400 uppercase">
+          Status
+        </span>
+        <span className="flex items-center text-2xl font-semibold text-foreground">
+          <StatusBadge subState={overview.subState} />
+        </span>
+        <span className="text-xs text-mineshaft-400">{overview.planName}</span>
+      </div>
+      <div className="flex min-w-[180px] flex-1 flex-col gap-2 border-r border-border p-6">
+        <span className="text-xs font-medium tracking-wide text-mineshaft-400 uppercase">
+          Next billing date
+        </span>
+        <span className="flex items-center gap-2 text-2xl font-semibold text-foreground">
+          <FontAwesomeIcon icon={faCalendar} className="text-lg text-org" />
+          {overview.nextBillingDate || "—"}
+        </span>
+        <span className="text-xs text-mineshaft-400">All products renew together</span>
+      </div>
+      <div className="flex min-w-[180px] flex-1 flex-col gap-2 p-6">
+        <span className="text-xs font-medium tracking-wide text-mineshaft-400 uppercase">
+          Recurring total
+        </span>
+        <span className="text-2xl font-semibold text-foreground">{recurringLabel(overview)}</span>
       </div>
     </div>
   </Card>
@@ -253,8 +279,11 @@ type UsageCardProps = {
 };
 
 const UsageCard = ({ overview }: UsageCardProps) => (
-  <Card title="Usage">
-    <div className="prod-usage" style={{ marginTop: 0 }}>
+  <Card>
+    <CardHeader>
+      <CardTitle>Usage</CardTitle>
+    </CardHeader>
+    <CardContent className="flex flex-col gap-2.5">
       <LimitMeter
         label="Members"
         used={overview.usage.members}
@@ -265,7 +294,7 @@ const UsageCard = ({ overview }: UsageCardProps) => (
         used={overview.usage.identities}
         limit={overview.usage.identityLimit}
       />
-    </div>
+    </CardContent>
   </Card>
 );
 
@@ -275,13 +304,6 @@ type ProductRowProps = {
   readOnly?: boolean;
   onManage: (id: string) => void;
   onContact: (prod: BillingV2CatalogProduct) => void;
-};
-
-const entitlementLabel = (entitlement?: BillingV2Entitlement): string => {
-  if (entitlement?.entitled) {
-    return "Active";
-  }
-  return "Not in your plan";
 };
 
 const ProductRow = ({ prod, entitlement, readOnly, onManage, onContact }: ProductRowProps) => {
@@ -318,32 +340,23 @@ const ProductRow = ({ prod, entitlement, readOnly, onManage, onContact }: Produc
   }
 
   return (
-    <div className="prod-item">
-      <div className="prod-row">
-        <ProductIcon product={prod} />
-        <div className="prod-main">
-          <div className="prod-name-row">
-            <span className="prod-name">{prod.name}</span>
-            {prod.addon && <span className="prod-plan-chip">Add-on</span>}
-            {entitled ? (
-              <span className="badge badge-success" style={{ gap: 5 }}>
-                <span className="dot" />
-                {entitlementLabel(entitlement)}
-              </span>
-            ) : (
-              <span className="badge badge-neutral">Not in your plan</span>
-            )}
-          </div>
-          <div className="prod-meta">{prod.tagline || prod.desc}</div>
+    <div className="flex items-center gap-4 border-t border-border py-4 first:border-t-0">
+      <ProductIcon product={prod} />
+      <div className="flex min-w-0 flex-1 flex-col gap-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-sm font-semibold text-foreground">{prod.name}</span>
+          {prod.addon && <Badge variant="neutral">Add-on</Badge>}
+          {entitled ? <ActiveBadge /> : <Badge variant="neutral">Not in your plan</Badge>}
         </div>
-        {limitNote && (
-          <div className="prod-price">
-            <span className="amt">{limitNote}</span>
-            <div className="breakdown">in use</div>
-          </div>
-        )}
-        {action && <div className="prod-actions">{action}</div>}
+        <div className="text-xs text-mineshaft-400">{prod.tagline || prod.desc}</div>
       </div>
+      {limitNote && (
+        <div className="flex shrink-0 flex-col items-end gap-0.5">
+          <span className="text-sm font-semibold text-foreground">{limitNote}</span>
+          <span className="text-xs text-mineshaft-400">in use</span>
+        </div>
+      )}
+      {action && <div className="flex shrink-0 items-center gap-1.5">{action}</div>}
     </div>
   );
 };
@@ -357,23 +370,29 @@ type ProductsCardProps = {
 };
 
 const ProductsCard = ({ overview, catalog, readOnly, onManage, onContact }: ProductsCardProps) => (
-  <Card title="Products" desc="Everything you can run on your subscription." noPad>
-    {catalog.length === 0 ? (
-      <div className="empty-row">No products are available yet.</div>
-    ) : (
-      <div className="prod-list" style={{ padding: "4px 20px 16px" }}>
-        {catalog.map((prod) => (
-          <ProductRow
-            key={prod.id}
-            prod={prod}
-            entitlement={overview.entitlements[prod.id]}
-            readOnly={readOnly}
-            onManage={onManage}
-            onContact={onContact}
-          />
-        ))}
-      </div>
-    )}
+  <Card>
+    <CardHeader>
+      <CardTitle>Products</CardTitle>
+      <CardDescription>Everything you can run on your subscription.</CardDescription>
+    </CardHeader>
+    <CardContent>
+      {catalog.length === 0 ? (
+        <CardEmpty>No products are available yet.</CardEmpty>
+      ) : (
+        <div className="flex flex-col">
+          {catalog.map((prod) => (
+            <ProductRow
+              key={prod.id}
+              prod={prod}
+              entitlement={overview.entitlements[prod.id]}
+              readOnly={readOnly}
+              onManage={onManage}
+              onContact={onContact}
+            />
+          ))}
+        </div>
+      )}
+    </CardContent>
   </Card>
 );
 
@@ -384,34 +403,37 @@ type PaymentCardProps = {
 };
 
 const PaymentCard = ({ overview, canManage, onUpdate }: PaymentCardProps) => (
-  <Card
-    title="Payment method"
-    action={
-      canManage ? (
-        <Button variant="outline" size="sm" onClick={onUpdate}>
-          Update
-        </Button>
-      ) : undefined
-    }
-  >
-    {overview.payment ? (
-      <div className="info-row">
-        <div className="info-pair">
-          <div className="card-brand">{overview.payment.brand.toUpperCase()}</div>
-          <div className="info-text">
-            <div className="t1">
+  <Card>
+    <CardHeader>
+      <CardTitle>Payment method</CardTitle>
+      {canManage && (
+        <CardAction>
+          <Button variant="outline" size="sm" onClick={onUpdate}>
+            Update
+          </Button>
+        </CardAction>
+      )}
+    </CardHeader>
+    <CardContent>
+      {overview.payment ? (
+        <div className="flex items-center gap-3.5">
+          <div className="flex h-[30px] w-[46px] shrink-0 items-center justify-center rounded-sm border border-border bg-mineshaft-700 text-[10px] font-bold tracking-wide text-foreground">
+            {overview.payment.brand.toUpperCase()}
+          </div>
+          <div>
+            <div className="text-sm font-medium text-foreground">
               {overview.payment.brand.toUpperCase()} ending in {overview.payment.last4}
             </div>
-            <div className="t2">
+            <div className="mt-0.5 text-xs text-mineshaft-400">
               Expires {String(overview.payment.expMonth).padStart(2, "0")} /{" "}
               {String(overview.payment.expYear).slice(-2)}
             </div>
           </div>
         </div>
-      </div>
-    ) : (
-      <div className="empty-row">No payment method on file yet.</div>
-    )}
+      ) : (
+        <CardEmpty>No payment method on file yet.</CardEmpty>
+      )}
+    </CardContent>
   </Card>
 );
 
@@ -422,30 +444,37 @@ type DetailsCardProps = {
 };
 
 const DetailsCard = ({ overview, canManage, onEdit }: DetailsCardProps) => (
-  <Card
-    title="Billing details"
-    action={
-      canManage ? (
-        <Button variant="outline" size="sm" onClick={onEdit}>
-          Edit
-        </Button>
-      ) : undefined
-    }
-  >
-    {overview.billingDetails ? (
-      <div className="detail-grid">
-        <div className="detail-cell">
-          <div className="dk">Billing name</div>
-          <div className="dv">{overview.billingDetails.name || "—"}</div>
+  <Card>
+    <CardHeader>
+      <CardTitle>Billing details</CardTitle>
+      {canManage && (
+        <CardAction>
+          <Button variant="outline" size="sm" onClick={onEdit}>
+            Edit
+          </Button>
+        </CardAction>
+      )}
+    </CardHeader>
+    <CardContent>
+      {overview.billingDetails ? (
+        <div className="grid grid-cols-3 gap-4">
+          <div>
+            <div className="mb-1 text-xs tracking-wide text-mineshaft-400 uppercase">
+              Billing name
+            </div>
+            <div className="text-sm text-foreground">{overview.billingDetails.name || "—"}</div>
+          </div>
+          <div>
+            <div className="mb-1 text-xs tracking-wide text-mineshaft-400 uppercase">
+              Billing email
+            </div>
+            <div className="text-sm text-foreground">{overview.billingDetails.email || "—"}</div>
+          </div>
         </div>
-        <div className="detail-cell">
-          <div className="dk">Billing email</div>
-          <div className="dv">{overview.billingDetails.email || "—"}</div>
-        </div>
-      </div>
-    ) : (
-      <div className="empty-row">No billing details on file yet.</div>
-    )}
+      ) : (
+        <CardEmpty>No billing details on file yet.</CardEmpty>
+      )}
+    </CardContent>
   </Card>
 );
 
@@ -454,50 +483,60 @@ type InvoicesCardProps = {
 };
 
 const InvoicesCard = ({ invoices }: InvoicesCardProps) => (
-  <Card title="Invoices">
-    {invoices.length === 0 ? (
-      <div className="empty-row">
-        No invoices yet. Your first invoice appears after your next billing date.
-      </div>
-    ) : (
-      <table className="inv-tbl">
-        <thead>
-          <tr>
-            <th>Date</th>
-            <th>Amount</th>
-            <th>Status</th>
-            <th className="right">Invoice</th>
-          </tr>
-        </thead>
-        <tbody>
-          {invoices.map((inv) => (
-            <tr key={inv.id}>
-              <td>{inv.date}</td>
-              <td className="mono">{fmtMoney(inv.amount)}</td>
-              <td>
-                {inv.paid ? (
-                  <span className="badge badge-success">Paid</span>
-                ) : (
-                  <span className="badge badge-danger">Unpaid</span>
-                )}
-              </td>
-              <td className="right">
-                {inv.pdfUrl ? (
-                  <a className="inv-dl" href={inv.pdfUrl} target="_blank" rel="noopener noreferrer">
-                    <IconExternal size={13} />
-                    PDF
-                  </a>
-                ) : (
-                  <span className="dv" style={{ color: "#707174" }}>
-                    —
-                  </span>
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    )}
+  <Card>
+    <CardHeader>
+      <CardTitle>Invoices</CardTitle>
+    </CardHeader>
+    <CardContent>
+      {invoices.length === 0 ? (
+        <CardEmpty>
+          No invoices yet. Your first invoice appears after your next billing date.
+        </CardEmpty>
+      ) : (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Date</TableHead>
+              <TableHead>Amount</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="text-right">Invoice</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {invoices.map((inv) => (
+              <TableRow key={inv.id}>
+                <TableCell>{inv.date}</TableCell>
+                <TableCell className="text-mineshaft-300 tabular-nums">
+                  {fmtMoney(inv.amount, 2)}
+                </TableCell>
+                <TableCell>
+                  {inv.paid ? (
+                    <Badge variant="success">Paid</Badge>
+                  ) : (
+                    <Badge variant="danger">Unpaid</Badge>
+                  )}
+                </TableCell>
+                <TableCell className="text-right">
+                  {inv.pdfUrl ? (
+                    <a
+                      className="inline-flex items-center gap-1.5 text-xs text-org hover:underline"
+                      href={inv.pdfUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <FontAwesomeIcon icon={faUpRightFromSquare} />
+                      PDF
+                    </a>
+                  ) : (
+                    <span className="text-mineshaft-400">—</span>
+                  )}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      )}
+    </CardContent>
   </Card>
 );
 
@@ -513,7 +552,6 @@ export type OverviewProps = {
   onGetStarted: () => void;
   onRetry: () => void;
   canManageBilling: boolean;
-  getStartedLoading?: boolean;
 };
 
 export const Overview = ({
@@ -527,8 +565,7 @@ export const Overview = ({
   onContact,
   onGetStarted,
   onRetry,
-  canManageBilling,
-  getStartedLoading
+  canManageBilling
 }: OverviewProps) => {
   if (subState === "loading") {
     return <OverviewSkeleton />;
@@ -536,7 +573,7 @@ export const Overview = ({
 
   if (subState === "error" || !overview) {
     return (
-      <div className="stack">
+      <div className="flex flex-col gap-4">
         <ErrorPanel onRetry={onRetry} />
       </div>
     );
@@ -549,7 +586,7 @@ export const Overview = ({
 
   if (subState === "no-subscription") {
     return (
-      <div className="stack">
+      <div className="flex flex-col gap-4">
         <Banner
           mode={mode}
           subState={subState}
@@ -557,19 +594,17 @@ export const Overview = ({
           onUpdatePayment={onUpdatePayment}
           onManageSubscription={onManageSubscription}
         />
-        <GetStarted
-          onGetStarted={onGetStarted}
-          canManage={canManageBilling}
-          loading={getStartedLoading}
-        />
+        <GetStarted onGetStarted={onGetStarted} canManage={canManageBilling} />
         <UsageCard overview={overview} />
-        <ProductsCard
-          overview={overview}
-          catalog={catalog}
-          readOnly={productsReadOnly}
-          onManage={onUpgrade}
-          onContact={onContact}
-        />
+        <div id="billing-v2-products">
+          <ProductsCard
+            overview={overview}
+            catalog={catalog}
+            readOnly={productsReadOnly}
+            onManage={onUpgrade}
+            onContact={onContact}
+          />
+        </div>
       </div>
     );
   }
@@ -577,7 +612,7 @@ export const Overview = ({
   const showPayment = overview.isCloud && !isManaged;
 
   return (
-    <div className="stack">
+    <div className="flex flex-col gap-4">
       <Banner
         mode={mode}
         subState={subState}

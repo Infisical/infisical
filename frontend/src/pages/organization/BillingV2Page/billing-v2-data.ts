@@ -7,10 +7,8 @@ export const catalogById = (
   id: string
 ): BillingV2CatalogProduct | undefined => catalog.find((p) => p.id === id);
 
-export const fmtMoney = (n: number): string => `$${Math.round(Number(n)).toLocaleString("en-US")}`;
-
-export const fmtMoney2 = (n: number): string =>
-  `$${Number(n).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+export const fmtMoney = (n: number, maximumFractionDigits = 0): string =>
+  `$${Number(n).toLocaleString("en-US", { maximumFractionDigits })}`;
 
 export const cadenceWord = (cad: BillingV2Cadence): string => {
   if (cad === "annual") {

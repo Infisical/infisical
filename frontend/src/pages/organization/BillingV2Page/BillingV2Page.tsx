@@ -1,5 +1,4 @@
-import { ReactNode, useEffect, useState } from "react";
-import { createPortal } from "react-dom";
+import { useEffect, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 
@@ -25,16 +24,9 @@ import { BillingV2RenderState, Overview } from "./components/Overview";
 import { ProductSheet } from "./components/ProductSheet";
 import { catalogById, intervalToCadence } from "./billing-v2-data";
 
-import "./billing-v2.css";
-
 const CONTACT_SALES_URL = "https://infisical.com/talk-to-us";
 
 type BillingV2Flow = { type: "sheet"; prodId: string };
-
-// Overlays render through a portal so fixed positioning is viewport-relative regardless of layout
-// ancestors, while keeping the `.billing-v2` scope that the ported stylesheet targets.
-const Overlay = ({ children }: { children: ReactNode }) =>
-  createPortal(<div className="billing-v2">{children}</div>, document.body);
 
 export const BillingV2Page = () => {
   const { t } = useTranslation();
@@ -86,6 +78,12 @@ export const BillingV2Page = () => {
 
   const cadence = intervalToCadence(overview?.interval ?? null);
 
+  // New customers check out; existing subscribers add/manage products via the Stripe portal.
+  let sheetManageMode: "checkout" | "portal" = "portal";
+  if (overview?.subState === "no-subscription") {
+    sheetManageMode = "checkout";
+  }
+
   const close = () => setFlow(null);
 
   const redirectToPortal = async () => {
@@ -119,24 +117,20 @@ export const BillingV2Page = () => {
     redirectToPortal();
   };
 
-  // No subscription yet: open the first purchasable product so the customer can review and check out.
+  // No subscription yet: send the customer to the product list to pick what they want, rather than
+  // pre-selecting a product for them.
   const onGetStarted = () => {
-    const startable = catalog.find((product) =>
-      (product.pro?.dims ?? []).some((dim) => dim.monthly > 0 || dim.annual > 0)
-    );
-    const target = startable ?? catalog[0];
-    if (target) {
-      setFlow({ type: "sheet", prodId: target.id });
-    }
+    document
+      .getElementById("billing-v2-products")
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
   const onUpgrade = (productId: string) => {
     setFlow({ type: "sheet", prodId: productId });
   };
 
-  // From the product sheet: a new customer checks out for that product, an existing one manages in Stripe.
   const onSheetManage = async (productId: string) => {
-    if (overview?.subState === "no-subscription") {
+    if (sheetManageMode === "checkout") {
       await redirectToCheckout(productId);
       return;
     }
@@ -189,42 +183,38 @@ export const BillingV2Page = () => {
             I={OrgPermissionBillingActions.Read}
             a={OrgPermissionSubjects.Billing}
           >
-            <div className="billing-v2">
-              <Overview
-                overview={overview}
-                catalog={catalog}
-                subState={subState}
-                onManageSubscription={onManageSubscription}
-                onUpgrade={onUpgrade}
-                onUpdatePayment={onUpdatePayment}
-                onEditDetails={onEditDetails}
-                onContact={onContact}
-                onGetStarted={onGetStarted}
-                onRetry={onRetry}
-                canManageBilling={canManageBilling}
-                getStartedLoading={createCheckoutSession.isPending}
-              />
-            </div>
+            <Overview
+              overview={overview}
+              catalog={catalog}
+              subState={subState}
+              onManageSubscription={onManageSubscription}
+              onUpgrade={onUpgrade}
+              onUpdatePayment={onUpdatePayment}
+              onEditDetails={onEditDetails}
+              onContact={onContact}
+              onGetStarted={onGetStarted}
+              onRetry={onRetry}
+              canManageBilling={canManageBilling}
+            />
           </OrgPermissionCan>
         </div>
       </div>
 
       {flow?.type === "sheet" && (
-        <Overlay>
-          <ProductSheet
-            prodId={flow.prodId}
-            prod={catalogById(catalog, flow.prodId)}
-            entitlement={overview?.entitlements[flow.prodId]}
-            cadence={cadence}
-            redirecting={sheetRedirecting}
-            onClose={close}
-            onManage={onSheetManage}
-            onContact={() => {
-              close();
-              onContact();
-            }}
-          />
-        </Overlay>
+        <ProductSheet
+          prodId={flow.prodId}
+          prod={catalogById(catalog, flow.prodId)}
+          entitlement={overview?.entitlements[flow.prodId]}
+          cadence={cadence}
+          manageMode={sheetManageMode}
+          redirecting={sheetRedirecting}
+          onClose={close}
+          onManage={onSheetManage}
+          onContact={() => {
+            close();
+            onContact();
+          }}
+        />
       )}
     </div>
   );
