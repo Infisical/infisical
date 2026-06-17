@@ -2254,12 +2254,10 @@ export const internalCertificateAuthorityServiceFactory = ({
       $checkSignature(ca.internalCa.keyAlgorithm, $getSignatureKeyFamily(signatureAlgorithm), signatureAlgorithm);
     }
 
-    const effectiveKeyAlgorithm = (keyAlgorithm || ca.internalCa.keyAlgorithm) as CertKeyAlgorithm;
-
     const alg =
       isPqcAlgorithm(ca.internalCa.keyAlgorithm) || !signatureAlgorithm
         ? keyAlgorithmToAlgCfg(ca.internalCa.keyAlgorithm as CertKeyAlgorithm)
-        : signatureAlgorithmToAlgCfg(signatureAlgorithm, effectiveKeyAlgorithm);
+        : signatureAlgorithmToAlgCfg(signatureAlgorithm, ca.internalCa.keyAlgorithm as CertKeyAlgorithm);
 
     const csrObj = new x509.Pkcs10CertificateRequest(csr);
 
