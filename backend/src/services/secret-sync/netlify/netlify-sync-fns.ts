@@ -5,6 +5,7 @@ import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
 import { SecretSyncError } from "../secret-sync-errors";
 import type { TNetlifySyncWithCredentials } from "./netlify-sync-types";
+import { NetlifySyncContext } from "./netlify-sync-constants";
 
 export const NetlifySyncFns = {
   async getSecrets(secretSync: TNetlifySyncWithCredentials): Promise<TSecretMap> {
@@ -81,27 +82,11 @@ export const NetlifySyncFns = {
     for await (const key of variablesToUpdate) {
       try {
         const existingVar = existingInNetlify[key];
-
-        if (existingVar.is_secret) {
-          await NetlifyPublicAPI.deleteVariable(secretSync.connection, params, { key });
-          await NetlifyPublicAPI.createVariable(secretSync.connection, params, {
-            key,
-            is_secret: false,
-            // We don't merge existing values from other contexts here because secrets are returned with
-            // masked values. So it would be replaced as *******
-            values: [{ context: config.context, value: secretMap[key].value }]
-          });
-        } else {
-          const mergedValues = [
-            ...existingVar.values.filter((v) => v.context !== config.context),
-            { context: config.context, value: secretMap[key].value }
-          ];
-          await NetlifyPublicAPI.updateVariable(secretSync.connection, params, {
-            key,
-            is_secret: false,
-            values: mergedValues
-          });
-        }
+        await NetlifyPublicAPI.updateVariableValue(secretSync.connection, params, {
+          key,
+          context: config.context ?? NetlifySyncContext.All,
+          value: secretMap[key].value
+        });
       } catch (error) {
         throw new SecretSyncError({ error, secretKey: key });
       }

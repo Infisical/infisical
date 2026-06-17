@@ -8,6 +8,7 @@ import { IntegrationUrls } from "@app/services/integration-auth/integration-list
 
 import { NetlifyConnectionMethod } from "./netlify-connection-constants";
 import { TNetlifyAccount, TNetlifyConnectionConfig, TNetlifySite, TNetlifyVariable } from "./netlify-connection-types";
+import { NetlifySyncContext } from "@app/services/secret-sync/netlify";
 
 export function getNetlifyAuthHeaders(connection: TNetlifyConnectionConfig): Record<string, string> {
   switch (connection.method) {
@@ -54,6 +55,12 @@ type NetlifyParams = {
   account_id: string;
   context_name?: string;
   site_id?: string;
+};
+
+type UpdateVariableValueRequestBody = {
+  key: string;
+  value: string;
+  context?: NetlifySyncContext;
 };
 
 class NetlifyPublicClient {
@@ -122,11 +129,11 @@ class NetlifyPublicClient {
   async updateVariableValue(
     connection: TNetlifyConnectionConfig,
     { account_id, ...params }: NetlifyParams,
-    variable: TNetlifyVariable
+    { key, ...variable }: UpdateVariableValueRequestBody,
   ) {
     const res = await this.send<TNetlifyVariable>(connection, {
       method: "PATCH",
-      url: `/accounts/${account_id}/env/${variable.key}`,
+      url: `/accounts/${account_id}/env/${key}`,
       data: variable,
       params
     });
