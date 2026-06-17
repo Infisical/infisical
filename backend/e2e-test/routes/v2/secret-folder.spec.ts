@@ -243,12 +243,7 @@ const deleteFolderInEnv = async (dto: { path: string; id: string; environment: s
   return res.json().folder;
 };
 
-const moveFolder = async (dto: {
-  folderId: string;
-  destinationEnvironment: string;
-  destinationPath: string;
-  shouldOverwrite?: boolean;
-}) =>
+const moveFolder = async (dto: { folderId: string; destinationEnvironment: string; destinationPath: string }) =>
   testServer.inject({
     method: "POST",
     url: `/api/v2/folders/move`,
@@ -259,8 +254,7 @@ const moveFolder = async (dto: {
       projectId: seedData1.projectV3.id,
       folderId: dto.folderId,
       destinationEnvironment: dto.destinationEnvironment,
-      destinationPath: dto.destinationPath,
-      shouldOverwrite: dto.shouldOverwrite ?? false
+      destinationPath: dto.destinationPath
     }
   });
 
