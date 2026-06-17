@@ -133,12 +133,10 @@ export const GithubProvider = (): TDynamicProviderFns => {
     }
   };
 
-  const revoke = async () => {
-    // GitHub installation tokens cannot be revoked.
-    throw new BadRequestError({
-      message:
-        "Github dynamic secret does not support revocation because GitHub itself cannot revoke installation tokens"
-    });
+  const revoke = async (_inputs: unknown, entityId: string) => {
+    // GitHub installation tokens are time-bound (max 1 hour) and cannot be
+    // revoked via the API, so revocation is a no-op just like SSH certs.
+    return { entityId };
   };
 
   const renew = async () => {
