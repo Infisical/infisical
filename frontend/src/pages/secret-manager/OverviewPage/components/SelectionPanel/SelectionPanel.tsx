@@ -309,8 +309,13 @@ export const SelectionPanel = ({
   const hasMovableSelection = selectedKeysCount > 0 || selectedRotationCount > 0;
   const shouldShowMove = shouldShowDelete && hasMovableSelection;
 
-  const isMoveDisabled = hasHoneyTokenSelected;
-  const moveDisabledReason = hasHoneyTokenSelected ? "Moving honey tokens is not supported" : "";
+  const isMoveDisabled = hasHoneyTokenSelected || areFoldersSelected;
+  let moveDisabledReason = "";
+  if (hasHoneyTokenSelected) {
+    moveDisabledReason = "Moving honey tokens is not supported";
+  } else if (areFoldersSelected) {
+    moveDisabledReason = "Folders cannot be moved via multi-select";
+  }
 
   const isDeleteDisabled = areRotationsSelected || isManagedSecretSelected;
   let deleteDisabledReason = "Rotated or honey token secrets cannot be deleted via multi-select";
