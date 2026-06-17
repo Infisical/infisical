@@ -6,8 +6,14 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
-// The license server joins this onto its configured portal origin, so it must be a relative path.
-const ReturnPathSchema = z.string().trim().startsWith("/").optional();
+// The license server joins this onto its configured portal origin, so it must be a single-rooted
+// relative path. Reject protocol-relative ("//host") values that would escape the origin.
+const ReturnPathSchema = z
+  .string()
+  .trim()
+  .startsWith("/")
+  .refine((path) => !path.startsWith("//"), { message: "must be a relative path" })
+  .optional();
 
 const BillingV2DimSchema = z.object({
   key: z.string(),

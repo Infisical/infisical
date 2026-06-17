@@ -10,6 +10,7 @@ import {
   OrgPermissionBillingActions,
   OrgPermissionSubjects,
   useOrganization,
+  useOrgPermission,
   useUser
 } from "@app/context";
 import {
@@ -39,8 +40,13 @@ export const BillingV2Page = () => {
   const { t } = useTranslation();
   const { currentOrg } = useOrganization();
   const { user } = useUser();
+  const { permission } = useOrgPermission();
   const orgId = currentOrg?.id ?? "";
   const billingEmail = user?.email ?? user?.username;
+  const canManageBilling = permission.can(
+    OrgPermissionBillingActions.ManageBilling,
+    OrgPermissionSubjects.Billing
+  );
 
   const { data: overview, isPending, isError, refetch } = useGetBillingV2Overview(orgId);
   const { data: catalog = [] } = useGetBillingV2Catalog(orgId);
@@ -195,6 +201,7 @@ export const BillingV2Page = () => {
                 onContact={onContact}
                 onGetStarted={onGetStarted}
                 onRetry={onRetry}
+                canManageBilling={canManageBilling}
                 getStartedLoading={createCheckoutSession.isPending}
               />
             </div>

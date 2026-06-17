@@ -39,6 +39,19 @@ const buildBackend = (envConfig: TLicenseClientFactoryDep["envConfig"]): TLicens
     return null;
   }
 
+  // Guard against a misconfigured base URL pointing the authenticated client at a non-http target.
+  let parsedUrl: URL;
+  try {
+    parsedUrl = new URL(serverUrl);
+  } catch {
+    logger.warn("license-client: LICENSE_SERVER_V2_URL is not a valid URL; serving feature fallbacks");
+    return null;
+  }
+  if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") {
+    logger.warn("license-client: LICENSE_SERVER_V2_URL must use http(s); serving feature fallbacks");
+    return null;
+  }
+
   return licenseServerBackend(serverUrl, { hmacSecret, issuer, audience });
 };
 

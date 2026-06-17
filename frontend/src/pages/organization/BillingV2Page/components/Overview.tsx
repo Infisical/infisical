@@ -33,12 +33,19 @@ export type BillingV2RenderState =
 type BannerProps = {
   mode: BillingV2Mode;
   subState: BillingV2RenderState;
+  canManage: boolean;
   onUpdatePayment: () => void;
   onManageSubscription: () => void;
 };
 
 // Banners (managed info / dunning).
-const Banner = ({ mode, subState, onUpdatePayment, onManageSubscription }: BannerProps) => {
+const Banner = ({
+  mode,
+  subState,
+  canManage,
+  onUpdatePayment,
+  onManageSubscription
+}: BannerProps) => {
   if (mode === "managed") {
     return (
       <div className="banner banner-info">
@@ -63,15 +70,17 @@ const Banner = ({ mode, subState, onUpdatePayment, onManageSubscription }: Banne
             Update your payment method to avoid losing access. Your products are still active while
             we retry.
           </div>
-          <div className="b-actions">
-            <Button variant="warning" size="sm" onClick={onUpdatePayment}>
-              <IconCreditCard size={14} />
-              Update payment method
-            </Button>
-            <Button variant="outline" size="sm" onClick={onManageSubscription}>
-              Manage subscription
-            </Button>
-          </div>
+          {canManage && (
+            <div className="b-actions">
+              <Button variant="warning" size="sm" onClick={onUpdatePayment}>
+                <IconCreditCard size={14} />
+                Update payment method
+              </Button>
+              <Button variant="outline" size="sm" onClick={onManageSubscription}>
+                Manage subscription
+              </Button>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -86,15 +95,17 @@ const Banner = ({ mode, subState, onUpdatePayment, onManageSubscription }: Banne
             A payment kept failing and access is paused. Complete payment to restore access to your
             products.
           </div>
-          <div className="b-actions">
-            <Button variant="danger" size="sm" onClick={onUpdatePayment}>
-              <IconCreditCard size={14} />
-              Update payment method
-            </Button>
-            <Button variant="outline" size="sm" onClick={onManageSubscription}>
-              Manage subscription
-            </Button>
-          </div>
+          {canManage && (
+            <div className="b-actions">
+              <Button variant="danger" size="sm" onClick={onUpdatePayment}>
+                <IconCreditCard size={14} />
+                Update payment method
+              </Button>
+              <Button variant="outline" size="sm" onClick={onManageSubscription}>
+                Manage subscription
+              </Button>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -154,10 +165,11 @@ const ErrorPanel = ({ onRetry }: ErrorPanelProps) => (
 
 type GetStartedProps = {
   onGetStarted: () => void;
+  canManage: boolean;
   loading?: boolean;
 };
 
-const GetStarted = ({ onGetStarted, loading }: GetStartedProps) => (
+const GetStarted = ({ onGetStarted, canManage, loading }: GetStartedProps) => (
   <Card>
     <div className="getstarted">
       <div className="gs-ico">
@@ -167,10 +179,12 @@ const GetStarted = ({ onGetStarted, loading }: GetStartedProps) => (
       <div className="gs-text">
         Pick the products your team needs and check out securely. You can change or cancel any time.
       </div>
-      <Button variant="org" size="lg" onClick={onGetStarted} loading={loading}>
-        Get started
-        <IconArrowRight size={15} />
-      </Button>
+      {canManage && (
+        <Button variant="org" size="lg" onClick={onGetStarted} loading={loading}>
+          Get started
+          <IconArrowRight size={15} />
+        </Button>
+      )}
     </div>
   </Card>
 );
@@ -365,16 +379,19 @@ const ProductsCard = ({ overview, catalog, readOnly, onManage, onContact }: Prod
 
 type PaymentCardProps = {
   overview: BillingV2Overview;
+  canManage: boolean;
   onUpdate: () => void;
 };
 
-const PaymentCard = ({ overview, onUpdate }: PaymentCardProps) => (
+const PaymentCard = ({ overview, canManage, onUpdate }: PaymentCardProps) => (
   <Card
     title="Payment method"
     action={
-      <Button variant="outline" size="sm" onClick={onUpdate}>
-        Update
-      </Button>
+      canManage ? (
+        <Button variant="outline" size="sm" onClick={onUpdate}>
+          Update
+        </Button>
+      ) : undefined
     }
   >
     {overview.payment ? (
@@ -400,16 +417,19 @@ const PaymentCard = ({ overview, onUpdate }: PaymentCardProps) => (
 
 type DetailsCardProps = {
   overview: BillingV2Overview;
+  canManage: boolean;
   onEdit: () => void;
 };
 
-const DetailsCard = ({ overview, onEdit }: DetailsCardProps) => (
+const DetailsCard = ({ overview, canManage, onEdit }: DetailsCardProps) => (
   <Card
     title="Billing details"
     action={
-      <Button variant="outline" size="sm" onClick={onEdit}>
-        Edit
-      </Button>
+      canManage ? (
+        <Button variant="outline" size="sm" onClick={onEdit}>
+          Edit
+        </Button>
+      ) : undefined
     }
   >
     {overview.billingDetails ? (
@@ -492,6 +512,7 @@ export type OverviewProps = {
   onContact: (prod: BillingV2CatalogProduct) => void;
   onGetStarted: () => void;
   onRetry: () => void;
+  canManageBilling: boolean;
   getStartedLoading?: boolean;
 };
 
@@ -506,6 +527,7 @@ export const Overview = ({
   onContact,
   onGetStarted,
   onRetry,
+  canManageBilling,
   getStartedLoading
 }: OverviewProps) => {
   if (subState === "loading") {
@@ -522,6 +544,8 @@ export const Overview = ({
 
   const { mode } = overview;
   const isManaged = mode === "managed";
+  // Managed plans and read-only billing roles cannot mutate the subscription.
+  const productsReadOnly = isManaged || !canManageBilling;
 
   if (subState === "no-subscription") {
     return (
@@ -529,15 +553,20 @@ export const Overview = ({
         <Banner
           mode={mode}
           subState={subState}
+          canManage={canManageBilling}
           onUpdatePayment={onUpdatePayment}
           onManageSubscription={onManageSubscription}
         />
-        <GetStarted onGetStarted={onGetStarted} loading={getStartedLoading} />
+        <GetStarted
+          onGetStarted={onGetStarted}
+          canManage={canManageBilling}
+          loading={getStartedLoading}
+        />
         <UsageCard overview={overview} />
         <ProductsCard
           overview={overview}
           catalog={catalog}
-          readOnly={isManaged}
+          readOnly={productsReadOnly}
           onManage={onUpgrade}
           onContact={onContact}
         />
@@ -552,6 +581,7 @@ export const Overview = ({
       <Banner
         mode={mode}
         subState={subState}
+        canManage={canManageBilling}
         onUpdatePayment={onUpdatePayment}
         onManageSubscription={onManageSubscription}
       />
@@ -560,12 +590,16 @@ export const Overview = ({
       <ProductsCard
         overview={overview}
         catalog={catalog}
-        readOnly={isManaged}
+        readOnly={productsReadOnly}
         onManage={onUpgrade}
         onContact={onContact}
       />
-      {showPayment && <PaymentCard overview={overview} onUpdate={onUpdatePayment} />}
-      {!isManaged && <DetailsCard overview={overview} onEdit={onEditDetails} />}
+      {showPayment && (
+        <PaymentCard overview={overview} canManage={canManageBilling} onUpdate={onUpdatePayment} />
+      )}
+      {!isManaged && (
+        <DetailsCard overview={overview} canManage={canManageBilling} onEdit={onEditDetails} />
+      )}
       {showPayment && <InvoicesCard invoices={overview.invoices} />}
     </div>
   );

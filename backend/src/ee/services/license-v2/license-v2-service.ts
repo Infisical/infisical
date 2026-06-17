@@ -337,11 +337,22 @@ export const licenseV2ServiceFactory = ({
 
     const members = await orgDAL.countAllOrgMembers(orgId);
 
+    // Name the plan from the subscription's tier so enterprise/trial orgs aren't all labelled "Pro".
+    let planName = "Free";
+    if (subState !== "no-subscription") {
+      const tier = subscription?.items[0]?.plan;
+      if (tier) {
+        planName = tier.charAt(0).toUpperCase() + tier.slice(1);
+      } else {
+        planName = "Pro";
+      }
+    }
+
     const overview: BillingV2Overview = {
       isCloud: true,
       mode: "self-serve",
       subState,
-      planName: subState === "no-subscription" ? "Free" : "Pro",
+      planName,
       nextBillingDate,
       recurringAmount,
       interval,

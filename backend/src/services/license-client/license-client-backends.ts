@@ -67,9 +67,9 @@ export const licenseServerBackend = (serverUrl: string, auth: TLicenseServerAuth
     return catalogResponseSchema.parse(body);
   },
 
-  // A brand-new org has no subscription; the server answers with a 404/500 or an empty status.
-  // Any non-200 or empty payload is treated as "no subscription" so a new customer renders the
-  // no-subscription state instead of an error.
+  // A brand-new org has no license yet (404) or a license with no active subscription (200 with
+  // status "none"); both are "no subscription". Other non-2xx statuses (auth failure, 5xx) are real
+  // errors and must surface so a paying org isn't shown the free state during an outage.
   fetchSubscription: async (orgId: string): Promise<TSubscriptionResponse | null> => {
     const url = new URL(SUBSCRIPTION_PATH, serverUrl);
     url.searchParams.set("org_id", orgId);
@@ -78,8 +78,11 @@ export const licenseServerBackend = (serverUrl: string, auth: TLicenseServerAuth
       headers: { Authorization: `Bearer ${mintServiceToken(auth)}` },
       redirect: "manual"
     });
-    if (!res.ok) {
+    if (res.status === 404) {
       return null;
+    }
+    if (!res.ok) {
+      throw new Error(`license server responded with ${res.status}`);
     }
 
     const body: unknown = await res.json();

@@ -103,7 +103,7 @@ export const subscriptionResponseSchema = z
 
 export const sessionResponseSchema = z
   .object({
-    url: z.string()
+    url: z.string().url()
   })
   .passthrough();
 
