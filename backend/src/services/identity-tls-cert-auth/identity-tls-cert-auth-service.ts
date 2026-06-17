@@ -143,6 +143,22 @@ export const identityTlsCertAuthServiceFactory = ({
           }
         });
 
+      // Require an end-entity certificate issued by the configured CA, not the CA certificate
+      // itself. `.ca` covers certs marked CA:TRUE; the raw comparison also covers a self-signed CA
+      // that omits basic constraints.
+      const isClientCertACa = clientCertificateX509.ca || clientCertificateX509.raw.equals(caCertificateX509.raw);
+      if (isClientCertACa) {
+        throw new UnauthorizedError({
+          message: "Access denied: a CA certificate cannot be used as a client certificate.",
+          detail: {
+            reasonCode: "ca_certificate_not_allowed",
+            identityId: identity.id,
+            orgId: identity.orgId,
+            identityName: identity.name
+          }
+        });
+      }
+
       if (new Date(clientCertificateX509.validTo) < new Date()) {
         throw new UnauthorizedError({
           message: "Access denied: Certificate has expired.",
