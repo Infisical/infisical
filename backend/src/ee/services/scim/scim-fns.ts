@@ -3,18 +3,20 @@ import { TListScimGroups, TListScimUsers, TScimGroup, TScimUser } from "./scim-t
 export const buildScimUserList = ({
   scimUsers,
   startIndex,
-  limit
+  limit,
+  totalResults
 }: {
   scimUsers: TScimUser[];
   startIndex: number;
   limit: number;
+  totalResults: number;
 }): TListScimUsers => {
   return {
     Resources: scimUsers,
     itemsPerPage: limit,
     schemas: ["urn:ietf:params:scim:api:messages:2.0:ListResponse"],
     startIndex,
-    totalResults: scimUsers.length
+    totalResults
   };
 };
 

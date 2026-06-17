@@ -865,6 +865,7 @@ export const orgDALFactory = (db: TDbClient) => {
             .andOn(`${TableName.UserAliases}.orgId`, "=", `${TableName.Membership}.scopeOrgId`)
             .andOn(`${TableName.UserAliases}.aliasType`, "=", (tx || db).raw("?", ["saml"]));
         })
+        .distinctOn(`${TableName.Membership}.actorUserId`)
         .select(
           selectAllTableCols(TableName.Membership),
           db.ref("email").withSchema(TableName.Users),
@@ -881,12 +882,65 @@ export const orgDALFactory = (db: TDbClient) => {
       if (limit) void query.limit(limit);
       if (offset) void query.offset(offset);
       if (sort) {
-        void query.orderBy(sort.map(([column, order, nulls]) => ({ column: column as string, order, nulls })));
+        void query.orderBy([
+          { column: `${TableName.Membership}.actorUserId` },
+          ...sort.map(([column, order, nulls]) => ({ column: column as string, order, nulls }))
+        ]);
+      } else {
+        void query.orderBy(`${TableName.Membership}.actorUserId`);
       }
       const res = await query;
       return res;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find one" });
+    }
+  };
+
+  const countMembershipsWithScimFilter = async (
+    orgId: string,
+    scimFilter: string | undefined,
+    tx?: Knex.Transaction
+  ) => {
+    try {
+      const result = await (tx || db.replicaNode())(TableName.Membership)
+        .where(`${TableName.Membership}.scopeOrgId`, orgId)
+        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+        .whereNotNull(`${TableName.Membership}.actorUserId`)
+        .where((qb) => {
+          if (scimFilter) {
+            void generateKnexQueryFromScim(qb, scimFilter, (attrPath) => {
+              switch (attrPath) {
+                case "active":
+                  return `${TableName.Membership}.isActive`;
+                case "userName":
+                  return `${TableName.UserAliases}.externalId`;
+                case "name.givenName":
+                  return `${TableName.Users}.firstName`;
+                case "name.familyName":
+                  return `${TableName.Users}.lastName`;
+                case "email.value":
+                  return `${TableName.Users}.email`;
+                default:
+                  return null;
+              }
+            });
+          }
+        })
+        .join(TableName.Users, `${TableName.Users}.id`, `${TableName.Membership}.actorUserId`)
+        .join(TableName.Organization, `${TableName.Organization}.id`, `${TableName.Membership}.scopeOrgId`)
+        .whereNull(`${TableName.Organization}.rootOrgId`)
+        .leftJoin(TableName.UserAliases, function joinUserAlias() {
+          this.on(`${TableName.UserAliases}.userId`, "=", `${TableName.Membership}.actorUserId`)
+            .andOn(`${TableName.UserAliases}.orgId`, "=", `${TableName.Membership}.scopeOrgId`)
+            .andOn(`${TableName.UserAliases}.aliasType`, "=", (tx || db).raw("?", ["saml"]));
+        })
+        .where({ isGhost: false })
+        .countDistinct(`${TableName.Membership}.actorUserId as count`)
+        .first();
+
+      return Number((result as unknown as { count: string })?.count ?? 0);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Count memberships" });
     }
   };
 
@@ -951,6 +1005,7 @@ export const orgDALFactory = (db: TDbClient) => {
     findEffectiveOrgMembership,
     findEffectiveOrgMemberships,
     findMembershipWithScimFilter,
+    countMembershipsWithScimFilter,
     createMembership,
     bulkCreateMemberships,
     updateMembershipById,
