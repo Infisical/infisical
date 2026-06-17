@@ -414,14 +414,17 @@ export const identityOrgDALFactory = (db: TDbClient) => {
     tx?: Knex
   ) => {
     try {
-      const searchQuery = (tx || db.replicaNode())(TableName.Membership)
-        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
-        .whereNotNull(`${TableName.Membership}.actorIdentityId`)
-        .where(`${TableName.Membership}.scopeOrgId`, orgId)
-        .join(TableName.Identity, `${TableName.Identity}.id`, `${TableName.Membership}.actorIdentityId`)
-        .whereNull(`${TableName.Identity}.projectId`)
-        .join(TableName.MembershipRole, `${TableName.MembershipRole}.membershipId`, `${TableName.Membership}.id`)
-        .leftJoin(TableName.Role, `${TableName.MembershipRole}.customRoleId`, `${TableName.Role}.id`)
+      const buildIdentitySearchBase = () =>
+        (tx || db.replicaNode())(TableName.Membership)
+          .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+          .whereNotNull(`${TableName.Membership}.actorIdentityId`)
+          .where(`${TableName.Membership}.scopeOrgId`, orgId)
+          .join(TableName.Identity, `${TableName.Identity}.id`, `${TableName.Membership}.actorIdentityId`)
+          .whereNull(`${TableName.Identity}.projectId`)
+          .join(TableName.MembershipRole, `${TableName.MembershipRole}.membershipId`, `${TableName.Membership}.id`)
+          .leftJoin(TableName.Role, `${TableName.MembershipRole}.customRoleId`, `${TableName.Role}.id`);
+
+      const searchQuery = buildIdentitySearchBase()
         .orderBy(
           orderBy === OrgIdentityOrderBy.Role
             ? `${TableName.MembershipRole}.${orderBy}`
@@ -429,15 +432,24 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           orderDirection
         )
         .select(`${TableName.Membership}.id`)
-        .select<{ id: string; total_count: string }>(
-          db.raw(
-            `count(${TableName.Membership}."actorIdentityId") OVER(PARTITION BY ${TableName.Membership}."scopeOrgId") as total_count`
-          )
-        )
         .as("searchedIdentities");
+
+      // the membership -> membership_roles join is one-to-many, so a window count over the joined
+      // rows counts role assignments instead of identities. Count distinct memberships separately.
+      const countQuery = buildIdentitySearchBase();
 
       if (searchFilter) {
         buildKnexFilterForSearchResource(searchQuery, searchFilter, (attr) => {
+          switch (attr) {
+            case "role":
+              return [`${TableName.Role}.slug`, `${TableName.MembershipRole}.role`];
+            case "name":
+              return `${TableName.Identity}.name`;
+            default:
+              throw new BadRequestError({ message: `Invalid ${String(attr)} provided` });
+          }
+        });
+        buildKnexFilterForSearchResource(countQuery, searchFilter, (attr) => {
           switch (attr) {
             case "role":
               return [`${TableName.Role}.slug`, `${TableName.MembershipRole}.role`];
@@ -452,6 +464,11 @@ export const identityOrgDALFactory = (db: TDbClient) => {
       if (limit) {
         void searchQuery.offset(offset).limit(limit);
       }
+
+      const [countResult] = (await countQuery.countDistinct(`${TableName.Membership}.id as count`)) as [
+        { count: string | number }?
+      ];
+      const totalCount = Number(countResult?.count ?? 0);
 
       type TSubquery = Awaited<typeof searchQuery>;
       const query = (tx || db.replicaNode())(TableName.Membership)
@@ -527,7 +544,6 @@ export const identityOrgDALFactory = (db: TDbClient) => {
         )
         .select(
           db.ref("id").withSchema(TableName.Membership),
-          db.ref("total_count").withSchema("searchedIdentities"),
           db.ref("role").withSchema(TableName.MembershipRole),
           db.ref("customRoleId").withSchema(TableName.MembershipRole).as("roleId"),
           db.ref("scopeOrgId").withSchema(TableName.Membership).as("orgId"),
@@ -596,7 +612,6 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           hasDeleteProtection,
           role,
           roleId,
-          total_count,
           id,
           uaId,
           alicloudId,
@@ -619,7 +634,6 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           roleId,
           identityId: identityId as string,
           id,
-          total_count: total_count as string,
           orgId,
           createdAt,
           updatedAt,
@@ -668,7 +682,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
         ]
       });
 
-      return { docs: formattedDocs, totalCount: Number(formattedDocs?.[0]?.total_count ?? 0) };
+      return { docs: formattedDocs, totalCount };
     } catch (error) {
       throw new DatabaseError({ error, name: "FindByOrgId" });
     }
