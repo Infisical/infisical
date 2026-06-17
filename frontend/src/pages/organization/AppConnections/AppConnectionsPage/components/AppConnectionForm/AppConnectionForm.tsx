@@ -555,6 +555,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         return <VenafiConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.VenafiTpp:
         return <VenafiTppConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.Netlify:
+        return <NetlifyConnectionForm onSubmit={onSubmit} appConnection={appConnection} />
       default:
         throw new Error(`Unhandled App ${(appConnection as TAppConnection).app}`);
     }

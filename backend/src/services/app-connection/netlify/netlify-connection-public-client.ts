@@ -95,29 +95,13 @@ class NetlifyPublicClient {
   }
 
   async getVariables(connection: TNetlifyConnectionConfig, { account_id, ...params }: NetlifyParams) {
-    const PAGE_SIZE = 100;
-    const allVariables: TNetlifyVariable[] = [];
-    let page = 1;
-
-    // eslint-disable-next-line no-constant-condition, @typescript-eslint/no-unnecessary-condition
-    while (true) {
-      const res = await this.send<TNetlifyVariable[]>(connection, {
-        method: "GET",
-        url: `/accounts/${account_id}/env`,
-        params: {
-          ...params,
-          limit: PAGE_SIZE,
-          page
-        }
-      });
-
-      allVariables.push(...res);
-
-      if (res.length < PAGE_SIZE) break;
-      page += 1;
-    }
-
-    return allVariables;
+    // This public endpoint doesn't support validation, but it also returns all variables.
+    // Tested with 900 secrets.
+    return await this.send<TNetlifyVariable[]>(connection, {
+      method: "GET",
+      url: `/accounts/${account_id}/env`,
+      params
+    });
   }
 
   async createVariable(
@@ -185,21 +169,6 @@ class NetlifyPublicClient {
 
       throw error;
     }
-  }
-
-  async upsertVariable(connection: TNetlifyConnectionConfig, params: NetlifyParams, variable: TNetlifyVariable) {
-    const res = await this.getVariable(connection, params, variable);
-
-    if (!res) {
-      return this.createVariable(connection, params, variable);
-    }
-
-    if (res.is_secret) {
-      await this.deleteVariable(connection, params, variable);
-      return this.createVariable(connection, params, variable);
-    }
-
-    return this.updateVariable(connection, params, variable);
   }
 
   async deleteVariable(
