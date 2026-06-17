@@ -20,30 +20,30 @@ const SUBSCRIPTION_PATH = "/v1/subscription";
 const CHECKOUT_SESSION_PATH = "/v1/billing/checkout-session";
 const PORTAL_SESSION_PATH = "/v1/billing/portal-session";
 
-// Issuer/audience/subject are a fixed contract with the license server (it validates them against
-// its own configured values), not per-deployment config, so they live here rather than in env.
-const SERVICE_TOKEN_ISSUER = "infisical";
-const SERVICE_TOKEN_AUDIENCE = "license-server";
+// Issuer/audience/subject match the license server's in-code constants (it validates iss/aud against
+// them). They are public claims, not per-deployment config, so they live here rather than in env.
+const SERVICE_TOKEN_ISSUER = "infisical-cloud";
+const SERVICE_TOKEN_AUDIENCE = "infisical-license-server";
 const SERVICE_TOKEN_SUBJECT = "infisical-cloud";
 
-// The license server validates a short-lived HS256 service JWT (iss/aud/exp/sub) signed with the
-// shared service key. Mint a fresh token per request; signing is cheap and results are cached upstream.
-const mintServiceToken = (hmacSecret: string): string =>
-  jwt.sign({}, hmacSecret, {
-    algorithm: "HS256",
+// The license server validates a short-lived RS256 service JWT (iss/aud/exp/sub) that we sign with
+// our private key and it verifies with the matching public key. Mint a fresh token per request.
+const mintServiceToken = (signingKey: string): string =>
+  jwt.sign({}, signingKey, {
+    algorithm: "RS256",
     issuer: SERVICE_TOKEN_ISSUER,
     audience: SERVICE_TOKEN_AUDIENCE,
     subject: SERVICE_TOKEN_SUBJECT,
     expiresIn: "2m"
   });
 
-export const licenseServerBackend = (serverUrl: string, hmacSecret: string): TLicenseClientBackend => ({
+export const licenseServerBackend = (serverUrl: string, signingKey: string): TLicenseClientBackend => ({
   fetchEntitlements: async (orgId: string): Promise<TEntitlementsResponse> => {
     const url = new URL(ENTITLEMENTS_PATH, serverUrl);
     url.searchParams.set("org_id", orgId);
     const res = await fetch(url, {
       method: "GET",
-      headers: { Authorization: `Bearer ${mintServiceToken(hmacSecret)}` },
+      headers: { Authorization: `Bearer ${mintServiceToken(signingKey)}` },
       redirect: "manual"
     });
     if (!res.ok) {
@@ -57,7 +57,7 @@ export const licenseServerBackend = (serverUrl: string, hmacSecret: string): TLi
     const url = new URL(PRODUCTS_PATH, serverUrl);
     const res = await fetch(url, {
       method: "GET",
-      headers: { Authorization: `Bearer ${mintServiceToken(hmacSecret)}` },
+      headers: { Authorization: `Bearer ${mintServiceToken(signingKey)}` },
       redirect: "manual"
     });
     if (!res.ok) {
@@ -75,7 +75,7 @@ export const licenseServerBackend = (serverUrl: string, hmacSecret: string): TLi
     url.searchParams.set("org_id", orgId);
     const res = await fetch(url, {
       method: "GET",
-      headers: { Authorization: `Bearer ${mintServiceToken(hmacSecret)}` },
+      headers: { Authorization: `Bearer ${mintServiceToken(signingKey)}` },
       redirect: "manual"
     });
     if (res.status === 404) {
@@ -101,7 +101,7 @@ export const licenseServerBackend = (serverUrl: string, hmacSecret: string): TLi
     url.searchParams.set("org_id", orgId);
     const res = await fetch(url, {
       method: "POST",
-      headers: { Authorization: `Bearer ${mintServiceToken(hmacSecret)}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${mintServiceToken(signingKey)}`, "Content-Type": "application/json" },
       body: JSON.stringify(payload),
       redirect: "manual"
     });
@@ -117,7 +117,7 @@ export const licenseServerBackend = (serverUrl: string, hmacSecret: string): TLi
     url.searchParams.set("org_id", orgId);
     const res = await fetch(url, {
       method: "POST",
-      headers: { Authorization: `Bearer ${mintServiceToken(hmacSecret)}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${mintServiceToken(signingKey)}`, "Content-Type": "application/json" },
       body: JSON.stringify(payload),
       redirect: "manual"
     });

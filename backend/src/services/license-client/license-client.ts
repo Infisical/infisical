@@ -22,8 +22,8 @@ const buildBackend = (envConfig: TLicenseClientFactoryDep["envConfig"]): TLicens
   }
 
   const serverUrl = envConfig.LICENSE_SERVER_V2_URL;
-  const hmacSecret = envConfig.LICENSE_SERVER_V2_SERVICE_KEY;
-  if (!serverUrl || !hmacSecret) {
+  const signingKey = envConfig.LICENSE_SERVER_V2_SERVICE_KEY;
+  if (!serverUrl || !signingKey) {
     logger.warn(
       "license-client: enabled but LICENSE_SERVER_V2_URL / _SERVICE_KEY is missing; serving feature fallbacks"
     );
@@ -43,7 +43,8 @@ const buildBackend = (envConfig: TLicenseClientFactoryDep["envConfig"]): TLicens
     return null;
   }
 
-  return licenseServerBackend(serverUrl, hmacSecret);
+  // The signing key is a PEM private key; env vars often carry it with escaped newlines.
+  return licenseServerBackend(serverUrl, signingKey.replace(/\\n/g, "\n"));
 };
 
 export const licenseClientFactory = ({ envConfig, keyStore }: TLicenseClientFactoryDep) => {
