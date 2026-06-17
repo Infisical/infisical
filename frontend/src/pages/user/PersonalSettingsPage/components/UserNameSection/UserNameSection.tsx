@@ -22,7 +22,7 @@ export const UserNameSection = (): JSX.Element => {
 
   useEffect(() => {
     if (user) {
-      reset({ name: `${user?.firstName ?? ""}${user?.lastName ? ` ${user.lastName}` : ""}` });
+      reset({ name: [user?.firstName, user?.lastName].filter(Boolean).join(" ") });
     }
   }, [user]);
 
@@ -49,7 +49,7 @@ export const UserNameSection = (): JSX.Element => {
           render={({ field, fieldState: { error } }) => (
             <FormControl isError={Boolean(error)} errorText={error?.message}>
               <Input
-                placeholder={`${user?.firstName ?? ""} ${user?.lastName ?? ""}`.trim()}
+                placeholder={[user?.firstName, user?.lastName].filter(Boolean).join(" ")}
                 {...field}
               />
             </FormControl>

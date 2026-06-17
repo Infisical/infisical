@@ -667,7 +667,7 @@ export const samlConfigServiceFactory = ({
           );
           isNewUser = true;
         } else if (!newUser.firstName && firstName) {
-          newUser = await userDAL.updateById(newUser.id, { firstName, lastName }, tx);
+          newUser = await userDAL.updateById(newUser.id, { firstName, ...(lastName ? { lastName } : {}) }, tx);
         }
 
         userAlias = await userAliasDAL.create(
