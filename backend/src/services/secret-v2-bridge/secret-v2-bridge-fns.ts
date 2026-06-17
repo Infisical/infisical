@@ -1506,7 +1506,9 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
     secretApprovalPolicyService,
     secretApprovalRequestDAL,
     secretApprovalRequestSecretDAL,
-    secretQueueService
+    secretQueueService,
+    reminderDAL,
+    reminderService
   } = dto;
 
   const sourceFolder = await folderDAL.findBySecretPath(projectId, sourceEnvironment, sourceSecretPath, tx);
@@ -1599,6 +1601,9 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
       ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedValue }).toString()
       : undefined
   }));
+
+  const sourceReminders = await reminderDAL.findSecretReminders(secretIds, tx);
+  const sourceSecretIdToKey = Object.fromEntries(decryptedSourceSecrets.map((s) => [s.id, s.key]));
 
   let isSourceUpdated = false;
   let isDestinationUpdated = false;
@@ -1863,6 +1868,32 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
         return [s.key, destinationSecretsGroupedByKey[s.key]?.[0]?.id];
       })
     );
+
+    // carry the source secrets' reminders over to the destination secrets so the schedule
+    // (message, repeatDays, nextReminderDate, fromDate, recipients) survives the move.
+    const remindersToCreate = sourceReminders
+      .map((rem) => {
+        const key = rem.secretId ? sourceSecretIdToKey[rem.secretId] : undefined;
+        const destinationSecretId = key ? destinationSecretIdByKey[key] : undefined;
+        if (!destinationSecretId) return null;
+        return {
+          secretId: destinationSecretId,
+          message: rem.message,
+          repeatDays: rem.repeatDays,
+          nextReminderDate: rem.nextReminderDate,
+          fromDate: rem.fromDate,
+          recipients: rem.recipients,
+          projectId
+        };
+      })
+      .filter((r): r is NonNullable<typeof r> => Boolean(r));
+
+    if (remindersToCreate.length) {
+      // we can delete the reminders in this case, because if it gets in this step,
+      //  it means that the move is a overwrite move or there is no existing reminder for the secret.
+      await reminderDAL.delete({ $in: { secretId: remindersToCreate.map((r) => r.secretId) } }, tx);
+      await reminderService.batchCreateReminders(remindersToCreate, tx);
+    }
 
     isDestinationUpdated = true;
   }

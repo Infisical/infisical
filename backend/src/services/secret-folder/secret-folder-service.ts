@@ -39,6 +39,8 @@ import {
 } from "../folder-commit/folder-commit-service";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
+import { TReminderDALFactory } from "../reminder/reminder-dal";
+import { TReminderServiceFactory } from "../reminder/reminder-types";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
 import { TSecretTagDALFactory } from "../secret-tag/secret-tag-dal";
@@ -110,6 +112,8 @@ type TSecretFolderServiceFactoryDep = {
   honeyTokenDAL: Pick<THoneyTokenDALFactory, "find">;
   secretImportDAL: Pick<TSecretImportDALFactory, "findImportByFolderIds">;
   secretV2BridgeService: Pick<TSecretV2BridgeServiceFactory, "dispatchSecretMoveSideEffects">;
+  reminderDAL: Pick<TReminderDALFactory, "findSecretReminders" | "delete">;
+  reminderService: Pick<TReminderServiceFactory, "batchCreateReminders">;
 };
 
 export type TSecretFolderServiceFactory = ReturnType<typeof secretFolderServiceFactory>;
@@ -136,7 +140,9 @@ export const secretFolderServiceFactory = ({
   secretRotationV2DAL,
   honeyTokenDAL,
   secretImportDAL,
-  secretV2BridgeService
+  secretV2BridgeService,
+  reminderDAL,
+  reminderService
 }: TSecretFolderServiceFactoryDep) => {
   const createFolder = async ({
     projectId,
@@ -1962,7 +1968,9 @@ export const secretFolderServiceFactory = ({
             secretApprovalPolicyService,
             secretApprovalRequestDAL,
             secretApprovalRequestSecretDAL,
-            secretQueueService
+            secretQueueService,
+            reminderDAL,
+            reminderService
           })
         );
       }

@@ -51,6 +51,7 @@ import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
+import { TReminderDALFactory } from "../reminder/reminder-dal";
 import { TReminderServiceFactory } from "../reminder/reminder-types";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 import { ResourceMetadataWithEncryptionDTO } from "../resource-metadata/resource-metadata-schema";
@@ -143,7 +144,8 @@ type TSecretV2BridgeServiceFactoryDep = {
     TKeyStoreFactory,
     "getItem" | "setExpiry" | "setItemWithExpiry" | "deleteItem" | "pgGetIntItem" | "hashGet" | "hashSet"
   >;
-  reminderService: Pick<TReminderServiceFactory, "createReminder" | "getReminder">;
+  reminderService: Pick<TReminderServiceFactory, "createReminder" | "getReminder" | "batchCreateReminders">;
+  reminderDAL: Pick<TReminderDALFactory, "findSecretReminders" | "delete">;
   secretValidationRuleService: Pick<TSecretValidationRuleServiceFactory, "validateSecrets">;
 };
 
@@ -173,6 +175,7 @@ export const secretV2BridgeServiceFactory = ({
   resourceMetadataDAL,
   keyStore,
   reminderService,
+  reminderDAL,
   secretValidationRuleService
 }: TSecretV2BridgeServiceFactoryDep) => {
   const $validateSecretReferences = async (
@@ -3039,7 +3042,9 @@ export const secretV2BridgeServiceFactory = ({
         secretApprovalPolicyService,
         secretApprovalRequestDAL,
         secretApprovalRequestSecretDAL,
-        secretQueueService
+        secretQueueService,
+        reminderDAL,
+        reminderService
       })
     );
 

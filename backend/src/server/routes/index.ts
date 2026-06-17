@@ -1951,6 +1951,7 @@ export const registerRoutes = async (
     snapshotService,
     resourceMetadataDAL,
     reminderService,
+    reminderDAL,
     keyStore,
     secretValidationRuleService
   });
@@ -2038,7 +2039,9 @@ export const registerRoutes = async (
     secretRotationV2DAL,
     honeyTokenDAL,
     secretImportDAL,
-    secretV2BridgeService
+    secretV2BridgeService,
+    reminderDAL,
+    reminderService
   });
 
   const secretSharingService = secretSharingServiceFactory({

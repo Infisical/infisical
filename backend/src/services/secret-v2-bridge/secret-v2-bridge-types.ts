@@ -21,6 +21,8 @@ import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-fold
 import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
 
 import { TCommitResourceChangeDTO, TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
+import { TReminderDALFactory } from "../reminder/reminder-dal";
+import { TReminderServiceFactory } from "../reminder/reminder-types";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 import { ResourceMetadataWithEncryptionDTO } from "../resource-metadata/resource-metadata-schema";
 import { TSecretV2BridgeDALFactory } from "./secret-v2-bridge-dal";
@@ -307,6 +309,8 @@ export type TFnSecretMove = {
     "insertV2Bridge" | "insertApprovalSecretV2Tags"
   >;
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets">;
+  reminderDAL: Pick<TReminderDALFactory, "findSecretReminders" | "delete">;
+  reminderService: Pick<TReminderServiceFactory, "batchCreateReminders">;
 };
 
 export type TFnSecretMoveResult = {
