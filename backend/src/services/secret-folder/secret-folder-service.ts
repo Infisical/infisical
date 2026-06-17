@@ -1603,20 +1603,20 @@ export const secretFolderServiceFactory = ({
     const destinationParentPath = destinationPath ?? "/";
     const canActorAccessDestination =
       !!destinationEnvironment &&
-      (permission.can(
+      permission.can(
         ProjectPermissionActions.Create,
         subject(ProjectPermissionSub.SecretFolders, {
           environment: destinationEnvironment,
           secretPath: destinationParentPath
         })
-      ) ||
-        permission.can(
-          ProjectPermissionActions.Read,
-          subject(ProjectPermissionSub.SecretFolders, {
-            environment: destinationEnvironment,
-            secretPath: destinationParentPath
-          })
-        ));
+      ) &&
+      permission.can(
+        ProjectPermissionActions.Read,
+        subject(ProjectPermissionSub.SecretFolders, {
+          environment: destinationEnvironment,
+          secretPath: destinationParentPath
+        })
+      );
 
     // run every read inside a transaction so it hits the primary database rather than a read replica
     const { sourceBlock, destinationBlock } = await folderDAL.transaction(async (tx) => {

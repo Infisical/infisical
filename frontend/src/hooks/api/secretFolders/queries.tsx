@@ -378,19 +378,12 @@ export const useMoveFolder = () => {
   const queryClient = useQueryClient();
 
   return useMutation<TMoveFolderResponse, object, TMoveFolderDTO>({
-    mutationFn: async ({
-      projectId,
-      folderId,
-      destinationEnvironment,
-      destinationPath,
-      shouldOverwrite = false
-    }) => {
+    mutationFn: async ({ projectId, folderId, destinationEnvironment, destinationPath }) => {
       const { data } = await apiRequest.post<TMoveFolderResponse>("/api/v2/folders/move", {
         projectId,
         folderId,
         destinationEnvironment,
-        destinationPath,
-        shouldOverwrite
+        destinationPath
       });
       return data;
     },
