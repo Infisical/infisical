@@ -134,8 +134,7 @@ export const GithubProvider = (): TDynamicProviderFns => {
   };
 
   const revoke = async (_inputs: unknown, entityId: string) => {
-    // GitHub installation tokens are time-bound (max 1 hour) and cannot be
-    // revoked via the API, so revocation is a no-op just like SSH certs.
+    // The token isn't stored at creation time, so we can't call DELETE /installation/token.
     return { entityId };
   };
 
