@@ -162,7 +162,8 @@ const ServerAdminsPanelTable = ({
               {!isPending &&
                 users?.map((user) => {
                   const { username, email, firstName, lastName, id } = user;
-                  const name = firstName || lastName ? `${firstName} ${lastName}` : null;
+                  const name =
+                    firstName || lastName ? `${firstName ?? ""} ${lastName ?? ""}`.trim() : null;
 
                   const isSelected = selectedUserIds.includes(id);
                   return (
