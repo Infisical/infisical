@@ -8,7 +8,7 @@ import { ProjectPermissionSecretActions } from "@app/ee/services/permission/proj
 import { SecretRotationV2Schema } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-union-schema";
 import { DASHBOARD } from "@app/lib/api-docs";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
-import { removeTrailingSlash } from "@app/lib/fn";
+import { prefixWithSlash, removeTrailingSlash } from "@app/lib/fn";
 import { OrderByDirection } from "@app/lib/types";
 import { readLimit, secretsLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
@@ -1870,5 +1870,53 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
 
       return { value: secretVersion.secretValue };
     }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/folder/move-check/:folderId",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      operationId: "checkFolderMoveCheck",
+      description: "Check whether a folder and its subtree can be moved (only static secrets allowed)",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      params: z.object({
+        folderId: z.string().trim().uuid()
+      }),
+      querystring: z.object({
+        destinationEnvironment: z.string().trim().optional(),
+        destinationPath: z.string().trim().transform(prefixWithSlash).transform(removeTrailingSlash).optional()
+      }),
+      response: {
+        200: z.object({
+          canMove: z.boolean(),
+          folderName: z.string(),
+          blockingType: z
+            .enum(["dynamic_secret", "secret_rotation", "honey_token", "secret_import", "secret_approval_policy"])
+            .optional(),
+          blockingPath: z.string().optional(),
+          destinationBlocked: z.boolean().optional(),
+          destinationBlockingPath: z.string().optional(),
+          destinationPolicyName: z.string().optional()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) =>
+      server.services.folder.getFolderMoveEligibility({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        id: req.params.folderId,
+        destinationEnvironment: req.query.destinationEnvironment,
+        destinationPath: req.query.destinationPath
+      })
   });
 };

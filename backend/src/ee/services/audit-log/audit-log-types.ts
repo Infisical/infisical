@@ -338,6 +338,7 @@ export enum EventType {
   CREATE_FOLDER = "create-folder",
   UPDATE_FOLDER = "update-folder",
   DELETE_FOLDER = "delete-folder",
+  MOVE_FOLDER = "move-folder",
   CREATE_WEBHOOK = "create-webhook",
   UPDATE_WEBHOOK_STATUS = "update-webhook-status",
   DELETE_WEBHOOK = "delete-webhook",
@@ -2490,6 +2491,17 @@ interface DeleteFolderEvent {
     folderId: string;
     folderName: string;
     folderPath: string;
+  };
+}
+
+interface MoveFolderEvent {
+  type: EventType.MOVE_FOLDER;
+  metadata: {
+    folderId: string;
+    sourceEnvironment: string;
+    sourcePath: string;
+    destinationEnvironment: string;
+    destinationPath: string;
   };
 }
 
@@ -7563,6 +7575,7 @@ export type Event =
   | CreateFolderEvent
   | UpdateFolderEvent
   | DeleteFolderEvent
+  | MoveFolderEvent
   | CreateWebhookEvent
   | UpdateWebhookStatusEvent
   | DeleteWebhookEvent
