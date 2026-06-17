@@ -5,10 +5,17 @@ import { logger } from "@app/lib/logger";
 import { featureReaderFactory } from "./feature-reader";
 import { licenseServerBackend } from "./license-client-backends";
 import { entitlementResolverFactory } from "./license-client-cache";
-import { TLicenseClientBackend } from "./license-client-types";
+import { TCreateCheckoutPayload, TCreatePortalPayload, TLicenseClientBackend } from "./license-client-types";
 
 type TLicenseClientFactoryDep = {
-  envConfig: Pick<TEnvConfig, "LICENSE_SERVER_V2_ENABLED" | "LICENSE_SERVER_V2_URL" | "LICENSE_SERVER_V2_SERVICE_KEY">;
+  envConfig: Pick<
+    TEnvConfig,
+    | "LICENSE_SERVER_V2_ENABLED"
+    | "LICENSE_SERVER_V2_URL"
+    | "LICENSE_SERVER_V2_SERVICE_KEY"
+    | "LICENSE_SERVER_V2_ISSUER"
+    | "LICENSE_SERVER_V2_AUDIENCE"
+  >;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry">;
 };
 
@@ -22,14 +29,17 @@ const buildBackend = (envConfig: TLicenseClientFactoryDep["envConfig"]): TLicens
   }
 
   const serverUrl = envConfig.LICENSE_SERVER_V2_URL;
-  if (!serverUrl || !envConfig.LICENSE_SERVER_V2_SERVICE_KEY) {
+  const hmacSecret = envConfig.LICENSE_SERVER_V2_SERVICE_KEY;
+  const issuer = envConfig.LICENSE_SERVER_V2_ISSUER;
+  const audience = envConfig.LICENSE_SERVER_V2_AUDIENCE;
+  if (!serverUrl || !hmacSecret || !issuer || !audience) {
     logger.warn(
-      "license-client: enabled but LICENSE_SERVER_V2_URL / LICENSE_SERVER_V2_SERVICE_KEY is missing; serving feature fallbacks"
+      "license-client: enabled but LICENSE_SERVER_V2_URL / _SERVICE_KEY / _ISSUER / _AUDIENCE is missing; serving feature fallbacks"
     );
     return null;
   }
 
-  return licenseServerBackend(serverUrl, envConfig.LICENSE_SERVER_V2_SERVICE_KEY);
+  return licenseServerBackend(serverUrl, { hmacSecret, issuer, audience });
 };
 
 export const licenseClientFactory = ({ envConfig, keyStore }: TLicenseClientFactoryDep) => {
@@ -43,5 +53,40 @@ export const licenseClientFactory = ({ envConfig, keyStore }: TLicenseClientFact
     return resolver.getEntitlements(orgId);
   };
 
-  return featureReaderFactory({ getEntitlements });
+  const getCatalog = async () => {
+    if (!backend) {
+      return null;
+    }
+    return backend.fetchCatalog();
+  };
+
+  const getSubscription = async (orgId: string) => {
+    if (!backend) {
+      return null;
+    }
+    return backend.fetchSubscription(orgId);
+  };
+
+  const createCheckout = async (orgId: string, payload: TCreateCheckoutPayload) => {
+    if (!backend) {
+      throw new Error("license client backend is not configured");
+    }
+    return backend.createCheckoutSession(orgId, payload);
+  };
+
+  const createPortal = async (orgId: string, payload: TCreatePortalPayload) => {
+    if (!backend) {
+      throw new Error("license client backend is not configured");
+    }
+    return backend.createPortalSession(orgId, payload);
+  };
+
+  return {
+    ...featureReaderFactory({ getEntitlements }),
+    getEntitlements,
+    getCatalog,
+    getSubscription,
+    createCheckout,
+    createPortal
+  };
 };

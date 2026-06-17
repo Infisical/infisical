@@ -1,0 +1,463 @@
+/* Infisical — License v2 billing surface. Scoped under .billing-v2 to avoid global collisions. */
+
+.billing-v2 * { box-sizing: border-box; }
+.billing-v2 a { color: inherit; text-decoration: none; }
+.billing-v2 button { font-family: inherit; }
+.billing-v2 ::selection { background: rgba(48,179,255,0.25); }
+
+/* ---------- BUTTON ---------- */
+.billing-v2 .btn { display:inline-flex; align-items:center; justify-content:center; gap:6px;
+  border:1px solid; border-radius:6px; color:#ebebeb; font-family:inherit;
+  font-size:13px; cursor:pointer; white-space:nowrap;
+  transition: background 200ms, border-color 200ms, transform 80ms; }
+.billing-v2 .btn:active { transform: scale(0.99); }
+.billing-v2 .btn:focus-visible { outline:none; box-shadow:0 0 0 3px rgba(45,47,51,0.6); }
+.billing-v2 .btn:disabled { opacity:0.5; pointer-events:none; }
+.billing-v2 .btn.xs { height:26px; padding:0 8px; font-size:12px; border-radius:4px; }
+.billing-v2 .btn.sm { height:30px; padding:0 10px; font-size:13px; }
+.billing-v2 .btn.md { height:34px; padding:0 13px; font-size:13px; }
+.billing-v2 .btn.lg { height:40px; padding:0 16px; font-size:14px; }
+.billing-v2 .btn.full { width:100%; }
+.billing-v2 .btn .ico { width:14px; height:14px; flex-shrink:0; }
+
+.billing-v2 .btn-outline  { background:transparent; border-color:#2b2c30; color:#adaeb0; }
+.billing-v2 .btn-outline:hover { background:rgba(235,235,235,0.05); border-color:#3a3b40; color:#ebebeb; }
+.billing-v2 .btn-ghost    { background:transparent; border-color:transparent; color:#adaeb0; }
+.billing-v2 .btn-ghost:hover { background:rgba(235,235,235,0.08); color:#ebebeb; }
+.billing-v2 .btn-neutral  { background:rgba(173,174,176,0.10); border-color:rgba(173,174,176,0.25); }
+.billing-v2 .btn-neutral:hover { background:rgba(173,174,176,0.16); }
+.billing-v2 .btn-org      { background:rgba(48,179,255,0.10); border-color:rgba(48,179,255,0.28); color:#ebebeb; }
+.billing-v2 .btn-org:hover { background:rgba(48,179,255,0.16); border-color:rgba(48,179,255,0.34); }
+.billing-v2 .btn-success  { background:rgba(46,204,113,0.10); border-color:rgba(46,204,113,0.25); }
+.billing-v2 .btn-success:hover { background:rgba(46,204,113,0.16); }
+.billing-v2 .btn-info     { background:rgba(99,176,189,0.10); border-color:rgba(99,176,189,0.25); }
+.billing-v2 .btn-warning  { background:rgba(241,196,15,0.10); border-color:rgba(241,196,15,0.28); }
+.billing-v2 .btn-warning:hover { background:rgba(241,196,15,0.16); }
+.billing-v2 .btn-danger   { background:rgba(231,76,60,0.10); border-color:rgba(231,76,60,0.28); }
+.billing-v2 .btn-danger:hover { background:rgba(231,76,60,0.16); border-color:rgba(231,76,60,0.34); }
+
+.billing-v2 .icon-btn { display:inline-flex; align-items:center; justify-content:center; width:30px; height:30px;
+  border-radius:6px; background:transparent; border:1px solid transparent; color:#7d7f80; cursor:pointer;
+  transition:all 200ms; flex-shrink:0; }
+.billing-v2 .icon-btn:hover { background:rgba(235,235,235,0.06); color:#ebebeb; }
+
+/* ---------- BADGE ---------- */
+.billing-v2 .badge { display:inline-flex; align-items:center; gap:4px; height:20px; padding:0 7px; font-size:11px;
+  border-radius:4px; border:1px solid; line-height:1; white-space:nowrap; font-weight:500; }
+.billing-v2 .badge .ico { width:11px; height:11px; }
+.billing-v2 .badge .dot { width:6px; height:6px; border-radius:50%; background:currentColor; }
+.billing-v2 .badge-neutral { background:rgba(173,174,176,0.15); border-color:rgba(173,174,176,0.10); color:#adaeb0; }
+.billing-v2 .badge-success { background:rgba(46,204,113,0.15); border-color:rgba(46,204,113,0.12); color:#2ecc71; }
+.billing-v2 .badge-info    { background:rgba(99,176,189,0.15); border-color:rgba(99,176,189,0.12); color:#63b0bd; }
+.billing-v2 .badge-warning { background:rgba(241,196,15,0.15); border-color:rgba(241,196,15,0.12); color:#f1c40f; }
+.billing-v2 .badge-danger  { background:rgba(231,76,60,0.15); border-color:rgba(231,76,60,0.12); color:#e74c3c; }
+.billing-v2 .badge-org     { background:rgba(48,179,255,0.15); border-color:rgba(48,179,255,0.12); color:#30b3ff; }
+.billing-v2 .badge-outline { background:transparent; border-color:#2b2c30; color:#adaeb0; }
+
+/* ---------- CARD ---------- */
+.billing-v2 .card { background:#16181a; border:1px solid #2b2c30; border-radius:8px; padding:20px;
+  display:flex; flex-direction:column; gap:18px; box-shadow:0 1px 2px rgba(0,0,0,0.3); }
+.billing-v2 .card.no-pad { padding:0; gap:0; }
+.billing-v2 .card-header { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; }
+.billing-v2 .card-title { font-size:16px; font-weight:600; line-height:1.1; color:#ebebeb; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.billing-v2 .card-desc { font-size:13px; color:#7d7f80; margin-top:6px; line-height:1.5; }
+
+/* ---------- INPUT ---------- */
+.billing-v2 .input { display:block; width:100%; height:34px; padding:0 12px; border:1px solid #2b2c30;
+  background:#141617; color:#ebebeb; border-radius:6px; font-size:13px; font-family:inherit;
+  transition:border-color 200ms, box-shadow 200ms; }
+.billing-v2 .input::placeholder { color:#707174; }
+.billing-v2 .input:focus { outline:none; border-color:#2d2f33; box-shadow:0 0 0 3px rgba(45,47,51,0.5); }
+.billing-v2 .field-label { font-size:12px; color:#adaeb0; margin-bottom:6px; display:block; }
+.billing-v2 .field-desc  { font-size:12px; color:#707174; margin-top:5px; line-height:1.5; }
+
+/* ---------- PAGE DESC ---------- */
+.billing-v2 .page-desc { font-size:13px; color:#adaeb0; margin-top:7px; line-height:1.55; max-width:56ch; }
+
+/* ---------- STACK ---------- */
+.billing-v2 .stack { display:flex; flex-direction:column; gap:18px; }
+
+/* ====================================================================== */
+/* ====================  BILLING-SPECIFIC  ============================== */
+/* ====================================================================== */
+
+/* ---------- Summary header card ---------- */
+.billing-v2 .summary { display:flex; flex-direction:column; gap:0; padding:0; overflow:hidden; }
+.billing-v2 .summary-top { display:flex; align-items:stretch; gap:0; flex-wrap:wrap; }
+.billing-v2 .summary-metric { flex:1; min-width:180px; padding:22px 24px; display:flex; flex-direction:column; gap:8px;
+  border-right:1px solid #2b2c30; }
+.billing-v2 .summary-metric:last-child { border-right:none; }
+.billing-v2 .summary-metric .lbl { font-size:11px; text-transform:uppercase; letter-spacing:0.06em; color:#707174; font-weight:500; }
+.billing-v2 .summary-metric .val { font-size:24px; font-weight:600; color:#fff; line-height:1.1; letter-spacing:-0.01em; }
+.billing-v2 .summary-metric .val .cadence { font-size:14px; font-weight:400; color:#adaeb0; letter-spacing:0; }
+.billing-v2 .summary-metric .sub { font-size:12px; color:#7d7f80; }
+.billing-v2 .summary-note { padding:12px 24px; border-top:1px solid #2b2c30; background:rgba(48,179,255,0.04);
+  font-size:12.5px; color:#9fa1a4; display:flex; align-items:center; gap:8px; }
+.billing-v2 .summary-note .ico { color:#30b3ff; width:14px; height:14px; flex-shrink:0; }
+
+/* ---------- Product rows / cards ---------- */
+.billing-v2 .prod-list { display:flex; flex-direction:column; }
+.billing-v2 .prod-item { padding:16px 4px; border-top:1px solid #2b2c30; }
+.billing-v2 .prod-item:first-child { border-top:none; }
+.billing-v2 .prod-row { display:flex; align-items:center; gap:16px; }
+.billing-v2 .prod-row.paused { opacity:0.62; }
+.billing-v2 .prod-row.paused .prod-ico { filter:grayscale(0.6); }
+.billing-v2 .prod-ico { width:38px; height:38px; border-radius:8px; display:flex; align-items:center; justify-content:center;
+  flex-shrink:0; border:1px solid; }
+.billing-v2 .prod-main { flex:1; min-width:0; display:flex; flex-direction:column; gap:4px; }
+.billing-v2 .prod-name-row { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.billing-v2 .prod-name { font-size:14.5px; font-weight:600; color:#ebebeb; }
+.billing-v2 .prod-plan-chip { font-size:11px; color:#adaeb0; background:rgba(173,174,176,0.10); border:1px solid rgba(173,174,176,0.18);
+  padding:1px 7px; border-radius:4px; font-weight:500; white-space:nowrap; }
+.billing-v2 .prod-meta { font-size:12.5px; color:#7d7f80; display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+.billing-v2 .prod-meta .sep { color:#3a3b40; }
+.billing-v2 .prod-price { text-align:right; flex-shrink:0; display:flex; flex-direction:column; gap:2px; }
+.billing-v2 .prod-price .amt { font-size:14px; font-weight:600; color:#ebebeb; }
+.billing-v2 .prod-price .amt .cadence { font-size:12px; font-weight:400; color:#7d7f80; }
+.billing-v2 .prod-actions { display:flex; align-items:center; gap:6px; flex-shrink:0; }
+
+/* ---------- Generic info rows (payment, billing details) ---------- */
+.billing-v2 .info-row { display:flex; align-items:center; justify-content:space-between; gap:16px; }
+.billing-v2 .info-pair { display:flex; align-items:center; gap:14px; }
+.billing-v2 .card-brand { width:46px; height:30px; border-radius:5px; border:1px solid #2b2c30; background:#1a1c1e;
+  display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; letter-spacing:0.03em; color:#ebebeb; flex-shrink:0; }
+.billing-v2 .info-text .t1 { font-size:13.5px; color:#ebebeb; font-weight:500; }
+.billing-v2 .info-text .t2 { font-size:12px; color:#7d7f80; margin-top:2px; }
+.billing-v2 .detail-grid { display:grid; grid-template-columns:repeat(3, 1fr); gap:18px; }
+.billing-v2 .detail-cell .dk { font-size:11px; text-transform:uppercase; letter-spacing:0.05em; color:#707174; margin-bottom:5px; }
+.billing-v2 .detail-cell .dv { font-size:13.5px; color:#ebebeb; }
+.billing-v2 .detail-cell .dv.mono { font-family:ui-monospace,"SF Mono",Menlo,monospace; font-size:12.5px; }
+
+/* ---------- Invoices table ---------- */
+.billing-v2 .inv-tbl { width:100%; border-collapse:collapse; }
+.billing-v2 .inv-tbl thead th { text-align:left; padding:0 4px 10px; font-size:11px; font-weight:500; color:#707174;
+  text-transform:uppercase; letter-spacing:0.05em; border-bottom:1px solid #2b2c30; }
+.billing-v2 .inv-tbl thead th.right { text-align:right; }
+.billing-v2 .inv-tbl tbody td { padding:13px 4px; font-size:13px; color:#ebebeb; border-bottom:1px solid #222327; vertical-align:middle; }
+.billing-v2 .inv-tbl tbody tr:last-child td { border-bottom:none; }
+.billing-v2 .inv-tbl td.right { text-align:right; }
+.billing-v2 .inv-tbl td.mono { font-family:ui-monospace,"SF Mono",Menlo,monospace; font-size:12.5px; color:#adaeb0; }
+.billing-v2 .inv-dl { color:#30b3ff; cursor:pointer; display:inline-flex; align-items:center; gap:5px; font-size:12.5px; }
+.billing-v2 .inv-dl:hover { text-decoration:underline; }
+.billing-v2 .empty-row { padding:28px; text-align:center; color:#707174; font-size:13px; }
+
+/* ---------- Banners ---------- */
+.billing-v2 .banner { display:flex; align-items:flex-start; gap:13px; padding:14px 16px; border-radius:8px; border:1px solid;
+  margin-bottom:22px; }
+.billing-v2 .banner .b-ico { width:20px; height:20px; flex-shrink:0; margin-top:1px; }
+.billing-v2 .banner .b-body { flex:1; min-width:0; }
+.billing-v2 .banner .b-title { font-size:13.5px; font-weight:600; margin-bottom:3px; }
+.billing-v2 .banner .b-text { font-size:12.5px; line-height:1.5; }
+.billing-v2 .banner .b-actions { display:flex; gap:8px; margin-top:12px; flex-wrap:wrap; }
+.billing-v2 .banner-warning { background:rgba(241,196,15,0.07); border-color:rgba(241,196,15,0.28); }
+.billing-v2 .banner-warning .b-ico, .billing-v2 .banner-warning .b-title { color:#f1c40f; }
+.billing-v2 .banner-warning .b-text { color:#cdb86a; }
+.billing-v2 .banner-danger { background:rgba(231,76,60,0.08); border-color:rgba(231,76,60,0.30); }
+.billing-v2 .banner-danger .b-ico, .billing-v2 .banner-danger .b-title { color:#e74c3c; }
+.billing-v2 .banner-danger .b-text { color:#d39189; }
+.billing-v2 .banner-info { background:rgba(99,176,189,0.07); border-color:rgba(99,176,189,0.26); }
+.billing-v2 .banner-info .b-ico, .billing-v2 .banner-info .b-title { color:#63b0bd; }
+.billing-v2 .banner-info .b-text { color:#92b3ba; }
+
+/* ---------- Get-started / empty ---------- */
+.billing-v2 .getstarted { display:flex; flex-direction:column; align-items:center; text-align:center; gap:16px;
+  padding:52px 28px; }
+.billing-v2 .getstarted .gs-ico { width:54px; height:54px; border-radius:12px; display:flex; align-items:center; justify-content:center;
+  background:rgba(48,179,255,0.10); border:1px solid rgba(48,179,255,0.25); color:#30b3ff; }
+.billing-v2 .getstarted .gs-title { font-size:18px; font-weight:600; color:#fff; }
+.billing-v2 .getstarted .gs-text { font-size:13.5px; color:#9fa1a4; max-width:42ch; line-height:1.6; }
+
+/* ---------- Inline error panel ---------- */
+.billing-v2 .err-panel { display:flex; flex-direction:column; align-items:center; text-align:center; gap:12px; padding:40px 28px; }
+.billing-v2 .err-panel .e-ico { color:#e74c3c; }
+.billing-v2 .err-panel .e-title { font-size:15px; font-weight:600; color:#ebebeb; }
+.billing-v2 .err-panel .e-text { font-size:13px; color:#9fa1a4; max-width:40ch; line-height:1.55; }
+
+/* ---------- Skeletons ---------- */
+.billing-v2 .sk { background:linear-gradient(90deg, #1c1e21 25%, #232529 50%, #1c1e21 75%); background-size:200% 100%;
+  animation:bv2-sk-shimmer 1.4s ease-in-out infinite; border-radius:5px; }
+@keyframes bv2-sk-shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+/* ---------- Modal / Dialog ---------- */
+.billing-v2 .modal-backdrop { position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:60;
+  display:flex; align-items:center; justify-content:center; padding:24px; animation:bv2-fade 180ms ease-out; }
+.billing-v2 .modal { background:#141617; border:1px solid #2b2c30; border-radius:10px; box-shadow:0 10px 40px rgba(0,0,0,0.55);
+  width:480px; max-width:100%; max-height:calc(100vh - 48px); display:flex; flex-direction:column; overflow:hidden;
+  animation:bv2-pop 180ms cubic-bezier(0.16,1,0.3,1); }
+.billing-v2 .modal.wide { width:760px; }
+.billing-v2 .modal-head { padding:18px 20px 16px; border-bottom:1px solid #2b2c30; display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+.billing-v2 .modal-head .m-title { font-size:16px; font-weight:600; color:#fff; }
+.billing-v2 .modal-head .m-desc { font-size:12.5px; color:#7d7f80; margin-top:4px; line-height:1.5; }
+.billing-v2 .modal-body { padding:20px; overflow-y:auto; flex:1; }
+.billing-v2 .modal-foot { padding:14px 20px; border-top:1px solid #2b2c30; display:flex; gap:10px; justify-content:flex-end; align-items:center; }
+.billing-v2 .modal-foot .foot-note { margin-right:auto; font-size:12px; color:#707174; }
+@keyframes bv2-fade { from{opacity:0} to{opacity:1} }
+@keyframes bv2-pop { from{opacity:0; transform:scale(0.97) translateY(6px)} to{opacity:1; transform:none} }
+
+/* ---------- Catalog cards ---------- */
+.billing-v2 .catalog-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+@media (max-width:680px){ .billing-v2 .catalog-grid{ grid-template-columns:1fr; } }
+.billing-v2 .cat-card { border:1px solid #2b2c30; border-radius:9px; background:#16181a; padding:16px;
+  display:flex; flex-direction:column; gap:13px; transition:border-color 200ms, background 200ms; }
+.billing-v2 .cat-card.added { border-color:rgba(46,204,113,0.30); background:rgba(46,204,113,0.03); }
+.billing-v2 .cat-card.selected { border-color:rgba(48,179,255,0.45); background:rgba(48,179,255,0.05); }
+.billing-v2 .cat-head { display:flex; gap:12px; align-items:flex-start; }
+.billing-v2 .cat-head .prod-ico { width:34px; height:34px; }
+.billing-v2 .cat-titles { flex:1; min-width:0; }
+.billing-v2 .cat-name { font-size:14px; font-weight:600; color:#ebebeb; display:flex; align-items:center; gap:8px; }
+.billing-v2 .cat-desc { font-size:12.5px; color:#7d7f80; margin-top:4px; line-height:1.5; }
+.billing-v2 .cat-plans { display:flex; flex-direction:column; gap:8px; }
+.billing-v2 .plan-opt { display:flex; align-items:center; gap:11px; padding:10px 12px; border:1px solid #2b2c30; border-radius:7px;
+  cursor:pointer; transition:border-color 150ms, background 150ms; background:#141617; }
+.billing-v2 .plan-opt:hover { border-color:#3a3b40; }
+.billing-v2 .plan-opt.sel { border-color:rgba(48,179,255,0.5); background:rgba(48,179,255,0.06); }
+.billing-v2 .plan-opt.disabled { opacity:0.55; cursor:default; }
+.billing-v2 .plan-radio { width:16px; height:16px; border-radius:50%; border:1.5px solid #3a3b40; flex-shrink:0; position:relative; }
+.billing-v2 .plan-opt.sel .plan-radio { border-color:#30b3ff; }
+.billing-v2 .plan-opt.sel .plan-radio::after { content:""; position:absolute; inset:3px; border-radius:50%; background:#30b3ff; }
+.billing-v2 .plan-info { flex:1; min-width:0; }
+.billing-v2 .plan-name { font-size:13px; font-weight:500; color:#ebebeb; }
+.billing-v2 .plan-feat { font-size:11.5px; color:#707174; margin-top:2px; }
+.billing-v2 .plan-price { text-align:right; flex-shrink:0; font-size:13px; font-weight:600; color:#ebebeb; }
+.billing-v2 .plan-price .cadence { font-size:11px; font-weight:400; color:#7d7f80; }
+.billing-v2 .plan-price.sales { font-size:12px; font-weight:500; color:#63b0bd; }
+.billing-v2 .cat-foot { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:2px; }
+
+/* ---------- Preset bundle ---------- */
+.billing-v2 .preset { display:flex; align-items:center; gap:14px; padding:14px 16px; border-radius:9px;
+  border:1px dashed rgba(48,179,255,0.35); background:rgba(48,179,255,0.04); margin-bottom:16px; }
+.billing-v2 .preset .p-ico { width:36px; height:36px; border-radius:8px; background:rgba(48,179,255,0.12);
+  border:1px solid rgba(48,179,255,0.25); color:#30b3ff; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.billing-v2 .preset .p-body { flex:1; }
+.billing-v2 .preset .p-title { font-size:13.5px; font-weight:600; color:#ebebeb; }
+.billing-v2 .preset .p-text { font-size:12px; color:#8a8c8f; margin-top:2px; }
+
+/* ---------- Cart summary (checkout) ---------- */
+.billing-v2 .cart { border:1px solid #2b2c30; border-radius:9px; background:#16181a; padding:16px; display:flex; flex-direction:column; gap:12px; }
+.billing-v2 .cart-title { font-size:13px; font-weight:600; color:#ebebeb; text-transform:uppercase; letter-spacing:0.04em; }
+.billing-v2 .cart-line { display:flex; align-items:center; justify-content:space-between; gap:12px; font-size:13px; }
+.billing-v2 .cart-line .cl-name { color:#cfd0d2; display:flex; align-items:center; gap:7px; }
+.billing-v2 .cart-line .cl-amt { color:#ebebeb; font-weight:500; white-space:nowrap; }
+.billing-v2 .cart-line.muted .cl-name, .billing-v2 .cart-line.muted .cl-amt { color:#8a8c8f; font-weight:400; }
+.billing-v2 .cart-divider { height:1px; background:#2b2c30; margin:2px 0; }
+.billing-v2 .cart-total { display:flex; align-items:center; justify-content:space-between; }
+.billing-v2 .cart-total .ct-lbl { font-size:13px; color:#adaeb0; }
+.billing-v2 .cart-total .ct-amt { font-size:18px; font-weight:600; color:#fff; }
+.billing-v2 .cart-total .ct-amt .cadence { font-size:12px; font-weight:400; color:#7d7f80; }
+.billing-v2 .cart-empty { font-size:12.5px; color:#707174; text-align:center; padding:14px 0; }
+
+/* ---------- Stepper ---------- */
+.billing-v2 .stepper { display:flex; align-items:center; gap:0; margin-bottom:4px; }
+.billing-v2 .step { display:flex; align-items:center; gap:9px; }
+.billing-v2 .step .sdot { width:24px; height:24px; border-radius:50%; border:1.5px solid #2b2c30; display:flex; align-items:center; justify-content:center;
+  font-size:12px; font-weight:600; color:#707174; flex-shrink:0; transition:all 200ms; }
+.billing-v2 .step.active .sdot { border-color:#30b3ff; color:#30b3ff; background:rgba(48,179,255,0.10); }
+.billing-v2 .step.done .sdot { border-color:#2ecc71; background:#2ecc71; color:#0e1014; }
+.billing-v2 .step .slbl { font-size:12.5px; color:#707174; white-space:nowrap; }
+.billing-v2 .step.active .slbl { color:#ebebeb; font-weight:500; }
+.billing-v2 .step.done .slbl { color:#adaeb0; }
+.billing-v2 .step-line { flex:1; height:1px; background:#2b2c30; margin:0 12px; min-width:18px; }
+.billing-v2 .step-line.done { background:rgba(46,204,113,0.4); }
+
+/* ---------- Review line items ---------- */
+.billing-v2 .review-list { display:flex; flex-direction:column; border:1px solid #2b2c30; border-radius:8px; overflow:hidden; }
+.billing-v2 .review-line { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:13px 15px; border-top:1px solid #222327; }
+.billing-v2 .review-line:first-child { border-top:none; }
+.billing-v2 .review-line .rl-name { font-size:13px; color:#ebebeb; display:flex; align-items:center; gap:9px; }
+.billing-v2 .review-line .rl-sub { font-size:11.5px; color:#707174; margin-top:1px; }
+.billing-v2 .review-line .rl-amt { font-size:13px; color:#ebebeb; font-weight:500; white-space:nowrap; }
+.billing-v2 .review-totals { background:#141617; padding:14px 15px; display:flex; flex-direction:column; gap:9px; border-top:1px solid #2b2c30; }
+
+/* ---------- Embedded payment region ---------- */
+.billing-v2 .pay-region { border:1px solid #2b2c30; border-radius:8px; background:#141617; padding:16px; position:relative; }
+.billing-v2 .pay-region-badge { position:absolute; top:-9px; right:14px; font-size:10px; color:#707174; background:#141617;
+  padding:0 7px; display:inline-flex; align-items:center; gap:5px; }
+.billing-v2 .pay-region-badge .ico { width:11px; height:11px; }
+.billing-v2 .pay-field { display:flex; flex-direction:column; gap:6px; margin-bottom:13px; }
+.billing-v2 .pay-field:last-child { margin-bottom:0; }
+.billing-v2 .pay-field label { font-size:11.5px; color:#8a8c8f; }
+.billing-v2 .pay-input { height:38px; border:1px solid #2b2c30; border-radius:7px; background:#16181a; display:flex; align-items:center;
+  padding:0 12px; gap:8px; font-size:13px; color:#ebebeb; }
+.billing-v2 .pay-input .pi-dots { letter-spacing:2px; color:#cfd0d2; font-family:ui-monospace,Menlo,monospace; }
+.billing-v2 .pay-input .pi-placeholder { color:#55575b; }
+.billing-v2 .pay-input .brand-mini { margin-left:auto; font-size:10px; font-weight:700; color:#707174; }
+.billing-v2 .pay-row { display:flex; gap:12px; }
+.billing-v2 .pay-row .pay-field { flex:1; }
+
+/* ---------- What-changes list ---------- */
+.billing-v2 .changes { display:flex; flex-direction:column; gap:9px; }
+.billing-v2 .change-item { display:flex; gap:10px; align-items:flex-start; font-size:12.5px; line-height:1.5; }
+.billing-v2 .change-item .ci-ico { width:16px; height:16px; flex-shrink:0; margin-top:1px; }
+.billing-v2 .change-item.add .ci-ico { color:#2ecc71; }
+.billing-v2 .change-item.remove .ci-ico { color:#e74c3c; }
+.billing-v2 .change-item .ci-text { color:#c4c5c7; }
+
+/* ---------- Proration preview box ---------- */
+.billing-v2 .proration { border:1px solid #2b2c30; border-radius:8px; overflow:hidden; }
+.billing-v2 .proration-row { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:13px 15px; }
+.billing-v2 .proration-row.hl { background:rgba(48,179,255,0.05); }
+.billing-v2 .proration-row + .proration-row { border-top:1px solid #2b2c30; }
+.billing-v2 .proration-row .pr-lbl { font-size:13px; color:#adaeb0; }
+.billing-v2 .proration-row .pr-lbl .pr-sub { font-size:11.5px; color:#707174; margin-top:2px; }
+.billing-v2 .proration-row .pr-amt { font-size:15px; font-weight:600; color:#ebebeb; white-space:nowrap; }
+.billing-v2 .proration-row.hl .pr-amt { color:#30b3ff; }
+
+/* ---------- 3DS auth interstitial ---------- */
+.billing-v2 .auth-body { display:flex; flex-direction:column; align-items:center; text-align:center; gap:18px; padding:34px 24px; }
+.billing-v2 .auth-bank { width:54px; height:54px; border-radius:12px; background:#1a1c1e; border:1px solid #2b2c30;
+  display:flex; align-items:center; justify-content:center; color:#63b0bd; }
+.billing-v2 .auth-title { font-size:15px; font-weight:600; color:#ebebeb; }
+.billing-v2 .auth-text { font-size:13px; color:#9fa1a4; max-width:34ch; line-height:1.55; }
+
+/* ---------- Spinner ---------- */
+.billing-v2 .spin { width:16px; height:16px; border:2px solid rgba(235,235,235,0.2); border-top-color:#ebebeb; border-radius:50%;
+  animation:bv2-spin 0.7s linear infinite; display:inline-block; }
+.billing-v2 .spin.lg { width:30px; height:30px; border-width:3px; }
+.billing-v2 .spin.org { border-top-color:#30b3ff; }
+@keyframes bv2-spin { to{ transform:rotate(360deg); } }
+
+/* ---------- Confirmation ---------- */
+.billing-v2 .confirm-body { display:flex; flex-direction:column; align-items:center; text-align:center; gap:16px; padding:36px 24px 28px; }
+.billing-v2 .confirm-check { width:56px; height:56px; border-radius:50%; background:rgba(46,204,113,0.12); border:1px solid rgba(46,204,113,0.3);
+  display:flex; align-items:center; justify-content:center; color:#2ecc71; }
+.billing-v2 .confirm-title { font-size:18px; font-weight:600; color:#fff; }
+.billing-v2 .confirm-text { font-size:13.5px; color:#9fa1a4; line-height:1.6; max-width:40ch; }
+.billing-v2 .confirm-list { width:100%; border:1px solid #2b2c30; border-radius:8px; overflow:hidden; margin-top:4px; }
+
+/* ---------- Misc ---------- */
+.billing-v2 .hint { font-size:12px; color:#707174; line-height:1.5; }
+.billing-v2 .mono { font-family:ui-monospace,"SF Mono",Menlo,monospace; }
+.billing-v2 .row-link { color:#30b3ff; cursor:pointer; font-size:12.5px; }
+.billing-v2 .row-link:hover { text-decoration:underline; }
+.billing-v2 .divider { height:1px; background:#2b2c30; }
+
+/* ---------- Usage meters ---------- */
+.billing-v2 .prod-usage { display:flex; flex-direction:column; gap:9px; margin-top:10px; }
+.billing-v2 .meter { display:flex; flex-direction:column; gap:5px; }
+.billing-v2 .meter-top { display:flex; align-items:baseline; justify-content:space-between; gap:10px; }
+.billing-v2 .meter-label { font-size:12px; color:#9fa1a4; white-space:nowrap; }
+.billing-v2 .meter-count { font-size:12px; color:#ebebeb; font-variant-numeric:tabular-nums; white-space:nowrap; }
+.billing-v2 .meter-count .meter-cap { color:#707174; }
+.billing-v2 .meter-count .meter-rate { color:#707174; }
+.billing-v2 .meter-count.tone-near { color:#f1c40f; }
+.billing-v2 .meter-count.tone-full { color:#e74c3c; }
+.billing-v2 .meter-track { height:5px; border-radius:3px; background:#26282c; overflow:hidden; }
+.billing-v2 .meter-fill { height:100%; border-radius:3px; background:#30b3ff; transition:width 300ms ease; }
+.billing-v2 .meter-fill.tone-near { background:#f1c40f; }
+.billing-v2 .meter-fill.tone-full { background:#e74c3c; }
+.billing-v2 .limit-note { display:flex; align-items:center; gap:7px; font-size:12px; margin-top:9px;
+  padding:8px 11px; border-radius:6px; }
+.billing-v2 .limit-note.near { background:rgba(241,196,15,0.07); border:1px solid rgba(241,196,15,0.22); color:#cdb86a; }
+.billing-v2 .limit-note.full { background:rgba(231,76,60,0.07); border:1px solid rgba(231,76,60,0.24); color:#d39189; }
+.billing-v2 .limit-note .ico { flex-shrink:0; }
+
+/* ---------- Cost block (MTD + projected) ---------- */
+.billing-v2 .cost-block { display:flex; flex-direction:column; gap:3px; }
+.billing-v2 .cost-mtd { font-size:24px; font-weight:600; color:#fff; line-height:1.1; letter-spacing:-0.01em; }
+.billing-v2 .cost-proj { font-size:12px; color:#7d7f80; }
+.billing-v2 .cost-proj strong { color:#adaeb0; font-weight:500; }
+
+/* ---------- Per-product price column ---------- */
+.billing-v2 .prod-price .breakdown { font-size:11px; color:#707174; margin-top:2px; line-height:1.4; }
+.billing-v2 .prod-price .model-chip { display:inline-flex; align-items:center; height:17px; padding:0 6px; border-radius:3px;
+  font-size:10px; font-weight:500; letter-spacing:0.02em; background:rgba(173,174,176,0.10);
+  border:1px solid rgba(173,174,176,0.16); color:#8a8c8f; text-transform:uppercase; }
+
+/* ====================================================================== */
+/* ====================  RIGHT-SIDE SHEET  ============================== */
+/* ====================================================================== */
+.billing-v2 .sheet-backdrop { position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:60; animation:bv2-fade 180ms ease-out; }
+.billing-v2 .sheet { position:fixed; top:0; right:0; height:100vh; width:780px; max-width:100%; background:#141617;
+  border-left:1px solid #2b2c30; box-shadow:-14px 0 50px rgba(0,0,0,0.5); z-index:61;
+  display:flex; flex-direction:column; animation:bv2-sheet-in 240ms cubic-bezier(0.16,1,0.3,1); }
+@keyframes bv2-sheet-in { from{ transform:translateX(48px); opacity:0.3 } to{ transform:none; opacity:1 } }
+@media (max-width:840px){ .billing-v2 .sheet{ width:100%; } }
+.billing-v2 .sheet-head { padding:18px 22px; border-bottom:1px solid #2b2c30; display:flex; align-items:flex-start; gap:14px; flex-shrink:0; }
+.billing-v2 .sheet-head .prod-ico { width:40px; height:40px; }
+.billing-v2 .sh-titles { flex:1; min-width:0; }
+.billing-v2 .sheet-title { font-size:17px; font-weight:600; color:#fff; line-height:1.2; display:flex; align-items:center; gap:9px; flex-wrap:wrap; }
+.billing-v2 .sheet-sub { font-size:12.5px; color:#7d7f80; margin-top:5px; line-height:1.5; max-width:62ch; }
+.billing-v2 .sheet-body { flex:1; overflow-y:auto; padding:22px; display:flex; flex-direction:column; gap:24px; }
+.billing-v2 .sheet-foot { padding:14px 22px; border-top:1px solid #2b2c30; display:flex; gap:10px; align-items:center; justify-content:flex-end; flex-shrink:0; }
+.billing-v2 .sheet-foot .foot-note { margin-right:auto; font-size:12px; color:#707174; }
+.billing-v2 .sheet-back { display:inline-flex; align-items:center; gap:5px; font-size:12.5px; color:#8a8c8f; cursor:pointer;
+  background:none; border:none; padding:0; margin-right:auto; font-family:inherit; }
+.billing-v2 .sheet-back:hover { color:#ebebeb; }
+
+/* ---------- Tier cards (pricing-page style, per product) ---------- */
+.billing-v2 .tier-cards { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+.billing-v2 .tier-cards.single { grid-template-columns:1fr; }
+@media (max-width:640px){ .billing-v2 .tier-cards{ grid-template-columns:1fr; } }
+.billing-v2 .tier-card { border:1px solid #2b2c30; border-radius:10px; background:#16181a; padding:18px;
+  display:flex; flex-direction:column; gap:14px; position:relative; transition:border-color 200ms, background 200ms; }
+.billing-v2 .tier-card.featured { border-color:rgba(48,179,255,0.42); background:rgba(48,179,255,0.045); }
+.billing-v2 .tier-card.current { border-color:rgba(173,174,176,0.30); background:rgba(173,174,176,0.04); }
+.billing-v2 .tier-top { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.billing-v2 .tier-name { font-size:15px; font-weight:600; color:#fff; }
+.billing-v2 .tier-price { display:flex; align-items:baseline; gap:7px; flex-wrap:wrap; min-height:30px; }
+.billing-v2 .tier-price .tp-amt { font-size:26px; font-weight:600; color:#fff; letter-spacing:-0.02em; line-height:1; }
+.billing-v2 .tier-price .tp-unit { font-size:12px; color:#7d7f80; }
+.billing-v2 .tier-desc { font-size:12.5px; color:#9fa1a4; line-height:1.55; flex:1; }
+.billing-v2 .tier-cta { margin-top:2px; }
+
+/* ---------- Comparison table ---------- */
+.billing-v2 .cmp-h { font-size:12px; font-weight:600; color:#8a8c8f; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:12px; }
+.billing-v2 .cmp-wrap { border:1px solid #2b2c30; border-radius:8px; overflow:hidden; }
+.billing-v2 .cmp-table { width:100%; border-collapse:collapse; }
+.billing-v2 .cmp-table th, .billing-v2 .cmp-table td { padding:11px 16px; text-align:left; font-size:12.5px; vertical-align:middle; }
+.billing-v2 .cmp-table tbody tr { border-top:1px solid #222327; }
+.billing-v2 .cmp-table thead th { background:#16181a; font-size:11px; text-transform:uppercase; letter-spacing:0.05em;
+  color:#707174; font-weight:500; border-bottom:1px solid #2b2c30; }
+.billing-v2 .cmp-table th.col, .billing-v2 .cmp-table td.col { text-align:center; width:150px; }
+.billing-v2 .cmp-table thead th.col .ch-name { color:#ebebeb; font-size:12px; font-weight:600; text-transform:none; letter-spacing:0; }
+.billing-v2 .cmp-table thead th.col .ch-name.org { color:#30b3ff; }
+.billing-v2 .cmp-table thead th.col .ch-name.ent { color:#63b0bd; }
+.billing-v2 .cmp-table .feat { color:#cfd0d2; }
+.billing-v2 .cmp-table td.col { color:#dfe0e2; font-variant-numeric:tabular-nums; }
+.billing-v2 .cmp-table td.col.ent, .billing-v2 .cmp-table th.col.ent { background:rgba(99,176,189,0.035); }
+.billing-v2 .cmp-table tbody tr:hover { background:rgba(235,235,235,0.02); }
+.billing-v2 .cmp-check { color:#2ecc71; display:inline-flex; }
+.billing-v2 .cmp-dash { color:#54565a; }
+
+/* ---------- Included-features list (add-ons w/ no Enterprise) ---------- */
+.billing-v2 .incl-list { display:grid; grid-template-columns:1fr 1fr; gap:11px 20px; }
+@media (max-width:560px){ .billing-v2 .incl-list{ grid-template-columns:1fr; } }
+.billing-v2 .incl-item { display:flex; gap:9px; align-items:flex-start; font-size:12.5px; color:#c4c5c7; line-height:1.5; }
+.billing-v2 .incl-item .ci-ico { width:15px; height:15px; flex-shrink:0; margin-top:2px; color:#2ecc71; }
+
+/* ---------- Sheet: current-usage strip (owned products) ---------- */
+.billing-v2 .sheet-usage { border:1px solid #2b2c30; border-radius:8px; background:#16181a; padding:16px; }
+.billing-v2 .sheet-usage .su-top { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:13px; }
+.billing-v2 .sheet-usage .su-lbl { font-size:12px; color:#adaeb0; font-weight:500; white-space:nowrap; }
+.billing-v2 .sheet-usage .su-amt { font-size:13px; color:#ebebeb; font-weight:600; white-space:nowrap; flex-shrink:0; }
+.billing-v2 .sheet-usage .su-amt .cadence { font-size:11px; font-weight:400; color:#7d7f80; }
+
+/* ---------- Available products section header ---------- */
+.billing-v2 .avail-intro { display:flex; flex-direction:column; align-items:center; text-align:center; gap:8px; padding:8px 20px 22px; }
+.billing-v2 .avail-intro .ai-ico { width:48px; height:48px; border-radius:11px; display:flex; align-items:center; justify-content:center;
+  background:rgba(48,179,255,0.10); border:1px solid rgba(48,179,255,0.25); color:#30b3ff; margin-bottom:4px; }
+.billing-v2 .avail-intro .ai-title { font-size:17px; font-weight:600; color:#fff; }
+.billing-v2 .avail-intro .ai-text { font-size:13px; color:#9fa1a4; max-width:46ch; line-height:1.6; }
+.billing-v2 .section-label { font-size:11px; text-transform:uppercase; letter-spacing:0.06em; color:#707174; font-weight:600;
+  margin:2px 0 -4px; }
+
+/* ---------- Available rows (within the Products card) ---------- */
+.billing-v2 .avail-sep { font-size:11px; text-transform:uppercase; letter-spacing:0.06em; color:#707174; font-weight:600;
+  padding:18px 0 12px; border-top:1px solid #2b2c30; margin-top:6px; }
+.billing-v2 .avail-sep + .prod-item { border-top:none; }
+.billing-v2 .prod-item.avail .prod-meta { color:#8a8c8f; max-width:62ch; }
+.billing-v2 .prod-item.avail .prod-price .amt { font-weight:500; color:#cfd0d2; white-space:nowrap; }
+
+/* ---------- Quantity stepper (manage seats/units) ---------- */
+.billing-v2 .qty-row { display:flex; align-items:center; justify-content:space-between; gap:14px; padding:13px 15px;
+  border:1px solid #2b2c30; border-radius:8px; }
+.billing-v2 .qty-info { min-width:0; }
+.billing-v2 .qty-name { font-size:13px; color:#ebebeb; font-weight:500; }
+.billing-v2 .qty-sub { font-size:11.5px; color:#707174; margin-top:2px; }
+.billing-v2 .qty-stepper { display:flex; align-items:center; gap:0; border:1px solid #2b2c30; border-radius:7px; overflow:hidden; flex-shrink:0; }
+.billing-v2 .qty-btn { width:34px; height:34px; display:flex; align-items:center; justify-content:center; background:#16181a;
+  border:none; color:#adaeb0; cursor:pointer; }
+.billing-v2 .qty-btn:hover:not(:disabled) { background:#1f2123; color:#ebebeb; }
+.billing-v2 .qty-btn:disabled { opacity:0.4; cursor:not-allowed; }
+.billing-v2 .qty-val { width:56px; height:34px; display:flex; align-items:center; justify-content:center; font-size:14px;
+  font-weight:600; color:#ebebeb; font-variant-numeric:tabular-nums; border-left:1px solid #2b2c30; border-right:1px solid #2b2c30; }

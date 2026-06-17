@@ -98,6 +98,7 @@ import { ldapConfigServiceFactory } from "@app/ee/services/ldap-config/ldap-conf
 import { ldapGroupMapDALFactory } from "@app/ee/services/ldap-config/ldap-group-map-dal";
 import { licenseDALFactory } from "@app/ee/services/license/license-dal";
 import { licenseServiceFactory } from "@app/ee/services/license/license-service";
+import { licenseV2ServiceFactory } from "@app/ee/services/license-v2/license-v2-service";
 import { oidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
 import { oidcConfigServiceFactory } from "@app/ee/services/oidc/oidc-config-service";
 import { pamAccountDALFactory } from "@app/ee/services/pam-account/pam-account-dal";
@@ -818,6 +819,15 @@ export const registerRoutes = async (
     meteredFeatures,
     usageReporter,
     source: usageSource
+  });
+
+  // Flag-gated v2 billing surface. Drives the catalog, subscription, and entitlement reads off the
+  // real license server via licenseClient; no new tables.
+  const licenseV2Service = licenseV2ServiceFactory({
+    envConfig,
+    orgDAL,
+    permissionService,
+    licenseClient
   });
 
   // Project events SSE service (for clients to subscribe to secret mutation events)
@@ -3786,6 +3796,7 @@ export const registerRoutes = async (
     secretScanning: secretScanningService,
     license: licenseService,
     licenseClient,
+    licenseV2: licenseV2Service,
     trustedIp: trustedIpService,
     scim: scimService,
     secretBlindIndex: secretBlindIndexService,
