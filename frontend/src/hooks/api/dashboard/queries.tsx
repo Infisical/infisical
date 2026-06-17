@@ -584,15 +584,18 @@ export const fetchFolderMoveEligibility = async (
 
 // fans out a recursive move-eligibility check per selected folder id and aggregates the results.
 // a move is only allowed when every selected folder resolves to canMove === true.
-export const useGetFoldersMoveEligibility = (folderIds: string[]) =>
+export const useGetFoldersMoveEligibility = (folderIds: string[], enabled = true) =>
   useQueries({
     queries: folderIds.map((folderId) => ({
       queryKey: dashboardKeys.getFolderMoveEligibility(folderId),
       queryFn: () => fetchFolderMoveEligibility(folderId),
-      enabled: Boolean(folderId)
+      enabled: enabled && Boolean(folderId),
+
+      staleTime: 0,
+      gcTime: 0
     })),
     combine: (results) => {
-      const isChecking = results.some((result) => result.isLoading);
+      const isChecking = results.some((result) => result.isLoading || result.isFetching);
       const canMove =
         results.length > 0 &&
         results.every((result) => result.isSuccess && Boolean(result.data?.canMove));

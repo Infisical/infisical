@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { SingleValue } from "react-select";
 import { subject } from "@casl/ability";
@@ -1194,17 +1194,26 @@ const FolderMoveBlockedView = ({
 };
 
 export const MoveSecretsModal = ({ isOpen, onOpenChange, visibleEnvs, ...props }: Props) => {
-  const { folders } = props;
-  const isSingleEnvMode = visibleEnvs.length === 1;
-  const moveCopy = getMoveSelectionCopy(props);
+  // the dialog plays a close animation, but the props that drive the body (folders/secrets/rotations)
+  // are cleared the instant the modal closes (the popup's `data` is dropped). snapshot the props while
+  // the modal is open so the body keeps rendering the same view through the close animation rather than
+  // flashing a different view as it fades out.
+  const snapshotRef = useRef(props);
+  if (isOpen) snapshotRef.current = props;
+  const contentProps = snapshotRef.current;
+  const { folders } = contentProps;
 
-  // only check eligibility while the modal is open, so selecting a folder never triggers the call
-  const folderIds = isOpen
-    ? Object.values(folders).flatMap((perEnv) => Object.values(perEnv).map((folder) => folder.id))
-    : [];
+  const isSingleEnvMode = visibleEnvs.length === 1;
+  const moveCopy = getMoveSelectionCopy(contentProps);
+
+  const folderIds = Object.values(folders).flatMap((perEnv) =>
+    Object.values(perEnv).map((folder) => folder.id)
+  );
   const hasFolders = folderIds.length > 0;
 
-  const { isChecking, canMove, blockedFolders } = useGetFoldersMoveEligibility(folderIds);
+  // gate the eligibility check on `isOpen` so selecting a folder never triggers the call, while the
+  // snapshot keeps `folderIds` populated so the rendered view stays stable through the close animation
+  const { isChecking, canMove, blockedFolders } = useGetFoldersMoveEligibility(folderIds, isOpen);
 
   const renderContent = () => {
     if (hasFolders && isChecking) {
@@ -1228,7 +1237,7 @@ export const MoveSecretsModal = ({ isOpen, onOpenChange, visibleEnvs, ...props }
     if (isSingleEnvMode) {
       return (
         <SingleEnvContent
-          {...props}
+          {...contentProps}
           visibleEnvs={visibleEnvs}
           onClose={() => onOpenChange(false)}
         />
@@ -1236,7 +1245,11 @@ export const MoveSecretsModal = ({ isOpen, onOpenChange, visibleEnvs, ...props }
     }
 
     return (
-      <MultiEnvContent {...props} visibleEnvs={visibleEnvs} onClose={() => onOpenChange(false)} />
+      <MultiEnvContent
+        {...contentProps}
+        visibleEnvs={visibleEnvs}
+        onClose={() => onOpenChange(false)}
+      />
     );
   };
 

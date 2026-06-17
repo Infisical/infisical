@@ -1651,7 +1651,7 @@ export const secretFolderServiceFactory = ({
       canMove: !sourceBlock,
       folderName: folder.name,
       blockingType: sourceBlock?.blockingType,
-      blockingPath: sourceBlock?.blockingPath,
+      blockingPath: sourceBlock?.blockingAbsPath,
       destinationBlocked: destinationEnvironment ? !canActorAccessDestination || Boolean(destinationBlock) : undefined,
       destinationBlockingPath: readableDestinationBlock?.blockingPath,
       destinationPolicyName: readableDestinationBlock?.policyName
@@ -1852,6 +1852,10 @@ export const secretFolderServiceFactory = ({
           checkedSourceParents.add(sourceParent);
           ForbiddenError.from(permission).throwUnlessCan(
             ProjectPermissionActions.Delete,
+            subject(ProjectPermissionSub.SecretFolders, { environment: sourceEnvironment, secretPath: sourceParent })
+          );
+          ForbiddenError.from(permission).throwUnlessCan(
+            ProjectPermissionActions.Read,
             subject(ProjectPermissionSub.SecretFolders, { environment: sourceEnvironment, secretPath: sourceParent })
           );
         }

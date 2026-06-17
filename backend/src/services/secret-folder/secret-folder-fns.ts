@@ -189,6 +189,7 @@ export const checkFolderMoveBlock = async (
 
   const buildBlock = (blockingType: TFolderMoveBlockingType, folderId: string): TFolderMoveBlock => {
     const blockingPath = resolvePath(folderId);
+
     return { blockingType, blockingPath, blockingAbsPath: toAbsPath(blockingPath) };
   };
 
