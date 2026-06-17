@@ -96,7 +96,7 @@ export const LaunchSessionSheet = ({ account, isOpen, onOpenChange }: Props) => 
                 <Terminal className="mt-0.5 size-5 shrink-0 text-foreground" />
                 <div className="text-left">
                   <p className="text-sm font-medium text-foreground">CLI</p>
-                  <p className="text-xs text-muted">Use a custom client with the Infisical CLI.</p>
+                  <p className="text-xs text-muted">Proxy locally via the Infisical CLI.</p>
                 </div>
               </button>
             </div>
@@ -125,7 +125,7 @@ export const LaunchSessionSheet = ({ account, isOpen, onOpenChange }: Props) => 
               <>
                 <p className="mt-5 mb-2.5 text-sm text-foreground">Run this command</p>
                 <div className="flex items-center justify-between rounded-md border border-border bg-mineshaft-800 px-4 py-3">
-                  <code className="font-mono text-sm text-muted">
+                  <code className="font-mono text-sm text-foreground">
                     <span className="text-product-pam">$</span> {cliCommand}
                   </code>
                   <IconButton
