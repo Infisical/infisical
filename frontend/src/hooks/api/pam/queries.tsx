@@ -290,7 +290,7 @@ export const useListPamSessions = (
     queryKey: pamKeys.listSessions(projectId, params),
     queryFn: async () => {
       const { data } = await apiRequest.get<TListPamSessionsResponse>("/api/v1/pam/sessions", {
-        params: { projectId, ...params }
+        params
       });
 
       return data;

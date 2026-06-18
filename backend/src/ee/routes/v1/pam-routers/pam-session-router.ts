@@ -52,7 +52,6 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
       description: "List PAM sessions for a project",
       tags: [ApiDocsTags.PamSessions],
       querystring: z.object({
-        projectId: z.string().describe("The ID of the project"),
         offset: z.coerce.number().min(0).default(0).optional().describe("The offset to start from for pagination"),
         limit: z.coerce
           .number()
@@ -75,7 +74,7 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const { sessions, totalCount } = await server.services.pamSession.listSessions(
-        req.query.projectId,
+        req.internalPamProjectId,
         {
           actor: req.permission.type,
           actorId: req.permission.id,
