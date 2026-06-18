@@ -19,8 +19,8 @@ import {
   TListAccessiblePamAccountsDTO,
   TListPamAccountTemplatesDTO,
   TPamAccount,
-  TPamAccountTemplate,
   TPamAccountTemplateDetail,
+  TPamAccountTemplateWithCount,
   TPamAccountTypeMetadata,
   TPamFolderWithCount,
   TPamMember,
@@ -210,7 +210,7 @@ export const useListPamAccountTemplates = (params?: TListPamAccountTemplatesDTO)
   return useQuery({
     queryKey: pamKeys.listTemplates(params),
     queryFn: async () => {
-      const { data } = await apiRequest.get<{ templates: TPamAccountTemplate[] }>(
+      const { data } = await apiRequest.get<{ templates: TPamAccountTemplateWithCount[] }>(
         "/api/v1/pam/account-templates",
         { params }
       );

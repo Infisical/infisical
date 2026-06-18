@@ -246,6 +246,8 @@ export type TDeletePamAccountDTO = {
   accountType: PamAccountType;
 };
 
+export type TPamAccountTemplateWithCount = TPamAccountTemplate & { accountCount: number };
+
 export type TPamAccountTemplateDetail = TPamAccountTemplate & { accountCount: number };
 
 export type TListPamAccountTemplatesDTO = {

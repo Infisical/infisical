@@ -17,6 +17,7 @@ import {
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import { TAccessiblePamAccount, usePamAccountTypeMap } from "@app/hooks/api/pam";
+import { PamSheetTab } from "@app/hooks/usePamSheetState";
 
 import { PamDetailSheet } from "../../components/PamDetailSheet";
 
@@ -121,7 +122,7 @@ export const LaunchSessionSheet = ({ account, isOpen, onOpenChange }: Props) => 
       metadata={metadata}
       tabs={[
         {
-          value: "launch",
+          value: PamSheetTab.Launch,
           label: "Launch",
           icon: <Rocket className="mr-1.5 size-4" />,
           content: <LaunchTab account={account} />

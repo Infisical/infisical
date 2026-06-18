@@ -43,7 +43,9 @@ export const registerPamAccountTemplateRouter = async (server: FastifyZodProvide
         type: z.nativeEnum(PamAccountType).optional().describe("Filter by account type")
       }),
       response: {
-        200: z.object({ templates: z.array(SanitizedTemplateSchema) })
+        200: z.object({
+          templates: z.array(SanitizedTemplateSchema.extend({ accountCount: z.number() }))
+        })
       }
     },
     config: { rateLimit: readLimit },

@@ -1,0 +1,737 @@
+import { type ReactNode, useEffect, useMemo, useState } from "react";
+import { useForm } from "react-hook-form";
+import { useNavigate } from "@tanstack/react-router";
+import {
+  FolderInput,
+  FolderOpen,
+  Layers2,
+  MoreHorizontal,
+  Network,
+  Pencil,
+  Settings,
+  SquarePen,
+  Trash2,
+  UserPlus,
+  Users
+} from "lucide-react";
+
+import { createNotification } from "@app/components/notifications";
+import {
+  Badge,
+  Button,
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+  GatewayPicker,
+  IconButton,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from "@app/components/v3";
+import { Skeleton } from "@app/components/v3/generic/Skeleton";
+import { useOrganization, useUser } from "@app/context";
+import { useGetOrganizationGroups } from "@app/hooks/api/organization/queries";
+import {
+  PamAccountType,
+  PamResourcePermissionActions,
+  TPamMember,
+  useDeletePamAccount,
+  useGetPamAccountById,
+  useListAccountMembers,
+  useListFolderMembers,
+  useListPamResourceRoles,
+  usePamAccountActions,
+  usePamAccountTypeMap,
+  useRemoveAccountGroupMember,
+  useRemoveAccountMember,
+  useUpdatePamAccount
+} from "@app/hooks/api/pam";
+import { useGetOrgUsers } from "@app/hooks/api/users/queries";
+import { PamSheetTab, usePamSheetState } from "@app/hooks/usePamSheetState";
+
+import { PamMemberKind, PamMembershipScope, PamMemberSource } from "../../components/memberEnums";
+import {
+  formatDetailDate,
+  isMembershipExpired,
+  MemberExpiry,
+  PamDetailSheet
+} from "../../components/PamDetailSheet";
+import { RemoveMemberConfirm } from "../../components/RemoveMemberConfirm";
+import { SheetSaveBar } from "../../components/SheetSaveBar";
+import { AccountPlatformIcon } from "../../PamAccessPage/components/AccountPlatformIcon";
+import { AssignAccessModal, EditMemberTarget } from "./AssignAccessModal";
+import { DeleteAccountModal } from "./DeleteAccountModal";
+import { EditAccountForm } from "./EditAccountForm";
+
+type Props = {
+  isOpen: boolean;
+  accountId?: string;
+  onOpenChange: (open: boolean) => void;
+};
+
+type ResolvedMember = {
+  member: TPamMember;
+  displayName: string;
+  subtitle: string;
+  source: PamMemberSource;
+  kind: PamMemberKind;
+};
+
+const PermissionsTab = ({
+  accountId,
+  folderId,
+  folderName
+}: {
+  accountId: string;
+  folderId: string;
+  folderName: string | null;
+}) => {
+  const { currentOrg } = useOrganization();
+  const { user } = useUser();
+  const navigate = useNavigate();
+  const { data: accountMembers, isLoading: isLoadingAccount } = useListAccountMembers(accountId);
+  const { data: folderMembers, isLoading: isLoadingFolder } = useListFolderMembers(folderId);
+
+  const goToFolderPermissions = () => {
+    navigate({ search: { folderId, tab: PamSheetTab.Permissions } as any });
+  };
+  const { data: resourceRoles } = useListPamResourceRoles();
+  const { data: orgUsers } = useGetOrgUsers(currentOrg.id);
+  const { data: orgGroups } = useGetOrganizationGroups(currentOrg.id);
+  const groupMap = useMemo(
+    () => new Map((orgGroups ?? []).map((g) => [g.id, g.name] as const)),
+    [orgGroups]
+  );
+
+  const removeUser = useRemoveAccountMember();
+  const removeGroup = useRemoveAccountGroupMember();
+
+  const [isAssignOpen, setIsAssignOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState<EditMemberTarget | null>(null);
+  const [removeTarget, setRemoveTarget] = useState<ResolvedMember | null>(null);
+
+  const directUserIdSet = useMemo(
+    () =>
+      new Set(
+        (accountMembers?.users ?? [])
+          .filter((m) => m.userId && !isMembershipExpired(m.expiresAt))
+          .map((m) => m.userId) as string[]
+      ),
+    [accountMembers]
+  );
+  const directGroupIdSet = useMemo(
+    () =>
+      new Set(
+        (accountMembers?.groups ?? [])
+          .filter((m) => m.groupId && !isMembershipExpired(m.expiresAt))
+          .map((m) => m.groupId) as string[]
+      ),
+    [accountMembers]
+  );
+
+  const userMap = useMemo(
+    () =>
+      new Map(
+        (orgUsers ?? []).map((ou) => {
+          const name =
+            [ou.user.firstName, ou.user.lastName].filter(Boolean).join(" ") || ou.user.username;
+          return [
+            ou.user.id,
+            { name, email: ou.user.email ?? ou.inviteEmail ?? ou.user.username }
+          ] as const;
+        })
+      ),
+    [orgUsers]
+  );
+
+  const directMembers = useMemo<ResolvedMember[]>(() => {
+    const users = (accountMembers?.users ?? []).map((m) => {
+      const info = m.userId ? userMap.get(m.userId) : undefined;
+      return {
+        member: m,
+        displayName: info?.name ?? m.userId ?? "Unknown",
+        subtitle: info?.email ?? "",
+        source: PamMemberSource.Direct,
+        kind: PamMemberKind.User
+      };
+    });
+    const groups = (accountMembers?.groups ?? []).map((m) => ({
+      member: m,
+      displayName:
+        (m.groupId ? groupMap.get(m.groupId) : undefined) ?? m.groupId ?? "Unknown group",
+      subtitle: "Group",
+      source: PamMemberSource.Direct,
+      kind: PamMemberKind.Group
+    }));
+    return [...users, ...groups];
+  }, [accountMembers, userMap, groupMap]);
+
+  const inheritedMembers = useMemo<ResolvedMember[]>(() => {
+    const users = (folderMembers?.users ?? []).map((m) => {
+      const info = m.userId ? userMap.get(m.userId) : undefined;
+      return {
+        member: m,
+        displayName: info?.name ?? m.userId ?? "Unknown",
+        subtitle: info?.email ?? "",
+        source: PamMemberSource.Inherited,
+        kind: PamMemberKind.User
+      };
+    });
+    const groups = (folderMembers?.groups ?? []).map((m) => ({
+      member: m,
+      displayName:
+        (m.groupId ? groupMap.get(m.groupId) : undefined) ?? m.groupId ?? "Unknown group",
+      subtitle: "Group",
+      source: PamMemberSource.Inherited,
+      kind: PamMemberKind.Group
+    }));
+    return [...users, ...groups];
+  }, [folderMembers, userMap, groupMap]);
+
+  const isLoading = isLoadingAccount || isLoadingFolder;
+
+  const roleNameFor = (role: string) =>
+    (resourceRoles ?? []).find((r) => r.slug === role)?.name ?? role;
+
+  const handleRemove = (rm: ResolvedMember) => {
+    const opts = {
+      onSuccess: () => createNotification({ type: "success", text: "Member removed" })
+    };
+    if (rm.kind === PamMemberKind.User && rm.member.userId) {
+      removeUser.mutate({ accountId, userId: rm.member.userId }, opts);
+    } else if (rm.kind === PamMemberKind.Group && rm.member.groupId) {
+      removeGroup.mutate({ accountId, groupId: rm.member.groupId }, opts);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col gap-4 p-4">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-32 w-full" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-4 p-4">
+      <AssignAccessModal
+        isOpen={isAssignOpen || Boolean(editTarget)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setIsAssignOpen(false);
+            setEditTarget(null);
+          }
+        }}
+        scope={PamMembershipScope.Account}
+        resourceId={accountId}
+        existingUserIds={directUserIdSet}
+        existingGroupIds={directGroupIdSet}
+        editMember={editTarget}
+      />
+      <RemoveMemberConfirm
+        isOpen={Boolean(removeTarget)}
+        onOpenChange={(open) => {
+          if (!open) setRemoveTarget(null);
+        }}
+        memberName={removeTarget?.displayName}
+        onConfirm={() => {
+          if (removeTarget) handleRemove(removeTarget);
+          setRemoveTarget(null);
+        }}
+      />
+      <Card>
+        <CardHeader className="border-b">
+          <CardTitle className="text-base">Direct Permissions</CardTitle>
+          <CardDescription>
+            Users and groups granted access directly on this account.
+          </CardDescription>
+          <CardAction>
+            <Button size="sm" variant="pam" onClick={() => setIsAssignOpen(true)}>
+              <UserPlus className="mr-1.5 size-4" />
+              Assign Access
+            </Button>
+          </CardAction>
+        </CardHeader>
+        <CardContent>
+          {directMembers.length === 0 ? (
+            <div className="rounded-md border border-border p-8 text-center text-sm text-muted">
+              No members assigned to this account yet.
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Assignee</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Expiry</TableHead>
+                  <TableHead className="w-12" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {directMembers.map((rm) => {
+                  const isOwnMembership =
+                    rm.kind === PamMemberKind.User && rm.member.userId === user.id;
+
+                  return (
+                    <TableRow key={`direct-${rm.member.membershipId}`} className="[&>td]:h-12">
+                      <TableCell>
+                        <div className="flex flex-col">
+                          <span className="font-medium text-foreground">{rm.displayName}</span>
+                          {rm.subtitle && <span className="text-xs text-muted">{rm.subtitle}</span>}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="neutral">{roleNameFor(rm.member.role)}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <MemberExpiry expiresAt={rm.member.expiresAt} />
+                      </TableCell>
+                      <TableCell>
+                        {!isOwnMembership && (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <IconButton
+                                variant="ghost"
+                                size="xs"
+                                aria-label="Member actions"
+                                className="text-muted"
+                              >
+                                <MoreHorizontal className="size-4" />
+                              </IconButton>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  setEditTarget({
+                                    kind: rm.kind,
+                                    id:
+                                      (rm.kind === PamMemberKind.User
+                                        ? rm.member.userId
+                                        : rm.member.groupId) ?? "",
+                                    label: rm.displayName,
+                                    role: rm.member.role
+                                  })
+                                }
+                              >
+                                <Pencil />
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                variant="danger"
+                                onClick={() => setRemoveTarget(rm)}
+                              >
+                                <Trash2 />
+                                Remove
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      {inheritedMembers.length > 0 && (
+        <Card>
+          <CardHeader className="border-b">
+            <CardTitle className="text-base">Inherited Permissions</CardTitle>
+            <CardDescription>
+              Access inherited from the{" "}
+              <button
+                type="button"
+                className="font-medium text-foreground hover:underline"
+                onClick={goToFolderPermissions}
+              >
+                {folderName ?? "parent"} folder
+              </button>
+              . Manage these on the folder.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Assignee</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Expiry</TableHead>
+                  <TableHead>Source</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {inheritedMembers.map((rm) => (
+                  <TableRow key={`inherited-${rm.member.membershipId}`} className="[&>td]:h-12">
+                    <TableCell>
+                      <div className="flex flex-col">
+                        <span className="font-medium text-foreground">{rm.displayName}</span>
+                        {rm.subtitle && <span className="text-xs text-muted">{rm.subtitle}</span>}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="neutral">{roleNameFor(rm.member.role)}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <MemberExpiry expiresAt={rm.member.expiresAt} />
+                    </TableCell>
+                    <TableCell>
+                      <button
+                        type="button"
+                        className="flex items-center gap-1.5 text-sm text-muted hover:text-foreground hover:underline"
+                        onClick={goToFolderPermissions}
+                      >
+                        <FolderInput className="size-3.5" />
+                        from {folderName ?? "Folder"} folder
+                      </button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+};
+
+type OverridesForm = { gatewayId: string | null; gatewayPoolId: string | null };
+
+const SettingsTab = ({
+  accountId,
+  onDirtyChange
+}: {
+  accountId: string;
+  onDirtyChange?: (isDirty: boolean) => void;
+}) => {
+  const { data: account, isLoading } = useGetPamAccountById(accountId);
+  const updateAccount = useUpdatePamAccount();
+  const [showGatewayPicker, setShowGatewayPicker] = useState(false);
+
+  const {
+    handleSubmit,
+    reset,
+    setValue,
+    watch,
+    formState: { isDirty }
+  } = useForm<OverridesForm>({
+    defaultValues: { gatewayId: null, gatewayPoolId: null }
+  });
+
+  useEffect(() => {
+    onDirtyChange?.(isDirty);
+    return () => onDirtyChange?.(false);
+  }, [isDirty, onDirtyChange]);
+
+  useEffect(() => {
+    if (account) {
+      reset({ gatewayId: account.gatewayId, gatewayPoolId: account.gatewayPoolId });
+      setShowGatewayPicker(false);
+    }
+  }, [account, reset]);
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col gap-4 p-4">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-32 w-full" />
+      </div>
+    );
+  }
+
+  if (!account) return null;
+
+  const gatewayId = watch("gatewayId");
+  const gatewayPoolId = watch("gatewayPoolId");
+  const isOverriding = Boolean(gatewayId || gatewayPoolId) || showGatewayPicker;
+
+  const setGateway = (value: OverridesForm) => {
+    setValue("gatewayId", value.gatewayId, { shouldDirty: true });
+    setValue("gatewayPoolId", value.gatewayPoolId, { shouldDirty: true });
+  };
+
+  const removeOverride = () => {
+    setGateway({ gatewayId: null, gatewayPoolId: null });
+    setShowGatewayPicker(false);
+  };
+
+  const discard = () => {
+    reset();
+    setShowGatewayPicker(false);
+  };
+
+  const onSubmit = (values: OverridesForm) => {
+    updateAccount.mutate(
+      {
+        accountId,
+        accountType: account.accountType,
+        gatewayId: values.gatewayId,
+        gatewayPoolId: values.gatewayPoolId
+      },
+      {
+        onSuccess: () => createNotification({ type: "success", text: "Overrides updated" })
+      }
+    );
+  };
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-1 flex-col gap-4 p-4">
+      <Card>
+        <CardHeader className="border-b">
+          <CardTitle className="text-base">Settings</CardTitle>
+          <CardDescription>System configuration overrides.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div
+            className={`rounded-md border p-4 ${isOverriding ? "border-product-pam/50" : "border-border"}`}
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex items-start gap-3">
+                <div className="flex size-9 shrink-0 items-center justify-center rounded-md border border-border bg-container">
+                  <Network className="size-4 text-muted" />
+                </div>
+                <div>
+                  <p className="font-medium text-foreground">
+                    Gateway
+                    {isOverriding && (
+                      <span className="ml-2 text-xs font-normal text-product-pam">(override)</span>
+                    )}
+                  </p>
+                  <p className="text-sm text-muted">
+                    {isOverriding
+                      ? "Overriding the template default for this account."
+                      : `Inherited from ${account.templateName}`}
+                  </p>
+                </div>
+              </div>
+              {isOverriding ? (
+                <Button type="button" size="sm" variant="ghost" onClick={removeOverride}>
+                  Remove Override
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setShowGatewayPicker(true)}
+                >
+                  <SquarePen className="mr-1.5 size-3.5" />
+                  Override
+                </Button>
+              )}
+            </div>
+
+            {isOverriding && (
+              <div className="mt-4">
+                <GatewayPicker value={{ gatewayId, gatewayPoolId }} onChange={setGateway} />
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      <div aria-hidden className="h-8 shrink-0" />
+      {isDirty && <SheetSaveBar isPending={updateAccount.isPending} onDiscard={discard} />}
+    </form>
+  );
+};
+
+const CONNECTION_FIELD_LABELS: Record<string, string> = {
+  host: "Host",
+  port: "Port",
+  database: "Database",
+  sslEnabled: "SSL",
+  sslRejectUnauthorized: "Reject Unauthorized SSL",
+  sslCertificate: "SSL Certificate"
+};
+
+const humanizeFieldKey = (key: string) =>
+  key
+    .replace(/([A-Z])/g, " $1")
+    .replace(/^./, (c) => c.toUpperCase())
+    .trim();
+
+const formatConnectionValue = (value: unknown): ReactNode => {
+  if (typeof value === "boolean") return value ? "Enabled" : "Disabled";
+  const str = String(value);
+  if (str.length > 48) return "Provided";
+  return <span className="font-mono">{str}</span>;
+};
+
+const buildConnectionMetadata = (connectionDetails: Record<string, unknown>) =>
+  Object.entries(connectionDetails)
+    .filter(([, value]) => value !== null && value !== undefined && value !== "")
+    .map(([key, value]) => ({
+      label: CONNECTION_FIELD_LABELS[key] ?? humanizeFieldKey(key),
+      value: formatConnectionValue(value)
+    }));
+
+export const AccountDetailSheet = ({ isOpen, accountId, onOpenChange }: Props) => {
+  const { data: account, isLoading } = useGetPamAccountById(isOpen ? accountId : undefined);
+  const { tab, setTab } = usePamSheetState("accountId");
+  const deleteAccount = useDeletePamAccount();
+
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [isFormDirty, setIsFormDirty] = useState(false);
+
+  const { map: accountTypeMap } = usePamAccountTypeMap();
+  const accountType = account?.accountType as PamAccountType | undefined;
+  const typeInfo = accountType ? accountTypeMap[accountType] : undefined;
+
+  const { can } = usePamAccountActions(accountId ?? "", isOpen && Boolean(accountId));
+  const canManageMembers = can(PamResourcePermissionActions.ManageMembers);
+  const canEdit = can(PamResourcePermissionActions.EditAccounts);
+  const canDelete = can(PamResourcePermissionActions.DeleteAccounts);
+
+  const handleDelete = () => {
+    if (!accountId || !accountType) return;
+    deleteAccount.mutate(
+      { accountId, accountType },
+      {
+        onSuccess: () => {
+          createNotification({ type: "success", text: "Account deleted" });
+          setIsDeleteOpen(false);
+          onOpenChange(false);
+        }
+      }
+    );
+  };
+
+  const actions =
+    account && (canEdit || canDelete) ? (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <IconButton variant="ghost" size="sm" aria-label="Account actions" className="text-muted">
+            <MoreHorizontal className="size-4" />
+          </IconButton>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+          {canEdit && (
+            <DropdownMenuItem onClick={() => setTab(PamSheetTab.Configuration)}>
+              <Settings />
+              Configure
+            </DropdownMenuItem>
+          )}
+          {canDelete && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem variant="danger" onClick={() => setIsDeleteOpen(true)}>
+                <Trash2 />
+                Delete
+              </DropdownMenuItem>
+            </>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    ) : undefined;
+
+  const conn = (account?.connectionDetails ?? {}) as Record<string, unknown>;
+
+  const metadata = account
+    ? [
+        ...(account.description ? [{ label: "Description", value: account.description }] : []),
+        {
+          label: "Template",
+          value: <Badge variant="neutral">{account.templateName ?? "None"}</Badge>
+        },
+        ...buildConnectionMetadata(conn),
+        { label: "Created", value: formatDetailDate(account.createdAt) }
+      ]
+    : [];
+
+  const folderSubtitle = account?.folderName ? (
+    <span className="flex items-center gap-1.5">
+      <FolderOpen className="size-3.5" />
+      {account.folderName}
+    </span>
+  ) : undefined;
+
+  return (
+    <>
+      <PamDetailSheet
+        isOpen={isOpen}
+        onOpenChange={onOpenChange}
+        isLoading={isLoading}
+        accountType={accountType}
+        title={account?.name}
+        subtitle={folderSubtitle}
+        typeBadge={typeInfo?.name}
+        icon={
+          accountType ? (
+            <div className="mb-4 flex size-16 items-center justify-center rounded-lg border border-border bg-container">
+              <AccountPlatformIcon accountType={accountType} size={40} />
+            </div>
+          ) : undefined
+        }
+        metadata={metadata}
+        actions={actions}
+        activeTab={tab}
+        onTabChange={setTab}
+        tabs={
+          [
+            canManageMembers && {
+              value: PamSheetTab.Permissions,
+              label: "Permissions",
+              icon: <Users className="mr-1.5 size-4" />,
+              content:
+                accountId && account ? (
+                  <PermissionsTab
+                    accountId={accountId}
+                    folderId={account.folderId}
+                    folderName={account.folderName}
+                  />
+                ) : null
+            },
+            canEdit && {
+              value: PamSheetTab.Configuration,
+              label: "Configuration",
+              icon: <Settings className="mr-1.5 size-4" />,
+              content: accountId ? (
+                <EditAccountForm accountId={accountId} onDirtyChange={setIsFormDirty} />
+              ) : null
+            },
+            canEdit && {
+              value: PamSheetTab.Overrides,
+              label: "Overrides",
+              icon: <Layers2 className="mr-1.5 size-4" />,
+              content: accountId ? (
+                <SettingsTab accountId={accountId} onDirtyChange={setIsFormDirty} />
+              ) : null
+            }
+          ].filter(Boolean) as {
+            value: string;
+            label: string;
+            icon: JSX.Element;
+            content: JSX.Element | null;
+          }[]
+        }
+        isDirty={isFormDirty}
+      />
+
+      <DeleteAccountModal
+        isOpen={isDeleteOpen}
+        accountName={account?.name ?? ""}
+        accountType={accountType}
+        isLoading={deleteAccount.isPending}
+        onConfirm={handleDelete}
+        onOpenChange={setIsDeleteOpen}
+      />
+    </>
+  );
+};
