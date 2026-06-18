@@ -16,6 +16,19 @@ export const pamSessionEventChunkDALFactory = (db: TDbClient) => {
       .select("*");
   };
 
+  const findBySessionIdPaginated = async (
+    sessionId: string,
+    { offset, limit }: { offset: number; limit: number },
+    tx?: Knex
+  ) => {
+    return (tx || db.replicaNode())(TableName.PamSessionEventChunk)
+      .where("sessionId", sessionId)
+      .orderBy("chunkIndex", "asc")
+      .offset(offset)
+      .limit(limit)
+      .select("*");
+  };
+
   const findByChunkIndex = async (sessionId: string, chunkIndex: number, tx?: Knex) => {
     return (tx || db.replicaNode())(TableName.PamSessionEventChunk).where({ sessionId, chunkIndex }).first();
   };
@@ -24,5 +37,5 @@ export const pamSessionEventChunkDALFactory = (db: TDbClient) => {
     await (tx || db)(TableName.PamSessionEventChunk).insert(data).onConflict(["sessionId", "chunkIndex"]).ignore();
   };
 
-  return { ...orm, findAllBySessionId, findByChunkIndex, insertIgnoreDuplicate };
+  return { ...orm, findAllBySessionId, findBySessionIdPaginated, findByChunkIndex, insertIgnoreDuplicate };
 };

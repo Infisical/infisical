@@ -54,7 +54,6 @@ export type TPamAccount = {
   templateAccessPolicy: unknown;
   templateSettings: unknown;
   accountType: PamAccountType;
-  projectId: string;
   gatewayId: string | null;
   gatewayPoolId: string | null;
   recordingConnectionId: string | null;
@@ -67,7 +66,6 @@ export type TPamAccount = {
 
 export type TPamFolder = {
   id: string;
-  projectId: string;
   parentId?: string | null;
   name: string;
   description?: string | null;
@@ -77,7 +75,6 @@ export type TPamFolder = {
 
 export type TPamAccountTemplate = {
   id: string;
-  projectId: string;
   name: string;
   description?: string | null;
   type: PamAccountType;
@@ -136,11 +133,13 @@ export type TPamSessionAiInsights = {
 
 export type TPamSession = {
   id: string;
-  projectId: string;
   accountId?: string | null;
   accountType: PamAccountType;
   accountName: string;
   folderName?: string | null;
+  resourceName?: string | null;
+  selectedHost?: string | null;
+  accessMethod?: string | null;
   userId?: string | null;
   actorName: string;
   actorEmail: string;

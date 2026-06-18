@@ -1,0 +1,73 @@
+import { Helmet } from "react-helmet";
+import { useTranslation } from "react-i18next";
+import { useNavigate, useSearch } from "@tanstack/react-router";
+
+import { PageHeader } from "@app/components/v2";
+import { Badge, Tabs, TabsContent, TabsList, TabsTrigger } from "@app/components/v3";
+import { useOrganization, useProject } from "@app/context";
+import { useGetWorkspaceUsers, useListWorkspaceGroups } from "@app/hooks/api";
+import { ProjectType } from "@app/hooks/api/projects/types";
+
+import { GroupsTab } from "./components/GroupsTab";
+import { MembersTab } from "./components/MembersTab";
+
+enum PamAccessControlTab {
+  Members = "members",
+  Groups = "groups"
+}
+
+export const PamAccessControlPage = () => {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const { currentOrg } = useOrganization();
+  const { currentProject } = useProject();
+
+  const selectedTab =
+    useSearch({
+      strict: false,
+      select: (el) => (el as { selectedTab?: string })?.selectedTab
+    }) || PamAccessControlTab.Members;
+
+  const { data: members = [] } = useGetWorkspaceUsers(currentProject.id);
+  const { data: groups = [] } = useListWorkspaceGroups(currentProject.id);
+
+  const updateTab = (tab: string) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (navigate as any)({
+      to: "/organizations/$orgId/pam/access-management",
+      search: { selectedTab: tab },
+      params: { orgId: currentOrg.id }
+    });
+  };
+
+  return (
+    <div className="mx-auto mb-6 w-full max-w-8xl">
+      <Helmet>
+        <title>{t("common.head-title", { title: "Access Control" })}</title>
+      </Helmet>
+      <PageHeader
+        scope={ProjectType.PAM}
+        title="Access Control"
+        description="Manage members, groups, and roles for the PAM product."
+      />
+      <Tabs value={selectedTab} onValueChange={updateTab}>
+        <TabsList variant="pam">
+          <TabsTrigger value={PamAccessControlTab.Members}>
+            Members
+            <Badge variant="pam">{members.length}</Badge>
+          </TabsTrigger>
+          <TabsTrigger value={PamAccessControlTab.Groups}>
+            Groups
+            <Badge variant="pam">{groups.length}</Badge>
+          </TabsTrigger>
+        </TabsList>
+        <TabsContent value={PamAccessControlTab.Members}>
+          <MembersTab />
+        </TabsContent>
+        <TabsContent value={PamAccessControlTab.Groups}>
+          <GroupsTab />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+};

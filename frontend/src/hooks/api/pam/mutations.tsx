@@ -91,8 +91,8 @@ export const useTerminatePamSession = () => {
 
       return data.session;
     },
-    onSuccess: (_, { projectId, sessionId }) => {
-      queryClient.invalidateQueries({ queryKey: pamKeys.listSessions(projectId) });
+    onSuccess: (_, { sessionId }) => {
+      queryClient.invalidateQueries({ queryKey: pamKeys.session() });
       queryClient.invalidateQueries({ queryKey: pamKeys.getSession(sessionId) });
     }
   });

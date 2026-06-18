@@ -1777,6 +1777,7 @@ export const registerRoutes = async (
   const pamSessionService = pamSessionServiceFactory({
     pamSessionDAL,
     pamAccountDAL,
+    pamSessionEventChunkDAL,
     pamFolderDAL,
     membershipDAL,
     membershipRoleDAL,

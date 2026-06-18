@@ -310,6 +310,7 @@ export const eventToNameMap: { [K in EventType]: string } = {
 
   [EventType.PAM_SESSION_START]: "Start PAM Session",
   [EventType.PAM_SESSION_END]: "End PAM Session",
+  [EventType.PAM_SESSION_TERMINATE]: "Terminate PAM Session",
   [EventType.PAM_ACCOUNT_TEMPLATE_CREATE]: "Create PAM Account Template",
   [EventType.PAM_ACCOUNT_TEMPLATE_UPDATE]: "Update PAM Account Template",
   [EventType.PAM_ACCOUNT_TEMPLATE_DELETE]: "Delete PAM Account Template",
@@ -475,6 +476,7 @@ export const projectToEventsMap: Partial<Record<ProjectType, EventType[]>> = {
     ...sharedProjectEvents,
     EventType.PAM_SESSION_START,
     EventType.PAM_SESSION_END,
+    EventType.PAM_SESSION_TERMINATE,
     EventType.PAM_ACCOUNT_TEMPLATE_CREATE,
     EventType.PAM_ACCOUNT_TEMPLATE_UPDATE,
     EventType.PAM_ACCOUNT_TEMPLATE_DELETE,

@@ -82,6 +82,7 @@ import { Route as projectAuditLogsPageRoutePamImport } from './pages/project/Aud
 import { Route as projectAccessControlPageRoutePamImport } from './pages/project/AccessControlPage/route-pam'
 import { Route as organizationSettingsPageOauthCallbackPageRouteImport } from './pages/organization/SettingsPage/OauthCallbackPage/route'
 import { Route as pamPamTemplatesPageRouteImport } from './pages/pam/PamTemplatesPage/route'
+import { Route as pamPamSessionsPageRouteImport } from './pages/pam/PamSessionsPage/route'
 import { Route as pamPamAccountsPageRouteImport } from './pages/pam/PamAccountsPage/route'
 import { Route as organizationNetworkingPageRelayDetailsByIDPageRouteImport } from './pages/organization/NetworkingPage/RelayDetailsByIDPage/route'
 import { Route as organizationNetworkingPageGatewayDetailsByIDPageRouteImport } from './pages/organization/NetworkingPage/GatewayDetailsByIDPage/route'
@@ -1057,6 +1058,12 @@ const organizationSettingsPageOauthCallbackPageRouteRoute =
 const pamPamTemplatesPageRouteRoute = pamPamTemplatesPageRouteImport.update({
   id: '/templates',
   path: '/templates',
+  getParentRoute: () => pamLayoutRoute,
+} as any)
+
+const pamPamSessionsPageRouteRoute = pamPamSessionsPageRouteImport.update({
+  id: '/sessions',
+  path: '/sessions',
   getParentRoute: () => pamLayoutRoute,
 } as any)
 
@@ -3169,6 +3176,13 @@ declare module '@tanstack/react-router' {
       path: '/accounts'
       fullPath: '/organizations/$orgId/pam/accounts'
       preLoaderRoute: typeof pamPamAccountsPageRouteImport
+      parentRoute: typeof pamLayoutImport
+    }
+    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/sessions': {
+      id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/sessions'
+      path: '/sessions'
+      fullPath: '/organizations/$orgId/pam/sessions'
+      preLoaderRoute: typeof pamPamSessionsPageRouteImport
       parentRoute: typeof pamLayoutImport
     }
     '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/templates': {
@@ -5644,6 +5658,7 @@ const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdPamPamLayoutAccessR
 
 interface pamLayoutRouteChildren {
   pamPamAccountsPageRouteRoute: typeof pamPamAccountsPageRouteRoute
+  pamPamSessionsPageRouteRoute: typeof pamPamSessionsPageRouteRoute
   pamPamTemplatesPageRouteRoute: typeof pamPamTemplatesPageRouteRoute
   AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdPamPamLayoutAccessRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdPamPamLayoutAccessRouteWithChildren
   projectAccessControlPageRoutePamRoute: typeof projectAccessControlPageRoutePamRoute
@@ -5656,6 +5671,7 @@ interface pamLayoutRouteChildren {
 
 const pamLayoutRouteChildren: pamLayoutRouteChildren = {
   pamPamAccountsPageRouteRoute: pamPamAccountsPageRouteRoute,
+  pamPamSessionsPageRouteRoute: pamPamSessionsPageRouteRoute,
   pamPamTemplatesPageRouteRoute: pamPamTemplatesPageRouteRoute,
   AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdPamPamLayoutAccessRoute:
     AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdPamPamLayoutAccessRouteWithChildren,
@@ -6067,6 +6083,7 @@ export interface FileRoutesByFullPath {
   '/organizations/$orgId/networking/gateways/$gatewayId': typeof organizationNetworkingPageGatewayDetailsByIDPageRouteRoute
   '/organizations/$orgId/networking/relays/$relayId': typeof organizationNetworkingPageRelayDetailsByIDPageRouteRoute
   '/organizations/$orgId/pam/accounts': typeof pamPamAccountsPageRouteRoute
+  '/organizations/$orgId/pam/sessions': typeof pamPamSessionsPageRouteRoute
   '/organizations/$orgId/pam/templates': typeof pamPamTemplatesPageRouteRoute
   '/organizations/$orgId/settings/oauth/callback': typeof organizationSettingsPageOauthCallbackPageRouteRoute
   '/organizations/$orgId/pam/access': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdPamPamLayoutAccessRouteWithChildren
@@ -6343,6 +6360,7 @@ export interface FileRoutesByTo {
   '/organizations/$orgId/networking/gateways/$gatewayId': typeof organizationNetworkingPageGatewayDetailsByIDPageRouteRoute
   '/organizations/$orgId/networking/relays/$relayId': typeof organizationNetworkingPageRelayDetailsByIDPageRouteRoute
   '/organizations/$orgId/pam/accounts': typeof pamPamAccountsPageRouteRoute
+  '/organizations/$orgId/pam/sessions': typeof pamPamSessionsPageRouteRoute
   '/organizations/$orgId/pam/templates': typeof pamPamTemplatesPageRouteRoute
   '/organizations/$orgId/settings/oauth/callback': typeof organizationSettingsPageOauthCallbackPageRouteRoute
   '/organizations/$orgId/pam/access-management': typeof projectAccessControlPageRoutePamRoute
@@ -6618,6 +6636,7 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/networking/gateways/$gatewayId': typeof organizationNetworkingPageGatewayDetailsByIDPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/networking/relays/$relayId': typeof organizationNetworkingPageRelayDetailsByIDPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/accounts': typeof pamPamAccountsPageRouteRoute
+  '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/sessions': typeof pamPamSessionsPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/templates': typeof pamPamTemplatesPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/settings/oauth/callback': typeof organizationSettingsPageOauthCallbackPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/access': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdPamPamLayoutAccessRouteWithChildren
@@ -6910,6 +6929,7 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/networking/gateways/$gatewayId'
     | '/organizations/$orgId/networking/relays/$relayId'
     | '/organizations/$orgId/pam/accounts'
+    | '/organizations/$orgId/pam/sessions'
     | '/organizations/$orgId/pam/templates'
     | '/organizations/$orgId/settings/oauth/callback'
     | '/organizations/$orgId/pam/access'
@@ -7185,6 +7205,7 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/networking/gateways/$gatewayId'
     | '/organizations/$orgId/networking/relays/$relayId'
     | '/organizations/$orgId/pam/accounts'
+    | '/organizations/$orgId/pam/sessions'
     | '/organizations/$orgId/pam/templates'
     | '/organizations/$orgId/settings/oauth/callback'
     | '/organizations/$orgId/pam/access-management'
@@ -7458,6 +7479,7 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/networking/gateways/$gatewayId'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/networking/relays/$relayId'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/accounts'
+    | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/sessions'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/templates'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/settings/oauth/callback'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/access'
@@ -8121,6 +8143,7 @@ export const routeTree = rootRoute
       "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam",
       "children": [
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/accounts",
+        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/sessions",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/templates",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/access",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/access-management",
@@ -8156,6 +8179,10 @@ export const routeTree = rootRoute
     },
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/accounts": {
       "filePath": "pam/PamAccountsPage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout"
+    },
+    "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/sessions": {
+      "filePath": "pam/PamSessionsPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout"
     },
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/templates": {
