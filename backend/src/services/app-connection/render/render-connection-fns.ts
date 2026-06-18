@@ -103,6 +103,7 @@ export const listRenderWorkflows = async (appConnection: TRenderConnection): Pro
     ).data;
 
     res.forEach((item) => {
+      if (!item.workflow) return;
       workflows.push({
         name: item.workflow.name,
         id: item.workflow.id
