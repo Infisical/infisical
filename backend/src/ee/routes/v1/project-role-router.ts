@@ -347,6 +347,12 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
     schema: {
       hide: false,
       tags: [ApiDocsTags.ProjectRoles],
+      description: "Get a project role by ID",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       params: z.object({
         roleId: z.string().trim().describe(PROJECT_ROLE.GET_ROLE_BY_ID.roleId)
       }),
