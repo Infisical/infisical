@@ -7,8 +7,10 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, SECRET_SHARING } from "@app/lib/api-docs";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { unique } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
 import { SecretSharingAccessType } from "@app/lib/types";
+import { sanitizeEmail } from "@app/lib/validator";
 import {
   publicEndpointLimit,
   publicSecretShareCreationLimit,
@@ -22,8 +24,6 @@ import { SecretSharingType } from "@app/services/secret-sharing/secret-sharing-t
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { SanitizedSecretSharingSchema } from "../sanitizedSchemas";
-import { sanitizeEmail } from "@app/lib/validator";
-import { unique } from "@app/lib/fn";
 
 const ALLOWED_IMAGE_CONTENT_TYPES = ["image/png", "image/jpeg"];
 const MAX_IMAGE_SIZE = 1 * 1024 * 1024; // 1MB
