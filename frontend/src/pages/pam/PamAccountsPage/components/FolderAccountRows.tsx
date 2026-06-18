@@ -59,29 +59,23 @@ export const FolderAccountRows = ({
 
   const q = search.trim().toLowerCase();
   const hasQuery = q.length > 0;
-  const folderNameMatches =
-    hasQuery && `${folder.name} ${folder.description ?? ""}`.toLowerCase().includes(q);
 
   // Client-side filtering keeps search/template instant once a folder's accounts are loaded
   const accountsToShow = useMemo(() => {
     let list = accounts;
     if (templateId) list = list.filter((a) => a.templateId === templateId);
-    if (hasQuery && !folderNameMatches) {
+    if (hasQuery) {
       list = list.filter((a) => `${a.name} ${a.description ?? ""}`.toLowerCase().includes(q));
     }
     return list;
-  }, [accounts, templateId, q, hasQuery, folderNameMatches]);
-
-  const effectiveCount = folderNameMatches
-    ? Math.max(accountsToShow.length, 1)
-    : accountsToShow.length;
+  }, [accounts, templateId, q, hasQuery]);
 
   useEffect(() => {
-    if (isOpen && !isLoading) onResultCount(folder.id, effectiveCount);
-  }, [isOpen, isLoading, effectiveCount, folder.id, onResultCount]);
+    if (isOpen && !isLoading) onResultCount(folder.id, accountsToShow.length);
+  }, [isOpen, isLoading, accountsToShow.length, folder.id, onResultCount]);
 
-  // While filtering, hide folders with no name match and no matching accounts
-  if (filterActive && isOpen && !isLoading && !folderNameMatches && accountsToShow.length === 0) {
+  // While filtering, hide folders with no matching accounts
+  if (filterActive && isOpen && !isLoading && accountsToShow.length === 0) {
     return null;
   }
 
@@ -98,14 +92,8 @@ export const FolderAccountRows = ({
             ) : (
               <Folder className="size-5 shrink-0 text-product-pam" />
             )}
-            <span className="font-medium text-foreground">
-              <HighlightText text={folder.name} highlight={search} />
-            </span>
-            {folder.description && (
-              <span className="text-muted">
-                <HighlightText text={folder.description} highlight={search} />
-              </span>
-            )}
+            <span className="font-medium text-foreground">{folder.name}</span>
+            {folder.description && <span className="text-muted">{folder.description}</span>}
           </div>
         </TableCell>
         <TableCell className="w-20">

@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef } from "react";
 import { ChevronRight, Folder, FolderOpen, Loader2 } from "lucide-react";
 
-import { HighlightText } from "@app/components/v2/HighlightText";
 import { TableCell, TableRow } from "@app/components/v3";
 import { Skeleton } from "@app/components/v3/generic/Skeleton";
 import {
@@ -9,6 +8,7 @@ import {
   TAccessiblePamFolder,
   useListAccessiblePamAccounts
 } from "@app/hooks/api/pam";
+import { useDebounce } from "@app/hooks/useDebounce";
 
 import { AccountRow } from "./AccountRow";
 
@@ -35,30 +35,31 @@ export const FolderAccountGroup = ({
   onLaunch,
   onResultCount
 }: Props) => {
-  // Only fetch this folder's accounts once it's open (lazy load per folder)
+  // Debounced term drives the server query; one request per open folder
+  const [debouncedSearch] = useDebounce(search);
+  const q = debouncedSearch.trim().toLowerCase();
+  const hasQuery = q.length > 0;
+
+  // Filter server-side so matches on later pages stay reachable
   const { data, isLoading, hasNextPage, isFetchingNextPage, fetchNextPage } =
-    useListAccessiblePamAccounts({ folderId: folder.id }, { enabled: isOpen });
+    useListAccessiblePamAccounts(
+      {
+        folderId: folder.id,
+        ...(accountType ? { accountType } : {}),
+        ...(hasQuery ? { search: q } : {})
+      },
+      { enabled: isOpen }
+    );
 
   const accounts = data?.pages.flatMap((p) => p.accounts) ?? [];
   const totalCount = data?.pages[0]?.totalCount ?? 0;
 
-  const q = search.trim().toLowerCase();
-  const hasQuery = q.length > 0;
-  const folderNameMatches = hasQuery && folder.name.toLowerCase().includes(q);
-
-  // Client-side filtering keeps search/type instant once a folder's accounts are loaded
+  // Narrow loaded rows on the raw term so non-matches hide instantly, ahead of the debounce
   const accountsToShow = useMemo(() => {
-    let list = accounts;
-    if (accountType) list = list.filter((a) => a.accountType === accountType);
-    if (hasQuery && !folderNameMatches) {
-      list = list.filter((a) => `${a.name} ${a.description ?? ""}`.toLowerCase().includes(q));
-    }
-    return list;
-  }, [accounts, accountType, q, hasQuery, folderNameMatches]);
-
-  const effectiveCount = folderNameMatches
-    ? Math.max(accountsToShow.length, 1)
-    : accountsToShow.length;
+    const live = search.trim().toLowerCase();
+    if (!live) return accounts;
+    return accounts.filter((a) => `${a.name} ${a.description ?? ""}`.toLowerCase().includes(live));
+  }, [accounts, search]);
 
   const sentinelRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -72,16 +73,16 @@ export const FolderAccountGroup = ({
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   useEffect(() => {
-    if (isOpen && !isLoading) onResultCount(folder.id, effectiveCount);
-  }, [isOpen, isLoading, effectiveCount, folder.id, onResultCount]);
+    if (isOpen && !isLoading) onResultCount(folder.id, totalCount);
+  }, [isOpen, isLoading, totalCount, folder.id, onResultCount]);
 
-  // While filtering, hide folders with no name match and no matching accounts
-  if (filterActive && isOpen && !isLoading && !folderNameMatches && accountsToShow.length === 0) {
+  // While filtering, hide folders with no matching accounts
+  if (filterActive && isOpen && !isLoading && totalCount === 0) {
     return null;
   }
 
   let count = folder.accountCount;
-  if (isOpen && !isLoading) count = filterActive ? accountsToShow.length : totalCount;
+  if (isOpen && !isLoading) count = search.trim() ? accountsToShow.length : totalCount;
 
   return (
     <>
@@ -96,9 +97,7 @@ export const FolderAccountGroup = ({
             ) : (
               <Folder className="size-5 shrink-0 text-product-pam" />
             )}
-            <span className="font-medium text-foreground">
-              <HighlightText text={folder.name} highlight={search} />
-            </span>
+            <span className="font-medium text-foreground">{folder.name}</span>
             <span className="text-xs text-muted">({count})</span>
           </div>
         </TableCell>

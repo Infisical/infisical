@@ -75,11 +75,7 @@ export const pamAccountDALFactory = (db: TDbClient) => {
     }
     if (filters?.search) {
       const pattern = `%${sanitizeSqlLikeString(filters.search)}%`;
-      void baseQuery.where((qb) => {
-        void qb
-          .whereILike(`${TableName.PamAccount}.name`, pattern)
-          .orWhereILike(`${TableName.PamFolder}.name`, pattern);
-      });
+      void baseQuery.whereILike(`${TableName.PamAccount}.name`, pattern);
     }
 
     const countQuery = baseQuery
