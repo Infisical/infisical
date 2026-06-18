@@ -51,7 +51,10 @@ type TSecretApprovalPolicyServiceFactoryDep = {
   secretApprovalPolicyDAL: TSecretApprovalPolicyDALFactory;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne" | "find">;
   userDAL: Pick<TUserDALFactory, "find">;
-  projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findProjectMembershipsByUserIds">;
+  projectMembershipDAL: Pick<
+    TProjectMembershipDALFactory,
+    "findProjectMembershipsByUserIds" | "findProjectMembershipsByGroupIds"
+  >;
   secretApprovalPolicyApproverDAL: TSecretApprovalPolicyApproverDALFactory;
   secretApprovalPolicyBypasserDAL: TSecretApprovalPolicyBypasserDALFactory;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
@@ -84,6 +87,21 @@ export const secretApprovalPolicyServiceFactory = ({
       const userIdsNotInProject = userIds.filter((id) => !projectMemberUserIds.has(id));
       throw new BadRequestError({
         message: `Some users are not members of the project: ${userIdsNotInProject.join(", ")}`
+      });
+    }
+  };
+
+  const verifyProjectGroupMembership = async (groupIds: string[], orgId: string, projectId: string) => {
+    if (groupIds.length === 0) return;
+    const projectMemberships = (await projectMembershipDAL.findProjectMembershipsByGroupIds(orgId, groupIds)).filter(
+      (v) => v.projectId === projectId
+    );
+
+    const projectGroupIds = new Set(projectMemberships.map((member) => member.groupId));
+    const groupIdsNotInProject = groupIds.filter((id) => !projectGroupIds.has(id));
+    if (groupIdsNotInProject.length) {
+      throw new BadRequestError({
+        message: `Some groups are not members of the project: ${groupIdsNotInProject.join(", ")}`
       });
     }
   };
@@ -128,7 +146,8 @@ export const secretApprovalPolicyServiceFactory = ({
   }: TCreateSapDTO) => {
     const groupApprovers = approvers
       ?.filter((approver) => approver.type === ApproverType.Group)
-      .map((approver) => approver.id);
+      .map((approver) => approver.id)
+      .filter(Boolean) as string[];
     const userApprovers = approvers
       ?.filter((approver) => approver.type === ApproverType.User)
       .map((approver) => approver.id)
@@ -263,7 +282,9 @@ export const secretApprovalPolicyServiceFactory = ({
         userApproverIds = userApproverIds.concat(approverUsers.map((user) => user.id));
       }
 
+      // verify user and group membership before inserting approvers
       await verifyProjectUserMembership(userApproverIds, actorOrgId, projectId);
+      await verifyProjectGroupMembership(groupApprovers, actorOrgId, projectId);
 
       await secretApprovalPolicyApproverDAL.insertMany(
         userApproverIds.map((approverUserId) => ({
@@ -294,6 +315,8 @@ export const secretApprovalPolicyServiceFactory = ({
       }
 
       if (groupBypassers.length) {
+        await verifyProjectGroupMembership(groupBypassers, actorOrgId, projectId);
+
         await secretApprovalPolicyBypasserDAL.insertMany(
           groupBypassers.map((groupId) => ({
             bypasserGroupId: groupId,
@@ -326,7 +349,8 @@ export const secretApprovalPolicyServiceFactory = ({
   }: TUpdateSapDTO) => {
     const groupApprovers = approvers
       ?.filter((approver) => approver.type === ApproverType.Group)
-      .map((approver) => approver.id);
+      .map((approver) => approver.id)
+      .filter(Boolean) as string[];
     const userApprovers = approvers
       ?.filter((approver) => approver.type === ApproverType.User)
       .map((approver) => approver.id)
@@ -471,6 +495,8 @@ export const secretApprovalPolicyServiceFactory = ({
       }
 
       if (groupApprovers) {
+        await verifyProjectGroupMembership(groupApprovers, actorOrgId, secretApprovalPolicy.projectId);
+
         await secretApprovalPolicyApproverDAL.insertMany(
           groupApprovers.map((approverGroupId) => ({
             approverGroupId,
@@ -506,6 +532,8 @@ export const secretApprovalPolicyServiceFactory = ({
       }
 
       if (groupBypassers.length) {
+        await verifyProjectGroupMembership(groupBypassers, actorOrgId, secretApprovalPolicy.projectId);
+
         await secretApprovalPolicyBypasserDAL.insertMany(
           groupBypassers.map((groupId) => ({
             bypasserGroupId: groupId,
