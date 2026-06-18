@@ -764,8 +764,7 @@ export const IdentityLdapAuthForm = ({
                 <AlertTitle>All directory users can authenticate</AlertTitle>
                 <AlertDescription>
                   Every user in the configured LDAP directory who can bind will be able to
-                  authenticate as this identity. Switch to &quot;Restrict&quot; to
-                  limit access.
+                  authenticate as this identity. Switch to &quot;Restrict&quot; to limit access.
                 </AlertDescription>
               </Alert>
             ) : (
@@ -849,9 +848,7 @@ export const IdentityLdapAuthForm = ({
                   </div>
                 ))}
                 {allowedFieldsFields.length === 0 && (
-                  <FieldError>
-                    Add at least one attribute, or allow any directory user.
-                  </FieldError>
+                  <FieldError>Add at least one attribute, or allow any directory user.</FieldError>
                 )}
                 <Button
                   type="button"
