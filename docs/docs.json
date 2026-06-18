@@ -68,6 +68,7 @@
                   "documentation/platform/identities/machine-identities"
                 ]
               },
+              "documentation/platform/oauth-applications",
               {
                 "group": "Access Control",
                 "pages": [
@@ -122,6 +123,7 @@
                       "integrations/app-connections/circleci",
                       "integrations/app-connections/chef",
                       "integrations/app-connections/cloudflare",
+                      "integrations/app-connections/convex",
                       "integrations/app-connections/databricks",
                       "integrations/app-connections/datadog",
                       "integrations/app-connections/dbt",
@@ -482,6 +484,7 @@
                       "documentation/platform/secret-rotation/auth0-client-secret",
                       "documentation/platform/secret-rotation/aws-iam-user-secret",
                       "documentation/platform/secret-rotation/azure-client-secret",
+                      "documentation/platform/secret-rotation/convex-access-key",
                       "documentation/platform/secret-rotation/databricks-service-principal-secret",
                       "documentation/platform/secret-rotation/datadog-application-key-secret",
                       "documentation/platform/secret-rotation/dbt-service-token",
@@ -846,7 +849,8 @@
                       "documentation/platform/pki/code-signing/overview",
                       "documentation/platform/pki/code-signing/signers",
                       "documentation/platform/pki/code-signing/approvals",
-                      "documentation/platform/pki/code-signing/pkcs11-module"
+                      "documentation/platform/pki/code-signing/pkcs11-module",
+                      "documentation/platform/pki/code-signing/windows-ksp"
                     ]
                   },
                   {
@@ -915,7 +919,13 @@
                   "documentation/platform/kms/overview",
                   "documentation/platform/kms/hsm-integration",
                   "documentation/platform/kms/kubernetes-encryption",
-                  "documentation/platform/kms/kmip",
+                  {
+                    "group": "KMIP Integration",
+                    "pages": [
+                      "documentation/platform/kms/kmip",
+                      "documentation/platform/kms/kmip-dell-poweredge"
+                    ]
+                  },
                   "documentation/platform/kms/sigstore-cosign"
                 ]
               }
@@ -1034,7 +1044,8 @@
               },
               "cli/scanning-overview",
               "cli/project-config",
-              "cli/faq"
+              "cli/faq",
+              "cli/cloudsmith-migration"
             ]
           }
         ]
@@ -3519,6 +3530,19 @@
             ]
           },
           {
+            "group": "KMIP Servers",
+            "pages": [
+              "api-reference/endpoints/kmip-servers/list",
+              "api-reference/endpoints/kmip-servers/get",
+              "api-reference/endpoints/kmip-servers/create",
+              "api-reference/endpoints/kmip-servers/update",
+              "api-reference/endpoints/kmip-servers/delete",
+              "api-reference/endpoints/kmip-servers/generate-enrollment-token",
+              "api-reference/endpoints/kmip-servers/revoke",
+              "api-reference/endpoints/kmip-servers/login"
+            ]
+          },
+          {
             "group": "External Migrations",
             "pages": [
               {
@@ -3810,15 +3834,15 @@
     },
     {
       "source": "/documentation/platform/pki/certificates",
-      "destination": "/documentation/platform/pki/certificates/certificates"
+      "destination": "/documentation/platform/pki/applications/certificates"
     },
     {
       "source": "/documentation/platform/pki/est",
-      "destination": "/documentation/platform/pki/enrollment-methods/est"
+      "destination": "/documentation/platform/pki/applications/enrollment-methods/est"
     },
     {
       "source": "/documentation/platform/pki/alerting",
-      "destination": "/documentation/platform/pki/alerting/overview"
+      "destination": "/documentation/platform/pki/applications/alerting/overview"
     },
     {
       "source": "/api-reference/endpoints/integrations/create-auth",
@@ -4004,6 +4028,94 @@
       "source": "/changelog/:slug*",
       "destination": "/documentation/getting-started/overview",
       "permanent": true
+    },
+    {
+      "source": "/documentation/platform/pki/certificate-syncs",
+      "destination": "/documentation/platform/pki/applications/certificate-syncs/overview"
+    },
+    {
+      "source": "/documentation/platform/pki/certificate-syncs/overview",
+      "destination": "/documentation/platform/pki/applications/certificate-syncs/overview"
+    },
+    {
+      "source": "/documentation/platform/pki/certificate-syncs/aws-certificate-manager",
+      "destination": "/documentation/platform/pki/applications/certificate-syncs/aws-certificate-manager"
+    },
+    {
+      "source": "/documentation/platform/pki/certificate-syncs/aws-elastic-load-balancer",
+      "destination": "/documentation/platform/pki/applications/certificate-syncs/aws-elastic-load-balancer"
+    },
+    {
+      "source": "/documentation/platform/pki/certificate-syncs/aws-secrets-manager",
+      "destination": "/documentation/platform/pki/applications/certificate-syncs/aws-secrets-manager"
+    },
+    {
+      "source": "/documentation/platform/pki/certificate-syncs/azure-key-vault",
+      "destination": "/documentation/platform/pki/applications/certificate-syncs/azure-key-vault"
+    },
+    {
+      "source": "/documentation/platform/pki/certificate-syncs/chef",
+      "destination": "/documentation/platform/pki/applications/certificate-syncs/chef"
+    },
+    {
+      "source": "/documentation/platform/pki/certificate-syncs/cloudflare-custom-certificate",
+      "destination": "/documentation/platform/pki/applications/certificate-syncs/cloudflare-custom-certificate"
+    },
+    {
+      "source": "/documentation/platform/pki/certificate-syncs/netscaler",
+      "destination": "/documentation/platform/pki/applications/certificate-syncs/netscaler"
+    },
+    {
+      "source": "/documentation/platform/pki/alerting/overview",
+      "destination": "/documentation/platform/pki/applications/alerting/overview"
+    },
+    {
+      "source": "/documentation/platform/pki/alerting/pagerduty-alerts",
+      "destination": "/documentation/platform/pki/applications/alerting/pagerduty-alerts"
+    },
+    {
+      "source": "/documentation/platform/pki/alerting/slack-alerts",
+      "destination": "/documentation/platform/pki/applications/alerting/slack-alerts"
+    },
+    {
+      "source": "/documentation/platform/pki/alerting/webhook-alerts",
+      "destination": "/documentation/platform/pki/applications/alerting/webhook-alerts"
+    },
+    {
+      "source": "/documentation/platform/pki/approvals",
+      "destination": "/documentation/platform/pki/applications/approvals"
+    },
+    {
+      "source": "/documentation/platform/pki/certificates/certificates",
+      "destination": "/documentation/platform/pki/applications/certificates"
+    },
+    {
+      "source": "/documentation/platform/pki/certificates/policies",
+      "destination": "/documentation/platform/pki/settings/policies"
+    },
+    {
+      "source": "/documentation/platform/pki/certificates/profiles",
+      "destination": "/documentation/platform/pki/settings/profiles"
+    },
+    {
+      "source": "/documentation/platform/pki/enrollment-methods/overview",
+      "destination": "/documentation/platform/pki/applications/enrollment-methods/overview"
+    },
+    {
+      "source": "/documentation/platform/pki/enrollment-methods/api",
+      "destination": "/documentation/platform/pki/applications/enrollment-methods/api"
+    },
+    {
+      "source": "/documentation/platform/pki/enrollment-methods/est",
+      "destination": "/documentation/platform/pki/applications/enrollment-methods/est"
+    },
+    {
+      "source": "/documentation/platform/pki/enrollment-methods/acme",
+      "destination": "/documentation/platform/pki/applications/enrollment-methods/acme"
+    },
+    {
+      "source": "/documentation/platform/pki/enrollment-methods/scep",
+      "destination": "/documentation/platform/pki/applications/enrollment-methods/scep"
     }
   ]
 }

@@ -32,6 +32,7 @@ import { ProfileList } from "./ProfileList";
 export const CertificateProfilesTab = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isCloneModalOpen, setIsCloneModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedProfile, setSelectedProfile] = useState<TCertificateProfileWithDetails | null>(
     null
@@ -43,6 +44,11 @@ export const CertificateProfilesTab = () => {
   const handleEditProfile = (profile: TCertificateProfileWithDetails) => {
     setSelectedProfile(profile);
     setIsEditModalOpen(true);
+  };
+
+  const handleCloneProfile = (profile: TCertificateProfileWithDetails) => {
+    setSelectedProfile(profile);
+    setIsCloneModalOpen(true);
   };
 
   const handleDeleteProfile = (profile: TCertificateProfileWithDetails) => {
@@ -94,7 +100,11 @@ export const CertificateProfilesTab = () => {
         </CardAction>
       </CardHeader>
       <CardContent>
-        <ProfileList onEditProfile={handleEditProfile} onDeleteProfile={handleDeleteProfile} />
+        <ProfileList
+          onEditProfile={handleEditProfile}
+          onCloneProfile={handleCloneProfile}
+          onDeleteProfile={handleDeleteProfile}
+        />
       </CardContent>
 
       <CreateProfileModal isOpen={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} />
@@ -115,6 +125,16 @@ export const CertificateProfilesTab = () => {
             }}
             profile={selectedProfile}
             mode="edit"
+          />
+
+          <CreateProfileModal
+            isOpen={isCloneModalOpen}
+            onClose={() => {
+              setIsCloneModalOpen(false);
+              setSelectedProfile(null);
+            }}
+            profile={selectedProfile}
+            mode="clone"
           />
 
           <DeleteActionModal

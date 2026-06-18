@@ -18,7 +18,8 @@ import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-grou
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
   hasSecretReadValueOrDescribePermission,
-  throwIfMissingSecretReadValueOrDescribePermission
+  throwIfMissingSecretReadValueOrDescribePermission,
+  validateSecretMovePermissions
 } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionSecretActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
@@ -3064,64 +3065,32 @@ export const secretServiceFactory = ({
       });
     }
 
-    const sourceActions = [
-      ProjectPermissionSecretActions.Delete,
-      ProjectPermissionSecretActions.DescribeSecret,
-      ProjectPermissionSecretActions.ReadValue
-    ] as const;
-    const destinationActions = [ProjectPermissionSecretActions.Create, ProjectPermissionSecretActions.Edit] as const;
+    // a move is delete-at-source + create/edit-at-destination. this is path-scoped, so it is checked
+    // once for the whole batch rather than per secret.
+    validateSecretMovePermissions(permission, {
+      sourceEnvironment,
+      sourceSecretPath,
+      destinationEnvironment,
+      destinationSecretPath
+    });
 
-    const decryptedSourceSecrets = sourceSecrets.map((secret) => {
-      const secretKey = crypto.encryption().symmetric().decrypt({
+    const decryptedSourceSecrets = sourceSecrets.map((secret) => ({
+      ...secret,
+      secretKey: crypto.encryption().symmetric().decrypt({
         ciphertext: secret.secretKeyCiphertext,
         iv: secret.secretKeyIV,
         tag: secret.secretKeyTag,
         key: botKey,
         keySize: SymmetricKeySize.Bits128
-      });
-
-      for (const destinationAction of destinationActions) {
-        ForbiddenError.from(permission).throwUnlessCan(
-          destinationAction,
-          subject(ProjectPermissionSub.Secrets, {
-            environment: destinationEnvironment,
-            secretPath: destinationSecretPath
-          })
-        );
-      }
-
-      for (const sourceAction of sourceActions) {
-        if (
-          sourceAction === ProjectPermissionSecretActions.ReadValue ||
-          sourceAction === ProjectPermissionSecretActions.DescribeSecret
-        ) {
-          throwIfMissingSecretReadValueOrDescribePermission(permission, sourceAction, {
-            environment: sourceEnvironment,
-            secretPath: sourceSecretPath
-          });
-        } else {
-          ForbiddenError.from(permission).throwUnlessCan(
-            sourceAction,
-            subject(ProjectPermissionSub.Secrets, {
-              environment: sourceEnvironment,
-              secretPath: sourceSecretPath
-            })
-          );
-        }
-      }
-
-      return {
-        ...secret,
-        secretKey,
-        secretValue: crypto.encryption().symmetric().decrypt({
-          ciphertext: secret.secretValueCiphertext,
-          iv: secret.secretValueIV,
-          tag: secret.secretValueTag,
-          key: botKey,
-          keySize: SymmetricKeySize.Bits128
-        })
-      };
-    });
+      }),
+      secretValue: crypto.encryption().symmetric().decrypt({
+        ciphertext: secret.secretValueCiphertext,
+        iv: secret.secretValueIV,
+        tag: secret.secretValueTag,
+        key: botKey,
+        keySize: SymmetricKeySize.Bits128
+      })
+    }));
 
     let isSourceUpdated = false;
     let isDestinationUpdated = false;

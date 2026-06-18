@@ -671,6 +671,52 @@ func TestListSecrets_Metadata(t *testing.T) {
 	})
 }
 
+func TestListSecrets_Reminder(t *testing.T) {
+	nodejs := stack.NodeJS()
+
+	proj := nodejs.CreateProject(t, "reminder-list-test")
+
+	repeatDays := 7
+	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "SECRET_WITH_REMINDER", "reminder-value", &infra.CreateSecretOpts{
+		ReminderNote:       "Rotate weekly",
+		ReminderRepeatDays: &repeatDays,
+	})
+	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "SECRET_WITHOUT_REMINDER", "no-reminder-value", nil)
+
+	identity := nodejs.CreateIdentity(t, "reminder-list-identity")
+	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
+
+	result, err := listSecrets(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &ListSecretsV4Params{
+		ProjectID:       proj.ID,
+		Environment:     proj.EnvSlug,
+		SecretPath:      new("/"),
+		ViewSecretValue: new(true),
+	})
+
+	require.NoError(t, err)
+	require.Len(t, result.Secrets, 2)
+
+	var secretWithReminder, secretWithoutReminder *secret.SecretRaw
+	for i := range result.Secrets {
+		switch result.Secrets[i].SecretKey {
+		case "SECRET_WITH_REMINDER":
+			secretWithReminder = &result.Secrets[i]
+		case "SECRET_WITHOUT_REMINDER":
+			secretWithoutReminder = &result.Secrets[i]
+		}
+	}
+
+	require.NotNil(t, secretWithReminder)
+	require.NotNil(t, secretWithReminder.SecretReminderNote, "secretReminderNote should be present")
+	assert.Equal(t, "Rotate weekly", *secretWithReminder.SecretReminderNote)
+	require.NotNil(t, secretWithReminder.SecretReminderRepeatDays, "secretReminderRepeatDays should be present")
+	assert.Equal(t, 7, *secretWithReminder.SecretReminderRepeatDays)
+
+	require.NotNil(t, secretWithoutReminder)
+	assert.Nil(t, secretWithoutReminder.SecretReminderNote, "secretReminderNote should be nil for secret without reminder")
+	assert.Nil(t, secretWithoutReminder.SecretReminderRepeatDays, "secretReminderRepeatDays should be nil for secret without reminder")
+}
+
 func TestListSecrets_PersonalOverrides(t *testing.T) {
 	nodejs := stack.NodeJS()
 

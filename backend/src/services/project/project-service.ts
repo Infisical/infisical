@@ -104,6 +104,7 @@ import {
   TCreateProjectDTO,
   TDeleteProjectDTO,
   TDeleteProjectWorkflowIntegration,
+  TEnableSecretBlindIndexDTO,
   TGetActivityTrendDTO,
   TGetDashboardStatsDTO,
   TGetProjectDTO,
@@ -194,7 +195,7 @@ type TProjectServiceFactoryDep = {
   licenseService: Pick<TLicenseServiceFactory, "getPlan" | "invalidateGetPlan">;
   smtpService: Pick<TSmtpService, "sendMail">;
   orgDAL: Pick<TOrgDALFactory, "findOne" | "findEffectiveOrgMembership">;
-  keyStore: Pick<TKeyStoreFactory, "deleteItem" | "acquireLock" | "getItem" | "setItemWithExpiry">;
+  keyStore: Pick<TKeyStoreFactory, "deleteItem" | "acquireLock" | "getItem" | "setItemWithExpiry" | "ttl">;
   roleDAL: Pick<TRoleDALFactory, "find" | "insertMany" | "delete">;
   kmsService: Pick<
     TKmsServiceFactory,
@@ -2573,6 +2574,56 @@ export const projectServiceFactory = ({
     return { requests };
   };
 
+  const enableSecretBlindIndex = async ({
+    actor,
+    actorId,
+    actorOrgId,
+    actorAuthMethod,
+    projectId
+  }: TEnableSecretBlindIndexDTO) => {
+    const project = await projectDAL.findById(projectId);
+    if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: project.id,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Settings);
+
+    if (project.secretBlindIndexEnabled) {
+      throw new BadRequestError({ message: "Secret blind indexing is already enabled for this project" });
+    }
+
+    await projectQueue.startSecretBlindIndexMigration(project.id);
+  };
+
+  const getSecretBlindIndexMigrationStatus = async ({
+    actor,
+    actorId,
+    actorOrgId,
+    actorAuthMethod,
+    projectId
+  }: TEnableSecretBlindIndexDTO) => {
+    const project = await projectDAL.findById(projectId);
+    if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: project.id,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Settings);
+
+    return projectQueue.getJobState(project.id);
+  };
+
   return {
     createProject,
     deleteProject,
@@ -2612,6 +2663,8 @@ export const projectServiceFactory = ({
     requestProjectAccess,
     getMyPendingProjectAccessRequests,
     searchProjects,
-    extractProjectIdFromSlug
+    extractProjectIdFromSlug,
+    enableSecretBlindIndex,
+    getSecretBlindIndexMigrationStatus
   };
 };

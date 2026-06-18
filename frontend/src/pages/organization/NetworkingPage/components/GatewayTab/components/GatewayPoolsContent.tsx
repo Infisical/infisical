@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { faEllipsisV, faMagnifyingGlass, faPen, faTrash } from "@fortawesome/free-solid-svg-icons";
+import { faEllipsisV, faPen, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
@@ -13,7 +13,6 @@ import {
   DropdownMenuTrigger,
   EmptyState,
   IconButton,
-  Input,
   Table,
   TableContainer,
   TableSkeleton,
@@ -33,10 +32,13 @@ import { PoolConnectedResourcesDrawer } from "./PoolConnectedResourcesDrawer";
 import { PoolDetailSheet } from "./PoolDetailSheet";
 import { PoolHealthBadge } from "./PoolHealthBadge";
 
-export const GatewayPoolsContent = () => {
+type Props = {
+  search: string;
+};
+
+export const GatewayPoolsContent = ({ search }: Props) => {
   const { subscription } = useSubscription();
   const isEnterprise = subscription?.gatewayPool;
-  const [search, setSearch] = useState("");
   const [selectedPoolId, setSelectedPoolId] = useState<string | null>(null);
   const [resourcesPool, setResourcesPool] = useState<{ id: string; name: string } | null>(null);
   const { data: pools, isPending: isPoolsLoading } = useListGatewayPools({
@@ -71,9 +73,6 @@ export const GatewayPoolsContent = () => {
   if (!isEnterprise) {
     return (
       <div>
-        <p className="mb-4 text-sm text-mineshaft-400">
-          Pool gateways for high availability and automatic failover
-        </p>
         <div className="rounded-md border border-yellow-500/30 bg-yellow-500/5 p-8 text-center">
           <div className="mb-3 text-2xl">&#x1f6e1;&#xfe0f;</div>
           <h4 className="mb-2 text-lg font-medium text-mineshaft-100">Enterprise Feature</h4>
@@ -96,19 +95,7 @@ export const GatewayPoolsContent = () => {
 
   return (
     <div>
-      <p className="mb-4 text-sm text-mineshaft-400">
-        Pool gateways for high availability and automatic failover
-      </p>
-      <div className="flex gap-2">
-        <Input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-          placeholder="Search pool..."
-          className="flex-1"
-        />
-      </div>
-      <TableContainer className="mt-4">
+      <TableContainer>
         <Table>
           <THead>
             <Tr>

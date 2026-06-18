@@ -28,12 +28,14 @@ export const GitHubConnectionAppInputCredentialsSchema = z.union([
   z.object({
     code: z.string().trim().min(1, "GitHub App code required"),
     installationId: z.string().min(1, "GitHub App Installation ID required"),
+    gitHubAppId: z.string().uuid().nullish(),
     instanceType: z.literal("server"),
     host: z.string().trim().min(1, "Host is required for server instance type")
   }),
   z.object({
     code: z.string().trim().min(1, "GitHub App code required"),
     installationId: z.string().min(1, "GitHub App Installation ID required"),
+    gitHubAppId: z.string().uuid().nullish(),
     instanceType: z.literal("cloud").optional(),
     host: z.string().trim().optional()
   })
@@ -68,11 +70,13 @@ export const GitHubConnectionOAuthOutputCredentialsSchema = z.union([
 export const GitHubConnectionAppOutputCredentialsSchema = z.union([
   z.object({
     installationId: z.string(),
+    gitHubAppId: z.string().uuid().nullish(),
     instanceType: z.literal("server"),
     host: z.string().trim().min(1)
   }),
   z.object({
     installationId: z.string(),
+    gitHubAppId: z.string().uuid().nullish(),
     instanceType: z.literal("cloud").optional(),
     host: z.string().trim().optional()
   })
@@ -160,7 +164,8 @@ export const SanitizedGitHubConnectionSchema = z.discriminatedUnion("method", [
     method: z.literal(GitHubConnectionMethod.App),
     credentials: z.object({
       instanceType: z.union([z.literal("server"), z.literal("cloud")]).optional(),
-      host: z.string().optional()
+      host: z.string().optional(),
+      gitHubAppId: z.string().uuid().nullish()
     })
   }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.GitHub]} (GitHub App)` })),
   BaseGitHubConnectionSchema.extend({

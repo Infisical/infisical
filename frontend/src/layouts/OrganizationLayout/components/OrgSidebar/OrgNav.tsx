@@ -1,196 +1,87 @@
 import { useEffect, useState } from "react";
-import { Link, useLocation, useNavigate } from "@tanstack/react-router";
+import { useLocation, useNavigate } from "@tanstack/react-router";
 import { AnimatePresence, motion } from "framer-motion";
-import {
-  Cable,
-  ChevronRight,
-  CreditCard,
-  FileText,
-  Network,
-  Settings,
-  Share2,
-  Shield
-} from "lucide-react";
-import { twMerge } from "tailwind-merge";
+import { Blocks, CreditCard, FileText, Settings, Shield } from "lucide-react";
 
-import {
-  OrgIcon,
-  SidebarGroup,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SubOrgIcon
-} from "@app/components/v3";
-import { useOrganization, useSubscription } from "@app/context";
+import { OrgIcon, SidebarCollapsibleGroup, SubOrgIcon } from "@app/components/v3";
+import { useOrganization } from "@app/context";
 
-import {
-  getOrgSettingsSubmenu,
-  getSecretSharingSubmenu,
-  NETWORKING_SUBMENU,
-  ORG_ACCESS_CONTROL_SUBMENU
-} from "./submenus";
-import { OrgSubmenuView } from "./SubmenuViews";
-import type { OrgNavItem, Submenu } from "./types";
+import { OrgNavList } from "./OrgNavLink";
+import { OrgSettingsSubmenuView } from "./OrgSubmenuView";
+import type { OrgNavGroup } from "./types";
 
 // --- Org nav ---
 
-const OrgNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Submenu) => void }) => {
-  const { currentOrg, isRootOrganization, isSubOrganization } = useOrganization();
-  const { subscription } = useSubscription();
+export const OrgNav = () => {
+  const { currentOrg, isRootOrganization } = useOrganization();
   const { pathname } = useLocation();
-  const orgId = currentOrg.id;
+  const navigate = useNavigate();
 
-  const items: OrgNavItem[] = [
-    {
-      label: "Overview",
-      icon: isRootOrganization ? OrgIcon : SubOrgIcon,
-      to: "/organizations/$orgId/projects",
-      isActive: pathname.startsWith(`/organizations/${orgId}/projects`)
-    },
-    {
-      label: "App Connections",
-      icon: Cable,
-      to: "/organizations/$orgId/app-connections",
-      isActive: pathname.startsWith(`/organizations/${orgId}/app-connections`)
-    },
-    {
-      label: "Networking",
-      icon: Network,
-      to: "/organizations/$orgId/networking",
-      isActive: pathname.startsWith(`/organizations/${orgId}/networking`),
-      submenu: NETWORKING_SUBMENU
-    },
-    {
-      label: "Secret Sharing",
-      icon: Share2,
-      to: "/organizations/$orgId/secret-sharing",
-      isActive: pathname.startsWith(`/organizations/${orgId}/secret-sharing`),
-      submenu: getSecretSharingSubmenu({ isSubOrganization })
-    },
-    {
-      label: "Audit Logs",
-      icon: FileText,
-      to: "/organizations/$orgId/audit-logs",
-      isActive: pathname.startsWith(`/organizations/${orgId}/audit-logs`)
-    },
-    {
-      label: "Access Control",
-      icon: Shield,
-      to: "/organizations/$orgId/access-management",
-      isActive:
-        pathname.startsWith(`/organizations/${orgId}/access-management`) ||
-        Boolean(pathname.match(/organizations\/[^/]+\/(members|identities|groups|roles)/)),
-      submenu: ORG_ACCESS_CONTROL_SUBMENU
-    },
-    ...(isRootOrganization
-      ? [
-          {
-            label: "Usage & Billing",
-            icon: CreditCard,
-            to: "/organizations/$orgId/billing",
-            isActive: pathname.startsWith(`/organizations/${orgId}/billing`)
-          }
-        ]
-      : []),
-    {
-      label: "Settings",
-      icon: Settings,
+  // /settings, /sso, /networking and /oauth-applications all live under the settings submenu.
+  const isOnSettingsArea =
+    /\/organizations\/[^/]+\/(settings|sso|networking|oauth-applications)(\/|$)/.test(pathname);
+  const [showSettings, setShowSettings] = useState(isOnSettingsArea);
+
+  useEffect(() => {
+    setShowSettings(isOnSettingsArea);
+  }, [pathname]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleOpenSettings = () => {
+    setShowSettings(true);
+    // Already on a settings-area URL (e.g. after collapsing via "< Settings"):
+    // re-navigating would push a duplicate same-URL history entry, so just
+    // re-expand the sub-nav.
+    if (isOnSettingsArea) return;
+    navigate({
       to: "/organizations/$orgId/settings",
-      isActive: pathname.startsWith(`/organizations/${orgId}/settings`),
-      submenu: getOrgSettingsSubmenu({
-        isSubOrganization,
-        hasSubOrganization: Boolean(subscription?.subOrganization)
-      })
+      params: { orgId: currentOrg.id },
+      search: { selectedTab: "" }
+    });
+  };
+
+  const groups: OrgNavGroup[] = [
+    {
+      label: "General",
+      collapsible: false,
+      items: [
+        {
+          label: "Home",
+          icon: isRootOrganization ? OrgIcon : SubOrgIcon,
+          pathSuffix: "projects"
+        },
+        {
+          label: "Integrations",
+          icon: Blocks,
+          pathSuffix: "integrations",
+          // Keep highlighted on the app-connections OAuth/manifest callback pages
+          activeMatch: /organizations\/[^/]+\/app-connections/
+        }
+      ]
+    },
+    {
+      label: "Administration",
+      items: [
+        {
+          label: "Access Control",
+          icon: Shield,
+          pathSuffix: "access-management",
+          activeMatch: /organizations\/[^/]+\/(members|identities|groups|roles)/
+        },
+        {
+          label: "Usage & Billing",
+          icon: CreditCard,
+          pathSuffix: "billing",
+          hidden: !isRootOrganization
+        },
+        { label: "Audit Logs", icon: FileText, pathSuffix: "audit-logs" },
+        { label: "Settings", icon: Settings, pathSuffix: "settings", opensSubmenu: true }
+      ]
     }
   ];
 
   return (
-    <SidebarMenu>
-      {items.map((item) =>
-        item.submenu ? (
-          <SidebarMenuItem key={item.label}>
-            <SidebarMenuButton
-              size="lg"
-              isActive={item.isActive}
-              tooltip={item.label}
-              onClick={() => onSubmenuOpen(item.submenu!)}
-            >
-              <item.icon className="size-4" />
-              <span>{item.label}</span>
-              <ChevronRight
-                className={twMerge(
-                  "ml-auto size-4 !text-foreground",
-                  !item.isActive && "opacity-50"
-                )}
-              />
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        ) : (
-          <SidebarMenuItem key={item.label}>
-            <SidebarMenuButton asChild isActive={item.isActive} size="lg" tooltip={item.label}>
-              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-              <Link to={item.to as any} params={{ orgId } as any}>
-                <item.icon className="size-4" />
-                <span>{item.label}</span>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        )
-      )}
-    </SidebarMenu>
-  );
-};
-
-// --- Org nav wrapper ---
-
-export const OrgNavWrapper = () => {
-  const { currentOrg, isSubOrganization } = useOrganization();
-  const { subscription } = useSubscription();
-  const { pathname } = useLocation();
-  const navigate = useNavigate();
-  const orgId = currentOrg.id;
-
-  const isOnAccessControl =
-    pathname.startsWith(`/organizations/${orgId}/access-management`) ||
-    Boolean(pathname.match(/organizations\/[^/]+\/(members|identities|groups|roles)/));
-  const isOnSettings = pathname.startsWith(`/organizations/${orgId}/settings`);
-  const isOnSecretSharing = pathname.startsWith(`/organizations/${orgId}/secret-sharing`);
-  const isOnNetworking = pathname.startsWith(`/organizations/${orgId}/networking`);
-
-  const getInitialSubmenu = (): Submenu | null => {
-    if (isOnAccessControl) return ORG_ACCESS_CONTROL_SUBMENU;
-    if (isOnSettings)
-      return getOrgSettingsSubmenu({
-        isSubOrganization,
-        hasSubOrganization: Boolean(subscription?.subOrganization)
-      });
-    if (isOnSecretSharing) return getSecretSharingSubmenu({ isSubOrganization });
-    if (isOnNetworking) return NETWORKING_SUBMENU;
-    return null;
-  };
-
-  const [activeSubmenu, setActiveSubmenu] = useState<Submenu | null>(getInitialSubmenu);
-
-  useEffect(() => {
-    setActiveSubmenu(getInitialSubmenu());
-  }, [pathname]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const handleSubmenuOpen = (submenu: Submenu) => {
-    setActiveSubmenu(submenu);
-    navigate({
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      to: `/organizations/$orgId/${submenu.pathSuffix}` as any,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      params: { orgId } as any,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      search: { selectedTab: submenu.defaultTab } as any
-    });
-  };
-
-  return (
     <AnimatePresence mode="wait" initial={false}>
-      {activeSubmenu ? (
+      {showSettings ? (
         <motion.div
           key="submenu"
           initial={{ x: 30, opacity: 0 }}
@@ -198,7 +89,7 @@ export const OrgNavWrapper = () => {
           exit={{ x: 30, opacity: 0 }}
           transition={{ duration: 0.11, ease: "easeOut" }}
         >
-          <OrgSubmenuView submenu={activeSubmenu} onBack={() => setActiveSubmenu(null)} />
+          <OrgSettingsSubmenuView onBack={() => setShowSettings(false)} />
         </motion.div>
       ) : (
         <motion.div
@@ -208,9 +99,16 @@ export const OrgNavWrapper = () => {
           exit={{ x: -30, opacity: 0 }}
           transition={{ duration: 0.11, ease: "easeOut" }}
         >
-          <SidebarGroup>
-            <OrgNav onSubmenuOpen={handleSubmenuOpen} />
-          </SidebarGroup>
+          {groups.map((group) => (
+            <SidebarCollapsibleGroup
+              key={group.label}
+              label={group.label}
+              collapsible={group.collapsible}
+              defaultOpen={group.defaultOpen}
+            >
+              <OrgNavList items={group.items} onOpenSubmenu={handleOpenSettings} />
+            </SidebarCollapsibleGroup>
+          ))}
         </motion.div>
       )}
     </AnimatePresence>

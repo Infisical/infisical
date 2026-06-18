@@ -2,11 +2,23 @@ import { useMemo } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link } from "@tanstack/react-router";
+import { ArrowRightIcon } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { RoleOption } from "@app/components/roles";
-import { Button, FilterableSelect, FormControl, Modal, ModalContent } from "@app/components/v2";
+import {
+  Button,
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Field,
+  FieldError,
+  FieldLabel,
+  FilterableSelect
+} from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
 import {
   useAddGroupToWorkspace,
@@ -31,7 +43,7 @@ type Props = {
 
 // TODO: update backend to support adding multiple roles at once
 
-const Content = ({ popUp, handlePopUpToggle }: Props) => {
+const Content = ({ onClose }: { onClose: () => void }) => {
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
 
@@ -75,7 +87,7 @@ const Content = ({ popUp, handlePopUpToggle }: Props) => {
     });
 
     reset();
-    handlePopUpToggle("group", false);
+    onClose();
 
     createNotification({
       text: "Successfully added group to project",
@@ -84,78 +96,73 @@ const Content = ({ popUp, handlePopUpToggle }: Props) => {
   };
 
   return filteredGroupMembershipOrgs.length ? (
-    <form onSubmit={handleSubmit(onFormSubmit)}>
+    <form onSubmit={handleSubmit(onFormSubmit)} className="flex flex-col gap-4">
       <Controller
         control={control}
         name="group"
         render={({ field: { onChange, value }, fieldState: { error } }) => (
-          <FormControl label="Group" errorText={error?.message} isError={Boolean(error)}>
+          <Field>
+            <FieldLabel htmlFor="group">Group</FieldLabel>
             <FilterableSelect
+              inputId="group"
               value={value}
               onChange={onChange}
+              placeholder="Select group..."
+              autoFocus
+              isError={Boolean(error)}
+              options={filteredGroupMembershipOrgs}
               getOptionValue={(option) => option.id}
               getOptionLabel={(option) => option.name}
-              options={filteredGroupMembershipOrgs}
-              placeholder="Select group..."
             />
-          </FormControl>
+            <FieldError>{error?.message}</FieldError>
+          </Field>
         )}
       />
       <Controller
         control={control}
         name="role"
         render={({ field: { onChange, value }, fieldState: { error } }) => (
-          <FormControl
-            label="Role"
-            errorText={error?.message}
-            isError={Boolean(error)}
-            className="mt-4"
-          >
+          <Field>
+            <FieldLabel htmlFor="role">Role</FieldLabel>
             <FilterableSelect
+              inputId="role"
               value={value}
               onChange={onChange}
+              options={roles ?? []}
+              placeholder="Select role..."
+              isError={Boolean(error)}
               getOptionValue={(option) => option.slug}
               getOptionLabel={(option) => option.name}
-              options={roles}
-              placeholder="Select role..."
               components={{ Option: RoleOption }}
             />
-          </FormControl>
+            <FieldError>{error?.message}</FieldError>
+          </Field>
         )}
       />
-      <div className="mt-6 flex items-center">
-        <Button
-          className="mr-4"
-          size="sm"
-          type="submit"
-          isLoading={isSubmitting}
-          isDisabled={isSubmitting}
-        >
-          {popUp?.group?.data ? "Update" : "Add"}
-        </Button>
-        <Button
-          colorSchema="secondary"
-          variant="plain"
-          onClick={() => handlePopUpToggle("group", false)}
-        >
+      <DialogFooter>
+        <Button variant="ghost" type="button" onClick={onClose}>
           Cancel
         </Button>
-      </div>
+        <Button variant="project" type="submit" isPending={isSubmitting} isDisabled={isSubmitting}>
+          Add
+        </Button>
+      </DialogFooter>
     </form>
   ) : (
-    <div className="flex flex-col space-y-4">
-      <div className="text-sm">
+    <div className="flex flex-col gap-4">
+      <p className="text-sm">
         Every group in your organization is already added. To add another group, create one at the
         organization level first.
-      </div>
-      <Link
-        to={"/organizations/$orgId/access-management" as const}
-        params={{ orgId }}
-        search={{ selectedTab: "groups" }}
-        className="self-end"
-      >
-        <Button variant="outline_bg">Go to organization groups -&gt;</Button>
-      </Link>
+      </p>
+      <Button asChild variant="outline" className="self-end">
+        <Link
+          to={"/organizations/$orgId/access-management" as const}
+          params={{ orgId }}
+          search={{ selectedTab: "groups" }}
+        >
+          Go to organization groups <ArrowRightIcon />
+        </Link>
+      </Button>
     </div>
   );
 };
@@ -166,13 +173,16 @@ export const GroupModal = ({ popUp, handlePopUpToggle }: Props) => {
   const productLabel = isCertManager ? "Certificate Manager" : "Project";
 
   return (
-    <Modal
-      isOpen={popUp?.group?.isOpen}
+    <Dialog
+      open={popUp?.group?.isOpen}
       onOpenChange={(isOpen) => handlePopUpToggle("group", isOpen)}
     >
-      <ModalContent bodyClassName="overflow-visible" title={`Add Group to ${productLabel}`}>
-        <Content popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-      </ModalContent>
-    </Modal>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>{`Add Group to ${productLabel}`}</DialogTitle>
+        </DialogHeader>
+        <Content onClose={() => handlePopUpToggle("group", false)} />
+      </DialogContent>
+    </Dialog>
   );
 };

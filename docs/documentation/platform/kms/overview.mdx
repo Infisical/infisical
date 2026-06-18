@@ -49,6 +49,7 @@ In the following steps, we explore how to generate a key and use it to encrypt d
                 - Key Usage: The type of key to create (e.g `Encrypt/Decrypt` for encryption, and `Sign/Verify` for signing).
                 - Algorithm: The encryption algorithm associated with the key (e.g. `AES-GCM-256`).
                 - Description: An optional description of what the intended usage is for the key.
+                - Allow Export: Whether the raw key material can be exported later. When disabled, the key material can never leave Infisical, regardless of permissions. This cannot be changed after the key is created.
 
                 ![kms add key modal](/images/platform/kms/infisical-kms/kms-add-key-modal.png)
             </Step>
@@ -402,11 +403,17 @@ The exported file is a JSON array where each entry is one of the following shape
   The exported file contains sensitive cryptographic key material. Store it securely and do not share it.
 </Warning>
 
+<Note>
+  Keys created with **Allow Export** disabled are non-exportable. They cannot be selected for export,
+  and any export request for them (including over KMIP) is rejected, regardless of the caller's permissions.
+</Note>
+
 ### Bulk Import
 
 1. Navigate to **Project > Key Management**.
 2. In the top-right of the keys table, click the dropdown arrow next to **Add Key** and select **Import Keys**.
 3. Upload a `.json` file matching the export format described above (drag and drop, or click to browse).
+   Each entry may also include an optional `"isExportable": false` field to import the key as non-exportable.
 ![kms import modal](/images/platform/kms/infisical-kms/kms-import-modal.png)
 4. A preview of the keys to be imported is shown, along with any validation errors.
 ![kms import preview](/images/platform/kms/infisical-kms/kms-import-preview.png)

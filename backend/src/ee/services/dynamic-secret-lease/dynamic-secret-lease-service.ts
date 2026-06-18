@@ -20,10 +20,14 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
+import { convertDynamicSecretProviderToValidationRuleProvider } from "@app/services/secret-validation-rule/secret-validation-rule-fns";
+import { TSecretValidationRuleServiceFactory } from "@app/services/secret-validation-rule/secret-validation-rule-service";
+import { SecretValidationRuleType } from "@app/services/secret-validation-rule/secret-validation-rule-types";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TDynamicSecretDALFactory } from "../dynamic-secret/dynamic-secret-dal";
 import { DynamicSecretProviders, TDynamicProviderFns } from "../dynamic-secret/providers/models";
+import { toSafeUsername } from "../dynamic-secret/providers/templateUtils";
 import { TDynamicSecretLeaseDALFactory } from "./dynamic-secret-lease-dal";
 import { TDynamicSecretLeaseQueueServiceFactory } from "./dynamic-secret-lease-queue";
 import {
@@ -44,6 +48,7 @@ type TDynamicSecretLeaseServiceFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   userDAL: Pick<TUserDALFactory, "findById">;
   identityDAL: TIdentityDALFactory;
+  secretValidationRuleService: Pick<TSecretValidationRuleServiceFactory, "findConstraintsForGeneratedSecret">;
 };
 
 export const dynamicSecretLeaseServiceFactory = ({
@@ -57,7 +62,8 @@ export const dynamicSecretLeaseServiceFactory = ({
   licenseService,
   kmsService,
   userDAL,
-  identityDAL
+  identityDAL,
+  secretValidationRuleService
 }: TDynamicSecretLeaseServiceFactoryDep): TDynamicSecretLeaseServiceFactory => {
   const extractEmailUsername = (email: string) => {
     const regex = new RE2(/^([^@]+)/);
@@ -148,23 +154,41 @@ export const dynamicSecretLeaseServiceFactory = ({
       if (actor === ActorType.USER) {
         const user = await requestMemoize(requestMemoKeys.userFindById(actorId), () => userDAL.findById(actorId));
         if (user) {
-          identity.name = extractEmailUsername(user.username);
+          identity.name = toSafeUsername(extractEmailUsername(user.username));
         }
       } else if (actor === ActorType.IDENTITY) {
         const machineIdentity = await requestMemoize(requestMemoKeys.identityFindById(actorId), () =>
           identityDAL.findById(actorId)
         );
         if (machineIdentity) {
-          identity.name = machineIdentity.name;
+          identity.name = toSafeUsername(machineIdentity.name);
         }
       }
+      const ruleProvider = convertDynamicSecretProviderToValidationRuleProvider(
+        dynamicSecretCfg.type as DynamicSecretProviders
+      );
+
+      let passwordValidation;
+      if (ruleProvider) {
+        const matched = await secretValidationRuleService.findConstraintsForGeneratedSecret({
+          projectId,
+          envId: folder.envId,
+          secretPath: path,
+          type: SecretValidationRuleType.DynamicSecrets,
+          provider: ruleProvider
+        });
+        if (matched.constraints.length) {
+          passwordValidation = matched;
+        }
+      }
+
       result = await selectedProvider.create({
         inputs: decryptedStoredInput,
         expireAt: expireAt.getTime(),
         usernameTemplate: dynamicSecretCfg.usernameTemplate,
         identity,
         dynamicSecret: dynamicSecretCfg,
-        metadata: { projectId },
+        metadata: { projectId, passwordValidation },
         config
       });
     } catch (error: unknown) {

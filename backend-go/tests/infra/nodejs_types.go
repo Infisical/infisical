@@ -178,14 +178,16 @@ type SecretMetadataEntry struct {
 
 // CreateSecretRequest is the request body for POST /api/v4/secrets/{key}.
 type CreateSecretRequest struct {
-	ProjectID      string                `json:"projectId"`
-	Environment    string                `json:"environment"`
-	SecretPath     string                `json:"secretPath"`
-	SecretValue    string                `json:"secretValue"`
-	SecretComment  string                `json:"secretComment,omitempty"`
-	SecretMetadata []SecretMetadataEntry `json:"secretMetadata,omitempty"`
-	Type           string                `json:"type"`
-	TagIDs         []string              `json:"tagIds,omitempty"`
+	ProjectID                string                `json:"projectId"`
+	Environment              string                `json:"environment"`
+	SecretPath               string                `json:"secretPath"`
+	SecretValue              string                `json:"secretValue"`
+	SecretComment            string                `json:"secretComment,omitempty"`
+	SecretMetadata           []SecretMetadataEntry `json:"secretMetadata,omitempty"`
+	Type                     string                `json:"type"`
+	TagIDs                   []string              `json:"tagIds,omitempty"`
+	SecretReminderNote       string                `json:"secretReminderNote,omitempty"`
+	SecretReminderRepeatDays *int                  `json:"secretReminderRepeatDays,omitempty"`
 }
 
 // CreateSecretResponse is the response from POST /api/v4/secrets/{key}.

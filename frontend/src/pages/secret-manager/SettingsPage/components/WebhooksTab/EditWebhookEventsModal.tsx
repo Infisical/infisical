@@ -1,8 +1,21 @@
-import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { components, OptionProps } from "react-select";
 import { CheckIcon } from "lucide-react";
 
-import { Button, FilterableSelect, FormControl, Modal, ModalContent } from "@app/components/v2";
+import {
+  Button,
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Field,
+  FieldDescription,
+  FieldLabel,
+  FilterableSelect
+} from "@app/components/v3";
 import {
   TWebhook,
   WEBHOOK_EVENT_METADATA,
@@ -39,7 +52,7 @@ const OptionWithDescription = (props: OptionProps<TWebhookEventOption>) => {
       <div className="flex flex-row items-center justify-between">
         <div className="min-w-0 flex-1">
           <p className="truncate font-medium">{children}</p>
-          <p className="truncate text-xs leading-4 text-mineshaft-400">{data.description}</p>
+          <p className="truncate text-xs leading-4 text-muted">{data.description}</p>
         </div>
         {isSelected && <CheckIcon className="ml-2 size-4 shrink-0" />}
       </div>
@@ -69,12 +82,12 @@ export const EditWebhookEventsModal = ({
   const defaultSettings = useMemo<TWebhookEventSettings>(
     () => ({
       [WebhookEvent.SecretModified]: true,
-      [WebhookEvent.SecretRotationFailed]: true
+      [WebhookEvent.SecretRotationFailed]: true,
+      [WebhookEvent.HoneyTokenTriggered]: true
     }),
     []
   );
   const [eventSettings, setEventSettings] = useState<TWebhookEventSettings>(defaultSettings);
-  const modalContainer = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -119,52 +132,53 @@ export const EditWebhookEventsModal = ({
   };
 
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-      <ModalContent
-        ref={modalContainer}
-        title="Edit Webhook Events"
-        subTitle="Select which events should trigger this webhook."
-      >
-        <form onSubmit={handleSave}>
-          <FormControl
-            label="Events"
-            helperText={
-              !hasSelection
-                ? "No events selected. The webhook will trigger on all events by default."
-                : undefined
-            }
-          >
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-xl">
+        <DialogHeader>
+          <DialogTitle>Edit Webhook Events</DialogTitle>
+          <DialogDescription>Select which events should trigger this webhook.</DialogDescription>
+        </DialogHeader>
+
+        <form onSubmit={handleSave} className="flex flex-col gap-6">
+          <Field>
+            <FieldLabel htmlFor="webhook-events">Events</FieldLabel>
             <FilterableSelect
               isMulti
+              inputId="webhook-events"
               options={EVENT_OPTIONS}
               value={selectedOptions}
               onChange={(selected) => handleChange(selected as readonly TWebhookEventOption[])}
               getOptionValue={(option) => option.value}
               getOptionLabel={(option) => option.label}
               placeholder="Select events..."
-              menuPortalTarget={modalContainer.current}
               menuPlacement="bottom"
               closeMenuOnSelect={false}
               hideSelectedOptions={false}
               components={{ Option: OptionWithDescription }}
             />
-          </FormControl>
-
-          <div className="mt-6 flex items-center justify-end space-x-4">
+            {!hasSelection && (
+              <FieldDescription>
+                No events selected. The webhook will trigger on all events by default.
+              </FieldDescription>
+            )}
+          </Field>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button type="button" variant="ghost">
+                Cancel
+              </Button>
+            </DialogClose>
             <Button
-              type="button"
-              variant="plain"
-              colorSchema="secondary"
-              onClick={() => onOpenChange(false)}
+              type="submit"
+              variant="project"
+              isPending={isSubmitting}
+              isDisabled={isSubmitting}
             >
-              Cancel
-            </Button>
-            <Button type="submit" isDisabled={isSubmitting} isLoading={isSubmitting}>
               Save Changes
             </Button>
-          </div>
+          </DialogFooter>
         </form>
-      </ModalContent>
-    </Modal>
+      </DialogContent>
+    </Dialog>
   );
 };

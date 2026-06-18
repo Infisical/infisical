@@ -15,6 +15,7 @@ import { usePopUp } from "@app/hooks/usePopUp";
 import {
   AuthMethodChart,
   CalendarCard,
+  DuplicatedSecretsCard,
   InsightsSummaryCards,
   SecretAccessChart
 } from "./components";
@@ -41,12 +42,12 @@ export const InsightsPage = withProjectPermission(
           description="Monitor upcoming secret rotations and reminders across your project."
         />
         <InsightsSummaryCards />
-        <div className="flex flex-col gap-6 xl:flex-row">
-          <div className="mt-6 flex flex-[1.3] flex-col gap-6">
-            {/* <WorldMap /> */}
+        <div className="mt-6 grid items-start gap-6 xl:grid-cols-[1.3fr_1fr]">
+          <div className="flex flex-col gap-6">
+            <DuplicatedSecretsCard />
             <CalendarCard />
           </div>
-          <div className="flex flex-1 flex-col gap-6 xl:mt-6">
+          <div className="flex flex-col gap-6">
             <SecretAccessChart />
             <AuthMethodChart />
           </div>

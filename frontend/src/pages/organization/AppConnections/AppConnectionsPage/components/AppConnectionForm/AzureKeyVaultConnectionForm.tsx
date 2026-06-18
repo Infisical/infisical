@@ -5,6 +5,7 @@ import { Controller, FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
+import { OrgPermissionCan } from "@app/components/permissions";
 import {
   Button,
   FormControl,
@@ -12,8 +13,15 @@ import {
   ModalClose,
   SecretInput,
   Select,
-  SelectItem
+  SelectItem,
+  Tooltip
 } from "@app/components/v2";
+import { GatewayPicker } from "@app/components/v3/platform/GatewayPicker";
+import { useSubscription } from "@app/context";
+import {
+  OrgGatewayPermissionActions,
+  OrgPermissionSubjects
+} from "@app/context/OrgPermissionContext/types";
 import {
   APP_CONNECTION_MAP,
   getAppConnectionMethodDetails,
@@ -97,7 +105,9 @@ const getDefaultValues = (appConnection?: TAzureKeyVaultConnection): Partial<For
       app: AppConnection.AzureKeyVault,
       method: AzureKeyVaultConnectionMethod.OAuth,
       isAutoRotationEnabled: false,
-      rotation: defaultRotation
+      rotation: defaultRotation,
+      gatewayId: null,
+      gatewayPoolId: null
     };
   }
 
@@ -107,7 +117,9 @@ const getDefaultValues = (appConnection?: TAzureKeyVaultConnection): Partial<For
     app: appConnection.app,
     method: appConnection.method,
     isAutoRotationEnabled: appConnection.isAutoRotationEnabled,
-    rotation: appConnection.rotation ?? defaultRotation
+    rotation: appConnection.rotation ?? defaultRotation,
+    gatewayId: appConnection.gatewayId,
+    gatewayPoolId: appConnection.gatewayPoolId
   };
   const { credentials } = appConnection;
 
@@ -174,11 +186,16 @@ export const AzureKeyVaultConnectionForm = ({ appConnection, onSubmit, projectId
   const {
     handleSubmit,
     control,
+    setValue,
     watch,
     formState: { isSubmitting, isDirty }
   } = form;
 
   const selectedMethod = watch("method");
+  const gatewayId = watch("gatewayId");
+  const gatewayPoolId = watch("gatewayPoolId");
+
+  const { subscription } = useSubscription();
 
   const onSubmitHandler = async (formData: FormData) => {
     const state = crypto.randomBytes(16).toString("hex");
@@ -273,6 +290,33 @@ export const AzureKeyVaultConnectionForm = ({ appConnection, onSubmit, projectId
             </FormControl>
           )}
         />
+
+        {subscription.gateway && (
+          <OrgPermissionCan
+            I={OrgGatewayPermissionActions.AttachGateways}
+            a={OrgPermissionSubjects.Gateway}
+          >
+            {(isAllowed) => (
+              <FormControl label="Gateway">
+                <Tooltip
+                  isDisabled={isAllowed}
+                  content="Restricted access. You don't have permission to attach gateways to resources."
+                >
+                  <div>
+                    <GatewayPicker
+                      isDisabled={!isAllowed}
+                      value={{ gatewayId: gatewayId ?? null, gatewayPoolId: gatewayPoolId ?? null }}
+                      onChange={({ gatewayId: newGwId, gatewayPoolId: newPoolId }) => {
+                        setValue("gatewayId", newGwId, { shouldDirty: true });
+                        setValue("gatewayPoolId", newPoolId, { shouldDirty: true });
+                      }}
+                    />
+                  </div>
+                </Tooltip>
+              </FormControl>
+            )}
+          </OrgPermissionCan>
+        )}
 
         {selectedMethod === AzureKeyVaultConnectionMethod.OAuth && (
           <Controller

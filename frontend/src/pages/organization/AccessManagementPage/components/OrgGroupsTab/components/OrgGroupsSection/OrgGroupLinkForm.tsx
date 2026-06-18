@@ -5,7 +5,15 @@ import { useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, FilterableSelect, FormControl } from "@app/components/v2";
+import { RoleOption } from "@app/components/roles";
+import {
+  Button,
+  DialogFooter,
+  Field,
+  FieldError,
+  FieldLabel,
+  FilterableSelect
+} from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import { useGetOrgRoles } from "@app/hooks/api";
 import { useCreateOrgGroupMembership } from "@app/hooks/api/orgGroupMembership";
@@ -68,60 +76,58 @@ export const OrgGroupLinkForm = ({ onClose }: Props) => {
   };
 
   return (
-    <form onSubmit={handleSubmit(onFormSubmit)}>
+    <form onSubmit={handleSubmit(onFormSubmit)} className="flex flex-col gap-4">
       <Controller
         control={control}
         name="group"
         render={({ field: { onChange, value }, fieldState: { error } }) => (
-          <FormControl label="Group" errorText={error?.message} isError={Boolean(error)}>
+          <Field>
+            <FieldLabel htmlFor="group">Group</FieldLabel>
             <FilterableSelect
+              inputId="group"
               value={value}
               onChange={onChange}
               placeholder="Select group..."
               autoFocus
+              isError={Boolean(error)}
               options={rootOrgGroups ?? []}
               getOptionValue={(option) => option.id}
               getOptionLabel={(option) => option.name}
               isLoading={isRootOrgLoading}
             />
-          </FormControl>
+            <FieldError>{error?.message}</FieldError>
+          </Field>
         )}
       />
       <Controller
         control={control}
         name="role"
         render={({ field: { onChange, value }, fieldState: { error } }) => (
-          <FormControl
-            label="Role"
-            errorText={error?.message}
-            isError={Boolean(error)}
-            className="mt-4"
-          >
+          <Field>
+            <FieldLabel htmlFor="role">Role</FieldLabel>
             <FilterableSelect
+              inputId="role"
               value={value}
               onChange={onChange}
               options={roles ?? []}
               placeholder="Select role..."
+              isError={Boolean(error)}
               getOptionValue={(option) => option.slug}
               getOptionLabel={(option) => option.name}
+              components={{ Option: RoleOption }}
             />
-          </FormControl>
+            <FieldError>{error?.message}</FieldError>
+          </Field>
         )}
       />
-      <div className="flex items-center">
-        <Button
-          className="mr-4"
-          size="sm"
-          type="submit"
-          isLoading={isSubmitting}
-          isDisabled={isSubmitting}
-        >
-          Link
-        </Button>
-        <Button colorSchema="secondary" variant="plain" onClick={() => onClose()}>
+      <DialogFooter>
+        <Button variant="ghost" type="button" onClick={() => onClose()}>
           Cancel
         </Button>
-      </div>
+        <Button variant="org" type="submit" isPending={isSubmitting} isDisabled={isSubmitting}>
+          Link
+        </Button>
+      </DialogFooter>
     </form>
   );
 };

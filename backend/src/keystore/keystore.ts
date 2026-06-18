@@ -88,12 +88,18 @@ export const KeyStorePrefixes = {
   UserMfaUnlockEmailSent: (userId: string) => `user-mfa-unlock-email-sent:${userId}` as const,
   UsedTotpCode: (userId: string, code: string) => `used-totp-code:${userId}:${code}` as const,
   UsedAccountRecoveryToken: (userId: string, jti: string) => `used-account-recovery-token:${userId}:${jti}` as const,
+  UsedGitHubManifestState: (jti: string) => `used-github-manifest-state:${jti}` as const,
+  GitHubManifestNameLock: (orgId: string, projectId: string | null, name: string) =>
+    `github-manifest-name-lock:${orgId}:${projectId ?? "org"}:${name}` as const,
 
   AiMcpServerOAuth: (sessionId: string) => `ai-mcp-server-oauth:${sessionId}` as const,
 
   // AI MCP Endpoint OAuth
   AiMcpEndpointOAuthClient: (clientId: string) => `ai-mcp-endpoint-oauth-client:${clientId}` as const,
   AiMcpEndpointOAuthCode: (clientId: string, code: string) => `ai-mcp-endpoint-oauth-code:${clientId}:${code}` as const,
+
+  // OAuth 2.0 authorization server (Infisical as an OAuth provider)
+  OauthAuthorizationCode: (code: string) => `oauth-authorization-code:${code}` as const,
 
   // Project SSE Connection Rate Limiting
   ProjectSSEConnectionsSet: (projectId: string) => `project-sse-connections:${projectId}` as const,
@@ -124,6 +130,9 @@ export const KeyStorePrefixes = {
   SecretManagerCachePattern: "secret-manager:*",
   AuditLogMigrationAlert: "audit-log-migration-alert-last-row-count",
   LicenseCloudPlan: (orgId: string) => `infisical-cloud-plan-${orgId}` as const,
+  LicenseEntitlements: (orgId: string) => `license-entitlements-${orgId}` as const,
+  LicenseUsageLastReported: (orgId: string, featureKey: string) =>
+    `license-usage-last-reported-${orgId}-${featureKey}` as const,
   IdentityLockoutState: (identityId: string, authMethod: string, slug: string) =>
     `lockout:identity:${identityId}:${authMethod}:${slug}` as const,
   IdentityLockoutStateByMethodPattern: (identityId: string, authMethod: string) =>
@@ -132,7 +141,10 @@ export const KeyStorePrefixes = {
 
   TelemetryEvent: (event: string, bucketId: string, distinctId: string, uuid: string) =>
     `telemetry-event-${event}-${bucketId}-${distinctId}-${uuid}` as const,
-  TelemetryEventByBucketPattern: (event: string, bucketId: string) => `telemetry-event-${event}-${bucketId}-*` as const
+  TelemetryEventByBucketPattern: (event: string, bucketId: string) => `telemetry-event-${event}-${bucketId}-*` as const,
+
+  AuditLogStreamFlushDebounce: (streamId: string) => `audit-log-stream:${streamId}:flush-debounce` as const,
+  AuditLogIngestConsumerLock: "audit-log-ingest:consumer-lock" as const
 };
 
 export const KeyStoreTtls = {
@@ -150,11 +162,15 @@ export const KeyStoreTtls = {
   EmailSignupOtpInSeconds: 300, // 5 minutes
   EmailSignupResendCooldownInSeconds: 60, // 1 minute
   InsightsCacheInSeconds: 300, // 5 minutes
+  InsightsDuplicationCacheInSeconds: 3600, // 1 hour
   AdminConfigInSeconds: 60,
   InvalidatingCacheInSeconds: 1800, // 30 minutes max lock for cache invalidation job
   AuditLogMigrationAlertInSeconds: 604800, // 7 days
   LicenseCloudPlanInSeconds: 300, // 5 minutes
+  LicenseEntitlementsInSeconds: 1800, // 30 minutes
+  LicenseUsageLastReportedInSeconds: 7776000, // 90 days (~3 billing cycles) so orphaned meter keys self-clean
   AiMcpEndpointOAuthFlowInSeconds: 300, // 5 minutes
+  OauthAuthorizationCodeInSeconds: 600, // 10 minutes
   AiMcpServerOAuthSessionInSeconds: 600, // 10 minutes
   DashboardCacheInSeconds: 600, // 10 minutes
   ProjectEnvironmentOperationMarkerInSeconds: 10,
@@ -441,7 +457,7 @@ export const keyStoreFactory = (
   const listLength = async (key: string) => pickPrimaryOrSecondaryRedis(primaryRedis, redisReadReplicas).llen(key);
 
   // Stream operations
-  const streamAdd = async (key: string, id: string, fieldValue: Record<string, string>, maxLen = 1000000) => {
+  const streamAdd = async (key: string, id: string, fieldValue: Record<string, string>, maxLen = 1_000_000) => {
     const args: string[] = [];
     for (const [field, value] of Object.entries(fieldValue)) {
       args.push(field, value);

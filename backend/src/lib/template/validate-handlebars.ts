@@ -5,11 +5,11 @@ import { logger } from "../logger";
 
 type SanitizationArg = {
   allowedExpressions?: (arg: string) => boolean;
+  allowedHelpers?: string[];
 };
 
 const isValidExpression = (expression: string, dto: SanitizationArg): boolean => {
-  // Allow helper functions (replace, truncate)
-  const allowedHelpers = ["replace", "truncate", "random", "uppercase", "lowercase"];
+  const allowedHelpers = dto.allowedHelpers ?? ["replace", "truncate", "random", "uppercase", "lowercase"];
   if (allowedHelpers.includes(expression)) {
     return true;
   }

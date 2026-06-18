@@ -3,6 +3,7 @@ import { ForbiddenError } from "@casl/ability";
 import { OrganizationActionScope } from "@app/db/schemas";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { KmipOperationType, recordKmipOperationMetric } from "@app/lib/telemetry/metrics";
+import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { TKmsKeyDALFactory } from "@app/services/kms/kms-key-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsKeyUsage } from "@app/services/kms/kms-types";
@@ -36,6 +37,33 @@ export const kmipOperationServiceFactory = ({
   kmipClientDAL,
   permissionService
 }: TKmipOperationServiceFactoryDep) => {
+  // KMIP servers authenticate via their enrollment-based access token, which is itself the
+  // authorization — no org-level permission needed. The legacy machine-identity path still
+  // requires the (deprecated) KMIP proxy permission.
+  const $authorizeProxyAccess = async ({
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: {
+    actor: ActorType;
+    actorId: string;
+    actorAuthMethod: ActorAuthMethod;
+    actorOrgId: string;
+  }) => {
+    if (actor === ActorType.KMIP_SERVER) return;
+
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
+      actor,
+      actorId,
+      orgId: actorOrgId,
+      actorAuthMethod,
+      actorOrgId
+    });
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionKmipActions.Proxy, OrgPermissionSubjects.Kmip);
+  };
+
   const create = async ({
     projectId,
     clientId,
@@ -45,16 +73,7 @@ export const kmipOperationServiceFactory = ({
     actorAuthMethod,
     actorOrgId
   }: TKmipCreateDTO) => {
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId: actorOrgId,
-      actorAuthMethod,
-      actorOrgId
-    });
-
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionKmipActions.Proxy, OrgPermissionSubjects.Kmip);
+    await $authorizeProxyAccess({ actor, actorId, actorAuthMethod, actorOrgId });
 
     const kmipClient = await kmipClientDAL.findOne({
       id: clientId,
@@ -87,16 +106,7 @@ export const kmipOperationServiceFactory = ({
   };
 
   const destroy = async ({ projectId, id, clientId, actor, actorId, actorOrgId, actorAuthMethod }: TKmipDestroyDTO) => {
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId: actorOrgId,
-      actorAuthMethod,
-      actorOrgId
-    });
-
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionKmipActions.Proxy, OrgPermissionSubjects.Kmip);
+    await $authorizeProxyAccess({ actor, actorId, actorAuthMethod, actorOrgId });
 
     const kmipClient = await kmipClientDAL.findOne({
       id: clientId,
@@ -150,16 +160,7 @@ export const kmipOperationServiceFactory = ({
   };
 
   const get = async ({ projectId, id, clientId, actor, actorId, actorAuthMethod, actorOrgId }: TKmipGetDTO) => {
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId: actorOrgId,
-      actorAuthMethod,
-      actorOrgId
-    });
-
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionKmipActions.Proxy, OrgPermissionSubjects.Kmip);
+    await $authorizeProxyAccess({ actor, actorId, actorAuthMethod, actorOrgId });
 
     const kmipClient = await kmipClientDAL.findOne({
       id: clientId,
@@ -218,16 +219,7 @@ export const kmipOperationServiceFactory = ({
   };
 
   const activate = async ({ projectId, id, clientId, actor, actorId, actorAuthMethod, actorOrgId }: TKmipGetDTO) => {
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId: actorOrgId,
-      actorAuthMethod,
-      actorOrgId
-    });
-
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionKmipActions.Proxy, OrgPermissionSubjects.Kmip);
+    await $authorizeProxyAccess({ actor, actorId, actorAuthMethod, actorOrgId });
 
     const kmipClient = await kmipClientDAL.findOne({
       id: clientId,
@@ -265,16 +257,7 @@ export const kmipOperationServiceFactory = ({
   };
 
   const revoke = async ({ projectId, id, clientId, actor, actorId, actorAuthMethod, actorOrgId }: TKmipRevokeDTO) => {
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId: actorOrgId,
-      actorAuthMethod,
-      actorOrgId
-    });
-
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionKmipActions.Proxy, OrgPermissionSubjects.Kmip);
+    await $authorizeProxyAccess({ actor, actorId, actorAuthMethod, actorOrgId });
 
     const kmipClient = await kmipClientDAL.findOne({
       id: clientId,
@@ -336,16 +319,7 @@ export const kmipOperationServiceFactory = ({
     actorAuthMethod,
     actorOrgId
   }: TKmipGetAttributesDTO) => {
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId: actorOrgId,
-      actorAuthMethod,
-      actorOrgId
-    });
-
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionKmipActions.Proxy, OrgPermissionSubjects.Kmip);
+    await $authorizeProxyAccess({ actor, actorId, actorAuthMethod, actorOrgId });
 
     const kmipClient = await kmipClientDAL.findOne({
       id: clientId,
@@ -399,16 +373,7 @@ export const kmipOperationServiceFactory = ({
   };
 
   const locate = async ({ projectId, clientId, actor, actorId, actorAuthMethod, actorOrgId }: TKmipLocateDTO) => {
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId: actorOrgId,
-      actorAuthMethod,
-      actorOrgId
-    });
-
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionKmipActions.Proxy, OrgPermissionSubjects.Kmip);
+    await $authorizeProxyAccess({ actor, actorId, actorAuthMethod, actorOrgId });
 
     const kmipClient = await kmipClientDAL.findOne({
       id: clientId,
@@ -445,16 +410,7 @@ export const kmipOperationServiceFactory = ({
     actorOrgId,
     kmipMetadata
   }: TKmipRegisterDTO) => {
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId: actorOrgId,
-      actorAuthMethod,
-      actorOrgId
-    });
-
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionKmipActions.Proxy, OrgPermissionSubjects.Kmip);
+    await $authorizeProxyAccess({ actor, actorId, actorAuthMethod, actorOrgId });
 
     const kmipClient = await kmipClientDAL.findOne({
       id: clientId,

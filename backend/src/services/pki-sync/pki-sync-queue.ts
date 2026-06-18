@@ -435,6 +435,8 @@ export const pkiSyncQueueFactory = ({
         throw new Error(`App connection not found: ${connectionId}`);
       }
 
+      const project = appConnectionProjectId ? await projectDAL.findById(appConnectionProjectId) : null;
+
       const credentials = await decryptAppConnectionCredentials({
         orgId,
         encryptedCredentials: appConnection.encryptedCredentials,
@@ -446,7 +448,8 @@ export const pkiSyncQueueFactory = ({
         ...pkiSync,
         connection: {
           ...pkiSync.connection,
-          credentials
+          credentials,
+          projectType: project?.type
         }
       } as TPkiSyncWithCredentials;
 
@@ -739,6 +742,8 @@ export const pkiSyncQueueFactory = ({
         throw new Error(`App connection not found: ${connectionId}`);
       }
 
+      const removeProject = appConnectionProjectId ? await projectDAL.findById(appConnectionProjectId) : null;
+
       const credentials = await decryptAppConnectionCredentials({
         orgId,
         encryptedCredentials: appConnection.encryptedCredentials,
@@ -753,7 +758,8 @@ export const pkiSyncQueueFactory = ({
           ...pkiSync,
           connection: {
             ...pkiSync.connection,
-            credentials
+            credentials,
+            projectType: removeProject?.type
           }
         } as TPkiSyncWithCredentials,
         Object.keys(certificateMap),

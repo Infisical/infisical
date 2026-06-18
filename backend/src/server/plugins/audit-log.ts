@@ -102,6 +102,13 @@ export const injectAuditLogInfo = fp(async (server: FastifyZodProvider) => {
           relayId: req.permission.id
         }
       };
+    } else if (req.auth.actor === ActorType.KMIP_SERVER) {
+      payload.actor = {
+        type: ActorType.KMIP_SERVER,
+        metadata: {
+          kmipServerId: req.permission.id
+        }
+      };
     } else {
       throw new BadRequestError({ message: "Invalid actor type provided" });
     }

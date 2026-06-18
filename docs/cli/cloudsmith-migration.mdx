@@ -1,0 +1,118 @@
+---
+title: 'Migrate off Cloudsmith'
+description: 'The Infisical CLI Linux package repository has moved from Cloudsmith to artifacts-cli.infisical.com. Learn how to migrate your package manager configuration.'
+---
+
+<Warning>
+  The Cloudsmith package repository stops serving on **September 16, 2026**. Any machine still pointed at the Cloudsmith URL will fail to install or update the Infisical CLI after that date. Follow the steps below to migrate now.
+</Warning>
+
+## What changed
+
+The Infisical CLI Linux package repository has moved from Cloudsmith to our own host at `artifacts-cli.infisical.com` (Amazon S3 served via CloudFront). All current and historical releases are available on the new host, so pinned version installs continue to resolve without changes to the version number.
+
+## Who is affected
+
+Anyone who installed the CLI on Linux from the Cloudsmith `apt`, `yum`/`dnf`, or `apk` repository is affected. This includes:
+
+- CI pipelines that install the CLI at build time
+- Container images with the CLI baked in
+- Developer machines running Linux
+
+Homebrew (macOS) and Windows users are **not affected**.
+
+## Impact of not migrating
+
+| Package manager | Effect of a dead Cloudsmith source |
+|---|---|
+| apt (Debian/Ubuntu) | `apt-get update` fails entirely, blocking **all** package operations |
+| yum/dnf (RHEL/CentOS/Fedora) | Infisical repo warns but other repos still work |
+| apk (Alpine) | Infisical repo warns but other repos still work |
+
+We recommend migrating regardless of your package manager to avoid any disruption.
+
+## Migration steps
+
+Remove the old Cloudsmith source first, then re-run the repository setup script for your distribution.
+
+<Tabs>
+  <Tab title="Debian / Ubuntu (apt)">
+    ```bash
+    # Remove old Cloudsmith source
+    grep -rlE 'cloudsmith.*infisical' /etc/apt/sources.list.d/ 2>/dev/null | xargs -r sudo rm -f
+
+    # Add new repository and install
+    curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | sudo -E bash
+    sudo apt-get update && sudo apt-get install -y infisical
+    ```
+  </Tab>
+  <Tab title="RHEL / CentOS / Fedora (yum/dnf)">
+    ```bash
+    # Remove old Cloudsmith source
+    grep -rlE 'cloudsmith.*infisical' /etc/yum.repos.d/ 2>/dev/null | xargs -r sudo rm -f
+
+    # Add new repository and install
+    curl -1sLf 'https://artifacts-cli.infisical.com/setup.rpm.sh' | sudo -E bash
+    sudo yum install -y infisical
+    ```
+  </Tab>
+  <Tab title="Alpine (apk)">
+    Run as root:
+    ```bash
+    # Remove old Cloudsmith source
+    sed -i '/cloudsmith.*infisical/d' /etc/apk/repositories
+
+    # Add new repository and install
+    wget -qO- 'https://artifacts-cli.infisical.com/setup.apk.sh' | sudo sh
+    apk update && apk add infisical
+    ```
+  </Tab>
+</Tabs>
+
+## Already on the new host but stuck on an older version?
+
+If you are on RHEL/CentOS/Fedora and your machine won't install the latest release, your repo config may be pointing at an outdated path from an earlier setup. Re-run the setup script to fix it, then refresh:
+
+```bash
+curl -1sLf 'https://artifacts-cli.infisical.com/setup.rpm.sh' | sudo -E bash
+sudo yum clean all && sudo yum makecache && sudo yum install -y infisical
+```
+
+<Note>
+  This version-pinning issue only affects RHEL/CentOS/Fedora (yum/dnf). Debian/Ubuntu and Alpine are not affected.
+</Note>
+
+## Verify the migration
+
+After running the setup script, confirm your package manager is pointing at the new host:
+
+<Tabs>
+  <Tab title="Debian / Ubuntu">
+    ```bash
+    grep -r 'infisical' /etc/apt/sources.list.d/
+    # Should show artifacts-cli.infisical.com, not cloudsmith.io
+    ```
+  </Tab>
+  <Tab title="RHEL / CentOS / Fedora">
+    ```bash
+    grep -r 'infisical' /etc/yum.repos.d/
+    # Should show artifacts-cli.infisical.com, not cloudsmith.io
+    ```
+  </Tab>
+  <Tab title="Alpine">
+    ```bash
+    grep 'infisical' /etc/apk/repositories
+    # Should show artifacts-cli.infisical.com, not cloudsmith.io
+    ```
+  </Tab>
+</Tabs>
+
+Then confirm the CLI installs or updates cleanly:
+
+```bash
+infisical --version
+```
+
+## Full installation instructions
+
+For a clean install from scratch, see the [CLI installation page](/cli/overview).
