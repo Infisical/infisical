@@ -53,7 +53,7 @@ export const InvoicesTable = () => {
                   <Td>{paid ? "Paid" : "Not Paid"}</Td>
                   <Td>{formattedTotal}</Td>
                   <Td>
-                    {paid && (
+                    {invoice_pdf && (
                       <IconButton
                         onClick={async () => window.open(invoice_pdf)}
                         size="lg"
