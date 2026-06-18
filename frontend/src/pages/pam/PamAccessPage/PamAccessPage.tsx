@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
-import { FolderOpen, Layers, Search } from "lucide-react";
+import { FolderOpen, KeyRound, Layers, Search } from "lucide-react";
 
 import { PageHeader } from "@app/components/v2";
 import {
@@ -86,12 +86,13 @@ export const PamAccessPage = () => {
   return (
     <>
       <Helmet>
-        <title>{t("common.head-title", { title: "Access" })}</title>
+        <title>{t("common.head-title", { title: "My Access" })}</title>
       </Helmet>
       <div className="mx-auto mb-6 w-full max-w-8xl">
         <PageHeader
           scope={ProjectType.PAM}
-          title="Access"
+          icon={KeyRound}
+          title="My Access"
           description="Every account you can connect to or request access to."
         />
 

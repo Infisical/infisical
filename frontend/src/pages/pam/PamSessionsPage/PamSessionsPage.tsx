@@ -3,7 +3,7 @@ import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
 import { format } from "date-fns";
-import { Activity, Ban, SearchIcon } from "lucide-react";
+import { Activity, Ban, SearchIcon, Video } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { DeleteActionModal, PageHeader } from "@app/components/v2";
@@ -151,6 +151,7 @@ export const PamSessionsPage = () => {
       </Helmet>
       <PageHeader
         scope={ProjectType.PAM}
+        icon={Video}
         title="Sessions"
         description="Monitor and manage active and historical sessions."
       />

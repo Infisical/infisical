@@ -148,6 +148,7 @@ export const PamAccountsPage = () => {
         title="Accounts"
         description="Privileged accounts grouped by folder."
         scope={ProjectType.PAM}
+        icon={FolderOpen}
       />
 
       <Card className="mt-4">

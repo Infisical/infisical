@@ -1,6 +1,7 @@
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useSearch } from "@tanstack/react-router";
+import { Shield } from "lucide-react";
 
 import { PageHeader } from "@app/components/v2";
 import { Badge, Tabs, TabsContent, TabsList, TabsTrigger } from "@app/components/v3";
@@ -46,6 +47,7 @@ export const PamAccessControlPage = () => {
       </Helmet>
       <PageHeader
         scope={ProjectType.PAM}
+        icon={Shield}
         title="Access Control"
         description="Manage members and groups for the PAM product."
       />

@@ -1,5 +1,6 @@
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
+import { FileText } from "lucide-react";
 
 import { PageHeader } from "@app/components/v2";
 import { useProject } from "@app/context";
@@ -17,6 +18,7 @@ export const PamAuditLogsPage = () => {
       </Helmet>
       <PageHeader
         scope={ProjectType.PAM}
+        icon={FileText}
         title="Audit Logs"
         description="Audit logs for security and compliance teams to monitor information access."
       />

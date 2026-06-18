@@ -1,7 +1,16 @@
 import { useMemo, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
-import { Eye, Layers, MoreHorizontal, Plus, Search, Settings, Trash2 } from "lucide-react";
+import {
+  ClipboardList,
+  Eye,
+  Layers,
+  MoreHorizontal,
+  Plus,
+  Search,
+  Settings,
+  Trash2
+} from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { PageHeader } from "@app/components/v2";
@@ -181,6 +190,7 @@ export const PamTemplatesPage = () => {
       <div className="mx-auto mb-6 w-full max-w-8xl">
         <PageHeader
           scope={ProjectType.PAM}
+          icon={ClipboardList}
           title="Account Templates"
           description="Templates define the policies, rotation behavior, and settings for a type of account."
         />

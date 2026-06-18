@@ -12,7 +12,7 @@ export const PamNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Submenu) =>
   const isResourceAdmin = Boolean(capabilities?.isResourceAdmin);
 
   const accessItems: NavItem[] = [
-    { label: "Access", icon: KeyRound, pathSuffix: "access", exactPath: true }
+    { label: "My Access", icon: KeyRound, pathSuffix: "access", exactPath: true }
   ];
 
   const manageItems: NavItem[] = [
