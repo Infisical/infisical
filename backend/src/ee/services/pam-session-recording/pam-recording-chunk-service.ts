@@ -247,7 +247,7 @@ export const pamSessionChunkServiceFactory = ({
     return { ok: true as const, projectId: session.projectId, storageBackend: backend };
   };
 
-  const getPlaybackBundle = async (sessionId: string, actor: OrgServiceActor) => {
+  const getSessionPlayback = async (sessionId: string, actor: OrgServiceActor) => {
     const session = await pamSessionDAL.findById(sessionId);
     if (!session) throw new NotFoundError({ message: `Session ${sessionId} not found` });
 
@@ -256,8 +256,7 @@ export const pamSessionChunkServiceFactory = ({
     const sessionComplete = session.status !== PamSessionStatus.Active && session.status !== PamSessionStatus.Starting;
 
     if (!session.encryptedSessionKey) {
-      // Legacy session fall through to legacy decrypt path
-      return { sessionKey: null, chunks: [], legacy: true as const, sessionComplete };
+      throw new NotFoundError({ message: `No recording available for session ${sessionId}` });
     }
 
     const sessionKey = await decryptSessionKey({
@@ -289,7 +288,6 @@ export const pamSessionChunkServiceFactory = ({
 
     return {
       sessionKey: sessionKey.toString("base64"),
-      legacy: false as const,
       sessionComplete,
       projectId: session.projectId,
       storageBackend: config?.backend ?? PamRecordingStorageBackend.Postgres,
@@ -328,5 +326,5 @@ export const pamSessionChunkServiceFactory = ({
     return { ciphertext: chunk.encryptedEventsBlob };
   };
 
-  return { requestPresignedPut, recordChunk, getPlaybackBundle, getChunkCiphertext };
+  return { requestPresignedPut, recordChunk, getSessionPlayback, getChunkCiphertext };
 };

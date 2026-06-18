@@ -109,7 +109,11 @@ export const PamSchemaFields = ({ control, namePrefix, fields }: Props) => {
                   {descriptor.label}
                   {descriptor.required && <RequiredMark />}
                 </FieldLabel>
-                <Switch checked={Boolean(field.value)} onCheckedChange={field.onChange} />
+                <Switch
+                  variant="pam"
+                  checked={Boolean(field.value)}
+                  onCheckedChange={field.onChange}
+                />
               </Field>
             ) : (
               <Field>

@@ -11,7 +11,9 @@ export const PamNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Submenu) =>
   const isProductAdmin = Boolean(capabilities?.isProductAdmin);
   const isResourceAdmin = Boolean(capabilities?.isResourceAdmin);
 
-  const accessItems: NavItem[] = [{ label: "Access", icon: KeyRound, pathSuffix: "access" }];
+  const accessItems: NavItem[] = [
+    { label: "Access", icon: KeyRound, pathSuffix: "access", exactPath: true }
+  ];
 
   const manageItems: NavItem[] = [
     ...(isProductAdmin || isResourceAdmin

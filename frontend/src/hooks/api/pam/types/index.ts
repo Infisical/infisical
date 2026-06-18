@@ -136,6 +136,7 @@ export type TPamSession = {
   accountId?: string | null;
   accountType: PamAccountType;
   accountName: string;
+  folderId?: string | null;
   folderName?: string | null;
   resourceName?: string | null;
   selectedHost?: string | null;
@@ -157,12 +158,6 @@ export type TPamSession = {
   aiInsightsError?: string | null;
   aiInsights?: TPamSessionAiInsights | null;
   reason?: string | null;
-};
-
-export type TPamSessionLogsPage = {
-  logs: TPamSessionLog[];
-  hasMore: boolean;
-  batchCount: number;
 };
 
 export type TAccessiblePamAccount = {

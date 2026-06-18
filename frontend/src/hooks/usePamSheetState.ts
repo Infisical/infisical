@@ -13,10 +13,11 @@ export const pamSheetSearchParams = z.object({
   accountId: z.string().optional().catch(undefined),
   folderId: z.string().optional().catch(undefined),
   templateId: z.string().optional().catch(undefined),
+  sessionId: z.string().optional().catch(undefined),
   tab: z.nativeEnum(PamSheetTab).optional().catch(undefined)
 });
 
-export type PamSheetKey = "accountId" | "folderId" | "templateId";
+export type PamSheetKey = "accountId" | "folderId" | "templateId" | "sessionId";
 
 export const usePamSheetState = (key: PamSheetKey) => {
   const navigate = useNavigate();

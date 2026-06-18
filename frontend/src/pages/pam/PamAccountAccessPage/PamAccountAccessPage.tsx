@@ -5,6 +5,7 @@ import { useParams } from "@tanstack/react-router";
 import { PamAccountType, TPamAccount, useGetPamAccountById } from "@app/hooks/api/pam";
 import { PamDataExplorerPage } from "@app/pages/pam/PamDataExplorerPage/PamDataExplorerPage";
 
+import { DisconnectedScreen } from "./DisconnectedScreen";
 import { SessionAccessGate } from "./ReasonGate";
 import { useWebAccessSession } from "./useWebAccessSession";
 
@@ -46,10 +47,11 @@ const TerminalContent = ({
   return (
     <div className="flex h-screen w-screen flex-col bg-background">
       <div
-        className="thin-scrollbar flex-1 overflow-x-auto overflow-y-hidden p-2 [&_.xterm-viewport]:thin-scrollbar"
+        className="relative thin-scrollbar flex-1 overflow-x-auto overflow-y-hidden p-2 [&_.xterm-viewport]:thin-scrollbar"
         style={{ minHeight: 0 }}
       >
         <div ref={containerRef} className="h-full" style={{ minWidth: "100%" }} />
+        {sessionEnded && <DisconnectedScreen onReconnect={handleReconnect} />}
       </div>
       <div className="flex items-center justify-between border-t border-border bg-card px-3 py-1.5 text-xs">
         <span className="flex items-center gap-1.5">
@@ -62,15 +64,6 @@ const TerminalContent = ({
               className="ml-2 text-muted hover:text-danger"
             >
               Disconnect
-            </button>
-          )}
-          {sessionEnded && (
-            <button
-              type="button"
-              onClick={handleReconnect}
-              className="ml-2 text-muted hover:text-success"
-            >
-              Reconnect
             </button>
           )}
         </span>

@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { faCircleXmark, faPlugCircleXmark } from "@fortawesome/free-solid-svg-icons";
+import { faPlugCircleXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { ContentLoader } from "@app/components/v2";
 import { TPamAccount } from "@app/hooks/api/pam";
 
+import { DisconnectedScreen } from "./DisconnectedScreen";
 import { useRdpSession } from "./useRdpSession";
 
 type RdpContentProps = {
@@ -79,19 +80,7 @@ export const RdpContent = ({
             </button>
           </div>
         )}
-        {sessionEnded && !error && (
-          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4">
-            <FontAwesomeIcon icon={faCircleXmark} size="3x" className="text-muted" />
-            <p className="text-sm text-muted">Session ended</p>
-            <button
-              type="button"
-              onClick={handleReconnect}
-              className="mt-2 rounded border border-border px-4 py-1.5 text-xs text-muted transition-colors hover:border-success hover:text-success"
-            >
-              Reconnect
-            </button>
-          </div>
-        )}
+        {sessionEnded && !error && <DisconnectedScreen onReconnect={handleReconnect} />}
       </div>
       <div className="flex h-[33px] shrink-0 items-center justify-between border-t border-border bg-card px-3 text-xs">
         <span className="flex items-center gap-1.5">

@@ -1,15 +1,13 @@
 import { PamSessionStatus } from "@app/hooks/api/pam";
 import { TPamSession } from "@app/hooks/api/pam/types";
 
-export const STATUS_BADGE: Record<
-  PamSessionStatus,
-  { variant: "pam" | "neutral" | "danger"; dot?: boolean }
-> = {
-  [PamSessionStatus.Starting]: { variant: "neutral" },
-  [PamSessionStatus.Active]: { variant: "pam", dot: true },
-  [PamSessionStatus.Ended]: { variant: "neutral" },
-  [PamSessionStatus.Terminated]: { variant: "danger" }
-};
+export const STATUS_BADGE: Record<PamSessionStatus, { variant: "success" | "neutral" | "danger" }> =
+  {
+    [PamSessionStatus.Starting]: { variant: "neutral" },
+    [PamSessionStatus.Active]: { variant: "success" },
+    [PamSessionStatus.Ended]: { variant: "neutral" },
+    [PamSessionStatus.Terminated]: { variant: "danger" }
+  };
 
 export const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
@@ -32,6 +30,6 @@ const getSessionEnd = (session: TPamSession) => {
 
 export const formatDuration = (session: TPamSession) => {
   const start = session.startedAt ? new Date(session.startedAt) : null;
-  if (!start) return "-";
+  if (!start) return "—";
   return formatCompactDuration(getSessionEnd(session).getTime() - start.getTime());
 };

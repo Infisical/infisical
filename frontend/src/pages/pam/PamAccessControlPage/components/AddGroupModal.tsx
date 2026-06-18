@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
+import { ExternalLink } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -20,34 +21,23 @@ import {
   useGetOrganizationGroups,
   useListWorkspaceGroups
 } from "@app/hooks/api";
+import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
+
+import { ProductRoleOptionList } from "./ProductRoleOptionList";
 
 type Props = {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
 };
 
-const ROLE_OPTIONS = [
-  {
-    value: "admin",
-    label: "Admin",
-    description:
-      "Full administrative access: manage accounts, account templates, settings, and access control."
-  },
-  {
-    value: "member",
-    label: "Member",
-    description: "Access limited to assigned folders and accounts."
-  }
-];
-
 export const AddGroupModal = ({ isOpen, onOpenChange }: Props) => {
   const { currentProject } = useProject();
   const { currentOrg } = useOrganization();
   const navigate = useNavigate();
-  const { mutateAsync: addGroup, isPending } = useAddGroupToWorkspace();
+  const { mutate: addGroup, isPending } = useAddGroupToWorkspace();
 
   const [selectedGroup, setSelectedGroup] = useState<{ id: string; name: string } | null>(null);
-  const [selectedRole, setSelectedRole] = useState("member");
+  const [selectedRole, setSelectedRole] = useState<string>(ProjectMembershipRole.Member);
 
   const { data: orgGroups } = useGetOrganizationGroups(currentOrg.id);
   const { data: projectGroups } = useListWorkspaceGroups(currentProject.id, currentProject.type);
@@ -59,25 +49,27 @@ export const AddGroupModal = ({ isOpen, onOpenChange }: Props) => {
 
   const handleClose = () => {
     setSelectedGroup(null);
-    setSelectedRole("member");
+    setSelectedRole(ProjectMembershipRole.Member);
     onOpenChange(false);
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     if (!selectedGroup) return;
 
-    try {
-      await addGroup({
+    addGroup(
+      {
         projectId: currentProject.id,
         projectType: currentProject.type,
         groupId: selectedGroup.id,
         role: selectedRole
-      });
-      createNotification({ text: "Group added", type: "success" });
-      handleClose();
-    } catch {
-      createNotification({ text: "Failed to add group", type: "error" });
-    }
+      },
+      {
+        onSuccess: () => {
+          createNotification({ text: "Group added", type: "success" });
+          handleClose();
+        }
+      }
+    );
   };
 
   return (
@@ -108,35 +100,7 @@ export const AddGroupModal = ({ isOpen, onOpenChange }: Props) => {
               <FieldLabel>
                 Product role <span className="text-product-pam">*</span>
               </FieldLabel>
-              <div className="flex flex-col gap-2">
-                {ROLE_OPTIONS.map((option) => {
-                  const isSelected = selectedRole === option.value;
-                  return (
-                    <button
-                      key={option.value}
-                      type="button"
-                      onClick={() => setSelectedRole(option.value)}
-                      className={`flex items-start gap-3 rounded-md border p-3 text-left transition-colors ${
-                        isSelected
-                          ? "border-product-pam/40 bg-product-pam/5"
-                          : "border-border bg-container hover:bg-container-hover"
-                      }`}
-                    >
-                      <div
-                        className={`mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full border ${
-                          isSelected ? "border-product-pam bg-product-pam" : "border-muted"
-                        }`}
-                      >
-                        {isSelected && <div className="size-1.5 rounded-full bg-white" />}
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium">{option.label}</p>
-                        <p className="text-xs text-muted">{option.description}</p>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
+              <ProductRoleOptionList value={selectedRole} onChange={setSelectedRole} />
             </Field>
           </div>
         ) : (
@@ -146,8 +110,7 @@ export const AddGroupModal = ({ isOpen, onOpenChange }: Props) => {
               organization level first.
             </p>
             <Button
-              variant="outline"
-              size="sm"
+              variant="pam"
               className="self-end"
               onClick={() => {
                 handleClose();
@@ -158,6 +121,7 @@ export const AddGroupModal = ({ isOpen, onOpenChange }: Props) => {
                 });
               }}
             >
+              <ExternalLink />
               Go to organization groups
             </Button>
           </div>

@@ -4,7 +4,6 @@ import z from "zod";
 import { PamSessionsSchema } from "@app/db/schemas";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { PamAccountType, PamSessionStatus } from "@app/ee/services/pam/pam-enums";
-import { SessionLogsPageSchema, TSessionLogsPage } from "@app/ee/services/pam-session/pam-session-log-schemas";
 import { PamRecordingStorageBackend } from "@app/ee/services/pam-session-recording/pam-recording-enums";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
 import { BadRequestError } from "@app/lib/errors";
@@ -38,6 +37,7 @@ const SanitizedSessionSchema = PamSessionsSchema.pick({
   folderName: true,
   selectedHost: true
 }).extend({
+  folderId: z.string().nullable().optional(),
   gatewayName: z.string().nullable().optional(),
   gatewayIdentityId: z.string().nullable().optional()
 });
@@ -115,42 +115,6 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
         throw new BadRequestError({ message: "Session not found" });
       }
       return { session };
-    }
-  });
-
-  server.route({
-    method: "GET",
-    url: "/:sessionId/logs",
-    config: { rateLimit: readLimit },
-    schema: {
-      operationId: "getPamSessionLogs",
-      description: "Get paginated logs for a PAM session",
-      tags: [ApiDocsTags.PamSessions],
-      params: z.object({
-        sessionId: z.string().uuid().describe("The ID of the session")
-      }),
-      querystring: z.object({
-        offset: z.coerce.number().int().nonnegative().default(0),
-        limit: z.coerce.number().int().min(1).max(100).default(20)
-      }),
-      response: {
-        200: SessionLogsPageSchema
-      }
-    },
-    onRequest: verifyAuth([AuthMode.JWT]),
-    handler: async (req) => {
-      const result = await server.services.pamSession.getSessionLogs(
-        req.params.sessionId,
-        req.query.offset,
-        req.query.limit,
-        {
-          actor: req.permission.type,
-          actorId: req.permission.id,
-          actorOrgId: req.permission.orgId,
-          actorAuthMethod: req.permission.authMethod
-        }
-      );
-      return result as TSessionLogsPage;
     }
   });
 

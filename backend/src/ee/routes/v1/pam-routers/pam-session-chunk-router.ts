@@ -184,23 +184,18 @@ export const registerPamSessionChunkRouter = async (server: FastifyZodProvider) 
       params: z.object({ sessionId: z.string().uuid().describe("The ID of the session") }),
       response: {
         200: z.object({
-          legacy: z.boolean(),
           sessionComplete: z.boolean(),
-          sessionKey: z.string().nullable(),
-          projectId: z.string().optional(),
-          storageBackend: z.string().optional(),
+          sessionKey: z.string(),
+          projectId: z.string(),
+          storageBackend: z.string(),
           chunks: z.array(ChunkPlaybackSchema)
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const result = await server.services.pamSessionChunk.getPlaybackBundle(req.params.sessionId, req.permission);
-      if (result.legacy) {
-        return { legacy: true, sessionComplete: result.sessionComplete, sessionKey: null, chunks: [] };
-      }
+      const result = await server.services.pamSessionChunk.getSessionPlayback(req.params.sessionId, req.permission);
       return {
-        legacy: false,
         sessionComplete: result.sessionComplete,
         sessionKey: result.sessionKey,
         projectId: result.projectId,

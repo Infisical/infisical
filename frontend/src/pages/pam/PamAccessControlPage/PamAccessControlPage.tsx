@@ -11,7 +11,7 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 import { GroupsTab } from "./components/GroupsTab";
 import { MembersTab } from "./components/MembersTab";
 
-enum PamAccessControlTab {
+export enum PamAccessControlTab {
   Members = "members",
   Groups = "groups"
 }
@@ -32,10 +32,9 @@ export const PamAccessControlPage = () => {
   const { data: groups = [] } = useListWorkspaceGroups(currentProject.id);
 
   const updateTab = (tab: string) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (navigate as any)({
+    navigate({
       to: "/organizations/$orgId/pam/access-management",
-      search: { selectedTab: tab },
+      search: (prev) => ({ ...prev, selectedTab: tab }),
       params: { orgId: currentOrg.id }
     });
   };
@@ -48,7 +47,7 @@ export const PamAccessControlPage = () => {
       <PageHeader
         scope={ProjectType.PAM}
         title="Access Control"
-        description="Manage members, groups, and roles for the PAM product."
+        description="Manage members and groups for the PAM product."
       />
       <Tabs value={selectedTab} onValueChange={updateTab}>
         <TabsList variant="pam">

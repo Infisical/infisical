@@ -7,7 +7,6 @@ import {
   ShieldCheckIcon,
   TableIcon,
   TerminalSquareIcon,
-  UnplugIcon,
   XIcon
 } from "lucide-react";
 
@@ -16,6 +15,7 @@ import { Button } from "@app/components/v3/generic/Button";
 import { cn } from "@app/components/v3/utils";
 import { useGetPamAccountById } from "@app/hooks/api/pam";
 
+import { DisconnectedScreen } from "../PamAccountAccessPage/DisconnectedScreen";
 import { DataExplorerGrid } from "./components/DataExplorerGrid";
 import { DataExplorerSidebar } from "./components/DataExplorerSidebar";
 import { QueryPanel } from "./components/QueryPanel";
@@ -375,15 +375,11 @@ export const PamDataExplorerPage = ({ reason }: Props = {}) => {
 
   if (hasDisconnected && !isConnected && !isConnecting) {
     return (
-      <div className="flex h-screen w-screen flex-col items-center justify-center gap-3 bg-background">
-        <UnplugIcon className="size-8 text-muted" />
-        <h2 className="text-sm font-medium text-foreground">Disconnected</h2>
-        <p className="text-xs text-muted">
-          {disconnectReason ?? "The database connection was closed."}
-        </p>
-        <Button variant="outline" size="xs" onClick={handleReconnect}>
-          Reconnect
-        </Button>
+      <div className="relative h-screen w-screen bg-background">
+        <DisconnectedScreen
+          onReconnect={handleReconnect}
+          description={disconnectReason ?? "The database connection was closed."}
+        />
       </div>
     );
   }
