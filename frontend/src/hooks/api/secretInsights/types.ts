@@ -152,3 +152,15 @@ export type TGetSecretBlindIndexStatusResponse = {
   status: "not-found" | "pending" | "completed" | "failed";
   message?: string;
 };
+
+export type TGetInsightsCountsDTO = {
+  projectId: string;
+};
+
+export type TGetInsightsCountsResponse = {
+  secretCount: number;
+  folderCount: number;
+  dynamicSecretCount: number;
+  secretRotationCount: number;
+  honeyTokenCount: number | null;
+};

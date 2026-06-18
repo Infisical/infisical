@@ -139,6 +139,17 @@ export const honeyTokenDALFactory = (db: TDbClient) => {
     await (tx || db)(TableName.HoneyTokenSecretMapping).where({ honeyTokenId }).delete();
   };
 
+  const countByProjectId = async (projectId: string, tx?: Knex) => {
+    const [result] = await (tx || db.replicaNode())(TableName.HoneyToken)
+      .where(`${TableName.HoneyToken}.projectId`, projectId)
+      .whereNot(`${TableName.HoneyToken}.status`, "revoked")
+      .count<{ count: string | number }>({
+        count: `${TableName.HoneyToken}.id`
+      });
+
+    return Number(result?.count ?? 0);
+  };
+
   return {
     ...orm,
     findByFolderIds,
@@ -146,6 +157,7 @@ export const honeyTokenDALFactory = (db: TDbClient) => {
     findOneByTokenIdentifierAndOrgId,
     findOneByTokenIdentifier,
     countByOrgId,
+    countByProjectId,
     tryMarkTriggered,
     createSecretMappings,
     deleteSecretMappingsByHoneyTokenId

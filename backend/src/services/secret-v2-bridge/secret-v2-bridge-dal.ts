@@ -1350,6 +1350,25 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     }
   };
 
+  const countByProject = async (projectId: string, tx?: Knex) => {
+    try {
+      const result = await (tx || db.replicaNode())(TableName.SecretV2)
+        .join(TableName.SecretFolder, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
+        .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+        .where(`${TableName.Environment}.projectId`, projectId)
+        .whereNull(`${TableName.Environment}.deleteAfter`)
+        // mirror the dashboard count (countByFolderIds): exclude personal/override secrets,
+        // include honey-token + rotation backing secrets, count records (not distinct keys)
+        .whereNull(`${TableName.SecretV2}.userId`)
+        .count("* as count")
+        .first();
+
+      return Number((result as { count?: string | number })?.count ?? 0);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "countByProject" });
+    }
+  };
+
   return {
     ...secretOrm,
     update,
@@ -1370,6 +1389,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     countByFolderIds,
     findStaleByProject,
     countStaleByProject,
+    countByProject,
     findDuplicatedSecretValues,
     findOne,
     find,

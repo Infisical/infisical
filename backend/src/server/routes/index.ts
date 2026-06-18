@@ -2753,6 +2753,8 @@ export const registerRoutes = async (
     reminderDAL,
     folderDAL,
     secretV2BridgeDAL,
+    dynamicSecretDAL,
+    honeyTokenDAL,
     projectBotService,
     projectDAL,
     userDAL,
