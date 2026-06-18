@@ -67,7 +67,7 @@ export type TDeleteDomainDTO = {
 export type TPamDomainServiceFactoryDep = {
   pamDomainDAL: TPamDomainDALFactory;
   pamResourceDAL: Pick<TPamResourceDALFactory, "find" | "findById">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findOne">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;

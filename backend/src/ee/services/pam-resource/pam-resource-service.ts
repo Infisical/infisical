@@ -1,7 +1,11 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
 import { ActionProjectType, OrganizationActionScope, TPamResources } from "@app/db/schemas";
-import { OrgPermissionAppConnectionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
+import {
+  OrgPermissionAppConnectionActions,
+  OrgPermissionGatewayActions,
+  OrgPermissionSubjects
+} from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionActions,
@@ -213,6 +217,19 @@ export const pamResourceServiceFactory = ({
     );
 
     if (gatewayId) {
+      const { permission: orgPermission } = await permissionService.getOrgPermission({
+        scope: OrganizationActionScope.Any,
+        actor: actor.type,
+        actorId: actor.id,
+        orgId: actor.orgId,
+        actorAuthMethod: actor.authMethod,
+        actorOrgId: actor.orgId
+      });
+      ForbiddenError.from(orgPermission).throwUnlessCan(
+        OrgPermissionGatewayActions.AttachGateways,
+        OrgPermissionSubjects.Gateway
+      );
+
       const gateway = await gatewayV2DAL.findOne({ id: gatewayId, orgId: actor.orgId });
       if (!gateway) {
         throw new NotFoundError({ message: "Gateway not found" });
@@ -372,6 +389,19 @@ export const pamResourceServiceFactory = ({
     }
 
     if (gatewayId && gatewayId !== resource.gatewayId) {
+      const { permission: orgPermission } = await permissionService.getOrgPermission({
+        scope: OrganizationActionScope.Any,
+        actor: actor.type,
+        actorId: actor.id,
+        orgId: actor.orgId,
+        actorAuthMethod: actor.authMethod,
+        actorOrgId: actor.orgId
+      });
+      ForbiddenError.from(orgPermission).throwUnlessCan(
+        OrgPermissionGatewayActions.AttachGateways,
+        OrgPermissionSubjects.Gateway
+      );
+
       const gateway = await gatewayV2DAL.findOne({ id: gatewayId, orgId: actor.orgId });
       if (!gateway) {
         throw new NotFoundError({ message: "Gateway not found" });
