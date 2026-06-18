@@ -34,32 +34,32 @@ const TerminalContent = ({
   };
 
   let statusLabel = "Connecting";
-  let statusDotClass = "bg-yellow-500";
+  let statusDotClass = "bg-warning";
   if (isConnected) {
     statusLabel = "Connected";
-    statusDotClass = "bg-green-500";
+    statusDotClass = "bg-success";
   } else if (sessionEnded) {
     statusLabel = "Disconnected";
-    statusDotClass = "bg-mineshaft-400";
+    statusDotClass = "bg-muted";
   }
 
   return (
-    <div className="flex h-screen w-screen flex-col bg-[#0d1117]">
+    <div className="flex h-screen w-screen flex-col bg-background">
       <div
         className="thin-scrollbar flex-1 overflow-x-auto overflow-y-hidden p-2 [&_.xterm-viewport]:thin-scrollbar"
         style={{ minHeight: 0 }}
       >
         <div ref={containerRef} className="h-full" style={{ minWidth: "100%" }} />
       </div>
-      <div className="flex items-center justify-between border-t border-mineshaft-600 bg-mineshaft-800 px-3 py-1.5 text-xs">
+      <div className="flex items-center justify-between border-t border-border bg-card px-3 py-1.5 text-xs">
         <span className="flex items-center gap-1.5">
           <span className={`inline-block size-2 rounded-full ${statusDotClass}`} />
-          <span className="text-mineshaft-300">{statusLabel}</span>
+          <span className="text-muted">{statusLabel}</span>
           {isConnected && (
             <button
               type="button"
               onClick={disconnect}
-              className="ml-2 text-mineshaft-400 hover:text-red-400"
+              className="ml-2 text-muted hover:text-danger"
             >
               Disconnect
             </button>
@@ -68,7 +68,7 @@ const TerminalContent = ({
             <button
               type="button"
               onClick={handleReconnect}
-              className="ml-2 text-mineshaft-400 hover:text-green-400"
+              className="ml-2 text-muted hover:text-success"
             >
               Reconnect
             </button>
@@ -76,8 +76,8 @@ const TerminalContent = ({
         </span>
         <div className="flex items-center gap-4">
           <span>
-            <span className="text-mineshaft-400">Account:</span>{" "}
-            <span className="text-mineshaft-300">{account.name}</span>
+            <span className="text-muted">Account:</span>{" "}
+            <span className="text-muted">{account.name}</span>
           </span>
         </div>
       </div>
@@ -99,7 +99,7 @@ const PageContent = () => {
 
   if (isPending) {
     return (
-      <div className="flex h-screen w-screen items-center justify-center bg-[#0d1117] text-mineshaft-300">
+      <div className="flex h-screen w-screen items-center justify-center bg-background text-muted">
         Loading...
       </div>
     );
@@ -107,8 +107,8 @@ const PageContent = () => {
 
   if (!account) {
     return (
-      <div className="flex h-screen w-screen items-center justify-center bg-[#0d1117]">
-        <p className="text-mineshaft-300">Could not find account with ID {accountId}</p>
+      <div className="flex h-screen w-screen items-center justify-center bg-background">
+        <p className="text-muted">Could not find account with ID {accountId}</p>
       </div>
     );
   }

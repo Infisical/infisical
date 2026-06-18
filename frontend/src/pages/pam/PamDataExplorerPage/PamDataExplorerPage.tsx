@@ -278,23 +278,23 @@ export const PamDataExplorerPage = ({ reason }: Props = {}) => {
 
   if (isConnecting && !isConnected) {
     return (
-      <div className="flex h-screen w-screen flex-col items-center justify-center gap-4 bg-bunker-800">
+      <div className="flex h-screen w-screen flex-col items-center justify-center gap-4 bg-background">
         <Spinner className="h-8 w-8" />
-        <p className="text-sm text-mineshaft-300">Connecting to database...</p>
+        <p className="text-sm text-muted">Connecting to database...</p>
       </div>
     );
   }
 
   if (mfaState?.required) {
     return (
-      <div className="flex h-screen w-screen flex-col items-center justify-center gap-3 bg-bunker-800">
-        <ShieldCheckIcon className="size-8 text-mineshaft-400" />
-        <h2 className="text-sm font-medium text-mineshaft-100">MFA Verification Required</h2>
-        <p className="max-w-sm text-center text-xs text-mineshaft-400">
+      <div className="flex h-screen w-screen flex-col items-center justify-center gap-3 bg-background">
+        <ShieldCheckIcon className="size-8 text-muted" />
+        <h2 className="text-sm font-medium text-foreground">MFA Verification Required</h2>
+        <p className="max-w-sm text-center text-xs text-muted">
           Multi-factor authentication is required to access this database account.
         </p>
         {mfaState.verifying ? (
-          <div className="flex items-center gap-2 text-xs text-mineshaft-400">
+          <div className="flex items-center gap-2 text-xs text-muted">
             <Spinner className="h-4 w-4" />
             Waiting for verification...
           </div>
@@ -309,15 +309,15 @@ export const PamDataExplorerPage = ({ reason }: Props = {}) => {
 
   if (approvalState?.required) {
     return (
-      <div className="flex h-screen w-screen flex-col items-center justify-center gap-3 bg-bunker-800">
-        <AlertTriangleIcon className="size-8 text-mineshaft-400" />
-        <h2 className="text-sm font-medium text-mineshaft-100">Approval Required</h2>
-        <p className="max-w-sm text-center text-xs text-mineshaft-400">
+      <div className="flex h-screen w-screen flex-col items-center justify-center gap-3 bg-background">
+        <AlertTriangleIcon className="size-8 text-muted" />
+        <h2 className="text-sm font-medium text-foreground">Approval Required</h2>
+        <p className="max-w-sm text-center text-xs text-muted">
           This account is protected by policy: {approvalState.policyName ?? "Unknown"}
         </p>
         {approvalState.submitted ? (
           <div className="flex flex-col items-center gap-2">
-            <p className="text-xs text-mineshaft-300">Approval request created successfully.</p>
+            <p className="text-xs text-muted">Approval request created successfully.</p>
             {approvalRequestUrl && (
               <a
                 href={approvalRequestUrl}
@@ -335,14 +335,14 @@ export const PamDataExplorerPage = ({ reason }: Props = {}) => {
         ) : (
           <div className="flex w-full max-w-sm flex-col gap-2">
             <textarea
-              className="w-full rounded border border-mineshaft-600 bg-bunker-700 px-3 py-2 text-xs text-mineshaft-200 placeholder:text-mineshaft-500 focus:border-mineshaft-400 focus:outline-none"
+              className="w-full rounded border border-border bg-container px-3 py-2 text-xs text-foreground placeholder:text-muted focus:border-border focus:outline-none"
               placeholder="Justification (optional)"
               rows={2}
               value={approvalJustification}
               onChange={(e) => setApprovalJustification(e.target.value)}
             />
             {approvalState.errorMessage && (
-              <p className="text-xs text-red-400">{approvalState.errorMessage}</p>
+              <p className="text-xs text-danger">{approvalState.errorMessage}</p>
             )}
             <div className="flex justify-center gap-2">
               <Button
@@ -362,10 +362,10 @@ export const PamDataExplorerPage = ({ reason }: Props = {}) => {
 
   if (errorMessage && !isConnected) {
     return (
-      <div className="flex h-screen w-screen flex-col items-center justify-center gap-3 bg-bunker-800">
-        <AlertTriangleIcon className="size-8 text-mineshaft-400" />
-        <h2 className="text-sm font-medium text-mineshaft-100">Connection Error</h2>
-        <p className="max-w-sm text-center text-xs text-mineshaft-400">{errorMessage}</p>
+      <div className="flex h-screen w-screen flex-col items-center justify-center gap-3 bg-background">
+        <AlertTriangleIcon className="size-8 text-muted" />
+        <h2 className="text-sm font-medium text-foreground">Connection Error</h2>
+        <p className="max-w-sm text-center text-xs text-muted">{errorMessage}</p>
         <Button variant="outline" size="xs" onClick={handleReconnect}>
           Try Again
         </Button>
@@ -375,10 +375,10 @@ export const PamDataExplorerPage = ({ reason }: Props = {}) => {
 
   if (hasDisconnected && !isConnected && !isConnecting) {
     return (
-      <div className="flex h-screen w-screen flex-col items-center justify-center gap-3 bg-bunker-800">
-        <UnplugIcon className="size-8 text-mineshaft-400" />
-        <h2 className="text-sm font-medium text-mineshaft-100">Disconnected</h2>
-        <p className="text-xs text-mineshaft-400">
+      <div className="flex h-screen w-screen flex-col items-center justify-center gap-3 bg-background">
+        <UnplugIcon className="size-8 text-muted" />
+        <h2 className="text-sm font-medium text-foreground">Disconnected</h2>
+        <p className="text-xs text-muted">
           {disconnectReason ?? "The database connection was closed."}
         </p>
         <Button variant="outline" size="xs" onClick={handleReconnect}>
@@ -393,7 +393,7 @@ export const PamDataExplorerPage = ({ reason }: Props = {}) => {
   const tabOpeningDisabled = isOpeningTab || atTabLimit;
 
   return (
-    <div ref={mountRef} className="flex h-screen w-screen flex-col bg-bunker-800">
+    <div ref={mountRef} className="flex h-screen w-screen flex-col bg-background">
       <div className="flex flex-1 overflow-hidden">
         <DataExplorerSidebar
           schemas={schemas}
@@ -408,7 +408,7 @@ export const PamDataExplorerPage = ({ reason }: Props = {}) => {
         />
 
         <div className="flex flex-1 flex-col overflow-hidden">
-          <div className="flex min-h-[34px] shrink-0 items-center overflow-x-auto border-b border-mineshaft-600 bg-mineshaft-800 px-2 [scrollbar-color:transparent_transparent] [scrollbar-width:thin] hover:[scrollbar-color:#4a4b4e_transparent] [&::-webkit-scrollbar]:h-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-transparent hover:[&::-webkit-scrollbar-thumb]:bg-mineshaft-600 [&::-webkit-scrollbar-track]:bg-transparent">
+          <div className="flex min-h-[34px] shrink-0 items-center overflow-x-auto border-b border-border bg-card px-2 [scrollbar-color:transparent_transparent] [scrollbar-width:thin] hover:[scrollbar-color:var(--color-border)_transparent] [&::-webkit-scrollbar]:h-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-transparent hover:[&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar-track]:bg-transparent">
             {tabs.map((tab) => {
               const isActive = activeTabId === tab.id;
               const Icon = tab.kind === "browse" ? TableIcon : TerminalSquareIcon;
@@ -426,9 +426,9 @@ export const PamDataExplorerPage = ({ reason }: Props = {}) => {
                   className={cn(
                     "group flex shrink-0 cursor-pointer items-center gap-1 border-b-2 px-3 py-2 text-xs font-medium transition-colors",
                     isActive
-                      ? "border-info text-mineshaft-100"
-                      : "border-transparent text-mineshaft-400 hover:text-mineshaft-200",
-                    tab.isDead && "text-red-400"
+                      ? "border-info text-foreground"
+                      : "border-transparent text-muted hover:text-foreground",
+                    tab.isDead && "text-danger"
                   )}
                 >
                   <span className="flex items-center gap-1.5">
@@ -441,7 +441,7 @@ export const PamDataExplorerPage = ({ reason }: Props = {}) => {
                       e.stopPropagation();
                       closeTab(tab.id);
                     }}
-                    className="ml-1 rounded p-0.5 text-mineshaft-300 transition-colors hover:text-mineshaft-100"
+                    className="ml-1 rounded p-0.5 text-muted transition-colors hover:text-foreground"
                     aria-label={`Close ${tab.title}`}
                   >
                     <XIcon className="size-3" />
@@ -456,7 +456,7 @@ export const PamDataExplorerPage = ({ reason }: Props = {}) => {
                 openQueryTab().catch(() => {});
               }}
               disabled={tabOpeningDisabled}
-              className="ml-1 flex shrink-0 items-center gap-1.5 rounded border border-mineshaft-600 px-2 py-1 text-xs text-mineshaft-300 transition-colors first:ml-0 hover:border-mineshaft-500 hover:text-mineshaft-100 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-mineshaft-600 disabled:hover:text-mineshaft-300"
+              className="ml-1 flex shrink-0 items-center gap-1.5 rounded border border-border px-2 py-1 text-xs text-muted transition-colors first:ml-0 hover:border-border hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-border disabled:hover:text-muted"
               aria-label="New query tab"
               title={atTabLimit ? `Tab limit (${MAX_TABS}) reached` : "New query tab"}
             >
@@ -471,8 +471,8 @@ export const PamDataExplorerPage = ({ reason }: Props = {}) => {
           {tabs.map((tab) => {
             const deadTabView = (
               <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
-                <AlertTriangleIcon className="size-8 text-red-400" />
-                <p className="text-sm text-mineshaft-300">
+                <AlertTriangleIcon className="size-8 text-danger" />
+                <p className="text-sm text-muted">
                   This connection was closed and cannot be reused.
                 </p>
                 <Button variant="outline" size="xs" onClick={() => closeTab(tab.id)}>
@@ -521,8 +521,8 @@ export const PamDataExplorerPage = ({ reason }: Props = {}) => {
 
           {tabs.length === 0 && (
             <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
-              <DatabaseIcon className="size-12 text-mineshaft-600" />
-              <p className="text-sm text-mineshaft-400">No tabs open</p>
+              <DatabaseIcon className="size-12 text-muted" />
+              <p className="text-sm text-muted">No tabs open</p>
               <Button
                 variant="outline"
                 size="xs"
@@ -539,14 +539,14 @@ export const PamDataExplorerPage = ({ reason }: Props = {}) => {
       </div>
 
       {/* Status bar */}
-      <div className="flex items-center justify-between border-t border-mineshaft-600 bg-mineshaft-800 px-3 py-1.5 text-xs">
-        <span className="text-mineshaft-400">
+      <div className="flex items-center justify-between border-t border-border bg-card px-3 py-1.5 text-xs">
+        <span className="text-muted">
           {tables.length} table{tables.length !== 1 ? "s" : ""}
         </span>
         <div className="flex items-center gap-4">
           <span>
-            <span className="text-mineshaft-400">Account:</span>{" "}
-            <span className="text-mineshaft-300">{account?.name ?? "Account"}</span>
+            <span className="text-muted">Account:</span>{" "}
+            <span className="text-muted">{account?.name ?? "Account"}</span>
           </span>
         </div>
       </div>

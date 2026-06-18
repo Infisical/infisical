@@ -745,7 +745,7 @@ export const DataExplorerGrid = ({
       )}
 
       {/* Dice UI DataGrid */}
-      <div className="data-explorer-grid relative flex min-h-0 flex-1 flex-col overflow-hidden font-mono text-foreground [--color-gray-200:var(--color-border)] [&_[data-slot=grid-footer]]:hidden [&_[data-slot=grid-header]]:bg-container [&_[data-slot=grid]]:thin-scrollbar [&_[data-slot=grid]]:rounded-none [&_[data-slot=grid]]:border-0 [&_[data-slot=grid]]:bg-bunker-800">
+      <div className="data-explorer-grid relative flex min-h-0 flex-1 flex-col overflow-hidden font-mono text-foreground [--color-gray-200:var(--color-border)] [&_[data-slot=grid-footer]]:hidden [&_[data-slot=grid-header]]:bg-container [&_[data-slot=grid]]:thin-scrollbar [&_[data-slot=grid]]:rounded-none [&_[data-slot=grid]]:border-0 [&_[data-slot=grid]]:bg-background">
         {isDataLoading && !hasLoaded && <ContentLoader className="h-full" />}
         <DataGrid
           {...gridProps}
@@ -753,7 +753,7 @@ export const DataExplorerGrid = ({
           stretchColumns
         />
         {isDataLoading && hasLoaded && (
-          <div className="absolute inset-0 z-20 flex items-center justify-center bg-bunker-800/60">
+          <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/60">
             <ContentLoader className="h-auto" lottieClassName="h-24 w-24" />
           </div>
         )}
