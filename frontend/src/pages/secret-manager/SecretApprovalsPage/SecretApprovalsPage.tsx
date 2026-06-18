@@ -45,7 +45,9 @@ export const SecretApprovalsPage = () => {
     navigate({
       to: "/organizations/$orgId/projects/secret-management/$projectId/approval",
       params: { orgId: currentOrg.id, projectId },
-      search: (prev) => ({ ...prev, selectedTab: tab })
+      // Clear any open request detail when switching tabs so returning to
+      // Change Requests does not reopen a stale requestId.
+      search: { selectedTab: tab, requestId: "" }
     });
   };
 

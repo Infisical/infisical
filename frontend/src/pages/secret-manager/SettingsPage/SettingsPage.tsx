@@ -58,7 +58,7 @@ export const SettingsPage = () => {
     }
   ];
 
-  const activeTab = tabs.find((tab) => tab.key === selectedTab);
+  const activeTab = tabs.find((tab) => !tab.isHidden && tab.key === selectedTab);
   const baseTitle = t("settings.project.title");
   const pageTitle = activeTab ? `${activeTab.name} - ${baseTitle}` : baseTitle;
 
