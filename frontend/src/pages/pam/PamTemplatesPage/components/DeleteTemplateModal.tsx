@@ -46,8 +46,9 @@ export const DeleteTemplateModal = ({
         <div className="grid gap-4">
           <p className="text-sm text-muted">
             <span className="font-medium text-foreground">{templateName}</span> is used by{" "}
-            {accountCount} account{accountCount === 1 ? "" : "s"}. Move or delete{" "}
-            {accountCount === 1 ? "it" : "them"} before this template can be deleted.
+            {accountCount} account{accountCount === 1 ? "" : "s"}. Update them to use a different
+            template or delete {accountCount === 1 ? "it" : "them"} before this template can be
+            deleted.
           </p>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>

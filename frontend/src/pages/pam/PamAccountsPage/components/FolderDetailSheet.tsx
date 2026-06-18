@@ -6,7 +6,6 @@ import {
   MoreHorizontal,
   Pencil,
   Settings,
-  SquarePen,
   Trash2,
   UserPlus,
   Users
@@ -149,11 +148,12 @@ const GeneralTab = ({
           <Controller
             control={control}
             name="description"
-            render={({ field }) => (
+            render={({ field, fieldState }) => (
               <Field>
                 <FieldLabel>Description</FieldLabel>
                 <FieldContent>
-                  <TextArea {...field} rows={3} />
+                  <TextArea {...field} rows={3} isError={!!fieldState.error} />
+                  <FieldError>{fieldState.error?.message}</FieldError>
                 </FieldContent>
               </Field>
             )}
@@ -296,7 +296,10 @@ const PermissionsTab = ({ folderId }: { folderId: string }) => {
       />
       <Card>
         <CardHeader className="border-b">
-          <CardTitle className="text-base">Permissions</CardTitle>
+          <CardTitle className="text-base">
+            Permissions
+            <Badge variant="pam">{resolvedMembers.length}</Badge>
+          </CardTitle>
           <CardDescription>
             Users and groups with access to this folder and its accounts.
           </CardDescription>
@@ -319,7 +322,6 @@ const PermissionsTab = ({ folderId }: { folderId: string }) => {
                   <TableHead>Assignee</TableHead>
                   <TableHead>Role</TableHead>
                   <TableHead>Expiry</TableHead>
-                  <TableHead>Source</TableHead>
                   <TableHead className="w-12" />
                 </TableRow>
               </TableHeader>
@@ -344,12 +346,6 @@ const PermissionsTab = ({ folderId }: { folderId: string }) => {
                       </TableCell>
                       <TableCell>
                         <MemberExpiry expiresAt={rm.member.expiresAt} />
-                      </TableCell>
-                      <TableCell>
-                        <span className="flex items-center gap-1.5 text-sm text-muted">
-                          <SquarePen className="size-3.5" />
-                          Manual
-                        </span>
                       </TableCell>
                       <TableCell>
                         {!isOwnMembership && (

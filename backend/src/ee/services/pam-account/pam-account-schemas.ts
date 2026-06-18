@@ -1,4 +1,5 @@
 /* eslint-disable no-underscore-dangle */
+import RE2 from "re2";
 import { z } from "zod";
 
 import { PamAccountType } from "../pam/pam-enums";
@@ -41,8 +42,15 @@ export const ACCOUNT_TYPE_CONFIGS = {
     sanitizedCredentials: z.object({ username: z.string().optional() }),
     ui: {
       sslEnabled: { label: "SSL Enabled" },
-      sslRejectUnauthorized: { label: "Reject Unauthorized" },
-      sslCertificate: { label: "SSL Certificate", widget: PamFieldWidget.Textarea },
+      sslRejectUnauthorized: {
+        label: "Reject Unauthorized",
+        showWhen: { field: "sslEnabled", equals: true }
+      },
+      sslCertificate: {
+        label: "SSL Certificate",
+        widget: PamFieldWidget.Textarea,
+        showWhen: { field: "sslEnabled", equals: true }
+      },
       password: { widget: PamFieldWidget.Password, secret: true }
     }
   },
@@ -74,8 +82,15 @@ export const ACCOUNT_TYPE_CONFIGS = {
     sanitizedCredentials: z.object({ username: z.string().optional() }),
     ui: {
       sslEnabled: { label: "SSL Enabled" },
-      sslRejectUnauthorized: { label: "Reject Unauthorized" },
-      sslCertificate: { label: "SSL Certificate", widget: PamFieldWidget.Textarea },
+      sslRejectUnauthorized: {
+        label: "Reject Unauthorized",
+        showWhen: { field: "sslEnabled", equals: true }
+      },
+      sslCertificate: {
+        label: "SSL Certificate",
+        widget: PamFieldWidget.Textarea,
+        showWhen: { field: "sslEnabled", equals: true }
+      },
       password: { widget: PamFieldWidget.Password, secret: true }
     }
   },
@@ -133,7 +148,15 @@ export const ACCOUNT_TYPE_CONFIGS = {
       connectionDetails: z.ZodTypeAny;
       credentials: z.ZodTypeAny;
       sanitizedCredentials: z.ZodTypeAny;
-      ui?: Record<string, { label?: string; widget?: PamFieldWidget; secret?: boolean }>;
+      ui?: Record<
+        string,
+        {
+          label?: string;
+          widget?: PamFieldWidget;
+          secret?: boolean;
+          showWhen?: { field: string; equals: string | boolean };
+        }
+      >;
       internalMetadata?: z.ZodTypeAny;
     }
   >
@@ -208,8 +231,8 @@ export const PamFieldDescriptorSchema = z.object({
   secret: z.boolean(),
   options: z.array(z.object({ label: z.string(), value: z.string() })).optional(),
 
-  // Only render when the discriminator field equals this value
-  showWhen: z.object({ field: z.string(), equals: z.string() }).optional()
+  // Only render when the referenced field equals this value
+  showWhen: z.object({ field: z.string(), equals: z.union([z.string(), z.boolean()]) }).optional()
 });
 
 type PamFieldDescriptor = z.infer<typeof PamFieldDescriptorSchema>;
@@ -224,13 +247,17 @@ export const PamAccountTypeMetadataSchema = z.object({
 
 type PamAccountTypeMetadata = z.infer<typeof PamAccountTypeMetadataSchema>;
 
-type TFieldUiHint = { label?: string; widget?: PamFieldWidget; secret?: boolean };
+type TFieldUiHint = {
+  label?: string;
+  widget?: PamFieldWidget;
+  secret?: boolean;
+  showWhen?: PamFieldDescriptor["showWhen"];
+};
 
-const humanizeKey = (key: string) =>
-  key
-    .replace(/([A-Z])/g, " $1")
-    .replace(/^./, (c) => c.toUpperCase())
-    .trim();
+const humanizeKey = (key: string) => {
+  const spaced = key.replace(new RE2(/([A-Z])/g), " $1").trim();
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+};
 
 const unwrapField = (schema: z.ZodTypeAny): { base: z.ZodTypeAny; required: boolean } => {
   let current = schema;
@@ -269,6 +296,7 @@ const describeField = (
   const hint = ui[key] ?? {};
   const widget = hint.widget ?? widgetForBase(base);
   const enumValues = (base._def as { values?: string[] }).values;
+  const resolvedShowWhen = hint.showWhen ?? showWhen;
 
   return {
     key,
@@ -279,7 +307,7 @@ const describeField = (
     ...(widget === PamFieldWidget.Select && enumValues
       ? { options: enumValues.map((v) => ({ label: humanizeKey(v), value: v })) }
       : {}),
-    ...(showWhen ? { showWhen } : {})
+    ...(resolvedShowWhen ? { showWhen: resolvedShowWhen } : {})
   };
 };
 

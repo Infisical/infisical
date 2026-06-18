@@ -30,7 +30,7 @@ export type TPamFieldDescriptor = {
   required: boolean;
   secret: boolean;
   options?: { label: string; value: string }[];
-  showWhen?: { field: string; equals: string };
+  showWhen?: { field: string; equals: string | boolean };
 };
 
 export type TPamAccountTypeMetadata = {

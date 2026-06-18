@@ -166,6 +166,15 @@ export const CreateAccountSheet = ({ isOpen, onOpenChange, defaultFolderId }: Pr
       return;
     }
 
+    const knownFields = new Set<string>([
+      "name",
+      "description",
+      "folderId",
+      "templateId",
+      ...selectedMetadata.connectionFields.map((f) => `connectionDetails.${f.key}`),
+      ...selectedMetadata.credentialFields.map((f) => `credentials.${f.key}`)
+    ]);
+
     createAccount.mutate(
       {
         accountType: values.accountType,
@@ -181,7 +190,16 @@ export const CreateAccountSheet = ({ isOpen, onOpenChange, defaultFolderId }: Pr
           createNotification({ text: "Account created", type: "success" });
           onOpenChange(false);
         },
-        onError: (error) => applyServerValidationErrors(error, setError)
+        onError: (error) => {
+          const unmapped = applyServerValidationErrors(error, setError, knownFields);
+          if (unmapped.length) {
+            createNotification({
+              type: "error",
+              title: "Validation Error",
+              text: unmapped.join(", ")
+            });
+          }
+        }
       }
     );
   };
@@ -345,11 +363,17 @@ export const CreateAccountSheet = ({ isOpen, onOpenChange, defaultFolderId }: Pr
                 <Controller
                   control={control}
                   name="description"
-                  render={({ field }) => (
+                  render={({ field, fieldState }) => (
                     <Field>
                       <FieldLabel>Description</FieldLabel>
                       <FieldContent>
-                        <TextArea {...field} placeholder="Optional description" rows={2} />
+                        <TextArea
+                          {...field}
+                          placeholder="Optional description"
+                          rows={2}
+                          isError={!!fieldState.error}
+                        />
+                        <FieldError>{fieldState.error?.message}</FieldError>
                       </FieldContent>
                     </Field>
                   )}

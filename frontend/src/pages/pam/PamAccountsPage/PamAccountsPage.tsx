@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
+import { Helmet } from "react-helmet";
+import { useTranslation } from "react-i18next";
 import { ChevronDown, FolderOpen, FolderPlus, Layers, Plus, Search } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
@@ -55,6 +57,7 @@ import { FolderDetailSheet } from "./components/FolderDetailSheet";
 const SKELETON_KEYS = ["s1", "s2", "s3", "s4", "s5"];
 
 export const PamAccountsPage = () => {
+  const { t } = useTranslation();
   const [searchInput, setSearchInput] = useState("");
   const [selectedFolderId, setSelectedFolderId] = useState<string>("");
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
@@ -144,9 +147,12 @@ export const PamAccountsPage = () => {
 
   return (
     <div className="mx-auto mb-6 w-full max-w-8xl">
+      <Helmet>
+        <title>{t("common.head-title", { title: "Accounts" })}</title>
+      </Helmet>
       <PageHeader
         title="Accounts"
-        description="Privileged accounts grouped by folder."
+        description="Privileged accounts grouped into folders."
         scope={ProjectType.PAM}
         icon={FolderOpen}
       />

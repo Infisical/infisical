@@ -34,8 +34,6 @@ type Props = {
   onResultCount: (folderId: string, count: number) => void;
 };
 
-const SKELETON_KEYS = ["a", "b", "c"];
-
 export const FolderAccountRows = ({
   folder,
   isOpen,
@@ -92,8 +90,10 @@ export const FolderAccountRows = ({
             ) : (
               <Folder className="size-5 shrink-0 text-product-pam" />
             )}
-            <span className="font-medium text-foreground">{folder.name}</span>
-            {folder.description && <span className="text-muted">{folder.description}</span>}
+            <span className="shrink-0 font-medium text-foreground">{folder.name}</span>
+            {folder.description && (
+              <span className="max-w-md truncate text-muted">{folder.description}</span>
+            )}
           </div>
         </TableCell>
         <TableCell className="w-20">
@@ -109,12 +109,12 @@ export const FolderAccountRows = ({
         </TableCell>
       </TableRow>
 
-      {isOpen && isLoading && (
+      {isOpen && isLoading && folder.accountCount > 0 && (
         <TableRow>
           <TableCell colSpan={2}>
             <div className="flex flex-col gap-2 pl-[26px]">
-              {SKELETON_KEYS.map((key) => (
-                <Skeleton key={key} className="h-8 w-full rounded-md" />
+              {Array.from({ length: folder.accountCount }).map((_, i) => (
+                <Skeleton key={`skeleton-${i + 1}`} className="h-8 w-full rounded-md" />
               ))}
             </div>
           </TableCell>

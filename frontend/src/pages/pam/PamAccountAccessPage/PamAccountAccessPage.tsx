@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Helmet } from "react-helmet";
 import { useParams } from "@tanstack/react-router";
+import { TriangleAlert } from "lucide-react";
 
 import { PamAccountType, TPamAccount, useGetPamAccountById } from "@app/hooks/api/pam";
 import { PamDataExplorerPage } from "@app/pages/pam/PamDataExplorerPage/PamDataExplorerPage";
@@ -8,6 +9,7 @@ import { PamDataExplorerPage } from "@app/pages/pam/PamDataExplorerPage/PamDataE
 import { DisconnectedScreen } from "./DisconnectedScreen";
 import { SessionAccessGate } from "./ReasonGate";
 import { useWebAccessSession } from "./useWebAccessSession";
+import { WebAccessStatusCard } from "./WebAccessStatusCard";
 
 const TerminalContent = ({
   account,
@@ -100,9 +102,12 @@ const PageContent = () => {
 
   if (!account) {
     return (
-      <div className="flex h-screen w-screen items-center justify-center bg-background">
-        <p className="text-muted">Could not find account with ID {accountId}</p>
-      </div>
+      <WebAccessStatusCard
+        tone="danger"
+        icon={TriangleAlert}
+        title="Account not found"
+        description={`Could not find an account with ID ${accountId}.`}
+      />
     );
   }
 

@@ -28,6 +28,8 @@ import {
   useAddAccountMember,
   useAddFolderGroupMember,
   useAddFolderMember,
+  useListPamProductGroups,
+  useListPamProductMembers,
   useListPamResourceRoles,
   useUpdateAccountGroupMemberRole,
   useUpdateAccountMemberRole,
@@ -118,6 +120,8 @@ export const AssignAccessModal = ({
   const { currentOrg } = useOrganization();
   const { data: orgUsers } = useGetOrgUsers(currentOrg.id);
   const { data: orgGroups } = useGetOrganizationGroups(currentOrg.id);
+  const { data: productMembers } = useListPamProductMembers();
+  const { data: productGroups } = useListPamProductGroups();
   const { data: resourceRoles } = useListPamResourceRoles();
 
   const addAccountUser = useAddAccountMember();
@@ -135,11 +139,14 @@ export const AssignAccessModal = ({
   const [roleSlug, setRoleSlug] = useState<string>("");
   const [expiry, setExpiry] = useState<string>("none");
 
-  // Roles come ordered most-to-least privileged, so the last one is the safe default
-  const defaultRoleSlug = useMemo(
-    () => (resourceRoles?.length ? resourceRoles[resourceRoles.length - 1].slug : ""),
-    [resourceRoles]
-  );
+  // Default to Requester
+  const defaultRoleSlug = useMemo(() => {
+    if (!resourceRoles?.length) return "";
+    return (
+      resourceRoles.find((r) => r.slug === "requester")?.slug ??
+      resourceRoles[resourceRoles.length - 1].slug
+    );
+  }, [resourceRoles]);
   const effectiveRoleSlug = roleSlug || editMember?.role || defaultRoleSlug;
 
   const lockedActor = useMemo<AssigneeOption | null>(
@@ -155,13 +162,22 @@ export const AssignAccessModal = ({
     [editMember]
   );
 
+  const pamUserIds = useMemo(
+    () => new Set((productMembers ?? []).map((m) => m.userId).filter(Boolean) as string[]),
+    [productMembers]
+  );
+  const pamGroupIds = useMemo(
+    () => new Set((productGroups ?? []).map((m) => m.groupId).filter(Boolean) as string[]),
+    [productGroups]
+  );
+
   const assigneeOptions = useMemo<AssigneeOption[]>(() => {
     const groups: AssigneeOption[] = (orgGroups ?? [])
-      .filter((g) => !existingGroupIds.has(g.id))
+      .filter((g) => pamGroupIds.has(g.id) && !existingGroupIds.has(g.id))
       .map((g) => ({ value: g.id, label: g.name, kind: PamMemberKind.Group, subtitle: "Group" }));
 
     const users: AssigneeOption[] = (orgUsers ?? [])
-      .filter((ou) => ou.user.id && !existingUserIds.has(ou.user.id))
+      .filter((ou) => ou.user.id && pamUserIds.has(ou.user.id) && !existingUserIds.has(ou.user.id))
       .map((ou) => {
         const name = [ou.user.firstName, ou.user.lastName].filter(Boolean).join(" ");
         return {
@@ -173,7 +189,7 @@ export const AssignAccessModal = ({
       });
 
     return [...groups, ...users];
-  }, [orgGroups, orgUsers, existingGroupIds, existingUserIds]);
+  }, [orgGroups, orgUsers, pamGroupIds, pamUserIds, existingGroupIds, existingUserIds]);
 
   const selectedRole = (resourceRoles ?? []).find((r) => r.slug === effectiveRoleSlug) ?? null;
 

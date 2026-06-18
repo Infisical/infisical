@@ -1,8 +1,8 @@
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
-import { useNavigate } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { Link, useNavigate } from "@tanstack/react-router";
 import {
-  FolderInput,
   FolderOpen,
   Layers2,
   MoreHorizontal,
@@ -41,6 +41,8 @@ import {
 } from "@app/components/v3";
 import { Skeleton } from "@app/components/v3/generic/Skeleton";
 import { useOrganization, useUser } from "@app/context";
+import { gatewayPoolsQueryKeys } from "@app/hooks/api/gateway-pools/queries";
+import { gatewaysQueryKeys } from "@app/hooks/api/gateways/queries";
 import { useGetOrganizationGroups } from "@app/hooks/api/organization/queries";
 import {
   PamAccountType,
@@ -48,6 +50,7 @@ import {
   TPamMember,
   useDeletePamAccount,
   useGetPamAccountById,
+  useGetPamAccountTemplate,
   useListAccountMembers,
   useListFolderMembers,
   useListPamResourceRoles,
@@ -253,7 +256,10 @@ const PermissionsTab = ({
       />
       <Card>
         <CardHeader className="border-b">
-          <CardTitle className="text-base">Direct Permissions</CardTitle>
+          <CardTitle className="text-base">
+            Direct Permissions
+            <Badge variant="pam">{directMembers.length}</Badge>
+          </CardTitle>
           <CardDescription>
             Users and groups granted access directly on this account.
           </CardDescription>
@@ -352,7 +358,10 @@ const PermissionsTab = ({
       {inheritedMembers.length > 0 && (
         <Card>
           <CardHeader className="border-b">
-            <CardTitle className="text-base">Inherited Permissions</CardTitle>
+            <CardTitle className="text-base">
+              Inherited Permissions
+              <Badge variant="pam">{inheritedMembers.length}</Badge>
+            </CardTitle>
             <CardDescription>
               Access inherited from the{" "}
               <button
@@ -360,9 +369,9 @@ const PermissionsTab = ({
                 className="font-medium text-foreground hover:underline"
                 onClick={goToFolderPermissions}
               >
-                {folderName ?? "parent"} folder
-              </button>
-              . Manage these on the folder.
+                {folderName ?? "parent"}
+              </button>{" "}
+              folder. Manage these on the folder.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -372,7 +381,6 @@ const PermissionsTab = ({
                   <TableHead>Assignee</TableHead>
                   <TableHead>Role</TableHead>
                   <TableHead>Expiry</TableHead>
-                  <TableHead>Source</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -389,16 +397,6 @@ const PermissionsTab = ({
                     </TableCell>
                     <TableCell>
                       <MemberExpiry expiresAt={rm.member.expiresAt} />
-                    </TableCell>
-                    <TableCell>
-                      <button
-                        type="button"
-                        className="flex items-center gap-1.5 text-sm text-muted hover:text-foreground hover:underline"
-                        onClick={goToFolderPermissions}
-                      >
-                        <FolderInput className="size-3.5" />
-                        from {folderName ?? "Folder"} folder
-                      </button>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -421,6 +419,9 @@ const SettingsTab = ({
   onDirtyChange?: (isDirty: boolean) => void;
 }) => {
   const { data: account, isLoading } = useGetPamAccountById(accountId);
+  const { data: template } = useGetPamAccountTemplate(account?.templateId);
+  const { data: gateways } = useQuery(gatewaysQueryKeys.list());
+  const { data: gatewayPools } = useQuery(gatewayPoolsQueryKeys.list());
   const updateAccount = useUpdatePamAccount();
   const [showGatewayPicker, setShowGatewayPicker] = useState(false);
 
@@ -460,6 +461,13 @@ const SettingsTab = ({
   const gatewayId = watch("gatewayId");
   const gatewayPoolId = watch("gatewayPoolId");
   const isOverriding = Boolean(gatewayId || gatewayPoolId) || showGatewayPicker;
+
+  const resolveGatewayLabel = (gwId?: string | null, poolId?: string | null) => {
+    if (poolId) return gatewayPools?.find((p) => p.id === poolId)?.name ?? "Gateway pool";
+    if (gwId) return gateways?.find((g) => g.id === gwId)?.name ?? "Gateway";
+    return "No gateway";
+  };
+  const inheritedGatewayLabel = resolveGatewayLabel(template?.gatewayId, template?.gatewayPoolId);
 
   const setGateway = (value: OverridesForm) => {
     setValue("gatewayId", value.gatewayId, { shouldDirty: true });
@@ -515,8 +523,8 @@ const SettingsTab = ({
                   </p>
                   <p className="text-sm text-muted">
                     {isOverriding
-                      ? "Overriding the template default for this account."
-                      : `Inherited from ${account.templateName}`}
+                      ? `Overriding the template default (${inheritedGatewayLabel}) for this account.`
+                      : `Inherited from ${account.templateName}: ${inheritedGatewayLabel}`}
                   </p>
                 </div>
               </div>
@@ -585,6 +593,7 @@ const buildConnectionMetadata = (connectionDetails: Record<string, unknown>) =>
 export const AccountDetailSheet = ({ isOpen, accountId, onOpenChange }: Props) => {
   const { data: account, isLoading } = useGetPamAccountById(isOpen ? accountId : undefined);
   const { tab, setTab } = usePamSheetState("accountId");
+  const { currentOrg } = useOrganization();
   const deleteAccount = useDeletePamAccount();
 
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
@@ -648,9 +657,29 @@ export const AccountDetailSheet = ({ isOpen, accountId, onOpenChange }: Props) =
         ...(account.description ? [{ label: "Description", value: account.description }] : []),
         {
           label: "Template",
-          value: <Badge variant="neutral">{account.templateName ?? "None"}</Badge>
+          value: account.templateId ? (
+            <Link
+              to="/organizations/$orgId/pam/templates"
+              params={{ orgId: currentOrg.id }}
+              search={{ templateId: account.templateId }}
+            >
+              <Badge variant="neutral" className="cursor-pointer hover:bg-container-hover">
+                {account.templateName ?? "Template"}
+              </Badge>
+            </Link>
+          ) : (
+            <Badge variant="neutral">None</Badge>
+          )
         },
         ...buildConnectionMetadata(conn),
+        ...(account.credentials?.username
+          ? [
+              {
+                label: "Username",
+                value: <span className="font-mono">{String(account.credentials.username)}</span>
+              }
+            ]
+          : []),
         { label: "Created", value: formatDetailDate(account.createdAt) }
       ]
     : [];

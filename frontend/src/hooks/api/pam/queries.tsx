@@ -56,6 +56,8 @@ export const pamKeys = {
     [...pamKeys.account(), "admin-list", params] as const,
   accountMembers: (accountId: string) => [...pamKeys.all, "account-members", accountId] as const,
   folderMembers: (folderId: string) => [...pamKeys.all, "folder-members", folderId] as const,
+  productMembers: () => [...pamKeys.all, "product-members"] as const,
+  productGroups: () => [...pamKeys.all, "product-groups"] as const,
   resourceRoles: () => [...pamKeys.all, "resource-roles"] as const,
   accessCapabilities: () => [...pamKeys.all, "access-capabilities"] as const,
   accountTypes: () => [...pamKeys.all, "account-types"] as const
@@ -325,6 +327,30 @@ export const useListFolderMembers = (folderId: string) => {
       return { users: usersRes.data.members, groups: groupsRes.data.members };
     },
     enabled: !!folderId
+  });
+};
+
+export const useListPamProductMembers = () => {
+  return useQuery({
+    queryKey: pamKeys.productMembers(),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ members: TPamMember[] }>(
+        "/api/v1/pam/memberships/users"
+      );
+      return data.members;
+    }
+  });
+};
+
+export const useListPamProductGroups = () => {
+  return useQuery({
+    queryKey: pamKeys.productGroups(),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ members: TPamMember[] }>(
+        "/api/v1/pam/memberships/groups"
+      );
+      return data.members;
+    }
   });
 };
 

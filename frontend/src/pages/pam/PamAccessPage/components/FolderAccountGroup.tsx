@@ -23,8 +23,6 @@ type Props = {
   onResultCount: (folderId: string, count: number) => void;
 };
 
-const SKELETON_KEYS = ["a", "b", "c"];
-
 export const FolderAccountGroup = ({
   folder,
   isOpen,
@@ -104,12 +102,12 @@ export const FolderAccountGroup = ({
         <TableCell className="w-20" />
       </TableRow>
 
-      {isOpen && isLoading && (
+      {isOpen && isLoading && folder.accountCount > 0 && (
         <TableRow>
           <TableCell colSpan={2}>
             <div className="flex flex-col gap-2 pl-[26px]">
-              {SKELETON_KEYS.map((key) => (
-                <Skeleton key={key} className="h-8 w-full rounded-md" />
+              {Array.from({ length: folder.accountCount }).map((_, i) => (
+                <Skeleton key={`skeleton-${i + 1}`} className="h-8 w-full rounded-md" />
               ))}
             </div>
           </TableCell>

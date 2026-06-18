@@ -55,20 +55,24 @@ export const getMissingRequiredFields = (
     })
     .map((field) => field.key);
 
-// Maps backend validation issues onto form fields
+// Maps backend validation issues onto the known form fields and returns the messages of any issues that couldn't be mapped
 export const applyServerValidationErrors = <T extends FieldValues>(
   error: unknown,
-  setError: UseFormSetError<T>
-): boolean => {
-  if (!axios.isAxiosError(error)) return false;
+  setError: UseFormSetError<T>,
+  knownFields: Set<string>
+): string[] => {
+  if (!axios.isAxiosError(error)) return [];
   const data = error.response?.data as TApiErrors | undefined;
-  if (data?.error !== ApiErrorTypes.ValidationError) return false;
+  if (data?.error !== ApiErrorTypes.ValidationError) return [];
 
-  let mapped = false;
+  const unmapped: string[] = [];
   data.message.forEach((issue) => {
-    if (!issue.path.length) return;
-    setError(issue.path.join(".") as Path<T>, { type: "server", message: issue.message });
-    mapped = true;
+    const name = issue.path.join(".");
+    if (name && knownFields.has(name)) {
+      setError(name as Path<T>, { type: "server", message: issue.message });
+    } else {
+      unmapped.push(issue.message);
+    }
   });
-  return mapped;
+  return unmapped;
 };

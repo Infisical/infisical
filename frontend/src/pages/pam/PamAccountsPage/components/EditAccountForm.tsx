@@ -144,6 +144,15 @@ export const EditAccountForm = ({ accountId, onDirtyChange }: Props) => {
     // Drop unchanged secrets (sentinel) so they're preserved server-side; send the rest
     const filteredCredentials = filterUnchangedCredentials(values.credentials);
 
+    const knownFields = new Set<string>([
+      "name",
+      "description",
+      "folderId",
+      "templateId",
+      ...metadata.connectionFields.map((f) => `connectionDetails.${f.key}`),
+      ...metadata.credentialFields.map((f) => `credentials.${f.key}`)
+    ]);
+
     updateAccount.mutate(
       {
         accountId,
@@ -157,7 +166,16 @@ export const EditAccountForm = ({ accountId, onDirtyChange }: Props) => {
       },
       {
         onSuccess: () => createNotification({ text: "Account updated", type: "success" }),
-        onError: (error) => applyServerValidationErrors(error, setError)
+        onError: (error) => {
+          const unmapped = applyServerValidationErrors(error, setError, knownFields);
+          if (unmapped.length) {
+            createNotification({
+              type: "error",
+              title: "Validation Error",
+              text: unmapped.join(", ")
+            });
+          }
+        }
       }
     );
   };
@@ -177,7 +195,7 @@ export const EditAccountForm = ({ accountId, onDirtyChange }: Props) => {
       <Card>
         <CardHeader className="border-b">
           <CardTitle className="text-base">General</CardTitle>
-          <CardDescription>Name, location, and template for this account.</CardDescription>
+          <CardDescription>General settings for this account.</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           <Controller
@@ -199,11 +217,12 @@ export const EditAccountForm = ({ accountId, onDirtyChange }: Props) => {
           <Controller
             control={control}
             name="description"
-            render={({ field }) => (
+            render={({ field, fieldState }) => (
               <Field>
                 <FieldLabel>Description</FieldLabel>
                 <FieldContent>
-                  <TextArea {...field} rows={2} />
+                  <TextArea {...field} rows={2} isError={!!fieldState.error} />
+                  <FieldError>{fieldState.error?.message}</FieldError>
                 </FieldContent>
               </Field>
             )}

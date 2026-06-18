@@ -1,12 +1,13 @@
 import { useState } from "react";
-import { faPlugCircleXmark } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { TriangleAlert } from "lucide-react";
 
 import { ContentLoader } from "@app/components/v2";
+import { Button } from "@app/components/v3";
 import { TPamAccount } from "@app/hooks/api/pam";
 
 import { DisconnectedScreen } from "./DisconnectedScreen";
 import { useRdpSession } from "./useRdpSession";
+import { WebAccessStatusCard } from "./WebAccessStatusCard";
 
 type RdpContentProps = {
   account: TPamAccount;
@@ -65,20 +66,17 @@ export const RdpContent = ({
           />
         )}
         {error && (
-          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4">
-            <FontAwesomeIcon icon={faPlugCircleXmark} size="3x" className="text-danger/80" />
-            <div className="flex flex-col items-center gap-1">
-              <p className="text-sm font-medium text-foreground">Connection failed</p>
-              <p className="max-w-md text-center text-xs text-muted">{error}</p>
-            </div>
-            <button
-              type="button"
-              onClick={handleReconnect}
-              className="mt-2 rounded border border-border px-4 py-1.5 text-xs text-muted transition-colors hover:border-success hover:text-success"
-            >
+          <WebAccessStatusCard
+            overlay
+            tone="danger"
+            icon={TriangleAlert}
+            title="Connection failed"
+            description={error}
+          >
+            <Button variant="pam" isFullWidth onClick={handleReconnect}>
               Reconnect
-            </button>
-          </div>
+            </Button>
+          </WebAccessStatusCard>
         )}
         {sessionEnded && !error && <DisconnectedScreen onReconnect={handleReconnect} />}
       </div>

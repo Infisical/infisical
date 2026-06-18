@@ -3,6 +3,7 @@ import { useParams } from "@tanstack/react-router";
 import {
   AlertTriangleIcon,
   DatabaseIcon,
+  PlugZap,
   PlusIcon,
   ShieldCheckIcon,
   TableIcon,
@@ -15,7 +16,7 @@ import { Button } from "@app/components/v3/generic/Button";
 import { cn } from "@app/components/v3/utils";
 import { useGetPamAccountById } from "@app/hooks/api/pam";
 
-import { DisconnectedScreen } from "../PamAccountAccessPage/DisconnectedScreen";
+import { WebAccessStatusCard } from "../PamAccountAccessPage/WebAccessStatusCard";
 import { DataExplorerGrid } from "./components/DataExplorerGrid";
 import { DataExplorerSidebar } from "./components/DataExplorerSidebar";
 import { QueryPanel } from "./components/QueryPanel";
@@ -287,36 +288,34 @@ export const PamDataExplorerPage = ({ reason }: Props = {}) => {
 
   if (mfaState?.required) {
     return (
-      <div className="flex h-screen w-screen flex-col items-center justify-center gap-3 bg-background">
-        <ShieldCheckIcon className="size-8 text-muted" />
-        <h2 className="text-sm font-medium text-foreground">MFA Verification Required</h2>
-        <p className="max-w-sm text-center text-xs text-muted">
-          Multi-factor authentication is required to access this database account.
-        </p>
+      <WebAccessStatusCard
+        icon={ShieldCheckIcon}
+        title="MFA Verification Required"
+        description="Multi-factor authentication is required to access this database account."
+      >
         {mfaState.verifying ? (
-          <div className="flex items-center gap-2 text-xs text-muted">
+          <div className="flex items-center justify-center gap-2 text-xs text-muted">
             <Spinner className="h-4 w-4" />
             Waiting for verification...
           </div>
         ) : (
-          <Button variant="outline" size="xs" onClick={handleMfaVerification}>
+          <Button variant="pam" isFullWidth onClick={handleMfaVerification}>
             Verify MFA
           </Button>
         )}
-      </div>
+      </WebAccessStatusCard>
     );
   }
 
   if (approvalState?.required) {
     return (
-      <div className="flex h-screen w-screen flex-col items-center justify-center gap-3 bg-background">
-        <AlertTriangleIcon className="size-8 text-muted" />
-        <h2 className="text-sm font-medium text-foreground">Approval Required</h2>
-        <p className="max-w-sm text-center text-xs text-muted">
-          This account is protected by policy: {approvalState.policyName ?? "Unknown"}
-        </p>
+      <WebAccessStatusCard
+        icon={AlertTriangleIcon}
+        title="Approval Required"
+        description={`This account is protected by policy: ${approvalState.policyName ?? "Unknown"}`}
+      >
         {approvalState.submitted ? (
-          <div className="flex flex-col items-center gap-2">
+          <>
             <p className="text-xs text-muted">Approval request created successfully.</p>
             {approvalRequestUrl && (
               <a
@@ -328,12 +327,12 @@ export const PamDataExplorerPage = ({ reason }: Props = {}) => {
                 View approval request
               </a>
             )}
-            <Button variant="outline" size="xs" onClick={handleReconnect}>
+            <Button variant="pam" isFullWidth onClick={handleReconnect}>
               Reconnect
             </Button>
-          </div>
+          </>
         ) : (
-          <div className="flex w-full max-w-sm flex-col gap-2">
+          <>
             <textarea
               className="w-full rounded border border-border bg-container px-3 py-2 text-xs text-foreground placeholder:text-muted focus:border-border focus:outline-none"
               placeholder="Justification (optional)"
@@ -344,43 +343,46 @@ export const PamDataExplorerPage = ({ reason }: Props = {}) => {
             {approvalState.errorMessage && (
               <p className="text-xs text-danger">{approvalState.errorMessage}</p>
             )}
-            <div className="flex justify-center gap-2">
-              <Button
-                variant="outline"
-                size="xs"
-                isPending={approvalState.creating}
-                onClick={() => submitApprovalRequest(approvalJustification)}
-              >
-                Create Approval Request
-              </Button>
-            </div>
-          </div>
+            <Button
+              variant="pam"
+              isFullWidth
+              isPending={approvalState.creating}
+              onClick={() => submitApprovalRequest(approvalJustification)}
+            >
+              Create Approval Request
+            </Button>
+          </>
         )}
-      </div>
+      </WebAccessStatusCard>
     );
   }
 
   if (errorMessage && !isConnected) {
     return (
-      <div className="flex h-screen w-screen flex-col items-center justify-center gap-3 bg-background">
-        <AlertTriangleIcon className="size-8 text-muted" />
-        <h2 className="text-sm font-medium text-foreground">Connection Error</h2>
-        <p className="max-w-sm text-center text-xs text-muted">{errorMessage}</p>
-        <Button variant="outline" size="xs" onClick={handleReconnect}>
+      <WebAccessStatusCard
+        tone="danger"
+        icon={AlertTriangleIcon}
+        title="Connection Error"
+        description={errorMessage}
+      >
+        <Button variant="pam" isFullWidth onClick={handleReconnect}>
           Try Again
         </Button>
-      </div>
+      </WebAccessStatusCard>
     );
   }
 
   if (hasDisconnected && !isConnected && !isConnecting) {
     return (
-      <div className="relative h-screen w-screen bg-background">
-        <DisconnectedScreen
-          onReconnect={handleReconnect}
-          description={disconnectReason ?? "The database connection was closed."}
-        />
-      </div>
+      <WebAccessStatusCard
+        icon={PlugZap}
+        title="Disconnected"
+        description={disconnectReason ?? "The database connection was closed."}
+      >
+        <Button variant="pam" isFullWidth onClick={handleReconnect}>
+          Reconnect
+        </Button>
+      </WebAccessStatusCard>
     );
   }
 

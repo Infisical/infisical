@@ -90,8 +90,10 @@ export const CreateFolderModal = ({ isOpen, onOpenChange }: Props) => {
                 id="folder-description"
                 placeholder="What lives in this folder?"
                 rows={3}
+                isError={!!errors.description}
                 {...register("description")}
               />
+              <FieldError>{errors.description?.message}</FieldError>
             </FieldContent>
           </Field>
 

@@ -115,7 +115,7 @@ export const CreateTemplateModal = ({ isOpen, onOpenChange, onCreated }: Props) 
                 }
               >
                 <SelectTrigger className="w-full" isError={!!errors.type}>
-                  <SelectValue placeholder="Select a platform type" />
+                  <SelectValue placeholder="Select an account type" />
                 </SelectTrigger>
                 <SelectContent position="popper" sideOffset={4}>
                   {accountTypes.map((meta) => (
@@ -141,8 +141,10 @@ export const CreateTemplateModal = ({ isOpen, onOpenChange, onCreated }: Props) 
                 id="template-description"
                 placeholder="What is this template for?"
                 rows={3}
+                isError={!!errors.description}
                 {...register("description")}
               />
+              <FieldError>{errors.description?.message}</FieldError>
             </FieldContent>
           </Field>
 

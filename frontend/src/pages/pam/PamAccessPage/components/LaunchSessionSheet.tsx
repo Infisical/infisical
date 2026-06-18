@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { ReactNode, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { FolderOpen, Globe, Rocket, Terminal } from "lucide-react";
 
@@ -16,7 +16,12 @@ import {
   RadioGroupItem
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
-import { TAccessiblePamAccount, usePamAccountTypeMap } from "@app/hooks/api/pam";
+import {
+  TAccessiblePamAccount,
+  TPamFieldDescriptor,
+  useGetPamAccountById,
+  usePamAccountTypeMap
+} from "@app/hooks/api/pam";
 import { PamSheetTab } from "@app/hooks/usePamSheetState";
 
 import { PamDetailSheet } from "../../components/PamDetailSheet";
@@ -25,6 +30,13 @@ type Props = {
   account: TAccessiblePamAccount | null;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
+};
+
+const formatFieldValue = (value: unknown): ReactNode => {
+  if (typeof value === "boolean") return value ? "Enabled" : "Disabled";
+  const str = String(value);
+  if (str.length > 48) return "Provided";
+  return <span className="font-mono">{str}</span>;
 };
 
 const LaunchTab = ({ account }: { account: TAccessiblePamAccount }) => {
@@ -95,6 +107,7 @@ const LaunchTab = ({ account }: { account: TAccessiblePamAccount }) => {
 
 export const LaunchSessionSheet = ({ account, isOpen, onOpenChange }: Props) => {
   const { map } = usePamAccountTypeMap();
+  const { data: fullAccount } = useGetPamAccountById(isOpen ? account?.id : undefined);
 
   if (!account) return null;
 
@@ -107,9 +120,21 @@ export const LaunchSessionSheet = ({ account, isOpen, onOpenChange }: Props) => 
     </span>
   ) : undefined;
 
-  const metadata = account.description
-    ? [{ label: "Description", value: account.description }]
-    : [];
+  const typeMeta = map[account.accountType];
+  const conn = (fullAccount?.connectionDetails ?? {}) as Record<string, unknown>;
+  const credentials = (fullAccount?.credentials ?? {}) as Record<string, unknown>;
+
+  const fieldRows = (fields: TPamFieldDescriptor[] | undefined, source: Record<string, unknown>) =>
+    (fields ?? [])
+      .filter((f) => !f.secret)
+      .filter((f) => source[f.key] !== undefined && source[f.key] !== null && source[f.key] !== "")
+      .map((f) => ({ label: f.label, value: formatFieldValue(source[f.key]) }));
+
+  const metadata = [
+    ...(account.description ? [{ label: "Description", value: account.description }] : []),
+    ...fieldRows(typeMeta?.connectionFields, conn),
+    ...fieldRows(typeMeta?.credentialFields, credentials)
+  ];
 
   return (
     <PamDetailSheet

@@ -145,11 +145,12 @@ const ConfigurationTab = ({
           <Controller
             control={control}
             name="description"
-            render={({ field }) => (
+            render={({ field, fieldState }) => (
               <Field>
                 <FieldLabel>Description</FieldLabel>
                 <FieldContent>
-                  <TextArea {...field} rows={3} />
+                  <TextArea {...field} rows={3} isError={!!fieldState.error} />
+                  <FieldError>{fieldState.error?.message}</FieldError>
                 </FieldContent>
               </Field>
             )}
