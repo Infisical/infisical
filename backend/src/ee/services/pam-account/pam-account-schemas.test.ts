@@ -67,6 +67,34 @@ describe("buildPamAccountTypeMetadata", () => {
     });
   });
 
+  test("derives MySQL connection and credential fields from the schema", () => {
+    const mysql = byType.get(PamAccountType.MySQL);
+    expect(mysql).toBeDefined();
+    expect(mysql?.name).toBe("MySQL");
+
+    expect(mysql?.connectionFields.map((f) => f.key)).toEqual([
+      "host",
+      "port",
+      "database",
+      "sslEnabled",
+      "sslRejectUnauthorized",
+      "sslCertificate"
+    ]);
+    expect(fieldByKey(mysql!.connectionFields, "host")).toMatchObject({ widget: "text", required: true });
+    expect(fieldByKey(mysql!.connectionFields, "port")).toMatchObject({ widget: "number", required: true });
+
+    expect(fieldByKey(mysql!.credentialFields, "username")).toMatchObject({
+      widget: "text",
+      required: true,
+      secret: false
+    });
+    expect(fieldByKey(mysql!.credentialFields, "password")).toMatchObject({
+      widget: "password",
+      secret: true,
+      required: false
+    });
+  });
+
   test("flattens the SSH discriminated union into a select plus conditional variant fields", () => {
     const ssh = byType.get(PamAccountType.SSH);
     expect(ssh).toBeDefined();

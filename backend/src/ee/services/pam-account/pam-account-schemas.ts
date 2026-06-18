@@ -47,6 +47,39 @@ export const ACCOUNT_TYPE_CONFIGS = {
     }
   },
 
+  [PamAccountType.MySQL]: {
+    name: "MySQL",
+    icon: "MySql.png",
+    connectionDetails: z.object({
+      host: z.string().trim().min(1).max(255),
+      port: z.coerce.number(),
+      database: z.string().trim().min(1).max(64),
+      sslEnabled: z.boolean(),
+      sslRejectUnauthorized: z.boolean(),
+      sslCertificate: z
+        .string()
+        .trim()
+        .transform((v) => v || undefined)
+        .optional()
+    }),
+    credentials: z.object({
+      username: z.string().trim().min(1).max(32),
+      password: z
+        .string()
+        .trim()
+        .max(256)
+        .transform((v) => v || undefined)
+        .optional()
+    }),
+    sanitizedCredentials: z.object({ username: z.string().optional() }),
+    ui: {
+      sslEnabled: { label: "SSL Enabled" },
+      sslRejectUnauthorized: { label: "Reject Unauthorized" },
+      sslCertificate: { label: "SSL Certificate", widget: PamFieldWidget.Textarea },
+      password: { widget: PamFieldWidget.Password, secret: true }
+    }
+  },
+
   [PamAccountType.SSH]: {
     name: "SSH",
     icon: "SSH.png",
@@ -145,6 +178,7 @@ export const extractGatewayTarget = (
   switch (accountType) {
     case PamAccountType.SSH:
     case PamAccountType.Postgres:
+    case PamAccountType.MySQL:
       return {
         host: (validated as { host: string; port: number }).host,
         port: (validated as { host: string; port: number }).port
