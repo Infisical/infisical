@@ -12,6 +12,7 @@ import { TProjectMembershipDALFactory } from "@app/services/project-membership/p
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { ApproverType, BypasserType } from "../access-approval-policy/access-approval-policy-types";
+import { TUserGroupMembershipDALFactory } from "../group/user-group-membership-dal";
 import { TLicenseServiceFactory } from "../license/license-service";
 import { TSecretApprovalRequestDALFactory } from "../secret-approval-request/secret-approval-request-dal";
 import { RequestState } from "../secret-approval-request/secret-approval-request-types";
@@ -55,6 +56,7 @@ type TSecretApprovalPolicyServiceFactoryDep = {
     TProjectMembershipDALFactory,
     "findProjectMembershipsByUserIds" | "findProjectMembershipsByGroupIds"
   >;
+  userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "findUserGroupMembershipsInProjectByUserIds">;
   secretApprovalPolicyApproverDAL: TSecretApprovalPolicyApproverDALFactory;
   secretApprovalPolicyBypasserDAL: TSecretApprovalPolicyBypasserDALFactory;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
@@ -73,6 +75,7 @@ export const secretApprovalPolicyServiceFactory = ({
   projectEnvDAL,
   userDAL,
   projectMembershipDAL,
+  userGroupMembershipDAL,
   licenseService,
   secretApprovalRequestDAL
 }: TSecretApprovalPolicyServiceFactoryDep) => {
@@ -85,9 +88,18 @@ export const secretApprovalPolicyServiceFactory = ({
     if (projectMemberships.length !== userIds.length) {
       const projectMemberUserIds = new Set(projectMemberships.map((member) => member.userId));
       const userIdsNotInProject = userIds.filter((id) => !projectMemberUserIds.has(id));
-      throw new BadRequestError({
-        message: `Some users are not members of the project: ${userIdsNotInProject.join(", ")}`
-      });
+
+      // Users not added to the project directly may still be members through a group.
+      const userIdsWithGroupAccess = new Set(
+        await userGroupMembershipDAL.findUserGroupMembershipsInProjectByUserIds(userIdsNotInProject, projectId)
+      );
+      const userIdsWithoutAccess = userIdsNotInProject.filter((id) => !userIdsWithGroupAccess.has(id));
+
+      if (userIdsWithoutAccess.length) {
+        throw new BadRequestError({
+          message: `Some users are not members of the project: ${userIdsWithoutAccess.join(", ")}`
+        });
+      }
     }
   };
 

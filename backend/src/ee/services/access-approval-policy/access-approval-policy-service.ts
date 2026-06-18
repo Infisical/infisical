@@ -15,6 +15,7 @@ import { TAccessApprovalRequestDALFactory } from "../access-approval-request/acc
 import { TAccessApprovalRequestReviewerDALFactory } from "../access-approval-request/access-approval-request-reviewer-dal";
 import { ApprovalStatus } from "../access-approval-request/access-approval-request-types";
 import { TGroupDALFactory } from "../group/group-dal";
+import { TUserGroupMembershipDALFactory } from "../group/user-group-membership-dal";
 import {
   TAccessApprovalPolicyApproverDALFactory,
   TAccessApprovalPolicyBypasserDALFactory
@@ -39,6 +40,7 @@ type TAccessApprovalPolicyServiceFactoryDep = {
   accessApprovalPolicyApproverDAL: TAccessApprovalPolicyApproverDALFactory;
   accessApprovalPolicyBypasserDAL: TAccessApprovalPolicyBypasserDALFactory;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findProjectMembershipsByUserIds">;
+  userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "findUserGroupMembershipsInProjectByUserIds">;
   groupDAL: TGroupDALFactory;
   userDAL: Pick<TUserDALFactory, "find">;
   accessApprovalRequestDAL: Pick<TAccessApprovalRequestDALFactory, "update" | "find" | "resetReviewByPolicyId">;
@@ -60,7 +62,8 @@ export const accessApprovalPolicyServiceFactory = ({
   accessApprovalRequestDAL,
   additionalPrivilegeDAL,
   accessApprovalRequestReviewerDAL,
-  projectMembershipDAL
+  projectMembershipDAL,
+  userGroupMembershipDAL
 }: TAccessApprovalPolicyServiceFactoryDep): TAccessApprovalPolicyServiceFactory => {
   const $policyExists = async ({
     envId,
@@ -92,9 +95,18 @@ export const accessApprovalPolicyServiceFactory = ({
     if (projectMemberships.length !== userIds.length) {
       const projectMemberUserIds = new Set(projectMemberships.map((member) => member.userId));
       const userIdsNotInProject = userIds.filter((id) => !projectMemberUserIds.has(id));
-      throw new BadRequestError({
-        message: `Some users are not members of the project: ${userIdsNotInProject.join(", ")}`
-      });
+
+      // Users not added to the project directly may still be members through a group.
+      const userIdsWithGroupAccess = new Set(
+        await userGroupMembershipDAL.findUserGroupMembershipsInProjectByUserIds(userIdsNotInProject, projectId)
+      );
+      const userIdsWithoutAccess = userIdsNotInProject.filter((id) => !userIdsWithGroupAccess.has(id));
+
+      if (userIdsWithoutAccess.length) {
+        throw new BadRequestError({
+          message: `Some users are not members of the project: ${userIdsWithoutAccess.join(", ")}`
+        });
+      }
     }
   };
 

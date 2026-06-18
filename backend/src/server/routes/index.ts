@@ -1003,6 +1003,7 @@ export const registerRoutes = async (
     licenseService,
     userDAL,
     projectMembershipDAL,
+    userGroupMembershipDAL,
     secretApprovalRequestDAL
   });
 
@@ -2098,7 +2099,8 @@ export const registerRoutes = async (
     accessApprovalRequestDAL,
     accessApprovalRequestReviewerDAL,
     additionalPrivilegeDAL,
-    projectMembershipDAL
+    projectMembershipDAL,
+    userGroupMembershipDAL
   });
 
   const accessApprovalRequestService = accessApprovalRequestServiceFactory({
