@@ -4,121 +4,60 @@ sidebarTitle: "Team Database Access"
 description: "Set up secure PostgreSQL access for your team."
 ---
 
-This guide walks through giving your team secure access to a production PostgreSQL database. By the end, your team will be able to connect through the browser or CLI, with every session recorded.
-
-## What You'll Set Up
-
-- A **folder** to organize your production databases
-- A **template** with production-appropriate rules (optional — you can use the default)
-- A PostgreSQL **account** with your database credentials
-- **Memberships** so your team can connect
+This guide walks through giving your team secure access to a production PostgreSQL database.
 
 ## Prerequisites
 
-- Product Admin access (to create folders and optionally templates)
-- A PostgreSQL database reachable from your [Gateway](/documentation/platform/gateways/overview)
+- Product Admin access
+- A PostgreSQL database reachable from your [Gateway](/documentation/platform/gateways/gateway-deployment)
 - Database credentials (username and password)
 
-## Step 1: Create a Folder
+## Steps
 
-First, create a folder to hold your production database accounts.
+<Steps>
+  <Step title="Create a Folder">
+    1. Go to **Privileged Access Management → Folders**
+    2. Click **Create Folder**
+    3. Name it `prod-databases`
+    4. Click **Create**
+  </Step>
+  <Step title="(Optional) Create a Custom Template">
+    The default `postgres` template works for most cases. If you need stricter rules:
 
-1. Go to **Privileged Access Management → Folders**
-2. Click **Create Folder**
-3. Name it `prod-databases` (or whatever makes sense for you)
-4. Click **Create**
+    1. Go to **Account Templates** and click **Create Template**
+    2. Name it `prod-postgres`, select **PostgreSQL** as the type
+    3. Configure your access policy (max duration, require reason, require MFA)
+    4. Click **Create**
+  </Step>
+  <Step title="Add the Database Account">
+    1. Open the `prod-databases` folder
+    2. Click **Add Account**
+    3. Select your template (`prod-postgres` or the default `postgres`)
+    4. Fill in your database connection details and credentials
+    5. Click **Create**
+  </Step>
+  <Step title="Grant Your Team Access">
+    1. Open the `prod-databases` folder
+    2. Go to the **Permissions** tab
+    3. Click **Assign Access**
+    4. Select your team and set the role to **Connector**
+    5. Click **Add**
 
-## Step 2: Decide on a Template
+    <Tip>
+    To let someone manage the folder day-to-day, grant them **Admin** instead of Connector.
+    </Tip>
+  </Step>
+  <Step title="Connect">
+    Your team can now connect — either in the browser or using the CLI proxy.
 
-Every account needs a template. You have two options:
-
-**Use the default `postgres` template** — This has sensible settings (1-hour sessions, recording enabled). If that works, skip to Step 3.
-
-**Create a custom template** — If you need stricter rules for production:
-
-1. Go to **Account Templates** and click **Create Template**
-2. Name it `prod-postgres`, select **PostgreSQL** as the type
-3. Configure **Access Policy**:
-   - Max Session Duration: 4 hours
-   - Require Reason: Enabled
-   - Require MFA: Enabled (if you want extra security)
-4. Make sure **Recording Enabled** is on
-5. Click **Create**
-
-## Step 3: Add the Database Account
-
-Now add your database to the folder.
-
-1. Open the `prod-databases` folder
-2. Click **Add Account** and select **PostgreSQL**
-3. Select your template (`prod-postgres` or the default `postgres`)
-4. Enter the connection details:
-   - Name: `orders-db` (or a descriptive name)
-   - Host: your database hostname
-   - Port: 5432
-   - Database: your database name
-5. Enter credentials:
-   - Username: your database username
-   - Password: your database password
-6. Click **Create**
-
-Infisical validates the connection. If it fails, check that the Gateway can reach your database and the credentials are correct.
-
-## Step 4: Grant Your Team Access
-
-Now give your team the ability to connect.
-
-1. Open the `prod-databases` folder
-2. Go to the **Memberships** tab
-3. Click **Add Member**
-4. Select your team (or individual team members)
-5. Set the role to **Connector**
-6. Click **Add**
-
-Everyone in that group can now connect to any account in the folder.
-
-### Designating a Folder Admin
-
-If you want someone else to manage this folder day-to-day (add accounts, manage access), grant them **Admin** instead of Connector. They'll be able to do everything within this folder without needing Product Admin access.
-
-## Step 5: Connect
-
-Your team can now connect to the database.
-
-### Via Web Access
-
-1. Go to the `orders-db` account
-2. Click **Access**
-3. Click **Connect in Browser**
-4. Use the Data Explorer to browse tables or the SQL Terminal to run queries
-
-### Via CLI
-
-```bash
-infisical pam access /prod-databases/orders-db
-```
-
-Then connect with any PostgreSQL client:
-```bash
-psql "postgresql://localhost:5432/orders"
-```
-
-## What's Happening Behind the Scenes
-
-- The user's connection goes through the Gateway
-- The Gateway injects the credentials automatically — the user never sees the password
-- Every query is recorded
-- When the session ends (or times out), the recording is available for review
+    1. Open the account
+    2. Click **Access**
+  </Step>
+</Steps>
 
 ## Adding More Databases
 
-To add another database to this setup:
-
-1. Open the `prod-databases` folder
-2. Click **Add Account**
-3. Follow the same process as Step 3
-
-Since your team already has access to the folder, they'll automatically have access to the new account.
+To add another database, open the folder and click **Add Account**. Your team will automatically have access since they already have folder permissions.
 
 ## Next Steps
 

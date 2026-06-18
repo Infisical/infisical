@@ -14,11 +14,8 @@ SSH accounts support three authentication methods: password, public key, and cer
   <Step title="Open the folder">
     Go to **Folders** and click on the folder where you want to add the account.
   </Step>
-  <Step title="Add account">
-    Click **Add Account** and select **SSH**.
-  </Step>
-  <Step title="Select a template">
-    Choose which template to use. The template determines session rules (duration, MFA, recording). You can use the default `ssh` template or a custom one.
+  <Step title="Add account and select a template">
+    Click **Add Account** and select an SSH template (e.g., the default `ssh` or a custom one). The template determines session rules like duration, MFA, and recording.
   </Step>
   <Step title="Enter connection details">
     | Field | Description |
@@ -32,97 +29,63 @@ SSH accounts support three authentication methods: password, public key, and cer
     See the section below for each method.
   </Step>
   <Step title="Save">
-    Click **Create**. For password and key auth, Infisical validates the connection. For certificate auth, you'll need to configure the server first.
+    Click **Create**.
   </Step>
 </Steps>
 
 ## Authentication Methods
 
-### Password
+<Tabs>
+  <Tab title="Password">
+    The simplest option. Provide the username and password.
 
-The simplest option — just provide the username and password.
+    The server must have `PasswordAuthentication yes` in sshd_config.
+  </Tab>
+  <Tab title="Public Key">
+    Authenticate with an SSH private key (OpenSSH format).
 
-| Field | Value |
-|-------|-------|
-| **Method** | Password |
-| **Password** | The user's password |
+    The corresponding public key must be in the user's `~/.ssh/authorized_keys` on the server.
+  </Tab>
+  <Tab title="Certificate (Recommended)">
+    The most secure option. Instead of storing static credentials, Infisical mints a short-lived certificate for each session.
 
-<Note>
-The server must have `PasswordAuthentication yes` in sshd_config.
-</Note>
+    After creating the account, configure the server to trust Infisical's CA. The account detail page provides a setup script.
 
-### Public Key
+    See the [SSH Certificate Auth guide](/documentation/platform/pam/guides/ssh-certificate-auth) for a full walkthrough.
+  </Tab>
+</Tabs>
 
-Authenticate with an SSH private key.
+## Connecting
 
-| Field | Value |
-|-------|-------|
-| **Method** | Public Key |
-| **Private Key** | The private key (OpenSSH format) |
+<Tabs>
+  <Tab title="Web Access">
+    Web Access provides an interactive terminal in your browser.
 
-The corresponding public key must be in the user's `~/.ssh/authorized_keys` on the server.
+    1. Open the account and click **Access**
+    2. Click **Connect in Browser**
+    3. A terminal opens in a new tab
 
-### Certificate (Recommended)
+    You get a full shell. To disconnect, type `exit` or close the tab.
+  </Tab>
+  <Tab title="CLI">
+    The CLI starts a local proxy that you connect to with your SSH client.
 
-The most secure option. Instead of storing static credentials, Infisical mints a short-lived certificate for each session.
+    ```bash
+    infisical pam access /prod-servers/web-01
+    ```
 
-| Field | Value |
-|-------|-------|
-| **Method** | Certificate |
+    Then connect:
+    ```bash
+    ssh deploy@localhost -p 2222
+    ```
 
-After creating the account, you need to configure the server to trust Infisical's CA. The account detail page provides a setup script you can run on the server.
+    No password or key needed since the proxy handles authentication.
 
-See the [SSH Certificate Auth guide](/documentation/platform/pam/guides/ssh-certificate-auth) for a full walkthrough.
-
-## Connecting via Web Access
-
-Web Access provides an interactive terminal in your browser.
-
-To connect:
-1. Open the account and click **Access**
-2. Click **Connect in Browser**
-3. A terminal opens in a new tab
-
-You get a full shell — run commands, use vim, transfer files. The session is recorded.
-
-To disconnect: type `exit` or close the tab.
-
-## Connecting via CLI
-
-The CLI starts a local proxy that you connect to with your SSH client.
-
-```bash
-infisical pam access /<folder>/<account>
-```
-
-For example:
-```bash
-infisical pam access /prod-servers/web-01
-```
-
-Output:
-```
-Proxy running on localhost:2222
-Connect with: ssh deploy@localhost -p 2222
-
-Session expires in 8 hours. Press Ctrl+C to disconnect.
-```
-
-Then connect:
-```bash
-ssh deploy@localhost -p 2222
-```
-
-<Tip>
-No password or key needed — the proxy handles authentication.
-</Tip>
-
-### CLI Flags
-
-| Flag | What it does |
-|------|--------------|
-| `--port <port>` | Use a specific local port |
-| `--reason <reason>` | Provide an access reason (if required by template) |
+    **Flags:**
+    - `--port <port>` — use a specific local port
+    - `--reason <reason>` — provide an access reason (if required by template)
+  </Tab>
+</Tabs>
 
 ## Next Steps
 

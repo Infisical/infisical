@@ -6,82 +6,42 @@ description: "Connect to a PostgreSQL database in under 10 minutes."
 
 This quickstart walks you through connecting to a PostgreSQL database via PAM. You'll create a folder, add a database account, and launch a session.
 
+<Note>
+**Gateway required** — PAM connects to your databases and servers through a Gateway. If you haven't deployed one yet, [deploy a Gateway](/documentation/platform/gateways/gateway-deployment) first.
+</Note>
+
 ## Prerequisites
 
 - Admin access to PAM
-- A PostgreSQL database reachable from your [Gateway](/documentation/platform/gateways/overview)
+- A deployed [Gateway](/documentation/platform/gateways/gateway-deployment) that can reach your database
 - Database credentials (username and password)
 
-## Step 1: Create a Folder
+## Steps
 
-Folders organize your accounts. Create one to hold your database.
+<Steps>
+  <Step title="Create a Folder">
+    Folders organize your accounts. Create one to hold your database.
 
-1. Go to **Privileged Access Management → Folders**
-2. Click **Create Folder**
-3. Name it `dev-databases` (or whatever you like)
-4. Click **Create**
+    1. Go to **Privileged Access Management → Accounts**
+    2. Click **Create Folder**
+    3. Name it `dev-databases` (or whatever you like)
+    4. Click **Create**
+  </Step>
+  <Step title="Add a Database Account">
+    1. Open the folder you just created
+    2. Click **Add Account**
+    3. Select the `postgres` template
+    4. Fill in your database connection details (host, port, credentials)
+    5. Click **Create**
+  </Step>
+  <Step title="Launch a Session">
+    1. Open the account you created
+    2. Click **Access**
+    3. Click **Connect in Browser**
 
-## Step 2: Add a Database Account
-
-Now add your database to the folder.
-
-1. Open the folder you just created
-2. Click **Add Account** and select **PostgreSQL**
-3. Select the `postgres` template (the default)
-4. Fill in the connection details:
-   - **Name**: `my-database`
-   - **Host**: your database hostname
-   - **Port**: `5432`
-   - **Database**: your database name
-   - **Username**: your database username
-   - **Password**: your database password
-5. Click **Create**
-
-Infisical validates the connection. If it fails, check your credentials and that the database is reachable from your Gateway.
-
-## Step 3: Grant Yourself Access
-
-You need a membership to connect.
-
-1. Open the folder
-2. Go to the **Memberships** tab
-3. Click **Add Member**
-4. Select yourself
-5. Set the role to **Connector**
-6. Click **Add**
-
-## Step 4: Launch a Session
-
-Now connect to your database.
-
-### Option A: Web Access
-
-1. Open the account you created
-2. Click **Access**
-3. Click **Connect in Browser**
-
-You'll see the Data Explorer (browse tables) and SQL Terminal (run queries).
-
-### Option B: CLI Access
-
-Run:
-```bash
-infisical pam access /dev-databases/my-database
-```
-
-Then connect with any PostgreSQL client:
-```bash
-psql "postgresql://localhost:5432/mydb"
-```
-
-## What Just Happened
-
-- You created a folder to organize accounts
-- You added a database account (credentials stored securely in Infisical)
-- You granted yourself access
-- You connected — without ever typing the database password
-
-The session was recorded. You can review it in **Sessions**.
+    You'll see the Data Explorer (browse tables) and SQL Terminal (run queries).
+  </Step>
+</Steps>
 
 ## Next Steps
 

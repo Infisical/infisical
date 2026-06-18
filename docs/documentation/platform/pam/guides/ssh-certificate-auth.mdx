@@ -4,136 +4,65 @@ sidebarTitle: "SSH Certificate Auth"
 description: "Configure certificate-based SSH access to eliminate static credentials."
 ---
 
-This guide walks through setting up SSH certificate authentication. Instead of managing passwords or SSH keys on every server, Infisical mints a short-lived certificate for each session. The certificate is valid only for that session, so there's nothing to rotate or revoke.
-
-## How It Works
-
-1. You create an SSH account with **Certificate** authentication
-2. You configure your server to trust Infisical's CA
-3. When a user connects, Infisical mints a certificate signed by that CA
-4. The server validates the certificate and grants access
-5. When the session ends, the certificate is useless
-
-No static credentials on the server. No keys to manage. The certificate is valid only for the session duration.
+This guide walks through setting up SSH certificate authentication. Instead of managing passwords or SSH keys, Infisical mints a short-lived certificate for each session — valid only for that session, so there's nothing to rotate or revoke.
 
 ## Prerequisites
 
 - Admin access to the folder where you'll create the account
 - Root/sudo access on the target server
-- The server must be reachable from your [Gateway](/documentation/platform/gateways/overview)
+- The server must be reachable from your [Gateway](/documentation/platform/gateways/gateway-deployment)
 
-## Step 1: Create the SSH Account
+## Steps
 
-1. Open the folder where you want to add the account
-2. Click **Add Account** and select **SSH**
-3. Select a template (the default `ssh` template works fine)
-4. Enter connection details:
-   - Name: `prod-web-01` (or a descriptive name)
-   - Host: your server's hostname or IP
-   - Port: 22
-   - Username: the Linux user to connect as (e.g., `deploy`)
-5. Set **Authentication Method** to **Certificate**
-6. Click **Create**
+<Steps>
+  <Step title="Create the SSH Account">
+    1. Open the folder where you want to add the account
+    2. Click **Add Account**
+    3. Select an SSH template
+    4. Fill in the connection details (host, port, username)
+    5. Set **Authentication Method** to **Certificate**
+    6. Click **Create**
+  </Step>
+  <Step title="Configure the Server">
+    Open the account you just created. You'll see a **CA Setup** section.
 
-The account is created, but you can't connect yet — you need to configure the server to trust Infisical's CA.
+    <Tabs>
+      <Tab title="Automated Setup (Recommended)">
+        Copy the setup script and run it on your server:
 
-## Step 2: Configure the Server
+        ```bash
+        curl -sSL "https://app.infisical.com/api/v1/pam/accounts/<account-id>/ssh-ca-setup" | sudo bash
+        ```
 
-Open the account you just created. You'll see a **CA Setup** section with two options.
+        The script downloads the CA public key, configures sshd to trust it, and restarts the service.
+      </Tab>
+      <Tab title="Manual Setup">
+        1. Copy the **CA Public Key** from the account page
+        2. Save it to `/etc/ssh/infisical_ca.pub` on the server
+        3. Add to sshd_config: `TrustedUserCAKeys /etc/ssh/infisical_ca.pub`
+        4. Restart sshd: `sudo systemctl restart sshd`
+      </Tab>
+    </Tabs>
 
-### Option A: Automated Setup (Recommended)
+    Verify the setup:
+    ```bash
+    sudo sshd -T | grep trustedusercakeys
+    ```
+  </Step>
+  <Step title="Connect">
+    Your team can now connect — either in the browser or using the CLI proxy.
 
-Copy the setup script and run it on your server:
+    1. Open the account
+    2. Click **Access**
+  </Step>
+</Steps>
 
-```bash
-curl -sSL "https://app.infisical.com/api/v1/pam/accounts/<account-id>/ssh-ca-setup" | sudo bash
-```
+## Why Certificates?
 
-The script:
-1. Downloads the CA public key
-2. Saves it to `/etc/ssh/infisical_ca.pub`
-3. Adds `TrustedUserCAKeys /etc/ssh/infisical_ca.pub` to sshd_config
-4. Restarts sshd
-
-### Option B: Manual Setup
-
-If you prefer to configure manually:
-
-1. Copy the **CA Public Key** from the account page
-2. Save it on the server:
-   ```bash
-   sudo vim /etc/ssh/infisical_ca.pub
-   # Paste the CA public key
-   ```
-3. Edit sshd_config:
-   ```bash
-   sudo vim /etc/ssh/sshd_config
-   # Add: TrustedUserCAKeys /etc/ssh/infisical_ca.pub
-   ```
-4. Restart sshd:
-   ```bash
-   sudo systemctl restart sshd
-   ```
-
-### Verify the Setup
-
-Check that sshd recognizes the CA:
-
-```bash
-sudo sshd -T | grep trustedusercakeys
-```
-
-You should see:
-```
-trustedusercakeys /etc/ssh/infisical_ca.pub
-```
-
-## Step 3: Connect
-
-Now your team can connect to the server.
-
-### Via Web Access
-
-1. Open the account and click **Access**
-2. Click **Connect in Browser**
-3. An interactive terminal opens
-
-### Via CLI
-
-```bash
-infisical pam access /your-folder/prod-web-01
-```
-
-Then connect with your SSH client:
-```bash
-ssh deploy@localhost -p <port>
-```
-
-The Gateway handles certificate generation automatically — users never see or manage any keys.
-
-## Troubleshooting
-
-**Connection refused or timeout**
-- Check that the Gateway can reach the server on port 22
-- Verify the server's firewall allows SSH
-- Make sure sshd is running: `sudo systemctl status sshd`
-
-**Permission denied (publickey)**
-- Verify the CA public key is saved correctly
-- Check that `TrustedUserCAKeys` is set in sshd_config
-- Restart sshd after config changes
-- Make sure the username in the account matches a real Linux user
-
-**Certificate not accepted**
-- Confirm the account is set to Certificate authentication
-- Check server logs: `sudo journalctl -u sshd -f`
-
-## Why Certificates Are Better
-
-- **No static credentials** — nothing to rotate or worry about being leaked
-- **Short-lived** — certificates are valid only for the session duration
-- **Per-account CAs** — each account has its own CA, so compromising one doesn't affect others
-- **Automatic** — users don't manage keys; the system handles everything
+- **No static credentials** to rotate or leak
+- **Short-lived** and valid only for the session
+- **Per-account CAs** so compromising one doesn't affect others
+- **Automatic** key management for users
 
 ## Next Steps
 

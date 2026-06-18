@@ -940,7 +940,6 @@
                   {
                     "group": "Quickstarts",
                     "pages": [
-                      "documentation/platform/pam/getting-started",
                       "documentation/platform/pam/quick-starts/launch-first-session"
                     ]
                   },

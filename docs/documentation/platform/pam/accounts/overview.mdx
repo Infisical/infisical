@@ -27,11 +27,8 @@ Accounts live inside folders. To add one:
   <Step title="Open the folder">
     Go to **Folders** and click on the folder where you want to add the account.
   </Step>
-  <Step title="Click Add Account">
-    Click **Add Account** and select the account type (PostgreSQL or SSH).
-  </Step>
-  <Step title="Select a template">
-    Choose which template this account should use. The template determines the session rules (duration, MFA, recording).
+  <Step title="Add account and select a template">
+    Click **Add Account** and select a template. The template determines the account type (PostgreSQL or SSH) and session rules (duration, MFA, recording).
   </Step>
   <Step title="Enter connection details">
     Provide the hostname, port, and other connection information.
@@ -40,11 +37,10 @@ Accounts live inside folders. To add one:
     Provide the username and password (or SSH key/certificate settings).
   </Step>
   <Step title="Save">
-    Click **Create**. Infisical validates the connection before saving.
+    Click **Create**.
   </Step>
 </Steps>
 
-If validation fails, check that the credentials are correct and that the account is reachable from your Gateway.
 
 ## Connecting to an Account
 
@@ -79,8 +75,8 @@ Most access is granted at the folder level — if you have access to the folder,
 
 But sometimes you need to grant access to just one account. For that, use direct account memberships:
 
-1. Open the account and go to the **Memberships** tab
-2. Click **Add Member**
+1. Open the account and go to the **Permissions** tab
+2. Click **Assign Access**
 3. Select the user/group, role, and optional expiration
 4. Click **Add**
 

@@ -58,7 +58,7 @@ Recording happens at the Gateway:
 1. Traffic flows through the Gateway
 2. Gateway captures session events
 3. Events are encrypted and cached locally
-4. Every 10 seconds, new events upload to Infisical
+4. Events upload to Infisical in real-time
 5. If connectivity drops, recording continues locally and syncs when restored
 
 This ensures no data is lost, even during network issues.
@@ -71,15 +71,15 @@ This ensures no data is lost, even during network issues.
 | **Gateway per network** | Multiple VPCs or on-prem segments |
 | **Gateway Pool** | High availability, load balancing |
 
-For deployment instructions, see the [Gateway documentation](/documentation/platform/gateways/overview).
+For deployment instructions, see [Deploy a Gateway](/documentation/platform/gateways/gateway-deployment).
 
 ## Next Steps
 
 <CardGroup cols={2}>
-  <Card title="Gateway Deployment" icon="server" href="/documentation/platform/gateways/gateway-deployment">
+  <Card title="Deploy a Gateway" icon="server" href="/documentation/platform/gateways/gateway-deployment">
     Deploy a Gateway in your network.
   </Card>
-  <Card title="Get Started" icon="rocket" href="/documentation/platform/pam/getting-started">
-    Set up your first PAM account.
+  <Card title="Launch Your First Session" icon="rocket" href="/documentation/platform/pam/quick-starts/launch-first-session">
+    Connect to a database in under 10 minutes.
   </Card>
 </CardGroup>

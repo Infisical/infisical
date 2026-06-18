@@ -12,11 +12,8 @@ PostgreSQL accounts let you manage access to your PostgreSQL databases. Users co
   <Step title="Open the folder">
     Go to **Folders** and click on the folder where you want to add the account.
   </Step>
-  <Step title="Add account">
-    Click **Add Account** and select **PostgreSQL**.
-  </Step>
-  <Step title="Select a template">
-    Choose which template to use. The template determines session rules (duration, MFA, recording). You can use the default `postgres` template or a custom one.
+  <Step title="Add account and select a template">
+    Click **Add Account** and select a PostgreSQL template (e.g., the default `postgres` or a custom one). The template determines session rules like duration, MFA, and recording.
   </Step>
   <Step title="Enter connection details">
     | Field | Description |
@@ -34,71 +31,43 @@ PostgreSQL accounts let you manage access to your PostgreSQL databases. Users co
     | **Password** | PostgreSQL password |
   </Step>
   <Step title="Save">
-    Click **Create**. Infisical validates the connection before saving — if it fails, check your credentials and that the database is reachable from your Gateway.
+    Click **Create**.
   </Step>
 </Steps>
 
-## Connecting via Web Access
+## Connecting
 
-Web Access provides a browser-based interface with two tools:
+<Tabs>
+  <Tab title="Web Access">
+    Web Access provides a browser-based interface with two tools:
 
-**Data Explorer** — browse tables, view data, filter and sort, edit rows (for tables with primary keys), and export to CSV/JSON.
+    - **Data Explorer** — browse tables, view data, filter and sort, edit rows, export to CSV/JSON
+    - **SQL Editor** — write and run SQL queries, use transactions
 
-**SQL Terminal** — write and run SQL queries, view results in a table, use transactions with BEGIN/COMMIT/ROLLBACK.
+    To connect:
+    1. Open the account and click **Access**
+    2. Click **Connect in Browser**
 
-To connect:
-1. Open the account and click **Access**
-2. Click **Connect in Browser**
-3. The interface opens in a new tab
+  </Tab>
+  <Tab title="CLI">
+    The CLI starts a local proxy that you connect to with your preferred PostgreSQL client.
 
-<Tip>
-**Run part of a query** — select text in the SQL Terminal and press Cmd+Enter (or Ctrl+Enter) to run just the selection.
-</Tip>
+    ```bash
+    infisical pam access /prod-databases/orders-db
+    ```
 
-<Note>
-Each tab has its own connection, so transactions are isolated per tab. Queries time out after 30 seconds, and idle sessions close after 10 minutes.
-</Note>
+    Then connect:
+    ```bash
+    psql "postgresql://localhost:5432/orders"
+    ```
 
-## Connecting via CLI
+    No password needed since the proxy handles authentication.
 
-The CLI starts a local proxy that you connect to with your preferred PostgreSQL client.
-
-```bash
-infisical pam access /<folder>/<account>
-```
-
-For example:
-```bash
-infisical pam access /prod-databases/orders-db
-```
-
-Output:
-```
-Proxy running on localhost:5432
-Connect with: psql "postgresql://localhost:5432/orders"
-
-Session expires in 4 hours. Press Ctrl+C to disconnect.
-```
-
-Then connect with any client:
-
-```bash
-# psql
-psql "postgresql://localhost:5432/orders"
-
-# Or configure pgAdmin/DBeaver to connect to localhost on the proxy port
-```
-
-<Tip>
-No password needed — the proxy handles authentication.
-</Tip>
-
-### CLI Flags
-
-| Flag | What it does |
-|------|--------------|
-| `--port <port>` | Use a specific local port |
-| `--reason <reason>` | Provide an access reason (if required by template) |
+    **Flags:**
+    - `--port <port>` — use a specific local port
+    - `--reason <reason>` — provide an access reason (if required by template)
+  </Tab>
+</Tabs>
 
 ## Next Steps
 

@@ -4,7 +4,7 @@ sidebarTitle: "Session Recording"
 description: "How PAM captures and stores session activity."
 ---
 
-When recording is enabled, PAM captures everything that happens during a session — every query, command, and response. This gives you a complete record for compliance audits and incident investigation.
+PAM captures everything that happens during a session — every query, command, and response. This gives you a complete record for compliance audits and incident investigation.
 
 ## What Gets Recorded
 
@@ -28,30 +28,17 @@ Recording happens at the Gateway level:
 
 1. Traffic flows through the Gateway
 2. The Gateway captures and encrypts session events
-3. Events upload to Infisical every 10 seconds
-4. When the session ends, the full recording is available
+3. Events upload to Infisical in real-time
+4. Recordings are available immediately — even for active sessions
 
 This architecture means:
 - **No data loss** — if connectivity drops, the Gateway caches locally and syncs when restored
 - **Near real-time** — admins can see what's happening in active sessions
 - **Always encrypted** — recordings are encrypted before upload
 
-## Configuring Recording
+## Storage Options
 
-Recording is configured at the **template level**. All accounts using a template inherit its recording settings.
-
-| Setting | What it does |
-|---------|--------------|
-| **Recording Enabled** | Toggle recording on/off |
-| **Storage Backend** | Where recordings are stored |
-
-To change recording settings:
-1. Go to **Account Templates** and open the template
-2. Find **System Settings → Recording**
-3. Toggle **Recording Enabled** and select the storage backend
-4. Save
-
-### Storage Options
+Recording is always enabled. You can configure where recordings are stored at the **template level** — all accounts using a template inherit its storage settings.
 
 | Backend | Description |
 |---------|-------------|
@@ -66,15 +53,11 @@ For most cases, internal storage works fine. Use [External Storage](/documentati
 2. The session detail page shows the full log of activity
 3. Use the search bar to find specific content
 
-For active sessions, logs update every 10 seconds. For completed sessions, the full recording is available immediately.
+Recordings are available in real-time for both active and completed sessions.
 
 ## Best Practices
 
-**Enable recording for production.** Session recordings are essential for compliance and incident investigation. Only disable for low-risk development environments where you don't need an audit trail.
-
 **Use external S3 for regulated environments.** If you have data residency or retention requirements, store recordings in your own bucket where you control the data lifecycle.
-
-**Configure log masking for sensitive data.** Templates can define patterns to redact from logs (like credit card numbers). This happens before storage, so sensitive data never gets recorded.
 
 ## Next Steps
 

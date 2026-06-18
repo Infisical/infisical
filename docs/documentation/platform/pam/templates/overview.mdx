@@ -6,6 +6,8 @@ description: "Define the rules that apply when users connect to accounts."
 
 Templates control what happens when someone connects to an account. How long can they stay connected? Do they need MFA? Should the session be recorded? These rules are defined in a template, and every account uses one.
 
+Templates are **type-specific** — a PostgreSQL template can only be used with PostgreSQL accounts, and an SSH template can only be used with SSH accounts. This allows for type-specific policies like command restrictions or query filtering in future releases.
+
 Infisical provides **default templates** (`postgres`, `ssh`) with sensible settings, so you can start adding accounts right away. Create custom templates when you need different rules — for example, stricter settings for production databases.
 
 ## Default Templates
@@ -14,8 +16,8 @@ When you first use PAM, these templates are already available:
 
 | Template | Type | Default Settings |
 |----------|------|------------------|
-| `postgres` | PostgreSQL | 1-hour sessions, recording enabled |
-| `ssh` | SSH | 1-hour sessions, recording enabled |
+| `postgres` | PostgreSQL | 1-hour sessions |
+| `ssh` | SSH | 1-hour sessions |
 
 These defaults work for many cases. If they fit your needs, you can skip straight to [adding accounts](/documentation/platform/pam/accounts/overview).
 
@@ -48,7 +50,6 @@ If you need different rules — say, 4-hour sessions with MFA for production —
     
     | Setting | What it does |
     |---------|--------------|
-    | **Recording Enabled** | Capture session activity |
     | **Recording Storage** | Where to store recordings (internal or your S3 bucket) |
     | **Password Constraints** | Minimum complexity for account passwords |
   </Step>
@@ -65,10 +66,6 @@ This means you can:
 - Apply the same rules to many accounts by having them use the same template
 - Change rules for all those accounts at once by editing the template
 - Have different accounts in the same folder use different templates (if they need different rules)
-
-<Warning>
-Changes to templates apply immediately to all accounts using them. Be careful when tightening rules — it may affect active sessions.
-</Warning>
 
 ## Next Steps
 
