@@ -23,6 +23,7 @@ import { TRoleDALFactory } from "./role-dal";
 import {
   TCreateRoleDTO,
   TDeleteRoleDTO,
+  TGetProjectRoleByIdDTO,
   TGetRoleByIdDTO,
   TGetRoleBySlugDTO,
   TGetUserPermissionDTO,
@@ -243,6 +244,35 @@ export const roleServiceFactory = ({
     return { ...role, [scope.key]: scope.value, permissions: unpackPermissions(role.permissions) };
   };
 
+  const getProjectRoleById = async (dto: TGetProjectRoleByIdDTO) => {
+    const { permission, selector } = dto;
+
+    const [role] = await roleDAL.find({ id: selector.id, $notNull: ["projectId"] }, { limit: 1 });
+    if (!role) {
+      throw new NotFoundError({ message: `Role with id ${selector.id} not found` });
+    }
+
+    // just forcing type safety
+    if (!role.projectId) {
+      throw new NotFoundError({ message: `Role with id ${selector.id} not found` });
+    }
+
+    const project = await projectDAL.findById(role.projectId);
+    if (!project || project.orgId !== permission.orgId) {
+      throw new NotFoundError({ message: `Role with id ${selector.id} not found` });
+    }
+
+    const scopeData = {
+      scope: AccessScope.Project,
+      orgId: permission.orgId,
+      projectId: role.projectId
+    } as const;
+
+    await scopeFactory[AccessScope.Project].onGetRoleByIdGuard({ permission, scopeData, selector });
+
+    return { ...role, projectId: role.projectId, permissions: unpackPermissions(role.permissions) };
+  };
+
   const getRoleBySlug = async (dto: TGetRoleBySlugDTO) => {
     const { scopeData, selector } = dto;
     const factory = scopeFactory[scopeData.scope];
@@ -339,6 +369,7 @@ export const roleServiceFactory = ({
     deleteRole,
     listRoles,
     getRoleById,
+    getProjectRoleById,
     getRoleBySlug,
     getUserPermission
   };
