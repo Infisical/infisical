@@ -531,6 +531,7 @@ export enum EventType {
   INTEGRATION_SYNCED = "integration-synced",
   CREATE_CMEK = "create-cmek",
   UPDATE_CMEK = "update-cmek",
+  ROTATE_CMEK = "rotate-cmek",
   DELETE_CMEK = "delete-cmek",
   GET_CMEKS = "get-cmeks",
   GET_CMEK = "get-cmek",
@@ -4334,6 +4335,14 @@ interface UpdateCmekEvent {
   };
 }
 
+interface RotateCmekEvent {
+  type: EventType.ROTATE_CMEK;
+  metadata: {
+    keyId: string;
+    version: number;
+  };
+}
+
 interface GetCmeksEvent {
   type: EventType.GET_CMEKS;
   metadata: {
@@ -7741,6 +7750,7 @@ export type Event =
   | IntegrationSyncedEvent
   | CreateCmekEvent
   | UpdateCmekEvent
+  | RotateCmekEvent
   | DeleteCmekEvent
   | GetCmekEvent
   | GetCmeksEvent

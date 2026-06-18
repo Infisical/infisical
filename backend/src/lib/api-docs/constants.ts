@@ -2492,6 +2492,9 @@ export const KMS = {
     description: "The updated description of this key.",
     isDisabled: "The flag to enable or disable this key."
   },
+  ROTATE_KEY: {
+    keyId: "The ID of the key to be rotated."
+  },
   DELETE_KEY: {
     keyId: "The ID of the key to be deleted."
   },
