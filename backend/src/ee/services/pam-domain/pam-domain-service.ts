@@ -119,7 +119,7 @@ export const pamDomainServiceFactory = ({
     if (gatewayId) {
       const gateway = await gatewayV2DAL.findOne({ id: gatewayId, orgId: actor.orgId });
       if (!gateway) {
-        throw new NotFoundError({ message: "Gateway not found or does not belong to this organization" });
+        throw new NotFoundError({ message: "Gateway not found" });
       }
     } else if (gatewayPoolId) {
       await gatewayPoolService.resolveAttachableGatewayFromPool({
@@ -241,7 +241,7 @@ export const pamDomainServiceFactory = ({
     if (gatewayId && gatewayId !== domain.gatewayId) {
       const gateway = await gatewayV2DAL.findOne({ id: gatewayId, orgId: actor.orgId });
       if (!gateway) {
-        throw new NotFoundError({ message: "Gateway not found or does not belong to this organization" });
+        throw new NotFoundError({ message: "Gateway not found" });
       }
     } else if (gatewayPoolId && gatewayPoolId !== domain.gatewayPoolId) {
       await gatewayPoolService.resolveAttachableGatewayFromPool({
