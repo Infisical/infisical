@@ -398,7 +398,8 @@ export const certificateApprovalServiceFactory = (
     }
 
     let effectiveBasicConstraints = csrBasicConstraints;
-    let effectivePathLength = csrBasicConstraints?.pathLength;
+    const storedPathLength = csrBasicConstraints?.pathLength;
+    let effectivePathLength = storedPathLength !== undefined && storedPathLength >= 0 ? storedPathLength : undefined;
 
     if (csrBasicConstraints?.isCA && policyIsCAState !== CertPolicyState.DENIED) {
       const policyMaxPathLength = certPolicy.basicConstraints?.maxPathLength;
