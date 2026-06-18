@@ -107,7 +107,7 @@ export const PamSchemaFields = ({ control, namePrefix, fields }: Props) => {
               <Field orientation="horizontal">
                 <FieldLabel>
                   {descriptor.label}
-                  {descriptor.required && <RequiredMark />}
+                  {(descriptor.required || descriptor.secret) && <RequiredMark />}
                 </FieldLabel>
                 <Switch
                   variant="pam"
@@ -119,7 +119,7 @@ export const PamSchemaFields = ({ control, namePrefix, fields }: Props) => {
               <Field>
                 <FieldLabel>
                   {descriptor.label}
-                  {descriptor.required && <RequiredMark />}
+                  {(descriptor.required || descriptor.secret) && <RequiredMark />}
                 </FieldLabel>
                 <FieldContent>
                   <FieldWidget field={field} descriptor={descriptor} isError={!!fieldState.error} />

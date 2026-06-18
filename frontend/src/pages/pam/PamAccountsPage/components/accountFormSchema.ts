@@ -1,7 +1,10 @@
+import { FieldValues, Path, UseFormSetError } from "react-hook-form";
+import axios from "axios";
 import { z } from "zod";
 
 import { PamAccountType, PamFieldWidget, TPamFieldDescriptor } from "@app/hooks/api/pam";
 import { UNCHANGED_PASSWORD_SENTINEL } from "@app/hooks/api/pam/constants";
+import { ApiErrorTypes, TApiErrors } from "@app/hooks/api/types";
 
 // Shared shape only; per-type connection/credential fields are validated server-side
 export const accountFormSchema = z.object({
@@ -39,18 +42,33 @@ export const buildEditCredentialValues = (
 const isFieldVisible = (field: TPamFieldDescriptor, values: Record<string, unknown>) =>
   !field.showWhen || values[field.showWhen.field] === field.showWhen.equals;
 
-// Lightweight required-field check; the backend performs full schema validation
-export const areRequiredFieldsFilled = (
+export const getMissingRequiredFields = (
   fields: TPamFieldDescriptor[],
   values: Record<string, unknown>
-): boolean =>
-  fields.every((field) => {
-    if (
-      !field.required ||
-      field.widget === PamFieldWidget.Boolean ||
-      !isFieldVisible(field, values)
-    )
-      return true;
-    const value = values[field.key];
-    return value !== undefined && value !== null && String(value).trim() !== "";
+): string[] =>
+  fields
+    .filter((field) => {
+      if (field.widget === PamFieldWidget.Boolean || !isFieldVisible(field, values)) return false;
+      if (!field.required && !field.secret) return false;
+      const value = values[field.key];
+      return value === undefined || value === null || String(value).trim() === "";
+    })
+    .map((field) => field.key);
+
+// Maps backend validation issues onto form fields
+export const applyServerValidationErrors = <T extends FieldValues>(
+  error: unknown,
+  setError: UseFormSetError<T>
+): boolean => {
+  if (!axios.isAxiosError(error)) return false;
+  const data = error.response?.data as TApiErrors | undefined;
+  if (data?.error !== ApiErrorTypes.ValidationError) return false;
+
+  let mapped = false;
+  data.message.forEach((issue) => {
+    if (!issue.path.length) return;
+    setError(issue.path.join(".") as Path<T>, { type: "server", message: issue.message });
+    mapped = true;
   });
+  return mapped;
+};

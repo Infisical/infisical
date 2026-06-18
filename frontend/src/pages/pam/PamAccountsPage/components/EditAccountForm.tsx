@@ -27,9 +27,10 @@ import { UNCHANGED_PASSWORD_SENTINEL } from "@app/hooks/api/pam/constants";
 import { SheetSaveBar } from "../../components/SheetSaveBar";
 import {
   accountFormSchema,
-  areRequiredFieldsFilled,
+  applyServerValidationErrors,
   buildDefaultFieldValues,
   buildEditCredentialValues,
+  getMissingRequiredFields,
   TAccountFormValues
 } from "./accountFormSchema";
 import { ConnectionDetailsForm } from "./ConnectionDetailsForm";
@@ -86,6 +87,8 @@ export const EditAccountForm = ({ accountId, onDirtyChange }: Props) => {
     control,
     handleSubmit,
     reset,
+    setError,
+    clearErrors,
     formState: { isDirty }
   } = useForm<TAccountFormValues>({
     resolver: zodResolver(accountFormSchema)
@@ -116,12 +119,25 @@ export const EditAccountForm = ({ accountId, onDirtyChange }: Props) => {
   const onSubmit = (values: TAccountFormValues) => {
     if (!accountId || !account || !metadata) return;
 
-    if (!areRequiredFieldsFilled(metadata.connectionFields, values.connectionDetails)) {
-      createNotification({ text: "Check connection details fields", type: "error" });
-      return;
-    }
-    if (!areRequiredFieldsFilled(metadata.credentialFields, values.credentials)) {
-      createNotification({ text: "Check credentials fields", type: "error" });
+    clearErrors();
+    const missingConnection = getMissingRequiredFields(
+      metadata.connectionFields,
+      values.connectionDetails
+    );
+    const missingCredentials = getMissingRequiredFields(
+      metadata.credentialFields,
+      values.credentials
+    );
+    if (missingConnection.length || missingCredentials.length) {
+      missingConnection.forEach((key) =>
+        setError(`connectionDetails.${key}`, {
+          type: "required",
+          message: "This field is required"
+        })
+      );
+      missingCredentials.forEach((key) =>
+        setError(`credentials.${key}`, { type: "required", message: "This field is required" })
+      );
       return;
     }
 
@@ -140,7 +156,8 @@ export const EditAccountForm = ({ accountId, onDirtyChange }: Props) => {
         ...(filteredCredentials ? { credentials: filteredCredentials } : {})
       },
       {
-        onSuccess: () => createNotification({ text: "Account updated", type: "success" })
+        onSuccess: () => createNotification({ text: "Account updated", type: "success" }),
+        onError: (error) => applyServerValidationErrors(error, setError)
       }
     );
   };

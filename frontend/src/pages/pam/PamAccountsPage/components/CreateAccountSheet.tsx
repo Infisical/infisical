@@ -51,8 +51,9 @@ import {
 import { AccountPlatformIcon } from "../../PamAccessPage/components/AccountPlatformIcon";
 import {
   accountFormSchema,
-  areRequiredFieldsFilled,
+  applyServerValidationErrors,
   buildDefaultFieldValues,
+  getMissingRequiredFields,
   TAccountFormValues
 } from "./accountFormSchema";
 import { ConnectionDetailsForm } from "./ConnectionDetailsForm";
@@ -77,6 +78,8 @@ export const CreateAccountSheet = ({ isOpen, onOpenChange, defaultFolderId }: Pr
     reset,
     watch,
     setValue,
+    setError,
+    clearErrors,
     formState: { isDirty }
   } = useForm<TAccountFormValues>({
     resolver: zodResolver(accountFormSchema),
@@ -141,12 +144,25 @@ export const CreateAccountSheet = ({ isOpen, onOpenChange, defaultFolderId }: Pr
   const onSubmit = (values: TAccountFormValues) => {
     if (!selectedMetadata) return;
 
-    if (!areRequiredFieldsFilled(selectedMetadata.connectionFields, values.connectionDetails)) {
-      createNotification({ text: "Check connection details fields", type: "error" });
-      return;
-    }
-    if (!areRequiredFieldsFilled(selectedMetadata.credentialFields, values.credentials)) {
-      createNotification({ text: "Check credentials fields", type: "error" });
+    clearErrors();
+    const missingConnection = getMissingRequiredFields(
+      selectedMetadata.connectionFields,
+      values.connectionDetails
+    );
+    const missingCredentials = getMissingRequiredFields(
+      selectedMetadata.credentialFields,
+      values.credentials
+    );
+    if (missingConnection.length || missingCredentials.length) {
+      missingConnection.forEach((key) =>
+        setError(`connectionDetails.${key}`, {
+          type: "required",
+          message: "This field is required"
+        })
+      );
+      missingCredentials.forEach((key) =>
+        setError(`credentials.${key}`, { type: "required", message: "This field is required" })
+      );
       return;
     }
 
@@ -164,7 +180,8 @@ export const CreateAccountSheet = ({ isOpen, onOpenChange, defaultFolderId }: Pr
         onSuccess: () => {
           createNotification({ text: "Account created", type: "success" });
           onOpenChange(false);
-        }
+        },
+        onError: (error) => applyServerValidationErrors(error, setError)
       }
     );
   };

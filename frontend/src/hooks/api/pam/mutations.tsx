@@ -102,6 +102,8 @@ export const useTerminatePamSession = () => {
 export const useCreatePamAccount = () => {
   const queryClient = useQueryClient();
   return useMutation({
+    // Validation errors are mapped onto the form fields
+    meta: { skipValidationToast: true },
     mutationFn: async ({ accountType, ...params }: TCreatePamAccountDTO) => {
       const { data } = await apiRequest.post(`/api/v1/pam/accounts/${accountType}`, params);
       return data.account;
@@ -116,6 +118,8 @@ export const useCreatePamAccount = () => {
 export const useUpdatePamAccount = () => {
   const queryClient = useQueryClient();
   return useMutation({
+    // Validation errors are mapped onto the form fields
+    meta: { skipValidationToast: true },
     mutationFn: async ({ accountId, accountType, ...params }: TUpdatePamAccountDTO) => {
       const { data } = await apiRequest.patch(
         `/api/v1/pam/accounts/${accountType}/${accountId}`,
