@@ -124,13 +124,24 @@ export const OrgTabGroup = () => {
               >
                 Audit Logs
               </Link>
-              , and workflow integrations and external migrations have moved to{" "}
+              , and workflow integrations, OAuth applications, and external migrations have moved to{" "}
               <Link
                 to="/organizations/$orgId/integrations"
                 params={{ orgId: currentOrg.id }}
                 className="underline hover:opacity-80"
               >
                 Integrations
+              </Link>
+              .
+            </p>
+            <p>
+              Secrets management configurations have moved to{" "}
+              <Link
+                to="/organizations/$orgId/projects/secret-management/product-settings"
+                params={{ orgId: currentOrg.id }}
+                className="underline hover:opacity-80"
+              >
+                Product Settings
               </Link>
               .
             </p>

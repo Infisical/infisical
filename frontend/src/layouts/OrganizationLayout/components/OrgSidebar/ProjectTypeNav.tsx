@@ -33,7 +33,7 @@ export const ProjectTypeNav = () => {
     : false;
   const isOnKmipServers = pathname.includes("/kmip-servers");
   const isOnSecretSharing = pathname.includes("/secret-sharing");
-  const isOnSecretManagementProjectSettings = pathname.includes('/secret-management/project-settings');
+  const isOnSecretManagementProductSettings = pathname.includes('/secret-management/product-settings');
 
   return (
     <SidebarGroup>
@@ -53,7 +53,7 @@ export const ProjectTypeNav = () => {
             size="lg"
             scope="project"
             asChild
-            isActive={!isOnKmipServers && !isOnSecretSharing && !isOnSecretManagementProjectSettings}
+            isActive={!isOnKmipServers && !isOnSecretSharing && !isOnSecretManagementProductSettings}
             tooltip="Projects"
           >
             <Link
@@ -109,15 +109,15 @@ export const ProjectTypeNav = () => {
               size="lg"
               scope="project"
               asChild
-              isActive={isOnSecretManagementProjectSettings}
-              tooltip="Project Settings"
+              isActive={isOnSecretManagementProductSettings}
+              tooltip="Product Settings"
             >
               <Link
-                to="/organizations/$orgId/projects/secret-management/project-settings"
+                to="/organizations/$orgId/projects/secret-management/product-settings"
                 params={{ orgId: resolvedOrgId }}
               >
                 <SlidersHorizontal className="size-4" />
-                <span>Project Settings</span>
+                <span>Product Settings</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>

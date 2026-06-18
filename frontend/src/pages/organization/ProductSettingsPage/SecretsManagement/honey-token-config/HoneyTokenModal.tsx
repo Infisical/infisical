@@ -384,7 +384,7 @@ export const HoneyTokenModal = ({ isOpen, onOpenChange }: Props) => {
               {(isAllowed) => (
                 <Button
                   type="submit"
-                  variant="org"
+                  variant="project"
                   isPending={isSaving || isTestingConnection}
                   isDisabled={!isAllowed || isSaving || isTestingConnection}
                 >

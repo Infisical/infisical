@@ -450,8 +450,8 @@ const organizationRoutes = route("/organizations/$orgId", [
   route("/projects/secret-management/secret-sharing", [
     index("organization/SecretSharingPage/route.tsx")
   ]),
-  route("/projects/secret-management/project-settings", [
-    index("organization/ProjectSettingsPage/route.tsx")
+  route("/projects/secret-management/product-settings", [
+    index("organization/ProductSettingsPage/SecretsManagement/route.tsx")
   ]),
   route("/access-management", "organization/AccessManagementPage/route.tsx"),
   route("/audit-logs", "organization/AuditLogsPage/route.tsx"),

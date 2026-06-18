@@ -94,7 +94,7 @@ import { Route as organizationKmipServersPageKmipServerDetailsByIDPageRouteImpor
 import { Route as organizationAppConnectionsGitHubManifestCallbackPageRouteImport } from './pages/organization/AppConnections/GitHubManifestCallbackPage/route'
 import { Route as organizationAppConnectionsOauthCallbackPageRouteImport } from './pages/organization/AppConnections/OauthCallbackPage/route'
 import { Route as organizationSecretSharingPageRouteImport } from './pages/organization/SecretSharingPage/route'
-import { Route as organizationProjectSettingsPageRouteImport } from './pages/organization/ProjectSettingsPage/route'
+import { Route as organizationProductSettingsPageSecretsManagementRouteImport } from './pages/organization/ProductSettingsPage/SecretsManagement/route'
 import { Route as organizationKmipServersPageRouteImport } from './pages/organization/KmipServersPage/route'
 import { Route as projectAuditLogsPageRouteSshImport } from './pages/project/AuditLogsPage/route-ssh'
 import { Route as projectAccessControlPageRouteSshImport } from './pages/project/AccessControlPage/route-ssh'
@@ -340,9 +340,9 @@ const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManag
   createFileRoute(
     '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/secret-sharing',
   )()
-const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManagementProjectSettingsImport =
+const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManagementProductSettingsImport =
   createFileRoute(
-    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/project-settings',
+    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/product-settings',
   )()
 const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManagementProjectIdImport =
   createFileRoute(
@@ -1039,11 +1039,11 @@ const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManag
     } as any,
   )
 
-const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManagementProjectSettingsRoute =
-  AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManagementProjectSettingsImport.update(
+const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManagementProductSettingsRoute =
+  AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManagementProductSettingsImport.update(
     {
-      id: '/secret-management/project-settings',
-      path: '/secret-management/project-settings',
+      id: '/secret-management/product-settings',
+      path: '/secret-management/product-settings',
       getParentRoute: () => organizationProjectsPageRouteRoute,
     } as any,
   )
@@ -1200,12 +1200,12 @@ const organizationSecretSharingPageRouteRoute =
       AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManagementSecretSharingRoute,
   } as any)
 
-const organizationProjectSettingsPageRouteRoute =
-  organizationProjectSettingsPageRouteImport.update({
+const organizationProductSettingsPageSecretsManagementRouteRoute =
+  organizationProductSettingsPageSecretsManagementRouteImport.update({
     id: '/',
     path: '/',
     getParentRoute: () =>
-      AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManagementProjectSettingsRoute,
+      AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManagementProductSettingsRoute,
   } as any)
 
 const organizationKmipServersPageRouteRoute =
@@ -3481,11 +3481,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManagementProjectIdImport
       parentRoute: typeof organizationProjectsPageRouteImport
     }
-    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/project-settings': {
-      id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/project-settings'
-      path: '/secret-management/project-settings'
-      fullPath: '/organizations/$orgId/projects/secret-management/project-settings'
-      preLoaderRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManagementProjectSettingsImport
+    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/product-settings': {
+      id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/product-settings'
+      path: '/secret-management/product-settings'
+      fullPath: '/organizations/$orgId/projects/secret-management/product-settings'
+      preLoaderRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManagementProductSettingsImport
       parentRoute: typeof organizationProjectsPageRouteImport
     }
     '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/secret-sharing': {
@@ -3523,12 +3523,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof organizationKmipServersPageRouteImport
       parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsKmsKmipServersImport
     }
-    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/project-settings/': {
-      id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/project-settings/'
+    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/product-settings/': {
+      id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/product-settings/'
       path: '/'
-      fullPath: '/organizations/$orgId/projects/secret-management/project-settings/'
-      preLoaderRoute: typeof organizationProjectSettingsPageRouteImport
-      parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManagementProjectSettingsImport
+      fullPath: '/organizations/$orgId/projects/secret-management/product-settings/'
+      preLoaderRoute: typeof organizationProductSettingsPageSecretsManagementRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManagementProductSettingsImport
     }
     '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/secret-sharing/': {
       id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/secret-sharing/'
@@ -6085,19 +6085,19 @@ const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManag
     AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManagementProjectIdRouteChildren,
   )
 
-interface AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManagementProjectSettingsRouteChildren {
-  organizationProjectSettingsPageRouteRoute: typeof organizationProjectSettingsPageRouteRoute
+interface AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManagementProductSettingsRouteChildren {
+  organizationProductSettingsPageSecretsManagementRouteRoute: typeof organizationProductSettingsPageSecretsManagementRouteRoute
 }
 
-const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManagementProjectSettingsRouteChildren: AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManagementProjectSettingsRouteChildren =
+const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManagementProductSettingsRouteChildren: AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManagementProductSettingsRouteChildren =
   {
-    organizationProjectSettingsPageRouteRoute:
-      organizationProjectSettingsPageRouteRoute,
+    organizationProductSettingsPageSecretsManagementRouteRoute:
+      organizationProductSettingsPageSecretsManagementRouteRoute,
   }
 
-const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManagementProjectSettingsRouteWithChildren =
-  AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManagementProjectSettingsRoute._addFileChildren(
-    AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManagementProjectSettingsRouteChildren,
+const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManagementProductSettingsRouteWithChildren =
+  AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManagementProductSettingsRoute._addFileChildren(
+    AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManagementProductSettingsRouteChildren,
   )
 
 interface AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManagementSecretSharingRouteChildren {
@@ -6246,7 +6246,7 @@ interface organizationProjectsPageRouteRouteChildren {
   AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsKmsKmipServersRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsKmsKmipServersRouteWithChildren
   AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdRouteWithChildren
   AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManagementProjectIdRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManagementProjectIdRouteWithChildren
-  AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManagementProjectSettingsRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManagementProjectSettingsRouteWithChildren
+  AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManagementProductSettingsRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManagementProductSettingsRouteWithChildren
   AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManagementSecretSharingRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManagementSecretSharingRouteWithChildren
   AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretScanningProjectIdRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretScanningProjectIdRouteWithChildren
   AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSshProjectIdRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSshProjectIdRouteWithChildren
@@ -6268,8 +6268,8 @@ const organizationProjectsPageRouteRouteChildren: organizationProjectsPageRouteR
       AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdRouteWithChildren,
     AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManagementProjectIdRoute:
       AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManagementProjectIdRouteWithChildren,
-    AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManagementProjectSettingsRoute:
-      AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManagementProjectSettingsRouteWithChildren,
+    AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManagementProductSettingsRoute:
+      AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManagementProductSettingsRouteWithChildren,
     AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManagementSecretSharingRoute:
       AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManagementSecretSharingRouteWithChildren,
     AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretScanningProjectIdRoute:
@@ -6699,13 +6699,13 @@ export interface FileRoutesByFullPath {
   '/organizations/$orgId/projects/kms/kmip-servers': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsKmsKmipServersRouteWithChildren
   '/organizations/$orgId/projects/pam/$projectId': typeof pamLayoutRouteWithChildren
   '/organizations/$orgId/projects/secret-management/$projectId': typeof secretManagerLayoutRouteWithChildren
-  '/organizations/$orgId/projects/secret-management/project-settings': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManagementProjectSettingsRouteWithChildren
+  '/organizations/$orgId/projects/secret-management/product-settings': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManagementProductSettingsRouteWithChildren
   '/organizations/$orgId/projects/secret-management/secret-sharing': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManagementSecretSharingRouteWithChildren
   '/organizations/$orgId/projects/secret-scanning/$projectId': typeof secretScanningLayoutRouteWithChildren
   '/organizations/$orgId/projects/ssh/$projectId': typeof sshLayoutRouteWithChildren
   '/organizations/$orgId/secret-manager/$projectId/approval': typeof secretManagerRedirectsRedirectApprovalPageRoute
   '/organizations/$orgId/projects/kms/kmip-servers/': typeof organizationKmipServersPageRouteRoute
-  '/organizations/$orgId/projects/secret-management/project-settings/': typeof organizationProjectSettingsPageRouteRoute
+  '/organizations/$orgId/projects/secret-management/product-settings/': typeof organizationProductSettingsPageSecretsManagementRouteRoute
   '/organizations/$orgId/projects/secret-management/secret-sharing/': typeof organizationSecretSharingPageRouteRoute
   '/organizations/$orgId/app-connections/$appConnection/oauth/callback': typeof organizationAppConnectionsOauthCallbackPageRouteRoute
   '/organizations/$orgId/app-connections/github/manifest/callback': typeof organizationAppConnectionsGitHubManifestCallbackPageRouteRoute
@@ -7005,7 +7005,7 @@ export interface FileRoutesByTo {
   '/organizations/$orgId/projects/ssh/$projectId': typeof sshLayoutRouteWithChildren
   '/organizations/$orgId/secret-manager/$projectId/approval': typeof secretManagerRedirectsRedirectApprovalPageRoute
   '/organizations/$orgId/projects/kms/kmip-servers': typeof organizationKmipServersPageRouteRoute
-  '/organizations/$orgId/projects/secret-management/project-settings': typeof organizationProjectSettingsPageRouteRoute
+  '/organizations/$orgId/projects/secret-management/product-settings': typeof organizationProductSettingsPageSecretsManagementRouteRoute
   '/organizations/$orgId/projects/secret-management/secret-sharing': typeof organizationSecretSharingPageRouteRoute
   '/organizations/$orgId/app-connections/$appConnection/oauth/callback': typeof organizationAppConnectionsOauthCallbackPageRouteRoute
   '/organizations/$orgId/app-connections/github/manifest/callback': typeof organizationAppConnectionsGitHubManifestCallbackPageRouteRoute
@@ -7292,13 +7292,13 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/kmip-servers': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsKmsKmipServersRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManagementProjectIdRouteWithChildren
-  '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/project-settings': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManagementProjectSettingsRouteWithChildren
+  '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/product-settings': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManagementProductSettingsRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/secret-sharing': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManagementSecretSharingRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-scanning/$projectId': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretScanningProjectIdRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/ssh/$projectId': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSshProjectIdRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/secret-manager/$projectId/approval': typeof secretManagerRedirectsRedirectApprovalPageRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/kmip-servers/': typeof organizationKmipServersPageRouteRoute
-  '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/project-settings/': typeof organizationProjectSettingsPageRouteRoute
+  '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/product-settings/': typeof organizationProductSettingsPageSecretsManagementRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/secret-sharing/': typeof organizationSecretSharingPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/app-connections/$appConnection/oauth/callback': typeof organizationAppConnectionsOauthCallbackPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/app-connections/github/manifest/callback': typeof organizationAppConnectionsGitHubManifestCallbackPageRouteRoute
@@ -7611,13 +7611,13 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/projects/kms/kmip-servers'
     | '/organizations/$orgId/projects/pam/$projectId'
     | '/organizations/$orgId/projects/secret-management/$projectId'
-    | '/organizations/$orgId/projects/secret-management/project-settings'
+    | '/organizations/$orgId/projects/secret-management/product-settings'
     | '/organizations/$orgId/projects/secret-management/secret-sharing'
     | '/organizations/$orgId/projects/secret-scanning/$projectId'
     | '/organizations/$orgId/projects/ssh/$projectId'
     | '/organizations/$orgId/secret-manager/$projectId/approval'
     | '/organizations/$orgId/projects/kms/kmip-servers/'
-    | '/organizations/$orgId/projects/secret-management/project-settings/'
+    | '/organizations/$orgId/projects/secret-management/product-settings/'
     | '/organizations/$orgId/projects/secret-management/secret-sharing/'
     | '/organizations/$orgId/app-connections/$appConnection/oauth/callback'
     | '/organizations/$orgId/app-connections/github/manifest/callback'
@@ -7916,7 +7916,7 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/projects/ssh/$projectId'
     | '/organizations/$orgId/secret-manager/$projectId/approval'
     | '/organizations/$orgId/projects/kms/kmip-servers'
-    | '/organizations/$orgId/projects/secret-management/project-settings'
+    | '/organizations/$orgId/projects/secret-management/product-settings'
     | '/organizations/$orgId/projects/secret-management/secret-sharing'
     | '/organizations/$orgId/app-connections/$appConnection/oauth/callback'
     | '/organizations/$orgId/app-connections/github/manifest/callback'
@@ -8201,13 +8201,13 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/kmip-servers'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId'
-    | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/project-settings'
+    | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/product-settings'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/secret-sharing'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-scanning/$projectId'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/ssh/$projectId'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/secret-manager/$projectId/approval'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/kmip-servers/'
-    | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/project-settings/'
+    | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/product-settings/'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/secret-sharing/'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/app-connections/$appConnection/oauth/callback'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/app-connections/github/manifest/callback'
@@ -8766,7 +8766,7 @@ export const routeTree = rootRoute
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/kmip-servers",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId",
-        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/project-settings",
+        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/product-settings",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/secret-sharing",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-scanning/$projectId",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/ssh/$projectId"
@@ -8952,11 +8952,11 @@ export const routeTree = rootRoute
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout"
       ]
     },
-    "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/project-settings": {
+    "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/product-settings": {
       "filePath": "",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects",
       "children": [
-        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/project-settings/"
+        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/product-settings/"
       ]
     },
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/secret-sharing": {
@@ -8988,9 +8988,9 @@ export const routeTree = rootRoute
       "filePath": "organization/KmipServersPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/kmip-servers"
     },
-    "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/project-settings/": {
-      "filePath": "organization/ProjectSettingsPage/route.tsx",
-      "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/project-settings"
+    "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/product-settings/": {
+      "filePath": "organization/ProductSettingsPage/SecretsManagement/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/product-settings"
     },
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/secret-sharing/": {
       "filePath": "organization/SecretSharingPage/route.tsx",

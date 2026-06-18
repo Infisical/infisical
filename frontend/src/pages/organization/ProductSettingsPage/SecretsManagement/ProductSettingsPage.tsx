@@ -21,9 +21,9 @@ import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@a
 import { useUpdateOrg } from "@app/hooks/api/organization/queries";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
-import { HoneyTokenSection } from "../SettingsPage/components/OrgProductSettingsTab/HoneyTokenSection";
+import { HoneyTokenSection } from "./honey-token-config/HoneyTokenSection";
 
-export const ProjectSettingsPage = () => {
+export const ProductSettingsPage = () => {
   const { currentOrg } = useOrganization();
   const { mutateAsync: updateOrg, isPending } = useUpdateOrg();
 
@@ -44,14 +44,14 @@ export const ProjectSettingsPage = () => {
   return (
     <>
       <Helmet>
-        <title>Project Settings | Infisical</title>
+        <title>Product Settings | Infisical</title>
         <link rel="icon" href="/infisical.ico" />
       </Helmet>
       <div className="h-full">
         <div className="mx-auto h-full w-full max-w-8xl bg-bunker-800 text-white">
           <PageHeader
             scope={ProjectType.SecretManager}
-            title="Project Settings"
+            title="Product Settings"
             description="Configure organization-wide settings for secrets management projects."
           />
           <div className="flex flex-col gap-4 px-8 pb-8">
@@ -83,7 +83,7 @@ export const ProjectSettingsPage = () => {
                       {(isAllowed) => (
                         <Switch
                           id="block-duplicate-secret-sync-destinations"
-                          variant="org"
+                          variant="project"
                           checked={currentOrg?.blockDuplicateSecretSyncDestinations ?? false}
                           onCheckedChange={(value) => handleToggle(value)}
                           disabled={!isAllowed || isPending}
