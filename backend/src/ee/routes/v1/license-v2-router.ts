@@ -91,7 +91,7 @@ const BillingV2OverviewSchema = z.object({
 });
 
 export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
-  // Every route is gated by LICENSE_SERVER_V2_ENABLED; the surface is invisible when the flag is off.
+  // Every route is gated on LICENSE_SERVER_V2_MODE="on"; the billing surface is invisible until full v2 cutover.
   server.addHook("onRequest", async () => {
     if (!server.services.licenseV2.isEnabled()) {
       throw new NotFoundError({ message: "License Server v2 is not enabled" });
