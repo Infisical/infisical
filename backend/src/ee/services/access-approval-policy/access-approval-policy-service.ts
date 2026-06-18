@@ -22,6 +22,7 @@ import {
 } from "./access-approval-policy-approver-dal";
 import { TAccessApprovalPolicyDALFactory } from "./access-approval-policy-dal";
 import { TAccessApprovalPolicyEnvironmentDALFactory } from "./access-approval-policy-environment-dal";
+import { approvalPolicyMembershipVerifierFactory } from "./access-approval-policy-fns";
 import {
   ApproverType,
   BypasserType,
@@ -39,7 +40,10 @@ type TAccessApprovalPolicyServiceFactoryDep = {
   projectEnvDAL: Pick<TProjectEnvDALFactory, "find" | "findOne">;
   accessApprovalPolicyApproverDAL: TAccessApprovalPolicyApproverDALFactory;
   accessApprovalPolicyBypasserDAL: TAccessApprovalPolicyBypasserDALFactory;
-  projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findProjectMembershipsByUserIds">;
+  projectMembershipDAL: Pick<
+    TProjectMembershipDALFactory,
+    "findProjectMembershipsByUserIds" | "findProjectMembershipsByGroupIds"
+  >;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "findUserGroupMembershipsInProjectByUserIds">;
   groupDAL: TGroupDALFactory;
   userDAL: Pick<TUserDALFactory, "find">;
@@ -86,29 +90,10 @@ export const accessApprovalPolicyServiceFactory = ({
     return policyId ? policy && policy.id !== policyId : Boolean(policy);
   };
 
-  const verifyProjectUserMembership = async (userIds: string[], orgId: string, projectId: string) => {
-    if (userIds.length === 0) return;
-    const projectMemberships = (await projectMembershipDAL.findProjectMembershipsByUserIds(orgId, userIds)).filter(
-      (v) => v.projectId === projectId
-    );
-
-    if (projectMemberships.length !== userIds.length) {
-      const projectMemberUserIds = new Set(projectMemberships.map((member) => member.userId));
-      const userIdsNotInProject = userIds.filter((id) => !projectMemberUserIds.has(id));
-
-      // Users not added to the project directly may still be members through a group.
-      const userIdsWithGroupAccess = new Set(
-        await userGroupMembershipDAL.findUserGroupMembershipsInProjectByUserIds(userIdsNotInProject, projectId)
-      );
-      const userIdsWithoutAccess = userIdsNotInProject.filter((id) => !userIdsWithGroupAccess.has(id));
-
-      if (userIdsWithoutAccess.length) {
-        throw new BadRequestError({
-          message: `Some users are not members of the project: ${userIdsWithoutAccess.join(", ")}`
-        });
-      }
-    }
-  };
+  const { verifyProjectUserMembership, verifyProjectGroupMembership } = approvalPolicyMembershipVerifierFactory({
+    projectMembershipDAL,
+    userGroupMembershipDAL
+  });
 
   const createAccessApprovalPolicy: TAccessApprovalPolicyServiceFactory["createAccessApprovalPolicy"] = async ({
     name,
@@ -207,6 +192,15 @@ export const accessApprovalPolicyServiceFactory = ({
         project.id
       );
     }
+
+    if (groupApprovers.length > 0) {
+      await verifyProjectGroupMembership(
+        groupApprovers.map((ga) => ga.id).filter(Boolean) as string[],
+        project.orgId,
+        project.id
+      );
+    }
+
     let groupBypassers: string[] = [];
     let bypasserUserIds: string[] = [];
 
@@ -544,6 +538,12 @@ export const accessApprovalPolicyServiceFactory = ({
       }
 
       if (groupApprovers) {
+        await verifyProjectGroupMembership(
+          groupApprovers.map((ga) => ga.id).filter(Boolean) as string[],
+          actorOrgId,
+          accessApprovalPolicy.projectId
+        );
+
         await accessApprovalPolicyApproverDAL.insertMany(
           groupApprovers.map((el) => ({
             approverGroupId: el.id,

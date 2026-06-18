@@ -57,7 +57,7 @@ export const userGroupMembershipDALFactory = (db: TDbClient) => {
 
   /**
    * Given a set of [userIds], returns the subset that have access to project [projectId]
-   * through a (non-pending) group membership — i.e. they belong to a group that is itself
+   * through a (non-pending) group membership, i.e. they belong to a group that is itself
    * a member of the project. Used to validate approvers/bypassers who are project members
    * via a group rather than directly.
    */

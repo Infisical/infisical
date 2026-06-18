@@ -11,6 +11,7 @@ import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal
 import { TProjectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
+import { approvalPolicyMembershipVerifierFactory } from "../access-approval-policy/access-approval-policy-fns";
 import { ApproverType, BypasserType } from "../access-approval-policy/access-approval-policy-types";
 import { TUserGroupMembershipDALFactory } from "../group/user-group-membership-dal";
 import { TLicenseServiceFactory } from "../license/license-service";
@@ -79,44 +80,10 @@ export const secretApprovalPolicyServiceFactory = ({
   licenseService,
   secretApprovalRequestDAL
 }: TSecretApprovalPolicyServiceFactoryDep) => {
-  const verifyProjectUserMembership = async (userIds: string[], orgId: string, projectId: string) => {
-    if (userIds.length === 0) return;
-    const projectMemberships = (await projectMembershipDAL.findProjectMembershipsByUserIds(orgId, userIds)).filter(
-      (v) => v.projectId === projectId
-    );
-
-    if (projectMemberships.length !== userIds.length) {
-      const projectMemberUserIds = new Set(projectMemberships.map((member) => member.userId));
-      const userIdsNotInProject = userIds.filter((id) => !projectMemberUserIds.has(id));
-
-      // Users not added to the project directly may still be members through a group.
-      const userIdsWithGroupAccess = new Set(
-        await userGroupMembershipDAL.findUserGroupMembershipsInProjectByUserIds(userIdsNotInProject, projectId)
-      );
-      const userIdsWithoutAccess = userIdsNotInProject.filter((id) => !userIdsWithGroupAccess.has(id));
-
-      if (userIdsWithoutAccess.length) {
-        throw new BadRequestError({
-          message: `Some users are not members of the project: ${userIdsWithoutAccess.join(", ")}`
-        });
-      }
-    }
-  };
-
-  const verifyProjectGroupMembership = async (groupIds: string[], orgId: string, projectId: string) => {
-    if (groupIds.length === 0) return;
-    const projectMemberships = (await projectMembershipDAL.findProjectMembershipsByGroupIds(orgId, groupIds)).filter(
-      (v) => v.projectId === projectId
-    );
-
-    const projectGroupIds = new Set(projectMemberships.map((member) => member.groupId));
-    const groupIdsNotInProject = groupIds.filter((id) => !projectGroupIds.has(id));
-    if (groupIdsNotInProject.length) {
-      throw new BadRequestError({
-        message: `Some groups are not members of the project: ${groupIdsNotInProject.join(", ")}`
-      });
-    }
-  };
+  const { verifyProjectUserMembership, verifyProjectGroupMembership } = approvalPolicyMembershipVerifierFactory({
+    projectMembershipDAL,
+    userGroupMembershipDAL
+  });
 
   const $policyExists = async ({
     envIds,
