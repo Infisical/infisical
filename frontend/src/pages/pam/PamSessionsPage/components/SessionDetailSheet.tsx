@@ -183,6 +183,9 @@ export const SessionDetailSheet = ({ sessionId, isOpen, onOpenChange, onTerminat
   const statusConfig = STATUS_BADGE[session.status];
   const typeName = accountTypeMap[session.accountType]?.name ?? session.accountType;
 
+  const emptyValue = <span className="text-muted">—</span>;
+  const duration = formatDuration(session);
+
   const metadata: { label: string; value: ReactNode }[] = [
     {
       label: "Status",
@@ -194,16 +197,18 @@ export const SessionDetailSheet = ({ sessionId, isOpen, onOpenChange, onTerminat
       )
     },
     { label: "Email", value: session.actorEmail },
-    { label: "Folder", value: session.folderName || "-" },
+    { label: "Folder", value: session.folderName || emptyValue },
     {
       label: "Started",
-      value: session.startedAt ? format(new Date(session.startedAt), "MMM d, yyyy h:mm a") : "-"
+      value: session.startedAt
+        ? format(new Date(session.startedAt), "MMM d, yyyy h:mm a")
+        : emptyValue
     },
     {
       label: "Ended",
       value: session.endedAt ? format(new Date(session.endedAt), "MMM d, yyyy h:mm a") : "Ongoing"
     },
-    { label: "Duration", value: formatDuration(session) },
+    { label: "Duration", value: duration === "—" ? emptyValue : duration },
     { label: "IP Address", value: session.actorIp },
     ...(session.reason ? [{ label: "Reason", value: session.reason }] : [])
   ];

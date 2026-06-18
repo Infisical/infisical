@@ -656,9 +656,9 @@ export const AccountDetailSheet = ({ isOpen, accountId, onOpenChange }: Props) =
     : [];
 
   const folderSubtitle = account?.folderName ? (
-    <span className="flex items-center gap-1.5">
-      <FolderOpen className="size-3.5" />
-      {account.folderName}
+    <span className="flex min-w-0 items-center gap-1.5">
+      <FolderOpen className="size-3.5 shrink-0" />
+      <span className="truncate">{account.folderName}</span>
     </span>
   ) : undefined;
 
