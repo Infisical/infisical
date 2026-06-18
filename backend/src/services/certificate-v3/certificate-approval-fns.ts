@@ -36,7 +36,11 @@ import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns
 import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
 import { copyMetadataFromRequestToCertificate } from "@app/services/resource-metadata/resource-metadata-fns";
 
-import { CertExtendedKeyUsageType, CertKeyUsageType, CertPolicyState } from "../certificate-common/certificate-constants";
+import {
+  CertExtendedKeyUsageType,
+  CertKeyUsageType,
+  CertPolicyState
+} from "../certificate-common/certificate-constants";
 import {
   calculateFinalRenewBeforeDays,
   extractCertificateFromBuffer,
