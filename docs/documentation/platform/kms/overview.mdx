@@ -369,7 +369,7 @@ In the following steps, we explore how to verify data using an existing key in I
 
 Every KMS key tracks a version, starting at 1. Rotating a key generates new cryptographic key material for it and increments the version. The key keeps the same ID and name, so applications referencing the key do not need any changes.
 
-Rotation works the same way as cloud KMS providers such as AWS KMS:
+How rotation behaves:
 
 - New encrypt operations use the latest key material.
 - All previous key material versions are retained inside Infisical, and decrypt operations automatically use the version that encrypted the ciphertext. Existing ciphertexts remain decryptable through Infisical without re-encryption.
