@@ -312,7 +312,13 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const { projectId } = req.query;
-      return server.services.insights.getCounts({ projectId }, req.permission);
+      const result = await server.services.insights.getCounts({ projectId }, req.permission);
+      await server.services.auditLog.createAuditLog({
+        projectId,
+        event: { type: EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_COUNTS, metadata: { projectId } },
+        ...req.auditLogInfo
+      });
+      return result;
     }
   });
 };

@@ -286,6 +286,8 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.VIEW_INSIGHTS_AUTH_METHODS]: "View Machine Identity Auth Methods Insights",
   [EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_SUMMARY]: "View Secrets Management Summary Insights",
   [EventType.VIEW_INSIGHTS_SECRETS_DUPLICATION]: "View Secrets Duplication Insights",
+  [EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_COUNTS]:
+    "View Secrets Management Resource Counts Insights",
 
   [EventType.CREATE_PROJECT_ROLE]: "Create Project Role",
   [EventType.UPDATE_PROJECT_ROLE]: "Update Project Role",

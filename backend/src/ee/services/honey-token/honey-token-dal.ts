@@ -141,8 +141,12 @@ export const honeyTokenDALFactory = (db: TDbClient) => {
 
   const countByProjectId = async (projectId: string, tx?: Knex) => {
     const [result] = await (tx || db.replicaNode())(TableName.HoneyToken)
+      .join(TableName.SecretFolder, `${TableName.SecretFolder}.id`, `${TableName.HoneyToken}.folderId`)
+      .join(TableName.Environment, `${TableName.Environment}.id`, `${TableName.SecretFolder}.envId`)
       .where(`${TableName.HoneyToken}.projectId`, projectId)
       .whereNot(`${TableName.HoneyToken}.status`, "revoked")
+      // exclude honey tokens in soft-deleted environments, mirroring findByFolderIds and the other counts
+      .whereNull(`${TableName.Environment}.deleteAfter`)
       .count<{ count: string | number }>({
         count: `${TableName.HoneyToken}.id`
       });
