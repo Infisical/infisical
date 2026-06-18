@@ -1,12 +1,24 @@
+import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { FolderOpen, Globe, Rocket, Terminal } from "lucide-react";
 
-import { Badge, Button } from "@app/components/v3";
-import { Sheet, SheetContent } from "@app/components/v3/generic/Sheet";
+import {
+  Badge,
+  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Field,
+  FieldLabel,
+  RadioGroup,
+  RadioGroupItem
+} from "@app/components/v3";
 import { useOrganization } from "@app/context";
-import { PAM_ACCOUNT_TYPE_MAP, TAccessiblePamAccount } from "@app/hooks/api/pam";
+import { TAccessiblePamAccount, usePamAccountTypeMap } from "@app/hooks/api/pam";
 
-import { AccountPlatformIcon } from "./AccountPlatformIcon";
+import { PamDetailSheet } from "../../components/PamDetailSheet";
 
 type Props = {
   account: TAccessiblePamAccount | null;
@@ -14,65 +26,51 @@ type Props = {
   onOpenChange: (open: boolean) => void;
 };
 
-export const LaunchSessionSheet = ({ account, isOpen, onOpenChange }: Props) => {
+const LaunchTab = ({ account }: { account: TAccessiblePamAccount }) => {
   const { currentOrg } = useOrganization();
-
-  if (!account) return null;
-
-  const typeName = PAM_ACCOUNT_TYPE_MAP[account.accountType]?.name ?? account.accountType;
+  const [method, setMethod] = useState("browser");
 
   return (
-    <Sheet open={isOpen} onOpenChange={onOpenChange}>
-      <SheetContent className="flex w-full !max-w-5xl flex-row gap-0 p-0" side="right">
-        <div className="flex w-[280px] shrink-0 flex-col border-r border-border bg-mineshaft-700/30 p-6">
-          <div className="mb-3 flex size-14 items-center justify-center rounded-md border border-border bg-mineshaft-800 p-2.5">
-            <AccountPlatformIcon accountType={account.accountType} size={32} />
-          </div>
-          <h3 className="text-base font-semibold text-foreground">{account.name}</h3>
-          {account.folderName && (
-            <p className="mt-0.5 flex items-center gap-1 text-xs text-muted">
-              <FolderOpen className="size-3" />
-              {account.folderName}
-            </p>
-          )}
-          <Badge variant="pam" className="mt-2.5 w-fit">
-            {typeName}
-          </Badge>
-          <div className="mt-4 border-t border-border pt-4">
-            {account.description && (
-              <div>
-                <p className="text-xs text-muted">Description</p>
-                <p className="mt-0.5 text-sm text-foreground">{account.description}</p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="flex flex-1 flex-col">
-          <div className="flex-1 p-6">
+    <div className="flex flex-1 flex-col gap-4 p-4">
+      <Card>
+        <CardHeader className="border-b">
+          <CardTitle className="text-base">Launch Session</CardTitle>
+          <CardDescription>Choose how to connect to this account.</CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-5">
+          <div>
             <p className="mb-3 text-sm font-medium text-foreground">Launch method</p>
-            <div className="flex gap-3">
-              <div className="flex flex-1 items-start gap-3 rounded-md border border-product-pam/40 bg-product-pam/5 p-3.5">
-                <Globe className="mt-0.5 size-5 shrink-0 text-foreground" />
-                <div className="text-left">
-                  <p className="text-sm font-medium text-foreground">Browser</p>
-                  <p className="text-xs text-muted">Connect directly from your browser.</p>
-                </div>
-              </div>
-              <div className="relative flex flex-1 items-start gap-3 rounded-md border border-border p-3.5 opacity-50">
-                <Terminal className="mt-0.5 size-5 shrink-0 text-foreground" />
-                <div className="text-left">
-                  <p className="text-sm font-medium text-foreground">CLI</p>
-                  <p className="text-xs text-muted">Use a custom client with the Infisical CLI.</p>
-                </div>
-                <Badge variant="warning" className="absolute top-2 right-2">
-                  Coming soon
-                </Badge>
-              </div>
-            </div>
+            <RadioGroup value={method} onValueChange={setMethod} className="grid-cols-2 gap-3">
+              <FieldLabel htmlFor="launch-browser" variant="pam">
+                <Field orientation="horizontal" className="items-center gap-3">
+                  <Globe className="size-5 shrink-0 text-foreground" />
+                  <div className="flex-1 text-left">
+                    <p className="text-sm font-medium text-foreground">Browser</p>
+                    <p className="text-xs text-muted">Connect directly from your browser.</p>
+                  </div>
+                  <RadioGroupItem id="launch-browser" value="browser" className="sr-only" />
+                </Field>
+              </FieldLabel>
+              <FieldLabel htmlFor="launch-cli" variant="pam">
+                <Field orientation="horizontal" className="relative items-center gap-3">
+                  <Terminal className="size-5 shrink-0 text-foreground" />
+                  <div className="flex-1 text-left">
+                    <p className="text-sm font-medium text-foreground">CLI</p>
+                    <p className="text-xs text-muted">
+                      Use a custom client with the Infisical CLI.
+                    </p>
+                  </div>
+                  <Badge variant="warning" className="absolute top-2 right-2">
+                    Coming soon
+                  </Badge>
+                  <RadioGroupItem id="launch-cli" value="cli" disabled className="sr-only" />
+                </Field>
+              </FieldLabel>
+            </RadioGroup>
+          </div>
 
-            <p className="mt-5 mb-2.5 text-sm text-foreground">Launch browser client</p>
-
+          <div>
+            <p className="mb-2.5 text-sm text-foreground">Launch browser client</p>
             <Button variant="pam" className="w-full" asChild>
               <Link
                 to="/organizations/$orgId/pam/accounts/$accountType/$accountId/access"
@@ -88,8 +86,47 @@ export const LaunchSessionSheet = ({ account, isOpen, onOpenChange }: Props) => 
               </Link>
             </Button>
           </div>
-        </div>
-      </SheetContent>
-    </Sheet>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
+export const LaunchSessionSheet = ({ account, isOpen, onOpenChange }: Props) => {
+  const { map } = usePamAccountTypeMap();
+
+  if (!account) return null;
+
+  const typeName = map[account.accountType]?.name ?? account.accountType;
+
+  const subtitle = account.folderName ? (
+    <span className="flex items-center gap-1.5">
+      <FolderOpen className="size-3.5" />
+      {account.folderName}
+    </span>
+  ) : undefined;
+
+  const metadata = account.description
+    ? [{ label: "Description", value: account.description }]
+    : [];
+
+  return (
+    <PamDetailSheet
+      isOpen={isOpen}
+      onOpenChange={onOpenChange}
+      accountType={account.accountType}
+      title={account.name}
+      subtitle={subtitle}
+      typeBadge={typeName}
+      metadata={metadata}
+      tabs={[
+        {
+          value: "launch",
+          label: "Launch",
+          icon: <Rocket className="mr-1.5 size-4" />,
+          content: <LaunchTab account={account} />
+        }
+      ]}
+    />
   );
 };
