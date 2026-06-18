@@ -729,7 +729,7 @@ export const IdentityLdapAuthForm = ({
                       }
                     }}
                   >
-                    <FieldLabel htmlFor="user-access-restricted" variant="org">
+                    <FieldLabel htmlFor="user-access-restricted" variant={scopeVariant}>
                       <Field orientation="horizontal">
                         <FieldContent>
                           <FieldTitle>
@@ -741,7 +741,7 @@ export const IdentityLdapAuthForm = ({
                         <RadioGroupItem value="restricted" id="user-access-restricted" />
                       </Field>
                     </FieldLabel>
-                    <FieldLabel htmlFor="user-access-all" variant="org">
+                    <FieldLabel htmlFor="user-access-all" variant={scopeVariant}>
                       <Field orientation="horizontal">
                         <FieldContent>
                           <FieldTitle>
