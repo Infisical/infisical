@@ -439,7 +439,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
       const countQuery = buildIdentitySearchBase();
 
       if (searchFilter) {
-        buildKnexFilterForSearchResource(searchQuery, searchFilter, (attr) => {
+        const getSearchFilterField = (attr: "name" | "role") => {
           switch (attr) {
             case "role":
               return [`${TableName.Role}.slug`, `${TableName.MembershipRole}.role`];
@@ -448,27 +448,14 @@ export const identityOrgDALFactory = (db: TDbClient) => {
             default:
               throw new BadRequestError({ message: `Invalid ${String(attr)} provided` });
           }
-        });
-        buildKnexFilterForSearchResource(countQuery, searchFilter, (attr) => {
-          switch (attr) {
-            case "role":
-              return [`${TableName.Role}.slug`, `${TableName.MembershipRole}.role`];
-            case "name":
-              return `${TableName.Identity}.name`;
-            default:
-              throw new BadRequestError({ message: `Invalid ${String(attr)} provided` });
-          }
-        });
+        };
+        buildKnexFilterForSearchResource(searchQuery, searchFilter, getSearchFilterField);
+        buildKnexFilterForSearchResource(countQuery, searchFilter, getSearchFilterField);
       }
 
       if (limit) {
         void searchQuery.offset(offset).limit(limit);
       }
-
-      const [countResult] = (await countQuery.countDistinct(`${TableName.Membership}.id as count`)) as [
-        { count: string | number }?
-      ];
-      const totalCount = Number(countResult?.count ?? 0);
 
       type TSubquery = Awaited<typeof searchQuery>;
       const query = (tx || db.replicaNode())(TableName.Membership)
@@ -596,7 +583,14 @@ export const identityOrgDALFactory = (db: TDbClient) => {
         );
       }
 
-      const docs = await query;
+      // the count and the paginated fetch are independent (they share only orgId), so run them
+      // concurrently instead of awaiting the count before building and executing the main query.
+      const [docs, countRows] = await Promise.all([
+        query,
+        countQuery.countDistinct(`${TableName.Membership}.id as count`)
+      ]);
+      const totalCount = Number((countRows as unknown as [{ count: string | number }?])[0]?.count ?? 0);
+
       const formattedDocs = sqlNestRelationships({
         data: docs,
         key: "id",
