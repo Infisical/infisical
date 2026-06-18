@@ -1,9 +1,8 @@
 import { useMemo, useState } from "react";
 import { components, OptionProps } from "react-select";
-import { User as UserIcon, Users as UsersIcon } from "lucide-react";
+import { CheckIcon, User as UserIcon, Users as UsersIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
-import { RoleOption } from "@app/components/roles";
 import {
   Button,
   Dialog,
@@ -79,6 +78,20 @@ const AssigneeSelectOption = ({ children, ...props }: OptionProps<AssigneeOption
           <p className="truncate text-xs leading-4 text-muted">{props.data.subtitle}</p>
         )}
       </div>
+    </div>
+  </components.Option>
+);
+
+const ResourceRoleOption = ({ isSelected, children, ...props }: OptionProps<TPamResourceRole>) => (
+  <components.Option isSelected={isSelected} {...props}>
+    <div className="flex items-start justify-between gap-2 whitespace-normal">
+      <div className="min-w-0">
+        <p>{children}</p>
+        {props.data.description && (
+          <p className="text-xs leading-4 text-muted">{props.data.description}</p>
+        )}
+      </div>
+      {isSelected && <CheckIcon className="mt-0.5 size-4 shrink-0" />}
     </div>
   </components.Option>
 );
@@ -311,7 +324,7 @@ export const AssignAccessModal = ({
                 onChange={(opt) => setRoleSlug((opt as TPamResourceRole | null)?.slug ?? "")}
                 getOptionValue={(opt) => opt.slug}
                 getOptionLabel={(opt) => opt.name}
-                components={{ Option: RoleOption }}
+                components={{ Option: ResourceRoleOption }}
                 placeholder="Select a role..."
               />
             </FieldContent>
