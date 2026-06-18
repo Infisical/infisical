@@ -20,11 +20,7 @@ export const pamAccountTemplateDALFactory = (db: TDbClient) => {
     tx?: Knex
   ): Promise<TPamAccountTemplateWithCount[]> => {
     const qb = (tx || db.replicaNode())(TableName.PamAccountTemplate)
-      .leftJoin(
-        TableName.PamAccount,
-        `${TableName.PamAccount}.templateId`,
-        `${TableName.PamAccountTemplate}.id`
-      )
+      .leftJoin(TableName.PamAccount, `${TableName.PamAccount}.templateId`, `${TableName.PamAccountTemplate}.id`)
       .where(`${TableName.PamAccountTemplate}.projectId`, projectId);
 
     if (filters?.search) {
@@ -41,13 +37,8 @@ export const pamAccountTemplateDALFactory = (db: TDbClient) => {
 
     return qb
       .groupBy(`${TableName.PamAccountTemplate}.id`)
-      .select(
-        `${TableName.PamAccountTemplate}.*`,
-        db.raw(`COUNT(${TableName.PamAccount}.id)::int as "accountCount"`)
-      )
-      .orderBy(`${TableName.PamAccountTemplate}.name`, "asc") as unknown as Promise<
-      TPamAccountTemplateWithCount[]
-    >;
+      .select(`${TableName.PamAccountTemplate}.*`, db.raw(`COUNT(${TableName.PamAccount}.id)::int as "accountCount"`))
+      .orderBy(`${TableName.PamAccountTemplate}.name`, "asc") as unknown as Promise<TPamAccountTemplateWithCount[]>;
   };
 
   const countAccountsByTemplateId = async (templateId: string, tx?: Knex) => {
