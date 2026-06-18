@@ -43,9 +43,7 @@ import {
   useListCertificatePolicies
 } from "@app/hooks/api/certificatePolicies";
 import {
-  EnrollmentType,
   IssuerType,
-  ScepChallengeType,
   TCertificateProfileDefaults,
   TCertificateProfileWithDetails,
   TCreateCertificateProfileDTO,
@@ -99,14 +97,9 @@ const certificateDefaultsSchema = z
 const configurationFields = [
   "slug",
   "description",
-  "enrollmentType",
   "issuerType",
   "certificateAuthorityId",
   "certificatePolicyId",
-  "estConfig",
-  "apiConfig",
-  "acmeConfig",
-  "scepConfig",
   "externalConfigs"
 ] as const;
 
@@ -123,325 +116,99 @@ const FORM_STEPS = [
   }
 ];
 
-const stripInactiveEnrollmentConfigs = (val: unknown) => {
-  const data = val as Record<string, unknown>;
-  return {
-    ...data,
-    estConfig: data.enrollmentType === EnrollmentType.EST ? data.estConfig : undefined,
-    apiConfig: data.enrollmentType === EnrollmentType.API ? data.apiConfig : undefined,
-    acmeConfig: data.enrollmentType === EnrollmentType.ACME ? data.acmeConfig : undefined,
-    scepConfig: data.enrollmentType === EnrollmentType.SCEP ? data.scepConfig : undefined
-  };
-};
+const slugSchema = z
+  .string()
+  .trim()
+  .min(1, "Profile slug is required")
+  .max(255, "Profile slug must be less than 255 characters")
+  .regex(
+    /^[a-zA-Z0-9-_]+$/,
+    "Profile slug must contain only letters, numbers, hyphens, and underscores"
+  );
 
-const createSchema = z.preprocess(
-  stripInactiveEnrollmentConfigs,
-  z
-    .object({
-      slug: z
-        .string()
-        .trim()
-        .min(1, "Profile slug is required")
-        .max(255, "Profile slug must be less than 255 characters")
-        .regex(
-          /^[a-zA-Z0-9-_]+$/,
-          "Profile slug must contain only letters, numbers, hyphens, and underscores"
-        ),
-      description: z
-        .string()
-        .trim()
-        .max(1000, "Description must be less than 1000 characters")
-        .optional(),
-      enrollmentType: z.nativeEnum(EnrollmentType),
-      issuerType: z.nativeEnum(IssuerType),
-      certificateAuthorityId: z.string().nullable().optional(),
-      certificatePolicyId: z.string().min(1, "Certificate Policy is required"),
-      estConfig: z
-        .object({
-          disableBootstrapCaValidation: z.boolean().optional(),
-          passphrase: z.string().min(1, "EST passphrase is required"),
-          caChain: z.string().min(1, "EST CA chain is required").optional()
-        })
-        .refine(
-          (data) => {
-            if (!data.disableBootstrapCaValidation && !data.caChain) {
-              return false;
-            }
-            return true;
-          },
-          {
-            message: "EST CA chain is required when bootstrap CA validation is enabled",
-            path: ["caChain"]
-          }
-        )
-        .optional(),
-      apiConfig: z
-        .object({
-          autoRenew: z.boolean().optional(),
-          renewBeforeDays: z.number().min(1).max(365).optional()
-        })
-        .optional(),
-      acmeConfig: z
-        .object({
-          skipDnsOwnershipVerification: z.boolean().optional(),
-          skipEabBinding: z.boolean().optional()
-        })
-        .optional(),
-      scepConfig: z
-        .object({
-          challengeType: z.nativeEnum(ScepChallengeType).default(ScepChallengeType.STATIC),
-          challengePassword: z.string().optional(),
-          includeCaCertInResponse: z.boolean().optional(),
-          allowCertBasedRenewal: z.boolean().optional(),
-          dynamicChallengeExpiryMinutes: z.number().min(1).max(1440).optional(),
-          dynamicChallengeMaxPending: z.number().min(1).max(1000).optional()
-        })
-        .optional(),
-      externalConfigs: z
-        .object({
-          template: z.string().min(1, "Azure ADCS template is required")
-        })
-        .optional(),
-      defaults: certificateDefaultsSchema
-    })
-    .refine(
-      (data) => {
-        if (data.enrollmentType === EnrollmentType.EST) {
-          return !!data.estConfig;
-        }
-        return true;
-      },
-      {
-        message: "EST enrollment type requires EST configuration",
-        path: ["estConfig"]
-      }
-    )
-    .refine(
-      (data) => {
-        if (data.enrollmentType === EnrollmentType.API) {
-          return !!data.apiConfig;
-        }
-        return true;
-      },
-      {
-        message: "API enrollment type requires API configuration",
-        path: ["apiConfig"]
-      }
-    )
-    .refine(
-      (data) => {
-        if (data.enrollmentType === EnrollmentType.ACME) {
-          return !!data.acmeConfig;
-        }
-        return true;
-      },
-      {
-        message: "ACME enrollment type requires ACME configuration",
-        path: ["acmeConfig"]
-      }
-    )
-    .refine(
-      (data) => {
-        if (data.enrollmentType === EnrollmentType.SCEP) {
-          return !!data.scepConfig;
-        }
-        return true;
-      },
-      {
-        message: "SCEP enrollment type requires SCEP configuration",
-        path: ["scepConfig"]
-      }
-    )
-    .refine(
-      (data) => {
-        if (data.enrollmentType === EnrollmentType.ACME && data.acmeConfig) {
-          return !(data.acmeConfig.skipEabBinding && data.acmeConfig.skipDnsOwnershipVerification);
-        }
-        return true;
-      },
-      {
-        message: "Cannot skip both EAB and DNS ownership validation.",
-        path: ["acmeConfig", "skipEabBinding"]
-      }
-    )
-    .refine(
-      (data) => {
-        if (data.issuerType === IssuerType.CA) {
-          return !!data.certificateAuthorityId;
-        }
-        return true;
-      },
-      {
-        message: "Certificate Authority is required",
-        path: ["certificateAuthorityId"]
-      }
-    )
-    .refine(
-      (data) => {
-        if (data.issuerType === IssuerType.SELF_SIGNED) {
-          return !data.certificateAuthorityId;
-        }
-        return true;
-      },
-      {
-        message: "Self-signed issuer type cannot have a certificate authority",
-        path: ["certificateAuthorityId"]
-      }
-    )
-    .refine(
-      (data) => {
-        if (data.issuerType === IssuerType.SELF_SIGNED) {
-          return data.enrollmentType === EnrollmentType.API;
-        }
-        return true;
-      },
-      {
-        message: "Self-signed issuer type only supports API enrollment",
-        path: ["enrollmentType"]
-      }
-    )
-    .refine(
-      (data) => {
-        if (
-          data.enrollmentType === EnrollmentType.SCEP &&
-          data.scepConfig &&
-          data.scepConfig.challengeType !== ScepChallengeType.DYNAMIC &&
-          (!data.scepConfig.challengePassword || data.scepConfig.challengePassword.length < 8)
-        ) {
-          return false;
-        }
-        return true;
-      },
-      {
-        message: "Challenge password must be at least 8 characters for static challenges",
-        path: ["scepConfig", "challengePassword"]
-      }
-    )
-);
+const descriptionSchema = z
+  .string()
+  .trim()
+  .max(1000, "Description must be less than 1000 characters")
+  .optional();
 
-const editSchema = z.preprocess(
-  stripInactiveEnrollmentConfigs,
-  z
-    .object({
-      slug: z
-        .string()
-        .trim()
-        .min(1, "Profile slug is required")
-        .max(255, "Profile slug must be less than 255 characters")
-        .regex(
-          /^[a-zA-Z0-9-_]+$/,
-          "Profile slug must contain only letters, numbers, hyphens, and underscores"
-        ),
-      description: z
-        .string()
-        .trim()
-        .max(1000, "Description must be less than 1000 characters")
-        .optional(),
-      enrollmentType: z.nativeEnum(EnrollmentType),
-      issuerType: z.nativeEnum(IssuerType),
-      certificateAuthorityId: z.string().nullable().optional(),
-      certificatePolicyId: z.string().optional(),
-      estConfig: z
-        .object({
-          disableBootstrapCaValidation: z.boolean().optional(),
-          passphrase: z.string().optional(),
-          caChain: z.string().optional()
-        })
-        .optional(),
-      apiConfig: z
-        .object({
-          autoRenew: z.boolean().optional(),
-          renewBeforeDays: z.number().min(1).max(365).optional()
-        })
-        .optional(),
-      acmeConfig: z
-        .object({
-          skipDnsOwnershipVerification: z.boolean().optional(),
-          skipEabBinding: z.boolean().optional()
-        })
-        .optional(),
-      scepConfig: z
-        .object({
-          challengeType: z.nativeEnum(ScepChallengeType).optional(),
-          challengePassword: z.string().optional(),
-          includeCaCertInResponse: z.boolean().optional(),
-          allowCertBasedRenewal: z.boolean().optional(),
-          dynamicChallengeExpiryMinutes: z.number().min(1).max(1440).optional(),
-          dynamicChallengeMaxPending: z.number().min(1).max(1000).optional()
-        })
-        .optional(),
-      externalConfigs: z
-        .object({
-          template: z.string().optional()
-        })
-        .optional(),
-      defaults: certificateDefaultsSchema
-    })
-    .refine(
-      (data) => {
-        if (data.enrollmentType === EnrollmentType.ACME && data.acmeConfig) {
-          return !(data.acmeConfig.skipEabBinding && data.acmeConfig.skipDnsOwnershipVerification);
-        }
-        return true;
-      },
-      {
-        message: "Cannot skip both EAB and DNS ownership validation.",
-        path: ["acmeConfig", "skipEabBinding"]
+const createSchema = z
+  .object({
+    slug: slugSchema,
+    description: descriptionSchema,
+    issuerType: z.nativeEnum(IssuerType),
+    certificateAuthorityId: z.string().nullable().optional(),
+    certificatePolicyId: z.string().min(1, "Certificate Policy is required"),
+    externalConfigs: z
+      .object({
+        template: z.string().min(1, "Azure ADCS template is required")
+      })
+      .optional(),
+    defaults: certificateDefaultsSchema
+  })
+  .refine(
+    (data) => {
+      if (data.issuerType === IssuerType.CA) {
+        return !!data.certificateAuthorityId;
       }
-    )
-    .refine(
-      (data) => {
-        if (data.issuerType === IssuerType.CA) {
-          return !!data.certificateAuthorityId;
-        }
-        return true;
-      },
-      {
-        message: "Certificate Authority is required",
-        path: ["certificateAuthorityId"]
+      return true;
+    },
+    {
+      message: "Certificate Authority is required",
+      path: ["certificateAuthorityId"]
+    }
+  )
+  .refine(
+    (data) => {
+      if (data.issuerType === IssuerType.SELF_SIGNED) {
+        return !data.certificateAuthorityId;
       }
-    )
-    .refine(
-      (data) => {
-        if (data.issuerType === IssuerType.SELF_SIGNED) {
-          return !data.certificateAuthorityId;
-        }
-        return true;
-      },
-      {
-        message: "Self-signed issuer type cannot have a certificate authority",
-        path: ["certificateAuthorityId"]
+      return true;
+    },
+    {
+      message: "Self-signed issuer type cannot have a certificate authority",
+      path: ["certificateAuthorityId"]
+    }
+  );
+
+const editSchema = z
+  .object({
+    slug: slugSchema,
+    description: descriptionSchema,
+    issuerType: z.nativeEnum(IssuerType),
+    certificateAuthorityId: z.string().nullable().optional(),
+    certificatePolicyId: z.string().optional(),
+    externalConfigs: z
+      .object({
+        template: z.string().optional()
+      })
+      .optional(),
+    defaults: certificateDefaultsSchema
+  })
+  .refine(
+    (data) => {
+      if (data.issuerType === IssuerType.CA) {
+        return !!data.certificateAuthorityId;
       }
-    )
-    .refine(
-      (data) => {
-        if (data.issuerType === IssuerType.SELF_SIGNED) {
-          return data.enrollmentType === EnrollmentType.API;
-        }
-        return true;
-      },
-      {
-        message: "Self-signed issuer type only supports API enrollment",
-        path: ["enrollmentType"]
+      return true;
+    },
+    {
+      message: "Certificate Authority is required",
+      path: ["certificateAuthorityId"]
+    }
+  )
+  .refine(
+    (data) => {
+      if (data.issuerType === IssuerType.SELF_SIGNED) {
+        return !data.certificateAuthorityId;
       }
-    )
-    .refine(
-      (data) => {
-        if (
-          data.enrollmentType === EnrollmentType.SCEP &&
-          data.scepConfig?.challengePassword &&
-          data.scepConfig.challengeType !== ScepChallengeType.DYNAMIC
-        ) {
-          return data.scepConfig.challengePassword.length >= 8;
-        }
-        return true;
-      },
-      {
-        message: "Challenge password must be at least 8 characters",
-        path: ["scepConfig", "challengePassword"]
-      }
-    )
-);
+      return true;
+    },
+    {
+      message: "Self-signed issuer type cannot have a certificate authority",
+      path: ["certificateAuthorityId"]
+    }
+  );
 
 export type FormData = z.infer<typeof createSchema>;
 
@@ -574,11 +341,38 @@ const convertFormToDefaults = (
   return result;
 };
 
+const toFormExternalConfigs = (
+  externalConfigs: TCertificateProfileWithDetails["externalConfigs"]
+): FormData["externalConfigs"] => {
+  if (!externalConfigs) return undefined;
+  return {
+    template:
+      typeof externalConfigs === "object" &&
+      externalConfigs !== null &&
+      typeof externalConfigs.template === "string"
+        ? externalConfigs.template
+        : ""
+  };
+};
+
+const buildFormValuesFromProfile = (
+  sourceProfile: TCertificateProfileWithDetails,
+  isClone: boolean
+): FormData => ({
+  slug: isClone ? `${sourceProfile.slug}-copy` : sourceProfile.slug,
+  description: sourceProfile.description || "",
+  issuerType: sourceProfile.issuerType,
+  certificateAuthorityId: sourceProfile.caId || undefined,
+  certificatePolicyId: sourceProfile.certificatePolicyId,
+  externalConfigs: toFormExternalConfigs(sourceProfile.externalConfigs),
+  defaults: convertDefaultsToForm(sourceProfile.defaults)
+});
+
 interface Props {
   isOpen: boolean;
   onClose: () => void;
   profile?: TCertificateProfileWithDetails;
-  mode?: "create" | "edit";
+  mode?: "create" | "edit" | "clone";
 }
 
 export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }: Props) => {
@@ -608,6 +402,7 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
   const updateProfile = useUpdateCertificateProfile();
 
   const isEdit = mode === "edit" && profile;
+  const isClone = mode === "clone" && profile;
   const isFinalStep = selectedStepIndex === FORM_STEPS.length - 1;
 
   const certificateAuthorities = (allCaData || []).map((ca) => ({
@@ -638,83 +433,18 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
 
   const { control, handleSubmit, reset, watch, setValue, trigger } = useForm<FormData>({
     resolver: zodResolver(isEdit ? editSchema : createSchema),
-    defaultValues: isEdit
-      ? {
-          slug: profile.slug,
-          description: profile.description || "",
-          enrollmentType: profile.enrollmentType,
-          issuerType: profile.issuerType,
-          certificateAuthorityId: profile.caId || undefined,
-          certificatePolicyId: profile.certificatePolicyId,
-          estConfig:
-            profile.enrollmentType === EnrollmentType.EST
-              ? {
-                  disableBootstrapCaValidation:
-                    profile.estConfig?.disableBootstrapCaValidation || false,
-                  passphrase: profile.estConfig?.passphrase || "",
-                  caChain: profile.estConfig?.caChain || ""
-                }
-              : undefined,
-          apiConfig:
-            profile.enrollmentType === EnrollmentType.API
-              ? {
-                  autoRenew: profile.apiConfig?.autoRenew || false,
-                  renewBeforeDays: profile.apiConfig?.renewBeforeDays || 30
-                }
-              : undefined,
-          acmeConfig:
-            profile.enrollmentType === EnrollmentType.ACME
-              ? {
-                  skipDnsOwnershipVerification:
-                    profile.acmeConfig?.skipDnsOwnershipVerification || false,
-                  skipEabBinding: profile.acmeConfig?.skipEabBinding || false
-                }
-              : undefined,
-          scepConfig:
-            profile.enrollmentType === EnrollmentType.SCEP
-              ? {
-                  challengeType:
-                    (profile.scepConfig?.challengeType as ScepChallengeType) ??
-                    ScepChallengeType.STATIC,
-                  challengePassword: "",
-                  includeCaCertInResponse: profile.scepConfig?.includeCaCertInResponse ?? true,
-                  allowCertBasedRenewal: profile.scepConfig?.allowCertBasedRenewal ?? true,
-                  dynamicChallengeExpiryMinutes:
-                    profile.scepConfig?.dynamicChallengeExpiryMinutes ?? 60,
-                  dynamicChallengeMaxPending: profile.scepConfig?.dynamicChallengeMaxPending ?? 100
-                }
-              : undefined,
-          externalConfigs: profile.externalConfigs
-            ? {
-                template:
-                  typeof profile.externalConfigs === "object" &&
-                  profile.externalConfigs !== null &&
-                  typeof profile.externalConfigs.template === "string"
-                    ? profile.externalConfigs.template
-                    : ""
-              }
-            : undefined,
-          defaults: convertDefaultsToForm(profile.defaults)
-        }
-      : {
-          slug: "",
-          description: "",
-          enrollmentType: EnrollmentType.API,
-          issuerType: IssuerType.CA,
-          certificateAuthorityId: "",
-          certificatePolicyId: "",
-          apiConfig: {
-            autoRenew: false,
-            renewBeforeDays: 30
-          },
-          acmeConfig: {
-            skipDnsOwnershipVerification: false,
-            skipEabBinding: false
-          },
-          scepConfig: undefined,
-          externalConfigs: undefined,
-          defaults: {}
-        }
+    defaultValues:
+      (isEdit || isClone) && profile
+        ? buildFormValuesFromProfile(profile, Boolean(isClone))
+        : {
+            slug: "",
+            description: "",
+            issuerType: IssuerType.CA,
+            certificateAuthorityId: "",
+            certificatePolicyId: "",
+            externalConfigs: undefined,
+            defaults: {}
+          }
   });
 
   const watchedIssuerType = watch("issuerType");
@@ -833,71 +563,15 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
   }, [isOpen]);
 
   useEffect(() => {
-    if (isEdit && profile) {
-      reset({
-        slug: profile.slug,
-        description: profile.description || "",
-        enrollmentType: profile.enrollmentType,
-        issuerType: profile.issuerType,
-        certificateAuthorityId: profile.caId || undefined,
-        certificatePolicyId: profile.certificatePolicyId,
-        estConfig:
-          profile.enrollmentType === EnrollmentType.EST
-            ? {
-                disableBootstrapCaValidation:
-                  profile.estConfig?.disableBootstrapCaValidation || false,
-                passphrase: profile.estConfig?.passphrase || "",
-                caChain: profile.estConfig?.caChain || ""
-              }
-            : undefined,
-        apiConfig:
-          profile.enrollmentType === EnrollmentType.API
-            ? {
-                autoRenew: profile.apiConfig?.autoRenew || false,
-                renewBeforeDays: profile.apiConfig?.renewBeforeDays || 30
-              }
-            : undefined,
-        acmeConfig:
-          profile.enrollmentType === EnrollmentType.ACME
-            ? {
-                skipDnsOwnershipVerification:
-                  profile.acmeConfig?.skipDnsOwnershipVerification || false,
-                skipEabBinding: profile.acmeConfig?.skipEabBinding || false
-              }
-            : undefined,
-        scepConfig:
-          profile.enrollmentType === EnrollmentType.SCEP
-            ? {
-                challengeType:
-                  (profile.scepConfig?.challengeType as ScepChallengeType) ??
-                  ScepChallengeType.STATIC,
-                challengePassword: "",
-                includeCaCertInResponse: profile.scepConfig?.includeCaCertInResponse ?? true,
-                allowCertBasedRenewal: profile.scepConfig?.allowCertBasedRenewal ?? true,
-                dynamicChallengeExpiryMinutes:
-                  profile.scepConfig?.dynamicChallengeExpiryMinutes ?? 60,
-                dynamicChallengeMaxPending: profile.scepConfig?.dynamicChallengeMaxPending ?? 100
-              }
-            : undefined,
-        externalConfigs: profile.externalConfigs
-          ? {
-              template:
-                typeof profile.externalConfigs === "object" &&
-                profile.externalConfigs !== null &&
-                typeof profile.externalConfigs.template === "string"
-                  ? profile.externalConfigs.template
-                  : ""
-            }
-          : undefined,
-        defaults: convertDefaultsToForm(profile.defaults)
-      });
+    if ((isEdit || isClone) && profile) {
+      reset(buildFormValuesFromProfile(profile, Boolean(isClone)));
     }
-  }, [isEdit, profile, reset, allCaData]);
+  }, [isEdit, isClone, profile, reset, allCaData]);
 
   // Additional effect to reset external configs when Azure ADCS templates are loaded
   useEffect(() => {
     if (
-      isEdit &&
+      (isEdit || isClone) &&
       profile &&
       isAzureAdcsCa &&
       azureAdcsTemplatesData?.templates &&
@@ -908,7 +582,7 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
     ) {
       setValue("externalConfigs.template", profile.externalConfigs.template);
     }
-  }, [isEdit, profile, isAzureAdcsCa, azureAdcsTemplatesData, setValue]);
+  }, [isEdit, isClone, profile, isAzureAdcsCa, azureAdcsTemplatesData, setValue]);
 
   // Pin TTL to 198 days when the selected CA is AWS ACM Public CA — backend rejects any other value.
   // Also re-applies when the user lands on the Defaults tab (policy selected) so the field shows 198
@@ -960,7 +634,6 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
       const createData: TCreateCertificateProfileDTO = {
         slug: data.slug,
         description: data.description,
-        enrollmentType: data.enrollmentType,
         issuerType: data.issuerType,
         caId:
           data.issuerType === IssuerType.SELF_SIGNED
@@ -1037,11 +710,21 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
       }}
     >
       <ModalContent
-        title={isEdit ? "Edit Certificate Profile" : "Create Certificate Profile"}
+        title={
+          // eslint-disable-next-line no-nested-ternary
+          isEdit
+            ? "Edit Certificate Profile"
+            : isClone
+              ? "Clone Certificate Profile"
+              : "Create Certificate Profile"
+        }
         subTitle={
+          // eslint-disable-next-line no-nested-ternary
           isEdit
             ? `Update configuration for ${profile?.slug}`
-            : "Define the CA and policy used to issue certificates from this profile"
+            : isClone
+              ? `Create a new profile based on ${profile?.slug}`
+              : "Define the CA and policy used to issue certificates from this profile"
         }
       >
         <form>
@@ -1115,11 +798,6 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                         onValueChange={(value) => {
                           if (value === "self-signed") {
                             setValue("certificateAuthorityId", "");
-                            setValue("enrollmentType", EnrollmentType.API);
-                            setValue("apiConfig", {
-                              autoRenew: false,
-                              renewBeforeDays: 30
-                            });
                           }
                           onChange(value);
                         }}
@@ -1177,9 +855,8 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                             <p className="-mt-2 mb-4 text-xs text-yellow-500">
                               No certificate authorities available.{" "}
                               <Link
-                                to="/organizations/$orgId/projects/cert-manager/$projectId/settings"
+                                to="/organizations/$orgId/projects/cert-manager/$projectId/certificate-authorities"
                                 params={{ orgId: orgId ?? "", projectId: projectId ?? "" }}
-                                search={{ selectedTab: "certificate-authorities" }}
                                 className="underline hover:text-yellow-400"
                               >
                                 Create one in Certificate Authorities

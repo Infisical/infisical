@@ -13,8 +13,10 @@ import { BadRequestError } from "@app/lib/errors";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import {
   executeWithPotentialGateway,
+  getRoleUsernameForHost,
   SQL_CONNECTION_ALTER_LOGIN_STATEMENT
 } from "@app/services/app-connection/shared/sql";
+import { generatePasswordWithConstraints } from "@app/services/secret-validation-rule/secret-validation-rule-password-generator";
 
 import { DEFAULT_PASSWORD_REQUIREMENTS, generatePassword } from "../utils";
 import {
@@ -36,6 +38,24 @@ const redactPasswords = (e: unknown, credentials: TSqlCredentialsRotationGenerat
   return redactedMessage;
 };
 
+const validateRotationUsernames = (
+  connectionUsername: string,
+  host: string,
+  rotationUsername1: string,
+  rotationUsername2: string
+) => {
+  const connectionRoleUsername = getRoleUsernameForHost(connectionUsername, host);
+  const rotationRoleUsername1 = getRoleUsernameForHost(rotationUsername1, host);
+  const rotationRoleUsername2 = getRoleUsernameForHost(rotationUsername2, host);
+
+  if (rotationRoleUsername1 === connectionRoleUsername || rotationRoleUsername2 === connectionRoleUsername) {
+    throw new BadRequestError({
+      message:
+        "Rotation username cannot be the same as the connection username. The connection credentials are used to execute rotation operations and changing their password would break the connection."
+    });
+  }
+};
+
 const ORACLE_PASSWORD_REQUIREMENTS = {
   ...DEFAULT_PASSWORD_REQUIREMENTS,
   length: 30
@@ -44,7 +64,15 @@ const ORACLE_PASSWORD_REQUIREMENTS = {
 export const sqlCredentialsRotationFactory: TRotationFactory<
   TSqlCredentialsRotationWithConnection,
   TSqlCredentialsRotationGeneratedCredentials
-> = (secretRotation, _appConnectionDAL, _kmsService, gatewayService, gatewayV2Service, gatewayPoolService) => {
+> = (
+  secretRotation,
+  _appConnectionDAL,
+  _kmsService,
+  gatewayService,
+  gatewayV2Service,
+  gatewayPoolService,
+  passwordValidationContext
+) => {
   const {
     connection,
     parameters: {
@@ -57,16 +85,18 @@ export const sqlCredentialsRotationFactory: TRotationFactory<
     secretsMapping
   } = secretRotation;
 
-  if (username1 === connection.credentials.username || username2 === connection.credentials.username) {
-    throw new BadRequestError({
-      message:
-        "Rotation username cannot be the same as the connection username. The connection credentials are used to execute rotation operations and changing their password would break the connection."
-    });
-  }
+  validateRotationUsernames(connection.credentials.username, connection.credentials.host, username1, username2);
 
   const defaultPasswordRequirement =
     connection.app === AppConnection.OracleDB ? ORACLE_PASSWORD_REQUIREMENTS : DEFAULT_PASSWORD_REQUIREMENTS;
   const passwordRequirement = userProvidedPasswordRequirements || defaultPasswordRequirement;
+
+  // When a secret validation rule covers this rotation, its constraints
+  // fully replace the user-configured passwordRequirements.
+  const generateRotationPassword = () =>
+    passwordValidationContext?.constraints?.length
+      ? generatePasswordWithConstraints(passwordValidationContext.constraints)
+      : generatePassword(passwordRequirement);
 
   let resolvedConnection: typeof connection | undefined;
   const getResolvedConnection = async () => {
@@ -112,9 +142,11 @@ export const sqlCredentialsRotationFactory: TRotationFactory<
   };
 
   const $executeQuery = async (tx: Knex, username: string, password: string) => {
+    const filteredUsername = getRoleUsernameForHost(username, connection.credentials.host);
+
     if (userProvidedRotationStatement) {
       const revokeStatement = handlebars.compile(userProvidedRotationStatement)({
-        username,
+        username: filteredUsername,
         password,
         database: connection.credentials.database
       });
@@ -123,7 +155,7 @@ export const sqlCredentialsRotationFactory: TRotationFactory<
         await tx.raw(query);
       }
     } else {
-      await tx.raw(...SQL_CONNECTION_ALTER_LOGIN_STATEMENT[connection.app]({ username, password }));
+      await tx.raw(...SQL_CONNECTION_ALTER_LOGIN_STATEMENT[connection.app]({ username: filteredUsername, password }));
     }
   };
 
@@ -132,10 +164,10 @@ export const sqlCredentialsRotationFactory: TRotationFactory<
   ) => {
     // For SQL, since we get existing users, we change both their passwords
     // on issue to invalidate their existing passwords
-    const credentialsSet = [{ username: username1, password: generatePassword(passwordRequirement) }];
+    const credentialsSet = [{ username: username1, password: generateRotationPassword() }];
     // if both are same username like for mysql dual password rotation - we don't want to reissue twice loosing first cred access
     if (username1 !== username2) {
-      credentialsSet.push({ username: username2, password: generatePassword(passwordRequirement) });
+      credentialsSet.push({ username: username2, password: generateRotationPassword() });
     }
 
     try {
@@ -163,7 +195,7 @@ export const sqlCredentialsRotationFactory: TRotationFactory<
   ) => {
     const revokedCredentials = credentialsToRevoke.map(({ username }) => ({
       username,
-      password: generatePassword(passwordRequirement)
+      password: generateRotationPassword()
     }));
 
     try {
@@ -189,7 +221,7 @@ export const sqlCredentialsRotationFactory: TRotationFactory<
     // generate new password for the next active user
     const credentials = {
       username: activeIndex === 0 ? username2 : username1,
-      password: generatePassword(passwordRequirement)
+      password: generateRotationPassword()
     };
 
     try {

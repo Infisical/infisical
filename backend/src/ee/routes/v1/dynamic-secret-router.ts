@@ -616,6 +616,122 @@ echo ""
 
   server.route({
     method: "POST",
+    url: "/ibm-api-connect/orgs",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      body: z.object({
+        instanceUrl: z.string().url().min(1).describe("The IBM API Connect instance URL"),
+        apiKey: z.string().min(1).describe("The IBM API Connect API key"),
+        clientId: z.string().min(1).describe("The IBM API Connect client ID"),
+        clientSecret: z.string().min(1).describe("The IBM API Connect client secret")
+      }),
+      response: {
+        200: z
+          .object({
+            name: z.string().describe("The name/slug of the organization"),
+            title: z.string().describe("The display title of the organization"),
+            id: z.string().describe("The unique identifier of the organization")
+          })
+          .array()
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const data = await server.services.dynamicSecret.fetchIbmApiConnectOrgs({
+        instanceUrl: req.body.instanceUrl,
+        apiKey: req.body.apiKey,
+        clientId: req.body.clientId,
+        clientSecret: req.body.clientSecret
+      });
+      return data;
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/ibm-api-connect/orgs/:orgId/catalogs",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      params: z.object({
+        orgId: z.string().min(1).describe("The organization ID")
+      }),
+      body: z.object({
+        instanceUrl: z.string().url().min(1).describe("The IBM API Connect instance URL"),
+        apiKey: z.string().min(1).describe("The IBM API Connect API key"),
+        clientId: z.string().min(1).describe("The IBM API Connect client ID"),
+        clientSecret: z.string().min(1).describe("The IBM API Connect client secret")
+      }),
+      response: {
+        200: z
+          .object({
+            name: z.string().describe("The name/slug of the catalog"),
+            title: z.string().describe("The display title of the catalog"),
+            id: z.string().describe("The unique identifier of the catalog")
+          })
+          .array()
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const data = await server.services.dynamicSecret.fetchIbmApiConnectOrgCatalogs({
+        instanceUrl: req.body.instanceUrl,
+        apiKey: req.body.apiKey,
+        clientId: req.body.clientId,
+        clientSecret: req.body.clientSecret,
+        orgId: req.params.orgId
+      });
+      return data;
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/ibm-api-connect/orgs/:orgId/catalogs/:catalogId/apps",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      params: z.object({
+        orgId: z.string().min(1).describe("The organization ID"),
+        catalogId: z.string().min(1).describe("The catalog ID")
+      }),
+      body: z.object({
+        instanceUrl: z.string().url().min(1).describe("The IBM API Connect instance URL"),
+        apiKey: z.string().min(1).describe("The IBM API Connect API key"),
+        clientId: z.string().min(1).describe("The IBM API Connect client ID"),
+        clientSecret: z.string().min(1).describe("The IBM API Connect client secret")
+      }),
+      response: {
+        200: z
+          .object({
+            name: z.string().describe("The name/slug of the application"),
+            title: z.string().describe("The display title of the application"),
+            id: z.string().describe("The unique identifier of the application"),
+            consumerOrgId: z.string().describe("The consumer organization ID extracted from the app's consumer_org_url")
+          })
+          .array()
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const data = await server.services.dynamicSecret.fetchIbmApiConnectOrgApps({
+        instanceUrl: req.body.instanceUrl,
+        apiKey: req.body.apiKey,
+        clientId: req.body.clientId,
+        clientSecret: req.body.clientSecret,
+        orgId: req.params.orgId,
+        catalogId: req.params.catalogId
+      });
+      return data;
+    }
+  });
+
+  server.route({
+    method: "POST",
     url: "/entra-id/users",
     config: {
       rateLimit: readLimit

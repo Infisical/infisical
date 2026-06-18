@@ -435,6 +435,8 @@ export const pkiSyncQueueFactory = ({
         throw new Error(`App connection not found: ${connectionId}`);
       }
 
+      const project = appConnectionProjectId ? await projectDAL.findById(appConnectionProjectId) : null;
+
       const credentials = await decryptAppConnectionCredentials({
         orgId,
         encryptedCredentials: appConnection.encryptedCredentials,
@@ -446,7 +448,8 @@ export const pkiSyncQueueFactory = ({
         ...pkiSync,
         connection: {
           ...pkiSync.connection,
-          credentials
+          credentials,
+          projectType: project?.type
         }
       } as TPkiSyncWithCredentials;
 
@@ -527,6 +530,23 @@ export const pkiSyncQueueFactory = ({
                 certificateId: metadata.id,
                 status: CertificateSyncStatus.Failed,
                 message: `Failed to sync certificate: ${failure.error}`
+              };
+            }
+          }
+        }
+      }
+
+      if (syncResult.details?.skippedCertificates) {
+        for (const skip of syncResult.details.skippedCertificates) {
+          const metadata = certificateMetadata.get(skip.name);
+          if (metadata) {
+            const updateIndex = postSyncUpdates.findIndex((u) => u.certificateId === metadata.id);
+            if (updateIndex >= 0) {
+              postSyncUpdates[updateIndex] = {
+                pkiSyncId: pkiSync.id,
+                certificateId: metadata.id,
+                status: CertificateSyncStatus.Failed,
+                message: `Certificate skipped: ${skip.reason}`
               };
             }
           }
@@ -722,6 +742,8 @@ export const pkiSyncQueueFactory = ({
         throw new Error(`App connection not found: ${connectionId}`);
       }
 
+      const removeProject = appConnectionProjectId ? await projectDAL.findById(appConnectionProjectId) : null;
+
       const credentials = await decryptAppConnectionCredentials({
         orgId,
         encryptedCredentials: appConnection.encryptedCredentials,
@@ -736,7 +758,8 @@ export const pkiSyncQueueFactory = ({
           ...pkiSync,
           connection: {
             ...pkiSync.connection,
-            credentials
+            credentials,
+            projectType: removeProject?.type
           }
         } as TPkiSyncWithCredentials,
         Object.keys(certificateMap),

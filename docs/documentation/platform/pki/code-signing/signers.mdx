@@ -144,7 +144,11 @@ Open the Signer and choose **Options → Edit settings**. The edit sheet walks y
 
 ## Signing with a Signer
 
-To sign with a Signer, use the [PKCS#11 module](/documentation/platform/pki/code-signing/pkcs11-module) (works with `jarsigner`, `cosign`, `osslsigncode`, `signtool`, and more) or call the [Sign API](/api-reference/endpoints/code-signing/signers/sign) directly.
+To sign with a Signer, pick the integration that matches your tooling:
+
+- **[PKCS#11 module](/documentation/platform/pki/code-signing/pkcs11-module)** for cross-platform tools (`jarsigner`, `cosign`, `osslsigncode`, `apksigner`, `openssl`, `gpg`, and more).
+- **[Windows KSP](/documentation/platform/pki/code-signing/windows-ksp)** for native `signtool` Authenticode signing on Windows.
+- **[Sign API](/api-reference/endpoints/code-signing/signers/sign)** to sign directly over HTTP.
 
 ## FAQ
 
@@ -173,5 +177,8 @@ To sign with a Signer, use the [PKCS#11 module](/documentation/platform/pki/code
   </Card>
   <Card title="PKCS#11 Module" icon="plug" href="/documentation/platform/pki/code-signing/pkcs11-module">
     Use jarsigner, cosign, osslsigncode, and friends with this Signer.
+  </Card>
+  <Card title="Windows KSP" icon="windows" href="/documentation/platform/pki/code-signing/windows-ksp">
+    Sign with native `signtool` on Windows.
   </Card>
 </CardGroup>

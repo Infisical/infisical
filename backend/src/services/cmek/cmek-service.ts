@@ -329,6 +329,8 @@ export const cmekServiceFactory = ({
       ProjectPermissionSub.Cmek
     );
 
+    if (!key.isExportable) throw new BadRequestError({ message: "You are not allowed to export this key" });
+
     const keyMaterial = await kmsService.getKeyMaterial({ kmsId: keyId });
 
     return {
@@ -377,6 +379,10 @@ export const cmekServiceFactory = ({
       ProjectPermissionCmekActions.ExportPrivateKey,
       ProjectPermissionSub.Cmek
     );
+
+    for (const key of keys) {
+      if (!key.isExportable) throw new BadRequestError({ message: "You are not allowed to export this key" });
+    }
 
     const bulkMaterials = await kmsService.getBulkKeyMaterial({ kmsIds: keys.map((k) => k.id) });
 
@@ -569,6 +575,7 @@ export const cmekServiceFactory = ({
           algorithm: entry.algorithm,
           name: entry.name,
           isReserved: false,
+          isExportable: entry.isExportable,
           projectId,
           orgId: actor.orgId,
           keyUsage: entry.keyUsage

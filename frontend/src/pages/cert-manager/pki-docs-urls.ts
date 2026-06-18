@@ -100,7 +100,9 @@ export const PkiDocsUrls = {
       requestToSign: `${PKI_DOCS_BASE_URL}/code-signing/approvals#request-to-sign`,
       grantLifecycle: `${PKI_DOCS_BASE_URL}/code-signing/approvals#access-lifecycle`
     },
-    pkcs11Module: `${PKI_DOCS_BASE_URL}/code-signing/pkcs11-module`
+    pkcs11Module: `${PKI_DOCS_BASE_URL}/code-signing/pkcs11-module`,
+    windowsKsp: `${PKI_DOCS_BASE_URL}/code-signing/windows-ksp`,
+    connect: `${PKI_DOCS_BASE_URL}/code-signing/overview`
   },
 
   // Discovery

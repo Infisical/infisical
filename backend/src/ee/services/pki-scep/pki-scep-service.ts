@@ -50,7 +50,13 @@ import { convertRawCertsToPkcs7 } from "../certificate-est/certificate-est-fns";
 import { TLicenseServiceFactory } from "../license/license-service";
 import { getScepChallengeValidator, ScepChallengeType } from "./challenge";
 import { TScepDynamicChallengeDALFactory } from "./pki-scep-dynamic-challenge-dal";
-import { getScepCapabilities, isSignerCertIssuedByCa } from "./pki-scep-fns";
+import {
+  evaluateScepRenewalAuthorization,
+  getScepCapabilities,
+  isSignerCertIssuedByCa,
+  ScepRenewalDenyReason,
+  TScepRenewalAuthResult
+} from "./pki-scep-fns";
 import { buildCertRepFailure, buildCertRepPending, buildCertRepSuccess } from "./pki-scep-message-builder";
 import { parseScepMessage } from "./pki-scep-message-parser";
 import { TScepTransactionDALFactory } from "./pki-scep-transaction-dal";
@@ -552,16 +558,67 @@ export const pkiScepServiceFactory = ({
 
     const csrObj = new x509.Pkcs10CertificateRequest(parsed.csr);
 
-    const isValidSigner = await isSignerCertIssuedByCa({
-      signerCertDer: parsed.signerCertDer,
-      caId: profile.caId!,
-      certificateDAL,
-      certificateAuthorityCertDAL,
-      certificateAuthorityDAL,
-      projectDAL,
-      kmsService
-    });
-    if (!isValidSigner) {
+    let signerCertObj: x509.X509Certificate | null = null;
+    try {
+      signerCertObj = new x509.X509Certificate(parsed.signerCertDer);
+    } catch {
+      signerCertObj = null;
+    }
+
+    const isValidSigner =
+      signerCertObj !== null &&
+      (await isSignerCertIssuedByCa({
+        signerCertDer: parsed.signerCertDer,
+        signerCert: signerCertObj,
+        caId: profile.caId!,
+        certificateDAL,
+        certificateAuthorityCertDAL,
+        certificateAuthorityDAL,
+        projectDAL,
+        kmsService
+      }));
+
+    const storedSignerCert =
+      isValidSigner && signerCertObj
+        ? await certificateDAL.findOne({ serialNumber: signerCertObj.serialNumber, caId: profile.caId! })
+        : null;
+
+    const toSanExt = (ext: x509.Extension | null): x509.SubjectAlternativeNameExtension | null => {
+      if (!ext) return null;
+      if (ext instanceof x509.SubjectAlternativeNameExtension) return ext;
+      try {
+        return new x509.SubjectAlternativeNameExtension(ext.rawData);
+      } catch {
+        return null;
+      }
+    };
+    const csrSanExt = toSanExt(csrObj.getExtension("2.5.29.17"));
+    const signerSanExt = signerCertObj ? toSanExt(signerCertObj.getExtension("2.5.29.17")) : null;
+
+    const renewalAuth: TScepRenewalAuthResult = signerCertObj
+      ? evaluateScepRenewalAuthorization({
+          isValidSigner,
+          storedSignerCert,
+          profileId: profile.id,
+          csrSubjectName: csrObj.subjectName,
+          signerCertSubjectName: signerCertObj.subjectName,
+          csrSubjectAltNames: csrSanExt,
+          signerCertSubjectAltNames: signerSanExt
+        })
+      : { authorized: false, reason: ScepRenewalDenyReason.InvalidSigner };
+
+    if (!renewalAuth.authorized) {
+      const failReasonByDenyReason: Record<ScepRenewalDenyReason, string> = {
+        [ScepRenewalDenyReason.InvalidSigner]:
+          "Signer certificate is missing, malformed, expired, revoked, or does not chain to profile CA",
+        [ScepRenewalDenyReason.WrongProfile]: "Signer certificate does not belong to this profile",
+        [ScepRenewalDenyReason.IdentityMismatch]: "Renewal CSR identity does not match the renewing certificate"
+      };
+      const failInfo =
+        renewalAuth.reason === ScepRenewalDenyReason.IdentityMismatch
+          ? ScepFailInfo.BadRequest
+          : ScepFailInfo.BadCertId;
+
       void auditLogService.createAuditLog({
         projectId: profile.projectId,
         actor: {
@@ -576,7 +633,7 @@ export const pkiScepServiceFactory = ({
             transactionId: parsed.transactionId,
             csrSubject: csrObj.subject,
             status: "failure" as const,
-            failReason: "Signer certificate is expired or does not chain to profile CA",
+            failReason: failReasonByDenyReason[renewalAuth.reason],
             clientIp
           }
         }
@@ -587,7 +644,7 @@ export const pkiScepServiceFactory = ({
         raPrivateKeyDer,
         transactionId: parsed.transactionId,
         recipientNonce: parsed.senderNonce,
-        failInfo: ScepFailInfo.BadCertId
+        failInfo
       });
     }
 

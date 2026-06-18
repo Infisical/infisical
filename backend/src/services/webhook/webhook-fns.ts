@@ -270,6 +270,127 @@ export const getWebhookPayload = (event: TWebhookPayloads) => {
     }
   }
 
+  if (event.type === WebhookEvents.HoneyTokenTriggered) {
+    const {
+      honeyTokenName,
+      projectName,
+      projectId,
+      environment,
+      environmentName,
+      secretPath,
+      type,
+      eventName,
+      sourceIp,
+      awsRegion
+    } = event.payload;
+
+    switch (type) {
+      case WebhookType.SLACK:
+        return {
+          text: "A honey token has been triggered!",
+          attachments: [
+            {
+              color: "#FF0000",
+              fields: [
+                {
+                  title: "Honey Token",
+                  value: honeyTokenName,
+                  short: false
+                },
+                {
+                  title: "Project",
+                  value: projectName,
+                  short: false
+                },
+                {
+                  title: "Environment",
+                  value: environment,
+                  short: false
+                },
+                {
+                  title: "Environment Name",
+                  value: environmentName,
+                  short: false
+                },
+                {
+                  title: "Secret Path",
+                  value: secretPath,
+                  short: false
+                },
+                {
+                  title: "AWS Event",
+                  value: eventName,
+                  short: false
+                },
+                {
+                  title: "Source IP",
+                  value: sourceIp || "Unknown",
+                  short: false
+                },
+                {
+                  title: "AWS Region",
+                  value: awsRegion,
+                  short: false
+                }
+              ]
+            }
+          ]
+        };
+      case WebhookType.MICROSOFT_TEAMS:
+        return {
+          type: "message",
+          attachments: [
+            {
+              contentType: "application/vnd.microsoft.card.adaptive",
+              content: {
+                type: "AdaptiveCard",
+                version: "1.2",
+                body: [
+                  {
+                    type: "TextBlock",
+                    size: "Medium",
+                    weight: "Bolder",
+                    text: "A honey token has been triggered!"
+                  },
+                  {
+                    type: "FactSet",
+                    facts: [
+                      { title: "Honey Token", value: honeyTokenName || "" },
+                      { title: "Project", value: projectName || "" },
+                      { title: "Environment", value: environment },
+                      { title: "Environment Name", value: environmentName || "" },
+                      { title: "Secret Path", value: secretPath || "" },
+                      { title: "AWS Event", value: eventName || "" },
+                      { title: "Source IP", value: sourceIp || "Unknown" },
+                      { title: "AWS Region", value: awsRegion || "" }
+                    ]
+                  }
+                ]
+              }
+            }
+          ]
+        };
+      case WebhookType.GENERAL:
+      default:
+        return {
+          event: event.type,
+          project: {
+            projectId,
+            projectName,
+            environment,
+            environmentName,
+            secretPath
+          },
+          honeyToken: {
+            name: honeyTokenName,
+            eventName,
+            sourceIp: sourceIp || "Unknown",
+            awsRegion
+          }
+        };
+    }
+  }
+
   if (event.type === WebhookEvents.TestEvent) {
     const { projectName, projectId, environment, environmentName, secretPath } = event.payload;
     return {

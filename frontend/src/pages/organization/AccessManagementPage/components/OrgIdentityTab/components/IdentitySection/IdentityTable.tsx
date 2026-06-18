@@ -1,7 +1,15 @@
 import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { formatDistanceToNow } from "date-fns";
-import { ChevronDownIcon, EditIcon, MoreHorizontalIcon, SearchIcon, TrashIcon } from "lucide-react";
+import {
+  ChevronDownIcon,
+  EditIcon,
+  LockIcon,
+  MoreHorizontalIcon,
+  PlusIcon,
+  SearchIcon,
+  TrashIcon
+} from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { LastLoginSection } from "@app/components/organization/LastLoginSection";
@@ -11,6 +19,9 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
   Empty,
   EmptyDescription,
@@ -48,6 +59,7 @@ import {
 } from "@app/helpers/userTablePreferences";
 import { usePagination, useResetPageHelper } from "@app/hooks";
 import {
+  IdentityAuthMethod,
   identityAuthToNameMap,
   useCountOrgIdentityMemberships,
   useSearchOrgIdentityMemberships
@@ -55,7 +67,9 @@ import {
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { IdentityMembershipSearchResult, SearchIdentitiesScope } from "@app/hooks/api/identities";
 import { OrgIdentityOrderBy } from "@app/hooks/api/organization/types";
-import { UsePopUpState } from "@app/hooks/usePopUp";
+import { usePopUp, UsePopUpState } from "@app/hooks/usePopUp";
+import { IdentityAuthMethodModal } from "@app/pages/organization/AccessManagementPage/components/OrgIdentityTab/components/IdentitySection/IdentityAuthMethodModal";
+import { IdentityAuthMethodSheet } from "@app/views/IdentityAuthMethods";
 
 type Props = {
   handlePopUpOpen: (
@@ -187,18 +201,34 @@ const LastUsedCell = ({ lastLoginAuthMethod, lastLoginTime }: LastUsedCellProps)
 type IdentityActionsMenuProps = {
   isProjectScoped: boolean;
   isSubOrgIdentity: boolean;
+  authMethods: IdentityAuthMethod[];
+  activeLockoutAuthMethods?: IdentityAuthMethod[];
   onEdit: () => void;
   onDelete: () => void;
+  onManageAuth: (authMethod: IdentityAuthMethod) => void;
+  onAddAuthMethod: () => void;
 };
 
-const getEditLabel = ({ isProjectScoped, isSubOrgIdentity }: IdentityActionsMenuProps) => {
+const getEditLabel = ({
+  isProjectScoped,
+  isSubOrgIdentity
+}: Pick<IdentityActionsMenuProps, "isProjectScoped" | "isSubOrgIdentity">) => {
   if (isProjectScoped) return "Open in Project";
   if (isSubOrgIdentity) return "Edit Machine Identity";
   return "Edit Machine Identity Membership";
 };
 
 const IdentityActionsMenu = (props: IdentityActionsMenuProps) => {
-  const { isProjectScoped, isSubOrgIdentity, onEdit, onDelete } = props;
+  const {
+    isProjectScoped,
+    isSubOrgIdentity,
+    authMethods,
+    activeLockoutAuthMethods,
+    onEdit,
+    onDelete,
+    onManageAuth,
+    onAddAuthMethod
+  } = props;
   const deleteLabel = isSubOrgIdentity ? "Delete Machine Identity" : "Remove From Sub-Organization";
 
   return (
@@ -237,6 +267,46 @@ const IdentityActionsMenu = (props: IdentityActionsMenuProps) => {
               </DropdownMenuItem>
             )}
           </OrgPermissionCan>
+        )}
+        {isSubOrgIdentity && !isProjectScoped && (
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger chevronOnLeft>Manage Auth Methods</DropdownMenuSubTrigger>
+            <DropdownMenuSubContent>
+              {authMethods.map((method) => (
+                <DropdownMenuItem
+                  key={method}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onManageAuth(method);
+                  }}
+                >
+                  {identityAuthToNameMap[method]}
+                  {activeLockoutAuthMethods?.includes(method) && (
+                    <Badge isSquare variant="danger" className="ml-auto">
+                      <LockIcon className="size-3!" />
+                    </Badge>
+                  )}
+                </DropdownMenuItem>
+              ))}
+              <OrgPermissionCan
+                I={OrgPermissionIdentityActions.Edit}
+                a={OrgPermissionSubjects.Identity}
+              >
+                {(isAllowed) => (
+                  <DropdownMenuItem
+                    isDisabled={!isAllowed}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onAddAuthMethod();
+                    }}
+                  >
+                    <PlusIcon />
+                    Add Auth Method
+                  </DropdownMenuItem>
+                )}
+              </OrgPermissionCan>
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
         )}
         {!isProjectScoped && (
           <OrgPermissionCan
@@ -283,19 +353,32 @@ const SkeletonRow = () => (
   </TableRow>
 );
 
+type ManageAuthPayload = {
+  identityId: string;
+  authMethod: IdentityAuthMethod;
+};
+
+type AddAuthMethodPayload = {
+  identityId: string;
+  name: string;
+  allAuthMethods: IdentityAuthMethod[];
+};
+
 type IdentityRowProps = {
   membership: IdentityMembershipSearchResult;
   onDelete: (data: { identityId: string; name: string }) => void;
+  onManageAuth: (data: ManageAuthPayload) => void;
+  onAddAuthMethod: (data: AddAuthMethodPayload) => void;
 };
 
-const IdentityRow = ({ membership, onDelete }: IdentityRowProps) => {
+const IdentityRow = ({ membership, onDelete, onManageAuth, onAddAuthMethod }: IdentityRowProps) => {
   const navigate = useNavigate();
   const { currentOrg, isSubOrganization } = useOrganization();
 
   const {
     scope,
     project,
-    identity: { id, name, orgId },
+    identity: { id, name, orgId, authMethods, activeLockoutAuthMethods },
     roles: membershipRoles,
     lastLoginAuthMethod,
     lastLoginTime
@@ -340,12 +423,34 @@ const IdentityRow = ({ membership, onDelete }: IdentityRowProps) => {
         <LastUsedCell lastLoginAuthMethod={lastLoginAuthMethod} lastLoginTime={lastLoginTime} />
       </TableCell>
       <TableCell>
-        <IdentityActionsMenu
-          isProjectScoped={isProjectScoped}
-          isSubOrgIdentity={isSubOrgIdentity}
-          onEdit={navigateToIdentity}
-          onDelete={() => onDelete({ identityId: id, name })}
-        />
+        <div className="flex items-center justify-end gap-2">
+          {(activeLockoutAuthMethods?.length ?? 0) > 0 && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Badge isSquare variant="danger">
+                  <LockIcon />
+                </Badge>
+              </TooltipTrigger>
+              <TooltipContent>
+                {`Locked out: ${activeLockoutAuthMethods
+                  .map((m) => identityAuthToNameMap[m])
+                  .join(", ")}`}
+              </TooltipContent>
+            </Tooltip>
+          )}
+          <IdentityActionsMenu
+            isProjectScoped={isProjectScoped}
+            isSubOrgIdentity={isSubOrgIdentity}
+            authMethods={authMethods ?? []}
+            activeLockoutAuthMethods={activeLockoutAuthMethods}
+            onEdit={navigateToIdentity}
+            onDelete={() => onDelete({ identityId: id, name })}
+            onManageAuth={(authMethod) => onManageAuth({ identityId: id, authMethod })}
+            onAddAuthMethod={() =>
+              onAddAuthMethod({ identityId: id, name, allAuthMethods: authMethods ?? [] })
+            }
+          />
+        </div>
       </TableCell>
     </TableRow>
   );
@@ -396,7 +501,18 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
       }
     : {};
 
-  const { data, isPending } = useSearchOrgIdentityMemberships({
+  const {
+    popUp: authMethodPopUp,
+    handlePopUpOpen: handleAuthMethodPopUpOpen,
+    handlePopUpToggle: handleAuthMethodPopUpToggle
+  } = usePopUp(["identityAuthMethod", "upgradePlan"] as const);
+
+  const [viewAuthMethodState, setViewAuthMethodState] = useState<{
+    identityId: string;
+    authMethod: IdentityAuthMethod;
+  } | null>(null);
+
+  const { data, isPending, refetch } = useSearchOrgIdentityMemberships({
     orgId: organizationId,
     offset,
     limit,
@@ -544,6 +660,10 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                     key={`identity-${membership.id}`}
                     membership={membership}
                     onDelete={(payload) => handlePopUpOpen("deleteIdentity", payload)}
+                    onManageAuth={(payload) => setViewAuthMethodState(payload)}
+                    onAddAuthMethod={(payload) =>
+                      handleAuthMethodPopUpOpen("identityAuthMethod", payload)
+                    }
                   />
                 ))}
             </TableBody>
@@ -559,6 +679,35 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
           )}
         </>
       )}
+      <IdentityAuthMethodModal
+        popUp={authMethodPopUp}
+        handlePopUpOpen={handleAuthMethodPopUpOpen}
+        handlePopUpToggle={handleAuthMethodPopUpToggle}
+      />
+      {viewAuthMethodState &&
+        (() => {
+          const viewedIdentity = data?.identities?.find(
+            ({ identity }) => identity.id === viewAuthMethodState.identityId
+          )?.identity;
+          if (!viewedIdentity) return null;
+          return (
+            <IdentityAuthMethodSheet
+              open
+              onOpenChange={(open) => {
+                if (!open) setViewAuthMethodState(null);
+              }}
+              identityId={viewAuthMethodState.identityId}
+              identityName={viewedIdentity.name}
+              authMethod={viewAuthMethodState.authMethod}
+              allAuthMethods={viewedIdentity.authMethods}
+              isLockedOut={
+                viewedIdentity.activeLockoutAuthMethods?.includes(viewAuthMethodState.authMethod) ??
+                false
+              }
+              onMutated={refetch}
+            />
+          );
+        })()}
     </>
   );
 };

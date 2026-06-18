@@ -6,6 +6,7 @@ import { TSecretRotationV2Form } from "../schemas";
 import { Auth0ClientSecretRotationParametersFields } from "./Auth0ClientSecretRotationParametersFields";
 import { AwsIamUserSecretRotationParametersFields } from "./AwsIamUserSecretRotationParametersFields";
 import { AzureClientSecretRotationParametersFields } from "./AzureClientSecretRotationParametersFields";
+import { ConvexAccessKeyRotationParametersFields } from "./ConvexAccessKeyRotationParametersFields";
 import { DatabricksServicePrincipalSecretRotationParametersFields } from "./DatabricksServicePrincipalSecretRotationParametersFields";
 import { DatadogApplicationKeySecretRotationParametersFields } from "./DatadogApplicationKeySecretRotationParametersFields";
 import { DbtServiceTokenRotationParametersFields } from "./DbtServiceTokenRotationParametersFields";
@@ -42,7 +43,8 @@ const COMPONENT_MAP: Record<SecretRotation, React.FC> = {
   [SecretRotation.HpIloLocalAccount]: HpIloRotationParametersFields,
   [SecretRotation.SupabaseApiKey]: SupabaseApiKeyRotationParametersFields,
   [SecretRotation.SalesforceOauthCredentials]: SalesforceOauthCredentialsRotationParametersFields,
-  [SecretRotation.DatadogApplicationKeySecret]: DatadogApplicationKeySecretRotationParametersFields
+  [SecretRotation.DatadogApplicationKeySecret]: DatadogApplicationKeySecretRotationParametersFields,
+  [SecretRotation.ConvexAccessKey]: ConvexAccessKeyRotationParametersFields
 };
 
 export const SecretRotationV2ParametersFields = () => {

@@ -5,6 +5,7 @@ import { OrderByDirection } from "@app/lib/types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { SecretsOrderBy } from "@app/services/secret/secret-types";
+import { TConstraint } from "@app/services/secret-validation-rule/secret-validation-rule-types";
 
 import { TGatewayPoolServiceFactory } from "../gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
@@ -29,6 +30,13 @@ import {
   TAzureClientSecretRotationListItem,
   TAzureClientSecretRotationWithConnection
 } from "./azure-client-secret";
+import {
+  TConvexAccessKeyRotation,
+  TConvexAccessKeyRotationGeneratedCredentials,
+  TConvexAccessKeyRotationInput,
+  TConvexAccessKeyRotationListItem,
+  TConvexAccessKeyRotationWithConnection
+} from "./convex-access-key";
 import {
   TDatabricksServicePrincipalSecretRotation,
   TDatabricksServicePrincipalSecretRotationGeneratedCredentials,
@@ -166,7 +174,8 @@ export type TSecretRotationV2 =
   | THpIloRotation
   | TSupabaseApiKeyRotation
   | TSalesforceOauthCredentialsRotation
-  | TDatadogApplicationKeySecretRotation;
+  | TDatadogApplicationKeySecretRotation
+  | TConvexAccessKeyRotation;
 
 export type TSecretRotationV2WithConnection =
   | TPostgresCredentialsRotationWithConnection
@@ -188,7 +197,8 @@ export type TSecretRotationV2WithConnection =
   | THpIloRotationWithConnection
   | TSupabaseApiKeyRotationWithConnection
   | TSalesforceOauthCredentialsRotationWithConnection
-  | TDatadogApplicationKeySecretRotationWithConnection;
+  | TDatadogApplicationKeySecretRotationWithConnection
+  | TConvexAccessKeyRotationWithConnection;
 
 export type TSecretRotationV2GeneratedCredentials =
   | TSqlCredentialsRotationGeneratedCredentials
@@ -206,7 +216,8 @@ export type TSecretRotationV2GeneratedCredentials =
   | THpIloRotationGeneratedCredentials
   | TSupabaseApiKeyRotationGeneratedCredentials
   | TSalesforceOauthCredentialsRotationGeneratedCredentials
-  | TDatadogApplicationKeySecretRotationGeneratedCredentials;
+  | TDatadogApplicationKeySecretRotationGeneratedCredentials
+  | TConvexAccessKeyRotationGeneratedCredentials;
 
 export type TSecretRotationV2Input =
   | TPostgresCredentialsRotationInput
@@ -228,7 +239,8 @@ export type TSecretRotationV2Input =
   | THpIloRotationInput
   | TSupabaseApiKeyRotationInput
   | TSalesforceOauthCredentialsRotationInput
-  | TDatadogApplicationKeySecretRotationInput;
+  | TDatadogApplicationKeySecretRotationInput
+  | TConvexAccessKeyRotationInput;
 
 export type TSecretRotationV2ListItem =
   | TPostgresCredentialsRotationListItem
@@ -250,7 +262,8 @@ export type TSecretRotationV2ListItem =
   | THpIloRotationListItem
   | TSupabaseApiKeyRotationListItem
   | TSalesforceOauthCredentialsRotationListItem
-  | TDatadogApplicationKeySecretRotationListItem;
+  | TDatadogApplicationKeySecretRotationListItem
+  | TConvexAccessKeyRotationListItem;
 
 export type TSecretRotationV2TemporaryParameters =
   | TLdapPasswordRotationInput["temporaryParameters"]
@@ -410,6 +423,15 @@ export type TRotationFactoryCheckActiveCredentials<T extends TSecretRotationV2Ge
   activeCredentials: T[number]
 ) => Promise<void>;
 
+// Password validation context passed to factories when an active
+// secret-validation rule covers the rotation's project/env/path/provider.
+// When present, factories that generate passwords must satisfy these
+// constraints and ignore any user-provided passwordRequirements.
+export type TRotationPasswordValidationContext = {
+  constraints: TConstraint[];
+  ruleNames: string[];
+};
+
 export type TRotationFactory<
   T extends TSecretRotationV2WithConnection,
   C extends TSecretRotationV2GeneratedCredentials,
@@ -420,7 +442,8 @@ export type TRotationFactory<
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">,
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
-  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">
+  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">,
+  passwordValidationContext?: TRotationPasswordValidationContext
 ) => {
   issueCredentials: TRotationFactoryIssueCredentials<C, P>;
   revokeCredentials: TRotationFactoryRevokeCredentials<C>;

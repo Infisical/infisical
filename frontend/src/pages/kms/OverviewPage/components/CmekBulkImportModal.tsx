@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import slugify from "@sindresorhus/slugify";
-import { AlertTriangleIcon, CircleXIcon, InfoIcon, UploadIcon } from "lucide-react";
+import { AlertTriangleIcon, CircleXIcon, InfoIcon, LockIcon, UploadIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -49,6 +49,7 @@ type ParsedKey = {
   keyMaterial?: string;
   privateKey?: string;
   publicKey?: string;
+  isExportable?: boolean;
 };
 
 type ValidationError = {
@@ -109,6 +110,9 @@ const validateEntry = (entry: unknown, index: number): ValidationError | null =>
   }
   if (!e.algorithm || typeof e.algorithm !== "string") {
     return { index, message: '"algorithm" is required' };
+  }
+  if (e.isExportable !== undefined && typeof e.isExportable !== "boolean") {
+    return { index, message: '"isExportable" must be a boolean' };
   }
   if (e.keyType === "encrypt-decrypt") {
     const validSymmetric = Object.values(SymmetricKeyAlgorithm) as string[];
@@ -239,7 +243,8 @@ export const CmekBulkImportModal = ({ isOpen, onOpenChange, projectId }: Props) 
           name: k.name,
           keyUsage: k.keyType as KmsKeyUsage,
           encryptionAlgorithm: k.algorithm as never,
-          keyMaterial: k.keyType === "sign-verify" ? (k.privateKey ?? "") : (k.keyMaterial ?? "")
+          keyMaterial: k.keyType === "sign-verify" ? (k.privateKey ?? "") : (k.keyMaterial ?? ""),
+          isExportable: k.isExportable
         }))
       });
       if (errors.length === 0) {
@@ -354,7 +359,8 @@ export const CmekBulkImportModal = ({ isOpen, onOpenChange, projectId }: Props) 
   "name": "...",
   "keyType": "encrypt-decrypt",
   "algorithm": "...",
-  "keyMaterial": "<base64>"
+  "keyMaterial": "<base64>",
+  "isExportable": true  // optional, default: true
 }
 
 // Sign/Verify key
@@ -363,8 +369,14 @@ export const CmekBulkImportModal = ({ isOpen, onOpenChange, projectId }: Props) 
   "keyType": "sign-verify",
   "algorithm": "...",
   "privateKey": "<base64>",
-  "publicKey": "<base64>"
+  "publicKey": "<base64>",
+  "isExportable": true  // optional, default: true
 }`}</pre>
+                <p className="mt-2">
+                  Set <code className="rounded bg-card px-1 py-0.5">isExportable</code> to{" "}
+                  <code className="rounded bg-card px-1 py-0.5">false</code> to permanently prevent
+                  the key material from being exported. This cannot be changed after import.
+                </p>
               </AccordionContent>
             </AccordionItem>
           </Accordion>
@@ -395,6 +407,7 @@ export const CmekBulkImportModal = ({ isOpen, onOpenChange, projectId }: Props) 
               <TableHead className="bg-container shadow-[inset_0_-1px_0_var(--color-border)]">
                 Algorithm
               </TableHead>
+              <TableHead className="w-5 bg-container shadow-[inset_0_-1px_0_var(--color-border)]" />
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -434,6 +447,16 @@ export const CmekBulkImportModal = ({ isOpen, onOpenChange, projectId }: Props) 
                   </TableCell>
                   <TableCell isTruncatable className="w-1/4 max-w-0 uppercase">
                     <p className="truncate">{renderFieldValue(key.algorithm)}</p>
+                  </TableCell>
+                  <TableCell>
+                    {key.isExportable === false && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <LockIcon className="size-4 text-muted" />
+                        </TooltipTrigger>
+                        <TooltipContent>Non-exportable</TooltipContent>
+                      </Tooltip>
+                    )}
                   </TableCell>
                 </TableRow>
               );

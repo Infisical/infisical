@@ -769,11 +769,12 @@ export const projectDALFactory = (db: TDbClient) => {
     }
   };
 
-  const countOfOrgProjects = async (orgId: string | null, tx?: Knex) => {
+  const countOfBillableOrgProjects = async (orgId: string | null, tx?: Knex) => {
     try {
       const subOrgProjects = db.replicaNode()(TableName.Organization).where({ rootOrgId: orgId }).select("id");
 
       const doc = await (tx || db.replicaNode())(TableName.Project)
+        .whereNotIn("type", [ProjectType.CertificateManager])
         .whereNull("deleteAfter")
         .andWhere((bd) => {
           if (orgId) {
@@ -812,6 +813,6 @@ export const projectDALFactory = (db: TDbClient) => {
     searchProjects,
     findProjectByEnvId,
     findProjectDeletedEnvironments,
-    countOfOrgProjects
+    countOfBillableOrgProjects
   };
 };

@@ -2,9 +2,8 @@ import crypto from "crypto";
 
 import { useEffect, useMemo } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { faCheck, faCopy, faEye, faEyeSlash, faTerminal } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { ClipboardCheckIcon, Copy, Eye, EyeOff, Terminal } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -15,15 +14,20 @@ import {
   AccordionItem,
   AccordionTrigger,
   Button,
-  Dialog,
-  DialogContent,
+  ButtonGroup,
   Field,
-  FieldContent,
   FieldError,
+  FieldGroup,
   FieldLabel,
   FilterableSelect,
   IconButton,
-  Input
+  Input,
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle
 } from "@app/components/v3";
 import { OrgPermissionHoneyTokenActions, OrgPermissionSubjects } from "@app/context";
 import { AWS_REGIONS } from "@app/helpers/appConnections";
@@ -208,28 +212,31 @@ export const HoneyTokenModal = ({ isOpen, onOpenChange }: Props) => {
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
-        <div className="mb-4">
-          <h2 className="text-lg font-medium text-mineshaft-100">Configure AWS Honey Tokens</h2>
-          <p className="mt-1 text-sm text-mineshaft-400">
-            Plant a decoy IAM credential in your AWS account. Infisical alerts on every access
-            attempt.
-          </p>
-        </div>
+    <Sheet open={isOpen} onOpenChange={onOpenChange}>
+      <SheetContent className="sm:max-w-2xl">
+        <form
+          onSubmit={handleSubmit(hasSavedConfig ? onSave : onNext)}
+          className="flex h-full min-h-0 flex-col"
+        >
+          <SheetHeader>
+            <SheetTitle>Configure AWS Honey Tokens</SheetTitle>
+            <SheetDescription>
+              Plant a decoy IAM credential in your AWS account. Infisical alerts on every access
+              attempt.
+            </SheetDescription>
+          </SheetHeader>
 
-        <form onSubmit={handleSubmit(hasSavedConfig ? onSave : onNext)}>
-          <div className="mb-4 space-y-4">
-            <Controller
-              control={control}
-              name="connectionId"
-              render={({ field, fieldState: { error } }) => {
-                const selectedConnection = awsConnections.find((conn) => conn.id === field.value);
+          <div className="thin-scrollbar flex-1 overflow-y-auto px-4">
+            <FieldGroup>
+              <Controller
+                control={control}
+                name="connectionId"
+                render={({ field, fieldState: { error } }) => {
+                  const selectedConnection = awsConnections.find((conn) => conn.id === field.value);
 
-                return (
-                  <Field>
-                    <FieldLabel>App Connection</FieldLabel>
-                    <FieldContent>
+                  return (
+                    <Field>
+                      <FieldLabel>App Connection</FieldLabel>
                       <FilterableSelect
                         value={selectedConnection || null}
                         onChange={(newValue) => {
@@ -248,132 +255,125 @@ export const HoneyTokenModal = ({ isOpen, onOpenChange }: Props) => {
                         getOptionValue={(option) => option.id}
                       />
                       <FieldError errors={[error]} />
-                    </FieldContent>
-                  </Field>
-                );
-              }}
-            />
+                    </Field>
+                  );
+                }}
+              />
 
-            <Field>
-              <FieldLabel>Webhook Signing Key</FieldLabel>
-              <FieldContent>
-                <div className="flex items-center gap-2">
-                  <Controller
-                    control={control}
-                    name="webhookSigningKey"
-                    render={({ field, fieldState: { error } }) => (
+              <Controller
+                control={control}
+                name="webhookSigningKey"
+                render={({ field, fieldState: { error } }) => (
+                  <Field>
+                    <FieldLabel>Webhook Signing Key</FieldLabel>
+                    <ButtonGroup className="w-full">
                       <Input
                         {...field}
                         type={isTokenVisible ? "text" : "password"}
                         placeholder="Enter webhook signing key..."
                         isError={Boolean(error)}
                         readOnly={hasSavedConfig}
-                        className="flex-1 font-mono"
+                        className="font-mono"
                       />
-                    )}
-                  />
-                  <IconButton
-                    aria-label="toggle signing key visibility"
-                    variant="outline"
-                    size="md"
-                    onClick={() => setIsTokenVisible.toggle()}
-                  >
-                    <FontAwesomeIcon icon={isTokenVisible ? faEyeSlash : faEye} />
-                  </IconButton>
-                  <IconButton
-                    aria-label="copy signing key"
-                    variant="outline"
-                    size="md"
-                    onClick={() => {
-                      navigator.clipboard.writeText(webhookSigningKey);
-                      setTokenCopied(true);
-                    }}
-                  >
-                    <FontAwesomeIcon icon={isTokenCopied ? faCheck : faCopy} />
-                  </IconButton>
-                </div>
-              </FieldContent>
-            </Field>
+                      <IconButton
+                        aria-label="toggle signing key visibility"
+                        variant="outline"
+                        onClick={() => setIsTokenVisible.toggle()}
+                      >
+                        {isTokenVisible ? <EyeOff /> : <Eye />}
+                      </IconButton>
+                      <IconButton
+                        aria-label="copy signing key"
+                        variant="outline"
+                        onClick={() => {
+                          navigator.clipboard.writeText(webhookSigningKey);
+                          setTokenCopied(true);
+                        }}
+                      >
+                        {isTokenCopied ? <ClipboardCheckIcon /> : <Copy />}
+                      </IconButton>
+                    </ButtonGroup>
+                    <FieldError errors={[error]} />
+                  </Field>
+                )}
+              />
 
-            <Accordion type="single" collapsible variant="ghost">
-              <AccordionItem value="advanced">
-                <AccordionTrigger>Advanced Options</AccordionTrigger>
-                <AccordionContent>
-                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                    <Controller
-                      control={control}
-                      name="stackName"
-                      render={({ field, fieldState: { error } }) => (
-                        <Field>
-                          <FieldLabel>CloudFormation Stack Name</FieldLabel>
-                          <FieldContent>
+              <Accordion type="single" collapsible variant="ghost">
+                <AccordionItem value="advanced">
+                  <AccordionTrigger>Advanced Options</AccordionTrigger>
+                  <AccordionContent>
+                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                      <Controller
+                        control={control}
+                        name="stackName"
+                        render={({ field, fieldState: { error } }) => (
+                          <Field>
+                            <FieldLabel>CloudFormation Stack Name</FieldLabel>
                             <Input
                               {...field}
                               placeholder={DEFAULT_STACK_NAME}
                               isError={Boolean(error)}
                             />
                             <FieldError errors={[error]} />
-                          </FieldContent>
-                        </Field>
-                      )}
-                    />
-                    <Controller
-                      control={control}
-                      name="awsRegion"
-                      render={({ field, fieldState: { error } }) => (
-                        <Field>
-                          <FieldLabel>AWS Region</FieldLabel>
-                          <FieldContent>
+                          </Field>
+                        )}
+                      />
+                      <Controller
+                        control={control}
+                        name="awsRegion"
+                        render={({ field, fieldState: { error } }) => (
+                          <Field>
+                            <FieldLabel>AWS Region</FieldLabel>
                             <Input
                               {...field}
                               placeholder={DEFAULT_AWS_REGION}
                               isError={Boolean(error)}
                             />
                             <FieldError errors={[error]} />
-                          </FieldContent>
-                        </Field>
-                      )}
-                    />
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
+                          </Field>
+                        )}
+                      />
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+            </FieldGroup>
+
+            {hasSavedConfig && (
+              <div className="mt-4 rounded-md border border-border bg-container p-4">
+                <div className="mb-3 flex items-center gap-2 text-sm text-mineshaft-300">
+                  <Terminal className="size-4 text-mineshaft-400" />
+                  <span className="font-medium tracking-wide uppercase">
+                    Deploy CloudFormation Stack
+                  </span>
+                </div>
+                <p className="mb-3 text-sm text-mineshaft-400">
+                  Run this command to create the CloudFormation stack that provisions the decoy IAM
+                  user and wires CloudTrail alerts back to Infisical.
+                </p>
+                <div className="relative">
+                  <pre className="rounded-md border border-border bg-card p-4 pr-12 font-mono text-xs leading-relaxed break-all whitespace-pre-wrap text-mineshaft-300">
+                    <span className="text-mineshaft-400 select-none">$ </span>
+                    {cfCommand}
+                  </pre>
+                  <IconButton
+                    aria-label="copy CloudFormation command"
+                    variant="outline"
+                    size="xs"
+                    className="absolute top-2 right-2"
+                    onClick={() => {
+                      navigator.clipboard.writeText(cfCommand);
+                      setCommandCopied(true);
+                    }}
+                  >
+                    {isCommandCopied ? <ClipboardCheckIcon /> : <Copy />}
+                  </IconButton>
+                </div>
+              </div>
+            )}
           </div>
 
-          {hasSavedConfig && (
-            <div className="mb-4 rounded-md border border-border bg-container p-4">
-              <div className="mb-3 flex items-center gap-2 text-sm text-mineshaft-300">
-                <FontAwesomeIcon icon={faTerminal} className="text-mineshaft-400" />
-                <span className="font-medium tracking-wide uppercase">
-                  Deploy CloudFormation Stack
-                </span>
-              </div>
-              <p className="mb-3 text-sm text-mineshaft-400">
-                Run this command to create the CloudFormation stack that provisions the decoy IAM
-                user and wires CloudTrail alerts back to Infisical.
-              </p>
-              <div className="relative">
-                <pre className="rounded-md border border-border bg-card p-4 pr-12 font-mono text-xs leading-relaxed break-all whitespace-pre-wrap text-mineshaft-300">
-                  <span className="text-mineshaft-400 select-none">$ </span>
-                  {cfCommand}
-                </pre>
-                <IconButton
-                  aria-label="copy CloudFormation command"
-                  variant="outline"
-                  size="xs"
-                  className="absolute top-2 right-2"
-                  onClick={() => {
-                    navigator.clipboard.writeText(cfCommand);
-                    setCommandCopied(true);
-                  }}
-                >
-                  <FontAwesomeIcon icon={isCommandCopied ? faCheck : faCopy} />
-                </IconButton>
-              </div>
-            </div>
-          )}
-
-          <div className="flex justify-end gap-2">
+          <SheetFooter>
             <Button variant="ghost" onClick={() => onOpenChange(false)} type="button">
               Cancel
             </Button>
@@ -392,9 +392,9 @@ export const HoneyTokenModal = ({ isOpen, onOpenChange }: Props) => {
                 </Button>
               )}
             </OrgPermissionCan>
-          </div>
+          </SheetFooter>
         </form>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 };

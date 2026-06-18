@@ -45,7 +45,7 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       operationId: "createWebhook",
       body: z.object({
@@ -121,7 +121,7 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       operationId: "updateWebhook",
       params: z.object({
@@ -196,7 +196,7 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       operationId: "deleteWebhook",
       params: z.object({
@@ -272,11 +272,41 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "GET",
+    url: "/:webhookId",
+    config: {
+      rateLimit: readLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      operationId: "getWebhookById",
+      params: z.object({
+        webhookId: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          webhook: sanitizedWebhookSchema.extend({ url: z.string() })
+        })
+      }
+    },
+    handler: async (req) => {
+      const webhook = await server.services.webhook.getWebhookById({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        id: req.params.webhookId
+      });
+      return { webhook };
+    }
+  });
+
+  server.route({
+    method: "GET",
     url: "/",
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       operationId: "listWebhooks",
       querystring: z.object({

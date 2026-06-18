@@ -6,6 +6,7 @@ import { groupMembershipsBase } from "@app/hooks/api/certManagerAccess";
 import { groupKeys } from "../groups/queries";
 import { TGroupMembership } from "../groups/types";
 import { pkiApplicationKeys } from "../pkiApplications/queries";
+import { secretInsightsKeys } from "../secretInsights/queries";
 import { userKeys } from "../users/query-keys";
 import { projectKeys } from "./query-keys";
 import {
@@ -162,6 +163,23 @@ export const useRequestProjectAccess = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: projectKeys.getMyPendingProjectAccessRequests()
+      });
+    }
+  });
+};
+
+export const useEnableSecretBlindIndex = () => {
+  const queryClient = useQueryClient();
+  return useMutation<{ message: string }, object, { projectId: string }>({
+    mutationFn: async ({ projectId }) => {
+      const { data } = await apiRequest.post<{ message: string }>(
+        `/api/v1/projects/${projectId}/secret-blind-index`
+      );
+      return data;
+    },
+    onSuccess: (_, { projectId }) => {
+      queryClient.invalidateQueries({
+        queryKey: secretInsightsKeys.secretsDuplication({ projectId })
       });
     }
   });

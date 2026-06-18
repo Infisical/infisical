@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { LogProvider } from "@app/ee/services/audit-log-stream/audit-log-stream-enums";
+import { LogProvider, StreamMode } from "@app/ee/services/audit-log-stream/audit-log-stream-enums";
 import { TAuditLogStream } from "@app/ee/services/audit-log-stream/audit-log-stream-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
@@ -22,6 +22,7 @@ export const registerAuditLogStreamEndpoints = <T extends TAuditLogStream>({
   }>;
   updateSchema: z.ZodType<{
     credentials: T["credentials"];
+    streamMode?: StreamMode;
   }>;
   sanitizedResponseSchema: z.ZodTypeAny;
 }) => {
@@ -110,13 +111,14 @@ export const registerAuditLogStreamEndpoints = <T extends TAuditLogStream>({
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { logStreamId } = req.params;
-      const { credentials } = req.body;
+      const { credentials, streamMode } = req.body;
 
       const auditLogStream = await server.services.auditLogStream.updateById(
         {
           logStreamId,
           provider,
-          credentials
+          credentials,
+          streamMode
         },
         req.permission
       );

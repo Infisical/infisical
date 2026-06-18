@@ -7,6 +7,7 @@ import (
 	"github.com/infisical/api/internal/ee/services/externalkms"
 	"github.com/infisical/api/internal/ee/services/license"
 	"github.com/infisical/api/internal/ee/services/ratelimit"
+	"github.com/infisical/api/internal/server/api/shared"
 	"github.com/infisical/api/internal/services/assumeprivilege"
 	"github.com/infisical/api/internal/services/auditlog"
 	"github.com/infisical/api/internal/services/auth/apiauth"
@@ -57,7 +58,7 @@ func newPlatformServices(ctx context.Context, infra *Infra) (*PlatformServices, 
 		PermissionService: permissionSvc,
 	})
 
-	apiAuthenticator := apiauth.NewApiAuthenticator(infra.Logger, infra.DB, infra.Config.AuthSecret, infra.KeyStore, assumePrivilegeSvc)
+	apiAuthenticator := apiauth.NewApiAuthenticator(infra.Logger, infra.DB, infra.Config.AuthSecret, infra.KeyStore, assumePrivilegeSvc, shared.NewErrorHandler(infra.Logger))
 
 	auditLogSvc := auditlog.NewService(ctx, infra.Logger, &auditlog.Deps{
 		Queue:  infra.Queue,

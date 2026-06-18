@@ -105,7 +105,6 @@ export const useRevokeGatewayAccess = () => {
     mutationFn: async ({ gatewayId }: { gatewayId: string }) => {
       const { data } = await apiRequest.post<{
         method: "aws" | "token";
-        deletedTokenCount: number;
       }>(`/api/v3/gateways/${gatewayId}/revoke`);
       return data;
     },

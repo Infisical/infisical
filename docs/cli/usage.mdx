@@ -138,21 +138,24 @@ For versions prior to v0.4.0, the CLI defaults to US Cloud. To connect to EU Clo
 
 The CLI defaults to US Cloud (https://app.infisical.com). To connect to **EU Cloud (https://eu.infisical.com)** or a **self-hosted instance**, you must configure the domain in one of the following ways:
 
-- Use the `INFISICAL_API_URL` environment variable
+- Use the `INFISICAL_DOMAIN` environment variable
 - Use the `--domain` flag on every command
+- Set the `domain` field in your project's [`.infisical.json`](/cli/project-config)
+
+When more than one is set, the CLI uses this order of precedence: `--domain` flag, then `INFISICAL_DOMAIN`, then the `domain` field in `.infisical.json`, then the default. The legacy `INFISICAL_API_URL` environment variable is still honored, but `INFISICAL_DOMAIN` takes precedence when both are set.
 
 <Tabs>
   <Tab title='Use Environment Variable (Recommended)'>
     The easiest way to ensure all CLI commands use the correct domain is to set
-    the `INFISICAL_API_URL` environment variable. This applies the domain
+    the `INFISICAL_DOMAIN` environment variable. This applies the domain
     setting globally to all commands:
 
     ```bash
     # Linux/MacOS
-    export INFISICAL_API_URL="https://your-domain.infisical.com"
+    export INFISICAL_DOMAIN="https://your-domain.infisical.com"
 
     # Windows PowerShell
-    setx INFISICAL_API_URL "https://your-domain.infisical.com"
+    setx INFISICAL_DOMAIN "https://your-domain.infisical.com"
     ```
 
     Once set, all subsequent CLI commands will automatically use this domain:
@@ -180,6 +183,24 @@ The CLI defaults to US Cloud (https://app.infisical.com). To connect to **EU Clo
 
     <Note>
       If you use `--domain` during login but forget to include it on subsequent commands, you may encounter authentication errors.
+    </Note>
+
+  </Tab>
+  <Tab title='Use .infisical.json'>
+    If your project has a [`.infisical.json`](/cli/project-config) file, you can pin the
+    domain to the project by adding a `domain` field. Every CLI command run from the
+    project then uses it automatically, with no flag or environment variable needed:
+
+    ```json .infisical.json
+    {
+      "workspaceId": "<workspace-id>",
+      "defaultEnvironment": "dev",
+      "domain": "https://your-domain.infisical.com"
+    }
+    ```
+
+    <Note>
+      Since `.infisical.json` is usually committed to your repository, the CLI prints a warning naming the host whenever the domain is read from the file, since all requests and credentials are sent there. Only set `domain` to an instance you trust.
     </Note>
 
   </Tab>
@@ -251,32 +272,32 @@ For security and privacy concerns, we recommend you to configure your terminal t
 
      #### Method 2: Export environment variable
 
-    You can point the CLI to the self-hosted Infisical instance by exporting the environment variable `INFISICAL_API_URL` in your terminal.
+    You can point the CLI to the self-hosted Infisical instance by exporting the environment variable `INFISICAL_DOMAIN` in your terminal. (The legacy `INFISICAL_API_URL` variable still works.)
 
     <Tabs>
     <Tab title="Linux/MacOs">
       ```bash
-      # Set the API URL
-      export INFISICAL_API_URL="https://your-self-hosted-infisical.com"
+      # Set the domain
+      export INFISICAL_DOMAIN="https://your-self-hosted-infisical.com"
 
       # For EU Cloud
-      export INFISICAL_API_URL="https://eu.infisical.com"
+      export INFISICAL_DOMAIN="https://eu.infisical.com"
 
       # Remove the setting
-      unset INFISICAL_API_URL
+      unset INFISICAL_DOMAIN
       ```
 
     </Tab>
     <Tab title="Windows Powershell">
       ```bash
-      # Set the API URL
-      setx INFISICAL_API_URL "https://your-self-hosted-infisical.com"
+      # Set the domain
+      setx INFISICAL_DOMAIN "https://your-self-hosted-infisical.com"
 
       # For EU Cloud
-      setx INFISICAL_API_URL "https://eu.infisical.com"
+      setx INFISICAL_DOMAIN "https://eu.infisical.com"
 
       # Remove the setting
-      setx INFISICAL_API_URL ""
+      setx INFISICAL_DOMAIN ""
 
       # NOTE: Once set, please restart powershell for the change to take effect
       ```
@@ -299,7 +320,7 @@ For security and privacy concerns, we recommend you to configure your terminal t
     ```
 
     <Tip>
-      **Best Practice:** Use `INFISICAL_API_URL` environment variable (Method 2) to avoid having to remember the `--domain` flag on every command. This is especially important in CI/CD pipelines and automation scripts.
+      **Best Practice:** Use `INFISICAL_DOMAIN` environment variable (Method 2) to avoid having to remember the `--domain` flag on every command. This is especially important in CI/CD pipelines and automation scripts.
     </Tip>
 
   </Accordion>

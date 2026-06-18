@@ -25,6 +25,7 @@ import { TCloudflareConnection } from "@app/services/app-connection/cloudflare/c
 import { TDNSMadeEasyConnection } from "@app/services/app-connection/dns-made-easy/dns-made-easy-connection-types";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
+import { extractCertificateFields } from "@app/services/certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
 import {
   CertExtendedKeyUsage,
@@ -572,6 +573,8 @@ export const orderCertificate = async (
       })
     : { cipherTextBlob: undefined };
 
+  const parsedFields = extractCertificateFields(Buffer.from(leafCert));
+
   return (tx || certificateDAL).transaction(async (innerTx: Knex) => {
     const cert = await certificateDAL.create(
       {
@@ -590,7 +593,8 @@ export const orderCertificate = async (
         keyAlgorithm,
         signatureAlgorithm,
         projectId: ca.projectId,
-        renewedFromCertificateId: isRenewal && originalCertificateId ? originalCertificateId : null
+        renewedFromCertificateId: isRenewal && originalCertificateId ? originalCertificateId : null,
+        ...parsedFields
       },
       innerTx
     );

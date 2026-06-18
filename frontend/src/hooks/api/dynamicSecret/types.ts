@@ -43,7 +43,8 @@ export enum DynamicSecretProviders {
   Couchbase = "couchbase",
   Clickhouse = "clickhouse",
   Milvus = "milvus",
-  Ssh = "ssh"
+  Ssh = "ssh",
+  IbmApiConnect = "ibm-api-connect"
 }
 
 export enum KubernetesDynamicSecretCredentialType {
@@ -413,6 +414,7 @@ export type TDynamicSecretProvider =
       type: DynamicSecretProviders.GcpIam;
       inputs: {
         serviceAccountEmail: string;
+        tokenScopes: string[];
       };
     }
   | {
@@ -506,6 +508,20 @@ export type TDynamicSecretProvider =
         caPublicKey?: string;
         principals: string[];
         keyAlgorithm: string;
+      };
+    }
+  | {
+      type: DynamicSecretProviders.IbmApiConnect;
+      inputs: {
+        clientId: string;
+        clientSecret: string;
+        instanceUrl: string;
+        apiKey: string;
+        orgId: string;
+        catalogId: string;
+        appId: string;
+        gatewayId?: string;
+        gatewayPoolId?: string;
       };
     };
 

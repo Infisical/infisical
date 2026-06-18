@@ -80,7 +80,8 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
             .enum(AllowedEncryptionKeyAlgorithms)
             .optional()
             .default(SymmetricKeyAlgorithm.AES_GCM_256)
-            .describe(KMS.CREATE_KEY.encryptionAlgorithm)
+            .describe(KMS.CREATE_KEY.encryptionAlgorithm),
+          isExportable: z.boolean().optional().default(true).describe(KMS.CREATE_KEY.isExportable)
         })
         .superRefine((data, ctx) => {
           if (
@@ -115,7 +116,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const {
-        body: { projectId, name, description, encryptionAlgorithm, keyUsage },
+        body: { projectId, name, description, encryptionAlgorithm, keyUsage, isExportable },
         permission
       } = req;
 
@@ -126,7 +127,8 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
           name,
           description,
           encryptionAlgorithm: encryptionAlgorithm as TCmekKeyEncryptionAlgorithm,
-          keyUsage
+          keyUsage,
+          isExportable
         },
         permission
       );
@@ -140,7 +142,8 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
             keyId: cmek.id,
             name,
             description,
-            encryptionAlgorithm: encryptionAlgorithm as TCmekKeyEncryptionAlgorithm
+            encryptionAlgorithm: encryptionAlgorithm as TCmekKeyEncryptionAlgorithm,
+            isExportable
           }
         }
       });
@@ -576,7 +579,8 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
                 name: keyNameSchema,
                 keyUsage: z.nativeEnum(KmsKeyUsage),
                 encryptionAlgorithm: z.enum(AllowedEncryptionKeyAlgorithms),
-                keyMaterial: z.string().min(1)
+                keyMaterial: z.string().min(1),
+                isExportable: z.boolean().optional().default(true).describe(KMS.CREATE_KEY.isExportable)
               })
               .superRefine((data, ctx) => {
                 if (
@@ -630,7 +634,8 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
             name: k.name,
             algorithm: k.encryptionAlgorithm as TCmekKeyEncryptionAlgorithm,
             keyUsage: k.keyUsage,
-            keyMaterial: k.keyMaterial
+            keyMaterial: k.keyMaterial,
+            isExportable: k.isExportable
           }))
         },
         permission

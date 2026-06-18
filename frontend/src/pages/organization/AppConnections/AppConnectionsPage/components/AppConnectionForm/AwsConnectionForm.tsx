@@ -33,7 +33,15 @@ const formSchema = z.discriminatedUnion("method", [
   rootSchema.extend({
     method: z.literal(AwsConnectionMethod.AssumeRole),
     credentials: z.object({
-      roleArn: z.string().trim().min(1, "Role ARN required")
+      roleArn: z.string().trim().min(1, "Role ARN required"),
+      stsEndpoint: z
+        .string()
+        .trim()
+        .url("Must be a valid URL")
+        .startsWith("https://", "Must use HTTPS")
+        .or(z.literal(""))
+        .optional()
+        .transform((val) => val || undefined)
     })
   }),
   rootSchema.extend({
@@ -104,25 +112,55 @@ export const AwsConnectionForm = ({ appConnection, onSubmit }: Props) => {
           )}
         />
         {selectedMethod === AwsConnectionMethod.AssumeRole ? (
-          <Controller
-            name="credentials.roleArn"
-            control={control}
-            shouldUnregister
-            render={({ field: { value, onChange }, fieldState: { error } }) => (
-              <FormControl
-                errorText={error?.message}
-                isError={Boolean(error?.message)}
-                label="Role ARN"
-                className="group"
-              >
-                <SecretInput
-                  containerClassName="text-gray-400 group-focus-within:border-primary-400/50! border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
-                  value={value}
-                  onChange={(e) => onChange(e.target.value)}
-                />
-              </FormControl>
-            )}
-          />
+          <>
+            <Controller
+              name="credentials.roleArn"
+              control={control}
+              shouldUnregister
+              render={({ field: { value, onChange }, fieldState: { error } }) => (
+                <FormControl
+                  errorText={error?.message}
+                  isError={Boolean(error?.message)}
+                  label="Role ARN"
+                  className="group"
+                >
+                  <SecretInput
+                    containerClassName="text-gray-400 group-focus-within:border-primary-400/50! border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
+                    value={value}
+                    onChange={(e) => onChange(e.target.value)}
+                  />
+                </FormControl>
+              )}
+            />
+            <Controller
+              name="credentials.stsEndpoint"
+              control={control}
+              shouldUnregister
+              render={({ field: { value, onChange }, fieldState: { error } }) => (
+                <FormControl
+                  errorText={error?.message}
+                  isError={Boolean(error?.message)}
+                  label="STS Endpoint URL"
+                  isOptional
+                  tooltipText={
+                    <div>
+                      <p>
+                        Override the default AWS STS endpoint Infisical calls to assume the role.
+                        Useful for VPC (PrivateLink), GovCloud, China, FIPS, or region-pinned
+                        endpoints. Leave blank to use the default AWS STS endpoint.
+                      </p>
+                    </div>
+                  }
+                >
+                  <Input
+                    placeholder="https://sts.amazonaws.com"
+                    value={value || ""}
+                    onChange={(e) => onChange(e.target.value)}
+                  />
+                </FormControl>
+              )}
+            />
+          </>
         ) : (
           <>
             <Controller

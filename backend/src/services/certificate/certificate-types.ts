@@ -130,6 +130,7 @@ export type TDeleteCertDTO = {
 export type TRevokeCertDTO = {
   id?: string;
   serialNumber?: string;
+  thumbprint?: string;
   revocationReason: CrlReason;
 } & Omit<TProjectPermission, "projectId">;
 

@@ -2,9 +2,16 @@ import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 
 import { createNotification } from "@app/components/notifications";
-import { ContentLoader } from "@app/components/v2";
+import { PageLoader } from "@app/components/v3/platform/PageLoader";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
+import {
+  APP_CONNECTION_MAP,
+  consumeCsrfToken,
+  getConnectionFlowReturnNavigateOptions,
+  getIntegrationsListTab,
+  GITHUB_CONNECTION_FORM_STORAGE_KEY,
+  readConnectionFormData
+} from "@app/helpers/appConnections";
 import {
   AzureAppConfigurationConnectionMethod,
   AzureClientSecretsConnectionMethod,
@@ -18,12 +25,11 @@ import {
   useUpdateAppConnection
 } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
-import { IntegrationsListPageTabs } from "@app/types/integrations";
 
 import { FormDataMap } from "./OauthCallbackPage.types";
 
 const formDataStorageFieldMap: Partial<Record<AppConnection, string>> = {
-  [AppConnection.GitHub]: "githubConnectionFormData",
+  [AppConnection.GitHub]: GITHUB_CONNECTION_FORM_STORAGE_KEY,
   [AppConnection.GitHubRadar]: "githubRadarConnectionFormData",
   [AppConnection.GitLab]: "gitlabConnectionFormData",
   [AppConnection.AzureKeyVault]: "azureKeyVaultConnectionFormData",
@@ -55,27 +61,60 @@ export const OAuthCallbackPage = () => {
   const appConnection = rawState.includes("<:>") ? rawState.split("<:>")[1] : rawAppConnection;
 
   const clearState = (app: AppConnection) => {
-    if (state !== localStorage.getItem("latestCSRFToken")) {
+    if (!consumeCsrfToken(state)) {
       throw new Error("Invalid CSRF token");
     }
 
     const dataFieldName = formDataStorageFieldMap[app];
 
     localStorage.removeItem(dataFieldName!);
-    localStorage.removeItem("latestCSRFToken");
+  };
+
+  // Shared post-success step: notify and navigate back to where the connection flow started.
+  const finalizeConnection = async (data: {
+    returnUrl: string;
+    appConnectionName: string;
+    connectionId?: string;
+    projectId?: string;
+    connection: TAppConnection;
+  }) => {
+    createNotification({
+      text: `Successfully ${data.connectionId ? "updated" : "added"} ${data.appConnectionName ? APP_CONNECTION_MAP[data.appConnectionName as AppConnection].name : ""} Connection`,
+      type: "success"
+    });
+
+    await navigate({
+      to: data.returnUrl,
+      params: {
+        projectId: data.projectId ?? undefined
+      },
+      search: data.returnUrl.includes("app-connections")
+        ? undefined
+        : {
+            connectionId: data.connection.id,
+            connectionName: data.connection.name,
+            ...(data.returnUrl.includes("integrations")
+              ? { selectedTab: getIntegrationsListTab() }
+              : {})
+          }
+    });
   };
 
   const getFormData = <T extends keyof FormDataMap>(app: T): FormDataMap[T] | null => {
     const dataFieldName = formDataStorageFieldMap[app];
 
-    try {
-      const rawData = JSON.parse(localStorage.getItem(dataFieldName!) ?? "{}");
+    const result = readConnectionFormData<FormDataMap[T]>(dataFieldName!);
 
-      return {
-        ...rawData,
-        app
-      } as FormDataMap[T];
-    } catch {
+    if (result.status === "missing") {
+      createNotification({
+        type: "error",
+        text: `Your ${app ? APP_CONNECTION_MAP[app as AppConnection].name : ""} Connection session has expired or was already completed. Please restart the connection flow.`
+      });
+      navigate({ to: "/" });
+      return null;
+    }
+
+    if (result.status === "corrupt") {
       createNotification({
         type: "error",
         text: `Invalid ${app || ""} form state, redirecting...`
@@ -83,6 +122,11 @@ export const OAuthCallbackPage = () => {
       navigate({ to: "/" });
       return null;
     }
+
+    return {
+      ...result.data,
+      app
+    } as FormDataMap[T];
   };
 
   const handleGitLab = useCallback(async () => {
@@ -144,7 +188,8 @@ export const OAuthCallbackPage = () => {
 
     clearState(AppConnection.AzureKeyVault);
 
-    const { connectionId, name, description, returnUrl, projectId } = formData;
+    const { connectionId, name, description, returnUrl, projectId, gatewayId, gatewayPoolId } =
+      formData;
 
     let connection: TAppConnection;
 
@@ -156,7 +201,9 @@ export const OAuthCallbackPage = () => {
           credentials: {
             code: code as string,
             tenantId: formData.tenantId
-          }
+          },
+          gatewayId,
+          gatewayPoolId
         });
       } else {
         connection = await createAppConnection.mutateAsync({
@@ -168,7 +215,9 @@ export const OAuthCallbackPage = () => {
           credentials: {
             tenantId: formData.tenantId,
             code: code as string
-          }
+          },
+          gatewayId,
+          gatewayPoolId
         });
       }
     } catch {
@@ -358,35 +407,60 @@ export const OAuthCallbackPage = () => {
 
     clearState(AppConnection.GitHub);
 
-    const { connectionId, name, description, returnUrl, gatewayId, credentials, projectId } =
-      formData;
+    const {
+      connectionId,
+      name,
+      description,
+      returnUrl,
+      gatewayId,
+      gatewayPoolId,
+      credentials,
+      projectId
+    } = formData;
+
+    const storedGitHubAppId = (credentials as { gitHubAppId?: string | null } | undefined)
+      ?.gitHubAppId;
+
+    const isAppMethod = formData.method === GitHubConnectionMethod.App;
+
+    // App connections go through GitHub's install flow, which redirects back with the chosen
+    // installation_id. If it's missing, the app wasn't installed — e.g. a non-admin org member
+    // triggered a pending install request that an owner must approve — so there's nothing to connect.
+    if (isAppMethod && !installationId) {
+      createNotification({
+        type: "error",
+        text: "The GitHub App was not installed. If you requested it on an organization, an owner may need to approve the installation first. Please complete the installation and try again."
+      });
+      navigate(getConnectionFlowReturnNavigateOptions({ returnUrl, projectId }));
+      return null;
+    }
 
     let connection: TAppConnection;
 
     try {
+      const gitHubAppId = storedGitHubAppId;
+
+      const appCredentials = {
+        code: code as string,
+        installationId: installationId as string,
+        ...(gitHubAppId !== undefined && { gitHubAppId }),
+        ...(credentials?.instanceType && { instanceType: credentials.instanceType }),
+        ...(credentials?.host && { host: credentials.host })
+      };
+
+      const oauthCredentials = {
+        code: code as string,
+        ...(credentials?.instanceType && { instanceType: credentials.instanceType }),
+        ...(credentials?.host && { host: credentials.host })
+      };
+
       if (connectionId) {
         connection = await updateAppConnection.mutateAsync({
           app: AppConnection.GitHub,
-          ...(installationId
-            ? {
-                connectionId,
-                credentials: {
-                  code: code as string,
-                  installationId: installationId as string,
-                  ...(credentials?.instanceType && { instanceType: credentials.instanceType }),
-                  ...(credentials?.host && { host: credentials.host })
-                },
-                gatewayId
-              }
-            : {
-                connectionId,
-                credentials: {
-                  code: code as string,
-                  ...(credentials?.instanceType && { instanceType: credentials.instanceType }),
-                  ...(credentials?.host && { host: credentials.host })
-                },
-                gatewayId
-              })
+          connectionId,
+          credentials: isAppMethod ? appCredentials : oauthCredentials,
+          gatewayId,
+          gatewayPoolId
         });
       } else {
         connection = await createAppConnection.mutateAsync({
@@ -394,35 +468,29 @@ export const OAuthCallbackPage = () => {
           name,
           description,
           projectId,
-          ...(installationId
+          ...(isAppMethod
             ? {
                 method: GitHubConnectionMethod.App,
-                credentials: {
-                  code: code as string,
-                  ...(credentials?.instanceType && { instanceType: credentials.instanceType }),
-                  installationId: installationId as string,
-                  ...(credentials?.host && { host: credentials.host })
-                },
-                gatewayId
+                credentials: appCredentials,
+                gatewayId,
+                gatewayPoolId
               }
             : {
                 method: GitHubConnectionMethod.OAuth,
-                credentials: {
-                  code: code as string,
-                  ...(credentials?.instanceType && { instanceType: credentials.instanceType }),
-                  ...(credentials?.host && { host: credentials.host })
-                },
-                gatewayId
+                credentials: oauthCredentials,
+                gatewayId,
+                gatewayPoolId
               })
         });
       }
-    } catch {
-      navigate({
-        to: returnUrl,
-        params: {
-          projectId
-        }
+    } catch (err) {
+      createNotification({
+        type: "error",
+        text:
+          (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+          `Failed to ${connectionId ? "update" : "create"} GitHub Connection`
       });
+      navigate(getConnectionFlowReturnNavigateOptions({ returnUrl, projectId }));
       return null;
     }
 
@@ -556,57 +624,38 @@ export const OAuthCallbackPage = () => {
         connection: TAppConnection;
       } | null = null;
 
-      if (appConnection === AppConnection.GitHub) {
-        data = await handleGitHub();
-      } else if (appConnection === AppConnection.GitHubRadar) {
-        data = await handleGitHubRadar();
-      } else if (appConnection === AppConnection.GitLab) {
-        data = await handleGitLab();
-      } else if (appConnection === AppConnection.AzureKeyVault) {
-        data = await handleAzureKeyVault();
-      } else if (appConnection === AppConnection.AzureAppConfiguration) {
-        data = await handleAzureAppConfiguration();
-      } else if (appConnection === AppConnection.AzureClientSecrets) {
-        data = await handleAzureClientSecrets();
-      } else if (appConnection === AppConnection.AzureDevOps) {
-        data = await handleAzureDevOps();
-      } else if (appConnection === AppConnection.Heroku) {
-        data = await handleHeroku();
+      try {
+        if (appConnection === AppConnection.GitHub) {
+          data = await handleGitHub();
+        } else if (appConnection === AppConnection.GitHubRadar) {
+          data = await handleGitHubRadar();
+        } else if (appConnection === AppConnection.GitLab) {
+          data = await handleGitLab();
+        } else if (appConnection === AppConnection.AzureKeyVault) {
+          data = await handleAzureKeyVault();
+        } else if (appConnection === AppConnection.AzureAppConfiguration) {
+          data = await handleAzureAppConfiguration();
+        } else if (appConnection === AppConnection.AzureClientSecrets) {
+          data = await handleAzureClientSecrets();
+        } else if (appConnection === AppConnection.AzureDevOps) {
+          data = await handleAzureDevOps();
+        } else if (appConnection === AppConnection.Heroku) {
+          data = await handleHeroku();
+        }
+      } catch {
+        createNotification({
+          type: "error",
+          text: "Your connection session is invalid or has expired. Please restart the connection flow."
+        });
+        await navigate({ to: "/" });
+        return;
       }
 
       if (data) {
-        createNotification({
-          text: `Successfully ${data.connectionId ? "updated" : "added"} ${data.appConnectionName ? APP_CONNECTION_MAP[data.appConnectionName as AppConnection].name : ""} Connection`,
-          type: "success"
-        });
-
-        await navigate({
-          to: data.returnUrl,
-          params: {
-            projectId: data.projectId ?? undefined
-          },
-          // scott: if it's not an app connection page we need to pass connection details as it's an inline creation
-          search: data.returnUrl.includes("app-connections")
-            ? undefined
-            : {
-                connectionId: data.connection.id,
-                connectionName: data.connection.name,
-                ...(data.returnUrl.includes("integrations")
-                  ? {
-                      selectedTab: localStorage.getItem("pkiSyncFormData")
-                        ? IntegrationsListPageTabs.PkiSyncs
-                        : IntegrationsListPageTabs.SecretSyncs
-                    }
-                  : {})
-              }
-        });
+        await finalizeConnection(data);
       }
     })();
   }, [isReady]);
 
-  return (
-    <div className="flex h-full w-full items-center justify-center">
-      <ContentLoader text="Please wait! Authentication in process." />
-    </div>
-  );
+  return <PageLoader />;
 };

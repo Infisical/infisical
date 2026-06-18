@@ -84,3 +84,4 @@ Tailwind CSS v4 with PostCSS. Dark theme configured via CSS custom properties in
 - Import ordering via `simple-import-sort`: node builtins → react/external packages → `@app/` → internal → relative → styles.
 - Forms use `react-hook-form` with `@hookform/resolvers` (Zod schemas).
 - Search params validated with `zodValidator()` from `@tanstack/zod-adapter`.
+- Toasts: call `createNotification({ title?, text, type, callToAction?, copyActions? })` from `@app/components/notifications`. Backed by **sonner** (the v3 `Toaster` in `components/v3/generic/Toast`), mounted once via `NotificationContainer` in `pages/root.tsx`. `react-toastify` has been removed, so do not reintroduce it.

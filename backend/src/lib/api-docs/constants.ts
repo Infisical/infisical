@@ -91,7 +91,8 @@ export enum ApiDocsTags {
   LdapSso = "LDAP SSO",
   Scim = "SCIM",
   Events = "Event Subscriptions",
-  GatewaysV3 = "Gateways"
+  GatewaysV3 = "Gateways",
+  KmipServers = "KMIP Servers"
 }
 
 export const GROUPS = {
@@ -2207,7 +2208,7 @@ export const CERTIFICATES = {
     serialNumber: "The serial number of the certificate to get."
   },
   REVOKE: {
-    id: "The ID of the certificate to revoke.",
+    id: "The ID or SHA-1/SHA-256 thumbprint of the certificate to revoke. Thumbprint colons and casing are ignored.",
     serialNumber:
       "The serial number of the certificate to revoke. The revoked certificate will be added to the certificate revocation list (CRL) of the CA.",
     revocationReason: "The reason for revoking the certificate.",
@@ -2481,7 +2482,9 @@ export const KMS = {
     name: "The name of the key to be created. Must be slug-friendly.",
     description: "An optional description of the key.",
     encryptionAlgorithm: "The algorithm to use when performing cryptographic operations with the key.",
-    type: "The type of key to be created, either encrypt-decrypt or sign-verify, based on your intended use for the key."
+    type: "The type of key to be created, either encrypt-decrypt or sign-verify, based on your intended use for the key.",
+    isExportable:
+      "Whether the raw key material can be exported after creation. When set to false, the key can never be exported regardless of permissions. This cannot be changed after creation."
   },
   UPDATE_KEY: {
     keyId: "The ID of the key to be updated.",
@@ -2663,6 +2666,7 @@ export const AppConnections = {
       description: `An optional description for the ${appName} Connection.`,
       credentials: `The credentials used to connect with ${appName}.`,
       method: `The method used to authenticate with ${appName}.`,
+      stsEndpoint: `An optional custom endpoint URL for the AWS STS API to use when connecting with ${appName}.`,
       isPlatformManagedCredentials: `Whether or not the ${appName} Connection credentials should be managed by Infisical. Once enabled this cannot be reversed.`,
       projectId: `The ID of the project to create the ${appName} Connection in.`,
       isAutoRotationEnabled: `Whether or not automatic credential rotation is enabled for the ${appName} Connection.`,
@@ -2677,6 +2681,7 @@ export const AppConnections = {
       description: `The updated description of the ${appName} Connection.`,
       credentials: `The credentials used to connect with ${appName}.`,
       method: `The method used to authenticate with ${appName}.`,
+      stsEndpoint: `An optional custom endpoint URL for the AWS STS API to use when connecting with ${appName}.`,
       isPlatformManagedCredentials: `Whether or not the ${appName} Connection credentials should be managed by Infisical. Once enabled this cannot be reversed.`,
       isAutoRotationEnabled: `Whether or not automatic credential rotation is enabled for the ${appName} Connection.`,
       rotation: `The updated credential rotation configuration for the ${appName} Connection.`
@@ -2722,6 +2727,10 @@ export const AppConnections = {
     DIGICERT: {
       apiKey: "The CertCentral API Key used to authenticate with DigiCert.",
       region: "The CertCentral region the API key belongs to (us or eu)."
+    },
+    GODADDY: {
+      apiKey: "The GoDaddy API Key used to authenticate with the GoDaddy API.",
+      apiSecret: "The GoDaddy API Secret used to authenticate with the GoDaddy API."
     },
     TRAVISCI: {
       apiToken: "The API token used to authenticate with Travis CI."
@@ -2882,6 +2891,10 @@ export const AppConnections = {
     },
     ANTHROPIC: {
       apiKey: "The Anthropic API key used to authenticate with the Anthropic API."
+    },
+    CONVEX: {
+      accessToken: "The Convex deploy key or access token used to authenticate with the Convex API.",
+      instanceUrl: "The Convex API instance URL. Defaults to 'https://api.convex.dev' if not provided."
     },
     OVH: {
       privateKey:
@@ -3385,6 +3398,9 @@ export const SecretRotations = {
     },
     DATADOG_APPLICATION_KEY_SECRET: {
       serviceAccountId: "The ID of the Datadog service account to rotate the application key for."
+    },
+    CONVEX_ACCESS_KEY: {
+      namePrefix: "A prefix to use when naming the generated Convex access key."
     }
   },
   SECRETS_MAPPING: {
@@ -3456,6 +3472,9 @@ export const SecretRotations = {
     DATADOG_APPLICATION_KEY_SECRET: {
       applicationKeyId: "The name of the secret that the rotated Datadog application key ID will be mapped to.",
       applicationKey: "The name of the secret that the rotated Datadog application key value will be mapped to."
+    },
+    CONVEX_ACCESS_KEY: {
+      accessKey: "The name of the secret that the rotated Convex access key will be mapped to."
     }
   }
 };

@@ -648,9 +648,23 @@ export const secretRotationV2DALFactory = (
     }
   };
 
+  const existsByFolderIds = async (folderIds: string[], tx?: Knex) => {
+    try {
+      if (!folderIds.length) return undefined;
+      const doc = await (tx || db.replicaNode())(TableName.SecretRotationV2)
+        .whereIn("folderId", folderIds)
+        .select(db.ref("folderId").withSchema(TableName.SecretRotationV2))
+        .first();
+      return doc as { folderId: string } | undefined;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Exists by folder ids - Secret Rotation V2" });
+    }
+  };
+
   return {
     ...secretRotationV2Orm,
     find,
+    existsByFolderIds,
     create,
     findById,
     updateById,

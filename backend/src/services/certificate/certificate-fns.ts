@@ -188,6 +188,40 @@ export const generatePkcs12FromCertificate = async ({
 };
 
 /**
+ * Format a raw hex digest as an upper-cased, colon-delimited fingerprint (e.g., "1A:2F:73:...").
+ */
+export const formatFingerprint = (hash: string) =>
+  new RE2(".{2}", "g").match(hash.toUpperCase())?.join(":") ?? hash.toUpperCase();
+
+export enum CertificateThumbprintAlgorithm {
+  SHA1 = "sha1",
+  SHA256 = "sha256"
+}
+
+/**
+ * Normalize a user-supplied certificate thumbprint into the colon-delimited fingerprint format
+ * stored on the certificate (e.g., "1A:2F:..."). Accepts thumbprints with or without colons,
+ * whitespace, or other separators, in any case. Returns the matching algorithm based on digest
+ * length (40 hex chars => SHA-1, 64 hex chars => SHA-256).
+ */
+export const normalizeThumbprint = (thumbprint: string) => {
+  const hex = thumbprint.replace(new RE2("[^a-fA-F0-9]", "g"), "");
+
+  let algorithm: CertificateThumbprintAlgorithm;
+  if (hex.length === 40) {
+    algorithm = CertificateThumbprintAlgorithm.SHA1;
+  } else if (hex.length === 64) {
+    algorithm = CertificateThumbprintAlgorithm.SHA256;
+  } else {
+    throw new BadRequestError({
+      message: "Invalid thumbprint. Expected a SHA-1 (40 hex characters) or SHA-256 (64 hex characters) digest"
+    });
+  }
+
+  return { algorithm, fingerprint: formatFingerprint(hex) };
+};
+
+/**
  * Parse and extract subject, fingerprints, and basicConstraints from a decrypted certificate.
  * Returns empty object on failure (graceful degradation).
  */
@@ -208,8 +242,6 @@ export const parseCertificateBody = (decryptedCertificate: Buffer): TParsedCerti
 
     // Calculate fingerprints and format with colons (e.g., "1A:2F:73:...")
     const rawData = Buffer.from(certObj.rawData);
-    const formatFingerprint = (hash: string) =>
-      new RE2(".{2}", "g").match(hash.toUpperCase())?.join(":") ?? hash.toUpperCase();
     const fingerprints: TCertificateFingerprints = {
       sha256: formatFingerprint(crypto.nativeCrypto.createHash("sha256").update(rawData).digest("hex")),
       sha1: formatFingerprint(crypto.nativeCrypto.createHash("sha1").update(rawData).digest("hex"))

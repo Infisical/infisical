@@ -14,6 +14,8 @@ import { BadRequestError, NotFoundError, PermissionBoundaryError } from "@app/li
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { TIdentityProjectDALFactory } from "@app/services/identity-project/identity-project-dal";
+import { MaxIdentities } from "@app/services/license-client";
+import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
 import { ActorType } from "../auth/auth-type";
@@ -48,6 +50,7 @@ type TIdentityServiceFactoryDep = {
   keyStore: Pick<TKeyStoreFactory, "getKeysByPattern" | "getItem">;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findEffectiveOrgMembership">;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
+  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
 };
 
 export type TIdentityServiceFactory = ReturnType<typeof identityServiceFactory>;
@@ -64,7 +67,8 @@ export const identityServiceFactory = ({
   orgDAL,
   membershipIdentityDAL,
   membershipRoleDAL,
-  additionalPrivilegeDAL
+  additionalPrivilegeDAL,
+  usageMeteringService
 }: TIdentityServiceFactoryDep) => {
   const createIdentity = async ({
     name,
@@ -182,6 +186,7 @@ export const identityServiceFactory = ({
       };
     });
     await licenseService.updateSubscriptionOrgMemberCount(orgId);
+    usageMeteringService.emit(orgId, MaxIdentities.key);
 
     return identity;
   };
@@ -373,6 +378,7 @@ export const identityServiceFactory = ({
 
       const deletedIdentity = await identityDAL.deleteById(id);
       await licenseService.updateSubscriptionOrgMemberCount(identityOrgMembership.scopeOrgId);
+      usageMeteringService.emit(identityOrgMembership.scopeOrgId, MaxIdentities.key);
       return { ...deletedIdentity, orgId: identityOrgMembership.scopeOrgId };
     }
 
@@ -406,6 +412,7 @@ export const identityServiceFactory = ({
     });
 
     const deletedIdentity = await requestMemoize(requestMemoKeys.identityFindById(id), () => identityDAL.findById(id));
+    usageMeteringService.emit(identityOrgMembership.scopeOrgId, MaxIdentities.key);
     return { ...deletedIdentity, orgId: identityOrgMembership.scopeOrgId };
   };
 
@@ -480,7 +487,17 @@ export const identityServiceFactory = ({
       searchFilter
     });
 
-    return { identityMemberships: docs, totalCount };
+    const docsWithLockouts = await Promise.all(
+      docs.map(async (doc) => ({
+        ...doc,
+        identity: {
+          ...doc.identity,
+          activeLockoutAuthMethods: await getIdentityActiveLockoutAuthMethods(doc.identity.id, keyStore)
+        }
+      }))
+    );
+
+    return { identityMemberships: docsWithLockouts, totalCount };
   };
 
   const listProjectIdentitiesByIdentityId = async ({

@@ -16,7 +16,6 @@ import "@fontsource/inter/400.css";
 import "@fontsource/inter/500.css";
 import "@xyflow/react/dist/style.css";
 import "nprogress/nprogress.css";
-import "react-toastify/dist/ReactToastify.css";
 import "@fortawesome/fontawesome-svg-core/styles.css";
 import "./index.css";
 

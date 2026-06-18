@@ -46,6 +46,7 @@ import {
   AcmeDnsProvider,
   CaStatus,
   CaType,
+  GoDaddyProductType,
   useCreateCa,
   useGetCa,
   useUpdateCa
@@ -156,6 +157,14 @@ const venafiTppConfigurationSchema = z.object({
   policyDN: z.string().trim().min(1, "Policy DN is required")
 });
 
+const godaddyConfigurationSchema = z.object({
+  godaddyConnection: z.object({
+    id: z.string().min(1, "GoDaddy Connection is required"),
+    name: z.string()
+  }),
+  productType: z.nativeEnum(GoDaddyProductType)
+});
+
 const schema = z.discriminatedUnion("type", [
   baseSchema.extend({
     type: z.literal(CaType.ACME),
@@ -180,6 +189,10 @@ const schema = z.discriminatedUnion("type", [
   baseSchema.extend({
     type: z.literal(CaType.VENAFI_TPP),
     configuration: venafiTppConfigurationSchema
+  }),
+  baseSchema.extend({
+    type: z.literal(CaType.GODADDY),
+    configuration: godaddyConfigurationSchema
   })
 ]);
 
@@ -196,7 +209,8 @@ const caTypes = [
   { label: "AWS Private CA (PCA)", value: CaType.AWS_PCA },
   { label: "AWS ACM Public CA", value: CaType.AWS_ACM_PUBLIC_CA },
   { label: "DigiCert CertCentral", value: CaType.DIGICERT },
-  { label: "Venafi TPP", value: CaType.VENAFI_TPP }
+  { label: "Venafi TPP", value: CaType.VENAFI_TPP },
+  { label: "GoDaddy", value: CaType.GODADDY }
 ];
 
 export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
@@ -305,6 +319,19 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
             policyDN: ""
           }
         });
+      } else if (initialType === CaType.GODADDY) {
+        reset({
+          type: CaType.GODADDY,
+          name: "",
+          status: CaStatus.ACTIVE,
+          configuration: {
+            godaddyConnection: {
+              id: "",
+              name: ""
+            },
+            productType: GoDaddyProductType.DV_SSL
+          }
+        });
       } else {
         reset({
           type: CaType.ACME,
@@ -373,6 +400,11 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
       enabled: caType === CaType.VENAFI_TPP
     });
 
+  const { data: availableGoDaddyConnections, isPending: isGoDaddyPending } =
+    useListAvailableAppConnections(AppConnection.GoDaddy, currentProject.id, {
+      enabled: caType === CaType.GODADDY
+    });
+
   const availableConnections: TAvailableAppConnection[] = useMemo(() => {
     if (caType === CaType.AZURE_AD_CS) {
       return availableAzureConnections || [];
@@ -385,6 +417,9 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
     }
     if (caType === CaType.VENAFI_TPP) {
       return availableVenafiTppConnections || [];
+    }
+    if (caType === CaType.GODADDY) {
+      return availableGoDaddyConnections || [];
     }
     return [
       ...(availableRoute53Connections || []),
@@ -401,7 +436,8 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
     availableAzureConnections,
     availableAwsConnections,
     availableDigiCertConnections,
-    availableVenafiTppConnections
+    availableVenafiTppConnections,
+    availableGoDaddyConnections
   ]);
 
   const isPending =
@@ -412,7 +448,8 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
     (isAzurePending && caType === CaType.AZURE_AD_CS) ||
     (isAwsPending && (caType === CaType.AWS_PCA || caType === CaType.AWS_ACM_PUBLIC_CA)) ||
     (isDigiCertPending && caType === CaType.DIGICERT) ||
-    (isVenafiTppPending && caType === CaType.VENAFI_TPP);
+    (isVenafiTppPending && caType === CaType.VENAFI_TPP) ||
+    (isGoDaddyPending && caType === CaType.GODADDY);
 
   const dnsAppConnection =
     caType === CaType.ACME && configuration && "dnsAppConnection" in configuration
@@ -560,6 +597,23 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
             policyDN: ca.configuration.policyDN
           }
         });
+      } else if (ca.type === CaType.GODADDY && availableConnections?.length) {
+        const selectedConnection = availableConnections?.find(
+          (connection) => connection.id === ca.configuration.appConnectionId
+        );
+
+        reset({
+          type: ca.type,
+          name: ca.name,
+          status: ca.status,
+          configuration: {
+            godaddyConnection: {
+              id: ca.configuration.appConnectionId,
+              name: selectedConnection?.name || ""
+            },
+            productType: ca.configuration.productType
+          }
+        });
       }
     }
   }, [ca, availableConnections, reset, isCaLoading]);
@@ -626,6 +680,11 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
       configPayload = {
         appConnectionId: formConfiguration.venafiTppConnection.id,
         policyDN: formConfiguration.policyDN
+      };
+    } else if (type === CaType.GODADDY && "godaddyConnection" in formConfiguration) {
+      configPayload = {
+        appConnectionId: formConfiguration.godaddyConnection.id,
+        productType: formConfiguration.productType
       };
     } else {
       throw new Error("Invalid certificate authority configuration");
@@ -1258,6 +1317,59 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
                     tooltipText="The policy folder path in Venafi TPP where certificates will be managed (e.g., \VED\Policy\Certificates)."
                   >
                     <Input {...field} placeholder="\VED\Policy\Certificates" />
+                  </FormControl>
+                )}
+              />
+            </>
+          )}
+          {caType === CaType.GODADDY && (
+            <>
+              <Controller
+                render={({ field: { value, onChange }, fieldState: { error } }) => (
+                  <FormControl
+                    tooltipText="GoDaddy App Connection provides the API key and secret used to place certificate orders."
+                    isError={Boolean(error)}
+                    errorText={error?.message}
+                    label="GoDaddy Connection"
+                  >
+                    <FilterableSelect
+                      value={value}
+                      onChange={(newValue) => {
+                        onChange(newValue);
+                      }}
+                      isLoading={isPending}
+                      options={availableConnections}
+                      placeholder="Select connection..."
+                      getOptionLabel={(option) => option.name}
+                      getOptionValue={(option) => option.id}
+                      components={{ Option: AppConnectionOption }}
+                    />
+                  </FormControl>
+                )}
+                control={control}
+                name="configuration.godaddyConnection"
+              />
+              <Controller
+                control={control}
+                name="configuration.productType"
+                defaultValue={GoDaddyProductType.DV_SSL}
+                render={({ field: { value, onChange }, fieldState: { error } }) => (
+                  <FormControl
+                    label="Product"
+                    isError={Boolean(error)}
+                    errorText={error?.message}
+                    isRequired
+                    tooltipText="Domain Validated SSL product to use for issuance."
+                  >
+                    <Select
+                      value={value}
+                      onValueChange={(val) => onChange(val)}
+                      className="w-full border border-mineshaft-500"
+                      position="popper"
+                      dropdownContainerClassName="max-w-none"
+                    >
+                      <SelectItem value={GoDaddyProductType.DV_SSL}>DV SSL</SelectItem>
+                    </Select>
                   </FormControl>
                 )}
               />

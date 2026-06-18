@@ -5,6 +5,7 @@ import { TDynamicSecrets } from "@app/db/schemas";
 import { SshCertKeyAlgorithm } from "@app/ee/services/ssh-certificate/ssh-certificate-types";
 import { CharacterType, characterValidator } from "@app/lib/validator/validate-string";
 import { ResourceMetadataNonEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
+import { TConstraint } from "@app/services/secret-validation-rule/secret-validation-rule-types";
 
 import {
   ActorIdentityAttributes,
@@ -614,7 +615,12 @@ export const DynamicSecretTotpSchema = z.discriminatedUnion("configType", [
 ]);
 
 export const DynamicSecretGcpIamSchema = z.object({
-  serviceAccountEmail: z.string().email().trim().min(1, "Service account email required").max(128)
+  serviceAccountEmail: z.string().email().trim().min(1, "Service account email required").max(128),
+  tokenScopes: z
+    .array(z.string().trim().min(1))
+    .min(1, "At least one scope is required")
+    .default(["https://www.googleapis.com/auth/iam", "https://www.googleapis.com/auth/cloud-platform"])
+    .describe("OAuth scopes for the generated access token.")
 });
 
 export const DynamicSecretGithubSchema = z.object({
@@ -783,8 +789,22 @@ export enum DynamicSecretProviders {
   Github = "github",
   Couchbase = "couchbase",
   Milvus = "milvus",
-  Ssh = "ssh"
+  Ssh = "ssh",
+  IbmApiConnect = "ibm-api-connect"
 }
+
+export const DynamicSecretIbmApiConnectSchema = z.object({
+  clientId: z.string().trim().min(1, "Client ID is required"),
+  clientSecret: z.string().trim().min(1, "Client Secret is required"),
+  instanceUrl: z.string().url("Must be a valid URL").trim().min(1, "Instance URL is required"),
+  apiKey: z.string().trim().min(1, "API Key is required"),
+  orgId: z.string().trim().min(1, "Organization is required"),
+  catalogId: z.string().trim().min(1, "Catalog is required"),
+  consumerOrgId: z.string().trim().min(1, "Consumer Organization is required"),
+  appId: z.string().trim().min(1, "Application is required"),
+  gatewayId: z.string().nullable().optional(),
+  gatewayPoolId: z.string().nullable().optional()
+});
 
 export const DynamicSecretSshSchema = z.object({
   principals: z.array(z.string().trim().min(1)).min(1),
@@ -823,8 +843,25 @@ export const DynamicSecretProviderSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal(DynamicSecretProviders.Github), inputs: DynamicSecretGithubSchema }),
   z.object({ type: z.literal(DynamicSecretProviders.Couchbase), inputs: DynamicSecretCouchbaseSchema }),
   z.object({ type: z.literal(DynamicSecretProviders.Milvus), inputs: DynamicSecretMilvusSchema }),
-  z.object({ type: z.literal(DynamicSecretProviders.Ssh), inputs: DynamicSecretSshSchema })
+  z.object({ type: z.literal(DynamicSecretProviders.Ssh), inputs: DynamicSecretSshSchema }),
+  z.object({
+    type: z.literal(DynamicSecretProviders.IbmApiConnect),
+    inputs: DynamicSecretIbmApiConnectSchema
+  })
 ]);
+
+// Extended metadata passed to a provider's create() call. When the project
+// has a matching secret validation rule, `passwordValidation` carries the
+// constraints that any generated password must satisfy; providers that
+// generate passwords (e.g. sql-database, milvus) honor it in place of the
+// user-configured passwordRequirements.
+export type TDynamicProviderCreateMetadata = {
+  projectId: string;
+  passwordValidation?: {
+    constraints: TConstraint[];
+    ruleNames: string[];
+  };
+};
 
 export type TDynamicProviderFns = {
   create: (arg: {
@@ -833,7 +870,7 @@ export type TDynamicProviderFns = {
     usernameTemplate?: string | null;
     identity: ActorIdentityAttributes;
     dynamicSecret: TDynamicSecrets;
-    metadata: { projectId: string };
+    metadata: TDynamicProviderCreateMetadata;
     config?: TDynamicSecretLeaseConfig;
   }) => Promise<{ entityId: string; data: unknown }>;
   validateConnection: (inputs: unknown, metadata: { projectId: string }) => Promise<boolean>;

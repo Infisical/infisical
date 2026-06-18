@@ -95,6 +95,7 @@ export const kmsServiceFactory = ({
   const generateKmsKey = async ({
     orgId,
     isReserved = true,
+    isExportable = true,
     tx,
     name,
     projectId,
@@ -136,6 +137,7 @@ export const kmsServiceFactory = ({
           keyUsage,
           orgId,
           isReserved,
+          isExportable,
           projectId,
           description
         },
@@ -381,6 +383,12 @@ export const kmsServiceFactory = ({
       });
     }
 
+    if (!kmsDoc.isExportable) {
+      throw new BadRequestError({
+        message: "You are not allowed to export this key"
+      });
+    }
+
     const keyCipher = symmetricCipherService(SymmetricKeyAlgorithm.AES_GCM_256);
     const kmsKey = keyCipher.decrypt(kmsDoc.internalKms?.encryptedKey as Buffer, ROOT_ENCRYPTION_KEY);
 
@@ -397,6 +405,9 @@ export const kmsServiceFactory = ({
       if (kmsDoc.externalKms) {
         throw new BadRequestError({ message: `Cannot get key material for external key [kmsId=${kmsDoc.id}]` });
       }
+      if (!kmsDoc.isExportable) {
+        throw new BadRequestError({ message: `You are not allowed to export this key [kmsId=${kmsDoc.id}]` });
+      }
 
       const keyCipher = symmetricCipherService(SymmetricKeyAlgorithm.AES_GCM_256);
       const keyMaterial = keyCipher.decrypt(kmsDoc.internalKms?.encryptedKey as Buffer, ROOT_ENCRYPTION_KEY);
@@ -406,7 +417,17 @@ export const kmsServiceFactory = ({
   };
 
   const importKeyMaterial = async (
-    { key, algorithm, name, isReserved, projectId, orgId, keyUsage, kmipMetadata }: TImportKeyMaterialDTO,
+    {
+      key,
+      algorithm,
+      name,
+      isReserved,
+      isExportable = true,
+      projectId,
+      orgId,
+      keyUsage,
+      kmipMetadata
+    }: TImportKeyMaterialDTO,
     tx?: Knex
   ) => {
     verifyKeyTypeAndAlgorithm(keyUsage, algorithm);
@@ -475,6 +496,7 @@ export const kmsServiceFactory = ({
           keyUsage,
           orgId,
           isReserved,
+          isExportable,
           projectId,
           kmipMetadata
         },

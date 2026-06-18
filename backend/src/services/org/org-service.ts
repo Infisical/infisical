@@ -41,6 +41,7 @@ import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membe
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
+import { TApprovalPolicyDALFactory } from "../approval-policy/approval-policy-dal";
 import { TAuthLoginFactory } from "../auth/auth-login-service";
 import { ActorAuthMethod, ActorType, AuthMethod, AuthModeJwtTokenPayload, AuthTokenType } from "../auth/auth-type";
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
@@ -123,6 +124,7 @@ type TOrgServiceFactoryDep = {
   reminderService: Pick<TReminderServiceFactory, "deleteReminderBySecretId">;
   userGroupMembershipDAL: TUserGroupMembershipDALFactory;
   additionalPrivilegeDAL: TAdditionalPrivilegeDALFactory;
+  approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "deleteUserStepApproversInProjects">;
   certificatePolicyDAL: Pick<TCertificatePolicyDALFactory, "create">;
 };
 
@@ -158,6 +160,7 @@ export const orgServiceFactory = ({
   membershipDAL,
   userGroupMembershipDAL,
   additionalPrivilegeDAL,
+  approvalPolicyDAL,
   certificatePolicyDAL
 }: TOrgServiceFactoryDep) => {
   /*
@@ -1121,7 +1124,8 @@ export const orgServiceFactory = ({
       membershipUserDAL,
       membershipRoleDAL,
       userGroupMembershipDAL,
-      additionalPrivilegeDAL
+      additionalPrivilegeDAL,
+      approvalPolicyDAL
     });
 
     return deletedMembership;
@@ -1159,7 +1163,8 @@ export const orgServiceFactory = ({
       membershipUserDAL,
       membershipRoleDAL,
       userGroupMembershipDAL,
-      additionalPrivilegeDAL
+      additionalPrivilegeDAL,
+      approvalPolicyDAL
     });
 
     return deletedMemberships;
@@ -1277,44 +1282,54 @@ export const orgServiceFactory = ({
     const orgCache: Record<string, { name: string; id: string } | undefined> = {};
     const notifiedUsers: string[] = [];
 
+    const resolvedInvites: { invitedUser: (typeof invitedUsers)[number]; org: { name: string; id: string } }[] = [];
+    for (const invitedUser of invitedUsers) {
+      let org = orgCache[invitedUser.scopeOrgId];
+      if (!org) {
+        // eslint-disable-next-line no-await-in-loop
+        org = await requestMemoize(requestMemoKeys.orgFindById(invitedUser.scopeOrgId), () =>
+          orgDAL.findById(invitedUser.scopeOrgId)
+        );
+        orgCache[invitedUser.scopeOrgId] = org;
+      }
+
+      if (org && invitedUser.actorUserId && invitedUser.inviteEmail) {
+        resolvedInvites.push({ invitedUser, org });
+      }
+    }
+
+    const tokens = await tokenService.createTokensForUsers(
+      resolvedInvites.map(({ invitedUser, org }) => ({
+        type: TokenType.TOKEN_EMAIL_ORG_INVITATION,
+        userId: invitedUser.actorUserId as string,
+        orgId: org.id
+      }))
+    );
+    const tokenByUserOrg = new Map(tokens.map((t) => [`${t.userId}:${t.orgId}`, t.token]));
+
     await Promise.all(
-      invitedUsers.map(async (invitedUser) => {
-        let org = orgCache[invitedUser.scopeOrgId];
-        if (!org) {
-          org = await requestMemoize(requestMemoKeys.orgFindById(invitedUser.scopeOrgId), () =>
-            orgDAL.findById(invitedUser.scopeOrgId)
-          );
-          orgCache[invitedUser.scopeOrgId] = org;
-        }
+      resolvedInvites.map(async ({ invitedUser, org }) => {
+        const token = tokenByUserOrg.get(`${invitedUser.actorUserId}:${org.id}`);
+        if (!token) return;
 
-        if (!org || !invitedUser.actorUserId) return;
+        await delayMs(Math.max(0, applyJitter(0, 2000)));
 
-        const token = await tokenService.createTokenForUser({
-          type: TokenType.TOKEN_EMAIL_ORG_INVITATION,
-          userId: invitedUser.actorUserId,
-          orgId: org.id
-        });
-
-        if (invitedUser.inviteEmail) {
-          await delayMs(Math.max(0, applyJitter(0, 2000)));
-
-          try {
-            await smtpService.sendMail({
-              template: SmtpTemplates.OrgInvite,
-              subjectLine: `Reminder: You have been invited to ${org.name} on Infisical`,
-              recipients: [invitedUser.inviteEmail],
-              substitutions: {
-                organizationName: org.name,
-                email: invitedUser.inviteEmail,
-                organizationId: org.id.toString(),
-                token,
-                callback_url: `${appCfg.SITE_URL}/signupinvite`
-              }
-            });
-            notifiedUsers.push(invitedUser.id);
-          } catch (err) {
-            logger.error(err, `daily-resource-cleanup: notify invited users failed to send email`);
-          }
+        try {
+          await smtpService.sendMail({
+            template: SmtpTemplates.OrgInvite,
+            subjectLine: `Reminder: You have been invited to ${org.name} on Infisical`,
+            recipients: [invitedUser.inviteEmail as string],
+            substitutions: {
+              organizationName: org.name,
+              email: invitedUser.inviteEmail,
+              organizationId: org.id.toString(),
+              token,
+              callback_url: `${appCfg.SITE_URL}/signupinvite`
+            }
+          });
+          notifiedUsers.push(invitedUser.id);
+        } catch (err) {
+          logger.error(err, `daily-resource-cleanup: notify invited users failed to send email`);
         }
       })
     );

@@ -1,7 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Controller, useFieldArray, useForm } from "react-hook-form";
-import { faPlus, faXmark } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useParams } from "@tanstack/react-router";
 import ms from "ms";
@@ -9,29 +7,41 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import {
-  Button,
-  FormControl,
-  IconButton,
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
   Input,
-  Tab,
-  TabList,
-  TabPanel,
-  Tabs
-} from "@app/components/v2";
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger
+} from "@app/components/v3";
 import { useOrganization, useSubscription } from "@app/context";
-import { getObjectFromSeconds, SECONDS_PER_DAY } from "@app/helpers/datetime";
-import { accessTokenTtlSchema } from "@app/helpers/identityAuthSchemas";
+import { getObjectFromSeconds } from "@app/helpers/datetime";
+import {
+  accessTokenTtlSchema,
+  DEFAULT_TRUSTED_IPS,
+  mapTrustedIpsFromServer,
+  superRefineAccessTokenTtl,
+  trustedIpsSchema
+} from "@app/helpers/identityAuthSchemas";
+import { useScopeVariant } from "@app/hooks";
 import {
   useAddIdentityUniversalAuth,
   useGetIdentityUniversalAuth,
   useUpdateIdentityUniversalAuth
 } from "@app/hooks/api";
-import { IdentityTrustedIp } from "@app/hooks/api/identities/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
+import { LOCKOUT_DEFAULT_VALUES } from "./lockout/constants";
 import { LockoutTab } from "./lockout/LockoutTab";
 import { superRefineLockout } from "./lockout/super-refine";
-import { IdentityFormTab } from "./types";
+import { AccessTokenNumUsesLimitField } from "./shared/AccessTokenNumUsesLimitField";
+import { AccessTokenTtlFields } from "./shared/AccessTokenTtlFields";
+import { TrustedIpsField } from "./shared/TrustedIpsField";
+import { IDENTITY_AUTH_FORM_ID, IdentityFormTab } from "./types";
 
 const buildSchema = (maxAccessTokenTTL: number) =>
   z
@@ -40,18 +50,8 @@ const buildSchema = (maxAccessTokenTTL: number) =>
       accessTokenMaxTTL: accessTokenTtlSchema(maxAccessTokenTTL, "Access Token Max TTL"),
       accessTokenPeriod: accessTokenTtlSchema(maxAccessTokenTTL, "Access Token Period").optional(),
       accessTokenNumUsesLimit: z.string(),
-      clientSecretTrustedIps: z
-        .object({
-          ipAddress: z.string().max(50)
-        })
-        .array()
-        .min(1),
-      accessTokenTrustedIps: z
-        .object({
-          ipAddress: z.string().max(50)
-        })
-        .array()
-        .min(1),
+      clientSecretTrustedIps: trustedIpsSchema,
+      accessTokenTrustedIps: trustedIpsSchema,
       lockoutEnabled: z.boolean().default(true),
       lockoutThreshold: z
         .string()
@@ -69,7 +69,8 @@ const buildSchema = (maxAccessTokenTTL: number) =>
       })
     })
     .required()
-    .superRefine(superRefineLockout);
+    .superRefine(superRefineLockout)
+    .superRefine(superRefineAccessTokenTtl);
 
 export type FormData = z.infer<ReturnType<typeof buildSchema>>;
 
@@ -85,6 +86,7 @@ type Props = {
   identityId?: string;
   isUpdate?: boolean;
   maxAccessTokenTTL: number;
+  onSubmittingChange?: (isSubmitting: boolean) => void;
 };
 
 export const IdentityUniversalAuthForm = ({
@@ -92,7 +94,8 @@ export const IdentityUniversalAuthForm = ({
   handlePopUpToggle,
   identityId,
   isUpdate,
-  maxAccessTokenTTL
+  maxAccessTokenTTL,
+  onSubmittingChange
 }: Props) => {
   const { projectId } = useParams({
     strict: false
@@ -100,6 +103,7 @@ export const IdentityUniversalAuthForm = ({
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
   const { subscription } = useSubscription();
+  const scopeVariant = useScopeVariant();
   const { mutateAsync: addMutateAsync } = useAddIdentityUniversalAuth();
   const { mutateAsync: updateMutateAsync } = useUpdateIdentityUniversalAuth();
   const [tabValue, setTabValue] = useState<IdentityFormTab>(IdentityFormTab.Configuration);
@@ -115,22 +119,18 @@ export const IdentityUniversalAuthForm = ({
     handleSubmit,
     reset,
     formState: { isSubmitting },
-    watch
+    watch,
+    trigger
   } = useForm<FormData>({
     resolver,
     defaultValues: {
       accessTokenTTL: "2592000",
       accessTokenMaxTTL: "2592000",
       accessTokenNumUsesLimit: "",
-      clientSecretTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }],
-      accessTokenTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }],
+      clientSecretTrustedIps: DEFAULT_TRUSTED_IPS,
+      accessTokenTrustedIps: DEFAULT_TRUSTED_IPS,
       accessTokenPeriod: "0",
-      lockoutEnabled: true,
-      lockoutThreshold: "3",
-      lockoutDurationValue: "5",
-      lockoutDurationUnit: "m",
-      lockoutCounterResetValue: "30",
-      lockoutCounterResetUnit: "s"
+      ...LOCKOUT_DEFAULT_VALUES
     }
   });
 
@@ -142,17 +142,6 @@ export const IdentityUniversalAuthForm = ({
   const lockoutDurationUnitWatch = watch("lockoutDurationUnit");
   const lockoutCounterResetValueWatch = watch("lockoutCounterResetValue");
   const lockoutCounterResetUnitWatch = watch("lockoutCounterResetUnit");
-
-  const {
-    fields: clientSecretTrustedIpsFields,
-    append: appendClientSecretTrustedIp,
-    remove: removeClientSecretTrustedIp
-  } = useFieldArray({ control, name: "clientSecretTrustedIps" });
-  const {
-    fields: accessTokenTrustedIpsFields,
-    append: appendAccessTokenTrustedIp,
-    remove: removeAccessTokenTrustedIp
-  } = useFieldArray({ control, name: "accessTokenTrustedIps" });
 
   useEffect(() => {
     if (data) {
@@ -166,20 +155,8 @@ export const IdentityUniversalAuthForm = ({
           ? String(data.accessTokenNumUsesLimit)
           : "",
         accessTokenPeriod: String(data.accessTokenPeriod),
-        clientSecretTrustedIps: data.clientSecretTrustedIps.map(
-          ({ ipAddress, prefix }: IdentityTrustedIp) => {
-            return {
-              ipAddress: `${ipAddress}${prefix !== undefined ? `/${prefix}` : ""}`
-            };
-          }
-        ),
-        accessTokenTrustedIps: data.accessTokenTrustedIps.map(
-          ({ ipAddress, prefix }: IdentityTrustedIp) => {
-            return {
-              ipAddress: `${ipAddress}${prefix !== undefined ? `/${prefix}` : ""}`
-            };
-          }
-        ),
+        clientSecretTrustedIps: mapTrustedIpsFromServer(data.clientSecretTrustedIps),
+        accessTokenTrustedIps: mapTrustedIpsFromServer(data.accessTokenTrustedIps),
         lockoutEnabled: data.lockoutEnabled,
         lockoutThreshold: String(data.lockoutThreshold),
         lockoutDurationValue: String(lockoutDurationObj.value),
@@ -193,17 +170,16 @@ export const IdentityUniversalAuthForm = ({
         accessTokenMaxTTL: "2592000",
         accessTokenNumUsesLimit: "",
         accessTokenPeriod: "0",
-        clientSecretTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }],
-        accessTokenTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }],
-        lockoutEnabled: true,
-        lockoutThreshold: "3",
-        lockoutDurationValue: "5",
-        lockoutDurationUnit: "m",
-        lockoutCounterResetValue: "30",
-        lockoutCounterResetUnit: "s"
+        clientSecretTrustedIps: DEFAULT_TRUSTED_IPS,
+        accessTokenTrustedIps: DEFAULT_TRUSTED_IPS,
+        ...LOCKOUT_DEFAULT_VALUES
       });
     }
   }, [data]);
+
+  useEffect(() => {
+    onSubmittingChange?.(isSubmitting);
+  }, [isSubmitting, onSubmittingChange]);
 
   const onFormSubmit = async ({
     accessTokenTTL,
@@ -271,6 +247,7 @@ export const IdentityUniversalAuthForm = ({
 
   return (
     <form
+      id={IDENTITY_AUTH_FORM_ID}
       onSubmit={handleSubmit(onFormSubmit, (fields) => {
         const firstErrorField = Object.keys(fields)[0];
         let tab = IdentityFormTab.Configuration;
@@ -294,83 +271,50 @@ export const IdentityUniversalAuthForm = ({
       })}
     >
       <Tabs value={tabValue} onValueChange={(value) => setTabValue(value as IdentityFormTab)}>
-        <TabList>
-          <Tab value={IdentityFormTab.Configuration}>Configuration</Tab>
-          <Tab value={IdentityFormTab.Lockout}>Lockout</Tab>
-          <Tab value={IdentityFormTab.Advanced}>Advanced</Tab>
-        </TabList>
-        <TabPanel value={IdentityFormTab.Configuration}>
-          {accessTokenPeriodValue > 0 ? (
-            <div className="mb-4 text-xs text-bunker-400">
-              When Access Token Period is set, TTL and Max TTL are ignored.
-            </div>
-          ) : (
-            <>
-              <Controller
-                control={control}
-                defaultValue="2592000"
-                name="accessTokenTTL"
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    label="Access Token TTL (seconds)"
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                    helperText={`Max: ${Math.floor(maxAccessTokenTTL / SECONDS_PER_DAY)} days`}
-                  >
-                    <Input {...field} placeholder="2592000" type="number" min="1" step="1" />
-                  </FormControl>
-                )}
-              />
-              <Controller
-                control={control}
-                defaultValue="2592000"
-                name="accessTokenMaxTTL"
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    label="Access Token Max TTL (seconds)"
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                    helperText={`Max: ${Math.floor(maxAccessTokenTTL / SECONDS_PER_DAY)} days`}
-                  >
-                    <Input {...field} placeholder="2592000" type="number" min="1" step="1" />
-                  </FormControl>
-                )}
-              />
-            </>
-          )}
-          <Controller
-            control={control}
-            defaultValue="0"
-            name="accessTokenNumUsesLimit"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Access Token Max Number of Uses"
-                isError={Boolean(error)}
-                errorText={error?.message}
-                tooltipText="The maximum number of times that an access token can be used; Leave blank for unlimited uses."
-              >
-                <Input {...field} placeholder="Unlimited uses" type="number" min="0" step="1" />
-              </FormControl>
+        <TabsList variant={scopeVariant}>
+          <TabsTrigger value={IdentityFormTab.Configuration}>Configuration</TabsTrigger>
+          <TabsTrigger value={IdentityFormTab.Lockout}>Lockout</TabsTrigger>
+          <TabsTrigger value={IdentityFormTab.Advanced}>Advanced</TabsTrigger>
+        </TabsList>
+        <TabsContent value={IdentityFormTab.Configuration}>
+          <FieldGroup>
+            {accessTokenPeriodValue > 0 ? (
+              <div className="text-xs text-muted">
+                When Access Token Period is set, TTL and Max TTL are ignored.
+              </div>
+            ) : (
+              <AccessTokenTtlFields control={control} maxAccessTokenTTL={maxAccessTokenTTL} />
             )}
-          />
-          <Controller
-            control={control}
-            defaultValue="0"
-            name="accessTokenPeriod"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Access Token Period (seconds)"
-                isError={Boolean(error)}
-                errorText={error?.message}
-                helperText="For periodic tokens: set a period (in seconds) to allow indefinite renewal. Set to 0 to disable periodic tokens and use TTL-based expiration."
-              >
-                <Input {...field} placeholder="0" type="number" min="0" step="1" />
-              </FormControl>
-            )}
-          />
-        </TabPanel>
+            <AccessTokenNumUsesLimitField control={control} />
+            <Controller
+              control={control}
+              defaultValue="0"
+              name="accessTokenPeriod"
+              render={({ field, fieldState: { error } }) => (
+                <Field>
+                  <FieldLabel htmlFor="accessTokenPeriod">Access Token Period (seconds)</FieldLabel>
+                  <Input
+                    {...field}
+                    id="accessTokenPeriod"
+                    placeholder="0"
+                    type="number"
+                    min="0"
+                    step="1"
+                    isError={Boolean(error)}
+                  />
+                  <FieldDescription>
+                    For periodic tokens: set a period (in seconds) to allow indefinite renewal. Set
+                    to 0 to disable periodic tokens and use TTL-based expiration.
+                  </FieldDescription>
+                  <FieldError>{error?.message}</FieldError>
+                </Field>
+              )}
+            />
+          </FieldGroup>
+        </TabsContent>
         <LockoutTab
           control={control}
+          trigger={trigger}
           lockoutEnabled={lockoutEnabledWatch}
           lockoutThreshold={lockoutThresholdWatch}
           lockoutDurationValue={lockoutDurationValueWatch}
@@ -378,175 +322,29 @@ export const IdentityUniversalAuthForm = ({
           lockoutCounterResetValue={lockoutCounterResetValueWatch}
           lockoutCounterResetUnit={lockoutCounterResetUnitWatch}
         />
-        <TabPanel value={IdentityFormTab.Advanced}>
-          {clientSecretTrustedIpsFields.map(({ id }, index) => (
-            <div className="mb-3 flex items-end space-x-2" key={id}>
-              <Controller
-                control={control}
-                name={`clientSecretTrustedIps.${index}.ipAddress`}
-                defaultValue="0.0.0.0/0"
-                render={({ field, fieldState: { error } }) => {
-                  return (
-                    <FormControl
-                      className="mb-0 grow"
-                      label={index === 0 ? "Client Secret Trusted IPs" : undefined}
-                      isError={Boolean(error)}
-                      errorText={error?.message}
-                    >
-                      <Input
-                        value={field.value}
-                        onChange={(e) => {
-                          if (subscription?.ipAllowlisting) {
-                            field.onChange(e);
-                            return;
-                          }
-
-                          handlePopUpOpen("upgradePlan", {
-                            featureName: "IP allowlisting"
-                          });
-                        }}
-                        placeholder="123.456.789.0"
-                      />
-                    </FormControl>
-                  );
-                }}
-              />
-              <IconButton
-                onClick={() => {
-                  if (subscription?.ipAllowlisting) {
-                    removeClientSecretTrustedIp(index);
-                    return;
-                  }
-
-                  handlePopUpOpen("upgradePlan", {
-                    featureName: "IP allowlisting"
-                  });
-                }}
-                size="lg"
-                colorSchema="danger"
-                variant="plain"
-                ariaLabel="update"
-                className="p-3"
-              >
-                <FontAwesomeIcon icon={faXmark} />
-              </IconButton>
-            </div>
-          ))}
-          <div className="my-4 ml-1">
-            <Button
-              variant="outline_bg"
-              onClick={() => {
-                if (subscription?.ipAllowlisting) {
-                  appendClientSecretTrustedIp({
-                    ipAddress: "0.0.0.0/0"
-                  });
-                  return;
-                }
-
-                handlePopUpOpen("upgradePlan", {
-                  featureName: "IP allowlisting"
-                });
-              }}
-              leftIcon={<FontAwesomeIcon icon={faPlus} />}
-              size="xs"
-            >
-              Add IP Address
-            </Button>
-          </div>
-          {accessTokenTrustedIpsFields.map(({ id }, index) => (
-            <div className="mb-3 flex items-end space-x-2" key={id}>
-              <Controller
-                control={control}
-                name={`accessTokenTrustedIps.${index}.ipAddress`}
-                defaultValue="0.0.0.0/0"
-                render={({ field, fieldState: { error } }) => {
-                  return (
-                    <FormControl
-                      className="mb-0 grow"
-                      label={index === 0 ? "Access Token Trusted IPs" : undefined}
-                      isError={Boolean(error)}
-                      errorText={error?.message}
-                    >
-                      <Input
-                        value={field.value}
-                        onChange={(e) => {
-                          if (subscription?.ipAllowlisting) {
-                            field.onChange(e);
-                            return;
-                          }
-
-                          handlePopUpOpen("upgradePlan", {
-                            featureName: "IP allowlisting"
-                          });
-                        }}
-                        placeholder="123.456.789.0"
-                      />
-                    </FormControl>
-                  );
-                }}
-              />
-              <IconButton
-                onClick={() => {
-                  if (subscription?.ipAllowlisting) {
-                    removeAccessTokenTrustedIp(index);
-                    return;
-                  }
-
-                  handlePopUpOpen("upgradePlan", {
-                    featureName: "IP allowlisting"
-                  });
-                }}
-                size="lg"
-                colorSchema="danger"
-                variant="plain"
-                ariaLabel="update"
-                className="p-3"
-              >
-                <FontAwesomeIcon icon={faXmark} />
-              </IconButton>
-            </div>
-          ))}
-          <div className="my-4 ml-1">
-            <Button
-              variant="outline_bg"
-              onClick={() => {
-                if (subscription?.ipAllowlisting) {
-                  appendAccessTokenTrustedIp({
-                    ipAddress: "0.0.0.0/0"
-                  });
-                  return;
-                }
-
-                handlePopUpOpen("upgradePlan", {
-                  featureName: "IP allowlisting"
-                });
-              }}
-              leftIcon={<FontAwesomeIcon icon={faPlus} />}
-              size="xs"
-            >
-              Add IP Address
-            </Button>
-          </div>
-        </TabPanel>
+        <TabsContent value={IdentityFormTab.Advanced}>
+          <FieldGroup>
+            <TrustedIpsField
+              control={control}
+              name="clientSecretTrustedIps"
+              label="Client Secret Trusted IPs"
+              isAllowed={Boolean(subscription?.ipAllowlisting)}
+              onUpgradeRequired={() =>
+                handlePopUpOpen("upgradePlan", { featureName: "IP allowlisting" })
+              }
+            />
+            <TrustedIpsField
+              control={control}
+              name="accessTokenTrustedIps"
+              label="Access Token Trusted IPs"
+              isAllowed={Boolean(subscription?.ipAllowlisting)}
+              onUpgradeRequired={() =>
+                handlePopUpOpen("upgradePlan", { featureName: "IP allowlisting" })
+              }
+            />
+          </FieldGroup>
+        </TabsContent>
       </Tabs>
-      <div className="flex items-center">
-        <Button
-          className="mr-4"
-          size="sm"
-          type="submit"
-          isLoading={isSubmitting}
-          isDisabled={isSubmitting}
-        >
-          {isUpdate ? "Update" : "Add"}
-        </Button>
-        <Button
-          colorSchema="secondary"
-          variant="plain"
-          onClick={() => handlePopUpToggle("identityAuthMethod", false)}
-        >
-          Cancel
-        </Button>
-      </div>
     </form>
   );
 };
