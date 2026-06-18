@@ -788,7 +788,7 @@ export const IdentityLdapAuthForm = ({
                         </p>
                         <div className="space-y-2">
                           <p>Example:</p>
-                          <p className="text-xs text-muted">
+                          <p className="text-xs font-bold">
                             &apos;uid&apos; → &apos;user1,user2,user3&apos;
                             <br />
                             &apos;mail&apos; → &apos;user@example.com&apos;
