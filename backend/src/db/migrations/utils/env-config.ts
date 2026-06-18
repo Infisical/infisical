@@ -31,6 +31,7 @@ const envSchema = z
     LICENSE_SERVER_KEY: zpStr(z.string().optional()),
     LICENSE_KEY: zpStr(z.string().optional()),
     LICENSE_KEY_OFFLINE: zpStr(z.string().optional()),
+    LICENSE_SERVER_V2_MODE: z.enum(["off", "read-compare", "on"]).default("off"),
     INTERNAL_REGION: zpStr(z.enum(["us", "eu"]).optional()),
 
     SITE_URL: zpStr(z.string().transform((val) => (val ? removeTrailingSlash(val) : val))).optional()

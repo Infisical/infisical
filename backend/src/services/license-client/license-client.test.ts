@@ -123,7 +123,7 @@ describe("featureReaderFactory", () => {
 describe("licenseClientFactory (usage example)", () => {
   const licenseClient = licenseClientFactory({
     envConfig: {
-      LICENSE_SERVER_V2_ENABLED: false,
+      LICENSE_SERVER_V2_MODE: "off",
       LICENSE_SERVER_V2_URL: undefined,
       LICENSE_SERVER_V2_SERVICE_KEY: undefined
     },
