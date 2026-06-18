@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Copy, FolderOpen, Globe, Rocket, Terminal } from "lucide-react";
 
@@ -6,7 +6,12 @@ import { createNotification } from "@app/components/notifications";
 import { Badge, Button, IconButton } from "@app/components/v3";
 import { Sheet, SheetContent } from "@app/components/v3/generic/Sheet";
 import { useOrganization } from "@app/context";
-import { PAM_ACCOUNT_TYPE_MAP, TAccessiblePamAccount } from "@app/hooks/api/pam";
+import {
+  PAM_ACCOUNT_TYPE_MAP,
+  PAM_WEB_ACCESS_SUPPORTED_TYPES,
+  PamAccountType,
+  TAccessiblePamAccount
+} from "@app/hooks/api/pam";
 
 import { AccountPlatformIcon } from "./AccountPlatformIcon";
 
@@ -23,7 +28,18 @@ type Props = {
 
 export const LaunchSessionSheet = ({ account, isOpen, onOpenChange }: Props) => {
   const { currentOrg } = useOrganization();
-  const [launchMethod, setLaunchMethod] = useState<LaunchMethod>(LaunchMethod.Browser);
+
+  const isWebAccessSupported = account
+    ? PAM_WEB_ACCESS_SUPPORTED_TYPES.has(account.accountType as PamAccountType)
+    : false;
+
+  const [launchMethod, setLaunchMethod] = useState<LaunchMethod>(
+    isWebAccessSupported ? LaunchMethod.Browser : LaunchMethod.CLI
+  );
+
+  useEffect(() => {
+    setLaunchMethod(isWebAccessSupported ? LaunchMethod.Browser : LaunchMethod.CLI);
+  }, [account?.id, isWebAccessSupported]);
 
   if (!account) return null;
 
@@ -67,39 +83,43 @@ export const LaunchSessionSheet = ({ account, isOpen, onOpenChange }: Props) => 
 
         <div className="flex flex-1 flex-col">
           <div className="flex-1 p-6">
-            <p className="mb-3 text-sm font-medium text-foreground">Launch method</p>
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={() => setLaunchMethod(LaunchMethod.Browser)}
-                className={`flex flex-1 cursor-pointer items-start gap-3 rounded-md border p-3.5 transition-colors ${
-                  launchMethod === LaunchMethod.Browser
-                    ? "border-product-pam/40 bg-product-pam/5"
-                    : "hover:border-muted-foreground/30 border-border"
-                }`}
-              >
-                <Globe className="mt-0.5 size-5 shrink-0 text-foreground" />
-                <div className="text-left">
-                  <p className="text-sm font-medium text-foreground">Browser</p>
-                  <p className="text-xs text-muted">Connect directly from your browser.</p>
+            {isWebAccessSupported && (
+              <>
+                <p className="mb-3 text-sm font-medium text-foreground">Launch method</p>
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setLaunchMethod(LaunchMethod.Browser)}
+                    className={`flex flex-1 cursor-pointer items-start gap-3 rounded-md border p-3.5 transition-colors ${
+                      launchMethod === LaunchMethod.Browser
+                        ? "border-product-pam/40 bg-product-pam/5"
+                        : "hover:border-muted-foreground/30 border-border"
+                    }`}
+                  >
+                    <Globe className="mt-0.5 size-5 shrink-0 text-foreground" />
+                    <div className="text-left">
+                      <p className="text-sm font-medium text-foreground">Browser</p>
+                      <p className="text-xs text-muted">Connect directly from your browser.</p>
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setLaunchMethod(LaunchMethod.CLI)}
+                    className={`flex flex-1 cursor-pointer items-start gap-3 rounded-md border p-3.5 transition-colors ${
+                      launchMethod === LaunchMethod.CLI
+                        ? "border-product-pam/40 bg-product-pam/5"
+                        : "hover:border-muted-foreground/30 border-border"
+                    }`}
+                  >
+                    <Terminal className="mt-0.5 size-5 shrink-0 text-foreground" />
+                    <div className="text-left">
+                      <p className="text-sm font-medium text-foreground">CLI</p>
+                      <p className="text-xs text-muted">Proxy locally via the Infisical CLI.</p>
+                    </div>
+                  </button>
                 </div>
-              </button>
-              <button
-                type="button"
-                onClick={() => setLaunchMethod(LaunchMethod.CLI)}
-                className={`flex flex-1 cursor-pointer items-start gap-3 rounded-md border p-3.5 transition-colors ${
-                  launchMethod === LaunchMethod.CLI
-                    ? "border-product-pam/40 bg-product-pam/5"
-                    : "hover:border-muted-foreground/30 border-border"
-                }`}
-              >
-                <Terminal className="mt-0.5 size-5 shrink-0 text-foreground" />
-                <div className="text-left">
-                  <p className="text-sm font-medium text-foreground">CLI</p>
-                  <p className="text-xs text-muted">Proxy locally via the Infisical CLI.</p>
-                </div>
-              </button>
-            </div>
+              </>
+            )}
 
             {launchMethod === LaunchMethod.Browser && (
               <>
@@ -123,7 +143,11 @@ export const LaunchSessionSheet = ({ account, isOpen, onOpenChange }: Props) => 
 
             {launchMethod === LaunchMethod.CLI && (
               <>
-                <p className="mt-5 mb-2.5 text-sm text-foreground">Run this command</p>
+                <p
+                  className={`${isWebAccessSupported ? "mt-5" : ""} mb-2.5 text-sm text-foreground`}
+                >
+                  Run this command
+                </p>
                 <div className="flex items-center justify-between rounded-md border border-border bg-mineshaft-800 px-4 py-3">
                   <code className="font-mono text-sm text-foreground">
                     <span className="text-product-pam">$</span> {cliCommand}

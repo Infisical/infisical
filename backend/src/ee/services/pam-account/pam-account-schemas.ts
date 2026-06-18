@@ -26,13 +26,7 @@ const ACCOUNT_TYPE_CONFIGS = {
     connectionDetails: z.object({
       host: z.string().trim().min(1).max(255),
       port: z.coerce.number(),
-      database: z
-        .string()
-        .trim()
-        .min(1)
-        .max(255)
-        .transform((v) => v || undefined)
-        .optional(),
+      database: z.string().trim().min(1).max(255).optional(),
       sslEnabled: z.boolean(),
       sslRejectUnauthorized: z.boolean(),
       sslCertificate: z
