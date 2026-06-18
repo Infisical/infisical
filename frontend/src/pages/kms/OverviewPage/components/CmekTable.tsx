@@ -244,6 +244,10 @@ export const CmekTable = () => {
     ProjectPermissionCmekActions.Verify,
     ProjectPermissionSub.Cmek
   );
+  const cannotRotateKey = permission.cannot(
+    ProjectPermissionCmekActions.Rotate,
+    ProjectPermissionSub.Cmek
+  );
   const cannotExportPrivateKey = permission.cannot(
     ProjectPermissionCmekActions.ExportPrivateKey,
     ProjectPermissionSub.Cmek
@@ -636,7 +640,7 @@ export const CmekTable = () => {
                                 {keyUsage === KmsKeyUsage.ENCRYPT_DECRYPT && (
                                   <DropdownMenuItem
                                     onClick={() => handlePopUpOpen("rotateKey", cmek)}
-                                    isDisabled={cannotEditKey || isDisabled}
+                                    isDisabled={cannotRotateKey || isDisabled}
                                   >
                                     <RotateCwIcon className="mr-2 size-4" />
                                     Rotate Key

@@ -119,6 +119,7 @@ const CmekPolicyActionSchema = z.object({
   [ProjectPermissionCmekActions.Decrypt]: z.boolean().optional(),
   [ProjectPermissionCmekActions.Sign]: z.boolean().optional(),
   [ProjectPermissionCmekActions.Verify]: z.boolean().optional(),
+  [ProjectPermissionCmekActions.Rotate]: z.boolean().optional(),
   [ProjectPermissionCmekActions.ExportPrivateKey]: z.boolean().optional()
 });
 
@@ -1610,6 +1611,7 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
       const canDecrypt = action.includes(ProjectPermissionCmekActions.Decrypt);
       const canSign = action.includes(ProjectPermissionCmekActions.Sign);
       const canVerify = action.includes(ProjectPermissionCmekActions.Verify);
+      const canRotate = action.includes(ProjectPermissionCmekActions.Rotate);
       const canExportPrivateKey = action.includes(ProjectPermissionCmekActions.ExportPrivateKey);
 
       if (!formVal[subject]) formVal[subject] = [{}];
@@ -1623,6 +1625,7 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
       if (canDecrypt) formVal[subject]![0][ProjectPermissionCmekActions.Decrypt] = true;
       if (canSign) formVal[subject]![0][ProjectPermissionCmekActions.Sign] = true;
       if (canVerify) formVal[subject]![0][ProjectPermissionCmekActions.Verify] = true;
+      if (canRotate) formVal[subject]![0][ProjectPermissionCmekActions.Rotate] = true;
       if (canExportPrivateKey)
         formVal[subject]![0][ProjectPermissionCmekActions.ExportPrivateKey] = true;
       return;
@@ -2251,6 +2254,11 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
         label: "Verify",
         value: ProjectPermissionCmekActions.Verify,
         description: "Verify signatures using KMS keys"
+      },
+      {
+        label: "Rotate",
+        value: ProjectPermissionCmekActions.Rotate,
+        description: "Rotate KMS key material"
       },
       {
         label: "Export Private Key",

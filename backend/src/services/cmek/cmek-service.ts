@@ -143,7 +143,7 @@ export const cmekServiceFactory = ({
       actionProjectType: ActionProjectType.KMS
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.Edit, ProjectPermissionSub.Cmek);
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.Rotate, ProjectPermissionSub.Cmek);
 
     const { version } = await kmsService.rotateKmsKey(keyId);
 
