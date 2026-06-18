@@ -3,7 +3,11 @@ import z from "zod";
 import { PamAccountsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { PamAccountType } from "@app/ee/services/pam/pam-enums";
-import { ACCOUNT_TYPE_CONFIGS } from "@app/ee/services/pam-account/pam-account-schemas";
+import {
+  ACCOUNT_TYPE_CONFIGS,
+  buildPamAccountTypeMetadata,
+  PamAccountTypeMetadataSchema
+} from "@app/ee/services/pam-account/pam-account-schemas";
 import {
   PamTemplateAccessPolicySchema,
   PamTemplateSettingsSchema
@@ -40,21 +44,20 @@ const SanitizedAccountListItemSchema = BaseAccountFields.extend({
   accountType: z.string()
 });
 
-type TConnectionDetailsSchema = (typeof ACCOUNT_TYPE_CONFIGS)[keyof typeof ACCOUNT_TYPE_CONFIGS]["connectionDetails"];
-
-const ConnectionDetailsSchema = z.union(
-  Object.values(ACCOUNT_TYPE_CONFIGS).map((c) => c.connectionDetails) as [
-    TConnectionDetailsSchema,
-    TConnectionDetailsSchema,
-    ...TConnectionDetailsSchema[]
-  ]
+const accountDetailVariants = Object.entries(ACCOUNT_TYPE_CONFIGS).map(([accountType, config]) =>
+  SanitizedAccountListItemSchema.extend({
+    accountType: z.literal(accountType as TSupportedAccountType),
+    connectionDetails: config.connectionDetails,
+    templateAccessPolicy: PamTemplateAccessPolicySchema.nullable().optional(),
+    templateSettings: PamTemplateSettingsSchema.nullable().optional(),
+    credentials: config.sanitizedCredentials
+  })
 );
 
-const SanitizedAccountDetailSchema = SanitizedAccountListItemSchema.extend({
-  templateAccessPolicy: PamTemplateAccessPolicySchema.nullable().optional(),
-  templateSettings: PamTemplateSettingsSchema.nullable().optional(),
-  connectionDetails: ConnectionDetailsSchema
-});
+const SanitizedAccountDetailSchema = z.discriminatedUnion(
+  "accountType",
+  accountDetailVariants as [(typeof accountDetailVariants)[number], ...(typeof accountDetailVariants)[number][]]
+);
 
 const toPascalCase = (s: string) =>
   s
@@ -266,6 +269,26 @@ const registerPerTypeEndpoints = (
 export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
+    url: "/types",
+    schema: {
+      operationId: "listPamAccountTypes",
+      description: "List supported PAM account types and their form field metadata",
+      tags: [ApiDocsTags.PamAccounts],
+      response: {
+        200: z.object({
+          accountTypes: z.array(PamAccountTypeMetadataSchema)
+        })
+      }
+    },
+    config: { rateLimit: readLimit },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async () => {
+      return { accountTypes: buildPamAccountTypeMetadata() };
+    }
+  });
+
+  server.route({
+    method: "GET",
     url: "/",
     schema: {
       operationId: "listPamAccounts",
@@ -325,6 +348,8 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
               folderName: true,
               templateName: true,
               accountType: true
+            }).extend({
+              canLaunch: z.boolean().describe("Whether the caller can launch a session for this account")
             })
           ),
           totalCount: z.number()

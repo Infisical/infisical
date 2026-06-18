@@ -24,7 +24,7 @@ export const pamProjectResolverFactory = ({ projectDAL, keyStore }: TResolverDep
         );
         if (projects.length === 0) {
           throw new BadRequestError({
-            message: "This organization has no Access Management project. Contact your administrator."
+            message: "This organization has no Privileged Access Manager project. Contact your administrator."
           });
         }
         return projects[0].id;

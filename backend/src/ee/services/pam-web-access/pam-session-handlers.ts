@@ -1,0 +1,26 @@
+import { PamAccountType } from "@app/ee/services/pam/pam-enums";
+
+import { TSessionContext, TSessionHandlerResult } from "./pam-web-access-types";
+import { handlePostgresSession } from "./postgres/pam-postgres-session-handler";
+import { handleSSHSession } from "./ssh/pam-ssh-session-handler";
+
+export type TWebAccessHandler = (
+  ctx: TSessionContext,
+  params: { connectionDetails: Record<string, unknown>; credentials: Record<string, unknown> }
+) => Promise<TSessionHandlerResult>;
+
+type TSessionHandlerEntry = {
+  gatewayAccountType: PamAccountType;
+  handler: TWebAccessHandler;
+};
+
+export const SESSION_HANDLERS: Partial<Record<PamAccountType, TSessionHandlerEntry>> = {
+  [PamAccountType.Postgres]: {
+    gatewayAccountType: PamAccountType.Postgres,
+    handler: handlePostgresSession
+  },
+  [PamAccountType.SSH]: {
+    gatewayAccountType: PamAccountType.SSH,
+    handler: handleSSHSession
+  }
+};

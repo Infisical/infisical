@@ -5,6 +5,7 @@ import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } 
 import { PamProductRole } from "../pam/pam-enums";
 import { TActorContext, verifyProductMembership } from "../pam/pam-permission";
 import { TPamValidatorDeps, validateGatewayAttachment, validateRecordingConnection } from "../pam/pam-validators";
+import { ACCOUNT_TYPE_CONFIGS } from "../pam-account/pam-account-schemas";
 import { TPamAccountTemplateDALFactory } from "./pam-account-template-dal";
 import {
   TCreatePamAccountTemplateDTO,
@@ -13,6 +14,8 @@ import {
   TListPamAccountTemplatesDTO,
   TUpdatePamAccountTemplateDTO
 } from "./pam-account-template-types";
+
+const SUPPORTED_ACCOUNT_TYPES = new Set<string>(Object.keys(ACCOUNT_TYPE_CONFIGS));
 
 type TPamAccountTemplateServiceFactoryDep = TPamValidatorDeps & {
   pamAccountTemplateDAL: TPamAccountTemplateDALFactory;
@@ -36,7 +39,8 @@ export const pamAccountTemplateServiceFactory = (deps: TPamAccountTemplateServic
 
   const list = async ({ projectId, search, type, ...ctx }: TListPamAccountTemplatesDTO & TActorContext) => {
     await verifyMembership(projectId, ctx);
-    return pamAccountTemplateDAL.findByProjectId(projectId, { search, type });
+    const templates = await pamAccountTemplateDAL.findByProjectId(projectId, { search, type });
+    return templates.filter((template) => SUPPORTED_ACCOUNT_TYPES.has(template.type));
   };
 
   const getById = async ({ templateId, projectId, ...ctx }: TGetPamAccountTemplateDTO & TActorContext) => {

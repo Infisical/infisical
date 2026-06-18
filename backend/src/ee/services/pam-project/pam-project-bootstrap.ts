@@ -215,7 +215,7 @@ export const bootstrapPamProject = async (
 
   const project = await projectDAL.create(
     {
-      name: "Access Management",
+      name: "Privileged Access Manager",
       slug,
       type: ProjectType.PAM,
       orgId,

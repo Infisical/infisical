@@ -42,6 +42,7 @@ export type TAddPamFolderMemberDTO = {
   userId?: string;
   groupId?: string;
   role: PamResourceRole;
+  expiry?: string | null;
 };
 
 export type TUpdatePamFolderMemberDTO = {
@@ -70,6 +71,7 @@ export type TAddPamAccountMemberDTO = {
   userId?: string;
   groupId?: string;
   role: PamResourceRole;
+  expiry?: string | null;
 };
 
 export type TUpdatePamAccountMemberDTO = {

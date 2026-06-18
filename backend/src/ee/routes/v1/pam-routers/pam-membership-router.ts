@@ -17,6 +17,7 @@ const MemberSchema = z.object({
   groupId: z.string().uuid().nullable().optional(),
   role: z.string(),
   isActive: z.boolean(),
+  expiresAt: z.date().nullable().optional(),
   createdAt: z.date()
 });
 
@@ -59,17 +60,39 @@ const emitAuditLog = async (
 const emitTelemetry = (
   server: FastifyZodProvider,
   req: FastifyRequest & { permission: { orgId: string } },
-  event: PostHogEventTypes
+  event: PostHogEventTypes,
+  properties: Record<string, unknown> = {}
 ) => {
   void server.services.telemetry.sendPostHogEvents({
     event,
     distinctId: getTelemetryDistinctId(req),
     organizationId: req.permission.orgId,
-    properties: { orgId: req.permission.orgId }
+    properties: { orgId: req.permission.orgId, ...properties }
   } as Parameters<typeof server.services.telemetry.sendPostHogEvents>[0]);
 };
 
 export const registerPamProductMembershipRouter = async (server: FastifyZodProvider) => {
+  server.route({
+    method: "GET",
+    url: "/capabilities",
+    schema: {
+      operationId: "getPamAccessCapabilities",
+      description: "Get the current user's PAM management capabilities",
+      tags: [ApiDocsTags.PamMemberships],
+      response: {
+        200: z.object({
+          isProductAdmin: z.boolean(),
+          isResourceAdmin: z.boolean()
+        })
+      }
+    },
+    config: { rateLimit: readLimit },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      return server.services.pamMembership.getAccessCapabilities(actorCtx(req));
+    }
+  });
+
   server.route({
     method: "GET",
     url: "/users",
@@ -352,7 +375,14 @@ export const registerPamFolderMembershipRouter = async (server: FastifyZodProvid
       description: "Add a user to a folder",
       tags: [ApiDocsTags.PamMemberships],
       params: folderParam.extend({ userId: z.string().uuid().describe("The ID of the user") }),
-      body: z.object({ role: z.nativeEnum(PamResourceRole).describe("The role to assign") }),
+      body: z.object({
+        role: z.nativeEnum(PamResourceRole).describe("The role to assign"),
+        expiry: z
+          .string()
+          .nullable()
+          .optional()
+          .describe("Relative duration for temporary access (e.g. '1h', '7d'). Null for permanent.")
+      }),
       response: { 200: FolderMemberResultSchema }
     },
     config: { rateLimit: writeLimit },
@@ -362,14 +392,16 @@ export const registerPamFolderMembershipRouter = async (server: FastifyZodProvid
         ...actorCtx(req),
         folderId: req.params.folderId,
         userId: req.params.userId,
-        role: req.body.role
+        role: req.body.role,
+        expiry: req.body.expiry
       });
       await emitAuditLog(server, req, EventType.PAM_FOLDER_MEMBER_ADD, {
         folderId: req.params.folderId,
         userId: req.params.userId,
-        role: req.body.role
+        role: req.body.role,
+        expiry: req.body.expiry
       });
-      emitTelemetry(server, req, PostHogEventTypes.PamFolderMemberAdded);
+      emitTelemetry(server, req, PostHogEventTypes.PamFolderMemberAdded, { expiry: req.body.expiry });
       return { ...membership, folderId: req.params.folderId };
     }
   });
@@ -439,7 +471,14 @@ export const registerPamFolderMembershipRouter = async (server: FastifyZodProvid
       description: "Add a group to a folder",
       tags: [ApiDocsTags.PamMemberships],
       params: folderParam.extend({ groupId: z.string().uuid().describe("The ID of the group") }),
-      body: z.object({ role: z.nativeEnum(PamResourceRole).describe("The role to assign") }),
+      body: z.object({
+        role: z.nativeEnum(PamResourceRole).describe("The role to assign"),
+        expiry: z
+          .string()
+          .nullable()
+          .optional()
+          .describe("Relative duration for temporary access (e.g. '1h', '7d'). Null for permanent.")
+      }),
       response: { 200: FolderMemberResultSchema }
     },
     config: { rateLimit: writeLimit },
@@ -449,14 +488,16 @@ export const registerPamFolderMembershipRouter = async (server: FastifyZodProvid
         ...actorCtx(req),
         folderId: req.params.folderId,
         groupId: req.params.groupId,
-        role: req.body.role
+        role: req.body.role,
+        expiry: req.body.expiry
       });
       await emitAuditLog(server, req, EventType.PAM_FOLDER_MEMBER_ADD, {
         folderId: req.params.folderId,
         groupId: req.params.groupId,
-        role: req.body.role
+        role: req.body.role,
+        expiry: req.body.expiry
       });
-      emitTelemetry(server, req, PostHogEventTypes.PamFolderMemberAdded);
+      emitTelemetry(server, req, PostHogEventTypes.PamFolderMemberAdded, { expiry: req.body.expiry });
       return { ...membership, folderId: req.params.folderId };
     }
   });
@@ -573,7 +614,14 @@ export const registerPamAccountMembershipRouter = async (server: FastifyZodProvi
       description: "Add a user to an account",
       tags: [ApiDocsTags.PamMemberships],
       params: accountParam.extend({ userId: z.string().uuid().describe("The ID of the user") }),
-      body: z.object({ role: z.nativeEnum(PamResourceRole).describe("The role to assign") }),
+      body: z.object({
+        role: z.nativeEnum(PamResourceRole).describe("The role to assign"),
+        expiry: z
+          .string()
+          .nullable()
+          .optional()
+          .describe("Relative duration for temporary access (e.g. '1h', '7d'). Null for permanent.")
+      }),
       response: { 200: AccountMemberResultSchema }
     },
     config: { rateLimit: writeLimit },
@@ -583,14 +631,16 @@ export const registerPamAccountMembershipRouter = async (server: FastifyZodProvi
         ...actorCtx(req),
         accountId: req.params.accountId,
         userId: req.params.userId,
-        role: req.body.role
+        role: req.body.role,
+        expiry: req.body.expiry
       });
       await emitAuditLog(server, req, EventType.PAM_ACCOUNT_MEMBER_ADD, {
         accountId: req.params.accountId,
         userId: req.params.userId,
-        role: req.body.role
+        role: req.body.role,
+        expiry: req.body.expiry
       });
-      emitTelemetry(server, req, PostHogEventTypes.PamAccountMemberAdded);
+      emitTelemetry(server, req, PostHogEventTypes.PamAccountMemberAdded, { expiry: req.body.expiry });
       return { ...membership, accountId: req.params.accountId };
     }
   });
@@ -660,7 +710,14 @@ export const registerPamAccountMembershipRouter = async (server: FastifyZodProvi
       description: "Add a group to an account",
       tags: [ApiDocsTags.PamMemberships],
       params: accountParam.extend({ groupId: z.string().uuid().describe("The ID of the group") }),
-      body: z.object({ role: z.nativeEnum(PamResourceRole).describe("The role to assign") }),
+      body: z.object({
+        role: z.nativeEnum(PamResourceRole).describe("The role to assign"),
+        expiry: z
+          .string()
+          .nullable()
+          .optional()
+          .describe("Relative duration for temporary access (e.g. '1h', '7d'). Null for permanent.")
+      }),
       response: { 200: AccountMemberResultSchema }
     },
     config: { rateLimit: writeLimit },
@@ -670,14 +727,16 @@ export const registerPamAccountMembershipRouter = async (server: FastifyZodProvi
         ...actorCtx(req),
         accountId: req.params.accountId,
         groupId: req.params.groupId,
+        expiry: req.body.expiry,
         role: req.body.role
       });
       await emitAuditLog(server, req, EventType.PAM_ACCOUNT_MEMBER_ADD, {
         accountId: req.params.accountId,
         groupId: req.params.groupId,
-        role: req.body.role
+        role: req.body.role,
+        expiry: req.body.expiry
       });
-      emitTelemetry(server, req, PostHogEventTypes.PamAccountMemberAdded);
+      emitTelemetry(server, req, PostHogEventTypes.PamAccountMemberAdded, { expiry: req.body.expiry });
       return { ...membership, accountId: req.params.accountId };
     }
   });

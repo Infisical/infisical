@@ -35,6 +35,7 @@ import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
 import { TPamAccountDALFactory } from "./pam-account-dal";
 import {
   parseInternalMetadata,
+  sanitizeCredentials,
   type TSshInternalMetadata,
   validateConnectionDetails,
   validateCredentials
@@ -149,6 +150,10 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     await checkAccount(accountId, account.folderId, projectId, ResourcePermissionPamResourceActions.ReadAccounts, ctx);
 
     const connectionDetails = await decrypt(projectId, account.encryptedConnectionDetails);
+    const credentials = sanitizeCredentials(
+      account.accountType as PamAccountType,
+      await decrypt(projectId, account.encryptedCredentials)
+    );
 
     return {
       id: account.id,
@@ -166,6 +171,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       gatewayPoolId: account.gatewayPoolId,
       recordingConnectionId: account.recordingConnectionId,
       connectionDetails,
+      credentials,
       createdAt: account.createdAt,
       updatedAt: account.updatedAt
     };
@@ -327,7 +333,8 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     }
 
     if (credentials) {
-      const validated = validateCredentials(accountType, credentials);
+      const existingCredentials = await decrypt(projectId, existing.encryptedCredentials);
+      const validated = validateCredentials(accountType, { ...existingCredentials, ...credentials });
       updateData.encryptedCredentials = await encrypt(projectId, validated);
     }
 
@@ -403,6 +410,16 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     );
     if (folderIds.length === 0 && accountIds.length === 0) return { accounts: [], totalCount: 0 };
 
+    const launchScopes = await getResourceIdsWithActions(
+      membershipDAL,
+      membershipRoleDAL,
+      projectId,
+      { allOf: [ResourcePermissionPamResourceActions.LaunchSessions] },
+      ctx
+    );
+    const launchFolderIds = new Set(launchScopes.folderIds);
+    const launchAccountIds = new Set(launchScopes.accountIds);
+
     const { accounts, totalCount } = await pamAccountDAL.findAccessible(projectId, folderIds, accountIds, {
       offset,
       limit,
@@ -422,6 +439,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
         templateName: a.templateName,
         accountType: a.accountType,
         projectId: a.projectId,
+        canLaunch: launchAccountIds.has(a.id) || (!!a.folderId && launchFolderIds.has(a.folderId)),
         createdAt: a.createdAt,
         updatedAt: a.updatedAt
       })),

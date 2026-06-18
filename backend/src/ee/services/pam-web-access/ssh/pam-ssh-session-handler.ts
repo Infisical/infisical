@@ -1,9 +1,7 @@
 import { Client, type ClientChannel, type ConnectConfig } from "ssh2";
 
-import { PamAccountType } from "@app/ee/services/pam/pam-enums";
 import { logger } from "@app/lib/logger";
 
-import { registerSessionHandler } from "../pam-session-handler-registry";
 import { parseClientMessage, resolveEndReason } from "../pam-web-access-fns";
 import {
   SessionEndReason,
@@ -13,7 +11,7 @@ import {
 } from "../pam-web-access-types";
 import { SshClientMessageSchema, SshClientMessageType } from "./pam-ssh-ws-types";
 
-const handleSSHSession = async (
+export const handleSSHSession = async (
   ctx: TSessionContext,
   params: { connectionDetails: Record<string, unknown>; credentials: Record<string, unknown> }
 ): Promise<TSessionHandlerResult> => {
@@ -128,8 +126,3 @@ const handleSSHSession = async (
     client.connect(connectConfig);
   });
 };
-
-registerSessionHandler(PamAccountType.SSH, {
-  gatewayAccountType: PamAccountType.SSH,
-  handler: handleSSHSession
-});
