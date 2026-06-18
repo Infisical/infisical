@@ -3427,6 +3427,7 @@ export const registerRoutes = async (
     pamAccountDAL,
     permissionService,
     kmsService,
+    gatewayV2DAL,
     gatewayV2Service,
     gatewayPoolService,
     resourceMetadataDAL,
@@ -3440,6 +3441,7 @@ export const registerRoutes = async (
     pamResourceDAL,
     permissionService,
     kmsService,
+    gatewayV2DAL,
     gatewayV2Service,
     gatewayPoolService,
     resourceMetadataDAL

@@ -24,6 +24,7 @@ import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage
 import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
 
 import { TGatewayPoolServiceFactory } from "../gateway-pool/gateway-pool-service";
+import { TGatewayV2DALFactory } from "../gateway-v2/gateway-v2-dal";
 import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
 import { PamAccountView } from "../pam-account/pam-account-enums";
@@ -61,6 +62,7 @@ type TPamResourceServiceFactoryDep = {
     TGatewayV2ServiceFactory,
     "getPAMConnectionDetails" | "getPlatformConnectionDetailsByGatewayId"
   >;
+  gatewayV2DAL: Pick<TGatewayV2DALFactory, "findOne">;
   gatewayPoolService: Pick<
     TGatewayPoolServiceFactory,
     "resolveEffectiveGatewayId" | "resolveAttachableGatewayFromPool"
@@ -82,6 +84,7 @@ export const pamResourceServiceFactory = ({
   pamAccountDAL,
   permissionService,
   kmsService,
+  gatewayV2DAL,
   gatewayV2Service,
   gatewayPoolService,
   resourceMetadataDAL,
@@ -209,7 +212,12 @@ export const pamResourceServiceFactory = ({
       })
     );
 
-    if (gatewayPoolId) {
+    if (gatewayId) {
+      const gateway = await gatewayV2DAL.findOne({ id: gatewayId, orgId: actor.orgId });
+      if (!gateway) {
+        throw new NotFoundError({ message: "Gateway not found or does not belong to this organization" });
+      }
+    } else if (gatewayPoolId) {
       await gatewayPoolService.resolveAttachableGatewayFromPool({
         poolId: gatewayPoolId,
         orgId: actor.orgId,
@@ -363,7 +371,12 @@ export const pamResourceServiceFactory = ({
       );
     }
 
-    if (gatewayPoolId && gatewayPoolId !== resource.gatewayPoolId) {
+    if (gatewayId && gatewayId !== resource.gatewayId) {
+      const gateway = await gatewayV2DAL.findOne({ id: gatewayId, orgId: actor.orgId });
+      if (!gateway) {
+        throw new NotFoundError({ message: "Gateway not found or does not belong to this organization" });
+      }
+    } else if (gatewayPoolId && gatewayPoolId !== resource.gatewayPoolId) {
       await gatewayPoolService.resolveAttachableGatewayFromPool({
         poolId: gatewayPoolId,
         orgId: actor.orgId,
