@@ -202,13 +202,13 @@ class NetlifyPublicClient {
 
   async deleteVariableValue(
     connection: TNetlifyConnectionConfig,
-    { account_id, value_id, ...params }: NetlifyParams & { value_id: string },
+    { account_id, ...params }: NetlifyParams,
     variable: Pick<TNetlifyVariable, "key" | "id">
   ) {
     try {
       const res = await this.send<TNetlifyVariable>(connection, {
         method: "DELETE",
-        url: `/accounts/${account_id}/${variable.key}/value/${value_id}`,
+        url: `/accounts/${account_id}/env/${variable.key}/value/${variable.id}`,
         params
       });
 

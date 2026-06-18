@@ -81,7 +81,6 @@ export const NetlifySyncFns = {
 
     for await (const key of variablesToUpdate) {
       try {
-        const existingVar = existingInNetlify[key];
         await NetlifyPublicAPI.updateVariableValue(secretSync.connection, params, {
           key,
           context: config.context ?? NetlifySyncContext.All,
@@ -96,15 +95,17 @@ export const NetlifySyncFns = {
       try {
         const variable = existingInNetlify[key];
         const remainingValues = variable.values.filter((v) => v.context !== config.context);
+        const variableToDelete = variable.values.filter((v) => v.context === config.context);
 
-        // We skip updating variables in case of `is_secret`, otherwise we override the
-        // correct value with a masked one.
-        if (remainingValues.length > 0 && !variable.is_secret) {
-          await NetlifyPublicAPI.updateVariable(secretSync.connection, params, {
+        if (variableToDelete.length > 0 && variableToDelete[0].id) {
+          await NetlifyPublicAPI.deleteVariableValue(secretSync.connection, params, {
             key,
-            values: remainingValues
+            id: variableToDelete[0].id
           });
-        } else {
+        }
+
+        // Delete variable if it doesn't have any values left.
+        if (remainingValues.length === 0) {
           await NetlifyPublicAPI.deleteVariable(secretSync.connection, params, { key });
         }
       } catch (error) {
@@ -135,16 +136,18 @@ export const NetlifySyncFns = {
         if (secret in secretMap) {
           const variable = existingSecrets[secret];
           const remainingValues = variable.values.filter((v) => v.context !== config.context);
+          const variableToDelete = variable.values.filter((v) => v.context === config.context);
 
-          // We skip updating variables in case of `is_secret`, otherwise we override the
-          // correct value with a masked one.
-          if (remainingValues.length > 0 && !variable.is_secret) {
-            await NetlifyPublicAPI.updateVariable(secretSync.connection, params, {
+          if (variableToDelete.length > 0 && variableToDelete[0].id) {
+            await NetlifyPublicAPI.deleteVariableValue(secretSync.connection, params, {
               key: secret,
-              values: remainingValues
+              id: variableToDelete[0].id
             });
-          } else {
-            await NetlifyPublicAPI.deleteVariable(secretSync.connection, params, { key: secret });
+          }
+
+          // Delete variable if it doesn't have any values left.
+          if (remainingValues.length === 0) {
+            await NetlifyPublicAPI.deleteVariable(secretSync.connection, params, { key });
           }
         }
       } catch (error) {
