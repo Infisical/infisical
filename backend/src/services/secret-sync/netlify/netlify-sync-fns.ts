@@ -83,7 +83,7 @@ export const NetlifySyncFns = {
       try {
         await NetlifyPublicAPI.updateVariableValue(secretSync.connection, params, {
           key,
-          context: config.context ?? NetlifySyncContext.All,
+          context: config.context,
           value: secretMap[key].value
         });
       } catch (error) {
