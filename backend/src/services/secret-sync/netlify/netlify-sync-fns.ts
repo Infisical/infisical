@@ -4,7 +4,6 @@ import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
 import { SecretSyncError } from "../secret-sync-errors";
-import { NetlifySyncContext } from "./netlify-sync-constants";
 import type { TNetlifySyncWithCredentials } from "./netlify-sync-types";
 
 export const NetlifySyncFns = {
