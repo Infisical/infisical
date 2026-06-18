@@ -1,0 +1,35 @@
+version: v0.161.1
+releasedAt: 2026-06-17T21:24:19+05:30
+sourceTag: v0.161.1
+previousTag: v0.161.0
+impactLevel: low
+summary: Adds a startup-run database migration for KMS keys to track
+  exportability. No config or deployment changes require operator updates.
+requiresDbMigration: true
+breakingChanges: []
+dbSchemaChanges:
+  - title: KMS keys exportability column
+    description: Adds a non-null isExportable column to KMS keys with a default of
+      true. Existing rows keep exportable behavior unless changed later.
+    action: No manual action required; Infisical runs this migration during startup.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20260612142200_add-is-exportable-to-kms-keys.ts
+        path: backend/src/db/migrations/20260612142200_add-is-exportable-to-kms-keys.ts
+        description: Adds isExportable with default true
+      - type: file
+        ref: backend/src/db/schemas/kms-keys.ts
+        path: backend/src/db/schemas/kms-keys.ts
+        description: Schema includes isExportable field
+configChanges: []
+deploymentNotes: []
+knownIssues: []
+generatedBy:
+  generator: "@infisical/upgrade-impact"
+  generatorVersion: "1"
+  model: gpt-5.4
+  generatedAt: 2026-06-17T16:38:34.093Z
+  sourceRange:
+    from: v0.161.0
+    to: v0.161.1
