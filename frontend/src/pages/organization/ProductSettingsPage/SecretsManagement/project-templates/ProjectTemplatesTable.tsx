@@ -77,7 +77,7 @@ export const ProjectTemplatesTable = ({ onEdit }: Props) => {
           placeholder="Search templates..."
         />
       </InputGroup>
-      <Table className="mt-4">
+      <Table containerClassName="mt-4">
         <TableHeader>
           <TableRow>
             <TableHead>Name</TableHead>
@@ -252,9 +252,9 @@ export const ProjectTemplatesTable = ({ onEdit }: Props) => {
             );
           })}
           {(!subscription?.projectTemplates || (!isPending && filteredTemplates?.length === 0)) && (
-            <TableRow>
-              <TableCell colSpan={colSpan}>
-                <Empty>
+            <TableRow className="hover:bg-transparent">
+              <TableCell colSpan={colSpan} className="p-0">
+                <Empty className="h-28 rounded-none border-0 shadow-none">
                   <EmptyHeader>
                     <EmptyTitle>
                       {search.trim()

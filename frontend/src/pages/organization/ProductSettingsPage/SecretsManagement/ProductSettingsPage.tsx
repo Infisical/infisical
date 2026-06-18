@@ -55,9 +55,7 @@ export const ProductSettingsPage = () => {
             title="Product Settings"
             description="Configure organization-wide settings for secrets management projects."
           />
-          <div className="flex flex-col gap-4 px-8 pb-8">
-            <ProjectTemplatesSection />
-            <HoneyTokenSection />
+          <div className="flex flex-col gap-4 pb-8">
             <Card>
               <CardHeader>
                 <CardTitle>
@@ -96,6 +94,8 @@ export const ProductSettingsPage = () => {
                 </FieldGroup>
               </CardContent>
             </Card>
+            <HoneyTokenSection />
+            <ProjectTemplatesSection />
           </div>
         </div>
       </div>

@@ -3,27 +3,21 @@ import { ChevronLeft } from "lucide-react";
 import { Button, Empty, EmptyHeader, EmptyTitle, PageLoader } from "@app/components/v3";
 import {
   InfisicalProjectTemplate,
-  TProjectTemplate,
   useGetProjectTemplateById
 } from "@app/hooks/api/projectTemplates";
 
 import { EditProjectTemplate } from "./components";
 
 type Props = {
-  template: TProjectTemplate;
+  templateId: string;
   onBack: () => void;
 };
 
-export const EditProjectTemplateSection = ({ template, onBack }: Props) => {
+export const EditProjectTemplateSection = ({ templateId, onBack }: Props) => {
+  const { data: projectTemplate, isPending } = useGetProjectTemplateById(templateId);
   const isInfisicalTemplate = Object.values(InfisicalProjectTemplate).includes(
-    template.name as InfisicalProjectTemplate
+    projectTemplate?.name as InfisicalProjectTemplate
   );
-
-  const { data: projectTemplate, isPending } = useGetProjectTemplateById(template.id, {
-    initialData: template,
-    enabled: !isInfisicalTemplate
-  });
-  const finalTemplate = isInfisicalTemplate ? template : projectTemplate;
 
   return (
     <div>
@@ -41,10 +35,10 @@ export const EditProjectTemplateSection = ({ template, onBack }: Props) => {
         <div className="flex h-[60vh] w-full items-center justify-center p-24">
           <PageLoader />
         </div>
-      ) : finalTemplate ? (
+      ) : projectTemplate ? (
         <EditProjectTemplate
           isInfisicalTemplate={isInfisicalTemplate}
-          projectTemplate={finalTemplate}
+          projectTemplate={projectTemplate}
           onBack={onBack}
         />
       ) : (
