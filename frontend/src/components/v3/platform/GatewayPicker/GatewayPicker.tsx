@@ -141,7 +141,7 @@ export const GatewayPicker = ({
                   <ServerIcon className="size-3.5 shrink-0 text-muted" />
                   <span className="truncate">{gw.name}</span>
                   <span
-                    className={`shrink-0 text-xs ${isOnline(gw) ? "text-green-500" : "text-red-400"}`}
+                    className={`shrink-0 text-xs ${isOnline(gw) ? "text-success" : "text-danger"}`}
                   >
                     {isOnline(gw) ? "Online" : "Offline"}
                   </span>

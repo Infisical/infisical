@@ -36,7 +36,8 @@ const switchVariants = cva(
         warning:
           "data-[state=checked]:border-warning/25 data-[state=checked]:bg-warning/10 data-[state=checked]:hover:bg-warning/15 data-[state=checked]:hover:border-warning/30",
         danger:
-          "data-[state=checked]:border-danger/25 data-[state=checked]:bg-danger/10 data-[state=checked]:hover:bg-danger/15 data-[state=checked]:hover:border-danger/30"
+          "data-[state=checked]:border-danger/25 data-[state=checked]:bg-danger/10 data-[state=checked]:hover:bg-danger/15 data-[state=checked]:hover:border-danger/30",
+        pam: "data-[state=checked]:border-product-pam/25 data-[state=checked]:bg-product-pam/25 data-[state=checked]:hover:bg-product-pam/30 data-[state=checked]:hover:border-product-pam/30"
       }
     },
     defaultVariants: {
