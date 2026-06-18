@@ -36,7 +36,7 @@ import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns
 import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
 import { copyMetadataFromRequestToCertificate } from "@app/services/resource-metadata/resource-metadata-fns";
 
-import { CertExtendedKeyUsageType, CertKeyUsageType } from "../certificate-common/certificate-constants";
+import { CertExtendedKeyUsageType, CertKeyUsageType, CertPolicyState } from "../certificate-common/certificate-constants";
 import {
   calculateFinalRenewBeforeDays,
   extractCertificateFromBuffer,
@@ -367,10 +367,53 @@ export const certificateApprovalServiceFactory = (
 
     validateCaSupport(ca, "CSR signing");
 
+    const certPolicy = await certificatePolicyService.getPolicyById({
+      actor: undefined,
+      actorId: undefined,
+      actorAuthMethod: undefined,
+      actorOrgId: undefined,
+      policyId: profile.certificatePolicyId,
+      internal: true
+    });
+
+    if (!certPolicy) {
+      throw new NotFoundError({ message: "Certificate policy not found for this profile" });
+    }
+
+    validateAlgorithmCompatibility(ca, certPolicy);
+
+    const csrBasicConstraints = certRequest.basicConstraints as { isCA: boolean; pathLength?: number } | undefined;
+    const policyIsCAState: CertPolicyState =
+      (certPolicy.basicConstraints?.isCA as CertPolicyState) || CertPolicyState.DENIED;
+
+    if (csrBasicConstraints?.isCA && policyIsCAState === CertPolicyState.DENIED) {
+      throw new BadRequestError({
+        message:
+          "CA certificate issuance is not allowed by the current policy. The policy's CA:true basicConstraints must be set to 'allowed' or 'required'."
+      });
+    }
+
+    let effectiveBasicConstraints = csrBasicConstraints;
+    let effectivePathLength = csrBasicConstraints?.pathLength;
+
+    if (csrBasicConstraints?.isCA && policyIsCAState !== CertPolicyState.DENIED) {
+      const policyMaxPathLength = certPolicy.basicConstraints?.maxPathLength;
+      effectiveBasicConstraints = {
+        isCA: true,
+        pathLength: policyMaxPathLength
+      };
+      if (
+        policyMaxPathLength !== undefined &&
+        policyMaxPathLength !== null &&
+        policyMaxPathLength !== -1 &&
+        (csrBasicConstraints.pathLength === undefined || csrBasicConstraints.pathLength === null)
+      ) {
+        effectivePathLength = policyMaxPathLength;
+      }
+    }
+
     const { certificate, certificateChain, issuingCaCertificate, serialNumber, cert } =
       await certificateDAL.transaction(async (tx) => {
-        const csrBasicConstraints = certRequest.basicConstraints as { isCA: boolean; pathLength?: number } | undefined;
-
         const certResult = await internalCaService.signCertFromCa({
           isInternal: true,
           caId: ca.id,
@@ -382,8 +425,8 @@ export const certificateApprovalServiceFactory = (
           signatureAlgorithm: certRequest.signatureAlgorithm || undefined,
           keyAlgorithm: certRequest.keyAlgorithm || undefined,
           isFromProfile: true,
-          basicConstraints: csrBasicConstraints,
-          pathLength: csrBasicConstraints?.pathLength,
+          basicConstraints: effectiveBasicConstraints,
+          pathLength: effectivePathLength,
           tx
         });
 
