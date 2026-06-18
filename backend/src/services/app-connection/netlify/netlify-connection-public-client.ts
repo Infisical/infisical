@@ -5,10 +5,10 @@ import { AxiosInstance, AxiosRequestConfig, AxiosResponse, HttpStatusCode, isAxi
 
 import { createRequestClient } from "@app/lib/config/request";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
+import { NetlifySyncContext } from "@app/services/secret-sync/netlify";
 
 import { NetlifyConnectionMethod } from "./netlify-connection-constants";
 import { TNetlifyAccount, TNetlifyConnectionConfig, TNetlifySite, TNetlifyVariable } from "./netlify-connection-types";
-import { NetlifySyncContext } from "@app/services/secret-sync/netlify";
 
 export function getNetlifyAuthHeaders(connection: TNetlifyConnectionConfig): Record<string, string> {
   switch (connection.method) {
@@ -104,7 +104,7 @@ class NetlifyPublicClient {
   async getVariables(connection: TNetlifyConnectionConfig, { account_id, ...params }: NetlifyParams) {
     // This public endpoint doesn't support validation, but it also returns all variables.
     // Tested with 900 secrets.
-    return await this.send<TNetlifyVariable[]>(connection, {
+    return this.send<TNetlifyVariable[]>(connection, {
       method: "GET",
       url: `/accounts/${account_id}/env`,
       params
@@ -129,7 +129,7 @@ class NetlifyPublicClient {
   async updateVariableValue(
     connection: TNetlifyConnectionConfig,
     { account_id, ...params }: NetlifyParams,
-    { key, ...variable }: UpdateVariableValueRequestBody,
+    { key, ...variable }: UpdateVariableValueRequestBody
   ) {
     const res = await this.send<TNetlifyVariable>(connection, {
       method: "PATCH",

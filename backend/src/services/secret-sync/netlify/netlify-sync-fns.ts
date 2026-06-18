@@ -4,8 +4,8 @@ import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
 import { SecretSyncError } from "../secret-sync-errors";
-import type { TNetlifySyncWithCredentials } from "./netlify-sync-types";
 import { NetlifySyncContext } from "./netlify-sync-constants";
+import type { TNetlifySyncWithCredentials } from "./netlify-sync-types";
 
 export const NetlifySyncFns = {
   async getSecrets(secretSync: TNetlifySyncWithCredentials): Promise<TSecretMap> {
@@ -147,7 +147,7 @@ export const NetlifySyncFns = {
 
           // Delete variable if it doesn't have any values left.
           if (remainingValues.length === 0) {
-            await NetlifyPublicAPI.deleteVariable(secretSync.connection, params, { key });
+            await NetlifyPublicAPI.deleteVariable(secretSync.connection, params, { key: secret });
           }
         }
       } catch (error) {
