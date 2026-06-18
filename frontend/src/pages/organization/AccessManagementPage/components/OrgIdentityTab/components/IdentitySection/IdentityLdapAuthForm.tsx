@@ -2,12 +2,15 @@ import { useEffect, useMemo, useState } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useParams } from "@tanstack/react-router";
-import { HelpCircleIcon, InfoIcon, PlusIcon, XIcon } from "lucide-react";
+import { HelpCircleIcon, InfoIcon, PlusIcon, TriangleAlertIcon, XIcon } from "lucide-react";
 import ms from "ms";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
   Button,
   Field,
   FieldError,
@@ -109,6 +112,23 @@ const buildSchema = (maxAccessTokenTTL: number) =>
     .required()
     .superRefine((data, ctx) => {
       superRefineLockout(data, ctx);
+
+      data.allowedFields?.forEach((field, index) => {
+        if (!field.key) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Attribute key is required",
+            path: ["allowedFields", index, "key"]
+          });
+        }
+        if (!field.value) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Attribute value is required",
+            path: ["allowedFields", index, "value"]
+          });
+        }
+      });
 
       // Validation based on scope
       if (data.scope === "template") {
@@ -645,6 +665,49 @@ export const IdentityLdapAuthForm = ({
             />
 
             <div className="flex flex-col gap-3">
+              <FieldLabel className="inline-flex items-center gap-1.5">
+                Authorized User Attributes
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <HelpCircleIcon className="size-3.5 text-muted" />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-md">
+                    <div className="max-h-[300px] space-y-4 overflow-y-auto text-sm">
+                      <p>
+                        Restrict which directory users may authenticate as this identity by listing
+                        the LDAP attributes their entry must match. Only users whose entry matches
+                        every attribute below are authorized.
+                      </p>
+                      <p>
+                        If no attributes are specified, every user in the configured LDAP directory
+                        will be able to authenticate as this identity.
+                      </p>
+                      <p>
+                        You can allow multiple values for an attribute by separating them with a
+                        comma.
+                      </p>
+                      <div className="space-y-2">
+                        <p>Example:</p>
+                        <p className="text-xs text-muted">
+                          &apos;uid&apos; → &apos;user1,user2,user3&apos;
+                          <br />
+                          &apos;mail&apos; → &apos;user@example.com&apos;
+                        </p>
+                      </div>
+                      <p>
+                        The above example would allow users with the UID user1, user2, or user3 to
+                        authenticate but only if their emails also match user@example.com
+                      </p>
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+              </FieldLabel>
+              {allowedFieldsFields.length > 0 && (
+                <p className="-mt-1 text-xs text-muted">
+                  Remove all attributes to allow every directory user to authenticate as this
+                  identity.
+                </p>
+              )}
               {allowedFieldsFields.map(({ id }, index) => (
                 <div className="flex items-start gap-2" key={id}>
                   <Controller
@@ -652,46 +715,6 @@ export const IdentityLdapAuthForm = ({
                     name={`allowedFields.${index}.key`}
                     render={({ field, fieldState: { error } }) => (
                       <Field className="flex-1">
-                        {index === 0 && (
-                          <FieldLabel
-                            htmlFor={`allowedField-key-${index}`}
-                            className="inline-flex items-center gap-1.5"
-                          >
-                            Required Attributes
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <HelpCircleIcon className="size-3.5 text-muted" />
-                              </TooltipTrigger>
-                              <TooltipContent className="max-w-md">
-                                <div className="max-h-[300px] space-y-4 overflow-y-auto text-sm">
-                                  <p>
-                                    Specify the fields that the user must contain in their LDAP
-                                    entry in order to authenticate with this identity. If nothing is
-                                    specified, all users in the configured LDAP directory will be
-                                    able to authenticate.
-                                  </p>
-                                  <p>
-                                    You can specify multiple required attributes by separating them
-                                    with a comma.
-                                  </p>
-                                  <div className="space-y-2">
-                                    <p>Example:</p>
-                                    <p className="text-xs text-muted">
-                                      &apos;uid&apos; → &apos;user1,user2,user3&apos;
-                                      <br />
-                                      &apos;mail&apos; → &apos;user@example.com&apos;
-                                    </p>
-                                  </div>
-                                  <p>
-                                    The above example would allow users with the UID user1, user2,
-                                    or user3 to authenticate but only if their emails also match
-                                    user@example.com
-                                  </p>
-                                </div>
-                              </TooltipContent>
-                            </Tooltip>
-                          </FieldLabel>
-                        )}
                         <Input
                           id={`allowedField-key-${index}`}
                           value={field.value}
@@ -708,11 +731,6 @@ export const IdentityLdapAuthForm = ({
                     name={`allowedFields.${index}.value`}
                     render={({ field, fieldState: { error } }) => (
                       <Field className="flex-1">
-                        {index === 0 && (
-                          <FieldLabel htmlFor={`allowedField-value-${index}`} className="invisible">
-                            Value
-                          </FieldLabel>
-                        )}
                         <Input
                           id={`allowedField-value-${index}`}
                           value={field.value}
@@ -728,14 +746,25 @@ export const IdentityLdapAuthForm = ({
                     type="button"
                     variant="ghost"
                     size="sm"
-                    aria-label="Remove required attribute"
-                    className={index === 0 ? "mt-[1.625rem]" : "mt-0.5"}
+                    aria-label="Remove authorized attribute"
+                    className="mt-0.5"
                     onClick={() => removeAllowedField(index)}
                   >
                     <XIcon />
                   </IconButton>
                 </div>
               ))}
+              {allowedFieldsFields.length === 0 && (
+                <Alert variant="warning">
+                  <TriangleAlertIcon />
+                  <AlertTitle>All directory users can authenticate</AlertTitle>
+                  <AlertDescription>
+                    No authorized attributes are set, so every user in the configured LDAP directory
+                    can authenticate as this identity. Add at least one attribute to restrict
+                    access.
+                  </AlertDescription>
+                </Alert>
+              )}
               <Button
                 type="button"
                 variant="outline"
@@ -749,7 +778,7 @@ export const IdentityLdapAuthForm = ({
                 }
               >
                 <PlusIcon />
-                Add Required Attribute
+                Add Attribute
               </Button>
             </div>
 
