@@ -22,6 +22,25 @@ const ACCOUNT_TYPE_CONFIGS = {
     })
   },
 
+  [PamAccountType.MySQL]: {
+    connectionDetails: z.object({
+      host: z.string().trim().min(1).max(255),
+      port: z.coerce.number(),
+      database: z.string().trim().min(1).max(255).optional(),
+      sslEnabled: z.boolean(),
+      sslRejectUnauthorized: z.boolean(),
+      sslCertificate: z
+        .string()
+        .trim()
+        .transform((v) => v || undefined)
+        .optional()
+    }),
+    credentials: z.object({
+      username: z.string().trim().min(1).max(32),
+      password: z.string().trim().min(1).max(80)
+    })
+  },
+
   [PamAccountType.SSH]: {
     connectionDetails: z.object({
       host: z.string().trim().min(1).max(255),
@@ -88,6 +107,7 @@ export const extractGatewayTarget = (
   switch (accountType) {
     case PamAccountType.SSH:
     case PamAccountType.Postgres:
+    case PamAccountType.MySQL:
       return {
         host: (validated as { host: string; port: number }).host,
         port: (validated as { host: string; port: number }).port

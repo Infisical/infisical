@@ -385,8 +385,10 @@ export const pamSessionServiceFactory = ({
       username: rawCredentials.username as string
     };
 
-    if (account.accountType === PamAccountType.Postgres) {
-      metadata.database = rawConnectionDetails.database as string;
+    if (account.accountType === PamAccountType.Postgres || account.accountType === PamAccountType.MySQL) {
+      if (rawConnectionDetails.database) {
+        metadata.database = rawConnectionDetails.database as string;
+      }
     }
 
     return {

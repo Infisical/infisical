@@ -1,5 +1,10 @@
 import { PamAccountType } from "./enums";
 
+export const PAM_WEB_ACCESS_SUPPORTED_TYPES = new Set<PamAccountType>([
+  PamAccountType.Postgres,
+  PamAccountType.SSH
+]);
+
 export const PAM_ACCOUNT_TYPE_MAP: Record<PamAccountType, { name: string; image: string }> = {
   [PamAccountType.Postgres]: { name: "PostgreSQL", image: "Postgres.png" },
   [PamAccountType.MySQL]: { name: "MySQL", image: "MySql.png" },
