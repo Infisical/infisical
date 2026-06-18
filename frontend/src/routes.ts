@@ -464,6 +464,7 @@ const organizationRoutes = route("/organizations/$orgId", [
   route("/identities/$identityId", "organization/IdentityDetailsByIDPage/route.tsx"),
   route("/integrations", "organization/IntegrationsPage/route.tsx"),
   route("/sso", "organization/SsoPage/route.tsx"),
+  route("/oauth-applications", "organization/OauthApplicationsPage/route.tsx"),
   route("/app-connections", [
     index("organization/AppConnections/AppConnectionsPage/route.tsx"),
     route(

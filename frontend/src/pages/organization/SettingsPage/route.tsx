@@ -20,8 +20,8 @@ const MOVED_SETTINGS_TABS: Record<string, { to: string; selectedTab: string }> =
     selectedTab: "streams"
   },
   "oauth-applications": {
-    to: "/organizations/$orgId/integrations",
-    selectedTab: "oauth-applications"
+    to: "/organizations/$orgId/oauth-applications",
+    selectedTab: ""
   },
   "tab-external-migrations": {
     to: "/organizations/$orgId/integrations",

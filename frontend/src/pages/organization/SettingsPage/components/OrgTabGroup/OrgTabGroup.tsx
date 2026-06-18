@@ -101,7 +101,7 @@ export const OrgTabGroup = () => {
             >
               Audit Logs
             </Link>
-            , and workflow integrations, OAuth applications, and external migrations have moved to{" "}
+            , and workflow integrations and external migrations have moved to{" "}
             <Link
               to="/organizations/$orgId/integrations"
               params={{ orgId: currentOrg.id }}
