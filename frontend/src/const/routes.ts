@@ -412,6 +412,14 @@ export const ROUTE_PATHS = Object.freeze({
     PamAccountAccessPage: setRoute(
       "/organizations/$orgId/pam/accounts/$accountType/$accountId/access",
       "/_authenticate/_inject-org-details/organizations/$orgId/pam/accounts/$accountType/$accountId/access"
+    ),
+    AccountsPage: setRoute(
+      "/organizations/$orgId/pam/accounts",
+      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/accounts"
+    ),
+    TemplatesPage: setRoute(
+      "/organizations/$orgId/pam/templates",
+      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/templates"
     )
   },
   Public: {

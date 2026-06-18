@@ -54,7 +54,7 @@ const PAM_ROLES = [
   {
     slug: "admin",
     name: "Admin",
-    description: "Full administrative access over Access Management"
+    description: "Full administrative access over Privileged Access Manager"
   },
   {
     slug: "member",
@@ -81,7 +81,12 @@ const PRODUCT_DEFINITIONS: ProductDefinition[] = [
   { type: ProjectType.KMS, name: "KMS", isSingleton: false },
   { type: ProjectType.SSH, name: "SSH", isSingleton: false },
   { type: ProjectType.SecretScanning, name: "Secret Scanning", isSingleton: false },
-  { type: ProjectType.PAM, name: "Access Management", isSingleton: false, roles: PAM_ROLES },
+  {
+    type: ProjectType.PAM,
+    name: "Privileged Access Manager",
+    isSingleton: true,
+    roles: PAM_ROLES
+  },
   { type: ProjectType.AI, name: "AI", isSingleton: false }
 ];
 

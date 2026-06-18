@@ -396,6 +396,8 @@ const secretScanningRoutes = route("/organizations/$orgId/projects/secret-scanni
 const pamRoutes = route("/organizations/$orgId/pam", [
   layout("pam-layout", "pam/layout.tsx", [
     route("/access", [index("pam/PamAccessPage/route.tsx")]),
+    route("/accounts", "pam/PamAccountsPage/route.tsx"),
+    route("/templates", "pam/PamTemplatesPage/route.tsx"),
     route("/audit-logs", "project/AuditLogsPage/route-pam.tsx"),
 
     // Access Management
