@@ -22,36 +22,35 @@ import { BillingV2Cadence, BillingV2CatalogProduct, BillingV2Entitlement } from 
 import { cadenceWord, fmtMoney, unitPrice } from "../billing-v2-data";
 import { ActiveBadge, ProductIcon } from "./shared";
 
-type ProPriceParts = { amt: string; unit: string } | null;
+type ProPriceParts = { amount: string; unit: string } | null;
 
-const proPriceParts = (prod: BillingV2CatalogProduct, cad: BillingV2Cadence): ProPriceParts => {
+const proPriceParts = (prod: BillingV2CatalogProduct, cadence: BillingV2Cadence): ProPriceParts => {
   if (prod.model === "flat" || prod.model === "limit") {
-    const b = prod.pro?.base;
-    if (!b) {
+    const base = prod.pro?.base;
+    if (!base) {
       return null;
     }
-    return { amt: fmtMoney(unitPrice(b, cad)), unit: `/ ${cadenceWord(cad)}` };
+    return { amount: fmtMoney(unitPrice(base, cadence)), unit: `/ ${cadenceWord(cadence)}` };
   }
 
-  const d = prod.pro?.dims?.[0];
-  if (!d) {
+  const dimension = prod.pro?.dims?.[0];
+  if (!dimension) {
     return null;
   }
-  let suffix = "mo";
-  if (cad === "annual") {
-    suffix = "yr";
-  }
-  return { amt: fmtMoney(unitPrice(d, cad), 2), unit: `/ ${d.noun} / ${suffix}` };
+  return {
+    amount: fmtMoney(unitPrice(dimension, cadence), 2),
+    unit: `/ ${dimension.noun} / ${cadenceWord(cadence)}`
+  };
 };
 
-const CmpCell = (v: string | boolean) => {
-  if (v === true) {
+const renderCompareCell = (value: string | boolean) => {
+  if (value === true) {
     return <FontAwesomeIcon icon={faCheck} className="text-success" />;
   }
-  if (v === false) {
+  if (value === false) {
     return <span className="text-mineshaft-500">—</span>;
   }
-  return v;
+  return value;
 };
 
 type EntitlementSummaryProps = {
@@ -60,7 +59,7 @@ type EntitlementSummaryProps = {
 
 const EntitlementSummary = ({ entitlement }: EntitlementSummaryProps) => {
   const entitled = Boolean(entitlement?.entitled);
-  let detail = "This product is not part of your current plan.";
+  let detail = "This product isn't part of your current plan.";
   if (entitled) {
     detail = "This product is active on your subscription.";
     if (entitlement && entitlement.limit !== null && entitlement.limit !== undefined) {
@@ -72,7 +71,7 @@ const EntitlementSummary = ({ entitlement }: EntitlementSummaryProps) => {
     <div className="rounded-lg border border-border bg-card p-4">
       <div className="mb-3 flex items-center justify-between gap-3">
         <span className="text-xs font-medium text-mineshaft-300">Your plan</span>
-        {entitled ? <ActiveBadge /> : <Badge variant="neutral">Not in your plan</Badge>}
+        {entitled ? <ActiveBadge /> : <Badge variant="neutral">Inactive</Badge>}
       </div>
       <div className="text-xs text-mineshaft-300">{detail}</div>
     </div>
@@ -86,15 +85,15 @@ type PlansViewProps = {
 };
 
 const PlansView = ({ prod, entitlement, cadence }: PlansViewProps) => {
-  const hasEnt = !!prod.enterprise;
-  const pp = proPriceParts(prod, cadence);
+  const hasEnterprise = !!prod.enterprise;
+  const priceParts = proPriceParts(prod, cadence);
   const entitled = Boolean(entitlement?.entitled);
 
   return (
     <>
       <EntitlementSummary entitlement={entitlement} />
 
-      <div className={`grid gap-3.5 ${hasEnt ? "sm:grid-cols-2" : "grid-cols-1"}`}>
+      <div className={`grid gap-3.5 ${hasEnterprise ? "sm:grid-cols-2" : "grid-cols-1"}`}>
         <div
           className={`flex flex-col gap-3.5 rounded-xl border p-[18px] ${
             entitled ? "border-mineshaft-500 bg-mineshaft-700/40" : "border-org/40 bg-org/5"
@@ -111,10 +110,10 @@ const PlansView = ({ prod, entitlement, cadence }: PlansViewProps) => {
               <Badge variant="org">Self-serve</Badge>
             )}
           </div>
-          {pp ? (
+          {priceParts ? (
             <div className="flex flex-wrap items-baseline gap-1.5">
-              <span className="text-2xl font-semibold text-foreground">{pp.amt}</span>
-              <span className="text-xs text-mineshaft-400">{pp.unit}</span>
+              <span className="text-2xl font-semibold text-foreground">{priceParts.amount}</span>
+              <span className="text-xs text-mineshaft-400">{priceParts.unit}</span>
             </div>
           ) : null}
           {prod.pro?.proFeature ? (
@@ -122,7 +121,7 @@ const PlansView = ({ prod, entitlement, cadence }: PlansViewProps) => {
           ) : null}
         </div>
 
-        {hasEnt && prod.enterprise ? (
+        {hasEnterprise && prod.enterprise ? (
           <div className="flex flex-col gap-3.5 rounded-xl border border-border bg-card p-[18px]">
             <div className="flex items-center justify-between gap-2">
               <span className="text-[15px] font-semibold text-foreground">Enterprise</span>
@@ -136,7 +135,7 @@ const PlansView = ({ prod, entitlement, cadence }: PlansViewProps) => {
         ) : null}
       </div>
 
-      {hasEnt && prod.compare ? (
+      {hasEnterprise && prod.compare ? (
         <div>
           <div className="mb-3 text-xs font-semibold tracking-wide text-mineshaft-400 uppercase">
             Compare plans
@@ -153,8 +152,8 @@ const PlansView = ({ prod, entitlement, cadence }: PlansViewProps) => {
               {prod.compare.map((row) => (
                 <TableRow key={row.label}>
                   <TableCell className="text-mineshaft-200">{row.label}</TableCell>
-                  <TableCell className="text-center">{CmpCell(row.pro)}</TableCell>
-                  <TableCell className="text-center">{CmpCell(row.ent)}</TableCell>
+                  <TableCell className="text-center">{renderCompareCell(row.pro)}</TableCell>
+                  <TableCell className="text-center">{renderCompareCell(row.ent)}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -162,7 +161,7 @@ const PlansView = ({ prod, entitlement, cadence }: PlansViewProps) => {
         </div>
       ) : null}
 
-      {!(hasEnt && prod.compare) && prod.includes ? (
+      {!(hasEnterprise && prod.compare) && prod.includes ? (
         <div>
           <div className="mb-3 text-xs font-semibold tracking-wide text-mineshaft-400 uppercase">
             What&apos;s included

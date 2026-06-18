@@ -346,7 +346,7 @@ const ProductRow = ({ prod, entitlement, readOnly, onManage, onContact }: Produc
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-sm font-semibold text-foreground">{prod.name}</span>
           {prod.addon && <Badge variant="neutral">Add-on</Badge>}
-          {entitled ? <ActiveBadge /> : <Badge variant="neutral">Not in your plan</Badge>}
+          {entitled ? <ActiveBadge /> : <Badge variant="neutral">Inactive</Badge>}
         </div>
         <div className="text-xs text-mineshaft-400">{prod.tagline || prod.desc}</div>
       </div>
