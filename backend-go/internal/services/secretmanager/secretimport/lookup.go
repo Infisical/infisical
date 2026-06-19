@@ -2,10 +2,14 @@ package secretimport
 
 import (
 	"bytes"
+	"regexp"
 	"sort"
 
 	"github.com/google/uuid"
 )
+
+// reservedReplicationRegex matches /__reserve_replication_<uuid> anywhere in a path.
+var reservedReplicationRegex = regexp.MustCompile(`/__reserve_replication_([a-f0-9-]{36})`)
 
 const (
 	flagReplication = 1 << 0
@@ -221,6 +225,36 @@ func (l *ImportLookup) ImportersOf(envID uuid.UUID, path string) []int32 {
 	return l.byTarget[importTarget{envID: envID, path: path}]
 }
 
+// ResolveReserved resolves a reserved replication import to its original source.
+// If the import at index i is reserved (path matches /__reserve_replication_<uuid>),
+// it extracts the UUID, looks up the original import by ID, and returns that import's
+// envID and path. Otherwise returns the import's own envID and path unchanged.
+func (l *ImportLookup) ResolveReserved(i int32) (envID uuid.UUID, path string) {
+	envID = l.TargetEnvID(i)
+	path = l.TargetPath(i)
+
+	if !l.IsReserved(i) {
+		return envID, path
+	}
+
+	match := reservedReplicationRegex.FindStringSubmatch(path)
+	if match == nil {
+		return envID, path
+	}
+
+	originalID, err := uuid.Parse(match[1])
+	if err != nil {
+		return envID, path
+	}
+
+	originalIdx, found := l.IndexByID(originalID)
+	if !found {
+		return envID, path
+	}
+
+	return l.TargetEnvID(originalIdx), l.TargetPath(originalIdx)
+}
+
 const maxImportDepth = 10
 
 // ResolvedImport represents a folder in the import chain.
@@ -258,8 +292,10 @@ func (l *ImportLookup) ResolveChain(
 				continue
 			}
 
-			envID := l.TargetEnvID(i)
-			path := l.TargetPath(i)
+			// For reserved imports, resolve back to the original source's env/path.
+			// This ensures permission checks and API responses use the original
+			// location (e.g. "/") rather than the reserved folder path.
+			envID, path := l.ResolveReserved(i)
 			key := importTarget{envID: envID, path: path}
 			if visited[key] {
 				continue
