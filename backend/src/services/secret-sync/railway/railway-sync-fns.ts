@@ -33,7 +33,9 @@ export const RailwaySyncFns = {
         if (!matchesSchema(key, environment?.slug || "", keySchema)) continue;
 
         entries[key] = {
-          value
+          // Railway returns null for sealed/unrendered variables (unrendered: true);
+          // coalesce to "" so the value doesn't reach Buffer.from(null) during import.
+          value: value ?? ""
         };
       }
 
@@ -94,7 +96,7 @@ export const RailwaySyncFns = {
         first: 1
       });
 
-      const latestDeploymentId = latestDeployment?.deployments.edges[0].node.id;
+      const latestDeploymentId = latestDeployment?.deployments.edges[0]?.node.id;
 
       if (!latestDeploymentId)
         throw new SecretSyncError({

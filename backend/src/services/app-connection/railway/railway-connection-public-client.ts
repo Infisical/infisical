@@ -45,7 +45,7 @@ export function getRailwayRatelimiter(headers: AxiosResponse["headers"]): {
   const now = +new Date();
   const nextReset = +new Date(limitResetAt);
 
-  const remaining = Math.min(0, nextReset - now);
+  const remaining = Math.max(0, nextReset - now);
 
   const wait = () => {
     return new Promise<void>((res) => {
@@ -67,6 +67,7 @@ class RailwayPublicClient {
     this.client = createRequestClient({
       method: "POST",
       baseURL: IntegrationUrls.RAILWAY_API_URL,
+      timeout: 1000 * 60, // 60 seconds timeout
       headers: {
         "Content-Type": "application/json"
       }
@@ -223,7 +224,7 @@ class RailwayPublicClient {
     config: RailwaySendReqOptions,
     variables: { projectId: string; environmentId: string; serviceId?: string }
   ) {
-    const res = await this.send<TRailwayResponse<{ variables: Record<string, string> }>>(
+    const res = await this.send<TRailwayResponse<{ variables: Record<string, string | null> }>>(
       `query variables($projectId: String!, $environmentId: String!, $serviceId: String, $unrendered: Boolean) { variables( projectId: $projectId, environmentId: $environmentId, serviceId: $serviceId, unrendered: $unrendered ) }`,
       config,
       { ...variables, unrendered: true }
