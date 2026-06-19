@@ -25,8 +25,8 @@ export const TriggerDevSyncOptionsFields = () => {
             <FieldContent>
               <Label htmlFor="trigger-dev-secret">Mark variables as secret</Label>
               <FieldDescription>
-                When enabled, synced variables are marked as secret (redacted) environment
-                variables in Trigger.dev.
+                When enabled, synced variables are marked as secret (redacted) environment variables
+                in Trigger.dev.
               </FieldDescription>
             </FieldContent>
             <Switch

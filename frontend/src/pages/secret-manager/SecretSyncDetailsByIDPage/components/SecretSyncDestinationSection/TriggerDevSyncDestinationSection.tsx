@@ -19,12 +19,16 @@ export const TriggerDevSyncDestinationSection = ({ secretSync }: Props) => {
     destinationConfig: { projectRef, environment }
   } = secretSync;
 
-  const { data: environments } = useTriggerDevConnectionListEnvironments(connection.id, projectRef, {
-    enabled: Boolean(connection.id && projectRef)
-  });
+  const { data: environments } = useTriggerDevConnectionListEnvironments(
+    connection.id,
+    projectRef,
+    {
+      enabled: Boolean(connection.id && projectRef)
+    }
+  );
   const environmentType = environments?.find((env) => env.slug === environment)?.type;
   const environmentLabel = environmentType
-    ? ENVIRONMENT_TYPE_LABELS[environmentType] ?? environment
+    ? (ENVIRONMENT_TYPE_LABELS[environmentType] ?? environment)
     : environment;
 
   return (

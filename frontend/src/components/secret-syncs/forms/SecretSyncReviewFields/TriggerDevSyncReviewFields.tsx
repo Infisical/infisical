@@ -46,7 +46,7 @@ export const TriggerDevSyncReviewFields = () => {
   const displayName = projects?.find((p) => p.id === projectRef)?.name ?? projectRef;
   const environmentType = environments?.find((env) => env.slug === environment)?.type;
   const environmentLabel = environmentType
-    ? ENVIRONMENT_TYPE_LABELS[environmentType] ?? environment
+    ? (ENVIRONMENT_TYPE_LABELS[environmentType] ?? environment)
     : environment;
 
   return (

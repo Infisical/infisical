@@ -63,7 +63,8 @@ export const TriggerDevSyncFields = () => {
     if (!projects) return [];
     const byId = new Map<string, TTriggerDevOrganization>();
     projects.forEach((project) => {
-      if (!byId.has(project.organization.id)) byId.set(project.organization.id, project.organization);
+      if (!byId.has(project.organization.id))
+        byId.set(project.organization.id, project.organization);
     });
     return [...byId.values()].sort((a, b) => a.name.localeCompare(b.name));
   }, [projects]);
@@ -75,8 +76,7 @@ export const TriggerDevSyncFields = () => {
     if (project) setSelectedOrgId(project.organization.id);
   }, [projectRef, projects, selectedOrgId]);
 
-  const selectedOrganization =
-    organizationOptions.find((org) => org.id === selectedOrgId) ?? null;
+  const selectedOrganization = organizationOptions.find((org) => org.id === selectedOrgId) ?? null;
 
   const orgProjects = useMemo(
     () => projects?.filter((project) => project.organization.id === selectedOrgId) ?? [],
