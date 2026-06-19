@@ -69,7 +69,7 @@ export const ProjectTemplatesTable = ({ projectType, onEdit }: Props) => {
 
   return (
     <div>
-      <InputGroup>
+      <InputGroup className="mb-4">
         <InputGroupAddon>
           <Search className="size-4" />
         </InputGroupAddon>
@@ -88,7 +88,7 @@ export const ProjectTemplatesTable = ({ projectType, onEdit }: Props) => {
           </EmptyHeader>
         </Empty>
       ) : (
-        <Table containerClassName="mt-4">
+        <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Name</TableHead>
