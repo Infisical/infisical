@@ -881,6 +881,314 @@ deletedFolder, err := client.Folders().Delete(infisical.DeleteFolderOptions{
 
 </ParamField>
 
+## Dynamic Secrets
+
+[Dynamic secrets](/documentation/platform/dynamic-secrets/overview) generate credentials on-demand instead of storing static values. Credentials are issued through short-lived **leases** that Infisical automatically revokes when they expire.
+
+<Note>
+  The Go SDK reads dynamic secret configurations and manages their leases.
+  Creating or updating a dynamic secret's configuration is done through the
+  [Infisical dashboard](/documentation/platform/dynamic-secrets/overview) or the
+  [API](/api-reference/endpoints/dynamic-secrets/create).
+</Note>
+
+### List Dynamic Secrets
+
+`client.DynamicSecrets().List(options)`
+
+Retrieve all dynamic secrets within a project environment and path.
+
+```go
+dynamicSecrets, err := client.DynamicSecrets().List(infisical.ListDynamicSecretsRootCredentialsOptions{
+  ProjectSlug:     "<project-slug>",
+  EnvironmentSlug: "dev",
+  SecretPath:      "/",
+})
+```
+
+#### Parameters
+
+<ParamField query="Parameters" type="object" optional>
+  <Expandable title="properties">
+    <ParamField query="ProjectSlug" type="string" required>
+      The slug of the project where the dynamic secrets live.
+    </ParamField>
+    <ParamField query="EnvironmentSlug" type="string" required>
+      The slug name (dev, prod, etc) of the environment where the dynamic secrets
+      live.
+    </ParamField>
+    <ParamField query="SecretPath" type="string" optional>
+      The path where the dynamic secrets live. The root path is `/`.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+###
+
+### Get Dynamic Secret by Name
+
+`client.DynamicSecrets().GetByName(options)`
+
+Retrieve a single dynamic secret configuration by name.
+
+```go
+dynamicSecret, err := client.DynamicSecrets().GetByName(infisical.GetDynamicSecretRootCredentialByNameOptions{
+  DynamicSecretName: "<dynamic-secret-name>",
+  ProjectSlug:       "<project-slug>",
+  EnvironmentSlug:   "dev",
+  SecretPath:        "/",
+})
+```
+
+#### Parameters
+
+<ParamField query="Parameters" type="object" optional>
+  <Expandable title="properties">
+    <ParamField query="DynamicSecretName" type="string" required>
+      The name of the dynamic secret to retrieve.
+    </ParamField>
+    <ParamField query="ProjectSlug" type="string" required>
+      The slug of the project where the dynamic secret lives.
+    </ParamField>
+    <ParamField query="EnvironmentSlug" type="string" required>
+      The slug name (dev, prod, etc) of the environment where the dynamic secret
+      lives.
+    </ParamField>
+    <ParamField query="SecretPath" type="string" optional>
+      The path where the dynamic secret lives. The root path is `/`.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+### Leases
+
+A lease represents a single set of generated credentials with its own TTL. Use leases to generate, inspect, renew, and revoke credentials from a dynamic secret. Access the leases interface with `client.DynamicSecrets().Leases()`.
+
+###
+
+### Create Lease
+
+`client.DynamicSecrets().Leases().Create(options)`
+
+Generate a new set of credentials from a dynamic secret.
+
+```go
+credentials, dynamicSecret, lease, err := client.DynamicSecrets().Leases().Create(infisical.CreateDynamicSecretLeaseOptions{
+  DynamicSecretName: "<dynamic-secret-name>",
+  ProjectSlug:       "<project-slug>",
+  EnvironmentSlug:   "dev",
+  SecretPath:        "/",
+  TTL:               "5m", // Optional
+})
+```
+
+<Note>
+  Your generated credentials are returned in the first return value
+  (`credentials`, a `map[string]any`). The exact keys depend on the dynamic
+  secret provider.
+</Note>
+
+#### Parameters
+
+<ParamField query="Parameters" type="object" optional>
+  <Expandable title="properties">
+    <ParamField query="DynamicSecretName" type="string" required>
+      The name of the dynamic secret to create a lease for.
+    </ParamField>
+    <ParamField query="ProjectSlug" type="string" required>
+      The slug of the project where the dynamic secret lives.
+    </ParamField>
+    <ParamField query="EnvironmentSlug" type="string" required>
+      The slug name (dev, prod, etc) of the environment where the dynamic secret
+      lives.
+    </ParamField>
+    <ParamField query="SecretPath" type="string" optional>
+      The path where the dynamic secret lives. The root path is `/`.
+    </ParamField>
+    <ParamField query="TTL" type="string" optional>
+      How long the lease credentials should remain valid, e.g. `5m` or `1h`.
+      Defaults to the dynamic secret's default TTL if not specified.
+    </ParamField>
+    <ParamField query="Config" type="map[string]any" optional>
+      Optional provider-specific configuration for the lease.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+#### Return
+
+<ParamField query="Return" type="(map[string]any, DynamicSecret, DynamicSecretLease, error)">
+  The generated credentials, the dynamic secret the lease was created from, the
+  lease details, and an error if the request failed.
+</ParamField>
+
+###
+
+### List Leases
+
+`client.DynamicSecrets().Leases().List(options)`
+
+Retrieve all leases for a dynamic secret.
+
+```go
+leases, err := client.DynamicSecrets().Leases().List(infisical.ListDynamicSecretLeasesOptions{
+  DynamicSecretName: "<dynamic-secret-name>",
+  ProjectSlug:       "<project-slug>",
+  EnvironmentSlug:   "dev",
+  SecretPath:        "/",
+})
+```
+
+#### Parameters
+
+<ParamField query="Parameters" type="object" optional>
+  <Expandable title="properties">
+    <ParamField query="DynamicSecretName" type="string" required>
+      The name of the dynamic secret whose leases should be fetched.
+    </ParamField>
+    <ParamField query="ProjectSlug" type="string" required>
+      The slug of the project where the dynamic secret lives.
+    </ParamField>
+    <ParamField query="EnvironmentSlug" type="string" required>
+      The slug name (dev, prod, etc) of the environment where the dynamic secret
+      lives.
+    </ParamField>
+    <ParamField query="SecretPath" type="string" optional>
+      The path where the dynamic secret lives. The root path is `/`.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+###
+
+### Get Lease by ID
+
+`client.DynamicSecrets().Leases().GetById(options)`
+
+Retrieve a single lease, including its associated dynamic secret.
+
+```go
+lease, err := client.DynamicSecrets().Leases().GetById(infisical.GetDynamicSecretLeaseByIdOptions{
+  LeaseId:         "<lease-id>",
+  ProjectSlug:     "<project-slug>",
+  EnvironmentSlug: "dev",
+  SecretPath:      "/",
+})
+```
+
+#### Parameters
+
+<ParamField query="Parameters" type="object" optional>
+  <Expandable title="properties">
+    <ParamField query="LeaseId" type="string" required>
+      The ID of the lease to retrieve.
+    </ParamField>
+    <ParamField query="ProjectSlug" type="string" required>
+      The slug of the project where the dynamic secret lives.
+    </ParamField>
+    <ParamField query="EnvironmentSlug" type="string" required>
+      The slug name (dev, prod, etc) of the environment where the dynamic secret
+      lives.
+    </ParamField>
+    <ParamField query="SecretPath" type="string" optional>
+      The path where the dynamic secret lives. The root path is `/`.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+###
+
+### Renew Lease
+
+`client.DynamicSecrets().Leases().RenewById(options)`
+
+Extend the TTL of an existing lease.
+
+```go
+lease, err := client.DynamicSecrets().Leases().RenewById(infisical.RenewDynamicSecretLeaseOptions{
+  LeaseId:         "<lease-id>",
+  ProjectSlug:     "<project-slug>",
+  EnvironmentSlug: "dev",
+  SecretPath:      "/",
+  TTL:             "10m", // Optional
+})
+```
+
+<Note>
+  Renewals must happen **before** the lease expires. Renewing does not issue new
+  credentials; the existing credentials continue to live for the specified TTL.
+</Note>
+
+#### Parameters
+
+<ParamField query="Parameters" type="object" optional>
+  <Expandable title="properties">
+    <ParamField query="LeaseId" type="string" required>
+      The ID of the lease to renew.
+    </ParamField>
+    <ParamField query="ProjectSlug" type="string" required>
+      The slug of the project where the dynamic secret lives.
+    </ParamField>
+    <ParamField query="EnvironmentSlug" type="string" required>
+      The slug name (dev, prod, etc) of the environment where the dynamic secret
+      lives.
+    </ParamField>
+    <ParamField query="SecretPath" type="string" optional>
+      The path where the dynamic secret lives. The root path is `/`.
+    </ParamField>
+    <ParamField query="TTL" type="string" optional>
+      The new amount of time the lease credentials should remain valid, e.g.
+      `10m` or `1h`.
+    </ParamField>
+    <ParamField query="IsForced" type="boolean" default="false" optional>
+      Whether to force the renewal. Use with caution.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+###
+
+### Delete Lease
+
+`client.DynamicSecrets().Leases().DeleteById(options)`
+
+Revoke a lease and its associated credentials.
+
+```go
+lease, err := client.DynamicSecrets().Leases().DeleteById(infisical.DeleteDynamicSecretLeaseOptions{
+  LeaseId:         "<lease-id>",
+  ProjectSlug:     "<project-slug>",
+  EnvironmentSlug: "dev",
+  SecretPath:      "/",
+  IsForced:        false,
+})
+```
+
+#### Parameters
+
+<ParamField query="Parameters" type="object" optional>
+  <Expandable title="properties">
+    <ParamField query="LeaseId" type="string" required>
+      The ID of the lease to delete.
+    </ParamField>
+    <ParamField query="ProjectSlug" type="string" required>
+      The slug of the project where the dynamic secret lives.
+    </ParamField>
+    <ParamField query="EnvironmentSlug" type="string" required>
+      The slug name (dev, prod, etc) of the environment where the dynamic secret
+      lives.
+    </ParamField>
+    <ParamField query="SecretPath" type="string" optional>
+      The path where the dynamic secret lives. The root path is `/`.
+    </ParamField>
+    <ParamField query="IsForced" type="boolean" default="false" optional>
+      When true, the lease is removed from Infisical without attempting to revoke
+      the credentials from the external provider. This is potentially unsafe for
+      sensitive dynamic secrets.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
 ## KMS
 
 ### Create Key
