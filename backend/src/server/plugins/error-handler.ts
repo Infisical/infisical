@@ -71,10 +71,9 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
       error instanceof PermissionBoundaryError ||
       error instanceof ZodError ||
       error instanceof RateLimitError ||
-      error instanceof ScimRequestError ||
-      error instanceof CryptographyError ||
       error instanceof PolicyViolationError ||
-      error instanceof AcmeError ||
+      (error instanceof ScimRequestError && error.status < 500) ||
+      (error instanceof AcmeError && error.status < 500) ||
       error instanceof jwt.JsonWebTokenError;
 
     if (isExpectedClientError) {
@@ -86,7 +85,8 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
           errorName: error.name,
           errorMessage: error.message,
           route: req.routeOptions?.url,
-          method: req.method
+          method: req.method,
+          details: (error as { details?: unknown }).details
         },
         `client error: ${error.name}`
       );
