@@ -40,11 +40,11 @@ import { useDecryptedSessionLogs } from "@app/hooks/api/pam/session-playback/que
 import { isBrokenChunkMarker } from "@app/hooks/api/pam/session-playback/types";
 import { TPamSession, TPamSessionLog, TSessionEvent } from "@app/hooks/api/pam/types";
 
-const RdpReplayView = lazy(() => import("./RdpReplayView/RdpReplayView"));
-
 import { LiveDot } from "../../components/LiveDot";
 import { PamDetailSheet } from "../../components/PamDetailSheet";
 import { capitalize, formatDuration, STATUS_BADGE } from "../constants";
+
+const RdpReplayView = lazy(() => import("./RdpReplayView/RdpReplayView"));
 
 type Props = {
   sessionId?: string;
@@ -320,7 +320,9 @@ export const SessionDetailSheet = ({ sessionId, isOpen, onOpenChange, onTerminat
                       }
                     >
                       <RdpReplayView
-                        events={filteredEvents.filter((e): e is TSessionEvent => !isBrokenChunkMarker(e))}
+                        events={filteredEvents.filter(
+                          (e): e is TSessionEvent => !isBrokenChunkMarker(e)
+                        )}
                         isStreaming={isActive}
                       />
                     </Suspense>

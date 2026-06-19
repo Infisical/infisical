@@ -46,7 +46,6 @@ import { POLICY_EDITORS } from "../../components/policyEditors";
 import { SheetSaveBar } from "../../components/SheetSaveBar";
 import { AccountPlatformIcon } from "../../PamAccessPage/components/AccountPlatformIcon";
 
-
 const configSchema = z.object({
   name: z.string().min(1, "Name is required").max(64),
   description: z.string().max(256).optional(),
@@ -89,8 +88,7 @@ const ConfigurationTab = ({
     currentProject.id
   );
 
-  const isWindows =
-    template?.type && template.type === PamAccountType.Windows;
+  const isWindows = template?.type && template.type === PamAccountType.Windows;
 
   const {
     control,
@@ -178,7 +176,12 @@ const ConfigurationTab = ({
                   type: "warning",
                   text: "Session playback requires the bucket to allow GET requests from this origin.",
                   callToAction: (
-                    <a href="https://infisical.com/docs/documentation/platform/pam/recording-storage" target="_blank" rel="noopener noreferrer" className="text-xs underline">
+                    <a
+                      href="https://infisical.com/docs/documentation/platform/pam/recording-storage"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs underline"
+                    >
                       CORS setup docs
                     </a>
                   )
@@ -259,7 +262,9 @@ const ConfigurationTab = ({
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {!isWindows && <SelectItem value="postgres">Internal Database (default)</SelectItem>}
+                      {!isWindows && (
+                        <SelectItem value="postgres">Internal Database (default)</SelectItem>
+                      )}
                       <SelectItem value="aws-s3">AWS S3</SelectItem>
                     </SelectContent>
                   </Select>
@@ -500,8 +505,6 @@ const SettingsTab = ({
               </FieldDescription>
             </FieldContent>
           </Field>
-
-
         </CardContent>
       </Card>
 

@@ -151,10 +151,10 @@ export const useCreatePamAccountTemplate = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (params: TCreatePamAccountTemplateDTO) => {
-      const { data } = await apiRequest.post<{ template: TPamAccountTemplate; corsProbeUrl?: string | null }>(
-        "/api/v1/pam/account-templates",
-        params
-      );
+      const { data } = await apiRequest.post<{
+        template: TPamAccountTemplate;
+        corsProbeUrl?: string | null;
+      }>("/api/v1/pam/account-templates", params);
       return { ...data.template, corsProbeUrl: data.corsProbeUrl };
     },
     onSuccess: () => {
@@ -167,10 +167,10 @@ export const useUpdatePamAccountTemplate = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ templateId, ...params }: TUpdatePamAccountTemplateDTO) => {
-      const { data } = await apiRequest.patch<{ template: TPamAccountTemplate; corsProbeUrl?: string | null }>(
-        `/api/v1/pam/account-templates/${templateId}`,
-        params
-      );
+      const { data } = await apiRequest.patch<{
+        template: TPamAccountTemplate;
+        corsProbeUrl?: string | null;
+      }>(`/api/v1/pam/account-templates/${templateId}`, params);
       return { ...data.template, corsProbeUrl: data.corsProbeUrl };
     },
     onSuccess: () => {

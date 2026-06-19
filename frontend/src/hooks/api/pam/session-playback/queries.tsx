@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
+import { TSessionEvent } from "../types";
 import {
   decryptOneChunk,
   detectChunkGaps,
@@ -10,7 +11,6 @@ import {
   PAM_PLAYBACK_MAX_CHUNKS,
   PAM_PLAYBACK_MAX_TOTAL_EVENTS
 } from "./decrypt";
-import { TSessionEvent } from "../types";
 import { TBrokenChunkMarker, TPamSessionPlayback } from "./types";
 
 export const pamPlaybackKeys = {
