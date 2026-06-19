@@ -80,7 +80,8 @@ export const handleRdpSession = async (ctx: TSessionContext): Promise<TSessionHa
 
       tcpSocket.on("close", () => {
         logger.info({ sessionId }, "rdp session: tcp socket closed");
-        onCleanup();
+        if (!cleanedUp) onCleanup();
+        teardown();
         try {
           socket.close();
         } catch (err) {
@@ -90,9 +91,7 @@ export const handleRdpSession = async (ctx: TSessionContext): Promise<TSessionHa
 
       tcpSocket.on("error", (err) => {
         logger.error(err, "rdp session: tcp socket error");
-        if (!cleanedUp) {
-          onCleanup();
-        }
+        if (!cleanedUp) onCleanup();
         teardown();
       });
 
