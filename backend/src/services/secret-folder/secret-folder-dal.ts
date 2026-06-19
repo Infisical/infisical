@@ -526,6 +526,21 @@ export const secretFolderDALFactory = (db: TDbClient) => {
     }
   };
 
+  // acquires a row-level lock on the given folders so that concurrent secret inserts into them block
+  // until the surrounding transaction commits (the secret -> folder FK insert needs a conflicting FOR KEY SHARE lock).
+  const lockFoldersForUpdate = async (folderIds: string[], tx: Knex) => {
+    if (!folderIds.length) return [];
+    try {
+      const folders = await tx(TableName.SecretFolder)
+        .whereIn("id", folderIds)
+        .forUpdate()
+        .select(selectAllTableCols(TableName.SecretFolder));
+      return folders;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "lockFoldersForUpdate" });
+    }
+  };
+
   return {
     ...secretFolderOrm,
     update,
@@ -540,6 +555,7 @@ export const secretFolderDALFactory = (db: TDbClient) => {
     findByEnvsDeep,
     findByParentId,
     findByEnvId,
-    findFoldersByRootAndIds
+    findFoldersByRootAndIds,
+    lockFoldersForUpdate
   };
 };

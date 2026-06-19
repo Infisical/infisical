@@ -13,7 +13,6 @@ import {
 import { withPermission } from "@app/hoc";
 import { AppConnectionsTable } from "@app/pages/organization/AppConnections/AppConnectionsPage/components";
 import { ExternalMigrationsTab } from "@app/pages/organization/SettingsPage/components/ExternalMigrationsTab";
-import { OrgOauthClientsTab } from "@app/pages/organization/SettingsPage/components/OrgOauthClientsTab";
 import { OrgWorkflowIntegrationTab } from "@app/pages/organization/SettingsPage/components/OrgWorkflowIntegrationTab";
 import { IntegrationsListPageTabs } from "@app/types/integrations";
 
@@ -61,8 +60,7 @@ export const IntegrationsPage = () => {
       key: "external-migrations",
       label: "External Migrations",
       component: ExternalMigrationsTab
-    },
-    { key: "oauth-applications", label: "OAuth Applications", component: OrgOauthClientsTab }
+    }
   ];
 
   const activeTab = tabs.some((tab) => tab.key === selectedTab)

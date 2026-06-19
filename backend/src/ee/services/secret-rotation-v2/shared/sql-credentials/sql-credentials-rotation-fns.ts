@@ -13,6 +13,7 @@ import { BadRequestError } from "@app/lib/errors";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import {
   executeWithPotentialGateway,
+  getRoleUsernameForHost,
   SQL_CONNECTION_ALTER_LOGIN_STATEMENT
 } from "@app/services/app-connection/shared/sql";
 import { generatePasswordWithConstraints } from "@app/services/secret-validation-rule/secret-validation-rule-password-generator";
@@ -35,6 +36,24 @@ const redactPasswords = (e: unknown, credentials: TSqlCredentialsRotationGenerat
   });
 
   return redactedMessage;
+};
+
+const validateRotationUsernames = (
+  connectionUsername: string,
+  host: string,
+  rotationUsername1: string,
+  rotationUsername2: string
+) => {
+  const connectionRoleUsername = getRoleUsernameForHost(connectionUsername, host);
+  const rotationRoleUsername1 = getRoleUsernameForHost(rotationUsername1, host);
+  const rotationRoleUsername2 = getRoleUsernameForHost(rotationUsername2, host);
+
+  if (rotationRoleUsername1 === connectionRoleUsername || rotationRoleUsername2 === connectionRoleUsername) {
+    throw new BadRequestError({
+      message:
+        "Rotation username cannot be the same as the connection username. The connection credentials are used to execute rotation operations and changing their password would break the connection."
+    });
+  }
 };
 
 const ORACLE_PASSWORD_REQUIREMENTS = {
@@ -66,12 +85,7 @@ export const sqlCredentialsRotationFactory: TRotationFactory<
     secretsMapping
   } = secretRotation;
 
-  if (username1 === connection.credentials.username || username2 === connection.credentials.username) {
-    throw new BadRequestError({
-      message:
-        "Rotation username cannot be the same as the connection username. The connection credentials are used to execute rotation operations and changing their password would break the connection."
-    });
-  }
+  validateRotationUsernames(connection.credentials.username, connection.credentials.host, username1, username2);
 
   const defaultPasswordRequirement =
     connection.app === AppConnection.OracleDB ? ORACLE_PASSWORD_REQUIREMENTS : DEFAULT_PASSWORD_REQUIREMENTS;
@@ -128,9 +142,11 @@ export const sqlCredentialsRotationFactory: TRotationFactory<
   };
 
   const $executeQuery = async (tx: Knex, username: string, password: string) => {
+    const filteredUsername = getRoleUsernameForHost(username, connection.credentials.host);
+
     if (userProvidedRotationStatement) {
       const revokeStatement = handlebars.compile(userProvidedRotationStatement)({
-        username,
+        username: filteredUsername,
         password,
         database: connection.credentials.database
       });
@@ -139,7 +155,7 @@ export const sqlCredentialsRotationFactory: TRotationFactory<
         await tx.raw(query);
       }
     } else {
-      await tx.raw(...SQL_CONNECTION_ALTER_LOGIN_STATEMENT[connection.app]({ username, password }));
+      await tx.raw(...SQL_CONNECTION_ALTER_LOGIN_STATEMENT[connection.app]({ username: filteredUsername, password }));
     }
   };
 

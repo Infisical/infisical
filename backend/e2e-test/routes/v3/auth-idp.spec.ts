@@ -4,7 +4,7 @@ import { Knex } from "knex";
 
 import { AccessScope, TableName } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
-import { ProviderAuthResult } from "@app/services/auth/auth-type";
+import { AuthMethod, ProviderAuthResult } from "@app/services/auth/auth-type";
 
 import { cleanupEmailDomains, seedVerifiedEmailDomain } from "../../testUtils/email-domains";
 
@@ -116,6 +116,49 @@ describe("Auth IdP Service-Level Tests", () => {
       expect(result2.userId).toBe(result1.userId);
     });
 
+    test("Backfills name for a pre-invited user with null firstName/lastName", async () => {
+      const externalId = `saml-preinvite-${crypto.randomUUID()}`;
+      const email = `samlpreinvite-${crypto.randomUUID()}@${TEST_DOMAIN}`;
+
+      const db = getDb();
+
+      // Simulate an org/project invite: a user record created without a name
+      // (mirrors membership-user-service.createOrGetUserToAdd — both names NULL)
+      const [invitedUser] = await db(TableName.Users)
+        .insert({
+          username: email,
+          email,
+          isAccepted: false,
+          isGhost: false,
+          authMethods: [AuthMethod.EMAIL]
+        })
+        .returning("*");
+      createdUserIds.push(invitedUser.id);
+      expect(invitedUser.firstName).toBeNull();
+      expect(invitedUser.lastName).toBeNull();
+
+      // First SAML login for that pre-invited user, with names from the IdP
+      await getServices().saml.samlLogin({
+        externalId,
+        email,
+        firstName: "Saml",
+        lastName: "Invitee",
+        authProvider: "okta-saml",
+        orgId: TEST_ORG_ID,
+        ip: "127.0.0.1",
+        userAgent: "test-agent"
+      });
+
+      // The existing invited user is reused (not duplicated)...
+      const alias = await db(TableName.UserAliases).where({ externalId, orgId: TEST_ORG_ID }).first();
+      expect(alias?.userId).toBe(invitedUser.id);
+
+      // ...and its name is backfilled from the IdP claims instead of staying NULL
+      const updatedUser = await db(TableName.Users).where({ id: invitedUser.id }).first();
+      expect(updatedUser?.firstName).toBe("Saml");
+      expect(updatedUser?.lastName).toBe("Invitee");
+    });
+
     test("Login without verified domain throws", async () => {
       await expect(
         getServices().saml.samlLogin({
@@ -193,6 +236,50 @@ describe("Auth IdP Service-Level Tests", () => {
 
       const alias2 = await db(TableName.UserAliases).where({ externalId, orgId: TEST_ORG_ID }).first();
       expect(alias2?.userId).toBe(alias1?.userId);
+    });
+
+    test("Backfills name for a pre-invited user with null firstName/lastName", async () => {
+      const externalId = `ldap-preinvite-${crypto.randomUUID()}`;
+      const email = `ldappreinvite-${crypto.randomUUID()}@${TEST_DOMAIN}`;
+
+      const db = getDb();
+
+      // Simulate an org/project invite: a user record created without a name
+      // (mirrors membership-user-service.createOrGetUserToAdd — both names NULL)
+      const [invitedUser] = await db(TableName.Users)
+        .insert({
+          username: email,
+          email,
+          isAccepted: false,
+          isGhost: false,
+          authMethods: [AuthMethod.EMAIL]
+        })
+        .returning("*");
+      createdUserIds.push(invitedUser.id);
+      expect(invitedUser.firstName).toBeNull();
+      expect(invitedUser.lastName).toBeNull();
+
+      // First LDAP login for that pre-invited user, with names from the directory
+      await getServices().ldap.ldapLogin({
+        ldapConfigId,
+        externalId,
+        username: email,
+        email,
+        firstName: "Ldap",
+        lastName: "Invitee",
+        orgId: TEST_ORG_ID,
+        ip: "127.0.0.1",
+        userAgent: "test-agent"
+      });
+
+      // The existing invited user is reused (not duplicated)...
+      const alias = await db(TableName.UserAliases).where({ externalId, orgId: TEST_ORG_ID }).first();
+      expect(alias?.userId).toBe(invitedUser.id);
+
+      // ...and its name is backfilled from the IdP claims instead of staying NULL
+      const updatedUser = await db(TableName.Users).where({ id: invitedUser.id }).first();
+      expect(updatedUser?.firstName).toBe("Ldap");
+      expect(updatedUser?.lastName).toBe("Invitee");
     });
 
     test("Login without verified domain throws", async () => {
@@ -279,6 +366,48 @@ describe("Auth IdP Service-Level Tests", () => {
       });
 
       expect(result2.userId).toBe(result1.userId);
+    });
+
+    test("Backfills name for a pre-invited user with null firstName/lastName", async () => {
+      const externalId = `oidc-preinvite-${crypto.randomUUID()}`;
+      const email = `oidcpreinvite-${crypto.randomUUID()}@${TEST_DOMAIN}`;
+
+      const db = getDb();
+
+      // Simulate an org/project invite: a user record created without a name
+      // (mirrors membership-user-service.createOrGetUserToAdd — both names NULL)
+      const [invitedUser] = await db(TableName.Users)
+        .insert({
+          username: email,
+          email,
+          isAccepted: false,
+          isGhost: false,
+          authMethods: [AuthMethod.EMAIL]
+        })
+        .returning("*");
+      createdUserIds.push(invitedUser.id);
+      expect(invitedUser.firstName).toBeNull();
+      expect(invitedUser.lastName).toBeNull();
+
+      // First OIDC login for that pre-invited user, with names from the IdP
+      await getServices().oidc.oidcLogin({
+        externalId,
+        email,
+        firstName: "Oidc",
+        lastName: "Invitee",
+        orgId: TEST_ORG_ID,
+        ip: "127.0.0.1",
+        userAgent: "test-agent"
+      });
+
+      // The existing invited user is reused (not duplicated)...
+      const alias = await db(TableName.UserAliases).where({ externalId, orgId: TEST_ORG_ID }).first();
+      expect(alias?.userId).toBe(invitedUser.id);
+
+      // ...and its name is backfilled from the IdP claims instead of staying NULL
+      const updatedUser = await db(TableName.Users).where({ id: invitedUser.id }).first();
+      expect(updatedUser?.firstName).toBe("Oidc");
+      expect(updatedUser?.lastName).toBe("Invitee");
     });
 
     test("Login without verified domain throws", async () => {

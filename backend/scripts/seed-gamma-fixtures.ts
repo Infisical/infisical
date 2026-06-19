@@ -37,6 +37,7 @@ import { getConfig, getHsmConfig, initEnvConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { initLogger, logger } from "@app/lib/logger";
 import { internalKmsDALFactory } from "@app/services/kms/internal-kms-dal";
+import { internalKmsKeyVersionDALFactory } from "@app/services/kms/internal-kms-key-version-dal";
 import { kmskeyDALFactory } from "@app/services/kms/kms-key-dal";
 import { kmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
 import { kmsServiceFactory } from "@app/services/kms/kms-service";
@@ -145,12 +146,14 @@ const main = async () => {
   // even though it's only used on the project-scoped path.
   const kmsDAL = kmskeyDALFactory(knex);
   const internalKmsDAL = internalKmsDALFactory(knex);
+  const internalKmsKeyVersionDAL = internalKmsKeyVersionDALFactory(knex);
   const orgDAL = orgDALFactory(knex);
   const projectDAL = projectDALFactory(knex);
   const kmsService = kmsServiceFactory({
     kmsRootConfigDAL,
     kmsDAL,
     internalKmsDAL,
+    internalKmsKeyVersionDAL,
     orgDAL,
     projectDAL,
     hsmService,

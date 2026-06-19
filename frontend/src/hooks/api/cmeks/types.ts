@@ -33,6 +33,7 @@ export type TUpdateCmek = KeyRef &
   Partial<Pick<TCmek, "name" | "description" | "isDisabled">> &
   ProjectRef;
 export type TDeleteCmek = KeyRef & ProjectRef;
+export type TRotateCmek = KeyRef & ProjectRef;
 
 export type TCmekEncrypt = KeyRef & { plaintext: string; isBase64Encoded?: boolean };
 export type TCmekDecrypt = KeyRef & { ciphertext: string };

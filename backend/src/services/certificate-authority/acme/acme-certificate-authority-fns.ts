@@ -554,14 +554,14 @@ export const orderCertificate = async (
   }
   throwIfAcmeOrderAborted(abortSignal);
 
-  const [leafCert, parentCert] = acme.crypto.splitPemChain(pem);
+  const [leafCert, ...intermediates] = acme.crypto.splitPemChain(pem);
   const certObj = new x509.X509Certificate(leafCert);
 
   const { cipherTextBlob: encryptedCertificate } = await kmsEncryptor({
     plainText: Buffer.from(new Uint8Array(certObj.rawData))
   });
 
-  const certificateChainPem = parentCert.trim();
+  const certificateChainPem = intermediates.join("\n").trim();
 
   const { cipherTextBlob: encryptedCertificateChain } = await kmsEncryptor({
     plainText: Buffer.from(certificateChainPem)

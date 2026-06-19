@@ -35,6 +35,17 @@ const getPolicyScore = (policy: { secretPath?: string | null }) =>
   // eslint-disable-next-line
   policy.secretPath ? (containsGlobPatterns(policy.secretPath) ? 1 : 2) : 0;
 
+// picks the highest-priority policy governing a secret path: exact path match first, then glob, then env-scoped.
+const resolvePolicyForPath = <T extends { secretPath?: string | null }>(policies: T[], secretPath: string) => {
+  // this will filter policies either without scoped to secret path or the one that matches with secret path
+  const policiesFilteredByPath = policies.filter(
+    ({ secretPath: policyPath }) => !policyPath || picomatch.isMatch(secretPath, policyPath, { strictSlashes: false })
+  );
+  // now sort by priority. exact secret path gets first match followed by glob followed by just env scoped
+  // if that is tie get by first createdAt
+  return policiesFilteredByPath.sort((a, b) => getPolicyScore(b) - getPolicyScore(a)).shift();
+};
+
 type TSecretApprovalPolicyServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   secretApprovalPolicyDAL: TSecretApprovalPolicyDALFactory;
@@ -584,26 +595,34 @@ export const secretApprovalPolicyServiceFactory = ({
     return sapPolicies;
   };
 
-  const getSecretApprovalPolicy = async (projectId: string, environment: string, path: string) => {
-    const secretPath = removeTrailingSlash(path);
+  const findEnvPolicies = async (projectId: string, environment: string) => {
     const env = await projectEnvDAL.findOne({ slug: environment, projectId });
     if (!env) {
       throw new NotFoundError({
         message: `Environment with slug '${environment}' not found in project with ID ${projectId}`
       });
     }
+    return secretApprovalPolicyDAL.find({ deletedAt: null }, { envId: env.id });
+  };
 
-    const policies = await secretApprovalPolicyDAL.find({ deletedAt: null }, { envId: env.id });
+  const getSecretApprovalPolicy = async (projectId: string, environment: string, path: string) => {
+    const policies = await findEnvPolicies(projectId, environment);
     if (!policies.length) return;
-    // this will filter policies either without scoped to secret path or the one that matches with secret path
-    const policiesFilteredByPath = policies.filter(
-      ({ secretPath: policyPath }) => !policyPath || picomatch.isMatch(secretPath, policyPath, { strictSlashes: false })
-    );
-    // now sort by priority. exact secret path gets first match followed by glob followed by just env scoped
-    // if that is tie get by first createdAt
-    const policiesByPriority = policiesFilteredByPath.sort((a, b) => getPolicyScore(b) - getPolicyScore(a));
-    const finalPolicy = policiesByPriority.shift();
-    return finalPolicy;
+    return resolvePolicyForPath(policies, removeTrailingSlash(path));
+  };
+
+  // batched variant of getSecretApprovalPolicy: fetches the env policies once, then matches every supplied path in
+  // memory. returns a Map keyed by the original input path, containing only paths governed by a policy.
+  const getSecretApprovalPolicyByPaths = async (projectId: string, environment: string, secretPaths: string[]) => {
+    const policyByPath = new Map<string, Awaited<ReturnType<typeof secretApprovalPolicyDAL.find>>[number]>();
+    const policies = await findEnvPolicies(projectId, environment);
+    if (!policies.length) return policyByPath;
+
+    for (const path of secretPaths) {
+      const policy = resolvePolicyForPath(policies, removeTrailingSlash(path));
+      if (policy) policyByPath.set(path, policy);
+    }
+    return policyByPath;
   };
 
   const getSecretApprovalPolicyOfFolder = async ({
@@ -661,6 +680,7 @@ export const secretApprovalPolicyServiceFactory = ({
     updateSecretApprovalPolicy,
     deleteSecretApprovalPolicy,
     getSecretApprovalPolicy,
+    getSecretApprovalPolicyByPaths,
     getSecretApprovalPolicyByProjectId,
     getSecretApprovalPolicyOfFolder,
     getSecretApprovalPolicyById
