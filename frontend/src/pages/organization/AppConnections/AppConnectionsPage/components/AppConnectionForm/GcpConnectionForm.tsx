@@ -2,25 +2,33 @@ import { Controller, FormProvider, useForm } from "react-hook-form";
 import { faCheck, faCopy } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Info } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import {
-  Button,
-  FormControl,
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
   IconButton,
-  ModalClose,
   SecretInput,
   Select,
+  SelectContent,
   SelectItem,
-  Tooltip
-} from "@app/components/v2";
+  SelectTrigger,
+  SelectValue,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
 import { useToggle } from "@app/hooks";
 import { GcpConnectionMethod, TGcpConnection } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 
+import { AppConnectionFormFooter } from "./AppConnectionFormFooter";
 import {
   genericAppConnectionFieldsSchema,
   GenericAppConnectionsFields
@@ -61,11 +69,7 @@ export const GcpConnectionForm = ({ appConnection, onSubmit }: Props) => {
   const [isCopied, { timedToggle: toggleIsCopied }] = useToggle(false);
   const expectedAccountIdSuffix = currentOrg.id.split("-").slice(0, 2).join("-");
 
-  const {
-    handleSubmit,
-    control,
-    formState: { isSubmitting, isDirty }
-  } = form;
+  const { handleSubmit, control } = form;
 
   return (
     <FormProvider {...form}>
@@ -75,31 +79,36 @@ export const GcpConnectionForm = ({ appConnection, onSubmit }: Props) => {
           name="method"
           control={control}
           render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl
-              tooltipText={`The method you would like to use to connect with ${
-                APP_CONNECTION_MAP[AppConnection.GCP].name
-              }. This field cannot be changed after creation.`}
-              errorText={error?.message}
-              isError={Boolean(error?.message)}
-              label="Method"
-            >
-              <Select
-                isDisabled={isUpdate}
-                value={value}
-                onValueChange={(val) => onChange(val)}
-                className="w-full border border-mineshaft-500"
-                position="popper"
-                dropdownContainerClassName="max-w-none"
-              >
-                {Object.values(GcpConnectionMethod).map((method) => {
-                  return (
-                    <SelectItem value={method} key={method}>
-                      {getAppConnectionMethodDetails(method).name}
-                    </SelectItem>
-                  );
-                })}
+            <Field className="mb-4">
+              <FieldLabel htmlFor="method">
+                Method
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-sm">
+                    {`The method you would like to use to connect with ${
+                      APP_CONNECTION_MAP[AppConnection.GCP].name
+                    }. This field cannot be changed after creation.`}
+                  </TooltipContent>
+                </Tooltip>
+              </FieldLabel>
+              <Select disabled={isUpdate} value={value} onValueChange={(val) => onChange(val)}>
+                <SelectTrigger id="method" className="w-full" isError={Boolean(error)}>
+                  <SelectValue placeholder="Select a method..." />
+                </SelectTrigger>
+                <SelectContent position="popper">
+                  {Object.values(GcpConnectionMethod).map((method) => {
+                    return (
+                      <SelectItem value={method} key={method}>
+                        {getAppConnectionMethodDetails(method).name}
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
               </Select>
-            </FormControl>
+              <FieldError errors={[error]} />
+            </Field>
           )}
         />
         <Controller
@@ -107,77 +116,62 @@ export const GcpConnectionForm = ({ appConnection, onSubmit }: Props) => {
           control={control}
           shouldUnregister
           render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl
-              errorText={error?.message}
-              isError={Boolean(error?.message)}
-              label="Service Account Email"
-              className="group"
-              helperText={
-                <>
-                  <div>
+            <Field className="group mb-4">
+              <FieldLabel htmlFor="service-account-email">Service Account Email</FieldLabel>
+              <SecretInput
+                id="service-account-email"
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
+              />
+              {!error && (
+                <FieldDescription>
+                  <span className="block">
                     {`Service account ID must be suffixed with "${expectedAccountIdSuffix}"`}
-                    <Tooltip className="relative right-2" position="bottom" content="Copy">
-                      <IconButton
-                        variant="plain"
-                        ariaLabel="copy"
-                        onClick={() => {
-                          if (isCopied) {
-                            return;
-                          }
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <IconButton
+                          variant="ghost-muted"
+                          size="xs"
+                          aria-label="copy"
+                          onClick={() => {
+                            if (isCopied) {
+                              return;
+                            }
 
-                          navigator.clipboard.writeText(expectedAccountIdSuffix);
+                            navigator.clipboard.writeText(expectedAccountIdSuffix);
 
-                          createNotification({
-                            text: "Copied to clipboard",
-                            type: "info"
-                          });
+                            createNotification({
+                              text: "Copied to clipboard",
+                              type: "info"
+                            });
 
-                          toggleIsCopied(2000);
-                        }}
-                        className="hover:bg-bunker-100/10"
-                      >
-                        <FontAwesomeIcon
-                          icon={!isCopied ? faCopy : faCheck}
-                          size="sm"
-                          className="cursor-pointer"
-                        />
-                      </IconButton>
+                            toggleIsCopied(2000);
+                          }}
+                          className="ml-1"
+                        >
+                          <FontAwesomeIcon
+                            icon={!isCopied ? faCopy : faCheck}
+                            size="sm"
+                            className="cursor-pointer"
+                          />
+                        </IconButton>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom">Copy</TooltipContent>
                     </Tooltip>
-                  </div>
-                  <div>
+                  </span>
+                  <span className="block">
                     Example:
                     <span className="ml-1">service-account-</span>
                     <span className="font-medium">{expectedAccountIdSuffix}</span>
                     <span>@my-project.iam.gserviceaccount.com</span>
-                  </div>
-                </>
-              }
-            >
-              <SecretInput
-                containerClassName="text-gray-400 group-focus-within:border-primary-400/50! border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
-                value={value}
-                onChange={(e) => onChange(e.target.value)}
-              />
-            </FormControl>
+                  </span>
+                </FieldDescription>
+              )}
+              <FieldError errors={[error]} />
+            </Field>
           )}
         />
-        <div className="mt-8 flex items-center">
-          <Button
-            className="mr-4"
-            size="sm"
-            type="submit"
-            colorSchema="secondary"
-            isLoading={isSubmitting}
-            isDisabled={isSubmitting || !isDirty}
-          >
-            {isUpdate ? "Update Credentials" : "Connect to GCP"}
-          </Button>
-          <ModalClose asChild>
-            <Button colorSchema="secondary" variant="plain">
-              Cancel
-            </Button>
-          </ModalClose>
-        </div>
+        <AppConnectionFormFooter submitLabel={isUpdate ? "Update Credentials" : "Connect to GCP"} />
       </form>
     </FormProvider>
   );

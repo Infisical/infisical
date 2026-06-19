@@ -1,20 +1,28 @@
 import { Controller, FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Info } from "lucide-react";
 import { z } from "zod";
 
 import {
-  Button,
-  FormControl,
+  Field,
+  FieldError,
+  FieldLabel,
   Input,
-  ModalClose,
   SecretInput,
   Select,
-  SelectItem
-} from "@app/components/v2";
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
 import { OCIConnectionMethod, TOCIConnection } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 
+import { AppConnectionFormFooter } from "./AppConnectionFormFooter";
 import {
   genericAppConnectionFieldsSchema,
   GenericAppConnectionsFields
@@ -63,11 +71,7 @@ export const OCIConnectionForm = ({ appConnection, onSubmit }: Props) => {
     }
   });
 
-  const {
-    handleSubmit,
-    control,
-    formState: { isSubmitting, isDirty }
-  } = form;
+  const { handleSubmit, control } = form;
 
   return (
     <FormProvider {...form}>
@@ -77,31 +81,36 @@ export const OCIConnectionForm = ({ appConnection, onSubmit }: Props) => {
           name="method"
           control={control}
           render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl
-              tooltipText={`The method you would like to use to connect with ${
-                APP_CONNECTION_MAP[AppConnection.OCI].name
-              }. This field cannot be changed after creation.`}
-              errorText={error?.message}
-              isError={Boolean(error?.message)}
-              label="Method"
-            >
-              <Select
-                isDisabled={isUpdate}
-                value={value}
-                onValueChange={(val) => onChange(val)}
-                className="w-full border border-mineshaft-500"
-                position="popper"
-                dropdownContainerClassName="max-w-none"
-              >
-                {Object.values(OCIConnectionMethod).map((method) => {
-                  return (
-                    <SelectItem value={method} key={method}>
-                      {getAppConnectionMethodDetails(method).name}{" "}
-                    </SelectItem>
-                  );
-                })}
+            <Field className="mb-4">
+              <FieldLabel>
+                Method
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-sm">
+                    {`The method you would like to use to connect with ${
+                      APP_CONNECTION_MAP[AppConnection.OCI].name
+                    }. This field cannot be changed after creation.`}
+                  </TooltipContent>
+                </Tooltip>
+              </FieldLabel>
+              <Select disabled={isUpdate} value={value} onValueChange={(val) => onChange(val)}>
+                <SelectTrigger className="w-full" isError={Boolean(error)}>
+                  <SelectValue placeholder="Select a method..." />
+                </SelectTrigger>
+                <SelectContent position="popper">
+                  {Object.values(OCIConnectionMethod).map((method) => {
+                    return (
+                      <SelectItem value={method} key={method}>
+                        {getAppConnectionMethodDetails(method).name}{" "}
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
               </Select>
-            </FormControl>
+              <FieldError errors={[error]} />
+            </Field>
           )}
         />
         <Controller
@@ -109,18 +118,28 @@ export const OCIConnectionForm = ({ appConnection, onSubmit }: Props) => {
           control={control}
           shouldUnregister
           render={({ field, fieldState: { error } }) => (
-            <FormControl
-              errorText={error?.message}
-              isError={Boolean(error?.message)}
-              label="User OCID"
-              tooltipClassName="max-w-sm"
-              tooltipText="The unique identifier (OCID) associated with your OCI user account. You can find this in your OCI console under Identity > Domains > [domain] > Users > [user]."
-            >
+            <Field className="mb-4">
+              <FieldLabel htmlFor="credentials-user-ocid">
+                User OCID
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-sm">
+                    The unique identifier (OCID) associated with your OCI user account. You can find
+                    this in your OCI console under Identity &gt; Domains &gt; [domain] &gt; Users
+                    &gt; [user].
+                  </TooltipContent>
+                </Tooltip>
+              </FieldLabel>
               <Input
+                id="credentials-user-ocid"
                 {...field}
                 placeholder="ocid1.user.oc1..************************************************************"
+                isError={Boolean(error?.message)}
               />
-            </FormControl>
+              <FieldError errors={[error]} />
+            </Field>
           )}
         />
         <Controller
@@ -128,18 +147,27 @@ export const OCIConnectionForm = ({ appConnection, onSubmit }: Props) => {
           control={control}
           shouldUnregister
           render={({ field, fieldState: { error } }) => (
-            <FormControl
-              errorText={error?.message}
-              isError={Boolean(error?.message)}
-              label="Tenancy OCID"
-              tooltipClassName="max-w-sm"
-              tooltipText="The unique identifier (OCID) for your tenancy in Oracle Cloud. You can find this in your OCI console under Administration > Tenancy Details."
-            >
+            <Field className="mb-4">
+              <FieldLabel htmlFor="credentials-tenancy-ocid">
+                Tenancy OCID
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-sm">
+                    The unique identifier (OCID) for your tenancy in Oracle Cloud. You can find this
+                    in your OCI console under Administration &gt; Tenancy Details.
+                  </TooltipContent>
+                </Tooltip>
+              </FieldLabel>
               <Input
+                id="credentials-tenancy-ocid"
                 {...field}
                 placeholder="ocid1.tenancy.oc1..************************************************************"
+                isError={Boolean(error?.message)}
               />
-            </FormControl>
+              <FieldError errors={[error]} />
+            </Field>
           )}
         />
         <Controller
@@ -147,15 +175,27 @@ export const OCIConnectionForm = ({ appConnection, onSubmit }: Props) => {
           control={control}
           shouldUnregister
           render={({ field, fieldState: { error } }) => (
-            <FormControl
-              errorText={error?.message}
-              isError={Boolean(error?.message)}
-              label="Region"
-              tooltipClassName="max-w-sm"
-              tooltipText="The OCI region where your resources are located (e.g., us-ashburn-1, eu-frankfurt-1)."
-            >
-              <Input {...field} placeholder="us-ashburn-1" />
-            </FormControl>
+            <Field className="mb-4">
+              <FieldLabel htmlFor="credentials-region">
+                Region
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-sm">
+                    The OCI region where your resources are located (e.g., us-ashburn-1,
+                    eu-frankfurt-1).
+                  </TooltipContent>
+                </Tooltip>
+              </FieldLabel>
+              <Input
+                id="credentials-region"
+                {...field}
+                placeholder="us-ashburn-1"
+                isError={Boolean(error?.message)}
+              />
+              <FieldError errors={[error]} />
+            </Field>
           )}
         />
         <Controller
@@ -163,15 +203,27 @@ export const OCIConnectionForm = ({ appConnection, onSubmit }: Props) => {
           control={control}
           shouldUnregister
           render={({ field, fieldState: { error } }) => (
-            <FormControl
-              errorText={error?.message}
-              isError={Boolean(error?.message)}
-              label="Fingerprint"
-              tooltipClassName="max-w-sm"
-              tooltipText="The fingerprint of the public key associated with your OCI API key. This is generated when you create an API key in your OCI user settings."
-            >
-              <Input {...field} placeholder="00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00" />
-            </FormControl>
+            <Field className="mb-4">
+              <FieldLabel htmlFor="credentials-fingerprint">
+                Fingerprint
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-sm">
+                    The fingerprint of the public key associated with your OCI API key. This is
+                    generated when you create an API key in your OCI user settings.
+                  </TooltipContent>
+                </Tooltip>
+              </FieldLabel>
+              <Input
+                id="credentials-fingerprint"
+                {...field}
+                placeholder="00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00"
+                isError={Boolean(error?.message)}
+              />
+              <FieldError errors={[error]} />
+            </Field>
           )}
         />
         <Controller
@@ -179,36 +231,14 @@ export const OCIConnectionForm = ({ appConnection, onSubmit }: Props) => {
           control={control}
           shouldUnregister
           render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl
-              errorText={error?.message}
-              isError={Boolean(error?.message)}
-              label="Private Key PEM"
-            >
-              <SecretInput
-                containerClassName="text-gray-400 group-focus-within:border-primary-400/50! border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
-                value={value}
-                onChange={(e) => onChange(e.target.value)}
-              />
-            </FormControl>
+            <Field className="mb-4">
+              <FieldLabel>Private Key PEM</FieldLabel>
+              <SecretInput value={value} onChange={(e) => onChange(e.target.value)} />
+              <FieldError errors={[error]} />
+            </Field>
           )}
         />
-        <div className="mt-8 flex items-center">
-          <Button
-            className="mr-4"
-            size="sm"
-            type="submit"
-            colorSchema="secondary"
-            isLoading={isSubmitting}
-            isDisabled={isSubmitting || !isDirty}
-          >
-            {isUpdate ? "Update Credentials" : "Connect to OCI"}
-          </Button>
-          <ModalClose asChild>
-            <Button colorSchema="secondary" variant="plain">
-              Cancel
-            </Button>
-          </ModalClose>
-        </div>
+        <AppConnectionFormFooter submitLabel={isUpdate ? "Update Credentials" : "Connect to OCI"} />
       </form>
     </FormProvider>
   );

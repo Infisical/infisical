@@ -3,8 +3,17 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, Modal, ModalClose, ModalContent } from "@app/components/v2";
+import {
+  Button,
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle
+} from "@app/components/v3";
 import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
+import { useScopeVariant } from "@app/hooks";
 import { TAppConnection, useUpdateAppConnection } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 
@@ -26,6 +35,7 @@ type ContentProps = { appConnection: TAppConnection; onComplete: () => void };
 
 const Content = ({ appConnection, onComplete }: ContentProps) => {
   const updateAppConnection = useUpdateAppConnection();
+  const scopeVariant = useScopeVariant();
   const { name: appName } = APP_CONNECTION_MAP[appConnection.app];
 
   const form = useForm<FormData>({
@@ -58,22 +68,20 @@ const Content = ({ appConnection, onComplete }: ContentProps) => {
     <FormProvider {...form}>
       <form onSubmit={handleSubmit(onSubmit)}>
         <GenericAppConnectionsFields />
-        <div className="mt-8 flex items-center">
+        <div className="mt-8 flex items-center gap-3">
           <Button
-            className="mr-4"
-            size="sm"
             type="submit"
-            colorSchema="secondary"
-            isLoading={isSubmitting}
+            variant={scopeVariant}
+            isPending={isSubmitting}
             isDisabled={isSubmitting || !isDirty}
           >
             Update Details
           </Button>
-          <ModalClose asChild>
-            <Button colorSchema="secondary" variant="plain">
+          <DialogClose asChild>
+            <Button type="button" variant="outline">
               Cancel
             </Button>
-          </ModalClose>
+          </DialogClose>
         </div>
       </form>
     </FormProvider>
@@ -84,16 +92,16 @@ export const EditAppConnectionDetailsModal = ({ isOpen, onOpenChange, appConnect
   if (!appConnection) return null;
 
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-      <ModalContent
-        className="max-w-2xl"
-        title="Edit Connection Name"
-        subTitle={`Update the name for this ${
-          appConnection ? APP_CONNECTION_MAP[appConnection.app].name : "App"
-        } Connection.`}
-      >
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Edit Connection Name</DialogTitle>
+          <DialogDescription>
+            Update the name for this {APP_CONNECTION_MAP[appConnection.app].name} Connection.
+          </DialogDescription>
+        </DialogHeader>
         <Content appConnection={appConnection} onComplete={() => onOpenChange(false)} />
-      </ModalContent>
-    </Modal>
+      </DialogContent>
+    </Dialog>
   );
 };

@@ -3,8 +3,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format, formatDistanceToNow } from "date-fns";
 import { PauseIcon, RefreshCwIcon, XIcon } from "lucide-react";
 
-import { Tooltip } from "@app/components/v2";
-import { Badge } from "@app/components/v3";
+import { Badge, Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
 import { TAppConnection } from "@app/hooks/api/appConnections";
 import { AppConnectionCredentialRotationStatus } from "@app/hooks/api/appConnections/types/root-connection-enums";
 
@@ -39,10 +38,14 @@ export const CrededentialRotationStatusBadge = ({ appConnection }: Props) => {
     }
 
     return (
-      <Tooltip
-        position="left"
-        className="max-w-sm select-text"
-        content={
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Badge variant="danger">
+            <XIcon />
+            Rotation Failed
+          </Badge>
+        </TooltipTrigger>
+        <TooltipContent side="left" className="max-w-sm select-text">
           <div className="flex flex-col gap-2 py-1 whitespace-normal">
             <div>
               <div className="mb-2 flex self-start text-red">
@@ -60,12 +63,7 @@ export const CrededentialRotationStatusBadge = ({ appConnection }: Props) => {
               </span>
             )}
           </div>
-        }
-      >
-        <Badge variant="danger">
-          <XIcon />
-          Rotation Failed
-        </Badge>
+        </TooltipContent>
       </Tooltip>
     );
   }
@@ -74,25 +72,22 @@ export const CrededentialRotationStatusBadge = ({ appConnection }: Props) => {
     (new Date(rotation.nextRotationAt).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24);
 
   return (
-    <Tooltip
-      className="max-w-lg"
-      content={
-        <>
-          <span>
-            Rotates on {format(rotation.nextRotationAt, "MM/dd/yyyy")} at{" "}
-            {format(rotation.nextRotationAt, "h:mm aa")}
-          </span>{" "}
-          <span className="text-mineshaft-300">(Local Time)</span>
-        </>
-      }
-      asChild
-    >
-      <Badge variant={daysToRotation >= 7 ? "info" : "warning"} className="capitalize">
-        <RefreshCwIcon />
-        {daysToRotation < 0
-          ? "Rotating"
-          : `Rotates ${formatDistanceToNow(rotation.nextRotationAt, { addSuffix: true })}`}
-      </Badge>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Badge variant={daysToRotation >= 7 ? "info" : "warning"} className="capitalize">
+          <RefreshCwIcon />
+          {daysToRotation < 0
+            ? "Rotating"
+            : `Rotates ${formatDistanceToNow(rotation.nextRotationAt, { addSuffix: true })}`}
+        </Badge>
+      </TooltipTrigger>
+      <TooltipContent className="max-w-lg">
+        <span>
+          Rotates on {format(rotation.nextRotationAt, "MM/dd/yyyy")} at{" "}
+          {format(rotation.nextRotationAt, "h:mm aa")}
+        </span>{" "}
+        <span className="text-mineshaft-300">(Local Time)</span>
+      </TooltipContent>
     </Tooltip>
   );
 };
