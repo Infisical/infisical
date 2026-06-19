@@ -21,6 +21,7 @@ export const buildScimUserList = ({
 export const parseScimFilter = (filterToParse: string | undefined) => {
   if (!filterToParse) return {};
   const [parsedName, parsedValue] = filterToParse.split(" eq ").map((s) => s.trim());
+  if (!parsedValue) return {};
 
   let attributeName = parsedName;
   if (parsedName === "userName") {
