@@ -1,5 +1,5 @@
 import { Link, useLocation, useParams } from "@tanstack/react-router";
-import { ChevronLeft, Server, Share2 } from "lucide-react";
+import { ChevronLeft, Server, Share2, SlidersHorizontal } from "lucide-react";
 
 import {
   ProjectIcon,
@@ -33,6 +33,9 @@ export const ProjectTypeNav = () => {
     : false;
   const isOnKmipServers = pathname.includes("/kmip-servers");
   const isOnSecretSharing = pathname.includes("/secret-sharing");
+  const isOnSecretManagementProductSettings = pathname.includes(
+    "/secret-management/product-settings"
+  );
 
   return (
     <SidebarGroup>
@@ -52,7 +55,9 @@ export const ProjectTypeNav = () => {
             size="lg"
             scope="project"
             asChild
-            isActive={!isOnKmipServers && !isOnSecretSharing}
+            isActive={
+              !isOnKmipServers && !isOnSecretSharing && !isOnSecretManagementProductSettings
+            }
             tooltip="Projects"
           >
             <Link
@@ -98,6 +103,25 @@ export const ProjectTypeNav = () => {
               >
                 <Share2 className="size-4" />
                 <span>Secret Sharing</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        )}
+        {isSecretManager && (
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              size="lg"
+              scope="project"
+              asChild
+              isActive={isOnSecretManagementProductSettings}
+              tooltip="Product Settings"
+            >
+              <Link
+                to="/organizations/$orgId/projects/secret-management/product-settings"
+                params={{ orgId: resolvedOrgId }}
+              >
+                <SlidersHorizontal className="size-4" />
+                <span>Product Settings</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>

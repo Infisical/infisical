@@ -45,10 +45,6 @@ type FormProps = {
 
 const PROJECT_TYPE_MENU_ITEMS = [
   {
-    label: "Secrets Management",
-    value: ProjectType.SecretManager
-  },
-  {
     label: "KMS",
     value: ProjectType.KMS
   },
@@ -76,7 +72,7 @@ const ProjectTemplateForm = ({ onComplete, projectTemplate }: FormProps) => {
     defaultValues: {
       name: projectTemplate?.name,
       description: projectTemplate?.description,
-      type: projectTemplate?.type ?? ProjectType.SecretManager
+      type: projectTemplate?.type ?? ProjectType.KMS
     }
   });
 
@@ -114,7 +110,7 @@ const ProjectTemplateForm = ({ onComplete, projectTemplate }: FormProps) => {
         <Controller
           control={control}
           name="type"
-          defaultValue={ProjectType.SecretManager}
+          defaultValue={ProjectType.KMS}
           render={({ field, fieldState: { error } }) => (
             <FormControl
               label="Project Type"

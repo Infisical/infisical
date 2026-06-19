@@ -1,29 +1,27 @@
 import { useMemo, useState } from "react";
-import {
-  faCircleInfo,
-  faClone,
-  faMagnifyingGlass,
-  faTrash
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { InfoIcon, Search, Trash2 } from "lucide-react";
 
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
-  EmptyState,
+  Empty,
+  EmptyHeader,
+  EmptyTitle,
   IconButton,
-  Input,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+  Skeleton,
   Table,
-  TableContainer,
-  TableSkeleton,
-  TBody,
-  Td,
-  Th,
-  THead,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
   Tooltip,
-  Tr
-} from "@app/components/v2";
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { OrgPermissionActions, OrgPermissionSubjects, useSubscription } from "@app/context";
-import { getProjectTitle } from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { TProjectTemplate, useListProjectTemplates } from "@app/hooks/api/projectTemplates";
@@ -31,10 +29,21 @@ import { TProjectTemplate, useListProjectTemplates } from "@app/hooks/api/projec
 import { DeleteProjectTemplateModal } from "./DeleteProjectTemplateModal";
 
 type Props = {
+  projectType: ProjectType;
   onEdit: (projectTemplate: TProjectTemplate) => void;
 };
 
-export const ProjectTemplatesTable = ({ onEdit }: Props) => {
+const skeletonRowIds = [
+  "template-skeleton-1",
+  "template-skeleton-2",
+  "template-skeleton-3",
+  "template-skeleton-4",
+  "template-skeleton-5"
+];
+
+const tableColumnKeys = ["name", "roles", "users", "groups", "identities", "actions"];
+
+export const ProjectTemplatesTable = ({ projectType, onEdit }: Props) => {
   const { subscription } = useSubscription();
 
   const { isPending, data: projectTemplates = [] } = useListProjectTemplates({
@@ -49,50 +58,65 @@ export const ProjectTemplatesTable = ({ onEdit }: Props) => {
     () =>
       projectTemplates?.filter(
         (template) =>
-          template.type !== ProjectType.SecretManager &&
+          template.type === projectType &&
           template.name.toLowerCase().includes(search.toLowerCase().trim())
       ) ?? [],
-    [search, projectTemplates]
+    [search, projectTemplates, projectType]
   );
 
-  const colSpan = 7;
+  const shouldShowEmptyState =
+    !subscription?.projectTemplates || (!isPending && filteredTemplates?.length === 0);
 
   return (
     <div>
-      <Input
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-        placeholder="Search templates..."
-      />
-      <TableContainer className="mt-4">
+      <InputGroup className="mb-4">
+        <InputGroupAddon>
+          <Search className="size-4" />
+        </InputGroupAddon>
+        <InputGroupInput
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search templates..."
+        />
+      </InputGroup>
+      {shouldShowEmptyState ? (
+        <Empty className="border border-dashed">
+          <EmptyHeader>
+            <EmptyTitle>
+              {search.trim() ? "No project templates match search" : "No project templates found"}
+            </EmptyTitle>
+          </EmptyHeader>
+        </Empty>
+      ) : (
         <Table>
-          <THead>
-            <Tr>
-              <Th>Name</Th>
-              <Th>Type</Th>
-              <Th>Roles</Th>
-              <Th>Users</Th>
-              <Th>Groups</Th>
-              <Th>Machine Identities</Th>
-              <Th />
-            </Tr>
-          </THead>
-          <TBody>
-            {subscription?.projectTemplates && isPending && (
-              <TableSkeleton
-                innerKey="project-templates-table"
-                columns={colSpan}
-                key="project-templates"
-              />
-            )}
+          <TableHeader>
+            <TableRow>
+              <TableHead>Name</TableHead>
+              <TableHead>Roles</TableHead>
+              <TableHead>Users</TableHead>
+              <TableHead>Groups</TableHead>
+              <TableHead>Machine Identities</TableHead>
+              <TableHead />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {subscription?.projectTemplates &&
+              isPending &&
+              skeletonRowIds.map((rowId) => (
+                <TableRow key={rowId}>
+                  {tableColumnKeys.map((columnKey) => (
+                    <TableCell key={`${rowId}-${columnKey}`}>
+                      <Skeleton className="h-5 w-full" />
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))}
             {filteredTemplates.map((template) => {
               const {
                 id,
                 name,
                 roles,
                 description,
-                type,
                 users,
                 groups,
                 identities,
@@ -103,89 +127,77 @@ export const ProjectTemplatesTable = ({ onEdit }: Props) => {
                 (identities?.length || 0) + (projectManagedIdentities?.length || 0);
 
               return (
-                <Tr
-                  onClick={() => onEdit(template)}
-                  className="cursor-pointer hover:bg-mineshaft-700"
-                  key={id}
-                >
-                  <Td>
+                <TableRow onClick={() => onEdit(template)} key={id}>
+                  <TableCell>
                     {name}
                     {description && (
-                      <Tooltip content={description}>
-                        <FontAwesomeIcon
-                          size="sm"
-                          className="ml-2 text-mineshaft-400"
-                          icon={faCircleInfo}
-                        />
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <InfoIcon className="mb-0.5 ml-2 inline-block size-3.5! text-muted" />
+                        </TooltipTrigger>
+                        <TooltipContent>{description}</TooltipContent>
                       </Tooltip>
                     )}
-                  </Td>
-                  <Td>{getProjectTitle(type)}</Td>
-                  <Td className="pl-8">
+                  </TableCell>
+                  <TableCell>
                     {roles.length}
                     {roles.length > 0 && (
-                      <Tooltip
-                        content={
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <InfoIcon className="mb-0.5 ml-2 inline-block size-3.5! text-muted" />
+                        </TooltipTrigger>
+                        <TooltipContent>
                           <ul className="ml-2 list-disc">
                             {roles.map((role) => (
                               <li key={role.name}>{role.name}</li>
                             ))}
                           </ul>
-                        }
-                      >
-                        <FontAwesomeIcon
-                          size="sm"
-                          className="ml-2 text-mineshaft-400"
-                          icon={faCircleInfo}
-                        />
+                        </TooltipContent>
                       </Tooltip>
                     )}
-                  </Td>
-                  <Td className="pl-8">
+                  </TableCell>
+                  <TableCell>
                     {users?.length || 0}
                     {users && Boolean(users.length) && (
-                      <Tooltip
-                        content={
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <InfoIcon className="mb-0.5 ml-2 inline-block size-3.5! text-muted" />
+                        </TooltipTrigger>
+                        <TooltipContent>
                           <ul className="ml-2 list-disc">
                             {users.map((user) => (
                               <li key={user.username}>{user.username}</li>
                             ))}
                           </ul>
-                        }
-                      >
-                        <FontAwesomeIcon
-                          size="sm"
-                          className="ml-2 text-mineshaft-400"
-                          icon={faCircleInfo}
-                        />
+                        </TooltipContent>
                       </Tooltip>
                     )}
-                  </Td>
-                  <Td className="pl-8">
+                  </TableCell>
+                  <TableCell>
                     {groups?.length || 0}
                     {groups && Boolean(groups.length) && (
-                      <Tooltip
-                        content={
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <InfoIcon className="inline-blocktext-muted ml-2" />
+                        </TooltipTrigger>
+                        <TooltipContent>
                           <ul className="ml-2 list-disc">
                             {groups.map((group) => (
                               <li key={group.groupSlug}>{group.groupSlug}</li>
                             ))}
                           </ul>
-                        }
-                      >
-                        <FontAwesomeIcon
-                          size="sm"
-                          className="ml-2 text-mineshaft-400"
-                          icon={faCircleInfo}
-                        />
+                        </TooltipContent>
                       </Tooltip>
                     )}
-                  </Td>
-                  <Td className="pl-8">
+                  </TableCell>
+                  <TableCell>
                     {totalIdentities}
                     {Boolean(totalIdentities) && (
-                      <Tooltip
-                        content={
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <InfoIcon size={14} className="ml-2 inline-block text-muted" />
+                        </TooltipTrigger>
+                        <TooltipContent>
                           <ul className="ml-2 list-disc">
                             {(projectManagedIdentities || []).map((identity) => (
                               <li key={identity.name}>{identity.name}</li>
@@ -197,17 +209,11 @@ export const ProjectTemplatesTable = ({ onEdit }: Props) => {
                               </li>
                             )}
                           </ul>
-                        }
-                      >
-                        <FontAwesomeIcon
-                          size="sm"
-                          className="ml-2 text-mineshaft-400"
-                          icon={faCircleInfo}
-                        />
+                        </TooltipContent>
                       </Tooltip>
                     )}
-                  </Td>
-                  <Td className="w-5">
+                  </TableCell>
+                  <TableCell className="w-5">
                     {name !== "default" && (
                       <OrgPermissionCan
                         I={OrgPermissionActions.Delete}
@@ -219,38 +225,22 @@ export const ProjectTemplatesTable = ({ onEdit }: Props) => {
                               e.stopPropagation();
                               handlePopUpOpen("deleteTemplate", template);
                             }}
-                            variant="plain"
-                            colorSchema="danger"
-                            ariaLabel="Delete template"
+                            variant="ghost-muted"
+                            aria-label="Delete template"
                             isDisabled={!isAllowed}
                           >
-                            <FontAwesomeIcon icon={faTrash} />
+                            <Trash2 className="size-4" />
                           </IconButton>
                         )}
                       </OrgPermissionCan>
                     )}
-                  </Td>
-                </Tr>
+                  </TableCell>
+                </TableRow>
               );
             })}
-            {(!subscription?.projectTemplates ||
-              (!isPending && filteredTemplates?.length === 0)) && (
-              <Tr>
-                <Td colSpan={colSpan}>
-                  <EmptyState
-                    title={
-                      search.trim()
-                        ? "No project templates match search"
-                        : "No project templates found"
-                    }
-                    icon={faClone}
-                  />
-                </Td>
-              </Tr>
-            )}
-          </TBody>
+          </TableBody>
         </Table>
-      </TableContainer>
+      )}
       <DeleteProjectTemplateModal
         isOpen={popUp.deleteTemplate.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("deleteTemplate", isOpen)}
