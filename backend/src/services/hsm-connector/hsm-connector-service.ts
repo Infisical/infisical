@@ -1,7 +1,9 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { ActionProjectType } from "@app/db/schemas";
+import { TGatewayPoolDALFactory } from "@app/ee/services/gateway-pool/gateway-pool-dal";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
+import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -40,6 +42,8 @@ export type THsmConnectorServiceFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "listHealthyGateways">;
+  gatewayV2DAL: Pick<TGatewayV2DALFactory, "findById">;
+  gatewayPoolDAL: Pick<TGatewayPoolDALFactory, "findById">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
 
@@ -51,9 +55,30 @@ export const hsmConnectorServiceFactory = ({
   kmsService,
   gatewayV2Service,
   gatewayPoolService,
+  gatewayV2DAL,
+  gatewayPoolDAL,
   licenseService
 }: THsmConnectorServiceFactoryDep) => {
   const routing = hsmConnectorRoutingFactory({ gatewayV2Service, gatewayPoolService });
+
+  const assertGatewayBelongsToOrg = async (
+    actorOrgId: string,
+    gatewayId: string | null | undefined,
+    gatewayPoolId: string | null | undefined
+  ) => {
+    if (gatewayId) {
+      const gw = await gatewayV2DAL.findById(gatewayId);
+      if (!gw || gw.orgId !== actorOrgId) {
+        throw new NotFoundError({ message: `Gateway ${gatewayId} not found.` });
+      }
+    }
+    if (gatewayPoolId) {
+      const pool = await gatewayPoolDAL.findById(gatewayPoolId);
+      if (!pool || pool.orgId !== actorOrgId) {
+        throw new NotFoundError({ message: `Gateway pool ${gatewayPoolId} not found.` });
+      }
+    }
+  };
 
   const assertLicense = async (orgId: string) => {
     const plan = await licenseService.getPlan(orgId);
@@ -92,6 +117,8 @@ export const hsmConnectorServiceFactory = ({
         message: "Exactly one of gatewayId or gatewayPoolId must be set."
       });
     }
+
+    await assertGatewayBelongsToOrg(actor.orgId, dto.gatewayId, dto.gatewayPoolId);
 
     const parsedCreds = HsmConnectorCredentialsSchema.safeParse(dto.credentials);
     if (!parsedCreds.success) {
@@ -203,6 +230,10 @@ export const hsmConnectorServiceFactory = ({
       throw new BadRequestError({
         message: "Exactly one of gatewayId or gatewayPoolId must be set after update."
       });
+    }
+
+    if (routingChanged) {
+      await assertGatewayBelongsToOrg(actor.orgId, nextGatewayId, nextGatewayPoolId);
     }
 
     const currentCreds = await decryptHsmConnectorCredentials({
@@ -331,15 +362,17 @@ export const hsmConnectorServiceFactory = ({
     projectId: string;
     keyLabel: string;
     keyAlgorithm: HsmKeyAlgorithm;
-  }): Promise<Buffer> => {
+  }): Promise<{ publicKeySpkiDer: Buffer; keyLabel: string }> => {
     const { row, credentials } = await $loadConnector(args.connectorId, args.projectId);
+    const prefix = credentials.keyNamePrefix ?? "";
+    const fullLabel = `${prefix}${args.keyLabel}`;
     const result = await routing.dispatchPkcs11<{ publicKey: string }>({
       connector: { gatewayId: row.gatewayId, gatewayPoolId: row.gatewayPoolId },
       credentials,
       endpoint: "/v1/generate-key-pair",
-      params: { keyLabel: args.keyLabel, keyAlgorithm: args.keyAlgorithm }
+      params: { keyLabel: fullLabel, keyAlgorithm: args.keyAlgorithm }
     });
-    return Buffer.from(result.publicKey, "base64");
+    return { publicKeySpkiDer: Buffer.from(result.publicKey, "base64"), keyLabel: fullLabel };
   };
 
   const sign = async (args: {

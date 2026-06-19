@@ -2634,6 +2634,8 @@ export const registerRoutes = async (
     kmsService,
     gatewayV2Service,
     gatewayPoolService,
+    gatewayV2DAL,
+    gatewayPoolDAL,
     licenseService
   });
 

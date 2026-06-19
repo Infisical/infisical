@@ -22,7 +22,7 @@ export const GatewaysV2Schema = z.object({
   healthAlertedAt: z.date().nullable().optional(),
   tokenVersion: z.number().default(0),
   heartbeatTTL: z.number().nullable().optional(),
-  capabilities: z.unknown()
+  capabilities: z.unknown().nullable().optional()
 });
 
 export type TGatewaysV2 = z.infer<typeof GatewaysV2Schema>;

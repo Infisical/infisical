@@ -300,6 +300,13 @@ export const signerServiceFactory = ({
 
     const isExternalCa = resolvedCaType !== null && resolvedCaType !== CaType.INTERNAL;
 
+    if (resolvedCaType === CaType.AZURE_AD_CS && dto.certificate?.keySource === CertKeySource.Hsm) {
+      throw new BadRequestError({
+        message:
+          "HSM-backed signers are not supported with Azure AD CS yet. Use AWS Private CA, an Internal CA, or switch the signer's key source to Infisical-managed."
+      });
+    }
+
     const keyAlgorithm: CertKeyAlgorithm = (dto.keyAlgorithm as CertKeyAlgorithm) ?? CertKeyAlgorithm.RSA_2048;
 
     let issuedCertificateId: string | null = null;

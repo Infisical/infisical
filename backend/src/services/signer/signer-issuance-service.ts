@@ -142,17 +142,22 @@ export const signerIssuanceServiceFactory = ({
         await hsmConnectorService.assertAttachPermission(input.hsm.actor, input.hsm.hsmConnectorId, input.projectId);
       }
       const reuseExistingKey = Boolean(input.hsm.hsmKeyLabel && input.hsm.hsmPublicKeySpki);
-      const keyLabel = reuseExistingKey
-        ? (input.hsm.hsmKeyLabel as string)
-        : `infisical-signer-${crypto.nativeCrypto.randomUUID()}`;
-      const publicKeySpkiDer = reuseExistingKey
-        ? Buffer.from(input.hsm.hsmPublicKeySpki as Buffer)
-        : await hsmConnectorService.generateKeyPair({
-            connectorId: input.hsm.hsmConnectorId,
-            projectId: input.projectId,
-            keyLabel,
-            keyAlgorithm: input.hsm.hsmKeyAlgorithm
-          });
+      let keyLabel: string;
+      let publicKeySpkiDer: Buffer;
+      if (reuseExistingKey) {
+        keyLabel = input.hsm.hsmKeyLabel as string;
+        publicKeySpkiDer = Buffer.from(input.hsm.hsmPublicKeySpki as Buffer);
+      } else {
+        const keyLabelSuffix = `signer-${crypto.nativeCrypto.randomUUID()}`;
+        const generated = await hsmConnectorService.generateKeyPair({
+          connectorId: input.hsm.hsmConnectorId,
+          projectId: input.projectId,
+          keyLabel: keyLabelSuffix,
+          keyAlgorithm: input.hsm.hsmKeyAlgorithm
+        });
+        keyLabel = generated.keyLabel;
+        publicKeySpkiDer = generated.publicKeySpkiDer;
+      }
       const built = await buildCsrWithExternalSigner({
         publicKeySpkiDer,
         keyAlgorithm: input.hsm.hsmKeyAlgorithm,

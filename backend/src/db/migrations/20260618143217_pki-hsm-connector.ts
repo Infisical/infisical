@@ -107,7 +107,7 @@ export async function up(knex: Knex): Promise<void> {
   if (await knex.schema.hasTable(TableName.GatewayV2)) {
     if (!(await knex.schema.hasColumn(TableName.GatewayV2, "capabilities"))) {
       await knex.schema.alterTable(TableName.GatewayV2, (t) => {
-        t.jsonb("capabilities").notNullable().defaultTo(knex.raw(`'{}'::jsonb`));
+        t.jsonb("capabilities");
       });
     }
     if (!(await indexExists(knex, GATEWAYS_CAPABILITIES_GIN_IDX))) {

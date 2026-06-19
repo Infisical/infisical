@@ -251,12 +251,12 @@ export const issueHsmBackedSignerCertificate = async (
     });
   }
 
-  const keyLabel = `infisical-signer-${crypto.nativeCrypto.randomUUID()}`;
+  const keyLabelSuffix = `signer-${crypto.nativeCrypto.randomUUID()}`;
 
-  const publicKeySpkiDer = await deps.hsmConnectorService.generateKeyPair({
+  const { publicKeySpkiDer, keyLabel } = await deps.hsmConnectorService.generateKeyPair({
     connectorId: input.hsmConnectorId,
     projectId: input.projectId,
-    keyLabel,
+    keyLabel: keyLabelSuffix,
     keyAlgorithm: input.hsmKeyAlgorithm
   });
   const built = await buildCsrWithExternalSigner({

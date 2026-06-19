@@ -159,7 +159,7 @@ export const buildCsrWithExternalSigner = async (input: BuildCsrInput): Promise<
 
   const spki = AsnConvert.parse(bufferToArrayBuffer(input.publicKeySpkiDer), SubjectPublicKeyInfo);
 
-  const nameDer = new x509.Name(`CN=${input.subjectCommonName}`).toArrayBuffer();
+  const nameDer = new x509.Name([{ CN: [input.subjectCommonName] }]).toArrayBuffer();
   const subject = AsnConvert.parse(nameDer, Name);
 
   // extensionRequest (RFC 2985 OID 1.2.840.113549.1.9.14) carries EKU + SAN + KU + BC.
