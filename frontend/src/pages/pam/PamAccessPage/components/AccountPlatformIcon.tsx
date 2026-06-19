@@ -1,4 +1,4 @@
-import { PamAccountType, usePamAccountTypeMap } from "@app/hooks/api/pam";
+import { PamAccountType, resolvePamAccountType, usePamAccountTypeMap } from "@app/hooks/api/pam";
 
 type Props = {
   accountType: PamAccountType;
@@ -7,7 +7,8 @@ type Props = {
 
 export const AccountPlatformIcon = ({ accountType, size = 28 }: Props) => {
   const { map } = usePamAccountTypeMap();
-  const meta = map[accountType];
+  const resolved = resolvePamAccountType(accountType);
+  const meta = map[resolved as PamAccountType];
 
   if (!meta) return null;
 

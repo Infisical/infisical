@@ -18,12 +18,21 @@ import {
   FieldLabel,
   GatewayPicker,
   Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Switch,
   TextArea
 } from "@app/components/v3";
 import { Skeleton } from "@app/components/v3/generic/Skeleton";
+import { useProject } from "@app/context";
+import { AppConnection, useListAvailableAppConnections } from "@app/hooks/api/appConnections";
 import {
   accountTypeRequiresRecording,
   PamAccountType,
+  resolvePamAccountType,
   useGetPamAccountTemplate,
   usePamAccountTypeMap,
   useUpdatePamAccountTemplate
@@ -39,7 +48,13 @@ import { RecordingConnectionPicker } from "../../PamAccountsPage/components/Reco
 
 const configSchema = z.object({
   name: z.string().min(1, "Name is required").max(64),
-  description: z.string().max(256).optional()
+  description: z.string().max(256).optional(),
+  recordingEnabled: z.boolean(),
+  recordingStorageBackend: z.enum(["postgres", "aws-s3"]),
+  recordingConnectionId: z.string().nullable(),
+  s3Bucket: z.string().optional(),
+  s3Region: z.string().optional(),
+  s3KeyPrefix: z.string().optional()
 });
 
 type ConfigForm = z.infer<typeof configSchema>;
@@ -68,16 +83,36 @@ const ConfigurationTab = ({
 }) => {
   const { data: template, isLoading } = useGetPamAccountTemplate(templateId);
   const updateTemplate = useUpdatePamAccountTemplate();
+  const { currentProject } = useProject();
+  const { data: awsConnections = [] } = useListAvailableAppConnections(
+    AppConnection.AWS,
+    currentProject.id
+  );
+
+  const isWindows =
+    template?.type && resolvePamAccountType(template.type) === PamAccountType.Windows;
 
   const {
     control,
     handleSubmit,
     reset,
+    watch,
     formState: { isDirty }
   } = useForm<ConfigForm>({
     resolver: zodResolver(configSchema),
-    defaultValues: { name: "", description: "" }
+    defaultValues: {
+      name: "",
+      description: "",
+      recordingEnabled: true,
+      recordingStorageBackend: "postgres",
+      recordingConnectionId: null,
+      s3Bucket: "",
+      s3Region: "",
+      s3KeyPrefix: ""
+    }
   });
+
+  const storageBackend = watch("recordingStorageBackend");
 
   useEffect(() => {
     onDirtyChange?.(isDirty);
@@ -86,13 +121,50 @@ const ConfigurationTab = ({
 
   useEffect(() => {
     if (template) {
-      reset({ name: template.name, description: template.description ?? "" });
+      const settings = (template.settings ?? {}) as Record<string, unknown>;
+      const s3Config = (settings.recordingS3Config ?? {}) as Record<string, string>;
+      const isWin =
+        resolvePamAccountType(template.type) === PamAccountType.Windows;
+      const savedBackend = settings.recordingStorageBackend as "postgres" | "aws-s3" | undefined;
+      reset({
+        name: template.name,
+        description: template.description ?? "",
+        recordingEnabled: settings.recordingEnabled !== false,
+        recordingStorageBackend: isWin ? "aws-s3" : (savedBackend ?? "postgres"),
+        recordingConnectionId: (template.recordingConnectionId as string) ?? null,
+        s3Bucket: s3Config.bucket ?? "",
+        s3Region: s3Config.region ?? "",
+        s3KeyPrefix: s3Config.keyPrefix ?? ""
+      });
     }
   }, [template, reset]);
 
   const onSubmit = (data: ConfigForm) => {
+    const settings: Record<string, unknown> = {
+      ...((template?.settings ?? {}) as Record<string, unknown>),
+      recordingEnabled: data.recordingEnabled,
+      recordingStorageBackend: data.recordingStorageBackend
+    };
+
+    if (data.recordingStorageBackend === "aws-s3" && data.s3Bucket) {
+      settings.recordingS3Config = {
+        bucket: data.s3Bucket,
+        region: data.s3Region || "us-east-1",
+        ...(data.s3KeyPrefix ? { keyPrefix: data.s3KeyPrefix } : {})
+      };
+    } else {
+      delete settings.recordingS3Config;
+    }
+
     updateTemplate.mutate(
-      { templateId, name: data.name, description: data.description || null },
+      {
+        templateId,
+        name: data.name,
+        description: data.description || null,
+        settings,
+        recordingConnectionId:
+          data.recordingStorageBackend === "aws-s3" ? data.recordingConnectionId : null
+      },
       {
         onSuccess: () => createNotification({ type: "success", text: "Template updated" })
       }
@@ -145,6 +217,128 @@ const ConfigurationTab = ({
               </Field>
             )}
           />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="border-b">
+          <CardTitle className="text-base">Recording</CardTitle>
+          <CardDescription>Configure how sessions are recorded and stored.</CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-6">
+          <Field orientation="horizontal" className="items-center!">
+            <FieldContent>
+              <FieldTitle>Enable recording</FieldTitle>
+              <FieldDescription>Record session activity for audit and playback.</FieldDescription>
+            </FieldContent>
+            <Controller
+              name="recordingEnabled"
+              control={control}
+              render={({ field }) => (
+                <Switch checked={field.value} variant="pam" onCheckedChange={field.onChange} />
+              )}
+            />
+          </Field>
+
+          <Controller
+            name="recordingStorageBackend"
+            control={control}
+            render={({ field }) => (
+              <Field>
+                <FieldLabel>Storage backend</FieldLabel>
+                <FieldContent>
+                  <Select value={field.value} onValueChange={(v) => field.onChange(v)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {!isWindows && <SelectItem value="postgres">PostgreSQL (default)</SelectItem>}
+                      <SelectItem value="aws-s3">AWS S3</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FieldDescription>
+                    {isWindows
+                      ? "RDP recordings require S3 storage."
+                      : "PostgreSQL stores recordings in the database. S3 is recommended for large or long sessions."}
+                  </FieldDescription>
+                </FieldContent>
+              </Field>
+            )}
+          />
+
+          {storageBackend === "aws-s3" && (
+            <>
+              <Controller
+                name="recordingConnectionId"
+                control={control}
+                render={({ field }) => (
+                  <Field>
+                    <FieldLabel>AWS Connection</FieldLabel>
+                    <FieldContent>
+                      <Select
+                        value={field.value ?? ""}
+                        onValueChange={(v) => field.onChange(v || null)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select an AWS connection" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {awsConnections.map((conn) => (
+                            <SelectItem key={conn.id} value={conn.id}>
+                              {conn.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FieldDescription>
+                        The AWS connection used to authenticate with S3.
+                      </FieldDescription>
+                    </FieldContent>
+                  </Field>
+                )}
+              />
+
+              <Controller
+                name="s3Bucket"
+                control={control}
+                render={({ field }) => (
+                  <Field>
+                    <FieldLabel>S3 Bucket</FieldLabel>
+                    <FieldContent>
+                      <Input {...field} placeholder="my-recordings-bucket" />
+                    </FieldContent>
+                  </Field>
+                )}
+              />
+
+              <Controller
+                name="s3Region"
+                control={control}
+                render={({ field }) => (
+                  <Field>
+                    <FieldLabel>Region</FieldLabel>
+                    <FieldContent>
+                      <Input {...field} placeholder="us-east-1" />
+                    </FieldContent>
+                  </Field>
+                )}
+              />
+
+              <Controller
+                name="s3KeyPrefix"
+                control={control}
+                render={({ field }) => (
+                  <Field>
+                    <FieldLabel>Key prefix (optional)</FieldLabel>
+                    <FieldContent>
+                      <Input {...field} placeholder="pam-recordings/" />
+                      <FieldDescription>Optional prefix for S3 object keys.</FieldDescription>
+                    </FieldContent>
+                  </Field>
+                )}
+              />
+            </>
+          )}
         </CardContent>
       </Card>
 

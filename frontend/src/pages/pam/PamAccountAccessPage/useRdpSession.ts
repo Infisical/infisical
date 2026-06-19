@@ -77,20 +77,14 @@ const ensureRdpBackend = () => {
 
 type UseRdpSessionOptions = {
   accountId: string;
-  projectId: string;
-  resourceId: string;
-  resourceName: string;
-  destination: string;
+  accountName: string;
   reason?: string;
   onSessionEnd?: () => void;
 };
 
 export const useRdpSession = ({
   accountId,
-  projectId,
-  resourceId,
-  resourceName,
-  destination,
+  accountName,
   reason,
   onSessionEnd
 }: UseRdpSessionOptions) => {
@@ -142,7 +136,7 @@ export const useRdpSession = ({
 
     const { data } = await apiRequest.post<{ ticket: string }>(
       `/api/v1/pam/accounts/${accountId}/web-access-ticket`,
-      { projectId, reason, resourceId }
+      { reason }
     );
     if (!isCurrent()) return;
     const proxyAddress = buildProxyAddress(data.ticket);
@@ -166,7 +160,7 @@ export const useRdpSession = ({
         .configBuilder()
         .withUsername(BROWSER_ACCEPTOR_USERNAME)
         .withPassword(BROWSER_ACCEPTOR_PASSWORD)
-        .withDestination(destination || resourceName)
+        .withDestination(accountName)
         .withProxyAddress(proxyAddress)
         .withAuthToken("infisical")
         .withDesktopSize(DEFAULT_DESKTOP_SIZE)
@@ -204,16 +198,7 @@ export const useRdpSession = ({
 
     containerRef.current.appendChild(el);
     elementRef.current = el;
-  }, [
-    accountId,
-    projectId,
-    resourceId,
-    reason,
-    destination,
-    resourceName,
-    buildProxyAddress,
-    teardown
-  ]);
+  }, [accountId, accountName, reason, buildProxyAddress, teardown]);
 
   const handleConnectError = useCallback((err: unknown) => {
     let message = "Failed to start RDP session";

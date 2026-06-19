@@ -20,7 +20,7 @@ import { TMfaSessionServiceFactory } from "@app/services/mfa-session/mfa-session
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
-import { PamAccessMethod, PamAccountType, PamSessionStatus } from "../pam/pam-enums";
+import { PamAccessMethod, PamAccountType, PamSessionStatus, resolveAccountType } from "../pam/pam-enums";
 import { enforceMfa } from "../pam/pam-mfa";
 import {
   checkAccountAccess,
@@ -30,7 +30,15 @@ import {
 } from "../pam/pam-permission";
 import { resolveAccessControls } from "../pam/pam-policies";
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
-import { extractGatewayTarget, parseInternalMetadata } from "../pam-account/pam-account-schemas";
+import {
+  extractGatewayTarget,
+  parseInternalMetadata,
+  validateConnectionDetails
+} from "../pam-account/pam-account-schemas";
+import {
+  PamTemplateAccessPolicySchema,
+  PamTemplateSettingsSchema
+} from "../pam-account-template/pam-account-template-schemas";
 import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
 import { PamRecordingStorageBackend } from "../pam-session-recording/pam-recording-enums";
 import { generateSessionRecordingSecrets } from "../pam-session-recording/pam-recording-secrets";
@@ -211,17 +219,32 @@ export const pamSessionServiceFactory = ({
         gatewayUploadTokenHash: secrets.uploadTokenHash
       });
 
+      const templateSettingsParsed = account.templateSettings
+        ? PamTemplateSettingsSchema.safeParse(account.templateSettings)
+        : null;
+      const resolvedBackend =
+        templateSettingsParsed?.success && templateSettingsParsed.data.recordingStorageBackend
+          ? templateSettingsParsed.data.recordingStorageBackend
+          : PamRecordingStorageBackend.Postgres;
+
       recording = {
         sessionKey: secrets.sessionKey.toString("base64"),
         uploadToken: secrets.uploadToken.toString("base64"),
-        storageBackend: PamRecordingStorageBackend.Postgres,
+        storageBackend: resolvedBackend,
         projectId: session.projectId,
         sessionId
       };
     }
 
+    const resolved = resolveAccountType(account.accountType);
+    const normalizedConnectionDetails = validateConnectionDetails(resolved, connectionDetails);
+
+    if (sessionStarted) {
+      await pamSessionDAL.activateSession(sessionId);
+    }
+
     return {
-      credentials: { ...connectionDetails, ...credentials },
+      credentials: { ...normalizedConnectionDetails, ...credentials },
       recording,
       projectId: session.projectId,
       accountId: session.accountId,

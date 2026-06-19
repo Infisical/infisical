@@ -21,7 +21,7 @@ export enum PamPolicyType {
 export enum SessionChannelType {
   Terminal = "terminal",
   Exec = "exec",
-  Sftp = "sftp"
+  Rdp = "rdp"
 }
 
 export enum PamSessionStatus {

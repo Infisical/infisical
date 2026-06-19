@@ -164,22 +164,6 @@ export const DEFAULT_ACCOUNT_TEMPLATES: TDefaultTemplate[] = [
         requireSymbols: true
       }
     }
-  },
-  {
-    name: "active-directory",
-    type: PamAccountType.ActiveDirectory,
-    settings: {
-      recordingEnabled: true,
-      recordingStorageBackend: PamRecordingStorageBackend.AwsS3,
-      passwordConstraints: {
-        minLength: 14,
-        maxLength: 127,
-        requireUppercase: true,
-        requireLowercase: true,
-        requireNumbers: true,
-        requireSymbols: true
-      }
-    }
   }
 ];
 

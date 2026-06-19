@@ -11,27 +11,15 @@ import { WebAccessStatusCard } from "./WebAccessStatusCard";
 
 type RdpContentProps = {
   account: TPamAccount;
-  projectId: string;
-  resourceId: string;
-  resourceName: string;
   reason?: string;
 };
 
-export const RdpContent = ({
-  account,
-  projectId,
-  resourceId,
-  resourceName,
-  reason
-}: RdpContentProps) => {
+export const RdpContent = ({ account, reason }: RdpContentProps) => {
   const [sessionEnded, setSessionEnded] = useState(false);
 
   const { containerRef, isConnected, error, disconnect, reconnect } = useRdpSession({
     accountId: account.id,
-    projectId,
-    resourceId,
-    resourceName,
-    destination: resourceName,
+    accountName: account.name,
     reason,
     onSessionEnd: () => setSessionEnded(true)
   });
@@ -95,11 +83,6 @@ export const RdpContent = ({
           )}
         </span>
         <div className="flex items-center gap-4">
-          <span>
-            <span className="text-muted">Resource:</span>{" "}
-            <span className="text-muted">{resourceName}</span>
-          </span>
-          <span className="text-muted">|</span>
           <span>
             <span className="text-muted">Account:</span>{" "}
             <span className="text-muted">{account.name}</span>

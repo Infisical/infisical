@@ -1810,7 +1810,8 @@ export const registerRoutes = async (
     pamSessionEventChunkDAL,
     pamAccountDAL,
     permissionService,
-    kmsService
+    kmsService,
+    appConnectionDAL
   });
 
   const pamWebAccessService = pamWebAccessServiceFactory({

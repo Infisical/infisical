@@ -8,9 +8,15 @@ export enum PamAccountType {
   Redis = "redis",
   Kubernetes = "kubernetes",
   AwsIam = "aws-iam",
-  Windows = "windows",
-  ActiveDirectory = "active-directory"
+  Windows = "windows"
 }
+
+const LEGACY_ACCOUNT_TYPE_ALIASES: Record<string, PamAccountType> = {
+  "active-directory": PamAccountType.Windows
+};
+
+export const resolveAccountType = (raw: string): PamAccountType =>
+  LEGACY_ACCOUNT_TYPE_ALIASES[raw] ?? (raw as PamAccountType);
 
 export enum PamResourceRole {
   Admin = "admin",
