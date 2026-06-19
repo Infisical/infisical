@@ -10,7 +10,8 @@ import {
   RailwayAccountWorkspaceListSchema,
   RailwayGetProjectsByProjectTokenSchema,
   RailwayGetSubscriptionTypeSchema,
-  RailwayProjectsListSchema
+  RailwayProjectsListSchema,
+  RailwayWorkspaceProjectsListSchema
 } from "./railway-connection-schemas";
 import { RailwayProject, TRailwayConnectionConfig, TRailwayResponse } from "./railway-connection-types";
 
@@ -107,7 +108,7 @@ class RailwayPublicClient {
   healthcheck(config: RailwaySendReqOptions) {
     switch (config.method) {
       case RailwayConnectionMethod.AccountToken:
-        return this.send(`{ me { teams { edges { node { id } } } } }`, config);
+        return this.send(`{ me { id } }`, config);
       case RailwayConnectionMethod.ProjectToken:
         return this.send(`{ projectToken { projectId environmentId project { id } } }`, config);
       case RailwayConnectionMethod.TeamToken:
@@ -169,21 +170,28 @@ class RailwayPublicClient {
       }
 
       case RailwayConnectionMethod.AccountToken: {
-        const res = await this.send(
-          `{ me { workspaces { id, name, team{ projects{ edges{ node{ id, name, services{ edges { node { name, id } } } environments { edges { node { name, id } } } } } } } } } }`,
-          config
+        const workspacesResponse = await this.send(`{ me { workspaces { id name } } }`, config);
+
+        const workspaces = await RailwayAccountWorkspaceListSchema.parseAsync(workspacesResponse);
+
+        const projectPerWorkspace = await Promise.all(
+          workspaces.me.workspaces.map(async (w) => {
+            const projectsResponse = await this.send(
+              `{ workspace(workspaceId: "${w.id}") { projects { edges { node { id, name, services { edges { node { id, name } } } environments { edges { node { name, id } } } } } } } }`,
+              config
+            );
+
+            const projectsData = await RailwayWorkspaceProjectsListSchema.parseAsync(projectsResponse);
+            return projectsData.workspace.projects.edges.map((p) => ({
+              id: p.node.id,
+              name: p.node.name,
+              environments: p.node.environments.edges.map((e) => e.node),
+              services: p.node.services.edges.map((s) => s.node)
+            }));
+          })
         );
 
-        const data = await RailwayAccountWorkspaceListSchema.parseAsync(res);
-
-        return data.me.workspaces.flatMap((w) =>
-          w.team.projects.edges.map((p) => ({
-            id: p.node.id,
-            name: p.node.name,
-            environments: p.node.environments.edges.map((e) => e.node),
-            services: p.node.services.edges.map((s) => s.node)
-          }))
-        );
+        return projectPerWorkspace.flat();
       }
 
       case RailwayConnectionMethod.ProjectToken: {
