@@ -38,7 +38,7 @@ import {
 import { usePamAccountPermission } from "@app/hooks/api/pam/queries";
 import { useDecryptedSessionLogs } from "@app/hooks/api/pam/session-playback/queries";
 import { isBrokenChunkMarker } from "@app/hooks/api/pam/session-playback/types";
-import { TPamSession, TPamSessionLog } from "@app/hooks/api/pam/types";
+import { TPamSession, TPamSessionLog, TSessionEvent } from "@app/hooks/api/pam/types";
 
 const RdpReplayView = lazy(() => import("./RdpReplayView/RdpReplayView"));
 
@@ -320,7 +320,7 @@ export const SessionDetailSheet = ({ sessionId, isOpen, onOpenChange, onTerminat
                       }
                     >
                       <RdpReplayView
-                        events={filteredEvents.filter((e) => !isBrokenChunkMarker(e))}
+                        events={filteredEvents.filter((e): e is TSessionEvent => !isBrokenChunkMarker(e))}
                         isStreaming={isActive}
                       />
                     </Suspense>
