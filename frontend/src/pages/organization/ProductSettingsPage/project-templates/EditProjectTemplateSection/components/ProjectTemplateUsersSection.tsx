@@ -239,7 +239,7 @@ export const ProjectTemplateUsersSection = ({ projectTemplate }: Props) => {
             <TableBody>
               {users.map(({ id }, pos) => (
                 <TableRow key={id}>
-                  <TableCell>
+                  <TableCell className="py-2">
                     <Controller
                       control={control}
                       name={`users.${pos}.username`}
@@ -252,7 +252,7 @@ export const ProjectTemplateUsersSection = ({ projectTemplate }: Props) => {
                       )}
                     />
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="py-2">
                     <OrgPermissionCan
                       I={OrgPermissionActions.Edit}
                       a={OrgPermissionSubjects.ProjectTemplates}
@@ -299,7 +299,7 @@ export const ProjectTemplateUsersSection = ({ projectTemplate }: Props) => {
                       )}
                     </OrgPermissionCan>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="py-2">
                     <div className="flex justify-end">
                       <OrgPermissionCan
                         I={OrgPermissionActions.Edit}

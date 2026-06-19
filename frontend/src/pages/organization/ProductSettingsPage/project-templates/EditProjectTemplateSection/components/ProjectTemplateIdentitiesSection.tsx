@@ -357,7 +357,7 @@ export const ProjectTemplateIdentitiesSection = ({ projectTemplate }: Props) => 
             <TableBody>
               {allIdentitiesForTable.map((item) => (
                 <TableRow key={item.id}>
-                  <TableCell>
+                  <TableCell className="py-2">
                     <p className="flex items-center gap-3 truncate">
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -376,7 +376,7 @@ export const ProjectTemplateIdentitiesSection = ({ projectTemplate }: Props) => 
                       </span>
                     </p>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="py-2">
                     <OrgPermissionCan
                       I={OrgPermissionActions.Edit}
                       a={OrgPermissionSubjects.ProjectTemplates}
@@ -427,7 +427,7 @@ export const ProjectTemplateIdentitiesSection = ({ projectTemplate }: Props) => 
                       )}
                     </OrgPermissionCan>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="py-2">
                     <div className="flex justify-end">
                       <OrgPermissionCan
                         I={OrgPermissionActions.Edit}
