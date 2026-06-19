@@ -181,18 +181,35 @@ class NetlifyPublicClient {
   }
 
   async upsertVariable(connection: TNetlifyConnectionConfig, params: NetlifyParams, variable: TNetlifyVariable) {
-    const res = await this.getVariable(connection, params, variable);
+    // Fetch the existing variable without the context filter so we can see values
+    // from every context. Netlify's PUT replaces the whole resource, so without this
+    // we would silently wipe values that belong to other contexts (e.g. syncing to
+    // `production` would erase the `branch-deploy` value).
+    const { context_name: _contextName, ...paramsWithoutContext } = params;
+    const res = await this.getVariable(connection, paramsWithoutContext, variable);
 
     if (!res) {
       return this.createVariable(connection, params, variable);
     }
 
     if (res.is_secret) {
-      await this.deleteVariable(connection, params, variable);
+      await this.deleteVariable(connection, paramsWithoutContext, variable);
       return this.createVariable(connection, params, variable);
     }
 
-    return this.updateVariable(connection, params, variable);
+    // Merge the incoming values with existing values for OTHER contexts.
+    // For each context the caller is updating, drop the existing entry; everything
+    // else is preserved verbatim.
+    const incomingContexts = new Set(
+      variable.values.map((v) => v.context).filter((c): c is string => Boolean(c))
+    );
+    const preservedValues = res.values.filter((v) => !v.context || !incomingContexts.has(v.context));
+    const mergedVariable: TNetlifyVariable = {
+      ...variable,
+      values: [...preservedValues, ...variable.values]
+    };
+
+    return this.updateVariable(connection, paramsWithoutContext, mergedVariable);
   }
 
   async deleteVariable(
