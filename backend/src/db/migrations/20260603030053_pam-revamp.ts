@@ -191,6 +191,8 @@ export async function up(knex: Knex): Promise<void> {
       templateMap["active-directory"] = templateMap.windows;
     }
 
+    await knex(TableName.PamAccount).where("accountType", "active-directory").update({ accountType: "windows" });
+
     const oldPamProjects = await knex(TableName.Project)
       .where({ orgId, type: ProjectType.PAM })
       .whereNot("id", newProjectId)

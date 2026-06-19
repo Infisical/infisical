@@ -10,23 +10,13 @@ export const PAM_ACCOUNT_TYPE_MAP: Record<PamAccountType, { name: string; image:
   [PamAccountType.Redis]: { name: "Redis", image: "Redis.png" },
   [PamAccountType.MongoDB]: { name: "MongoDB", image: "MongoDB.png" },
   [PamAccountType.AwsIam]: { name: "AWS IAM", image: "Amazon Web Services.png" },
-  [PamAccountType.Windows]: { name: "Windows", image: "Windows.png" },
-  [PamAccountType.ActiveDirectory]: { name: "Windows", image: "Windows.png" }
-};
-
-const LEGACY_TYPE_ALIASES: Record<string, PamAccountType> = {
-  "active-directory": PamAccountType.Windows
+  [PamAccountType.Windows]: { name: "Windows", image: "Windows.png" }
 };
 
 const PAM_ACCOUNT_TYPE_FALLBACK = { name: "Unknown", image: "Windows.png" };
 
-export const resolvePamAccountType = (accountType: string): string =>
-  LEGACY_TYPE_ALIASES[accountType] ?? accountType;
+export const resolvePamAccountType = (accountType: string): string => accountType;
 
-export const getPamAccountTypeInfo = (accountType: string): { name: string; image: string } => {
-  const resolved = LEGACY_TYPE_ALIASES[accountType] ?? accountType;
-  return (
-    (PAM_ACCOUNT_TYPE_MAP as Record<string, { name: string; image: string }>)[resolved] ??
-    PAM_ACCOUNT_TYPE_FALLBACK
-  );
-};
+export const getPamAccountTypeInfo = (accountType: string): { name: string; image: string } =>
+  (PAM_ACCOUNT_TYPE_MAP as Record<string, { name: string; image: string }>)[accountType] ??
+  PAM_ACCOUNT_TYPE_FALLBACK;

@@ -8,8 +8,7 @@ export enum PamAccountType {
   Redis = "redis",
   Kubernetes = "kubernetes",
   AwsIam = "aws-iam",
-  Windows = "windows",
-  ActiveDirectory = "active-directory"
+  Windows = "windows"
 }
 
 export enum PamPolicyType {
