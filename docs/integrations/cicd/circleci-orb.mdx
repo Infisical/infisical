@@ -1,0 +1,380 @@
+---
+title: "CircleCI Orb"
+description: "Use the Infisical CLI CircleCI Orb to inject secrets into your CircleCI pipelines"
+---
+
+The Infisical CLI CircleCI Orb simplifies the integration of Infisical secret management into your CircleCI workflows. It provides reusable commands for installing the CLI and authenticating with Infisical.
+
+## Prerequisites
+
+- Set up and add secrets to [Infisical Cloud](https://app.infisical.com)
+- Create a [Machine Identity](/documentation/platform/identities/machine-identities) with appropriate permissions
+
+## Installation
+
+Add the Infisical orb to your CircleCI configuration:
+
+```yaml
+version: 2.1
+
+orbs:
+  infisical: infisical/cli@1.0.0
+```
+
+## Orb Commands
+
+### `install`
+
+Installs the Infisical CLI on your CircleCI executor.
+
+#### Parameters
+
+- `version` (optional): The version of Infisical CLI to install. Defaults to `latest`.
+
+#### Example
+
+```yaml
+version: 2.1
+
+orbs:
+  infisical: infisical/cli@1.0.0
+
+jobs:
+  build:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - checkout
+      - infisical/install:
+          version: "0.28.1"
+      - run:
+          name: Verify installation
+          command: infisical --version
+```
+
+### `setup`
+
+Installs the Infisical CLI and authenticates using a machine identity. This is a convenience command that combines installation and authentication in one step.
+
+#### Parameters
+
+- `version` (optional): The version of Infisical CLI to install. Defaults to `latest`.
+- `auth-method` (required): Authentication method to use (e.g., `universal-auth`, `kubernetes`, `aws-iam`).
+- `client-id` (optional): Client ID for Universal Auth. Can be set via `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID` environment variable.
+- `client-secret` (optional): Client secret for Universal Auth. Can be set via `INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET` environment variable.
+- `machine-identity-id` (optional): Machine identity ID for cloud-native auth methods.
+
+#### Example with Universal Auth
+
+```yaml
+version: 2.1
+
+orbs:
+  infisical: infisical/cli@1.0.0
+
+workflows:
+  build-and-deploy:
+    jobs:
+      - build:
+          context: infisical-credentials
+
+jobs:
+  build:
+    docker:
+      - image: cimg/node:lts
+    steps:
+      - checkout
+      - infisical/setup:
+          auth-method: universal-auth
+          client-id: ${INFISICAL_UNIVERSAL_AUTH_CLIENT_ID}
+          client-secret: ${INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET}
+      - run:
+          name: Build with secrets
+          command: infisical run -- npm run build
+```
+
+<Tip>
+Store your client ID and client secret as environment variables in a CircleCI context or project settings for security.
+</Tip>
+
+## Usage Examples
+
+### Basic Setup with Universal Auth
+
+```yaml
+version: 2.1
+
+orbs:
+  infisical: infisical/cli@1.0.0
+
+workflows:
+  main:
+    jobs:
+      - deploy:
+          context: infisical-prod
+
+jobs:
+  deploy:
+    docker:
+      - image: cimg/python:3.11
+    steps:
+      - checkout
+      - infisical/setup:
+          auth-method: universal-auth
+      - run:
+          name: Deploy application
+          command: |
+            infisical run --env=prod --path=/ -- python deploy.py
+```
+
+### Separate Install and Login Steps
+
+For more granular control, you can separate the installation and authentication steps:
+
+```yaml
+version: 2.1
+
+orbs:
+  infisical: infisical/cli@1.0.0
+
+jobs:
+  test:
+    docker:
+      - image: cimg/node:lts
+    steps:
+      - checkout
+      - infisical/install
+      - run:
+          name: Login to Infisical
+          command: |
+            export INFISICAL_TOKEN=$(infisical login \
+              --method=universal-auth \
+              --client-id=${INFISICAL_UNIVERSAL_AUTH_CLIENT_ID} \
+              --client-secret=${INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET} \
+              --silent --plain)
+      - run:
+          name: Run tests with secrets
+          command: infisical run --env=dev -- npm test
+```
+
+### Using Native AWS IAM Auth
+
+```yaml
+version: 2.1
+
+orbs:
+  infisical: infisical/cli@1.0.0
+  aws-cli: circleci/aws-cli@4.0.0
+
+jobs:
+  deploy:
+    docker:
+      - image: cimg/python:3.11
+    steps:
+      - checkout
+      - aws-cli/setup
+      - infisical/install
+      - run:
+          name: Authenticate with AWS IAM
+          command: |
+            export INFISICAL_TOKEN=$(infisical login \
+              --method=aws-iam \
+              --machine-identity-id=${INFISICAL_MACHINE_IDENTITY_ID} \
+              --silent --plain)
+      - run:
+          name: Deploy with secrets
+          command: infisical run --env=prod -- ./deploy.sh
+```
+
+### Export Secrets to File
+
+```yaml
+version: 2.1
+
+orbs:
+  infisical: infisical/cli@1.0.0
+
+jobs:
+  build:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - checkout
+      - infisical/setup:
+          auth-method: universal-auth
+      - run:
+          name: Export secrets to .env file
+          command: |
+            infisical export --env=staging --format=dotenv > .env
+            cat .env
+      - run:
+          name: Use exported secrets
+          command: ./build.sh
+```
+
+### Multi-Environment Workflow
+
+```yaml
+version: 2.1
+
+orbs:
+  infisical: infisical/cli@1.0.0
+
+workflows:
+  build-test-deploy:
+    jobs:
+      - test:
+          context: infisical-dev
+      - deploy-staging:
+          context: infisical-staging
+          requires:
+            - test
+      - deploy-prod:
+          context: infisical-prod
+          requires:
+            - deploy-staging
+          filters:
+            branches:
+              only: main
+
+jobs:
+  test:
+    docker:
+      - image: cimg/node:lts
+    steps:
+      - checkout
+      - infisical/setup:
+          auth-method: universal-auth
+      - run:
+          name: Run tests
+          command: infisical run --env=dev -- npm test
+
+  deploy-staging:
+    docker:
+      - image: cimg/node:lts
+    steps:
+      - checkout
+      - infisical/setup:
+          auth-method: universal-auth
+      - run:
+          name: Deploy to staging
+          command: infisical run --env=staging -- npm run deploy
+
+  deploy-prod:
+    docker:
+      - image: cimg/node:lts
+    steps:
+      - checkout
+      - infisical/setup:
+          auth-method: universal-auth
+      - run:
+          name: Deploy to production
+          command: infisical run --env=prod -- npm run deploy
+```
+
+## Authentication Methods
+
+The orb supports all Infisical CLI authentication methods. Here are examples for each:
+
+<Tabs>
+  <Tab title="Universal Auth">
+    ```yaml
+    - infisical/setup:
+        auth-method: universal-auth
+        client-id: ${INFISICAL_UNIVERSAL_AUTH_CLIENT_ID}
+        client-secret: ${INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET}
+    ```
+  </Tab>
+  <Tab title="AWS IAM">
+    ```yaml
+    - infisical/setup:
+        auth-method: aws-iam
+        machine-identity-id: ${INFISICAL_MACHINE_IDENTITY_ID}
+    ```
+  </Tab>
+  <Tab title="Azure">
+    ```yaml
+    - infisical/setup:
+        auth-method: azure
+        machine-identity-id: ${INFISICAL_MACHINE_IDENTITY_ID}
+    ```
+  </Tab>
+  <Tab title="GCP ID Token">
+    ```yaml
+    - infisical/setup:
+        auth-method: gcp-id-token
+        machine-identity-id: ${INFISICAL_MACHINE_IDENTITY_ID}
+    ```
+  </Tab>
+</Tabs>
+
+## Security Best Practices
+
+1. **Use CircleCI Contexts**: Store sensitive credentials like client IDs and secrets in CircleCI contexts rather than hardcoding them.
+
+2. **Leverage Machine Identities**: Use machine identities instead of service tokens for better security and auditability.
+
+3. **Use Cloud-Native Auth When Possible**: If running on AWS, Azure, or GCP, use the respective native authentication methods to avoid managing credentials.
+
+4. **Limit Token Scope**: Configure your machine identities with the minimum required permissions.
+
+5. **Rotate Credentials Regularly**: Implement a rotation policy for your machine identity credentials.
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="CLI installation fails">
+    Ensure your executor has internet access and can reach the Infisical CLI repository. If using a custom Docker image, verify that `curl` and `bash` are installed.
+
+    ```yaml
+    - run:
+        name: Install prerequisites
+        command: |
+          sudo apt-get update
+          sudo apt-get install -y curl bash
+    - infisical/install
+    ```
+  </Accordion>
+
+  <Accordion title="Authentication fails with Universal Auth">
+    Verify that:
+    - Your client ID and secret are correctly set as environment variables
+    - The machine identity has the correct permissions
+    - Your Infisical instance is accessible from CircleCI
+
+    ```yaml
+    - run:
+        name: Debug authentication
+        command: |
+          echo "Client ID: ${INFISICAL_UNIVERSAL_AUTH_CLIENT_ID}"
+          infisical login --method=universal-auth \
+            --client-id=${INFISICAL_UNIVERSAL_AUTH_CLIENT_ID} \
+            --client-secret=${INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET} \
+            --debug
+    ```
+  </Accordion>
+
+  <Accordion title="Secrets not injecting into commands">
+    Make sure you're using the `infisical run --` prefix before your command:
+
+    ```yaml
+    # ❌ Wrong
+    - run: npm run build
+
+    # ✅ Correct
+    - run: infisical run --env=prod -- npm run build
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Additional Resources
+
+- [Infisical CLI Documentation](/cli/overview)
+- [Machine Identities Guide](/documentation/platform/identities/machine-identities)
+- [CircleCI Orbs Documentation](https://circleci.com/docs/orb-intro/)
+
+## Support
+
+For issues or questions:
+- Join our [Slack community](https://infisical.com/slack)
+- Open an issue on [GitHub](https://github.com/Infisical/infisical)
