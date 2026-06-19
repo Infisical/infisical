@@ -102,7 +102,7 @@ class NetlifyPublicClient {
   }
 
   async getVariables(connection: TNetlifyConnectionConfig, { account_id, ...params }: NetlifyParams) {
-    // This public endpoint doesn't support validation, but it also returns all variables.
+    // This public endpoint doesn't support pagination, but it also returns all variables.
     // Tested with 900 secrets.
     return this.send<TNetlifyVariable[]>(connection, {
       method: "GET",
