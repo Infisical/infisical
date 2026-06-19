@@ -198,6 +198,12 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
       if (sort) {
         void query.orderBy(sort.map(([column, order, nulls]) => ({ column: column as string, order, nulls })));
       }
+      // Secondary ordering for deterministic metadata/tag order with LEFT JOINs (matches findByFolderIds)
+      void query
+        .orderBy(`${TableName.ResourceMetadata}.createdAt`, "asc", "first")
+        .orderBy(`${TableName.ResourceMetadata}.id`, "asc", "first")
+        .orderBy(`${TableName.SecretTag}.createdAt`, "asc", "first")
+        .orderBy(`${TableName.SecretTag}.id`, "asc", "first");
 
       const docs = await query;
       const data = sqlNestRelationships({
@@ -418,7 +424,12 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
           db.ref("value").withSchema(TableName.ResourceMetadata).as("metadataValue"),
           db.ref("encryptedValue").withSchema(TableName.ResourceMetadata).as("metadataEncryptedValue")
         )
-        .orderBy("id", "asc");
+        // Order by key (name) to match Go sidecar; secondary order by createdAt+id for deterministic tag/metadata order
+        .orderBy(`${TableName.SecretV2}.key`, "asc")
+        .orderBy(`${TableName.ResourceMetadata}.createdAt`, "asc", "first")
+        .orderBy(`${TableName.ResourceMetadata}.id`, "asc", "first")
+        .orderBy(`${TableName.SecretTag}.createdAt`, "asc", "first")
+        .orderBy(`${TableName.SecretTag}.id`, "asc", "first");
 
       const data = sqlNestRelationships({
         data: secs,
@@ -684,7 +695,12 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
           }
         })
         // Always order by key (name) to match the Go sidecar's ordering.
-        .orderBy("key", filters?.orderDirection ?? OrderByDirection.ASC);
+        // Secondary order by createdAt+id for deterministic tag/metadata order with LEFT JOINs.
+        .orderBy("key", filters?.orderDirection ?? OrderByDirection.ASC)
+        .orderBy(`${TableName.ResourceMetadata}.createdAt`, "asc", "first")
+        .orderBy(`${TableName.ResourceMetadata}.id`, "asc", "first")
+        .orderBy(`${TableName.SecretTag}.createdAt`, "asc", "first")
+        .orderBy(`${TableName.SecretTag}.id`, "asc", "first");
 
       let secs: Awaited<typeof query>;
 
