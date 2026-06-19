@@ -24,7 +24,6 @@ const SENSITIVE_FIELDS = new Set([
   "secretCommentTag"
 ]);
 
-
 type ComparisonDiff = {
   path: string;
   type: "missing_in_go" | "missing_in_node" | "type_mismatch" | "value_mismatch";

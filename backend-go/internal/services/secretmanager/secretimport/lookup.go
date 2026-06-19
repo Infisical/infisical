@@ -292,17 +292,23 @@ func (l *ImportLookup) ResolveChain(
 				continue
 			}
 
-			// For reserved imports, resolve back to the original source's env/path.
+			// For display/permissions, resolve reserved imports to the original source.
 			// This ensures permission checks and API responses use the original
 			// location (e.g. "/") rather than the reserved folder path.
-			envID, path := l.ResolveReserved(i)
-			key := importTarget{envID: envID, path: path}
+			displayEnvID, displayPath := l.ResolveReserved(i)
+
+			// Cycle detection uses display values (original source)
+			key := importTarget{envID: displayEnvID, path: displayPath}
 			if visited[key] {
 				continue
 			}
 			visited[key] = true
 
-			resolvedID, ok := resolveFolder(envID, path)
+			// For folder lookup, use the ACTUAL import target (reserved path for reserved imports).
+			// This ensures we fetch secrets from the replicated copy, not the live source.
+			fetchEnvID := l.TargetEnvID(i)
+			fetchPath := l.TargetPath(i)
+			resolvedID, ok := resolveFolder(fetchEnvID, fetchPath)
 			if !ok {
 				continue
 			}
@@ -311,11 +317,14 @@ func (l *ImportLookup) ResolveChain(
 				FolderID:  resolvedID,
 				ImportIdx: i,
 				Depth:     depth,
-				EnvID:     envID,
-				Path:      path,
+				EnvID:     displayEnvID,
+				Path:      displayPath,
 			})
 
-			walk(resolvedID, depth+1)
+			// Don't recurse into reserved folders - they're replicated copies without their own imports
+			if !l.IsReserved(i) {
+				walk(resolvedID, depth+1)
+			}
 		}
 	}
 
