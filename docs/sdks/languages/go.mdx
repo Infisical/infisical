@@ -1072,6 +1072,13 @@ lease, err := client.DynamicSecrets().Leases().GetById(infisical.GetDynamicSecre
   </Expandable>
 </ParamField>
 
+#### Return
+
+<ParamField query="Return" type="(DynamicSecretLeaseWithDynamicSecret, error)">
+  The lease, with the associated dynamic secret nested in its `DynamicSecret`
+  field, and an error if the request failed.
+</ParamField>
+
 ### Renew Lease
 
 `client.DynamicSecrets().Leases().RenewById(options)`
