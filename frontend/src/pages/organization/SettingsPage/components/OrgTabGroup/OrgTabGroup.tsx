@@ -134,17 +134,6 @@ export const OrgTabGroup = () => {
               </Link>
               .
             </p>
-            <p>
-              Secrets management configurations have moved to{" "}
-              <Link
-                to="/organizations/$orgId/projects/secret-management/product-settings"
-                params={{ orgId: currentOrg.id }}
-                className="underline hover:opacity-80"
-              >
-                Product Settings
-              </Link>
-              .
-            </p>
           </AlertDescription>
         </Alert>
       )}
