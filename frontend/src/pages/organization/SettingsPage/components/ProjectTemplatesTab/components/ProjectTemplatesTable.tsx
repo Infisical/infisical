@@ -25,8 +25,8 @@ import {
 import { OrgPermissionActions, OrgPermissionSubjects, useSubscription } from "@app/context";
 import { getProjectTitle } from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
-import { TProjectTemplate, useListProjectTemplates } from "@app/hooks/api/projectTemplates";
 import { ProjectType } from "@app/hooks/api/projects/types";
+import { TProjectTemplate, useListProjectTemplates } from "@app/hooks/api/projectTemplates";
 
 import { DeleteProjectTemplateModal } from "./DeleteProjectTemplateModal";
 
