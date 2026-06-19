@@ -1,6 +1,8 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 
+import { logger } from "@app/lib/logger";
+import { RAILWAY_NON_REDEPLOYABLE_STATUSES } from "@app/services/app-connection/railway/railway-connection-constants";
 import { RailwayPublicAPI } from "@app/services/app-connection/railway/railway-connection-public-client";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 
@@ -93,19 +95,25 @@ export const RailwaySyncFns = {
           serviceId: config.serviceId,
           environmentId: config.environmentId
         },
-        first: 1
+        first: 10
       });
 
-      const latestDeploymentId = latestDeployment?.deployments.edges[0]?.node.id;
+      const edges = latestDeployment?.deployments.edges ?? [];
 
-      if (!latestDeploymentId)
-        throw new SecretSyncError({
-          message: "Failed to get latest deployment from Railway"
-        });
+      // Only deployments with a build snapshot can be redeployed; deployments in states like
+      // BUILDING/FAILED/REMOVED have no snapshot and Railway rejects them with
+      // "Cannot redeploy without a snapshot". Pick the most recent redeployable deployment.
+      const redeployableDeploymentId = edges.find((edge) => !RAILWAY_NON_REDEPLOYABLE_STATUSES.has(edge.node.status))
+        ?.node.id;
+
+      // No redeployable deployment exists yet (e.g. service has never successfully deployed);
+      // the variables are already upserted, so skip the redeploy rather than failing the sync.
+      logger.info({ redeployableDeploymentId }, "Skipping redeploy. No redeployable deployment found.");
+      if (!redeployableDeploymentId) return;
 
       await RailwayPublicAPI.redeployDeployment(secretSync.connection, {
         input: {
-          deploymentId: latestDeploymentId
+          deploymentId: redeployableDeploymentId
         }
       });
     } catch (error) {

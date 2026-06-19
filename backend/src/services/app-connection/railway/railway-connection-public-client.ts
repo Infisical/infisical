@@ -123,8 +123,8 @@ class RailwayPublicClient {
     config: RailwaySendReqOptions,
     variables: { input: { serviceId: string; environmentId: string }; first?: number }
   ) {
-    return this.send<TRailwayResponse<{ deployments: { edges: { node: { id: string } }[] } }>>(
-      `query deployments($input: DeploymentListInput!, $first: Int) { deployments(first: $first, input: $input) { edges { node { id } } } }`,
+    return this.send<TRailwayResponse<{ deployments: { edges: { node: { id: string; status: string } }[] } }>>(
+      `query deployments($input: DeploymentListInput!, $first: Int) { deployments(first: $first, input: $input) { edges { node { id status } } } }`,
       config,
       variables
     );
