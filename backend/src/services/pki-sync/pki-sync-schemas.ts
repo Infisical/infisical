@@ -15,7 +15,13 @@ export const PkiSyncOptionsSchema = z.object({
       (val) => {
         if (!val) return true;
 
-        const allowedPlaceholdersRegexPart = ["{{certificateId}}"]
+        const allowedPlaceholdersRegexPart = [
+          "{{certificateId}}",
+          "{{profileId}}",
+          "{{commonName}}",
+          "{{friendlyName}}",
+          "{{environment}}"
+        ]
           .map((p) => p.replace(new RE2(/[-/\\^$*+?.()|[\]{}]/g), "\\$&")) // Escape regex special characters
           .join("|");
 
@@ -32,7 +38,7 @@ export const PkiSyncOptionsSchema = z.object({
       },
       {
         message:
-          "Certificate name schema must include exactly one {{certificateId}} placeholder. Only alphanumeric characters (a-z, A-Z, 0-9), dashes (-), underscores (_), and slashes (/) are allowed besides the placeholders."
+          "Certificate name schema must include exactly one {{certificateId}} placeholder. It can also include {{profileId}}, {{commonName}}, {{friendlyName}}, or {{environment}} placeholders. Only alphanumeric characters (a-z, A-Z, 0-9), dashes (-), underscores (_), and slashes (/) are allowed besides the placeholders."
       }
     )
 });

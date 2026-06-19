@@ -434,6 +434,15 @@ export const PkiSyncOptionsFields = ({ destination }: Props) => {
                     <li>
                       <code>{"{{certificateId}}"}</code> - The unique ID of the certificate
                     </li>
+                    <li>
+                      <code>{"{{commonName}}"}</code> - The common name (FQDN) of the certificate
+                    </li>
+                    <li>
+                      <code>{"{{friendlyName}}"}</code> - The friendly name of the certificate
+                    </li>
+                    <li>
+                      <code>{"{{profileId}}"}</code> - The profile ID of the certificate
+                    </li>
                   </ul>
                 </div>
                 {syncOption?.forbiddenCharacters && syncOption.forbiddenCharacters.length > 0 && (

@@ -289,13 +289,22 @@ const buildManagedCertNamePattern = (certificateNameSchema: string | undefined):
 
   const CERT_ID_TOKEN = "__INFISICAL_CERT_ID_PLACEHOLDER__";
   const ENV_TOKEN = "__INFISICAL_ENV_PLACEHOLDER__";
+  const PROFILE_ID_TOKEN = "__INFISICAL_PROFILE_ID_PLACEHOLDER__";
+  const COMMON_NAME_TOKEN = "__INFISICAL_COMMON_NAME_PLACEHOLDER__";
+  const FRIENDLY_NAME_TOKEN = "__INFISICAL_FRIENDLY_NAME_PLACEHOLDER__";
 
   const tokenized = certificateNameSchema
     .replace(new RE2("\\{\\{certificateId\\}\\}", "g"), CERT_ID_TOKEN)
+    .replace(new RE2("\\{\\{profileId\\}\\}", "g"), PROFILE_ID_TOKEN)
+    .replace(new RE2("\\{\\{commonName\\}\\}", "g"), COMMON_NAME_TOKEN)
+    .replace(new RE2("\\{\\{friendlyName\\}\\}", "g"), FRIENDLY_NAME_TOKEN)
     .replace(new RE2("\\{\\{environment\\}\\}", "g"), ENV_TOKEN);
 
   const pattern = escapeRegex(tokenized)
     .replace(new RE2(CERT_ID_TOKEN, "g"), "[0-9a-f]{32}")
+    .replace(new RE2(PROFILE_ID_TOKEN, "g"), "[0-9a-f]{32}")
+    .replace(new RE2(COMMON_NAME_TOKEN, "g"), "[a-zA-Z0-9._-]*")
+    .replace(new RE2(FRIENDLY_NAME_TOKEN, "g"), "[a-zA-Z0-9._-]*")
     .replace(new RE2(ENV_TOKEN, "g"), "global");
 
   return new RE2(`^${pattern}$`);
@@ -432,8 +441,12 @@ export const netScalerPkiSyncFactory = ({
               } else if (certificate?.renewedFromCertificateId && !preserveItemOnRenewal) {
                 const certIdClean = certificateId.replace(new RE2("-", "g"), "");
                 if (certificateNameSchema) {
+                  const sanitize = (val: string) => val.replace(new RE2("[^a-zA-Z0-9._-]", "g"), "");
                   targetCertKeyName = handlebars.compile(certificateNameSchema)({
                     certificateId: certIdClean,
+                    profileId: certificate?.profileId?.replace(new RE2("-", "g"), "") || certIdClean,
+                    commonName: sanitize(certificate?.commonName || ""),
+                    friendlyName: sanitize(certificate?.friendlyName || ""),
                     environment: "global"
                   });
                 } else {

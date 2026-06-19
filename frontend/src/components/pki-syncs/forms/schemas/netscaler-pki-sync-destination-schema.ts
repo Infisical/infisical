@@ -15,7 +15,12 @@ const NetScalerSyncOptionsSchema = z.object({
       (val) => {
         if (!val) return true;
 
-        const allowedOptionalPlaceholders = ["{{environment}}"];
+        const allowedOptionalPlaceholders = [
+          "{{environment}}",
+          "{{profileId}}",
+          "{{commonName}}",
+          "{{friendlyName}}"
+        ];
 
         const allowedPlaceholdersRegexPart = ["{{certificateId}}", ...allowedOptionalPlaceholders]
           .map((p) => p.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&"))
@@ -36,7 +41,7 @@ const NetScalerSyncOptionsSchema = z.object({
       },
       {
         message:
-          "Certificate name schema must include exactly one {{certificateId}} placeholder. It can also include {{environment}} placeholders. Only alphanumeric characters (a-z, A-Z, 0-9), dashes (-), underscores (_), and periods (.) are allowed besides the placeholders."
+          "Certificate name schema must include exactly one {{certificateId}} placeholder. It can also include {{environment}}, {{profileId}}, {{commonName}}, or {{friendlyName}} placeholders. Only alphanumeric characters (a-z, A-Z, 0-9), dashes (-), underscores (_), and periods (.) are allowed besides the placeholders."
       }
     )
 });
