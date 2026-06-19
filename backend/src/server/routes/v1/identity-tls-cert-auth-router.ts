@@ -13,6 +13,7 @@ import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
+import { isValidAllowedSubjectAltNameEntry } from "@app/services/identity-tls-cert-auth/identity-tls-cert-auth-fns";
 import { isSuperAdmin } from "@app/services/super-admin/super-admin-fns";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
@@ -24,6 +25,34 @@ const validateCommonNames = z
     el
       .split(",")
       .map((i) => i.trim())
+      .join(",")
+  );
+
+const validateSubjectAltNames = z
+  .string()
+  .min(1)
+  .trim()
+  .superRefine((val, ctx) => {
+    const invalidEntries = val
+      .split(",")
+      .map((i) => i.trim())
+      .filter(Boolean)
+      .filter((entry) => !isValidAllowedSubjectAltNameEntry(entry));
+
+    if (invalidEntries.length) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Invalid subject alternative name ${
+          invalidEntries.length > 1 ? "entries" : "entry"
+        }: ${invalidEntries.join(", ")}. Prefix non-DNS values with their type (e.g. "URI:spiffe://...", "IP:10.0.0.1", "EMAIL:svc@example.com").`
+      });
+    }
+  })
+  .transform((el) =>
+    el
+      .split(",")
+      .map((i) => i.trim())
+      .filter(Boolean)
       .join(",")
   );
 
@@ -176,6 +205,10 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
             .optional()
             .nullable()
             .describe(TLS_CERT_AUTH.ATTACH.allowedCommonNames),
+          allowedSubjectAltNames: validateSubjectAltNames
+            .optional()
+            .nullable()
+            .describe(TLS_CERT_AUTH.ATTACH.allowedSubjectAltNames),
           caCertificate: z
             .string()
             .min(1)
@@ -240,6 +273,7 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
           metadata: {
             identityId: identityTlsCertAuth.identityId,
             allowedCommonNames: identityTlsCertAuth.allowedCommonNames,
+            allowedSubjectAltNames: identityTlsCertAuth.allowedSubjectAltNames,
             accessTokenTTL: identityTlsCertAuth.accessTokenTTL,
             accessTokenMaxTTL: identityTlsCertAuth.accessTokenMaxTTL,
             accessTokenTrustedIps: identityTlsCertAuth.accessTokenTrustedIps as TIdentityTrustedIp[],
@@ -300,6 +334,10 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
             .optional()
             .nullable()
             .describe(TLS_CERT_AUTH.UPDATE.allowedCommonNames),
+          allowedSubjectAltNames: validateSubjectAltNames
+            .optional()
+            .nullable()
+            .describe(TLS_CERT_AUTH.UPDATE.allowedSubjectAltNames),
           accessTokenTrustedIps: z
             .object({
               ipAddress: z.string().trim()
@@ -357,6 +395,7 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
           metadata: {
             identityId: identityTlsCertAuth.identityId,
             allowedCommonNames: identityTlsCertAuth.allowedCommonNames,
+            allowedSubjectAltNames: identityTlsCertAuth.allowedSubjectAltNames,
             accessTokenTTL: identityTlsCertAuth.accessTokenTTL,
             accessTokenMaxTTL: identityTlsCertAuth.accessTokenMaxTTL,
             accessTokenTrustedIps: identityTlsCertAuth.accessTokenTrustedIps as TIdentityTrustedIp[],

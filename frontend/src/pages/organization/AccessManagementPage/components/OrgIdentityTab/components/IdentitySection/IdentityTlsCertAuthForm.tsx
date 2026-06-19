@@ -46,6 +46,7 @@ const buildSchema = (maxAccessTokenTTL: number) =>
   z
     .object({
       allowedCommonNames: z.string().optional(),
+      allowedSubjectAltNames: z.string().optional(),
       caCertificate: z.string().min(1),
       accessTokenTTL: accessTokenTtlSchema(maxAccessTokenTTL, "Access Token TTL"),
       accessTokenMaxTTL: accessTokenTtlSchema(maxAccessTokenTTL, "Access Token Max TTL"),
@@ -117,6 +118,7 @@ export const IdentityTlsCertAuthForm = ({
       reset({
         caCertificate: data.caCertificate,
         allowedCommonNames: data.allowedCommonNames || undefined,
+        allowedSubjectAltNames: data.allowedSubjectAltNames || undefined,
         accessTokenTTL: String(data.accessTokenTTL),
         accessTokenMaxTTL: String(data.accessTokenMaxTTL),
         accessTokenNumUsesLimit: data.accessTokenNumUsesLimit
@@ -142,6 +144,7 @@ export const IdentityTlsCertAuthForm = ({
   const onFormSubmit = async ({
     caCertificate,
     allowedCommonNames,
+    allowedSubjectAltNames,
     accessTokenTTL,
     accessTokenMaxTTL,
     accessTokenNumUsesLimit,
@@ -154,6 +157,7 @@ export const IdentityTlsCertAuthForm = ({
         ...(projectId ? { projectId } : { organizationId: orgId }),
         caCertificate,
         allowedCommonNames: allowedCommonNames || null,
+        allowedSubjectAltNames: allowedSubjectAltNames || null,
         identityId,
         accessTokenTTL: Number(accessTokenTTL),
         accessTokenMaxTTL: Number(accessTokenMaxTTL),
@@ -166,6 +170,7 @@ export const IdentityTlsCertAuthForm = ({
         identityId,
         caCertificate,
         allowedCommonNames: allowedCommonNames || undefined,
+        allowedSubjectAltNames: allowedSubjectAltNames || undefined,
         accessTokenTTL: Number(accessTokenTTL),
         accessTokenMaxTTL: Number(accessTokenMaxTTL),
         accessTokenNumUsesLimit: Number(accessTokenNumUsesLimit || "0"),
@@ -241,6 +246,39 @@ export const IdentityTlsCertAuthForm = ({
                     </Tooltip>
                   </FieldLabel>
                   <Input {...field} id="allowedCommonNames" type="text" isError={Boolean(error)} />
+                  <FieldError>{error?.message}</FieldError>
+                </Field>
+              )}
+            />
+
+            <Controller
+              control={control}
+              defaultValue=""
+              name="allowedSubjectAltNames"
+              render={({ field, fieldState: { error } }) => (
+                <Field>
+                  <FieldLabel
+                    htmlFor="allowedSubjectAltNames"
+                    className="inline-flex items-center gap-1.5"
+                  >
+                    Allowed Subject Alternative Names (optional)
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <InfoIcon className="size-3.5 text-muted" />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-md">
+                        Comma separated subject alternative names allowed to authenticate against
+                        the identity. Prefix entries by type (URI:, DNS:, IP:, EMAIL:). Bare entries
+                        are treated as DNS names. Leave empty to skip SAN validation.
+                      </TooltipContent>
+                    </Tooltip>
+                  </FieldLabel>
+                  <Input
+                    {...field}
+                    id="allowedSubjectAltNames"
+                    type="text"
+                    isError={Boolean(error)}
+                  />
                   <FieldError>{error?.message}</FieldError>
                 </Field>
               )}
