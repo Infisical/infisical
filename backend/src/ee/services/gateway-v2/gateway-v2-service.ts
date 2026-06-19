@@ -974,12 +974,24 @@ export const gatewayV2ServiceFactory = ({
     await $checkGatewayHealth(gateway.id);
   };
 
-  const heartbeat = async ({ orgPermission }: { orgPermission: OrgServiceActor }) => {
+  const heartbeat = async ({
+    orgPermission,
+    capabilities
+  }: {
+    orgPermission: OrgServiceActor;
+    capabilities?: Record<string, unknown>;
+  }) => {
+    const persistCapabilities = async (gatewayId: string) => {
+      if (capabilities === undefined) return;
+      await gatewayV2DAL.updateById(gatewayId, { capabilities });
+    };
+
     if (orgPermission.type === ActorType.GATEWAY) {
       const gateway = await gatewayV2DAL.findById(orgPermission.id);
       if (!gateway || gateway.orgId !== orgPermission.orgId) {
         throw new NotFoundError({ message: `Gateway ${orgPermission.id} not found.` });
       }
+      await persistCapabilities(gateway.id);
       await $checkGatewayHealth(gateway.id);
       return;
     }
@@ -995,6 +1007,7 @@ export const gatewayV2ServiceFactory = ({
       throw new NotFoundError({ message: `Gateway for identity ${orgPermission.id} not found.` });
     }
 
+    await persistCapabilities(gateway.id);
     await $checkGatewayHealth(gateway.id);
   };
 

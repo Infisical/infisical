@@ -17,6 +17,7 @@ import {
   ProjectPermissionDynamicSecretActions,
   ProjectPermissionGroupActions,
   ProjectPermissionHoneyTokenActions,
+  ProjectPermissionHsmConnectorActions,
   ProjectPermissionIdentityActions,
   ProjectPermissionInsightsActions,
   ProjectPermissionKmipActions,
@@ -408,6 +409,18 @@ const buildAdminPermissionRules = () => {
 
   can(
     [
+      ProjectPermissionHsmConnectorActions.Read,
+      ProjectPermissionHsmConnectorActions.Create,
+      ProjectPermissionHsmConnectorActions.Edit,
+      ProjectPermissionHsmConnectorActions.Delete,
+      ProjectPermissionHsmConnectorActions.Test,
+      ProjectPermissionHsmConnectorActions.Attach
+    ],
+    ProjectPermissionSub.HsmConnectors
+  );
+
+  can(
+    [
       ProjectPermissionHoneyTokenActions.Read,
       ProjectPermissionHoneyTokenActions.ReadCredentials,
       ProjectPermissionHoneyTokenActions.Create,
@@ -690,6 +703,11 @@ const buildMemberPermissionRules = () => {
   );
 
   can(ProjectPermissionAppConnectionActions.Connect, ProjectPermissionSub.AppConnections);
+
+  can(
+    [ProjectPermissionHsmConnectorActions.Read, ProjectPermissionHsmConnectorActions.Test],
+    ProjectPermissionSub.HsmConnectors
+  );
 
   can([ProjectPermissionActions.Read], ProjectPermissionSub.PamFolders);
 

@@ -28,7 +28,11 @@ export const PkiSignerCertificateIssuanceJobsSchema = z.object({
   failureReason: z.string().nullable().optional(),
   certificateId: z.string().uuid().nullable().optional(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  keySource: z.string().default("infisical"),
+  hsmConnectorId: z.string().uuid().nullable().optional(),
+  hsmKeyLabel: z.string().nullable().optional(),
+  hsmPublicKeySpki: zodBuffer.nullable().optional()
 });
 
 export type TPkiSignerCertificateIssuanceJobs = z.infer<typeof PkiSignerCertificateIssuanceJobsSchema>;

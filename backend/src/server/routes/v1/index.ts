@@ -17,6 +17,7 @@ import { registerAuthRoutes } from "./auth-router";
 import { registerProjectBotRouter } from "./bot-router";
 import { registerCertManagerAccessRouter } from "./cert-manager-access-routers";
 import { registerCertManagerExportRouter } from "./cert-manager-export-router";
+import { registerCertManagerHsmConnectorRouter } from "./cert-manager-hsm-connector-router";
 import { registerCertManagerInstanceRouter } from "./cert-manager-instance-router";
 import { registerCaRouter } from "./certificate-authority-router";
 import { CERTIFICATE_AUTHORITY_REGISTER_ROUTER_MAP } from "./certificate-authority-routers";
@@ -240,6 +241,7 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
       await pkiRouter.register(registerCertificateCleanupRouter, { prefix: "/certificate-cleanup" });
       await pkiRouter.register(registerCertificateInventoryViewRouter, { prefix: "/certificate-inventory-views" });
       await pkiRouter.register(registerCertManagerAccessRouter, { prefix: "/access" });
+      await pkiRouter.register(registerCertManagerHsmConnectorRouter, { prefix: "/hsm-connectors" });
       await pkiRouter.register(
         async (pkiSyncRouter) => {
           await registerPkiSyncRouter(pkiSyncRouter as unknown as FastifyZodProvider);

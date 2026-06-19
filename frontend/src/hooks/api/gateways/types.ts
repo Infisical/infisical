@@ -11,6 +11,8 @@ export type TGateway = {
     name: string;
     id: string;
   };
+  isV1?: boolean;
+  capabilities?: Record<string, unknown>;
 };
 
 export type TUpdateGatewayDTO = {

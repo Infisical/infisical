@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { SignerKeyAlgorithm } from "@app/hooks/api/signers";
+import { CertKeySource, HsmKeyAlgorithm, SignerKeyAlgorithm } from "@app/hooks/api/signers";
 import { slugSchema } from "@app/lib/schemas";
 
 export const basicsSchema = z.object({
@@ -31,7 +31,10 @@ export const certificateSchema = z
         ])
       )
       .default(null),
-    keyAlgorithm: z.nativeEnum(SignerKeyAlgorithm).default(SignerKeyAlgorithm.RSA_2048)
+    keyAlgorithm: z.nativeEnum(SignerKeyAlgorithm).default(SignerKeyAlgorithm.RSA_2048),
+    keySource: z.nativeEnum(CertKeySource).default(CertKeySource.Infisical),
+    hsmConnectorId: z.string().uuid().optional().nullable(),
+    hsmKeyAlgorithm: z.nativeEnum(HsmKeyAlgorithm).default(HsmKeyAlgorithm.RSA_2048)
   })
   .refine(
     (data) =>
@@ -41,5 +44,9 @@ export const certificateSchema = z
       message: "Renew before must be less than the certificate validity (days).",
       path: ["certificateRenewBeforeDays"]
     }
-  );
+  )
+  .refine((data) => data.keySource !== CertKeySource.Hsm || Boolean(data.hsmConnectorId), {
+    message: "Pick an HSM Connector.",
+    path: ["hsmConnectorId"]
+  });
 export type CertificateForm = z.infer<typeof certificateSchema>;

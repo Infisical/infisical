@@ -1112,7 +1112,7 @@ export const AzureAdCsCertificateAuthorityFns = ({
     isCancelled
   }: {
     caId: string;
-    profileId: string;
+    profileId?: string;
     commonName: string;
     altNames?: string[];
     keyUsages?: CertKeyUsage[];

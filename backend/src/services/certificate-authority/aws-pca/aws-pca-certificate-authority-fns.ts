@@ -537,7 +537,7 @@ export const AwsPcaCertificateAuthorityFns = ({
     isCancelled
   }: {
     caId: string;
-    profileId: string;
+    profileId?: string;
     commonName: string;
     altNames?: Array<{ type: CertSubjectAlternativeNameType; value: string }>;
     keyUsages?: CertKeyUsage[];

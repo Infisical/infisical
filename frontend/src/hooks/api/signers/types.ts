@@ -19,6 +19,18 @@ export enum SignerKeyAlgorithm {
   ECDSA_P521 = "EC_secp521r1"
 }
 
+export enum CertKeySource {
+  Infisical = "infisical",
+  Hsm = "hsm"
+}
+
+export enum HsmKeyAlgorithm {
+  RSA_2048 = "RSA_2048",
+  RSA_4096 = "RSA_4096",
+  ECC_P256 = "ECC_P256",
+  ECC_P384 = "ECC_P384"
+}
+
 export const signerKeyAlgorithmLabels: Record<SignerKeyAlgorithm, string> = {
   [SignerKeyAlgorithm.RSA_2048]: "RSA-2048",
   [SignerKeyAlgorithm.RSA_3072]: "RSA-3072",
@@ -54,12 +66,14 @@ export const getSignerStatusBadgeVariant = (status: SignerStatus) => {
 };
 
 export enum SigningOperationStatus {
+  Pending = "pending",
   Success = "success",
   Failed = "failed",
   Denied = "denied"
 }
 
 export const signingOperationStatusLabels: Record<SigningOperationStatus, string> = {
+  [SigningOperationStatus.Pending]: "Pending",
   [SigningOperationStatus.Success]: "Success",
   [SigningOperationStatus.Failed]: "Failed",
   [SigningOperationStatus.Denied]: "Denied"
@@ -230,6 +244,12 @@ export type TCreateSignerApprovalPolicyInput = {
   constraints?: { maxSignings?: number | null; maxWindowDuration?: string | null };
 };
 
+export type TSignerCertificateInput = {
+  keySource?: CertKeySource;
+  hsmConnectorId?: string;
+  hsmKeyAlgorithm?: HsmKeyAlgorithm;
+};
+
 export type TCreateSignerDTO = {
   projectId: string;
   name: string;
@@ -243,6 +263,7 @@ export type TCreateSignerDTO = {
   approvalPolicyId?: string;
   members?: TCreateSignerMemberInput[];
   approvalPolicy?: TCreateSignerApprovalPolicyInput;
+  certificate?: TSignerCertificateInput;
 };
 
 export type TUpdateSignerDTO = {

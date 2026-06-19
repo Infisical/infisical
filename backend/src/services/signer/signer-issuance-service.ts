@@ -4,23 +4,27 @@ import * as x509 from "@peculiar/x509";
 import { TPkiSignerCertificateIssuanceJobs } from "@app/db/schemas";
 import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { crypto } from "@app/lib/crypto/cryptography";
+import { buildCsrWithExternalSigner } from "@app/lib/csr/build-csr-with-external-signer";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 
 import { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal";
+import { TCertificateDALFactory } from "../certificate/certificate-dal";
 import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
 import { CertExtendedKeyUsage, CertKeyAlgorithm, CertKeyUsage } from "../certificate/certificate-types";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority/certificate-authority-dal";
 import { CaStatus, CaType } from "../certificate-authority/certificate-authority-enums";
 import { keyAlgorithmToAlgCfg } from "../certificate-authority/certificate-authority-fns";
 import { TCertificateIssuanceQueueFactory } from "../certificate-authority/certificate-issuance-queue";
+import { THsmConnectorServiceFactory } from "../hsm-connector/hsm-connector-service";
+import { THsmConnectorServiceActor } from "../hsm-connector/hsm-connector-types";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { TProjectDALFactory } from "../project/project-dal";
 import { getProjectKmsCertificateKeyId } from "../project/project-fns";
 import { TSignerDALFactory } from "./signer-dal";
-import { SignerIssuanceJobStatus, SignerStatus } from "./signer-enums";
+import { CertKeySource, HsmKeyAlgorithm, SignerIssuanceJobStatus, SignerStatus } from "./signer-enums";
 import { formatSignerIssuanceErrorReason, isTerminalIssuanceError } from "./signer-issuance-errors";
-import { verifyCodeSigningEku } from "./signer-issuance-fns";
+import { hsmKeyAlgorithmToCertKeyAlgorithm, verifyCodeSigningEku } from "./signer-issuance-fns";
 import { TSignerIssuanceJobDALFactory } from "./signer-issuance-job-dal";
 
 const POLL_INTERVAL_PATTERN = "*/15 * * * *"; // every 15 minutes
@@ -38,8 +42,10 @@ type TSignerIssuanceServiceDeps = {
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "findOne" | "create" | "updateById">;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
   kmsService: Pick<TKmsServiceFactory, "encryptWithKmsKey" | "decryptWithKmsKey" | "generateKmsKey">;
-  certificateIssuanceQueue: Pick<TCertificateIssuanceQueueFactory, "azureAdCsFns" | "awsPcaFns">;
+  certificateIssuanceQueue: Pick<TCertificateIssuanceQueueFactory, "awsPcaFns" | "azureAdCsFns">;
   cronJob: TCronJobFactory;
+  hsmConnectorService: Pick<THsmConnectorServiceFactory, "generateKeyPair" | "sign" | "assertAttachPermission">;
+  certificateDAL: Pick<TCertificateDALFactory, "updateById">;
 };
 
 type TRequestIssuanceInput = {
@@ -49,6 +55,13 @@ type TRequestIssuanceInput = {
   commonName: string;
   certificateTtlDays: number;
   keyAlgorithm?: CertKeyAlgorithm;
+  hsm?: {
+    hsmConnectorId: string;
+    hsmKeyAlgorithm: HsmKeyAlgorithm;
+    hsmKeyLabel?: string;
+    hsmPublicKeySpki?: Buffer;
+    actor?: Pick<THsmConnectorServiceActor, "type" | "id" | "authMethod" | "orgId">;
+  };
 };
 
 export const signerIssuanceServiceFactory = ({
@@ -60,9 +73,11 @@ export const signerIssuanceServiceFactory = ({
   projectDAL,
   kmsService,
   certificateIssuanceQueue,
-  cronJob
+  cronJob,
+  hsmConnectorService,
+  certificateDAL
 }: TSignerIssuanceServiceDeps) => {
-  const { azureAdCsFns, awsPcaFns } = certificateIssuanceQueue;
+  const { awsPcaFns, azureAdCsFns } = certificateIssuanceQueue;
 
   const buildCsrForSigner = async (
     commonName: string,
@@ -121,6 +136,69 @@ export const signerIssuanceServiceFactory = ({
     }
 
     await signerIssuanceJobDAL.cancelOpenForSigner(input.signerId, "Superseded by a newer issuance request.");
+
+    if (input.hsm) {
+      if (input.hsm.actor) {
+        await hsmConnectorService.assertAttachPermission(input.hsm.actor, input.hsm.hsmConnectorId, input.projectId);
+      }
+      const reuseExistingKey = Boolean(input.hsm.hsmKeyLabel && input.hsm.hsmPublicKeySpki);
+      const keyLabel = reuseExistingKey
+        ? (input.hsm.hsmKeyLabel as string)
+        : `infisical-signer-${crypto.nativeCrypto.randomUUID()}`;
+      const publicKeySpkiDer = reuseExistingKey
+        ? Buffer.from(input.hsm.hsmPublicKeySpki as Buffer)
+        : await hsmConnectorService.generateKeyPair({
+            connectorId: input.hsm.hsmConnectorId,
+            projectId: input.projectId,
+            keyLabel,
+            keyAlgorithm: input.hsm.hsmKeyAlgorithm
+          });
+      const built = await buildCsrWithExternalSigner({
+        publicKeySpkiDer,
+        keyAlgorithm: input.hsm.hsmKeyAlgorithm,
+        subjectCommonName: input.commonName,
+        signCallback: async (tbs, mech, isDigest) =>
+          hsmConnectorService.sign({
+            connectorId: input.hsm!.hsmConnectorId,
+            projectId: input.projectId,
+            keyLabel,
+            mechanism: mech,
+            data: tbs,
+            isDigest
+          })
+      });
+      const encryptedCsrHsm = await encryptForProject(input.projectId, Buffer.from(built.csrPem));
+      const hsmCertKeyAlgorithm = hsmKeyAlgorithmToCertKeyAlgorithm(input.hsm.hsmKeyAlgorithm);
+
+      const hsmJob = await signerIssuanceJobDAL.create({
+        signerId: input.signerId,
+        caId: input.caId,
+        caType,
+        status: SignerIssuanceJobStatus.Pending,
+        commonName: input.commonName,
+        certificateTtlDays: input.certificateTtlDays,
+        keyAlgorithm: hsmCertKeyAlgorithm,
+        encryptedCsr: encryptedCsrHsm,
+        encryptedPrivateKey: null,
+        keySource: CertKeySource.Hsm,
+        hsmConnectorId: input.hsm.hsmConnectorId,
+        hsmKeyLabel: keyLabel,
+        hsmPublicKeySpki: publicKeySpkiDer,
+        nextPollAt: new Date()
+      });
+
+      void (async () => {
+        try {
+          await processJob(hsmJob.id);
+        } catch (err) {
+          logger.warn(
+            err,
+            `signer issuance: first-attempt HSM-backed job failed, cron will retry [jobId=${hsmJob.id}] [signerId=${input.signerId}]`
+          );
+        }
+      })();
+      return hsmJob;
+    }
 
     const keyAlgorithm: CertKeyAlgorithm = input.keyAlgorithm ?? CertKeyAlgorithm.RSA_2048;
     const { csrPem, privateKeyPem } = await buildCsrForSigner(input.commonName, keyAlgorithm);
@@ -291,6 +369,26 @@ export const signerIssuanceServiceFactory = ({
       return;
     }
 
+    if (job.keySource === CertKeySource.Hsm && job.hsmConnectorId && job.hsmKeyLabel) {
+      try {
+        const certAlg = job.keyAlgorithm as CertKeyAlgorithm;
+        await certificateDAL.updateById(certificateId, {
+          keySource: CertKeySource.Hsm,
+          hsmConnectorId: job.hsmConnectorId,
+          hsmKeyLabel: job.hsmKeyLabel,
+          hsmPublicKeySpki: job.hsmPublicKeySpki ?? null,
+          keyAlgorithm: certAlg
+        });
+      } catch (patchErr) {
+        const reason = formatSignerIssuanceErrorReason(
+          patchErr,
+          "Failed to record HSM coordinates on the issued certificate"
+        );
+        await markJobFailed(job, reason);
+        return;
+      }
+    }
+
     await signerDAL.transaction(async (tx) => {
       await signerDAL.updateById(
         job.signerId,
@@ -328,21 +426,23 @@ export const signerIssuanceServiceFactory = ({
     let certificateId: string;
 
     if (kind === CaType.AZURE_AD_CS) {
+      if (job.keySource === CertKeySource.Hsm) {
+        throw new BadRequestError({
+          message:
+            "HSM-backed signers are not supported with Azure AD CS yet. Use AWS Private CA, or switch the signer's key source to Infisical."
+        });
+      }
       const azureResult = await azureAdCsFns.orderCertificateFromProfile({
         caId: job.caId,
-        profileId: undefined as unknown as string,
         commonName: job.commonName,
         altNames: [],
         keyUsages: [CertKeyUsage.DIGITAL_SIGNATURE, CertKeyUsage.KEY_ENCIPHERMENT],
         extendedKeyUsages: [CertExtendedKeyUsage.CODE_SIGNING],
         validity: { ttl: `${job.certificateTtlDays}d` },
-        signatureAlgorithm: undefined,
         keyAlgorithm: job.keyAlgorithm as CertKeyAlgorithm,
         isRenewal: false,
-        originalCertificateId: undefined,
-        csr,
         isCancelled: async () => false
-      } as Parameters<typeof azureAdCsFns.orderCertificateFromProfile>[0]);
+      });
       if (!azureResult?.certificateId) {
         throw new BadRequestError({ message: "Azure AD CS order returned without a certificate id." });
       }
@@ -350,16 +450,13 @@ export const signerIssuanceServiceFactory = ({
     } else {
       const awsResult = await awsPcaFns.orderCertificateFromProfile({
         caId: job.caId,
-        profileId: undefined as unknown as string,
         commonName: job.commonName,
         altNames: [],
         keyUsages: [CertKeyUsage.DIGITAL_SIGNATURE, CertKeyUsage.KEY_ENCIPHERMENT],
         extendedKeyUsages: [CertExtendedKeyUsage.CODE_SIGNING],
         validity: { ttl: `${job.certificateTtlDays}d` },
-        signatureAlgorithm: undefined,
         keyAlgorithm: job.keyAlgorithm as CertKeyAlgorithm,
         isRenewal: false,
-        originalCertificateId: undefined,
         csr,
         isCancelled: async () => false
       });
@@ -426,7 +523,6 @@ export const signerIssuanceServiceFactory = ({
   return {
     requestIssuance,
     processJob,
-    start,
-    _buildCsrForSigner: buildCsrForSigner
+    start
   };
 };

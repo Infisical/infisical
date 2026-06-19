@@ -8,6 +8,7 @@ import { openApiHidden, slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { CertKeySource, HsmKeyAlgorithm } from "@app/services/signer/signer-enums";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { ApprovalPolicyBodySchema, SignerIdParamsSchema, SignerKeyAlgorithm } from "./schemas";
@@ -32,6 +33,18 @@ export const registerSignerLifecycleRouter = async (server: FastifyZodProvider) 
         certificateRenewBeforeDays: z.number().int().min(1).max(30).nullable().optional(),
         keyAlgorithm: SignerKeyAlgorithm.schema.optional(),
         certificateId: z.string().uuid().optional(),
+        certificate: z
+          .object({
+            keySource: z.nativeEnum(CertKeySource).optional().default(CertKeySource.Infisical),
+            hsmConnectorId: z.string().uuid().optional(),
+            hsmKeyAlgorithm: z.nativeEnum(HsmKeyAlgorithm).optional()
+          })
+          .refine(
+            (data) =>
+              data.keySource !== CertKeySource.Hsm || (Boolean(data.hsmConnectorId) && Boolean(data.hsmKeyAlgorithm)),
+            { message: `hsmConnectorId and hsmKeyAlgorithm are required when keySource = '${CertKeySource.Hsm}'` }
+          )
+          .optional(),
         approvalPolicyId: z.string().uuid().optional(),
         members: z
           .array(
@@ -68,7 +81,9 @@ export const registerSignerLifecycleRouter = async (server: FastifyZodProvider) 
             signerId: signer.id,
             name: signer.name,
             certificateId: signer.certificateId,
-            approvalPolicyId: signer.approvalPolicyId
+            approvalPolicyId: signer.approvalPolicyId,
+            keySource: req.body.certificate?.keySource,
+            hsmConnectorId: req.body.certificate?.hsmConnectorId
           }
         }
       });

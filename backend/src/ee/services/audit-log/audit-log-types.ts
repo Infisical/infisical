@@ -54,6 +54,7 @@ import {
   TUpdateSecretSyncDTO
 } from "@app/services/secret-sync/secret-sync-types";
 import { TDuplicateSecretAttributes } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
+import { CertKeySource } from "@app/services/signer/signer-enums";
 import { TWebhookPayloads } from "@app/services/webhook/webhook-types";
 import { WorkflowIntegration } from "@app/services/workflow-integration/workflow-integration-types";
 
@@ -571,6 +572,10 @@ export enum EventType {
   CREATE_APP_CONNECTION = "create-app-connection",
   UPDATE_APP_CONNECTION = "update-app-connection",
   DELETE_APP_CONNECTION = "delete-app-connection",
+  CREATE_HSM_CONNECTOR = "create-hsm-connector",
+  UPDATE_HSM_CONNECTOR = "update-hsm-connector",
+  DELETE_HSM_CONNECTOR = "delete-hsm-connector",
+  TEST_HSM_CONNECTOR = "test-hsm-connector",
   GET_APP_CONNECTION_USAGE = "get-app-connection-usage",
   MIGRATE_APP_CONNECTION = "migrate-app-connection",
   ROTATE_APP_CONNECTION_CREDENTIALS = "rotate-app-connection-credentials",
@@ -4518,6 +4523,43 @@ interface RotateAppConnectionCredentialsEvent {
   };
 }
 
+interface CreateHsmConnectorEvent {
+  type: EventType.CREATE_HSM_CONNECTOR;
+  metadata: {
+    connectorId: string;
+    name: string;
+    gatewayId: string | null;
+    gatewayPoolId: string | null;
+  };
+}
+
+interface UpdateHsmConnectorEvent {
+  type: EventType.UPDATE_HSM_CONNECTOR;
+  metadata: {
+    connectorId: string;
+    name: string;
+    fieldsUpdated: string[];
+  };
+}
+
+interface DeleteHsmConnectorEvent {
+  type: EventType.DELETE_HSM_CONNECTOR;
+  metadata: {
+    connectorId: string;
+    name: string;
+  };
+}
+
+interface TestHsmConnectorEvent {
+  type: EventType.TEST_HSM_CONNECTOR;
+  metadata: {
+    connectorId: string;
+    name: string;
+    ok: boolean;
+    memberCount: number;
+  };
+}
+
 interface CreateGitHubAppEvent {
   type: EventType.CREATE_GITHUB_APP;
   metadata: {
@@ -4850,6 +4892,8 @@ interface CreatePkiSignerEvent {
     caId?: string | null;
     commonName?: string | null;
     approvalPolicyId?: string | null;
+    keySource?: CertKeySource;
+    hsmConnectorId?: string | null;
   };
 }
 
@@ -7756,6 +7800,10 @@ export type Event =
   | GetAppConnectionUsageEvent
   | MigrateAppConnectionEvent
   | RotateAppConnectionCredentialsEvent
+  | CreateHsmConnectorEvent
+  | UpdateHsmConnectorEvent
+  | DeleteHsmConnectorEvent
+  | TestHsmConnectorEvent
   | CreateGitHubAppEvent
   | DeleteGitHubAppEvent
   | GetSshHostGroupEvent
