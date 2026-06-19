@@ -23,10 +23,10 @@ import {
 } from "@app/components/v3";
 import { OrgPermissionActions, OrgPermissionSubjects, useSubscription } from "@app/context";
 import { usePopUp } from "@app/hooks";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { TProjectTemplate, useListProjectTemplates } from "@app/hooks/api/projectTemplates";
 
 import { DeleteProjectTemplateModal } from "./DeleteProjectTemplateModal";
-import { ProjectType } from "@app/hooks/api/projects/types";
 
 type Props = {
   onEdit: (projectTemplate: TProjectTemplate) => void;
@@ -124,8 +124,6 @@ export const ProjectTemplatesTable = ({ onEdit }: Props) => {
 
               const totalIdentities =
                 (identities?.length || 0) + (projectManagedIdentities?.length || 0);
-
-              const isDefault = name === "default";
 
               return (
                 <TableRow

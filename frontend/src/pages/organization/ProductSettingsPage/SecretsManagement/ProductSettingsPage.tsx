@@ -95,7 +95,12 @@ export const ProductSettingsPage = () => {
               </CardContent>
             </Card>
             <HoneyTokenSection />
-            <ProjectTemplatesSection />
+            <OrgPermissionCan
+              I={OrgPermissionActions.Read}
+              a={OrgPermissionSubjects.ProjectTemplates}
+            >
+              {(isAllowed) => isAllowed && <ProjectTemplatesSection />}
+            </OrgPermissionCan>
           </div>
         </div>
       </div>

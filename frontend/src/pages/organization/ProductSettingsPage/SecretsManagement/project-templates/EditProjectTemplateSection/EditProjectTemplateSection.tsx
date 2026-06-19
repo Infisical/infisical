@@ -2,8 +2,8 @@ import { useMemo } from "react";
 import { ChevronLeft } from "lucide-react";
 
 import { Button, Empty, EmptyHeader, EmptyTitle, PageLoader } from "@app/components/v3";
-import { InfisicalProjectTemplate, useListProjectTemplates } from "@app/hooks/api/projectTemplates";
 import { ProjectType } from "@app/hooks/api/projects/types";
+import { InfisicalProjectTemplate, useListProjectTemplates } from "@app/hooks/api/projectTemplates";
 
 import { EditProjectTemplate } from "./components";
 

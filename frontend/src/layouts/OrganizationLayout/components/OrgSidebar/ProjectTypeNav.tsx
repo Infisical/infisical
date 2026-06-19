@@ -33,7 +33,9 @@ export const ProjectTypeNav = () => {
     : false;
   const isOnKmipServers = pathname.includes("/kmip-servers");
   const isOnSecretSharing = pathname.includes("/secret-sharing");
-  const isOnSecretManagementProductSettings = pathname.includes('/secret-management/product-settings');
+  const isOnSecretManagementProductSettings = pathname.includes(
+    "/secret-management/product-settings"
+  );
 
   return (
     <SidebarGroup>
@@ -53,7 +55,9 @@ export const ProjectTypeNav = () => {
             size="lg"
             scope="project"
             asChild
-            isActive={!isOnKmipServers && !isOnSecretSharing && !isOnSecretManagementProductSettings}
+            isActive={
+              !isOnKmipServers && !isOnSecretSharing && !isOnSecretManagementProductSettings
+            }
             tooltip="Projects"
           >
             <Link
