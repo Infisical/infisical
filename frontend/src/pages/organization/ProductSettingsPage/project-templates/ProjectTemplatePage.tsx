@@ -12,7 +12,8 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 import {
   InfisicalProjectTemplate,
   useDeleteProjectTemplate,
-  useGetProjectTemplateById
+  useGetProjectTemplateById,
+  useListProjectTemplates
 } from "@app/hooks/api/projectTemplates";
 
 import { EditProjectTemplateSection } from "./EditProjectTemplateSection";
@@ -26,15 +27,17 @@ type Props = {
 
 export const ProjectTemplatePage = ({ templateId, projectType, onBack }: Props) => {
   const { data: projectTemplate } = useGetProjectTemplateById(templateId);
+  const { data: projectTemplates = [] } = useListProjectTemplates();
   const deleteProjectTemplate = useDeleteProjectTemplate();
   const { handlePopUpToggle, popUp, handlePopUpOpen, handlePopUpClose } = usePopUp([
     "removeTemplate",
     "editDetails"
   ] as const);
 
-  const isInfisicalTemplate = Object.values(InfisicalProjectTemplate).includes(
-    projectTemplate?.name as InfisicalProjectTemplate
-  );
+  const templateName =
+    projectTemplate?.name ?? projectTemplates.find((t) => t.id === templateId)?.name;
+
+  const isInfisicalTemplate = templateName === InfisicalProjectTemplate.Default;
 
   const handleRemoveTemplate = async () => {
     await deleteProjectTemplate.mutateAsync({ templateId });
@@ -65,7 +68,7 @@ export const ProjectTemplatePage = ({ templateId, projectType, onBack }: Props) 
           </Button>
           <PageHeader
             scope={projectType}
-            title={projectTemplate?.name ?? "Project Template"}
+            title={templateName ?? "Project Template"}
             description={
               <>
                 {getProjectTitle(projectType)}
