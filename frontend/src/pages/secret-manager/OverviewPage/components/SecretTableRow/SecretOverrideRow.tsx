@@ -31,6 +31,7 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
+import { copyToClipboard } from "@app/helpers/clipboard";
 import { useToggle } from "@app/hooks";
 import { useGetSecretValue } from "@app/hooks/api/dashboard/queries";
 import { SecretType } from "@app/hooks/api/types";
@@ -139,7 +140,11 @@ export const SecretOverrideRow = ({
   const handleCopyOverrideToClipboard = async () => {
     try {
       const { data } = await refetchOverrideValue();
-      await window.navigator.clipboard.writeText(data?.valueOverride ?? "");
+      const succeeded = await copyToClipboard(data?.valueOverride ?? "");
+      if (!succeeded) {
+        createNotification({ type: "error", text: "Failed to copy to clipboard" });
+        return;
+      }
       createNotification({ type: "success", text: "Copied override to clipboard" });
     } catch (e) {
       console.error(e);
