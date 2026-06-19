@@ -27,7 +27,8 @@ func newLicenseAPI(serverURL, loginPath, apiKey, region string) *licenseAPI {
 
 	api.client = resty.New().
 		SetBaseURL(serverURL).
-		SetTimeout(35 * time.Second)
+		SetTimeout(35*time.Second).
+		SetHeader("Content-Type", "application/json")
 
 	if region != "" {
 		api.client.SetHeader("x-region", region)
@@ -45,16 +46,17 @@ func (api *licenseAPI) refreshToken(ctx context.Context) (string, error) {
 		Token string `json:"token"`
 	}
 
-	resp, err := resty.New().R().
+	resp, err := api.client.R().
 		SetContext(ctx).
 		SetHeader("X-API-KEY", api.apiKey).
 		SetResult(&result).
-		Post(api.serverURL + api.loginPath)
+		Post(api.loginPath)
+
 	if err != nil {
 		return "", fmt.Errorf("license token refresh: %w", err)
 	}
 	if resp.IsError() {
-		return "", fmt.Errorf("license token refresh: status %d", resp.StatusCode())
+		return "", fmt.Errorf("license token refresh: status %d, body: %s", resp.StatusCode(), resp.String())
 	}
 
 	api.client.SetAuthToken(result.Token)
