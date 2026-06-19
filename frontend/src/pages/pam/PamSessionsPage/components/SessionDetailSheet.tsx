@@ -32,7 +32,6 @@ import {
   PamResourcePermissionActions,
   PamResourcePermissionSub,
   PamSessionStatus,
-  resolvePamAccountType,
   useGetPamSessionById,
   usePamAccountTypeMap
 } from "@app/hooks/api/pam";
@@ -285,7 +284,7 @@ export const SessionDetailSheet = ({ sessionId, isOpen, onOpenChange, onTerminat
     );
   }
 
-  const isRdpSession = resolvePamAccountType(session.accountType) === PamAccountType.Windows;
+  const isRdpSession = session.accountType === PamAccountType.Windows;
 
   const tabs = isRdpSession
     ? [

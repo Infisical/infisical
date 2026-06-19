@@ -21,7 +21,7 @@ import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 
-import { PamAccountType, resolveAccountType } from "../pam/pam-enums";
+import { PamAccountType } from "../pam/pam-enums";
 import {
   checkAccountAccess,
   checkFolderPermission,
@@ -237,8 +237,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       });
     }
 
-    const resolved = resolveAccountType(accountType);
-    if (resolved === PamAccountType.Windows) {
+    if (accountType === PamAccountType.Windows) {
       const settings = (template.settings ?? {}) as Record<string, unknown>;
       if (
         settings.recordingStorageBackend !== "aws-s3" ||

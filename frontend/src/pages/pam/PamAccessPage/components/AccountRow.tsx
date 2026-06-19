@@ -10,7 +10,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { PamAccountType, resolvePamAccountType, TAccessiblePamAccount, usePamAccountTypeMap } from "@app/hooks/api/pam";
+import { PamAccountType, TAccessiblePamAccount, usePamAccountTypeMap } from "@app/hooks/api/pam";
 
 import { AccountPlatformIcon } from "./AccountPlatformIcon";
 
@@ -23,8 +23,7 @@ type Props = {
 
 export const AccountRow = ({ account, search, onLaunch, indented }: Props) => {
   const { map } = usePamAccountTypeMap();
-  const resolved = resolvePamAccountType(account.accountType);
-  const typeName = map[resolved as PamAccountType]?.name ?? account.accountType;
+  const typeName = map[account.accountType as PamAccountType]?.name ?? account.accountType;
   const { canLaunch } = account;
 
   return (

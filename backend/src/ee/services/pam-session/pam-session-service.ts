@@ -20,7 +20,7 @@ import { TMfaSessionServiceFactory } from "@app/services/mfa-session/mfa-session
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
-import { PamAccessMethod, PamAccountType, PamSessionStatus, resolveAccountType } from "../pam/pam-enums";
+import { PamAccessMethod, PamAccountType, PamSessionStatus } from "../pam/pam-enums";
 import { enforceMfa } from "../pam/pam-mfa";
 import {
   checkAccountAccess,
@@ -236,8 +236,7 @@ export const pamSessionServiceFactory = ({
       };
     }
 
-    const resolved = resolveAccountType(account.accountType);
-    const normalizedConnectionDetails = validateConnectionDetails(resolved, connectionDetails);
+    const normalizedConnectionDetails = validateConnectionDetails(account.accountType as PamAccountType, connectionDetails);
 
     if (sessionStarted) {
       await pamSessionDAL.activateSession(sessionId);

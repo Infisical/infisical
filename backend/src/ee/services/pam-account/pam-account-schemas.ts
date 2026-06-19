@@ -437,8 +437,7 @@ export const ACCOUNT_TYPE_CONFIGS = {
 type TSupportedAccountType = keyof typeof ACCOUNT_TYPE_CONFIGS;
 
 const getAccountTypeConfig = (accountType: PamAccountType | string) => {
-  const resolved = resolveAccountType(accountType);
-  const config = ACCOUNT_TYPE_CONFIGS[resolved as TSupportedAccountType];
+  const config = ACCOUNT_TYPE_CONFIGS[accountType as TSupportedAccountType];
   if (!config) {
     throw new Error(`Account type '${accountType}' is not supported in this phase`);
   }
@@ -446,8 +445,7 @@ const getAccountTypeConfig = (accountType: PamAccountType | string) => {
 };
 
 export const validateConnectionDetails = (accountType: PamAccountType, data: unknown) => {
-  const resolved = resolveAccountType(accountType);
-  if (resolved === PamAccountType.Windows && data && typeof data === "object") {
+  if (accountType === PamAccountType.Windows && data && typeof data === "object") {
     const raw = data as Record<string, unknown>;
     if (!raw.host && raw.hostname) {
       raw.host = raw.hostname;

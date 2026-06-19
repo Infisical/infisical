@@ -145,7 +145,7 @@ export const pamWebAccessServiceFactory = ({
       throw new NotFoundError({ message: `Account with ID '${accountId}' not found` });
     }
 
-    if (!SESSION_HANDLERS[account.accountType]) {
+    if (!SESSION_HANDLERS[account.accountType as PamAccountType]) {
       throw new BadRequestError({ message: "Web access is not supported for this account type" });
     }
 
@@ -353,7 +353,11 @@ export const pamWebAccessServiceFactory = ({
         throw new BadRequestError({ message: "Invalid account or project" });
       }
 
+<<<<<<< HEAD
       const handlerEntry = SESSION_HANDLERS[account.accountType];
+=======
+      const handlerEntry = SESSION_HANDLERS[account.accountType as PamAccountType];
+>>>>>>> 64c8bcdcd0 (refactor(pam): remove resolveAccountType and resolvePamAccountType identity functions)
       if (!handlerEntry) {
         throw new BadRequestError({ message: "Web access is not supported for this account type" });
       }

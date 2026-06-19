@@ -15,8 +15,6 @@ export const PAM_ACCOUNT_TYPE_MAP: Record<PamAccountType, { name: string; image:
 
 const PAM_ACCOUNT_TYPE_FALLBACK = { name: "Unknown", image: "Windows.png" };
 
-export const resolvePamAccountType = (accountType: string): string => accountType;
-
 export const getPamAccountTypeInfo = (accountType: string): { name: string; image: string } =>
   (PAM_ACCOUNT_TYPE_MAP as Record<string, { name: string; image: string }>)[accountType] ??
   PAM_ACCOUNT_TYPE_FALLBACK;

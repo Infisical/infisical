@@ -11,8 +11,6 @@ export enum PamAccountType {
   Windows = "windows"
 }
 
-export const resolveAccountType = (raw: string): PamAccountType => raw as PamAccountType;
-
 export enum PamResourceRole {
   Admin = "admin",
   Connector = "connector",

@@ -19,7 +19,6 @@ import {
 import { useOrganization } from "@app/context";
 import {
   PamAccountType,
-  resolvePamAccountType,
   TAccessiblePamAccount,
   TPamFieldDescriptor,
   useGetPamAccountById,
@@ -152,8 +151,7 @@ export const LaunchSessionSheet = ({ account, isOpen, onOpenChange }: Props) => 
 
   if (!account) return null;
 
-  const resolved = resolvePamAccountType(account.accountType);
-  const typeMeta = map[resolved as PamAccountType];
+  const typeMeta = map[account.accountType as PamAccountType];
   const typeName = typeMeta?.name ?? account.accountType;
   const supportsWebAccess = Boolean(typeMeta?.supportsWebAccess);
 

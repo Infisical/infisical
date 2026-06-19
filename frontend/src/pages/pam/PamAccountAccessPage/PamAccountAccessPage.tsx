@@ -3,7 +3,7 @@ import { Helmet } from "react-helmet";
 import { useParams } from "@tanstack/react-router";
 import { TriangleAlert } from "lucide-react";
 
-import { PamAccountType, resolvePamAccountType, TPamAccount, useGetPamAccountById } from "@app/hooks/api/pam";
+import { PamAccountType, TPamAccount, useGetPamAccountById } from "@app/hooks/api/pam";
 import { PamDataExplorerPage } from "@app/pages/pam/PamDataExplorerPage/PamDataExplorerPage";
 
 import { DisconnectedScreen } from "./DisconnectedScreen";
@@ -110,22 +110,20 @@ const PageContent = () => {
     );
   }
 
-  const resolvedType = resolvePamAccountType(account.accountType);
-
-  if (resolvedType === PamAccountType.SSH) {
-    return <TerminalContent account={account} orgId={orgId!} />;
+  if (account.accountType === PamAccountType.SSH) {
+    return <TerminalContent account={account} />;
   }
 
   return (
     <SessionAccessGate account={account}>
       {({ reason, mfaSessionId }) => {
-        if (resolvedType === PamAccountType.Postgres) {
+        if (account.accountType === PamAccountType.Postgres) {
           return <PamDataExplorerPage reason={reason} mfaSessionId={mfaSessionId} />;
         }
-        if (resolvedType === PamAccountType.Windows) {
+        if (account.accountType === PamAccountType.Windows) {
           return <RdpContent account={account} reason={reason} mfaSessionId={mfaSessionId} />;
         }
-        return <TerminalContent account={account} orgId={orgId!} reason={reason} mfaSessionId={mfaSessionId} />;
+        return <TerminalContent account={account} reason={reason} mfaSessionId={mfaSessionId} />;
       }}
     </SessionAccessGate>
   );
