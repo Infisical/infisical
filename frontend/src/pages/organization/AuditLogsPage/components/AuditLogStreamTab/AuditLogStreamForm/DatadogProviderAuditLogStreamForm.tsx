@@ -13,6 +13,8 @@ import {
 import { LogProvider } from "@app/hooks/api/auditLogStreams/enums";
 import { TDatadogProviderLogStream } from "@app/hooks/api/auditLogStreams/types/providers/datadog-provider";
 
+import { auditLogStreamFiltersSchema, ProductsField } from "./AuditLogStreamProductsField";
+
 type Props = {
   auditLogStream?: TDatadogProviderLogStream;
   onSubmit: (formData: FormData) => void;
@@ -26,7 +28,8 @@ const formSchema = z.object({
       .string()
       .trim()
       .regex(/^[a-fA-F0-9]{32}$/, "Invalid Datadog API key format")
-  })
+  }),
+  ...auditLogStreamFiltersSchema.shape
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -109,6 +112,9 @@ export const DatadogProviderAuditLogStreamForm = ({ auditLogStream, onSubmit }: 
             </FormControl>
           )}
         />
+        <div className="mt-6">
+          <ProductsField />
+        </div>
         <div className="mt-8 flex items-center">
           <Button
             className="mr-4"

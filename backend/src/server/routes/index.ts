@@ -975,6 +975,7 @@ export const registerRoutes = async (
   const auditLogStreamOutboxService = auditLogStreamOutboxServiceFactory({
     auditLogStreamOutboxDAL,
     auditLogStreamDAL,
+    projectDAL,
     kmsService,
     keyStore,
     queueService

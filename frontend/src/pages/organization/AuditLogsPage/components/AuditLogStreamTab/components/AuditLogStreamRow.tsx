@@ -18,6 +18,8 @@ import { OrgPermissionActions } from "@app/context/OrgPermissionContext/types";
 import { AUDIT_LOG_STREAM_PROVIDER_MAP, getProviderUrl } from "@app/helpers/auditLogStreams";
 import { TAuditLogStream } from "@app/hooks/api/types";
 
+import { AuditLogStreamProductBadges } from "./AuditLogStreamProductBadges";
+
 type Props = {
   logStream: TAuditLogStream;
   onDelete: (logStream: TAuditLogStream) => void;
@@ -29,6 +31,8 @@ export const AuditLogStreamRow = ({ logStream, onDelete, onEditCredentials }: Pr
 
   const providerDetails = AUDIT_LOG_STREAM_PROVIDER_MAP[provider];
   const url = getProviderUrl(logStream);
+
+  const products = logStream.filters?.products ?? [];
 
   return (
     <Tr
@@ -60,6 +64,9 @@ export const AuditLogStreamRow = ({ logStream, onDelete, onEditCredentials }: Pr
         <div className="flex w-full items-center gap-2">
           <p className="truncate">{url}</p>
         </div>
+      </Td>
+      <Td>
+        <AuditLogStreamProductBadges products={products} />
       </Td>
       <Td>
         <div className="flex items-center justify-end gap-2">
