@@ -6,7 +6,6 @@ import {
   Alert,
   AlertDescription,
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -15,6 +14,7 @@ import {
   AlertDialogMedia,
   AlertDialogTitle,
   AlertTitle,
+  Button,
   Field,
   FieldContent,
   FieldLabel,
@@ -43,19 +43,23 @@ export const DeleteAppConnectionModal = ({ isOpen, onOpenChange, appConnection }
   const isConfirmed = inputData === name;
 
   const handleDeleteAppConnection = async () => {
-    if (!isConfirmed) return;
+    if (!isConfirmed || deleteAppConnection.isPending) return;
 
-    await deleteAppConnection.mutateAsync({
-      connectionId,
-      app
-    });
+    try {
+      await deleteAppConnection.mutateAsync({
+        connectionId,
+        app
+      });
 
-    createNotification({
-      text: `Successfully removed ${APP_CONNECTION_MAP[app].name} connection`,
-      type: "success"
-    });
+      createNotification({
+        text: `Successfully removed ${APP_CONNECTION_MAP[app].name} connection`,
+        type: "success"
+      });
 
-    onOpenChange(false);
+      onOpenChange(false);
+    } catch {
+      // Error is handled by the mutation's onError handler
+    }
   };
 
   return (
@@ -99,13 +103,15 @@ export const DeleteAppConnectionModal = ({ isOpen, onOpenChange, appConnection }
         </form>
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction
+          <Button
             variant="danger"
+            size="sm"
+            isDisabled={!isConfirmed}
+            isPending={deleteAppConnection.isPending}
             onClick={handleDeleteAppConnection}
-            disabled={!isConfirmed}
           >
             Delete
-          </AlertDialogAction>
+          </Button>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

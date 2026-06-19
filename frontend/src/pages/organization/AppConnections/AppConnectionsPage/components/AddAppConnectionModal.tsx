@@ -47,9 +47,13 @@ export const AddAppConnectionModal = ({
   const [selectedApp, setSelectedApp] = useState<AppConnection | null>(app ?? null);
   const [confirmDiscardOpen, setConfirmDiscardOpen] = useState(false);
 
+  // Reset to the starting step whenever the sheet (re)opens: a preset `app` goes straight to its
+  // form, otherwise the provider picker. Keyed on `isOpen` so reopening with an unchanged preset
+  // `app` (inline create flows keep the modal mounted) still restores the form instead of falling
+  // back to the picker.
   useEffect(() => {
-    setSelectedApp(app ?? null);
-  }, [app]);
+    if (isOpen) setSelectedApp(app ?? null);
+  }, [isOpen, app]);
 
   const closeSheet = () => {
     setSelectedApp(null);
@@ -108,6 +112,9 @@ export const AddAppConnectionModal = ({
                 app={selectedApp}
                 projectId={projectId}
                 onComplete={handleComplete}
+                // Explicit Cancel is a deliberate abandon, so it closes immediately. Ambiguous
+                // dismissals (X / Escape / outside click) route through handleSheetOpenChange,
+                // which shows the discard confirmation.
                 onCancel={closeSheet}
               />
             </div>

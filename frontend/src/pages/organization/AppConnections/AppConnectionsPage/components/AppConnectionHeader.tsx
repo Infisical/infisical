@@ -34,7 +34,7 @@ export const AppConnectionHeader = ({ app, isConnected }: Props) => {
             href={`https://infisical.com/docs/integrations/app-connections/${app}`}
           />
         </div>
-        <p className="text-sm font-normal leading-4 text-mineshaft-400">
+        <p className="text-sm leading-4 font-normal text-mineshaft-400">
           {isConnected ? `${appDetails.name} Connection` : `Connect to ${appDetails.name}`}
         </p>
       </div>
