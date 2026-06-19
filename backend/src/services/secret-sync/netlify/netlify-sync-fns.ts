@@ -81,7 +81,11 @@ export const NetlifySyncFns = {
         if (!matchesSchema(key, environment?.slug || "", keySchema)) continue;
 
         if (!secretMap[key]) {
-          await NetlifyPublicAPI.deleteVariable(secretSync.connection, params, {
+          // Only remove the value for the current sync context — other contexts on
+          // the same variable (set by other syncs or manually in Netlify) must not
+          // be wiped, since Netlify's DELETE on the variable resource removes ALL
+          // contexts at once.
+          await NetlifyPublicAPI.deleteVariableForContext(secretSync.connection, params, {
             key
           });
         }
@@ -110,7 +114,9 @@ export const NetlifySyncFns = {
     for await (const secret of Object.keys(existingSecrets)) {
       try {
         if (secret in secretMap) {
-          await NetlifyPublicAPI.deleteVariable(secretSync.connection, params, {
+          // Scope the deletion to the current sync's context so values that
+          // belong to other contexts on the same variable are not wiped.
+          await NetlifyPublicAPI.deleteVariableForContext(secretSync.connection, params, {
             key: secret
           });
         }

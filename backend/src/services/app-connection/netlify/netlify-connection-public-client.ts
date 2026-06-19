@@ -225,7 +225,7 @@ class NetlifyPublicClient {
     try {
       const res = await this.send<TNetlifyVariable>(connection, {
         method: "DELETE",
-        url: `/accounts/${account_id}/${variable.key}/value/${value_id}`,
+        url: `/accounts/${account_id}/env/${variable.key}/value/${value_id}`,
         params
       });
 
@@ -237,6 +237,42 @@ class NetlifyPublicClient {
 
       throw error;
     }
+  }
+
+  /**
+   * Delete a variable while preserving values for any context the caller is
+   * not currently targeting. If `params.context_name` is set and the variable
+   * has values for other contexts, only the value for the targeted context is
+   * removed; otherwise the whole variable is deleted.
+   */
+  async deleteVariableForContext(
+    connection: TNetlifyConnectionConfig,
+    params: NetlifyParams,
+    variable: Pick<TNetlifyVariable, "key">
+  ) {
+    const { context_name: contextName, ...paramsWithoutContext } = params;
+
+    if (!contextName) {
+      return this.deleteVariable(connection, paramsWithoutContext, variable);
+    }
+
+    // Fetch without context filter so we see every context's value.
+    const fullVariable = await this.getVariable(connection, paramsWithoutContext, variable);
+    if (!fullVariable) return null;
+
+    const valueForContext = fullVariable.values.find((v) => v.context === contextName);
+    if (!valueForContext) return null; // nothing to delete in this context
+
+    // If our context is the only one with a value, a full delete is cleaner.
+    if (fullVariable.values.length === 1 || !valueForContext.id) {
+      return this.deleteVariable(connection, paramsWithoutContext, variable);
+    }
+
+    return this.deleteVariableValue(
+      connection,
+      { ...paramsWithoutContext, value_id: valueForContext.id },
+      variable
+    );
   }
 
   async getSites(connection: TNetlifyConnectionConfig, accountId: string) {
