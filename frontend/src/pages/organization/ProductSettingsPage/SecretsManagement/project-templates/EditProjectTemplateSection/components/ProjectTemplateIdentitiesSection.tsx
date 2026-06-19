@@ -2,7 +2,6 @@ import { useMemo, useState } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { InfoIcon, Plus, Save, Trash2 } from "lucide-react";
-import { twMerge } from "tailwind-merge";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -26,6 +25,9 @@ import {
   Input,
   OrgIcon,
   ProjectIcon,
+  Tabs,
+  TabsList,
+  TabsTrigger,
   Table,
   TableBody,
   TableCell,
@@ -341,20 +343,20 @@ export const ProjectTemplateIdentitiesSection = ({ projectTemplate }: Props) => 
         {errors.projectManagedIdentities && (
           <span className="my-4 text-sm text-red">{errors.projectManagedIdentities.message}</span>
         )}
-        <Table
-          className="table-fixed"
-          containerClassName="rounded-lg border-mineshaft-600 bg-mineshaft-800"
-        >
-          <TableHeader>
-            <TableRow>
-              <TableHead className="h-12 px-5 text-sm text-mineshaft-200">Identity</TableHead>
-              <TableHead className="h-12 px-5 text-sm text-mineshaft-200">Roles</TableHead>
-              <TableHead className="h-12 w-20 px-5" />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {allIdentitiesForTable.length > 0 ? (
-              allIdentitiesForTable.map((item) => (
+        {allIdentitiesForTable.length > 0 ? (
+          <Table
+            className="table-fixed"
+            containerClassName="rounded-lg border-mineshaft-600 bg-mineshaft-800"
+          >
+            <TableHeader>
+              <TableRow>
+                <TableHead className="h-12 px-5 text-sm text-mineshaft-200">Identity</TableHead>
+                <TableHead className="h-12 px-5 text-sm text-mineshaft-200">Roles</TableHead>
+                <TableHead className="h-12 w-20 px-5" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {allIdentitiesForTable.map((item) => (
                 <TableRow key={item.id} className="hover:bg-transparent">
                   <TableCell className="h-[58px] w-1/3 max-w-0 px-5 py-2">
                     <p className="flex items-center gap-3 truncate">
@@ -453,20 +455,16 @@ export const ProjectTemplateIdentitiesSection = ({ projectTemplate }: Props) => 
                     </div>
                   </TableCell>
                 </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={3} className="h-24 p-0">
-                  <Empty className="h-full rounded-none border-0 bg-mineshaft-800 p-6 md:p-8">
-                    <EmptyHeader>
-                      <EmptyTitle>No machine identities assigned to this template</EmptyTitle>
-                    </EmptyHeader>
-                  </Empty>
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+              ))}
+            </TableBody>
+          </Table>
+        ) : (
+          <Empty className="border border-dashed">
+            <EmptyHeader>
+              <EmptyTitle>No machine identities assigned to this template</EmptyTitle>
+            </EmptyHeader>
+          </Empty>
+        )}
       </form>
 
       <Dialog open={isAddIdentityModalOpen} onOpenChange={setIsAddIdentityModalOpen}>
@@ -478,38 +476,18 @@ export const ProjectTemplateIdentitiesSection = ({ projectTemplate }: Props) => 
             </DialogDescription>
           </DialogHeader>
           <div className="mb-4 flex items-center justify-center gap-x-2">
-            <div className="flex w-3/4 gap-x-0.5 rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setAddMachineIdentityType(AddIdentityType.CreateNew);
-                }}
-                size="xs"
-                className={twMerge(
-                  "min-w-[2.4rem] flex-1 rounded border-none hover:bg-mineshaft-600",
-                  addMachineIdentityType === AddIdentityType.CreateNew
-                    ? "bg-mineshaft-500"
-                    : "bg-transparent"
-                )}
-              >
-                Create New
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setAddMachineIdentityType(AddIdentityType.AssignExisting);
-                }}
-                size="xs"
-                className={twMerge(
-                  "min-w-[2.4rem] flex-1 rounded border-none hover:bg-mineshaft-600",
-                  addMachineIdentityType === AddIdentityType.AssignExisting
-                    ? "bg-mineshaft-500"
-                    : "bg-transparent"
-                )}
-              >
-                Assign Existing
-              </Button>
-            </div>
+            <Tabs
+              value={String(addMachineIdentityType)}
+              onValueChange={(val) => setAddMachineIdentityType(Number(val) as AddIdentityType)}
+              className="w-3/4"
+            >
+              <TabsList variant="filled" className="w-full">
+                <TabsTrigger value={String(AddIdentityType.CreateNew)}>Create New</TabsTrigger>
+                <TabsTrigger value={String(AddIdentityType.AssignExisting)}>
+                  Assign Existing
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
             <Tooltip>
               <TooltipTrigger asChild>
                 <InfoIcon size={16} className="text-mineshaft-400" />
@@ -574,17 +552,17 @@ export const ProjectTemplateIdentitiesSection = ({ projectTemplate }: Props) => 
                   </Field>
                 )}
               />
-              <div className="mt-4 flex items-center">
+              <div className="mt-4 flex items-center justify-end gap-4">
+                <Button type="button" variant="ghost" onClick={handleCloseAddIdentityModal}>
+                  Cancel
+                </Button>
                 <Button
-                  className="mr-4"
                   size="sm"
                   type="submit"
+                  variant="project"
                   isDisabled={!projectIdentityName || selectedProjectRolesInModal.length === 0}
                 >
                   Add to Template
-                </Button>
-                <Button type="button" variant="ghost" onClick={handleCloseAddIdentityModal}>
-                  Cancel
                 </Button>
               </div>
             </form>
@@ -634,17 +612,17 @@ export const ProjectTemplateIdentitiesSection = ({ projectTemplate }: Props) => 
                   </Field>
                 )}
               />
-              <div className="mt-4 flex items-center">
+              <div className="mt-4 flex items-center justify-end gap-4">
+                <Button type="button" variant="ghost" onClick={handleCloseAddIdentityModal}>
+                  Cancel
+                </Button>
                 <Button
-                  className="mr-4"
                   size="sm"
                   type="submit"
+                  variant="project"
                   isDisabled={!selectedOrgIdentity || selectedOrgRolesInModal.length === 0}
                 >
                   Assign to Template
-                </Button>
-                <Button type="button" variant="ghost" onClick={handleCloseAddIdentityModal}>
-                  Cancel
                 </Button>
               </div>
             </form>

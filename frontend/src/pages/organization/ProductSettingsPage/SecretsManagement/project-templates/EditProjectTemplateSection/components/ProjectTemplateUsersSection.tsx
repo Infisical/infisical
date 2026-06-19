@@ -225,20 +225,20 @@ export const ProjectTemplateUsersSection = ({ projectTemplate }: Props) => {
           </OrgPermissionCan>
         </div>
         {errors.users && <span className="my-4 text-sm text-red">{errors.users.message}</span>}
-        <Table
-          className="table-fixed"
-          containerClassName="rounded-lg border-mineshaft-600 bg-mineshaft-800"
-        >
-          <TableHeader>
-            <TableRow>
-              <TableHead className="h-12 px-5 text-sm text-mineshaft-200">Username</TableHead>
-              <TableHead className="h-12 px-5 text-sm text-mineshaft-200">Roles</TableHead>
-              <TableHead className="h-12 w-20 px-5" />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {users.length > 0 ? (
-              users.map(({ id }, pos) => (
+        {users.length > 0 ? (
+          <Table
+            className="table-fixed"
+            containerClassName="rounded-lg border-mineshaft-600 bg-mineshaft-800"
+          >
+            <TableHeader>
+              <TableRow>
+                <TableHead className="h-12 px-5 text-sm text-mineshaft-200">Username</TableHead>
+                <TableHead className="h-12 px-5 text-sm text-mineshaft-200">Roles</TableHead>
+                <TableHead className="h-12 w-20 px-5" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {users.map(({ id }, pos) => (
                 <TableRow key={id} className="hover:bg-transparent">
                   <TableCell className="h-[58px] w-1/3 max-w-0 px-5 py-2">
                     <Controller
@@ -321,20 +321,16 @@ export const ProjectTemplateUsersSection = ({ projectTemplate }: Props) => {
                     </div>
                   </TableCell>
                 </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={3} className="h-24 p-0">
-                  <Empty className="h-full rounded-none border-0 bg-mineshaft-800 p-6 md:p-8">
-                    <EmptyHeader>
-                      <EmptyTitle>No users assigned to this template</EmptyTitle>
-                    </EmptyHeader>
-                  </Empty>
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+              ))}
+            </TableBody>
+          </Table>
+        ) : (
+          <Empty className="border border-dashed">
+            <EmptyHeader>
+              <EmptyTitle>No users assigned to this template</EmptyTitle>
+            </EmptyHeader>
+          </Empty>
+        )}
       </form>
 
       <Dialog open={isAddUserModalOpen} onOpenChange={setIsAddUserModalOpen}>
@@ -393,15 +389,16 @@ export const ProjectTemplateUsersSection = ({ projectTemplate }: Props) => {
                 )}
               />
             </div>
-            <div className="mt-8 flex items-center gap-4">
+            <div className="mt-8 flex items-center justify-end gap-4">
+              <Button type="button" variant="ghost" onClick={handleCloseAddUserModal}>
+                Cancel
+              </Button>
               <Button
                 type="submit"
+                variant="project"
                 isDisabled={selectedUsersInModal.length === 0 || selectedRolesInModal.length === 0}
               >
                 Add Users
-              </Button>
-              <Button type="button" variant="ghost" onClick={handleCloseAddUserModal}>
-                Cancel
               </Button>
             </div>
           </form>

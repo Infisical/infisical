@@ -131,20 +131,20 @@ export const ProjectTemplateRolesSection = ({ projectTemplate, isInfisicalTempla
             )}
           </div>
           <div>
-            <Table
-              className="table-fixed"
-              containerClassName="rounded-lg border-mineshaft-600 bg-mineshaft-800"
-            >
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="h-12 px-5 text-sm text-mineshaft-200">Name</TableHead>
-                  <TableHead className="h-12 px-5 text-sm text-mineshaft-200">Type</TableHead>
-                  <TableHead className="h-12 w-20 px-5" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {roles.length ? (
-                  roles.map((role) => {
+            {roles.length ? (
+              <Table
+                className="table-fixed"
+                containerClassName="rounded-lg border-mineshaft-600 bg-mineshaft-800"
+              >
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="h-12 px-5 text-sm text-mineshaft-200">Name</TableHead>
+                    <TableHead className="h-12 px-5 text-sm text-mineshaft-200">Type</TableHead>
+                    <TableHead className="h-12 w-20 px-5" />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {roles.map((role) => {
                     const isCustomRole = isCustomProjectRole(role.slug);
 
                     return (
@@ -208,20 +208,16 @@ export const ProjectTemplateRolesSection = ({ projectTemplate, isInfisicalTempla
                         </TableCell>
                       </TableRow>
                     );
-                  })
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={3} className="h-24 p-0">
-                      <Empty className="h-full rounded-none border-0 bg-mineshaft-800 p-6 md:p-8">
-                        <EmptyHeader>
-                          <EmptyTitle>No roles assigned to template</EmptyTitle>
-                        </EmptyHeader>
-                      </Empty>
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
+                  })}
+                </TableBody>
+              </Table>
+            ) : (
+              <Empty className="border border-dashed">
+                <EmptyHeader>
+                  <EmptyTitle>No roles assigned to template</EmptyTitle>
+                </EmptyHeader>
+              </Empty>
+            )}
           </div>
           <DeleteActionModal
             isOpen={popUp.removeRole.isOpen}

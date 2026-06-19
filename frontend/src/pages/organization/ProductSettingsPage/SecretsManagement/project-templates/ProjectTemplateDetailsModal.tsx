@@ -98,19 +98,19 @@ const ProjectTemplateForm = ({ onComplete, projectTemplate }: FormProps) => {
         />
         {errors.description?.message && <FieldError>{errors.description.message}</FieldError>}
       </Field>
-      <div className="mt-4 flex items-center">
+      <div className="mt-4 flex items-center justify-end gap-4">
+        <DialogClose asChild>
+          <Button variant="ghost">Cancel</Button>
+        </DialogClose>
         <Button
-          className="mr-4"
           size="sm"
           type="submit"
+          variant="project"
           isPending={isSubmitting}
           isDisabled={isSubmitting}
         >
           {projectTemplate ? "Update" : "Add"} Template
         </Button>
-        <DialogClose asChild>
-          <Button variant="ghost">Cancel</Button>
-        </DialogClose>
       </div>
     </form>
   );

@@ -42,7 +42,7 @@ export const EditProjectTemplateSection = ({ templateId, onBack }: Props) => {
           onBack={onBack}
         />
       ) : (
-        <Empty className="py-12">
+        <Empty className="border border-dashed">
           <EmptyHeader>
             <EmptyTitle>Error: Unable to find project template.</EmptyTitle>
           </EmptyHeader>
