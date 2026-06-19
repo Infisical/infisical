@@ -84,7 +84,7 @@ const createService = () => {
   };
 
   const projectDAL = {
-    find: vi.fn(async () => [])
+    findProjectTypesByIds: vi.fn(async () => [])
   };
 
   const service = auditLogStreamOutboxServiceFactory({
@@ -327,7 +327,7 @@ describe("audit-log-stream-outbox-service enqueueForLogs batch fanout", () => {
     };
 
     const projectDAL = {
-      find: vi.fn(async () => [])
+      findProjectTypesByIds: vi.fn(async () => [])
     };
 
     // Win the debounce SETNX so the flush job is always enqueued in these tests.
@@ -413,7 +413,7 @@ describe("audit-log-stream-outbox-service enqueueForLogs batch fanout", () => {
 
     await service.enqueueForLogs([projectLog("1", "orgA", "projPki")]);
 
-    expect(projectDAL.find).not.toHaveBeenCalled();
+    expect(projectDAL.findProjectTypesByIds).not.toHaveBeenCalled();
     expect(auditLogStreamOutboxDAL.batchInsert.mock.calls[0][0]).toHaveLength(1);
   });
 
@@ -430,7 +430,7 @@ describe("audit-log-stream-outbox-service enqueueForLogs batch fanout", () => {
       }
     ] as never);
 
-    projectDAL.find.mockResolvedValue([
+    projectDAL.findProjectTypesByIds.mockResolvedValue([
       { id: "projPki", type: AuditLogStreamProduct.CertificateManager },
       { id: "projSecrets", type: AuditLogStreamProduct.SecretManager }
     ] as never);
@@ -441,7 +441,7 @@ describe("audit-log-stream-outbox-service enqueueForLogs batch fanout", () => {
       log("orgLevel", "orgA") // matches (organization, no projectId)
     ]);
 
-    expect(projectDAL.find).toHaveBeenCalledTimes(1);
+    expect(projectDAL.findProjectTypesByIds).toHaveBeenCalledTimes(1);
     const inserted = auditLogStreamOutboxDAL.batchInsert.mock.calls[0][0] as { payload: { id: string } }[];
     expect(inserted.map((r) => r.payload.id).sort()).toEqual(["orgLevel", "pki"]);
     // The stream received rows, so it is woken exactly once.
@@ -455,12 +455,49 @@ describe("audit-log-stream-outbox-service enqueueForLogs batch fanout", () => {
     auditLogStreamDAL.find.mockResolvedValue([
       { id: "sA", orgId: "orgA", provider: PROVIDER, filters: { products: [AuditLogStreamProduct.KMS] } }
     ] as never);
-    projectDAL.find.mockResolvedValue([{ id: "projPki", type: AuditLogStreamProduct.CertificateManager }] as never);
+    projectDAL.findProjectTypesByIds.mockResolvedValue([
+      { id: "projPki", type: AuditLogStreamProduct.CertificateManager }
+    ] as never);
 
     await service.enqueueForLogs([projectLog("pki", "orgA", "projPki")]);
 
     expect(auditLogStreamOutboxDAL.batchInsert).not.toHaveBeenCalled();
     expect(keyStore.setItemWithExpiryNX).not.toHaveBeenCalled();
+  });
+
+  test("unresolvable project log (hard-deleted project) is not misrouted to an org-filtered stream", async () => {
+    const { service, auditLogStreamDAL, auditLogStreamOutboxDAL, projectDAL, keyStore } = buildService();
+
+    // Stream scoped to org-level events only. A log whose project was hard-deleted (so it is absent
+    // from the type lookup) must NOT leak into this stream as if it were an Organization event.
+    auditLogStreamDAL.find.mockResolvedValue([
+      { id: "sOrg", orgId: "orgA", provider: PROVIDER, filters: { products: [AuditLogStreamProduct.Organization] } }
+    ] as never);
+    // Lookup returns nothing for the projectId — the project no longer exists.
+    projectDAL.findProjectTypesByIds.mockResolvedValue([] as never);
+
+    await service.enqueueForLogs([projectLog("orphan", "orgA", "projGone")]);
+
+    expect(projectDAL.findProjectTypesByIds).toHaveBeenCalledTimes(1);
+    expect(auditLogStreamOutboxDAL.batchInsert).not.toHaveBeenCalled();
+    expect(keyStore.setItemWithExpiryNX).not.toHaveBeenCalled();
+  });
+
+  test("unresolvable project log still reaches an unfiltered catch-all stream", async () => {
+    const { service, auditLogStreamDAL, auditLogStreamOutboxDAL, projectDAL } = buildService();
+
+    // One product-filtered stream (must skip the orphan log) and one unfiltered stream (must keep it).
+    auditLogStreamDAL.find.mockResolvedValue([
+      { id: "sFiltered", orgId: "orgA", provider: PROVIDER, filters: { products: [AuditLogStreamProduct.KMS] } },
+      { id: "sCatchAll", orgId: "orgA", provider: PROVIDER }
+    ] as never);
+    projectDAL.findProjectTypesByIds.mockResolvedValue([] as never);
+
+    await service.enqueueForLogs([projectLog("orphan", "orgA", "projGone")]);
+
+    const inserted = auditLogStreamOutboxDAL.batchInsert.mock.calls[0][0] as { streamId: string }[];
+    // Only the catch-all stream receives it; the KMS-filtered stream does not.
+    expect(inserted.map((r) => r.streamId)).toEqual(["sCatchAll"]);
   });
 });
 

@@ -69,19 +69,18 @@ export const streamHasProductFilter = (stream: Pick<TAuditLogStreams, "filters">
 export const resolveAuditLogProduct = (
   log: Pick<TAuditLogs, "projectId">,
   projectTypeById: Map<string, string>
-): AuditLogStreamProduct => {
+): AuditLogStreamProduct | null => {
   if (!log.projectId) return AuditLogStreamProduct.Organization;
-  return (
-    (projectTypeById.get(log.projectId) as AuditLogStreamProduct | undefined) ?? AuditLogStreamProduct.Organization
-  );
+  return (projectTypeById.get(log.projectId) as AuditLogStreamProduct | undefined) ?? null;
 };
 
 export const auditLogMatchesStreamFilter = (
-  product: AuditLogStreamProduct,
+  product: AuditLogStreamProduct | null,
   filters?: TAuditLogStreamFilters | null
 ): boolean => {
   const products = filters?.products;
   if (!products || products.length === 0) return true;
+  if (product === null) return false;
   return products.includes(product);
 };
 

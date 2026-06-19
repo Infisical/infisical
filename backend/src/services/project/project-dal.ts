@@ -369,6 +369,16 @@ export const projectDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findProjectTypesByIds = async (ids: string[], tx?: Knex): Promise<{ id: string; type: string }[]> => {
+    try {
+      if (ids.length === 0) return [];
+      const rows = await (tx || db.replicaNode())(TableName.Project).whereIn("id", ids).select("id", "type");
+      return rows as { id: string; type: string }[];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find project types by ids" });
+    }
+  };
+
   // Lightweight all-projects-in-org lookup that returns only the IDs.
   const findOrgProjectIds = async (orgId: string, tx?: Knex): Promise<string[]> => {
     try {
@@ -802,6 +812,7 @@ export const projectDALFactory = (db: TDbClient) => {
     findUserProjects,
     findIdentityProjects,
     findActorAccessibleProjectIds,
+    findProjectTypesByIds,
     findOrgProjectIds,
     setProjectUpgradeStatus,
     findProjectGhostUser,

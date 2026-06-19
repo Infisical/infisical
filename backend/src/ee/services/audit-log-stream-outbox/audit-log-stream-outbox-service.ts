@@ -70,7 +70,7 @@ const computeBackoffMs = (attemptsAfterIncrement: number): number => {
 export type TAuditLogStreamOutboxServiceFactoryDep = {
   auditLogStreamOutboxDAL: TAuditLogStreamOutboxDALFactory;
   auditLogStreamDAL: Pick<TAuditLogStreamDALFactory, "find" | "findById">;
-  projectDAL: Pick<TProjectDALFactory, "find">;
+  projectDAL: Pick<TProjectDALFactory, "findProjectTypesByIds">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX">;
   queueService: TQueueServiceFactory;
@@ -161,7 +161,7 @@ export const auditLogStreamOutboxServiceFactory = ({
         }
       }
       if (projectIds.size > 0) {
-        const projects = await projectDAL.find({ $in: { id: [...projectIds] } });
+        const projects = await projectDAL.findProjectTypesByIds([...projectIds]);
         projectTypeById = new Map(projects.map((project) => [project.id, project.type]));
       }
     }
