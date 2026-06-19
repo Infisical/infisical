@@ -455,9 +455,7 @@ describe("audit-log-stream-outbox-service enqueueForLogs batch fanout", () => {
     auditLogStreamDAL.find.mockResolvedValue([
       { id: "sA", orgId: "orgA", provider: PROVIDER, filters: { products: [AuditLogStreamProduct.KMS] } }
     ] as never);
-    projectDAL.find.mockResolvedValue([
-      { id: "projPki", type: AuditLogStreamProduct.CertificateManager }
-    ] as never);
+    projectDAL.find.mockResolvedValue([{ id: "projPki", type: AuditLogStreamProduct.CertificateManager }] as never);
 
     await service.enqueueForLogs([projectLog("pki", "orgA", "projPki")]);
 

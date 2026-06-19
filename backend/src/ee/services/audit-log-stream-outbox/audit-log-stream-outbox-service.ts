@@ -168,22 +168,21 @@ export const auditLogStreamOutboxServiceFactory = ({
 
     for (const stream of streams) {
       const logs = logsByOrg.get(stream.orgId);
-      if (!logs) continue;
-
-      const filters = stream.filters as TAuditLogStreamFilters | null;
-      const streamHasFilter = streamHasProductFilter(stream);
-      let streamReceivedRow = false;
-      for (const log of logs) {
-        if (streamHasFilter && !auditLogMatchesStreamFilter(resolveAuditLogProduct(log, projectTypeById), filters)) {
-          continue;
+      if (logs) {
+        const filters = stream.filters as TAuditLogStreamFilters | null;
+        const streamHasFilter = streamHasProductFilter(stream);
+        let streamReceivedRow = false;
+        for (const log of logs) {
+          if (!streamHasFilter || auditLogMatchesStreamFilter(resolveAuditLogProduct(log, projectTypeById), filters)) {
+            outboxRows.push({ streamId: stream.id, orgId: stream.orgId, payload: log });
+            streamReceivedRow = true;
+          }
         }
-        outboxRows.push({ streamId: stream.id, orgId: stream.orgId, payload: log });
-        streamReceivedRow = true;
-      }
 
-      // Only wake a stream that actually received rows — a fully-filtered-out stream has nothing to flush.
-      if (streamReceivedRow) {
-        streamsToFlush.set(stream.id, { orgId: stream.orgId, provider: stream.provider as LogProvider });
+        // Only wake a stream that actually received rows — a fully-filtered-out stream has nothing to flush.
+        if (streamReceivedRow) {
+          streamsToFlush.set(stream.id, { orgId: stream.orgId, provider: stream.provider as LogProvider });
+        }
       }
     }
 
