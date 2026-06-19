@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Ban } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -327,6 +328,8 @@ const SettingsTab = ({
                   setValue("gatewayId", value.gatewayId, { shouldDirty: true });
                   setValue("gatewayPoolId", value.gatewayPoolId, { shouldDirty: true });
                 }}
+                noGatewayLabel="No Gateway"
+                noGatewayIcon={Ban}
               />
               <FieldDescription>
                 Used to reach accounts unless overridden on the account.
