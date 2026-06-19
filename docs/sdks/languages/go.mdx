@@ -1097,7 +1097,7 @@ lease, err := client.DynamicSecrets().Leases().RenewById(infisical.RenewDynamicS
 
 <Note>
   Renewals must happen **before** the lease expires. Renewing does not issue new
-  credentials; the existing credentials continue to live for the specified TTL.
+  credentials; it extends the expiration of the existing credentials.
 </Note>
 
 #### Parameters
@@ -1118,8 +1118,12 @@ lease, err := client.DynamicSecrets().Leases().RenewById(infisical.RenewDynamicS
       The path where the dynamic secret lives. The root path is `/`.
     </ParamField>
     <ParamField query="TTL" type="string" optional>
-      The new amount of time the lease credentials should remain valid, e.g.
-      `10m` or `1h`.
+      How much time to add to the lease's current expiration, e.g. `10m` or
+      `1h`. The duration is added to the existing expiry rather than measured
+      from now, so renewing a lease that still has time left extends it beyond
+      the remaining time. The total lifetime cannot exceed the dynamic secret's
+      max TTL, counted from when the lease was created. Defaults to the dynamic
+      secret's default TTL if not specified.
     </ParamField>
     <ParamField query="IsForced" type="boolean" default="false" optional>
       When true, the renewal is applied even if the lease has already expired.
