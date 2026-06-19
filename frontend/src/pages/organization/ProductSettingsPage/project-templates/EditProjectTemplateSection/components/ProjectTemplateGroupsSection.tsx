@@ -8,6 +8,12 @@ import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
   Button,
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -180,153 +186,156 @@ export const ProjectTemplateGroupsSection = ({ projectTemplate }: Props) => {
 
   return (
     <>
-      <form
-        onSubmit={handleSubmit(onFormSubmit)}
-        className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-7"
-      >
-        <div className="mb-8 flex items-start justify-between gap-4">
-          <div>
-            <h2 className="text-2xl font-semibold tracking-normal">Project Groups</h2>
-            <p className="mt-2 text-base text-mineshaft-300">
+      <form onSubmit={handleSubmit(onFormSubmit)}>
+        <Card>
+          <CardHeader>
+            <CardTitle>Project Groups</CardTitle>
+            <CardDescription>
               Add groups that will be automatically added to projects created from this template.
-            </p>
-          </div>
-
-          <OrgPermissionCan
-            I={OrgPermissionActions.Edit}
-            a={OrgPermissionSubjects.ProjectTemplates}
-          >
-            {(isAllowed) => (
-              <div className="flex gap-3">
-                {isAllowed && isDirty && (
-                  <>
-                    <Button onClick={handleDiscard} variant="ghost" type="button" size="lg">
-                      Discard
-                    </Button>
-                    <Button type="submit" variant="outline" size="lg">
-                      <Save className="size-4" />
-                      Save Changes
-                    </Button>
-                  </>
-                )}
-                <Button
-                  onClick={() => setIsAddGroupModalOpen(true)}
-                  variant="project"
-                  size="lg"
-                  isDisabled={!isAllowed || availableOrgGroups.length === 0}
-                  type="button"
-                >
-                  <Plus className="size-4" />
-                  Add Group
-                </Button>
-              </div>
-            )}
-          </OrgPermissionCan>
-        </div>
-        {errors.groups && <span className="my-4 text-sm text-red">{errors.groups.message}</span>}
-        {groups.length > 0 ? (
-          <Table className="table-fixed">
-            <TableHeader>
-              <TableRow>
-                <TableHead>Group</TableHead>
-                <TableHead>Roles</TableHead>
-                <TableHead />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {groups.map(({ id }, pos) => (
-                <TableRow key={id}>
-                  <TableCell className="py-2">
-                    <Controller
-                      control={control}
-                      name={`groups.${pos}.groupSlug`}
-                      render={({ field }) => (
-                        <p className="truncate">
-                          <span className="text-sm font-medium text-mineshaft-100">
-                            {getGroupName(field.value)}
-                          </span>
-                        </p>
-                      )}
-                    />
-                  </TableCell>
-                  <TableCell className="py-2">
-                    <OrgPermissionCan
-                      I={OrgPermissionActions.Edit}
-                      a={OrgPermissionSubjects.ProjectTemplates}
+            </CardDescription>
+            <CardAction>
+              <OrgPermissionCan
+                I={OrgPermissionActions.Edit}
+                a={OrgPermissionSubjects.ProjectTemplates}
+              >
+                {(isAllowed) => (
+                  <div className="flex gap-3">
+                    {isAllowed && isDirty && (
+                      <>
+                        <Button onClick={handleDiscard} variant="ghost" type="button">
+                          Discard
+                        </Button>
+                        <Button type="submit" variant="outline">
+                          <Save className="size-4" />
+                          Save Changes
+                        </Button>
+                      </>
+                    )}
+                    <Button
+                      onClick={() => setIsAddGroupModalOpen(true)}
+                      variant="project"
+                      isDisabled={!isAllowed}
+                      type="button"
                     >
-                      {(isAllowed) => (
+                      <Plus className="size-4" />
+                      Add Group
+                    </Button>
+                  </div>
+                )}
+              </OrgPermissionCan>
+            </CardAction>
+          </CardHeader>
+          <CardContent>
+            {errors.groups && (
+              <span className="my-4 text-sm text-danger">{errors.groups.message}</span>
+            )}
+            {groups.length > 0 ? (
+              <Table className="table-fixed">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Group</TableHead>
+                    <TableHead>Roles</TableHead>
+                    <TableHead />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {groups.map(({ id }, pos) => (
+                    <TableRow key={id}>
+                      <TableCell className="py-2">
                         <Controller
                           control={control}
-                          name={`groups.${pos}.roles`}
-                          render={({ field, fieldState: { error } }) => {
-                            const availableRoleSlugs = new Set(availableRoles.map((r) => r.slug));
-                            const orphanedRoles = field.value
-                              .filter((slug) => !availableRoleSlugs.has(slug))
-                              .map((slug) => ({ slug, name: slug }));
-                            const allOptions = [...availableRoles, ...orphanedRoles];
-
-                            const selectedValues = allOptions.filter((role) =>
-                              field.value.includes(role.slug)
-                            );
-
-                            return (
-                              <Field className="mb-0 max-w-[786px]">
-                                <FilterableSelect
-                                  isMulti
-                                  isDisabled={!isAllowed}
-                                  options={allOptions}
-                                  value={selectedValues}
-                                  onChange={(selected) => {
-                                    field.onChange(
-                                      (selected as { slug: string; name: string }[]).map(
-                                        (s) => s.slug
-                                      )
-                                    );
-                                  }}
-                                  getOptionValue={(option) => option.slug}
-                                  getOptionLabel={(option) => option.name}
-                                  placeholder="Select roles..."
-                                  menuPosition="fixed"
-                                />
-                                {error?.message && <FieldError>{error.message}</FieldError>}
-                              </Field>
-                            );
-                          }}
+                          name={`groups.${pos}.groupSlug`}
+                          render={({ field }) => (
+                            <p className="truncate">
+                              <span className="text-sm font-medium text-mineshaft-100">
+                                {getGroupName(field.value)}
+                              </span>
+                            </p>
+                          )}
                         />
-                      )}
-                    </OrgPermissionCan>
-                  </TableCell>
-                  <TableCell className="py-2">
-                    <div className="flex justify-end">
-                      <OrgPermissionCan
-                        I={OrgPermissionActions.Edit}
-                        a={OrgPermissionSubjects.ProjectTemplates}
-                      >
-                        {(isAllowed) => (
-                          <IconButton
-                            onClick={() => remove(pos)}
-                            variant="ghost-muted"
-                            size="xs"
-                            aria-label="Remove group"
-                            isDisabled={!isAllowed}
+                      </TableCell>
+                      <TableCell className="py-2">
+                        <OrgPermissionCan
+                          I={OrgPermissionActions.Edit}
+                          a={OrgPermissionSubjects.ProjectTemplates}
+                        >
+                          {(isAllowed) => (
+                            <Controller
+                              control={control}
+                              name={`groups.${pos}.roles`}
+                              render={({ field, fieldState: { error } }) => {
+                                const availableRoleSlugs = new Set(
+                                  availableRoles.map((r) => r.slug)
+                                );
+                                const orphanedRoles = field.value
+                                  .filter((slug) => !availableRoleSlugs.has(slug))
+                                  .map((slug) => ({ slug, name: slug }));
+                                const allOptions = [...availableRoles, ...orphanedRoles];
+
+                                const selectedValues = allOptions.filter((role) =>
+                                  field.value.includes(role.slug)
+                                );
+
+                                return (
+                                  <Field className="mb-0 max-w-[786px]">
+                                    <FilterableSelect
+                                      isMulti
+                                      isDisabled={!isAllowed}
+                                      options={allOptions}
+                                      value={selectedValues}
+                                      onChange={(selected) => {
+                                        field.onChange(
+                                          (selected as { slug: string; name: string }[]).map(
+                                            (s) => s.slug
+                                          )
+                                        );
+                                      }}
+                                      getOptionValue={(option) => option.slug}
+                                      getOptionLabel={(option) => option.name}
+                                      placeholder="Select roles..."
+                                      menuPosition="fixed"
+                                    />
+                                    {error?.message && <FieldError>{error.message}</FieldError>}
+                                  </Field>
+                                );
+                              }}
+                            />
+                          )}
+                        </OrgPermissionCan>
+                      </TableCell>
+                      <TableCell className="py-2">
+                        <div className="flex justify-end">
+                          <OrgPermissionCan
+                            I={OrgPermissionActions.Edit}
+                            a={OrgPermissionSubjects.ProjectTemplates}
                           >
-                            <Trash2 className="size-4" />
-                          </IconButton>
-                        )}
-                      </OrgPermissionCan>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        ) : (
-          <Empty className="border border-dashed">
-            <EmptyHeader>
-              <EmptyTitle>No groups assigned to this template</EmptyTitle>
-            </EmptyHeader>
-          </Empty>
-        )}
+                            {(isAllowed) => (
+                              <IconButton
+                                onClick={() => remove(pos)}
+                                variant="ghost-muted"
+                                size="xs"
+                                aria-label="Remove group"
+                                isDisabled={!isAllowed}
+                              >
+                                <Trash2 className="size-4" />
+                              </IconButton>
+                            )}
+                          </OrgPermissionCan>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            ) : (
+              <Empty className="border border-dashed">
+                <EmptyHeader>
+                  <EmptyTitle>No groups assigned to this template</EmptyTitle>
+                </EmptyHeader>
+              </Empty>
+            )}
+          </CardContent>
+        </Card>
       </form>
 
       <Dialog open={isAddGroupModalOpen} onOpenChange={setIsAddGroupModalOpen}>

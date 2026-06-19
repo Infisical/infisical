@@ -1,4 +1,4 @@
-import { LayoutTemplate } from "lucide-react";
+import { LayoutTemplate, PlusIcon } from "lucide-react";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { OrgPermissionCan } from "@app/components/permissions";
@@ -64,6 +64,7 @@ export const ProjectTemplatesSection = ({ projectType, onTemplateSelect }: Props
                     handlePopUpOpen("addTemplate");
                   }}
                 >
+                  <PlusIcon />
                   Add Template
                 </Button>
               )}

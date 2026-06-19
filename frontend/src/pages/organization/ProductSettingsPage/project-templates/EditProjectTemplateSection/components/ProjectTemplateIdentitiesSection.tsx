@@ -9,6 +9,12 @@ import { OrgPermissionCan } from "@app/components/permissions";
 import {
   Badge,
   Button,
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -293,175 +299,173 @@ export const ProjectTemplateIdentitiesSection = ({ projectTemplate }: Props) => 
 
   return (
     <>
-      <form
-        onSubmit={handleSubmit(onFormSubmit)}
-        className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-7"
-      >
-        <div className="mb-8 flex items-start justify-between gap-4">
-          <div>
-            <h2 className="text-2xl font-semibold tracking-normal">Project Machine Identities</h2>
-            <p className="mt-2 text-base text-mineshaft-300">
+      <form onSubmit={handleSubmit(onFormSubmit)}>
+        <Card>
+          <CardHeader>
+            <CardTitle>Project Machine Identities</CardTitle>
+            <CardDescription>
               Add machine identities that will be automatically added to projects created from this
               template.
-            </p>
-          </div>
-
-          <OrgPermissionCan
-            I={OrgPermissionActions.Edit}
-            a={OrgPermissionSubjects.ProjectTemplates}
-          >
-            {(isAllowed) => (
-              <div className="flex gap-3">
-                {isAllowed && isDirty && (
-                  <>
-                    <Button onClick={handleDiscard} variant="ghost" type="button" size="lg">
-                      Discard
-                    </Button>
-                    <Button type="submit" variant="outline" size="lg">
-                      <Save className="size-4" />
-                      Save Changes
-                    </Button>
-                  </>
-                )}
-                <Button
-                  onClick={() => setIsAddIdentityModalOpen(true)}
-                  variant="project"
-                  size="lg"
-                  isDisabled={!isAllowed}
-                  type="button"
-                >
-                  <Plus className="size-4" />
-                  Add Machine Identity
-                </Button>
-              </div>
-            )}
-          </OrgPermissionCan>
-        </div>
-        {errors.identities && (
-          <span className="my-4 text-sm text-red">{errors.identities.message}</span>
-        )}
-        {errors.projectManagedIdentities && (
-          <span className="my-4 text-sm text-red">{errors.projectManagedIdentities.message}</span>
-        )}
-        {allIdentitiesForTable.length > 0 ? (
-          <Table className="table-fixed">
-            <TableHeader>
-              <TableRow>
-                <TableHead>Identity</TableHead>
-                <TableHead>Roles</TableHead>
-                <TableHead />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {allIdentitiesForTable.map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell className="py-2">
-                    <p className="flex items-center gap-3 truncate">
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Badge isSquare variant={item.type === "project" ? "project" : "org"}>
-                            {item.type === "project" ? <ProjectIcon /> : <OrgIcon />}
-                          </Badge>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          {item.type === "project"
-                            ? "Managed by project"
-                            : "Managed by organization"}
-                        </TooltipContent>
-                      </Tooltip>
-                      <span className="truncate text-sm font-medium text-mineshaft-100">
-                        {item.name}
-                      </span>
-                    </p>
-                  </TableCell>
-                  <TableCell className="py-2">
-                    <OrgPermissionCan
-                      I={OrgPermissionActions.Edit}
-                      a={OrgPermissionSubjects.ProjectTemplates}
+            </CardDescription>
+            <CardAction>
+              <OrgPermissionCan
+                I={OrgPermissionActions.Edit}
+                a={OrgPermissionSubjects.ProjectTemplates}
+              >
+                {(isAllowed) => (
+                  <div className="flex gap-3">
+                    {isAllowed && isDirty && (
+                      <>
+                        <Button onClick={handleDiscard} variant="ghost" type="button">
+                          Discard
+                        </Button>
+                        <Button type="submit" variant="outline">
+                          <Save className="size-4" />
+                          Save Changes
+                        </Button>
+                      </>
+                    )}
+                    <Button
+                      onClick={() => setIsAddIdentityModalOpen(true)}
+                      variant="project"
+                      isDisabled={!isAllowed}
+                      type="button"
                     >
-                      {(isAllowed) => (
-                        <Controller
-                          control={control}
-                          name={
-                            item.type === "org"
-                              ? `identities.${item.index}.roles`
-                              : `projectManagedIdentities.${item.index}.roles`
-                          }
-                          render={({ field, fieldState: { error } }) => {
-                            const availableRoleSlugs = new Set(availableRoles.map((r) => r.slug));
-                            const orphanedRoles = field.value
-                              .filter((slug) => !availableRoleSlugs.has(slug))
-                              .map((slug) => ({ slug, name: slug }));
-                            const allOptions = [...availableRoles, ...orphanedRoles];
-
-                            const selectedValues = allOptions.filter((role) =>
-                              field.value.includes(role.slug)
-                            );
-
-                            return (
-                              <Field className="mb-0 max-w-[786px]">
-                                <FilterableSelect
-                                  isMulti
-                                  isDisabled={!isAllowed}
-                                  options={allOptions}
-                                  value={selectedValues}
-                                  onChange={(selected) => {
-                                    field.onChange(
-                                      (selected as { slug: string; name: string }[]).map(
-                                        (s) => s.slug
-                                      )
-                                    );
-                                  }}
-                                  getOptionValue={(option) => option.slug}
-                                  getOptionLabel={(option) => option.name}
-                                  placeholder="Select roles..."
-                                  menuPosition="fixed"
-                                />
-                                {error?.message && <FieldError>{error.message}</FieldError>}
-                              </Field>
-                            );
-                          }}
-                        />
-                      )}
-                    </OrgPermissionCan>
-                  </TableCell>
-                  <TableCell className="py-2">
-                    <div className="flex justify-end">
-                      <OrgPermissionCan
-                        I={OrgPermissionActions.Edit}
-                        a={OrgPermissionSubjects.ProjectTemplates}
-                      >
-                        {(isAllowed) => (
-                          <IconButton
-                            onClick={() => {
-                              if (item.type === "org") {
-                                removeIdentity(item.index);
-                              } else {
-                                removeProjectManagedIdentity(item.index);
+                      <Plus className="size-4" />
+                      Add Machine Identity
+                    </Button>
+                  </div>
+                )}
+              </OrgPermissionCan>
+            </CardAction>
+          </CardHeader>
+          <CardContent>
+            {errors.identities && (
+              <span className="my-4 text-sm text-danger">{errors.identities.message}</span>
+            )}
+            {errors.projectManagedIdentities && (
+              <span className="my-4 text-sm text-danger">
+                {errors.projectManagedIdentities.message}
+              </span>
+            )}
+            {allIdentitiesForTable.length > 0 ? (
+              <Table className="table-fixed">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Identity</TableHead>
+                    <TableHead>Roles</TableHead>
+                    <TableHead className="w-40">Managed By</TableHead>
+                    <TableHead className="w-16" />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {allIdentitiesForTable.map((item) => (
+                    <TableRow key={item.id}>
+                      <TableCell className="py-2">
+                        <p className="truncate">
+                          <span className="truncate text-sm font-medium text-mineshaft-100">
+                            {item.name}
+                          </span>
+                        </p>
+                      </TableCell>
+                      <TableCell className="py-2">
+                        <OrgPermissionCan
+                          I={OrgPermissionActions.Edit}
+                          a={OrgPermissionSubjects.ProjectTemplates}
+                        >
+                          {(isAllowed) => (
+                            <Controller
+                              control={control}
+                              name={
+                                item.type === "org"
+                                  ? `identities.${item.index}.roles`
+                                  : `projectManagedIdentities.${item.index}.roles`
                               }
-                            }}
-                            variant="ghost-muted"
-                            size="xs"
-                            aria-label="Remove identity"
-                            isDisabled={!isAllowed}
+                              render={({ field, fieldState: { error } }) => {
+                                const availableRoleSlugs = new Set(
+                                  availableRoles.map((r) => r.slug)
+                                );
+                                const orphanedRoles = field.value
+                                  .filter((slug) => !availableRoleSlugs.has(slug))
+                                  .map((slug) => ({ slug, name: slug }));
+                                const allOptions = [...availableRoles, ...orphanedRoles];
+
+                                const selectedValues = allOptions.filter((role) =>
+                                  field.value.includes(role.slug)
+                                );
+
+                                return (
+                                  <Field className="mb-0 max-w-[786px]">
+                                    <FilterableSelect
+                                      isMulti
+                                      isDisabled={!isAllowed}
+                                      options={allOptions}
+                                      value={selectedValues}
+                                      onChange={(selected) => {
+                                        field.onChange(
+                                          (selected as { slug: string; name: string }[]).map(
+                                            (s) => s.slug
+                                          )
+                                        );
+                                      }}
+                                      getOptionValue={(option) => option.slug}
+                                      getOptionLabel={(option) => option.name}
+                                      placeholder="Select roles..."
+                                      menuPosition="fixed"
+                                    />
+                                    {error?.message && <FieldError>{error.message}</FieldError>}
+                                  </Field>
+                                );
+                              }}
+                            />
+                          )}
+                        </OrgPermissionCan>
+                      </TableCell>
+                      <TableCell className="py-2">
+                        <Badge variant={item.type === "project" ? "project" : "org"}>
+                          {item.type === "project" ? <ProjectIcon /> : <OrgIcon />}
+                          {item.type === "project" ? "Project" : "Organization"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="py-2">
+                        <div className="flex justify-end">
+                          <OrgPermissionCan
+                            I={OrgPermissionActions.Edit}
+                            a={OrgPermissionSubjects.ProjectTemplates}
                           >
-                            <Trash2 className="size-4" />
-                          </IconButton>
-                        )}
-                      </OrgPermissionCan>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        ) : (
-          <Empty className="border border-dashed">
-            <EmptyHeader>
-              <EmptyTitle>No machine identities assigned to this template</EmptyTitle>
-            </EmptyHeader>
-          </Empty>
-        )}
+                            {(isAllowed) => (
+                              <IconButton
+                                onClick={() => {
+                                  if (item.type === "org") {
+                                    removeIdentity(item.index);
+                                  } else {
+                                    removeProjectManagedIdentity(item.index);
+                                  }
+                                }}
+                                variant="ghost-muted"
+                                size="xs"
+                                aria-label="Remove identity"
+                                isDisabled={!isAllowed}
+                              >
+                                <Trash2 className="size-4" />
+                              </IconButton>
+                            )}
+                          </OrgPermissionCan>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            ) : (
+              <Empty className="border border-dashed">
+                <EmptyHeader>
+                  <EmptyTitle>No machine identities assigned to this template</EmptyTitle>
+                </EmptyHeader>
+              </Empty>
+            )}
+          </CardContent>
+        </Card>
       </form>
 
       <Dialog open={isAddIdentityModalOpen} onOpenChange={setIsAddIdentityModalOpen}>

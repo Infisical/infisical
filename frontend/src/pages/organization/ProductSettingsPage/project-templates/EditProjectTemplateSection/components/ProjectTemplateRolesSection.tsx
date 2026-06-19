@@ -4,7 +4,14 @@ import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { DeleteActionModal } from "@app/components/v2";
 import {
+  Badge,
   Button,
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
   Empty,
   EmptyHeader,
   EmptyTitle,
@@ -87,7 +94,7 @@ export const ProjectTemplateRolesSection = ({ projectTemplate, isInfisicalTempla
   const roleToDelete = popUp?.removeRole?.data as TProjectRole;
 
   return (
-    <div className="relative mb-6">
+    <div>
       {popUp?.editRole.isOpen ? (
         <ProjectTemplateEditRoleForm
           onGoBack={() => handlePopUpClose("editRole")}
@@ -99,38 +106,37 @@ export const ProjectTemplateRolesSection = ({ projectTemplate, isInfisicalTempla
           }
         />
       ) : (
-        <div className="w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-7">
-          <div className="mb-8 flex items-start justify-between gap-4">
-            <div>
-              <h2 className="text-2xl font-semibold tracking-normal">Project Roles</h2>
-              <p className="mt-2 text-base text-mineshaft-300">
-                {isInfisicalTemplate
-                  ? "Click a role to view the associated permissions."
-                  : "Add, edit and remove roles for this project template."}
-              </p>
-            </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>Project Roles</CardTitle>
+            <CardDescription>
+              {isInfisicalTemplate
+                ? "Click a role to view the associated permissions."
+                : "Add, edit and remove roles for this project template."}
+            </CardDescription>
             {!isInfisicalTemplate && (
-              <OrgPermissionCan
-                I={OrgPermissionActions.Edit}
-                a={OrgPermissionSubjects.ProjectTemplates}
-              >
-                {(isAllowed) => (
-                  <Button
-                    onClick={() => {
-                      handlePopUpOpen("editRole");
-                    }}
-                    variant="project"
-                    size="lg"
-                    isDisabled={!isAllowed}
-                  >
-                    <Plus className="size-4" />
-                    Add Role
-                  </Button>
-                )}
-              </OrgPermissionCan>
+              <CardAction>
+                <OrgPermissionCan
+                  I={OrgPermissionActions.Edit}
+                  a={OrgPermissionSubjects.ProjectTemplates}
+                >
+                  {(isAllowed) => (
+                    <Button
+                      onClick={() => {
+                        handlePopUpOpen("editRole");
+                      }}
+                      variant="project"
+                      isDisabled={!isAllowed}
+                    >
+                      <Plus className="size-4" />
+                      Add Role
+                    </Button>
+                  )}
+                </OrgPermissionCan>
+              </CardAction>
             )}
-          </div>
-          <div>
+          </CardHeader>
+          <CardContent>
             {roles.length ? (
               <Table className="table-fixed">
                 <TableHeader>
@@ -158,19 +164,19 @@ export const ProjectTemplateRolesSection = ({ projectTemplate, isInfisicalTempla
                       >
                         <TableCell>{role.name}</TableCell>
                         <TableCell>
-                          <span className="inline-flex items-center gap-1.5 rounded-md border border-mineshaft-500 bg-mineshaft-700 px-2 py-0.5 text-sm font-medium text-mineshaft-200">
+                          <Badge variant="neutral">
                             {isCustomRole ? (
                               <>
-                                <WrenchIcon className="size-4 text-mineshaft-300" />
+                                <WrenchIcon />
                                 Custom
                               </>
                             ) : (
                               <>
-                                <Rows3 className="size-4 text-mineshaft-300" />
+                                <Rows3 />
                                 Platform
                               </>
                             )}
-                          </span>
+                          </Badge>
                         </TableCell>
                         <TableCell>
                           <div className="flex justify-end">
@@ -212,7 +218,7 @@ export const ProjectTemplateRolesSection = ({ projectTemplate, isInfisicalTempla
                 </EmptyHeader>
               </Empty>
             )}
-          </div>
+          </CardContent>
           <DeleteActionModal
             isOpen={popUp.removeRole.isOpen}
             deleteKey="remove"
@@ -220,7 +226,7 @@ export const ProjectTemplateRolesSection = ({ projectTemplate, isInfisicalTempla
             onChange={(isOpen) => handlePopUpToggle("removeRole", isOpen)}
             onDeleteApproved={() => handleRemoveRole(roleToDelete?.slug)}
           />
-        </div>
+        </Card>
       )}
     </div>
   );

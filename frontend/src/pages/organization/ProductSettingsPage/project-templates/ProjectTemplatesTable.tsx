@@ -133,18 +133,18 @@ export const ProjectTemplatesTable = ({ projectType, onEdit }: Props) => {
                     {description && (
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <InfoIcon size={14} className="ml-2 inline text-mineshaft-400" />
+                          <InfoIcon className="mb-0.5 ml-2 inline-block size-3.5! text-muted" />
                         </TooltipTrigger>
                         <TooltipContent>{description}</TooltipContent>
                       </Tooltip>
                     )}
                   </TableCell>
-                  <TableCell className="pl-8">
+                  <TableCell>
                     {roles.length}
                     {roles.length > 0 && (
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <InfoIcon size={14} className="ml-2 inline text-mineshaft-400" />
+                          <InfoIcon className="mb-0.5 ml-2 inline-block size-3.5! text-muted" />
                         </TooltipTrigger>
                         <TooltipContent>
                           <ul className="ml-2 list-disc">
@@ -156,12 +156,12 @@ export const ProjectTemplatesTable = ({ projectType, onEdit }: Props) => {
                       </Tooltip>
                     )}
                   </TableCell>
-                  <TableCell className="pl-8">
+                  <TableCell>
                     {users?.length || 0}
                     {users && Boolean(users.length) && (
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <InfoIcon size={14} className="ml-2 inline text-mineshaft-400" />
+                          <InfoIcon className="mb-0.5 ml-2 inline-block size-3.5! text-muted" />
                         </TooltipTrigger>
                         <TooltipContent>
                           <ul className="ml-2 list-disc">
@@ -173,12 +173,12 @@ export const ProjectTemplatesTable = ({ projectType, onEdit }: Props) => {
                       </Tooltip>
                     )}
                   </TableCell>
-                  <TableCell className="pl-8">
+                  <TableCell>
                     {groups?.length || 0}
                     {groups && Boolean(groups.length) && (
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <InfoIcon size={14} className="ml-2 inline text-mineshaft-400" />
+                          <InfoIcon className="inline-blocktext-muted ml-2" />
                         </TooltipTrigger>
                         <TooltipContent>
                           <ul className="ml-2 list-disc">
@@ -190,12 +190,12 @@ export const ProjectTemplatesTable = ({ projectType, onEdit }: Props) => {
                       </Tooltip>
                     )}
                   </TableCell>
-                  <TableCell className="pl-8">
+                  <TableCell>
                     {totalIdentities}
                     {Boolean(totalIdentities) && (
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <InfoIcon size={14} className="ml-2 inline text-mineshaft-400" />
+                          <InfoIcon size={14} className="ml-2 inline-block text-muted" />
                         </TooltipTrigger>
                         <TooltipContent>
                           <ul className="ml-2 list-disc">

@@ -16,7 +16,7 @@ export const EditProjectTemplate = ({ isInfisicalTemplate, projectTemplate }: Pr
   const { type } = projectTemplate;
 
   return (
-    <>
+    <div className="flex flex-col gap-6">
       {type === ProjectType.SecretManager && (
         <ProjectTemplateEnvironmentsForm
           isInfisicalTemplate={isInfisicalTemplate}
@@ -34,6 +34,6 @@ export const EditProjectTemplate = ({ isInfisicalTemplate, projectTemplate }: Pr
           <ProjectTemplateIdentitiesSection projectTemplate={projectTemplate} />
         </>
       )}
-    </>
+    </div>
   );
 };

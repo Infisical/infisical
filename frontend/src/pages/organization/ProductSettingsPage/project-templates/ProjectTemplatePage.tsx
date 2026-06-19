@@ -90,7 +90,6 @@ export const ProjectTemplatePage = ({ templateId, projectType, onBack }: Props) 
                   {(isAllowed) => (
                     <Button
                       isDisabled={!isAllowed}
-                      size="lg"
                       variant="outline"
                       onClick={() => handlePopUpOpen("editDetails")}
                     >
@@ -107,9 +106,7 @@ export const ProjectTemplatePage = ({ templateId, projectType, onBack }: Props) 
                     <Button
                       isDisabled={!isAllowed}
                       onClick={() => handlePopUpOpen("removeTemplate")}
-                      size="lg"
                       variant="danger"
-                      className="text-red-200"
                     >
                       <Trash2 className="size-4" />
                       Delete Template

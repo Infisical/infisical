@@ -8,6 +8,12 @@ import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
   Button,
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -181,153 +187,156 @@ export const ProjectTemplateUsersSection = ({ projectTemplate }: Props) => {
 
   return (
     <>
-      <form
-        onSubmit={handleSubmit(onFormSubmit)}
-        className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-7"
-      >
-        <div className="mb-8 flex items-start justify-between gap-4">
-          <div>
-            <h2 className="text-2xl font-semibold tracking-normal">Project Members</h2>
-            <p className="mt-2 text-base text-mineshaft-300">
+      <form onSubmit={handleSubmit(onFormSubmit)}>
+        <Card>
+          <CardHeader>
+            <CardTitle>Project Members</CardTitle>
+            <CardDescription>
               Add users who will be automatically added to projects created from this template.
-            </p>
-          </div>
-
-          <OrgPermissionCan
-            I={OrgPermissionActions.Edit}
-            a={OrgPermissionSubjects.ProjectTemplates}
-          >
-            {(isAllowed) => (
-              <div className="flex gap-3">
-                {isAllowed && isDirty && (
-                  <>
-                    <Button onClick={handleDiscard} variant="ghost" type="button" size="lg">
-                      Discard
-                    </Button>
-                    <Button type="submit" variant="outline" size="lg">
-                      <Save className="size-4" />
-                      Save Changes
-                    </Button>
-                  </>
-                )}
-                <Button
-                  onClick={() => setIsAddUserModalOpen(true)}
-                  variant="project"
-                  size="lg"
-                  isDisabled={!isAllowed || availableOrgUsers.length === 0}
-                  type="button"
-                >
-                  <Plus className="size-4" />
-                  Add User
-                </Button>
-              </div>
-            )}
-          </OrgPermissionCan>
-        </div>
-        {errors.users && <span className="my-4 text-sm text-red">{errors.users.message}</span>}
-        {users.length > 0 ? (
-          <Table className="table-fixed">
-            <TableHeader>
-              <TableRow>
-                <TableHead>Username</TableHead>
-                <TableHead>Roles</TableHead>
-                <TableHead />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {users.map(({ id }, pos) => (
-                <TableRow key={id}>
-                  <TableCell className="py-2">
-                    <Controller
-                      control={control}
-                      name={`users.${pos}.username`}
-                      render={({ field }) => (
-                        <p className="truncate">
-                          <span className="text-sm font-medium text-mineshaft-100">
-                            {field.value}
-                          </span>
-                        </p>
-                      )}
-                    />
-                  </TableCell>
-                  <TableCell className="py-2">
-                    <OrgPermissionCan
-                      I={OrgPermissionActions.Edit}
-                      a={OrgPermissionSubjects.ProjectTemplates}
+            </CardDescription>
+            <CardAction>
+              <OrgPermissionCan
+                I={OrgPermissionActions.Edit}
+                a={OrgPermissionSubjects.ProjectTemplates}
+              >
+                {(isAllowed) => (
+                  <div className="flex gap-3">
+                    {isAllowed && isDirty && (
+                      <>
+                        <Button onClick={handleDiscard} variant="ghost" type="button">
+                          Discard
+                        </Button>
+                        <Button type="submit" variant="outline">
+                          <Save className="size-4" />
+                          Save Changes
+                        </Button>
+                      </>
+                    )}
+                    <Button
+                      onClick={() => setIsAddUserModalOpen(true)}
+                      variant="project"
+                      isDisabled={!isAllowed || availableOrgUsers.length === 0}
+                      type="button"
                     >
-                      {(isAllowed) => (
+                      <Plus className="size-4" />
+                      Add User
+                    </Button>
+                  </div>
+                )}
+              </OrgPermissionCan>
+            </CardAction>
+          </CardHeader>
+          <CardContent>
+            {errors.users && (
+              <span className="my-4 text-sm text-danger">{errors.users.message}</span>
+            )}
+            {users.length > 0 ? (
+              <Table className="table-fixed">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Username</TableHead>
+                    <TableHead>Roles</TableHead>
+                    <TableHead />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {users.map(({ id }, pos) => (
+                    <TableRow key={id}>
+                      <TableCell className="py-2">
                         <Controller
                           control={control}
-                          name={`users.${pos}.roles`}
-                          render={({ field, fieldState: { error } }) => {
-                            const availableRoleSlugs = new Set(availableRoles.map((r) => r.slug));
-                            const orphanedRoles = field.value
-                              .filter((slug) => !availableRoleSlugs.has(slug))
-                              .map((slug) => ({ slug, name: slug }));
-                            const allOptions = [...availableRoles, ...orphanedRoles];
-
-                            const selectedValues = allOptions.filter((role) =>
-                              field.value.includes(role.slug)
-                            );
-
-                            return (
-                              <Field className="mb-0 max-w-[786px]">
-                                <FilterableSelect
-                                  isMulti
-                                  isDisabled={!isAllowed}
-                                  options={allOptions}
-                                  value={selectedValues}
-                                  onChange={(selected) => {
-                                    field.onChange(
-                                      (selected as { slug: string; name: string }[]).map(
-                                        (s) => s.slug
-                                      )
-                                    );
-                                  }}
-                                  getOptionValue={(option) => option.slug}
-                                  getOptionLabel={(option) => option.name}
-                                  placeholder="Select roles..."
-                                  menuPosition="fixed"
-                                />
-                                {error?.message && <FieldError>{error.message}</FieldError>}
-                              </Field>
-                            );
-                          }}
+                          name={`users.${pos}.username`}
+                          render={({ field }) => (
+                            <p className="truncate">
+                              <span className="text-sm font-medium text-mineshaft-100">
+                                {field.value}
+                              </span>
+                            </p>
+                          )}
                         />
-                      )}
-                    </OrgPermissionCan>
-                  </TableCell>
-                  <TableCell className="py-2">
-                    <div className="flex justify-end">
-                      <OrgPermissionCan
-                        I={OrgPermissionActions.Edit}
-                        a={OrgPermissionSubjects.ProjectTemplates}
-                      >
-                        {(isAllowed) => (
-                          <IconButton
-                            onClick={() => remove(pos)}
-                            variant="ghost-muted"
-                            size="xs"
-                            aria-label="Remove user"
-                            isDisabled={!isAllowed}
+                      </TableCell>
+                      <TableCell className="py-2">
+                        <OrgPermissionCan
+                          I={OrgPermissionActions.Edit}
+                          a={OrgPermissionSubjects.ProjectTemplates}
+                        >
+                          {(isAllowed) => (
+                            <Controller
+                              control={control}
+                              name={`users.${pos}.roles`}
+                              render={({ field, fieldState: { error } }) => {
+                                const availableRoleSlugs = new Set(
+                                  availableRoles.map((r) => r.slug)
+                                );
+                                const orphanedRoles = field.value
+                                  .filter((slug) => !availableRoleSlugs.has(slug))
+                                  .map((slug) => ({ slug, name: slug }));
+                                const allOptions = [...availableRoles, ...orphanedRoles];
+
+                                const selectedValues = allOptions.filter((role) =>
+                                  field.value.includes(role.slug)
+                                );
+
+                                return (
+                                  <Field className="mb-0 max-w-[786px]">
+                                    <FilterableSelect
+                                      isMulti
+                                      isDisabled={!isAllowed}
+                                      options={allOptions}
+                                      value={selectedValues}
+                                      onChange={(selected) => {
+                                        field.onChange(
+                                          (selected as { slug: string; name: string }[]).map(
+                                            (s) => s.slug
+                                          )
+                                        );
+                                      }}
+                                      getOptionValue={(option) => option.slug}
+                                      getOptionLabel={(option) => option.name}
+                                      placeholder="Select roles..."
+                                      menuPosition="fixed"
+                                    />
+                                    {error?.message && <FieldError>{error.message}</FieldError>}
+                                  </Field>
+                                );
+                              }}
+                            />
+                          )}
+                        </OrgPermissionCan>
+                      </TableCell>
+                      <TableCell className="py-2">
+                        <div className="flex justify-end">
+                          <OrgPermissionCan
+                            I={OrgPermissionActions.Edit}
+                            a={OrgPermissionSubjects.ProjectTemplates}
                           >
-                            <Trash2 className="size-4" />
-                          </IconButton>
-                        )}
-                      </OrgPermissionCan>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        ) : (
-          <Empty className="border border-dashed">
-            <EmptyHeader>
-              <EmptyTitle>No users assigned to this template</EmptyTitle>
-            </EmptyHeader>
-          </Empty>
-        )}
+                            {(isAllowed) => (
+                              <IconButton
+                                onClick={() => remove(pos)}
+                                variant="ghost-muted"
+                                size="xs"
+                                aria-label="Remove user"
+                                isDisabled={!isAllowed}
+                              >
+                                <Trash2 className="size-4" />
+                              </IconButton>
+                            )}
+                          </OrgPermissionCan>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            ) : (
+              <Empty className="border border-dashed">
+                <EmptyHeader>
+                  <EmptyTitle>No users assigned to this template</EmptyTitle>
+                </EmptyHeader>
+              </Empty>
+            )}
+          </CardContent>
+        </Card>
       </form>
 
       <Dialog open={isAddUserModalOpen} onOpenChange={setIsAddUserModalOpen}>
