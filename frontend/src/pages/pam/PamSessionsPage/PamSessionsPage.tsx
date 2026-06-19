@@ -46,7 +46,9 @@ import {
   PamResourcePermissionSub,
   PamSessionStatus,
   useListPamSessions,
+  usePamAccountActions,
   usePamAccountTypeMap,
+  usePamFolderActions,
   useTerminatePamSession
 } from "@app/hooks/api/pam";
 import { usePamAccountPermission } from "@app/hooks/api/pam/queries";
@@ -82,10 +84,56 @@ const TerminateCell = ({
   );
 };
 
+const AccountNameCell = ({ session, search }: { session: TPamSession; search: string }) => {
+  const { currentOrg } = useOrganization();
+  const { can } = usePamAccountActions(session.accountId ?? "", Boolean(session.accountId));
+  const name = <HighlightText text={session.accountName} highlight={search} />;
+
+  if (session.accountId && can(PamResourcePermissionActions.ReadAccounts)) {
+    return (
+      <Link
+        to="/organizations/$orgId/pam/accounts"
+        params={{ orgId: currentOrg.id }}
+        search={{ accountId: session.accountId }}
+        onClick={(e) => e.stopPropagation()}
+        className="text-sm hover:underline"
+      >
+        {name}
+      </Link>
+    );
+  }
+
+  return <span className="text-sm">{name}</span>;
+};
+
+const FolderNameCell = ({ session, search }: { session: TPamSession; search: string }) => {
+  const { currentOrg } = useOrganization();
+  const { can } = usePamFolderActions(session.folderId ?? "", Boolean(session.folderId));
+
+  if (!session.folderName) return <span className="text-muted">—</span>;
+
+  const name = <HighlightText text={session.folderName} highlight={search} />;
+
+  if (session.folderId && can(PamResourcePermissionActions.ReadFolder)) {
+    return (
+      <Link
+        to="/organizations/$orgId/pam/accounts"
+        params={{ orgId: currentOrg.id }}
+        search={{ folderId: session.folderId }}
+        onClick={(e) => e.stopPropagation()}
+        className="hover:underline"
+      >
+        {name}
+      </Link>
+    );
+  }
+
+  return name;
+};
+
 export const PamSessionsPage = () => {
   const { t } = useTranslation();
   const { currentProject } = useProject();
-  const { currentOrg } = useOrganization();
   const { map: accountTypeMap } = usePamAccountTypeMap();
 
   const [search, setSearch] = useState("");
@@ -229,12 +277,6 @@ export const PamSessionsPage = () => {
                 const accountTypeDetails =
                   session.accountType && accountTypeMap[session.accountType as PamAccountType];
 
-                const folderLabel = session.folderName ? (
-                  <HighlightText text={session.folderName} highlight={search} />
-                ) : (
-                  <span className="text-muted">—</span>
-                );
-
                 return (
                   <TableRow key={session.id} onClick={() => sessionSheet.openSheet(session.id)}>
                     <TableCell className="h-[50px]">
@@ -256,37 +298,11 @@ export const PamSessionsPage = () => {
                             className="size-5 shrink-0 rounded-sm"
                           />
                         )}
-                        {session.accountId ? (
-                          <Link
-                            to="/organizations/$orgId/pam/accounts"
-                            params={{ orgId: currentOrg.id }}
-                            search={{ accountId: session.accountId }}
-                            onClick={(e) => e.stopPropagation()}
-                            className="text-sm hover:underline"
-                          >
-                            <HighlightText text={session.accountName} highlight={search} />
-                          </Link>
-                        ) : (
-                          <span className="text-sm">
-                            <HighlightText text={session.accountName} highlight={search} />
-                          </span>
-                        )}
+                        <AccountNameCell session={session} search={search} />
                       </div>
                     </TableCell>
                     <TableCell className="text-sm">
-                      {session.folderId && session.folderName ? (
-                        <Link
-                          to="/organizations/$orgId/pam/accounts"
-                          params={{ orgId: currentOrg.id }}
-                          search={{ folderId: session.folderId }}
-                          onClick={(e) => e.stopPropagation()}
-                          className="hover:underline"
-                        >
-                          <HighlightText text={session.folderName} highlight={search} />
-                        </Link>
-                      ) : (
-                        folderLabel
-                      )}
+                      <FolderNameCell session={session} search={search} />
                     </TableCell>
                     <TableCell className="text-sm">
                       {session.startedAt ? (
