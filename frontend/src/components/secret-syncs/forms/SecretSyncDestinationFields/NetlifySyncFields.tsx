@@ -139,8 +139,8 @@ export const NetlifySyncFields = () => {
               />
               <FieldDescription>
                 Avoid configuring multiple syncs with overlapping contexts for the same site.
-                &quot;All Contexts&quot; overlaps with every context. Overlapping syncs may delete each
-                other&apos;s secrets.
+                &quot;All Contexts&quot; overlaps with every context. Overlapping syncs may delete
+                each other&apos;s secrets.
               </FieldDescription>
               <FieldError errors={[error]} />
             </FieldContent>
