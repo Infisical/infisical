@@ -29,6 +29,7 @@ import { TProjectTemplate, useListProjectTemplates } from "@app/hooks/api/projec
 import { DeleteProjectTemplateModal } from "./DeleteProjectTemplateModal";
 
 type Props = {
+  projectType: ProjectType;
   onEdit: (projectTemplate: TProjectTemplate) => void;
 };
 
@@ -42,7 +43,7 @@ const skeletonRowIds = [
 
 const tableColumnKeys = ["name", "roles", "users", "groups", "identities", "actions"];
 
-export const ProjectTemplatesTable = ({ onEdit }: Props) => {
+export const ProjectTemplatesTable = ({ projectType, onEdit }: Props) => {
   const { subscription } = useSubscription();
 
   const { isPending, data: projectTemplates = [] } = useListProjectTemplates({
@@ -57,10 +58,10 @@ export const ProjectTemplatesTable = ({ onEdit }: Props) => {
     () =>
       projectTemplates?.filter(
         (template) =>
-          template.type === ProjectType.SecretManager &&
+          template.type === projectType &&
           template.name.toLowerCase().includes(search.toLowerCase().trim())
       ) ?? [],
-    [search, projectTemplates]
+    [search, projectTemplates, projectType]
   );
 
   const shouldShowEmptyState =
@@ -128,7 +129,6 @@ export const ProjectTemplatesTable = ({ onEdit }: Props) => {
               return (
                 <TableRow
                   onClick={() => onEdit(template)}
-                  className="cursor-pointer hover:bg-mineshaft-700"
                   key={id}
                 >
                   <TableCell>

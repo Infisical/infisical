@@ -134,13 +134,12 @@ export const ProjectTemplateRolesSection = ({ projectTemplate, isInfisicalTempla
             {roles.length ? (
               <Table
                 className="table-fixed"
-                containerClassName="rounded-lg border-mineshaft-600 bg-mineshaft-800"
               >
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="h-12 px-5 text-sm text-mineshaft-200">Name</TableHead>
-                    <TableHead className="h-12 px-5 text-sm text-mineshaft-200">Type</TableHead>
-                    <TableHead className="h-12 w-20 px-5" />
+                    <TableHead>Name</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -150,7 +149,6 @@ export const ProjectTemplateRolesSection = ({ projectTemplate, isInfisicalTempla
                     return (
                       <TableRow
                         key={role.slug}
-                        className="group w-full cursor-pointer hover:bg-transparent"
                         role="button"
                         tabIndex={0}
                         onKeyDown={(evt) => {
@@ -160,10 +158,10 @@ export const ProjectTemplateRolesSection = ({ projectTemplate, isInfisicalTempla
                         }}
                         onClick={() => handlePopUpOpen("editRole", role)}
                       >
-                        <TableCell className="h-[56px] px-5 py-2 text-sm font-medium text-mineshaft-100">
+                        <TableCell>
                           {role.name}
                         </TableCell>
-                        <TableCell className="h-[56px] px-5 py-2">
+                        <TableCell>
                           <span className="inline-flex items-center gap-1.5 rounded-md border border-mineshaft-500 bg-mineshaft-700 px-2 py-0.5 text-sm font-medium text-mineshaft-200">
                             {isCustomRole ? (
                               <>
@@ -178,7 +176,7 @@ export const ProjectTemplateRolesSection = ({ projectTemplate, isInfisicalTempla
                             )}
                           </span>
                         </TableCell>
-                        <TableCell className="h-[56px] px-5 py-2">
+                        <TableCell>
                           <div className="flex justify-end">
                             {isCustomRole && (
                               <OrgPermissionCan

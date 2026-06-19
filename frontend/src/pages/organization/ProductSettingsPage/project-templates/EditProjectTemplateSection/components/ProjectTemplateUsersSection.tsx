@@ -228,19 +228,18 @@ export const ProjectTemplateUsersSection = ({ projectTemplate }: Props) => {
         {users.length > 0 ? (
           <Table
             className="table-fixed"
-            containerClassName="rounded-lg border-mineshaft-600 bg-mineshaft-800"
           >
             <TableHeader>
               <TableRow>
-                <TableHead className="h-12 px-5 text-sm text-mineshaft-200">Username</TableHead>
-                <TableHead className="h-12 px-5 text-sm text-mineshaft-200">Roles</TableHead>
-                <TableHead className="h-12 w-20 px-5" />
+                <TableHead>Username</TableHead>
+                <TableHead>Roles</TableHead>
+                <TableHead />
               </TableRow>
             </TableHeader>
             <TableBody>
               {users.map(({ id }, pos) => (
-                <TableRow key={id} className="hover:bg-transparent">
-                  <TableCell className="h-[58px] w-1/3 max-w-0 px-5 py-2">
+                <TableRow key={id}>
+                  <TableCell>
                     <Controller
                       control={control}
                       name={`users.${pos}.username`}
@@ -253,7 +252,7 @@ export const ProjectTemplateUsersSection = ({ projectTemplate }: Props) => {
                       )}
                     />
                   </TableCell>
-                  <TableCell className="h-[58px] px-5 py-2">
+                  <TableCell>
                     <OrgPermissionCan
                       I={OrgPermissionActions.Edit}
                       a={OrgPermissionSubjects.ProjectTemplates}
@@ -300,7 +299,7 @@ export const ProjectTemplateUsersSection = ({ projectTemplate }: Props) => {
                       )}
                     </OrgPermissionCan>
                   </TableCell>
-                  <TableCell className="h-[58px] px-5 py-2">
+                  <TableCell>
                     <div className="flex justify-end">
                       <OrgPermissionCan
                         I={OrgPermissionActions.Edit}

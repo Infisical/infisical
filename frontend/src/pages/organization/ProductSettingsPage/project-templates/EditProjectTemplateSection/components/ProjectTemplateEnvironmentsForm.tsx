@@ -141,19 +141,18 @@ export const ProjectTemplateEnvironmentsForm = ({
       )}
       <Table
         className="table-fixed"
-        containerClassName="rounded-lg border-mineshaft-600 bg-mineshaft-800"
       >
         <TableHeader>
           <TableRow>
-            <TableHead className="h-12 px-5 text-sm text-mineshaft-200">Name</TableHead>
-            <TableHead className="h-12 px-5 text-sm text-mineshaft-200">Slug</TableHead>
+            <TableHead>Name</TableHead>
+            <TableHead>Slug</TableHead>
             {!isInfisicalTemplate && <TableHead className="h-12 w-44 px-5" />}
           </TableRow>
         </TableHeader>
         <TableBody>
           {environments.map(({ id, name, slug }, pos) => (
             <TableRow key={id} className="hover:bg-transparent">
-              <TableCell className="h-[56px] px-5 py-2 text-sm text-mineshaft-100">
+              <TableCell>
                 {isInfisicalTemplate ? (
                   name
                 ) : (
@@ -181,7 +180,7 @@ export const ProjectTemplateEnvironmentsForm = ({
                   </OrgPermissionCan>
                 )}
               </TableCell>
-              <TableCell className="h-[56px] px-5 py-2 font-mono text-sm text-mineshaft-100">
+              <TableCell>
                 {isInfisicalTemplate ? (
                   slug
                 ) : (
@@ -210,7 +209,7 @@ export const ProjectTemplateEnvironmentsForm = ({
                 )}
               </TableCell>
               {!isInfisicalTemplate && (
-                <TableCell className="h-[56px] px-5 py-2 align-middle">
+                <TableCell>
                   <div className="flex items-center justify-end gap-3 text-mineshaft-400">
                     <OrgPermissionCan
                       I={OrgPermissionActions.Edit}

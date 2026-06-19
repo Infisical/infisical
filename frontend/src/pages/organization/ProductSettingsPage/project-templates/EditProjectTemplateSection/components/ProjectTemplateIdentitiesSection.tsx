@@ -346,19 +346,18 @@ export const ProjectTemplateIdentitiesSection = ({ projectTemplate }: Props) => 
         {allIdentitiesForTable.length > 0 ? (
           <Table
             className="table-fixed"
-            containerClassName="rounded-lg border-mineshaft-600 bg-mineshaft-800"
           >
             <TableHeader>
               <TableRow>
-                <TableHead className="h-12 px-5 text-sm text-mineshaft-200">Identity</TableHead>
-                <TableHead className="h-12 px-5 text-sm text-mineshaft-200">Roles</TableHead>
-                <TableHead className="h-12 w-20 px-5" />
+                <TableHead>Identity</TableHead>
+                <TableHead>Roles</TableHead>
+                <TableHead />
               </TableRow>
             </TableHeader>
             <TableBody>
               {allIdentitiesForTable.map((item) => (
-                <TableRow key={item.id} className="hover:bg-transparent">
-                  <TableCell className="h-[58px] w-1/3 max-w-0 px-5 py-2">
+                <TableRow key={item.id}>
+                  <TableCell>
                     <p className="flex items-center gap-3 truncate">
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -377,7 +376,7 @@ export const ProjectTemplateIdentitiesSection = ({ projectTemplate }: Props) => 
                       </span>
                     </p>
                   </TableCell>
-                  <TableCell className="h-[58px] px-5 py-2">
+                  <TableCell>
                     <OrgPermissionCan
                       I={OrgPermissionActions.Edit}
                       a={OrgPermissionSubjects.ProjectTemplates}
@@ -428,7 +427,7 @@ export const ProjectTemplateIdentitiesSection = ({ projectTemplate }: Props) => 
                       )}
                     </OrgPermissionCan>
                   </TableCell>
-                  <TableCell className="h-[58px] px-5 py-2">
+                  <TableCell>
                     <div className="flex justify-end">
                       <OrgPermissionCan
                         I={OrgPermissionActions.Edit}

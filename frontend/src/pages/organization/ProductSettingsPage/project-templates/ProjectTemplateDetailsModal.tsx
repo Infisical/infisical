@@ -28,7 +28,7 @@ import { slugSchema } from "@app/lib/schemas";
 const formSchema = z.object({
   name: slugSchema({ min: 1, max: 64, field: "Name" }),
   description: z.string().max(500).optional(),
-  type: z.nativeEnum(ProjectType).default(ProjectType.SecretManager)
+  type: z.nativeEnum(ProjectType)
 });
 
 export type FormData = z.infer<typeof formSchema>;
@@ -38,14 +38,16 @@ type Props = {
   onOpenChange: (isOpen: boolean) => void;
   onComplete?: (template: TProjectTemplate) => void;
   projectTemplate?: TProjectTemplate;
+  projectType: ProjectType;
 };
 
 type FormProps = {
   projectTemplate?: TProjectTemplate;
   onComplete: (template: TProjectTemplate) => void;
+  projectType: ProjectType;
 };
 
-const ProjectTemplateForm = ({ onComplete, projectTemplate }: FormProps) => {
+const ProjectTemplateForm = ({ onComplete, projectTemplate, projectType }: FormProps) => {
   const createProjectTemplate = useCreateProjectTemplate();
   const updateProjectTemplate = useUpdateProjectTemplate();
 
@@ -58,7 +60,7 @@ const ProjectTemplateForm = ({ onComplete, projectTemplate }: FormProps) => {
     defaultValues: {
       name: projectTemplate?.name,
       description: projectTemplate?.description,
-      type: projectTemplate?.type ?? ProjectType.SecretManager
+      type: projectTemplate?.type ?? projectType
     }
   });
 
@@ -120,7 +122,8 @@ export const ProjectTemplateDetailsModal = ({
   isOpen,
   onOpenChange,
   projectTemplate,
-  onComplete
+  onComplete,
+  projectType
 }: Props) => {
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -131,6 +134,7 @@ export const ProjectTemplateDetailsModal = ({
           </DialogTitle>
         </DialogHeader>
         <ProjectTemplateForm
+          projectType={projectType}
           projectTemplate={projectTemplate}
           onComplete={(template) => {
             if (onComplete) onComplete(template);
