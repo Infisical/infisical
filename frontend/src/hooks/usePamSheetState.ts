@@ -5,8 +5,7 @@ export enum PamSheetTab {
   Launch = "launch",
   Permissions = "permissions",
   Configuration = "configuration",
-  Overrides = "overrides",
-  AccessPolicy = "access-policy"
+  Advanced = "advanced"
 }
 
 export const pamSheetSearchParams = z.object({

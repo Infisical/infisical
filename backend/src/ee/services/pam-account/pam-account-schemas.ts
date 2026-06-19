@@ -211,6 +211,37 @@ export const extractGatewayTarget = (
   }
 };
 
+// -- Account accessibility
+
+export enum PamAccountAccessibilityIssue {
+  NoGateway = "no-gateway",
+  NoRecordingConfig = "no-recording-config",
+  NoCredential = "no-credential"
+}
+
+export const accountTypeRequiresRecording = (accountType: PamAccountType): boolean =>
+  accountType === PamAccountType.Windows;
+
+export const getAccountAccessibilityIssues = ({
+  accountType,
+  hasGateway,
+  hasRecordingConfig,
+  credentialConfigured
+}: {
+  accountType: PamAccountType;
+  hasGateway: boolean;
+  hasRecordingConfig: boolean;
+  credentialConfigured: boolean;
+}): PamAccountAccessibilityIssue[] => {
+  const issues: PamAccountAccessibilityIssue[] = [];
+  if (!hasGateway) issues.push(PamAccountAccessibilityIssue.NoGateway);
+  if (accountTypeRequiresRecording(accountType) && !hasRecordingConfig) {
+    issues.push(PamAccountAccessibilityIssue.NoRecordingConfig);
+  }
+  if (!credentialConfigured) issues.push(PamAccountAccessibilityIssue.NoCredential);
+  return issues;
+};
+
 export type TSshInternalMetadata = z.infer<(typeof ACCOUNT_TYPE_CONFIGS)[PamAccountType.SSH]["internalMetadata"]>;
 
 export const parseInternalMetadata = (accountType: PamAccountType, data: unknown): TSshInternalMetadata | null => {
@@ -383,3 +414,18 @@ export const buildPamAccountTypeMetadata = (): PamAccountTypeMetadata[] =>
     connectionFields: fieldsFromSchema(config.connectionDetails, config.ui),
     credentialFields: fieldsFromSchema(config.credentials, config.ui)
   }));
+
+export const isCredentialConfigured = (accountType: PamAccountType, credentials: Record<string, unknown>): boolean => {
+  const config = ACCOUNT_TYPE_CONFIGS[accountType as TSupportedAccountType];
+  if (!config) return false;
+
+  const applicableSecretFields = fieldsFromSchema(config.credentials, config.ui).filter(
+    (field) => field.secret && (!field.showWhen || credentials[field.showWhen.field] === field.showWhen.equals)
+  );
+  if (applicableSecretFields.length === 0) return true;
+
+  return applicableSecretFields.some((field) => {
+    const value = credentials[field.key];
+    return typeof value === "string" && value.trim().length > 0;
+  });
+};

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { MoreHorizontal, Settings, ShieldCheck, Trash2 } from "lucide-react";
+import { MoreHorizontal, Settings, Settings2, Trash2 } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -22,6 +22,7 @@ import {
   FieldError,
   FieldLabel,
   FieldTitle,
+  GatewayPicker,
   IconButton,
   Input,
   Switch,
@@ -29,6 +30,7 @@ import {
 } from "@app/components/v3";
 import { Skeleton } from "@app/components/v3/generic/Skeleton";
 import {
+  accountTypeRequiresRecording,
   PamAccountType,
   useDeletePamAccountTemplate,
   useGetPamAccountTemplate,
@@ -40,6 +42,7 @@ import { PamSheetTab, usePamSheetState } from "@app/hooks/usePamSheetState";
 import { formatDetailDate, PamDetailSheet } from "../../components/PamDetailSheet";
 import { SheetSaveBar } from "../../components/SheetSaveBar";
 import { AccountPlatformIcon } from "../../PamAccessPage/components/AccountPlatformIcon";
+import { RecordingConnectionPicker } from "../../PamAccountsPage/components/RecordingConnectionPicker";
 import { DeleteTemplateModal } from "./DeleteTemplateModal";
 
 const configSchema = z.object({
@@ -49,7 +52,7 @@ const configSchema = z.object({
 
 type ConfigForm = z.infer<typeof configSchema>;
 
-const accessPolicySchema = z.object({
+const settingsSchema = z.object({
   requireReason: z.boolean(),
   requireMfa: z.boolean(),
   maxSessionDurationSeconds: z
@@ -58,10 +61,13 @@ const accessPolicySchema = z.object({
     .min(60, "Minimum 60 seconds")
     .max(86400, "Maximum 24 hours")
     .optional()
-    .nullable()
+    .nullable(),
+  gatewayId: z.string().nullable(),
+  gatewayPoolId: z.string().nullable(),
+  recordingConnectionId: z.string().nullable()
 });
 
-type AccessPolicyForm = z.infer<typeof accessPolicySchema>;
+type SettingsForm = z.infer<typeof settingsSchema>;
 
 type Props = {
   isOpen: boolean;
@@ -164,7 +170,7 @@ const ConfigurationTab = ({
   );
 };
 
-const AccessPolicyTab = ({
+const SettingsTab = ({
   templateId,
   onDirtyChange
 }: {
@@ -179,13 +185,18 @@ const AccessPolicyTab = ({
     control,
     handleSubmit,
     reset,
+    setValue,
+    watch,
     formState: { errors, isDirty }
-  } = useForm<AccessPolicyForm>({
-    resolver: zodResolver(accessPolicySchema),
+  } = useForm<SettingsForm>({
+    resolver: zodResolver(settingsSchema),
     defaultValues: {
       requireReason: false,
       requireMfa: false,
-      maxSessionDurationSeconds: null
+      maxSessionDurationSeconds: null,
+      gatewayId: null,
+      gatewayPoolId: null,
+      recordingConnectionId: null
     }
   });
 
@@ -203,26 +214,13 @@ const AccessPolicyTab = ({
         maxSessionDurationSeconds:
           typeof policy.maxSessionDurationSeconds === "number"
             ? policy.maxSessionDurationSeconds
-            : null
+            : null,
+        gatewayId: template.gatewayId ?? null,
+        gatewayPoolId: template.gatewayPoolId ?? null,
+        recordingConnectionId: template.recordingConnectionId ?? null
       });
     }
   }, [template, reset]);
-
-  const onSubmit = (data: AccessPolicyForm) => {
-    updateTemplate.mutate(
-      {
-        templateId,
-        accessPolicy: {
-          requireReason: data.requireReason,
-          requireMfa: data.requireMfa,
-          maxSessionDurationSeconds: data.maxSessionDurationSeconds ?? undefined
-        }
-      },
-      {
-        onSuccess: () => createNotification({ type: "success", text: "Template updated" })
-      }
-    );
-  };
 
   if (isLoading) {
     return (
@@ -233,6 +231,32 @@ const AccessPolicyTab = ({
       </div>
     );
   }
+
+  if (!template) return null;
+
+  const gatewayId = watch("gatewayId");
+  const gatewayPoolId = watch("gatewayPoolId");
+  const recordingConnectionId = watch("recordingConnectionId");
+  const showRecording = accountTypeRequiresRecording(template.type);
+
+  const onSubmit = (data: SettingsForm) => {
+    updateTemplate.mutate(
+      {
+        templateId,
+        accessPolicy: {
+          requireReason: data.requireReason,
+          requireMfa: data.requireMfa,
+          maxSessionDurationSeconds: data.maxSessionDurationSeconds ?? undefined
+        },
+        gatewayId: data.gatewayId,
+        gatewayPoolId: data.gatewayPoolId,
+        ...(showRecording ? { recordingConnectionId: data.recordingConnectionId } : {})
+      },
+      {
+        onSuccess: () => createNotification({ type: "success", text: "Template updated" })
+      }
+    );
+  };
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="flex flex-1 flex-col gap-4 p-4">
@@ -293,6 +317,46 @@ const AccessPolicyTab = ({
               )}
             />
           </Field>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="border-b">
+          <CardTitle className="text-base">System Settings</CardTitle>
+          <CardDescription>System-level defaults for accounts using this template.</CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          <Field>
+            <FieldLabel>Gateway</FieldLabel>
+            <FieldContent>
+              <GatewayPicker
+                value={{ gatewayId, gatewayPoolId }}
+                onChange={(value) => {
+                  setValue("gatewayId", value.gatewayId, { shouldDirty: true });
+                  setValue("gatewayPoolId", value.gatewayPoolId, { shouldDirty: true });
+                }}
+              />
+              <FieldDescription>
+                Used to reach accounts unless overridden on the account.
+              </FieldDescription>
+            </FieldContent>
+          </Field>
+
+          {showRecording && (
+            <Field>
+              <FieldLabel>Recording Bucket</FieldLabel>
+              <FieldContent>
+                <RecordingConnectionPicker
+                  value={recordingConnectionId}
+                  includeNone
+                  onChange={(value) =>
+                    setValue("recordingConnectionId", value, { shouldDirty: true })
+                  }
+                />
+                <FieldDescription>Where session recordings are stored.</FieldDescription>
+              </FieldContent>
+            </Field>
+          )}
         </CardContent>
       </Card>
 
@@ -380,11 +444,11 @@ export const TemplateDetailSheet = ({ isOpen, templateId, onOpenChange }: Props)
         metadata={metadata}
         tabs={[
           {
-            value: PamSheetTab.AccessPolicy,
-            label: "Access Policy",
-            icon: <ShieldCheck className="mr-1.5 size-4" />,
+            value: PamSheetTab.Advanced,
+            label: "General",
+            icon: <Settings2 className="mr-1.5 size-4" />,
             content: templateId ? (
-              <AccessPolicyTab templateId={templateId} onDirtyChange={setIsFormDirty} />
+              <SettingsTab templateId={templateId} onDirtyChange={setIsFormDirty} />
             ) : null
           },
           {

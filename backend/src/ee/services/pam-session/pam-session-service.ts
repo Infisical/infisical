@@ -324,8 +324,8 @@ export const pamSessionServiceFactory = ({
     );
 
     const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
-      gatewayId: account.gatewayId,
-      gatewayPoolId: account.gatewayPoolId
+      gatewayId: account.gatewayId ?? account.templateGatewayId,
+      gatewayPoolId: account.gatewayPoolId ?? account.templateGatewayPoolId
     });
     if (!effectiveGatewayId) {
       throw new BadRequestError({ message: "Gateway not configured for this account" });

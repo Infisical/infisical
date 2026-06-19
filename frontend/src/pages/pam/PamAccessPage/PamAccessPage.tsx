@@ -72,9 +72,10 @@ export const PamAccessPage = () => {
     setResultCounts((prev) => (prev[folderId] === count ? prev : { ...prev, [folderId]: count }));
   }, []);
 
+  const nonEmptyFolders = folders.filter((folder) => folder.accountCount > 0);
   const visibleFolders = selectedFolderId
-    ? folders.filter((folder) => folder.id === selectedFolderId)
-    : folders;
+    ? nonEmptyFolders.filter((folder) => folder.id === selectedFolderId)
+    : nonEmptyFolders;
 
   const isFolderOpen = (folderId: string) =>
     filterActive || folderId === selectedFolderId || expandedFolders.has(folderId);

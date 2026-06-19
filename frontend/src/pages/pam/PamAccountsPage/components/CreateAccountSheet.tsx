@@ -15,6 +15,7 @@ import {
   AlertDialogHeader,
   AlertDialogMedia,
   AlertDialogTitle,
+  GatewayPicker,
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
@@ -40,6 +41,7 @@ import {
 } from "@app/components/v3/generic/Sheet";
 import { TextArea } from "@app/components/v3/generic/TextArea";
 import {
+  accountTypeRequiresRecording,
   PamAccountType,
   useCreatePamAccount,
   useListPamAccountTemplates,
@@ -58,6 +60,7 @@ import {
 } from "./accountFormSchema";
 import { ConnectionDetailsForm } from "./ConnectionDetailsForm";
 import { CredentialsForm } from "./CredentialsForm";
+import { RecordingConnectionPicker } from "./RecordingConnectionPicker";
 
 type Props = {
   isOpen: boolean;
@@ -71,6 +74,15 @@ export const CreateAccountSheet = ({ isOpen, onOpenChange, defaultFolderId }: Pr
   const [step, setStep] = useState<1 | 2>(1);
   const [templateSearch, setTemplateSearch] = useState("");
   const [confirmDiscardOpen, setConfirmDiscardOpen] = useState(false);
+
+  // Gateway/recording are collected inline only when the chosen template doesn't already provide them
+  const [gateway, setGateway] = useState<{
+    gatewayId: string | null;
+    gatewayPoolId: string | null;
+  }>({ gatewayId: null, gatewayPoolId: null });
+  const [recordingConnectionId, setRecordingConnectionId] = useState<string | null>(null);
+  const [gatewayError, setGatewayError] = useState(false);
+  const [recordingError, setRecordingError] = useState(false);
 
   const {
     control,
@@ -105,6 +117,15 @@ export const CreateAccountSheet = ({ isOpen, onOpenChange, defaultFolderId }: Pr
   const selectedTemplate = templates.find((t) => t.id === selectedTemplateId);
   const selectedMetadata = accountTypes.find((t) => t.type === selectedTemplate?.type);
 
+  const needsGateway = Boolean(
+    selectedTemplate && !selectedTemplate.gatewayId && !selectedTemplate.gatewayPoolId
+  );
+  const needsRecording = Boolean(
+    selectedTemplate &&
+      accountTypeRequiresRecording(selectedTemplate.type) &&
+      !selectedTemplate.recordingConnectionId
+  );
+
   const templateQuery = templateSearch.trim().toLowerCase();
   const filteredTemplates = templates.filter((tpl) => {
     if (!templateQuery) return true;
@@ -128,6 +149,10 @@ export const CreateAccountSheet = ({ isOpen, onOpenChange, defaultFolderId }: Pr
       });
       setStep(1);
       setTemplateSearch("");
+      setGateway({ gatewayId: null, gatewayPoolId: null });
+      setRecordingConnectionId(null);
+      setGatewayError(false);
+      setRecordingError(false);
     }
   }, [isOpen, defaultFolderId, reset]);
 
@@ -137,7 +162,11 @@ export const CreateAccountSheet = ({ isOpen, onOpenChange, defaultFolderId }: Pr
     setValue("accountType", selectedMetadata.type);
     setValue("connectionDetails", buildDefaultFieldValues(selectedMetadata.connectionFields));
     setValue("credentials", buildDefaultFieldValues(selectedMetadata.credentialFields));
-  }, [selectedMetadata?.type, setValue]);
+    setGateway({ gatewayId: null, gatewayPoolId: null });
+    setRecordingConnectionId(null);
+    setGatewayError(false);
+    setRecordingError(false);
+  }, [selectedMetadata?.type, selectedTemplateId, setValue]);
 
   const canProceed = Boolean(selectedFolderId && selectedTemplateId);
 
@@ -153,7 +182,17 @@ export const CreateAccountSheet = ({ isOpen, onOpenChange, defaultFolderId }: Pr
       selectedMetadata.credentialFields,
       values.credentials
     );
-    if (missingConnection.length || missingCredentials.length) {
+    const gatewayMissing = needsGateway && !gateway.gatewayId && !gateway.gatewayPoolId;
+    const recordingMissing = needsRecording && !recordingConnectionId;
+    setGatewayError(gatewayMissing);
+    setRecordingError(recordingMissing);
+
+    if (
+      missingConnection.length ||
+      missingCredentials.length ||
+      gatewayMissing ||
+      recordingMissing
+    ) {
       missingConnection.forEach((key) =>
         setError(`connectionDetails.${key}`, {
           type: "required",
@@ -183,7 +222,10 @@ export const CreateAccountSheet = ({ isOpen, onOpenChange, defaultFolderId }: Pr
         folderId: values.folderId,
         templateId: values.templateId,
         connectionDetails: values.connectionDetails,
-        credentials: values.credentials
+        credentials: values.credentials,
+        ...(gateway.gatewayId ? { gatewayId: gateway.gatewayId } : {}),
+        ...(gateway.gatewayPoolId ? { gatewayPoolId: gateway.gatewayPoolId } : {}),
+        ...(recordingConnectionId ? { recordingConnectionId } : {})
       },
       {
         onSuccess: () => {
@@ -381,7 +423,48 @@ export const CreateAccountSheet = ({ isOpen, onOpenChange, defaultFolderId }: Pr
 
                 <div className="mt-2">
                   <h3 className="mb-3 text-sm font-medium text-foreground">Connection Details</h3>
-                  <ConnectionDetailsForm control={control} />
+                  <div className="flex flex-col gap-4">
+                    <ConnectionDetailsForm control={control} />
+                    {needsGateway && (
+                      <Field>
+                        <FieldLabel>
+                          Gateway<span className="text-product-pam">*</span>
+                        </FieldLabel>
+                        <FieldContent>
+                          <GatewayPicker
+                            value={gateway}
+                            onChange={(value) => {
+                              setGateway(value);
+                              setGatewayError(false);
+                            }}
+                            isRequired
+                            isError={gatewayError}
+                          />
+                          {gatewayError && <FieldError>A gateway is required</FieldError>}
+                        </FieldContent>
+                      </Field>
+                    )}
+                    {needsRecording && (
+                      <Field>
+                        <FieldLabel>
+                          Recording Bucket<span className="text-product-pam">*</span>
+                        </FieldLabel>
+                        <FieldContent>
+                          <RecordingConnectionPicker
+                            value={recordingConnectionId}
+                            onChange={(value) => {
+                              setRecordingConnectionId(value);
+                              setRecordingError(false);
+                            }}
+                            isError={recordingError}
+                          />
+                          {recordingError && (
+                            <FieldError>A recording bucket is required</FieldError>
+                          )}
+                        </FieldContent>
+                      </Field>
+                    )}
+                  </div>
                 </div>
 
                 <div className="mt-2">

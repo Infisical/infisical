@@ -11,6 +11,7 @@ import {
   usePamAccountTypeMap
 } from "@app/hooks/api/pam";
 
+import { AccountAccessibilityBadge } from "../../components/AccountAccessibilityBadge";
 import { AccountPlatformIcon } from "../../PamAccessPage/components/AccountPlatformIcon";
 import { AccountActionsMenu } from "./AccountActionsMenu";
 import { FolderActionsMenu } from "./FolderActionsMenu";
@@ -77,6 +78,9 @@ export const FolderAccountRows = ({
     return null;
   }
 
+  let count = folder.accountCount;
+  if (isOpen && !isLoading) count = filterActive ? accountsToShow.length : accounts.length;
+
   return (
     <>
       <TableRow className="cursor-pointer select-none" onClick={onToggle}>
@@ -91,6 +95,7 @@ export const FolderAccountRows = ({
               <Folder className="size-5 shrink-0 text-product-pam" />
             )}
             <span className="shrink-0 font-medium text-foreground">{folder.name}</span>
+            <span className="shrink-0 text-xs text-muted">({count})</span>
             {folder.description && (
               <span className="max-w-md truncate text-muted">{folder.description}</span>
             )}
@@ -138,6 +143,7 @@ export const FolderAccountRows = ({
                     <HighlightText text={account.name} highlight={search} />
                   </span>
                   <Badge variant="neutral">{map[accountType]?.name ?? account.accountType}</Badge>
+                  <AccountAccessibilityBadge issues={account.accessibilityIssues} />
                 </div>
               </TableCell>
               <TableCell className="w-20">

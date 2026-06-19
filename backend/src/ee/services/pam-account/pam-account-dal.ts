@@ -5,6 +5,25 @@ import { TableName, TPamAccounts } from "@app/db/schemas";
 import { sanitizeSqlLikeString } from "@app/lib/fn";
 import { ormify } from "@app/lib/knex";
 
+import { PamAccountType } from "../pam/pam-enums";
+
+export const accountAccessibilitySql = (accountTable: string, templateTable: string): string =>
+  `(
+    ("${accountTable}"."gatewayId" is not null or "${accountTable}"."gatewayPoolId" is not null
+      or "${templateTable}"."gatewayId" is not null or "${templateTable}"."gatewayPoolId" is not null)
+    and "${accountTable}"."credentialConfigured" = true
+    and ("${templateTable}"."type" != '${PamAccountType.Windows}'
+      or "${accountTable}"."recordingConnectionId" is not null
+      or "${templateTable}"."recordingConnectionId" is not null)
+  )`;
+
+type TPamAccountTemplateInheritedFields = {
+  credentialConfigured: boolean;
+  templateGatewayId: string | null;
+  templateGatewayPoolId: string | null;
+  templateRecordingConnectionId: string | null;
+};
+
 export type TPamAccountListItem = Pick<
   TPamAccounts,
   | "id"
@@ -18,19 +37,21 @@ export type TPamAccountListItem = Pick<
   | "recordingConnectionId"
   | "createdAt"
   | "updatedAt"
-> & {
-  accountType: string;
-  templateName: string;
-  folderName: string | null;
-};
+> &
+  TPamAccountTemplateInheritedFields & {
+    accountType: string;
+    templateName: string;
+    folderName: string | null;
+  };
 
-export type TPamAccountDetail = TPamAccounts & {
-  accountType: string;
-  templateName: string;
-  templateAccessPolicy: unknown;
-  templateSettings: unknown;
-  folderName: string | null;
-};
+export type TPamAccountDetail = TPamAccounts &
+  TPamAccountTemplateInheritedFields & {
+    accountType: string;
+    templateName: string;
+    templateAccessPolicy: unknown;
+    templateSettings: unknown;
+    folderName: string | null;
+  };
 
 export type TPamAccountDALFactory = ReturnType<typeof pamAccountDALFactory>;
 
@@ -46,6 +67,7 @@ export const pamAccountDALFactory = (db: TDbClient) => {
       templateId?: string;
       accountType?: string;
       search?: string;
+      onlyAccessible?: boolean;
       offset?: number;
       limit?: number;
     },
@@ -77,6 +99,9 @@ export const pamAccountDALFactory = (db: TDbClient) => {
       const pattern = `%${sanitizeSqlLikeString(filters.search)}%`;
       void baseQuery.whereILike(`${TableName.PamAccount}.name`, pattern);
     }
+    if (filters?.onlyAccessible) {
+      void baseQuery.whereRaw(accountAccessibilitySql(TableName.PamAccount, TableName.PamAccountTemplate));
+    }
 
     const countQuery = baseQuery
       .clone()
@@ -96,10 +121,14 @@ export const pamAccountDALFactory = (db: TDbClient) => {
         `${TableName.PamAccount}.gatewayId`,
         `${TableName.PamAccount}.gatewayPoolId`,
         `${TableName.PamAccount}.recordingConnectionId`,
+        `${TableName.PamAccount}.credentialConfigured`,
         `${TableName.PamAccount}.createdAt`,
         `${TableName.PamAccount}.updatedAt`,
         `${TableName.PamAccountTemplate}.type as accountType`,
         `${TableName.PamAccountTemplate}.name as templateName`,
+        `${TableName.PamAccountTemplate}.gatewayId as templateGatewayId`,
+        `${TableName.PamAccountTemplate}.gatewayPoolId as templateGatewayPoolId`,
+        `${TableName.PamAccountTemplate}.recordingConnectionId as templateRecordingConnectionId`,
         `${TableName.PamFolder}.name as folderName`
       )
       .orderBy(`${TableName.PamFolder}.name`, "asc")
@@ -127,6 +156,9 @@ export const pamAccountDALFactory = (db: TDbClient) => {
         `${TableName.PamAccountTemplate}.name as templateName`,
         `${TableName.PamAccountTemplate}.accessPolicy as templateAccessPolicy`,
         `${TableName.PamAccountTemplate}.settings as templateSettings`,
+        `${TableName.PamAccountTemplate}.gatewayId as templateGatewayId`,
+        `${TableName.PamAccountTemplate}.gatewayPoolId as templateGatewayPoolId`,
+        `${TableName.PamAccountTemplate}.recordingConnectionId as templateRecordingConnectionId`,
         `${TableName.PamFolder}.name as folderName`
       )) as unknown as TPamAccountDetail[];
 

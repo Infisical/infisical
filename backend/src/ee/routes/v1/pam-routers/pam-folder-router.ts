@@ -27,7 +27,12 @@ export const registerPamFolderRouter = async (server: FastifyZodProvider) => {
       description: "List all PAM folders in the project",
       tags: [ApiDocsTags.PamFolders],
       querystring: z.object({
-        search: z.string().optional().describe("Filter folders by name")
+        search: z.string().optional().describe("Filter folders by name"),
+        onlyAccessible: z
+          .enum(["true", "false"])
+          .optional()
+          .transform((v) => v === "true")
+          .describe("Count only accounts that can launch a session toward each folder's accountCount")
       }),
       response: {
         200: z.object({
@@ -45,6 +50,7 @@ export const registerPamFolderRouter = async (server: FastifyZodProvider) => {
       const folders = await server.services.pamFolder.list({
         projectId: req.internalPamProjectId,
         search: req.query.search,
+        onlyAccessible: req.query.onlyAccessible,
         actorId: req.permission.id,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,

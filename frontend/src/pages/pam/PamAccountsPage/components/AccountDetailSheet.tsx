@@ -4,11 +4,11 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import {
   FolderOpen,
-  Layers2,
   MoreHorizontal,
   Network,
   Pencil,
   Settings,
+  Settings2,
   SquarePen,
   Trash2,
   UserPlus,
@@ -736,9 +736,9 @@ export const AccountDetailSheet = ({ isOpen, accountId, onOpenChange }: Props) =
               ) : null
             },
             canEdit && {
-              value: PamSheetTab.Overrides,
-              label: "Overrides",
-              icon: <Layers2 className="mr-1.5 size-4" />,
+              value: PamSheetTab.Advanced,
+              label: "Advanced",
+              icon: <Settings2 className="mr-1.5 size-4" />,
               content: accountId ? (
                 <SettingsTab accountId={accountId} onDirtyChange={setIsFormDirty} />
               ) : null

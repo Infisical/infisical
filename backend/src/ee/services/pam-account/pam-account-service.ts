@@ -34,6 +34,8 @@ import { TPamAccountTemplateDALFactory } from "../pam-account-template/pam-accou
 import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
 import { TPamAccountDALFactory } from "./pam-account-dal";
 import {
+  getAccountAccessibilityIssues,
+  isCredentialConfigured,
   parseInternalMetadata,
   sanitizeCredentials,
   type TSshInternalMetadata,
@@ -91,6 +93,25 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     return JSON.parse(decryptor({ cipherTextBlob: blob }).toString("utf-8")) as Record<string, unknown>;
   };
 
+  const computeAccessibility = (a: {
+    accountType: string;
+    gatewayId?: string | null;
+    gatewayPoolId?: string | null;
+    recordingConnectionId?: string | null;
+    templateGatewayId: string | null;
+    templateGatewayPoolId: string | null;
+    templateRecordingConnectionId: string | null;
+    credentialConfigured: boolean;
+  }) => {
+    const accessibilityIssues = getAccountAccessibilityIssues({
+      accountType: a.accountType as PamAccountType,
+      hasGateway: Boolean(a.gatewayId || a.gatewayPoolId || a.templateGatewayId || a.templateGatewayPoolId),
+      hasRecordingConfig: Boolean(a.recordingConnectionId || a.templateRecordingConnectionId),
+      credentialConfigured: a.credentialConfigured
+    });
+    return { isAccessible: accessibilityIssues.length === 0, accessibilityIssues };
+  };
+
   const verifyMembership = (projectId: string, ctx: TActorContext) =>
     verifyProductMembership(permissionService, projectId, ctx);
 
@@ -128,6 +149,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       gatewayId: a.gatewayId,
       gatewayPoolId: a.gatewayPoolId,
       recordingConnectionId: a.recordingConnectionId,
+      ...computeAccessibility(a),
       createdAt: a.createdAt,
       updatedAt: a.updatedAt
     }));
@@ -230,6 +252,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
         templateId,
         encryptedConnectionDetails,
         encryptedCredentials,
+        credentialConfigured: isCredentialConfigured(accountType, validatedCredentials),
         gatewayId,
         gatewayPoolId,
         recordingConnectionId
@@ -336,6 +359,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       const existingCredentials = await decrypt(projectId, existing.encryptedCredentials);
       const validated = validateCredentials(accountType, { ...existingCredentials, ...credentials });
       updateData.encryptedCredentials = await encrypt(projectId, validated);
+      updateData.credentialConfigured = isCredentialConfigured(accountType, validated);
     }
 
     try {
@@ -425,7 +449,8 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       limit,
       search,
       folderId,
-      accountType
+      accountType,
+      onlyAccessible: true
     });
 
     return {

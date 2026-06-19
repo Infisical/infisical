@@ -6,6 +6,7 @@ import { PamAccountType } from "@app/ee/services/pam/pam-enums";
 import {
   ACCOUNT_TYPE_CONFIGS,
   buildPamAccountTypeMetadata,
+  PamAccountAccessibilityIssue,
   PamAccountTypeMetadataSchema
 } from "@app/ee/services/pam-account/pam-account-schemas";
 import {
@@ -42,6 +43,14 @@ const SanitizedAccountListItemSchema = BaseAccountFields.extend({
   folderName: z.string().nullable().optional(),
   templateName: z.string(),
   accountType: z.string()
+});
+
+// The admin list surfaces accessibility so unusable accounts can be flagged in the UI
+const AdminAccountListItemSchema = SanitizedAccountListItemSchema.extend({
+  isAccessible: z.boolean().describe("Whether the account is fully provisioned to launch a session"),
+  accessibilityIssues: z
+    .array(z.nativeEnum(PamAccountAccessibilityIssue))
+    .describe("Reasons the account cannot launch a session, if any")
 });
 
 const accountDetailVariants = Object.entries(ACCOUNT_TYPE_CONFIGS).map(([accountType, config]) =>
@@ -300,7 +309,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
         search: z.string().optional().describe("Filter accounts by name")
       }),
       response: {
-        200: z.object({ accounts: z.array(SanitizedAccountListItemSchema) })
+        200: z.object({ accounts: z.array(AdminAccountListItemSchema) })
       }
     },
     config: { rateLimit: readLimit },

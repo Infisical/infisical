@@ -2,7 +2,11 @@ import { describe, expect, test } from "vitest";
 
 import { PamAccountType } from "../pam/pam-enums";
 import {
+  accountTypeRequiresRecording,
   buildPamAccountTypeMetadata,
+  getAccountAccessibilityIssues,
+  isCredentialConfigured,
+  PamAccountAccessibilityIssue,
   PamAccountTypeMetadataSchema,
   PamFieldDescriptorSchema
 } from "./pam-account-schemas";
@@ -118,5 +122,62 @@ describe("buildPamAccountTypeMetadata", () => {
       secret: true,
       showWhen: { field: "authMethod", equals: "public-key" }
     });
+  });
+});
+
+describe("isCredentialConfigured", () => {
+  test("Postgres/MySQL require a non-empty password", () => {
+    expect(isCredentialConfigured(PamAccountType.Postgres, { username: "u", password: "p" })).toBe(true);
+    expect(isCredentialConfigured(PamAccountType.Postgres, { username: "u", password: "  " })).toBe(false);
+    expect(isCredentialConfigured(PamAccountType.MySQL, { username: "u" })).toBe(false);
+  });
+
+  test("SSH credential depends on the auth method", () => {
+    expect(isCredentialConfigured(PamAccountType.SSH, { authMethod: "password", password: "p" })).toBe(true);
+    expect(isCredentialConfigured(PamAccountType.SSH, { authMethod: "password" })).toBe(false);
+    expect(isCredentialConfigured(PamAccountType.SSH, { authMethod: "public-key", privateKey: "k" })).toBe(true);
+    expect(isCredentialConfigured(PamAccountType.SSH, { authMethod: "public-key" })).toBe(false);
+
+    expect(isCredentialConfigured(PamAccountType.SSH, { authMethod: "certificate" })).toBe(true);
+  });
+});
+
+describe("getAccountAccessibilityIssues", () => {
+  test("recording is only required for account types that stream to a bucket", () => {
+    expect(accountTypeRequiresRecording(PamAccountType.Windows)).toBe(true);
+    expect(accountTypeRequiresRecording(PamAccountType.Postgres)).toBe(false);
+  });
+
+  test("a fully provisioned non-Windows account has no issues", () => {
+    expect(
+      getAccountAccessibilityIssues({
+        accountType: PamAccountType.Postgres,
+        hasGateway: true,
+        hasRecordingConfig: false,
+        credentialConfigured: true
+      })
+    ).toEqual([]);
+  });
+
+  test("flags missing gateway and credential", () => {
+    expect(
+      getAccountAccessibilityIssues({
+        accountType: PamAccountType.Postgres,
+        hasGateway: false,
+        hasRecordingConfig: false,
+        credentialConfigured: false
+      })
+    ).toEqual([PamAccountAccessibilityIssue.NoGateway, PamAccountAccessibilityIssue.NoCredential]);
+  });
+
+  test("flags missing recording only for Windows", () => {
+    expect(
+      getAccountAccessibilityIssues({
+        accountType: PamAccountType.Windows,
+        hasGateway: true,
+        hasRecordingConfig: false,
+        credentialConfigured: true
+      })
+    ).toEqual([PamAccountAccessibilityIssue.NoRecordingConfig]);
   });
 });

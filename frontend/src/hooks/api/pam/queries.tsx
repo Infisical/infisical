@@ -14,6 +14,7 @@ import {
 
 import { PamAccountType, PamResourcePermissionActions, PamResourcePermissionSub } from "./enums";
 import {
+  PamAccountAccessibilityIssue,
   PamFolderPermissionSet,
   TAccessiblePamAccount,
   TListAccessiblePamAccountsDTO,
@@ -150,7 +151,8 @@ export const useListAccessiblePamFolders = () => {
     queryKey: pamKeys.accessibleFolders(),
     queryFn: async () => {
       const { data } = await apiRequest.get<{ folders: TAccessiblePamFolder[] }>(
-        "/api/v1/pam/folders"
+        "/api/v1/pam/folders",
+        { params: { onlyAccessible: "true" } }
       );
       return data.folders;
     }
@@ -175,6 +177,8 @@ type TAdminAccountListItem = {
   gatewayId: string | null;
   gatewayPoolId: string | null;
   recordingConnectionId: string | null;
+  isAccessible: boolean;
+  accessibilityIssues: PamAccountAccessibilityIssue[];
   createdAt: string;
   updatedAt: string;
 };

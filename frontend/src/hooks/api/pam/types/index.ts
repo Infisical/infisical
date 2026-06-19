@@ -43,6 +43,15 @@ export type TPamAccountTypeMetadata = {
 
 // New model types
 
+export enum PamAccountAccessibilityIssue {
+  NoGateway = "no-gateway",
+  NoRecordingConfig = "no-recording-config",
+  NoCredential = "no-credential"
+}
+
+export const accountTypeRequiresRecording = (type: PamAccountType): boolean =>
+  type === PamAccountType.Windows;
+
 export type TPamAccount = {
   id: string;
   name: string;
@@ -219,6 +228,7 @@ export type TCreatePamAccountDTO = {
   credentials: Record<string, unknown>;
   gatewayId?: string;
   gatewayPoolId?: string;
+  recordingConnectionId?: string;
 };
 
 export type TUpdatePamAccountDTO = {
@@ -263,6 +273,9 @@ export type TUpdatePamAccountTemplateDTO = {
   description?: string | null;
   accessPolicy?: Record<string, unknown>;
   settings?: Record<string, unknown>;
+  gatewayId?: string | null;
+  gatewayPoolId?: string | null;
+  recordingConnectionId?: string | null;
 };
 
 export type TDeletePamAccountTemplateDTO = {
