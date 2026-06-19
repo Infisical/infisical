@@ -56,8 +56,10 @@ export const RailwaySyncFns = {
   /**
    * Syncs secrets to Railway and redeploys the service if needed.
    *
-   * Gets existing Railway vars, merges with new secrets (keeping Railway vars if deletion is disabled),
-   * then replaces every variable with the new values, if variable is not in the secretMap, it is deleted.
+   * Upserts the Infisical-managed secrets with `replace: false` so existing Railway variables are
+   * never deleted implicitly. Sealed variables (value === null, unreadable by design) cannot be
+   * resubmitted, so a `replace: true` payload would silently wipe them — a data-loss bug. When
+   * deletion is enabled, drift is removed explicitly via per-key deletes that skip sealed variables.
    * If there's a service, triggers a redeploy to pick up the changes.
    */
   async syncSecrets(secretSync: TRailwaySyncWithCredentials, secretMap: TSecretMap) {
@@ -65,15 +67,9 @@ export const RailwaySyncFns = {
       const {
         syncOptions: { disableSecretDeletion }
       } = secretSync;
-      const railwaySecrets = await this.getSecrets(secretSync);
       const config = secretSync.destinationConfig;
 
-      const railwaySecretsMap = Object.fromEntries(
-        Object.entries(railwaySecrets).map(([key, secret]) => [key, secret.value])
-      );
       const secretMapMap = Object.fromEntries(Object.entries(secretMap).map(([key, secret]) => [key, secret.value]));
-
-      const toReplace = disableSecretDeletion ? { ...railwaySecretsMap, ...secretMapMap } : secretMapMap;
 
       const upserted = await RailwayPublicAPI.upsertCollection(secretSync.connection, {
         input: {
@@ -81,8 +77,8 @@ export const RailwaySyncFns = {
           environmentId: config.environmentId,
           serviceId: config.serviceId || undefined,
           skipDeploys: true,
-          variables: toReplace,
-          replace: true
+          variables: secretMapMap,
+          replace: false
         }
       });
 
@@ -90,6 +86,34 @@ export const RailwaySyncFns = {
         throw new SecretSyncError({
           message: "Failed to upsert secrets to Railway"
         });
+
+      // When deletion is enabled (full-mirror), remove only the variables Infisical no longer
+      // manages. Explicitly skip sealed variables (value === null) — they are unreadable and must
+      // never be deleted — and Railway system variables (RAILWAY_ prefix).
+      if (!disableSecretDeletion) {
+        const existingVariables = await RailwayPublicAPI.getVariables(secretSync.connection, {
+          projectId: config.projectId,
+          environmentId: config.environmentId,
+          serviceId: config.serviceId || undefined
+        });
+
+        const keysToDelete = Object.entries(existingVariables)
+          .filter(([key, value]) => value !== null && !key.startsWith("RAILWAY_") && !(key in secretMap))
+          .map(([key]) => key);
+
+        for (const name of keysToDelete) {
+          // eslint-disable-next-line no-await-in-loop
+          await RailwayPublicAPI.deleteVariable(secretSync.connection, {
+            input: {
+              projectId: config.projectId,
+              environmentId: config.environmentId,
+              serviceId: config.serviceId || undefined,
+              name,
+              skipDeploys: true
+            }
+          });
+        }
+      }
 
       if (!config.serviceId) return;
 
@@ -132,31 +156,32 @@ export const RailwaySyncFns = {
   },
 
   async removeSecrets(secretSync: TRailwaySyncWithCredentials, secretMap: TSecretMap) {
-    const existing = await this.getSecrets(secretSync);
     const config = secretSync.destinationConfig;
 
-    // Create a new variables object excluding secrets that exist in secretMap
-    const remainingVariables = Object.fromEntries(
-      Object.entries(existing)
-        .filter(([key]) => !(key in secretMap))
-        .map(([key, secret]) => [key, secret.value])
-    );
-
     try {
-      const upserted = await RailwayPublicAPI.upsertCollection(secretSync.connection, {
-        input: {
-          projectId: config.projectId,
-          environmentId: config.environmentId,
-          serviceId: config.serviceId || undefined,
-          skipDeploys: true,
-          variables: remainingVariables,
-          replace: true
-        }
+      const existingVariables = await RailwayPublicAPI.getVariables(secretSync.connection, {
+        projectId: config.projectId,
+        environmentId: config.environmentId,
+        serviceId: config.serviceId || undefined
       });
 
-      if (!upserted) {
-        throw new SecretSyncError({
-          message: "Failed to remove secrets from Railway"
+      // Delete only the Infisical-managed variables that exist in Railway. Per-key deletes (instead
+      // of a replace: true collection upsert) guarantee sealed variables (value === null) — which
+      // are unreadable and cannot be resubmitted — are never wiped.
+      const keysToDelete = Object.keys(existingVariables).filter(
+        (key) => key in secretMap && existingVariables[key] !== null
+      );
+
+      for (const name of keysToDelete) {
+        // eslint-disable-next-line no-await-in-loop
+        await RailwayPublicAPI.deleteVariable(secretSync.connection, {
+          input: {
+            projectId: config.projectId,
+            environmentId: config.environmentId,
+            serviceId: config.serviceId || undefined,
+            name,
+            skipDeploys: true
+          }
         });
       }
     } catch (error) {

@@ -26,6 +26,7 @@ export enum RailwayDeploymentStatus {
 // selecting a deployment to redeploy.
 export const RAILWAY_NON_REDEPLOYABLE_STATUSES = new Set<string>([
   RailwayDeploymentStatus.Building,
+  RailwayDeploymentStatus.Deploying,
   RailwayDeploymentStatus.Queued,
   RailwayDeploymentStatus.Initializing,
   RailwayDeploymentStatus.Waiting,

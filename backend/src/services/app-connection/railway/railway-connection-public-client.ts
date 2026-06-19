@@ -178,8 +178,9 @@ class RailwayPublicClient {
         const projectPerWorkspace = await Promise.all(
           workspaces.me.workspaces.map(async (w) => {
             const projectsResponse = await this.send(
-              `{ workspace(workspaceId: "${w.id}") { projects { edges { node { id, name, services { edges { node { id, name } } } environments { edges { node { name, id } } } } } } } }`,
-              config
+              `query workspace($workspaceId: String!) { workspace(workspaceId: $workspaceId) { projects { edges { node { id, name, services { edges { node { id, name } } } environments { edges { node { name, id } } } } } } } }`,
+              config,
+              { workspaceId: w.id }
             );
 
             const projectsData = await RailwayWorkspaceProjectsListSchema.parseAsync(projectsResponse);
