@@ -58,7 +58,7 @@ export const InvoicesTable = () => {
                         onClick={async () => window.open(invoice_pdf)}
                         size="lg"
                         variant="plain"
-                        ariaLabel="download receipt"
+                        ariaLabel="download invoice"
                       >
                         <FontAwesomeIcon icon={faDownload} />
                       </IconButton>
