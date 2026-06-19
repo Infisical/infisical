@@ -8,7 +8,7 @@ import { entitlementResolverFactory } from "./license-client-cache";
 import { TCreateCheckoutPayload, TCreatePortalPayload, TLicenseClientBackend } from "./license-client-types";
 
 type TLicenseClientFactoryDep = {
-  envConfig: Pick<TEnvConfig, "LICENSE_SERVER_V2_ENABLED" | "LICENSE_SERVER_V2_URL" | "LICENSE_SERVER_V2_SERVICE_KEY">;
+  envConfig: Pick<TEnvConfig, "LICENSE_SERVER_V2_MODE" | "LICENSE_SERVER_V2_URL" | "LICENSE_SERVER_V2_SERVICE_KEY">;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry">;
 };
 
@@ -17,7 +17,7 @@ export type TLicenseClientFactory = ReturnType<typeof licenseClientFactory>;
 // Returns null (SDK dormant -> getFeature serves fallbacks) unless the kill switch is on and the
 // server URL + service key are configured.
 const buildBackend = (envConfig: TLicenseClientFactoryDep["envConfig"]): TLicenseClientBackend | null => {
-  if (!envConfig.LICENSE_SERVER_V2_ENABLED) {
+  if (envConfig.LICENSE_SERVER_V2_MODE === "off") {
     return null;
   }
 

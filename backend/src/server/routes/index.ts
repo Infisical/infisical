@@ -381,6 +381,7 @@ import { TKmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal"
 import { kmsServiceFactory } from "@app/services/kms/kms-service";
 import { RootKeyEncryptionStrategy } from "@app/services/kms/kms-types";
 import { licenseClientFactory } from "@app/services/license-client";
+import { dualReadServiceFactory } from "@app/services/license-client/dual-read/dual-read-service";
 import {
   buildMeteredFeatures,
   buildUsageReporter,
@@ -788,21 +789,26 @@ export const registerRoutes = async (
     permissionService
   });
 
+  // License Server v2 client SDK. Coexists with licenseService during migration - getFeature()
+  // is the single read primitive; falls back to feature defaults until the server is configured.
+  const licenseClient = licenseClientFactory({ envConfig, keyStore });
+
+  // Shadow-compares v1 getPlan against v2 entitlements in read-compare mode; reads v2 via the real SDK.
+  const licenseDualRead = dualReadServiceFactory({ licenseClient, envConfig });
+
   const licenseService = licenseServiceFactory({
     permissionService,
     orgDAL,
     licenseDAL,
     keyStore,
     projectDAL,
-    envConfig
+    envConfig,
+    licenseClient,
+    licenseDualRead
   });
 
-  // License Server v2 client SDK. Coexists with licenseService during migration - getFeature()
-  // is the single read primitive; falls back to feature defaults until the server is configured.
-  const licenseClient = licenseClientFactory({ envConfig, keyStore });
-
-  // Usage metering: counts the 5 metered features and reports them to the License Server. Inert
-  // until LICENSE_SERVER_V2_ENABLED is on (the emitter no-ops, the worker no-ops without a reporter).
+  // Usage metering: counts the 5 metered features and reports them to the License Server. Inert while
+  // LICENSE_SERVER_V2_MODE is off; active in read-compare and on (emitter no-ops / worker no-ops without a reporter).
   const usageCounterDAL = usageCounterDALFactory(db);
   const meteredFeatures = buildMeteredFeatures({ licenseDAL, usageCounterDAL });
   meteredFeatures.forEach(({ feature, count }) => licenseClient.registerCounter(feature, count));
