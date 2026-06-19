@@ -1,15 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import {
-  FolderOpen,
-  MoreHorizontal,
-  Pencil,
-  Settings,
-  Trash2,
-  UserPlus,
-  Users
-} from "lucide-react";
+import { FolderOpen, MoreHorizontal, Pencil, Trash2, UserPlus } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -45,7 +37,6 @@ import { Skeleton } from "@app/components/v3/generic/Skeleton";
 import { useOrganization, useUser } from "@app/context";
 import { useGetOrganizationGroups } from "@app/hooks/api/organization/queries";
 import {
-  PamResourcePermissionActions,
   TPamFolderWithCount,
   TPamMember,
   useListFolderMembers,
@@ -65,6 +56,7 @@ import {
   MemberExpiry,
   PamDetailSheet
 } from "../../components/PamDetailSheet";
+import { PAM_FOLDER_TABS, visiblePamTabs } from "../../components/pamResourceTabs";
 import { RemoveMemberConfirm } from "../../components/RemoveMemberConfirm";
 import { SheetSaveBar } from "../../components/SheetSaveBar";
 import { AssignAccessModal, EditMemberTarget } from "./AssignAccessModal";
@@ -409,8 +401,7 @@ export const FolderDetailSheet = ({
   onOpenChange
 }: Props) => {
   const { can } = usePamFolderActions(folder?.id ?? "", isOpen && Boolean(folder));
-  const canManageMembers = can(PamResourcePermissionActions.ManageMembers);
-  const canEdit = can(PamResourcePermissionActions.EditFolder);
+  const availableTabs = visiblePamTabs(PAM_FOLDER_TABS, can);
 
   const [isFormDirty, setIsFormDirty] = useState(false);
 
@@ -422,25 +413,19 @@ export const FolderDetailSheet = ({
       ]
     : [];
 
-  const tabs = [
-    canManageMembers && {
-      value: PamSheetTab.Permissions,
-      label: "Permissions",
-      icon: <Users className="mr-1.5 size-4" />,
-      content: folder ? <PermissionsTab folderId={folder.id} /> : null
-    },
-    canEdit && {
-      value: PamSheetTab.Configuration,
-      label: "Configuration",
-      icon: <Settings className="mr-1.5 size-4" />,
-      content: folder ? <GeneralTab folder={folder} onDirtyChange={setIsFormDirty} /> : null
-    }
-  ].filter(Boolean) as {
-    value: string;
-    label: string;
-    icon: JSX.Element;
-    content: JSX.Element | null;
-  }[];
+  const tabContent: Partial<Record<PamSheetTab, JSX.Element | null>> = {
+    [PamSheetTab.Permissions]: folder ? <PermissionsTab folderId={folder.id} /> : null,
+    [PamSheetTab.Configuration]: folder ? (
+      <GeneralTab folder={folder} onDirtyChange={setIsFormDirty} />
+    ) : null
+  };
+
+  const tabs = availableTabs.map((tabDef) => ({
+    value: tabDef.value,
+    label: tabDef.label,
+    icon: <tabDef.icon className="mr-1.5 size-4" />,
+    content: tabContent[tabDef.value] ?? null
+  }));
 
   return (
     <PamDetailSheet

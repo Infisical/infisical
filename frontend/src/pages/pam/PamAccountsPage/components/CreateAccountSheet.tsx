@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { AlertTriangle, Search } from "lucide-react";
+import { AlertTriangle, Plus, Search } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { HighlightText } from "@app/components/v2/HighlightText";
@@ -29,6 +29,7 @@ import {
   Select,
   SelectContent,
   SelectItem,
+  SelectSeparator,
   SelectTrigger,
   SelectValue
 } from "@app/components/v3/generic/Select";
@@ -59,8 +60,11 @@ import {
   TAccountFormValues
 } from "./accountFormSchema";
 import { ConnectionDetailsForm } from "./ConnectionDetailsForm";
+import { CreateFolderModal } from "./CreateFolderModal";
 import { CredentialsForm } from "./CredentialsForm";
 import { RecordingConnectionPicker } from "./RecordingConnectionPicker";
+
+const CREATE_FOLDER_VALUE = "__create_folder__";
 
 type Props = {
   isOpen: boolean;
@@ -74,6 +78,7 @@ export const CreateAccountSheet = ({ isOpen, onOpenChange, defaultFolderId }: Pr
   const [step, setStep] = useState<1 | 2>(1);
   const [templateSearch, setTemplateSearch] = useState("");
   const [confirmDiscardOpen, setConfirmDiscardOpen] = useState(false);
+  const [createFolderOpen, setCreateFolderOpen] = useState(false);
 
   // Gateway/recording are collected inline only when the chosen template doesn't already provide them
   const [gateway, setGateway] = useState<{
@@ -275,7 +280,16 @@ export const CreateAccountSheet = ({ isOpen, onOpenChange, defaultFolderId }: Pr
                         Folder<span className="text-product-pam">*</span>
                       </FieldLabel>
                       <FieldContent>
-                        <Select value={field.value} onValueChange={field.onChange}>
+                        <Select
+                          value={field.value}
+                          onValueChange={(val) => {
+                            if (val === CREATE_FOLDER_VALUE) {
+                              setCreateFolderOpen(true);
+                              return;
+                            }
+                            field.onChange(val);
+                          }}
+                        >
                           <SelectTrigger className="w-full">
                             <SelectValue placeholder="Select folder" />
                           </SelectTrigger>
@@ -285,6 +299,13 @@ export const CreateAccountSheet = ({ isOpen, onOpenChange, defaultFolderId }: Pr
                                 {folder.name}
                               </SelectItem>
                             ))}
+                            {folders.length > 0 && <SelectSeparator />}
+                            <SelectItem value={CREATE_FOLDER_VALUE}>
+                              <span className="flex items-center gap-1.5 text-muted">
+                                <Plus className="size-4" />
+                                Create folder
+                              </span>
+                            </SelectItem>
                           </SelectContent>
                         </Select>
                       </FieldContent>
@@ -511,6 +532,12 @@ export const CreateAccountSheet = ({ isOpen, onOpenChange, defaultFolderId }: Pr
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <CreateFolderModal
+        isOpen={createFolderOpen}
+        onOpenChange={setCreateFolderOpen}
+        onCreated={(folderId) => setValue("folderId", folderId, { shouldDirty: true })}
+      />
     </>
   );
 };

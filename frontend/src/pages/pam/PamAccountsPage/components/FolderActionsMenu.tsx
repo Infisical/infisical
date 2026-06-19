@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Eye, MoreHorizontal, Plus, Settings, Trash2 } from "lucide-react";
+import { MoreHorizontal, Plus, Trash2 } from "lucide-react";
 
 import {
   DropdownMenu,
@@ -14,31 +14,26 @@ import {
   TPamFolderWithCount,
   usePamFolderActions
 } from "@app/hooks/api/pam";
+import { PamSheetTab } from "@app/hooks/usePamSheetState";
+
+import { PAM_FOLDER_TABS, visiblePamTabs } from "../../components/pamResourceTabs";
 
 type Props = {
   folder: TPamFolderWithCount;
-  onDetails: () => void;
-  onConfigure: () => void;
+  onOpenTab: (tab: PamSheetTab) => void;
   onAddAccount: () => void;
   onDelete: () => void;
 };
 
-export const FolderActionsMenu = ({
-  folder,
-  onDetails,
-  onConfigure,
-  onAddAccount,
-  onDelete
-}: Props) => {
+export const FolderActionsMenu = ({ folder, onOpenTab, onAddAccount, onDelete }: Props) => {
   // Defer the permission fetch until the menu is first opened to avoid a request per row
   const [hasOpened, setHasOpened] = useState(false);
   const { can, isLoading } = usePamFolderActions(folder.id, hasOpened);
 
-  const canRead = can(PamResourcePermissionActions.ReadFolder);
-  const canEdit = can(PamResourcePermissionActions.EditFolder);
+  const tabs = visiblePamTabs(PAM_FOLDER_TABS, can);
   const canCreateAccounts = can(PamResourcePermissionActions.CreateAccounts);
   const canDelete = can(PamResourcePermissionActions.DeleteFolder);
-  const hasAnyAction = canRead || canEdit || canCreateAccounts || canDelete;
+  const hasAnyAction = tabs.length > 0 || canCreateAccounts || canDelete;
 
   return (
     <DropdownMenu onOpenChange={(open) => open && setHasOpened(true)}>
@@ -58,18 +53,12 @@ export const FolderActionsMenu = ({
         {!isLoading && !hasAnyAction && (
           <DropdownMenuItem isDisabled>No actions available</DropdownMenuItem>
         )}
-        {canRead && (
-          <DropdownMenuItem onClick={onDetails}>
-            <Eye />
-            Details
+        {tabs.map((tab) => (
+          <DropdownMenuItem key={tab.value} onClick={() => onOpenTab(tab.value)}>
+            <tab.icon />
+            {tab.label}
           </DropdownMenuItem>
-        )}
-        {canEdit && (
-          <DropdownMenuItem onClick={onConfigure}>
-            <Settings />
-            Configure
-          </DropdownMenuItem>
-        )}
+        ))}
         {canCreateAccounts && (
           <DropdownMenuItem onClick={onAddAccount}>
             <Plus />

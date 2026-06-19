@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Eye, MoreHorizontal, Settings, Trash2 } from "lucide-react";
+import { MoreHorizontal, Trash2 } from "lucide-react";
 
 import {
   DropdownMenu,
@@ -10,23 +10,24 @@ import {
   IconButton
 } from "@app/components/v3";
 import { PamResourcePermissionActions, usePamAccountActions } from "@app/hooks/api/pam";
+import { PamSheetTab } from "@app/hooks/usePamSheetState";
+
+import { PAM_ACCOUNT_TABS, visiblePamTabs } from "../../components/pamResourceTabs";
 
 type Props = {
   accountId: string;
-  onDetails: () => void;
-  onConfigure: () => void;
+  onOpenTab: (tab: PamSheetTab) => void;
   onDelete: () => void;
 };
 
-export const AccountActionsMenu = ({ accountId, onDetails, onConfigure, onDelete }: Props) => {
+export const AccountActionsMenu = ({ accountId, onOpenTab, onDelete }: Props) => {
   // Defer the permission fetch until the menu is first opened to avoid a request per row
   const [hasOpened, setHasOpened] = useState(false);
   const { can, isLoading } = usePamAccountActions(accountId, hasOpened);
 
-  const canRead = can(PamResourcePermissionActions.ReadAccounts);
-  const canEdit = can(PamResourcePermissionActions.EditAccounts);
+  const tabs = visiblePamTabs(PAM_ACCOUNT_TABS, can);
   const canDelete = can(PamResourcePermissionActions.DeleteAccounts);
-  const hasAnyAction = canRead || canEdit || canDelete;
+  const hasAnyAction = tabs.length > 0 || canDelete;
 
   return (
     <DropdownMenu onOpenChange={(open) => open && setHasOpened(true)}>
@@ -46,18 +47,12 @@ export const AccountActionsMenu = ({ accountId, onDetails, onConfigure, onDelete
         {!isLoading && !hasAnyAction && (
           <DropdownMenuItem isDisabled>No actions available</DropdownMenuItem>
         )}
-        {canRead && (
-          <DropdownMenuItem onClick={onDetails}>
-            <Eye />
-            View Details
+        {tabs.map((tab) => (
+          <DropdownMenuItem key={tab.value} onClick={() => onOpenTab(tab.value)}>
+            <tab.icon />
+            {tab.label}
           </DropdownMenuItem>
-        )}
-        {canEdit && (
-          <DropdownMenuItem onClick={onConfigure}>
-            <Settings />
-            Configure
-          </DropdownMenuItem>
-        )}
+        ))}
         {canDelete && (
           <>
             <DropdownMenuSeparator />

@@ -1,16 +1,7 @@
 import { useMemo, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
-import {
-  ClipboardList,
-  Eye,
-  Layers,
-  MoreHorizontal,
-  Plus,
-  Search,
-  Settings,
-  Trash2
-} from "lucide-react";
+import { ClipboardList, Layers, MoreHorizontal, Plus, Search, Trash2 } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { PageHeader } from "@app/components/v2";
@@ -55,6 +46,7 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 import { PamSheetTab, usePamSheetState } from "@app/hooks/usePamSheetState";
 import { usePopUp } from "@app/hooks/usePopUp";
 
+import { PAM_TEMPLATE_TABS } from "../components/pamResourceTabs";
 import { AccountPlatformIcon } from "../PamAccessPage/components/AccountPlatformIcon";
 import { CreateTemplateModal } from "./components/CreateTemplateModal";
 import { DeleteTemplateModal } from "./components/DeleteTemplateModal";
@@ -103,24 +95,18 @@ const TemplateRow = ({
             </IconButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" sideOffset={4} onClick={(e) => e.stopPropagation()}>
-            <DropdownMenuItem
-              onClick={(e) => {
-                e.stopPropagation();
-                onOpen();
-              }}
-            >
-              <Eye />
-              Details
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={(e) => {
-                e.stopPropagation();
-                onOpen(PamSheetTab.Configuration);
-              }}
-            >
-              <Settings />
-              Configure
-            </DropdownMenuItem>
+            {PAM_TEMPLATE_TABS.map((tab) => (
+              <DropdownMenuItem
+                key={tab.value}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onOpen(tab.value);
+                }}
+              >
+                <tab.icon />
+                {tab.label}
+              </DropdownMenuItem>
+            ))}
             <DropdownMenuSeparator />
             <DropdownMenuItem
               variant="danger"

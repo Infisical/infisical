@@ -41,6 +41,7 @@ export const ACCOUNT_TYPE_CONFIGS = {
     }),
     sanitizedCredentials: z.object({ username: z.string().optional() }),
     ui: {
+      port: { defaultValue: 5432 },
       sslEnabled: { label: "SSL Enabled" },
       sslRejectUnauthorized: {
         label: "Reject Unauthorized",
@@ -81,6 +82,7 @@ export const ACCOUNT_TYPE_CONFIGS = {
     }),
     sanitizedCredentials: z.object({ username: z.string().optional() }),
     ui: {
+      port: { defaultValue: 3306 },
       sslEnabled: { label: "SSL Enabled" },
       sslRejectUnauthorized: {
         label: "Reject Unauthorized",
@@ -129,6 +131,7 @@ export const ACCOUNT_TYPE_CONFIGS = {
       username: z.string().optional()
     }),
     ui: {
+      port: { defaultValue: 22 },
       authMethod: { label: "Auth Method" },
       password: { widget: PamFieldWidget.Password, secret: true },
       privateKey: { label: "Private Key", widget: PamFieldWidget.Textarea, secret: true }
@@ -154,6 +157,7 @@ export const ACCOUNT_TYPE_CONFIGS = {
           label?: string;
           widget?: PamFieldWidget;
           secret?: boolean;
+          defaultValue?: string | number | boolean;
           showWhen?: { field: string; equals: string | boolean };
         }
       >;
@@ -262,6 +266,9 @@ export const PamFieldDescriptorSchema = z.object({
   secret: z.boolean(),
   options: z.array(z.object({ label: z.string(), value: z.string() })).optional(),
 
+  // Value the form prefills the field with on create
+  defaultValue: z.union([z.string(), z.number(), z.boolean()]).optional(),
+
   // Only render when the referenced field equals this value
   showWhen: z.object({ field: z.string(), equals: z.union([z.string(), z.boolean()]) }).optional()
 });
@@ -282,6 +289,7 @@ type TFieldUiHint = {
   label?: string;
   widget?: PamFieldWidget;
   secret?: boolean;
+  defaultValue?: string | number | boolean;
   showWhen?: PamFieldDescriptor["showWhen"];
 };
 
@@ -338,6 +346,7 @@ const describeField = (
     ...(widget === PamFieldWidget.Select && enumValues
       ? { options: enumValues.map((v) => ({ label: humanizeKey(v), value: v })) }
       : {}),
+    ...(hint.defaultValue !== undefined ? { defaultValue: hint.defaultValue } : {}),
     ...(resolvedShowWhen ? { showWhen: resolvedShowWhen } : {})
   };
 };

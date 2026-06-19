@@ -50,7 +50,8 @@ describe("buildPamAccountTypeMetadata", () => {
     });
     expect(fieldByKey(postgres!.connectionFields, "port")).toMatchObject({
       widget: "number",
-      required: true
+      required: true,
+      defaultValue: 5432
     });
     expect(fieldByKey(postgres!.connectionFields, "sslEnabled")).toMatchObject({ widget: "boolean" });
 

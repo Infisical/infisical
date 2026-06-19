@@ -7,12 +7,9 @@ import {
   MoreHorizontal,
   Network,
   Pencil,
-  Settings,
-  Settings2,
   SquarePen,
   Trash2,
-  UserPlus,
-  Users
+  UserPlus
 } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
@@ -46,9 +43,7 @@ import { gatewaysQueryKeys } from "@app/hooks/api/gateways/queries";
 import { useGetOrganizationGroups } from "@app/hooks/api/organization/queries";
 import {
   PamAccountType,
-  PamResourcePermissionActions,
   TPamMember,
-  useDeletePamAccount,
   useGetPamAccountById,
   useGetPamAccountTemplate,
   useListAccountMembers,
@@ -70,11 +65,11 @@ import {
   MemberExpiry,
   PamDetailSheet
 } from "../../components/PamDetailSheet";
+import { PAM_ACCOUNT_TABS, visiblePamTabs } from "../../components/pamResourceTabs";
 import { RemoveMemberConfirm } from "../../components/RemoveMemberConfirm";
 import { SheetSaveBar } from "../../components/SheetSaveBar";
 import { AccountPlatformIcon } from "../../PamAccessPage/components/AccountPlatformIcon";
 import { AssignAccessModal, EditMemberTarget } from "./AssignAccessModal";
-import { DeleteAccountModal } from "./DeleteAccountModal";
 import { EditAccountForm } from "./EditAccountForm";
 
 type Props = {
@@ -547,7 +542,11 @@ const SettingsTab = ({
 
             {isOverriding && (
               <div className="mt-4">
-                <GatewayPicker value={{ gatewayId, gatewayPoolId }} onChange={setGateway} />
+                <GatewayPicker
+                  value={{ gatewayId, gatewayPoolId }}
+                  onChange={setGateway}
+                  isRequired
+                />
               </div>
             )}
           </div>
@@ -594,9 +593,7 @@ export const AccountDetailSheet = ({ isOpen, accountId, onOpenChange }: Props) =
   const { data: account, isLoading } = useGetPamAccountById(isOpen ? accountId : undefined);
   const { tab, setTab } = usePamSheetState("accountId");
   const { currentOrg } = useOrganization();
-  const deleteAccount = useDeletePamAccount();
 
-  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isFormDirty, setIsFormDirty] = useState(false);
 
   const { map: accountTypeMap } = usePamAccountTypeMap();
@@ -604,51 +601,7 @@ export const AccountDetailSheet = ({ isOpen, accountId, onOpenChange }: Props) =
   const typeInfo = accountType ? accountTypeMap[accountType] : undefined;
 
   const { can } = usePamAccountActions(accountId ?? "", isOpen && Boolean(accountId));
-  const canManageMembers = can(PamResourcePermissionActions.ManageMembers);
-  const canEdit = can(PamResourcePermissionActions.EditAccounts);
-  const canDelete = can(PamResourcePermissionActions.DeleteAccounts);
-
-  const handleDelete = () => {
-    if (!accountId || !accountType) return;
-    deleteAccount.mutate(
-      { accountId, accountType },
-      {
-        onSuccess: () => {
-          createNotification({ type: "success", text: "Account deleted" });
-          setIsDeleteOpen(false);
-          onOpenChange(false);
-        }
-      }
-    );
-  };
-
-  const actions =
-    account && (canEdit || canDelete) ? (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <IconButton variant="ghost" size="sm" aria-label="Account actions" className="text-muted">
-            <MoreHorizontal className="size-4" />
-          </IconButton>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-          {canEdit && (
-            <DropdownMenuItem onClick={() => setTab(PamSheetTab.Configuration)}>
-              <Settings />
-              Configure
-            </DropdownMenuItem>
-          )}
-          {canDelete && (
-            <>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem variant="danger" onClick={() => setIsDeleteOpen(true)}>
-                <Trash2 />
-                Delete
-              </DropdownMenuItem>
-            </>
-          )}
-        </DropdownMenuContent>
-      </DropdownMenu>
-    ) : undefined;
+  const availableTabs = visiblePamTabs(PAM_ACCOUNT_TABS, can);
 
   const conn = (account?.connectionDetails ?? {}) as Record<string, unknown>;
 
@@ -691,76 +644,49 @@ export const AccountDetailSheet = ({ isOpen, accountId, onOpenChange }: Props) =
     </span>
   ) : undefined;
 
-  return (
-    <>
-      <PamDetailSheet
-        isOpen={isOpen}
-        onOpenChange={onOpenChange}
-        isLoading={isLoading}
-        accountType={accountType}
-        title={account?.name}
-        subtitle={folderSubtitle}
-        typeBadge={typeInfo?.name}
-        icon={
-          accountType ? (
-            <div className="mb-4 flex size-16 items-center justify-center rounded-lg border border-border bg-container">
-              <AccountPlatformIcon accountType={accountType} size={40} />
-            </div>
-          ) : undefined
-        }
-        metadata={metadata}
-        actions={actions}
-        activeTab={tab}
-        onTabChange={setTab}
-        tabs={
-          [
-            canManageMembers && {
-              value: PamSheetTab.Permissions,
-              label: "Permissions",
-              icon: <Users className="mr-1.5 size-4" />,
-              content:
-                accountId && account ? (
-                  <PermissionsTab
-                    accountId={accountId}
-                    folderId={account.folderId}
-                    folderName={account.folderName}
-                  />
-                ) : null
-            },
-            canEdit && {
-              value: PamSheetTab.Configuration,
-              label: "Configuration",
-              icon: <Settings className="mr-1.5 size-4" />,
-              content: accountId ? (
-                <EditAccountForm accountId={accountId} onDirtyChange={setIsFormDirty} />
-              ) : null
-            },
-            canEdit && {
-              value: PamSheetTab.Advanced,
-              label: "Advanced",
-              icon: <Settings2 className="mr-1.5 size-4" />,
-              content: accountId ? (
-                <SettingsTab accountId={accountId} onDirtyChange={setIsFormDirty} />
-              ) : null
-            }
-          ].filter(Boolean) as {
-            value: string;
-            label: string;
-            icon: JSX.Element;
-            content: JSX.Element | null;
-          }[]
-        }
-        isDirty={isFormDirty}
-      />
+  const tabContent: Partial<Record<PamSheetTab, ReactNode>> = {
+    [PamSheetTab.Permissions]:
+      accountId && account ? (
+        <PermissionsTab
+          accountId={accountId}
+          folderId={account.folderId}
+          folderName={account.folderName}
+        />
+      ) : null,
+    [PamSheetTab.Configuration]: accountId ? (
+      <EditAccountForm accountId={accountId} onDirtyChange={setIsFormDirty} />
+    ) : null,
+    [PamSheetTab.Advanced]: accountId ? (
+      <SettingsTab accountId={accountId} onDirtyChange={setIsFormDirty} />
+    ) : null
+  };
 
-      <DeleteAccountModal
-        isOpen={isDeleteOpen}
-        accountName={account?.name ?? ""}
-        accountType={accountType}
-        isLoading={deleteAccount.isPending}
-        onConfirm={handleDelete}
-        onOpenChange={setIsDeleteOpen}
-      />
-    </>
+  return (
+    <PamDetailSheet
+      isOpen={isOpen}
+      onOpenChange={onOpenChange}
+      isLoading={isLoading}
+      accountType={accountType}
+      title={account?.name}
+      subtitle={folderSubtitle}
+      typeBadge={typeInfo?.name}
+      icon={
+        accountType ? (
+          <div className="mb-4 flex size-16 items-center justify-center rounded-lg border border-border bg-container">
+            <AccountPlatformIcon accountType={accountType} size={40} />
+          </div>
+        ) : undefined
+      }
+      metadata={metadata}
+      activeTab={tab}
+      onTabChange={setTab}
+      tabs={availableTabs.map((tabDef) => ({
+        value: tabDef.value,
+        label: tabDef.label,
+        icon: <tabDef.icon className="mr-1.5 size-4" />,
+        content: tabContent[tabDef.value] ?? null
+      }))}
+      isDirty={isFormDirty}
+    />
   );
 };

@@ -10,6 +10,7 @@ import {
   useListPamAccountsAdmin,
   usePamAccountTypeMap
 } from "@app/hooks/api/pam";
+import { PamSheetTab } from "@app/hooks/usePamSheetState";
 
 import { AccountAccessibilityBadge } from "../../components/AccountAccessibilityBadge";
 import { AccountPlatformIcon } from "../../PamAccessPage/components/AccountPlatformIcon";
@@ -25,11 +26,9 @@ type Props = {
   search: string;
   templateId: string;
   filterActive: boolean;
-  onOpenAccount: (accountId: string) => void;
-  onConfigureAccount: (accountId: string) => void;
+  onOpenAccount: (accountId: string, tab?: PamSheetTab) => void;
   onDeleteAccount: (target: DeleteTarget) => void;
-  onFolderDetails: () => void;
-  onFolderConfigure: () => void;
+  onOpenFolder: (tab?: PamSheetTab) => void;
   onFolderAddAccount: () => void;
   onFolderDelete: () => void;
   onResultCount: (folderId: string, count: number) => void;
@@ -43,10 +42,8 @@ export const FolderAccountRows = ({
   templateId,
   filterActive,
   onOpenAccount,
-  onConfigureAccount,
   onDeleteAccount,
-  onFolderDetails,
-  onFolderConfigure,
+  onOpenFolder,
   onFolderAddAccount,
   onFolderDelete,
   onResultCount
@@ -105,8 +102,7 @@ export const FolderAccountRows = ({
           <div className="flex items-center justify-end gap-1">
             <FolderActionsMenu
               folder={folder}
-              onDetails={onFolderDetails}
-              onConfigure={onFolderConfigure}
+              onOpenTab={(tab) => onOpenFolder(tab)}
               onAddAccount={onFolderAddAccount}
               onDelete={onFolderDelete}
             />
@@ -150,8 +146,7 @@ export const FolderAccountRows = ({
                 <div className="flex items-center justify-end gap-1">
                   <AccountActionsMenu
                     accountId={account.id}
-                    onDetails={() => onOpenAccount(account.id)}
-                    onConfigure={() => onConfigureAccount(account.id)}
+                    onOpenTab={(tab) => onOpenAccount(account.id, tab)}
                     onDelete={() =>
                       onDeleteAccount({
                         accountId: account.id,

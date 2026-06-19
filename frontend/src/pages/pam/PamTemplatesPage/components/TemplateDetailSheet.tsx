@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { MoreHorizontal, Settings, Settings2, Trash2 } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -11,11 +10,6 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
   Field,
   FieldContent,
   FieldDescription,
@@ -23,7 +17,6 @@ import {
   FieldLabel,
   FieldTitle,
   GatewayPicker,
-  IconButton,
   Input,
   Switch,
   TextArea
@@ -32,7 +25,6 @@ import { Skeleton } from "@app/components/v3/generic/Skeleton";
 import {
   accountTypeRequiresRecording,
   PamAccountType,
-  useDeletePamAccountTemplate,
   useGetPamAccountTemplate,
   usePamAccountTypeMap,
   useUpdatePamAccountTemplate
@@ -40,10 +32,10 @@ import {
 import { PamSheetTab, usePamSheetState } from "@app/hooks/usePamSheetState";
 
 import { formatDetailDate, PamDetailSheet } from "../../components/PamDetailSheet";
+import { PAM_TEMPLATE_TABS } from "../../components/pamResourceTabs";
 import { SheetSaveBar } from "../../components/SheetSaveBar";
 import { AccountPlatformIcon } from "../../PamAccessPage/components/AccountPlatformIcon";
 import { RecordingConnectionPicker } from "../../PamAccountsPage/components/RecordingConnectionPicker";
-import { DeleteTemplateModal } from "./DeleteTemplateModal";
 
 const configSchema = z.object({
   name: z.string().min(1, "Name is required").max(64),
@@ -369,26 +361,11 @@ const SettingsTab = ({
 export const TemplateDetailSheet = ({ isOpen, templateId, onOpenChange }: Props) => {
   const { data: template, isLoading } = useGetPamAccountTemplate(isOpen ? templateId : undefined);
   const { tab, setTab } = usePamSheetState("templateId");
-  const deleteTemplate = useDeletePamAccountTemplate();
-  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isFormDirty, setIsFormDirty] = useState(false);
 
   const { map: accountTypeMap } = usePamAccountTypeMap();
   const accountType = template?.type as PamAccountType | undefined;
   const typeInfo = accountType ? accountTypeMap[accountType] : undefined;
-
-  const handleDelete = (id: string) => {
-    deleteTemplate.mutate(
-      { templateId: id },
-      {
-        onSuccess: () => {
-          createNotification({ type: "success", text: "Template deleted" });
-          setIsDeleteOpen(false);
-          onOpenChange(false);
-        }
-      }
-    );
-  };
 
   const metadata = template
     ? [
@@ -401,75 +378,40 @@ export const TemplateDetailSheet = ({ isOpen, templateId, onOpenChange }: Props)
       ]
     : [];
 
-  const actions = template ? (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <IconButton variant="ghost" size="sm" aria-label="Template actions" className="text-muted">
-          <MoreHorizontal className="size-4" />
-        </IconButton>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-        <DropdownMenuItem onClick={() => setTab(PamSheetTab.Configuration)}>
-          <Settings />
-          Configure
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem variant="danger" onClick={() => setIsDeleteOpen(true)}>
-          <Trash2 />
-          Delete
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  ) : undefined;
+  const tabContent: Partial<Record<PamSheetTab, JSX.Element | null>> = {
+    [PamSheetTab.Advanced]: templateId ? (
+      <SettingsTab templateId={templateId} onDirtyChange={setIsFormDirty} />
+    ) : null,
+    [PamSheetTab.Configuration]: templateId ? (
+      <ConfigurationTab templateId={templateId} onDirtyChange={setIsFormDirty} />
+    ) : null
+  };
 
   return (
-    <>
-      <PamDetailSheet
-        isOpen={isOpen}
-        onOpenChange={onOpenChange}
-        isLoading={isLoading}
-        accountType={accountType}
-        title={template?.name}
-        typeBadge={typeInfo?.name}
-        activeTab={tab}
-        onTabChange={setTab}
-        actions={actions}
-        icon={
-          accountType ? (
-            <div className="mb-4 flex size-16 items-center justify-center rounded-lg border border-border bg-container">
-              <AccountPlatformIcon accountType={accountType} size={40} />
-            </div>
-          ) : undefined
-        }
-        metadata={metadata}
-        tabs={[
-          {
-            value: PamSheetTab.Advanced,
-            label: "General",
-            icon: <Settings2 className="mr-1.5 size-4" />,
-            content: templateId ? (
-              <SettingsTab templateId={templateId} onDirtyChange={setIsFormDirty} />
-            ) : null
-          },
-          {
-            value: PamSheetTab.Configuration,
-            label: "Configuration",
-            icon: <Settings className="mr-1.5 size-4" />,
-            content: templateId ? (
-              <ConfigurationTab templateId={templateId} onDirtyChange={setIsFormDirty} />
-            ) : null
-          }
-        ]}
-        isDirty={isFormDirty}
-      />
-
-      <DeleteTemplateModal
-        template={template}
-        isOpen={isDeleteOpen}
-        onOpenChange={setIsDeleteOpen}
-        onConfirm={handleDelete}
-        isDeleting={deleteTemplate.isPending}
-      />
-    </>
+    <PamDetailSheet
+      isOpen={isOpen}
+      onOpenChange={onOpenChange}
+      isLoading={isLoading}
+      accountType={accountType}
+      title={template?.name}
+      typeBadge={typeInfo?.name}
+      activeTab={tab}
+      onTabChange={setTab}
+      icon={
+        accountType ? (
+          <div className="mb-4 flex size-16 items-center justify-center rounded-lg border border-border bg-container">
+            <AccountPlatformIcon accountType={accountType} size={40} />
+          </div>
+        ) : undefined
+      }
+      metadata={metadata}
+      tabs={PAM_TEMPLATE_TABS.map((tabDef) => ({
+        value: tabDef.value,
+        label: tabDef.label,
+        icon: <tabDef.icon className="mr-1.5 size-4" />,
+        content: tabContent[tabDef.value] ?? null
+      }))}
+      isDirty={isFormDirty}
+    />
   );
 };

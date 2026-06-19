@@ -29,9 +29,10 @@ type FormData = z.infer<typeof formSchema>;
 type Props = {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
+  onCreated?: (folderId: string) => void;
 };
 
-export const CreateFolderModal = ({ isOpen, onOpenChange }: Props) => {
+export const CreateFolderModal = ({ isOpen, onOpenChange, onCreated }: Props) => {
   const createFolder = useCreatePamFolder();
 
   const {
@@ -48,9 +49,10 @@ export const CreateFolderModal = ({ isOpen, onOpenChange }: Props) => {
     createFolder.mutate(
       { name: data.name, description: data.description || undefined },
       {
-        onSuccess: () => {
+        onSuccess: (folder) => {
           createNotification({ type: "success", text: "Folder created" });
           reset();
+          onCreated?.(folder.id);
           onOpenChange(false);
         }
       }

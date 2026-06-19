@@ -20,6 +20,7 @@ export const accountFormSchema = z.object({
 export type TAccountFormValues = z.infer<typeof accountFormSchema>;
 
 const defaultForField = (field: TPamFieldDescriptor): unknown => {
+  if (field.defaultValue !== undefined) return field.defaultValue;
   if (field.widget === PamFieldWidget.Boolean) return false;
   if (field.widget === PamFieldWidget.Select) return field.options?.[0]?.value ?? "";
   return "";

@@ -42,7 +42,7 @@ import {
   useListPamFoldersAdmin
 } from "@app/hooks/api/pam";
 import { ProjectType } from "@app/hooks/api/projects/types";
-import { PamSheetTab, usePamSheetState } from "@app/hooks/usePamSheetState";
+import { usePamSheetState } from "@app/hooks/usePamSheetState";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { AccountPlatformIcon } from "../PamAccessPage/components/AccountPlatformIcon";
@@ -160,7 +160,7 @@ export const PamAccountsPage = () => {
               <Search />
             </InputGroupAddon>
             <InputGroupInput
-              placeholder="Search folders and accounts..."
+              placeholder="Search accounts..."
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
             />
@@ -279,13 +279,9 @@ export const PamAccountsPage = () => {
                   search={searchInput}
                   templateId={selectedTemplateId}
                   filterActive={filterActive}
-                  onOpenAccount={(id) => accountSheet.openSheet(id)}
-                  onConfigureAccount={(id) => accountSheet.openSheet(id, PamSheetTab.Configuration)}
+                  onOpenAccount={(id, tab) => accountSheet.openSheet(id, tab)}
                   onDeleteAccount={(target) => handlePopUpOpen("deleteAccount", target)}
-                  onFolderDetails={() => folderSheet.openSheet(folder.id)}
-                  onFolderConfigure={() =>
-                    folderSheet.openSheet(folder.id, PamSheetTab.Configuration)
-                  }
+                  onOpenFolder={(tab) => folderSheet.openSheet(folder.id, tab)}
                   onFolderAddAccount={() =>
                     handlePopUpOpen("createAccount", { folderId: folder.id })
                   }

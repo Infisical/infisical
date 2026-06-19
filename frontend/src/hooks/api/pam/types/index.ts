@@ -30,6 +30,7 @@ export type TPamFieldDescriptor = {
   required: boolean;
   secret: boolean;
   options?: { label: string; value: string }[];
+  defaultValue?: string | number | boolean;
   showWhen?: { field: string; equals: string | boolean };
 };
 
