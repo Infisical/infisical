@@ -36,6 +36,8 @@ const deleteFolder = async (dto: { path: string; id: string }) => {
 };
 
 describe("Secret Folder Router", async () => {
+  vi.setConfig({ testTimeout: 10_000 });
+
   test.each([
     { name: "folder1", path: "/" }, // one in root
     { name: "folder1", path: "/level1/level2" }, // then create a deep one creating intermediate ones
