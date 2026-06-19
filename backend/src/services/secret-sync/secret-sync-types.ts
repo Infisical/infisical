@@ -125,12 +125,6 @@ import {
   TExternalInfisicalSyncWithCredentials
 } from "./external-infisical";
 import { TFlyioSync, TFlyioSyncInput, TFlyioSyncListItem, TFlyioSyncWithCredentials } from "./flyio/flyio-sync-types";
-import {
-  TTriggerDevSync,
-  TTriggerDevSyncInput,
-  TTriggerDevSyncListItem,
-  TTriggerDevSyncWithCredentials
-} from "./trigger-dev/trigger-dev-sync-types";
 import { TGcpSync, TGcpSyncInput, TGcpSyncListItem, TGcpSyncWithCredentials } from "./gcp";
 import { TGitLabSync, TGitLabSyncInput, TGitLabSyncListItem, TGitLabSyncWithCredentials } from "./gitlab";
 import {
@@ -204,6 +198,12 @@ import {
   TTerraformCloudSyncWithCredentials
 } from "./terraform-cloud";
 import { TTravisCISync, TTravisCISyncInput, TTravisCISyncListItem, TTravisCISyncWithCredentials } from "./travis-ci";
+import {
+  TTriggerDevSync,
+  TTriggerDevSyncInput,
+  TTriggerDevSyncListItem,
+  TTriggerDevSyncWithCredentials
+} from "./trigger-dev/trigger-dev-sync-types";
 import { TVercelSync, TVercelSyncInput, TVercelSyncListItem, TVercelSyncWithCredentials } from "./vercel";
 import { TZabbixSync, TZabbixSyncInput, TZabbixSyncListItem, TZabbixSyncWithCredentials } from "./zabbix";
 

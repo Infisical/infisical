@@ -2,7 +2,11 @@ import { z } from "zod";
 
 import { TTriggerDevConnection } from "@app/services/app-connection/trigger-dev";
 
-import { CreateTriggerDevSyncSchema, TriggerDevSyncListItemSchema, TriggerDevSyncSchema } from "./trigger-dev-sync-schemas";
+import {
+  CreateTriggerDevSyncSchema,
+  TriggerDevSyncListItemSchema,
+  TriggerDevSyncSchema
+} from "./trigger-dev-sync-schemas";
 
 export type TTriggerDevSync = z.infer<typeof TriggerDevSyncSchema>;
 

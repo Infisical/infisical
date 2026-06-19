@@ -12,12 +12,7 @@ import { APP_CONNECTION_NAME_MAP } from "../app-connection-maps";
 import { TriggerDevConnectionMethod } from "./trigger-dev-connection-enums";
 
 export const TriggerDevConnectionApiKeyCredentialsSchema = z.object({
-  apiKey: z
-    .string()
-    .trim()
-    .min(1, "API Key required")
-    .max(255)
-    .describe(AppConnections.CREDENTIALS.TRIGGER_DEV.apiKey),
+  apiKey: z.string().trim().min(1, "API Key required").max(255).describe(AppConnections.CREDENTIALS.TRIGGER_DEV.apiKey),
   instanceUrl: z
     .string()
     .trim()

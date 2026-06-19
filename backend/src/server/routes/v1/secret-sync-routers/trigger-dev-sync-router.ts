@@ -1,9 +1,9 @@
+import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
 import {
   CreateTriggerDevSyncSchema,
   TriggerDevSyncSchema,
   UpdateTriggerDevSyncSchema
 } from "@app/services/secret-sync/trigger-dev";
-import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
 
 import { registerSyncSecretsEndpoints } from "./secret-sync-endpoints";
 

@@ -191,12 +191,6 @@ import {
   TValidateFlyioConnectionCredentialsSchema
 } from "./flyio";
 import {
-  TTriggerDevConnection,
-  TTriggerDevConnectionConfig,
-  TTriggerDevConnectionInput,
-  TValidateTriggerDevConnectionCredentialsSchema
-} from "./trigger-dev";
-import {
   TGcpConnection,
   TGcpConnectionConfig,
   TGcpConnectionInput,
@@ -383,6 +377,12 @@ import {
   TTravisCIConnectionInput,
   TValidateTravisCIConnectionCredentialsSchema
 } from "./travis-ci";
+import {
+  TTriggerDevConnection,
+  TTriggerDevConnectionConfig,
+  TTriggerDevConnectionInput,
+  TValidateTriggerDevConnectionCredentialsSchema
+} from "./trigger-dev";
 import {
   TValidateVenafiConnectionCredentialsSchema,
   TVenafiConnection,

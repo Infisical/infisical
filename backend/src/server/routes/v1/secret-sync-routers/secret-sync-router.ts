@@ -49,7 +49,6 @@ import {
   ExternalInfisicalSyncSchema
 } from "@app/services/secret-sync/external-infisical";
 import { FlyioSyncListItemSchema, FlyioSyncSchema } from "@app/services/secret-sync/flyio";
-import { TriggerDevSyncListItemSchema, TriggerDevSyncSchema } from "@app/services/secret-sync/trigger-dev";
 import { GcpSyncListItemSchema, GcpSyncSchema } from "@app/services/secret-sync/gcp";
 import { GitHubSyncListItemSchema, GitHubSyncSchema } from "@app/services/secret-sync/github";
 import { GitLabSyncListItemSchema, GitLabSyncSchema } from "@app/services/secret-sync/gitlab";
@@ -69,6 +68,7 @@ import { SupabaseSyncListItemSchema, SupabaseSyncSchema } from "@app/services/se
 import { TeamCitySyncListItemSchema, TeamCitySyncSchema } from "@app/services/secret-sync/teamcity";
 import { TerraformCloudSyncListItemSchema, TerraformCloudSyncSchema } from "@app/services/secret-sync/terraform-cloud";
 import { TravisCISyncListItemSchema, TravisCISyncSchema } from "@app/services/secret-sync/travis-ci";
+import { TriggerDevSyncListItemSchema, TriggerDevSyncSchema } from "@app/services/secret-sync/trigger-dev";
 import { VercelSyncListItemSchema, VercelSyncSchema } from "@app/services/secret-sync/vercel";
 import { WindmillSyncListItemSchema, WindmillSyncSchema } from "@app/services/secret-sync/windmill";
 import { ZabbixSyncListItemSchema, ZabbixSyncSchema } from "@app/services/secret-sync/zabbix";

@@ -62,7 +62,6 @@ import {
 } from "./digital-ocean-app-platform";
 import { EXTERNAL_INFISICAL_SYNC_LIST_OPTION, ExternalInfisicalSyncFns } from "./external-infisical";
 import { FLYIO_SYNC_LIST_OPTION, FlyioSyncFns } from "./flyio";
-import { TRIGGER_DEV_SYNC_LIST_OPTION, TriggerDevSyncFns } from "./trigger-dev";
 import { GCP_SYNC_LIST_OPTION } from "./gcp";
 import { GcpSyncFns } from "./gcp/gcp-sync-fns";
 import { GITLAB_SYNC_LIST_OPTION, GitLabSyncFns } from "./gitlab";
@@ -85,6 +84,7 @@ import { SUPABASE_SYNC_LIST_OPTION, SupabaseSyncFns } from "./supabase";
 import { TEAMCITY_SYNC_LIST_OPTION, TeamCitySyncFns } from "./teamcity";
 import { TERRAFORM_CLOUD_SYNC_LIST_OPTION, TerraformCloudSyncFns } from "./terraform-cloud";
 import { TRAVIS_CI_SYNC_LIST_OPTION, TravisCISyncFns } from "./travis-ci";
+import { TRIGGER_DEV_SYNC_LIST_OPTION, TriggerDevSyncFns } from "./trigger-dev";
 import { VERCEL_SYNC_LIST_OPTION, VercelSyncFns } from "./vercel";
 import { WINDMILL_SYNC_LIST_OPTION, WindmillSyncFns } from "./windmill";
 import { ZABBIX_SYNC_LIST_OPTION, ZabbixSyncFns } from "./zabbix";

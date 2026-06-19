@@ -144,11 +144,6 @@ import {
   validateF5BigIpConnectionCredentials
 } from "./f5-big-ip";
 import { FlyioConnectionMethod, getFlyioConnectionListItem, validateFlyioConnectionCredentials } from "./flyio";
-import {
-  getTriggerDevConnectionListItem,
-  TriggerDevConnectionMethod,
-  validateTriggerDevConnectionCredentials
-} from "./trigger-dev";
 import { GcpConnectionMethod, getGcpConnectionListItem, validateGcpConnectionCredentials } from "./gcp";
 import {
   getGitHubConnectionListItem,
@@ -247,6 +242,11 @@ import {
   TravisCIConnectionMethod,
   validateTravisCIConnectionCredentials
 } from "./travis-ci";
+import {
+  getTriggerDevConnectionListItem,
+  TriggerDevConnectionMethod,
+  validateTriggerDevConnectionCredentials
+} from "./trigger-dev";
 import { getVenafiConnectionListItem, validateVenafiConnectionCredentials, VenafiConnectionMethod } from "./venafi";
 import {
   getVenafiTppConnectionListItem,

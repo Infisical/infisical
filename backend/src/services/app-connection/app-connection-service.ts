@@ -108,8 +108,6 @@ import { externalInfisicalConnectionService } from "./external-infisical/externa
 import { ValidateF5BigIpConnectionCredentialsSchema } from "./f5-big-ip";
 import { ValidateFlyioConnectionCredentialsSchema } from "./flyio";
 import { flyioConnectionService } from "./flyio/flyio-connection-service";
-import { ValidateTriggerDevConnectionCredentialsSchema } from "./trigger-dev";
-import { triggerDevConnectionService } from "./trigger-dev/trigger-dev-connection-service";
 import { ValidateGcpConnectionCredentialsSchema } from "./gcp";
 import { gcpConnectionService } from "./gcp/gcp-connection-service";
 import {
@@ -168,6 +166,8 @@ import { ValidateTerraformCloudConnectionCredentialsSchema } from "./terraform-c
 import { terraformCloudConnectionService } from "./terraform-cloud/terraform-cloud-connection-service";
 import { ValidateTravisCIConnectionCredentialsSchema } from "./travis-ci";
 import { travisCIConnectionService } from "./travis-ci/travis-ci-connection-service";
+import { ValidateTriggerDevConnectionCredentialsSchema } from "./trigger-dev";
+import { triggerDevConnectionService } from "./trigger-dev/trigger-dev-connection-service";
 import { ValidateVenafiConnectionCredentialsSchema } from "./venafi/venafi-connection-schema";
 import { venafiConnectionService } from "./venafi/venafi-connection-service";
 import { ValidateVenafiTppConnectionCredentialsSchema } from "./venafi-tpp/venafi-tpp-connection-schemas";

@@ -105,10 +105,6 @@ import {
   SanitizedF5BigIpConnectionSchema
 } from "@app/services/app-connection/f5-big-ip";
 import { FlyioConnectionListItemSchema, SanitizedFlyioConnectionSchema } from "@app/services/app-connection/flyio";
-import {
-  SanitizedTriggerDevConnectionSchema,
-  TriggerDevConnectionListItemSchema
-} from "@app/services/app-connection/trigger-dev";
 import { GcpConnectionListItemSchema, SanitizedGcpConnectionSchema } from "@app/services/app-connection/gcp";
 import { GitHubConnectionListItemSchema, SanitizedGitHubConnectionSchema } from "@app/services/app-connection/github";
 import {
@@ -202,6 +198,10 @@ import {
   SanitizedTravisCIConnectionSchema,
   TravisCIConnectionListItemSchema
 } from "@app/services/app-connection/travis-ci";
+import {
+  SanitizedTriggerDevConnectionSchema,
+  TriggerDevConnectionListItemSchema
+} from "@app/services/app-connection/trigger-dev";
 import { SanitizedVenafiConnectionSchema, VenafiConnectionListItemSchema } from "@app/services/app-connection/venafi";
 import {
   SanitizedVenafiTppConnectionSchema,

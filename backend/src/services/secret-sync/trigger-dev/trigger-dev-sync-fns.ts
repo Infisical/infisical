@@ -14,8 +14,7 @@ const sleep = async () =>
     setTimeout(resolve, 60000);
   });
 
-const isRateLimitError = (error: unknown) =>
-  (error as { response?: { status?: number } })?.response?.status === 429;
+const isRateLimitError = (error: unknown) => (error as { response?: { status?: number } })?.response?.status === 429;
 
 const getEnvVarsBaseUrl = async (secretSync: TTriggerDevSyncWithCredentials) => {
   const {
