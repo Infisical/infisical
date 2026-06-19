@@ -135,12 +135,18 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           message: z.string(),
-          token: z.string().optional()
+          token: z.string().optional(),
+          ssoRedirect: z
+            .object({
+              method: z.enum(["oidc", "saml"]),
+              orgSlug: z.string()
+            })
+            .optional()
         })
       }
     },
     handler: async (req) => {
-      const { token } = await server.services.org.verifyUserToOrg({
+      const { token, ssoRedirect } = await server.services.org.verifyUserToOrg({
         orgId: req.body.organizationId,
         code: req.body.code,
         email: req.body.email
@@ -148,7 +154,8 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
 
       return {
         message: "Successfully verified email",
-        token
+        token,
+        ssoRedirect
       };
     }
   });

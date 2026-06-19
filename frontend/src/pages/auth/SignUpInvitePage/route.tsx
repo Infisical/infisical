@@ -41,18 +41,33 @@ export const Route = createFileRoute("/_restrict-login-signup/signupinvite")({
         organizationId
       });
 
-      if (!result.token) {
-        createNotification({
-          text: "Invitation accepted. Please login into your account",
-          type: "success"
-        });
-      }
-
       if (authData) {
         // Logged-in user — invitation accepted, go to the org
         throw redirect({
           to: "/login/select-organization",
           search: { org_id: organizationId }
+        });
+      }
+
+      if (!result.token && result.ssoRedirect) {
+        // SSO-enforced org — the invitee must authenticate via the org's IdP. Send them straight
+        // to the SSO login flow instead of the generic login screen.
+        const { method, orgSlug } = result.ssoRedirect as {
+          method: "oidc" | "saml";
+          orgSlug: string;
+        };
+        const ssoUrl =
+          method === "oidc"
+            ? `/api/v1/sso/oidc/login?orgSlug=${encodeURIComponent(orgSlug)}`
+            : `/api/v1/sso/redirect/saml2/organizations/${encodeURIComponent(orgSlug)}`;
+        window.location.assign(ssoUrl);
+        return { inviteEmail: email };
+      }
+
+      if (!result.token) {
+        createNotification({
+          text: "Invitation accepted. Please login into your account",
+          type: "success"
         });
       }
 

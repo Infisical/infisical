@@ -881,7 +881,8 @@ export const registerRoutes = async (
     additionalPrivilegeDAL,
     projectAccessRequestDAL,
     applicationMembershipCleanupService,
-    approvalPolicyDAL
+    approvalPolicyDAL,
+    emailDomainDAL
   });
 
   const membershipIdentityService = membershipIdentityServiceFactory({

@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import axios from "axios";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -248,11 +249,23 @@ export const AddOrgMemberModal = ({
     }
 
     const usernames = emails.split(",").map((email) => email.trim());
-    const { data } = await addUsersMutateAsync({
-      organizationId: currentOrg?.id,
-      inviteeEmails: usernames,
-      organizationRoleSlug: organizationRole.slug
-    });
+
+    let data: Awaited<ReturnType<typeof addUsersMutateAsync>>["data"];
+    try {
+      ({ data } = await addUsersMutateAsync({
+        organizationId: currentOrg?.id,
+        inviteeEmails: usernames,
+        organizationRoleSlug: organizationRole.slug
+      }));
+    } catch (err) {
+      createNotification({
+        text:
+          (axios.isAxiosError(err) && (err.response?.data as { message?: string })?.message) ||
+          "Failed to invite users to the organization.",
+        type: "error"
+      });
+      return;
+    }
 
     await Promise.allSettled(
       targetProjects.map((el) =>

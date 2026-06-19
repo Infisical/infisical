@@ -1038,18 +1038,27 @@ export const orgServiceFactory = ({
       isEmailVerified: true
     });
 
-    // If user already completed signup, they'll be promoted to Accepted
-    // when they authenticate via selectOrganization or processProviderCallback
-    if (user.isAccepted) {
-      return { user };
+    const membershipRole = await membershipRoleDAL.findOne({ membershipId: orgMembership.id });
+    const canBypassSsoEnforcement =
+      organization.bypassOrgAuthEnabled && membershipRole.role === OrgMembershipRole.Admin;
+    const isSsoEnforced = Boolean(organization.authEnforced) && !canBypassSsoEnforcement;
+    let ssoRedirect: { method: "oidc" | "saml"; orgSlug: string } | undefined;
+    if (isSsoEnforced && organization.slug) {
+      const oidcCfg = await oidcConfigDAL.findOne({ orgId, isActive: true });
+      if (oidcCfg) {
+        ssoRedirect = { method: "oidc", orgSlug: organization.slug };
+      } else {
+        const samlCfg = await samlConfigDAL.findOne({ orgId, isActive: true });
+        if (samlCfg) ssoRedirect = { method: "saml", orgSlug: organization.slug };
+      }
     }
 
-    const membershipRole = await membershipRoleDAL.findOne({ membershipId: orgMembership.id });
-    if (
-      organization.authEnforced &&
-      !(organization.bypassOrgAuthEnabled && membershipRole.role === OrgMembershipRole.Admin)
-    ) {
-      return { user };
+    if (user.isAccepted) {
+      return { user, ssoRedirect };
+    }
+
+    if (isSsoEnforced) {
+      return { user, ssoRedirect };
     }
 
     const appCfg = getConfig();

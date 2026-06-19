@@ -1,6 +1,8 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { AccessScope, OrganizationActionScope, OrgMembershipStatus } from "@app/db/schemas";
+import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
+import { EmailDomainStatus } from "@app/ee/services/email-domain/email-domain-types";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
@@ -32,6 +34,7 @@ type TOrgMembershipUserScopeFactoryDep = {
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "delete">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   membershipUserDAL: Pick<TMembershipUserDALFactory, "find">;
+  emailDomainDAL: Pick<TEmailDomainDALFactory, "find">;
 };
 
 export const newOrgMembershipUserFactory = ({
@@ -41,7 +44,8 @@ export const newOrgMembershipUserFactory = ({
   orgDAL,
   smtpService,
   licenseService,
-  membershipUserDAL
+  membershipUserDAL,
+  emailDomainDAL
 }: TOrgMembershipUserScopeFactoryDep): TMembershipUserScopeFactory => {
   const getScopeField: TMembershipUserScopeFactory["getScopeField"] = (dto) => {
     if (dto.scope === AccessScope.Organization) {
@@ -101,10 +105,27 @@ export const newOrgMembershipUserFactory = ({
       orgDAL.findById(dto.permission.orgId)
     );
     if (org?.authEnforced) {
-      throw new ForbiddenRequestError({
-        name: "InviteUser",
-        message: "Failed to invite user due to org-level auth enforced for organization"
+      const verifiedDomains = await emailDomainDAL.find({
+        orgId: org.id,
+        status: EmailDomainStatus.Verified
       });
+      const verifiedDomainSet = new Set(verifiedDomains.map((el) => el.domain.toLowerCase().trim()));
+
+      const unverifiedEmails = newMembers
+        .map((member) => member.email)
+        .filter((email) => {
+          const emailDomain = email?.split("@")?.[1]?.toLowerCase().trim();
+          return !emailDomain || !verifiedDomainSet.has(emailDomain);
+        });
+
+      if (unverifiedEmails.length) {
+        throw new ForbiddenRequestError({
+          name: "InviteUser",
+          message: `Cannot invite ${unverifiedEmails.map((email) => email || "(no email)").join(", ")} because org-level authentication is enforced and ${
+            unverifiedEmails.length > 1 ? "their email domains are" : "their email domain is"
+          } not a verified domain for this organization. Invited users must be able to sign in through the configured SSO provider.`
+        });
+      }
     }
 
     if (org.rootOrgId) {
