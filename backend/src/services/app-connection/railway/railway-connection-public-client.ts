@@ -243,7 +243,7 @@ class RailwayPublicClient {
   async deleteVariable(
     config: RailwaySendReqOptions,
     variables: {
-      input: { projectId: string; environmentId: string; name: string; skipDeploys?: boolean; serviceId?: string };
+      input: { projectId: string; environmentId: string; name: string; serviceId?: string };
     }
   ) {
     await this.send<TRailwayResponse<{ variables: Record<string, string> }>>(

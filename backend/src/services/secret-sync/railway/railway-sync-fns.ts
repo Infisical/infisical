@@ -108,8 +108,7 @@ export const RailwaySyncFns = {
               projectId: config.projectId,
               environmentId: config.environmentId,
               serviceId: config.serviceId || undefined,
-              name,
-              skipDeploys: true
+              name
             }
           });
         }
@@ -179,8 +178,7 @@ export const RailwaySyncFns = {
             projectId: config.projectId,
             environmentId: config.environmentId,
             serviceId: config.serviceId || undefined,
-            name,
-            skipDeploys: true
+            name
           }
         });
       }
