@@ -1,10 +1,9 @@
+import { useMemo } from "react";
 import { ChevronLeft } from "lucide-react";
 
 import { Button, Empty, EmptyHeader, EmptyTitle, PageLoader } from "@app/components/v3";
-import {
-  InfisicalProjectTemplate,
-  useGetProjectTemplateById
-} from "@app/hooks/api/projectTemplates";
+import { InfisicalProjectTemplate, useListProjectTemplates } from "@app/hooks/api/projectTemplates";
+import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { EditProjectTemplate } from "./components";
 
@@ -14,7 +13,23 @@ type Props = {
 };
 
 export const EditProjectTemplateSection = ({ templateId, onBack }: Props) => {
-  const { data: projectTemplate, isPending } = useGetProjectTemplateById(templateId);
+  const { data: projectTemplates, isPending } = useListProjectTemplates();
+
+  const projectTemplate = useMemo(() => {
+    const template = projectTemplates?.find(
+      (t) => t.id === templateId && t.type === ProjectType.SecretManager
+    );
+    if (!template) return undefined;
+
+    return {
+      ...template,
+      roles: template.roles.map((role) => ({
+        ...role,
+        permissions: role.permissions.filter((perm) => perm.subject !== "secret-events")
+      }))
+    };
+  }, [projectTemplates, templateId]);
+
   const isInfisicalTemplate = Object.values(InfisicalProjectTemplate).includes(
     projectTemplate?.name as InfisicalProjectTemplate
   );

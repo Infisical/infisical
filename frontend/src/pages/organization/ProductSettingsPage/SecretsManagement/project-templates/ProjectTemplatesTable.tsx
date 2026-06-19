@@ -57,7 +57,6 @@ export const ProjectTemplatesTable = ({ onEdit }: Props) => {
     () =>
       projectTemplates?.filter(
         (template) =>
-          template.name !== 'default' &&
           template.type === ProjectType.SecretManager &&
           template.name.toLowerCase().includes(search.toLowerCase().trim())
       ) ?? [],
@@ -130,8 +129,8 @@ export const ProjectTemplatesTable = ({ onEdit }: Props) => {
 
               return (
                 <TableRow
-                  onClick={isDefault ? undefined : () => onEdit(template)}
-                  className={isDefault ? "" : "cursor-pointer hover:bg-mineshaft-700"}
+                  onClick={() => onEdit(template)}
+                  className="cursor-pointer hover:bg-mineshaft-700"
                   key={id}
                 >
                   <TableCell>
