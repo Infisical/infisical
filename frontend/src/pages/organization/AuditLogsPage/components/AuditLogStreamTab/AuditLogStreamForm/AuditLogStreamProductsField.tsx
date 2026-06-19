@@ -155,6 +155,7 @@ export const ProductsField = () => {
           placeholder="All products"
           getOptionValue={(option) => option.value}
           getOptionLabel={(option) => option.label}
+          menuListClassName="max-h-[18rem] overflow-y-auto thin-scrollbar"
           components={{ Option: ProductOptionItem }}
           menuPortalTarget={menuPortalTarget ?? undefined}
           menuPlacement="auto"

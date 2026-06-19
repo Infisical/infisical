@@ -17,7 +17,8 @@ import { LOG_STREAM_FACTORY_MAP } from "../audit-log-stream/audit-log-stream-fac
 import {
   auditLogMatchesStreamFilter,
   decryptLogStreamCredentials,
-  resolveAuditLogProduct
+  resolveAuditLogProduct,
+  streamHasProductFilter
 } from "../audit-log-stream/audit-log-stream-fns";
 import { TAuditLogStreamFilters } from "../audit-log-stream/audit-log-stream-schemas";
 import { TAuditLogStreamOutboxDALFactory } from "./audit-log-stream-outbox-dal";
@@ -150,9 +151,7 @@ export const auditLogStreamOutboxServiceFactory = ({
     // that most orgs have no streams configured, so a per-org loop is mostly empty round-trips.
     const streams = await auditLogStreamDAL.find({ $in: { orgId: [...logsByOrg.keys()] } });
 
-    const hasProductFilter = streams.some(
-      (stream) => ((stream.filters as TAuditLogStreamFilters | null)?.products?.length ?? 0) > 0
-    );
+    const hasProductFilter = streams.some(streamHasProductFilter);
     let projectTypeById = new Map<string, string>();
     if (hasProductFilter) {
       const projectIds = new Set<string>();
@@ -172,7 +171,7 @@ export const auditLogStreamOutboxServiceFactory = ({
       if (!logs) continue;
 
       const filters = stream.filters as TAuditLogStreamFilters | null;
-      const streamHasFilter = (filters?.products?.length ?? 0) > 0;
+      const streamHasFilter = streamHasProductFilter(stream);
       let streamReceivedRow = false;
       for (const log of logs) {
         if (streamHasFilter && !auditLogMatchesStreamFilter(resolveAuditLogProduct(log, projectTypeById), filters)) {

@@ -63,6 +63,9 @@ export const decryptLogStreamCredentials = async ({
   return JSON.parse(decryptedPlainTextBlob.toString()) as TAuditLogStreamCredentials;
 };
 
+export const streamHasProductFilter = (stream: Pick<TAuditLogStreams, "filters">): boolean =>
+  ((stream.filters as TAuditLogStreamFilters | null)?.products?.length ?? 0) > 0;
+
 export const resolveAuditLogProduct = (
   log: Pick<TAuditLogs, "projectId">,
   projectTypeById: Map<string, string>
