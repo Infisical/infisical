@@ -34,10 +34,13 @@ export const RailwaySyncFns = {
         // eslint-disable-next-line no-continue
         if (!matchesSchema(key, environment?.slug || "", keySchema)) continue;
 
+        // Railway returns null for sealed/unrendered variables (unrendered: true). Skip them so we
+        // neither hit Buffer.from(null) during import nor overwrite the sealed value with "" on sync-back.
+        // eslint-disable-next-line no-continue
+        if (value === null) continue;
+
         entries[key] = {
-          // Railway returns null for sealed/unrendered variables (unrendered: true);
-          // coalesce to "" so the value doesn't reach Buffer.from(null) during import.
-          value: value ?? ""
+          value
         };
       }
 
@@ -108,8 +111,10 @@ export const RailwaySyncFns = {
 
       // No redeployable deployment exists yet (e.g. service has never successfully deployed);
       // the variables are already upserted, so skip the redeploy rather than failing the sync.
-      logger.info({ redeployableDeploymentId }, "Skipping redeploy. No redeployable deployment found.");
-      if (!redeployableDeploymentId) return;
+      if (!redeployableDeploymentId) {
+        logger.info({ redeployableDeploymentId }, "Skipping redeploy. No redeployable deployment found.");
+        return;
+      }
 
       await RailwayPublicAPI.redeployDeployment(secretSync.connection, {
         input: {
