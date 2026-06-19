@@ -127,10 +127,7 @@ export const ProjectTemplatesTable = ({ projectType, onEdit }: Props) => {
                 (identities?.length || 0) + (projectManagedIdentities?.length || 0);
 
               return (
-                <TableRow
-                  onClick={() => onEdit(template)}
-                  key={id}
-                >
+                <TableRow onClick={() => onEdit(template)} key={id}>
                   <TableCell>
                     {name}
                     {description && (

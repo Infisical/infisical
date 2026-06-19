@@ -139,9 +139,7 @@ export const ProjectTemplateEnvironmentsForm = ({
       {errors.environments && (
         <span className="my-4 text-sm text-red">{errors.environments.message}</span>
       )}
-      <Table
-        className="table-fixed"
-      >
+      <Table className="table-fixed">
         <TableHeader>
           <TableRow>
             <TableHead>Name</TableHead>

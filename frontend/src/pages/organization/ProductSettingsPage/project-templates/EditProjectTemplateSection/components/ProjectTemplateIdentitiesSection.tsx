@@ -344,9 +344,7 @@ export const ProjectTemplateIdentitiesSection = ({ projectTemplate }: Props) => 
           <span className="my-4 text-sm text-red">{errors.projectManagedIdentities.message}</span>
         )}
         {allIdentitiesForTable.length > 0 ? (
-          <Table
-            className="table-fixed"
-          >
+          <Table className="table-fixed">
             <TableHeader>
               <TableRow>
                 <TableHead>Identity</TableHead>

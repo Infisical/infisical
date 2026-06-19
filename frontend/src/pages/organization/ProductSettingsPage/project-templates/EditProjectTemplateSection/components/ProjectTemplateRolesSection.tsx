@@ -132,9 +132,7 @@ export const ProjectTemplateRolesSection = ({ projectTemplate, isInfisicalTempla
           </div>
           <div>
             {roles.length ? (
-              <Table
-                className="table-fixed"
-              >
+              <Table className="table-fixed">
                 <TableHeader>
                   <TableRow>
                     <TableHead>Name</TableHead>
@@ -158,9 +156,7 @@ export const ProjectTemplateRolesSection = ({ projectTemplate, isInfisicalTempla
                         }}
                         onClick={() => handlePopUpOpen("editRole", role)}
                       >
-                        <TableCell>
-                          {role.name}
-                        </TableCell>
+                        <TableCell>{role.name}</TableCell>
                         <TableCell>
                           <span className="inline-flex items-center gap-1.5 rounded-md border border-mineshaft-500 bg-mineshaft-700 px-2 py-0.5 text-sm font-medium text-mineshaft-200">
                             {isCustomRole ? (

@@ -225,9 +225,7 @@ export const ProjectTemplateGroupsSection = ({ projectTemplate }: Props) => {
         </div>
         {errors.groups && <span className="my-4 text-sm text-red">{errors.groups.message}</span>}
         {groups.length > 0 ? (
-          <Table
-            className="table-fixed"
-          >
+          <Table className="table-fixed">
             <TableHeader>
               <TableRow>
                 <TableHead>Group</TableHead>

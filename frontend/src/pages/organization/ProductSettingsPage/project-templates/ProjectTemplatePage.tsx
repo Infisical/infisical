@@ -117,10 +117,7 @@ export const ProjectTemplatePage = ({ templateId, projectType, onBack }: Props) 
             )}
           </PageHeader>
           <div className="pb-8">
-            <EditProjectTemplateSection
-              templateId={templateId}
-              projectType={projectType}
-            />
+            <EditProjectTemplateSection templateId={templateId} projectType={projectType} />
           </div>
         </div>
       </div>

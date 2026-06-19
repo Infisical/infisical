@@ -226,9 +226,7 @@ export const ProjectTemplateUsersSection = ({ projectTemplate }: Props) => {
         </div>
         {errors.users && <span className="my-4 text-sm text-red">{errors.users.message}</span>}
         {users.length > 0 ? (
-          <Table
-            className="table-fixed"
-          >
+          <Table className="table-fixed">
             <TableHeader>
               <TableRow>
                 <TableHead>Username</TableHead>
