@@ -1420,26 +1420,48 @@ export const signerServiceFactory = ({
       throw new BadRequestError({ message: `Signer '${signer.name}' has no certificate attached yet.` });
     }
 
-    const { certPublicKey } = await getCertificateCredentials({
-      certId: signer.certificateId,
-      projectId,
-      certificateSecretDAL,
-      projectDAL,
-      kmsService
-    });
-
-    if (!certPublicKey) {
-      throw new BadRequestError({
-        message:
-          "Public key derivation is not supported for this certificate's key type. PQC certificates cannot be used as code signers."
-      });
+    const certificate = await certificateDAL.findById(signer.certificateId);
+    if (!certificate) {
+      throw new NotFoundError({ message: `Signer certificate ${signer.certificateId} not found` });
     }
 
-    const publicKeyObject = crypto.nativeCrypto.createPublicKey({
-      key: certPublicKey,
-      format: "pem",
-      type: "spki"
-    });
+    let publicKeyObject: ReturnType<typeof crypto.nativeCrypto.createPublicKey>;
+    if (certificate.keySource === CertKeySource.Hsm) {
+      const certBody = await certificateBodyDAL.findOne({ certId: signer.certificateId });
+      if (!certBody?.encryptedCertificate) {
+        throw new BadRequestError({ message: `Certificate body not found for signer '${signer.name}'.` });
+      }
+      const keyId = await getProjectKmsCertificateKeyId({ projectId, projectDAL, kmsService });
+      const kmsDecryptor = await kmsService.decryptWithKmsKey({ kmsId: keyId });
+      const decryptedCert = await kmsDecryptor({ cipherTextBlob: certBody.encryptedCertificate });
+      const cert = new x509.X509Certificate(decryptedCert);
+      publicKeyObject = crypto.nativeCrypto.createPublicKey({
+        key: Buffer.from(cert.publicKey.rawData),
+        format: "der",
+        type: "spki"
+      });
+    } else {
+      const { certPublicKey } = await getCertificateCredentials({
+        certId: signer.certificateId,
+        projectId,
+        certificateSecretDAL,
+        projectDAL,
+        kmsService
+      });
+
+      if (!certPublicKey) {
+        throw new BadRequestError({
+          message:
+            "Public key derivation is not supported for this certificate's key type. PQC certificates cannot be used as code signers."
+        });
+      }
+
+      publicKeyObject = crypto.nativeCrypto.createPublicKey({
+        key: certPublicKey,
+        format: "pem",
+        type: "spki"
+      });
+    }
 
     const publicKeyDer = publicKeyObject.export({ format: "der", type: "spki" });
 
