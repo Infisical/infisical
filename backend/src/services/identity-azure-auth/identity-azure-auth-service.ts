@@ -392,11 +392,11 @@ export const identityAzureAuthServiceFactory = ({
       });
     }
 
-    const identityGcpAuth = await identityAzureAuthDAL.findOne({ identityId });
+    const identityAzureAuth = await identityAzureAuthDAL.findOne({ identityId });
 
     if (
-      (accessTokenMaxTTL || identityGcpAuth.accessTokenMaxTTL) > 0 &&
-      (accessTokenTTL || identityGcpAuth.accessTokenMaxTTL) > (accessTokenMaxTTL || identityGcpAuth.accessTokenMaxTTL)
+      (accessTokenMaxTTL || identityAzureAuth.accessTokenMaxTTL) > 0 &&
+      (accessTokenTTL || identityAzureAuth.accessTokenTTL) > (accessTokenMaxTTL || identityAzureAuth.accessTokenMaxTTL)
     ) {
       throw new BadRequestError({ message: "Access token TTL cannot be greater than max TTL" });
     }
@@ -444,7 +444,7 @@ export const identityAzureAuthServiceFactory = ({
       return extractIPDetails(accessTokenTrustedIp.ipAddress);
     });
 
-    const updatedAzureAuth = await identityAzureAuthDAL.updateById(identityGcpAuth.id, {
+    const updatedAzureAuth = await identityAzureAuthDAL.updateById(identityAzureAuth.id, {
       tenantId,
       resource,
       allowedServicePrincipalIds,

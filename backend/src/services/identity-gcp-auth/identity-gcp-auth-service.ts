@@ -443,7 +443,7 @@ export const identityGcpAuthServiceFactory = ({
 
     if (
       (accessTokenMaxTTL || identityGcpAuth.accessTokenMaxTTL) > 0 &&
-      (accessTokenTTL || identityGcpAuth.accessTokenMaxTTL) > (accessTokenMaxTTL || identityGcpAuth.accessTokenMaxTTL)
+      (accessTokenTTL || identityGcpAuth.accessTokenTTL) > (accessTokenMaxTTL || identityGcpAuth.accessTokenMaxTTL)
     ) {
       throw new BadRequestError({ message: "Access token TTL cannot be greater than max TTL" });
     }

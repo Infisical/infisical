@@ -1093,7 +1093,7 @@ export const identityKubernetesAuthServiceFactory = ({
 
     if (
       (accessTokenMaxTTL || identityKubernetesAuth.accessTokenMaxTTL) > 0 &&
-      (accessTokenTTL || identityKubernetesAuth.accessTokenMaxTTL) >
+      (accessTokenTTL || identityKubernetesAuth.accessTokenTTL) >
         (accessTokenMaxTTL || identityKubernetesAuth.accessTokenMaxTTL)
     ) {
       throw new BadRequestError({ message: "Access token TTL cannot be greater than max TTL" });
