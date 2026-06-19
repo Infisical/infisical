@@ -32,6 +32,7 @@ export const handleRdpSession = async (ctx: TSessionContext): Promise<TSessionHa
   return new Promise<TSessionHandlerResult>((resolve, reject) => {
     const connectTimeout = setTimeout(() => {
       logger.error({ sessionId }, "rdp session: relay connect timed out");
+      if (!cleanedUp) onCleanup();
       teardown();
       reject(new Error("RDP relay connection timed out"));
     }, RDP_TCP_CONNECT_TIMEOUT_MS);
@@ -105,6 +106,7 @@ export const handleRdpSession = async (ctx: TSessionContext): Promise<TSessionHa
     tcpSocket.once("error", (err) => {
       clearTimeout(connectTimeout);
       logger.error(err, "rdp session: failed to connect to relay");
+      if (!cleanedUp) onCleanup();
       teardown();
       reject(err);
     });

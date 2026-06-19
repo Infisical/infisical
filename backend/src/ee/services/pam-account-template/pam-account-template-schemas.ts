@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { AWSRegion } from "@app/services/app-connection/app-connection-enums";
+
 import { PamRecordingStorageBackend } from "../pam-session-recording/pam-recording-enums";
 
 export const PamPasswordConstraintsSchema = z.object({
@@ -13,7 +15,7 @@ export const PamPasswordConstraintsSchema = z.object({
 
 export const PamRecordingS3ConfigSchema = z.object({
   bucket: z.string().trim().min(1),
-  region: z.string().trim().min(1),
+  region: z.nativeEnum(AWSRegion),
   keyPrefix: z.string().trim().optional()
 });
 
