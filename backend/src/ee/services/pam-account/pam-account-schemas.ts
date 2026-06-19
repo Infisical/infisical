@@ -98,6 +98,95 @@ export const ACCOUNT_TYPE_CONFIGS = {
     }
   },
 
+  [PamAccountType.MsSQL]: {
+    name: "Microsoft SQL Server",
+    icon: "MsSql.png",
+    connectionDetails: z.object({
+      host: z.string().trim().min(1).max(255),
+      port: z.coerce.number(),
+      database: z.string().trim().min(1).max(128),
+      sslEnabled: z.boolean(),
+      sslRejectUnauthorized: z.boolean(),
+      sslCertificate: z
+        .string()
+        .trim()
+        .transform((v) => v || undefined)
+        .optional()
+    }),
+    credentials: z.object({
+      username: z.string().trim().min(1).max(128),
+      password: z
+        .string()
+        .trim()
+        .max(256)
+        .transform((v) => v || undefined)
+        .optional()
+    }),
+    sanitizedCredentials: z.object({ username: z.string().optional() }),
+    ui: {
+      port: { defaultValue: 1433 },
+      sslEnabled: { label: "SSL Enabled" },
+      sslRejectUnauthorized: {
+        label: "Reject Unauthorized",
+        showWhen: { field: "sslEnabled", equals: true }
+      },
+      sslCertificate: {
+        label: "SSL Certificate",
+        widget: PamFieldWidget.Textarea,
+        showWhen: { field: "sslEnabled", equals: true }
+      },
+      password: { widget: PamFieldWidget.Password, secret: true }
+    }
+  },
+
+  [PamAccountType.MongoDB]: {
+    name: "MongoDB",
+    icon: "MongoDB.png",
+    connectionDetails: z.object({
+      host: z.string().trim().min(1).max(255),
+      port: z.coerce.number(),
+      database: z.string().trim().min(1).max(255),
+      authSource: z
+        .string()
+        .trim()
+        .max(255)
+        .transform((v) => v || undefined)
+        .optional(),
+      sslEnabled: z.boolean(),
+      sslRejectUnauthorized: z.boolean(),
+      sslCertificate: z
+        .string()
+        .trim()
+        .transform((v) => v || undefined)
+        .optional()
+    }),
+    credentials: z.object({
+      username: z.string().trim().min(1).max(255),
+      password: z
+        .string()
+        .trim()
+        .max(256)
+        .transform((v) => v || undefined)
+        .optional()
+    }),
+    sanitizedCredentials: z.object({ username: z.string().optional() }),
+    ui: {
+      port: { defaultValue: 27017 },
+      authSource: { label: "Auth Source" },
+      sslEnabled: { label: "SSL Enabled" },
+      sslRejectUnauthorized: {
+        label: "Reject Unauthorized",
+        showWhen: { field: "sslEnabled", equals: true }
+      },
+      sslCertificate: {
+        label: "SSL Certificate",
+        widget: PamFieldWidget.Textarea,
+        showWhen: { field: "sslEnabled", equals: true }
+      },
+      password: { widget: PamFieldWidget.Password, secret: true }
+    }
+  },
+
   [PamAccountType.SSH]: {
     name: "SSH",
     icon: "SSH.png",
@@ -246,6 +335,8 @@ export const extractGatewayTarget = (
     case PamAccountType.SSH:
     case PamAccountType.Postgres:
     case PamAccountType.MySQL:
+    case PamAccountType.MongoDB:
+    case PamAccountType.MsSQL:
       return {
         host: (validated as { host: string; port: number }).host,
         port: (validated as { host: string; port: number }).port
