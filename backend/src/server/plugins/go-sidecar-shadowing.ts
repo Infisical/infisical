@@ -24,6 +24,7 @@ const SENSITIVE_FIELDS = new Set([
   "secretCommentTag"
 ]);
 
+
 type ComparisonDiff = {
   path: string;
   type: "missing_in_go" | "missing_in_node" | "type_mismatch" | "value_mismatch";
@@ -45,7 +46,7 @@ const isIgnoredImportField = (path: string, fieldName: string): boolean => {
 };
 
 const isEmpty = (value: unknown): boolean => {
-  if (value === null || value === undefined) {
+  if (value === null || value === undefined || value === "") {
     return true;
   }
   if (Array.isArray(value) && value.length === 0) {
