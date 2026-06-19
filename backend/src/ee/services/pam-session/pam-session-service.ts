@@ -404,6 +404,7 @@ export const pamSessionServiceFactory = ({
       selectedHost: gatewayTarget.host
     });
 
+    await pamSessionDAL.activateSession(session.id);
     await pamSessionExpirationService.scheduleSessionExpiration(session.id, expiresAt);
 
     const certs = await gatewayV2Service.getPAMConnectionDetails({

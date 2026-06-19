@@ -33,6 +33,7 @@ export const PamAccountsSchema = z.object({
   gatewayId: z.string().uuid().nullable().optional(),
   gatewayPoolId: z.string().uuid().nullable().optional(),
   recordingConnectionId: z.string().uuid().nullable().optional(),
+  recordingSettings: z.unknown().nullable().optional(),
   credentialConfigured: z.boolean().default(false)
 });
 

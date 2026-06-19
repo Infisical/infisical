@@ -21,7 +21,7 @@ import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 
-import { PamAccountType } from "../pam/pam-enums";
+import { PamAccountType, resolveAccountType } from "../pam/pam-enums";
 import {
   checkAccountAccess,
   checkFolderPermission,
@@ -29,7 +29,7 @@ import {
   TActorContext,
   verifyProductMembership
 } from "../pam/pam-permission";
-import { validateGatewayAttachment, validateRecordingConnection } from "../pam/pam-validators";
+import { mintCorsProbeUrl, validateGatewayAttachment, validateRecordingConnection, validateRecordingS3Config } from "../pam/pam-validators";
 import { TPamAccountTemplateDALFactory } from "../pam-account-template/pam-account-template-dal";
 import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
 import { TPamAccountDALFactory } from "./pam-account-dal";
@@ -64,7 +64,7 @@ type TPamAccountServiceFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findOne">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveAttachableGatewayFromPool">;
-  appConnectionDAL: Pick<TAppConnectionDALFactory, "findOne">;
+  appConnectionDAL: Pick<TAppConnectionDALFactory, "findOne" | "findById">;
 };
 
 export type TPamAccountServiceFactory = ReturnType<typeof pamAccountServiceFactory>;
@@ -192,6 +192,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       gatewayId: account.gatewayId,
       gatewayPoolId: account.gatewayPoolId,
       recordingConnectionId: account.recordingConnectionId,
+      recordingSettings: account.recordingSettings ?? null,
       connectionDetails,
       credentials,
       ...computeAccessibility(account),
@@ -212,6 +213,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     gatewayId,
     gatewayPoolId,
     recordingConnectionId,
+    recordingSettings,
     ...ctx
   }: TCreatePamAccountDTO & TActorContext) => {
     const { permission } = await checkFolder(folderId, projectId, ctx);
@@ -235,8 +237,30 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       });
     }
 
+    const resolved = resolveAccountType(accountType);
+    if (resolved === PamAccountType.Windows) {
+      const settings = (template.settings ?? {}) as Record<string, unknown>;
+      if (
+        settings.recordingStorageBackend !== "aws-s3" ||
+        !template.recordingConnectionId
+      ) {
+        throw new BadRequestError({
+          message:
+            "Cannot create a Windows account until the account template has S3 recording fully configured (storage backend, AWS connection, and S3 bucket)"
+        });
+      }
+    }
+
     await validateGatewayAttachment(deps, gatewayId, gatewayPoolId, ctx);
     await validateRecordingConnection(deps, recordingConnectionId, ctx);
+
+    let resolvedS3Config = null;
+    if (recordingSettings?.s3Config) {
+      const connId = recordingConnectionId ?? template.recordingConnectionId;
+      if (connId) {
+        resolvedS3Config = await validateRecordingS3Config(deps, connId, recordingSettings.s3Config);
+      }
+    }
 
     const validatedConnectionDetails = validateConnectionDetails(accountType, connectionDetails);
     const validatedCredentials = validateCredentials(accountType, credentials);
@@ -256,8 +280,11 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
         credentialConfigured: isCredentialConfigured(accountType, validatedCredentials),
         gatewayId,
         gatewayPoolId,
-        recordingConnectionId
+        recordingConnectionId,
+        recordingSettings: recordingSettings ?? null
       });
+
+      const corsProbeUrl = resolvedS3Config ? await mintCorsProbeUrl(resolvedS3Config) : null;
 
       return {
         id: account.id,
@@ -274,7 +301,8 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
         accountType,
         folderName: folder.name,
         templateName: template.name,
-        connectionDetails: validatedConnectionDetails
+        connectionDetails: validatedConnectionDetails,
+        corsProbeUrl
       };
     } catch (err) {
       if (err instanceof DatabaseError) {
@@ -305,6 +333,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     gatewayId,
     gatewayPoolId,
     recordingConnectionId,
+    recordingSettings,
     ...ctx
   }: TUpdatePamAccountDTO & TActorContext) => {
     const existing = await pamAccountDAL.findByIdWithDetails(accountId);
@@ -342,6 +371,16 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     await validateGatewayAttachment(deps, gatewayId, gatewayPoolId, ctx);
     await validateRecordingConnection(deps, recordingConnectionId, ctx);
 
+    let resolvedS3Config = null;
+    if (recordingSettings?.s3Config) {
+      const connId =
+        (recordingConnectionId !== undefined ? recordingConnectionId : existing.recordingConnectionId)
+        ?? existing.templateRecordingConnectionId;
+      if (connId) {
+        resolvedS3Config = await validateRecordingS3Config(deps, connId, recordingSettings.s3Config);
+      }
+    }
+
     const updateData: Record<string, unknown> = {};
     if (name !== undefined) updateData.name = name;
     if (description !== undefined) updateData.description = description;
@@ -350,6 +389,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     if (gatewayId !== undefined) updateData.gatewayId = gatewayId;
     if (gatewayPoolId !== undefined) updateData.gatewayPoolId = gatewayPoolId;
     if (recordingConnectionId !== undefined) updateData.recordingConnectionId = recordingConnectionId;
+    if (recordingSettings !== undefined) updateData.recordingSettings = recordingSettings;
 
     if (connectionDetails) {
       const validated = validateConnectionDetails(accountType, connectionDetails);
@@ -364,7 +404,9 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     }
 
     try {
-      return await pamAccountDAL.updateById(accountId, updateData);
+      const account = await pamAccountDAL.updateById(accountId, updateData);
+      const corsProbeUrl = resolvedS3Config ? await mintCorsProbeUrl(resolvedS3Config) : null;
+      return { ...account, corsProbeUrl };
     } catch (err) {
       if (err instanceof DatabaseError) {
         const code = (err.error as { code?: string })?.code;

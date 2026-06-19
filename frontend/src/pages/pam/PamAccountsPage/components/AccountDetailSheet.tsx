@@ -3,6 +3,8 @@ import { useForm } from "react-hook-form";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import {
+  AlertTriangleIcon,
+  DatabaseIcon,
   FolderOpen,
   MoreHorizontal,
   Network,
@@ -14,6 +16,9 @@ import {
 
 import { createNotification } from "@app/components/notifications";
 import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
   Badge,
   Button,
   Card,
@@ -29,6 +34,7 @@ import {
   DropdownMenuTrigger,
   GatewayPicker,
   IconButton,
+  Input,
   Table,
   TableBody,
   TableCell,
@@ -38,10 +44,12 @@ import {
 } from "@app/components/v3";
 import { Skeleton } from "@app/components/v3/generic/Skeleton";
 import { useOrganization, useUser } from "@app/context";
+import { useListAppConnections } from "@app/hooks/api/appConnections";
 import { gatewayPoolsQueryKeys } from "@app/hooks/api/gateway-pools/queries";
 import { gatewaysQueryKeys } from "@app/hooks/api/gateways/queries";
 import { useGetOrganizationGroups } from "@app/hooks/api/organization/queries";
 import {
+  accountTypeRequiresRecording,
   PamAccountAccessibilityIssue,
   PamAccountType,
   TPamMember,
@@ -73,6 +81,7 @@ import { TabWarningPing } from "../../components/TabWarningPing";
 import { AccountPlatformIcon } from "../../PamAccessPage/components/AccountPlatformIcon";
 import { AssignAccessModal, EditMemberTarget } from "./AssignAccessModal";
 import { EditAccountForm } from "./EditAccountForm";
+import { RecordingConnectionPicker } from "./RecordingConnectionPicker";
 
 type Props = {
   isOpen: boolean;
@@ -413,7 +422,14 @@ const PermissionsTab = ({
   );
 };
 
-type OverridesForm = { gatewayId: string | null; gatewayPoolId: string | null };
+type OverridesForm = {
+  gatewayId: string | null;
+  gatewayPoolId: string | null;
+  recordingConnectionId: string | null;
+  recordingBucket: string;
+  recordingRegion: string;
+  recordingKeyPrefix: string;
+};
 
 const SettingsTab = ({
   accountId,
@@ -426,17 +442,29 @@ const SettingsTab = ({
   const { data: template } = useGetPamAccountTemplate(account?.templateId);
   const { data: gateways } = useQuery(gatewaysQueryKeys.list());
   const { data: gatewayPools } = useQuery(gatewayPoolsQueryKeys.list());
+  const { data: appConnections = [] } = useListAppConnections();
   const updateAccount = useUpdatePamAccount();
   const [showGatewayPicker, setShowGatewayPicker] = useState(false);
+  const [showRecordingPicker, setShowRecordingPicker] = useState(false);
+
+  const showRecordingOverride = account && accountTypeRequiresRecording(account.accountType);
 
   const {
     handleSubmit,
     reset,
     setValue,
     watch,
+    register,
     formState: { isDirty }
   } = useForm<OverridesForm>({
-    defaultValues: { gatewayId: null, gatewayPoolId: null }
+    defaultValues: {
+      gatewayId: null,
+      gatewayPoolId: null,
+      recordingConnectionId: null,
+      recordingBucket: "",
+      recordingRegion: "",
+      recordingKeyPrefix: ""
+    }
   });
 
   useEffect(() => {
@@ -446,8 +474,17 @@ const SettingsTab = ({
 
   useEffect(() => {
     if (account) {
-      reset({ gatewayId: account.gatewayId, gatewayPoolId: account.gatewayPoolId });
+      const s3 = account.recordingSettings?.s3Config;
+      reset({
+        gatewayId: account.gatewayId,
+        gatewayPoolId: account.gatewayPoolId,
+        recordingConnectionId: account.recordingConnectionId,
+        recordingBucket: s3?.bucket ?? "",
+        recordingRegion: s3?.region ?? "",
+        recordingKeyPrefix: s3?.keyPrefix ?? ""
+      });
       setShowGatewayPicker(false);
+      setShowRecordingPicker(false);
     }
   }, [account, reset]);
 
@@ -464,7 +501,13 @@ const SettingsTab = ({
 
   const gatewayId = watch("gatewayId");
   const gatewayPoolId = watch("gatewayPoolId");
-  const isOverriding = Boolean(gatewayId || gatewayPoolId) || showGatewayPicker;
+  const recordingConnId = watch("recordingConnectionId");
+  const recordingBucket = watch("recordingBucket");
+  const recordingRegion = watch("recordingRegion");
+  const isGatewayOverriding = Boolean(gatewayId || gatewayPoolId) || showGatewayPicker;
+  const hasRecordingOverride =
+    Boolean(recordingConnId) || Boolean(recordingBucket) || Boolean(recordingRegion);
+  const isRecordingOverriding = hasRecordingOverride || showRecordingPicker;
 
   const resolveGatewayLabel = (gwId?: string | null, poolId?: string | null) => {
     if (poolId) return gatewayPools?.find((p) => p.id === poolId)?.name ?? "Gateway pool";
@@ -473,31 +516,79 @@ const SettingsTab = ({
   };
   const inheritedGatewayLabel = resolveGatewayLabel(template?.gatewayId, template?.gatewayPoolId);
 
-  const setGateway = (value: OverridesForm) => {
+  const resolveConnectionName = (connId?: string | null) => {
+    if (!connId) return "None";
+    return appConnections.find((c) => c.id === connId)?.name ?? "AWS connection";
+  };
+  const inheritedRecordingLabel = resolveConnectionName(template?.recordingConnectionId);
+
+  const setGateway = (value: { gatewayId: string | null; gatewayPoolId: string | null }) => {
     setValue("gatewayId", value.gatewayId, { shouldDirty: true });
     setValue("gatewayPoolId", value.gatewayPoolId, { shouldDirty: true });
   };
 
-  const removeOverride = () => {
+  const removeGatewayOverride = () => {
     setGateway({ gatewayId: null, gatewayPoolId: null });
     setShowGatewayPicker(false);
+  };
+
+  const removeRecordingOverride = () => {
+    setValue("recordingConnectionId", null, { shouldDirty: true });
+    setValue("recordingBucket", "", { shouldDirty: true });
+    setValue("recordingRegion", "", { shouldDirty: true });
+    setValue("recordingKeyPrefix", "", { shouldDirty: true });
+    setShowRecordingPicker(false);
   };
 
   const discard = () => {
     reset();
     setShowGatewayPicker(false);
+    setShowRecordingPicker(false);
   };
 
   const onSubmit = (values: OverridesForm) => {
+    const bucket = values.recordingBucket.trim();
+    const region = values.recordingRegion.trim();
+    const keyPrefix = values.recordingKeyPrefix.trim();
+    const hasS3Override = Boolean(bucket) || Boolean(region);
+    const recordingSettings = hasS3Override
+      ? {
+          s3Config: {
+            bucket,
+            region,
+            ...(keyPrefix ? { keyPrefix } : {})
+          }
+        }
+      : null;
+
     updateAccount.mutate(
       {
         accountId,
         accountType: account.accountType,
         gatewayId: values.gatewayId,
-        gatewayPoolId: values.gatewayPoolId
+        gatewayPoolId: values.gatewayPoolId,
+        recordingConnectionId: values.recordingConnectionId,
+        recordingSettings
       },
       {
-        onSuccess: () => createNotification({ type: "success", text: "Overrides updated" })
+        onSuccess: async (result) => {
+          createNotification({ type: "success", text: "Overrides updated" });
+          const { corsProbeUrl } = result as { corsProbeUrl?: string | null };
+          if (corsProbeUrl) {
+            try {
+              await fetch(corsProbeUrl, { mode: "cors" });
+            } catch {
+              createNotification(
+                {
+                  title: "Bucket CORS not configured",
+                  type: "warning",
+                  text: "Session playback requires the bucket to allow GET requests from this origin. See the docs for CORS setup."
+                },
+                { autoClose: 10000 }
+              );
+            }
+          }
+        }
       }
     );
   };
@@ -509,9 +600,9 @@ const SettingsTab = ({
           <CardTitle className="text-base">Settings</CardTitle>
           <CardDescription>System configuration overrides.</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex flex-col gap-4">
           <div
-            className={`rounded-md border p-4 ${isOverriding ? "border-product-pam/50" : "border-border"}`}
+            className={`rounded-md border p-4 ${isGatewayOverriding ? "border-product-pam/50" : "border-border"}`}
           >
             <div className="flex items-start justify-between gap-4">
               <div className="flex items-start gap-3">
@@ -521,19 +612,19 @@ const SettingsTab = ({
                 <div>
                   <p className="font-medium text-foreground">
                     Gateway
-                    {isOverriding && (
+                    {isGatewayOverriding && (
                       <span className="ml-2 text-xs font-normal text-product-pam">(override)</span>
                     )}
                   </p>
                   <p className="text-sm text-muted">
-                    {isOverriding
+                    {isGatewayOverriding
                       ? `Overriding the template default (${inheritedGatewayLabel}) for this account.`
                       : `Inherited from ${account.templateName}: ${inheritedGatewayLabel}`}
                   </p>
                 </div>
               </div>
-              {isOverriding ? (
-                <Button type="button" size="sm" variant="ghost" onClick={removeOverride}>
+              {isGatewayOverriding ? (
+                <Button type="button" size="sm" variant="ghost" onClick={removeGatewayOverride}>
                   Remove Override
                 </Button>
               ) : (
@@ -549,7 +640,7 @@ const SettingsTab = ({
               )}
             </div>
 
-            {isOverriding && (
+            {isGatewayOverriding && (
               <div className="mt-4">
                 <GatewayPicker
                   value={{ gatewayId, gatewayPoolId }}
@@ -559,6 +650,88 @@ const SettingsTab = ({
               </div>
             )}
           </div>
+
+          {showRecordingOverride && (
+            <div
+              className={`rounded-md border p-4 ${isRecordingOverriding ? "border-product-pam/50" : "border-border"}`}
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-start gap-3">
+                  <div className="flex size-9 shrink-0 items-center justify-center rounded-md border border-border bg-container">
+                    <DatabaseIcon className="size-4 text-muted" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-foreground">
+                      Recording Settings
+                      {isRecordingOverriding && (
+                        <span className="ml-2 text-xs font-normal text-product-pam">
+                          (override)
+                        </span>
+                      )}
+                    </p>
+                    <p className="text-sm text-muted">
+                      {isRecordingOverriding
+                        ? "Overriding the template recording config for this account."
+                        : `Inherited from ${account.templateName}: ${inheritedRecordingLabel}`}
+                    </p>
+                  </div>
+                </div>
+                {isRecordingOverriding ? (
+                  <Button type="button" size="sm" variant="ghost" onClick={removeRecordingOverride}>
+                    Remove Override
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setShowRecordingPicker(true)}
+                  >
+                    <SquarePen className="mr-1.5 size-3.5" />
+                    Override
+                  </Button>
+                )}
+              </div>
+
+              {isRecordingOverriding && (
+                <div className="mt-4 flex flex-col gap-3">
+                  <Alert variant="warning">
+                    <AlertTriangleIcon />
+                    <AlertTitle>Changing bucket affects existing recordings</AlertTitle>
+                    <AlertDescription>
+                      Changing the bucket makes existing recordings inaccessible unless you manually
+                      migrate the objects. Keep the same bucket and key prefix when rotating
+                      credentials.
+                    </AlertDescription>
+                  </Alert>
+                  <div>
+                    <p className="mb-1 text-sm text-muted">AWS Connection</p>
+                    <RecordingConnectionPicker
+                      value={recordingConnId}
+                      onChange={(v) => setValue("recordingConnectionId", v, { shouldDirty: true })}
+                      includeNone
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <p className="mb-1 text-sm text-muted">S3 Bucket</p>
+                      <Input placeholder="my-recordings-bucket" {...register("recordingBucket")} />
+                    </div>
+                    <div>
+                      <p className="mb-1 text-sm text-muted">Region</p>
+                      <Input placeholder="us-east-1" {...register("recordingRegion")} />
+                    </div>
+                  </div>
+                  <div>
+                    <p className="mb-1 text-sm text-muted">
+                      Key Prefix <span className="text-xs text-muted">(optional)</span>
+                    </p>
+                    <Input placeholder="recordings/" {...register("recordingKeyPrefix")} />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
 

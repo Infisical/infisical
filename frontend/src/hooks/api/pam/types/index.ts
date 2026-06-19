@@ -63,6 +63,10 @@ export enum PamAccountAccessibilityIssue {
 export const accountTypeRequiresRecording = (type: PamAccountType): boolean =>
   type === PamAccountType.Windows;
 
+export type TPamAccountRecordingSettings = {
+  s3Config?: { bucket: string; region: string; keyPrefix?: string };
+};
+
 export type TPamAccount = {
   id: string;
   name: string;
@@ -77,6 +81,7 @@ export type TPamAccount = {
   gatewayId: string | null;
   gatewayPoolId: string | null;
   recordingConnectionId: string | null;
+  recordingSettings: TPamAccountRecordingSettings | null;
   connectionDetails: Record<string, unknown>;
   // Non-secret credential fields only
   credentials: Record<string, unknown>;
@@ -256,6 +261,7 @@ export type TUpdatePamAccountDTO = {
   gatewayId?: string | null;
   gatewayPoolId?: string | null;
   recordingConnectionId?: string | null;
+  recordingSettings?: TPamAccountRecordingSettings | null;
 };
 
 export type TDeletePamAccountDTO = {

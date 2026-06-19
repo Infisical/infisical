@@ -16,7 +16,7 @@ All PAM services live under `backend/src/ee/services/pam-*/`:
 | `pam-session-recording/` | Recording chunk storage, retrieval, secrets, and storage providers (`aws-s3/`, `postgres/`) |
 | `pam-membership/` | Product + resource membership management |
 | `pam-project/` | PAM project bootstrap and resolver (formerly `pam-instance/`) |
-| `pam-web-access/` | WebSocket session handlers (Postgres, SSH), ticket-based auth |
+| `pam-web-access/` | WebSocket session handlers (Postgres, SSH, RDP), ticket-based auth |
 
 Routes live in `backend/src/ee/routes/v1/pam-routers/`.
 

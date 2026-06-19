@@ -15,7 +15,7 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { PamSessionStatus } from "../pam/pam-enums";
 import { checkAccountAccess, TActorContext } from "../pam/pam-permission";
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
-import { PamTemplateSettingsSchema } from "../pam-account-template/pam-account-template-schemas";
+import { PamRecordingS3ConfigSchema, PamTemplateSettingsSchema } from "../pam-account-template/pam-account-template-schemas";
 import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
 import { ResourcePermissionPamResourceActions } from "../permission/resource-permission";
 import { TPamSessionEventChunkDALFactory } from "./pam-recording-chunk-dal";
@@ -54,13 +54,21 @@ export const pamSessionChunkServiceFactory = ({
     const account = await pamAccountDAL.findByIdWithDetails(accountId);
     if (!account) return null;
 
-    const parsed = account.templateSettings ? PamTemplateSettingsSchema.safeParse(account.templateSettings) : null;
-    const settings = parsed?.success ? parsed.data : null;
-    if (!settings) return null;
+    const templateParsed = account.templateSettings ? PamTemplateSettingsSchema.safeParse(account.templateSettings) : null;
+    const templateSettings = templateParsed?.success ? templateParsed.data : null;
+    if (!templateSettings) return null;
 
-    if (settings.recordingStorageBackend === PamRecordingStorageBackend.AwsS3) {
+    const accountS3Parsed = account.recordingSettings
+      ? PamRecordingS3ConfigSchema.safeParse(
+          (account.recordingSettings as Record<string, unknown>).s3Config
+        )
+      : null;
+    const accountS3 = accountS3Parsed?.success ? accountS3Parsed.data : null;
+
+    if (templateSettings.recordingStorageBackend === PamRecordingStorageBackend.AwsS3) {
       const connectionId = account.recordingConnectionId;
-      if (!connectionId || !settings.recordingS3Config) return null;
+      const s3Config = accountS3 ?? templateSettings.recordingS3Config;
+      if (!connectionId || !s3Config) return null;
 
       const raw = await appConnectionDAL.findById(connectionId);
       if (!raw) {
@@ -71,14 +79,14 @@ export const pamSessionChunkServiceFactory = ({
       const appConnection = await decryptAppConnection(raw, kmsService);
       const awsConfig = await getAwsConnectionConfig(
         appConnection as unknown as TAwsConnectionConfig,
-        (settings.recordingS3Config.region as AWSRegion) ?? AWSRegion.US_EAST_1
+        (s3Config.region as AWSRegion) ?? AWSRegion.US_EAST_1
       );
 
       return {
         backend: PamRecordingStorageBackend.AwsS3,
-        bucket: settings.recordingS3Config.bucket,
-        region: settings.recordingS3Config.region as AWSRegion,
-        keyPrefix: settings.recordingS3Config.keyPrefix ?? null,
+        bucket: s3Config.bucket,
+        region: s3Config.region as AWSRegion,
+        keyPrefix: s3Config.keyPrefix ?? null,
         awsCredentials: awsConfig.credentials
       };
     }

@@ -62,7 +62,6 @@ import {
 import { ConnectionDetailsForm } from "./ConnectionDetailsForm";
 import { CreateFolderModal } from "./CreateFolderModal";
 import { CredentialsForm } from "./CredentialsForm";
-import { RecordingConnectionPicker } from "./RecordingConnectionPicker";
 
 const CREATE_FOLDER_VALUE = "__create_folder__";
 
@@ -85,9 +84,7 @@ export const CreateAccountSheet = ({ isOpen, onOpenChange, defaultFolderId }: Pr
     gatewayId: string | null;
     gatewayPoolId: string | null;
   }>({ gatewayId: null, gatewayPoolId: null });
-  const [recordingConnectionId, setRecordingConnectionId] = useState<string | null>(null);
   const [gatewayError, setGatewayError] = useState(false);
-  const [recordingError, setRecordingError] = useState(false);
 
   const {
     control,
@@ -155,9 +152,7 @@ export const CreateAccountSheet = ({ isOpen, onOpenChange, defaultFolderId }: Pr
       setStep(1);
       setTemplateSearch("");
       setGateway({ gatewayId: null, gatewayPoolId: null });
-      setRecordingConnectionId(null);
       setGatewayError(false);
-      setRecordingError(false);
     }
   }, [isOpen, defaultFolderId, reset]);
 
@@ -168,9 +163,7 @@ export const CreateAccountSheet = ({ isOpen, onOpenChange, defaultFolderId }: Pr
     setValue("connectionDetails", buildDefaultFieldValues(selectedMetadata.connectionFields));
     setValue("credentials", buildDefaultFieldValues(selectedMetadata.credentialFields));
     setGateway({ gatewayId: null, gatewayPoolId: null });
-    setRecordingConnectionId(null);
     setGatewayError(false);
-    setRecordingError(false);
   }, [selectedMetadata?.type, selectedTemplateId, setValue]);
 
   const canProceed = Boolean(selectedFolderId && selectedTemplateId);
@@ -188,16 +181,9 @@ export const CreateAccountSheet = ({ isOpen, onOpenChange, defaultFolderId }: Pr
       values.credentials
     );
     const gatewayMissing = needsGateway && !gateway.gatewayId && !gateway.gatewayPoolId;
-    const recordingMissing = needsRecording && !recordingConnectionId;
     setGatewayError(gatewayMissing);
-    setRecordingError(recordingMissing);
 
-    if (
-      missingConnection.length ||
-      missingCredentials.length ||
-      gatewayMissing ||
-      recordingMissing
-    ) {
+    if (missingConnection.length || missingCredentials.length || gatewayMissing) {
       missingConnection.forEach((key) =>
         setError(`connectionDetails.${key}`, {
           type: "required",
@@ -229,8 +215,7 @@ export const CreateAccountSheet = ({ isOpen, onOpenChange, defaultFolderId }: Pr
         connectionDetails: values.connectionDetails,
         credentials: values.credentials,
         ...(gateway.gatewayId ? { gatewayId: gateway.gatewayId } : {}),
-        ...(gateway.gatewayPoolId ? { gatewayPoolId: gateway.gatewayPoolId } : {}),
-        ...(recordingConnectionId ? { recordingConnectionId } : {})
+        ...(gateway.gatewayPoolId ? { gatewayPoolId: gateway.gatewayPoolId } : {})
       },
       {
         onSuccess: () => {
@@ -466,24 +451,18 @@ export const CreateAccountSheet = ({ isOpen, onOpenChange, defaultFolderId }: Pr
                       </Field>
                     )}
                     {needsRecording && (
-                      <Field>
-                        <FieldLabel>
-                          Recording Bucket<span className="text-product-pam">*</span>
-                        </FieldLabel>
-                        <FieldContent>
-                          <RecordingConnectionPicker
-                            value={recordingConnectionId}
-                            onChange={(value) => {
-                              setRecordingConnectionId(value);
-                              setRecordingError(false);
-                            }}
-                            isError={recordingError}
-                          />
-                          {recordingError && (
-                            <FieldError>A recording bucket is required</FieldError>
-                          )}
-                        </FieldContent>
-                      </Field>
+                      <div className="rounded-md border border-warning/40 bg-warning/5 p-3">
+                        <div className="flex items-start gap-2">
+                          <AlertTriangle className="mt-0.5 size-4 shrink-0 text-warning" />
+                          <div className="text-sm">
+                            <p className="font-medium text-warning">S3 recording not configured</p>
+                            <p className="mt-1 text-muted">
+                              This account type requires S3 recording. Configure it in the account
+                              template settings before creating an account.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -500,7 +479,12 @@ export const CreateAccountSheet = ({ isOpen, onOpenChange, defaultFolderId }: Pr
                 <Button type="button" variant="ghost" onClick={() => setStep(1)}>
                   Back
                 </Button>
-                <Button type="submit" variant="pam" isPending={createAccount.isPending}>
+                <Button
+                  type="submit"
+                  variant="pam"
+                  isPending={createAccount.isPending}
+                  isDisabled={needsRecording}
+                >
                   Create
                 </Button>
               </SheetFooter>

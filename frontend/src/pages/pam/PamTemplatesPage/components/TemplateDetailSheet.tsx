@@ -1,11 +1,14 @@
 import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Ban } from "lucide-react";
+import { AlertTriangleIcon, Ban } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
   Card,
   CardContent,
   CardDescription,
@@ -123,8 +126,7 @@ const ConfigurationTab = ({
     if (template) {
       const settings = (template.settings ?? {}) as Record<string, unknown>;
       const s3Config = (settings.recordingS3Config ?? {}) as Record<string, string>;
-      const isWin =
-        resolvePamAccountType(template.type) === PamAccountType.Windows;
+      const isWin = resolvePamAccountType(template.type) === PamAccountType.Windows;
       const savedBackend = settings.recordingStorageBackend as "postgres" | "aws-s3" | undefined;
       reset({
         name: template.name,
@@ -166,7 +168,24 @@ const ConfigurationTab = ({
           data.recordingStorageBackend === "aws-s3" ? data.recordingConnectionId : null
       },
       {
-        onSuccess: () => createNotification({ type: "success", text: "Template updated" })
+        onSuccess: async (result) => {
+          createNotification({ type: "success", text: "Template updated" });
+          const { corsProbeUrl } = result as { corsProbeUrl?: string | null };
+          if (corsProbeUrl) {
+            try {
+              await fetch(corsProbeUrl, { mode: "cors" });
+            } catch {
+              createNotification(
+                {
+                  title: "Bucket CORS not configured",
+                  type: "warning",
+                  text: "Session playback requires the bucket to allow GET requests from this origin. See the docs for CORS setup."
+                },
+                { autoClose: 10000 }
+              );
+            }
+          }
+        }
       }
     );
   };
@@ -268,6 +287,16 @@ const ConfigurationTab = ({
 
           {storageBackend === "aws-s3" && (
             <>
+              <Alert variant="warning">
+                <AlertTriangleIcon />
+                <AlertTitle>Changing bucket affects existing recordings</AlertTitle>
+                <AlertDescription>
+                  Changing the bucket on a template with existing recordings makes those recordings
+                  inaccessible unless you manually migrate the objects. Keep the same bucket and key
+                  prefix when rotating credentials.
+                </AlertDescription>
+              </Alert>
+
               <Controller
                 name="recordingConnectionId"
                 control={control}

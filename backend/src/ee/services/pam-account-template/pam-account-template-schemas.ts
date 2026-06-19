@@ -12,9 +12,13 @@ export const PamPasswordConstraintsSchema = z.object({
 });
 
 export const PamRecordingS3ConfigSchema = z.object({
-  bucket: z.string().min(1),
-  region: z.string().min(1),
-  keyPrefix: z.string().optional()
+  bucket: z.string().trim().min(1),
+  region: z.string().trim().min(1),
+  keyPrefix: z.string().trim().optional()
+});
+
+export const PamAccountRecordingSettingsSchema = z.object({
+  s3Config: PamRecordingS3ConfigSchema.optional()
 });
 
 export const PamTemplateSettingsSchema = z.object({
