@@ -1,0 +1,43 @@
+{
+  "expectations": [
+    {
+      "text": "Explains CA-based architecture (Infisical generates CA key pair, signs certificates)",
+      "passed": true,
+      "evidence": "\"Infisical generates a CA key pair when you create the dynamic secret...Your servers trust the CA by installing its public key in /etc/ssh/sshd_config\""
+    },
+    {
+      "text": "Shows correct config fields (allowed principals, key algorithm)",
+      "passed": true,
+      "evidence": "Configuration table shows 'Allowed Principals' (e.g., ubuntu,deploy,root) and 'Key Algorithm' (ED25519 recommended)"
+    },
+    {
+      "text": "Recommends ED25519 as the key algorithm",
+      "passed": true,
+      "evidence": "\"Key Algorithm: ED25519 (Recommended for modern servers; alternatives: RSA 2048/4096, ECDSA P-256/P-384)\""
+    },
+    {
+      "text": "Shows target host setup with TrustedUserCAKeys in sshd_config",
+      "passed": true,
+      "evidence": "\"Add TrustedUserCAKeys /etc/ssh/infisical_ca.pub to /etc/ssh/sshd_config\""
+    },
+    {
+      "text": "Correctly states certificates CANNOT be renewed (must create new lease)",
+      "passed": true,
+      "evidence": "\"Certificates Cannot Be Renewed: The TTL is baked in at signing time. Once a certificate expires, it's no longer valid. Your team must request a new lease for a fresh certificate\""
+    },
+    {
+      "text": "Shows correct SSH usage command with -i key.pem and -o CertificateFile=cert.pub",
+      "passed": true,
+      "evidence": "\"ssh -i key.pem -o CertificateFile=cert.pub <principal>@<hostname>\""
+    }
+  ],
+  "summary": {
+    "passed": 6,
+    "failed": 0,
+    "total": 6,
+    "pass_rate": 1.0
+  },
+  "timing": {
+    "total_duration_seconds": 44.0
+  }
+}

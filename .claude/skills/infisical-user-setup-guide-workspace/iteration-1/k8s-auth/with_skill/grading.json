@@ -1,0 +1,34 @@
+{
+  "expectations": [
+    {
+      "text": "Recommends Kubernetes Auth as the preferred method for GKE (platform-native, zero-secret)",
+      "passed": true,
+      "evidence": "Found 'Kubernetes Auth': True"
+    },
+    {
+      "text": "Uses correct CRD name 'InfisicalSecret' for syncing secrets",
+      "passed": true,
+      "evidence": "Found 'InfisicalSecret': True"
+    },
+    {
+      "text": "Shows Helm-based operator installation",
+      "passed": true,
+      "evidence": "Found Helm commands: True"
+    },
+    {
+      "text": "Does not recommend deprecated API Keys or Service Tokens as auth methods",
+      "passed": true,
+      "evidence": "Service tokens: False, API keys: False"
+    },
+    {
+      "text": "Covers Kubernetes service account setup for K8s Auth",
+      "passed": true,
+      "evidence": "Found service account reference: True"
+    },
+    {
+      "text": "References creating a machine identity in Infisical",
+      "passed": true,
+      "evidence": "Found 'machine identity': True"
+    }
+  ]
+}

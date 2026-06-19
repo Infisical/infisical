@@ -1,0 +1,43 @@
+{
+  "expectations": [
+    {
+      "text": "Uses aws-iam auth type (not universal-auth with client-id/secret)",
+      "passed": false,
+      "evidence": "Discusses 'INFISICAL_AGENT_MODE: kubernetes' and machine identity with client credentials stored in AWS Secrets Manager, not aws-iam auth type"
+    },
+    {
+      "text": "Shows correct auth config with identity-id field",
+      "passed": false,
+      "evidence": "Shows 'secrets' with INFISICAL_CLIENT_ID/SECRET from AWS Secrets Manager, not identity-id field for aws-iam"
+    },
+    {
+      "text": "Shows ECS task definition pattern with shared volume between agent and app containers",
+      "passed": true,
+      "evidence": "Task definition shows two containers (infisical-agent and my-app) with shared volume 'infisical-socket' mounted in both"
+    },
+    {
+      "text": "Uses correct template function (listSecrets or listSecretsByProjectSlug) with proper signature",
+      "passed": false,
+      "evidence": "Does not show actual template with listSecrets or listSecretsByProjectSlug. Shows environment variable approach instead"
+    },
+    {
+      "text": "Mentions exit-after-auth option for init-style sidecar pattern",
+      "passed": false,
+      "evidence": "Does not mention exit-after-auth option. Shows container running continuously"
+    },
+    {
+      "text": "Does not require manually managing any credentials or access keys",
+      "passed": false,
+      "evidence": "Requires storing machine identity credentials in AWS Secrets Manager and managing them manually"
+    }
+  ],
+  "summary": {
+    "passed": 1,
+    "failed": 5,
+    "total": 6,
+    "pass_rate": 0.17
+  },
+  "timing": {
+    "total_duration_seconds": 28.1
+  }
+}

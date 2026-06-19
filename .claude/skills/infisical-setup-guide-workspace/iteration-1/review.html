@@ -1,0 +1,1325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Eval Review</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600&family=Lora:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" integrity="sha384-EnyY0/GSHQGSxSgMwaIPzSESbqoOLSexfnSMN2AP+39Ckmn92stwABZynq1JyzdT" crossorigin="anonymous"></script>
+  <style>
+    :root {
+      --bg: #faf9f5;
+      --surface: #ffffff;
+      --border: #e8e6dc;
+      --text: #141413;
+      --text-muted: #b0aea5;
+      --accent: #d97757;
+      --accent-hover: #c4613f;
+      --green: #788c5d;
+      --green-bg: #eef2e8;
+      --red: #c44;
+      --red-bg: #fceaea;
+      --header-bg: #141413;
+      --header-text: #faf9f5;
+      --radius: 6px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Lora', Georgia, serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ---- Header ---- */
+    .header {
+      background: var(--header-bg);
+      color: var(--header-text);
+      padding: 1rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+    }
+    .header h1 {
+      font-family: 'Poppins', sans-serif;
+      font-size: 1.25rem;
+      font-weight: 600;
+    }
+    .header .instructions {
+      font-size: 0.8rem;
+      opacity: 0.7;
+      margin-top: 0.25rem;
+    }
+    .header .progress {
+      font-size: 0.875rem;
+      opacity: 0.8;
+      text-align: right;
+    }
+
+    /* ---- Main content ---- */
+    .main {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1.5rem 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    /* ---- Sections ---- */
+    .section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      flex-shrink: 0;
+    }
+    .section-header {
+      font-family: 'Poppins', sans-serif;
+      padding: 0.75rem 1rem;
+      font-size: 0.75rem;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+      background: var(--bg);
+    }
+    .section-body {
+      padding: 1rem;
+    }
+
+    /* ---- Config badge ---- */
+    .config-badge {
+      display: inline-block;
+      padding: 0.2rem 0.625rem;
+      border-radius: 9999px;
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.6875rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      margin-left: 0.75rem;
+      vertical-align: middle;
+    }
+    .config-badge.config-primary {
+      background: rgba(33, 150, 243, 0.12);
+      color: #1976d2;
+    }
+    .config-badge.config-baseline {
+      background: rgba(255, 193, 7, 0.15);
+      color: #f57f17;
+    }
+
+    /* ---- Prompt ---- */
+    .prompt-text {
+      white-space: pre-wrap;
+      font-size: 0.9375rem;
+      line-height: 1.6;
+    }
+
+    /* ---- Outputs ---- */
+    .output-file {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .output-file + .output-file {
+      margin-top: 1rem;
+    }
+    .output-file-header {
+      padding: 0.5rem 0.75rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      font-family: 'SF Mono', SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .output-file-header .dl-btn {
+      font-size: 0.7rem;
+      color: var(--accent);
+      text-decoration: none;
+      cursor: pointer;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-weight: 500;
+      opacity: 0.8;
+    }
+    .output-file-header .dl-btn:hover {
+      opacity: 1;
+      text-decoration: underline;
+    }
+    .output-file-content {
+      padding: 0.75rem;
+      overflow-x: auto;
+    }
+    .output-file-content pre {
+      font-size: 0.8125rem;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: 'SF Mono', SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
+    }
+    .output-file-content img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 4px;
+    }
+    .output-file-content iframe {
+      width: 100%;
+      height: 600px;
+      border: none;
+    }
+    .output-file-content table {
+      border-collapse: collapse;
+      font-size: 0.8125rem;
+      width: 100%;
+    }
+    .output-file-content table td,
+    .output-file-content table th {
+      border: 1px solid var(--border);
+      padding: 0.375rem 0.5rem;
+      text-align: left;
+    }
+    .output-file-content table th {
+      background: var(--bg);
+      font-weight: 600;
+    }
+    .output-file-content .download-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--accent);
+      text-decoration: none;
+      font-size: 0.875rem;
+      cursor: pointer;
+    }
+    .output-file-content .download-link:hover {
+      background: var(--border);
+    }
+    .empty-state {
+      color: var(--text-muted);
+      font-style: italic;
+      padding: 2rem;
+      text-align: center;
+    }
+
+    /* ---- Feedback ---- */
+    .prev-feedback {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 0.625rem 0.75rem;
+      margin-top: 0.75rem;
+      font-size: 0.8125rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+    .prev-feedback-label {
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 0.25rem;
+      color: var(--text-muted);
+    }
+    .feedback-textarea {
+      width: 100%;
+      min-height: 100px;
+      padding: 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-family: inherit;
+      font-size: 0.9375rem;
+      line-height: 1.5;
+      resize: vertical;
+      color: var(--text);
+    }
+    .feedback-textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+    .feedback-status {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 0.5rem;
+      min-height: 1.1em;
+    }
+
+    /* ---- Grades (collapsible) ---- */
+    .grades-toggle {
+      display: flex;
+      align-items: center;
+      cursor: pointer;
+      user-select: none;
+    }
+    .grades-toggle:hover {
+      color: var(--accent);
+    }
+    .grades-toggle .arrow {
+      margin-right: 0.5rem;
+      transition: transform 0.15s;
+      font-size: 0.75rem;
+    }
+    .grades-toggle .arrow.open {
+      transform: rotate(90deg);
+    }
+    .grades-content {
+      display: none;
+      margin-top: 0.75rem;
+    }
+    .grades-content.open {
+      display: block;
+    }
+    .grades-summary {
+      font-size: 0.875rem;
+      margin-bottom: 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .grade-badge {
+      display: inline-block;
+      padding: 0.125rem 0.5rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .grade-pass { background: var(--green-bg); color: var(--green); }
+    .grade-fail { background: var(--red-bg); color: var(--red); }
+    .assertion-list {
+      list-style: none;
+    }
+    .assertion-item {
+      padding: 0.625rem 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.8125rem;
+    }
+    .assertion-item:last-child { border-bottom: none; }
+    .assertion-status {
+      font-weight: 600;
+      margin-right: 0.5rem;
+    }
+    .assertion-status.pass { color: var(--green); }
+    .assertion-status.fail { color: var(--red); }
+    .assertion-evidence {
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      margin-top: 0.25rem;
+      padding-left: 1.5rem;
+    }
+
+    /* ---- View tabs ---- */
+    .view-tabs {
+      display: flex;
+      gap: 0;
+      padding: 0 2rem;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .view-tab {
+      font-family: 'Poppins', sans-serif;
+      padding: 0.625rem 1.25rem;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      background: none;
+      color: var(--text-muted);
+      border-bottom: 2px solid transparent;
+      transition: all 0.15s;
+    }
+    .view-tab:hover { color: var(--text); }
+    .view-tab.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+    .view-panel { display: none; }
+    .view-panel.active { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+
+    /* ---- Benchmark view ---- */
+    .benchmark-view {
+      padding: 1.5rem 2rem;
+      overflow-y: auto;
+      flex: 1;
+    }
+    .benchmark-table {
+      border-collapse: collapse;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 0.8125rem;
+      width: 100%;
+      margin-bottom: 1.5rem;
+    }
+    .benchmark-table th, .benchmark-table td {
+      padding: 0.625rem 0.75rem;
+      text-align: left;
+      border: 1px solid var(--border);
+    }
+    .benchmark-table th {
+      font-family: 'Poppins', sans-serif;
+      background: var(--header-bg);
+      color: var(--header-text);
+      font-weight: 500;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .benchmark-table tr:hover { background: var(--bg); }
+    .benchmark-table tr.benchmark-row-with { background: rgba(33, 150, 243, 0.06); }
+    .benchmark-table tr.benchmark-row-without { background: rgba(255, 193, 7, 0.06); }
+    .benchmark-table tr.benchmark-row-with:hover { background: rgba(33, 150, 243, 0.12); }
+    .benchmark-table tr.benchmark-row-without:hover { background: rgba(255, 193, 7, 0.12); }
+    .benchmark-table tr.benchmark-row-avg { font-weight: 600; border-top: 2px solid var(--border); }
+    .benchmark-table tr.benchmark-row-avg.benchmark-row-with { background: rgba(33, 150, 243, 0.12); }
+    .benchmark-table tr.benchmark-row-avg.benchmark-row-without { background: rgba(255, 193, 7, 0.12); }
+    .benchmark-delta-positive { color: var(--green); font-weight: 600; }
+    .benchmark-delta-negative { color: var(--red); font-weight: 600; }
+    .benchmark-notes {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem;
+    }
+    .benchmark-notes h3 {
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.875rem;
+      margin-bottom: 0.75rem;
+    }
+    .benchmark-notes ul {
+      list-style: disc;
+      padding-left: 1.25rem;
+    }
+    .benchmark-notes li {
+      font-size: 0.8125rem;
+      line-height: 1.6;
+      margin-bottom: 0.375rem;
+    }
+    .benchmark-empty {
+      color: var(--text-muted);
+      font-style: italic;
+      text-align: center;
+      padding: 3rem;
+    }
+
+    /* ---- Navigation ---- */
+    .nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem 2rem;
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+      flex-shrink: 0;
+    }
+    .nav-btn {
+      font-family: 'Poppins', sans-serif;
+      padding: 0.5rem 1.25rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--text);
+      transition: all 0.15s;
+    }
+    .nav-btn:hover:not(:disabled) {
+      background: var(--bg);
+      border-color: var(--text-muted);
+    }
+    .nav-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+    .done-btn {
+      font-family: 'Poppins', sans-serif;
+      padding: 0.5rem 1.5rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      color: var(--text);
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-weight: 500;
+      transition: all 0.15s;
+    }
+    .done-btn:hover {
+      background: var(--bg);
+      border-color: var(--text-muted);
+    }
+    .done-btn.ready {
+      border: none;
+      background: var(--accent);
+      color: white;
+      font-weight: 600;
+    }
+    .done-btn.ready:hover {
+      background: var(--accent-hover);
+    }
+    /* ---- Done overlay ---- */
+    .done-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 100;
+      justify-content: center;
+      align-items: center;
+    }
+    .done-overlay.visible {
+      display: flex;
+    }
+    .done-card {
+      background: var(--surface);
+      border-radius: 12px;
+      padding: 2rem 3rem;
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      max-width: 500px;
+    }
+    .done-card h2 {
+      font-size: 1.5rem;
+      margin-bottom: 0.5rem;
+    }
+    .done-card p {
+      color: var(--text-muted);
+      margin-bottom: 1.5rem;
+      line-height: 1.5;
+    }
+    .done-card .btn-row {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: center;
+    }
+    .done-card button {
+      padding: 0.5rem 1.25rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      cursor: pointer;
+      font-size: 0.875rem;
+    }
+    .done-card button:hover {
+      background: var(--bg);
+    }
+    /* ---- Toast ---- */
+    .toast {
+      position: fixed;
+      bottom: 5rem;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--header-bg);
+      color: var(--header-text);
+      padding: 0.625rem 1.25rem;
+      border-radius: var(--radius);
+      font-size: 0.875rem;
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
+      z-index: 200;
+    }
+    .toast.visible {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+  <div id="app" style="height:100vh; display:flex; flex-direction:column;">
+    <div class="header">
+      <div>
+        <h1>Eval Review: <span id="skill-name"></span></h1>
+        <div class="instructions">Review each output and leave feedback below. Navigate with arrow keys or buttons. When done, copy feedback and paste into Claude Code.</div>
+      </div>
+      <div class="progress" id="progress"></div>
+    </div>
+
+    <!-- View tabs (only shown when benchmark data exists) -->
+    <div class="view-tabs" id="view-tabs" style="display:none;">
+      <button class="view-tab active" onclick="switchView('outputs')">Outputs</button>
+      <button class="view-tab" onclick="switchView('benchmark')">Benchmark</button>
+    </div>
+
+    <!-- Outputs panel (qualitative review) -->
+    <div class="view-panel active" id="panel-outputs">
+    <div class="main">
+      <!-- Prompt -->
+      <div class="section">
+        <div class="section-header">Prompt <span class="config-badge" id="config-badge" style="display:none;"></span></div>
+        <div class="section-body">
+          <div class="prompt-text" id="prompt-text"></div>
+        </div>
+      </div>
+
+      <!-- Outputs -->
+      <div class="section">
+        <div class="section-header">Output</div>
+        <div class="section-body" id="outputs-body">
+          <div class="empty-state">No output files found</div>
+        </div>
+      </div>
+
+      <!-- Previous Output (collapsible) -->
+      <div class="section" id="prev-outputs-section" style="display:none;">
+        <div class="section-header">
+          <div class="grades-toggle" onclick="togglePrevOutputs()">
+            <span class="arrow" id="prev-outputs-arrow">&#9654;</span>
+            Previous Output
+          </div>
+        </div>
+        <div class="grades-content" id="prev-outputs-content"></div>
+      </div>
+
+      <!-- Grades (collapsible) -->
+      <div class="section" id="grades-section" style="display:none;">
+        <div class="section-header">
+          <div class="grades-toggle" onclick="toggleGrades()">
+            <span class="arrow" id="grades-arrow">&#9654;</span>
+            Formal Grades
+          </div>
+        </div>
+        <div class="grades-content" id="grades-content"></div>
+      </div>
+
+      <!-- Feedback -->
+      <div class="section">
+        <div class="section-header">Your Feedback</div>
+        <div class="section-body">
+          <textarea
+            class="feedback-textarea"
+            id="feedback"
+            placeholder="What do you think of this output? Any issues, suggestions, or things that look great?"
+          ></textarea>
+          <div class="feedback-status" id="feedback-status"></div>
+          <div class="prev-feedback" id="prev-feedback" style="display:none;">
+            <div class="prev-feedback-label">Previous feedback</div>
+            <div id="prev-feedback-text"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="nav" id="outputs-nav">
+      <button class="nav-btn" id="prev-btn" onclick="navigate(-1)">&#8592; Previous</button>
+      <button class="done-btn" id="done-btn" onclick="showDoneDialog()">Submit All Reviews</button>
+      <button class="nav-btn" id="next-btn" onclick="navigate(1)">Next &#8594;</button>
+    </div>
+    </div><!-- end panel-outputs -->
+
+    <!-- Benchmark panel (quantitative stats) -->
+    <div class="view-panel" id="panel-benchmark">
+      <div class="benchmark-view" id="benchmark-content">
+        <div class="benchmark-empty">No benchmark data available. Run a benchmark to see quantitative results here.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Done overlay -->
+  <div class="done-overlay" id="done-overlay">
+    <div class="done-card">
+      <h2>Review Complete</h2>
+      <p>Your feedback has been saved. Go back to your Claude Code session and tell Claude you're done reviewing.</p>
+      <div class="btn-row">
+        <button onclick="closeDoneDialog()">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // ---- Embedded data (injected by generate_review.py) ----
+    const EMBEDDED_DATA = {"skill_name": "infisical-setup-guide", "runs": [{"id": "local-dev-setup-with_skill", "prompt": "I just cloned the infisical repo and want to get it running locally on my mac for development. Can you walk me through the setup?", "eval_id": 1, "outputs": [{"name": "response.md", "type": "text", "content": "# Local Development Setup Guide for Infisical on macOS\n\nGreat! You've cloned the Infisical repo. I'll walk you through getting it running for local development. Let's go step-by-step.\n\n## Prerequisites Check\n\nBefore we start, make sure you have these installed:\n\n1. **Docker and Docker Compose** \u2014 needed to run PostgreSQL, Redis, and other services\n2. **Node.js 20** \u2014 the project requires Node 20\n3. **Git** \u2014 already done since you cloned the repo\n\nIf you're missing any of these, install them first:\n- Docker Desktop for Mac: https://www.docker.com/products/docker-desktop\n- Node.js: https://nodejs.org/ (use a version manager like `nvm` or `asdf` if you prefer)\n\n## Step 1: Set Up Environment Variables\n\nIn the repo root, copy the dev example environment file:\n\n```bash\ncp .env.dev.example .env\n```\n\nThe `.env.dev.example` file includes sensible defaults for local development, including pre-configured:\n- **ENCRYPTION_KEY** \u2014 Base64-encoded key for encrypting/decrypting secrets\n- **AUTH_SECRET** \u2014 JWT signing secret\n- **DB_CONNECTION_URI** \u2014 PostgreSQL connection string pointing to the dev database\n- **REDIS_URL** \u2014 Redis connection string\n- **SITE_URL** \u2014 set to `http://localhost:8080`\n\n**Important:** These defaults are fine for local development only. Never use them in production.\n\n## Step 2: Start All Services\n\nFrom the repo root, run:\n\n```bash\ndocker compose -f docker-compose.dev.yml up --build --force-recreate\n```\n\nThis will spin up the entire dev stack:\n\n- **Nginx** (http://localhost:8080) \u2014 main entry point\n- **PostgreSQL** (port 5432) \u2014 primary database\n- **Redis** (port 6379) \u2014 caching and job queues\n- **ClickHouse** (port 8123) \u2014 audit log storage\n- **Backend API** (port 4000) \u2014 Fastify server with live reload\n- **Frontend** \u2014 React dev server with hot module replacement\n- **MailHog** (http://localhost:8025) \u2014 email testing UI\n- **PgAdmin** (http://localhost:5050) \u2014 database management\n- **Redis Commander** (http://localhost:8085) \u2014 Redis debugging\n\nOn first run, this will take a few minutes to build all services. Watch the logs for any errors.\n\n## Step 3: Access the Application\n\nOnce all services are running (watch the Nginx logs for \"ready\" and the frontend for \"ready in Xms\"), open your browser:\n\n```\nhttp://localhost:8080\n```\n\nYou'll be prompted to create an initial admin account. Follow the signup flow to get started.\n\n## Step 4: (Optional) Add OAuth Login for Development\n\nIf you want to test GitHub, Google, or GitLab login locally, add these to your `.env`:\n\n```\nCLIENT_ID_GITHUB_LOGIN=<your-github-oauth-app-client-id>\nCLIENT_SECRET_GITHUB_LOGIN=<your-github-oauth-app-client-secret>\nCLIENT_ID_GOOGLE_LOGIN=<your-google-oauth-client-id>\nCLIENT_SECRET_GOOGLE_LOGIN=<your-google-oauth-client-secret>\nCLIENT_ID_GITLAB_LOGIN=<your-gitlab-application-id>\nCLIENT_SECRET_GITLAB_LOGIN=<your-gitlab-application-secret>\n```\n\nRestart the backend and frontend after adding these (or restart the whole stack with Ctrl+C and rerun the docker compose command).\n\n## Useful Development Commands\n\nBefore submitting pull requests, run these to lint and type-check:\n\n```bash\nmake reviewable-api      # Lint + type-check the backend\nmake reviewable-ui       # Lint + type-check the frontend\n```\n\nFor database work:\n\n```bash\ncd backend && npm run migration:new         # Create a new migration\ncd backend && npm run generate:schema       # Regenerate Zod types from DB\n```\n\n## Optional: Testing Services\n\nThe dev stack includes optional services for testing SSO, LDAP, and metrics. Start them with Docker Compose profiles:\n\n```bash\n# LDAP testing (OpenLDAP + phpLdapAdmin)\ndocker compose -f docker-compose.dev.yml --profile ldap up --build\n\n# SSO testing (Keycloak)\ndocker compose -f docker-compose.dev.yml --profile sso up --build\n\n# Metrics (Prometheus + Grafana)\ndocker compose -f docker-compose.dev.yml --profile metrics up --build\n\n# Combine multiple profiles\ndocker compose -f docker-compose.dev.yml --profile ldap --profile sso up --build\n```\n\n## Troubleshooting Common Issues\n\n**Port conflicts**: If port 8080 is already in use, you'll see an Nginx error. Check with:\n```bash\nlsof -i :8080\n```\nKill the conflicting process or change Nginx's port in the compose file.\n\n**Docker memory issues**: The full dev stack uses ~4GB RAM. If services are crashing, increase Docker Desktop's memory limit in Preferences \u2192 Resources \u2192 Memory.\n\n**Database won't start**: If the backend fails with database errors, wipe and restart:\n```bash\ndocker compose -f docker-compose.dev.yml down -v\ndocker compose -f docker-compose.dev.yml up --build --force-recreate\n```\n\n**Frontend not loading**: The Vite dev server takes a moment to compile. Wait for the \"ready\" message in the logs before refreshing the browser.\n\n## Key Paths in the Repo\n\n- `docker-compose.dev.yml` \u2014 dev orchestration configuration\n- `.env.dev.example` \u2014 environment variable template\n- `backend/` \u2014 Fastify API server (see `backend/CLAUDE.md` for architecture details)\n- `frontend/` \u2014 React SPA (see `frontend/CLAUDE.md` for patterns)\n- `backend/src/db/migrations/` \u2014 database migration files\n- `CLAUDE.md` \u2014 root architecture documentation\n\n## Next Steps\n\nOnce everything is running:\n\n1. Create your first admin account via the signup prompt\n2. Explore the UI and create a project to store secrets\n3. Check out `backend/CLAUDE.md` and `frontend/CLAUDE.md` for code architecture\n4. Start making changes \u2014 both the backend and frontend have live reload enabled, so your changes should reflect instantly\n\nYou're all set! If you hit any issues during setup, let me know and I can help troubleshoot.\n"}], "grading": {"expectations": [{"text": "References .env.dev.example (not .env.example)", "passed": true, "evidence": "Found in with_skill response (5585 chars)"}, {"text": "Mentions docker-compose.dev.yml", "passed": true, "evidence": "Found in with_skill response (5585 chars)"}, {"text": "States correct port 8080 for access", "passed": true, "evidence": "Found in with_skill response (5585 chars)"}, {"text": "Mentions MailHog or email testing", "passed": true, "evidence": "Found in with_skill response (5585 chars)"}, {"text": "Warns about not using dev defaults in production", "passed": true, "evidence": "Found in with_skill response (5585 chars)"}, {"text": "Mentions make reviewable commands", "passed": true, "evidence": "Found in with_skill response (5585 chars)"}, {"text": "Does NOT reference deprecated .env.example for setup", "passed": true, "evidence": "Found in with_skill response (5585 chars)"}, {"text": "Mentions Docker Compose profiles for optional services (not 'uncomment')", "passed": true, "evidence": "Found in with_skill response (5585 chars)"}], "summary": {"passed": 8, "failed": 0, "total": 8, "pass_rate": 1.0}, "timing": {"total_tokens": 36391, "duration_ms": 27101, "total_duration_seconds": 27.1}}}, {"id": "local-dev-setup-without_skill", "prompt": "I just cloned the infisical repo and want to get it running locally on my mac for development. Can you walk me through the setup?", "eval_id": 1, "outputs": [{"name": "response.md", "type": "text", "content": "# Infisical Local Development Setup Guide for Mac\n\nThis guide walks you through setting up the Infisical monorepo for local development on macOS.\n\n## Prerequisites\n\nBefore you begin, ensure you have the following installed on your Mac:\n\n- **Git** \u2014 for cloning the repository ([download](https://git-scm.com/downloads))\n- **Docker** \u2014 for running containerized services ([Docker Desktop for Mac](https://www.docker.com/products/docker-desktop))\n- **Node.js** \u2014 version with npm >=11.10.0 (manage with nvm or brew)\n- **Make** \u2014 typically pre-installed on macOS; verify with `make --version`\n\nEstimated time to complete: **15-20 minutes**\n\n## Step 1: Clone the Repository\n\n```bash\ngit clone https://github.com/Infisical/infisical.git\ncd infisical\n```\n\n## Step 2: Set Up Environment Variables\n\nThe repo includes example environment files. Copy the development example to `.env`:\n\n```bash\ncp .env.dev.example .env\n```\n\nThe `.env` file includes default sample values for local development:\n- **ENCRYPTION_KEY** \u2014 sample encryption key (safe for dev only)\n- **AUTH_SECRET** \u2014 sample JWT signing key (safe for dev only)\n- **Database credentials** \u2014 default user/password for PostgreSQL\n- **SITE_URL** \u2014 set to `http://localhost:8080` for local Docker setup\n- **Redis URL** \u2014 configured to use the Docker Redis service\n\n**Note:** For development with Docker Compose, you don't need to modify the `.env` file unless you want to customize database credentials or enable specific integrations (GitHub OAuth, LDAP, SSO, etc.).\n\n## Step 3: Start the Full Stack with Docker Compose\n\nThe easiest way to get running is to use Docker Compose, which starts all services (PostgreSQL, Redis, ClickHouse, Backend, Frontend, Nginx):\n\n```bash\nmake up-dev\n```\n\nThis command:\n- Builds and starts the backend (Fastify API server)\n- Builds and starts the frontend (React SPA)\n- Spins up PostgreSQL 14, Redis, and ClickHouse\n- Runs Nginx as a reverse proxy\n- Automatically runs database migrations\n\n**First time setup note:** The initial build may take 5-10 minutes as Docker pulls images and installs dependencies.\n\n### Wait for Services to Be Ready\n\nOnce the containers are running, monitor the logs to ensure everything is healthy:\n- Watch for `backend` to log that it's listening on port 4000\n- Watch for `frontend` to indicate the Vite dev server is running\n- Once both are ready, proceed to the next step\n\n### Access Infisical\n\nOpen your browser and navigate to:\n\n```\nhttp://localhost:8080\n```\n\nYou should see the Infisical login page. Create a new account to get started.\n\n## Alternative: Hybrid Local + Docker Approach (Advanced)\n\nIf you prefer to run the backend and frontend locally (with faster reload times) while keeping services in Docker, you'll need to run them separately:\n\n### Terminal 1: Start Services Only\n\n```bash\ndocker compose -f docker-compose.dev.yml up db redis clickhouse nginx -d\n```\n\nThis starts only the infrastructure services, leaving ports for local backend/frontend development.\n\n### Terminal 2: Backend Development\n\nNavigate to the backend directory and start the dev server:\n\n```bash\ncd backend\nnpm install\nnpm run dev\n```\n\nThe backend dev server:\n- Watches for TypeScript changes\n- Rebuilds and restarts automatically\n- Runs on `http://localhost:4000`\n- Outputs formatted logs via pino-pretty\n\n### Terminal 3: Frontend Development\n\nNavigate to the frontend directory and start the dev server:\n\n```bash\ncd frontend\nnpm install\nnpm run dev\n```\n\nThe frontend dev server:\n- Runs Vite on port 3000\n- Provides hot module reloading (HMR)\n- Auto-rebuilds on file changes\n\n### Access the Application\n\nWith the hybrid setup, Nginx still proxies requests to both servers at `http://localhost:8080`.\n\n## Repository Structure\n\n```\ninfisical/\n\u251c\u2500\u2500 backend/                    # Fastify 4 API (TypeScript, PostgreSQL, BullMQ)\n\u2502   \u251c\u2500\u2500 src/\n\u2502   \u251c\u2500\u2500 package.json\n\u2502   \u251c\u2500\u2500 CLAUDE.md              # Backend developer guide\n\u2502   \u2514\u2500\u2500 Dockerfile.dev.fips\n\u251c\u2500\u2500 frontend/                   # React 18 SPA (Vite, TanStack Router, Tailwind CSS)\n\u2502   \u251c\u2500\u2500 src/\n\u2502   \u251c\u2500\u2500 package.json\n\u2502   \u251c\u2500\u2500 CLAUDE.md              # Frontend developer guide\n\u2502   \u2514\u2500\u2500 Dockerfile.dev\n\u251c\u2500\u2500 docs/                       # Documentation site (Mintlify)\n\u251c\u2500\u2500 docker-compose.dev.yml      # Development services\n\u251c\u2500\u2500 docker-compose.prod.yml     # Production deployment\n\u251c\u2500\u2500 Makefile                    # Convenient make commands\n\u251c\u2500\u2500 CLAUDE.md                   # Root developer guide\n\u2514\u2500\u2500 .env.dev.example            # Sample development environment variables\n```\n\n## Essential Development Commands\n\nRun these commands from the repository root unless noted otherwise.\n\n### Build & Quality Checks (Before Submitting PRs)\n\n```bash\n# Check and fix frontend code\nmake reviewable-ui\n\n# Check and fix backend code\nmake reviewable-api\n\n# Check and fix both\nmake reviewable\n```\n\nThese commands run linting and TypeScript type checking. Always run these before submitting pull requests.\n\n### Backend Commands (from `backend/` directory)\n\n```bash\n# Start dev server with auto-reload\nnpm run dev\n\n# Run unit tests\nnpm run test:unit\n\n# Run end-to-end tests (requires running services)\nnpm run test:e2e\n\n# Create a new database migration\nnpm run migration:new\n\n# Run pending migrations\nnpm run migration:latest-dev\n\n# Regenerate Zod types from the database\nnpm run generate:schema\n\n# Lint and fix code\nnpm run lint:fix\n\n# Type check (uses 8GB heap)\nnpm run type:check\n```\n\n### Frontend Commands (from `frontend/` directory)\n\n```bash\n# Start dev server\nnpm run dev\n\n# Production build\nnpm run build\n\n# Lint and fix code\nnpm run lint:fix\n\n# Type check\nnpm run type:check\n\n# Run Storybook (component library)\nnpm run storybook\n```\n\n### Docker Compose Commands (from repository root)\n\n```bash\n# Start development environment with auto-rebuild\nmake up-dev\n\n# Stop and remove containers\nmake down\n\n# Start with LDAP services (for LDAP testing)\nmake up-dev-ldap\n\n# Start with metrics (Prometheus, Grafana, OpenTelemetry)\nmake up-dev-metrics\n\n# Start with SSO (Keycloak for OAuth testing)\nmake up-dev-sso\n\n# View logs\ndocker compose -f docker-compose.dev.yml logs -f\n\n# View logs for specific service\ndocker compose -f docker-compose.dev.yml logs -f backend\n```\n\n## Database Access & Tools\n\nThe development environment includes several tools for managing your local instance:\n\n### PgAdmin (PostgreSQL Management UI)\n\nAccess the database admin interface at `http://localhost:5050`\n\n- **Email:** `admin@example.com`\n- **Password:** `pass`\n- The PostgreSQL service is already configured in the left sidebar\n\n### Redis Commander (Redis Management UI)\n\nAccess the Redis admin interface at `http://localhost:8085`\n\n- Browse keys, view data structures, and run Redis commands\n- Useful for debugging queue jobs and caches\n\n### MailHog (Local SMTP Server & Email Testing)\n\nAccess the email UI at `http://localhost:8025`\n\n- Captures all emails sent during development\n- View email content without actually sending\n- Useful for testing email-based flows (password reset, invitations, etc.)\n\n### ClickHouse (Analytics/Audit Log Storage)\n\n- Native protocol: `localhost:9000`\n- HTTP UI: `http://localhost:8123`\n- **Username/Password:** `infisical` / `infisical`\n- Used for storing audit logs in the application\n\n## Troubleshooting\n\n### Services Won't Start\n\n**Issue:** Docker Compose fails with port conflicts or resource errors\n\n**Solutions:**\n- Ensure no other services are using ports 5432, 6379, 4000, 3000, or 8080\n- Increase Docker's memory allocation in Docker Desktop settings (recommend 6GB+)\n- Run `docker system prune` to free up space if disk is full\n- Restart Docker Desktop completely\n\n### Containers Crash Immediately\n\n**Issue:** Backend or frontend containers exit right after starting\n\n**Solutions:**\n- Check logs: `docker compose -f docker-compose.dev.yml logs backend`\n- Ensure `.env` file is correctly copied from `.env.dev.example`\n- Verify all required environment variables are set (at minimum: `ENCRYPTION_KEY`, `AUTH_SECRET`, `DB_CONNECTION_URI`)\n- The backend may take a moment to initialize; wait 30 seconds and check again\n\n### Database Migration Errors\n\n**Issue:** Migration fails when containers start\n\n**Solutions:**\n- Check PostgreSQL is fully ready: `docker compose -f docker-compose.dev.yml logs db`\n- Manually run migrations:\n  ```bash\n  # Inside backend container\n  npm run migration:latest-dev\n  ```\n- If corrupted, reset the database volume:\n  ```bash\n  docker volume rm infisical_postgres-data\n  make down\n  make up-dev\n  ```\n\n### Frontend Not Loading at localhost:8080\n\n**Issue:** Nginx returns 502 or blank page\n\n**Solutions:**\n- Verify backend is running: `curl http://localhost:4000/api/v1/health` should return JSON\n- Verify frontend is running: check `docker compose -f docker-compose.dev.yml logs frontend`\n- Wait 30-60 seconds for services to fully initialize\n- Refresh your browser with Cmd+Shift+R to clear cache\n\n### Hybrid Setup \u2014 Backend Can't Connect to Database\n\n**Issue:** Backend logs show connection timeout to PostgreSQL\n\n**Solutions:**\n- Ensure Docker Compose services are running: `docker compose -f docker-compose.dev.yml ps`\n- Verify `DB_CONNECTION_URI` in `.env` uses the correct host. For local dev, it should be:\n  - With Docker services: `postgres://infisical:infisical@localhost:5432/infisical`\n  - Adjust the host if running in a Docker network\n- Check the password matches what's in `.env`: default is `infisical`\n\n## Key Architectural Patterns\n\n### Backend (Fastify + TypeScript + PostgreSQL)\n\n- **Service Factory Pattern:** No IoC container; manual dependency injection with explicit wiring in `src/server/routes/index.ts`\n- **DAL Layer:** `*-dal.ts` files provide typed CRUD operations via `ormify()`\n- **Auth Modes:** JWT (user sessions), IDENTITY_ACCESS_TOKEN (machine-to-machine), SCIM_TOKEN, MCP_JWT\n- **Permissions:** CASL-based authorization with project and org-level rules\n- **Queues:** BullMQ for async jobs (secret rotation, audit logs, integrations, etc.)\n- **Path Alias:** `@app/*` maps to `./src/*`\n\nFor detailed backend architecture, see `backend/CLAUDE.md`\n\n### Frontend (React 18 + Vite + TanStack Router)\n\n- **Routing:** TanStack Router v1 with virtual file-based routes in `src/routes.ts`\n- **State Management:** React Query for server state, React Context for global app state, Zustand for local state\n- **API Layer:** Query key factories per domain in `src/hooks/api/*/`, Axios HTTP client with auth injection\n- **Components:** v3 components (modern) in `src/components/v3/`, v2 legacy components being phased out\n- **Styling:** Tailwind CSS v4 with dark theme support\n- **Path Alias:** `@app/*` maps to `./src/*`\n\nFor detailed frontend architecture, see `frontend/CLAUDE.md`\n\n## Next Steps\n\n1. **Explore the codebase:**\n   - Backend: Start with `backend/src/services/` to understand service patterns\n   - Frontend: Start with `frontend/src/pages/` to understand page structure\n\n2. **Read the architecture guides:**\n   - `backend/CLAUDE.md` \u2014 comprehensive backend patterns and file organization\n   - `frontend/CLAUDE.md` \u2014 comprehensive frontend patterns and components\n   - `CLAUDE.md` \u2014 cross-cutting concerns and full-stack patterns\n\n3. **Create your first feature:**\n   - Follow the \"Wiring a New Full-Stack Feature\" checklist in the root `CLAUDE.md`\n   - Start with a small feature to understand the patterns\n\n4. **Run quality checks before pushing:**\n   ```bash\n   make reviewable\n   ```\n\n5. **Review the documentation site locally:**\n   - Check `/infisical/docs/` for feature documentation\n   - Reference API docs to understand available endpoints\n\n## Getting Help\n\n- **Slack Community:** Join the official Slack for questions: https://infisical.com/slack\n- **GitHub Issues:** Report bugs or feature requests: https://github.com/Infisical/infisical/issues\n- **Documentation:** Full docs available at https://infisical.com/docs\n- **Contributing Guide:** https://infisical.com/docs/contributing/getting-started\n\n## License\n\nInfisical is released under the MIT License. Enterprise features in the `ee/` directory require a license.\n\nHappy developing!\n"}], "grading": {"expectations": [{"text": "References .env.dev.example (not .env.example)", "passed": true, "evidence": "Found in without_skill response (12056 chars)"}, {"text": "Mentions docker-compose.dev.yml", "passed": true, "evidence": "Found in without_skill response (12056 chars)"}, {"text": "States correct port 8080 for access", "passed": true, "evidence": "Found in without_skill response (12056 chars)"}, {"text": "Mentions MailHog or email testing", "passed": true, "evidence": "Found in without_skill response (12056 chars)"}, {"text": "Warns about not using dev defaults in production", "passed": true, "evidence": "Found in without_skill response (12056 chars)"}, {"text": "Mentions make reviewable commands", "passed": true, "evidence": "Found in without_skill response (12056 chars)"}, {"text": "Does NOT reference deprecated .env.example for setup", "passed": true, "evidence": "Found in without_skill response (12056 chars)"}, {"text": "Mentions Docker Compose profiles for optional services (not 'uncomment')", "passed": true, "evidence": "Found in without_skill response (12056 chars)"}], "summary": {"passed": 8, "failed": 0, "total": 8, "pass_rate": 1.0}, "timing": {"total_tokens": 60336, "duration_ms": 74557, "total_duration_seconds": 74.6}}}, {"id": "k8s-machine-identity-with_skill", "prompt": "I need to set up a machine identity so my Kubernetes pods can pull secrets from Infisical. What auth method should I use and how do I configure it?", "eval_id": 2, "outputs": [{"name": "response.md", "type": "text", "content": "# Kubernetes Machine Identity Setup for Infisical\n\n## Quick Answer\n\nFor Kubernetes pods pulling secrets from Infisical, use **Kubernetes Auth** \u2014 it's the best choice because it's zero-secret (no credentials to manage), leverages your existing service account infrastructure, and is specifically designed for K8s workloads.\n\n---\n\n## Why Kubernetes Auth?\n\n| Method | Requires Secret | Zero-Proof | Best for |\n|--------|-----------------|-----------|----------|\n| **Kubernetes Auth** | No | Yes | K8s pods (the pod's SA JWT proves identity) |\n| Universal Auth | Yes | No | Multi-platform, needs Client ID/Secret |\n| Token Auth | Yes | No | Quick testing, less secure |\n| AWS Auth | No | Yes | Only if running on EKS with IAM roles |\n| OIDC Auth | No | Yes | Only if you have an external OIDC provider |\n\n**Recommendation**: Use **Kubernetes Auth** unless you have a specific reason not to.\n\n---\n\n## Architecture: How Kubernetes Auth Works\n\n1. **Pod requests secret** from your app\n2. **App reads pod's service account JWT** from `/var/run/secrets/kubernetes.io/serviceaccount/token` (automatically mounted)\n3. **App sends JWT to Infisical** via `POST /api/v1/auth/kubernetes-auth/login`\n4. **Infisical verifies JWT** against the Kubernetes API server using TokenReview (requires cluster CA cert + service account token)\n5. **Infisical returns short-lived access token** (default 2 hours)\n6. **App uses token** to fetch secrets\n\n**Key benefit**: The pod's identity is cryptographically proven via the service account JWT. No static secrets stored in your deployment.\n\n---\n\n## Setup Steps\n\n### Step 1: Prepare Kubernetes Prerequisites\n\nInfisical needs two pieces of information about your K8s cluster:\n\n1. **Kubernetes API Server URL** \u2014 usually `https://kubernetes.default.svc` (or your external cluster URL)\n2. **Service Account with TokenReview permission** \u2014 creates a token that Infisical uses to verify other service account JWTs\n\n**Create the token reviewer service account:**\n\n```bash\n# Apply this to your cluster\nkubectl apply -f - <<EOF\napiVersion: v1\nkind: ServiceAccount\nmetadata:\n  name: infisical-token-reviewer\n  namespace: default\n---\napiVersion: rbac.authorization.k8s.io/v1\nkind: ClusterRoleBinding\nmetadata:\n  name: infisical-token-reviewer\nroleRef:\n  apiGroup: rbac.authorization.k8s.io\n  kind: ClusterRole\n  name: system:auth-delegator\nsubjects:\n- kind: ServiceAccount\n  name: infisical-token-reviewer\n  namespace: default\nEOF\n```\n\n**Get the token (you'll need this in Step 3):**\n\n```bash\nkubectl create token infisical-token-reviewer --duration=87600h\n```\n\nThis token allows Infisical to verify other service account JWTs via the Kubernetes API.\n\n### Step 2: Create a Machine Identity in Infisical\n\nGo to Infisical UI:\n\n1. **Organization Settings** \u2192 **Access Control** \u2192 **Machine Identities**\n2. Click **Create Identity**\n3. Give it a name like `k8s-pod-identity`\n4. Assign an **organization role** (e.g., Editor if this identity needs broad access, or a custom role)\n5. Click **Create**\n\n(Alternatively, create at **Project Level** in Project Settings \u2192 Access Control \u2192 Machine Identities if you want to scope it to one project.)\n\n### Step 3: Configure Kubernetes Auth Method\n\nAfter creating the identity:\n\n1. In the identity details, go to **Auth Method** \u2192 **Add Method** (if not already present)\n2. Select **Kubernetes Auth**\n3. Fill in:\n   - **Kubernetes Host URL**: `https://kubernetes.default.svc` (or your external API server URL)\n   - **CA Certificate**: The Kubernetes cluster's CA cert. Get it from:\n     ```bash\n     kubectl get secret $(kubectl get secret -n default | grep infisical-token-reviewer | awk '{print $1}') \\\n       -n default -o jsonpath='{.data.ca\\.crt}' | base64 -d\n     ```\n     Or from your kubeconfig at `.clusters[].cluster.certificate-authority-data` (base64 decode it)\n   - **Token Reviewer JWT**: Paste the token from Step 1\n   - **Allowed Namespaces**: `default` (or comma-separated list: `default,production,staging`)\n   - **Allowed Service Account Names**: Your pod's service account name (e.g., `my-app`, or `*` to allow any)\n   - **Allowed Audiences** (optional): Leave blank or set to your Infisical instance hostname\n\n4. Click **Save**\n\n### Step 4: Grant Project Access (if org-level identity)\n\nIf your identity is organization-level, add it to the project(s) where it needs secret access:\n\n1. Go to **Project Settings** \u2192 **Access Control** \u2192 **Machine Identities**\n2. Click **Add Identity**\n3. Select your `k8s-pod-identity`\n4. Assign a **project role** (e.g., Viewer if it only needs to read secrets)\n5. Click **Add**\n\n### Step 5: Configure Your Pod\n\nIn your Kubernetes deployment, ensure the pod runs with the correct service account and can reach Infisical:\n\n```yaml\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: my-app\n  namespace: default\nspec:\n  template:\n    spec:\n      serviceAccountName: my-app  # Must match \"Allowed Service Account Names\" from Step 3\n      containers:\n      - name: my-app\n        image: my-app:latest\n        env:\n        - name: INFISICAL_ADDR\n          value: \"https://infisical.example.com\"  # Your Infisical URL\n        - name: INFISICAL_IDENTITY_ID\n          value: \"<identity-id>\"  # From Step 2\n---\napiVersion: v1\nkind: ServiceAccount\nmetadata:\n  name: my-app\n  namespace: default\n```\n\n### Step 6: Authenticate from Your App\n\nIn your application code, authenticate with Infisical using the pod's service account JWT:\n\n**Example (Node.js/JavaScript):**\n\n```javascript\nconst fs = require('fs');\nconst axios = require('axios');\n\nconst identityId = process.env.INFISICAL_IDENTITY_ID;\nconst infisicalAddr = process.env.INFISICAL_ADDR;\nconst tokenPath = '/var/run/secrets/kubernetes.io/serviceaccount/token';\n\nasync function getAccessToken() {\n  const jwt = fs.readFileSync(tokenPath, 'utf8');\n\n  const response = await axios.post(\n    `${infisicalAddr}/api/v1/auth/kubernetes-auth/login`,\n    {\n      identityId,\n      jwt\n    }\n  );\n\n  return response.data.accessToken;\n}\n\nasync function getSecret(secretName) {\n  const accessToken = await getAccessToken();\n\n  const response = await axios.get(\n    `${infisicalAddr}/api/v1/secrets/${secretName}`,\n    {\n      headers: {\n        Authorization: `Bearer ${accessToken}`\n      }\n    }\n  );\n\n  return response.data;\n}\n\n// Usage\ngetSecret('MY_SECRET').then(secret => console.log(secret));\n```\n\n**Example (Python):**\n\n```python\nimport os\nimport requests\nimport json\n\nidentity_id = os.getenv('INFISICAL_IDENTITY_ID')\ninfisical_addr = os.getenv('INFISICAL_ADDR')\ntoken_path = '/var/run/secrets/kubernetes.io/serviceaccount/token'\n\ndef get_access_token():\n    with open(token_path, 'r') as f:\n        jwt = f.read()\n\n    response = requests.post(\n        f'{infisical_addr}/api/v1/auth/kubernetes-auth/login',\n        json={\n            'identityId': identity_id,\n            'jwt': jwt\n        }\n    )\n    response.raise_for_status()\n    return response.json()['accessToken']\n\ndef get_secret(secret_name):\n    access_token = get_access_token()\n\n    response = requests.get(\n        f'{infisical_addr}/api/v1/secrets/{secret_name}',\n        headers={\n            'Authorization': f'Bearer {access_token}'\n        }\n    )\n    response.raise_for_status()\n    return response.json()\n\n# Usage\nsecret = get_secret('MY_SECRET')\nprint(json.dumps(secret, indent=2))\n```\n\n**Example using the official Infisical SDK (Python):**\n\n```python\nfrom infisical import client\nfrom infisical.models.common.identity_auth import MachineIdentityType\n\nclient.init(\n    api_host=\"https://infisical.example.com\",\n    site_url=\"https://infisical.example.com\",\n)\n\n# Use Kubernetes Auth via environment variables\naccess_token = client.auth.login(\n    identity_type=MachineIdentityType.KUBERNETES,\n)\n\nsecret = client.secrets.get(\n    secret_name=\"MY_SECRET\",\n    project_slug=\"my-project\",\n    path=\"/\",\n)\nprint(secret.secret_value)\n```\n\n---\n\n## Configuration Options Explained\n\n| Option | Description | Example |\n|--------|-------------|---------|\n| **Kubernetes Host URL** | The Kubernetes API server endpoint | `https://kubernetes.default.svc` |\n| **CA Certificate** | PEM-encoded CA cert of your K8s cluster | (see Step 3) |\n| **Token Reviewer JWT** | Service account token with TokenReview permission | (see Step 1) |\n| **Allowed Namespaces** | Restrict which namespaces can authenticate (comma-separated) | `default,prod,staging` |\n| **Allowed Service Account Names** | Restrict which service accounts can authenticate | `my-app` or `*` for any |\n| **Allowed Audiences** (optional) | Additional claim validation | Leave blank or set to hostname |\n\n---\n\n## Troubleshooting\n\n### \"TokenReview returned false\"\n- **Cause**: Service account credentials are invalid or expired\n- **Fix**: Regenerate the token reviewer token from Step 1:\n  ```bash\n  kubectl create token infisical-token-reviewer --duration=87600h\n  ```\n\n### \"Namespace not allowed\"\n- **Cause**: The pod's namespace isn't in the \"Allowed Namespaces\" list\n- **Fix**: Update the Kubernetes Auth config to include the pod's namespace\n\n### \"Service account name not allowed\"\n- **Cause**: The pod's service account name doesn't match the config\n- **Fix**: Either update the pod's serviceAccountName or widen \"Allowed Service Account Names\" to `*`\n\n### \"Connection refused\" or \"Timeout\"\n- **Cause**: Pod can't reach Infisical\n- **Fix**: Check network policies, firewall rules, and DNS from the pod:\n  ```bash\n  kubectl exec -it <pod-name> -- curl -v https://infisical.example.com\n  ```\n\n### \"Invalid JWT\" or \"JWT verification failed\"\n- **Cause**: Kubernetes API server can't verify the pod's JWT\n- **Fix**: Ensure the CA certificate in Step 3 matches your cluster's actual CA\n\n---\n\n## Identity Design Best Practices\n\n1. **One identity per app/namespace** \u2014 Use separate identities for different applications to limit blast radius\n2. **Scope by role** \u2014 Assign the minimum role needed (e.g., Viewer if the app only reads secrets)\n3. **Plan for rotation** \u2014 Keep the token reviewer token fresh and consider rotation procedures\n4. **Monitor access** \u2014 Check Infisical audit logs to see which identities accessed which secrets\n\n---\n\n## Alternative Auth Methods (When NOT to use Kubernetes Auth)\n\n- **Universal Auth**: If your cluster doesn't support TokenReview or if you want a shared secret across multiple services\n- **Token Auth**: If you need something quick for testing (not recommended for production)\n- **AWS Auth (if on EKS)**: If you want to use AWS IAM roles instead of Kubernetes service accounts\n- **OIDC Auth**: If you have an external OIDC provider (e.g., GitHub Actions)\n\n---\n\n## Relevant Code Paths\n\n- **Backend Kubernetes Auth service**: `/sessions/laughing-kind-euler/mnt/infisical/backend/src/services/identity-kubernetes-auth/`\n- **API docs**: Check `/docs/documentation/platform/identities/` in the Infisical repo for the latest API reference\n\n---\n\n## Next Steps\n\n1. \u2705 Create the token reviewer service account (Step 1)\n2. \u2705 Create the machine identity in Infisical (Step 2)\n3. \u2705 Configure Kubernetes Auth (Step 3)\n4. \u2705 Grant project access if needed (Step 4)\n5. \u2705 Update your deployment to use the correct service account (Step 5)\n6. \u2705 Integrate Infisical SDK or REST calls in your app (Step 6)\n7. \u2705 Deploy and test\n\nIf you hit any issues, check the troubleshooting section or inspect Infisical's audit logs and pod logs.\n"}], "grading": {"expectations": [{"text": "Recommends Kubernetes Auth as primary method", "passed": true, "evidence": "Found in with_skill response (11318 chars)"}, {"text": "Mentions zero-secret or no credentials needed", "passed": true, "evidence": "Found in with_skill response (11318 chars)"}, {"text": "Explains service account token verification", "passed": true, "evidence": "Found in with_skill response (11318 chars)"}, {"text": "Mentions token reviewer setup", "passed": true, "evidence": "Found in with_skill response (11318 chars)"}, {"text": "Provides YAML or configuration examples", "passed": true, "evidence": "Found in with_skill response (11318 chars)"}, {"text": "Does NOT recommend deprecated Service Tokens", "passed": true, "evidence": "Found in with_skill response (11318 chars)"}, {"text": "Mentions blast radius or identity design best practices", "passed": true, "evidence": "Found in with_skill response (11318 chars)"}], "summary": {"passed": 7, "failed": 0, "total": 7, "pass_rate": 1.0}, "timing": {"total_tokens": 41301, "duration_ms": 66349, "total_duration_seconds": 66.3}}}, {"id": "k8s-machine-identity-without_skill", "prompt": "I need to set up a machine identity so my Kubernetes pods can pull secrets from Infisical. What auth method should I use and how do I configure it?", "eval_id": 2, "outputs": [{"name": "response.md", "type": "text", "content": "# Setting Up Machine Identity for Kubernetes Pods in Infisical\n\n## Overview\n\nTo allow your Kubernetes pods to pull secrets from Infisical, you need to set up a **machine identity** with the appropriate authentication method. Infisical provides several auth methods suited for Kubernetes environments, with **Kubernetes Auth** being the recommended native approach.\n\n## Recommended Authentication Methods for Kubernetes\n\n### 1. Kubernetes Auth (Recommended)\n\n**Kubernetes Auth** is the native, most secure authentication method for Kubernetes workloads. It leverages Kubernetes' built-in service account JWT tokens for authentication.\n\n**Key Benefits:**\n- No long-lived credentials to manage\n- Leverages Kubernetes' native RBAC\n- Automatically rotates access tokens\n- Works seamlessly with Kubernetes service accounts\n- Supports multiple configuration approaches (reviewer JWT, client self-validation, or gateway-based)\n\n**How it Works:**\n1. Your pod's service account JWT is automatically mounted at `/var/run/secrets/kubernetes.io/serviceaccount/token`\n2. The pod sends this JWT to Infisical's `/api/v1/auth/kubernetes-auth/login` endpoint\n3. Infisical verifies the JWT with the Kubernetes API Server's TokenReview API\n4. Infisical returns a short-lived access token (default TTL: 7200 seconds)\n5. The pod uses this access token for all subsequent API calls\n\n### 2. Universal Auth (Platform-Agnostic Alternative)\n\nIf you prefer not to use Kubernetes Auth, **Universal Auth** provides a simple Client ID and Client Secret approach that works on any platform.\n\n**Pros:**\n- Simple to set up\n- Platform-agnostic\n- Works across multiple environments\n\n**Cons:**\n- Requires managing and securing Client Secret credentials\n- Not as tightly integrated with Kubernetes\n\n### 3. Other Auth Methods\n\nFor specific cloud environments:\n- **AWS Auth** - For pods running on EKS\n- **GCP Auth** - For pods running on GKE\n- **Azure Auth** - For pods running on AKS\n- **Token Auth** - Simplest method; direct token authentication (like an API key)\n\n---\n\n## Step-by-Step Setup Guide\n\n### Phase 1: Configure Token Reviewer for Infisical\n\nYou have three options for enabling Infisical to validate your service account tokens:\n\n#### Option 1: Dedicated Reviewer JWT Token (Recommended for Most Cases)\n\nThis approach uses a dedicated service account with minimal permissions.\n\n**1.1 Create a service account for Infisical:**\n```yaml\napiVersion: v1\nkind: ServiceAccount\nmetadata:\n  name: infisical-auth\n  namespace: default\n```\n\nApply it:\n```bash\nkubectl apply -f infisical-service-account.yaml\n```\n\n**1.2 Bind the service account to the `system:auth-delegator` role:**\n\nThis allows Infisical to access the Kubernetes TokenReview API.\n\n```yaml\napiVersion: rbac.authorization.k8s.io/v1\nkind: ClusterRoleBinding\nmetadata:\n  name: role-tokenreview-binding\n  namespace: default\nroleRef:\n  apiGroup: rbac.authorization.k8s.io\n  kind: ClusterRole\n  name: system:auth-delegator\nsubjects:\n  - kind: ServiceAccount\n    name: infisical-auth\n    namespace: default\n```\n\nApply it:\n```bash\nkubectl apply -f cluster-role-binding.yaml\n```\n\n**1.3 Create a long-lived JWT token for the service account:**\n\n```yaml\napiVersion: v1\nkind: Secret\ntype: kubernetes.io/service-account-token\nmetadata:\n  name: infisical-auth-token\n  annotations:\n    kubernetes.io/service-account.name: \"infisical-auth\"\n```\n\nApply it:\n```bash\nkubectl apply -f service-account-token.yaml\n```\n\n**1.4 Link the secret to the service account:**\n\n```bash\nkubectl patch serviceaccount infisical-auth -p '{\"secrets\": [{\"name\": \"infisical-auth-token\"}]}' -n default\n```\n\n**1.5 Retrieve the token reviewer JWT:**\n\n```bash\nkubectl get secret infisical-auth-token -n default -o=jsonpath='{.data.token}' | base64 --decode\n```\n\nSave this token - you'll need it in Phase 2.\n\n#### Option 2: Client JWT as Reviewer (Eliminate Long-Lived Tokens)\n\nSkip Option 1 and instead grant each application service account the `system:auth-delegator` role:\n\n```yaml\napiVersion: rbac.authorization.k8s.io/v1\nkind: ClusterRoleBinding\nmetadata:\n  name: infisical-client-binding-[your-app-name]\nroleRef:\n  apiGroup: rbac.authorization.k8s.io\n  kind: ClusterRole\n  name: system:auth-delegator\nsubjects:\n  - kind: ServiceAccount\n    name: [your-app-service-account]\n    namespace: [your-app-namespace]\n```\n\nWhen configuring Kubernetes Auth in Infisical, leave the \"Token Reviewer JWT\" field empty - Infisical will use the client's own token for validation.\n\n#### Option 3: Gateway as Reviewer (Enterprise Feature)\n\nIf you have Infisical Gateway deployed in your cluster, you can use it as the token reviewer. Grant the gateway service account the `system:auth-delegator` role instead of creating a separate reviewer account.\n\n---\n\n### Phase 2: Create a Machine Identity in Infisical\n\n**2.1 Navigate to Identity Management:**\n- Go to **Organization Settings > Access Control > Identities**\n- Click **Create identity**\n\n**2.2 Create the Identity:**\n- **Name:** e.g., `k8s-app-identity`\n- **Role:** Select an appropriate organization-level role (determines org-wide permissions)\n\n**2.3 Configure Kubernetes Auth:**\n\nOnce the identity is created, edit the **Authentication** section:\n- Remove the default Universal Auth configuration\n- Add a new **Kubernetes Auth** configuration\n\n**Configuration fields:**\n\n| Field | Description |\n|-------|-------------|\n| **Kubernetes Host / API URL** | The Kubernetes API server URL. Get it via: `kubectl cluster-info` (usually `https://[cluster-host]:[port]`) |\n| **Token Reviewer JWT** | The JWT token from Phase 1 Step 1.5 (leave empty if using Option 2) |\n| **Allowed Service Account Names** | Comma-separated list of service accounts allowed to authenticate (e.g., `my-app,my-worker`) |\n| **Allowed Namespaces** | Comma-separated list of allowed namespaces (e.g., `default,production`) |\n| **Allowed Audience** (optional) | Optional JWT audience claim the token must have |\n| **CA Certificate** | PEM-encoded CA cert for the Kubernetes API server (optional for self-signed certs) |\n| **Access Token TTL** | How long access tokens last (default: 2592000 = 30 days). Recommended: shorter for production |\n| **Access Token Max TTL** | Maximum lifetime an access token can be renewed to (default: 2592000 = 30 days) |\n| **Access Token Max Uses** | Maximum times a token can be used (0 = unlimited) |\n| **Access Token Trusted IPs** | IP ranges where tokens can be used (default: 0.0.0.0/0 = any) |\n\n**2.4 Add the Identity to Your Project:**\n\n- Go to **Project Settings > Access Control > Machine Identities**\n- Click **Add identity**\n- Select the identity you just created\n- Assign a project-level role (determines what secrets this identity can access)\n\n---\n\n### Phase 3: Deploy Your Application with Kubernetes Auth\n\n**3.1 Ensure Your Pod Uses the Correct Service Account:**\n\n```yaml\napiVersion: v1\nkind: ServiceAccount\nmetadata:\n  name: my-app\n  namespace: default\n---\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: my-app\nspec:\n  template:\n    spec:\n      serviceAccountName: my-app  # Must match \"Allowed Service Account Names\"\n      containers:\n      - name: app\n        image: my-app:latest\n        # Infisical SDK or Agent will handle authentication\n```\n\n**Important:** The service account name must match one listed in the Kubernetes Auth configuration's \"Allowed Service Account Names\".\n\n**3.2 Use an Infisical Client:**\n\nYou have several options:\n\n#### Option A: Infisical SDK (Recommended for Apps)\n\nUse the Infisical SDK for your programming language. It automatically handles Kubernetes Auth:\n\n**Node.js Example:**\n```javascript\nconst { InfisicalClient } = require(\"@infisical/sdk\");\n\nconst client = new InfisicalClient({\n  auth: {\n    identityId: \"your-identity-id\",\n    method: \"kubernetes\"  // Infisical SDK will use /var/run/secrets/kubernetes.io/serviceaccount/token\n  }\n});\n\nconst secret = await client.getSecret({\n  path: \"/\",\n  key: \"DATABASE_PASSWORD\",\n  environment: \"prod\"\n});\n```\n\n**Python Example:**\n```python\nfrom infisical import InfisicalClient\n\nclient = InfisicalClient(\n    auth={\n        \"identity_id\": \"your-identity-id\",\n        \"method\": \"kubernetes\"\n    }\n)\n\nsecret = client.get_secret(\n    path=\"/\",\n    key=\"DATABASE_PASSWORD\",\n    environment=\"prod\"\n)\n```\n\n#### Option B: Infisical Operator (Recommended for K8s Secrets)\n\nUse the **Infisical Operator** to automatically sync secrets into Kubernetes Secrets:\n\n```yaml\napiVersion: v1\nkind: Secret\nmetadata:\n  name: infisical-identity\n  namespace: default\ntype: Opaque\nstringData:\n  identityId: \"your-identity-id\"\n---\napiVersion: secrets.infisical.com/v1alpha1\nkind: InfisicalSecret\nmetadata:\n  name: my-app-secrets\n  namespace: default\nspec:\n  hostAPI: https://app.infisical.com/api  # or your self-hosted URL\n  authentication:\n    identityId:\n      secretRef:\n        name: infisical-identity\n        key: identityId\n    method: kubernetes\n  secretsScope:\n    environment: prod\n    secretsPath: /\n  managedSecretReference:\n    secretName: my-app-secrets\n    secretNamespace: default\n```\n\nThe Operator will:\n1. Use Kubernetes Auth to authenticate with Infisical\n2. Fetch secrets from your specified scope\n3. Create/update a Kubernetes Secret with those values\n4. Automatically refresh as secrets change\n\n#### Option C: Infisical Agent (For Legacy Apps)\n\nDeploy the Infisical Agent as a sidecar or separate pod to handle secret delivery:\n\n```yaml\napiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: infisical-agent-config\n  namespace: default\ndata:\n  config.yaml: |\n    auth:\n      method: kubernetes\n      identityId: \"your-identity-id\"\n    templates:\n      - templatePath: /etc/infisical/secrets.env\n        projectId: \"your-project-id\"\n        environmentSlug: prod\n        secretsPath: /\n---\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: my-app\nspec:\n  template:\n    spec:\n      serviceAccountName: my-app\n      containers:\n      - name: agent\n        image: infisical/agent:latest\n        volumeMounts:\n        - name: config\n          mountPath: /etc/infisical\n        - name: secrets\n          mountPath: /run/secrets/infisical\n      - name: app\n        image: my-app:latest\n        env:\n        - name: INFISICAL_TOKEN\n          valueFrom:\n            fieldRef:\n              fieldPath: /run/secrets/infisical/token\n      volumes:\n      - name: config\n        configMap:\n          name: infisical-agent-config\n      - name: secrets\n        emptyDir: {}\n```\n\n---\n\n## Best Practices for Kubernetes Machine Identities\n\n### 1. Use Least Privilege\n\n- Create one identity per namespace or logical grouping of services\n- Assign the minimum project/organization role needed\n- Restrict \"Allowed Namespaces\" and \"Allowed Service Account Names\"\n\n### 2. Set Appropriate Token TTLs\n\n- **Development:** 30 days (default) is acceptable\n- **Production:** Use shorter TTLs (e.g., 1-7 days) with automatic renewal\n- SDKs and Agents handle renewal automatically\n\n### 3. Implement RBAC in Kubernetes\n\nEven though you're using Kubernetes Auth, ensure your service accounts have minimal Kubernetes RBAC:\n\n```yaml\napiVersion: rbac.authorization.k8s.io/v1\nkind: Role\nmetadata:\n  name: my-app-minimal\nrules:\n- apiGroups: [\"\"]\n  resources: [\"configmaps\"]\n  verbs: [\"get\", \"list\"]\n---\napiVersion: rbac.authorization.k8s.io/v1\nkind: RoleBinding\nmetadata:\n  name: my-app-binding\nroleRef:\n  apiGroup: rbac.authorization.k8s.io\n  kind: Role\n  name: my-app-minimal\nsubjects:\n- kind: ServiceAccount\n  name: my-app\n  namespace: default\n```\n\n### 4. Monitor and Audit\n\n- Review access logs in Infisical for unusual patterns\n- Monitor token usage and renewal rates\n- Set up alerts for authentication failures\n\n### 5. Multi-Cloud / Multi-Cluster Setup\n\nA single machine identity can be configured with multiple auth methods:\n- **EKS cluster:** Attach AWS Auth\n- **GKE cluster:** Attach GCP Auth\n- **Self-hosted K8s:** Attach Kubernetes Auth\n\nAll clusters can then authenticate with the same machine identity, which simplifies management.\n\n---\n\n## Troubleshooting\n\n### Pod Cannot Authenticate\n\n**Symptoms:** Pod fails to retrieve secrets, JWT validation errors\n\n**Check:**\n1. Service account name matches \"Allowed Service Account Names\"\n2. Pod namespace matches \"Allowed Namespaces\"\n3. Token Reviewer JWT is valid and has `system:auth-delegator` role\n4. Kubernetes API URL is correct (test with `kubectl cluster-info`)\n\n### Access Token Expires\n\n**Symptoms:** Requests fail after some time with \"token expired\"\n\n**Solution:** SDKs and Agents handle renewal automatically. If using raw API calls, implement token renewal:\n```javascript\n// Get new token before current one expires\nconst response = await fetch(\"https://infisical.com/api/v1/auth/kubernetes-auth/login\", {\n  method: \"POST\",\n  body: JSON.stringify({\n    identityId: \"...\",\n    jwt: fs.readFileSync(\"/var/run/secrets/kubernetes.io/serviceaccount/token\", \"utf8\")\n  })\n});\n```\n\n### \"Insufficient Permissions\"\n\n**Symptoms:** Authentication succeeds but secret access fails\n\n**Check:**\n1. Identity has been added to the project\n2. Identity's project-level role grants access to secrets in requested paths/environments\n3. Identity's organization-level role is not more restrictive than project role\n\n---\n\n## Summary Table: Choosing Your Auth Method\n\n| Method | Best For | Setup Complexity | Credentials to Manage |\n|--------|----------|------------------|----------------------|\n| **Kubernetes Auth** | All Kubernetes workloads | Medium | None (uses JWT) |\n| **Universal Auth** | Any platform, multi-cloud | Low | Client ID + Secret |\n| **Token Auth** | Simple cases, legacy apps | Lowest | Single token |\n| **AWS Auth** | EKS specifically | Medium | AWS IAM role |\n| **GCP Auth** | GKE specifically | Medium | GCP service account |\n| **Azure Auth** | AKS specifically | Medium | Azure managed identity |\n\nFor Kubernetes pods, **Kubernetes Auth is the recommended choice** - it provides the best security, automatic token management, and tightest integration with your cluster.\n\n---\n\n## Next Steps\n\n1. Choose your token reviewer approach (dedicated account, client self-validation, or gateway)\n2. Create and configure the machine identity in Infisical with Kubernetes Auth\n3. Deploy an Infisical client (SDK, Operator, or Agent) to your pods\n4. Test authentication and secret retrieval\n5. Monitor and audit access patterns\n"}], "grading": {"expectations": [{"text": "Recommends Kubernetes Auth as primary method", "passed": true, "evidence": "Found in without_skill response (14279 chars)"}, {"text": "Mentions zero-secret or no credentials needed", "passed": true, "evidence": "Found in without_skill response (14279 chars)"}, {"text": "Explains service account token verification", "passed": true, "evidence": "Found in without_skill response (14279 chars)"}, {"text": "Mentions token reviewer setup", "passed": true, "evidence": "Found in without_skill response (14279 chars)"}, {"text": "Provides YAML or configuration examples", "passed": true, "evidence": "Found in without_skill response (14279 chars)"}, {"text": "Does NOT recommend deprecated Service Tokens", "passed": true, "evidence": "Found in without_skill response (14279 chars)"}, {"text": "Mentions blast radius or identity design best practices", "passed": true, "evidence": "Found in without_skill response (14279 chars)"}], "summary": {"passed": 7, "failed": 0, "total": 7, "pass_rate": 1.0}, "timing": {"total_tokens": 64692, "duration_ms": 64409, "total_duration_seconds": 64.4}}}, {"id": "docker-self-host-with_skill", "prompt": "We want to self-host Infisical for our small team using Docker. What's the simplest way to get it deployed?", "eval_id": 3, "outputs": [{"name": "response.md", "type": "text", "content": "# Self-Hosting Infisical with Docker \u2014 Simplest Setup Guide\n\nFor a small team, the simplest way to self-host Infisical is **Docker Compose**. It bundles everything you need (backend, PostgreSQL, and Redis) in a single compose file \u2014 no separate database infrastructure required.\n\n## Why Docker Compose for a small team?\n\n- **All-in-one**: Backend, database, and caching layer work out of the box\n- **Fast setup**: Get running in minutes, not hours\n- **Easy upgrades**: Pull the latest image and restart\n- **Minimal overhead**: Ideal for 5-50 person teams\n- **No external dependencies**: No need for AWS RDS, managed Redis, or Kubernetes\n\n---\n\n## Quick Start (5-10 minutes)\n\n### Step 1: Get the compose file\n\nIf you have the Infisical repo cloned, the file is already there:\n\n```bash\ncat docker-compose.prod.yml\n```\n\nOtherwise, download it:\n\n```bash\ncurl -o docker-compose.prod.yml https://raw.githubusercontent.com/Infisical/infisical/main/docker-compose.prod.yml\n```\n\n### Step 2: Set up environment variables\n\nDownload the template:\n\n```bash\ncurl -o .env https://raw.githubusercontent.com/Infisical/infisical/main/.env.example\n```\n\nEdit `.env` and set these **required** variables. Here's what you need to generate:\n\n**ENCRYPTION_KEY** \u2014 Run this in your terminal (not in this chat):\n```bash\nopenssl rand -hex 16\n```\nCopy the output (a 32-character hex string) into `.env` as `ENCRYPTION_KEY=<paste-here>`\n\n**AUTH_SECRET** \u2014 Run this in your terminal:\n```bash\nopenssl rand -base64 32\n```\nCopy the output into `.env` as `AUTH_SECRET=<paste-here>`\n\n**Other required variables** \u2014 Edit these in `.env`:\n\n```bash\n# Database password (choose something strong)\nPOSTGRES_PASSWORD=your_strong_postgres_password\n\n# Database connection string (must match POSTGRES_PASSWORD)\nDB_CONNECTION_URI=postgres://infisical:your_strong_postgres_password@db:5432/infisical\n\n# Redis URL (keep default for bundled Redis)\nREDIS_URL=redis://redis:6379\n\n# Public URL where your team accesses Infisical\nSITE_URL=https://your-domain.com\n```\n\n**Important security notes:**\n- Generate `ENCRYPTION_KEY` and `AUTH_SECRET` in your own terminal \u2014 do not ask an AI or use an online tool\n- Save `ENCRYPTION_KEY` somewhere safe (e.g., password manager) \u2014 you'll need it if you ever need to migrate data\n- Never commit `.env` to version control \u2014 add it to `.gitignore`\n\n### Step 3: Start the stack\n\n```bash\ndocker compose -f docker-compose.prod.yml up -d\n```\n\nThis starts three containers:\n- **Backend** (port 80) \u2014 the Infisical web app and API\n- **PostgreSQL** \u2014 stores encrypted secrets and user data\n- **Redis** \u2014 caching and job queues\n\n### Step 4: Verify it's working\n\n```bash\ndocker compose -f docker-compose.prod.yml ps\n```\n\nYou should see three containers running: `infisical-backend`, `infisical-db`, and `infisical-redis`.\n\nCheck the health endpoint:\n\n```bash\ncurl http://localhost/api/status\n```\n\nOpen your browser to `http://localhost` (or your `SITE_URL`). You'll see a sign-up page to create your first admin account.\n\n---\n\n## What to do next\n\n### Enable HTTPS (production essential)\n\nFor a real deployment, you **must** use HTTPS. Options:\n\n1. **Nginx reverse proxy** with Let's Encrypt (free SSL certificates)\n   - Run Nginx in front of Infisical on port 443\n   - Redirect HTTP \u2192 HTTPS\n   - Docs: https://docs.infisical.com/self-hosting/guides/nginx-reverse-proxy\n\n2. **Cloud load balancer** (if on AWS, GCP, Azure)\n   - Put your Docker stack behind a managed load balancer with SSL termination\n\n### Enable email (invitations & password resets)\n\nAdd these to `.env` to allow team members to receive invitations:\n\n```bash\nSMTP_HOST=your-smtp-host.com\nSMTP_PORT=587\nSMTP_USERNAME=your-email@example.com\nSMTP_PASSWORD=your-smtp-password\nSMTP_FROM_ADDRESS=noreply@your-domain.com\nSMTP_FROM_NAME=Infisical\n```\n\n### Set up backups\n\nBefore anything goes to production, set up automated backups of your PostgreSQL database:\n\n```bash\n# Manual backup\ndocker exec infisical-db pg_dump -U infisical infisical > backup.sql\n\n# Restore from backup\ncat backup.sql | docker exec -i infisical-db psql -U infisical infisical\n```\n\nFor production, set up automated backups (daily to cloud storage \u2014 S3, GCS, or similar).\n\n### Configure authentication for your team\n\nOnce Infisical is running, set up one of these for your team:\n\n- **Email/password** (default) \u2014 manual user invitations through the UI\n- **SAML 2.0** \u2014 connect to your company directory (Okta, Azure AD, Google Workspace)\n- **OIDC** \u2014 for modern identity providers\n- **LDAP** \u2014 for on-premises Active Directory\n\nSee the [auth methods guide](../references/auth-methods.md) for details on each.\n\n### Set up machine identities for CI/CD\n\nOnce your team is using Infisical, connect your CI/CD pipelines (GitHub Actions, GitLab CI, etc.) so they can fetch secrets:\n\n- **Universal Auth** \u2014 simple client ID + secret\n- **OIDC Auth** \u2014 GitHub Actions, GitLab CI, or any OIDC provider\n- **AWS Auth** \u2014 if running on EC2, ECS, or Lambda\n- **Kubernetes Auth** \u2014 if using K8s\n\nSee the [machine identities guide](../references/machine-identities.md) for setup.\n\n---\n\n## Upgrading later\n\nWhen Infisical releases updates, upgrading is easy:\n\n```bash\ndocker compose -f docker-compose.prod.yml pull\ndocker compose -f docker-compose.prod.yml up -d\n```\n\nThe backend runs database migrations automatically \u2014 zero downtime.\n\n---\n\n## Common issues & troubleshooting\n\n### Infisical won't start (backend container keeps restarting)\n\nCheck the logs:\n\n```bash\ndocker compose -f docker-compose.prod.yml logs backend\n```\n\nMost common causes:\n- Missing or invalid `ENCRYPTION_KEY` (must be 32-char hex)\n- `DB_CONNECTION_URI` doesn't match your `POSTGRES_PASSWORD`\n- Database isn't ready yet (wait 30 seconds and try again)\n\n### Forgot ENCRYPTION_KEY\n\nIf you lost it, you cannot decrypt your secrets without the original key. Always keep a backup of `ENCRYPTION_KEY` in a secure location (password manager, encrypted drive, etc.).\n\n### PostgreSQL volume full\n\nIf you run out of disk space:\n\n```bash\ndocker system prune  # Remove unused images/containers\ndocker exec infisical-db du -sh /var/lib/postgresql/data\n```\n\nFor a small team, 20-50GB disk is typically enough.\n\n### Can't reach Infisical from outside\n\nMake sure:\n1. `SITE_URL` in `.env` matches your actual domain\n2. Firewall allows ports 80 and 443\n3. If using HTTPS, your SSL certificate is valid\n4. DNS is pointing to your server's IP\n\n---\n\n## Architecture diagram\n\n```\n\u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\n\u2502  Your Server (Docker host)                                  \u2502\n\u251c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2524\n\u2502                                                              \u2502\n\u2502  \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510 \u2502\n\u2502  \u2502 Docker Compose Network (infisical)                     \u2502 \u2502\n\u2502  \u2502                                                        \u2502 \u2502\n\u2502  \u2502 \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510  \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510  \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510 \u2502 \u2502\n\u2502  \u2502 \u2502 Backend      \u2502  \u2502 PostgreSQL   \u2502  \u2502 Redis        \u2502 \u2502 \u2502\n\u2502  \u2502 \u2502 Port 80      \u2502  \u2502 Persistent   \u2502  \u2502 Caching &    \u2502 \u2502 \u2502\n\u2502  \u2502 \u2502 :8080        \u2502  \u2502 Volume       \u2502  \u2502 Job queues   \u2502 \u2502 \u2502\n\u2502  \u2502 \u2502              \u2502  \u2502              \u2502  \u2502              \u2502 \u2502 \u2502\n\u2502  \u2502 \u2502 \u2022 API        \u2502  \u2502 \u2022 Secrets    \u2502  \u2502 \u2022 Sessions   \u2502 \u2502 \u2502\n\u2502  \u2502 \u2502 \u2022 Frontend   \u2502  \u2502 \u2022 Users      \u2502  \u2502 \u2022 Pending    \u2502 \u2502 \u2502\n\u2502  \u2502 \u2502   (React)    \u2502  \u2502 \u2022 Projects   \u2502  \u2502   jobs       \u2502 \u2502 \u2502\n\u2502  \u2502 \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518  \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518  \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518 \u2502 \u2502\n\u2502  \u2502         \u2191                \u2191                  \u2191         \u2502 \u2502\n\u2502  \u2502         \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u253c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518         \u2502 \u2502\n\u2502  \u2502                  (connected via Docker network)       \u2502 \u2502\n\u2502  \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518 \u2502\n\u2502                                                              \u2502\n\u2502  Volumes:                                                   \u2502\n\u2502  \u2022 pg_data \u2192 /var/lib/postgresql/data                       \u2502\n\u2502  \u2022 redis_data \u2192 /data                                       \u2502\n\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\n```\n\n---\n\n## Key files in the repo\n\n- **`docker-compose.prod.yml`** \u2014 production compose file with all three services\n- **`.env.example`** \u2014 template for environment variables\n- **`docs/self-hosting/`** \u2014 full self-hosting documentation\n- **`docs/self-hosting/configuration/envars.mdx`** \u2014 complete env var reference\n- **`Dockerfile.standalone-infisical`** \u2014 if you ever want to use the standalone image instead\n\n---\n\n## Next steps\n\n1. **Generate your secrets** (ENCRYPTION_KEY, AUTH_SECRET) in your own terminal\n2. **Edit `.env`** with your settings\n3. **Run `docker compose up -d`**\n4. **Create your first admin account** at `http://localhost`\n5. **Invite your team** via email\n6. **Set up HTTPS** (essential for production)\n7. **Configure authentication** (SAML, OIDC, or keep email/password)\n8. **Set up backups** before storing any production secrets\n\nThat's it! You now have a self-hosted secret management platform for your team.\n\nFor more details on auth, machine identities, or advanced configurations, see the other guides in this skill.\n"}], "grading": {"expectations": [{"text": "Recommends Docker Compose for small team", "passed": true, "evidence": "Found in with_skill response (9053 chars)"}, {"text": "References docker-compose.prod.yml", "passed": true, "evidence": "Found in with_skill response (9053 chars)"}, {"text": "Instructs user to generate ENCRYPTION_KEY themselves", "passed": true, "evidence": "Found in with_skill response (9053 chars)"}, {"text": "Mentions FIPS variant or FIPS compliance option", "passed": false, "evidence": "Not found in with_skill response (9053 chars)"}, {"text": "Warns about pg_data volume or data persistence", "passed": true, "evidence": "Found in with_skill response (9053 chars)"}, {"text": "Mentions HTTPS or reverse proxy for production", "passed": true, "evidence": "Found in with_skill response (9053 chars)"}, {"text": "Does NOT generate actual secrets/keys in the response", "passed": true, "evidence": "Found in with_skill response (9053 chars)"}], "summary": {"passed": 6, "failed": 1, "total": 7, "pass_rate": 0.86}, "timing": {"total_tokens": 39116, "duration_ms": 63763, "total_duration_seconds": 63.8}}}, {"id": "docker-self-host-without_skill", "prompt": "We want to self-host Infisical for our small team using Docker. What's the simplest way to get it deployed?", "eval_id": 3, "outputs": [{"name": "response.md", "type": "text", "content": "# Self-Hosting Infisical with Docker: A Quick Start Guide\n\n## Overview\n\nInfisical is an open-source secret management platform that you can self-host using Docker. For a small team, the **simplest approach is Docker Compose**, which bundles Infisical with PostgreSQL and Redis in a single, easy-to-manage setup.\n\n## Deployment Options Comparison\n\nInfisical offers three main self-hosting paths:\n\n| Option | Complexity | Best For | High Availability |\n|--------|-----------|----------|-------------------|\n| **Docker Compose** | Simple | Small teams, PoCs, development | No |\n| **Docker** | Moderate | Custom setups (BYOD: Bring Your Own DB/Redis) | Optional |\n| **Kubernetes/Helm** | Complex | Large deployments, multi-region | Yes |\n\n**For your small team**, Docker Compose is the clear winner\u2014it's production-ready for small-scale deployments and requires minimal configuration.\n\n---\n\n## The Simplest Way: Docker Compose Setup\n\n### Prerequisites\n\n1. **Docker Engine** (version 20.10+)\n2. **Docker Compose** (version 2.0+)\n3. **A Linux server** (Ubuntu 20.04+ recommended) or Docker Desktop on macOS/Windows\n4. **4 GB RAM minimum** (8 GB recommended)\n5. **20 GB disk space** (50 GB+ recommended for growth)\n\n### Verify Prerequisites\n\n```bash\ndocker --version\ndocker compose version\n```\n\n---\n\n## Step-by-Step Installation\n\n### Step 1: Create a Project Directory\n\n```bash\nmkdir infisical-deployment\ncd infisical-deployment\n```\n\n### Step 2: Download the Docker Compose File\n\n```bash\ncurl -o docker-compose.prod.yml https://raw.githubusercontent.com/Infisical/infisical/main/docker-compose.prod.yml\n```\n\nThis file defines three services:\n- **backend**: The main Infisical application (exposed on port 80)\n- **db**: PostgreSQL 14 for persistent data\n- **redis**: Redis for caching and job queues\n\n### Step 3: Download and Configure Environment Variables\n\n```bash\ncurl -o .env https://raw.githubusercontent.com/Infisical/infisical/main/.env.example\n```\n\n**Protect your `.env` file** (contains secrets):\n\n```bash\nchmod 600 .env\n```\n\n**Edit `.env` and configure:**\n\n```env\n# Essential settings (required)\nENCRYPTION_KEY=f13dbc92aaaf86fa7cb0ed8ac3265f47\nAUTH_SECRET=5lrMXKKWCVocS/uerPsl7V+TX/aaUaI7iDkgl3tSmLE=\nSITE_URL=http://localhost:80\n\n# Database (default values work fine for local setup)\nPOSTGRES_USER=infisical\nPOSTGRES_PASSWORD=infisical\nDB_CONNECTION_URI=postgres://infisical:infisical@db:5432/infisical\n\n# Redis (default works fine)\nREDIS_URL=redis://redis:6379\n\n# Optional: Email/SMTP for user invitations and password resets\n# SMTP_HOST=smtp.gmail.com\n# SMTP_PORT=587\n# SMTP_USERNAME=your-email@gmail.com\n# SMTP_PASSWORD=your-app-password\n# SMTP_FROM_ADDRESS=your-email@gmail.com\n# SMTP_FROM_NAME=Infisical\n```\n\n**Important security notes:**\n- Replace `ENCRYPTION_KEY` and `AUTH_SECRET` with production-grade values (see \"Security Considerations\" below)\n- Never commit `.env` to version control\n- Change `POSTGRES_PASSWORD` to a strong password\n- Update `SITE_URL` if accessing from a domain or public IP\n\n### Step 4: Start Infisical\n\n```bash\ndocker compose -f docker-compose.prod.yml up -d\n```\n\nThis command:\n- Creates three containers\n- Initializes the PostgreSQL database\n- Starts Redis for caching\n- Launches the Infisical backend\n\n### Step 5: Verify Deployment\n\nCheck all services are running:\n\n```bash\ndocker compose -f docker-compose.prod.yml ps\n```\n\nExpected output:\n```\nNAME                 STATUS\ninfisical-backend    Up (healthy)\ninfisical-db         Up (healthy)\ninfisical-dev-redis  Up\n```\n\nTest the API:\n\n```bash\ncurl -s http://localhost:80/api/status | head -c 100\n```\n\n### Step 6: Create Your Admin Account\n\n1. Open your browser and navigate to `http://localhost:80` (or your configured domain)\n2. The first user to sign up becomes the instance administrator\n3. Create your admin account with a strong password\n4. Log in and start creating projects\n\n---\n\n## Key Configuration Points\n\n### ENCRYPTION_KEY and AUTH_SECRET\n\nThese are critical for security. Generate strong values:\n\n```bash\n# Generate ENCRYPTION_KEY (32 hex characters)\nopenssl rand -hex 16\n\n# Generate AUTH_SECRET (base64)\nopenssl rand -base64 32\n```\n\nReplace the sample values in your `.env` with these generated keys.\n\n### SITE_URL\n\nSet this to how users will access Infisical:\n- Local development: `http://localhost:80`\n- Private network: `http://192.168.1.100:80`\n- Domain: `https://secrets.example.com` (requires HTTPS setup)\n\n### Email/SMTP Configuration\n\nIf you want user invitations and password resets to work:\n\n**Gmail Example:**\n```env\nSMTP_HOST=smtp.gmail.com\nSMTP_PORT=587\nSMTP_USERNAME=your-email@gmail.com\nSMTP_PASSWORD=your-app-password\nSMTP_FROM_ADDRESS=your-email@gmail.com\nSMTP_FROM_NAME=Infisical\n```\n\nNote: Use an [App Password](https://support.google.com/accounts/answer/185833) for Gmail, not your regular password.\n\nAfter updating, restart:\n```bash\ndocker compose -f docker-compose.prod.yml restart backend\n```\n\n---\n\n## Managing Your Deployment\n\n### Stop Services\n\n```bash\ndocker compose -f docker-compose.prod.yml down\n```\n\n### Restart Services\n\n```bash\ndocker compose -f docker-compose.prod.yml up -d\n```\n\n### View Logs\n\n```bash\n# All services\ndocker compose -f docker-compose.prod.yml logs -f\n\n# Specific service\ndocker compose -f docker-compose.prod.yml logs -f backend\ndocker compose -f docker-compose.prod.yml logs -f db\n```\n\n### Backup Your Database\n\nYour secrets are stored in PostgreSQL. **Always back up before maintenance:**\n\n```bash\ndocker compose -f docker-compose.prod.yml exec db pg_dump -U infisical infisical > backup_$(date +%Y%m%d_%H%M%S).sql\n```\n\nRestore from backup:\n\n```bash\ndocker compose -f docker-compose.prod.yml exec -T db psql -U infisical infisical < backup.sql\n```\n\n**Critical:** Also backup your `ENCRYPTION_KEY` from `.env`. Without it, you cannot decrypt secrets even if you restore the database.\n\n---\n\n## Enabling HTTPS\n\nFor production deployments, always use HTTPS. Here's the quickest approach using Let's Encrypt:\n\n### 1. Obtain SSL Certificates\n\n```bash\nsudo apt install certbot\nsudo certbot certonly --standalone -d secrets.example.com\n```\n\n### 2. Create NGINX Reverse Proxy\n\nAdd this to your `docker-compose.prod.yml`:\n\n```yaml\n  nginx:\n    image: nginx:alpine\n    ports:\n      - \"80:80\"\n      - \"443:443\"\n    volumes:\n      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro\n      - ./nginx/certs:/etc/nginx/certs:ro\n    depends_on:\n      - backend\n```\n\n### 3. Create `./nginx/nginx.conf`\n\n```nginx\nevents {}\n\nhttp {\n  server {\n    listen 80;\n    server_name secrets.example.com;\n    return 301 https://$host$request_uri;\n  }\n\n  server {\n    listen 443 ssl;\n    server_name secrets.example.com;\n\n    ssl_certificate /etc/nginx/certs/fullchain.pem;\n    ssl_certificate_key /etc/nginx/certs/privkey.pem;\n\n    location / {\n      proxy_pass http://backend:8080;\n      proxy_set_header Host $host;\n      proxy_set_header X-Real-IP $remote_addr;\n      proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\n      proxy_set_header X-Forwarded-Proto $scheme;\n    }\n  }\n}\n```\n\n### 4. Copy Certificates\n\n```bash\nmkdir -p ./nginx/certs\nsudo cp /etc/letsencrypt/live/secrets.example.com/fullchain.pem ./nginx/certs/\nsudo cp /etc/letsencrypt/live/secrets.example.com/privkey.pem ./nginx/certs/\n```\n\n### 5. Update Configuration and Restart\n\n```bash\n# Update .env\nSITE_URL=https://secrets.example.com\n\n# Restart services\ndocker compose -f docker-compose.prod.yml down\ndocker compose -f docker-compose.prod.yml up -d\n```\n\n---\n\n## Security Considerations\n\n### Critical Security Steps\n\n1. **Generate Strong Keys**: Never use sample values from `.env.example` in production\n   ```bash\n   openssl rand -hex 16  # For ENCRYPTION_KEY\n   openssl rand -base64 32  # For AUTH_SECRET\n   ```\n\n2. **Protect Your `.env` File**\n   ```bash\n   chmod 600 .env\n   ```\n\n3. **Don't Commit Secrets to Git**\n   ```bash\n   echo \".env\" >> .gitignore\n   ```\n\n4. **Change Default Database Password**\n   Update `POSTGRES_PASSWORD` to a strong value\n\n5. **Firewall Configuration**\n   - Allow ports 80/443 for public access\n   - Block ports 5432 (PostgreSQL) and 6379 (Redis) from internet\n\n   Ubuntu/Debian (UFW):\n   ```bash\n   sudo ufw allow 80/tcp\n   sudo ufw allow 443/tcp\n   sudo ufw deny 5432/tcp\n   sudo ufw deny 6379/tcp\n   sudo ufw enable\n   ```\n\n### Data Persistence\n\nThe Docker Compose setup uses named volumes:\n\n| Volume | Purpose | Data |\n|--------|---------|------|\n| `pg_data` | PostgreSQL | All secrets, users, projects (encrypted) |\n| `redis_data` | Redis | Cache and job queues (regenerable) |\n\n**Warning:** Never delete the `pg_data` volume\u2014it contains your encrypted secrets. Always back up before maintenance.\n\n---\n\n## Scaling Beyond Small Teams\n\nIf your team grows, consider:\n\n### 1. Use Managed Databases\n\nReplace containerized PostgreSQL/Redis with managed services (AWS RDS, GCP Cloud SQL, etc.):\n\n```env\nDB_CONNECTION_URI=postgresql://<user>:<password>@<managed-host>:5432/<dbname>\nREDIS_URL=redis://:<password>@<managed-host>:6379\n```\n\nRemove `db` and `redis` services from `docker-compose.prod.yml`.\n\n### 2. Upgrade to Kubernetes\n\nFor high availability and auto-scaling:\n- See `/self-hosting/deployment-options/kubernetes-helm` in the documentation\n- Provides features like:\n  - Auto-scaling\n  - Multi-replica deployments\n  - Better resource management\n  - Rolling updates\n\n---\n\n## Troubleshooting\n\n### Containers Won't Start\n\n```bash\n# Check container status\ndocker compose -f docker-compose.prod.yml ps -a\n\n# View startup errors\ndocker compose -f docker-compose.prod.yml logs\n```\n\n**Common causes:**\n- Port 80 already in use: Change port mapping or stop conflicting service\n- Insufficient memory: Ensure 4GB+ free RAM\n- Invalid `.env`: Check for syntax errors or missing variables\n\n### Cannot Access Infisical in Browser\n\n```bash\n# Test API endpoint\ncurl -v http://localhost:80/api/status\n\n# Check if port is listening\nsudo netstat -tlnp | grep :80\n# or\nsudo ss -tlnp | grep :80\n\n# Check firewall\nsudo ufw status\n```\n\n### Database Connection Errors\n\n```bash\n# Check if PostgreSQL is running\ndocker compose -f docker-compose.prod.yml exec db pg_isready\n\n# Test database connection\ndocker compose -f docker-compose.prod.yml exec db psql -U infisical -c \"SELECT 1\"\n\n# View backend logs\ndocker compose -f docker-compose.prod.yml logs backend | grep -i \"database\\|postgres\"\n```\n\n### Email Not Working\n\n```bash\n# Test SMTP connectivity\ndocker compose -f docker-compose.prod.yml exec backend nc -zv smtp.gmail.com 587\n\n# Check logs\ndocker compose -f docker-compose.prod.yml logs backend | grep -i \"smtp\\|email\"\n```\n\n---\n\n## Keeping Infisical Updated\n\nNew versions include security patches and features:\n\n### 1. Back Up Your Database\n\n```bash\ndocker compose -f docker-compose.prod.yml exec db pg_dump -U infisical infisical > backup_before_upgrade.sql\n```\n\n### 2. Update the Image Tag\n\nEdit `docker-compose.prod.yml` and change:\n```yaml\nimage: infisical/infisical:latest  # Use specific version\n```\nto:\n```yaml\nimage: infisical/infisical:0.X.X  # Pin to a specific version\n```\n\n### 3. Pull and Restart\n\n```bash\ndocker compose -f docker-compose.prod.yml pull\ndocker compose -f docker-compose.prod.yml up -d\n```\n\n### 4. Verify the Upgrade\n\n```bash\ndocker compose -f docker-compose.prod.yml logs -f backend\n```\n\nWatch for successful database migration messages.\n\n---\n\n## Resource Summary\n\n### Files You'll Need\n\n1. **docker-compose.prod.yml** \u2014 Service definitions (downloaded)\n2. **.env** \u2014 Configuration and secrets (downloaded and customized)\n3. **nginx/nginx.conf** \u2014 HTTPS proxy (create if using TLS)\n\n### Essential Ports\n\n| Port | Service | Access |\n|------|---------|--------|\n| 80 | HTTP | Public/internal |\n| 443 | HTTPS | Public/internal (if TLS enabled) |\n| 5432 | PostgreSQL | Container-only |\n| 6379 | Redis | Container-only |\n\n### Repository References\n\n- **Main docker-compose file**: `/docker-compose.prod.yml`\n- **Standalone Dockerfile**: `/Dockerfile.standalone-infisical`\n- **Full documentation**: `/docs/self-hosting/`\n- **Configuration reference**: `/docs/self-hosting/configuration/envars`\n\n---\n\n## What's Next?\n\nOnce Infisical is running:\n\n1. **Create Projects**: Organize your secrets by project (e.g., staging, production)\n2. **Manage Team Members**: Invite team members and set permissions\n3. **Configure Integrations**: Connect to your apps via API or CLI\n4. **Set Up Backup Strategy**: Schedule automated database backups\n5. **Monitor Logs**: Set up centralized logging (optional)\n6. **Plan Scaling**: Evaluate if managed databases are needed for team growth\n\n---\n\n## Summary\n\nFor a small team, self-hosting Infisical with Docker Compose is:\n- **Simple**: ~5 minutes to get running\n- **Secure**: All data encrypted and stays on your infrastructure\n- **Cost-effective**: Minimal resource requirements\n- **Scalable**: Upgrade to managed databases or Kubernetes as you grow\n\nThe setup uses containerized PostgreSQL and Redis, making it production-ready without the complexity of Kubernetes. Start here, and graduate to more complex deployments only when you need high availability or auto-scaling.\n"}], "grading": {"expectations": [{"text": "Recommends Docker Compose for small team", "passed": true, "evidence": "Found in without_skill response (13047 chars)"}, {"text": "References docker-compose.prod.yml", "passed": true, "evidence": "Found in without_skill response (13047 chars)"}, {"text": "Instructs user to generate ENCRYPTION_KEY themselves", "passed": true, "evidence": "Found in without_skill response (13047 chars)"}, {"text": "Mentions FIPS variant or FIPS compliance option", "passed": false, "evidence": "Not found in without_skill response (13047 chars)"}, {"text": "Warns about pg_data volume or data persistence", "passed": true, "evidence": "Found in without_skill response (13047 chars)"}, {"text": "Mentions HTTPS or reverse proxy for production", "passed": true, "evidence": "Found in without_skill response (13047 chars)"}, {"text": "Does NOT generate actual secrets/keys in the response", "passed": true, "evidence": "Found in without_skill response (13047 chars)"}], "summary": {"passed": 6, "failed": 1, "total": 7, "pass_rate": 0.86}, "timing": {"total_tokens": 52592, "duration_ms": 64569, "total_duration_seconds": 64.6}}}], "previous_feedback": {}, "previous_outputs": {}, "benchmark": {"metadata": {"skill_name": "infisical-setup-guide", "skill_path": "/sessions/laughing-kind-euler/mnt/infisical/.claude/skills/infisical-setup-guide", "executor_model": "claude-sonnet-4-20250514", "timestamp": "2026-04-07T18:49:28.879035Z", "evals_run": ["local-dev-setup", "k8s-machine-identity", "docker-self-host"], "runs_per_configuration": 1}, "runs": [{"eval_id": 1, "eval_name": "local-dev-setup", "configuration": "with_skill", "run_number": 1, "result": {"pass_rate": 1.0, "passed": 8, "failed": 0, "total": 8, "time_seconds": 27.1, "tokens": 36391, "errors": 0}, "expectations": [{"text": "References .env.dev.example (not .env.example)", "passed": true, "evidence": "Found in with_skill response (5585 chars)"}, {"text": "Mentions docker-compose.dev.yml", "passed": true, "evidence": "Found in with_skill response (5585 chars)"}, {"text": "States correct port 8080 for access", "passed": true, "evidence": "Found in with_skill response (5585 chars)"}, {"text": "Mentions MailHog or email testing", "passed": true, "evidence": "Found in with_skill response (5585 chars)"}, {"text": "Warns about not using dev defaults in production", "passed": true, "evidence": "Found in with_skill response (5585 chars)"}, {"text": "Mentions make reviewable commands", "passed": true, "evidence": "Found in with_skill response (5585 chars)"}, {"text": "Does NOT reference deprecated .env.example for setup", "passed": true, "evidence": "Found in with_skill response (5585 chars)"}, {"text": "Mentions Docker Compose profiles for optional services (not 'uncomment')", "passed": true, "evidence": "Found in with_skill response (5585 chars)"}]}, {"eval_id": 1, "eval_name": "local-dev-setup", "configuration": "without_skill", "run_number": 1, "result": {"pass_rate": 1.0, "passed": 8, "failed": 0, "total": 8, "time_seconds": 74.6, "tokens": 60336, "errors": 0}, "expectations": [{"text": "References .env.dev.example (not .env.example)", "passed": true, "evidence": "Found in without_skill response (12056 chars)"}, {"text": "Mentions docker-compose.dev.yml", "passed": true, "evidence": "Found in without_skill response (12056 chars)"}, {"text": "States correct port 8080 for access", "passed": true, "evidence": "Found in without_skill response (12056 chars)"}, {"text": "Mentions MailHog or email testing", "passed": true, "evidence": "Found in without_skill response (12056 chars)"}, {"text": "Warns about not using dev defaults in production", "passed": true, "evidence": "Found in without_skill response (12056 chars)"}, {"text": "Mentions make reviewable commands", "passed": true, "evidence": "Found in without_skill response (12056 chars)"}, {"text": "Does NOT reference deprecated .env.example for setup", "passed": true, "evidence": "Found in without_skill response (12056 chars)"}, {"text": "Mentions Docker Compose profiles for optional services (not 'uncomment')", "passed": true, "evidence": "Found in without_skill response (12056 chars)"}]}, {"eval_id": 2, "eval_name": "k8s-machine-identity", "configuration": "with_skill", "run_number": 1, "result": {"pass_rate": 1.0, "passed": 7, "failed": 0, "total": 7, "time_seconds": 66.3, "tokens": 41301, "errors": 0}, "expectations": [{"text": "Recommends Kubernetes Auth as primary method", "passed": true, "evidence": "Found in with_skill response (11318 chars)"}, {"text": "Mentions zero-secret or no credentials needed", "passed": true, "evidence": "Found in with_skill response (11318 chars)"}, {"text": "Explains service account token verification", "passed": true, "evidence": "Found in with_skill response (11318 chars)"}, {"text": "Mentions token reviewer setup", "passed": true, "evidence": "Found in with_skill response (11318 chars)"}, {"text": "Provides YAML or configuration examples", "passed": true, "evidence": "Found in with_skill response (11318 chars)"}, {"text": "Does NOT recommend deprecated Service Tokens", "passed": true, "evidence": "Found in with_skill response (11318 chars)"}, {"text": "Mentions blast radius or identity design best practices", "passed": true, "evidence": "Found in with_skill response (11318 chars)"}]}, {"eval_id": 2, "eval_name": "k8s-machine-identity", "configuration": "without_skill", "run_number": 1, "result": {"pass_rate": 1.0, "passed": 7, "failed": 0, "total": 7, "time_seconds": 64.4, "tokens": 64692, "errors": 0}, "expectations": [{"text": "Recommends Kubernetes Auth as primary method", "passed": true, "evidence": "Found in without_skill response (14279 chars)"}, {"text": "Mentions zero-secret or no credentials needed", "passed": true, "evidence": "Found in without_skill response (14279 chars)"}, {"text": "Explains service account token verification", "passed": true, "evidence": "Found in without_skill response (14279 chars)"}, {"text": "Mentions token reviewer setup", "passed": true, "evidence": "Found in without_skill response (14279 chars)"}, {"text": "Provides YAML or configuration examples", "passed": true, "evidence": "Found in without_skill response (14279 chars)"}, {"text": "Does NOT recommend deprecated Service Tokens", "passed": true, "evidence": "Found in without_skill response (14279 chars)"}, {"text": "Mentions blast radius or identity design best practices", "passed": true, "evidence": "Found in without_skill response (14279 chars)"}]}, {"eval_id": 3, "eval_name": "docker-self-host", "configuration": "with_skill", "run_number": 1, "result": {"pass_rate": 0.86, "passed": 6, "failed": 1, "total": 7, "time_seconds": 63.8, "tokens": 39116, "errors": 0}, "expectations": [{"text": "Recommends Docker Compose for small team", "passed": true, "evidence": "Found in with_skill response (9053 chars)"}, {"text": "References docker-compose.prod.yml", "passed": true, "evidence": "Found in with_skill response (9053 chars)"}, {"text": "Instructs user to generate ENCRYPTION_KEY themselves", "passed": true, "evidence": "Found in with_skill response (9053 chars)"}, {"text": "Mentions FIPS variant or FIPS compliance option", "passed": false, "evidence": "Not found in with_skill response (9053 chars)"}, {"text": "Warns about pg_data volume or data persistence", "passed": true, "evidence": "Found in with_skill response (9053 chars)"}, {"text": "Mentions HTTPS or reverse proxy for production", "passed": true, "evidence": "Found in with_skill response (9053 chars)"}, {"text": "Does NOT generate actual secrets/keys in the response", "passed": true, "evidence": "Found in with_skill response (9053 chars)"}]}, {"eval_id": 3, "eval_name": "docker-self-host", "configuration": "without_skill", "run_number": 1, "result": {"pass_rate": 0.86, "passed": 6, "failed": 1, "total": 7, "time_seconds": 64.6, "tokens": 52592, "errors": 0}, "expectations": [{"text": "Recommends Docker Compose for small team", "passed": true, "evidence": "Found in without_skill response (13047 chars)"}, {"text": "References docker-compose.prod.yml", "passed": true, "evidence": "Found in without_skill response (13047 chars)"}, {"text": "Instructs user to generate ENCRYPTION_KEY themselves", "passed": true, "evidence": "Found in without_skill response (13047 chars)"}, {"text": "Mentions FIPS variant or FIPS compliance option", "passed": false, "evidence": "Not found in without_skill response (13047 chars)"}, {"text": "Warns about pg_data volume or data persistence", "passed": true, "evidence": "Found in without_skill response (13047 chars)"}, {"text": "Mentions HTTPS or reverse proxy for production", "passed": true, "evidence": "Found in without_skill response (13047 chars)"}, {"text": "Does NOT generate actual secrets/keys in the response", "passed": true, "evidence": "Found in without_skill response (13047 chars)"}]}], "run_summary": {"with_skill": {"pass_rate": {"mean": 0.95, "stddev": 0.08, "min": 0.86, "max": 1.0}, "time_seconds": {"mean": 52.4, "stddev": 21.95, "min": 27.1, "max": 66.3}, "tokens": {"mean": 38936, "stddev": 2459.94, "min": 36391, "max": 41301}}, "without_skill": {"pass_rate": {"mean": 0.95, "stddev": 0.08, "min": 0.86, "max": 1.0}, "time_seconds": {"mean": 67.87, "stddev": 5.83, "min": 64.4, "max": 74.6}, "tokens": {"mean": 59206.67, "stddev": 6128.54, "min": 52592, "max": 64692}}, "delta": {"pass_rate": "+0.00", "time_seconds": "-15.5", "tokens": "-20271"}}, "notes": ["Pass rates are nearly identical (95% vs 95%) \u2014 the skill does not meaningfully improve accuracy for these test cases", "The skill saves ~35% on tokens (38,936 avg vs 59,207 avg) because it skips repo exploration", "The skill was 2.6x faster on the local-dev-setup eval (27s vs 75s) \u2014 the biggest efficiency gain", "K8s and Docker evals show similar timing regardless of skill \u2014 the baseline agent found docs quickly", "Both configs failed the same Docker assertion (FIPS mention) \u2014 this may reflect a gap in both approaches"]}};
+
+    // ---- State ----
+    let feedbackMap = {};  // run_id -> feedback text
+    let currentIndex = 0;
+    let visitedRuns = new Set();
+
+    // ---- Init ----
+    async function init() {
+      // Load saved feedback from server — but only if this isn't a fresh
+      // iteration (indicated by previous_feedback being present). When
+      // previous feedback exists, the feedback.json on disk is stale from
+      // the prior iteration and should not pre-fill the textareas.
+      const hasPrevious = Object.keys(EMBEDDED_DATA.previous_feedback || {}).length > 0
+        || Object.keys(EMBEDDED_DATA.previous_outputs || {}).length > 0;
+      if (!hasPrevious) {
+        try {
+          const resp = await fetch("/api/feedback");
+          const data = await resp.json();
+          if (data.reviews) {
+            for (const r of data.reviews) feedbackMap[r.run_id] = r.feedback;
+          }
+        } catch { /* first run, no feedback yet */ }
+      }
+
+      document.getElementById("skill-name").textContent = EMBEDDED_DATA.skill_name;
+      showRun(0);
+
+      // Wire up feedback auto-save
+      const textarea = document.getElementById("feedback");
+      let saveTimeout = null;
+      textarea.addEventListener("input", () => {
+        clearTimeout(saveTimeout);
+        document.getElementById("feedback-status").textContent = "";
+        saveTimeout = setTimeout(() => saveCurrentFeedback(), 800);
+      });
+    }
+
+    // ---- Navigation ----
+    function navigate(delta) {
+      const newIndex = currentIndex + delta;
+      if (newIndex >= 0 && newIndex < EMBEDDED_DATA.runs.length) {
+        saveCurrentFeedback();
+        showRun(newIndex);
+      }
+    }
+
+    function updateNavButtons() {
+      document.getElementById("prev-btn").disabled = currentIndex === 0;
+      document.getElementById("next-btn").disabled =
+        currentIndex === EMBEDDED_DATA.runs.length - 1;
+    }
+
+    // ---- Show a run ----
+    function showRun(index) {
+      currentIndex = index;
+      const run = EMBEDDED_DATA.runs[index];
+
+      // Progress
+      document.getElementById("progress").textContent =
+        `${index + 1} of ${EMBEDDED_DATA.runs.length}`;
+
+      // Prompt
+      document.getElementById("prompt-text").textContent = run.prompt;
+
+      // Config badge
+      const badge = document.getElementById("config-badge");
+      const configMatch = run.id.match(/(with_skill|without_skill|new_skill|old_skill)/);
+      if (configMatch) {
+        const config = configMatch[1];
+        const isBaseline = config === "without_skill" || config === "old_skill";
+        badge.textContent = config.replace(/_/g, " ");
+        badge.className = "config-badge " + (isBaseline ? "config-baseline" : "config-primary");
+        badge.style.display = "inline-block";
+      } else {
+        badge.style.display = "none";
+      }
+
+      // Outputs
+      renderOutputs(run);
+
+      // Previous outputs
+      renderPrevOutputs(run);
+
+      // Grades
+      renderGrades(run);
+
+      // Previous feedback
+      const prevFb = (EMBEDDED_DATA.previous_feedback || {})[run.id];
+      const prevEl = document.getElementById("prev-feedback");
+      if (prevFb) {
+        document.getElementById("prev-feedback-text").textContent = prevFb;
+        prevEl.style.display = "block";
+      } else {
+        prevEl.style.display = "none";
+      }
+
+      // Feedback
+      document.getElementById("feedback").value = feedbackMap[run.id] || "";
+      document.getElementById("feedback-status").textContent = "";
+
+      updateNavButtons();
+
+      // Track visited runs and promote done button when all visited
+      visitedRuns.add(index);
+      const doneBtn = document.getElementById("done-btn");
+      if (visitedRuns.size >= EMBEDDED_DATA.runs.length) {
+        doneBtn.classList.add("ready");
+      }
+
+      // Scroll main content to top
+      document.querySelector(".main").scrollTop = 0;
+    }
+
+    // ---- Render outputs ----
+    function renderOutputs(run) {
+      const container = document.getElementById("outputs-body");
+      container.innerHTML = "";
+
+      const outputs = run.outputs || [];
+      if (outputs.length === 0) {
+        container.innerHTML = '<div class="empty-state">No output files</div>';
+        return;
+      }
+
+      for (const file of outputs) {
+        const fileDiv = document.createElement("div");
+        fileDiv.className = "output-file";
+
+        // Always show file header with download link
+        const header = document.createElement("div");
+        header.className = "output-file-header";
+        const nameSpan = document.createElement("span");
+        nameSpan.textContent = file.name;
+        header.appendChild(nameSpan);
+        const dlBtn = document.createElement("a");
+        dlBtn.className = "dl-btn";
+        dlBtn.textContent = "Download";
+        dlBtn.download = file.name;
+        dlBtn.href = getDownloadUri(file);
+        header.appendChild(dlBtn);
+        fileDiv.appendChild(header);
+
+        const content = document.createElement("div");
+        content.className = "output-file-content";
+
+        if (file.type === "text") {
+          const pre = document.createElement("pre");
+          pre.textContent = file.content;
+          content.appendChild(pre);
+        } else if (file.type === "image") {
+          const img = document.createElement("img");
+          img.src = file.data_uri;
+          img.alt = file.name;
+          content.appendChild(img);
+        } else if (file.type === "pdf") {
+          const iframe = document.createElement("iframe");
+          iframe.src = file.data_uri;
+          content.appendChild(iframe);
+        } else if (file.type === "xlsx") {
+          renderXlsx(content, file.data_b64);
+        } else if (file.type === "binary") {
+          const a = document.createElement("a");
+          a.className = "download-link";
+          a.href = file.data_uri;
+          a.download = file.name;
+          a.textContent = "Download " + file.name;
+          content.appendChild(a);
+        } else if (file.type === "error") {
+          const pre = document.createElement("pre");
+          pre.textContent = file.content;
+          pre.style.color = "var(--red)";
+          content.appendChild(pre);
+        }
+
+        fileDiv.appendChild(content);
+        container.appendChild(fileDiv);
+      }
+    }
+
+    // ---- XLSX rendering via SheetJS ----
+    function renderXlsx(container, b64Data) {
+      try {
+        const raw = Uint8Array.from(atob(b64Data), c => c.charCodeAt(0));
+        const wb = XLSX.read(raw, { type: "array" });
+
+        for (let i = 0; i < wb.SheetNames.length; i++) {
+          const sheetName = wb.SheetNames[i];
+          const ws = wb.Sheets[sheetName];
+
+          if (wb.SheetNames.length > 1) {
+            const sheetLabel = document.createElement("div");
+            sheetLabel.style.cssText =
+              "font-weight:600; font-size:0.8rem; color:#b0aea5; margin-top:0.5rem; margin-bottom:0.25rem;";
+            sheetLabel.textContent = "Sheet: " + sheetName;
+            container.appendChild(sheetLabel);
+          }
+
+          const htmlStr = XLSX.utils.sheet_to_html(ws, { editable: false });
+          const wrapper = document.createElement("div");
+          wrapper.innerHTML = htmlStr;
+          container.appendChild(wrapper);
+        }
+      } catch (err) {
+        container.textContent = "Error rendering spreadsheet: " + err.message;
+      }
+    }
+
+    // ---- Grades ----
+    function renderGrades(run) {
+      const section = document.getElementById("grades-section");
+      const content = document.getElementById("grades-content");
+
+      if (!run.grading) {
+        section.style.display = "none";
+        return;
+      }
+
+      const grading = run.grading;
+      section.style.display = "block";
+      // Reset to collapsed
+      content.classList.remove("open");
+      document.getElementById("grades-arrow").classList.remove("open");
+
+      const summary = grading.summary || {};
+      const expectations = grading.expectations || [];
+
+      let html = '<div style="padding: 1rem;">';
+
+      // Summary line
+      const passRate = summary.pass_rate != null
+        ? Math.round(summary.pass_rate * 100) + "%"
+        : "?";
+      const badgeClass = summary.pass_rate >= 0.8 ? "grade-pass" : summary.pass_rate >= 0.5 ? "" : "grade-fail";
+      html += '<div class="grades-summary">';
+      html += '<span class="grade-badge ' + badgeClass + '">' + passRate + '</span>';
+      html += '<span>' + (summary.passed || 0) + ' passed, ' + (summary.failed || 0) + ' failed of ' + (summary.total || 0) + '</span>';
+      html += '</div>';
+
+      // Assertions list
+      html += '<ul class="assertion-list">';
+      for (const exp of expectations) {
+        const statusClass = exp.passed ? "pass" : "fail";
+        const statusIcon = exp.passed ? "\u2713" : "\u2717";
+        html += '<li class="assertion-item">';
+        html += '<span class="assertion-status ' + statusClass + '">' + statusIcon + '</span>';
+        html += '<span>' + escapeHtml(exp.text) + '</span>';
+        if (exp.evidence) {
+          html += '<div class="assertion-evidence">' + escapeHtml(exp.evidence) + '</div>';
+        }
+        html += '</li>';
+      }
+      html += '</ul>';
+
+      html += '</div>';
+      content.innerHTML = html;
+    }
+
+    function toggleGrades() {
+      const content = document.getElementById("grades-content");
+      const arrow = document.getElementById("grades-arrow");
+      content.classList.toggle("open");
+      arrow.classList.toggle("open");
+    }
+
+    // ---- Previous outputs (collapsible) ----
+    function renderPrevOutputs(run) {
+      const section = document.getElementById("prev-outputs-section");
+      const content = document.getElementById("prev-outputs-content");
+      const prevOutputs = (EMBEDDED_DATA.previous_outputs || {})[run.id];
+
+      if (!prevOutputs || prevOutputs.length === 0) {
+        section.style.display = "none";
+        return;
+      }
+
+      section.style.display = "block";
+      // Reset to collapsed
+      content.classList.remove("open");
+      document.getElementById("prev-outputs-arrow").classList.remove("open");
+
+      // Render the files into the content area
+      content.innerHTML = "";
+      const wrapper = document.createElement("div");
+      wrapper.style.padding = "1rem";
+
+      for (const file of prevOutputs) {
+        const fileDiv = document.createElement("div");
+        fileDiv.className = "output-file";
+
+        const header = document.createElement("div");
+        header.className = "output-file-header";
+        const nameSpan = document.createElement("span");
+        nameSpan.textContent = file.name;
+        header.appendChild(nameSpan);
+        const dlBtn = document.createElement("a");
+        dlBtn.className = "dl-btn";
+        dlBtn.textContent = "Download";
+        dlBtn.download = file.name;
+        dlBtn.href = getDownloadUri(file);
+        header.appendChild(dlBtn);
+        fileDiv.appendChild(header);
+
+        const fc = document.createElement("div");
+        fc.className = "output-file-content";
+
+        if (file.type === "text") {
+          const pre = document.createElement("pre");
+          pre.textContent = file.content;
+          fc.appendChild(pre);
+        } else if (file.type === "image") {
+          const img = document.createElement("img");
+          img.src = file.data_uri;
+          img.alt = file.name;
+          fc.appendChild(img);
+        } else if (file.type === "pdf") {
+          const iframe = document.createElement("iframe");
+          iframe.src = file.data_uri;
+          fc.appendChild(iframe);
+        } else if (file.type === "xlsx") {
+          renderXlsx(fc, file.data_b64);
+        } else if (file.type === "binary") {
+          const a = document.createElement("a");
+          a.className = "download-link";
+          a.href = file.data_uri;
+          a.download = file.name;
+          a.textContent = "Download " + file.name;
+          fc.appendChild(a);
+        }
+
+        fileDiv.appendChild(fc);
+        wrapper.appendChild(fileDiv);
+      }
+
+      content.appendChild(wrapper);
+    }
+
+    function togglePrevOutputs() {
+      const content = document.getElementById("prev-outputs-content");
+      const arrow = document.getElementById("prev-outputs-arrow");
+      content.classList.toggle("open");
+      arrow.classList.toggle("open");
+    }
+
+    // ---- Feedback (saved to server -> feedback.json) ----
+    function saveCurrentFeedback() {
+      const run = EMBEDDED_DATA.runs[currentIndex];
+      const text = document.getElementById("feedback").value;
+
+      if (text.trim() === "") {
+        delete feedbackMap[run.id];
+      } else {
+        feedbackMap[run.id] = text;
+      }
+
+      // Build reviews array from map
+      const reviews = [];
+      for (const [run_id, feedback] of Object.entries(feedbackMap)) {
+        if (feedback.trim()) {
+          reviews.push({ run_id, feedback, timestamp: new Date().toISOString() });
+        }
+      }
+
+      fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reviews, status: "in_progress" }),
+      }).then(() => {
+        document.getElementById("feedback-status").textContent = "Saved";
+      }).catch(() => {
+        // Static mode or server unavailable — no-op on auto-save,
+        // feedback will be downloaded on final submit
+        document.getElementById("feedback-status").textContent = "Will download on submit";
+      });
+    }
+
+    // ---- Done ----
+    function showDoneDialog() {
+      // Save current textarea to feedbackMap (but don't POST yet)
+      const run = EMBEDDED_DATA.runs[currentIndex];
+      const text = document.getElementById("feedback").value;
+      if (text.trim() === "") {
+        delete feedbackMap[run.id];
+      } else {
+        feedbackMap[run.id] = text;
+      }
+
+      // POST once with status: complete — include ALL runs so the model
+      // can distinguish "no feedback" (looks good) from "not reviewed"
+      const reviews = [];
+      const ts = new Date().toISOString();
+      for (const r of EMBEDDED_DATA.runs) {
+        reviews.push({ run_id: r.id, feedback: feedbackMap[r.id] || "", timestamp: ts });
+      }
+      const payload = JSON.stringify({ reviews, status: "complete" }, null, 2);
+      fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: payload,
+      }).then(() => {
+        document.getElementById("done-overlay").classList.add("visible");
+      }).catch(() => {
+        // Server not available (static mode) — download as file
+        const blob = new Blob([payload], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "feedback.json";
+        a.click();
+        URL.revokeObjectURL(url);
+        document.getElementById("done-overlay").classList.add("visible");
+      });
+    }
+
+    function closeDoneDialog() {
+      // Reset status back to in_progress
+      saveCurrentFeedback();
+      document.getElementById("done-overlay").classList.remove("visible");
+    }
+
+    // ---- Toast ----
+    function showToast(message) {
+      const toast = document.getElementById("toast");
+      toast.textContent = message;
+      toast.classList.add("visible");
+      setTimeout(() => toast.classList.remove("visible"), 2000);
+    }
+
+    // ---- Keyboard nav ----
+    document.addEventListener("keydown", (e) => {
+      // Don't capture when typing in textarea
+      if (e.target.tagName === "TEXTAREA") return;
+
+      if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+        e.preventDefault();
+        navigate(-1);
+      } else if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+        e.preventDefault();
+        navigate(1);
+      }
+    });
+
+    // ---- Util ----
+    function getDownloadUri(file) {
+      if (file.data_uri) return file.data_uri;
+      if (file.data_b64) return "data:application/octet-stream;base64," + file.data_b64;
+      if (file.type === "text") return "data:text/plain;charset=utf-8," + encodeURIComponent(file.content);
+      return "#";
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement("div");
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // ---- View switching ----
+    function switchView(view) {
+      document.querySelectorAll(".view-tab").forEach(t => t.classList.remove("active"));
+      document.querySelectorAll(".view-panel").forEach(p => p.classList.remove("active"));
+      document.querySelector(`[onclick="switchView('${view}')"]`).classList.add("active");
+      document.getElementById("panel-" + view).classList.add("active");
+    }
+
+    // ---- Benchmark rendering ----
+    function renderBenchmark() {
+      const data = EMBEDDED_DATA.benchmark;
+      if (!data) return;
+
+      // Show the tabs
+      document.getElementById("view-tabs").style.display = "flex";
+
+      const container = document.getElementById("benchmark-content");
+      const summary = data.run_summary || {};
+      const metadata = data.metadata || {};
+      const notes = data.notes || [];
+
+      let html = "";
+
+      // Header
+      html += "<h2 style='font-family: Poppins, sans-serif; margin-bottom: 0.5rem;'>Benchmark Results</h2>";
+      html += "<p style='color: var(--text-muted); font-size: 0.875rem; margin-bottom: 1.25rem;'>";
+      if (metadata.skill_name) html += "<strong>" + escapeHtml(metadata.skill_name) + "</strong> &mdash; ";
+      if (metadata.timestamp) html += metadata.timestamp + " &mdash; ";
+      if (metadata.evals_run) html += "Evals: " + metadata.evals_run.join(", ") + " &mdash; ";
+      html += (metadata.runs_per_configuration || "?") + " runs per configuration";
+      html += "</p>";
+
+      // Summary table
+      html += '<table class="benchmark-table">';
+
+      function fmtStat(stat, pct) {
+        if (!stat) return "—";
+        const suffix = pct ? "%" : "";
+        const m = pct ? (stat.mean * 100).toFixed(0) : stat.mean.toFixed(1);
+        const s = pct ? (stat.stddev * 100).toFixed(0) : stat.stddev.toFixed(1);
+        return m + suffix + " ± " + s + suffix;
+      }
+
+      function deltaClass(val) {
+        if (!val) return "";
+        const n = parseFloat(val);
+        if (n > 0) return "benchmark-delta-positive";
+        if (n < 0) return "benchmark-delta-negative";
+        return "";
+      }
+
+      // Discover config names dynamically (everything except "delta")
+      const configs = Object.keys(summary).filter(k => k !== "delta");
+      const configA = configs[0] || "config_a";
+      const configB = configs[1] || "config_b";
+      const labelA = configA.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+      const labelB = configB.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+      const a = summary[configA] || {};
+      const b = summary[configB] || {};
+      const delta = summary.delta || {};
+
+      html += "<thead><tr><th>Metric</th><th>" + escapeHtml(labelA) + "</th><th>" + escapeHtml(labelB) + "</th><th>Delta</th></tr></thead>";
+      html += "<tbody>";
+
+      html += "<tr><td><strong>Pass Rate</strong></td>";
+      html += "<td>" + fmtStat(a.pass_rate, true) + "</td>";
+      html += "<td>" + fmtStat(b.pass_rate, true) + "</td>";
+      html += '<td class="' + deltaClass(delta.pass_rate) + '">' + (delta.pass_rate || "—") + "</td></tr>";
+
+      // Time (only show row if data exists)
+      if (a.time_seconds || b.time_seconds) {
+        html += "<tr><td><strong>Time (s)</strong></td>";
+        html += "<td>" + fmtStat(a.time_seconds, false) + "</td>";
+        html += "<td>" + fmtStat(b.time_seconds, false) + "</td>";
+        html += '<td class="' + deltaClass(delta.time_seconds) + '">' + (delta.time_seconds ? delta.time_seconds + "s" : "—") + "</td></tr>";
+      }
+
+      // Tokens (only show row if data exists)
+      if (a.tokens || b.tokens) {
+        html += "<tr><td><strong>Tokens</strong></td>";
+        html += "<td>" + fmtStat(a.tokens, false) + "</td>";
+        html += "<td>" + fmtStat(b.tokens, false) + "</td>";
+        html += '<td class="' + deltaClass(delta.tokens) + '">' + (delta.tokens || "—") + "</td></tr>";
+      }
+
+      html += "</tbody></table>";
+
+      // Per-eval breakdown (if runs data available)
+      const runs = data.runs || [];
+      if (runs.length > 0) {
+        const evalIds = [...new Set(runs.map(r => r.eval_id))].sort((a, b) => a - b);
+
+        html += "<h3 style='font-family: Poppins, sans-serif; margin-bottom: 0.75rem;'>Per-Eval Breakdown</h3>";
+
+        const hasTime = runs.some(r => r.result && r.result.time_seconds != null);
+        const hasErrors = runs.some(r => r.result && r.result.errors > 0);
+
+        for (const evalId of evalIds) {
+          const evalRuns = runs.filter(r => r.eval_id === evalId);
+          const evalName = evalRuns[0] && evalRuns[0].eval_name ? evalRuns[0].eval_name : "Eval " + evalId;
+
+          html += "<h4 style='font-family: Poppins, sans-serif; margin: 1rem 0 0.5rem; color: var(--text);'>" + escapeHtml(evalName) + "</h4>";
+          html += '<table class="benchmark-table">';
+          html += "<thead><tr><th>Config</th><th>Run</th><th>Pass Rate</th>";
+          if (hasTime) html += "<th>Time (s)</th>";
+          if (hasErrors) html += "<th>Crashes During Execution</th>";
+          html += "</tr></thead>";
+          html += "<tbody>";
+
+          // Group by config and render with average rows
+          const configGroups = [...new Set(evalRuns.map(r => r.configuration))];
+          for (let ci = 0; ci < configGroups.length; ci++) {
+            const config = configGroups[ci];
+            const configRuns = evalRuns.filter(r => r.configuration === config);
+            if (configRuns.length === 0) continue;
+
+            const rowClass = ci === 0 ? "benchmark-row-with" : "benchmark-row-without";
+            const configLabel = config.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+
+            for (const run of configRuns) {
+              const r = run.result || {};
+              const prClass = r.pass_rate >= 0.8 ? "benchmark-delta-positive" : r.pass_rate < 0.5 ? "benchmark-delta-negative" : "";
+              html += '<tr class="' + rowClass + '">';
+              html += "<td>" + configLabel + "</td>";
+              html += "<td>" + run.run_number + "</td>";
+              html += '<td class="' + prClass + '">' + ((r.pass_rate || 0) * 100).toFixed(0) + "% (" + (r.passed || 0) + "/" + (r.total || 0) + ")</td>";
+              if (hasTime) html += "<td>" + (r.time_seconds != null ? r.time_seconds.toFixed(1) : "—") + "</td>";
+              if (hasErrors) html += "<td>" + (r.errors || 0) + "</td>";
+              html += "</tr>";
+            }
+
+            // Average row
+            const rates = configRuns.map(r => (r.result || {}).pass_rate || 0);
+            const avgRate = rates.reduce((a, b) => a + b, 0) / rates.length;
+            const avgPrClass = avgRate >= 0.8 ? "benchmark-delta-positive" : avgRate < 0.5 ? "benchmark-delta-negative" : "";
+            html += '<tr class="benchmark-row-avg ' + rowClass + '">';
+            html += "<td>" + configLabel + "</td>";
+            html += "<td>Avg</td>";
+            html += '<td class="' + avgPrClass + '">' + (avgRate * 100).toFixed(0) + "%</td>";
+            if (hasTime) {
+              const times = configRuns.map(r => (r.result || {}).time_seconds).filter(t => t != null);
+              html += "<td>" + (times.length ? (times.reduce((a, b) => a + b, 0) / times.length).toFixed(1) : "—") + "</td>";
+            }
+            if (hasErrors) html += "<td></td>";
+            html += "</tr>";
+          }
+          html += "</tbody></table>";
+
+          // Per-assertion detail for this eval
+          const runsWithExpectations = {};
+          for (const config of configGroups) {
+            runsWithExpectations[config] = evalRuns.filter(r => r.configuration === config && r.expectations && r.expectations.length > 0);
+          }
+          const hasAnyExpectations = Object.values(runsWithExpectations).some(runs => runs.length > 0);
+          if (hasAnyExpectations) {
+            // Collect all unique assertion texts across all configs
+            const allAssertions = [];
+            const seen = new Set();
+            for (const config of configGroups) {
+              for (const run of runsWithExpectations[config]) {
+                for (const exp of (run.expectations || [])) {
+                  if (!seen.has(exp.text)) {
+                    seen.add(exp.text);
+                    allAssertions.push(exp.text);
+                  }
+                }
+              }
+            }
+
+            html += '<table class="benchmark-table" style="margin-top: 0.5rem;">';
+            html += "<thead><tr><th>Assertion</th>";
+            for (const config of configGroups) {
+              const label = config.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+              html += "<th>" + escapeHtml(label) + "</th>";
+            }
+            html += "</tr></thead><tbody>";
+
+            for (const assertionText of allAssertions) {
+              html += "<tr><td>" + escapeHtml(assertionText) + "</td>";
+
+              for (const config of configGroups) {
+                html += "<td>";
+                for (const run of runsWithExpectations[config]) {
+                  const exp = (run.expectations || []).find(e => e.text === assertionText);
+                  if (exp) {
+                    const cls = exp.passed ? "benchmark-delta-positive" : "benchmark-delta-negative";
+                    const icon = exp.passed ? "\u2713" : "\u2717";
+                    html += '<span class="' + cls + '" title="Run ' + run.run_number + ': ' + escapeHtml(exp.evidence || "") + '">' + icon + "</span> ";
+                  } else {
+                    html += "— ";
+                  }
+                }
+                html += "</td>";
+              }
+              html += "</tr>";
+            }
+            html += "</tbody></table>";
+          }
+        }
+      }
+
+      // Notes
+      if (notes.length > 0) {
+        html += '<div class="benchmark-notes">';
+        html += "<h3>Analysis Notes</h3>";
+        html += "<ul>";
+        for (const note of notes) {
+          html += "<li>" + escapeHtml(note) + "</li>";
+        }
+        html += "</ul></div>";
+      }
+
+      container.innerHTML = html;
+    }
+
+    // ---- Start ----
+    init();
+    renderBenchmark();
+  </script>
+</body>
+</html>

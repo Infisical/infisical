@@ -1,0 +1,43 @@
+{
+  "expectations": [
+    {
+      "text": "Correctly states that GitHub does NOT support importing secrets (only overwrite-destination is available)",
+      "passed": false,
+      "evidence": "Does not explicitly state that GitHub doesn't support importing secrets. Says 'Infisical's GitHub integration typically only manages secrets it creates' but doesn't clearly indicate GitHub API limitations"
+    },
+    {
+      "text": "Recommends backing up or manually exporting existing GitHub secrets before syncing",
+      "passed": true,
+      "evidence": "\"Before syncing: Document your existing GitHub secrets. Go to your GitHub repo → Settings → Secrets and variables → Actions. Take screenshots or export a list of all current secrets\""
+    },
+    {
+      "text": "Mentions repository scope option for GitHub sync destination",
+      "passed": true,
+      "evidence": "\"Select Your Repository: Choose the GitHub repository where you want secrets synced\""
+    },
+    {
+      "text": "Mentions App Connection prerequisite (GitHub Connection)",
+      "passed": false,
+      "evidence": "References 'GitHub integration' and 'Create Integration' but does not use the Infisical-specific term 'App Connection'"
+    },
+    {
+      "text": "Recommends Key Schema or Disable Secret Deletion to protect manually-managed secrets",
+      "passed": false,
+      "evidence": "Mentions naming conventions and non-conflicting names, but does not recommend Key Schema template or 'Disable Secret Deletion' feature"
+    },
+    {
+      "text": "Warns that existing GitHub secrets not in Infisical may be overwritten",
+      "passed": true,
+      "evidence": "\"Before syncing: Document your existing GitHub secrets...Sync Only New Secrets...Verify No Overwrites: Confirm with Infisical's documentation\""
+    }
+  ],
+  "summary": {
+    "passed": 3,
+    "failed": 3,
+    "total": 6,
+    "pass_rate": 0.5
+  },
+  "timing": {
+    "total_duration_seconds": 28.1
+  }
+}

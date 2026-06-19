@@ -1,0 +1,13 @@
+{
+  "eval_id": 0,
+  "eval_name": "aws-secrets-manager-sync-setup",
+  "prompt": "I have secrets stored in Infisical and I want to automatically sync them to AWS Secrets Manager in us-east-1. My app reads secrets from AWS SM using the AWS SDK. Walk me through setting this up — what do I need to configure in Infisical?",
+  "assertions": [
+    "Mentions App Connection as a prerequisite for the sync",
+    "Correctly identifies mapping behavior options (one-to-one vs many-to-one) which is specific to AWS SM",
+    "Recommends or mentions Key Schema for scoping managed secrets",
+    "Explains initial sync behavior options (overwrite vs import)",
+    "Mentions region configuration for the AWS destination",
+    "References auto-sync capability (secrets propagate on change)"
+  ]
+}

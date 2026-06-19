@@ -1,0 +1,43 @@
+{
+  "expectations": [
+    {
+      "text": "Recommends IRSA or Assume Role method (not just Access Key method)",
+      "passed": true,
+      "evidence": "\"Option A: Temporary Credentials via AssumeRole (Recommended)...Option B: Temporary Credentials via IRSA...Recommendation: Use Option A (AssumeRole)\""
+    },
+    {
+      "text": "Correctly identifies Temporary Credentials type (not IAM User type) for short-lived STS creds",
+      "passed": true,
+      "evidence": "\"AWS Credential Type: Temporary Credentials...Generates STS credentials (Access Key + Secret Key + Session Token)\""
+    },
+    {
+      "text": "Notes the 1-hour maximum TTL for AssumeRole with temporary credentials",
+      "passed": true,
+      "evidence": "\"Max TTL: 1h (AssumeRole max is 1 hour)\" and 'The maximum TTL for AssumeRole is exactly 1 hour. You cannot extend beyond this.'"
+    },
+    {
+      "text": "Shows correct IAM permissions policy needed for STS operations",
+      "passed": true,
+      "evidence": "Shows IAM policy with 'sts:GetSessionToken' and 'sts:AssumeRole' permissions"
+    },
+    {
+      "text": "Mentions KUBERNETES_AUTO_FETCH_SERVICE_ACCOUNT_TOKEN env var for IRSA setup",
+      "passed": false,
+      "evidence": "Response discusses IRSA option but does not mention KUBERNETES_AUTO_FETCH_SERVICE_ACCOUNT_TOKEN environment variable"
+    },
+    {
+      "text": "Explains that lease returns include ACCESS_KEY, SECRET_ACCESS_KEY, and SESSION_TOKEN",
+      "passed": true,
+      "evidence": "\"Infisical will create temporary AWS credentials and display: ACCESS_KEY, SECRET_ACCESS_KEY, SESSION_TOKEN\""
+    }
+  ],
+  "summary": {
+    "passed": 5,
+    "failed": 1,
+    "total": 6,
+    "pass_rate": 0.83
+  },
+  "timing": {
+    "total_duration_seconds": 40.3
+  }
+}

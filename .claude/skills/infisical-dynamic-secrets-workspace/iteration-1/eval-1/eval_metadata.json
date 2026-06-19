@@ -1,0 +1,13 @@
+{
+  "eval_id": 1,
+  "eval_name": "aws-iam-dynamic-creds-eks",
+  "prompt": "I need temporary AWS IAM credentials for my application running on EKS. The credentials should have specific S3 read permissions and expire after 1 hour. What's the best way to set this up with Infisical dynamic secrets?",
+  "assertions": [
+    "Recommends IRSA or Assume Role method (not just Access Key method)",
+    "Correctly identifies Temporary Credentials type (not IAM User type) for short-lived STS creds",
+    "Notes the 1-hour maximum TTL for AssumeRole with temporary credentials",
+    "Shows correct IAM permissions policy needed for STS operations",
+    "Mentions KUBERNETES_AUTO_FETCH_SERVICE_ACCOUNT_TOKEN env var for IRSA setup",
+    "Explains that lease returns include ACCESS_KEY, SECRET_ACCESS_KEY, and SESSION_TOKEN"
+  ]
+}

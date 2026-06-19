@@ -1,0 +1,43 @@
+{
+  "expectations": [
+    {
+      "text": "Correctly warns that Azure Key Vault converts underscores to hyphens (DATABASE_URL becomes DATABASE-URL)",
+      "passed": true,
+      "evidence": "\"Azure Key Vault does not allow underscores in secret names. When you sync secrets from Infisical to Azure Key Vault, all underscores are automatically converted to hyphens. Example mappings: DATABASE_URL → DATABASE-URL, API_KEY → API-KEY\""
+    },
+    {
+      "text": "Lists required permissions: secrets/list, secrets/get, secrets/set, and secrets/recover",
+      "passed": true,
+      "evidence": "Table clearly lists all four permissions: 'secrets/list' (check what exists), 'secrets/get' (read values), 'secrets/set' (create/update), 'secrets/recover' (recover soft-deleted)'"
+    },
+    {
+      "text": "Recommends Key Vault Secrets Officer role as the appropriate built-in role",
+      "passed": true,
+      "evidence": "\"Recommended Role: Key Vault Secrets Officer — This built-in Azure role includes all the permissions above and is specifically designed for secret management operations.\""
+    },
+    {
+      "text": "Explains why secrets/recover is needed (Azure soft-delete behavior)",
+      "passed": true,
+      "evidence": "\"Why secrets/recover Matters: Azure Key Vault uses soft-delete by default, meaning deleted secrets remain recoverable for a retention period. If Infisical attempts to update a secret that was recently deleted, it needs the secrets/recover permission to restore it first before updating.\""
+    },
+    {
+      "text": "Mentions App Connection prerequisite",
+      "passed": true,
+      "evidence": "\"Create an Azure App Connection in Infisical with your service principal credentials\""
+    },
+    {
+      "text": "Mentions the vault base URL as a required destination config field",
+      "passed": true,
+      "evidence": "\"Destination: Select your Key Vault's base URL (e.g., https://my-vault.vault.azure.net)\""
+    }
+  ],
+  "summary": {
+    "passed": 6,
+    "failed": 0,
+    "total": 6,
+    "pass_rate": 1.0
+  },
+  "timing": {
+    "total_duration_seconds": 22.7
+  }
+}

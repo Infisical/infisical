@@ -1,0 +1,23 @@
+{
+  "skill_name": "infisical-secret-syncs",
+  "evals": [
+    {
+      "id": 0,
+      "prompt": "I have secrets stored in Infisical and I want to automatically sync them to AWS Secrets Manager in us-east-1. My app reads secrets from AWS SM using the AWS SDK. Walk me through setting this up — what do I need to configure in Infisical?",
+      "expected_output": "Mentions App Connection prerequisite, correct AWS SM destination config (region, mapping behavior), key schema recommendation, initial sync behavior options, auto-sync explanation",
+      "files": []
+    },
+    {
+      "id": 1,
+      "prompt": "We use GitHub Actions for CI/CD and want our Infisical secrets to automatically show up as GitHub repository secrets. We already have secrets in GitHub that we don't want to lose during the migration. How should I set this up?",
+      "expected_output": "GitHub sync with repository scope, warns that GitHub does NOT support importing secrets (only overwrite-destination), recommends manually exporting existing GitHub secrets first, mentions App Connection, key schema recommendation",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "I need to sync secrets from Infisical to Azure Key Vault. My secret names use underscores like DATABASE_URL and API_KEY. Will that cause any issues? Also what permissions does my service principal need?",
+      "expected_output": "Warns about underscore-to-hyphen conversion in Azure Key Vault, lists required permissions (secrets/list, secrets/get, secrets/set, secrets/recover), recommends Key Vault Secrets Officer role, mentions App Connection",
+      "files": []
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "eval_id": 1,
+  "eval_name": "github-sync-with-existing-secrets",
+  "prompt": "We use GitHub Actions for CI/CD and want our Infisical secrets to automatically show up as GitHub repository secrets. We already have secrets in GitHub that we don't want to lose during the migration. How should I set this up?",
+  "assertions": [
+    "Correctly states that GitHub does NOT support importing secrets (only overwrite-destination is available)",
+    "Recommends backing up or manually exporting existing GitHub secrets before syncing",
+    "Mentions repository scope option for GitHub sync destination",
+    "Mentions App Connection prerequisite (GitHub Connection)",
+    "Recommends Key Schema or Disable Secret Deletion to protect manually-managed secrets",
+    "Warns that existing GitHub secrets not in Infisical may be overwritten"
+  ]
+}
