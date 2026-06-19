@@ -82,7 +82,9 @@ export const registerPamProductMembershipRouter = async (server: FastifyZodProvi
       response: {
         200: z.object({
           isProductAdmin: z.boolean(),
-          isResourceAdmin: z.boolean()
+          isResourceAdmin: z.boolean(),
+          canViewSessions: z.boolean(),
+          canViewAuditLogs: z.boolean()
         })
       }
     },

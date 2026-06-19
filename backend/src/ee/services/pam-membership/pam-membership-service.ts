@@ -734,16 +734,26 @@ export const pamMembershipServiceFactory = ({
     });
     const isProductAdmin = hasRole(PamProductRole.Admin);
 
-    const { folderIds, accountIds } = await getResourceIdsWithActions(
-      membershipDAL,
-      membershipRoleDAL,
-      projectId,
-      { allOf: [ResourcePermissionPamResourceActions.ManageMembers] },
-      ctx
-    );
-    const isResourceAdmin = folderIds.length > 0 || accountIds.length > 0;
+    const hasAnyResourceWith = async (action: ResourcePermissionPamResourceActions) => {
+      const { folderIds, accountIds } = await getResourceIdsWithActions(
+        membershipDAL,
+        membershipRoleDAL,
+        projectId,
+        { allOf: [action] },
+        ctx
+      );
+      return folderIds.length > 0 || accountIds.length > 0;
+    };
 
-    return { isProductAdmin, isResourceAdmin };
+    const [isResourceAdmin, canViewSessions, canViewAuditLogsResource] = await Promise.all([
+      hasAnyResourceWith(ResourcePermissionPamResourceActions.ManageMembers),
+      hasAnyResourceWith(ResourcePermissionPamResourceActions.ViewSessions),
+      hasAnyResourceWith(ResourcePermissionPamResourceActions.ViewAuditLogs)
+    ]);
+
+    const canViewAuditLogs = isProductAdmin || canViewAuditLogsResource;
+
+    return { isProductAdmin, isResourceAdmin, canViewSessions, canViewAuditLogs };
   };
 
   return {

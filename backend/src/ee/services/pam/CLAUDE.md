@@ -46,7 +46,7 @@ Every list/mutation endpoint checks action-level permissions, not just membershi
 
 | Endpoint | Required Permission |
 |---|---|
-| Get access capabilities | Product membership (returns `isProductAdmin` / `isResourceAdmin` flags for sidebar gating) |
+| Get access capabilities | Product membership (returns `isProductAdmin` / `isResourceAdmin` / `canViewSessions` / `canViewAuditLogs` flags for sidebar gating) |
 | List folders | `ReadFolder` (via `getResourceIdsWithActions`) |
 | List accounts | `ReadAccounts` (via `getResourceIdsWithActions`) |
 | List accessible accounts | `ReadAccounts` AND (`LaunchSessions` OR `ViewCredentials`) |

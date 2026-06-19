@@ -397,9 +397,12 @@ export const useGetPamAccessCapabilities = () => {
   return useQuery({
     queryKey: pamKeys.accessCapabilities(),
     queryFn: async () => {
-      const { data } = await apiRequest.get<{ isProductAdmin: boolean; isResourceAdmin: boolean }>(
-        "/api/v1/pam/memberships/capabilities"
-      );
+      const { data } = await apiRequest.get<{
+        isProductAdmin: boolean;
+        isResourceAdmin: boolean;
+        canViewSessions: boolean;
+        canViewAuditLogs: boolean;
+      }>("/api/v1/pam/memberships/capabilities");
       return data;
     }
   });
