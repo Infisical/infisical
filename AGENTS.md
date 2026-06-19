@@ -1,3 +1,6 @@
+## Feature development 
+Check out Claude.md for additional context on project file structure and general feature development
+
 ## Issue and PR Guidelines
 
 - Never create an issue.
