@@ -30,7 +30,7 @@ export const auditLogStreamFiltersSchema = z.object({
 // Display labels for each product. Shared with the stream table so naming stays consistent.
 export const AUDIT_LOG_STREAM_PRODUCT_LABELS: Record<AuditLogStreamProduct, string> = {
   [AuditLogStreamProduct.SecretManager]: "Secret Management",
-  [AuditLogStreamProduct.CertificateManager]: "Certificate Manager (PKI)",
+  [AuditLogStreamProduct.CertificateManager]: "Certificate Manager",
   [AuditLogStreamProduct.KMS]: "KMS",
   [AuditLogStreamProduct.SecretScanning]: "Secret Scanning",
   [AuditLogStreamProduct.PAM]: "PAM",
@@ -145,8 +145,8 @@ export const ProductsField = () => {
 
             const next = (newValue as MultiValue<ProductOption>)
               .map((option) => option.value)
-              .filter((productValue): productValue is AuditLogStreamProduct =>
-                productValue !== ALL_VALUE
+              .filter(
+                (productValue): productValue is AuditLogStreamProduct => productValue !== ALL_VALUE
               );
             // Empty selection is "stream everything" — selecting every product is the same intent,
             // so normalize it back to an empty list.
