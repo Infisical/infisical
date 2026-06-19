@@ -8,6 +8,7 @@ import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
+  ProjectPermissionCertificateActions,
   ProjectPermissionHsmConnectorActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
@@ -314,7 +315,21 @@ export const hsmConnectorServiceFactory = ({
   ) => {
     const row = await hsmConnectorDAL.findById(dto.connectorId);
     if (!row) throw new NotFoundError({ message: `HSM Connector ${dto.connectorId} not found.` });
+
     await assertProjectPermission(actor, row.projectId, ProjectPermissionHsmConnectorActions.Read);
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      projectId: row.projectId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.CertificateManager
+    });
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionCertificateActions.Read,
+      ProjectPermissionSub.Certificates
+    );
+
     const { rows, totalCount } = await hsmConnectorDAL.listLinkedCertificates(row.id, {
       offset: dto.offset,
       limit: dto.limit
