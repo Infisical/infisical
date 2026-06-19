@@ -492,6 +492,8 @@ export const CreateAccountSheet = ({ isOpen, onOpenChange, defaultFolderId }: Pr
                   <h3 className="mb-3 text-sm font-medium text-foreground">Credentials</h3>
                   <CredentialsForm control={control} />
                 </div>
+
+                <div aria-hidden className="h-8 shrink-0" />
               </div>
 
               <SheetFooter className="justify-end border-t">
