@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { ChevronDown, FolderOpen, FolderPlus, Layers, Plus, Search } from "lucide-react";
@@ -84,10 +84,6 @@ export const PamAccountsPage = () => {
   // Active filters force-open every folder so matches surface; otherwise folders load lazily on open
   const filterActive = Boolean(query || selectedTemplateId);
   const hasActiveFilters = Boolean(query || selectedFolderId || selectedTemplateId);
-
-  useEffect(() => {
-    setResultCounts({});
-  }, [query, selectedTemplateId]);
 
   const toggleFolder = useCallback((folderId: string) => {
     setExpandedFolders((prev) => {

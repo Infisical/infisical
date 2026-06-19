@@ -83,6 +83,7 @@ export const PamAccessPage = () => {
   const filterSettled = visibleFolders.every((f) => resultCounts[f.id] !== undefined);
   const filterHasMatches = visibleFolders.some((f) => (resultCounts[f.id] ?? 0) > 0);
   const showNoMatches = filterActive && filterSettled && !filterHasMatches;
+  const showEmpty = !isLoadingFolders && (visibleFolders.length === 0 || showNoMatches);
 
   return (
     <>
@@ -160,7 +161,7 @@ export const PamAccessPage = () => {
             </CardContent>
           )}
 
-          {!isLoadingFolders && (visibleFolders.length === 0 || showNoMatches) && (
+          {showEmpty && (
             <CardContent>
               <Empty>
                 <EmptyHeader>
@@ -177,7 +178,7 @@ export const PamAccessPage = () => {
             </CardContent>
           )}
 
-          {!isLoadingFolders && visibleFolders.length > 0 && (
+          {!isLoadingFolders && !showEmpty && (
             <Table>
               <TableHeader>
                 <TableRow>
