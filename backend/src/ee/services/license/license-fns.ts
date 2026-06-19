@@ -84,7 +84,7 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   oidcSSO: false,
   scim: false,
   ldap: false,
-  groups: true,
+  groups: false,
   status: null,
   trial_end: null,
   has_used_trial: true,
@@ -104,11 +104,11 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   pkiPqc: false,
   kmsPqc: false,
   enforceMfa: false,
-  projectTemplates: true,
+  projectTemplates: false,
   kmip: false,
   gateway: false,
   gatewayPool: false,
-  sshHostGroups: true,
+  sshHostGroups: false,
   secretScanning: false,
   enterpriseSecretSyncs: false,
   enterpriseCertificateSyncs: false,
@@ -118,8 +118,8 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   machineIdentityAuthTemplates: false,
   pkiLegacyTemplates: false,
   secretShareExternalBranding: false,
-  honeyTokens: true,
-  honeyTokenLimit: 5
+  honeyTokens: false,
+  honeyTokenLimit: 0
 });
 
 export const setupLicenseRequestWithStore = (
