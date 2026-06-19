@@ -127,6 +127,7 @@ const registerPerTypeEndpoints = (
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
+        projectId: req.internalPamProjectId,
         event: {
           type: EventType.PAM_ACCOUNT_CREATE,
           metadata: {
@@ -201,6 +202,7 @@ const registerPerTypeEndpoints = (
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
+        projectId: req.internalPamProjectId,
         event: {
           type: EventType.PAM_ACCOUNT_UPDATE,
           metadata: {
@@ -217,6 +219,18 @@ const registerPerTypeEndpoints = (
           }
         }
       });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.PamAccountUpdated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            accountType,
+            orgId: req.permission.orgId
+          }
+        })
+        .catch(() => {});
 
       return { account };
     }
@@ -249,6 +263,7 @@ const registerPerTypeEndpoints = (
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
+        projectId: req.internalPamProjectId,
         event: {
           type: EventType.PAM_ACCOUNT_DELETE,
           metadata: {

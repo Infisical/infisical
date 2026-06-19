@@ -52,6 +52,7 @@ const emitAuditLog = async (
   await server.services.auditLog.createAuditLog({
     ...req.auditLogInfo,
     orgId: req.permission.orgId,
+    projectId: req.internalPamProjectId,
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     event: { type, metadata } as TCreateAuditLogDTO["event"]
   });

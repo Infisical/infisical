@@ -211,6 +211,8 @@ export const pamSessionServiceFactory = ({
       projectId: session.projectId,
       accountId: session.accountId,
       accountName: session.accountName,
+      accountType: session.accountType,
+      actorEmail: session.actorEmail,
       sessionStarted
     };
   };

@@ -165,6 +165,7 @@ export const registerPamFolderRouter = async (server: FastifyZodProvider) => {
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
+        projectId: req.internalPamProjectId,
         event: {
           type: EventType.PAM_FOLDER_CREATE,
           metadata: {
@@ -224,6 +225,7 @@ export const registerPamFolderRouter = async (server: FastifyZodProvider) => {
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
+        projectId: req.internalPamProjectId,
         event: {
           type: EventType.PAM_FOLDER_UPDATE,
           metadata: {
@@ -233,6 +235,17 @@ export const registerPamFolderRouter = async (server: FastifyZodProvider) => {
           }
         }
       });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.PamFolderUpdated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            orgId: req.permission.orgId
+          }
+        })
+        .catch(() => {});
 
       return { folder };
     }
@@ -267,6 +280,7 @@ export const registerPamFolderRouter = async (server: FastifyZodProvider) => {
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
+        projectId: req.internalPamProjectId,
         event: {
           type: EventType.PAM_FOLDER_DELETE,
           metadata: {

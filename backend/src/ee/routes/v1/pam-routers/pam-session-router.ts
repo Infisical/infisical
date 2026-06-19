@@ -6,7 +6,7 @@ import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-t
 import { PamAccountType, PamSessionStatus } from "@app/ee/services/pam/pam-enums";
 import { PamRecordingStorageBackend } from "@app/ee/services/pam-session-recording/pam-recording-enums";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
-import { BadRequestError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -111,7 +111,7 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
         actorAuthMethod: req.permission.authMethod
       });
       if (!session) {
-        throw new BadRequestError({ message: "Session not found" });
+        throw new NotFoundError({ message: "Session not found" });
       }
       return { session };
     }
@@ -161,6 +161,18 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
             }
           }
         });
+
+        void server.services.telemetry
+          .sendPostHogEvents({
+            event: PostHogEventTypes.PamSessionStarted,
+            distinctId: result.actorEmail || getTelemetryDistinctId(req),
+            organizationId: req.permission.orgId,
+            properties: {
+              accountType: result.accountType,
+              orgId: req.permission.orgId
+            }
+          })
+          .catch(() => {});
       }
 
       return {
@@ -250,6 +262,18 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
           }
         }
       });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.PamSessionTerminated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            accountType: session.accountType,
+            orgId: req.permission.orgId
+          }
+        })
+        .catch(() => {});
 
       return { session };
     }
@@ -390,17 +414,6 @@ export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => 
         reason: req.body.reason
       });
 
-      void server.services.telemetry
-        .sendPostHogEvents({
-          event: PostHogEventTypes.PamSessionStarted,
-          distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
-          properties: {
-            orgId: req.permission.orgId
-          }
-        })
-        .catch(() => {});
-
       return { ticket };
     }
   });
@@ -476,9 +489,9 @@ export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => 
 
         const payload = z
           .object({
-            accountId: z.string(),
-            projectId: z.string(),
-            orgId: z.string(),
+            accountId: z.string().uuid(),
+            projectId: z.string().uuid(),
+            orgId: z.string().uuid(),
             accountName: z.string(),
             accountType: z.string(),
             actorEmail: z.string(),
