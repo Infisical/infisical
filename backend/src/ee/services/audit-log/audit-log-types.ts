@@ -5736,6 +5736,7 @@ interface PamSessionStartEvent {
   type: EventType.PAM_SESSION_START;
   metadata: {
     sessionId: string;
+    accountId?: string;
     accountName: string;
   };
 }
@@ -5744,6 +5745,7 @@ interface PamSessionEndEvent {
   type: EventType.PAM_SESSION_END;
   metadata: {
     sessionId: string;
+    accountId?: string;
     accountName: string;
   };
 }
@@ -5752,6 +5754,7 @@ interface PamSessionTerminateEvent {
   type: EventType.PAM_SESSION_TERMINATE;
   metadata: {
     sessionId: string;
+    accountId?: string;
     accountName: string;
   };
 }
@@ -5760,6 +5763,7 @@ interface PamSessionChunkUploadEvent {
   type: EventType.PAM_SESSION_CHUNK_UPLOAD;
   metadata: {
     sessionId: string;
+    accountId?: string;
     chunkIndex: number;
     storageBackend: string;
     ciphertextBytes: number;
@@ -5770,6 +5774,7 @@ interface PamSessionUploadTokenInvalidEvent {
   type: EventType.PAM_SESSION_UPLOAD_TOKEN_INVALID;
   metadata: {
     sessionId: string;
+    accountId?: string;
     chunkIndex?: number;
   };
 }

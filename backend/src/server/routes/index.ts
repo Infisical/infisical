@@ -100,6 +100,7 @@ import { licenseDALFactory } from "@app/ee/services/license/license-dal";
 import { licenseServiceFactory } from "@app/ee/services/license/license-service";
 import { oidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
 import { oidcConfigServiceFactory } from "@app/ee/services/oidc/oidc-config-service";
+import { pamAuditLogScopeResolverFactory } from "@app/ee/services/pam/pam-audit-log-fns";
 import { pamAccountDALFactory } from "@app/ee/services/pam-account/pam-account-dal";
 import { pamAccountServiceFactory } from "@app/ee/services/pam-account/pam-account-service";
 import { pamAccountTemplateDALFactory } from "@app/ee/services/pam-account-template/pam-account-template-dal";
@@ -965,6 +966,7 @@ export const registerRoutes = async (
     ? clickhouseAuditLogDALFactory(clickhouse, db, envConfig.CLICKHOUSE_AUDIT_LOG_TABLE_NAME)
     : undefined;
 
+  const pamAccountDAL = pamAccountDALFactory(db);
   const auditLogService = auditLogServiceFactory({
     auditLogDAL,
     clickhouseAuditLogDAL,
@@ -973,7 +975,14 @@ export const registerRoutes = async (
     keyStore,
     smtpService,
     userDAL,
-    notificationService
+    notificationService,
+    resolvePamAuditScope: pamAuditLogScopeResolverFactory({
+      projectDAL,
+      permissionService,
+      membershipDAL,
+      membershipRoleDAL,
+      pamAccountDAL
+    })
   });
   const secretApprovalPolicyService = secretApprovalPolicyServiceFactory({
     projectEnvDAL,
@@ -1601,7 +1610,6 @@ export const registerRoutes = async (
 
   const pamAccountTemplateDAL = pamAccountTemplateDALFactory(db);
   const pamFolderDAL = pamFolderDALFactory(db);
-  const pamAccountDAL = pamAccountDALFactory(db);
 
   const pamFolderService = pamFolderServiceFactory({
     pamFolderDAL,

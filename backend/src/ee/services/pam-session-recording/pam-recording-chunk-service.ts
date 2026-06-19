@@ -244,7 +244,7 @@ export const pamSessionChunkServiceFactory = ({
       throw err;
     }
 
-    return { ok: true as const, projectId: session.projectId, storageBackend: backend };
+    return { ok: true as const, projectId: session.projectId, accountId: session.accountId, storageBackend: backend };
   };
 
   const getSessionPlayback = async (sessionId: string, actor: OrgServiceActor) => {

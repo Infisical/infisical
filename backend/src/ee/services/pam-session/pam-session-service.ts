@@ -209,6 +209,7 @@ export const pamSessionServiceFactory = ({
       credentials: { ...connectionDetails, ...credentials },
       recording,
       projectId: session.projectId,
+      accountId: session.accountId,
       accountName: session.accountName,
       sessionStarted
     };
@@ -225,6 +226,7 @@ export const pamSessionServiceFactory = ({
 
     return {
       projectId: session.projectId,
+      accountId: session.accountId,
       accountName: session.accountName,
       alreadyEnded: !updatedSession
     };

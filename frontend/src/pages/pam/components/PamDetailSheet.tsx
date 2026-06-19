@@ -170,7 +170,9 @@ export const PamDetailSheet = ({
                     {metadata.map((field) => (
                       <div key={field.label}>
                         <p className="text-xs font-medium text-muted">{field.label}</p>
-                        <div className="mt-1 text-sm text-foreground">{field.value}</div>
+                        <div className="mt-1 text-sm break-words whitespace-pre-wrap text-foreground">
+                          {field.value}
+                        </div>
                       </div>
                     ))}
                   </div>

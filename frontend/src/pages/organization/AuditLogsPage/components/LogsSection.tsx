@@ -22,7 +22,7 @@ import { Timezone } from "@app/helpers/datetime";
 import { isInfisicalCloud } from "@app/helpers/platform";
 import { withPermission, withProjectPermission } from "@app/hoc";
 import { useGetAuditLogPostgresStorageStatus } from "@app/hooks/api/auditLogs";
-import { Project } from "@app/hooks/api/projects/types";
+import { Project, ProjectType } from "@app/hooks/api/projects/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import {
@@ -299,6 +299,12 @@ export const LogsSection = (props: Props) => {
   const { project } = props;
 
   if (project) {
+    // PAM uses its own product/resource permission model and scopes audit logs server-side, so the
+    // generic project audit-log permission gate doesn't apply here
+    if (project.type === ProjectType.PAM) {
+      return <LogsSectionComponent {...props} />;
+    }
+
     const ProjectLogsSectionWithPermission = withProjectPermission(LogsSectionComponent, {
       action: ProjectPermissionAuditLogsActions.Read,
       subject: ProjectPermissionSub.AuditLogs

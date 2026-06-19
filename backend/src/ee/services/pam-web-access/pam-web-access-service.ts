@@ -234,7 +234,7 @@ export const pamWebAccessServiceFactory = ({
       socket.off("message", preAuthHandler);
     };
 
-    let session: { id: string } | null = null;
+    let session: { id: string; accountId?: string | null } | null = null;
     let cleanedUp = false;
     let handlerResult: TSessionHandlerResult | null = null;
     let relayServer: { port: number; cleanup: () => Promise<void> } | null = null;
@@ -292,7 +292,7 @@ export const pamWebAccessServiceFactory = ({
               projectId,
               event: {
                 type: EventType.PAM_SESSION_END,
-                metadata: { sessionId, accountName }
+                metadata: { sessionId, accountId: session.accountId ?? undefined, accountName }
               }
             });
           }

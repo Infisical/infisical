@@ -156,6 +156,7 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
             type: EventType.PAM_SESSION_START,
             metadata: {
               sessionId: req.params.sessionId,
+              accountId: result.accountId ?? undefined,
               accountName: result.accountName
             }
           }
@@ -186,10 +187,8 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.GATEWAY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { projectId, accountName, alreadyEnded } = await server.services.pamSession.endSessionFromGateway(
-        req.params.sessionId,
-        req.permission.id
-      );
+      const { projectId, accountId, accountName, alreadyEnded } =
+        await server.services.pamSession.endSessionFromGateway(req.params.sessionId, req.permission.id);
 
       if (!alreadyEnded) {
         await server.services.auditLog.createAuditLog({
@@ -200,6 +199,7 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
             type: EventType.PAM_SESSION_END,
             metadata: {
               sessionId: req.params.sessionId,
+              accountId: accountId ?? undefined,
               accountName
             }
           }
@@ -245,6 +245,7 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
           type: EventType.PAM_SESSION_TERMINATE,
           metadata: {
             sessionId: req.params.sessionId,
+            accountId: session.accountId ?? undefined,
             accountName
           }
         }

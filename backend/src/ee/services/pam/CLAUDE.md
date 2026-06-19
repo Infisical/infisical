@@ -60,6 +60,15 @@ Every list/mutation endpoint checks action-level permissions, not just membershi
 | Edit/delete folder | `EditFolder`/`DeleteFolder` (via folder permission) |
 | Template list/getById | Product membership only (templates are project-wide config) |
 | Template create/update/delete | Product Admin |
+| View audit logs | `ViewAuditLogs` per resource for account/folder logs; Product Admin for resource-less (product-level) logs |
+
+### Audit Log Scoping
+
+PAM audit logs are served through the shared `GET /organization/audit-logs` endpoint, but scoped by the PAM permission model rather than the generic project `AuditLogs` permission. `pamAuditLogScopeResolverFactory` (`pam/pam-audit-log-fns.ts`) is injected into `auditLogServiceFactory` as `resolvePamAuditScope`; for a PAM project it returns `{ accountIds, folderIds, includeProductLevel }` and the shared service skips its generic permission check and passes the scope to `auditLogDAL.find`. Returns `null` for non-PAM projects (generic check still applies).
+
+Scoping rules (enforced via `eventMetadata` json): account-scoped logs (have `accountId`) and folder-scoped logs (have `folderId`) are returned only when the actor has `ViewAuditLogs` on that resource — a folder grant cascades to the accounts inside it. Resource-less logs (neither id, e.g. template/product-member events) are returned only to product admins. Admins are **not** exempt from the resource check. The scope filter is implemented in both audit-log backends (Postgres `auditLogDAL` and `clickhouseAuditLogDAL`), so it holds regardless of `CLICKHOUSE_AUDIT_LOG_ENABLED`.
+
+**Requirement for new PAM events:** any account- or folder-scoped audit event must put `accountId`/`folderId` in its `eventMetadata`, or it falls into the product-level bucket and is hidden from resource viewers.
 
 ### Auth Modes
 

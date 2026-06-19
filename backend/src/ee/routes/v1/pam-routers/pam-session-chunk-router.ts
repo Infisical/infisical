@@ -162,6 +162,7 @@ export const registerPamSessionChunkRouter = async (server: FastifyZodProvider) 
           type: EventType.PAM_SESSION_CHUNK_UPLOAD,
           metadata: {
             sessionId: req.params.sessionId,
+            accountId: result.accountId ?? undefined,
             chunkIndex: req.body.chunkIndex,
             storageBackend: result.storageBackend,
             ciphertextBytes: req.body.ciphertextBytes
