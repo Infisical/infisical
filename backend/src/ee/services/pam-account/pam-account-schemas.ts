@@ -279,6 +279,7 @@ export const PamAccountTypeMetadataSchema = z.object({
   type: z.nativeEnum(PamAccountType),
   name: z.string(),
   icon: z.string(),
+  supportsWebAccess: z.boolean(),
   connectionFields: z.array(PamFieldDescriptorSchema),
   credentialFields: z.array(PamFieldDescriptorSchema)
 });
@@ -410,7 +411,7 @@ const fieldsFromSchema = (schema: z.ZodTypeAny, ui: Record<string, TFieldUiHint>
   return [];
 };
 
-export const buildPamAccountTypeMetadata = (): PamAccountTypeMetadata[] =>
+export const buildPamAccountTypeMetadata = (webAccessSupportedTypes: Set<PamAccountType>): PamAccountTypeMetadata[] =>
   (
     Object.entries(ACCOUNT_TYPE_CONFIGS) as [
       TSupportedAccountType,
@@ -420,6 +421,7 @@ export const buildPamAccountTypeMetadata = (): PamAccountTypeMetadata[] =>
     type,
     name: config.name,
     icon: config.icon,
+    supportsWebAccess: webAccessSupportedTypes.has(type),
     connectionFields: fieldsFromSchema(config.connectionDetails, config.ui),
     credentialFields: fieldsFromSchema(config.credentials, config.ui)
   }));

@@ -94,7 +94,7 @@ Defined in `pam/pam-enums.ts` as `PamAccountType`. Each type's full config lives
 
 ### Schema-Driven Forms
 
-The frontend renders the create/edit account forms entirely from backend metadata -- there are **no per-type frontend components**. `buildPamAccountTypeMetadata()` walks each config's Zod schemas and emits `PamFieldDescriptor`s (`{ key, label, widget, required, secret, options?, showWhen? }`). The `GET /pam/accounts/types` endpoint serves these as `PamAccountTypeMetadata` (`{ type, name, icon, connectionFields, credentialFields }`).
+The frontend renders the create/edit account forms entirely from backend metadata -- there are **no per-type frontend components**. `buildPamAccountTypeMetadata(webAccessSupportedTypes)` walks each config's Zod schemas and emits `PamFieldDescriptor`s (`{ key, label, widget, required, secret, options?, defaultValue?, showWhen? }`). The `GET /pam/accounts/types` endpoint serves these as `PamAccountTypeMetadata` (`{ type, name, icon, supportsWebAccess, connectionFields, credentialFields }`). `supportsWebAccess` is derived from the `SESSION_HANDLERS` keys (passed in by the route) -- the single source of truth for browser-session support -- so the frontend gates Browser vs CLI launch without a separate list to maintain.
 
 How descriptors are derived:
 - **Label** -- `ui[key].label`, else humanized from the field key.

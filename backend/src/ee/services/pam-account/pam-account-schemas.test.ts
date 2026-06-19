@@ -13,8 +13,14 @@ import {
 
 // These assertions exercise the Zod-introspection path (buildPamAccountTypeMetadata reads schema internals to derive field descriptors)
 describe("buildPamAccountTypeMetadata", () => {
-  const metadata = buildPamAccountTypeMetadata();
+  const metadata = buildPamAccountTypeMetadata(new Set([PamAccountType.Postgres, PamAccountType.SSH]));
   const byType = new Map(metadata.map((m) => [m.type, m]));
+
+  test("flags web-access support from the provided supported-types set", () => {
+    expect(byType.get(PamAccountType.Postgres)?.supportsWebAccess).toBe(true);
+    expect(byType.get(PamAccountType.SSH)?.supportsWebAccess).toBe(true);
+    expect(byType.get(PamAccountType.MySQL)?.supportsWebAccess).toBe(false);
+  });
 
   const fieldByKey = <T extends { key: string }>(fields: T[], key: string) => fields.find((f) => f.key === key);
 

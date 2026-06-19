@@ -38,6 +38,7 @@ export type TPamAccountTypeMetadata = {
   type: PamAccountType;
   name: string;
   icon: string;
+  supportsWebAccess: boolean;
   connectionFields: TPamFieldDescriptor[];
   credentialFields: TPamFieldDescriptor[];
 };

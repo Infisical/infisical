@@ -13,6 +13,7 @@ import {
   PamTemplateAccessPolicySchema,
   PamTemplateSettingsSchema
 } from "@app/ee/services/pam-account-template/pam-account-template-schemas";
+import { SESSION_HANDLERS } from "@app/ee/services/pam-web-access/pam-session-handlers";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
@@ -292,7 +293,9 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
     config: { rateLimit: readLimit },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async () => {
-      return { accountTypes: buildPamAccountTypeMetadata() };
+      return {
+        accountTypes: buildPamAccountTypeMetadata(new Set(Object.keys(SESSION_HANDLERS) as PamAccountType[]))
+      };
     }
   });
 
