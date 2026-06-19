@@ -354,7 +354,7 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
         }
       ],
       params: z.object({
-        roleId: z.string().trim().uuid().describe("The ID of the role")
+        roleId: z.string().trim().uuid().describe(PROJECT_ROLE.GET_ROLE_BY_ID.roleId)
       }),
       response: {
         200: z.object({
