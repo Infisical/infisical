@@ -1141,7 +1141,9 @@ lease, err := client.DynamicSecrets().Leases().RenewById(infisical.RenewDynamicS
       `10m` or `1h`.
     </ParamField>
     <ParamField query="IsForced" type="boolean" default="false" optional>
-      Whether to force the renewal. Use with caution.
+      When true, the renewal is applied even if the lease has already expired.
+      Forced renewals may produce a new lease record rather than extending the
+      existing one; use only as a last resort when a normal renewal fails.
     </ParamField>
   </Expandable>
 </ParamField>
