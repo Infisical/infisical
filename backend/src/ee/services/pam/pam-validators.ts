@@ -107,9 +107,7 @@ export const validateRecordingS3Config = async (
   return resolvedConfig;
 };
 
-export const mintCorsProbeUrl = async (
-  resolvedConfig: TPamRecordingResolvedConfig
-): Promise<string | null> => {
+export const mintCorsProbeUrl = async (resolvedConfig: TPamRecordingResolvedConfig): Promise<string | null> => {
   try {
     const probeKey = `${normalizeKeyPrefix(resolvedConfig.keyPrefix)}.cors-probe`;
     const provider = PAM_RECORDING_STORAGE_FACTORY_MAP[PamRecordingStorageBackend.AwsS3]();

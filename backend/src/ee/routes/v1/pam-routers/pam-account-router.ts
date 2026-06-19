@@ -105,7 +105,9 @@ const registerPerTypeEndpoints = (
         gatewayId: z.string().uuid().optional().describe("The ID of the gateway to use"),
         gatewayPoolId: z.string().uuid().optional().describe("The ID of the gateway pool to use"),
         recordingConnectionId: z.string().uuid().optional().describe("The ID of the recording connection to use"),
-        recordingSettings: PamAccountRecordingSettingsSchema.nullable().optional().describe("Account-level recording S3 config override")
+        recordingSettings: PamAccountRecordingSettingsSchema.nullable()
+          .optional()
+          .describe("Account-level recording S3 config override")
       }),
       response: {
         200: z.object({
@@ -188,7 +190,9 @@ const registerPerTypeEndpoints = (
           .nullable()
           .optional()
           .describe("The ID of the recording connection to use"),
-        recordingSettings: PamAccountRecordingSettingsSchema.nullable().optional().describe("Account-level recording S3 config override")
+        recordingSettings: PamAccountRecordingSettingsSchema.nullable()
+          .optional()
+          .describe("Account-level recording S3 config override")
       }),
       response: {
         200: z.object({

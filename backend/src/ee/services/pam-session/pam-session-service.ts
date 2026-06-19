@@ -236,7 +236,10 @@ export const pamSessionServiceFactory = ({
       };
     }
 
-    const normalizedConnectionDetails = validateConnectionDetails(account.accountType as PamAccountType, connectionDetails);
+    const normalizedConnectionDetails = validateConnectionDetails(
+      account.accountType as PamAccountType,
+      connectionDetails
+    );
 
     if (sessionStarted) {
       await pamSessionDAL.activateSession(sessionId);

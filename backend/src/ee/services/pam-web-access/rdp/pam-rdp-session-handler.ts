@@ -112,4 +112,3 @@ export const handleRdpSession = async (ctx: TSessionContext): Promise<TSessionHa
     tcpSocket.connect(relayPort, "127.0.0.1");
   });
 };
-

@@ -29,7 +29,12 @@ import {
   TActorContext,
   verifyProductMembership
 } from "../pam/pam-permission";
-import { mintCorsProbeUrl, validateGatewayAttachment, validateRecordingConnection, validateRecordingS3Config } from "../pam/pam-validators";
+import {
+  mintCorsProbeUrl,
+  validateGatewayAttachment,
+  validateRecordingConnection,
+  validateRecordingS3Config
+} from "../pam/pam-validators";
 import { TPamAccountTemplateDALFactory } from "../pam-account-template/pam-account-template-dal";
 import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
 import { TPamAccountDALFactory } from "./pam-account-dal";
@@ -239,10 +244,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
 
     if (accountType === PamAccountType.Windows) {
       const settings = (template.settings ?? {}) as Record<string, unknown>;
-      if (
-        settings.recordingStorageBackend !== "aws-s3" ||
-        !template.recordingConnectionId
-      ) {
+      if (settings.recordingStorageBackend !== "aws-s3" || !template.recordingConnectionId) {
         throw new BadRequestError({
           message:
             "Cannot create a Windows account until the account template has S3 recording fully configured (storage backend, AWS connection, and S3 bucket)"
@@ -373,8 +375,8 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     let resolvedS3Config = null;
     if (recordingSettings?.s3Config) {
       const connId =
-        (recordingConnectionId !== undefined ? recordingConnectionId : existing.recordingConnectionId)
-        ?? existing.templateRecordingConnectionId;
+        (recordingConnectionId !== undefined ? recordingConnectionId : existing.recordingConnectionId) ??
+        existing.templateRecordingConnectionId;
       if (connId) {
         resolvedS3Config = await validateRecordingS3Config(deps, connId, recordingSettings.s3Config);
       }

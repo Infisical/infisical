@@ -15,7 +15,10 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { PamSessionStatus } from "../pam/pam-enums";
 import { checkAccountAccess, TActorContext } from "../pam/pam-permission";
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
-import { PamRecordingS3ConfigSchema, PamTemplateSettingsSchema } from "../pam-account-template/pam-account-template-schemas";
+import {
+  PamRecordingS3ConfigSchema,
+  PamTemplateSettingsSchema
+} from "../pam-account-template/pam-account-template-schemas";
 import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
 import { ResourcePermissionPamResourceActions } from "../permission/resource-permission";
 import { TPamSessionEventChunkDALFactory } from "./pam-recording-chunk-dal";
@@ -54,19 +57,19 @@ export const pamSessionChunkServiceFactory = ({
     const account = await pamAccountDAL.findByIdWithDetails(accountId);
     if (!account) return null;
 
-    const templateParsed = account.templateSettings ? PamTemplateSettingsSchema.safeParse(account.templateSettings) : null;
+    const templateParsed = account.templateSettings
+      ? PamTemplateSettingsSchema.safeParse(account.templateSettings)
+      : null;
     const templateSettings = templateParsed?.success ? templateParsed.data : null;
     if (!templateSettings) return null;
 
     const accountS3Parsed = account.recordingSettings
-      ? PamRecordingS3ConfigSchema.safeParse(
-          (account.recordingSettings as Record<string, unknown>).s3Config
-        )
+      ? PamRecordingS3ConfigSchema.safeParse((account.recordingSettings as Record<string, unknown>).s3Config)
       : null;
     const accountS3 = accountS3Parsed?.success ? accountS3Parsed.data : null;
 
     if (templateSettings.recordingStorageBackend === PamRecordingStorageBackend.AwsS3) {
-      const connectionId = account.recordingConnectionId;
+      const connectionId = account.recordingConnectionId ?? account.templateRecordingConnectionId;
       const s3Config = accountS3 ?? templateSettings.recordingS3Config;
       if (!connectionId || !s3Config) return null;
 
