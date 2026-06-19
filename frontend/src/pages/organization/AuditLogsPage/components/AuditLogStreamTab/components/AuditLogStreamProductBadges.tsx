@@ -1,3 +1,5 @@
+import { twMerge } from "tailwind-merge";
+
 import {
   Badge,
   Popover,
@@ -19,9 +21,6 @@ type Props = {
 
 const DEFAULT_MAX_VISIBLE = 2;
 
-const getProductLabel = (product: AuditLogStreamProduct) =>
-  AUDIT_LOG_STREAM_PRODUCT_LABELS[product];
-
 const ProductBadge = ({
   product,
   className
@@ -29,8 +28,8 @@ const ProductBadge = ({
   product: AuditLogStreamProduct;
   className?: string;
 }) => (
-  <Badge variant="neutral" isTruncatable className={`max-w-[10rem] ${className ?? ""}`}>
-    {getProductLabel(product)}
+  <Badge variant="neutral" isTruncatable className={twMerge("max-w-[10rem]", className)}>
+    {AUDIT_LOG_STREAM_PRODUCT_LABELS[product]}
   </Badge>
 );
 
@@ -45,7 +44,13 @@ export const AuditLogStreamProductBadges = ({
 
   // Sort by displayed label so order is stable regardless of how the list was stored.
   const sortedProducts = [...products].sort((a, b) =>
-    getProductLabel(a).localeCompare(getProductLabel(b), undefined, { sensitivity: "base" })
+    AUDIT_LOG_STREAM_PRODUCT_LABELS[a].localeCompare(
+      AUDIT_LOG_STREAM_PRODUCT_LABELS[b],
+      undefined,
+      {
+        sensitivity: "base"
+      }
+    )
   );
   const visible = sortedProducts.slice(0, maxVisible);
   const overflow = sortedProducts.slice(maxVisible);
