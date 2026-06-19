@@ -8,12 +8,18 @@ import {
 } from "@app/lib/telemetry/metrics";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { chunkAuditLogsByBatchLimit } from "../audit-log-stream/audit-log-stream-batching";
 import { TAuditLogStreamDALFactory } from "../audit-log-stream/audit-log-stream-dal";
 import { LogProvider, StreamMode } from "../audit-log-stream/audit-log-stream-enums";
 import { LOG_STREAM_FACTORY_MAP } from "../audit-log-stream/audit-log-stream-factory";
-import { decryptLogStreamCredentials } from "../audit-log-stream/audit-log-stream-fns";
+import {
+  auditLogMatchesStreamFilter,
+  decryptLogStreamCredentials,
+  resolveAuditLogProduct
+} from "../audit-log-stream/audit-log-stream-fns";
+import { TAuditLogStreamFilters } from "../audit-log-stream/audit-log-stream-schemas";
 import { TAuditLogStreamOutboxDALFactory } from "./audit-log-stream-outbox-dal";
 import {
   TAuditLogStreamFlushJobData,
@@ -63,6 +69,7 @@ const computeBackoffMs = (attemptsAfterIncrement: number): number => {
 export type TAuditLogStreamOutboxServiceFactoryDep = {
   auditLogStreamOutboxDAL: TAuditLogStreamOutboxDALFactory;
   auditLogStreamDAL: Pick<TAuditLogStreamDALFactory, "find" | "findById">;
+  projectDAL: Pick<TProjectDALFactory, "findIncludingExpired">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX">;
   queueService: TQueueServiceFactory;
@@ -78,6 +85,7 @@ export type TAuditLogStreamOutboxServiceFactory = {
 export const auditLogStreamOutboxServiceFactory = ({
   auditLogStreamOutboxDAL,
   auditLogStreamDAL,
+  projectDAL,
   kmsService,
   keyStore,
   queueService
@@ -141,12 +149,44 @@ export const auditLogStreamOutboxServiceFactory = ({
     // One lookup for every org in the batch instead of a query per org — the common case is
     // that most orgs have no streams configured, so a per-org loop is mostly empty round-trips.
     const streams = await auditLogStreamDAL.find({ $in: { orgId: [...logsByOrg.keys()] } });
+
+    // Product scoping needs each log's product, which is its project's type. Only pay for that
+    // resolution when at least one stream actually filters by product — the common case (no
+    // product-scoped streams) keeps the original zero-extra-query fanout.
+    const hasProductFilter = streams.some(
+      (stream) => ((stream.filters as TAuditLogStreamFilters | null)?.products?.length ?? 0) > 0
+    );
+
+    let projectTypeById = new Map<string, string>();
+    if (hasProductFilter) {
+      const projectIds = new Set<string>();
+      for (const logs of logsByOrg.values()) {
+        for (const log of logs) {
+          if (log.projectId) projectIds.add(log.projectId);
+        }
+      }
+      if (projectIds.size > 0) {
+        const projects = await projectDAL.findIncludingExpired({ $in: { id: [...projectIds] } });
+        projectTypeById = new Map(projects.map((project) => [project.id, project.type]));
+      }
+    }
+
     for (const stream of streams) {
       const logs = logsByOrg.get(stream.orgId);
-      if (logs) {
-        for (const log of logs) {
-          outboxRows.push({ streamId: stream.id, orgId: stream.orgId, payload: log });
+      if (!logs) continue;
+
+      const filters = stream.filters as TAuditLogStreamFilters | null;
+      let streamReceivedRow = false;
+      for (const log of logs) {
+        if (hasProductFilter && !auditLogMatchesStreamFilter(resolveAuditLogProduct(log, projectTypeById), filters)) {
+          continue;
         }
+        outboxRows.push({ streamId: stream.id, orgId: stream.orgId, payload: log });
+        streamReceivedRow = true;
+      }
+
+      // Only wake a stream that actually received rows — a fully-filtered-out stream has nothing to flush.
+      if (streamReceivedRow) {
         streamsToFlush.set(stream.id, { orgId: stream.orgId, provider: stream.provider as LogProvider });
       }
     }

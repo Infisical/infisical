@@ -104,7 +104,7 @@ export const FilterableSelect = <T,>({
         clearIndicator: () => "p-1 hover:text-red text-bunker-400",
         indicatorSeparator: () => "bg-bunker-400",
         dropdownIndicator: () => "text-bunker-200 p-1",
-        menuList: () => "flex flex-col gap-1",
+        menuList: () => "flex flex-col gap-1 max-h-[18rem] overflow-y-auto thin-scrollbar",
         menu: () =>
           "my-2 p-2 border text-sm text-mineshaft-200 thin-scrollbar bg-mineshaft-900 border-mineshaft-600 rounded-md",
         groupHeading: () => "ml-3 mt-2 mb-1 text-mineshaft-400 text-sm",

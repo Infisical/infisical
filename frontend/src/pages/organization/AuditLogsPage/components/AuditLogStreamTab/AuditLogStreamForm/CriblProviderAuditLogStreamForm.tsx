@@ -16,6 +16,8 @@ import {
 import { LogProvider, StreamMode } from "@app/hooks/api/auditLogStreams/enums";
 import { TCriblProviderLogStream } from "@app/hooks/api/auditLogStreams/types/providers/cribl-provider";
 
+import { auditLogStreamFiltersSchema, ProductsField } from "./AuditLogStreamProductsField";
+
 type Props = {
   auditLogStream?: TCriblProviderLogStream;
   onSubmit: (formData: FormData) => void;
@@ -27,7 +29,8 @@ const formSchema = z.object({
     url: z.string().url().trim().min(1).max(255),
     token: z.string().trim().min(21).max(255)
   }),
-  streamMode: z.nativeEnum(StreamMode).optional()
+  streamMode: z.nativeEnum(StreamMode).optional(),
+  ...auditLogStreamFiltersSchema.shape
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -152,6 +155,10 @@ export const CriblProviderAuditLogStreamForm = ({ auditLogStream, onSubmit }: Pr
             />
           </div>
         )}
+
+        <div className="mt-6">
+          <ProductsField />
+        </div>
 
         <div className="mt-8 flex items-center">
           <Button

@@ -2,6 +2,7 @@ import { createNotification } from "@app/components/notifications";
 import { AUDIT_LOG_STREAM_PROVIDER_MAP } from "@app/helpers/auditLogStreams";
 import { useCreateAuditLogStream, useUpdateAuditLogStream } from "@app/hooks/api";
 import { LogProvider, StreamMode } from "@app/hooks/api/auditLogStreams/enums";
+import { TAuditLogStreamFilters } from "@app/hooks/api/auditLogStreams/types";
 import { TAuditLogStream } from "@app/hooks/api/types";
 import { DiscriminativePick } from "@app/types";
 
@@ -13,13 +14,20 @@ import { DatadogProviderAuditLogStreamForm } from "./DatadogProviderAuditLogStre
 import { SplunkProviderAuditLogStreamForm } from "./SplunkProviderAuditLogStreamForm";
 
 // Provider forms submit their provider + credentials; the custom form may also submit a
-// one-way streamMode upgrade (single -> batch).
+// one-way streamMode upgrade (single -> batch). Every form may submit product filters.
 export type AuditLogStreamFormData = DiscriminativePick<
   TAuditLogStream,
   "provider" | "credentials"
 > & {
   streamMode?: StreamMode;
+  filters?: TAuditLogStreamFilters | null;
 };
+
+// An empty product selection means "stream everything", which the API represents as a null filter.
+const normalizeFilters = (formData: AuditLogStreamFormData): AuditLogStreamFormData => ({
+  ...formData,
+  filters: formData.filters?.products?.length ? formData.filters : null
+});
 
 type FormProps = {
   onComplete: (auditLogStream: TAuditLogStream) => void;
@@ -35,7 +43,7 @@ const CreateForm = ({ provider, onComplete }: CreateFormProps) => {
   const { name: providerName } = AUDIT_LOG_STREAM_PROVIDER_MAP[provider];
 
   const onSubmit = async (formData: AuditLogStreamFormData) => {
-    const logStream = await createAuditLogStream.mutateAsync(formData);
+    const logStream = await createAuditLogStream.mutateAsync(normalizeFilters(formData));
     createNotification({
       text: `Successfully created ${providerName} Log Stream`,
       type: "success"
@@ -66,7 +74,7 @@ const UpdateForm = ({ auditLogStream, onComplete }: UpdateFormProps) => {
   const onSubmit = async (formData: AuditLogStreamFormData) => {
     const connection = await updateAuditLogStream.mutateAsync({
       auditLogStreamId: auditLogStream.id,
-      ...formData
+      ...normalizeFilters(formData)
     });
     createNotification({
       text: `Successfully updated ${providerName} Log Stream`,

@@ -13,10 +13,13 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
+import { Badge } from "@app/components/v3";
 import { OrgPermissionSubjects } from "@app/context";
 import { OrgPermissionActions } from "@app/context/OrgPermissionContext/types";
 import { AUDIT_LOG_STREAM_PROVIDER_MAP, getProviderUrl } from "@app/helpers/auditLogStreams";
 import { TAuditLogStream } from "@app/hooks/api/types";
+
+import { AUDIT_LOG_STREAM_PRODUCT_LABELS } from "../AuditLogStreamForm/AuditLogStreamProductsField";
 
 type Props = {
   logStream: TAuditLogStream;
@@ -29,6 +32,8 @@ export const AuditLogStreamRow = ({ logStream, onDelete, onEditCredentials }: Pr
 
   const providerDetails = AUDIT_LOG_STREAM_PROVIDER_MAP[provider];
   const url = getProviderUrl(logStream);
+
+  const products = logStream.filters?.products ?? [];
 
   return (
     <Tr
@@ -60,6 +65,20 @@ export const AuditLogStreamRow = ({ logStream, onDelete, onEditCredentials }: Pr
         <div className="flex w-full items-center gap-2">
           <p className="truncate">{url}</p>
         </div>
+      </Td>
+      <Td>
+        {products.length === 0 ? (
+          <span className="text-sm text-mineshaft-400">All products</span>
+        ) : (
+          <Tooltip
+            content={products.map((product) => AUDIT_LOG_STREAM_PRODUCT_LABELS[product]).join(", ")}
+          >
+            <div className="flex w-fit flex-wrap items-center gap-1">
+              <Badge variant="info">{AUDIT_LOG_STREAM_PRODUCT_LABELS[products[0]]}</Badge>
+              {products.length > 1 && <Badge variant="info">{`+${products.length - 1}`}</Badge>}
+            </div>
+          </Tooltip>
+        )}
       </Td>
       <Td>
         <div className="flex items-center justify-end gap-2">
