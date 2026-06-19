@@ -1,0 +1,175 @@
+---
+title: "End-to-End Automation"
+description: "Script a self-hosted Infisical instance from empty to running application — bootstrap, project creation, secret import, and runtime injection, without any UI interaction."
+---
+
+This guide shows how to take a freshly started self-hosted Infisical instance to the point where an application is running with its secrets injected by the CLI — without a single UI click. It chains together the [bootstrap flow](/self-hosting/guides/automated-bootstrapping), the [projects API](/api-reference/endpoints/projects/create-project), and the [CLI](/cli/overview) into a single reproducible script.
+
+Use this when you're provisioning a new environment from infrastructure-as-code, seeding a local development setup for a team, or writing a test harness that needs Infisical stood up on demand.
+
+<Tip>
+  **Minimal path vs. full automation.** This guide presents the complete scripted flow. If you only need the app running locally without `.env`, steps 1–5 can each be done manually in a few commands — you don't need a shell script. The script format is most useful when this setup needs to be repeatable or automated. Avoid writing a reusable setup script unless your workflow will actually re-run it.
+</Tip>
+
+## Prerequisites
+
+- A self-hosted Infisical instance already running (see the [Self-Hosted Quickstart](/documentation/getting-started/self-hosted-quickstart) or the [Docker Compose deployment guide](/self-hosting/deployment-options/docker-compose))
+- The [Infisical CLI](/cli/overview) installed locally
+- An application that reads its configuration from environment variables
+- `curl` and `jq` available for the API calls
+
+## The flow at a glance
+
+<Steps>
+  <Step title="Bootstrap the instance">
+    Create the admin user, organization, and instance admin machine identity in a single command. Capture the returned token for reuse.
+  </Step>
+  <Step title="Create a project via the API">
+    Use the bootstrap token to POST to the projects endpoint. Capture the project ID.
+  </Step>
+  <Step title="Push secrets in bulk">
+    Feed an existing `.env` file straight into the project with `infisical secrets set --file`.
+  </Step>
+  <Step title="Write .infisical.json">
+    Link your application directory to the project without the interactive `infisical init` prompt.
+  </Step>
+  <Step title="Run the application">
+    Start your process under `infisical run` with the machine identity token in the environment.
+  </Step>
+</Steps>
+
+## The script
+
+The snippet below is the complete end-to-end flow. Each block is explained in the section that follows.
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+DOMAIN="http://localhost:80"
+ADMIN_EMAIL="admin@example.com"
+ADMIN_PASSWORD="your-secure-password"
+ORG_NAME="my-org"
+PROJECT_NAME="my-app"
+
+# 1. Bootstrap
+BOOTSTRAP=$(infisical bootstrap \
+  --domain="$DOMAIN" \
+  --email="$ADMIN_EMAIL" \
+  --password="$ADMIN_PASSWORD" \
+  --organization="$ORG_NAME" \
+  --ignore-if-bootstrapped)
+
+export INFISICAL_TOKEN=$(echo "$BOOTSTRAP" | jq -r '.identity.credentials.token')
+
+# 2. Create a project
+PROJECT_ID=$(curl -sX POST "$DOMAIN/api/v1/projects" \
+  -H "Authorization: Bearer $INFISICAL_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d "{\"projectName\":\"$PROJECT_NAME\",\"type\":\"secret-manager\"}" \
+  | jq -r '.project.id')
+
+# 3. Push every secret from the local .env file into the dev environment
+infisical secrets set \
+  --projectId="$PROJECT_ID" \
+  --env=dev \
+  --file=".env"
+
+# 4. Link the repo to the project without running `infisical init`
+cat > .infisical.json <<EOF
+{
+  "workspaceId": "$PROJECT_ID",
+  "defaultEnvironment": "dev"
+}
+EOF
+
+# 5. Start the application with secrets injected
+infisical run --projectId="$PROJECT_ID" -- your-start-command
+```
+
+## What each step does
+
+### 1. Bootstrap
+
+`infisical bootstrap` is the non-interactive equivalent of signing up as the first user. In a single call it creates an admin user, an organization, and an **instance admin machine identity**, and returns a JWT token that has instance-level privileges.
+
+The `--ignore-if-bootstrapped` flag makes the command idempotent — re-running the script against an already-bootstrapped instance is a no-op rather than an error, which matters when this runs as part of a provisioning pipeline.
+
+Piping the response through `jq` pulls out the `identity.credentials.token` field. Exporting it as `INFISICAL_TOKEN` means every subsequent CLI call picks it up automatically — no separate login step is required. See the [bootstrap command reference](/cli/commands/bootstrap) and [Programmatic Provisioning](/self-hosting/guides/automated-bootstrapping) for alternative transports (API, Helm) and the full response schema.
+
+<Warning>
+  The bootstrap token has instance-level admin privileges. Treat it as a root credential: store it securely, scope its use to automation, and rotate it periodically via the server admin panel.
+</Warning>
+
+### 2. Create a project
+
+With the bootstrap token in hand, any API call the token is authorized for is available without further auth steps. The [`POST /api/v1/projects`](/api-reference/endpoints/projects/create-project) endpoint creates a new Secret Manager project; the response includes a `project.id` field used by the CLI as the `workspaceId`.
+
+### 3. Push secrets
+
+`infisical secrets set --file` performs a single bulk import from a file on disk. It accepts both `.env` (`KEY=value`) and YAML (`key: value`) formats. Comments beginning with `#` or `//` and empty lines are ignored. See the [secrets command reference](/cli/commands/secrets) for the full flag list.
+
+<Tip>
+  Running this multiple times is safe: `infisical secrets set` creates missing keys and updates existing ones in place. This makes it easy to re-run the script as your `.env` evolves.
+</Tip>
+
+### 4. Write `.infisical.json`
+
+The `infisical init` command is designed for interactive use — it prompts for a project selection. In a script, it's faster to write the file directly. The minimum valid config is just the project ID:
+
+```json .infisical.json
+{
+  "workspaceId": "<project-id>",
+  "defaultEnvironment": "dev"
+}
+```
+
+The file contains no secrets and is safe to commit. See the [project config reference](/cli/project-config) for optional fields, including `gitBranchToEnvironmentMapping` for automatically switching environments based on the current git branch.
+
+### 5. Run the application
+
+`infisical run` reads secrets from the project and injects them as environment variables into the child process. Because `INFISICAL_TOKEN` is already exported, the CLI authenticates without an interactive login, and because `.infisical.json` sets the default environment, the `--env` flag can be omitted.
+
+Inside your application, secrets appear exactly as if they came from a `.env` file — `process.env.MY_KEY`, `os.environ["MY_KEY"]`, and so on. No SDK is required and no code change is needed when moving from dotenv to Infisical.
+
+<Warning>
+  When `INFISICAL_TOKEN` is a machine identity token (as opposed to a session from `infisical login`), the `--projectId` flag is required — the CLI cannot infer the project from the token alone. If `.infisical.json` is present, pass the project ID explicitly anyway to be safe:
+
+  ```bash
+  infisical run --projectId="$PROJECT_ID" -- your-start-command
+  ```
+</Warning>
+
+## Using a scoped machine identity instead of the bootstrap token
+
+The bootstrap token is convenient but over-privileged for running a single application. Once the instance is bootstrapped, create a project-scoped [Machine Identity](/documentation/platform/identities/machine-identities) with Universal Auth and swap it in:
+
+```bash
+export INFISICAL_TOKEN=$(infisical login --method=universal-auth \
+  --client-id="<client-id>" \
+  --client-secret="<client-secret>" \
+  --domain="$DOMAIN" \
+  --plain --silent)
+
+infisical run -- your-start-command
+```
+
+This is the pattern you want for CI/CD pipelines and long-lived production workloads. The bootstrap token stays locked away and is used only for provisioning.
+
+## Important notes
+
+- **Docker networking.** If your application also runs in Docker and needs to reach a containerized Infisical instance, use the container service name (e.g. `http://backend:8080`) rather than `http://localhost`. `localhost` inside a container refers to the container itself.
+- **HTTPS and cookies.** If you skip TLS on a local instance, set `HTTPS_ENABLED=false` in the Infisical backend's environment. Without this, the CLI may log out on every request because of secure-cookie requirements. See the [self-hosting FAQ](/self-hosting/faq) for details.
+- **Readiness timing.** On slower machines or in CI, the Infisical backend can take a few seconds to become healthy after `docker compose up`. If the bootstrap call races the backend, poll `/api/status` before bootstrapping:
+
+  ```bash
+  until curl -sf "$DOMAIN/api/status" >/dev/null; do sleep 1; done
+  ```
+- **Idempotency beyond bootstrap.** `--ignore-if-bootstrapped` makes step 1 safe to re-run, but step 2 (project creation) is not idempotent — a repeated call with the same project name will fail. Either check for the project first via `GET /api/v1/projects`, or catch the error and fetch the existing project ID.
+
+## What's next
+
+- [Programmatic Provisioning](/self-hosting/guides/automated-bootstrapping) — deeper dive into the bootstrap flow, including API and Helm variants.
+- [Machine Identities](/documentation/platform/identities/machine-identities) — scoped credentials for production automation.
+- [Production Hardening](/self-hosting/guides/production-hardening) — before using this pattern in a shared environment.
+- [CLI command reference](/cli/overview) — full flag documentation for `bootstrap`, `secrets`, `run`, and `login`.
