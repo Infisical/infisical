@@ -24,7 +24,10 @@ vi.mock("@app/lib/logger", () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() }
 }));
 
-vi.mock("@app/ee/services/audit-log-stream/audit-log-stream-fns", () => ({
+// Keep the real product-filter helpers (auditLogMatchesStreamFilter, resolveAuditLogProduct) so
+// the fanout filtering tests exercise actual behavior; only credential decryption is stubbed.
+vi.mock("@app/ee/services/audit-log-stream/audit-log-stream-fns", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@app/ee/services/audit-log-stream/audit-log-stream-fns")>()),
   decryptLogStreamCredentials: async () => ({})
 }));
 
@@ -81,7 +84,7 @@ const createService = () => {
   };
 
   const projectDAL = {
-    findIncludingExpired: vi.fn(async () => [])
+    find: vi.fn(async () => [])
   };
 
   const service = auditLogStreamOutboxServiceFactory({
@@ -324,7 +327,7 @@ describe("audit-log-stream-outbox-service enqueueForLogs batch fanout", () => {
     };
 
     const projectDAL = {
-      findIncludingExpired: vi.fn(async () => [])
+      find: vi.fn(async () => [])
     };
 
     // Win the debounce SETNX so the flush job is always enqueued in these tests.
@@ -410,7 +413,7 @@ describe("audit-log-stream-outbox-service enqueueForLogs batch fanout", () => {
 
     await service.enqueueForLogs([projectLog("1", "orgA", "projPki")]);
 
-    expect(projectDAL.findIncludingExpired).not.toHaveBeenCalled();
+    expect(projectDAL.find).not.toHaveBeenCalled();
     expect(auditLogStreamOutboxDAL.batchInsert.mock.calls[0][0]).toHaveLength(1);
   });
 
@@ -427,7 +430,7 @@ describe("audit-log-stream-outbox-service enqueueForLogs batch fanout", () => {
       }
     ] as never);
 
-    projectDAL.findIncludingExpired.mockResolvedValue([
+    projectDAL.find.mockResolvedValue([
       { id: "projPki", type: AuditLogStreamProduct.CertificateManager },
       { id: "projSecrets", type: AuditLogStreamProduct.SecretManager }
     ] as never);
@@ -438,7 +441,7 @@ describe("audit-log-stream-outbox-service enqueueForLogs batch fanout", () => {
       log("orgLevel", "orgA") // matches (organization, no projectId)
     ]);
 
-    expect(projectDAL.findIncludingExpired).toHaveBeenCalledTimes(1);
+    expect(projectDAL.find).toHaveBeenCalledTimes(1);
     const inserted = auditLogStreamOutboxDAL.batchInsert.mock.calls[0][0] as { payload: { id: string } }[];
     expect(inserted.map((r) => r.payload.id).sort()).toEqual(["orgLevel", "pki"]);
     // The stream received rows, so it is woken exactly once.
@@ -452,7 +455,7 @@ describe("audit-log-stream-outbox-service enqueueForLogs batch fanout", () => {
     auditLogStreamDAL.find.mockResolvedValue([
       { id: "sA", orgId: "orgA", provider: PROVIDER, filters: { products: [AuditLogStreamProduct.KMS] } }
     ] as never);
-    projectDAL.findIncludingExpired.mockResolvedValue([
+    projectDAL.find.mockResolvedValue([
       { id: "projPki", type: AuditLogStreamProduct.CertificateManager }
     ] as never);
 

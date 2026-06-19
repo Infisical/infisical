@@ -69,7 +69,7 @@ const computeBackoffMs = (attemptsAfterIncrement: number): number => {
 export type TAuditLogStreamOutboxServiceFactoryDep = {
   auditLogStreamOutboxDAL: TAuditLogStreamOutboxDALFactory;
   auditLogStreamDAL: Pick<TAuditLogStreamDALFactory, "find" | "findById">;
-  projectDAL: Pick<TProjectDALFactory, "findIncludingExpired">;
+  projectDAL: Pick<TProjectDALFactory, "find">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX">;
   queueService: TQueueServiceFactory;
@@ -150,13 +150,9 @@ export const auditLogStreamOutboxServiceFactory = ({
     // that most orgs have no streams configured, so a per-org loop is mostly empty round-trips.
     const streams = await auditLogStreamDAL.find({ $in: { orgId: [...logsByOrg.keys()] } });
 
-    // Product scoping needs each log's product, which is its project's type. Only pay for that
-    // resolution when at least one stream actually filters by product — the common case (no
-    // product-scoped streams) keeps the original zero-extra-query fanout.
     const hasProductFilter = streams.some(
       (stream) => ((stream.filters as TAuditLogStreamFilters | null)?.products?.length ?? 0) > 0
     );
-
     let projectTypeById = new Map<string, string>();
     if (hasProductFilter) {
       const projectIds = new Set<string>();
@@ -166,7 +162,7 @@ export const auditLogStreamOutboxServiceFactory = ({
         }
       }
       if (projectIds.size > 0) {
-        const projects = await projectDAL.findIncludingExpired({ $in: { id: [...projectIds] } });
+        const projects = await projectDAL.find({ $in: { id: [...projectIds] } });
         projectTypeById = new Map(projects.map((project) => [project.id, project.type]));
       }
     }
@@ -176,9 +172,10 @@ export const auditLogStreamOutboxServiceFactory = ({
       if (!logs) continue;
 
       const filters = stream.filters as TAuditLogStreamFilters | null;
+      const streamHasFilter = (filters?.products?.length ?? 0) > 0;
       let streamReceivedRow = false;
       for (const log of logs) {
-        if (hasProductFilter && !auditLogMatchesStreamFilter(resolveAuditLogProduct(log, projectTypeById), filters)) {
+        if (streamHasFilter && !auditLogMatchesStreamFilter(resolveAuditLogProduct(log, projectTypeById), filters)) {
           continue;
         }
         outboxRows.push({ streamId: stream.id, orgId: stream.orgId, payload: log });

@@ -63,10 +63,6 @@ export const decryptLogStreamCredentials = async ({
   return JSON.parse(decryptedPlainTextBlob.toString()) as TAuditLogStreamCredentials;
 };
 
-// The product an audit log belongs to. A log created inside a project belongs to that project's
-// product (project `type` values are 1:1 with AuditLogStreamProduct); a log with no project is an
-// org-level event. A project whose type can't be resolved (e.g. hard-deleted) falls back to
-// Organization so it still reaches org-scoped streams rather than being silently dropped.
 export const resolveAuditLogProduct = (
   log: Pick<TAuditLogs, "projectId">,
   projectTypeById: Map<string, string>
@@ -77,8 +73,6 @@ export const resolveAuditLogProduct = (
   );
 };
 
-// Whether a stream with the given filters should receive a log of the given product. A null filter
-// or an absent/empty `products` list means "stream everything" (backwards-compatible default).
 export const auditLogMatchesStreamFilter = (
   product: AuditLogStreamProduct,
   filters?: TAuditLogStreamFilters | null
