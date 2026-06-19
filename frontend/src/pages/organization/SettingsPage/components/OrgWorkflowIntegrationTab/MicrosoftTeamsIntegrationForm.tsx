@@ -107,17 +107,25 @@ export const MicrosoftTeamsIntegrationForm = ({ id, onClose }: Props) => {
         clientId: microsoftTeamsClientId.clientId
       };
 
-      const url = `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/authorize?
-      client_id=${microsoftTeamsClientId.clientId}
-      &redirect_uri=${state.redirectUri}
-      &response_type=code
-      &response_mode=query
-      &scope=https://graph.microsoft.com/.default
-      &state=${encodeURIComponent(JSON.stringify(state))}
-      &prompt=consent
-      &admin_consent=true`;
+      const microsoftTeamsAuthorizationUrl = new URL(
+        `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/authorize`
+      );
 
-      window.location.href = url;
+      const queryParams = {
+        client_id: microsoftTeamsClientId.clientId,
+        redirect_uri: state.redirectUri,
+        response_type: "code",
+        response_mode: "query",
+        scope: "https://graph.microsoft.com/.default",
+        state: JSON.stringify(state),
+        prompt: "consent",
+        admin_consent: "true"
+      } as const;
+
+      Object.entries(queryParams).forEach(([key, value]) => {
+        microsoftTeamsAuthorizationUrl.searchParams.set(key, value);
+      });
+      window.location.href = microsoftTeamsAuthorizationUrl.toString();
     }
   };
 
