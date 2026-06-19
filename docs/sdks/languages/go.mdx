@@ -923,8 +923,6 @@ dynamicSecrets, err := client.DynamicSecrets().List(infisical.ListDynamicSecrets
   </Expandable>
 </ParamField>
 
-###
-
 ### Get Dynamic Secret by Name
 
 `client.DynamicSecrets().GetByName(options)`
@@ -963,8 +961,6 @@ dynamicSecret, err := client.DynamicSecrets().GetByName(infisical.GetDynamicSecr
 ### Leases
 
 A lease represents a single set of generated credentials with its own TTL. Use leases to generate, inspect, renew, and revoke credentials from a dynamic secret. Access the leases interface with `client.DynamicSecrets().Leases()`.
-
-###
 
 ### Create Lease
 
@@ -1022,8 +1018,6 @@ credentials, dynamicSecret, lease, err := client.DynamicSecrets().Leases().Creat
   lease details, and an error if the request failed.
 </ParamField>
 
-###
-
 ### List Leases
 
 `client.DynamicSecrets().Leases().List(options)`
@@ -1059,8 +1053,6 @@ leases, err := client.DynamicSecrets().Leases().List(infisical.ListDynamicSecret
   </Expandable>
 </ParamField>
 
-###
-
 ### Get Lease by ID
 
 `client.DynamicSecrets().Leases().GetById(options)`
@@ -1095,8 +1087,6 @@ lease, err := client.DynamicSecrets().Leases().GetById(infisical.GetDynamicSecre
     </ParamField>
   </Expandable>
 </ParamField>
-
-###
 
 ### Renew Lease
 
@@ -1147,8 +1137,6 @@ lease, err := client.DynamicSecrets().Leases().RenewById(infisical.RenewDynamicS
     </ParamField>
   </Expandable>
 </ParamField>
-
-###
 
 ### Delete Lease
 
