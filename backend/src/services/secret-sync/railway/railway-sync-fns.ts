@@ -94,12 +94,10 @@ export const RailwaySyncFns = {
         first: 1
       });
 
-      const latestDeploymentId = latestDeployment?.deployments.edges[0].node.id;
+      const latestDeploymentId = latestDeployment?.deployments.edges[0]?.node.id;
 
-      if (!latestDeploymentId)
-        throw new SecretSyncError({
-          message: "Failed to get latest deployment from Railway"
-        });
+      // Some Railway services (e.g. cron jobs) may not have deployments to redeploy
+      if (!latestDeploymentId) return;
 
       await RailwayPublicAPI.redeployDeployment(secretSync.connection, {
         input: {
