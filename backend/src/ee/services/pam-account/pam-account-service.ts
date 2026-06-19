@@ -194,6 +194,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       recordingConnectionId: account.recordingConnectionId,
       connectionDetails,
       credentials,
+      ...computeAccessibility(account),
       createdAt: account.createdAt,
       updatedAt: account.updatedAt
     };

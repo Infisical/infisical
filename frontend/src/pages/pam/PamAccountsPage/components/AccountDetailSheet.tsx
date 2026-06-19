@@ -42,6 +42,7 @@ import { gatewayPoolsQueryKeys } from "@app/hooks/api/gateway-pools/queries";
 import { gatewaysQueryKeys } from "@app/hooks/api/gateways/queries";
 import { useGetOrganizationGroups } from "@app/hooks/api/organization/queries";
 import {
+  PamAccountAccessibilityIssue,
   PamAccountType,
   TPamMember,
   useGetPamAccountById,
@@ -68,6 +69,7 @@ import {
 import { PAM_ACCOUNT_TABS, visiblePamTabs } from "../../components/pamResourceTabs";
 import { RemoveMemberConfirm } from "../../components/RemoveMemberConfirm";
 import { SheetSaveBar } from "../../components/SheetSaveBar";
+import { TabWarningPing } from "../../components/TabWarningPing";
 import { AccountPlatformIcon } from "../../PamAccessPage/components/AccountPlatformIcon";
 import { AssignAccessModal, EditMemberTarget } from "./AssignAccessModal";
 import { EditAccountForm } from "./EditAccountForm";
@@ -84,6 +86,13 @@ type ResolvedMember = {
   subtitle: string;
   source: PamMemberSource;
   kind: PamMemberKind;
+};
+
+// Maps each accessibility issue to the tab where it can be resolved
+const ISSUE_TO_TAB: Record<PamAccountAccessibilityIssue, PamSheetTab> = {
+  [PamAccountAccessibilityIssue.NoCredential]: PamSheetTab.Configuration,
+  [PamAccountAccessibilityIssue.NoGateway]: PamSheetTab.Advanced,
+  [PamAccountAccessibilityIssue.NoRecordingConfig]: PamSheetTab.Advanced
 };
 
 const PermissionsTab = ({
@@ -603,6 +612,10 @@ export const AccountDetailSheet = ({ isOpen, accountId, onOpenChange }: Props) =
   const { can } = usePamAccountActions(accountId ?? "", isOpen && Boolean(accountId));
   const availableTabs = visiblePamTabs(PAM_ACCOUNT_TABS, can);
 
+  const tabsWithIssues = new Set(
+    (account?.accessibilityIssues ?? []).map((issue) => ISSUE_TO_TAB[issue])
+  );
+
   const conn = (account?.connectionDetails ?? {}) as Record<string, unknown>;
 
   const metadata = account
@@ -684,7 +697,8 @@ export const AccountDetailSheet = ({ isOpen, accountId, onOpenChange }: Props) =
         value: tabDef.value,
         label: tabDef.label,
         icon: <tabDef.icon className="mr-1.5 size-4" />,
-        content: tabContent[tabDef.value] ?? null
+        content: tabContent[tabDef.value] ?? null,
+        indicator: tabsWithIssues.has(tabDef.value) ? <TabWarningPing /> : undefined
       }))}
       isDirty={isFormDirty}
     />

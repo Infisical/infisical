@@ -71,6 +71,8 @@ export type TPamAccount = {
   connectionDetails: Record<string, unknown>;
   // Non-secret credential fields only
   credentials: Record<string, unknown>;
+  isAccessible: boolean;
+  accessibilityIssues: PamAccountAccessibilityIssue[];
   createdAt: string;
   updatedAt: string;
 };

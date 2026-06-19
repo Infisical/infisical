@@ -38,6 +38,7 @@ export type PamDetailSheetTab = {
   label: string;
   icon?: ReactNode;
   content: ReactNode;
+  indicator?: ReactNode;
 };
 
 type Props = {
@@ -83,6 +84,7 @@ const TabbedContent = ({
             <TabsTrigger key={tab.value} value={tab.value}>
               {tab.icon}
               {tab.label}
+              {tab.indicator}
             </TabsTrigger>
           ))}
         </TabsList>

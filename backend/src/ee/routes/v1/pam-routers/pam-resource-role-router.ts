@@ -11,7 +11,7 @@ const DEFAULT_RESOURCE_ROLES = [
     slug: PamResourceRole.Admin,
     name: "Admin",
     isDefault: true,
-    description: "Full control of accounts, folders, sessions, and grants"
+    description: "Full control of accounts, folders, sessions, and memberships"
   },
   {
     slug: PamResourceRole.Connector,

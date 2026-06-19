@@ -60,7 +60,11 @@ const accountDetailVariants = Object.entries(ACCOUNT_TYPE_CONFIGS).map(([account
     connectionDetails: config.connectionDetails,
     templateAccessPolicy: PamTemplateAccessPolicySchema.nullable().optional(),
     templateSettings: PamTemplateSettingsSchema.nullable().optional(),
-    credentials: config.sanitizedCredentials
+    credentials: config.sanitizedCredentials,
+    isAccessible: z.boolean().describe("Whether the account is fully provisioned to launch a session"),
+    accessibilityIssues: z
+      .array(z.nativeEnum(PamAccountAccessibilityIssue))
+      .describe("Reasons the account cannot launch a session, if any")
   })
 );
 

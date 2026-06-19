@@ -25,12 +25,21 @@ export const AccountAccessibilityBadge = ({ issues }: Props) => {
         </Badge>
       </TooltipTrigger>
       <TooltipContent>
-        <p className="mb-1 font-medium">This account can&apos;t be used yet</p>
-        <ul className="list-inside list-disc">
-          {issues.map((issue) => (
-            <li key={issue}>{ISSUE_LABELS[issue]}</li>
-          ))}
-        </ul>
+        {issues.length === 1 ? (
+          <p>
+            This account can&apos;t be used yet:{" "}
+            {ISSUE_LABELS[issues[0]].charAt(0).toLowerCase() + ISSUE_LABELS[issues[0]].slice(1)}.
+          </p>
+        ) : (
+          <>
+            <p className="mb-1 font-medium">This account can&apos;t be used yet</p>
+            <ul className="list-inside list-disc">
+              {issues.map((issue) => (
+                <li key={issue}>{ISSUE_LABELS[issue]}</li>
+              ))}
+            </ul>
+          </>
+        )}
       </TooltipContent>
     </Tooltip>
   );

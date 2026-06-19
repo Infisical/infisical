@@ -49,7 +49,7 @@ export const PamAccessControlPage = () => {
         scope={ProjectType.PAM}
         icon={Shield}
         title="Access Control"
-        description="Manage members and groups for the PAM product."
+        description="Manage members and groups."
       />
       <Tabs value={selectedTab} onValueChange={updateTab}>
         <TabsList variant="pam">
