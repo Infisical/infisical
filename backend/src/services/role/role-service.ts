@@ -252,7 +252,6 @@ export const roleServiceFactory = ({
       throw new NotFoundError({ message: `Role with id ${selector.id} not found` });
     }
 
-    // just forcing type safety
     if (!role.projectId) {
       throw new NotFoundError({ message: `Role with id ${selector.id} not found` });
     }
@@ -268,9 +267,13 @@ export const roleServiceFactory = ({
       projectId: role.projectId
     } as const;
 
-    await scopeFactory[AccessScope.Project].onGetRoleByIdGuard({ permission, scopeData, selector });
+    const roleResult = await getRoleById({
+      permission,
+      scopeData,
+      selector: { id: role.id }
+    });
 
-    return { ...role, projectId: role.projectId, permissions: unpackPermissions(role.permissions) };
+    return { ...roleResult, projectId: scopeData.projectId };
   };
 
   const getRoleBySlug = async (dto: TGetRoleBySlugDTO) => {
