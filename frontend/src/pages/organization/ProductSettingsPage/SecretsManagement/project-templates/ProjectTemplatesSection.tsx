@@ -1,4 +1,3 @@
-import { useNavigate } from "@tanstack/react-router";
 import { LayoutTemplate } from "lucide-react";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
@@ -12,38 +11,25 @@ import {
   CardHeader,
   CardTitle
 } from "@app/components/v3";
-import {
-  OrgPermissionActions,
-  OrgPermissionSubjects,
-  useOrganization,
-  useSubscription
-} from "@app/context";
+import { OrgPermissionActions, OrgPermissionSubjects, useSubscription } from "@app/context";
 import { TProjectTemplate } from "@app/hooks/api/projectTemplates";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { ProjectTemplateDetailsModal } from "./ProjectTemplateDetailsModal";
+import { ProjectTemplateSheet } from "./ProjectTemplateSheet";
 import { ProjectTemplatesTable } from "./ProjectTemplatesTable";
 
 export const ProjectTemplatesSection = () => {
-  const navigate = useNavigate();
-  const { currentOrg } = useOrganization();
   const { subscription } = useSubscription();
 
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
     "upgradePlan",
-    "addTemplate"
+    "addTemplate",
+    "editTemplate"
   ] as const);
 
-  const navigateToTemplate = (template: TProjectTemplate) => {
-    if (!currentOrg?.id) return;
-
-    navigate({
-      to: "/organizations/$orgId/projects/secret-management/product-settings/project-templates/$templateId" as const,
-      params: {
-        orgId: currentOrg.id,
-        templateId: template.id
-      }
-    });
+  const handleTemplateClick = (template: TProjectTemplate) => {
+    handlePopUpOpen("editTemplate", template);
   };
 
   return (
@@ -85,13 +71,18 @@ export const ProjectTemplatesSection = () => {
           </CardAction>
         </CardHeader>
         <CardContent>
-          <ProjectTemplatesTable onEdit={navigateToTemplate} />
+          <ProjectTemplatesTable onEdit={handleTemplateClick} />
         </CardContent>
       </Card>
       <ProjectTemplateDetailsModal
-        onComplete={navigateToTemplate}
+        onComplete={handleTemplateClick}
         isOpen={popUp.addTemplate.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("addTemplate", isOpen)}
+      />
+      <ProjectTemplateSheet
+        isOpen={popUp.editTemplate.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("editTemplate", isOpen)}
+        projectTemplate={(popUp.editTemplate.data as TProjectTemplate) ?? null}
       />
       <UpgradePlanModal
         isOpen={popUp.upgradePlan.isOpen}
