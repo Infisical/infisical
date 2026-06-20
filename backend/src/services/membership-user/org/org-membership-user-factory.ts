@@ -247,6 +247,16 @@ export const newOrgMembershipUserFactory = ({
       const ssoLoginUrl = await $getEnforcedSsoLoginUrl(orgDetails.id, orgDetails.slug);
 
       const emails = newUsers.map((el) => el.email).filter((email): email is string => Boolean(email));
+
+      if (!appCfg.isSmtpConfigured) {
+        emails.forEach((email) => {
+          signUpTokens.push({
+            email,
+            link: ssoLoginUrl
+          });
+        });
+      }
+
       await Promise.allSettled(
         emails.map((email) =>
           smtpService.sendMail({
