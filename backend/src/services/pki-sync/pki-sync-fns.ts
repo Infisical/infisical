@@ -26,7 +26,7 @@ import { F5_BIG_IP_PKI_SYNC_LIST_OPTION } from "./f5-big-ip/f5-big-ip-pki-sync-c
 import { f5BigIpPkiSyncFactory } from "./f5-big-ip/f5-big-ip-pki-sync-fns";
 import { NETSCALER_PKI_SYNC_LIST_OPTION } from "./netscaler/netscaler-pki-sync-constants";
 import { netScalerPkiSyncFactory } from "./netscaler/netscaler-pki-sync-fns";
-import { UUID_NAME_REGEX_FRAGMENT } from "./pki-sync-certificate-name-fns";
+import { buildManagedCertificateNameRegexSource, UUID_NAME_REGEX_FRAGMENT } from "./pki-sync-certificate-name-fns";
 import { PkiSync } from "./pki-sync-enums";
 import { TCertificateMap, TPkiSyncWithCredentials } from "./pki-sync-types";
 
@@ -90,28 +90,13 @@ export const parsePkiSyncErrorMessage = (error: unknown): string => {
   return "An unknown error occurred during PKI sync operation";
 };
 
-const escapeNameSchemaRegex = (value: string): string =>
-  value.replace(new RE2("[\\\\^$.*+?()\\[\\]{}|/]", "g"), "\\$&");
-
 export const matchesCertificateNameSchema = (name: string, schema?: string): boolean => {
   if (!schema) return true;
 
-  const CERT_ID_TOKEN = "__INFISICAL_CERT_ID_PLACEHOLDER__";
-  const PROFILE_ID_TOKEN = "__INFISICAL_PROFILE_ID_PLACEHOLDER__";
-  const APP_ID_TOKEN = "__INFISICAL_APP_ID_PLACEHOLDER__";
-  const COMMON_NAME_TOKEN = "__INFISICAL_COMMON_NAME_PLACEHOLDER__";
-
-  const tokenized = schema
-    .replace(new RE2("\\{\\{certificateId\\}\\}", "g"), CERT_ID_TOKEN)
-    .replace(new RE2("\\{\\{profileId\\}\\}", "g"), PROFILE_ID_TOKEN)
-    .replace(new RE2("\\{\\{applicationId\\}\\}", "g"), APP_ID_TOKEN)
-    .replace(new RE2("\\{\\{commonName\\}\\}", "g"), COMMON_NAME_TOKEN);
-
-  const pattern = escapeNameSchemaRegex(tokenized)
-    .replace(new RE2(CERT_ID_TOKEN, "g"), UUID_NAME_REGEX_FRAGMENT)
-    .replace(new RE2(PROFILE_ID_TOKEN, "g"), UUID_NAME_REGEX_FRAGMENT)
-    .replace(new RE2(APP_ID_TOKEN, "g"), UUID_NAME_REGEX_FRAGMENT)
-    .replace(new RE2(COMMON_NAME_TOKEN, "g"), "[a-zA-Z0-9._-]*");
+  const pattern = buildManagedCertificateNameRegexSource(schema, {
+    uuid: UUID_NAME_REGEX_FRAGMENT,
+    commonName: "[a-zA-Z0-9._-]*"
+  });
 
   return new RE2(`^${pattern}$`).test(name);
 };

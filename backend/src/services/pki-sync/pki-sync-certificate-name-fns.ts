@@ -36,6 +36,28 @@ export const UUID_NAME_REGEX_FRAGMENT = "[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?
 export const certificateNameSchemaHasFreeTextPlaceholder = (schema?: string): boolean =>
   Boolean(schema && schema.includes("{{commonName}}"));
 
+const PLACEHOLDER_OR_CHAR_REGEX = new RE2(
+  "\\{\\{(certificateId|profileId|applicationId|commonName)\\}\\}|[\\s\\S]",
+  "g"
+);
+const REGEX_SPECIAL_CHARS = new RE2("[\\\\^$.*+?()\\[\\]{}|/]", "g");
+
+export const buildManagedCertificateNameRegexSource = (
+  schema: string,
+  fragments: { uuid: string; commonName: string }
+): string => {
+  const fragmentByPlaceholder: Record<string, string> = {
+    certificateId: fragments.uuid,
+    profileId: fragments.uuid,
+    applicationId: fragments.uuid,
+    commonName: fragments.commonName
+  };
+
+  return schema.replace(PLACEHOLDER_OR_CHAR_REGEX, (match: string, placeholder?: string) =>
+    placeholder ? fragmentByPlaceholder[placeholder] : match.replace(REGEX_SPECIAL_CHARS, "\\$&")
+  );
+};
+
 export type TCertificateNameSchemaData = {
   certificateId: string;
   profileId?: string | null;

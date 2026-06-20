@@ -7,7 +7,6 @@ import {
   SecretsManagerClient,
   UpdateSecretCommand
 } from "@aws-sdk/client-secrets-manager";
-import RE2 from "re2";
 
 import { TCertificateSyncs } from "@app/db/schemas";
 import { CustomAWSHasher } from "@app/lib/aws/hashing";
@@ -20,11 +19,7 @@ import { TCertificateDALFactory } from "@app/services/certificate/certificate-da
 import { TCertificateSyncDALFactory } from "@app/services/certificate-sync/certificate-sync-dal";
 import { CertificateSyncStatus } from "@app/services/certificate-sync/certificate-sync-enums";
 import { createConnectionQueue, RateLimitConfig } from "@app/services/connection-queue";
-import {
-  certificateNameSchemaHasFreeTextPlaceholder,
-  sanitizeCertificateNameValue
-} from "@app/services/pki-sync/pki-sync-certificate-name-fns";
-import { PkiSync } from "@app/services/pki-sync/pki-sync-enums";
+import { certificateNameSchemaHasFreeTextPlaceholder } from "@app/services/pki-sync/pki-sync-certificate-name-fns";
 import { matchesCertificateNameSchema } from "@app/services/pki-sync/pki-sync-fns";
 import { TCertificateMap, TPkiSyncWithCredentials } from "@app/services/pki-sync/pki-sync-types";
 
@@ -274,24 +269,7 @@ export const awsSecretsManagerPkiSyncFactory = ({
       }
 
       let targetSecretName = certName;
-      if (syncOptions?.certificateNameSchema) {
-        const extendedCertData = certData as Record<string, unknown>;
-        const safeCommonName = sanitizeCertificateNameValue(
-          typeof extendedCertData.commonName === "string" ? extendedCertData.commonName : "",
-          PkiSync.AwsSecretsManager
-        );
-        const profileId =
-          typeof extendedCertData.profileId === "string" && extendedCertData.profileId
-            ? extendedCertData.profileId
-            : certificateId;
-        const applicationId = typeof pkiSync.applicationId === "string" ? pkiSync.applicationId : "";
-
-        targetSecretName = syncOptions.certificateNameSchema
-          .replace(new RE2("\\{\\{certificateId\\}\\}", "g"), certificateId)
-          .replace(new RE2("\\{\\{profileId\\}\\}", "g"), profileId)
-          .replace(new RE2("\\{\\{applicationId\\}\\}", "g"), applicationId)
-          .replace(new RE2("\\{\\{commonName\\}\\}", "g"), safeCommonName);
-      } else {
+      if (!syncOptions?.certificateNameSchema) {
         targetSecretName = `${AWS_SECRETS_MANAGER_PKI_SYNC_DEFAULTS.INFISICAL_PREFIX}${certificateId}`;
       }
 

@@ -1,5 +1,6 @@
 import {
   buildCertificateNameSchemaTestName,
+  buildManagedCertificateNameRegexSource,
   certificateNameSchemaHasFreeTextPlaceholder,
   compileCertificateNameSchema,
   sanitizeCertificateNameValue
@@ -144,6 +145,26 @@ describe("sanitizeCertificateNameValue", () => {
 
   test("no-op without a destination", () => {
     expect(sanitizeCertificateNameValue("app.example.com")).toBe("app.example.com");
+  });
+});
+
+describe("buildManagedCertificateNameRegexSource", () => {
+  const fragments = { uuid: "[0-9a-f]{32}", commonName: "[a-zA-Z0-9._-]*" };
+
+  test("substitutes placeholders and escapes literal regex characters", () => {
+    expect(buildManagedCertificateNameRegexSource("cert.{{certificateId}}", fragments)).toBe("cert\\.[0-9a-f]{32}");
+    expect(buildManagedCertificateNameRegexSource("{{commonName}}-{{certificateId}}", fragments)).toBe(
+      "[a-zA-Z0-9._-]*-[0-9a-f]{32}"
+    );
+  });
+
+  test("treats a sentinel-like literal as a literal, not a wildcard (no token-collision injection)", () => {
+    const source = buildManagedCertificateNameRegexSource(
+      "__INFISICAL_COMMON_NAME_PLACEHOLDER__-{{certificateId}}",
+      fragments
+    );
+    expect(source).toBe("__INFISICAL_COMMON_NAME_PLACEHOLDER__-[0-9a-f]{32}");
+    expect(source).not.toContain("[a-zA-Z0-9._-]*");
   });
 });
 

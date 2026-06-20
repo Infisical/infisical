@@ -18,6 +18,7 @@ import { CertificateSyncStatus } from "@app/services/certificate-sync/certificat
 import { TCertificateMap } from "@app/services/pki-sync/pki-sync-types";
 
 import {
+  buildManagedCertificateNameRegexSource,
   certificateNameSchemaHasFreeTextPlaceholder,
   compileCertificateNameSchema
 } from "../pki-sync-certificate-name-fns";
@@ -92,31 +93,17 @@ const buildPartitionedPath = (partition: string, name: string) => `/${partition}
 
 const buildEncodedObjectId = (partition: string, name: string) => encodeURIComponent(`~${partition}~${name}`);
 
-const escapeRegex = (s: string) => s.replace(new RE2("[\\\\^$.*+?()\\[\\]{}|/]", "g"), "\\$&");
-
 export const buildManagedCertNamePattern = (certificateNameSchema: string | undefined): RE2 => {
   if (!certificateNameSchema) {
     return new RE2(`^${F5_BIG_IP_DEFAULT_CERT_NAME_PREFIX}[0-9a-f]{32}(-[a-zA-Z0-9]*)?$`);
   }
 
-  const CERT_ID_TOKEN = "__INFISICAL_CERT_ID_PLACEHOLDER__";
-  const PROFILE_ID_TOKEN = "__INFISICAL_PROFILE_ID_PLACEHOLDER__";
-  const APP_ID_TOKEN = "__INFISICAL_APP_ID_PLACEHOLDER__";
-  const COMMON_NAME_TOKEN = "__INFISICAL_COMMON_NAME_PLACEHOLDER__";
-
-  const tokenized = certificateNameSchema
-    .replace(new RE2("\\{\\{certificateId\\}\\}", "g"), CERT_ID_TOKEN)
-    .replace(new RE2("\\{\\{profileId\\}\\}", "g"), PROFILE_ID_TOKEN)
-    .replace(new RE2("\\{\\{applicationId\\}\\}", "g"), APP_ID_TOKEN)
-    .replace(new RE2("\\{\\{commonName\\}\\}", "g"), COMMON_NAME_TOKEN);
-
   // {{certificateId}}, {{profileId}}, and {{applicationId}} resolve to dash-stripped UUIDs (32 hex chars).
   // {{commonName}} is arbitrary, so match any run of BIG-IP-safe characters.
-  const pattern = escapeRegex(tokenized)
-    .replace(new RE2(CERT_ID_TOKEN, "g"), "[0-9a-f]{32}")
-    .replace(new RE2(PROFILE_ID_TOKEN, "g"), "[0-9a-f]{32}")
-    .replace(new RE2(APP_ID_TOKEN, "g"), "[0-9a-f]{32}")
-    .replace(new RE2(COMMON_NAME_TOKEN, "g"), "[a-zA-Z0-9._-]*");
+  const pattern = buildManagedCertificateNameRegexSource(certificateNameSchema, {
+    uuid: "[0-9a-f]{32}",
+    commonName: "[a-zA-Z0-9._-]*"
+  });
 
   return new RE2(`^${pattern}$`);
 };
