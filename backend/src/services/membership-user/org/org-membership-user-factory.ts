@@ -247,19 +247,21 @@ export const newOrgMembershipUserFactory = ({
       const ssoLoginUrl = await $getEnforcedSsoLoginUrl(orgDetails.id, orgDetails.slug);
 
       const emails = newUsers.map((el) => el.email).filter((email): email is string => Boolean(email));
-      if (emails.length) {
-        await smtpService.sendMail({
-          template: SmtpTemplates.OrgInvite,
-          subjectLine: "Infisical organization invitation",
-          recipients: emails,
-          substitutions: {
-            inviterFirstName: actorDetails?.firstName,
-            inviterUsername: actorDetails?.email,
-            organizationName: orgDetails?.name,
-            callback_url: ssoLoginUrl
-          }
-        });
-      }
+      await Promise.allSettled(
+        emails.map((email) =>
+          smtpService.sendMail({
+            template: SmtpTemplates.OrgInvite,
+            subjectLine: "Infisical organization invitation",
+            recipients: [email],
+            substitutions: {
+              inviterFirstName: actorDetails?.firstName,
+              inviterUsername: actorDetails?.email,
+              organizationName: orgDetails?.name,
+              callback_url: ssoLoginUrl
+            }
+          })
+        )
+      );
     } else if (isEmailLoginEnabled) {
       await Promise.allSettled(
         newUsers.map(async (el) => {
