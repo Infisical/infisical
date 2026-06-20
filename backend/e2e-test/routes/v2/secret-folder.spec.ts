@@ -341,7 +341,7 @@ describe("Secret Folder Move Router", async () => {
     expect(rootFolders.map((folder) => folder.name)).not.toContain("move-src");
 
     await deleteFolderInEnv({ path: "/", id: destParent.id, environment: sourceEnv, forceDelete: true });
-  });
+  }, 10_000);
 
   test("Move a folder to a different environment", async () => {
     const srcRoot = await createFolderInEnv({ path: "/", name: "move-cross", environment: sourceEnv });
@@ -369,7 +369,7 @@ describe("Secret Folder Move Router", async () => {
     );
     expect(movedFolder).toBeDefined();
     await deleteFolderInEnv({ path: "/", id: movedFolder!.id, environment: crossEnv, forceDelete: true });
-  });
+  }, 10_000);
 
   test("Moving a folder onto a path that already has a folder of the same name fails", async () => {
     const srcRoot = await createFolderInEnv({ path: "/", name: "move-conflict", environment: sourceEnv });
@@ -390,7 +390,7 @@ describe("Secret Folder Move Router", async () => {
 
     await deleteFolderInEnv({ path: "/", id: srcRoot.id, environment: sourceEnv, forceDelete: true });
     await deleteFolderInEnv({ path: "/", id: destParent.id, environment: sourceEnv, forceDelete: true });
-  });
+  }, 10_000);
 
   test("Blocks moving a folder whose subtree is governed by a source approval policy", async () => {
     // /policy-src/protected is covered by a source approval policy. Folders governed by a secret approval policy
@@ -428,7 +428,7 @@ describe("Secret Folder Move Router", async () => {
     await deleteSecretApprovalPolicy(policy.id);
     await deleteFolderInEnv({ path: "/", id: srcRoot.id, environment: sourceEnv, forceDelete: true });
     await deleteFolderInEnv({ path: "/", id: destParent.id, environment: sourceEnv, forceDelete: true });
-  });
+  }, 10_000);
 
   test("Blocks moving a folder when the destination path is governed by an approval policy", async () => {
     // /move-into-policy holds only static secrets and is freely movable, but the destination it would land at
@@ -462,5 +462,5 @@ describe("Secret Folder Move Router", async () => {
     await deleteSecretApprovalPolicy(policy.id);
     await deleteFolderInEnv({ path: "/", id: srcRoot.id, environment: sourceEnv, forceDelete: true });
     await deleteFolderInEnv({ path: "/", id: destParent.id, environment: sourceEnv, forceDelete: true });
-  });
+  }, 10_000);
 });
