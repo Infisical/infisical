@@ -11,6 +11,7 @@ import {
 import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { TOidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
@@ -80,6 +81,7 @@ type TMembershipUserServiceFactoryDep = {
   >;
   approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "deleteUserStepApproversInProjects">;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "find">;
+  oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne">;
 };
 
 export type TMembershipUserServiceFactory = ReturnType<typeof membershipUserServiceFactory>;
@@ -102,7 +104,8 @@ export const membershipUserServiceFactory = ({
   projectAccessRequestDAL,
   applicationMembershipCleanupService,
   approvalPolicyDAL,
-  emailDomainDAL
+  emailDomainDAL,
+  oidcConfigDAL
 }: TMembershipUserServiceFactoryDep) => {
   const scopeFactory = {
     [AccessScope.Organization]: newOrgMembershipUserFactory({
@@ -114,7 +117,8 @@ export const membershipUserServiceFactory = ({
       userDAL,
       userGroupMembershipDAL,
       membershipUserDAL,
-      emailDomainDAL
+      emailDomainDAL,
+      oidcConfigDAL
     }),
     [AccessScope.Project]: newProjectMembershipUserFactory({
       orgDAL,

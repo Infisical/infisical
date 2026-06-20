@@ -5,6 +5,7 @@ import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-doma
 import { EmailDomainStatus } from "@app/ee/services/email-domain/email-domain-types";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { TOidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { assertPermissionBoundary } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -12,6 +13,7 @@ import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, InternalServerError } from "@app/lib/errors";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
+import { matchesAllowedEmailDomain } from "@app/lib/validator";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
@@ -35,6 +37,7 @@ type TOrgMembershipUserScopeFactoryDep = {
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   membershipUserDAL: Pick<TMembershipUserDALFactory, "find">;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "find">;
+  oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne">;
 };
 
 export const newOrgMembershipUserFactory = ({
@@ -45,7 +48,8 @@ export const newOrgMembershipUserFactory = ({
   smtpService,
   licenseService,
   membershipUserDAL,
-  emailDomainDAL
+  emailDomainDAL,
+  oidcConfigDAL
 }: TOrgMembershipUserScopeFactoryDep): TMembershipUserScopeFactory => {
   const getScopeField: TMembershipUserScopeFactory["getScopeField"] = (dto) => {
     if (dto.scope === AccessScope.Organization) {
@@ -125,6 +129,22 @@ export const newOrgMembershipUserFactory = ({
             unverifiedEmails.length > 1 ? "their email domains are" : "their email domain is"
           } not a verified domain for this organization. Invited users must be able to sign in through the configured SSO provider.`
         });
+      }
+
+      const oidcCfg = await oidcConfigDAL.findOne({ orgId: org.id, isActive: true });
+      if (oidcCfg?.allowedEmailDomains?.trim()) {
+        const disallowedEmails = newMembers
+          .map((member) => member.email)
+          .filter((email) => !email || !matchesAllowedEmailDomain(email, oidcCfg.allowedEmailDomains as string));
+
+        if (disallowedEmails.length) {
+          throw new ForbiddenRequestError({
+            name: "InviteUser",
+            message: `Cannot invite ${disallowedEmails.map((email) => email || "(no email)").join(", ")} because org-level authentication is enforced and ${
+              disallowedEmails.length > 1 ? "their email domains are" : "their email domain is"
+            } not permitted by the configured OIDC provider's allowed email domains. Invited users must be able to sign in through the configured SSO provider.`
+          });
+        }
       }
     }
 
