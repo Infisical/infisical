@@ -974,10 +974,9 @@ export const orgServiceFactory = ({
         inviterFirstName: invitingUser.firstName,
         inviterUsername: invitingUser.email,
         organizationName: org?.name,
-        email: inviteeOrgMembership.email,
-        organizationId: org?.id.toString(),
-        token,
-        callback_url: `${appCfg.SITE_URL}/signupinvite`
+        callback_url: `${appCfg.SITE_URL}/signupinvite?token=${token}&to=${encodeURIComponent(
+          inviteeOrgMembership.email as string
+        )}&organization_id=${org?.id}`
       }
     });
 
@@ -1321,10 +1320,9 @@ export const orgServiceFactory = ({
             recipients: [invitedUser.inviteEmail as string],
             substitutions: {
               organizationName: org.name,
-              email: invitedUser.inviteEmail,
-              organizationId: org.id.toString(),
-              token,
-              callback_url: `${appCfg.SITE_URL}/signupinvite`
+              callback_url: `${appCfg.SITE_URL}/signupinvite?token=${token}&to=${encodeURIComponent(
+                invitedUser.inviteEmail as string
+              )}&organization_id=${org.id}`
             }
           });
           notifiedUsers.push(invitedUser.id);
