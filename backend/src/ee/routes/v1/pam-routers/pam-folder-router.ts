@@ -27,7 +27,12 @@ export const registerPamFolderRouter = async (server: FastifyZodProvider) => {
       description: "List all PAM folders in the project",
       tags: [ApiDocsTags.PamFolders],
       querystring: z.object({
-        search: z.string().optional().describe("Filter folders by name")
+        search: z.string().optional().describe("Filter folders by name"),
+        onlyAccessible: z
+          .enum(["true", "false"])
+          .optional()
+          .transform((v) => v === "true")
+          .describe("Count only accounts that can launch a session toward each folder's accountCount")
       }),
       response: {
         200: z.object({
@@ -45,6 +50,7 @@ export const registerPamFolderRouter = async (server: FastifyZodProvider) => {
       const folders = await server.services.pamFolder.list({
         projectId: req.internalPamProjectId,
         search: req.query.search,
+        onlyAccessible: req.query.onlyAccessible,
         actorId: req.permission.id,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
@@ -159,6 +165,7 @@ export const registerPamFolderRouter = async (server: FastifyZodProvider) => {
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
+        projectId: req.internalPamProjectId,
         event: {
           type: EventType.PAM_FOLDER_CREATE,
           metadata: {
@@ -218,6 +225,7 @@ export const registerPamFolderRouter = async (server: FastifyZodProvider) => {
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
+        projectId: req.internalPamProjectId,
         event: {
           type: EventType.PAM_FOLDER_UPDATE,
           metadata: {
@@ -227,6 +235,17 @@ export const registerPamFolderRouter = async (server: FastifyZodProvider) => {
           }
         }
       });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.PamFolderUpdated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            orgId: req.permission.orgId
+          }
+        })
+        .catch(() => {});
 
       return { folder };
     }
@@ -261,6 +280,7 @@ export const registerPamFolderRouter = async (server: FastifyZodProvider) => {
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
+        projectId: req.internalPamProjectId,
         event: {
           type: EventType.PAM_FOLDER_DELETE,
           metadata: {

@@ -1,27 +1,19 @@
-import "./postgres/pam-postgres-session-handler";
-import "./ssh/pam-ssh-session-handler";
-
 import net from "node:net";
 
-import { ForbiddenError } from "@casl/ability";
 import type WebSocket from "ws";
 
-import { ResourceType } from "@app/db/schemas";
 import { AuditLogInfo, EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { PamAccountType } from "@app/ee/services/pam/pam-enums";
 import { PamTemplateAccessPolicySchema } from "@app/ee/services/pam-account-template/pam-account-template-schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import {
-  ResourcePermissionPamResourceActions,
-  ResourcePermissionSub
-} from "@app/ee/services/permission/resource-permission";
+import { ResourcePermissionPamResourceActions } from "@app/ee/services/permission/resource-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { GatewayProxyProtocol } from "@app/lib/gateway/types";
 import { createGatewayConnection, createRelayConnection, setupRelayServer } from "@app/lib/gateway-v2/gateway-v2";
 import { logger } from "@app/lib/logger";
-import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
+import { ActorType } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -29,10 +21,11 @@ import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { PamAccessMethod, PamSessionStatus } from "../pam/pam-enums";
+import { checkAccountAccess } from "../pam/pam-permission";
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
 import { extractGatewayTarget } from "../pam-account/pam-account-schemas";
 import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
-import { getSessionHandler, isWebAccessSupported } from "./pam-session-handler-registry";
+import { SESSION_HANDLERS } from "./pam-session-handlers";
 import {
   DEFAULT_WEB_SESSION_DURATION_MS,
   MAX_WEB_SESSIONS_PER_USER,
@@ -125,48 +118,6 @@ export const pamWebAccessServiceFactory = ({
     socket.close();
   };
 
-  const checkLaunchPermission = async (
-    projectId: string,
-    accountId: string,
-    folderId: string | null | undefined,
-    ctx: { actorId: string; actor: ActorType; actorOrgId: string; actorAuthMethod: ActorAuthMethod }
-  ) => {
-    if (folderId) {
-      try {
-        const { permission } = await permissionService.getResourcePermission({
-          actor: ctx.actor,
-          actorId: ctx.actorId,
-          projectId,
-          resourceType: ResourceType.PamFolder,
-          resourceId: folderId,
-          actorAuthMethod: ctx.actorAuthMethod,
-          actorOrgId: ctx.actorOrgId
-        });
-        ForbiddenError.from(permission).throwUnlessCan(
-          ResourcePermissionPamResourceActions.LaunchSessions,
-          ResourcePermissionSub.PamResource
-        );
-        return;
-      } catch (err) {
-        if (!(err instanceof ForbiddenError)) throw err;
-      }
-    }
-
-    const { permission } = await permissionService.getResourcePermission({
-      actor: ctx.actor,
-      actorId: ctx.actorId,
-      projectId,
-      resourceType: ResourceType.PamAccount,
-      resourceId: accountId,
-      actorAuthMethod: ctx.actorAuthMethod,
-      actorOrgId: ctx.actorOrgId
-    });
-    ForbiddenError.from(permission).throwUnlessCan(
-      ResourcePermissionPamResourceActions.LaunchSessions,
-      ResourcePermissionSub.PamResource
-    );
-  };
-
   const issueWebSocketTicket = async ({
     accountId,
     projectId,
@@ -182,7 +133,7 @@ export const pamWebAccessServiceFactory = ({
       throw new NotFoundError({ message: `Account with ID '${accountId}' not found` });
     }
 
-    if (!isWebAccessSupported(account.accountType as PamAccountType)) {
+    if (!SESSION_HANDLERS[account.accountType as PamAccountType]) {
       throw new BadRequestError({ message: "Web access is not supported for this account type" });
     }
 
@@ -205,12 +156,19 @@ export const pamWebAccessServiceFactory = ({
       ? policy.maxSessionDurationSeconds * 1000
       : DEFAULT_WEB_SESSION_DURATION_MS;
 
-    await checkLaunchPermission(projectId, accountId, account.folderId, {
-      actorId: actor.id,
-      actor: actor.type,
-      actorOrgId: actor.orgId,
-      actorAuthMethod: actor.authMethod
-    });
+    await checkAccountAccess(
+      permissionService,
+      accountId,
+      account.folderId,
+      projectId,
+      ResourcePermissionPamResourceActions.LaunchSessions,
+      {
+        actorId: actor.id,
+        actor: actor.type,
+        actorOrgId: actor.orgId,
+        actorAuthMethod: actor.authMethod
+      }
+    );
 
     await pamSessionDAL.endExpiredWebSessions(actor.id, projectId);
     const activeCount = await pamSessionDAL.countActiveWebSessions(actor.id, projectId);
@@ -276,7 +234,7 @@ export const pamWebAccessServiceFactory = ({
       socket.off("message", preAuthHandler);
     };
 
-    let session: { id: string } | null = null;
+    let session: { id: string; accountId?: string | null } | null = null;
     let cleanedUp = false;
     let handlerResult: TSessionHandlerResult | null = null;
     let relayServer: { port: number; cleanup: () => Promise<void> } | null = null;
@@ -334,7 +292,7 @@ export const pamWebAccessServiceFactory = ({
               projectId,
               event: {
                 type: EventType.PAM_SESSION_END,
-                metadata: { sessionId, accountName }
+                metadata: { sessionId, accountId: session.accountId ?? undefined, accountName }
               }
             });
           }
@@ -380,14 +338,14 @@ export const pamWebAccessServiceFactory = ({
         throw new BadRequestError({ message: "Invalid account or project" });
       }
 
-      const handlerEntry = getSessionHandler(account.accountType as PamAccountType);
+      const handlerEntry = SESSION_HANDLERS[account.accountType as PamAccountType];
       if (!handlerEntry) {
         throw new BadRequestError({ message: "Web access is not supported for this account type" });
       }
 
       const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
-        gatewayId: account.gatewayId,
-        gatewayPoolId: account.gatewayPoolId
+        gatewayId: account.gatewayId ?? account.templateGatewayId,
+        gatewayPoolId: account.gatewayPoolId ?? account.templateGatewayPoolId
       });
       if (!effectiveGatewayId) {
         throw new BadRequestError({ message: "Gateway not configured for this account" });

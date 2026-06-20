@@ -1,9 +1,7 @@
 import crypto from "crypto";
 
-import { PamAccountType } from "@app/ee/services/pam/pam-enums";
 import { logger } from "@app/lib/logger";
 
-import { registerSessionHandler } from "../pam-session-handler-registry";
 import { parseClientMessage } from "../pam-web-access-fns";
 import {
   SessionEndReason,
@@ -30,7 +28,7 @@ const toPgErrorFields = (err: unknown) => {
   return { message: pgErr.message, detail: pgErr.detail, hint: pgErr.hint };
 };
 
-const handlePostgresSession = async (
+export const handlePostgresSession = async (
   ctx: TSessionContext,
   params: { connectionDetails: Record<string, unknown>; credentials: Record<string, unknown> }
 ): Promise<TSessionHandlerResult> => {
@@ -244,8 +242,3 @@ const handlePostgresSession = async (
     }
   };
 };
-
-registerSessionHandler(PamAccountType.Postgres, {
-  gatewayAccountType: PamAccountType.Postgres,
-  handler: handlePostgresSession
-});

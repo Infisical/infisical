@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
-import { AccessScope, ActionProjectType, RESOURCE_SCOPE, ResourceType } from "@app/db/schemas";
+import { AccessScope, ActionProjectType, RESOURCE_SCOPE, ResourceType, TemporaryPermissionMode } from "@app/db/schemas";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
@@ -9,12 +9,13 @@ import {
   ResourcePermissionSub
 } from "@app/ee/services/permission/resource-permission";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { ms } from "@app/lib/ms";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { PamProductRole, PamResourceRole } from "../pam/pam-enums";
-import { TActorContext } from "../pam/pam-permission";
+import { getResourceIdsWithActions, TActorContext } from "../pam/pam-permission";
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
 import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
 import {
@@ -195,6 +196,7 @@ export const pamMembershipServiceFactory = ({
           groupId: m.actorGroupId,
           role: roles[0]?.role ?? defaultRole,
           isActive: m.isActive,
+          expiresAt: roles[0]?.isTemporary ? (roles[0]?.temporaryAccessEndTime ?? null) : null,
           createdAt: m.createdAt
         };
       })
@@ -476,12 +478,18 @@ export const pamMembershipServiceFactory = ({
     resourceId: string,
     resourceKey: string,
     role: string,
+    expiry: string | null | undefined,
     dto: { userId?: string; groupId?: string } & TActorContext
   ) => {
     if (!VALID_RESOURCE_ROLES.includes(role as PamResourceRole)) {
       throw new BadRequestError({
         message: `Invalid resource role '${role}'. Expected: ${VALID_RESOURCE_ROLES.join(", ")}`
       });
+    }
+
+    const relativeMs = expiry ? ms(expiry) : null;
+    if (expiry && (!relativeMs || relativeMs <= 0)) {
+      throw new BadRequestError({ message: `Invalid expiry duration '${expiry}'` });
     }
 
     const { column, id, kind } = await validateActorExists(dto, dto.actorOrgId);
@@ -493,9 +501,19 @@ export const pamMembershipServiceFactory = ({
         { tx }
       );
       if (existing.length > 0) {
-        throw new BadRequestError({
-          message: `${kind === "user" ? "User" : "Group"} is already a member of this ${resourceKey}`
-        });
+        // Expired memberships can be replaced
+        const now = new Date();
+        const existingRoles = await membershipRoleDAL.find({ membershipId: existing[0].id }, { tx });
+        const isStillActive = existingRoles.some(
+          (r) => !r.isTemporary || (r.temporaryAccessEndTime && now < new Date(r.temporaryAccessEndTime))
+        );
+        if (isStillActive) {
+          throw new BadRequestError({
+            message: `${kind === "user" ? "User" : "Group"} is already a member of this ${resourceKey}`
+          });
+        }
+        await membershipRoleDAL.delete({ membershipId: existing[0].id }, tx);
+        await membershipDAL.deleteById(existing[0].id, tx);
       }
 
       const membership = await membershipDAL.create(
@@ -508,7 +526,23 @@ export const pamMembershipServiceFactory = ({
         tx
       );
 
-      const membershipRole = await membershipRoleDAL.create({ membershipId: membership.id, role }, tx);
+      const now = new Date();
+      const membershipRole = await membershipRoleDAL.create(
+        {
+          membershipId: membership.id,
+          role,
+          ...(relativeMs
+            ? {
+                isTemporary: true,
+                temporaryMode: TemporaryPermissionMode.Relative,
+                temporaryRange: expiry,
+                temporaryAccessStartTime: now,
+                temporaryAccessEndTime: new Date(now.getTime() + relativeMs)
+              }
+            : {})
+        },
+        tx
+      );
 
       return {
         membershipId: membership.id,
@@ -516,6 +550,7 @@ export const pamMembershipServiceFactory = ({
         userId: kind === "user" ? id : undefined,
         groupId: kind === "group" ? id : undefined,
         role: membershipRole.role,
+        expiresAt: membershipRole.temporaryAccessEndTime ?? null,
         createdAt: membership.createdAt
       };
     });
@@ -527,12 +562,16 @@ export const pamMembershipServiceFactory = ({
     resourceId: string,
     resourceKey: string,
     role: string,
-    dto: { userId?: string; groupId?: string }
+    dto: { userId?: string; groupId?: string } & TActorContext
   ) => {
     if (!VALID_RESOURCE_ROLES.includes(role as PamResourceRole)) {
       throw new BadRequestError({
         message: `Invalid resource role '${role}'. Expected: ${VALID_RESOURCE_ROLES.join(", ")}`
       });
+    }
+
+    if (dto.userId && dto.userId === dto.actorId) {
+      throw new ForbiddenRequestError({ message: "You cannot modify your own membership" });
     }
 
     const { column, id, kind } = resolveActorColumn(dto);
@@ -565,8 +604,12 @@ export const pamMembershipServiceFactory = ({
     resourceType: ResourceType,
     resourceId: string,
     resourceKey: string,
-    dto: { userId?: string; groupId?: string }
+    dto: { userId?: string; groupId?: string } & TActorContext
   ) => {
+    if (dto.userId && dto.userId === dto.actorId) {
+      throw new ForbiddenRequestError({ message: "You cannot modify your own membership" });
+    }
+
     const { column, id, kind } = resolveActorColumn(dto);
 
     const [membership] = await membershipDAL.find({
@@ -605,7 +648,13 @@ export const pamMembershipServiceFactory = ({
     return listResourceMembers(projectId, ResourceType.PamFolder, folderId);
   };
 
-  const addFolderMember = async ({ projectId, folderId, role, ...dto }: TAddPamFolderMemberDTO & TActorContext) => {
+  const addFolderMember = async ({
+    projectId,
+    folderId,
+    role,
+    expiry,
+    ...dto
+  }: TAddPamFolderMemberDTO & TActorContext) => {
     await checkManageMembers(projectId, { type: ResourceType.PamFolder, id: folderId }, dto);
 
     const folder = await pamFolderDAL.findById(folderId);
@@ -613,7 +662,7 @@ export const pamMembershipServiceFactory = ({
       throw new NotFoundError({ message: `Folder with ID '${folderId}' not found` });
     }
 
-    return addResourceMember(projectId, ResourceType.PamFolder, folderId, "folderId", role, dto);
+    return addResourceMember(projectId, ResourceType.PamFolder, folderId, "folderId", role, expiry, dto);
   };
 
   const updateFolderMemberRole = async ({
@@ -648,9 +697,15 @@ export const pamMembershipServiceFactory = ({
     return listResourceMembers(projectId, ResourceType.PamAccount, accountId);
   };
 
-  const addAccountMember = async ({ projectId, accountId, role, ...dto }: TAddPamAccountMemberDTO & TActorContext) => {
+  const addAccountMember = async ({
+    projectId,
+    accountId,
+    role,
+    expiry,
+    ...dto
+  }: TAddPamAccountMemberDTO & TActorContext) => {
     await checkAccountManagePermission(projectId, accountId, dto);
-    return addResourceMember(projectId, ResourceType.PamAccount, accountId, "accountId", role, dto);
+    return addResourceMember(projectId, ResourceType.PamAccount, accountId, "accountId", role, expiry, dto);
   };
 
   const updateAccountMemberRole = async ({
@@ -668,6 +723,39 @@ export const pamMembershipServiceFactory = ({
     return removeResourceMember(projectId, ResourceType.PamAccount, accountId, "accountId", dto);
   };
 
+  const getAccessCapabilities = async ({ projectId, ...ctx }: { projectId: string } & TActorContext) => {
+    const { hasRole } = await permissionService.getProjectPermission({
+      actor: ctx.actor,
+      actorId: ctx.actorId,
+      projectId,
+      actorAuthMethod: ctx.actorAuthMethod,
+      actorOrgId: ctx.actorOrgId,
+      actionProjectType: ActionProjectType.PAM
+    });
+    const isProductAdmin = hasRole(PamProductRole.Admin);
+
+    const hasAnyResourceWith = async (action: ResourcePermissionPamResourceActions) => {
+      const { folderIds, accountIds } = await getResourceIdsWithActions(
+        membershipDAL,
+        membershipRoleDAL,
+        projectId,
+        { allOf: [action] },
+        ctx
+      );
+      return folderIds.length > 0 || accountIds.length > 0;
+    };
+
+    const [isResourceAdmin, canViewSessions, canViewAuditLogsResource] = await Promise.all([
+      hasAnyResourceWith(ResourcePermissionPamResourceActions.ManageMembers),
+      hasAnyResourceWith(ResourcePermissionPamResourceActions.ViewSessions),
+      hasAnyResourceWith(ResourcePermissionPamResourceActions.ViewAuditLogs)
+    ]);
+
+    const canViewAuditLogs = isProductAdmin || canViewAuditLogsResource;
+
+    return { isProductAdmin, isResourceAdmin, canViewSessions, canViewAuditLogs };
+  };
+
   return {
     listProductMembers,
     addProductMember,
@@ -681,6 +769,7 @@ export const pamMembershipServiceFactory = ({
     listAccountMembers,
     addAccountMember,
     updateAccountMemberRole,
-    removeAccountMember
+    removeAccountMember,
+    getAccessCapabilities
   };
 };

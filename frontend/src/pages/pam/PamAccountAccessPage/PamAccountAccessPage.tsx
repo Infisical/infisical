@@ -1,12 +1,15 @@
 import { useState } from "react";
 import { Helmet } from "react-helmet";
 import { useParams } from "@tanstack/react-router";
+import { TriangleAlert } from "lucide-react";
 
 import { PamAccountType, TPamAccount, useGetPamAccountById } from "@app/hooks/api/pam";
 import { PamDataExplorerPage } from "@app/pages/pam/PamDataExplorerPage/PamDataExplorerPage";
 
+import { DisconnectedScreen } from "./DisconnectedScreen";
 import { SessionAccessGate } from "./ReasonGate";
 import { useWebAccessSession } from "./useWebAccessSession";
+import { WebAccessStatusCard } from "./WebAccessStatusCard";
 
 const TerminalContent = ({
   account,
@@ -34,50 +37,42 @@ const TerminalContent = ({
   };
 
   let statusLabel = "Connecting";
-  let statusDotClass = "bg-yellow-500";
+  let statusDotClass = "bg-warning";
   if (isConnected) {
     statusLabel = "Connected";
-    statusDotClass = "bg-green-500";
+    statusDotClass = "bg-success";
   } else if (sessionEnded) {
     statusLabel = "Disconnected";
-    statusDotClass = "bg-mineshaft-400";
+    statusDotClass = "bg-muted";
   }
 
   return (
-    <div className="flex h-screen w-screen flex-col bg-[#0d1117]">
+    <div className="flex h-screen w-screen flex-col bg-background">
       <div
-        className="thin-scrollbar flex-1 overflow-x-auto overflow-y-hidden p-2 [&_.xterm-viewport]:thin-scrollbar"
+        className="relative thin-scrollbar flex-1 overflow-x-auto overflow-y-hidden p-2 [&_.xterm-viewport]:thin-scrollbar"
         style={{ minHeight: 0 }}
       >
         <div ref={containerRef} className="h-full" style={{ minWidth: "100%" }} />
+        {sessionEnded && <DisconnectedScreen onReconnect={handleReconnect} />}
       </div>
-      <div className="flex items-center justify-between border-t border-mineshaft-600 bg-mineshaft-800 px-3 py-1.5 text-xs">
+      <div className="flex items-center justify-between border-t border-border bg-card px-3 py-1.5 text-xs">
         <span className="flex items-center gap-1.5">
           <span className={`inline-block size-2 rounded-full ${statusDotClass}`} />
-          <span className="text-mineshaft-300">{statusLabel}</span>
+          <span className="text-muted">{statusLabel}</span>
           {isConnected && (
             <button
               type="button"
               onClick={disconnect}
-              className="ml-2 text-mineshaft-400 hover:text-red-400"
+              className="ml-2 text-muted hover:text-danger"
             >
               Disconnect
-            </button>
-          )}
-          {sessionEnded && (
-            <button
-              type="button"
-              onClick={handleReconnect}
-              className="ml-2 text-mineshaft-400 hover:text-green-400"
-            >
-              Reconnect
             </button>
           )}
         </span>
         <div className="flex items-center gap-4">
           <span>
-            <span className="text-mineshaft-400">Account:</span>{" "}
-            <span className="text-mineshaft-300">{account.name}</span>
+            <span className="text-muted">Account:</span>{" "}
+            <span className="text-muted">{account.name}</span>
           </span>
         </div>
       </div>
@@ -99,7 +94,7 @@ const PageContent = () => {
 
   if (isPending) {
     return (
-      <div className="flex h-screen w-screen items-center justify-center bg-[#0d1117] text-mineshaft-300">
+      <div className="flex h-screen w-screen items-center justify-center bg-background text-muted">
         Loading...
       </div>
     );
@@ -107,9 +102,12 @@ const PageContent = () => {
 
   if (!account) {
     return (
-      <div className="flex h-screen w-screen items-center justify-center bg-[#0d1117]">
-        <p className="text-mineshaft-300">Could not find account with ID {accountId}</p>
-      </div>
+      <WebAccessStatusCard
+        tone="danger"
+        icon={TriangleAlert}
+        title="Account not found"
+        description={`Could not find an account with ID ${accountId}.`}
+      />
     );
   }
 

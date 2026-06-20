@@ -70,7 +70,7 @@ export const pamFolderServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(action, ResourcePermissionSub.PamResource);
   };
 
-  const list = async ({ projectId, search, ...ctx }: TListPamFoldersDTO & TActorContext) => {
+  const list = async ({ projectId, search, onlyAccessible, ...ctx }: TListPamFoldersDTO & TActorContext) => {
     await verifyMembership(projectId, ctx);
 
     const { folderIds, accountIds } = await getResourceIdsWithActions(
@@ -82,7 +82,7 @@ export const pamFolderServiceFactory = ({
     );
     if (folderIds.length === 0 && accountIds.length === 0) return [];
 
-    return pamFolderDAL.findByProjectIdFiltered(projectId, folderIds, { search, accountIds });
+    return pamFolderDAL.findByProjectIdFiltered(projectId, folderIds, { search, accountIds, onlyAccessible });
   };
 
   const getById = async ({ folderId, projectId, ...ctx }: TGetPamFolderDTO & TActorContext) => {

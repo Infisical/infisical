@@ -1,6 +1,7 @@
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useSearch } from "@tanstack/react-router";
+import { Shield } from "lucide-react";
 
 import { PageHeader } from "@app/components/v2";
 import { Badge, Tabs, TabsContent, TabsList, TabsTrigger } from "@app/components/v3";
@@ -11,7 +12,7 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 import { GroupsTab } from "./components/GroupsTab";
 import { MembersTab } from "./components/MembersTab";
 
-enum PamAccessControlTab {
+export enum PamAccessControlTab {
   Members = "members",
   Groups = "groups"
 }
@@ -32,10 +33,9 @@ export const PamAccessControlPage = () => {
   const { data: groups = [] } = useListWorkspaceGroups(currentProject.id);
 
   const updateTab = (tab: string) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (navigate as any)({
+    navigate({
       to: "/organizations/$orgId/pam/access-management",
-      search: { selectedTab: tab },
+      search: (prev) => ({ ...prev, selectedTab: tab }),
       params: { orgId: currentOrg.id }
     });
   };
@@ -47,8 +47,9 @@ export const PamAccessControlPage = () => {
       </Helmet>
       <PageHeader
         scope={ProjectType.PAM}
+        icon={Shield}
         title="Access Control"
-        description="Manage members, groups, and roles for the PAM product."
+        description="Manage members and groups."
       />
       <Tabs value={selectedTab} onValueChange={updateTab}>
         <TabsList variant="pam">

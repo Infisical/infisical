@@ -24,4 +24,5 @@ export type TGetPamFolderDTO = {
 export type TListPamFoldersDTO = {
   projectId: string;
   search?: string;
+  onlyAccessible?: boolean;
 };

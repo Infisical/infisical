@@ -26,7 +26,7 @@ export const PamTemplateSettingsSchema = z.object({
 });
 
 export const PamTemplateAccessPolicySchema = z.object({
-  maxSessionDurationSeconds: z.number().int().min(60).max(86400),
+  maxSessionDurationSeconds: z.number().int().min(60).max(86400).optional(),
   requireReason: z.boolean().default(false),
   requireMfa: z.boolean().default(false)
 });

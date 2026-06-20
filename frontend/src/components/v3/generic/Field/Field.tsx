@@ -108,7 +108,8 @@ const fieldLabelVariants = cva(
           "has-[[data-state=checked]]:border-project/30 has-[[data-state=checked]]:bg-project/5!",
         org: "has-[[data-state=checked]]:border-org/30 has-[[data-state=checked]]:bg-org/5!",
         "sub-org":
-          "has-[[data-state=checked]]:border-sub-org/30 has-[[data-state=checked]]:bg-sub-org/5!"
+          "has-[[data-state=checked]]:border-sub-org/30 has-[[data-state=checked]]:bg-sub-org/5!",
+        pam: "has-[[data-state=checked]]:border-product-pam/30 has-[[data-state=checked]]:bg-product-pam/5!"
       }
     },
     defaultVariants: {

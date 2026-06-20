@@ -45,7 +45,7 @@ const createPamProjectForOrg = async (knex: Knex, orgId: string) => {
 
   const [{ id: projectId }] = (await knex(TableName.Project)
     .insert({
-      name: "Access Management",
+      name: "Privileged Access Manager",
       slug,
       type: ProjectType.PAM,
       orgId,

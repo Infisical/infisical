@@ -3,11 +3,17 @@ import z from "zod";
 import { PamAccountsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { PamAccountType } from "@app/ee/services/pam/pam-enums";
-import { ACCOUNT_TYPE_CONFIGS } from "@app/ee/services/pam-account/pam-account-schemas";
+import {
+  ACCOUNT_TYPE_CONFIGS,
+  buildPamAccountTypeMetadata,
+  PamAccountAccessibilityIssue,
+  PamAccountTypeMetadataSchema
+} from "@app/ee/services/pam-account/pam-account-schemas";
 import {
   PamTemplateAccessPolicySchema,
   PamTemplateSettingsSchema
 } from "@app/ee/services/pam-account-template/pam-account-template-schemas";
+import { SESSION_HANDLERS } from "@app/ee/services/pam-web-access/pam-session-handlers";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
@@ -40,21 +46,32 @@ const SanitizedAccountListItemSchema = BaseAccountFields.extend({
   accountType: z.string()
 });
 
-type TConnectionDetailsSchema = (typeof ACCOUNT_TYPE_CONFIGS)[keyof typeof ACCOUNT_TYPE_CONFIGS]["connectionDetails"];
+// The admin list surfaces accessibility so unusable accounts can be flagged in the UI
+const AdminAccountListItemSchema = SanitizedAccountListItemSchema.extend({
+  isAccessible: z.boolean().describe("Whether the account is fully provisioned to launch a session"),
+  accessibilityIssues: z
+    .array(z.nativeEnum(PamAccountAccessibilityIssue))
+    .describe("Reasons the account cannot launch a session, if any")
+});
 
-const ConnectionDetailsSchema = z.union(
-  Object.values(ACCOUNT_TYPE_CONFIGS).map((c) => c.connectionDetails) as [
-    TConnectionDetailsSchema,
-    TConnectionDetailsSchema,
-    ...TConnectionDetailsSchema[]
-  ]
+const accountDetailVariants = Object.entries(ACCOUNT_TYPE_CONFIGS).map(([accountType, config]) =>
+  SanitizedAccountListItemSchema.extend({
+    accountType: z.literal(accountType as TSupportedAccountType),
+    connectionDetails: config.connectionDetails,
+    templateAccessPolicy: PamTemplateAccessPolicySchema.nullable().optional(),
+    templateSettings: PamTemplateSettingsSchema.nullable().optional(),
+    credentials: config.sanitizedCredentials,
+    isAccessible: z.boolean().describe("Whether the account is fully provisioned to launch a session"),
+    accessibilityIssues: z
+      .array(z.nativeEnum(PamAccountAccessibilityIssue))
+      .describe("Reasons the account cannot launch a session, if any")
+  })
 );
 
-const SanitizedAccountDetailSchema = SanitizedAccountListItemSchema.extend({
-  templateAccessPolicy: PamTemplateAccessPolicySchema.nullable().optional(),
-  templateSettings: PamTemplateSettingsSchema.nullable().optional(),
-  connectionDetails: ConnectionDetailsSchema
-});
+const SanitizedAccountDetailSchema = z.discriminatedUnion(
+  "accountType",
+  accountDetailVariants as [(typeof accountDetailVariants)[number], ...(typeof accountDetailVariants)[number][]]
+);
 
 const toPascalCase = (s: string) =>
   s
@@ -114,6 +131,7 @@ const registerPerTypeEndpoints = (
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
+        projectId: req.internalPamProjectId,
         event: {
           type: EventType.PAM_ACCOUNT_CREATE,
           metadata: {
@@ -188,6 +206,7 @@ const registerPerTypeEndpoints = (
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
+        projectId: req.internalPamProjectId,
         event: {
           type: EventType.PAM_ACCOUNT_UPDATE,
           metadata: {
@@ -204,6 +223,18 @@ const registerPerTypeEndpoints = (
           }
         }
       });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.PamAccountUpdated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            accountType,
+            orgId: req.permission.orgId
+          }
+        })
+        .catch(() => {});
 
       return { account };
     }
@@ -236,6 +267,7 @@ const registerPerTypeEndpoints = (
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
+        projectId: req.internalPamProjectId,
         event: {
           type: EventType.PAM_ACCOUNT_DELETE,
           metadata: {
@@ -266,6 +298,28 @@ const registerPerTypeEndpoints = (
 export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
+    url: "/types",
+    schema: {
+      operationId: "listPamAccountTypes",
+      description: "List supported PAM account types and their form field metadata",
+      tags: [ApiDocsTags.PamAccounts],
+      response: {
+        200: z.object({
+          accountTypes: z.array(PamAccountTypeMetadataSchema)
+        })
+      }
+    },
+    config: { rateLimit: readLimit },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async () => {
+      return {
+        accountTypes: buildPamAccountTypeMetadata(new Set(Object.keys(SESSION_HANDLERS) as PamAccountType[]))
+      };
+    }
+  });
+
+  server.route({
+    method: "GET",
     url: "/",
     schema: {
       operationId: "listPamAccounts",
@@ -277,7 +331,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
         search: z.string().optional().describe("Filter accounts by name")
       }),
       response: {
-        200: z.object({ accounts: z.array(SanitizedAccountListItemSchema) })
+        200: z.object({ accounts: z.array(AdminAccountListItemSchema) })
       }
     },
     config: { rateLimit: readLimit },
@@ -325,6 +379,8 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
               folderName: true,
               templateName: true,
               accountType: true
+            }).extend({
+              canLaunch: z.boolean().describe("Whether the caller can launch a session for this account")
             })
           ),
           totalCount: z.number()

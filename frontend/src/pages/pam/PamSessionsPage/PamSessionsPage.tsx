@@ -1,14 +1,18 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
+import { Link } from "@tanstack/react-router";
 import { format } from "date-fns";
-import { SearchIcon, SquareIcon } from "lucide-react";
+import { Activity, Ban, SearchIcon, Video } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { DeleteActionModal, PageHeader } from "@app/components/v2";
+import { HighlightText } from "@app/components/v2/HighlightText";
 import {
   Badge,
   Button,
+  Card,
+  CardContent,
   Empty,
   EmptyDescription,
   EmptyHeader,
@@ -17,8 +21,12 @@ import {
   InputGroupAddon,
   InputGroupInput,
   Pagination,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
   Skeleton,
-  Switch,
   Table,
   TableBody,
   TableCell,
@@ -26,21 +34,30 @@ import {
   TableHeader,
   TableRow
 } from "@app/components/v3";
-import { useProject } from "@app/context";
+import { useOrganization, useProject } from "@app/context";
 import {
-  PAM_ACCOUNT_TYPE_MAP,
+  getUserTablePreference,
+  PreferenceKey,
+  setUserTablePreference
+} from "@app/helpers/userTablePreferences";
+import {
   PamAccountType,
   PamResourcePermissionActions,
   PamResourcePermissionSub,
   PamSessionStatus,
   useListPamSessions,
+  usePamAccountActions,
+  usePamAccountTypeMap,
+  usePamFolderActions,
   useTerminatePamSession
 } from "@app/hooks/api/pam";
 import { usePamAccountPermission } from "@app/hooks/api/pam/queries";
 import { TPamSession } from "@app/hooks/api/pam/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { useDebounce } from "@app/hooks/useDebounce";
+import { usePamSheetState } from "@app/hooks/usePamSheetState";
 
+import { LiveDot } from "../components/LiveDot";
 import { SessionDetailSheet } from "./components/SessionDetailSheet";
 import { capitalize, formatDuration, STATUS_BADGE } from "./constants";
 
@@ -61,22 +78,73 @@ const TerminateCell = ({
 
   return (
     <Button variant="danger" size="xs" onClick={(e) => onTerminate(session, e)}>
-      <SquareIcon className="mr-1 size-3" />
+      <Ban className="mr-1 size-3" />
       Terminate
     </Button>
   );
 };
 
+const AccountNameCell = ({ session, search }: { session: TPamSession; search: string }) => {
+  const { currentOrg } = useOrganization();
+  const { can } = usePamAccountActions(session.accountId ?? "", Boolean(session.accountId));
+  const name = <HighlightText text={session.accountName} highlight={search} />;
+
+  if (session.accountId && can(PamResourcePermissionActions.ReadAccounts)) {
+    return (
+      <Link
+        to="/organizations/$orgId/pam/accounts"
+        params={{ orgId: currentOrg.id }}
+        search={{ accountId: session.accountId }}
+        onClick={(e) => e.stopPropagation()}
+        className="text-sm hover:underline"
+      >
+        {name}
+      </Link>
+    );
+  }
+
+  return <span className="text-sm">{name}</span>;
+};
+
+const FolderNameCell = ({ session, search }: { session: TPamSession; search: string }) => {
+  const { currentOrg } = useOrganization();
+  const { can } = usePamFolderActions(session.folderId ?? "", Boolean(session.folderId));
+
+  if (!session.folderName) return <span className="text-muted">—</span>;
+
+  const name = <HighlightText text={session.folderName} highlight={search} />;
+
+  if (session.folderId && can(PamResourcePermissionActions.ReadFolder)) {
+    return (
+      <Link
+        to="/organizations/$orgId/pam/accounts"
+        params={{ orgId: currentOrg.id }}
+        search={{ folderId: session.folderId }}
+        onClick={(e) => e.stopPropagation()}
+        className="hover:underline"
+      >
+        {name}
+      </Link>
+    );
+  }
+
+  return name;
+};
+
 export const PamSessionsPage = () => {
   const { t } = useTranslation();
   const { currentProject } = useProject();
+  const { map: accountTypeMap } = usePamAccountTypeMap();
+
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search);
-  const [activeOnly, setActiveOnly] = useState(false);
-  const [selectedSession, setSelectedSession] = useState<TPamSession | null>(null);
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const sessionSheet = usePamSheetState("sessionId");
   const [sessionToTerminate, setSessionToTerminate] = useState<TPamSession | null>(null);
   const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(20);
+  const [perPage, setPerPage] = useState(() =>
+    getUserTablePreference("pamSessionsTable", PreferenceKey.PerPage, 20)
+  );
 
   const offset = (page - 1) * perPage;
 
@@ -84,19 +152,20 @@ export const PamSessionsPage = () => {
     offset,
     limit: perPage,
     search: debouncedSearch || undefined,
-    status: activeOnly ? PamSessionStatus.Active : undefined
+    status: statusFilter === "all" ? undefined : (statusFilter as PamSessionStatus)
   });
   const sessions = data?.sessions ?? [];
   const totalCount = data?.totalCount ?? 0;
   const terminateSession = useTerminatePamSession();
 
-  useEffect(() => {
-    if (!selectedSession) return;
-    const fresh = sessions.find((s) => s.id === selectedSession.id);
-    if (fresh) {
-      setSelectedSession(fresh);
-    }
-  }, [sessions]);
+  const query = search.trim().toLowerCase();
+  const displayedSessions = query
+    ? sessions.filter((session) =>
+        `${session.actorName} ${session.actorEmail} ${session.accountName} ${session.folderName ?? ""}`
+          .toLowerCase()
+          .includes(query)
+      )
+    : sessions;
 
   const requestTerminate = (session: TPamSession, e?: React.MouseEvent) => {
     e?.stopPropagation();
@@ -105,16 +174,12 @@ export const PamSessionsPage = () => {
 
   const confirmTerminate = async () => {
     if (!sessionToTerminate) return;
-    try {
-      await terminateSession.mutateAsync({
-        sessionId: sessionToTerminate.id,
-        projectId: currentProject.id
-      });
-      createNotification({ text: "Session terminated", type: "success" });
-      setSessionToTerminate(null);
-    } catch {
-      createNotification({ text: "Failed to terminate session", type: "error" });
-    }
+    await terminateSession.mutateAsync({
+      sessionId: sessionToTerminate.id,
+      projectId: currentProject.id
+    });
+    createNotification({ text: "Session terminated", type: "success" });
+    setSessionToTerminate(null);
   };
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -122,8 +187,8 @@ export const PamSessionsPage = () => {
     setPage(1);
   };
 
-  const handleActiveOnlyChange = (checked: boolean) => {
-    setActiveOnly(checked);
+  const handleStatusChange = (value: string) => {
+    setStatusFilter(value);
     setPage(1);
   };
 
@@ -134,139 +199,163 @@ export const PamSessionsPage = () => {
       </Helmet>
       <PageHeader
         scope={ProjectType.PAM}
+        icon={Video}
         title="Sessions"
         description="Monitor and manage active and historical sessions."
       />
 
-      <div className="mb-4 flex items-center gap-4">
-        <div className="flex-1">
-          <InputGroup>
-            <InputGroupAddon>
-              <SearchIcon />
-            </InputGroupAddon>
-            <InputGroupInput
-              value={search}
-              onChange={handleSearchChange}
-              placeholder="Search by account, user, or folder..."
-            />
-          </InputGroup>
-        </div>
-        {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
-        <label className="flex shrink-0 cursor-pointer items-center gap-2 text-sm text-muted">
-          <Switch checked={activeOnly} onCheckedChange={handleActiveOnlyChange} size="sm" />
-          Only show active sessions
-        </label>
-      </div>
+      <Card className="mt-4">
+        <CardContent className="flex items-center gap-4">
+          <div className="flex-1">
+            <InputGroup>
+              <InputGroupAddon>
+                <SearchIcon />
+              </InputGroupAddon>
+              <InputGroupInput
+                value={search}
+                onChange={handleSearchChange}
+                placeholder="Search by account, user, or folder..."
+              />
+            </InputGroup>
+          </div>
+          <Select value={statusFilter} onValueChange={handleStatusChange}>
+            <SelectTrigger>
+              <Activity className="mr-1.5 size-4 text-muted" />
+              <SelectValue placeholder="All" />
+            </SelectTrigger>
+            <SelectContent position="popper">
+              <SelectItem value="all">All</SelectItem>
+              <SelectItem value={PamSessionStatus.Active}>Active</SelectItem>
+              <SelectItem value={PamSessionStatus.Ended}>Ended</SelectItem>
+            </SelectContent>
+          </Select>
+        </CardContent>
 
-      {!isPending && sessions.length === 0 ? (
-        <Empty className="border">
-          <EmptyHeader>
-            <EmptyTitle>
-              {search || activeOnly ? "No sessions match your filters" : "No sessions found"}
-            </EmptyTitle>
-            <EmptyDescription>
-              {search || activeOnly
-                ? "Try adjusting your search or filters."
-                : "Sessions will appear here when users connect to resources."}
-            </EmptyDescription>
-          </EmptyHeader>
-        </Empty>
-      ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>User</TableHead>
-              <TableHead>Account</TableHead>
-              <TableHead>Folder</TableHead>
-              <TableHead>Started</TableHead>
-              <TableHead>Duration</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="w-5" />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isPending &&
-              Array.from({ length: 5 }).map((_, i) => (
-                <TableRow key={`skeleton-${i + 1}`}>
-                  {Array.from({ length: 7 }).map((__, j) => (
-                    <TableCell key={`cell-${j + 1}`}>
-                      <Skeleton className="h-4 w-full" />
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))}
-            {sessions.map((session) => {
-              const statusConfig = STATUS_BADGE[session.status];
-              const accountTypeDetails =
-                session.accountType && PAM_ACCOUNT_TYPE_MAP[session.accountType as PamAccountType];
+        {!isPending && displayedSessions.length === 0 ? (
+          <CardContent>
+            <Empty>
+              <EmptyHeader>
+                <EmptyTitle>
+                  {search || statusFilter !== "all"
+                    ? "No sessions match your filters"
+                    : "No sessions found"}
+                </EmptyTitle>
+                <EmptyDescription>
+                  {search || statusFilter !== "all"
+                    ? "Try adjusting your search or filters."
+                    : "Sessions will appear here when users connect to resources."}
+                </EmptyDescription>
+              </EmptyHeader>
+            </Empty>
+          </CardContent>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>User</TableHead>
+                <TableHead>Account</TableHead>
+                <TableHead>Folder</TableHead>
+                <TableHead>Started</TableHead>
+                <TableHead>Duration</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="w-5" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isPending &&
+                Array.from({ length: 5 }).map((_, i) => (
+                  <TableRow key={`skeleton-${i + 1}`}>
+                    {Array.from({ length: 7 }).map((__, j) => (
+                      <TableCell key={`cell-${j + 1}`}>
+                        <Skeleton className="h-4 w-full" />
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))}
+              {displayedSessions.map((session) => {
+                const statusConfig = STATUS_BADGE[session.status];
+                const accountTypeDetails =
+                  session.accountType && accountTypeMap[session.accountType as PamAccountType];
 
-              return (
-                <TableRow key={session.id} onClick={() => setSelectedSession(session)}>
-                  <TableCell className="h-[50px]">{session.actorName}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      {accountTypeDetails && (
-                        <img
-                          src={`/images/integrations/${accountTypeDetails.image}`}
-                          alt={accountTypeDetails.name}
-                          className="size-5 shrink-0 rounded-sm"
-                        />
-                      )}
-                      <span className="text-sm">{session.accountName}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-sm">{session.folderName ?? "-"}</TableCell>
-                  <TableCell>
-                    {session.startedAt ? (
+                return (
+                  <TableRow key={session.id} onClick={() => sessionSheet.openSheet(session.id)}>
+                    <TableCell className="h-[50px]">
                       <div className="flex flex-col">
                         <span className="text-sm">
-                          {format(new Date(session.startedAt), "h:mm:ss a")}
+                          <HighlightText text={session.actorName} highlight={search} />
                         </span>
                         <span className="text-xs text-muted">
-                          {format(new Date(session.startedAt), "M/d/yyyy")}
+                          <HighlightText text={session.actorEmail} highlight={search} />
                         </span>
                       </div>
-                    ) : (
-                      "-"
-                    )}
-                  </TableCell>
-                  <TableCell className="text-sm">{formatDuration(session)}</TableCell>
-                  <TableCell>
-                    <Badge variant={statusConfig.variant}>
-                      {statusConfig.dot && (
-                        <span className="mr-1.5 inline-block size-1.5 rounded-full bg-product-pam" />
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        {accountTypeDetails && (
+                          <img
+                            src={`/images/integrations/${accountTypeDetails.icon}`}
+                            alt={accountTypeDetails.name}
+                            className="size-5 shrink-0 rounded-sm"
+                          />
+                        )}
+                        <AccountNameCell session={session} search={search} />
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-sm">
+                      <FolderNameCell session={session} search={search} />
+                    </TableCell>
+                    <TableCell className="text-sm">
+                      {session.startedAt ? (
+                        format(new Date(session.startedAt), "MMM d, yyyy h:mm a")
+                      ) : (
+                        <span className="text-muted">—</span>
                       )}
-                      {capitalize(session.status)}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <TerminateCell session={session} onTerminate={requestTerminate} />
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
-      )}
+                    </TableCell>
+                    <TableCell className="text-sm">
+                      {session.startedAt ? (
+                        formatDuration(session)
+                      ) : (
+                        <span className="text-muted">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={statusConfig.variant}>
+                        {session.status === PamSessionStatus.Active && <LiveDot />}
+                        {capitalize(session.status)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <TerminateCell session={session} onTerminate={requestTerminate} />
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        )}
 
-      {totalCount > 0 && (
-        <Pagination
-          count={totalCount}
-          page={page}
-          perPage={perPage}
-          onChangePage={setPage}
-          onChangePerPage={(newPerPage) => {
-            setPerPage(newPerPage);
-            setPage(1);
-          }}
-        />
-      )}
+        {totalCount > 0 && (
+          <CardContent>
+            <Pagination
+              count={totalCount}
+              page={page}
+              perPage={perPage}
+              onChangePage={setPage}
+              onChangePerPage={(newPerPage) => {
+                setPerPage(newPerPage);
+                setPage(1);
+                setUserTablePreference("pamSessionsTable", PreferenceKey.PerPage, newPerPage);
+              }}
+            />
+          </CardContent>
+        )}
+      </Card>
 
       <SessionDetailSheet
-        session={selectedSession}
-        isOpen={!!selectedSession}
+        sessionId={sessionSheet.selectedId}
+        isOpen={sessionSheet.isOpen}
         onOpenChange={(open) => {
-          if (!open) setSelectedSession(null);
+          if (!open) sessionSheet.closeSheet();
         }}
         onTerminate={requestTerminate}
       />

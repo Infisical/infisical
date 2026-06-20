@@ -46,6 +46,7 @@ Every list/mutation endpoint checks action-level permissions, not just membershi
 
 | Endpoint | Required Permission |
 |---|---|
+| Get access capabilities | Product membership (returns `isProductAdmin` / `isResourceAdmin` / `canViewSessions` / `canViewAuditLogs` flags for sidebar gating) |
 | List folders | `ReadFolder` (via `getResourceIdsWithActions`) |
 | List accounts | `ReadAccounts` (via `getResourceIdsWithActions`) |
 | List accessible accounts | `ReadAccounts` AND (`LaunchSessions` OR `ViewCredentials`) |
@@ -59,6 +60,15 @@ Every list/mutation endpoint checks action-level permissions, not just membershi
 | Edit/delete folder | `EditFolder`/`DeleteFolder` (via folder permission) |
 | Template list/getById | Product membership only (templates are project-wide config) |
 | Template create/update/delete | Product Admin |
+| View audit logs | `ViewAuditLogs` per resource for account/folder logs; Product Admin for resource-less (product-level) logs |
+
+### Audit Log Scoping
+
+PAM audit logs are served through the shared `GET /organization/audit-logs` endpoint, but scoped by the PAM permission model rather than the generic project `AuditLogs` permission. `pamAuditLogScopeResolverFactory` (`pam/pam-audit-log-fns.ts`) is injected into `auditLogServiceFactory` as `resolvePamAuditScope`; for a PAM project it returns `{ accountIds, folderIds, includeProductLevel }` and the shared service skips its generic permission check and passes the scope to `auditLogDAL.find`. Returns `null` for non-PAM projects (generic check still applies).
+
+Scoping rules (enforced via `eventMetadata` json): account-scoped logs (have `accountId`) and folder-scoped logs (have `folderId`) are returned only when the actor has `ViewAuditLogs` on that resource — a folder grant cascades to the accounts inside it. Resource-less logs (neither id, e.g. template/product-member events) are returned only to product admins. Admins are **not** exempt from the resource check. The scope filter is implemented in both audit-log backends (Postgres `auditLogDAL` and `clickhouseAuditLogDAL`), so it holds regardless of `CLICKHOUSE_AUDIT_LOG_ENABLED`.
+
+**Requirement for new PAM events:** any account- or folder-scoped audit event must put `accountId`/`folderId` in its `eventMetadata`, or it falls into the product-level bucket and is hidden from resource viewers.
 
 ### Auth Modes
 
@@ -73,23 +83,44 @@ Resource memberships are scoped to either a `PamFolder` or a `PamAccount` via th
 
 ## Account Types
 
-Defined in `pam/pam-enums.ts` as `PamAccountType`. Validation schemas per type live in `pam-account/pam-account-schemas.ts` in the `ACCOUNT_TYPE_CONFIGS` map.
+Defined in `pam/pam-enums.ts` as `PamAccountType`. Each type's full config lives in `pam-account/pam-account-schemas.ts` in the `ACCOUNT_TYPE_CONFIGS` map. A config entry holds everything the backend and frontend need for that type:
+
+- `name` -- human-readable label (e.g. `"PostgreSQL"`), served to the frontend
+- `icon` -- icon filename under the frontend's account-platform icons (e.g. `"Postgres.png"`)
+- `connectionDetails` -- Zod schema for the non-secret connection fields
+- `credentials` -- Zod schema for the secret credentials (a `ZodObject` or a `ZodDiscriminatedUnion`)
+- `sanitizedCredentials` -- Zod allowlist of credential fields that are safe to return in API responses (e.g. `username` but never `password`). This is the single source of truth for what's a secret -- there is no string-matching denylist.
+- `ui` -- optional sparse per-field hints (`{ label?, widget?, secret? }`) for fields whose label/widget can't be inferred from the schema. Anything not listed is inferred.
+
+### Schema-Driven Forms
+
+The frontend renders the create/edit account forms entirely from backend metadata -- there are **no per-type frontend components**. `buildPamAccountTypeMetadata(webAccessSupportedTypes)` walks each config's Zod schemas and emits `PamFieldDescriptor`s (`{ key, label, widget, required, secret, options?, defaultValue?, showWhen? }`). The `GET /pam/accounts/types` endpoint serves these as `PamAccountTypeMetadata` (`{ type, name, icon, supportsWebAccess, connectionFields, credentialFields }`). `supportsWebAccess` is derived from the `SESSION_HANDLERS` keys (passed in by the route) -- the single source of truth for browser-session support -- so the frontend gates Browser vs CLI launch without a separate list to maintain.
+
+How descriptors are derived:
+- **Label** -- `ui[key].label`, else humanized from the field key.
+- **Widget** -- `ui[key].widget`, else inferred from the Zod base type (`ZodNumber` -> `number`, `ZodBoolean` -> `boolean`, `ZodEnum` -> `select` with `options`, else `text`). `password`/`textarea` must be set via `ui` since they're not inferable.
+- **Required** -- a field is optional if its schema is `ZodOptional`/`ZodDefault`/nullable (the builder peels these via `unwrapField`).
+- **Secret** -- `ui[key].secret`, else `true` when the widget is `password`. Secret fields use the write-only `PamPasswordInput` (sentinel-based, see below).
+- **Discriminated unions** (e.g. SSH `authMethod`) -- the discriminator becomes a `select`; each variant's non-shared fields get a `showWhen: { field, equals }` so the renderer reveals them conditionally.
 
 ### Key Helpers
 
 - **`extractGatewayTarget(accountType, rawConnectionDetails)`** -- validated extraction of `{ host, port }` from decrypted connection details, dispatched by account type. Use this instead of raw type casts.
+- **`sanitizeCredentials(accountType, decrypted)`** -- strips secret fields from decrypted credentials using the type's `sanitizedCredentials` allowlist; used by `getById` before returning credentials to the client.
+- **`buildPamAccountTypeMetadata()`** -- builds the field descriptors served by `GET /pam/accounts/types`.
 - **`PamAccessMethod`** enum (`Web`, `Cli`) -- use instead of hardcoded `"web"`/`"cli"` strings.
 
 ### Adding a New Account Type
 
-1. Add the enum value to `PamAccountType` in `pam/pam-enums.ts`
-2. Add `connectionDetails` and `credentials` Zod schemas to `ACCOUNT_TYPE_CONFIGS` in `pam-account/pam-account-schemas.ts`
-3. Add a case to `extractGatewayTarget` in `pam-account-schemas.ts`
-4. If it supports web access: add a session handler in `pam-web-access/` and register it in `pam-session-handler-registry.ts`
-5. Add the corresponding frontend enum value and any UI components
-6. Update `PamAccountType` on the frontend enum in `frontend/src/hooks/api/pam/enums.ts`
+Most types need only backend changes -- the frontend auto-renders from metadata.
 
-The router's `ConnectionDetailsSchema` and `SanitizedAccountDetailSchema` auto-derive from `ACCOUNT_TYPE_CONFIGS`, so no router changes are needed for new types.
+1. Add the enum value to `PamAccountType` in `pam/pam-enums.ts` (and the matching frontend enum in `frontend/src/hooks/api/pam/enums.ts` -- the one shared string both sides need).
+2. Add a config entry to `ACCOUNT_TYPE_CONFIGS` in `pam-account/pam-account-schemas.ts`: `name`, `icon`, `connectionDetails`, `credentials`, `sanitizedCredentials`, and any `ui` hints (set `widget: "password"`/`"textarea"` and `secret: true` where the schema can't express it).
+3. Drop the icon image into `frontend/public/images/integrations/` matching the `icon` filename in the config. No component edit -- `AccountPlatformIcon` and the type pickers resolve the name/icon from `GET /pam/accounts/types`.
+4. Add a case to `extractGatewayTarget` in `pam-account-schemas.ts`.
+5. If it supports web access: add a session handler in `pam-web-access/` (export the handler function) and add an entry for it to the `SESSION_HANDLERS` map in `pam-session-handlers.ts`.
+
+No changes to the account form components, router schemas, or field renderers are needed. The per-type route bodies use `config.connectionDetails`/`config.credentials` directly, the detail response (`SanitizedAccountDetailSchema`) is a discriminated union auto-derived from `ACCOUNT_TYPE_CONFIGS` (each variant pulls `connectionDetails` and `sanitizedCredentials` from the config), and the frontend forms render from `GET /pam/accounts/types`.
 
 ## Session Lifecycle
 

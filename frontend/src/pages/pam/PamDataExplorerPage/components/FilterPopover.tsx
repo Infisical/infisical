@@ -164,7 +164,7 @@ export const FilterPopover = ({ columns, filters, onFiltersChange }: FilterPopov
       </PopoverTrigger>
       <PopoverContent className="w-[580px] p-3" align="start">
         <div className="mb-2 flex items-center justify-between">
-          <span className="text-sm font-medium text-mineshaft-200">Filters</span>
+          <span className="text-sm font-medium text-foreground">Filters</span>
           {draft.length > 0 && (
             <Button variant="ghost" size="xs" onClick={clearAll} className="h-auto p-0 text-xs">
               Clear all
@@ -173,7 +173,7 @@ export const FilterPopover = ({ columns, filters, onFiltersChange }: FilterPopov
         </div>
 
         {draft.length === 0 ? (
-          <p className="py-3 text-center text-xs text-mineshaft-400">No filters applied</p>
+          <p className="py-3 text-center text-xs text-muted">No filters applied</p>
         ) : (
           <div className="space-y-2">
             {draft.map((filter, index) => {
@@ -188,7 +188,7 @@ export const FilterPopover = ({ columns, filters, onFiltersChange }: FilterPopov
                   >
                     <SelectTrigger
                       size="sm"
-                      className="w-40 text-xs text-mineshaft-200"
+                      className="w-40 text-xs text-foreground"
                       title={filter.column}
                     >
                       <SelectValue />
@@ -208,7 +208,7 @@ export const FilterPopover = ({ columns, filters, onFiltersChange }: FilterPopov
                       updateFilter(index, { operator: val as FilterOperator })
                     }
                   >
-                    <SelectTrigger size="sm" className="w-28 text-xs text-mineshaft-200">
+                    <SelectTrigger size="sm" className="w-28 text-xs text-foreground">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -225,14 +225,14 @@ export const FilterPopover = ({ columns, filters, onFiltersChange }: FilterPopov
                       value={filter.value}
                       onChange={(e) => updateFilter(index, { value: e.target.value })}
                       placeholder={getFilterPlaceholder(colInfo?.type ?? "", filter.operator)}
-                      className="h-7 flex-1 text-xs text-mineshaft-200"
+                      className="h-7 flex-1 text-xs text-foreground"
                     />
                   )}
 
                   <button
                     type="button"
                     onClick={() => removeFilter(index)}
-                    className="rounded p-1 text-mineshaft-400 hover:bg-mineshaft-700 hover:text-mineshaft-200"
+                    className="rounded p-1 text-muted hover:bg-container-hover hover:text-foreground"
                   >
                     <XIcon className="size-3" />
                   </button>

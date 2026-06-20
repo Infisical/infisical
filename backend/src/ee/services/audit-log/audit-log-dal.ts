@@ -33,6 +33,7 @@ export interface TAuditLogDALFactory extends Omit<TOrmify<TableName.AuditLog>, "
       secretKey?: string | undefined;
       eventType?: EventType[] | undefined;
       eventMetadata?: Record<string, string> | undefined;
+      pamScope?: TPamAuditLogScope | undefined;
     },
     tx?: knex.Knex
   ) => Promise<TAuditLogs[]>;
@@ -60,6 +61,12 @@ type TFindQuery = {
   offset?: number;
 };
 
+export type TPamAuditLogScope = {
+  accountIds: string[];
+  folderIds: string[];
+  includeProductLevel: boolean;
+};
+
 const QUERY_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
 const AUDIT_LOG_PRUNE_BATCH_SIZE = 10000;
 const MAX_RETRY_ON_FAILURE = 3;
@@ -83,7 +90,8 @@ export const auditLogDALFactory = (db: TDbClient) => {
       secretPath,
       secretKey,
       eventType,
-      eventMetadata
+      eventMetadata,
+      pamScope
     },
     tx
   ) => {
@@ -102,6 +110,43 @@ export const auditLogDALFactory = (db: TDbClient) => {
 
       if (userAgentType) {
         void sqlQuery.where("userAgentType", userAgentType);
+      }
+
+      // PAM resource scoping: account logs by accountId, folder logs by folderId, and resource-less
+      // (product-level) logs only for product admins
+      if (pamScope) {
+        const metaColumn = `"${TableName.AuditLog}"."eventMetadata"`;
+        const placeholders = (values: string[]) => values.map(() => "?").join(", ");
+        void sqlQuery.where((scope) => {
+          let matched = false;
+          if (pamScope.accountIds.length) {
+            matched = true;
+            void scope.orWhereRaw(
+              `${metaColumn}->>'accountId' IN (${placeholders(pamScope.accountIds)})`,
+              pamScope.accountIds
+            );
+          }
+          if (pamScope.folderIds.length) {
+            matched = true;
+            void scope.orWhere((folderScope) => {
+              void folderScope
+                .whereRaw(`jsonb_exists(${metaColumn}, 'folderId')`)
+                .whereRaw(`NOT jsonb_exists(${metaColumn}, 'accountId')`)
+                .whereRaw(`${metaColumn}->>'folderId' IN (${placeholders(pamScope.folderIds)})`, pamScope.folderIds);
+            });
+          }
+          if (pamScope.includeProductLevel) {
+            matched = true;
+            void scope.orWhere((productScope) => {
+              void productScope
+                .whereRaw(`NOT jsonb_exists(${metaColumn}, 'accountId')`)
+                .whereRaw(`NOT jsonb_exists(${metaColumn}, 'folderId')`);
+            });
+          }
+          if (!matched) {
+            void scope.whereRaw("1 = 0");
+          }
+        });
       }
 
       // Select statements

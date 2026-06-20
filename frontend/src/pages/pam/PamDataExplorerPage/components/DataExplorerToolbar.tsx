@@ -264,9 +264,9 @@ const LimitOffsetPopover = ({
                 value={limitInput}
                 onChange={(e) => setLimitInput(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && applyChanges()}
-                className={`h-8 w-16 rounded border bg-transparent text-center text-sm text-mineshaft-200 outline-none ${
+                className={`h-8 w-16 rounded border bg-transparent text-center text-sm text-foreground outline-none ${
                   limitError
-                    ? "border-red-500 focus:border-red-500"
+                    ? "border-danger focus:border-danger"
                     : "border-border focus:border-ring"
                 }`}
                 min={1}
@@ -279,9 +279,9 @@ const LimitOffsetPopover = ({
                 value={offsetInput}
                 onChange={(e) => setOffsetInput(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && applyChanges()}
-                className={`h-8 w-16 rounded border bg-transparent text-center text-sm text-mineshaft-200 outline-none ${
+                className={`h-8 w-16 rounded border bg-transparent text-center text-sm text-foreground outline-none ${
                   offsetError
-                    ? "border-red-500 focus:border-red-500"
+                    ? "border-danger focus:border-danger"
                     : "border-border focus:border-ring"
                 }`}
                 min={0}
@@ -289,7 +289,7 @@ const LimitOffsetPopover = ({
             </div>
           </div>
           {(limitError || offsetError) && (
-            <p className="text-center text-[10px] text-red-400">{limitError || offsetError}</p>
+            <p className="text-center text-[10px] text-danger">{limitError || offsetError}</p>
           )}
           <Button
             variant="outline"

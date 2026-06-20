@@ -29,14 +29,12 @@ import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
 import { extractGatewayTarget, parseInternalMetadata } from "../pam-account/pam-account-schemas";
 import { PamTemplateAccessPolicySchema } from "../pam-account-template/pam-account-template-schemas";
 import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
-import { TPamSessionEventChunkDALFactory } from "../pam-session-recording/pam-recording-chunk-dal";
 import { PamRecordingStorageBackend } from "../pam-session-recording/pam-recording-enums";
-import { decryptSessionKey, generateSessionRecordingSecrets } from "../pam-session-recording/pam-recording-secrets";
+import { generateSessionRecordingSecrets } from "../pam-session-recording/pam-recording-secrets";
 import { ResourcePermissionPamResourceActions } from "../permission/resource-permission";
 import { DEFAULT_SESSION_DURATION_MS } from "./pam-session-constants";
 import { TPamSessionDALFactory } from "./pam-session-dal";
 import { TPamSessionExpirationServiceFactory } from "./pam-session-expiration-queue";
-import { decryptChunks } from "./pam-session-fns";
 
 type TPamSessionServiceFactoryDep = {
   pamSessionDAL: Pick<
@@ -50,7 +48,6 @@ type TPamSessionServiceFactoryDep = {
     | "updateById"
   >;
   pamAccountDAL: Pick<TPamAccountDALFactory, "findByIdWithDetails" | "findOne">;
-  pamSessionEventChunkDAL: Pick<TPamSessionEventChunkDALFactory, "findBySessionIdPaginated">;
   pamFolderDAL: Pick<TPamFolderDALFactory, "findOne">;
   membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find">;
@@ -67,7 +64,6 @@ export type TPamSessionServiceFactory = ReturnType<typeof pamSessionServiceFacto
 export const pamSessionServiceFactory = ({
   pamSessionDAL,
   pamAccountDAL,
-  pamSessionEventChunkDAL,
   pamFolderDAL,
   membershipDAL,
   membershipRoleDAL,
@@ -213,7 +209,10 @@ export const pamSessionServiceFactory = ({
       credentials: { ...connectionDetails, ...credentials },
       recording,
       projectId: session.projectId,
+      accountId: session.accountId,
       accountName: session.accountName,
+      accountType: session.accountType,
+      actorEmail: session.actorEmail,
       sessionStarted
     };
   };
@@ -229,6 +228,7 @@ export const pamSessionServiceFactory = ({
 
     return {
       projectId: session.projectId,
+      accountId: session.accountId,
       accountName: session.accountName,
       alreadyEnded: !updatedSession
     };
@@ -328,8 +328,8 @@ export const pamSessionServiceFactory = ({
     );
 
     const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
-      gatewayId: account.gatewayId,
-      gatewayPoolId: account.gatewayPoolId
+      gatewayId: account.gatewayId ?? account.templateGatewayId,
+      gatewayPoolId: account.gatewayPoolId ?? account.templateGatewayPoolId
     });
     if (!effectiveGatewayId) {
       throw new BadRequestError({ message: "Gateway not configured for this account" });
@@ -482,54 +482,11 @@ export const pamSessionServiceFactory = ({
     return { session: updated, projectId: session.projectId, accountName: session.accountName };
   };
 
-  const getSessionLogs = async (sessionId: string, offset: number, limit: number, ctx: TActorContext) => {
-    const session = await pamSessionDAL.findById(sessionId);
-    if (!session) {
-      throw new NotFoundError({ message: "Session not found" });
-    }
-
-    if (!session.accountId) {
-      return { logs: [], hasMore: false, batchCount: 0 };
-    }
-
-    const account = await pamAccountDAL.findByIdWithDetails(session.accountId);
-    await checkAccount(
-      session.accountId,
-      account?.folderId,
-      session.projectId,
-      ResourcePermissionPamResourceActions.ViewSessions,
-      ctx
-    );
-
-    if (!session.encryptedSessionKey) {
-      return { logs: [], hasMore: false, batchCount: 0 };
-    }
-
-    const sessionKey = await decryptSessionKey({
-      projectId: session.projectId,
-      sessionId,
-      encryptedSessionKey: session.encryptedSessionKey,
-      kmsService
-    });
-
-    const chunks = await pamSessionEventChunkDAL.findBySessionIdPaginated(sessionId, {
-      offset,
-      limit: limit + 1
-    });
-
-    const hasMore = chunks.length > limit;
-    const pageChunks = hasMore ? chunks.slice(0, limit) : chunks;
-    const logs = pageChunks.length > 0 ? decryptChunks(pageChunks, sessionKey, session.projectId, sessionId) : [];
-
-    return { logs, hasMore, batchCount: pageChunks.length };
-  };
-
   return {
     access,
     listSessions,
     getSessionById,
     getSessionCredentials,
-    getSessionLogs,
     endSessionFromGateway,
     terminateSession
   };
