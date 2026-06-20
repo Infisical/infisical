@@ -65,7 +65,7 @@ export const RailwaySyncFns = {
   async syncSecrets(secretSync: TRailwaySyncWithCredentials, secretMap: TSecretMap) {
     try {
       const {
-        syncOptions: { disableSecretDeletion }
+        syncOptions: { disableSecretDeletion, keySchema }
       } = secretSync;
       const config = secretSync.destinationConfig;
 
@@ -98,7 +98,13 @@ export const RailwaySyncFns = {
         });
 
         const keysToDelete = Object.entries(existingVariables)
-          .filter(([key, value]) => value !== null && !key.startsWith("RAILWAY_") && !(key in secretMap))
+          .filter(
+            ([key, value]) =>
+              value !== null &&
+              !key.startsWith("RAILWAY_") &&
+              matchesSchema(key, secretSync.environment?.slug || "", keySchema) &&
+              !(key in secretMap)
+          )
           .map(([key]) => key);
 
         for (const name of keysToDelete) {
