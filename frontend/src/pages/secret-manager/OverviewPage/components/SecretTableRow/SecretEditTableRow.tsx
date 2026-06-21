@@ -354,13 +354,27 @@ export const SecretEditTableRow = ({
     if (!isSingleEnvView || hasPendingChange) return;
 
     originalCommentRef.current = comment ?? "";
-    originalTagsRef.current = tags?.map((t) => ({ id: t.id, slug: t.slug })) ?? [];
+    const freshTags = tags?.map((t) => ({ id: t.id, slug: t.slug })) ?? [];
+    originalTagsRef.current = freshTags;
     originalMetadataRef.current =
       secretMetadata?.map((m) => ({
         key: m.key,
         value: m.value,
         isEncrypted: m.isEncrypted ?? false
       })) ?? [];
+
+    // Sync the form's tags field with fresh server data when it isn't being
+    // edited. Without this, after a bulk-tag refetch the parent form keeps the
+    // stale tag list from mount while originalTagsRef has advanced to the
+    // fresh server data. Opening the tag popover then reads the stale form
+    // value, the batch-mode debounce emits it as a change, and the auto-apply
+    // logic records a false tag-removal pending change — surfacing a spurious
+    // "Commit Changes" modal. Syncing here (without marking dirty) keeps the
+    // form in sync with originalTagsRef so the emitted value matches the
+    // original and no false change is recorded.
+    if (!getFieldState("tags").isDirty) {
+      setValue("tags", freshTags, { shouldDirty: false });
+    }
   }, [comment, tags, secretMetadata, isSingleEnvView, hasPendingChange]);
 
   // Stable callbacks for child components to avoid resetting their debounce timers on re-render
