@@ -350,43 +350,72 @@ export const SecretEditTableRow = ({
   // Without this, after a batch commit clears pending changes, the form reset
   // (line ~514) would revert to stale values from initial mount instead of
   // the freshly committed server data.
+  // Sync each form field (and its original* ref) with fresh server data, but
+  // only while that field's editor popover is CLOSED. Two problems this solves:
+  //
+  // 1. Spurious "Commit Changes" modal: without syncing the form field, a bulk
+  //    operation refetch advances the original* ref to fresh server data while
+  //    the parent form keeps the stale mount-time value. Opening the popover
+  //    (SecretTagForm / SecretCommentForm / SecretMetadataForm) seeds the child
+  //    with the stale form value, the child's batch-mode debounce emits it as a
+  //    change, and the auto-apply logic — comparing the emitted value against the
+  //    now-fresh original* ref — records a false pending change.
+  //
+  // 2. Dropped in-flight edit: the child popovers hold the user's in-progress
+  //    selection in their OWN internal form and only push it to the parent via a
+  //    debounced setValue(... ) call that does NOT mark the parent field dirty
+  //    (react-hook-form's setValue only marks dirty when shouldDirty is passed).
+  //    So getFieldState(...).isDirty stays false during editing and cannot guard
+  //    the parent field. If a refetch landed while a popover was open and we
+  //    synced unconditionally, we would overwrite the just-pushed selection with
+  //    fresh server data and advance the original* ref to match — so the
+  //    auto-apply check would see no diff and the pending change would never be
+  //    recorded, silently dropping the edit. Gating on the popover's closed
+  //    state (instead of isDirty) keeps the parent field and its ref untouched
+  //    while the user is actively editing; once a change is pushed, the
+  //    hasPendingChange guard above takes over and blocks further syncing.
+  //
+  // The ref and form field are updated together so they never diverge (a
+  // diverged ref is itself the source of the false-pending-change bug).
   useEffect(() => {
     if (!isSingleEnvView || hasPendingChange) return;
 
-    const freshComment = comment ?? "";
-    originalCommentRef.current = freshComment;
-    const freshTags = tags?.map((t) => ({ id: t.id, slug: t.slug })) ?? [];
-    originalTagsRef.current = freshTags;
-    const freshMetadata =
-      secretMetadata?.map((m) => ({
-        key: m.key,
-        value: m.value,
-        isEncrypted: m.isEncrypted ?? false
-      })) ?? [];
-    originalMetadataRef.current = freshMetadata;
-
-    // Sync the form's comment/tags/metadata fields with fresh server data when
-    // they aren't being edited. Without this, after a bulk operation refetch the
-    // parent form keeps the stale values from mount while the original* refs
-    // have advanced to the fresh server data. Opening the corresponding popover
-    // (SecretTagForm / SecretCommentForm / SecretMetadataForm) then seeds the
-    // child with the stale form value, and the child's batch-mode debounce
-    // emits it as a change. The auto-apply logic compares the emitted value
-    // against the now-fresh original* ref, sees a diff, and records a false
-    // pending change — surfacing a spurious "Commit Changes" modal. Syncing
-    // here (without marking dirty) keeps each form field aligned with its
-    // original* ref so the emitted value matches the original and no false
-    // change is recorded. In-progress edits are preserved via the isDirty guard.
-    if (!getFieldState("comment").isDirty) {
-      setValue("comment", freshComment, { shouldDirty: false });
+    if (!isCommentOpen) {
+      const freshComment = comment ?? "";
+      originalCommentRef.current = freshComment;
+      if (!getFieldState("comment").isDirty) {
+        setValue("comment", freshComment, { shouldDirty: false });
+      }
     }
-    if (!getFieldState("tags").isDirty) {
-      setValue("tags", freshTags, { shouldDirty: false });
+    if (!isTagOpen) {
+      const freshTags = tags?.map((t) => ({ id: t.id, slug: t.slug })) ?? [];
+      originalTagsRef.current = freshTags;
+      if (!getFieldState("tags").isDirty) {
+        setValue("tags", freshTags, { shouldDirty: false });
+      }
     }
-    if (!getFieldState("metadata").isDirty) {
-      setValue("metadata", freshMetadata, { shouldDirty: false });
+    if (!isMetadataOpen) {
+      const freshMetadata =
+        secretMetadata?.map((m) => ({
+          key: m.key,
+          value: m.value,
+          isEncrypted: m.isEncrypted ?? false
+        })) ?? [];
+      originalMetadataRef.current = freshMetadata;
+      if (!getFieldState("metadata").isDirty) {
+        setValue("metadata", freshMetadata, { shouldDirty: false });
+      }
     }
-  }, [comment, tags, secretMetadata, isSingleEnvView, hasPendingChange]);
+  }, [
+    comment,
+    tags,
+    secretMetadata,
+    isSingleEnvView,
+    hasPendingChange,
+    isCommentOpen,
+    isTagOpen,
+    isMetadataOpen
+  ]);
 
   // Stable callbacks for child components to avoid resetting their debounce timers on re-render
   const handleCommentChange = useCallback(
