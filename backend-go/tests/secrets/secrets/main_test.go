@@ -19,16 +19,16 @@ import (
 
 	"github.com/infisical/api/internal/keystore"
 	"github.com/infisical/api/internal/queue"
-	"github.com/infisical/api/internal/server/api/secretmanager/secret"
+	"github.com/infisical/api/internal/server/api/secrets/secret"
 	"github.com/infisical/api/internal/server/api/shared"
 	"github.com/infisical/api/internal/services/auditlog"
 	"github.com/infisical/api/internal/services/auth"
 	"github.com/infisical/api/internal/services/kms"
 	"github.com/infisical/api/internal/services/permission"
 	"github.com/infisical/api/internal/services/project"
-	secretSvc "github.com/infisical/api/internal/services/secretmanager/secret"
-	"github.com/infisical/api/internal/services/secretmanager/secretfolder"
-	"github.com/infisical/api/internal/services/secretmanager/secretimport"
+	secretSvc "github.com/infisical/api/internal/services/secrets/secret"
+	"github.com/infisical/api/internal/services/secrets/secretfolder"
+	"github.com/infisical/api/internal/services/secrets/secretimport"
 	"github.com/infisical/api/tests/infra"
 )
 

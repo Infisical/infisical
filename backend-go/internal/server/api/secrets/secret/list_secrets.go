@@ -11,7 +11,7 @@ import (
 	"github.com/infisical/api/internal/services/auth"
 	"github.com/infisical/api/internal/services/permission"
 	permsecretsvc "github.com/infisical/api/internal/services/permission/secretmanager"
-	secretsvc "github.com/infisical/api/internal/services/secretmanager/secret"
+	secretsvc "github.com/infisical/api/internal/services/secrets/secret"
 )
 
 // PersonalOverridesBehavior controls how personal secret overrides are handled.

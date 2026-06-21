@@ -15,8 +15,8 @@ import (
 	"github.com/infisical/api/internal/database/pg/sqln"
 	"github.com/infisical/api/internal/libs/fn"
 	"github.com/infisical/api/internal/services/kms"
-	"github.com/infisical/api/internal/services/secretmanager/secretfolder"
-	"github.com/infisical/api/internal/services/secretmanager/secretimport"
+	"github.com/infisical/api/internal/services/secrets/secretfolder"
+	"github.com/infisical/api/internal/services/secrets/secretimport"
 )
 
 const secretValueHiddenMask = "<hidden-by-infisical>"

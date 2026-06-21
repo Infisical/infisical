@@ -3,21 +3,21 @@ package api
 import (
 	"context"
 
-	"github.com/infisical/api/internal/services/secretmanager/environment"
-	"github.com/infisical/api/internal/services/secretmanager/secret"
-	"github.com/infisical/api/internal/services/secretmanager/secretfolder"
-	"github.com/infisical/api/internal/services/secretmanager/secretimport"
+	"github.com/infisical/api/internal/services/secrets/environment"
+	"github.com/infisical/api/internal/services/secrets/secret"
+	"github.com/infisical/api/internal/services/secrets/secretfolder"
+	"github.com/infisical/api/internal/services/secrets/secretimport"
 )
 
-// SecretManagerServices holds secret manager services shared across handlers.
-type SecretManagerServices struct {
+// SecretsServices holds secrets services shared across handlers.
+type SecretsServices struct {
 	SecretFolder *secretfolder.Service
 	SecretImport *secretimport.Service
 	Environment  *environment.Service
 	Secret       *secret.Service
 }
 
-func newSecretManagerServices(ctx context.Context, infra *Infra, platform *PlatformServices) *SecretManagerServices {
+func newSecretsServices(ctx context.Context, infra *Infra, platform *PlatformServices) *SecretsServices {
 	secretFolderSvc := secretfolder.NewService(ctx, infra.Logger, &secretfolder.Deps{DB: infra.DB})
 	secretImportSvc := secretimport.NewService(ctx, infra.Logger, &secretimport.Deps{DB: infra.DB})
 	environmentSvc := environment.NewService(ctx, infra.Logger, &environment.Deps{DB: infra.DB})
@@ -29,7 +29,7 @@ func newSecretManagerServices(ctx context.Context, infra *Infra, platform *Platf
 		KMSService:          platform.KMS,
 	})
 
-	svc := &SecretManagerServices{
+	svc := &SecretsServices{
 		SecretFolder: secretFolderSvc,
 		SecretImport: secretImportSvc,
 		Environment:  environmentSvc,

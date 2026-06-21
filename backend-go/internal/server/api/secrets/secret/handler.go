@@ -16,7 +16,7 @@ import (
 	"github.com/infisical/api/internal/services/auth"
 	"github.com/infisical/api/internal/services/kms"
 	"github.com/infisical/api/internal/services/permission"
-	secretsvc "github.com/infisical/api/internal/services/secretmanager/secret"
+	secretsvc "github.com/infisical/api/internal/services/secrets/secret"
 )
 
 // Compile-time check that Handler implements ServiceInterface.

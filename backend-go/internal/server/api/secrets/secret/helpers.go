@@ -9,7 +9,7 @@ import (
 	"github.com/infisical/api/internal/libs/errutil"
 	"github.com/infisical/api/internal/services/auditlog"
 	"github.com/infisical/api/internal/services/auth"
-	secretsvc "github.com/infisical/api/internal/services/secretmanager/secret"
+	secretsvc "github.com/infisical/api/internal/services/secrets/secret"
 )
 
 // parseTagSlugs parses a comma-separated string of tag slugs into a slice.

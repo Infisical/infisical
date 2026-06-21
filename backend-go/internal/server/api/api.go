@@ -30,7 +30,7 @@ type Infra struct {
 // Services holds all initialized services for the API.
 type Services struct {
 	Platform      *PlatformServices
-	SecretManager *SecretManagerServices
+	Secrets *SecretsServices
 }
 
 // NewServices creates all services for the API.
@@ -41,11 +41,11 @@ func NewServices(ctx context.Context, infra *Infra) (*Services, func(), error) {
 		return nil, nil, fmt.Errorf("platform services: %w", err)
 	}
 
-	secretManagerSvc := newSecretManagerServices(ctx, infra, platformSvc)
+	secretsSvc := newSecretsServices(ctx, infra, platformSvc)
 
 	services := &Services{
 		Platform:      platformSvc,
-		SecretManager: secretManagerSvc,
+		Secrets: secretsSvc,
 	}
 
 	cleanup := func() {

@@ -30,8 +30,7 @@ func NewServer(infra *api.Infra, services *api.Services, cfg *config.Config, log
 	router := chi.NewRouter()
 
 	// Register domain routes
-	api.RegisterPlatformRoutes(router, logger, services.Platform)
-	api.RegisterSecretManagerRoutes(router, logger, infra, services.Platform, services.SecretManager)
+	api.RegisterSecretsRoutes(router, logger, infra, services.Platform, services.Secrets)
 
 	return &Server{
 		services: services,
