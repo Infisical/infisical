@@ -65,7 +65,6 @@ const OptionWithDescription = (props: OptionProps<TWebhookEventOption>) => {
   );
 };
 
-<<<<<<< HEAD
 const formSchema = z.object({
   environment: z.string().trim().describe("Environment"),
   webhookUrl: z.string().url().trim().describe("Webhook URL"),
@@ -74,21 +73,8 @@ const formSchema = z.object({
   type: z.nativeEnum(WebhookType).describe("Type").default(WebhookType.GENERAL),
   enabledEvents: z.record(z.nativeEnum(WebhookEvent), z.boolean()).default({
     [WebhookEvent.SecretModified]: true,
-    [WebhookEvent.SecretRotationFailed]: true
-=======
-const formSchema = z
-  .object({
-    environment: z.string().trim().describe("Environment"),
-    webhookUrl: z.string().url().trim().describe("Webhook URL"),
-    webhookSecretKey: z.string().trim().optional().describe("Secret Key"),
-    secretPath: z.string().trim().describe("Secret Path"),
-    type: z.nativeEnum(WebhookType).describe("Type").default(WebhookType.GENERAL),
-    enabledEvents: z.record(z.nativeEnum(WebhookEvent), z.boolean()).default({
-      [WebhookEvent.SecretModified]: true,
-      [WebhookEvent.SecretRotationFailed]: true,
-      [WebhookEvent.HoneyTokenTriggered]: true
-    })
->>>>>>> upstream/main
+    [WebhookEvent.SecretRotationFailed]: true,
+    [WebhookEvent.HoneyTokenTriggered]: true
   })
 });
 
