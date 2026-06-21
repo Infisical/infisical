@@ -1,35 +1,29 @@
 package api
 
 import (
-	"log/slog"
-
-	"github.com/go-chi/chi/v5"
-
 	"github.com/infisical/api/internal/ee/services/ratelimit"
 	"github.com/infisical/api/internal/server/api/secrets/secret"
-	"github.com/infisical/api/internal/server/api/shared"
 	"github.com/infisical/api/internal/services/auth/apiauth"
 )
 
-// RegisterSecretsRoutes initializes secrets handlers and registers their routes.
-func RegisterSecretsRoutes(router chi.Router, logger *slog.Logger, infra *Infra, platform *PlatformServices, svc *SecretsServices) {
-	l := logger.With(slog.String("product", "secrets"))
+func (r *Router) registerSecretsRoutes() {
+	l := r.logger.With("product", "secrets")
 
 	secretsHandler := secret.NewHandler(&secret.Deps{
 		Logger:     l,
-		Permission: platform.Permission,
-		Project:    platform.Project,
-		AuditLog:   platform.AuditLog,
-		Secrets:    svc.Secret,
-		KMS:        platform.KMS,
-		KeyStore:   infra.KeyStore,
+		Permission: r.services.Permission,
+		Project:    r.services.Platform().Project,
+		AuditLog:   r.services.AuditLog,
+		Secrets:    r.services.Secrets().Secret,
+		KMS:        r.services.KMS,
+		KeyStore:   r.services.Infra().KeyStore,
 	})
 
-	secret.RegisterRoutes(router, secretsHandler,
-		secret.WithMiddleware(platform.ApiAuthenticator.RequireAuth(
+	secret.RegisterRoutes(r.Router, secretsHandler,
+		secret.WithMiddleware(r.auth.RequireAuth(
 			apiauth.WithAuthModes(apiauth.JWTAuth, apiauth.IdentityAccessTokenAuth, apiauth.ServiceTokenAuth),
 		)),
-		secret.WithMiddleware(platform.RateLimit.Middleware(ratelimit.PresetSecrets)),
-		secret.WithErrorHandler(shared.NewErrorHandler(l)),
+		secret.WithMiddleware(r.services.RateLimit.Middleware(ratelimit.PresetSecrets)),
+		secret.WithErrorHandler(NewErrorHandler(l)),
 	)
 }

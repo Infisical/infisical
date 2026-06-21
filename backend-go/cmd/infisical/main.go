@@ -21,7 +21,7 @@ import (
 	"github.com/infisical/api/internal/libs/logutil"
 	"github.com/infisical/api/internal/queue"
 	"github.com/infisical/api/internal/server"
-	"github.com/infisical/api/internal/server/api"
+	"github.com/infisical/api/internal/services"
 )
 
 func main() {
@@ -110,7 +110,7 @@ func run(cfg *config.Config, logger *slog.Logger) error {
 		hsmSvc = hsmService
 	}
 
-	infra := &api.Infra{
+	infra := &services.Infra{
 		Logger:   logger,
 		Config:   cfg,
 		DB:       db,
@@ -120,7 +120,7 @@ func run(cfg *config.Config, logger *slog.Logger) error {
 		KeyStore: ks,
 		Queue:    queueSvc,
 	}
-	services, cleanup, err := api.NewServices(ctx, infra)
+	svc, cleanup, err := services.New(ctx, infra)
 	if err != nil {
 		logger.ErrorContext(ctx, "failed to initialize services", slog.Any("error", err))
 		return err
@@ -128,7 +128,7 @@ func run(cfg *config.Config, logger *slog.Logger) error {
 	defer cleanup()
 
 	// Create server.
-	srv := server.NewServer(infra, services, cfg, logger)
+	srv := server.NewServer(svc, cfg, logger)
 
 	// Create error channel for signal handling and server errors.
 	// Buffered to prevent blocking if multiple senders (signal, queue, HTTP) fire after first receive.
