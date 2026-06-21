@@ -656,6 +656,29 @@ func (n *NodeJSService) CreateSecret(t *testing.T, projectID, environment, secre
 	}
 }
 
+// UpdateSecret updates a secret's value via the Node.js API.
+func (n *NodeJSService) UpdateSecret(t *testing.T, projectID, environment, secretPath, key, newValue string) {
+	t.Helper()
+
+	var resp UpdateSecretResponse
+	r, err := n.client.R().
+		SetAuthToken(n.identityToken).
+		SetBody(UpdateSecretRequest{
+			ProjectID:   projectID,
+			Environment: environment,
+			SecretPath:  secretPath,
+			SecretValue: newValue,
+		}).
+		SetResult(&resp).
+		Patch(fmt.Sprintf("/api/v4/secrets/%s", key))
+	if err != nil {
+		t.Fatalf("infra.UpdateSecret: request failed: %v", err)
+	}
+	if r.IsError() {
+		t.Fatalf("infra.UpdateSecret: returned %d: %s", r.StatusCode(), r.String())
+	}
+}
+
 // FolderSeed contains metadata for a folder created via the Node.js API.
 type FolderSeed struct {
 	ID   string

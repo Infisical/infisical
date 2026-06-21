@@ -15,6 +15,7 @@ import (
 	"github.com/infisical/api/internal/database/pg"
 	"github.com/infisical/api/internal/database/pg/qb"
 	"github.com/infisical/api/internal/database/pg/sqln"
+	"github.com/infisical/api/internal/libs/cache"
 	"github.com/infisical/api/internal/libs/errutil"
 	"github.com/infisical/api/internal/libs/fn"
 	"github.com/infisical/api/internal/services/auth"
@@ -65,6 +66,16 @@ type GetProjectPermissionResult struct {
 	Permission            ProjectPermission
 	Memberships           []Membership
 	HasProjectEnforcement func(check string) bool
+	rulesJSON             string // interpolated rules JSON, kept private for hashing
+}
+
+// PermissionRulesHash returns the SHA256 hash of the interpolated permission rules JSON.
+// Used for cache key generation to ensure cache isolation per unique permission set.
+func (r *GetProjectPermissionResult) PermissionRulesHash() string {
+	if r.rulesJSON == "" {
+		return ""
+	}
+	return cache.HashString(r.rulesJSON)
 }
 
 // HasRole reports whether any membership includes the given role slug.
@@ -254,6 +265,7 @@ func (p *Service) GetProjectPermission(ctx context.Context, args *GetProjectPerm
 		Permission:            ProjectPermission{Ability: ability},
 		Memberships:           memberships,
 		HasProjectEnforcement: checkProjectEnforcement(projectDetails),
+		rulesJSON:             rulesStr,
 	}, nil
 }
 
@@ -327,6 +339,7 @@ func (p *Service) getServiceTokenProjectPermission(
 		Permission:            ProjectPermission{Ability: ability},
 		Memberships:           nil,
 		HasProjectEnforcement: checkProjectEnforcement(serviceTokenProject),
+		rulesJSON:             string(rulesJSON),
 	}, nil
 }
 
@@ -787,6 +800,167 @@ func (s *Service) findIdentityName(ctx context.Context, identityID uuid.UUID) (s
 		return "", err
 	}
 	return name, nil
+}
+
+// GetPermissionFingerprintArgs holds the input for the permission fingerprint query.
+type GetPermissionFingerprintArgs struct {
+	ProjectID string
+	OrgID     uuid.UUID
+	ActorID   uuid.UUID
+	ActorType auth.ActorType
+}
+
+// GetPermissionFingerprint returns a lightweight hash of membership DB rows for ETag validation.
+// This is faster than computing the full permission rules hash since it only reads IDs + timestamps.
+// Port of permission-dal.ts:947-1050.
+func (s *Service) GetPermissionFingerprint(ctx context.Context, args *GetPermissionFingerprintArgs) (string, error) {
+	// Build group subquery for group membership
+	var groupSubquery string
+	if args.ActorType == auth.ActorTypeUser {
+		groupSubquery = `
+			SELECT grp.id FROM groups grp
+			INNER JOIN user_group_membership ugm ON ugm."groupId" = grp.id
+			WHERE ugm."userId" = @actorID
+		`
+	} else {
+		groupSubquery = `
+			SELECT grp.id FROM groups grp
+			INNER JOIN identity_group_membership igm ON igm."groupId" = grp.id
+			WHERE igm."identityId" = @actorID
+		`
+	}
+
+	// Build actor condition
+	var actorCondition string
+	if args.ActorType == auth.ActorTypeUser {
+		actorCondition = `(membership."actorUserId" = @actorID OR membership."actorGroupId" IN (` + groupSubquery + `))`
+	} else {
+		actorCondition = `(membership."actorIdentityId" = @actorID OR membership."actorGroupId" IN (` + groupSubquery + `))`
+	}
+
+	// Build additional privilege join condition
+	var apActorCondition string
+	if args.ActorType == auth.ActorTypeIdentity {
+		apActorCondition = `membership."actorIdentityId" = addlPriv."actorIdentityId"`
+	} else {
+		apActorCondition = `membership."actorUserId" = addlPriv."actorUserId"`
+	}
+
+	// Build metadata join condition
+	var metaJoinCondition string
+	if args.ActorType == auth.ActorTypeUser {
+		metaJoinCondition = `identityMeta."userId" = @actorID AND membership."scopeOrgId" = identityMeta."orgId"`
+	} else {
+		metaJoinCondition = `identityMeta."identityId" = @actorID`
+	}
+
+	query := `
+		SELECT
+			membership.id AS "mId",
+			membership."isActive" AS "mActive",
+			membership.status AS "mStatus",
+			project."deleteAfter" AS "pDel",
+			memberRole.id AS "rId",
+			memberRole."updatedAt" AS "rUp",
+			customRole."updatedAt" AS "crUp",
+			addlPriv.id AS "pId",
+			addlPriv."updatedAt" AS "pUp",
+			identityMeta.id AS "imId",
+			identityMeta."updatedAt" AS "imUp",
+			CASE WHEN memberRole."isTemporary" AND NOW() >= memberRole."temporaryAccessEndTime" THEN true ELSE false END AS "rExp",
+			CASE WHEN addlPriv."isTemporary" AND NOW() >= addlPriv."temporaryAccessEndTime" THEN true ELSE false END AS "pExp"
+		FROM memberships membership
+		INNER JOIN membership_roles memberRole ON membership.id = memberRole."membershipId"
+		LEFT JOIN roles customRole ON memberRole."customRoleId" = customRole.id
+		LEFT JOIN additional_privileges addlPriv ON ` + apActorCondition + ` AND membership."scopeProjectId" = addlPriv."projectId"
+		LEFT JOIN identity_metadata identityMeta ON ` + metaJoinCondition + `
+		LEFT JOIN projects project ON membership."scopeProjectId" = project.id
+		WHERE membership."scopeOrgId" = @orgID
+		AND (
+			(membership.scope = 'project' AND membership."scopeProjectId" = @projectID)
+			OR (membership.scope = 'resource' AND membership."scopeProjectId" = @projectID)
+			OR membership.scope = 'organization'
+		)
+		AND ` + actorCondition + `
+		ORDER BY membership.id, memberRole.id, addlPriv.id, identityMeta.id
+	`
+
+	args2 := pgx.NamedArgs{
+		"orgID":     args.OrgID,
+		"actorID":   args.ActorID,
+		"projectID": args.ProjectID,
+	}
+
+	rows, err := s.db.Replica().Query(ctx, query, args2)
+	if err != nil {
+		return "", err
+	}
+	defer rows.Close()
+
+	// Collect rows as JSON-serializable data for hashing
+	var rowData []map[string]any
+	for rows.Next() {
+		var (
+			mID     uuid.UUID
+			mActive sql.Null[bool]
+			mStatus sql.Null[string]
+			pDel    sql.Null[time.Time]
+			rID     sql.Null[uuid.UUID]
+			rUp     sql.Null[time.Time]
+			crUp    sql.Null[time.Time]
+			pID     sql.Null[uuid.UUID]
+			pUp     sql.Null[time.Time]
+			imID    sql.Null[uuid.UUID]
+			imUp    sql.Null[time.Time]
+			rExp    bool
+			pExp    bool
+		)
+
+		if err := rows.Scan(&mID, &mActive, &mStatus, &pDel, &rID, &rUp, &crUp, &pID, &pUp, &imID, &imUp, &rExp, &pExp); err != nil {
+			return "", err
+		}
+
+		row := map[string]any{
+			"mId":     mID.String(),
+			"mActive": mActive.V,
+			"mStatus": mStatus.V,
+			"rExp":    rExp,
+			"pExp":    pExp,
+		}
+
+		if pDel.Valid {
+			row["pDel"] = pDel.V.Format(time.RFC3339)
+		}
+		if rID.Valid {
+			row["rId"] = rID.V.String()
+		}
+		if rUp.Valid {
+			row["rUp"] = rUp.V.Format(time.RFC3339)
+		}
+		if crUp.Valid {
+			row["crUp"] = crUp.V.Format(time.RFC3339)
+		}
+		if pID.Valid {
+			row["pId"] = pID.V.String()
+		}
+		if pUp.Valid {
+			row["pUp"] = pUp.V.Format(time.RFC3339)
+		}
+		if imID.Valid {
+			row["imId"] = imID.V.String()
+		}
+		if imUp.Valid {
+			row["imUp"] = imUp.V.Format(time.RFC3339)
+		}
+
+		rowData = append(rowData, row)
+	}
+
+	if err := rows.Err(); err != nil {
+		return "", err
+	}
+
+	return cache.GenerateHash(rowData), nil
 }
 
 // findServiceTokenByID returns service token details needed for permission checks.

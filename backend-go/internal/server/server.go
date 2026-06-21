@@ -26,12 +26,12 @@ type Server struct {
 }
 
 // NewServer creates a new HTTP server with chi routing.
-func NewServer(services *api.Services, cfg *config.Config, logger *slog.Logger) *Server {
+func NewServer(infra *api.Infra, services *api.Services, cfg *config.Config, logger *slog.Logger) *Server {
 	router := chi.NewRouter()
 
 	// Register domain routes
 	api.RegisterPlatformRoutes(router, logger, services.Platform)
-	api.RegisterSecretManagerRoutes(router, logger, services.Platform, services.SecretManager)
+	api.RegisterSecretManagerRoutes(router, logger, infra, services.Platform, services.SecretManager)
 
 	return &Server{
 		services: services,
@@ -47,6 +47,7 @@ func (s *Server) Listen(ctx context.Context, addr string, wg *sync.WaitGroup, er
 
 	// Middleware stack (applied in reverse order - last wraps first)
 	// Inner middlewares (closest to handler) first, outer middlewares last
+	handler = middlewares.ETag(handler)
 	handler = requestLogger(handler, s.logger)
 	handler = chimw.StripSlashes(handler)
 	handler = middlewares.Timeout(100 * time.Second)(handler) // Match Node.js connectionTimeout

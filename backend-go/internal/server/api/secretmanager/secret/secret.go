@@ -6,12 +6,14 @@ import (
 	"context"
 	"log/slog"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 
 	"github.com/infisical/api/internal/libs/errutil"
 	"github.com/infisical/api/internal/services/auditlog"
 	"github.com/infisical/api/internal/services/auth"
+	"github.com/infisical/api/internal/services/kms"
 	"github.com/infisical/api/internal/services/permission"
 	secretsvc "github.com/infisical/api/internal/services/secretmanager/secret"
 )
@@ -24,6 +26,7 @@ var _ ServiceInterface = (*Handler)(nil)
 // PermissionService provides project permission checks.
 type PermissionService interface {
 	GetProjectPermission(ctx context.Context, args *permission.GetProjectPermissionArgs) (*permission.GetProjectPermissionResult, error)
+	GetPermissionFingerprint(ctx context.Context, args *permission.GetPermissionFingerprintArgs) (string, error)
 }
 
 // ProjectService resolves project identifiers.
@@ -45,6 +48,23 @@ type SecretsService interface {
 	FindByFolderIds(ctx context.Context, folderIDs []uuid.UUID, userID *uuid.UUID, filters *secretsvc.FindByFolderIdsFilter) ([]secretsvc.Secret, error)
 }
 
+// KMSService creates cipher pairs for encryption/decryption.
+type KMSService interface {
+	CreateCipherPairWithProjectDataKey(ctx context.Context, projectID string) (*kms.CipherPair, error)
+}
+
+// KeyStoreService provides Redis and PostgreSQL key-value operations.
+type KeyStoreService interface {
+	GetItem(ctx context.Context, key string) (string, error)
+	SetItemWithExpiry(ctx context.Context, key string, expiry time.Duration, value string) error
+	SetExpiry(ctx context.Context, key string, expiry time.Duration) (bool, error)
+	DeleteItem(ctx context.Context, key string) (int64, error)
+	HashGet(ctx context.Context, key, field string) (string, error)
+	HashSet(ctx context.Context, key, field, value string) error
+	IncrementByWithExpiry(ctx context.Context, key string, value int64, expiry time.Duration) (int64, error)
+	PgGetIntItem(ctx context.Context, key string) (int64, error)
+}
+
 // --- Handler ---
 
 // Handler provides HTTP handlers for secrets endpoints.
@@ -54,6 +74,8 @@ type Handler struct {
 	project    ProjectService
 	auditLog   AuditLogService
 	secrets    SecretsService
+	kms        KMSService
+	keyStore   KeyStoreService
 }
 
 // Deps holds the dependencies for the secrets handler.
@@ -63,6 +85,8 @@ type Deps struct {
 	Project    ProjectService
 	AuditLog   AuditLogService
 	Secrets    SecretsService
+	KMS        KMSService
+	KeyStore   KeyStoreService
 }
 
 // NewHandler creates a new secrets handler.
@@ -73,6 +97,8 @@ func NewHandler(deps *Deps) *Handler {
 		project:    deps.Project,
 		auditLog:   deps.AuditLog,
 		secrets:    deps.Secrets,
+		kms:        deps.KMS,
+		keyStore:   deps.KeyStore,
 	}
 }
 

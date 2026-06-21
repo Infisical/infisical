@@ -209,6 +209,22 @@ type GetSecretResponse struct {
 	} `json:"secret"`
 }
 
+// UpdateSecretRequest is the request body for PATCH /api/v4/secrets/{key}.
+type UpdateSecretRequest struct {
+	ProjectID   string `json:"projectId"`
+	Environment string `json:"environment"`
+	SecretPath  string `json:"secretPath"`
+	SecretValue string `json:"secretValue"`
+}
+
+// UpdateSecretResponse is the response from PATCH /api/v4/secrets/{key}.
+type UpdateSecretResponse struct {
+	Secret struct {
+		ID      string `json:"id"`
+		Version int    `json:"version"`
+	} `json:"secret"`
+}
+
 // CreateFolderRequest is the request body for POST /api/v2/folders.
 type CreateFolderRequest struct {
 	ProjectID   string `json:"projectId"`

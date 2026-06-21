@@ -17,6 +17,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 
+	"github.com/infisical/api/internal/keystore"
 	"github.com/infisical/api/internal/queue"
 	"github.com/infisical/api/internal/server/api/secretmanager/secret"
 	"github.com/infisical/api/internal/server/api/shared"
@@ -94,6 +95,8 @@ func newSecretsHandler(t *testing.T) *secret.Handler {
 		Project:    projectSvc,
 		AuditLog:   auditLogSvc,
 		Secrets:    secretsSvc,
+		KMS:        kmsSvc,
+		KeyStore:   keystore.NewKeyStore(redisClient, stack.DB()),
 	})
 }
 

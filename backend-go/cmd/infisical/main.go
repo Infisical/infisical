@@ -74,7 +74,7 @@ func run(cfg *config.Config, logger *slog.Logger) error {
 	defer errutil.DeferErr(ctx, redisClient.Close, "closing redis")
 
 	// Initialize KeyStore and Queue.
-	ks := keystore.NewKeyStore(redisClient)
+	ks := keystore.NewKeyStore(redisClient, db)
 	queueSvc := queue.NewService(ctx, logger, redisClient)
 	defer errutil.DeferErr(ctx, queueSvc.Close, "closing queue")
 
@@ -110,7 +110,7 @@ func run(cfg *config.Config, logger *slog.Logger) error {
 		hsmSvc = hsmService
 	}
 
-	services, cleanup, err := api.NewServices(ctx, &api.Infra{
+	infra := &api.Infra{
 		Logger:   logger,
 		Config:   cfg,
 		DB:       db,
@@ -119,7 +119,8 @@ func run(cfg *config.Config, logger *slog.Logger) error {
 		License:  licenseSvc,
 		KeyStore: ks,
 		Queue:    queueSvc,
-	})
+	}
+	services, cleanup, err := api.NewServices(ctx, infra)
 	if err != nil {
 		logger.ErrorContext(ctx, "failed to initialize services", slog.Any("error", err))
 		return err
@@ -127,7 +128,7 @@ func run(cfg *config.Config, logger *slog.Logger) error {
 	defer cleanup()
 
 	// Create server.
-	srv := server.NewServer(services, cfg, logger)
+	srv := server.NewServer(infra, services, cfg, logger)
 
 	// Create error channel for signal handling and server errors.
 	// Buffered to prevent blocking if multiple senders (signal, queue, HTTP) fire after first receive.

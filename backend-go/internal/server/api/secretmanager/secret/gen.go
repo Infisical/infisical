@@ -285,6 +285,15 @@ func (a *HTTPAdapter) ListSecretsV4(w http.ResponseWriter, r *http.Request) {
 		queryParams.MetadataFilter = &queryParamMetadataFilter
 	}
 	opts.Query = queryParams
+
+	// Parse header parameters
+	headerParams := &ListSecretsV4Headers{}
+	headers := r.Header
+	if headerValues := headers[http.CanonicalHeaderKey("If-None-Match")]; len(headerValues) > 0 {
+		headerParamIfNoneMatch := headerValues[0]
+		headerParams.IfNoneMatch = &headerParamIfNoneMatch
+	}
+	opts.Header = headerParams
 	// Validate request
 	if err := opts.Validate(); err != nil {
 		a.errHandler.HandleError(w, r, http.StatusBadRequest, OapiHandlerError{
@@ -301,10 +310,6 @@ func (a *HTTPAdapter) ListSecretsV4(w http.ResponseWriter, r *http.Request) {
 		code := http.StatusInternalServerError
 		if resp != nil && resp.Status != 0 {
 			code = resp.Status
-		}
-		var errResp *ListSecretsV4ErrorResponse
-		if errors.As(err, &errResp) {
-			code = 400
 		}
 		a.errHandler.HandleError(w, r, code, err)
 		return
@@ -587,6 +592,15 @@ func (a *HTTPAdapter) ListSecretsRawV3(w http.ResponseWriter, r *http.Request) {
 		queryParams.MetadataFilter = &queryParamMetadataFilter
 	}
 	opts.Query = queryParams
+
+	// Parse header parameters
+	headerParams := &ListSecretsRawV3Headers{}
+	headers := r.Header
+	if headerValues := headers[http.CanonicalHeaderKey("If-None-Match")]; len(headerValues) > 0 {
+		headerParamIfNoneMatch := headerValues[0]
+		headerParams.IfNoneMatch = &headerParamIfNoneMatch
+	}
+	opts.Header = headerParams
 	// Validate request
 	if err := opts.Validate(); err != nil {
 		a.errHandler.HandleError(w, r, http.StatusBadRequest, OapiHandlerError{
@@ -603,10 +617,6 @@ func (a *HTTPAdapter) ListSecretsRawV3(w http.ResponseWriter, r *http.Request) {
 		code := http.StatusInternalServerError
 		if resp != nil && resp.Status != 0 {
 			code = resp.Status
-		}
-		var errResp *ListSecretsRawV3ErrorResponse
-		if errors.As(err, &errResp) {
-			code = 400
 		}
 		a.errHandler.HandleError(w, r, code, err)
 		return
@@ -859,6 +869,16 @@ func NewRouter(svc ServiceInterface, opts ...RouterOption) chi.Router {
 	return r
 }
 
+type ListSecretsV4Headers struct {
+	// IfNoneMatch ETag from a previous response. If the resource has not changed, returns 304 Not Modified.
+	IfNoneMatch *string `json:"If-None-Match,omitempty"`
+}
+
+type ListSecretsRawV3Headers struct {
+	// IfNoneMatch ETag from a previous response. If the resource has not changed, returns 304 Not Modified.
+	IfNoneMatch *string `json:"If-None-Match,omitempty"`
+}
+
 type GetSecretByNameV4Path struct {
 	SecretName string `json:"secretName" validate:"required,min=1"`
 }
@@ -1067,10 +1087,6 @@ type ListSecretsV4Response struct {
 
 type ListSecretsV4ErrorResponse shared.ValidationError
 
-func (r ListSecretsV4ErrorResponse) Error() string {
-	return "unmapped client error"
-}
-
 type ListSecretsV4ErrorResponseJSON shared.Error
 
 type ListSecretsV4ErrorResponseJSON500 shared.Error
@@ -1096,10 +1112,6 @@ type ListSecretsRawV3Response struct {
 
 type ListSecretsRawV3ErrorResponse shared.ValidationError
 
-func (r ListSecretsRawV3ErrorResponse) Error() string {
-	return "unmapped client error"
-}
-
 type ListSecretsRawV3ErrorResponseJSON shared.Error
 
 type ListSecretsRawV3ErrorResponseJSON500 shared.Error
@@ -1120,7 +1132,8 @@ type GetSecretByNameRawV3ErrorResponseJSON500 shared.Error
 
 // ListSecretsV4ServiceRequestOptions holds all parameters for the ListSecretsV4 operation.
 type ListSecretsV4ServiceRequestOptions struct {
-	Query *ListSecretsV4Query
+	Query  *ListSecretsV4Query
+	Header *ListSecretsV4Headers
 	// RawRequest provides access to the underlying HTTP request for custom content type handling.
 	RawRequest *http.Request
 }
@@ -1133,6 +1146,14 @@ func (o *ListSecretsV4ServiceRequestOptions) Validate() error {
 		if v, ok := any(o.Query).(runtime.Validator); ok {
 			if err := v.Validate(); err != nil {
 				errors = errors.Append("Query", err)
+			}
+		}
+	}
+
+	if o.Header != nil {
+		if v, ok := any(o.Header).(runtime.Validator); ok {
+			if err := v.Validate(); err != nil {
+				errors = errors.Append("Header", err)
 			}
 		}
 	}
@@ -1179,7 +1200,8 @@ func (o *GetSecretByNameV4ServiceRequestOptions) Validate() error {
 
 // ListSecretsRawV3ServiceRequestOptions holds all parameters for the ListSecretsRawV3 operation.
 type ListSecretsRawV3ServiceRequestOptions struct {
-	Query *ListSecretsRawV3Query
+	Query  *ListSecretsRawV3Query
+	Header *ListSecretsRawV3Headers
 	// RawRequest provides access to the underlying HTTP request for custom content type handling.
 	RawRequest *http.Request
 }
@@ -1192,6 +1214,14 @@ func (o *ListSecretsRawV3ServiceRequestOptions) Validate() error {
 		if v, ok := any(o.Query).(runtime.Validator); ok {
 			if err := v.Validate(); err != nil {
 				errors = errors.Append("Query", err)
+			}
+		}
+	}
+
+	if o.Header != nil {
+		if v, ok := any(o.Header).(runtime.Validator); ok {
+			if err := v.Validate(); err != nil {
+				errors = errors.Append("Header", err)
 			}
 		}
 	}

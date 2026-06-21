@@ -3,6 +3,7 @@ package secret
 import (
 	"context"
 	"log/slog"
+	"net/http"
 	"sort"
 
 	"github.com/google/uuid"
@@ -40,23 +41,43 @@ type listSecretsInternalOpts struct {
 	PersonalOverridesBehavior PersonalOverridesBehavior
 	TagSlugs                  []string
 	MetadataFilter            []secretsvc.MetadataFilter
+	IfNoneMatch               string
 }
 
 // listSecretsResponse is the internal response type for listing secrets.
 type listSecretsResponse struct {
-	Secrets []SecretRaw
-	Imports []SecretImport
+	Secrets []SecretRaw    `json:"secrets"`
+	Imports []SecretImport `json:"imports,omitempty"`
+}
+
+// listSecretsResponseWithETag wraps the response with caching metadata.
+type listSecretsResponseWithETag struct {
+	Response    *listSecretsResponse
+	ETag        string
+	NotModified bool
 }
 
 // listSecrets is the unified internal method for listing secrets.
 // Both V3 and V4 handlers call this with different options.
-func (h *Handler) listSecrets(ctx context.Context, opts *listSecretsInternalOpts) (*listSecretsResponse, error) {
+func (h *Handler) listSecrets(ctx context.Context, opts *listSecretsInternalOpts) (*listSecretsResponseWithETag, error) {
 	identity, err := auth.IdentityFromContext(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	// 1. Get permission
+	var permissionFingerprint string
+	if identity.Actor == auth.ActorTypeUser || identity.Actor == auth.ActorTypeIdentity {
+		permissionFingerprint, err = h.permission.GetPermissionFingerprint(ctx, &permission.GetPermissionFingerprintArgs{
+			ProjectID: opts.ProjectID,
+			OrgID:     identity.OrgID,
+			ActorID:   identity.ActorID,
+			ActorType: identity.Actor,
+		})
+		if err != nil {
+			h.logger.WarnContext(ctx, "failed to get permission fingerprint, proceeding without cache", slog.Any("error", err))
+		}
+	}
+
 	permResult, err := h.permission.GetProjectPermission(ctx, &permission.GetProjectPermissionArgs{
 		Actor:             identity.Actor,
 		ActorID:           identity.ActorID,
@@ -70,7 +91,29 @@ func (h *Handler) listSecrets(ctx context.Context, opts *listSecretsInternalOpts
 	}
 	checker := permsecretsvc.NewSecretAccessChecker(permResult.Permission.Ability)
 
-	// 2. Fetch ALL secrets (permission-agnostic)
+	cipherPair, err := h.kms.CreateCipherPairWithProjectDataKey(ctx, opts.ProjectID)
+	if err != nil {
+		return nil, err
+	}
+
+	cacheParams := &listSecretsCacheParams{
+		ProjectID:             opts.ProjectID,
+		OrgID:                 identity.OrgID,
+		ActorID:               identity.ActorID,
+		ActorType:             identity.Actor,
+		PermissionFingerprint: permissionFingerprint,
+		PermissionRulesHash:   permResult.PermissionRulesHash(),
+		RequestParams:         opts,
+		IfNoneMatch:           opts.IfNoneMatch,
+	}
+
+	cacheResult, err := h.listSecretsCheckCache(ctx, cacheParams, cipherPair)
+	if err != nil {
+		h.logger.WarnContext(ctx, "cache check failed, proceeding without cache", slog.Any("error", err))
+	} else if cacheResult != nil {
+		return cacheResult, nil
+	}
+
 	result, err := h.secrets.ListSecrets(ctx, &secretsvc.ListSecretsOpts{
 		ProjectID:      opts.ProjectID,
 		Environment:    opts.Environment,
@@ -84,7 +127,7 @@ func (h *Handler) listSecrets(ctx context.Context, opts *listSecretsInternalOpts
 		return nil, err
 	}
 
-	// 3. Expand references (on permission-filtered pool to prevent leaking unauthorized secrets)
+	// Expand references (on permission-filtered pool to prevent leaking unauthorized secrets)
 	if opts.ExpandSecretReferences {
 		// Filter the expansion pool to only include secrets the user can read.
 		// This prevents relative reference expansion (e.g., ${RESTRICTED}) from leaking
@@ -121,11 +164,9 @@ func (h *Handler) listSecrets(ctx context.Context, opts *listSecretsInternalOpts
 		}
 	}
 
-	// 4. Filter by permission + apply ValueHidden
 	result.DirectSecrets = filterListSecretsByPermission(result.DirectSecrets, checker, opts)
 	result.ImportedSecrets = filterListSecretsByPermission(result.ImportedSecrets, checker, opts)
 
-	// 5. Filter personal overrides
 	filterPersonalOverrides := func(secrets []secretsvc.ProcessedSecret) []secretsvc.ProcessedSecret {
 		switch opts.PersonalOverridesBehavior {
 		case PersonalOverridesIncludeAll:
@@ -163,16 +204,19 @@ func (h *Handler) listSecrets(ctx context.Context, opts *listSecretsInternalOpts
 	result.DirectSecrets = filterPersonalOverrides(result.DirectSecrets)
 	result.ImportedSecrets = filterPersonalOverrides(result.ImportedSecrets)
 
-	// 6. Build response
 	response := h.buildListSecretsResponse(result, opts.ProjectID, opts.IncludeImports)
 
-	// TODO: Re-enable audit logging once Go backend is primary
-	// // 7. Audit log
-	// if err := h.createGetSecretsAuditLog(ctx, opts.ProjectID, opts.Environment, opts.SecretPath, len(response.Secrets)); err != nil {
-	// 	return nil, err
-	// }
+	etag, err := h.listSecretsWriteCache(ctx, cacheParams, cipherPair, response)
+	if err != nil {
+		h.logger.WarnContext(ctx, "cache write failed", slog.Any("error", err))
+	}
 
-	return response, nil
+	// TODO: Re-enable audit logging once Go backend is primary
+
+	return &listSecretsResponseWithETag{
+		Response: response,
+		ETag:     etag,
+	}, nil
 }
 
 func filterListSecretsByPermission(secrets []secretsvc.ProcessedSecret, checker *permsecretsvc.SecretAccessChecker, opts *listSecretsInternalOpts) []secretsvc.ProcessedSecret {
@@ -224,7 +268,12 @@ func (h *Handler) ListSecretsV4(ctx context.Context, opts *ListSecretsV4ServiceR
 		behavior = PersonalOverridesPriority
 	}
 
-	response, err := h.listSecrets(ctx, &listSecretsInternalOpts{
+	var ifNoneMatch string
+	if opts.Header != nil && opts.Header.IfNoneMatch != nil {
+		ifNoneMatch = *opts.Header.IfNoneMatch
+	}
+
+	result, err := h.listSecrets(ctx, &listSecretsInternalOpts{
 		ProjectID:                 q.ProjectID,
 		Environment:               q.Environment,
 		SecretPath:                fn.RemoveTrailingSlash(fn.ValueOr(q.SecretPath, "/")),
@@ -236,15 +285,32 @@ func (h *Handler) ListSecretsV4(ctx context.Context, opts *ListSecretsV4ServiceR
 		PersonalOverridesBehavior: behavior,
 		TagSlugs:                  parseTagSlugs(q.TagSlugs),
 		MetadataFilter:            parseMetadataFilter(q.MetadataFilter),
+		IfNoneMatch:               ifNoneMatch,
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	return NewListSecretsV4ResponseData(&ListSecretsV4Response{
-		Secrets: response.Secrets,
-		Imports: response.Imports,
-	}), nil
+	// Handle 304 Not Modified
+	if result.NotModified {
+		resp := NewListSecretsV4ResponseData(&ListSecretsV4Response{
+			Secrets: []SecretRaw{},
+		})
+		resp.Headers = make(http.Header)
+		resp.Headers.Set("ETag", result.ETag)
+		return resp.WithStatus(http.StatusNotModified), nil
+	}
+
+	// Build response with ETag header
+	resp := NewListSecretsV4ResponseData(&ListSecretsV4Response{
+		Secrets: result.Response.Secrets,
+		Imports: result.Response.Imports,
+	})
+	if result.ETag != "" {
+		resp.Headers = make(http.Header)
+		resp.Headers.Set("ETag", result.ETag)
+	}
+	return resp, nil
 }
 
 // ListSecretsRawV3 is the handler for listing raw secrets (V3, deprecated).
@@ -272,7 +338,12 @@ func (h *Handler) ListSecretsRawV3(ctx context.Context, opts *ListSecretsRawV3Se
 		return nil, errutil.BadRequest("Environment is required")
 	}
 
-	response, err := h.listSecrets(ctx, &listSecretsInternalOpts{
+	var ifNoneMatch string
+	if opts.Header != nil && opts.Header.IfNoneMatch != nil {
+		ifNoneMatch = *opts.Header.IfNoneMatch
+	}
+
+	result, err := h.listSecrets(ctx, &listSecretsInternalOpts{
 		ProjectID:                 projectID,
 		Environment:               env,
 		SecretPath:                fn.RemoveTrailingSlash(fn.ValueOr(q.SecretPath, "/")),
@@ -280,19 +351,36 @@ func (h *Handler) ListSecretsRawV3(ctx context.Context, opts *ListSecretsRawV3Se
 		Recursive:                 fn.ValueOr(q.Recursive, false),
 		ViewSecretValue:           fn.ValueOr(q.ViewSecretValue, true),
 		ExpandSecretReferences:    fn.ValueOr(q.ExpandSecretReferences, true),
-		IncludeImports:            fn.ValueOr(q.IncludeImports, false), // V3 defaults to false (unlike V4)
-		PersonalOverridesBehavior: PersonalOverridesIncludeAll,         // V3 default
+		IncludeImports:            fn.ValueOr(q.IncludeImports, false),
+		PersonalOverridesBehavior: PersonalOverridesIncludeAll,
 		TagSlugs:                  parseTagSlugs(q.TagSlugs),
 		MetadataFilter:            parseMetadataFilter(q.MetadataFilter),
+		IfNoneMatch:               ifNoneMatch,
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	return NewListSecretsRawV3ResponseData(&ListSecretsRawV3Response{
-		Secrets: response.Secrets,
-		Imports: response.Imports,
-	}), nil
+	// Handle 304 Not Modified
+	if result.NotModified {
+		resp := NewListSecretsRawV3ResponseData(&ListSecretsRawV3Response{
+			Secrets: []SecretRaw{},
+		})
+		resp.Headers = make(http.Header)
+		resp.Headers.Set("ETag", result.ETag)
+		return resp.WithStatus(http.StatusNotModified), nil
+	}
+
+	// Build response with ETag header
+	resp := NewListSecretsRawV3ResponseData(&ListSecretsRawV3Response{
+		Secrets: result.Response.Secrets,
+		Imports: result.Response.Imports,
+	})
+	if result.ETag != "" {
+		resp.Headers = make(http.Header)
+		resp.Headers.Set("ETag", result.ETag)
+	}
+	return resp, nil
 }
 
 // buildListSecretsResponse builds the response for ListSecretsV4.

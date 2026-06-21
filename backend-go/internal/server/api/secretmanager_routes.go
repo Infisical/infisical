@@ -12,7 +12,7 @@ import (
 )
 
 // RegisterSecretManagerRoutes initializes secret manager handlers and registers their routes.
-func RegisterSecretManagerRoutes(router chi.Router, logger *slog.Logger, platform *PlatformServices, svc *SecretManagerServices) {
+func RegisterSecretManagerRoutes(router chi.Router, logger *slog.Logger, infra *Infra, platform *PlatformServices, svc *SecretManagerServices) {
 	l := logger.With(slog.String("product", "secretmanager"))
 
 	secretsHandler := secret.NewHandler(&secret.Deps{
@@ -21,6 +21,8 @@ func RegisterSecretManagerRoutes(router chi.Router, logger *slog.Logger, platfor
 		Project:    platform.Project,
 		AuditLog:   platform.AuditLog,
 		Secrets:    svc.Secret,
+		KMS:        platform.KMS,
+		KeyStore:   infra.KeyStore,
 	})
 
 	// Create adapter with shared error handler
