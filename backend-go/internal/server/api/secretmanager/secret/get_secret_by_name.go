@@ -2,12 +2,10 @@ package secret
 
 import (
 	"context"
-	"log/slog"
 
 	"github.com/google/uuid"
 
 	"github.com/infisical/api/internal/libs/errutil"
-	"github.com/infisical/api/internal/libs/fn"
 	"github.com/infisical/api/internal/services/auditlog"
 	"github.com/infisical/api/internal/services/auth"
 	"github.com/infisical/api/internal/services/permission"
@@ -193,99 +191,6 @@ func (h *Handler) getSecretByName(ctx context.Context, opts *getSecretByNameInte
 	// }
 
 	return &getSecretByNameResponse{Secret: secretRaw}, nil
-}
-
-// GetSecretByNameV4 is the handler for getting a secret by name (V4).
-func (h *Handler) GetSecretByNameV4(ctx context.Context, opts *GetSecretByNameV4ServiceRequestOptions) (*GetSecretByNameV4ResponseData, error) {
-	q := opts.Query
-	p := opts.PathParams
-
-	h.logger.InfoContext(ctx, "getting secret by name v4",
-		slog.String("projectId", q.ProjectID),
-		slog.String("environment", q.Environment),
-		slog.String("secretPath", fn.ValueOr(q.SecretPath, "/")),
-		slog.String("secretName", p.SecretName),
-	)
-
-	identity, err := auth.IdentityFromContext(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	secretType := "shared"
-	if q.Type != nil {
-		secretType = string(*q.Type)
-	}
-
-	response, err := h.getSecretByName(ctx, &getSecretByNameInternalOpts{
-		ProjectID:              q.ProjectID,
-		Environment:            q.Environment,
-		SecretPath:             fn.RemoveTrailingSlash(fn.ValueOr(q.SecretPath, "/")),
-		SecretName:             p.SecretName,
-		SecretType:             getSecretType(identity, secretType),
-		UserID:                 getUserID(identity),
-		ViewSecretValue:        fn.ValueOr(q.ViewSecretValue, true),
-		ExpandSecretReferences: fn.ValueOr(q.ExpandSecretReferences, true),
-		IncludeImports:         fn.ValueOr(q.IncludeImports, true),
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return NewGetSecretByNameV4ResponseData(&GetSecretByNameV4Response{
-		Secret: response.Secret,
-	}), nil
-}
-
-// GetSecretByNameRawV3 is the handler for getting a raw secret by name (V3, deprecated).
-func (h *Handler) GetSecretByNameRawV3(ctx context.Context, opts *GetSecretByNameRawV3ServiceRequestOptions) (*GetSecretByNameRawV3ResponseData, error) {
-	q := opts.Query
-	p := opts.PathParams
-
-	identity, err := auth.IdentityFromContext(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	projectID, err := h.project.ResolveProjectID(ctx, identity.OrgID, q.WorkspaceID, q.WorkspaceSlug)
-	if err != nil {
-		return nil, err
-	}
-
-	h.logger.InfoContext(ctx, "getting secret by name raw v3",
-		slog.String("secretName", p.SecretName),
-		slog.String("projectId", projectID),
-		slog.String("environment", fn.ValueOr(q.Environment, "")),
-	)
-
-	env := fn.ValueOr(q.Environment, "")
-	if env == "" {
-		return nil, errutil.BadRequest("Environment is required")
-	}
-
-	secretType := "shared"
-	if q.Type != nil {
-		secretType = string(*q.Type)
-	}
-
-	response, err := h.getSecretByName(ctx, &getSecretByNameInternalOpts{
-		ProjectID:              projectID,
-		Environment:            env,
-		SecretPath:             fn.RemoveTrailingSlash(fn.ValueOr(q.SecretPath, "/")),
-		SecretName:             p.SecretName,
-		SecretType:             getSecretType(identity, secretType),
-		UserID:                 getUserID(identity),
-		ViewSecretValue:        fn.ValueOr(q.ViewSecretValue, true),
-		ExpandSecretReferences: fn.ValueOr(q.ExpandSecretReferences, true),
-		IncludeImports:         fn.ValueOr(q.IncludeImports, false), // V3 defaults to false (unlike V4)
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return NewGetSecretByNameRawV3ResponseData(&GetSecretByNameRawV3Response{
-		Secret: response.Secret,
-	}), nil
 }
 
 func (h *Handler) CreateGetSecretAuditLog(ctx context.Context, projectID, env, secretPath string, sec *SecretRaw) error {

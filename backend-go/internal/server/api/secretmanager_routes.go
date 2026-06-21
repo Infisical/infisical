@@ -25,22 +25,11 @@ func RegisterSecretManagerRoutes(router chi.Router, logger *slog.Logger, infra *
 		KeyStore:   infra.KeyStore,
 	})
 
-	// Create adapter with shared error handler
-	secretsAdapter := secret.NewHTTPAdapter(secretsHandler, shared.NewErrorHandler(l))
-
-	// Secrets routes - all require authentication
-	router.Group(func(r chi.Router) {
-		r.Use(platform.ApiAuthenticator.RequireAuth(
+	secret.RegisterRoutes(router, secretsHandler,
+		secret.WithMiddleware(platform.ApiAuthenticator.RequireAuth(
 			apiauth.WithAuthModes(apiauth.JWTAuth, apiauth.IdentityAccessTokenAuth, apiauth.ServiceTokenAuth),
-		))
-		r.Use(platform.RateLimit.Middleware(ratelimit.PresetSecrets))
-
-		// V4 endpoints
-		r.Get("/api/v4/secrets", secretsAdapter.ListSecretsV4)
-		r.Get("/api/v4/secrets/{secretName}", secretsAdapter.GetSecretByNameV4)
-
-		// V3 endpoints (deprecated)
-		r.Get("/api/v3/secrets/raw", secretsAdapter.ListSecretsRawV3)
-		r.Get("/api/v3/secrets/raw/{secretName}", secretsAdapter.GetSecretByNameRawV3)
-	})
+		)),
+		secret.WithMiddleware(platform.RateLimit.Middleware(ratelimit.PresetSecrets)),
+		secret.WithErrorHandler(shared.NewErrorHandler(l)),
+	)
 }

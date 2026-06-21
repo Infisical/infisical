@@ -830,7 +830,7 @@ func WithMiddleware(mw func(http.Handler) http.Handler) RouterOption {
 }
 
 // WithErrorHandler sets a custom error handler for the router.
-// If not set, OapiOapiDefaultErrorHandler is used.
+// If not set, OapiDefaultErrorHandler is used.
 func WithErrorHandler(h OapiErrorHandler) RouterOption {
 	return func(cfg *routerConfig) {
 		cfg.errHandler = h
@@ -847,26 +847,33 @@ func WithJSONBodyDecoder(fn runtime.JSONBodyDecoderFunc) RouterOption {
 
 // NewRouter creates a new chi.Router with the given service implementation.
 func NewRouter(svc ServiceInterface, opts ...RouterOption) chi.Router {
+	r := chi.NewRouter()
+	RegisterRoutes(r, svc, opts...)
+	return r
+}
+
+// RegisterRoutes registers all routes on an existing chi.Router.
+// Middlewares are applied within a Group so they only affect these routes.
+func RegisterRoutes(r chi.Router, svc ServiceInterface, opts ...RouterOption) {
 	cfg := &routerConfig{}
 	for _, opt := range opts {
 		opt(cfg)
-	}
-
-	r := chi.NewRouter()
-	for _, mw := range cfg.middlewares {
-		r.Use(mw)
 	}
 
 	adapter := NewHTTPAdapter(svc, cfg.errHandler)
 	if cfg.jsonBodyDecoder != nil {
 		adapter.jsonBodyDecoder = cfg.jsonBodyDecoder
 	}
-	r.Method("GET", "/api/v4/secrets", http.HandlerFunc(adapter.ListSecretsV4))
-	r.Method("GET", "/api/v4/secrets/{secretName}", http.HandlerFunc(adapter.GetSecretByNameV4))
-	r.Method("GET", "/api/v3/secrets/raw", http.HandlerFunc(adapter.ListSecretsRawV3))
-	r.Method("GET", "/api/v3/secrets/raw/{secretName}", http.HandlerFunc(adapter.GetSecretByNameRawV3))
 
-	return r
+	r.Group(func(r chi.Router) {
+		for _, mw := range cfg.middlewares {
+			r.Use(mw)
+		}
+		r.Method("GET", "/api/v4/secrets", http.HandlerFunc(adapter.ListSecretsV4))
+		r.Method("GET", "/api/v4/secrets/{secretName}", http.HandlerFunc(adapter.GetSecretByNameV4))
+		r.Method("GET", "/api/v3/secrets/raw", http.HandlerFunc(adapter.ListSecretsRawV3))
+		r.Method("GET", "/api/v3/secrets/raw/{secretName}", http.HandlerFunc(adapter.GetSecretByNameRawV3))
+	})
 }
 
 type ListSecretsV4Headers struct {

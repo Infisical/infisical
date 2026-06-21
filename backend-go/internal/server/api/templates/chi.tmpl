@@ -1,0 +1,80 @@
+{{/* Chi-specific template blocks - extended with RegisterRoutes */}}
+
+{{define "router-import"}}"github.com/go-chi/chi/v5"{{end}}
+
+{{define "get-path-param"}}chi.URLParam(r, "{{ . }}"){{end}}
+
+{{/* router-path converts OpenAPI path to chi format: /** -> /* */}}
+{{define "router-path"}}{{ escapeGoString (replace . "/**" "/*") }}{{end}}
+
+{{define "router-config"}}
+type routerConfig struct {
+    middlewares []func(http.Handler) http.Handler
+    errHandler  OapiErrorHandler
+    jsonBodyDecoder runtime.JSONBodyDecoderFunc
+}
+
+// WithMiddleware adds middleware to the router.
+func WithMiddleware(mw func(http.Handler) http.Handler) RouterOption {
+    return func(cfg *routerConfig) {
+        cfg.middlewares = append(cfg.middlewares, mw)
+    }
+}
+
+// WithErrorHandler sets a custom error handler for the router.
+// If not set, OapiDefaultErrorHandler is used.
+func WithErrorHandler(h OapiErrorHandler) RouterOption {
+    return func(cfg *routerConfig) {
+        cfg.errHandler = h
+    }
+}
+
+// WithJSONBodyDecoder sets a custom function for decoding JSON request bodies.
+// If not set, runtime.DecodeJSONBody is used.
+func WithJSONBodyDecoder(fn runtime.JSONBodyDecoderFunc) RouterOption {
+    return func(cfg *routerConfig) {
+        cfg.jsonBodyDecoder = fn
+    }
+}
+{{end}}
+
+{{define "new-router"}}
+{{- $config := .Config -}}
+{{- $operations := .Operations -}}
+{{- $serviceName := $config.Generate.Handler.Name -}}
+// NewRouter creates a new chi.Router with the given service implementation.
+func NewRouter(svc {{ $serviceName }}Interface, opts ...RouterOption) chi.Router {
+    r := chi.NewRouter()
+    RegisterRoutes(r, svc, opts...)
+    return r
+}
+
+// RegisterRoutes registers all routes on an existing chi.Router.
+// Middlewares are applied within a Group so they only affect these routes.
+func RegisterRoutes(r chi.Router, svc {{ $serviceName }}Interface, opts ...RouterOption) {
+    cfg := &routerConfig{}
+    for _, opt := range opts {
+        opt(cfg)
+    }
+
+    {{- if $operations }}
+
+    adapter := NewHTTPAdapter(svc, cfg.errHandler)
+    if cfg.jsonBodyDecoder != nil {
+        adapter.jsonBodyDecoder = cfg.jsonBodyDecoder
+    }
+
+    r.Group(func(r chi.Router) {
+        for _, mw := range cfg.middlewares {
+            r.Use(mw)
+        }
+        {{- range $operations }}{{ $op := . }}
+        r.Method("{{ $op.Method }}", "{{template "router-path" $op.Path}}", http.HandlerFunc(adapter.{{ $op.ID | ucFirst }}))
+        {{- end }}
+    })
+    {{- else }}
+    _ = svc // unused when no operations
+    _ = cfg
+    {{- end }}
+}
+{{end}}

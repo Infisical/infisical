@@ -3,13 +3,11 @@ package secret
 import (
 	"context"
 	"log/slog"
-	"net/http"
 	"sort"
 
 	"github.com/google/uuid"
 
 	"github.com/infisical/api/internal/libs/errutil"
-	"github.com/infisical/api/internal/libs/fn"
 	"github.com/infisical/api/internal/services/auth"
 	"github.com/infisical/api/internal/services/permission"
 	permsecretsvc "github.com/infisical/api/internal/services/permission/secretmanager"
@@ -246,141 +244,6 @@ func filterListSecretsByPermission(secrets []secretsvc.ProcessedSecret, checker 
 		filtered = append(filtered, *sec)
 	}
 	return filtered
-}
-
-// ListSecretsV4 is the handler for listing secrets (V4).
-func (h *Handler) ListSecretsV4(ctx context.Context, opts *ListSecretsV4ServiceRequestOptions) (*ListSecretsV4ResponseData, error) {
-	q := opts.Query
-
-	h.logger.InfoContext(ctx, "listing secrets v4",
-		slog.String("projectId", q.ProjectID),
-		slog.String("environment", q.Environment),
-		slog.String("secretPath", fn.ValueOr(q.SecretPath, "/")),
-	)
-
-	identity, err := auth.IdentityFromContext(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	behavior := PersonalOverridesNeverInclude
-	if fn.ValueOr(q.IncludePersonalOverrides, false) {
-		behavior = PersonalOverridesPriority
-	}
-
-	var ifNoneMatch string
-	if opts.Header != nil && opts.Header.IfNoneMatch != nil {
-		ifNoneMatch = *opts.Header.IfNoneMatch
-	}
-
-	result, err := h.listSecrets(ctx, &listSecretsInternalOpts{
-		ProjectID:                 q.ProjectID,
-		Environment:               q.Environment,
-		SecretPath:                fn.RemoveTrailingSlash(fn.ValueOr(q.SecretPath, "/")),
-		UserID:                    getUserID(identity),
-		Recursive:                 fn.ValueOr(q.Recursive, false),
-		ViewSecretValue:           fn.ValueOr(q.ViewSecretValue, true),
-		ExpandSecretReferences:    fn.ValueOr(q.ExpandSecretReferences, true),
-		IncludeImports:            fn.ValueOr(q.IncludeImports, true),
-		PersonalOverridesBehavior: behavior,
-		TagSlugs:                  parseTagSlugs(q.TagSlugs),
-		MetadataFilter:            parseMetadataFilter(q.MetadataFilter),
-		IfNoneMatch:               ifNoneMatch,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	// Handle 304 Not Modified
-	if result.NotModified {
-		resp := NewListSecretsV4ResponseData(&ListSecretsV4Response{
-			Secrets: []SecretRaw{},
-		})
-		resp.Headers = make(http.Header)
-		resp.Headers.Set("ETag", result.ETag)
-		return resp.WithStatus(http.StatusNotModified), nil
-	}
-
-	// Build response with ETag header
-	resp := NewListSecretsV4ResponseData(&ListSecretsV4Response{
-		Secrets: result.Response.Secrets,
-		Imports: result.Response.Imports,
-	})
-	if result.ETag != "" {
-		resp.Headers = make(http.Header)
-		resp.Headers.Set("ETag", result.ETag)
-	}
-	return resp, nil
-}
-
-// ListSecretsRawV3 is the handler for listing raw secrets (V3, deprecated).
-func (h *Handler) ListSecretsRawV3(ctx context.Context, opts *ListSecretsRawV3ServiceRequestOptions) (*ListSecretsRawV3ResponseData, error) {
-	q := opts.Query
-
-	identity, err := auth.IdentityFromContext(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	projectID, err := h.project.ResolveProjectID(ctx, identity.OrgID, q.WorkspaceID, q.WorkspaceSlug)
-	if err != nil {
-		return nil, err
-	}
-
-	h.logger.InfoContext(ctx, "listing secrets raw v3",
-		slog.String("projectId", projectID),
-		slog.String("environment", fn.ValueOr(q.Environment, "")),
-		slog.String("secretPath", fn.ValueOr(q.SecretPath, "/")),
-	)
-
-	env := fn.ValueOr(q.Environment, "")
-	if env == "" {
-		return nil, errutil.BadRequest("Environment is required")
-	}
-
-	var ifNoneMatch string
-	if opts.Header != nil && opts.Header.IfNoneMatch != nil {
-		ifNoneMatch = *opts.Header.IfNoneMatch
-	}
-
-	result, err := h.listSecrets(ctx, &listSecretsInternalOpts{
-		ProjectID:                 projectID,
-		Environment:               env,
-		SecretPath:                fn.RemoveTrailingSlash(fn.ValueOr(q.SecretPath, "/")),
-		UserID:                    getUserID(identity),
-		Recursive:                 fn.ValueOr(q.Recursive, false),
-		ViewSecretValue:           fn.ValueOr(q.ViewSecretValue, true),
-		ExpandSecretReferences:    fn.ValueOr(q.ExpandSecretReferences, true),
-		IncludeImports:            fn.ValueOr(q.IncludeImports, false),
-		PersonalOverridesBehavior: PersonalOverridesIncludeAll,
-		TagSlugs:                  parseTagSlugs(q.TagSlugs),
-		MetadataFilter:            parseMetadataFilter(q.MetadataFilter),
-		IfNoneMatch:               ifNoneMatch,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	// Handle 304 Not Modified
-	if result.NotModified {
-		resp := NewListSecretsRawV3ResponseData(&ListSecretsRawV3Response{
-			Secrets: []SecretRaw{},
-		})
-		resp.Headers = make(http.Header)
-		resp.Headers.Set("ETag", result.ETag)
-		return resp.WithStatus(http.StatusNotModified), nil
-	}
-
-	// Build response with ETag header
-	resp := NewListSecretsRawV3ResponseData(&ListSecretsRawV3Response{
-		Secrets: result.Response.Secrets,
-		Imports: result.Response.Imports,
-	})
-	if result.ETag != "" {
-		resp.Headers = make(http.Header)
-		resp.Headers.Set("ETag", result.ETag)
-	}
-	return resp, nil
 }
 
 // buildListSecretsResponse builds the response for ListSecretsV4.
