@@ -139,21 +139,21 @@ export const CoolifySyncFns = {
       }
     }
 
-    if (secretSync.syncOptions.disableSecretDeletion) return;
+    if (!secretSync.syncOptions.disableSecretDeletion) {
+      for await (const coolifySecret of existingCoolifySecrets) {
+        if (!matchesSchema(coolifySecret.key, secretSync.environment?.slug || "", secretSync.syncOptions.keySchema))
+          // eslint-disable-next-line no-continue
+          continue;
 
-    for await (const coolifySecret of existingCoolifySecrets) {
-      if (!matchesSchema(coolifySecret.key, secretSync.environment?.slug || "", secretSync.syncOptions.keySchema))
-        // eslint-disable-next-line no-continue
-        continue;
-
-      if (!(coolifySecret.key in secretMap)) {
-        try {
-          await deleteCoolifySecret(secretSync, coolifySecret.uuid);
-        } catch (error) {
-          throw new SecretSyncError({
-            error,
-            secretKey: coolifySecret.key
-          });
+        if (!(coolifySecret.key in secretMap)) {
+          try {
+            await deleteCoolifySecret(secretSync, coolifySecret.uuid);
+          } catch (error) {
+            throw new SecretSyncError({
+              error,
+              secretKey: coolifySecret.key
+            });
+          }
         }
       }
     }
