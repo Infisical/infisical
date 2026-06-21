@@ -353,27 +353,38 @@ export const SecretEditTableRow = ({
   useEffect(() => {
     if (!isSingleEnvView || hasPendingChange) return;
 
-    originalCommentRef.current = comment ?? "";
+    const freshComment = comment ?? "";
+    originalCommentRef.current = freshComment;
     const freshTags = tags?.map((t) => ({ id: t.id, slug: t.slug })) ?? [];
     originalTagsRef.current = freshTags;
-    originalMetadataRef.current =
+    const freshMetadata =
       secretMetadata?.map((m) => ({
         key: m.key,
         value: m.value,
         isEncrypted: m.isEncrypted ?? false
       })) ?? [];
+    originalMetadataRef.current = freshMetadata;
 
-    // Sync the form's tags field with fresh server data when it isn't being
-    // edited. Without this, after a bulk-tag refetch the parent form keeps the
-    // stale tag list from mount while originalTagsRef has advanced to the
-    // fresh server data. Opening the tag popover then reads the stale form
-    // value, the batch-mode debounce emits it as a change, and the auto-apply
-    // logic records a false tag-removal pending change — surfacing a spurious
-    // "Commit Changes" modal. Syncing here (without marking dirty) keeps the
-    // form in sync with originalTagsRef so the emitted value matches the
-    // original and no false change is recorded.
+    // Sync the form's comment/tags/metadata fields with fresh server data when
+    // they aren't being edited. Without this, after a bulk operation refetch the
+    // parent form keeps the stale values from mount while the original* refs
+    // have advanced to the fresh server data. Opening the corresponding popover
+    // (SecretTagForm / SecretCommentForm / SecretMetadataForm) then seeds the
+    // child with the stale form value, and the child's batch-mode debounce
+    // emits it as a change. The auto-apply logic compares the emitted value
+    // against the now-fresh original* ref, sees a diff, and records a false
+    // pending change — surfacing a spurious "Commit Changes" modal. Syncing
+    // here (without marking dirty) keeps each form field aligned with its
+    // original* ref so the emitted value matches the original and no false
+    // change is recorded. In-progress edits are preserved via the isDirty guard.
+    if (!getFieldState("comment").isDirty) {
+      setValue("comment", freshComment, { shouldDirty: false });
+    }
     if (!getFieldState("tags").isDirty) {
       setValue("tags", freshTags, { shouldDirty: false });
+    }
+    if (!getFieldState("metadata").isDirty) {
+      setValue("metadata", freshMetadata, { shouldDirty: false });
     }
   }, [comment, tags, secretMetadata, isSingleEnvView, hasPendingChange]);
 
