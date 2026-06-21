@@ -10,13 +10,13 @@ func (r *Router) registerSecretsRoutes() {
 	l := r.logger.With("product", "secrets")
 
 	secretsHandler := secret.NewHandler(&secret.Deps{
-		Logger:     l,
-		Permission: r.services.Permission,
-		Project:    r.services.Platform().Project,
-		AuditLog:   r.services.AuditLog,
-		Secrets:    r.services.Secrets().Secret,
-		KMS:        r.services.KMS,
-		KeyStore:   r.services.Infra().KeyStore,
+		Logger:      l,
+		Permission:  r.services.Permission,
+		Project:     r.services.Platform().Project,
+		AuditLog:    r.services.AuditLog,
+		Secrets:     r.services.Secrets().Secret,
+		KMS:         r.services.KMS,
+		SecretCache: r.services.Secrets().SecretCache,
 	})
 
 	secret.RegisterRoutes(r.Router, secretsHandler,

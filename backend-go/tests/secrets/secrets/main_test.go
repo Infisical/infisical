@@ -27,6 +27,7 @@ import (
 	"github.com/infisical/api/internal/services/permission"
 	"github.com/infisical/api/internal/services/project"
 	secretSvc "github.com/infisical/api/internal/services/secrets/secret"
+	"github.com/infisical/api/internal/services/secrets/secretcache"
 	"github.com/infisical/api/internal/services/secrets/secretfolder"
 	"github.com/infisical/api/internal/services/secrets/secretimport"
 	"github.com/infisical/api/tests/infra"
@@ -89,14 +90,17 @@ func newSecretsHandler(t *testing.T) *secret.Handler {
 		KMSService:          kmsSvc,
 	})
 
+	ks := keystore.NewKeyStore(redisClient, stack.DB())
+	secretCacheSvc := secretcache.NewService(ctx, infra.NopLogger(), &secretcache.Deps{KeyStore: ks})
+
 	return secret.NewHandler(&secret.Deps{
-		Logger:     infra.NopLogger(),
-		Permission: permSvc,
-		Project:    projectSvc,
-		AuditLog:   auditLogSvc,
-		Secrets:    secretsSvc,
-		KMS:        kmsSvc,
-		KeyStore:   keystore.NewKeyStore(redisClient, stack.DB()),
+		Logger:      infra.NopLogger(),
+		Permission:  permSvc,
+		Project:     projectSvc,
+		AuditLog:    auditLogSvc,
+		Secrets:     secretsSvc,
+		KMS:         kmsSvc,
+		SecretCache: secretCacheSvc,
 	})
 }
 

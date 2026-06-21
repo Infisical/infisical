@@ -6,7 +6,6 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
-	"time"
 
 	"github.com/google/uuid"
 
@@ -17,6 +16,7 @@ import (
 	"github.com/infisical/api/internal/services/kms"
 	"github.com/infisical/api/internal/services/permission"
 	secretsvc "github.com/infisical/api/internal/services/secrets/secret"
+	"github.com/infisical/api/internal/services/secrets/secretcache"
 )
 
 // Compile-time check that Handler implements ServiceInterface.
@@ -54,52 +54,46 @@ type KMSService interface {
 	CreateCipherPairWithProjectDataKey(ctx context.Context, projectID string) (*kms.CipherPair, error)
 }
 
-// KeyStoreService provides Redis and PostgreSQL key-value operations.
-type KeyStoreService interface {
-	GetItem(ctx context.Context, key string) (string, error)
-	SetItemWithExpiry(ctx context.Context, key string, expiry time.Duration, value string) error
-	SetExpiry(ctx context.Context, key string, expiry time.Duration) (bool, error)
-	DeleteItem(ctx context.Context, key string) (int64, error)
-	HashGet(ctx context.Context, key, field string) (string, error)
-	HashSet(ctx context.Context, key, field, value string) error
-	IncrementByWithExpiry(ctx context.Context, key string, value int64, expiry time.Duration) (int64, error)
-	PgGetIntItem(ctx context.Context, key string) (int64, error)
+// SecretCacheService provides caching for secrets operations.
+type SecretCacheService interface {
+	CheckListSecrets(ctx context.Context, params *secretcache.ListSecretsCacheParams, cipherPair *kms.CipherPair) (*secretcache.ListSecretsCacheResult, error)
+	WriteListSecrets(ctx context.Context, params *secretcache.ListSecretsCacheParams, cipherPair *kms.CipherPair, response any) (string, error)
 }
 
 // --- Handler ---
 
 // Handler provides HTTP handlers for secrets endpoints.
 type Handler struct {
-	logger     *slog.Logger
-	permission PermissionService
-	project    ProjectService
-	auditLog   AuditLogService
-	secrets    SecretsService
-	kms        KMSService
-	keyStore   KeyStoreService
+	logger      *slog.Logger
+	permission  PermissionService
+	project     ProjectService
+	auditLog    AuditLogService
+	secrets     SecretsService
+	kms         KMSService
+	secretCache SecretCacheService
 }
 
 // Deps holds the dependencies for the secrets handler.
 type Deps struct {
-	Logger     *slog.Logger
-	Permission PermissionService
-	Project    ProjectService
-	AuditLog   AuditLogService
-	Secrets    SecretsService
-	KMS        KMSService
-	KeyStore   KeyStoreService
+	Logger      *slog.Logger
+	Permission  PermissionService
+	Project     ProjectService
+	AuditLog    AuditLogService
+	Secrets     SecretsService
+	KMS         KMSService
+	SecretCache SecretCacheService
 }
 
 // NewHandler creates a new secrets handler.
 func NewHandler(deps *Deps) *Handler {
 	return &Handler{
-		logger:     deps.Logger.With(slog.String("handler", "secrets")),
-		permission: deps.Permission,
-		project:    deps.Project,
-		auditLog:   deps.AuditLog,
-		secrets:    deps.Secrets,
-		kms:        deps.KMS,
-		keyStore:   deps.KeyStore,
+		logger:      deps.Logger.With(slog.String("handler", "secrets")),
+		permission:  deps.Permission,
+		project:     deps.Project,
+		auditLog:    deps.AuditLog,
+		secrets:     deps.Secrets,
+		kms:         deps.KMS,
+		secretCache: deps.SecretCache,
 	}
 }
 

@@ -2,6 +2,7 @@ package secret
 
 import (
 	"context"
+	"encoding/json"
 	"log/slog"
 	"sort"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/infisical/api/internal/services/permission"
 	permsecretsvc "github.com/infisical/api/internal/services/permission/secretmanager"
 	secretsvc "github.com/infisical/api/internal/services/secrets/secret"
+	"github.com/infisical/api/internal/services/secrets/secretcache"
 )
 
 // PersonalOverridesBehavior controls how personal secret overrides are handled.
@@ -94,22 +96,46 @@ func (h *Handler) listSecrets(ctx context.Context, opts *listSecretsInternalOpts
 		return nil, err
 	}
 
-	cacheParams := &listSecretsCacheParams{
+	requestParamsHash := secretcache.BuildListSecretsRequestParamsHash(map[string]any{
+		"environment":               opts.Environment,
+		"path":                      opts.SecretPath,
+		"recursive":                 opts.Recursive,
+		"includeImports":            opts.IncludeImports,
+		"expandSecretReferences":    opts.ExpandSecretReferences,
+		"viewSecretValue":           opts.ViewSecretValue,
+		"personalOverridesBehavior": opts.PersonalOverridesBehavior,
+		"tagSlugs":                  opts.TagSlugs,
+		"metadataFilter":            opts.MetadataFilter,
+	})
+
+	cacheParams := &secretcache.ListSecretsCacheParams{
 		ProjectID:             opts.ProjectID,
-		OrgID:                 identity.OrgID,
 		ActorID:               identity.ActorID,
-		ActorType:             identity.Actor,
 		PermissionFingerprint: permissionFingerprint,
 		PermissionRulesHash:   permResult.PermissionRulesHash(),
-		RequestParams:         opts,
+		RequestParamsHash:     requestParamsHash,
 		IfNoneMatch:           opts.IfNoneMatch,
 	}
 
-	cacheResult, err := h.listSecretsCheckCache(ctx, cacheParams, cipherPair)
+	cacheResult, err := h.secretCache.CheckListSecrets(ctx, cacheParams, cipherPair)
 	if err != nil {
 		h.logger.WarnContext(ctx, "cache check failed, proceeding without cache", slog.Any("error", err))
 	} else if cacheResult != nil {
-		return cacheResult, nil
+		if cacheResult.NotModified {
+			return &listSecretsResponseWithETag{
+				NotModified: true,
+				ETag:        cacheResult.ETag,
+			}, nil
+		}
+		var cached listSecretsResponse
+		if err := json.Unmarshal(cacheResult.Response, &cached); err != nil {
+			h.logger.WarnContext(ctx, "failed to unmarshal cached response, proceeding without cache", slog.Any("error", err))
+		} else {
+			return &listSecretsResponseWithETag{
+				Response: &cached,
+				ETag:     cacheResult.ETag,
+			}, nil
+		}
 	}
 
 	result, err := h.secrets.ListSecrets(ctx, &secretsvc.ListSecretsOpts{
@@ -204,7 +230,7 @@ func (h *Handler) listSecrets(ctx context.Context, opts *listSecretsInternalOpts
 
 	response := h.buildListSecretsResponse(result, opts.ProjectID, opts.IncludeImports)
 
-	etag, err := h.listSecretsWriteCache(ctx, cacheParams, cipherPair, response)
+	etag, err := h.secretCache.WriteListSecrets(ctx, cacheParams, cipherPair, response)
 	if err != nil {
 		h.logger.WarnContext(ctx, "cache write failed", slog.Any("error", err))
 	}
