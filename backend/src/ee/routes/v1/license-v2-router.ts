@@ -187,7 +187,11 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
         returnPath: ReturnPathSchema
       }),
       response: {
-        200: z.object({ url: z.string() })
+        200: z.object({
+          outcome: z.enum(["checkout_created", "subscription_updated"]),
+          checkoutUrl: z.string().optional(),
+          subscriptionId: z.string().optional()
+        })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT]),

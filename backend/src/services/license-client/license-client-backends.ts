@@ -2,11 +2,13 @@ import jwt from "jsonwebtoken";
 
 import {
   catalogResponseSchema,
+  checkoutResultSchema,
   cloudPlanResponseSchema,
   entitlementsResponseSchema,
   sessionResponseSchema,
   subscriptionResponseSchema,
   TCatalogResponse,
+  TCheckoutResult,
   TCloudPlanResponse,
   TCreateCheckoutPayload,
   TCreatePortalPayload,
@@ -119,7 +121,7 @@ export const licenseServerBackend = (serverUrl: string, signingKey: string): TLi
     return cloudPlanResponseSchema.parse(body);
   },
 
-  createCheckoutSession: async (orgId: string, payload: TCreateCheckoutPayload): Promise<TSessionResponse> => {
+  createCheckoutSession: async (orgId: string, payload: TCreateCheckoutPayload): Promise<TCheckoutResult> => {
     const url = new URL(CHECKOUT_SESSION_PATH, serverUrl);
     url.searchParams.set("org_id", orgId);
     const res = await fetch(url, {
@@ -132,7 +134,7 @@ export const licenseServerBackend = (serverUrl: string, signingKey: string): TLi
       throw new Error(`license server responded with ${res.status}`);
     }
     const body: unknown = await res.json();
-    return sessionResponseSchema.parse(body);
+    return checkoutResultSchema.parse(body);
   },
 
   createPortalSession: async (orgId: string, payload: TCreatePortalPayload): Promise<TSessionResponse> => {

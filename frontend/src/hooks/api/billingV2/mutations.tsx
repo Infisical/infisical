@@ -3,6 +3,7 @@ import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 
 import {
+  BillingV2CheckoutResult,
   TAddBillingV2PaymentMethodDTO,
   TCreateBillingV2CheckoutSessionDTO,
   TCreateBillingV2PortalSessionDTO
@@ -32,14 +33,12 @@ export const useCreateBillingV2CheckoutSession = () => {
       email,
       returnPath
     }: TCreateBillingV2CheckoutSessionDTO) => {
-      const {
-        data: { url }
-      } = await apiRequest.post<{ url: string }>(
+      const { data } = await apiRequest.post<BillingV2CheckoutResult>(
         `/api/v1/organizations/${orgId}/billing/v2/checkout-session`,
         { productId, cadence, email, returnPath }
       );
 
-      return url;
+      return data;
     }
   });
 };

@@ -109,6 +109,18 @@ export const sessionResponseSchema = z
   })
   .passthrough();
 
+// Checkout either needs the customer to complete a Stripe Checkout (checkout_created) or is applied
+// directly to an existing subscription (subscription_updated). `url` is the legacy shape, tolerated so
+// the cloud and license server can deploy in any order.
+export const checkoutResultSchema = z
+  .object({
+    outcome: z.enum(["checkout_created", "subscription_updated"]).optional(),
+    checkoutUrl: z.string().optional(),
+    subscriptionId: z.string().optional(),
+    url: z.string().optional()
+  })
+  .passthrough();
+
 // The cloud-plan FeatureSet carries plan caps; the server nulls a limit when it is effectively
 // unlimited. Used counts come back zeroed and are overlaid by this app, so we ignore them.
 export const cloudPlanResponseSchema = z
@@ -129,6 +141,7 @@ export type TCatalogResponse = z.infer<typeof catalogResponseSchema>;
 export type TSubscriptionItem = z.infer<typeof subscriptionItemSchema>;
 export type TSubscriptionResponse = z.infer<typeof subscriptionResponseSchema>;
 export type TSessionResponse = z.infer<typeof sessionResponseSchema>;
+export type TCheckoutResult = z.infer<typeof checkoutResultSchema>;
 export type TCloudPlanResponse = z.infer<typeof cloudPlanResponseSchema>;
 
 export type TCheckoutLineItem = {
@@ -153,6 +166,6 @@ export type TLicenseClientBackend = {
   fetchCatalog: () => Promise<TCatalogResponse>;
   fetchSubscription: (orgId: string) => Promise<TSubscriptionResponse | null>;
   fetchCloudPlan: (orgId: string) => Promise<TCloudPlanResponse | null>;
-  createCheckoutSession: (orgId: string, payload: TCreateCheckoutPayload) => Promise<TSessionResponse>;
+  createCheckoutSession: (orgId: string, payload: TCreateCheckoutPayload) => Promise<TCheckoutResult>;
   createPortalSession: (orgId: string, payload: TCreatePortalPayload) => Promise<TSessionResponse>;
 };

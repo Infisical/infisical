@@ -94,14 +94,31 @@ export const BillingV2Page = () => {
 
   const redirectToCheckout = async (productId: string) => {
     try {
-      const url = await createCheckoutSession.mutateAsync({
+      const result = await createCheckoutSession.mutateAsync({
         orgId,
         productId,
         cadence,
         email: billingEmail,
         returnPath: window.location.pathname
       });
-      window.location.href = url;
+
+      // The product was added straight to the existing subscription; no Stripe redirect needed.
+      if (result.outcome === "subscription_updated") {
+        close();
+        createNotification({
+          type: "success",
+          text: "Product added to your subscription. It may take a moment to appear here."
+        });
+        refetch();
+        return;
+      }
+
+      if (result.checkoutUrl) {
+        window.location.href = result.checkoutUrl;
+        return;
+      }
+
+      createNotification({ type: "error", text: "Failed to start checkout." });
     } catch {
       createNotification({ type: "error", text: "Failed to start checkout." });
     }

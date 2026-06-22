@@ -2,7 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 
 import { OrganizationActionScope } from "@app/db/schemas";
 import { TEnvConfig } from "@app/lib/config/env";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { TIdentityOrgDALFactory } from "@app/services/identity/identity-org-dal";
 import { TLicenseClientFactory } from "@app/services/license-client";
@@ -425,8 +425,17 @@ export const licenseV2ServiceFactory = ({
       throw new BadRequestError({ message: "This product is not available for self-serve checkout" });
     }
 
-    const session = await licenseClient.createCheckout(orgId, { items, email, returnPath });
-    return { url: session.url };
+    const result = await licenseClient.createCheckout(orgId, { items, email, returnPath });
+    if (result.outcome === "subscription_updated") {
+      return { outcome: "subscription_updated" as const, subscriptionId: result.subscriptionId };
+    }
+
+    // checkout_created (or the legacy { url } shape) means the customer must finish in Stripe Checkout.
+    const checkoutUrl = result.checkoutUrl ?? result.url;
+    if (!checkoutUrl) {
+      throw new InternalServerError({ message: "Checkout session did not return a URL" });
+    }
+    return { outcome: "checkout_created" as const, checkoutUrl };
   };
 
   const addPaymentMethod = async ({ orgId, actor, returnPath }: TAddBillingV2PaymentMethodDTO) => {
