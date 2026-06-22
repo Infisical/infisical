@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
-import { OrganizationActionScope, TOrganizations, TSecretSharing } from "@app/db/schemas";
+import { OrganizationActionScope, OrgMembershipStatus, TOrganizations, TSecretSharing } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionSecretShareAction, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -107,14 +107,26 @@ export const secretSharingServiceFactory = ({
   const $hasExternalEmailAccess = (sharedSecret: TSecretSharing): boolean =>
     Boolean(sharedSecret.allowExternalEmails && sharedSecret.password);
 
-  // Verifies the actor has access to secretOrgId by checking they share the same root org.
-  const $assertOrgAccess = async (secretOrgId: string, actorOrgId: string): Promise<void> => {
+  // Verifies the actor has access to secretOrgId: same root org family AND active membership in secretOrgId.
+  const $assertOrgAccess = async (secretOrgId: string, actorOrgId: string, actorId?: string): Promise<void> => {
     if (secretOrgId === actorOrgId) return;
     const [actorRootOrg, secretRootOrg] = await Promise.all([
       orgDAL.findRootOrgDetails(actorOrgId),
       orgDAL.findRootOrgDetails(secretOrgId)
     ]);
     if (!actorRootOrg || !secretRootOrg || actorRootOrg.id !== secretRootOrg.id) {
+      throw new ForbiddenRequestError({ message: "You do not have access to this secret" });
+    }
+    if (!actorId) {
+      throw new UnauthorizedError({ message: "Authentication required to view this secret" });
+    }
+    const memberships = await orgDAL.findMembership({
+      actorUserId: actorId,
+      scopeOrgId: secretOrgId,
+      status: OrgMembershipStatus.Accepted,
+      isActive: true
+    });
+    if (memberships.length === 0) {
       throw new ForbiddenRequestError({ message: "You do not have access to this secret" });
     }
   };
@@ -615,7 +627,7 @@ export const secretSharingServiceFactory = ({
         throw new UnauthorizedError({ message: "Authentication required to view this secret" });
       }
       if (sharedSecret.orgId) {
-        await $assertOrgAccess(sharedSecret.orgId, orgId);
+        await $assertOrgAccess(sharedSecret.orgId, orgId, actorId);
       }
     }
 
@@ -687,7 +699,7 @@ export const secretSharingServiceFactory = ({
           throw new UnauthorizedError();
         }
         if (sharedSecret.orgId) {
-          await $assertOrgAccess(sharedSecret.orgId, orgId);
+          await $assertOrgAccess(sharedSecret.orgId, orgId, actorId);
         }
       }
 
