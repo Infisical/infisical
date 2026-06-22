@@ -133,7 +133,7 @@ export const AppConnectionsSelect = ({ onSelect, projectType }: Props) => {
         <InputGroupInput
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search apps — AWS, GitHub, Postgres, Vault..."
+          placeholder="Search apps (e.g. AWS, GitHub, Postgres, Vault)"
         />
       </InputGroup>
 
