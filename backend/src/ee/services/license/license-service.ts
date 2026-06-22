@@ -67,7 +67,7 @@ type TLicenseServiceFactoryDep = {
   licenseDAL: TLicenseDALFactory;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiry" | "getItem" | "deleteItem">;
   projectDAL: TProjectDALFactory;
-  licenseClient?: Pick<TLicenseClientFactory, "getEntitlements">;
+  licenseClient?: Pick<TLicenseClientFactory, "getEntitlements" | "getSubscription">;
   licenseDualRead?: Pick<TDualReadServiceFactory, "compareInBackground">;
 };
 
@@ -234,6 +234,23 @@ export const licenseServiceFactory = ({
             throw new BadRequestError({ message: "License Server v2 entitlements are unavailable" });
           }
           currentPlan = projectV2ToFeatureSet(getDefaultOnPremFeatures(), entitlements);
+
+          // The entitlement projection only carries feature flags, so set the plan slug from the
+          // subscription tier; otherwise the org-level plan label can't reflect the real tier. Keep
+          // it non-fatal so a subscription read failure doesn't drop the org to the free fallback.
+          try {
+            const subscription = await licenseClient.getSubscription(rootOrgId);
+            const paidTiers = (subscription?.items ?? [])
+              .map((item) => item.plan.toLowerCase())
+              .filter((tier) => tier !== "free");
+            if (paidTiers.some((tier) => tier.includes("enterprise"))) {
+              currentPlan.slug = "enterprise";
+            } else if (paidTiers.length > 0) {
+              currentPlan.slug = "pro";
+            }
+          } catch (error) {
+            logger.error(error, `getPlan: failed to resolve plan tier from subscription [orgId=${rootOrgId}]`);
+          }
         } else {
           const {
             data: { currentPlan: v1Plan }

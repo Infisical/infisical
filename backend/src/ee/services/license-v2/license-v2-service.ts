@@ -2,8 +2,9 @@ import { ForbiddenError } from "@casl/ability";
 
 import { OrganizationActionScope } from "@app/db/schemas";
 import { TEnvConfig } from "@app/lib/config/env";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { TIdentityOrgDALFactory } from "@app/services/identity/identity-org-dal";
 import { TLicenseClientFactory } from "@app/services/license-client";
 import {
   TCatalogProduct,
@@ -32,10 +33,17 @@ import {
 type TLicenseV2ServiceFactoryDep = {
   envConfig: Pick<TEnvConfig, "LICENSE_SERVER_V2_MODE">;
   orgDAL: Pick<TOrgDALFactory, "findById" | "countAllOrgMembers">;
+  identityOrgMembershipDAL: Pick<TIdentityOrgDALFactory, "countAllOrgIdentities">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseClient: Pick<
     TLicenseClientFactory,
-    "getEntitlements" | "getCatalog" | "getSubscription" | "getCloudPlan" | "createCheckout" | "createPortal"
+    | "getEntitlements"
+    | "getCatalog"
+    | "getSubscription"
+    | "getCloudPlan"
+    | "getBillingProfile"
+    | "createCheckout"
+    | "createPortal"
   >;
 };
 
@@ -220,6 +228,7 @@ const buildCheckoutItems = (product: TCatalogProduct, cadence: "monthly" | "annu
 export const licenseV2ServiceFactory = ({
   envConfig,
   orgDAL,
+  identityOrgMembershipDAL,
   permissionService,
   licenseClient
 }: TLicenseV2ServiceFactoryDep) => {
@@ -328,6 +337,9 @@ export const licenseV2ServiceFactory = ({
     }
 
     const members = await orgDAL.countAllOrgMembers(orgId);
+    const identities = await identityOrgMembershipDAL.countAllOrgIdentities({
+      scopeOrgId: orgId
+    });
 
     // Plan caps come from the license server (a null limit means genuinely unlimited). Used counts
     // are overlaid here; a missing plan leaves limits unknown.
@@ -352,6 +364,29 @@ export const licenseV2ServiceFactory = ({
       }
     }
 
+    // Payment method, billing identity, and invoices come from the org's Stripe customer. A
+    // failure (or unconfigured backend) degrades to the empty state rather than failing the page.
+    let payment: BillingV2Overview["payment"] = null;
+    let billingDetails: BillingV2Overview["billingDetails"] = null;
+    let invoices: BillingV2Overview["invoices"] = [];
+    try {
+      const profile = await licenseClient.getBillingProfile(orgId);
+      if (profile) {
+        payment = profile.payment;
+        billingDetails = profile.billingDetails;
+        invoices = profile.invoices.map((invoice) => ({
+          id: invoice.id,
+          number: invoice.number,
+          date: formatDate(invoice.date) ?? "",
+          amount: centsToDollars(invoice.amount),
+          paid: invoice.paid,
+          pdfUrl: invoice.pdfUrl ?? ""
+        }));
+      }
+    } catch (error) {
+      logger.error(error, `billing-v2: failed to read billing profile [orgId=${orgId}]`);
+    }
+
     const overview: BillingV2Overview = {
       isCloud: true,
       mode: "self-serve",
@@ -363,12 +398,12 @@ export const licenseV2ServiceFactory = ({
       usage: {
         members,
         memberLimit,
-        identities: 0,
+        identities,
         identityLimit
       },
-      payment: null,
-      billingDetails: null,
-      invoices: [],
+      payment,
+      billingDetails,
+      invoices,
       entitlements: await buildEntitlements(orgId, subscription)
     };
 
@@ -419,8 +454,16 @@ export const licenseV2ServiceFactory = ({
       throw new BadRequestError({ message: "This product is not available for self-serve checkout" });
     }
 
-    const session = await licenseClient.createCheckout(orgId, { items, email, returnPath });
-    return { url: session.url };
+    const result = await licenseClient.createCheckout(orgId, { items, email, returnPath });
+    if (result.outcome === "subscription_updated") {
+      return { outcome: "subscription_updated" as const, subscriptionId: result.subscriptionId };
+    }
+
+    // checkout_created: the customer must finish in Stripe Checkout.
+    if (!result.checkoutUrl) {
+      throw new InternalServerError({ message: "Checkout session did not return a URL" });
+    }
+    return { outcome: "checkout_created" as const, checkoutUrl: result.checkoutUrl };
   };
 
   const addPaymentMethod = async ({ orgId, actor, returnPath }: TAddBillingV2PaymentMethodDTO) => {

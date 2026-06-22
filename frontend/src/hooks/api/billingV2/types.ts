@@ -87,6 +87,12 @@ export type BillingV2Overview = {
   entitlements: Record<string, BillingV2Entitlement>;
 };
 
+export type BillingV2CheckoutResult = {
+  outcome: "checkout_created" | "subscription_updated";
+  checkoutUrl?: string;
+  subscriptionId?: string;
+};
+
 export type TCreateBillingV2PortalSessionDTO = {
   orgId: string;
   returnPath?: string;

@@ -1,11 +1,5 @@
 import { useOrganization, useSubscription } from "@app/context";
-import { SubscriptionPlan } from "@app/hooks/api/types";
-
-const getPlan = (subscription: SubscriptionPlan) => {
-  if (subscription.groups) return "Enterprise Plan";
-  if (subscription.pitRecovery) return "Pro Plan";
-  return "Free Plan";
-};
+import { getSubscriptionPlanLabel } from "@app/hooks/api/subscriptions";
 
 export const SidebarHeader = () => {
   const { currentOrg } = useOrganization();
@@ -20,7 +14,9 @@ export const SidebarHeader = () => {
         <div className="max-w-36 truncate text-sm font-medium text-ellipsis capitalize">
           {currentOrg?.name}
         </div>
-        <div className="text-xs text-mineshaft-400">{getPlan(subscription)}</div>
+        <div className="text-xs text-mineshaft-400">
+          {getSubscriptionPlanLabel(subscription, " Plan")}
+        </div>
       </div>
     </div>
   );

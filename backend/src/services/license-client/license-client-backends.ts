@@ -1,12 +1,16 @@
 import jwt from "jsonwebtoken";
 
 import {
+  billingProfileResponseSchema,
   catalogResponseSchema,
+  checkoutResultSchema,
   cloudPlanResponseSchema,
   entitlementsResponseSchema,
   sessionResponseSchema,
   subscriptionResponseSchema,
+  TBillingProfileResponse,
   TCatalogResponse,
+  TCheckoutResult,
   TCloudPlanResponse,
   TCreateCheckoutPayload,
   TCreatePortalPayload,
@@ -20,6 +24,7 @@ const ENTITLEMENTS_PATH = "/v1/entitlements";
 const PRODUCTS_PATH = "/v1/products";
 const SUBSCRIPTION_PATH = "/v1/subscription";
 const CLOUD_PLAN_PATH = "/v1/cloud-plan";
+const BILLING_PROFILE_PATH = "/v1/billing/profile";
 const CHECKOUT_SESSION_PATH = "/v1/billing/checkout-session";
 const PORTAL_SESSION_PATH = "/v1/billing/portal-session";
 
@@ -119,7 +124,27 @@ export const licenseServerBackend = (serverUrl: string, signingKey: string): TLi
     return cloudPlanResponseSchema.parse(body);
   },
 
-  createCheckoutSession: async (orgId: string, payload: TCreateCheckoutPayload): Promise<TSessionResponse> => {
+  // The server returns 200 with everything empty when the org has no Stripe customer yet; a 404
+  // means the org has no license at all (same as /v1/subscription), so degrade to "no profile".
+  fetchBillingProfile: async (orgId: string): Promise<TBillingProfileResponse | null> => {
+    const url = new URL(BILLING_PROFILE_PATH, serverUrl);
+    url.searchParams.set("org_id", orgId);
+    const res = await fetch(url, {
+      method: "GET",
+      headers: { Authorization: `Bearer ${mintServiceToken(signingKey)}` },
+      redirect: "manual"
+    });
+    if (res.status === 404) {
+      return null;
+    }
+    if (!res.ok) {
+      throw new Error(`license server responded with ${res.status}`);
+    }
+    const body: unknown = await res.json();
+    return billingProfileResponseSchema.parse(body);
+  },
+
+  createCheckoutSession: async (orgId: string, payload: TCreateCheckoutPayload): Promise<TCheckoutResult> => {
     const url = new URL(CHECKOUT_SESSION_PATH, serverUrl);
     url.searchParams.set("org_id", orgId);
     const res = await fetch(url, {
@@ -132,7 +157,7 @@ export const licenseServerBackend = (serverUrl: string, signingKey: string): TLi
       throw new Error(`license server responded with ${res.status}`);
     }
     const body: unknown = await res.json();
-    return sessionResponseSchema.parse(body);
+    return checkoutResultSchema.parse(body);
   },
 
   createPortalSession: async (orgId: string, payload: TCreatePortalPayload): Promise<TSessionResponse> => {

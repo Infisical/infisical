@@ -79,6 +79,13 @@ export const licenseClientFactory = ({ envConfig, keyStore }: TLicenseClientFact
     return backend.fetchCloudPlan(orgId);
   };
 
+  const getBillingProfile = async (orgId: string) => {
+    if (!backend) {
+      return null;
+    }
+    return backend.fetchBillingProfile(orgId);
+  };
+
   const createCheckout = async (orgId: string, payload: TCreateCheckoutPayload) => {
     if (!backend) {
       throw new Error("license client backend is not configured");
@@ -99,6 +106,7 @@ export const licenseClientFactory = ({ envConfig, keyStore }: TLicenseClientFact
     getCatalog,
     getSubscription,
     getCloudPlan,
+    getBillingProfile,
     createCheckout,
     createPortal
   };
