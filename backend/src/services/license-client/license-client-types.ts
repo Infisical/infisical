@@ -132,6 +132,44 @@ export const cloudPlanResponseSchema = z
   })
   .passthrough();
 
+// Billing profile: the org's Stripe payment method, billing identity, and recent invoices. Every
+// field is null/empty when the org has no Stripe customer yet (the server returns 200, not 404).
+// Invoice amounts are cents and dates are Unix seconds, matching /v1/subscription.
+const billingProfilePaymentSchema = z
+  .object({
+    brand: z.string(),
+    last4: z.string(),
+    expMonth: z.number(),
+    expYear: z.number()
+  })
+  .passthrough();
+
+const billingProfileDetailsSchema = z
+  .object({
+    name: z.string(),
+    email: z.string()
+  })
+  .passthrough();
+
+const billingProfileInvoiceSchema = z
+  .object({
+    id: z.string(),
+    number: z.string(),
+    date: z.number().nullish(),
+    amount: z.number(),
+    paid: z.boolean(),
+    pdfUrl: z.string().nullish()
+  })
+  .passthrough();
+
+export const billingProfileResponseSchema = z
+  .object({
+    payment: billingProfilePaymentSchema.nullable(),
+    billingDetails: billingProfileDetailsSchema.nullable(),
+    invoices: z.array(billingProfileInvoiceSchema).default([])
+  })
+  .passthrough();
+
 export type TEntitlementFeature = z.infer<typeof entitlementFeatureSchema>;
 export type TEntitlementsResponse = z.infer<typeof entitlementsResponseSchema>;
 export type TCatalogProduct = z.infer<typeof catalogProductSchema>;
@@ -141,6 +179,7 @@ export type TSubscriptionResponse = z.infer<typeof subscriptionResponseSchema>;
 export type TSessionResponse = z.infer<typeof sessionResponseSchema>;
 export type TCheckoutResult = z.infer<typeof checkoutResultSchema>;
 export type TCloudPlanResponse = z.infer<typeof cloudPlanResponseSchema>;
+export type TBillingProfileResponse = z.infer<typeof billingProfileResponseSchema>;
 
 export type TCheckoutLineItem = {
   productId: string;
@@ -164,6 +203,7 @@ export type TLicenseClientBackend = {
   fetchCatalog: () => Promise<TCatalogResponse>;
   fetchSubscription: (orgId: string) => Promise<TSubscriptionResponse | null>;
   fetchCloudPlan: (orgId: string) => Promise<TCloudPlanResponse | null>;
+  fetchBillingProfile: (orgId: string) => Promise<TBillingProfileResponse | null>;
   createCheckoutSession: (orgId: string, payload: TCreateCheckoutPayload) => Promise<TCheckoutResult>;
   createPortalSession: (orgId: string, payload: TCreatePortalPayload) => Promise<TSessionResponse>;
 };
