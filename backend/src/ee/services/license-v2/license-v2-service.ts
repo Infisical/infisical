@@ -30,7 +30,7 @@ import {
 } from "./license-v2-types";
 
 type TLicenseV2ServiceFactoryDep = {
-  envConfig: Pick<TEnvConfig, "LICENSE_SERVER_V2_ENABLED">;
+  envConfig: Pick<TEnvConfig, "LICENSE_SERVER_V2_MODE">;
   orgDAL: Pick<TOrgDALFactory, "findById" | "countAllOrgMembers">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseClient: Pick<
@@ -429,7 +429,8 @@ export const licenseV2ServiceFactory = ({
   };
 
   return {
-    isEnabled: () => envConfig.LICENSE_SERVER_V2_ENABLED,
+    // Billing surface (portal, checkout, overview) goes live only at full v2 cutover, not during read-compare.
+    isEnabled: () => envConfig.LICENSE_SERVER_V2_MODE === "on",
     getOverview,
     getCatalog,
     portalSession,

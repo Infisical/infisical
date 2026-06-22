@@ -1,6 +1,8 @@
 import { z } from "zod";
 
 import { AccessScope, OrgMembershipRole } from "@app/db/schemas";
+import { unique } from "@app/lib/fn";
+import { sanitizeEmail } from "@app/lib/validator";
 import { inviteUserRateLimit, smtpRateLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -23,7 +25,7 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
           .email()
           .array()
           .max(100)
-          .refine((val) => val.every((el) => el === el.toLowerCase()), "Email must be lowercase"),
+          .transform((val) => unique(val.map((el) => sanitizeEmail(el)))),
         organizationId: z.string().trim(),
         organizationRoleSlug: z.string().default(OrgMembershipRole.Member)
       }),

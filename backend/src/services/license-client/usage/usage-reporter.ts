@@ -37,11 +37,11 @@ export const usageReporterFactory = (serverUrl: string, serviceKey: string): TUs
 });
 
 // Returns null when the v2 license server is disabled or unconfigured, which keeps usage reporting
-// inert until Phase 2 flips LICENSE_SERVER_V2_ENABLED on.
+// inert until Phase 2 flips LICENSE_SERVER_V2_MODE on.
 export const buildUsageReporter = (
-  envConfig: Pick<TEnvConfig, "LICENSE_SERVER_V2_ENABLED" | "LICENSE_SERVER_V2_URL" | "LICENSE_SERVER_V2_SERVICE_KEY">
+  envConfig: Pick<TEnvConfig, "LICENSE_SERVER_V2_MODE" | "LICENSE_SERVER_V2_URL" | "LICENSE_SERVER_V2_SERVICE_KEY">
 ): TUsageReporter | null => {
-  if (!envConfig.LICENSE_SERVER_V2_ENABLED) {
+  if (envConfig.LICENSE_SERVER_V2_MODE === "off") {
     return null;
   }
 

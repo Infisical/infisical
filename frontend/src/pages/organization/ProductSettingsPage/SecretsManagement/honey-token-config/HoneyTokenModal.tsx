@@ -171,18 +171,11 @@ export const HoneyTokenModal = ({ isOpen, onOpenChange }: Props) => {
     });
 
   const onNext = async (data: FormData) => {
-    try {
-      await saveConfig(data);
-      createNotification({
-        text: "Settings saved. Deploy the CloudFormation stack, then click Save.",
-        type: "success"
-      });
-    } catch {
-      createNotification({
-        text: "Failed to save honey token settings",
-        type: "error"
-      });
-    }
+    await saveConfig(data);
+    createNotification({
+      text: "Settings saved. Deploy the CloudFormation stack, then click Save.",
+      type: "success"
+    });
   };
 
   const onSave = async (data: FormData) => {
@@ -373,10 +366,7 @@ export const HoneyTokenModal = ({ isOpen, onOpenChange }: Props) => {
             )}
           </div>
 
-          <SheetFooter>
-            <Button variant="ghost" onClick={() => onOpenChange(false)} type="button">
-              Cancel
-            </Button>
+          <SheetFooter className="border-t">
             <OrgPermissionCan
               I={OrgPermissionHoneyTokenActions.Setup}
               a={OrgPermissionSubjects.HoneyTokens}
@@ -384,7 +374,7 @@ export const HoneyTokenModal = ({ isOpen, onOpenChange }: Props) => {
               {(isAllowed) => (
                 <Button
                   type="submit"
-                  variant="org"
+                  variant="project"
                   isPending={isSaving || isTestingConnection}
                   isDisabled={!isAllowed || isSaving || isTestingConnection}
                 >
@@ -392,6 +382,9 @@ export const HoneyTokenModal = ({ isOpen, onOpenChange }: Props) => {
                 </Button>
               )}
             </OrgPermissionCan>
+            <Button variant="ghost" onClick={() => onOpenChange(false)} type="button">
+              Cancel
+            </Button>
           </SheetFooter>
         </form>
       </SheetContent>

@@ -6,6 +6,8 @@ import { Button, FormControl, Input, ModalClose, SecretInput } from "@app/compon
 import { LogProvider } from "@app/hooks/api/auditLogStreams/enums";
 import { TAzureProviderLogStream } from "@app/hooks/api/auditLogStreams/types/providers/azure-provider";
 
+import { auditLogStreamFiltersSchema, ProductsField } from "./AuditLogStreamProductsField";
+
 type Props = {
   auditLogStream?: TAzureProviderLogStream;
   onSubmit: (formData: FormData) => void;
@@ -23,7 +25,8 @@ const formSchema = z.object({
       .trim()
       .regex(/^dcr-[0-9a-f]{32}$/, "DCR ID must be in dcr-*** format"),
     cltName: z.string().trim().min(1).max(255)
-  })
+  }),
+  ...auditLogStreamFiltersSchema.shape
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -135,6 +138,9 @@ export const AzureProviderAuditLogStreamForm = ({ auditLogStream, onSubmit }: Pr
             </FormControl>
           )}
         />
+        <div className="mt-6">
+          <ProductsField />
+        </div>
         <div className="mt-8 flex items-center">
           <Button
             className="mr-4"

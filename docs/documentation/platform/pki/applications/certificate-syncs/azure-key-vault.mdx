@@ -38,7 +38,7 @@ Store certificates in Azure Key Vault as certificate objects. Certificates synce
             - **Enable Removal of Expired/Revoked Certificates**: Remove certificates from the destination if they are no longer active.
             - **Enable Versioning on Renewal**: Create a new version of the certificate on renewal instead of a new certificate.
             - **Include Root CA**: Include the Root CA certificate in the chain.
-            - **Certificate Name Schema**: Customize certificate names using `{{certificateId}}` placeholder.
+            - **Certificate Name Schema**: Customize certificate names using placeholders such as `{{certificateId}}`, `{{commonName}}`, `{{profileId}}`, and `{{applicationId}}`. Must include `{{certificateId}}`. See [Certificate Name Schema](/documentation/platform/pki/applications/certificate-syncs/overview#certificate-name-schema) for the full placeholder reference.
             - **Auto-Sync Enabled**: Automatically sync certificates when changes occur.
 
         <Tip>

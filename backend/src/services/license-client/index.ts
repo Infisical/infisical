@@ -12,3 +12,4 @@ export { defineFeature, defineLimitFeature } from "./feature";
 export * from "./features";
 export type { TLicenseClientFactory } from "./license-client";
 export { licenseClientFactory } from "./license-client";
+export type { TEntitlementsResponse } from "./license-client-types";

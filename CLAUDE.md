@@ -87,3 +87,6 @@ When making significant changes to the codebase (new services, architectural shi
 1. **Backend**: Create service module, migration, wire DI, add routes — see checklist in `backend/CLAUDE.md`
 2. **Frontend**: Add API hooks in `src/hooks/api/<domain>/`, create page/view, wire route — see `frontend/CLAUDE.md` for routing and component patterns
 3. Run `make reviewable-api` and `make reviewable-ui` before submitting
+
+## Helpful files 
+Read AGENTS.md for additional context.

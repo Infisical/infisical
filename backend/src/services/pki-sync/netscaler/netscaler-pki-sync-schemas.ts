@@ -1,8 +1,8 @@
-import RE2 from "re2";
 import { z } from "zod";
 
 import { openApiHidden } from "@app/server/lib/schemas";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
+import { buildCertificateNameSchemaTestName } from "@app/services/pki-sync/pki-sync-certificate-name-fns";
 import { PkiSync } from "@app/services/pki-sync/pki-sync-enums";
 import { PkiSyncSchema } from "@app/services/pki-sync/pki-sync-schemas";
 
@@ -27,9 +27,7 @@ export const NetScalerPkiSyncOptionsSchema = z.object({
           return false;
         }
 
-        const testName = schema
-          .replace(new RE2("\\{\\{certificateId\\}\\}", "g"), "test-cert-id")
-          .replace(new RE2("\\{\\{environment\\}\\}", "g"), "test-env");
+        const testName = buildCertificateNameSchemaTestName(schema);
 
         const hasForbiddenChars = NETSCALER_NAMING.FORBIDDEN_CHARACTERS.split("").some((char) =>
           testName.includes(char)
@@ -39,7 +37,7 @@ export const NetScalerPkiSyncOptionsSchema = z.object({
       },
       {
         message:
-          "Certificate name schema must include the {{certificateId}} placeholder and result in names that contain only alphanumeric characters, hyphens (-), underscores (_), and periods (.) and be 1-255 characters long for NetScaler"
+          "Certificate name schema must include the {{certificateId}} placeholder and result in names that contain only alphanumeric characters, hyphens (-), underscores (_), and periods (.) and be 1-63 characters long for NetScaler. Available placeholders: {{certificateId}}, {{profileId}}, {{applicationId}}, {{commonName}}"
       }
     )
 });

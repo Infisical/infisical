@@ -64,31 +64,41 @@ const Page = () => {
           </Link>
         </PageHeader>
         <Tabs
-          orientation={isCertManager ? "horizontal" : "vertical"}
+          orientation={isCertManager || isSecretManager ? "horizontal" : "vertical"}
           value={selectedTab}
           onValueChange={updateSelectedTab}
         >
-          {isCertManager && (
+          {(isCertManager || isSecretManager) && (
             <TabList>
               <Tab variant="project" value={ProjectAccessControlTabs.Member}>
                 Users
               </Tab>
-              <Tab variant="project" value={ProjectAccessControlTabs.Groups}>
-                Groups
-              </Tab>
               <Tab variant="project" value={ProjectAccessControlTabs.Identities}>
                 Machine Identities
               </Tab>
+              <Tab variant="project" value={ProjectAccessControlTabs.Groups}>
+                Groups
+              </Tab>
+              {isSecretManager && (
+                <Tab variant="project" value={ProjectAccessControlTabs.ServiceTokens}>
+                  Service Tokens
+                </Tab>
+              )}
+              {isSecretManager && (
+                <Tab variant="project" value={ProjectAccessControlTabs.Roles}>
+                  Roles
+                </Tab>
+              )}
             </TabList>
           )}
           <TabPanel value={ProjectAccessControlTabs.Member}>
             <MembersTab />
           </TabPanel>
-          <TabPanel value={ProjectAccessControlTabs.Groups}>
-            <GroupsTab />
-          </TabPanel>
           <TabPanel value={ProjectAccessControlTabs.Identities}>
             <IdentityTab />
+          </TabPanel>
+          <TabPanel value={ProjectAccessControlTabs.Groups}>
+            <GroupsTab />
           </TabPanel>
           {isSecretManager && (
             <TabPanel value={ProjectAccessControlTabs.ServiceTokens}>

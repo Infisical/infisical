@@ -2444,6 +2444,9 @@ export const PROJECT_ROLE = {
     projectId: "The ID of the project.",
     roleSlug: "The slug of the role to get details."
   },
+  GET_ROLE_BY_ID: {
+    roleId: "The ID of the role to get."
+  },
   LIST: {
     projectSlug: "The slug of the project to list the roles of.",
     projectId: "The ID of the project."

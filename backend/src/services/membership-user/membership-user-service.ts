@@ -8,9 +8,12 @@ import {
   TemporaryPermissionMode,
   TMembershipRolesInsert
 } from "@app/db/schemas";
+import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { TOidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { TSamlConfigDALFactory } from "@app/ee/services/saml-config/saml-config-dal";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
@@ -78,6 +81,9 @@ type TMembershipUserServiceFactoryDep = {
     "cleanupActorApplicationMemberships"
   >;
   approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "deleteUserStepApproversInProjects">;
+  emailDomainDAL: Pick<TEmailDomainDALFactory, "find">;
+  oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne">;
+  samlConfigDAL: Pick<TSamlConfigDALFactory, "findOne">;
 };
 
 export type TMembershipUserServiceFactory = ReturnType<typeof membershipUserServiceFactory>;
@@ -99,7 +105,10 @@ export const membershipUserServiceFactory = ({
   additionalPrivilegeDAL,
   projectAccessRequestDAL,
   applicationMembershipCleanupService,
-  approvalPolicyDAL
+  approvalPolicyDAL,
+  emailDomainDAL,
+  oidcConfigDAL,
+  samlConfigDAL
 }: TMembershipUserServiceFactoryDep) => {
   const scopeFactory = {
     [AccessScope.Organization]: newOrgMembershipUserFactory({
@@ -110,7 +119,10 @@ export const membershipUserServiceFactory = ({
       tokenService,
       userDAL,
       userGroupMembershipDAL,
-      membershipUserDAL
+      membershipUserDAL,
+      emailDomainDAL,
+      oidcConfigDAL,
+      samlConfigDAL
     }),
     [AccessScope.Project]: newProjectMembershipUserFactory({
       orgDAL,

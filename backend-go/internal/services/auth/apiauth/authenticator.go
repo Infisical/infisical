@@ -387,16 +387,16 @@ func (a *ApiAuthenticator) validateIdentityTokenClaims(ctx context.Context, clai
 }
 
 // ValidateServiceToken performs real service token validation.
-// Exact port of fnValidateServiceToken in service-token-service.ts:172-199.
+// TODO(go): FIPS mode changes in bcrypt to the other one is needed
 func (a *ApiAuthenticator) ValidateServiceToken(ctx context.Context, token string) (*auth.Identity, error) {
-	// 1. Split token: "st.<tokenID>.<tokenSecret>"
-	parts := strings.SplitN(token, ".", 3)
-	if len(parts) != 3 || parts[0] != "st" {
+	// 1. Split token: "st.<tokenID>.<tokenSecret>[.<extra>]"
+	// Legacy tokens may have a 4th segment that should be ignored.
+	parts := strings.SplitN(token, ".", 4)
+	if len(parts) < 3 || parts[0] != "st" {
 		return nil, errutil.Unauthorized("You are not allowed to access this resource").WithErrf("validateServiceToken: invalid token format")
 	}
 	tokenID := parts[1]
 	tokenSecret := parts[2]
-
 	// 2. Find service token.
 	serviceToken, err := a.findServiceTokenByID(ctx, tokenID)
 	if err != nil {
