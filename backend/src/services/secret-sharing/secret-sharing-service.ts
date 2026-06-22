@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
-import { OrganizationActionScope, TOrganizations, TSecretSharing } from "@app/db/schemas";
+import { OrganizationActionScope, OrgMembershipStatus, TOrganizations, TSecretSharing } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionSecretShareAction, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -113,11 +113,13 @@ export const secretSharingServiceFactory = ({
     if (!actorId) {
       throw new UnauthorizedError({ message: "Authentication required to view this secret" });
     }
-    const actorOrgs = await orgDAL.listOrganizationsWithSubOrgs({ actorId });
-    const accessibleOrgIds = new Set(
-      actorOrgs.flatMap((org) => [org.id, ...org.subOrganizations.map((s: { id: string }) => s.id)])
-    );
-    if (!accessibleOrgIds.has(secretOrgId)) {
+    const memberships = await orgDAL.findMembership({
+      actorUserId: actorId,
+      scopeOrgId: secretOrgId,
+      status: OrgMembershipStatus.Accepted,
+      isActive: true
+    });
+    if (memberships.length === 0) {
       throw new ForbiddenRequestError({ message: "You do not have access to this secret" });
     }
   };
