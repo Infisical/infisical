@@ -107,6 +107,21 @@ export const secretSharingServiceFactory = ({
   const $hasExternalEmailAccess = (sharedSecret: TSecretSharing): boolean =>
     Boolean(sharedSecret.allowExternalEmails && sharedSecret.password);
 
+  // Verifies the actor has access to secretOrgId, accounting for sub-org membership.
+  const $assertOrgAccess = async (secretOrgId: string, actorOrgId: string, actorId?: string): Promise<void> => {
+    if (secretOrgId === actorOrgId) return;
+    if (!actorId) {
+      throw new UnauthorizedError({ message: "Authentication required to view this secret" });
+    }
+    const customerOrgs = await orgDAL.listOrganizationsWithSubOrgs({ actorId });
+    const accessibleOrgIds = new Set(
+      customerOrgs.flatMap((org) => [org.id, ...org.subOrganizations.map((s: { id: string }) => s.id)])
+    );
+    if (!accessibleOrgIds.has(secretOrgId)) {
+      throw new ForbiddenRequestError({ message: "You do not have access to this secret" });
+    }
+  };
+
   const createSharedSecret = async ({
     actor,
     actorId,
@@ -602,8 +617,8 @@ export const secretSharingServiceFactory = ({
       if (!orgId) {
         throw new UnauthorizedError({ message: "Authentication required to view this secret" });
       }
-      if (sharedSecret.orgId && sharedSecret.orgId !== orgId) {
-        throw new ForbiddenRequestError({ message: "You do not have access to this secret" });
+      if (sharedSecret.orgId) {
+        await $assertOrgAccess(sharedSecret.orgId, orgId, actorId);
       }
     }
 
@@ -670,12 +685,13 @@ export const secretSharingServiceFactory = ({
 
       const { accessType, expiresAt, expiresAfterViews } = sharedSecret;
 
-      if (accessType === SecretSharingAccessType.Organization && orgId === undefined) {
-        throw new UnauthorizedError();
-      }
-
-      if (accessType === SecretSharingAccessType.Organization && orgId !== sharedSecret.orgId) {
-        throw new ForbiddenRequestError();
+      if (accessType === SecretSharingAccessType.Organization) {
+        if (orgId === undefined) {
+          throw new UnauthorizedError();
+        }
+        if (sharedSecret.orgId) {
+          await $assertOrgAccess(sharedSecret.orgId, orgId, actorId);
+        }
       }
 
       const isAuthorizedUser = await $isAuthorizedEmailUser(sharedSecret, actorId);
