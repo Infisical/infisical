@@ -1,10 +1,17 @@
 /* eslint-disable no-underscore-dangle */
+import dns from "dns";
+import { promisify } from "util";
+
 import ConnectionString from "mongodb-connection-string-url";
 import RE2 from "re2";
 import { z } from "zod";
 
+import { BadRequestError } from "@app/lib/errors";
+
 import { PamAccountType } from "../pam/pam-enums";
 import { getApplicablePolicies, PamPolicyDescriptorSchema } from "../pam/pam-policies";
+
+const resolveSrv = promisify(dns.resolveSrv);
 
 enum PamFieldWidget {
   Text = "text",
@@ -432,10 +439,10 @@ export const sanitizeCredentials = (accountType: PamAccountType, data: unknown) 
 
 export type TGatewayTarget = { host: string; port?: number };
 
-export const extractGatewayTarget = (
+export const extractGatewayTarget = async (
   accountType: PamAccountType,
   rawConnectionDetails: Record<string, unknown>
-): TGatewayTarget => {
+): Promise<TGatewayTarget> => {
   const validated = validateConnectionDetails(accountType, rawConnectionDetails);
 
   switch (accountType) {
@@ -454,15 +461,28 @@ export const extractGatewayTarget = (
     }
     case PamAccountType.MongoDB: {
       const { connectionString } = validated as { connectionString: string };
-      try {
-        const url = new URL(connectionString);
-        return {
-          host: url.hostname,
-          port: url.port ? Number(url.port) : undefined
-        };
-      } catch {
-        return { host: connectionString };
+      const cs = new ConnectionString(connectionString);
+      const [firstHost] = cs.hosts;
+
+      if (cs.isSRV) {
+        const records = await resolveSrv(`_mongodb._tcp.${firstHost}`);
+        if (records.length === 0) {
+          throw new BadRequestError({
+            message: `Unable to resolve SRV record for MongoDB host "${firstHost}". Ensure the host is a valid SRV domain.`
+          });
+        }
+        const record = records[Math.floor(Math.random() * records.length)];
+        return { host: record.name, port: record.port };
       }
+
+      const colonIdx = firstHost.lastIndexOf(":");
+      if (colonIdx !== -1) {
+        return {
+          host: firstHost.slice(0, colonIdx),
+          port: parseInt(firstHost.slice(colonIdx + 1), 10)
+        };
+      }
+      return { host: firstHost, port: 27017 };
     }
     default:
       throw new Error(`No gateway target extraction defined for account type '${accountType}'`);

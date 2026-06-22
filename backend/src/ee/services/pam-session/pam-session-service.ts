@@ -357,7 +357,7 @@ export const pamSessionServiceFactory = ({
 
     const rawConnectionDetails = await decrypt(projectId, account.encryptedConnectionDetails);
     const rawCredentials = await decrypt(projectId, account.encryptedCredentials);
-    const gatewayTarget = extractGatewayTarget(account.accountType as PamAccountType, rawConnectionDetails);
+    const gatewayTarget = await extractGatewayTarget(account.accountType as PamAccountType, rawConnectionDetails);
 
     const user = await userDAL.findById(actor.actorId);
     const expiresAt = new Date(Date.now() + sessionDurationMs);
