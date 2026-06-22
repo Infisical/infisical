@@ -20,6 +20,7 @@ describe("buildPamAccountTypeMetadata", () => {
     expect(byType.get(PamAccountType.Postgres)?.supportsWebAccess).toBe(true);
     expect(byType.get(PamAccountType.SSH)?.supportsWebAccess).toBe(true);
     expect(byType.get(PamAccountType.MySQL)?.supportsWebAccess).toBe(false);
+    expect(byType.get(PamAccountType.Kubernetes)?.supportsWebAccess).toBe(false);
   });
 
   const fieldByKey = <T extends { key: string }>(fields: T[], key: string) => fields.find((f) => f.key === key);
@@ -106,6 +107,40 @@ describe("buildPamAccountTypeMetadata", () => {
     });
   });
 
+  test("derives Kubernetes connection and credential fields from the schema", () => {
+    const k8s = byType.get(PamAccountType.Kubernetes);
+    expect(k8s).toBeDefined();
+    expect(k8s?.name).toBe("Kubernetes");
+
+    expect(k8s?.connectionFields.map((f) => f.key)).toEqual(["url", "sslRejectUnauthorized", "sslCertificate"]);
+    expect(fieldByKey(k8s!.connectionFields, "url")).toMatchObject({ widget: "text", required: true });
+    expect(fieldByKey(k8s!.connectionFields, "sslRejectUnauthorized")).toMatchObject({
+      widget: "boolean",
+      required: true
+    });
+    expect(fieldByKey(k8s!.connectionFields, "sslCertificate")).toMatchObject({ widget: "textarea", required: false });
+
+    const authMethod = fieldByKey(k8s!.credentialFields, "authMethod");
+    expect(authMethod).toMatchObject({ widget: "select", required: true });
+    expect(authMethod?.options?.map((o) => o.value)).toEqual(["service-account-token", "gateway-kubernetes-auth"]);
+
+    expect(fieldByKey(k8s!.credentialFields, "serviceAccountToken")).toMatchObject({
+      widget: "textarea",
+      secret: true,
+      showWhen: { field: "authMethod", equals: "service-account-token" }
+    });
+    expect(fieldByKey(k8s!.credentialFields, "namespace")).toMatchObject({
+      widget: "text",
+      required: true,
+      showWhen: { field: "authMethod", equals: "gateway-kubernetes-auth" }
+    });
+    expect(fieldByKey(k8s!.credentialFields, "serviceAccountName")).toMatchObject({
+      widget: "text",
+      required: true,
+      showWhen: { field: "authMethod", equals: "gateway-kubernetes-auth" }
+    });
+  });
+
   test("flattens the SSH discriminated union into a select plus conditional variant fields", () => {
     const ssh = byType.get(PamAccountType.SSH);
     expect(ssh).toBeDefined();
@@ -137,6 +172,29 @@ describe("isCredentialConfigured", () => {
     expect(isCredentialConfigured(PamAccountType.Postgres, { username: "u", password: "p" })).toBe(true);
     expect(isCredentialConfigured(PamAccountType.Postgres, { username: "u", password: "  " })).toBe(false);
     expect(isCredentialConfigured(PamAccountType.MySQL, { username: "u" })).toBe(false);
+  });
+
+  test("Kubernetes credential depends on the auth method", () => {
+    expect(
+      isCredentialConfigured(PamAccountType.Kubernetes, {
+        authMethod: "service-account-token",
+        serviceAccountToken: "token123"
+      })
+    ).toBe(true);
+    expect(
+      isCredentialConfigured(PamAccountType.Kubernetes, {
+        authMethod: "service-account-token",
+        serviceAccountToken: ""
+      })
+    ).toBe(false);
+    expect(isCredentialConfigured(PamAccountType.Kubernetes, { authMethod: "service-account-token" })).toBe(false);
+    expect(
+      isCredentialConfigured(PamAccountType.Kubernetes, {
+        authMethod: "gateway-kubernetes-auth",
+        namespace: "default",
+        serviceAccountName: "my-sa"
+      })
+    ).toBe(true);
   });
 
   test("SSH credential depends on the auth method", () => {
