@@ -49,6 +49,7 @@ type TPamSessionServiceFactoryDep = {
     | "endSessionById"
     | "terminateSessionById"
     | "updateById"
+    | "activateSession"
   >;
   pamAccountDAL: Pick<TPamAccountDALFactory, "findByIdWithDetails" | "findOne">;
   pamFolderDAL: Pick<TPamFolderDALFactory, "findOne">;

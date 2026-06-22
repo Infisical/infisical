@@ -610,8 +610,7 @@ const fieldsFromSchema = (schema: z.ZodTypeAny, ui: Record<string, TFieldUiHint>
         widget: PamFieldWidget.Select,
         required: true,
         secret: false,
-        options:
-          ui[discriminator]?.options ?? discriminatorValues.map((v) => ({ label: humanizeKey(v), value: v }))
+        options: ui[discriminator]?.options ?? discriminatorValues.map((v) => ({ label: humanizeKey(v), value: v }))
       }
     ];
 
