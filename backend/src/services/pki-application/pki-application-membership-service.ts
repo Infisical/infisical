@@ -475,6 +475,19 @@ export const pkiApplicationMembershipServiceFactory = ({
       );
       const r = updatedRoles[0];
 
+      if (role === ResourceMembershipRole.Auditor && kind !== ApplicationMemberKind.Identity) {
+        await approvalPolicyDAL.deleteStepApproversBySubject(
+          {
+            projectId,
+            scopeType: ApprovalPolicyScope.PkiApplication,
+            scopeId: applicationId,
+            userId: kind === ApplicationMemberKind.User ? (membership.actorUserId ?? undefined) : undefined,
+            groupId: kind === ApplicationMemberKind.Group ? (membership.actorGroupId ?? undefined) : undefined
+          },
+          tx
+        );
+      }
+
       return {
         membershipId: membership.id,
         applicationId,
