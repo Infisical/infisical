@@ -329,7 +329,7 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       body: z.object({
-        schemas: z.array(z.string()),
+        schemas: z.array(z.string()).default(["urn:ietf:params:scim:schemas:core:2.0:User"]),
         userName: z.string().trim(),
         name: z
           .object({
@@ -503,7 +503,7 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
     method: "POST",
     schema: {
       body: z.object({
-        schemas: z.array(z.string()),
+        schemas: z.array(z.string()).default(["urn:ietf:params:scim:schemas:core:2.0:Group"]),
         displayName: z.string().trim(),
         members: z
           .array(
