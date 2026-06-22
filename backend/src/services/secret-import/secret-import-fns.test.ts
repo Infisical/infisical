@@ -22,7 +22,7 @@ const decorateSecret = (secret: TSecret) => ({
   ...secret,
   type: SecretType.Shared,
   tags: [] as { slug: string }[],
-  secretMetadata: [] as { key: string; value: string }[],
+  secretMetadata: [] as { key: string; value: string; encryptedValue?: Buffer | null }[],
   encryptedValue: Buffer.from("root-value"),
   encryptedComment: Buffer.from(""),
   skipMultilineEncoding: false
