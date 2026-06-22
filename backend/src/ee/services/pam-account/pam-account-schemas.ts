@@ -339,8 +339,11 @@ type TFieldUiHint = {
 };
 
 const humanizeKey = (key: string) => {
-  const spaced = key.replace(new RE2(/([A-Z])/g), " $1").trim();
-  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+  const spaced = key.replace(new RE2(/([A-Z])/g), " $1").replace(/-/g, " ").trim();
+  return spaced
+    .split(" ")
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
 };
 
 const unwrapField = (schema: z.ZodTypeAny): { base: z.ZodTypeAny; required: boolean } => {
