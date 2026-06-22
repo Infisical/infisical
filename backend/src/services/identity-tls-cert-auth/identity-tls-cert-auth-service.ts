@@ -42,7 +42,12 @@ import { TMembershipIdentityDALFactory } from "../membership-identity/membership
 import { TOrgDALFactory } from "../org/org-dal";
 import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/super-admin-fns";
 import { TIdentityTlsCertAuthDALFactory } from "./identity-tls-cert-auth-dal";
-import { isSubjectAltNameAllowed, parseSubjectDetails } from "./identity-tls-cert-auth-fns";
+import {
+  isSubjectAltNameAllowed,
+  parseAllowedSubjectAltNames,
+  parseSubjectDetails,
+  serializeAllowedSubjectAltNames
+} from "./identity-tls-cert-auth-fns";
 import { TIdentityTlsCertAuthServiceFactory } from "./identity-tls-cert-auth-types";
 
 type TIdentityTlsCertAuthServiceFactoryDep = {
@@ -196,7 +201,7 @@ export const identityTlsCertAuthServiceFactory = ({
         );
 
         const isValidSubjectAltName = isSubjectAltNameAllowed(
-          identityTlsCertAuth.allowedSubjectAltNames,
+          parseAllowedSubjectAltNames(identityTlsCertAuth.allowedSubjectAltNames),
           sanExtension?.names.items
         );
         if (!isValidSubjectAltName) {
@@ -435,7 +440,7 @@ export const identityTlsCertAuthServiceFactory = ({
           identityId: identityMembershipOrg.identity.id,
           accessTokenMaxTTL,
           allowedCommonNames,
-          allowedSubjectAltNames,
+          allowedSubjectAltNames: serializeAllowedSubjectAltNames(allowedSubjectAltNames),
           accessTokenTTL,
           encryptedCaCertificate: encryptor({ plainText: Buffer.from(caCertificate) }).cipherTextBlob,
           accessTokenNumUsesLimit,
@@ -540,7 +545,7 @@ export const identityTlsCertAuthServiceFactory = ({
 
     const updatedTlsCertAuth = await identityTlsCertAuthDAL.updateById(identityTlsCertAuth.id, {
       allowedCommonNames,
-      allowedSubjectAltNames,
+      allowedSubjectAltNames: serializeAllowedSubjectAltNames(allowedSubjectAltNames),
       encryptedCaCertificate: caCertificate
         ? encryptor({ plainText: Buffer.from(caCertificate) }).cipherTextBlob
         : undefined,

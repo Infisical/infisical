@@ -118,7 +118,7 @@ export const IdentityTlsCertAuthForm = ({
       reset({
         caCertificate: data.caCertificate,
         allowedCommonNames: data.allowedCommonNames || undefined,
-        allowedSubjectAltNames: data.allowedSubjectAltNames || undefined,
+        allowedSubjectAltNames: data.allowedSubjectAltNames?.join("\n") || undefined,
         accessTokenTTL: String(data.accessTokenTTL),
         accessTokenMaxTTL: String(data.accessTokenMaxTTL),
         accessTokenNumUsesLimit: data.accessTokenNumUsesLimit
@@ -152,12 +152,21 @@ export const IdentityTlsCertAuthForm = ({
   }: FormData) => {
     if (!identityId) return;
 
+    const allowedSubjectAltNamesList = allowedSubjectAltNames
+      ? allowedSubjectAltNames
+          .split("\n")
+          .map((entry) => entry.trim())
+          .filter(Boolean)
+      : [];
+
     if (data) {
       await updateMutateAsync({
         ...(projectId ? { projectId } : { organizationId: orgId }),
         caCertificate,
         allowedCommonNames: allowedCommonNames || null,
-        allowedSubjectAltNames: allowedSubjectAltNames || null,
+        allowedSubjectAltNames: allowedSubjectAltNamesList.length
+          ? allowedSubjectAltNamesList
+          : null,
         identityId,
         accessTokenTTL: Number(accessTokenTTL),
         accessTokenMaxTTL: Number(accessTokenMaxTTL),
@@ -170,7 +179,9 @@ export const IdentityTlsCertAuthForm = ({
         identityId,
         caCertificate,
         allowedCommonNames: allowedCommonNames || undefined,
-        allowedSubjectAltNames: allowedSubjectAltNames || undefined,
+        allowedSubjectAltNames: allowedSubjectAltNamesList.length
+          ? allowedSubjectAltNamesList
+          : undefined,
         accessTokenTTL: Number(accessTokenTTL),
         accessTokenMaxTTL: Number(accessTokenMaxTTL),
         accessTokenNumUsesLimit: Number(accessTokenNumUsesLimit || "0"),
@@ -267,16 +278,16 @@ export const IdentityTlsCertAuthForm = ({
                         <InfoIcon className="size-3.5 text-muted" />
                       </TooltipTrigger>
                       <TooltipContent className="max-w-md">
-                        Comma separated subject alternative names allowed to authenticate against
-                        the identity. Prefix entries by type (URI:, DNS:, IP:, EMAIL:). Bare entries
-                        are treated as DNS names. Leave empty to skip SAN validation.
+                        Subject alternative names allowed to authenticate against the identity, one
+                        per line. Prefix entries by type (URI:, DNS:, IP:, EMAIL:). Bare entries are
+                        treated as DNS names. Leave empty to skip SAN validation.
                       </TooltipContent>
                     </Tooltip>
                   </FieldLabel>
-                  <Input
+                  <TextArea
                     {...field}
                     id="allowedSubjectAltNames"
-                    type="text"
+                    placeholder={"URI:spiffe://example.org/svc\nsvc.example.com"}
                     isError={Boolean(error)}
                   />
                   <FieldError>{error?.message}</FieldError>

@@ -4,8 +4,10 @@ import {
   isSubjectAltNameAllowed,
   isValidAllowedSubjectAltNameEntry,
   normalizeAllowedSubjectAltName,
+  parseAllowedSubjectAltNames,
   parseCertificateSubjectAltNames,
   parseSubjectDetails,
+  serializeAllowedSubjectAltNames,
   TCertificateSanItem
 } from "./identity-tls-cert-auth-fns";
 
@@ -165,62 +167,72 @@ describe("normalizeAllowedSubjectAltName", () => {
 describe("isSubjectAltNameAllowed", () => {
   test("matches a type-prefixed allow-list entry against the certificate", () => {
     expect(
-      isSubjectAltNameAllowed("URI:spiffe://example.org/svc", [{ type: "url", value: "spiffe://example.org/svc" }])
+      isSubjectAltNameAllowed(["URI:spiffe://example.org/svc"], [{ type: "url", value: "spiffe://example.org/svc" }])
     ).toBe(true);
   });
 
   test("matches a bare DNS allow-list entry against a DNS SAN", () => {
-    expect(isSubjectAltNameAllowed("svc.example.com", [{ type: "dns", value: "svc.example.com" }])).toBe(true);
+    expect(isSubjectAltNameAllowed(["svc.example.com"], [{ type: "dns", value: "svc.example.com" }])).toBe(true);
   });
 
   test("matches DNS SANs case-insensitively", () => {
-    expect(isSubjectAltNameAllowed("svc.example.com", [{ type: "dns", value: "SVC.EXAMPLE.COM" }])).toBe(true);
+    expect(isSubjectAltNameAllowed(["svc.example.com"], [{ type: "dns", value: "SVC.EXAMPLE.COM" }])).toBe(true);
   });
 
   test("matches email SAN domain case-insensitively but local-part case-sensitively", () => {
     // domain casing differs -> still matches
-    expect(isSubjectAltNameAllowed("EMAIL:svc@EXAMPLE.com", [{ type: "email", value: "svc@example.com" }])).toBe(true);
+    expect(isSubjectAltNameAllowed(["EMAIL:svc@EXAMPLE.com"], [{ type: "email", value: "svc@example.com" }])).toBe(
+      true
+    );
     // local-part casing differs -> must NOT match
-    expect(isSubjectAltNameAllowed("EMAIL:Svc@example.com", [{ type: "email", value: "svc@example.com" }])).toBe(false);
+    expect(isSubjectAltNameAllowed(["EMAIL:Svc@example.com"], [{ type: "email", value: "svc@example.com" }])).toBe(
+      false
+    );
   });
 
   test("does not conflate SAN types (bare value defaults to DNS and must not match a URI SAN)", () => {
     expect(
-      isSubjectAltNameAllowed("spiffe://example.org/svc", [{ type: "url", value: "spiffe://example.org/svc" }])
+      isSubjectAltNameAllowed(["spiffe://example.org/svc"], [{ type: "url", value: "spiffe://example.org/svc" }])
     ).toBe(false);
   });
 
   test("does not match a same-string SAN of a different type", () => {
     // Allow-list wants a URI SAN; a DNS SAN with the same string must not pass.
     expect(
-      isSubjectAltNameAllowed("URI:spiffe://example.org/svc", [{ type: "dns", value: "spiffe://example.org/svc" }])
+      isSubjectAltNameAllowed(["URI:spiffe://example.org/svc"], [{ type: "dns", value: "spiffe://example.org/svc" }])
     ).toBe(false);
   });
 
   test("matches when any one of several allow-list entries is satisfied", () => {
     expect(
-      isSubjectAltNameAllowed("URI:spiffe://example.org/other, svc.example.com", [
-        { type: "dns", value: "svc.example.com" }
-      ])
+      isSubjectAltNameAllowed(
+        ["URI:spiffe://example.org/other", "svc.example.com"],
+        [{ type: "dns", value: "svc.example.com" }]
+      )
     ).toBe(true);
   });
 
   test("returns false when no certificate SAN matches", () => {
     expect(
-      isSubjectAltNameAllowed("URI:spiffe://example.org/svc", [{ type: "url", value: "spiffe://example.org/other" }])
+      isSubjectAltNameAllowed(["URI:spiffe://example.org/svc"], [{ type: "url", value: "spiffe://example.org/other" }])
     ).toBe(false);
   });
 
   test("returns false when the certificate has no SANs", () => {
-    expect(isSubjectAltNameAllowed("svc.example.com", undefined)).toBe(false);
-    expect(isSubjectAltNameAllowed("svc.example.com", [])).toBe(false);
+    expect(isSubjectAltNameAllowed(["svc.example.com"], undefined)).toBe(false);
+    expect(isSubjectAltNameAllowed(["svc.example.com"], [])).toBe(false);
   });
 
-  test("tolerates whitespace in the allow-list", () => {
+  test("returns false for an empty allow-list", () => {
+    expect(isSubjectAltNameAllowed([], [{ type: "dns", value: "svc.example.com" }])).toBe(false);
+  });
+
+  test("trims surrounding whitespace on each allow-list entry", () => {
     expect(
-      isSubjectAltNameAllowed(" svc.example.com , URI:spiffe://example.org/svc ", [
-        { type: "dns", value: "svc.example.com" }
-      ])
+      isSubjectAltNameAllowed(
+        [" svc.example.com ", " URI:spiffe://example.org/svc "],
+        [{ type: "dns", value: "svc.example.com" }]
+      )
     ).toBe(true);
   });
 });

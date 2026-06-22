@@ -105,15 +105,31 @@ export const isValidAllowedSubjectAltNameEntry = (entry: string): boolean => {
 };
 
 export const isSubjectAltNameAllowed = (
-  allowedSubjectAltNames: string,
+  allowedSubjectAltNames: ReadonlyArray<string>,
   certificateSanItems?: ReadonlyArray<TCertificateSanItem>
 ): boolean => {
   const certificateSans = new Set(parseCertificateSubjectAltNames(certificateSanItems));
   if (certificateSans.size === 0) return false;
 
   return allowedSubjectAltNames
-    .split(",")
     .map(normalizeAllowedSubjectAltName)
     .filter((san): san is string => san !== null)
     .some((allowedSan) => certificateSans.has(allowedSan));
+};
+
+export const serializeAllowedSubjectAltNames = (entries?: ReadonlyArray<string> | null): string | null | undefined => {
+  if (entries === undefined) return undefined;
+  if (entries === null || entries.length === 0) return null;
+  return JSON.stringify(entries);
+};
+
+export const parseAllowedSubjectAltNames = (stored?: string | null): string[] => {
+  if (!stored) return [];
+  try {
+    const parsed = JSON.parse(stored) as unknown;
+    if (Array.isArray(parsed)) return parsed.filter((entry): entry is string => typeof entry === "string");
+    return [];
+  } catch {
+    return [];
+  }
 };
