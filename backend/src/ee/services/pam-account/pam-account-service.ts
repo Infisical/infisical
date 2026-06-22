@@ -263,7 +263,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
           message: "S3 recording config requires an AWS connection on the account or template"
         });
       }
-      resolvedS3Config = await validateRecordingS3Config(deps, connId, recordingSettings.s3Config);
+      resolvedS3Config = await validateRecordingS3Config(deps, connId, recordingSettings.s3Config, ctx);
     }
 
     const validatedConnectionDetails = validateConnectionDetails(accountType, connectionDetails);
@@ -385,7 +385,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
           message: "S3 recording config requires an AWS connection on the account or template"
         });
       }
-      resolvedS3Config = await validateRecordingS3Config(deps, connId, recordingSettings.s3Config);
+      resolvedS3Config = await validateRecordingS3Config(deps, connId, recordingSettings.s3Config, ctx);
     }
 
     const updateData: Record<string, unknown> = {};

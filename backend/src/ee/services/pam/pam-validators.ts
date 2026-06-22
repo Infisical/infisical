@@ -1,13 +1,21 @@
-import { ForbiddenError } from "@casl/ability";
+import { ForbiddenError, subject } from "@casl/ability";
 
-import { OrganizationActionScope } from "@app/db/schemas";
+import { ActionProjectType, OrganizationActionScope } from "@app/db/schemas";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
-import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
+import {
+  OrgPermissionAppConnectionActions,
+  OrgPermissionGatewayActions,
+  OrgPermissionSubjects
+} from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { NotFoundError } from "@app/lib/errors";
+import {
+  ProjectPermissionAppConnectionActions,
+  ProjectPermissionSub
+} from "@app/ee/services/permission/project-permission";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
-import { AWSRegion } from "@app/services/app-connection/app-connection-enums";
+import { AppConnection, AWSRegion } from "@app/services/app-connection/app-connection-enums";
 import { decryptAppConnection } from "@app/services/app-connection/app-connection-fns";
 import { getAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-fns";
 import { TAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-types";
@@ -19,7 +27,7 @@ import { normalizeKeyPrefix, TPamRecordingResolvedConfig } from "../pam-session-
 import { TActorContext } from "./pam-permission";
 
 export type TPamValidatorDeps = {
-  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
+  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findOne">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveAttachableGatewayFromPool">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findOne" | "findById">;
@@ -64,30 +72,73 @@ export const validateGatewayAttachment = async (
   }
 };
 
+const enforceAppConnectionConnect = async (
+  { permissionService, appConnectionDAL }: Pick<TPamValidatorDeps, "permissionService" | "appConnectionDAL">,
+  connectionId: string,
+  ctx: TActorContext
+) => {
+  const conn = await appConnectionDAL.findById(connectionId);
+  if (!conn) {
+    throw new NotFoundError({ message: "Recording connection not found" });
+  }
+
+  if (conn.app !== AppConnection.AWS) {
+    throw new BadRequestError({ message: "Recording connection must be an AWS connection" });
+  }
+
+  if (conn.projectId) {
+    const { permission } = await permissionService.getProjectPermission({
+      actor: ctx.actor,
+      actorId: ctx.actorId,
+      projectId: conn.projectId,
+      actorAuthMethod: ctx.actorAuthMethod,
+      actorOrgId: ctx.actorOrgId,
+      actionProjectType: ActionProjectType.Any
+    });
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionAppConnectionActions.Connect,
+      subject(ProjectPermissionSub.AppConnections, { connectionId })
+    );
+  } else {
+    if (conn.orgId !== ctx.actorOrgId) {
+      throw new NotFoundError({ message: "Recording connection not found" });
+    }
+    const { permission: orgPermission } = await permissionService.getOrgPermission({
+      actorId: ctx.actorId,
+      actor: ctx.actor,
+      orgId: conn.orgId,
+      actorOrgId: ctx.actorOrgId,
+      actorAuthMethod: ctx.actorAuthMethod,
+      scope: OrganizationActionScope.Any
+    });
+    ForbiddenError.from(orgPermission).throwUnlessCan(
+      OrgPermissionAppConnectionActions.Connect,
+      subject(OrgPermissionSubjects.AppConnections, { connectionId })
+    );
+  }
+
+  return conn;
+};
+
 export const validateRecordingConnection = async (
-  { appConnectionDAL }: Pick<TPamValidatorDeps, "appConnectionDAL">,
+  deps: Pick<TPamValidatorDeps, "permissionService" | "appConnectionDAL">,
   connectionId: string | null | undefined,
   ctx: TActorContext
 ) => {
   if (connectionId) {
-    const conn = await appConnectionDAL.findOne({ id: connectionId, orgId: ctx.actorOrgId });
-    if (!conn) {
-      throw new NotFoundError({ message: "Recording connection not found in your organization" });
-    }
+    await enforceAppConnectionConnect(deps, connectionId, ctx);
   }
 };
 
 export const validateRecordingS3Config = async (
-  { appConnectionDAL, kmsService }: Pick<TPamValidatorDeps, "appConnectionDAL" | "kmsService">,
+  deps: Pick<TPamValidatorDeps, "permissionService" | "appConnectionDAL" | "kmsService">,
   connectionId: string,
-  s3Config: { bucket: string; region: string; keyPrefix?: string }
+  s3Config: { bucket: string; region: string; keyPrefix?: string },
+  ctx: TActorContext
 ): Promise<TPamRecordingResolvedConfig> => {
-  const raw = await appConnectionDAL.findById(connectionId);
-  if (!raw) {
-    throw new NotFoundError({ message: `Recording connection ${connectionId} not found` });
-  }
+  const raw = await enforceAppConnectionConnect(deps, connectionId, ctx);
 
-  const appConnection = await decryptAppConnection(raw, kmsService);
+  const appConnection = await decryptAppConnection(raw, deps.kmsService);
   const awsConfig = await getAwsConnectionConfig(
     appConnection as unknown as TAwsConnectionConfig,
     (s3Config.region as AWSRegion) ?? AWSRegion.US_EAST_1
