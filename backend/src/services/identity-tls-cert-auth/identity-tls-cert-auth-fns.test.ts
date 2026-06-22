@@ -4,10 +4,8 @@ import {
   isSubjectAltNameAllowed,
   isValidAllowedSubjectAltNameEntry,
   normalizeAllowedSubjectAltName,
-  parseAllowedSubjectAltNames,
   parseCertificateSubjectAltNames,
   parseSubjectDetails,
-  serializeAllowedSubjectAltNames,
   TCertificateSanItem
 } from "./identity-tls-cert-auth-fns";
 
