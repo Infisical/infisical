@@ -110,14 +110,12 @@ export const sessionResponseSchema = z
   .passthrough();
 
 // Checkout either needs the customer to complete a Stripe Checkout (checkout_created) or is applied
-// directly to an existing subscription (subscription_updated). `url` is the legacy shape, tolerated so
-// the cloud and license server can deploy in any order.
+// directly to an existing subscription (subscription_updated).
 export const checkoutResultSchema = z
   .object({
-    outcome: z.enum(["checkout_created", "subscription_updated"]).optional(),
+    outcome: z.enum(["checkout_created", "subscription_updated"]),
     checkoutUrl: z.string().optional(),
-    subscriptionId: z.string().optional(),
-    url: z.string().optional()
+    subscriptionId: z.string().optional()
   })
   .passthrough();
 

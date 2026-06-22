@@ -430,12 +430,11 @@ export const licenseV2ServiceFactory = ({
       return { outcome: "subscription_updated" as const, subscriptionId: result.subscriptionId };
     }
 
-    // checkout_created (or the legacy { url } shape) means the customer must finish in Stripe Checkout.
-    const checkoutUrl = result.checkoutUrl ?? result.url;
-    if (!checkoutUrl) {
+    // checkout_created: the customer must finish in Stripe Checkout.
+    if (!result.checkoutUrl) {
       throw new InternalServerError({ message: "Checkout session did not return a URL" });
     }
-    return { outcome: "checkout_created" as const, checkoutUrl };
+    return { outcome: "checkout_created" as const, checkoutUrl: result.checkoutUrl };
   };
 
   const addPaymentMethod = async ({ orgId, actor, returnPath }: TAddBillingV2PaymentMethodDTO) => {
