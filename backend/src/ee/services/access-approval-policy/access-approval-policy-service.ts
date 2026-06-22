@@ -62,25 +62,25 @@ export const accessApprovalPolicyServiceFactory = ({
   accessApprovalRequestReviewerDAL,
   projectMembershipDAL
 }: TAccessApprovalPolicyServiceFactoryDep): TAccessApprovalPolicyServiceFactory => {
-  const $policyExists = async ({
-    envId,
-    envIds,
+  const $assertNoConflictingPolicy = async ({
+    envs,
     secretPath,
-    policyId
+    excludePolicyId
   }: {
-    envId?: string;
-    envIds?: string[];
+    envs: { id: string; slug: string }[];
     secretPath: string;
-    policyId?: string;
+    excludePolicyId?: string;
   }) => {
-    if (!envId && !envIds) {
-      throw new BadRequestError({ message: "Must provide either envId or envIds" });
-    }
+    if (envs.length === 0) return;
     const policy = await accessApprovalPolicyDAL.findPolicyByEnvIdAndSecretPath({
       secretPath,
-      envIds: envId ? [envId] : (envIds as string[])
+      envIds: envs.map((e) => e.id)
     });
-    return policyId ? policy && policy.id !== policyId : Boolean(policy);
+    if (!policy || policy.id === excludePolicyId) return;
+    const conflictEnv = envs.find((e) => policy.environments?.some((pe) => pe.id === e.id)) ?? envs[0];
+    throw new BadRequestError({
+      message: `A policy for secret path '${secretPath}' already exists in environment '${conflictEnv.slug}'`
+    });
   };
 
   const verifyProjectUserMembership = async (userIds: string[], orgId: string, projectId: string) => {
@@ -155,14 +155,7 @@ export const accessApprovalPolicyServiceFactory = ({
       throw new NotFoundError({ message: `One or more environments not found: ${notFoundEnvs.join(", ")}` });
     }
 
-    for (const env of envs) {
-      // eslint-disable-next-line no-await-in-loop
-      if (await $policyExists({ envId: env.id, secretPath })) {
-        throw new BadRequestError({
-          message: `A policy for secret path '${secretPath}' already exists in environment '${env.slug}'`
-        });
-      }
-    }
+    await $assertNoConflictingPolicy({ envs, secretPath });
 
     let approverUserIds = userApprovers;
     if (userApproverNames.length) {
@@ -383,20 +376,11 @@ export const accessApprovalPolicyServiceFactory = ({
       envs = await projectEnvDAL.find({ $in: { slug: environments }, projectId: accessApprovalPolicy.projectId });
     }
 
-    for (const env of envs) {
-      if (
-        // eslint-disable-next-line no-await-in-loop
-        await $policyExists({
-          envId: env.id,
-          secretPath: secretPath || accessApprovalPolicy.secretPath,
-          policyId: accessApprovalPolicy.id
-        })
-      ) {
-        throw new BadRequestError({
-          message: `A policy for secret path '${secretPath || accessApprovalPolicy.secretPath}' already exists in environment '${env.slug}'`
-        });
-      }
-    }
+    await $assertNoConflictingPolicy({
+      envs,
+      secretPath: secretPath || accessApprovalPolicy.secretPath,
+      excludePolicyId: accessApprovalPolicy.id
+    });
 
     const { permission } = await permissionService.getProjectPermission({
       actor,
