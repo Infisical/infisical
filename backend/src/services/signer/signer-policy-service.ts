@@ -55,7 +55,7 @@ type TSignerPolicyServiceFactoryDep = {
   signerRequestDAL: TSignerRequestDALFactory;
   approvalRequestStepsDAL: Pick<TApprovalRequestStepsDALFactory, "create">;
   approvalRequestStepEligibleApproversDAL: Pick<TApprovalRequestStepEligibleApproversDALFactory, "create">;
-  approvalRequestGrantsDAL: Pick<TApprovalRequestGrantsDALFactory, "create" | "find" | "update" | "updateById">;
+  approvalRequestGrantsDAL: Pick<TApprovalRequestGrantsDALFactory, "create" | "update">;
   membershipDAL: Pick<TMembershipDALFactory, "find" | "transaction">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
