@@ -158,7 +158,7 @@ export const ACCOUNT_TYPE_CONFIGS = {
     credentials: z.discriminatedUnion("authMethod", [
       z.object({
         authMethod: z.literal("service-account-token"),
-        serviceAccountToken: z.string().trim().max(10000)
+        serviceAccountToken: z.string().trim().min(1).max(10000)
       }),
       z.object({
         authMethod: z.literal("gateway-kubernetes-auth"),
