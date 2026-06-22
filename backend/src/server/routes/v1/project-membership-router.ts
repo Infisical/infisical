@@ -18,6 +18,24 @@ import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { SanitizedUserSchema } from "../sanitizedSchemas";
 
+const projectUserMembershipRoleSchema = z.object({
+  id: z.string(),
+  role: z.string(),
+  customRoleId: z.string().optional().nullable(),
+  customRoleName: z.string().optional().nullable(),
+  customRoleSlug: z.string().optional().nullable(),
+  isTemporary: z.boolean(),
+  temporaryMode: z.string().optional().nullable(),
+  temporaryRange: z.string().nullable().optional(),
+  temporaryAccessStartTime: z.date().nullable().optional(),
+  temporaryAccessEndTime: z.date().nullable().optional()
+});
+
+const projectUserMembershipSchema = ProjectMembershipsSchema.extend({
+  user: SanitizedUserSchema,
+  roles: z.array(projectUserMembershipRoleSchema)
+});
+
 export const registerProjectMembershipRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
@@ -39,25 +57,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
       }),
       response: {
         200: z.object({
-          memberships: ProjectMembershipsSchema.extend({
-            user: SanitizedUserSchema,
-            roles: z.array(
-              z.object({
-                id: z.string(),
-                role: z.string(),
-                customRoleId: z.string().optional().nullable(),
-                customRoleName: z.string().optional().nullable(),
-                customRoleSlug: z.string().optional().nullable(),
-                isTemporary: z.boolean(),
-                temporaryMode: z.string().optional().nullable(),
-                temporaryRange: z.string().nullable().optional(),
-                temporaryAccessStartTime: z.date().nullable().optional(),
-                temporaryAccessEndTime: z.date().nullable().optional()
-              })
-            )
-          })
-            .omit({ updatedAt: true })
-            .array()
+          memberships: projectUserMembershipSchema.omit({ updatedAt: true }).array()
         })
       }
     },
@@ -103,23 +103,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
       }),
       response: {
         200: z.object({
-          membership: ProjectMembershipsSchema.extend({
-            user: SanitizedUserSchema,
-            roles: z.array(
-              z.object({
-                id: z.string(),
-                role: z.string(),
-                customRoleId: z.string().optional().nullable(),
-                customRoleName: z.string().optional().nullable(),
-                customRoleSlug: z.string().optional().nullable(),
-                isTemporary: z.boolean(),
-                temporaryMode: z.string().optional().nullable(),
-                temporaryRange: z.string().nullable().optional(),
-                temporaryAccessStartTime: z.date().nullable().optional(),
-                temporaryAccessEndTime: z.date().nullable().optional()
-              })
-            )
-          }).omit({ updatedAt: true })
+          membership: projectUserMembershipSchema.omit({ updatedAt: true })
         })
       }
     },
@@ -173,23 +157,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
       }),
       response: {
         200: z.object({
-          membership: ProjectMembershipsSchema.extend({
-            user: SanitizedUserSchema,
-            roles: z.array(
-              z.object({
-                id: z.string(),
-                role: z.string(),
-                customRoleId: z.string().optional().nullable(),
-                customRoleName: z.string().optional().nullable(),
-                customRoleSlug: z.string().optional().nullable(),
-                isTemporary: z.boolean(),
-                temporaryMode: z.string().optional().nullable(),
-                temporaryRange: z.string().nullable().optional(),
-                temporaryAccessStartTime: z.date().nullable().optional(),
-                temporaryAccessEndTime: z.date().nullable().optional()
-              })
-            )
-          }).omit({ updatedAt: true })
+          membership: projectUserMembershipSchema.omit({ updatedAt: true })
         })
       }
     },
@@ -305,23 +273,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
       }),
       response: {
         200: z.object({
-          membership: ProjectMembershipsSchema.extend({
-            user: SanitizedUserSchema,
-            roles: z.array(
-              z.object({
-                id: z.string(),
-                role: z.string(),
-                customRoleId: z.string().optional().nullable(),
-                customRoleName: z.string().optional().nullable(),
-                customRoleSlug: z.string().optional().nullable(),
-                isTemporary: z.boolean(),
-                temporaryMode: z.string().optional().nullable(),
-                temporaryRange: z.string().nullable().optional(),
-                temporaryAccessStartTime: z.date().nullable().optional(),
-                temporaryAccessEndTime: z.date().nullable().optional()
-              })
-            )
-          }).omit({ createdAt: true, updatedAt: true })
+          membership: projectUserMembershipSchema.omit({ createdAt: true, updatedAt: true })
         })
       }
     },
