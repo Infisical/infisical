@@ -176,6 +176,7 @@ export const ACCOUNT_TYPE_CONFIGS = {
     }),
     ui: {
       port: { defaultValue: 1433 },
+      database: { defaultValue: "master" },
       authMethod: {
         label: "Auth Method",
         defaultValue: "sql-login",
