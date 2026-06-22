@@ -74,9 +74,10 @@ export const accessApprovalPolicyServiceFactory = ({
     if (envs.length === 0) return;
     const policy = await accessApprovalPolicyDAL.findPolicyByEnvIdAndSecretPath({
       secretPath,
-      envIds: envs.map((e) => e.id)
+      envIds: envs.map((e) => e.id),
+      excludePolicyId
     });
-    if (!policy || policy.id === excludePolicyId) return;
+    if (!policy) return;
     const conflictEnv = envs.find((e) => policy.environments?.some((pe) => pe.id === e.id)) ?? envs[0];
     throw new BadRequestError({
       message: `A policy for secret path '${secretPath}' already exists in environment '${conflictEnv.slug}'`
