@@ -240,7 +240,7 @@ export const licenseServiceFactory = ({
           // it non-fatal so a subscription read failure doesn't drop the org to the free fallback.
           try {
             const subscription = await licenseClient.getSubscription(rootOrgId);
-            const tiers = subscription?.items.map((item) => item.plan.toLowerCase()) ?? [];
+            const tiers = (subscription?.items ?? []).map((item) => item.plan.toLowerCase());
             if (tiers.some((tier) => tier.includes("enterprise"))) {
               currentPlan.slug = "enterprise";
             } else if (tiers.length > 0) {

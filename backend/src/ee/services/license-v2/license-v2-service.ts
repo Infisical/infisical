@@ -1,6 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { OrganizationActionScope, TableName } from "@app/db/schemas";
+import { OrganizationActionScope } from "@app/db/schemas";
 import { TEnvConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -332,7 +332,7 @@ export const licenseV2ServiceFactory = ({
 
     const members = await orgDAL.countAllOrgMembers(orgId);
     const identities = await identityOrgMembershipDAL.countAllOrgIdentities({
-      [`${TableName.Membership}.scopeOrgId` as "scopeOrgId"]: orgId
+      scopeOrgId: orgId
     });
 
     // Plan caps come from the license server (a null limit means genuinely unlimited). Used counts
