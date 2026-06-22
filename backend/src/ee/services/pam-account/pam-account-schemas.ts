@@ -252,10 +252,7 @@ export const extractGatewayTarget = (
     case PamAccountType.Kubernetes: {
       const { url } = validated as { url: string };
       const parsed = new URL(url);
-      return {
-        host: parsed.hostname,
-        port: parsed.port ? Number(parsed.port) : undefined
-      };
+      return { host: parsed.hostname };
     }
     default:
       throw new Error(`No gateway target extraction defined for account type '${accountType}'`);
