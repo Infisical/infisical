@@ -17,7 +17,6 @@ import {
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { Tooltip } from "@app/components/v2";
 import {
   Badge,
   DropdownMenu,
@@ -26,14 +25,17 @@ import {
   DropdownMenuTrigger,
   IconButton,
   TableCell,
-  TableRow
+  TableRow,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionAppConnectionActions } from "@app/context/ProjectPermissionContext/types";
 import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
 import { useToggle } from "@app/hooks";
 import { TAppConnection } from "@app/hooks/api/appConnections";
-import { CrededentialRotationStatusBadge } from "@app/pages/organization/AppConnections/AppConnectionsPage/components/AppConnectionForm/shared/CrededentialRotationBadge";
+import { CredentialRotationStatusBadge } from "@app/pages/organization/AppConnections/AppConnectionsPage/components/AppConnectionForm/shared/CredentialRotationBadge";
 
 type Props = {
   appConnection: TAppConnection;
@@ -99,8 +101,11 @@ export const AppConnectionRow = ({
         <div className="flex items-center gap-1.5">
           <span className="truncate">{name}</span>
           {description && (
-            <Tooltip content={description}>
-              <InfoIcon className="text-accent" />
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <InfoIcon className="text-accent" />
+              </TooltipTrigger>
+              <TooltipContent>{description}</TooltipContent>
             </Tooltip>
           )}
         </div>
@@ -114,17 +119,22 @@ export const AppConnectionRow = ({
       <TableCell className="text-right">
         <div className="flex items-center justify-end gap-2">
           {isPlatformManagedCredentials && (
-            <Tooltip side="left" content="This connection's credentials are managed by Infisical.">
-              <div>
-                <Badge variant="info">
-                  <ServerIcon />
-                  Platform Managed
-                </Badge>
-              </div>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div>
+                  <Badge variant="info">
+                    <ServerIcon />
+                    Platform Managed
+                  </Badge>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="left">
+                This connection&apos;s credentials are managed by Infisical.
+              </TooltipContent>
             </Tooltip>
           )}
           {appConnection.rotation && (
-            <CrededentialRotationStatusBadge appConnection={appConnection} />
+            <CredentialRotationStatusBadge appConnection={appConnection} />
           )}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

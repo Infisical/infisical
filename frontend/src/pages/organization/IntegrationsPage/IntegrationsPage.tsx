@@ -1,9 +1,9 @@
 import { Helmet } from "react-helmet";
-import { faInfoCircle } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate, useSearch } from "@tanstack/react-router";
+import { InfoIcon } from "lucide-react";
 
 import { PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
+import { Alert, AlertTitle } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization } from "@app/context";
 import {
@@ -19,14 +19,12 @@ import { IntegrationsListPageTabs } from "@app/types/integrations";
 const AppConnectionsTab = withPermission(
   () => (
     <>
-      <div className="mb-4 flex w-full flex-col rounded-md border border-blue-500/50 bg-blue-500/30 px-4 py-2 text-sm text-blue-200">
-        <div className="flex items-center">
-          <FontAwesomeIcon icon={faInfoCircle} className="mr-2 mb-0.5 text-sm" />
-          <span className="text-sm text-blue-200">
-            App connections can also be created and managed independently in projects now.
-          </span>
-        </div>
-      </div>
+      <Alert variant="info" className="mb-4">
+        <InfoIcon />
+        <AlertTitle>
+          App connections can also be created and managed independently in projects now.
+        </AlertTitle>
+      </Alert>
       <AppConnectionsTable />
     </>
   ),

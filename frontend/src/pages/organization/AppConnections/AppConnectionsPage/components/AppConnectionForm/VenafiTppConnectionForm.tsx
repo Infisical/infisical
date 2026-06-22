@@ -1,18 +1,26 @@
 import { Controller, FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Info } from "lucide-react";
 import { z } from "zod";
 
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
   Button,
-  FormControl,
+  Field,
+  FieldError,
+  FieldLabel,
   Input,
-  ModalClose,
   SecretInput,
   Select,
+  SelectContent,
   SelectItem,
-  Tooltip
-} from "@app/components/v2";
+  SelectTrigger,
+  SelectValue,
+  SheetFooter,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { GatewayPicker } from "@app/components/v3/platform/GatewayPicker";
 import { useSubscription } from "@app/context";
 import {
@@ -20,9 +28,11 @@ import {
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
 import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
+import { useScopeVariant } from "@app/hooks";
 import { TVenafiTppConnection, VenafiTppConnectionMethod } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 
+import { useAppConnectionForm } from "./AppConnectionFormContext";
 import {
   genericAppConnectionFieldsSchema,
   GenericAppConnectionsFields
@@ -57,6 +67,8 @@ type FormData = z.infer<typeof formSchema>;
 
 export const VenafiTppConnectionForm = ({ appConnection, onSubmit }: Props) => {
   const isUpdate = Boolean(appConnection);
+  const { onCancel } = useAppConnectionForm();
+  const scopeVariant = useScopeVariant();
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -96,31 +108,34 @@ export const VenafiTppConnectionForm = ({ appConnection, onSubmit }: Props) => {
           name="method"
           control={control}
           render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl
-              tooltipText={`The method you would like to use to connect with ${
-                APP_CONNECTION_MAP[AppConnection.VenafiTpp].name
-              }. This field cannot be changed after creation.`}
-              errorText={error?.message}
-              isError={Boolean(error?.message)}
-              label="Method"
-            >
-              <Select
-                isDisabled={isUpdate}
-                value={value}
-                onValueChange={(val) => onChange(val)}
-                className="w-full border border-mineshaft-500"
-                position="popper"
-                dropdownContainerClassName="max-w-none"
-              >
-                {Object.values(VenafiTppConnectionMethod).map((method) => {
-                  return (
+            <Field className="mb-4">
+              <FieldLabel>
+                Method
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-sm">
+                    The method you would like to use to connect with{" "}
+                    {APP_CONNECTION_MAP[AppConnection.VenafiTpp].name}. This field cannot be changed
+                    after creation.
+                  </TooltipContent>
+                </Tooltip>
+              </FieldLabel>
+              <Select disabled={isUpdate} value={value} onValueChange={(val) => onChange(val)}>
+                <SelectTrigger className="w-full" isError={Boolean(error?.message)}>
+                  <SelectValue placeholder="Select a method..." />
+                </SelectTrigger>
+                <SelectContent position="popper">
+                  {Object.values(VenafiTppConnectionMethod).map((method) => (
                     <SelectItem value={method} key={method}>
                       {getAppConnectionMethodDetails(method).name}
                     </SelectItem>
-                  );
-                })}
+                  ))}
+                </SelectContent>
               </Select>
-            </FormControl>
+              <FieldError errors={[error]} />
+            </Field>
           )}
         />
         {subscription.gateway && (
@@ -129,23 +144,32 @@ export const VenafiTppConnectionForm = ({ appConnection, onSubmit }: Props) => {
             a={OrgPermissionSubjects.Gateway}
           >
             {(isAllowed) => (
-              <FormControl label="Gateway">
-                <Tooltip
-                  isDisabled={isAllowed}
-                  content="Restricted access. You don't have permission to attach gateways to resources."
-                >
-                  <div>
-                    <GatewayPicker
-                      isDisabled={!isAllowed}
-                      value={{ gatewayId: gatewayId ?? null, gatewayPoolId: gatewayPoolId ?? null }}
-                      onChange={({ gatewayId: newGwId, gatewayPoolId: newPoolId }) => {
-                        setValue("gatewayId", newGwId, { shouldDirty: true });
-                        setValue("gatewayPoolId", newPoolId, { shouldDirty: true });
-                      }}
-                    />
-                  </div>
+              <Field className="mb-4">
+                <FieldLabel>Gateway</FieldLabel>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div>
+                      <GatewayPicker
+                        isDisabled={!isAllowed}
+                        value={{
+                          gatewayId: gatewayId ?? null,
+                          gatewayPoolId: gatewayPoolId ?? null
+                        }}
+                        onChange={({ gatewayId: newGwId, gatewayPoolId: newPoolId }) => {
+                          setValue("gatewayId", newGwId, { shouldDirty: true });
+                          setValue("gatewayPoolId", newPoolId, { shouldDirty: true });
+                        }}
+                      />
+                    </div>
+                  </TooltipTrigger>
+                  {!isAllowed && (
+                    <TooltipContent>
+                      Restricted access. You don&apos;t have permission to attach gateways to
+                      resources.
+                    </TooltipContent>
+                  )}
                 </Tooltip>
-              </FormControl>
+              </Field>
             )}
           </OrgPermissionCan>
         )}
@@ -153,27 +177,42 @@ export const VenafiTppConnectionForm = ({ appConnection, onSubmit }: Props) => {
           name="credentials.tppUrl"
           control={control}
           render={({ field, fieldState: { error } }) => (
-            <FormControl
-              errorText={error?.message}
-              isError={Boolean(error?.message)}
-              label="TPP URL"
-            >
-              <Input {...field} placeholder="https://tpp.example.com" />
-            </FormControl>
+            <Field className="mb-4">
+              <FieldLabel htmlFor="venafi-tpp-url">TPP URL</FieldLabel>
+              <Input
+                id="venafi-tpp-url"
+                {...field}
+                placeholder="https://tpp.example.com"
+                isError={Boolean(error?.message)}
+              />
+              <FieldError errors={[error]} />
+            </Field>
           )}
         />
         <Controller
           name="credentials.clientId"
           control={control}
           render={({ field, fieldState: { error } }) => (
-            <FormControl
-              errorText={error?.message}
-              isError={Boolean(error?.message)}
-              label="Client ID"
-              tooltipText="The OAuth Client ID registered in the Venafi TPP API Integration."
-            >
-              <Input {...field} placeholder="my-infisical-integration" />
-            </FormControl>
+            <Field className="mb-4">
+              <FieldLabel htmlFor="venafi-client-id">
+                Client ID
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-sm">
+                    The OAuth Client ID registered in the Venafi TPP API Integration.
+                  </TooltipContent>
+                </Tooltip>
+              </FieldLabel>
+              <Input
+                id="venafi-client-id"
+                {...field}
+                placeholder="my-infisical-integration"
+                isError={Boolean(error?.message)}
+              />
+              <FieldError errors={[error]} />
+            </Field>
           )}
         />
         <div className="grid grid-cols-2 gap-2">
@@ -181,50 +220,43 @@ export const VenafiTppConnectionForm = ({ appConnection, onSubmit }: Props) => {
             name="credentials.username"
             control={control}
             render={({ field, fieldState: { error } }) => (
-              <FormControl
-                errorText={error?.message}
-                isError={Boolean(error?.message)}
-                label="Username"
-              >
-                <Input {...field} placeholder="admin@domain.com" />
-              </FormControl>
+              <Field className="mb-4">
+                <FieldLabel htmlFor="venafi-username">Username</FieldLabel>
+                <Input
+                  id="venafi-username"
+                  {...field}
+                  placeholder="admin@domain.com"
+                  isError={Boolean(error?.message)}
+                />
+                <FieldError errors={[error]} />
+              </Field>
             )}
           />
           <Controller
             name="credentials.password"
             control={control}
             render={({ field: { value, onChange }, fieldState: { error } }) => (
-              <FormControl
-                errorText={error?.message}
-                isError={Boolean(error?.message)}
-                label="Password"
-              >
-                <SecretInput
-                  containerClassName="text-gray-400 group-focus-within:border-primary-400/50! border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
-                  value={value}
-                  onChange={(e) => onChange(e.target.value)}
-                />
-              </FormControl>
+              <Field className="mb-4">
+                <FieldLabel>Password</FieldLabel>
+                <SecretInput value={value} onChange={(e) => onChange(e.target.value)} />
+                <FieldError errors={[error]} />
+              </Field>
             )}
           />
         </div>
-        <div className="mt-8 flex items-center">
+        <SheetFooter className="sticky bottom-0 -mx-4 items-center border-t bg-popover">
           <Button
-            className="mr-4"
-            size="sm"
             type="submit"
-            colorSchema="secondary"
-            isLoading={isSubmitting}
+            variant={scopeVariant}
+            isPending={isSubmitting}
             isDisabled={isSubmitting || !isDirty}
           >
             {isUpdate ? "Update Credentials" : "Connect to Venafi TPP"}
           </Button>
-          <ModalClose asChild>
-            <Button colorSchema="secondary" variant="plain">
-              Cancel
-            </Button>
-          </ModalClose>
-        </div>
+          <Button type="button" variant="outline" onClick={onCancel} isDisabled={isSubmitting}>
+            Cancel
+          </Button>
+        </SheetFooter>
       </form>
     </FormProvider>
   );
