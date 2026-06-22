@@ -10,6 +10,7 @@ import (
 
 	"github.com/infisical/api/internal/server/api/secrets/secret"
 	"github.com/infisical/api/tests/infra"
+	"github.com/infisical/api/tests/infra/nodejs"
 )
 
 // The expansion algorithm itself (circular refs, self-reference, max depth,
@@ -24,17 +25,17 @@ func TestGetSecretByName_Expansion(t *testing.T) {
 		name     string
 		target   string
 		expand   bool
-		seed     func(t *testing.T, nodejs *infra.NodeJSService, projectID, env string)
+		seed     func(t *testing.T, api *nodejs.API, projectID, env string)
 		expected string
 	}{
 		{
 			name:   "expands same-folder reference",
 			target: "ENDPOINT",
 			expand: true,
-			seed: func(t *testing.T, nodejs *infra.NodeJSService, projectID, env string) {
-				nodejs.CreateSecret(t, projectID, env, "/", "HOST", "myhost.com", nil)
-				nodejs.CreateSecret(t, projectID, env, "/", "PORT", "5432", nil)
-				nodejs.CreateSecret(t, projectID, env, "/", "ENDPOINT", "${HOST}:${PORT}", nil)
+			seed: func(t *testing.T, api *nodejs.API, projectID, env string) {
+				api.Secrets.Create(projectID, env, "HOST", "myhost.com").Do()
+				api.Secrets.Create(projectID, env, "PORT", "5432").Do()
+				api.Secrets.Create(projectID, env, "ENDPOINT", "${HOST}:${PORT}").Do()
 			},
 			expected: "myhost.com:5432",
 		},
@@ -42,9 +43,9 @@ func TestGetSecretByName_Expansion(t *testing.T) {
 			name:   "preserves references when expansion disabled",
 			target: "ENDPOINT",
 			expand: false,
-			seed: func(t *testing.T, nodejs *infra.NodeJSService, projectID, env string) {
-				nodejs.CreateSecret(t, projectID, env, "/", "HOST", "myhost.com", nil)
-				nodejs.CreateSecret(t, projectID, env, "/", "ENDPOINT", "${HOST}:8080", nil)
+			seed: func(t *testing.T, api *nodejs.API, projectID, env string) {
+				api.Secrets.Create(projectID, env, "HOST", "myhost.com").Do()
+				api.Secrets.Create(projectID, env, "ENDPOINT", "${HOST}:8080").Do()
 			},
 			expected: "${HOST}:8080",
 		},
@@ -52,9 +53,9 @@ func TestGetSecretByName_Expansion(t *testing.T) {
 			name:   "expands absolute cross-env reference against the database",
 			target: "CONN",
 			expand: true,
-			seed: func(t *testing.T, nodejs *infra.NodeJSService, projectID, env string) {
-				nodejs.CreateSecret(t, projectID, "staging", "/", "DB_HOST", "staging-db.example.com", nil)
-				nodejs.CreateSecret(t, projectID, env, "/", "CONN", "${staging.DB_HOST}", nil)
+			seed: func(t *testing.T, api *nodejs.API, projectID, env string) {
+				api.Secrets.Create(projectID, "staging", "DB_HOST", "staging-db.example.com").Do()
+				api.Secrets.Create(projectID, env, "CONN", "${staging.DB_HOST}").Do()
 			},
 			expected: "staging-db.example.com",
 		},
@@ -62,12 +63,12 @@ func TestGetSecretByName_Expansion(t *testing.T) {
 			name:   "expands absolute cross-env reference into a nested path",
 			target: "CONN",
 			expand: true,
-			seed: func(t *testing.T, nodejs *infra.NodeJSService, projectID, env string) {
-				nodejs.CreateFolder(t, projectID, "staging", "/", "db")
-				nodejs.CreateFolder(t, projectID, "staging", "/db", "primary")
-				nodejs.CreateSecret(t, projectID, "staging", "/db/primary", "DB_HOST", "primary-db.example.com", nil)
+			seed: func(t *testing.T, api *nodejs.API, projectID, env string) {
+				api.Folders.Create(projectID, "staging", "/", "db")
+				api.Folders.Create(projectID, "staging", "/db", "primary")
+				api.Secrets.Create(projectID, "staging", "DB_HOST", "primary-db.example.com").Path("/db/primary").Do()
 				// ${env.path.KEY}: dotted path segments map to /db/primary.
-				nodejs.CreateSecret(t, projectID, env, "/", "CONN", "${staging.db.primary.DB_HOST}", nil)
+				api.Secrets.Create(projectID, env, "CONN", "${staging.db.primary.DB_HOST}").Do()
 			},
 			expected: "primary-db.example.com",
 		},
@@ -76,16 +77,17 @@ func TestGetSecretByName_Expansion(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			nodejs := stack.NodeJS()
+			nj := stack.NodeJS()
+			api := nj.For(t)
 
-			proj := nodejs.CreateProject(t, "get-expansion")
-			tc.seed(t, nodejs, proj.ID, proj.EnvSlug)
+			proj := api.Projects.Create("get-expansion").Do()
+			tc.seed(t, api, proj.ID, proj.EnvSlug)
 
-			identity := nodejs.CreateIdentity(t, "get-expansion-identity")
-			nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
+			identity := api.Identities.Create("get-expansion-identity")
+			api.Identities.AddToProject(proj.ID, identity.ID).Role("admin").Do()
 
 			client := infra.NewClientBuilder(t, newSecretsRouter(t)).
-				Identity(infra.MachineIdentity(identity.ID, nodejs.OrgID())).
+				Identity(infra.MachineIdentity(identity.ID, nj.OrgID())).
 				Build()
 
 			resp, err := getSecret(client, tc.target, &secret.GetSecretByNameV4Query{
@@ -129,17 +131,18 @@ func TestGetSecretByName_Imports(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			nodejs := stack.NodeJS()
+			nj := stack.NodeJS()
+			api := nj.For(t)
 
-			proj := nodejs.CreateProject(t, "get-import")
-			nodejs.CreateSecret(t, proj.ID, "staging", "/", "STAGING_SECRET", "staging-value", nil)
-			nodejs.CreateSecretImport(t, proj.ID, "dev", "/", "staging", "/")
+			proj := api.Projects.Create("get-import").Do()
+			api.Secrets.Create(proj.ID, "staging", "STAGING_SECRET", "staging-value").Do()
+			api.Imports.Create(proj.ID, "dev", "/", "staging", "/")
 
-			identity := nodejs.CreateIdentity(t, "get-import-identity")
-			nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
+			identity := api.Identities.Create("get-import-identity")
+			api.Identities.AddToProject(proj.ID, identity.ID).Role("admin").Do()
 
 			client := infra.NewClientBuilder(t, newSecretsRouter(t)).
-				Identity(infra.MachineIdentity(identity.ID, nodejs.OrgID())).
+				Identity(infra.MachineIdentity(identity.ID, nj.OrgID())).
 				Build()
 
 			resp, err := getSecret(client, "STAGING_SECRET", &secret.GetSecretByNameV4Query{
@@ -168,19 +171,20 @@ func TestGetSecretByName_Imports(t *testing.T) {
 // resolved using a secret that exists only via an import.
 func TestGetSecretByName_ExpansionThroughImports(t *testing.T) {
 	t.Parallel()
-	nodejs := stack.NodeJS()
+	nj := stack.NodeJS()
+	api := nj.For(t)
 
-	proj := nodejs.CreateProject(t, "get-expansion-import")
+	proj := api.Projects.Create("get-expansion-import").Do()
 	// Base value lives in staging; dev imports staging and references it.
-	nodejs.CreateSecret(t, proj.ID, "staging", "/", "DB_HOST", "staging-db.example.com", nil)
-	nodejs.CreateSecret(t, proj.ID, "dev", "/", "DB_URL", "postgres://${DB_HOST}/app", nil)
-	nodejs.CreateSecretImport(t, proj.ID, "dev", "/", "staging", "/")
+	api.Secrets.Create(proj.ID, "staging", "DB_HOST", "staging-db.example.com").Do()
+	api.Secrets.Create(proj.ID, "dev", "DB_URL", "postgres://${DB_HOST}/app").Do()
+	api.Imports.Create(proj.ID, "dev", "/", "staging", "/")
 
-	identity := nodejs.CreateIdentity(t, "get-expansion-import-identity")
-	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
+	identity := api.Identities.Create("get-expansion-import-identity")
+	api.Identities.AddToProject(proj.ID, identity.ID).Role("admin").Do()
 
 	client := infra.NewClientBuilder(t, newSecretsRouter(t)).
-		Identity(infra.MachineIdentity(identity.ID, nodejs.OrgID())).
+		Identity(infra.MachineIdentity(identity.ID, nj.OrgID())).
 		Build()
 
 	resp, err := getSecret(client, "DB_URL", &secret.GetSecretByNameV4Query{

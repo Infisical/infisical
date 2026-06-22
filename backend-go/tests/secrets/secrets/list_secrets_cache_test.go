@@ -14,6 +14,7 @@ import (
 
 	"github.com/infisical/api/internal/server/api/secrets/secret"
 	"github.com/infisical/api/tests/infra"
+	"github.com/infisical/api/tests/infra/nodejs"
 )
 
 // listRaw issues a list request with optional headers and returns the raw
@@ -29,16 +30,17 @@ func listRaw(client *infra.HTTPClient, q *secret.ListSecretsV4Query, headers map
 
 func TestListSecrets_ETag_ReturnsHeader(t *testing.T) {
 	t.Parallel()
-	nodejs := stack.NodeJS()
+	nj := stack.NodeJS()
+	api := nj.For(t)
 
-	proj := nodejs.CreateProject(t, "etag-header")
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "ETAG_SECRET", "etag-value", nil)
+	proj := api.Projects.Create("etag-header").Do()
+	api.Secrets.Create(proj.ID, proj.EnvSlug, "ETAG_SECRET", "etag-value").Do()
 
-	identity := nodejs.CreateIdentity(t, "etag-header-identity")
-	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
+	identity := api.Identities.Create("etag-header-identity")
+	api.Identities.AddToProject(proj.ID, identity.ID).Role("admin").Do()
 
 	client := infra.NewClientBuilder(t, newSecretsRouter(t)).
-		Identity(infra.MachineIdentity(identity.ID, nodejs.OrgID())).
+		Identity(infra.MachineIdentity(identity.ID, nj.OrgID())).
 		Build()
 
 	q := secret.ListSecretsV4Query{
@@ -64,16 +66,17 @@ func TestListSecrets_ETag_ReturnsHeader(t *testing.T) {
 
 func TestListSecrets_ETag_Returns304WhenMatches(t *testing.T) {
 	t.Parallel()
-	nodejs := stack.NodeJS()
+	nj := stack.NodeJS()
+	api := nj.For(t)
 
-	proj := nodejs.CreateProject(t, "etag-304")
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "CACHE_SECRET", "cache-value", nil)
+	proj := api.Projects.Create("etag-304").Do()
+	api.Secrets.Create(proj.ID, proj.EnvSlug, "CACHE_SECRET", "cache-value").Do()
 
-	identity := nodejs.CreateIdentity(t, "etag-304-identity")
-	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
+	identity := api.Identities.Create("etag-304-identity")
+	api.Identities.AddToProject(proj.ID, identity.ID).Role("admin").Do()
 
 	client := infra.NewClientBuilder(t, newSecretsRouter(t)).
-		Identity(infra.MachineIdentity(identity.ID, nodejs.OrgID())).
+		Identity(infra.MachineIdentity(identity.ID, nj.OrgID())).
 		Build()
 
 	q := secret.ListSecretsV4Query{
@@ -96,16 +99,17 @@ func TestListSecrets_ETag_Returns304WhenMatches(t *testing.T) {
 
 func TestListSecrets_ETag_Returns200WhenDiffers(t *testing.T) {
 	t.Parallel()
-	nodejs := stack.NodeJS()
+	nj := stack.NodeJS()
+	api := nj.For(t)
 
-	proj := nodejs.CreateProject(t, "etag-miss")
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "MISS_SECRET", "miss-value", nil)
+	proj := api.Projects.Create("etag-miss").Do()
+	api.Secrets.Create(proj.ID, proj.EnvSlug, "MISS_SECRET", "miss-value").Do()
 
-	identity := nodejs.CreateIdentity(t, "etag-miss-identity")
-	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
+	identity := api.Identities.Create("etag-miss-identity")
+	api.Identities.AddToProject(proj.ID, identity.ID).Role("admin").Do()
 
 	client := infra.NewClientBuilder(t, newSecretsRouter(t)).
-		Identity(infra.MachineIdentity(identity.ID, nodejs.OrgID())).
+		Identity(infra.MachineIdentity(identity.ID, nj.OrgID())).
 		Build()
 
 	q := secret.ListSecretsV4Query{
@@ -127,16 +131,17 @@ func TestListSecrets_ETag_Returns200WhenDiffers(t *testing.T) {
 
 func TestListSecrets_ETag_ConsistentForSameContent(t *testing.T) {
 	t.Parallel()
-	nodejs := stack.NodeJS()
+	nj := stack.NodeJS()
+	api := nj.For(t)
 
-	proj := nodejs.CreateProject(t, "etag-consistent")
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "CONSISTENT_SECRET", "consistent-value", nil)
+	proj := api.Projects.Create("etag-consistent").Do()
+	api.Secrets.Create(proj.ID, proj.EnvSlug, "CONSISTENT_SECRET", "consistent-value").Do()
 
-	identity := nodejs.CreateIdentity(t, "etag-consistent-identity")
-	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
+	identity := api.Identities.Create("etag-consistent-identity")
+	api.Identities.AddToProject(proj.ID, identity.ID).Role("admin").Do()
 
 	client := infra.NewClientBuilder(t, newSecretsRouter(t)).
-		Identity(infra.MachineIdentity(identity.ID, nodejs.OrgID())).
+		Identity(infra.MachineIdentity(identity.ID, nj.OrgID())).
 		Build()
 
 	q := secret.ListSecretsV4Query{
@@ -160,13 +165,13 @@ func TestListSecrets_ETag_ConsistentForSameContent(t *testing.T) {
 func TestListSecrets_ETag_DiffersForDifferentParams(t *testing.T) {
 	tests := []struct {
 		name        string
-		setupSecond func(t *testing.T, nodejs *infra.NodeJSService, proj *infra.ProjectSeed) secret.ListSecretsV4Query
+		setupSecond func(t *testing.T, api *nodejs.API, proj *nodejs.ProjectSeed) secret.ListSecretsV4Query
 	}{
 		{
 			name: "different environment",
-			setupSecond: func(t *testing.T, nodejs *infra.NodeJSService, proj *infra.ProjectSeed) secret.ListSecretsV4Query {
-				nodejs.CreateEnvironment(t, proj.ID, "custom-env", "Custom Env")
-				nodejs.CreateSecret(t, proj.ID, "custom-env", "/", "CUSTOM_SECRET", "custom-value", nil)
+			setupSecond: func(t *testing.T, api *nodejs.API, proj *nodejs.ProjectSeed) secret.ListSecretsV4Query {
+				api.Environments.Create(proj.ID, "custom-env", "Custom Env")
+				api.Secrets.Create(proj.ID, "custom-env", "CUSTOM_SECRET", "custom-value").Do()
 				return secret.ListSecretsV4Query{
 					ProjectID: proj.ID, Environment: "custom-env", SecretPath: new("/"), ViewSecretValue: new(true),
 				}
@@ -174,9 +179,9 @@ func TestListSecrets_ETag_DiffersForDifferentParams(t *testing.T) {
 		},
 		{
 			name: "different path",
-			setupSecond: func(t *testing.T, nodejs *infra.NodeJSService, proj *infra.ProjectSeed) secret.ListSecretsV4Query {
-				nodejs.CreateFolder(t, proj.ID, proj.EnvSlug, "/", "config")
-				nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/config", "CONFIG_SECRET", "config-value", nil)
+			setupSecond: func(t *testing.T, api *nodejs.API, proj *nodejs.ProjectSeed) secret.ListSecretsV4Query {
+				api.Folders.Create(proj.ID, proj.EnvSlug, "/", "config")
+				api.Secrets.Create(proj.ID, proj.EnvSlug, "CONFIG_SECRET", "config-value").Path("/config").Do()
 				return secret.ListSecretsV4Query{
 					ProjectID: proj.ID, Environment: proj.EnvSlug, SecretPath: new("/config"), ViewSecretValue: new(true),
 				}
@@ -184,9 +189,9 @@ func TestListSecrets_ETag_DiffersForDifferentParams(t *testing.T) {
 		},
 		{
 			name: "recursive vs non-recursive",
-			setupSecond: func(t *testing.T, nodejs *infra.NodeJSService, proj *infra.ProjectSeed) secret.ListSecretsV4Query {
-				nodejs.CreateFolder(t, proj.ID, proj.EnvSlug, "/", "nested")
-				nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/nested", "NESTED_SECRET", "nested-value", nil)
+			setupSecond: func(t *testing.T, api *nodejs.API, proj *nodejs.ProjectSeed) secret.ListSecretsV4Query {
+				api.Folders.Create(proj.ID, proj.EnvSlug, "/", "nested")
+				api.Secrets.Create(proj.ID, proj.EnvSlug, "NESTED_SECRET", "nested-value").Path("/nested").Do()
 				return secret.ListSecretsV4Query{
 					ProjectID: proj.ID, Environment: proj.EnvSlug, SecretPath: new("/"), ViewSecretValue: new(true), Recursive: new(true),
 				}
@@ -197,17 +202,18 @@ func TestListSecrets_ETag_DiffersForDifferentParams(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			nodejs := stack.NodeJS()
+			nj := stack.NodeJS()
+			api := nj.For(t)
 
-			proj := nodejs.CreateProject(t, "etag-diff-params")
-			nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "ROOT_SECRET", "root-value", nil)
-			secondQuery := tc.setupSecond(t, nodejs, proj)
+			proj := api.Projects.Create("etag-diff-params").Do()
+			api.Secrets.Create(proj.ID, proj.EnvSlug, "ROOT_SECRET", "root-value").Do()
+			secondQuery := tc.setupSecond(t, api, proj)
 
-			identity := nodejs.CreateIdentity(t, "etag-diff-params-identity")
-			nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
+			identity := api.Identities.Create("etag-diff-params-identity")
+			api.Identities.AddToProject(proj.ID, identity.ID).Role("admin").Do()
 
 			client := infra.NewClientBuilder(t, newSecretsRouter(t)).
-				Identity(infra.MachineIdentity(identity.ID, nodejs.OrgID())).
+				Identity(infra.MachineIdentity(identity.ID, nj.OrgID())).
 				Build()
 
 			_, status, header := listRaw(client, &secret.ListSecretsV4Query{
@@ -228,18 +234,19 @@ func TestListSecrets_ETag_DiffersForDifferentParams(t *testing.T) {
 
 func TestListSecrets_Cache_StoresInRedis(t *testing.T) {
 	t.Parallel()
-	nodejs := stack.NodeJS()
+	nj := stack.NodeJS()
+	api := nj.For(t)
 	redisClient := stack.Redis().Client()
 	t.Cleanup(func() { redisClient.Close() })
 
-	proj := nodejs.CreateProject(t, "cache-redis")
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "CACHED_SECRET", "cached-value", nil)
+	proj := api.Projects.Create("cache-redis").Do()
+	api.Secrets.Create(proj.ID, proj.EnvSlug, "CACHED_SECRET", "cached-value").Do()
 
-	identity := nodejs.CreateIdentity(t, "cache-redis-identity")
-	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
+	identity := api.Identities.Create("cache-redis-identity")
+	api.Identities.AddToProject(proj.ID, identity.ID).Role("admin").Do()
 
 	client := infra.NewClientBuilder(t, newSecretsRouter(t)).
-		Identity(infra.MachineIdentity(identity.ID, nodejs.OrgID())).
+		Identity(infra.MachineIdentity(identity.ID, nj.OrgID())).
 		Build()
 
 	q := secret.ListSecretsV4Query{
@@ -274,22 +281,23 @@ func TestListSecrets_Cache_StoresInRedis(t *testing.T) {
 
 func TestListSecrets_Cache_IsolatedByActor(t *testing.T) {
 	t.Parallel()
-	nodejs := stack.NodeJS()
+	nj := stack.NodeJS()
+	api := nj.For(t)
 
-	proj := nodejs.CreateProject(t, "cache-actor")
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "ACTOR_SECRET", "actor-value", nil)
+	proj := api.Projects.Create("cache-actor").Do()
+	api.Secrets.Create(proj.ID, proj.EnvSlug, "ACTOR_SECRET", "actor-value").Do()
 
-	identity1 := nodejs.CreateIdentity(t, "cache-actor-identity-1")
-	nodejs.AddIdentityToProject(t, proj.ID, identity1.ID, infra.Role("admin"))
+	identity1 := api.Identities.Create("cache-actor-identity-1")
+	api.Identities.AddToProject(proj.ID, identity1.ID).Role("admin").Do()
 
-	identity2 := nodejs.CreateIdentity(t, "cache-actor-identity-2")
-	nodejs.AddIdentityToProject(t, proj.ID, identity2.ID, infra.Role("admin"))
+	identity2 := api.Identities.Create("cache-actor-identity-2")
+	api.Identities.AddToProject(proj.ID, identity2.ID).Role("admin").Do()
 
 	// Both clients share one router/handler so the cache state is shared; only
 	// the actor differs.
 	router := newSecretsRouter(t)
-	client1 := infra.NewClientBuilder(t, router).Identity(infra.MachineIdentity(identity1.ID, nodejs.OrgID())).Build()
-	client2 := infra.NewClientBuilder(t, router).Identity(infra.MachineIdentity(identity2.ID, nodejs.OrgID())).Build()
+	client1 := infra.NewClientBuilder(t, router).Identity(infra.MachineIdentity(identity1.ID, nj.OrgID())).Build()
+	client2 := infra.NewClientBuilder(t, router).Identity(infra.MachineIdentity(identity2.ID, nj.OrgID())).Build()
 
 	q := secret.ListSecretsV4Query{
 		ProjectID:       proj.ID,
@@ -309,18 +317,19 @@ func TestListSecrets_Cache_IsolatedByActor(t *testing.T) {
 
 func TestListSecrets_Cache_Returns304FromHandlerCache(t *testing.T) {
 	t.Parallel()
-	nodejs := stack.NodeJS()
+	nj := stack.NodeJS()
+	api := nj.For(t)
 
-	proj := nodejs.CreateProject(t, "cache-handler-304")
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "HANDLER_SECRET", "handler-value", nil)
+	proj := api.Projects.Create("cache-handler-304").Do()
+	api.Secrets.Create(proj.ID, proj.EnvSlug, "HANDLER_SECRET", "handler-value").Do()
 
-	identity := nodejs.CreateIdentity(t, "cache-handler-304-identity")
-	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
+	identity := api.Identities.Create("cache-handler-304-identity")
+	api.Identities.AddToProject(proj.ID, identity.ID).Role("admin").Do()
 
 	// One client => one handler, so the second request hits the same in-process
 	// cache the first populated.
 	client := infra.NewClientBuilder(t, newSecretsRouter(t)).
-		Identity(infra.MachineIdentity(identity.ID, nodejs.OrgID())).
+		Identity(infra.MachineIdentity(identity.ID, nj.OrgID())).
 		Build()
 
 	q := secret.ListSecretsV4Query{
@@ -342,16 +351,17 @@ func TestListSecrets_Cache_Returns304FromHandlerCache(t *testing.T) {
 
 func TestListSecrets_Cache_InvalidatedOnSecretChange(t *testing.T) {
 	t.Parallel()
-	nodejs := stack.NodeJS()
+	nj := stack.NodeJS()
+	api := nj.For(t)
 
-	proj := nodejs.CreateProject(t, "cache-invalidate")
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "CHANGING_SECRET", "original-value", nil)
+	proj := api.Projects.Create("cache-invalidate").Do()
+	api.Secrets.Create(proj.ID, proj.EnvSlug, "CHANGING_SECRET", "original-value").Do()
 
-	identity := nodejs.CreateIdentity(t, "cache-invalidate-identity")
-	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
+	identity := api.Identities.Create("cache-invalidate-identity")
+	api.Identities.AddToProject(proj.ID, identity.ID).Role("admin").Do()
 
 	client := infra.NewClientBuilder(t, newSecretsRouter(t)).
-		Identity(infra.MachineIdentity(identity.ID, nodejs.OrgID())).
+		Identity(infra.MachineIdentity(identity.ID, nj.OrgID())).
 		Build()
 
 	q := secret.ListSecretsV4Query{
@@ -370,7 +380,7 @@ func TestListSecrets_Cache_InvalidatedOnSecretChange(t *testing.T) {
 
 	// Updating the secret increments the DAL version and deletes the ETag key,
 	// invalidating the cache.
-	nodejs.UpdateSecret(t, proj.ID, proj.EnvSlug, "/", "CHANGING_SECRET", "updated-value")
+	api.Secrets.Update(proj.ID, proj.EnvSlug, "CHANGING_SECRET", "updated-value").Do()
 
 	body, status, header = listRaw(client, &q, map[string]string{"If-None-Match": firstEtag})
 	require.Equal(t, 200, status, "should return 200 after secret change, not 304")
@@ -386,16 +396,17 @@ func TestListSecrets_Cache_InvalidatedOnSecretChange(t *testing.T) {
 // concurrent reader gets a consistent, correct response.
 func TestListSecrets_Cache_ConcurrentAccess(t *testing.T) {
 	t.Parallel()
-	nodejs := stack.NodeJS()
+	nj := stack.NodeJS()
+	api := nj.For(t)
 
-	proj := nodejs.CreateProject(t, "cache-concurrent")
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "CONCURRENT_SECRET", "concurrent-value", nil)
+	proj := api.Projects.Create("cache-concurrent").Do()
+	api.Secrets.Create(proj.ID, proj.EnvSlug, "CONCURRENT_SECRET", "concurrent-value").Do()
 
-	identity := nodejs.CreateIdentity(t, "cache-concurrent-identity")
-	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
+	identity := api.Identities.Create("cache-concurrent-identity")
+	api.Identities.AddToProject(proj.ID, identity.ID).Role("admin").Do()
 
 	client := infra.NewClientBuilder(t, newSecretsRouter(t)).
-		Identity(infra.MachineIdentity(identity.ID, nodejs.OrgID())).
+		Identity(infra.MachineIdentity(identity.ID, nj.OrgID())).
 		Build()
 
 	q := secret.ListSecretsV4Query{

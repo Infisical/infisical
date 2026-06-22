@@ -26,13 +26,14 @@ func TestGetSecretByNameRawV3(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			nodejs := stack.NodeJS()
+			nj := stack.NodeJS()
+			api := nj.For(t)
 
-			proj := nodejs.CreateProject(t, "v3-get")
-			nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "V3_SECRET", "v3-value", nil)
+			proj := api.Projects.Create("v3-get").Do()
+			api.Secrets.Create(proj.ID, proj.EnvSlug, "V3_SECRET", "v3-value").Do()
 
 			client := infra.NewClientBuilder(t, newSecretsRouter(t)).
-				Identity(infra.UserIdentity(nodejs.UserID(), nodejs.OrgID())).
+				Identity(infra.UserIdentity(nj.UserID(), nj.OrgID())).
 				Build()
 
 			q := secret.GetSecretByNameRawV3Query{
@@ -58,13 +59,14 @@ func TestGetSecretByNameRawV3(t *testing.T) {
 // TestListSecretsRawV3 covers the deprecated V3 raw list endpoint.
 func TestListSecretsRawV3(t *testing.T) {
 	t.Parallel()
-	nodejs := stack.NodeJS()
+	nj := stack.NodeJS()
+	api := nj.For(t)
 
-	proj := nodejs.CreateProject(t, "v3-list")
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "V3_SECRET", "v3-value", nil)
+	proj := api.Projects.Create("v3-list").Do()
+	api.Secrets.Create(proj.ID, proj.EnvSlug, "V3_SECRET", "v3-value").Do()
 
 	client := infra.NewClientBuilder(t, newSecretsRouter(t)).
-		Identity(infra.UserIdentity(nodejs.UserID(), nodejs.OrgID())).
+		Identity(infra.UserIdentity(nj.UserID(), nj.OrgID())).
 		Build()
 
 	t.Run("with workspace slug", func(t *testing.T) {

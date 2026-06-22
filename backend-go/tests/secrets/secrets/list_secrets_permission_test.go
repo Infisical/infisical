@@ -11,6 +11,7 @@ import (
 
 	"github.com/infisical/api/internal/server/api/secrets/secret"
 	"github.com/infisical/api/tests/infra"
+	"github.com/infisical/api/tests/infra/nodejs"
 )
 
 // TestListSecrets_Permission_IdentityRole covers base project roles assigned to
@@ -33,18 +34,19 @@ func TestListSecrets_Permission_IdentityRole(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			nodejs := stack.NodeJS()
+			nj := stack.NodeJS()
+			api := nj.For(t)
 
-			proj := nodejs.CreateProject(t, "list-perm-identity-role")
-			nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "ROLE_SECRET", "role-value", nil)
+			proj := api.Projects.Create("list-perm-identity-role").Do()
+			api.Secrets.Create(proj.ID, proj.EnvSlug, "ROLE_SECRET", "role-value").Do()
 
-			identity := nodejs.CreateIdentity(t, "list-perm-identity-role-id")
+			identity := api.Identities.Create("list-perm-identity-role-id")
 			if tc.addToProject {
-				nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role(tc.role))
+				api.Identities.AddToProject(proj.ID, identity.ID).Role(tc.role).Do()
 			}
 
 			client := infra.NewClientBuilder(t, newSecretsRouter(t)).
-				Identity(infra.MachineIdentity(identity.ID, nodejs.OrgID())).
+				Identity(infra.MachineIdentity(identity.ID, nj.OrgID())).
 				Build()
 
 			resp, err := listSecrets(client, &secret.ListSecretsV4Query{
@@ -86,16 +88,17 @@ func TestListSecrets_Permission_UserRole(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			nodejs := stack.NodeJS()
+			nj := stack.NodeJS()
+			api := nj.For(t)
 
-			proj := nodejs.CreateProject(t, "list-perm-user-role")
-			nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "USER_SECRET", "user-value", nil)
+			proj := api.Projects.Create("list-perm-user-role").Do()
+			api.Secrets.Create(proj.ID, proj.EnvSlug, "USER_SECRET", "user-value").Do()
 
-			user := nodejs.InviteAndCreateUser(t, "list-perm-user-"+tc.role+"@test.local")
-			nodejs.AddUserToProject(t, proj.ID, user.Email, []string{tc.role})
+			user := api.Users.InviteAndCreate("list-perm-user-" + tc.role + "@test.local")
+			api.Users.AddToProject(proj.ID, user.Email).Role(tc.role).Do()
 
 			client := infra.NewClientBuilder(t, newSecretsRouter(t)).
-				Identity(infra.UserIdentity(user.ID, nodejs.OrgID())).
+				Identity(infra.UserIdentity(user.ID, nj.OrgID())).
 				Build()
 
 			resp, err := listSecrets(client, &secret.ListSecretsV4Query{
@@ -115,21 +118,22 @@ func TestListSecrets_Permission_UserRole(t *testing.T) {
 
 func TestListSecrets_Permission_CustomRoleEnvironmentScoped(t *testing.T) {
 	t.Parallel()
-	nodejs := stack.NodeJS()
+	nj := stack.NodeJS()
+	api := nj.For(t)
 
-	proj := nodejs.CreateProject(t, "list-perm-env-scoped")
-	nodejs.CreateSecret(t, proj.ID, "dev", "/", "DEV_SECRET", "dev-value", nil)
-	nodejs.CreateSecret(t, proj.ID, "staging", "/", "STAGING_SECRET", "staging-value", nil)
+	proj := api.Projects.Create("list-perm-env-scoped").Do()
+	api.Secrets.Create(proj.ID, "dev", "DEV_SECRET", "dev-value").Do()
+	api.Secrets.Create(proj.ID, "staging", "STAGING_SECRET", "staging-value").Do()
 
-	customRole := nodejs.CreateCustomProjectRole(t, proj.ID, "dev-only-reader", "Dev Only Reader", []infra.Permission{
-		{Subject: "secrets", Action: []string{"read"}, Conditions: map[string]any{"environment": "dev"}},
+	customRole := api.Roles.CreateCustom(proj.ID, "dev-only-reader", "Dev Only Reader", nodejs.Permission{
+		Subject: "secrets", Action: []string{"read"}, Conditions: map[string]any{"environment": "dev"},
 	})
 
-	identity := nodejs.CreateIdentity(t, "list-perm-env-scoped-id")
-	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role(customRole.Slug))
+	identity := api.Identities.Create("list-perm-env-scoped-id")
+	api.Identities.AddToProject(proj.ID, identity.ID).Role(customRole.Slug).Do()
 
 	client := infra.NewClientBuilder(t, newSecretsRouter(t)).
-		Identity(infra.MachineIdentity(identity.ID, nodejs.OrgID())).
+		Identity(infra.MachineIdentity(identity.ID, nj.OrgID())).
 		Build()
 
 	dev, err := listSecrets(client, &secret.ListSecretsV4Query{
@@ -148,27 +152,28 @@ func TestListSecrets_Permission_CustomRoleEnvironmentScoped(t *testing.T) {
 
 func TestListSecrets_Permission_CustomRolePathScoped(t *testing.T) {
 	t.Parallel()
-	nodejs := stack.NodeJS()
+	nj := stack.NodeJS()
+	api := nj.For(t)
 
-	proj := nodejs.CreateProject(t, "list-perm-path-scoped")
+	proj := api.Projects.Create("list-perm-path-scoped").Do()
 
-	nodejs.CreateFolder(t, proj.ID, proj.EnvSlug, "/", "app")
-	nodejs.CreateFolder(t, proj.ID, proj.EnvSlug, "/app", "config")
-	nodejs.CreateFolder(t, proj.ID, proj.EnvSlug, "/", "other")
+	api.Folders.Create(proj.ID, proj.EnvSlug, "/", "app")
+	api.Folders.Create(proj.ID, proj.EnvSlug, "/app", "config")
+	api.Folders.Create(proj.ID, proj.EnvSlug, "/", "other")
 
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/app", "APP_SECRET", "app-value", nil)
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/app/config", "CONFIG_SECRET", "config-value", nil)
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/other", "OTHER_SECRET", "other-value", nil)
+	api.Secrets.Create(proj.ID, proj.EnvSlug, "APP_SECRET", "app-value").Path("/app").Do()
+	api.Secrets.Create(proj.ID, proj.EnvSlug, "CONFIG_SECRET", "config-value").Path("/app/config").Do()
+	api.Secrets.Create(proj.ID, proj.EnvSlug, "OTHER_SECRET", "other-value").Path("/other").Do()
 
-	customRole := nodejs.CreateCustomProjectRole(t, proj.ID, "app-reader", "App Path Reader", []infra.Permission{
-		{Subject: "secrets", Action: []string{"read"}, Conditions: map[string]any{"secretPath": map[string]any{"$glob": "/app/**"}}},
+	customRole := api.Roles.CreateCustom(proj.ID, "app-reader", "App Path Reader", nodejs.Permission{
+		Subject: "secrets", Action: []string{"read"}, Conditions: map[string]any{"secretPath": map[string]any{"$glob": "/app/**"}},
 	})
 
-	identity := nodejs.CreateIdentity(t, "list-perm-path-scoped-id")
-	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role(customRole.Slug))
+	identity := api.Identities.Create("list-perm-path-scoped-id")
+	api.Identities.AddToProject(proj.ID, identity.ID).Role(customRole.Slug).Do()
 
 	client := infra.NewClientBuilder(t, newSecretsRouter(t)).
-		Identity(infra.MachineIdentity(identity.ID, nodejs.OrgID())).
+		Identity(infra.MachineIdentity(identity.ID, nj.OrgID())).
 		Build()
 
 	app, err := listSecrets(client, &secret.ListSecretsV4Query{
@@ -206,18 +211,19 @@ func TestListSecrets_Permission_GroupRole(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			nodejs := stack.NodeJS()
+			nj := stack.NodeJS()
+			api := nj.For(t)
 
-			proj := nodejs.CreateProject(t, "list-perm-group-role")
-			nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "GROUP_SECRET", "group-value", nil)
+			proj := api.Projects.Create("list-perm-group-role").Do()
+			api.Secrets.Create(proj.ID, proj.EnvSlug, "GROUP_SECRET", "group-value").Do()
 
-			group := nodejs.CreateGroup(t, "list-perm-group-"+tc.role)
-			user := nodejs.InviteAndCreateUser(t, "list-perm-group-"+tc.role+"@test.local")
-			nodejs.AddUserToGroup(t, group.ID, user.Email)
-			nodejs.AddGroupToProject(t, proj.ID, group.ID, tc.role)
+			group := api.Groups.Create("list-perm-group-" + tc.role)
+			user := api.Users.InviteAndCreate("list-perm-group-" + tc.role + "@test.local")
+			api.Groups.AddUser(group.ID, user.Email)
+			api.Groups.AddToProject(proj.ID, group.ID, tc.role)
 
 			client := infra.NewClientBuilder(t, newSecretsRouter(t)).
-				Identity(infra.UserIdentity(user.ID, nodejs.OrgID())).
+				Identity(infra.UserIdentity(user.ID, nj.OrgID())).
 				Build()
 
 			resp, err := listSecrets(client, &secret.ListSecretsV4Query{
@@ -237,23 +243,24 @@ func TestListSecrets_Permission_GroupRole(t *testing.T) {
 
 func TestListSecrets_Permission_GroupCustomRole(t *testing.T) {
 	t.Parallel()
-	nodejs := stack.NodeJS()
+	nj := stack.NodeJS()
+	api := nj.For(t)
 
-	proj := nodejs.CreateProject(t, "list-perm-group-custom")
-	nodejs.CreateSecret(t, proj.ID, "dev", "/", "DEV_SECRET", "dev-value", nil)
-	nodejs.CreateSecret(t, proj.ID, "staging", "/", "STAGING_SECRET", "staging-value", nil)
+	proj := api.Projects.Create("list-perm-group-custom").Do()
+	api.Secrets.Create(proj.ID, "dev", "DEV_SECRET", "dev-value").Do()
+	api.Secrets.Create(proj.ID, "staging", "STAGING_SECRET", "staging-value").Do()
 
-	customRole := nodejs.CreateCustomProjectRole(t, proj.ID, "group-dev-reader", "Group Dev Reader", []infra.Permission{
-		{Subject: "secrets", Action: []string{"read"}, Conditions: map[string]any{"environment": "dev"}},
+	customRole := api.Roles.CreateCustom(proj.ID, "group-dev-reader", "Group Dev Reader", nodejs.Permission{
+		Subject: "secrets", Action: []string{"read"}, Conditions: map[string]any{"environment": "dev"},
 	})
 
-	group := nodejs.CreateGroup(t, "list-perm-custom-role-group")
-	user := nodejs.InviteAndCreateUser(t, "list-perm-group-custom@test.local")
-	nodejs.AddUserToGroup(t, group.ID, user.Email)
-	nodejs.AddGroupToProject(t, proj.ID, group.ID, customRole.Slug)
+	group := api.Groups.Create("list-perm-custom-role-group")
+	user := api.Users.InviteAndCreate("list-perm-group-custom@test.local")
+	api.Groups.AddUser(group.ID, user.Email)
+	api.Groups.AddToProject(proj.ID, group.ID, customRole.Slug)
 
 	client := infra.NewClientBuilder(t, newSecretsRouter(t)).
-		Identity(infra.UserIdentity(user.ID, nodejs.OrgID())).
+		Identity(infra.UserIdentity(user.ID, nj.OrgID())).
 		Build()
 
 	dev, err := listSecrets(client, &secret.ListSecretsV4Query{
@@ -272,20 +279,21 @@ func TestListSecrets_Permission_GroupCustomRole(t *testing.T) {
 
 func TestListSecrets_Permission_AdditionalPrivilegeExtendsRole(t *testing.T) {
 	t.Parallel()
-	nodejs := stack.NodeJS()
+	nj := stack.NodeJS()
+	api := nj.For(t)
 
-	proj := nodejs.CreateProject(t, "list-perm-addl-priv")
-	nodejs.CreateSecret(t, proj.ID, "dev", "/", "DEV_SECRET", "dev-value", nil)
-	nodejs.CreateSecret(t, proj.ID, "staging", "/", "STAGING_SECRET", "staging-value", nil)
+	proj := api.Projects.Create("list-perm-addl-priv").Do()
+	api.Secrets.Create(proj.ID, "dev", "DEV_SECRET", "dev-value").Do()
+	api.Secrets.Create(proj.ID, "staging", "STAGING_SECRET", "staging-value").Do()
 
-	identity := nodejs.CreateIdentity(t, "list-perm-addl-priv-id")
-	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("no-access"))
-	nodejs.CreateIdentityAdditionalPrivilege(t, identity.ID, proj.ID, []infra.Permission{
-		{Subject: "secrets", Action: "read", Conditions: map[string]any{"environment": "dev"}},
-	}, nil)
+	identity := api.Identities.Create("list-perm-addl-priv-id")
+	api.Identities.AddToProject(proj.ID, identity.ID).Role("no-access").Do()
+	api.Identities.AdditionalPrivilege(identity.ID, proj.ID, nodejs.Permission{
+		Subject: "secrets", Action: "read", Conditions: map[string]any{"environment": "dev"},
+	}).Do()
 
 	client := infra.NewClientBuilder(t, newSecretsRouter(t)).
-		Identity(infra.MachineIdentity(identity.ID, nodejs.OrgID())).
+		Identity(infra.MachineIdentity(identity.ID, nj.OrgID())).
 		Build()
 
 	dev, err := listSecrets(client, &secret.ListSecretsV4Query{
@@ -304,23 +312,24 @@ func TestListSecrets_Permission_AdditionalPrivilegeExtendsRole(t *testing.T) {
 
 func TestListSecrets_Permission_MultipleAdditionalPrivilegesMerge(t *testing.T) {
 	t.Parallel()
-	nodejs := stack.NodeJS()
+	nj := stack.NodeJS()
+	api := nj.For(t)
 
-	proj := nodejs.CreateProject(t, "list-perm-multi-addl-priv")
-	nodejs.CreateSecret(t, proj.ID, "dev", "/", "DEV_SECRET", "dev-value", nil)
-	nodejs.CreateSecret(t, proj.ID, "staging", "/", "STAGING_SECRET", "staging-value", nil)
+	proj := api.Projects.Create("list-perm-multi-addl-priv").Do()
+	api.Secrets.Create(proj.ID, "dev", "DEV_SECRET", "dev-value").Do()
+	api.Secrets.Create(proj.ID, "staging", "STAGING_SECRET", "staging-value").Do()
 
-	identity := nodejs.CreateIdentity(t, "list-perm-multi-addl-priv-id")
-	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("no-access"))
-	nodejs.CreateIdentityAdditionalPrivilege(t, identity.ID, proj.ID, []infra.Permission{
-		{Subject: "secrets", Action: "read", Conditions: map[string]any{"environment": "dev"}},
-	}, nil)
-	nodejs.CreateIdentityAdditionalPrivilege(t, identity.ID, proj.ID, []infra.Permission{
-		{Subject: "secrets", Action: "read", Conditions: map[string]any{"environment": "staging"}},
-	}, nil)
+	identity := api.Identities.Create("list-perm-multi-addl-priv-id")
+	api.Identities.AddToProject(proj.ID, identity.ID).Role("no-access").Do()
+	api.Identities.AdditionalPrivilege(identity.ID, proj.ID, nodejs.Permission{
+		Subject: "secrets", Action: "read", Conditions: map[string]any{"environment": "dev"},
+	}).Do()
+	api.Identities.AdditionalPrivilege(identity.ID, proj.ID, nodejs.Permission{
+		Subject: "secrets", Action: "read", Conditions: map[string]any{"environment": "staging"},
+	}).Do()
 
 	client := infra.NewClientBuilder(t, newSecretsRouter(t)).
-		Identity(infra.MachineIdentity(identity.ID, nodejs.OrgID())).
+		Identity(infra.MachineIdentity(identity.ID, nj.OrgID())).
 		Build()
 
 	dev, err := listSecrets(client, &secret.ListSecretsV4Query{
@@ -353,25 +362,26 @@ func TestListSecrets_Permission_TemporaryRole(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			nodejs := stack.NodeJS()
+			nj := stack.NodeJS()
+			api := nj.For(t)
 
-			proj := nodejs.CreateProject(t, "list-perm-temp-role")
-			nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "TEMP_SECRET", "temp-value", nil)
+			proj := api.Projects.Create("list-perm-temp-role").Do()
+			api.Secrets.Create(proj.ID, proj.EnvSlug, "TEMP_SECRET", "temp-value").Do()
 
-			identity := nodejs.CreateIdentity(t, "list-perm-temp-role-id")
-			nodejs.AddIdentityToProject(t, proj.ID, identity.ID, []infra.RoleAssignment{
-				{Role: tc.baseRole, IsTemporary: false},
-				{
+			identity := api.Identities.Create("list-perm-temp-role-id")
+			api.Identities.AddToProject(proj.ID, identity.ID).Roles(
+				nodejs.RoleAssignment{Role: tc.baseRole, IsTemporary: false},
+				nodejs.RoleAssignment{
 					Role:                     "admin",
 					IsTemporary:              true,
 					TemporaryMode:            "relative",
 					TemporaryRange:           "1h",
 					TemporaryAccessStartTime: time.Now().Add(tc.startOffset).UTC().Format(time.RFC3339),
 				},
-			})
+			).Do()
 
 			client := infra.NewClientBuilder(t, newSecretsRouter(t)).
-				Identity(infra.MachineIdentity(identity.ID, nodejs.OrgID())).
+				Identity(infra.MachineIdentity(identity.ID, nj.OrgID())).
 				Build()
 
 			resp, err := listSecrets(client, &secret.ListSecretsV4Query{
@@ -407,22 +417,20 @@ func TestListSecrets_Permission_TemporaryAdditionalPrivilege(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			nodejs := stack.NodeJS()
+			nj := stack.NodeJS()
+			api := nj.For(t)
 
-			proj := nodejs.CreateProject(t, "list-perm-temp-addl")
-			nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "TEMP_ADDL_SECRET", "temp-addl-value", nil)
+			proj := api.Projects.Create("list-perm-temp-addl").Do()
+			api.Secrets.Create(proj.ID, proj.EnvSlug, "TEMP_ADDL_SECRET", "temp-addl-value").Do()
 
-			identity := nodejs.CreateIdentity(t, "list-perm-temp-addl-id")
-			nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("no-access"))
-			nodejs.CreateIdentityAdditionalPrivilege(t, identity.ID, proj.ID, []infra.Permission{
-				{Subject: "secrets", Action: "read"},
-			}, &infra.IdentityPrivilegeOpts{
-				TemporaryRange:           "1h",
-				TemporaryAccessStartTime: time.Now().Add(tc.startOffset).UTC().Format(time.RFC3339),
-			})
+			identity := api.Identities.Create("list-perm-temp-addl-id")
+			api.Identities.AddToProject(proj.ID, identity.ID).Role("no-access").Do()
+			api.Identities.AdditionalPrivilege(identity.ID, proj.ID, nodejs.Permission{
+				Subject: "secrets", Action: "read",
+			}).Temporary("1h", time.Now().Add(tc.startOffset).UTC().Format(time.RFC3339)).Do()
 
 			client := infra.NewClientBuilder(t, newSecretsRouter(t)).
-				Identity(infra.MachineIdentity(identity.ID, nodejs.OrgID())).
+				Identity(infra.MachineIdentity(identity.ID, nj.OrgID())).
 				Build()
 
 			resp, err := listSecrets(client, &secret.ListSecretsV4Query{
@@ -459,16 +467,17 @@ func TestListSecrets_Permission_ViewSecretValue(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			nodejs := stack.NodeJS()
+			nj := stack.NodeJS()
+			api := nj.For(t)
 
-			proj := nodejs.CreateProject(t, "list-perm-view-value")
-			nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "VALUE_SECRET", "real-value", nil)
+			proj := api.Projects.Create("list-perm-view-value").Do()
+			api.Secrets.Create(proj.ID, proj.EnvSlug, "VALUE_SECRET", "real-value").Do()
 
-			identity := nodejs.CreateIdentity(t, "list-perm-view-value-id")
-			nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
+			identity := api.Identities.Create("list-perm-view-value-id")
+			api.Identities.AddToProject(proj.ID, identity.ID).Role("admin").Do()
 
 			client := infra.NewClientBuilder(t, newSecretsRouter(t)).
-				Identity(infra.MachineIdentity(identity.ID, nodejs.OrgID())).
+				Identity(infra.MachineIdentity(identity.ID, nj.OrgID())).
 				Build()
 
 			resp, err := listSecrets(client, &secret.ListSecretsV4Query{

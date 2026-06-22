@@ -10,6 +10,7 @@ import (
 
 	"github.com/infisical/api/internal/server/api/secrets/secret"
 	"github.com/infisical/api/tests/infra"
+	"github.com/infisical/api/tests/infra/nodejs"
 )
 
 // TestGetSecretByName_ImportPermissions verifies that importing a secret across
@@ -17,26 +18,25 @@ import (
 // importing one. The project, secrets, import, and identities are read-only
 // fixtures shared across the cases.
 func TestGetSecretByName_ImportPermissions(t *testing.T) {
-	nodejs := stack.NodeJS()
+	nj := stack.NodeJS()
+	api := nj.For(t)
 
-	proj := nodejs.CreateProject(t, "get-import-perm")
+	proj := api.Projects.Create("get-import-perm").Do()
 
-	nodejs.CreateSecret(t, proj.ID, "staging", "/", "STAGING_SECRET", "staging-value", nil)
-	nodejs.CreateSecret(t, proj.ID, "dev", "/", "DEV_DIRECT", "dev-direct-value", nil)
-	nodejs.CreateSecretImport(t, proj.ID, "dev", "/", "staging", "/")
+	api.Secrets.Create(proj.ID, "staging", "STAGING_SECRET", "staging-value").Do()
+	api.Secrets.Create(proj.ID, "dev", "DEV_DIRECT", "dev-direct-value").Do()
+	api.Imports.Create(proj.ID, "dev", "/", "staging", "/")
 
-	devOnlyRole := nodejs.CreateCustomProjectRole(t, proj.ID, "dev-only-reader", "Dev Only", []infra.Permission{
-		{
-			Subject:    "secrets",
-			Action:     []string{"read"},
-			Conditions: map[string]any{"environment": "dev"},
-		},
+	devOnlyRole := api.Roles.CreateCustom(proj.ID, "dev-only-reader", "Dev Only", nodejs.Permission{
+		Subject:    "secrets",
+		Action:     []string{"read"},
+		Conditions: map[string]any{"environment": "dev"},
 	})
-	devOnlyIdentity := nodejs.CreateIdentity(t, "dev-only-identity")
-	nodejs.AddIdentityToProject(t, proj.ID, devOnlyIdentity.ID, infra.Role(devOnlyRole.Slug))
+	devOnlyIdentity := api.Identities.Create("dev-only-identity")
+	api.Identities.AddToProject(proj.ID, devOnlyIdentity.ID).Role(devOnlyRole.Slug).Do()
 
-	adminIdentity := nodejs.CreateIdentity(t, "admin-identity")
-	nodejs.AddIdentityToProject(t, proj.ID, adminIdentity.ID, infra.Role("admin"))
+	adminIdentity := api.Identities.Create("admin-identity")
+	api.Identities.AddToProject(proj.ID, adminIdentity.ID).Role("admin").Do()
 
 	tests := []struct {
 		name           string
@@ -83,7 +83,7 @@ func TestGetSecretByName_ImportPermissions(t *testing.T) {
 			t.Parallel()
 
 			client := infra.NewClientBuilder(t, newSecretsRouter(t)).
-				Identity(infra.MachineIdentity(tc.identityID, nodejs.OrgID())).
+				Identity(infra.MachineIdentity(tc.identityID, nj.OrgID())).
 				Build()
 
 			resp, err := getSecret(client, tc.secretName, &secret.GetSecretByNameV4Query{

@@ -10,6 +10,7 @@ import (
 
 	"github.com/infisical/api/internal/server/api/secrets/secret"
 	"github.com/infisical/api/tests/infra"
+	"github.com/infisical/api/tests/infra/nodejs"
 )
 
 func TestGetSecretByName_Basic(t *testing.T) {
@@ -17,15 +18,15 @@ func TestGetSecretByName_Basic(t *testing.T) {
 		name       string
 		secretName string
 		path       string // defaults to "/"
-		seed       func(t *testing.T, nodejs *infra.NodeJSService, projectID, env string)
+		seed       func(t *testing.T, api *nodejs.API, projectID, env string)
 		wantErr    string // non-empty => expect an error containing this substring
 		assertResp func(t *testing.T, resp secret.GetSecretByNameV4Response)
 	}{
 		{
 			name:       "returns decrypted value",
 			secretName: "PLAIN_SECRET",
-			seed: func(t *testing.T, nodejs *infra.NodeJSService, projectID, env string) {
-				nodejs.CreateSecret(t, projectID, env, "/", "PLAIN_SECRET", "plain-value", nil)
+			seed: func(t *testing.T, api *nodejs.API, projectID, env string) {
+				api.Secrets.Create(projectID, env, "PLAIN_SECRET", "plain-value").Do()
 			},
 			assertResp: func(t *testing.T, resp secret.GetSecretByNameV4Response) {
 				assert.Equal(t, "plain-value", resp.Secret.SecretValue)
@@ -34,10 +35,9 @@ func TestGetSecretByName_Basic(t *testing.T) {
 		{
 			name:       "returns comment",
 			secretName: "COMMENTED_SECRET",
-			seed: func(t *testing.T, nodejs *infra.NodeJSService, projectID, env string) {
-				nodejs.CreateSecret(t, projectID, env, "/", "COMMENTED_SECRET", "commented-value", &infra.CreateSecretOpts{
-					Comment: "This is a comment for the secret",
-				})
+			seed: func(t *testing.T, api *nodejs.API, projectID, env string) {
+				api.Secrets.Create(projectID, env, "COMMENTED_SECRET", "commented-value").
+					Comment("This is a comment for the secret").Do()
 			},
 			assertResp: func(t *testing.T, resp secret.GetSecretByNameV4Response) {
 				assert.Equal(t, "This is a comment for the secret", resp.Secret.SecretComment)
@@ -46,13 +46,12 @@ func TestGetSecretByName_Basic(t *testing.T) {
 		{
 			name:       "returns metadata",
 			secretName: "METADATA_SECRET",
-			seed: func(t *testing.T, nodejs *infra.NodeJSService, projectID, env string) {
-				nodejs.CreateSecret(t, projectID, env, "/", "METADATA_SECRET", "metadata-value", &infra.CreateSecretOpts{
-					Metadata: []infra.SecretMetadataEntry{
-						{Key: "env", Value: "production"},
-						{Key: "owner", Value: "platform-team"},
-					},
-				})
+			seed: func(t *testing.T, api *nodejs.API, projectID, env string) {
+				api.Secrets.Create(projectID, env, "METADATA_SECRET", "metadata-value").
+					Metadata(
+						nodejs.SecretMetadataEntry{Key: "env", Value: "production"},
+						nodejs.SecretMetadataEntry{Key: "owner", Value: "platform-team"},
+					).Do()
 			},
 			assertResp: func(t *testing.T, resp secret.GetSecretByNameV4Response) {
 				require.NotEmpty(t, resp.Secret.SecretMetadata)
@@ -67,11 +66,9 @@ func TestGetSecretByName_Basic(t *testing.T) {
 		{
 			name:       "returns reminder",
 			secretName: "REMINDER_SECRET",
-			seed: func(t *testing.T, nodejs *infra.NodeJSService, projectID, env string) {
-				nodejs.CreateSecret(t, projectID, env, "/", "REMINDER_SECRET", "reminder-value", &infra.CreateSecretOpts{
-					ReminderNote:       "Remember to rotate this secret",
-					ReminderRepeatDays: new(30),
-				})
+			seed: func(t *testing.T, api *nodejs.API, projectID, env string) {
+				api.Secrets.Create(projectID, env, "REMINDER_SECRET", "reminder-value").
+					Reminder("Remember to rotate this secret", 30).Do()
 			},
 			assertResp: func(t *testing.T, resp secret.GetSecretByNameV4Response) {
 				require.NotNil(t, resp.Secret.SecretReminderNote)
@@ -83,11 +80,9 @@ func TestGetSecretByName_Basic(t *testing.T) {
 		{
 			name:       "returns tag with color",
 			secretName: "TAGGED_SECRET",
-			seed: func(t *testing.T, nodejs *infra.NodeJSService, projectID, env string) {
-				tag := nodejs.CreateTag(t, projectID, "important", "Important", "#ff0000")
-				nodejs.CreateSecret(t, projectID, env, "/", "TAGGED_SECRET", "tagged-value", &infra.CreateSecretOpts{
-					TagIDs: []string{tag.ID},
-				})
+			seed: func(t *testing.T, api *nodejs.API, projectID, env string) {
+				tag := api.Tags.Create(projectID, "important", "Important", "#ff0000")
+				api.Secrets.Create(projectID, env, "TAGGED_SECRET", "tagged-value").Tags(tag.ID).Do()
 			},
 			assertResp: func(t *testing.T, resp secret.GetSecretByNameV4Response) {
 				require.Len(t, resp.Secret.Tags, 1)
@@ -100,9 +95,9 @@ func TestGetSecretByName_Basic(t *testing.T) {
 			name:       "secretPath filters to nested folder",
 			secretName: "NESTED_GET_SECRET",
 			path:       "/nested",
-			seed: func(t *testing.T, nodejs *infra.NodeJSService, projectID, env string) {
-				nodejs.CreateFolder(t, projectID, env, "/", "nested")
-				nodejs.CreateSecret(t, projectID, env, "/nested", "NESTED_GET_SECRET", "nested-get-value", nil)
+			seed: func(t *testing.T, api *nodejs.API, projectID, env string) {
+				api.Folders.Create(projectID, env, "/", "nested")
+				api.Secrets.Create(projectID, env, "NESTED_GET_SECRET", "nested-get-value").Path("/nested").Do()
 			},
 			assertResp: func(t *testing.T, resp secret.GetSecretByNameV4Response) {
 				assert.Equal(t, "nested-get-value", resp.Secret.SecretValue)
@@ -118,18 +113,19 @@ func TestGetSecretByName_Basic(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			nodejs := stack.NodeJS()
+			nj := stack.NodeJS()
+			api := nj.For(t)
 
-			proj := nodejs.CreateProject(t, "get-basic")
+			proj := api.Projects.Create("get-basic").Do()
 			if tc.seed != nil {
-				tc.seed(t, nodejs, proj.ID, proj.EnvSlug)
+				tc.seed(t, api, proj.ID, proj.EnvSlug)
 			}
 
-			identity := nodejs.CreateIdentity(t, "get-basic-identity")
-			nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
+			identity := api.Identities.Create("get-basic-identity")
+			api.Identities.AddToProject(proj.ID, identity.ID).Role("admin").Do()
 
 			client := infra.NewClientBuilder(t, newSecretsRouter(t)).
-				Identity(infra.MachineIdentity(identity.ID, nodejs.OrgID())).
+				Identity(infra.MachineIdentity(identity.ID, nj.OrgID())).
 				Build()
 
 			path := tc.path
@@ -175,14 +171,15 @@ func TestGetSecretByName_Validation(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			nodejs := stack.NodeJS()
+			nj := stack.NodeJS()
+			api := nj.For(t)
 
-			proj := nodejs.CreateProject(t, "get-validation")
-			identity := nodejs.CreateIdentity(t, "get-validation-identity")
-			nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
+			proj := api.Projects.Create("get-validation").Do()
+			identity := api.Identities.Create("get-validation-identity")
+			api.Identities.AddToProject(proj.ID, identity.ID).Role("admin").Do()
 
 			client := infra.NewClientBuilder(t, newSecretsRouter(t)).
-				Identity(infra.MachineIdentity(identity.ID, nodejs.OrgID())).
+				Identity(infra.MachineIdentity(identity.ID, nj.OrgID())).
 				Build()
 
 			req := client.Get("/api/v4/secrets/SOME_SECRET")
@@ -201,17 +198,18 @@ func TestGetSecretByName_Validation(t *testing.T) {
 // version query param after the secret has been updated.
 func TestGetSecretByName_Version(t *testing.T) {
 	t.Parallel()
-	nodejs := stack.NodeJS()
+	nj := stack.NodeJS()
+	api := nj.For(t)
 
-	proj := nodejs.CreateProject(t, "get-version")
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "VERSIONED", "v1-value", nil)
-	nodejs.UpdateSecret(t, proj.ID, proj.EnvSlug, "/", "VERSIONED", "v2-value")
+	proj := api.Projects.Create("get-version").Do()
+	api.Secrets.Create(proj.ID, proj.EnvSlug, "VERSIONED", "v1-value").Do()
+	api.Secrets.Update(proj.ID, proj.EnvSlug, "VERSIONED", "v2-value").Do()
 
-	identity := nodejs.CreateIdentity(t, "get-version-identity")
-	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
+	identity := api.Identities.Create("get-version-identity")
+	api.Identities.AddToProject(proj.ID, identity.ID).Role("admin").Do()
 
 	client := infra.NewClientBuilder(t, newSecretsRouter(t)).
-		Identity(infra.MachineIdentity(identity.ID, nodejs.OrgID())).
+		Identity(infra.MachineIdentity(identity.ID, nj.OrgID())).
 		Build()
 
 	t.Run("latest version by default", func(t *testing.T) {
@@ -257,18 +255,17 @@ func TestGetSecretByName_Version(t *testing.T) {
 // normal secret is correctly reported as not rotated.
 func TestGetSecretByName_ResponseFields(t *testing.T) {
 	t.Parallel()
-	nodejs := stack.NodeJS()
+	nj := stack.NodeJS()
+	api := nj.For(t)
 
-	proj := nodejs.CreateProject(t, "get-response-fields")
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "MULTILINE", "line1\nline2", &infra.CreateSecretOpts{
-		SkipMultilineEncoding: true,
-	})
+	proj := api.Projects.Create("get-response-fields").Do()
+	api.Secrets.Create(proj.ID, proj.EnvSlug, "MULTILINE", "line1\nline2").SkipMultilineEncoding().Do()
 
-	identity := nodejs.CreateIdentity(t, "get-response-fields-identity")
-	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
+	identity := api.Identities.Create("get-response-fields-identity")
+	api.Identities.AddToProject(proj.ID, identity.ID).Role("admin").Do()
 
 	client := infra.NewClientBuilder(t, newSecretsRouter(t)).
-		Identity(infra.MachineIdentity(identity.ID, nodejs.OrgID())).
+		Identity(infra.MachineIdentity(identity.ID, nj.OrgID())).
 		Build()
 
 	resp, err := getSecret(client, "MULTILINE", &secret.GetSecretByNameV4Query{

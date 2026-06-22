@@ -6,6 +6,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/infisical/api/internal/services/auth"
+	"github.com/infisical/api/tests/infra/nodejs"
 )
 
 // TestIdentity represents authentication context for test requests.
@@ -27,8 +28,8 @@ type TestIdentity struct {
 	IdentityName       string
 	IdentityAuthMethod auth.IdentityAuthMethod
 
-	// Service token specific (reuses ServiceTokenScope from nodejs.go)
-	ServiceTokenScopes []ServiceTokenScope
+	// Service token specific (reuses ServiceTokenScope from the nodejs package)
+	ServiceTokenScopes []nodejs.ServiceTokenScope
 }
 
 // ToAuthIdentity converts TestIdentity to the auth.Identity used by handlers.
@@ -85,7 +86,7 @@ func MachineIdentity(identityID, orgID string) *TestIdentity {
 }
 
 // ServiceTokenIdentity creates a test identity for a service token.
-func ServiceTokenIdentity(tokenID, orgID string, scopes ...ServiceTokenScope) *TestIdentity {
+func ServiceTokenIdentity(tokenID, orgID string, scopes ...nodejs.ServiceTokenScope) *TestIdentity {
 	return &TestIdentity{
 		AuthMode:           auth.AuthModeServiceToken,
 		ActorType:          auth.ActorTypeService,

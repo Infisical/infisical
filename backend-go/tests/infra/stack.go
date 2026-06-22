@@ -12,6 +12,7 @@ import (
 	"github.com/infisical/api/internal/config"
 
 	"github.com/infisical/api/internal/database/pg"
+	"github.com/infisical/api/tests/infra/nodejs"
 )
 
 // Stack holds references to running containers and provides accessors
@@ -19,7 +20,7 @@ import (
 type Stack struct {
 	postgres *PostgresService
 	redis    *RedisService
-	nodejs   *NodeJSService
+	nodeJS   *nodejs.Service
 	network  *testcontainers.DockerNetwork
 	cfg      *config.Config
 	db       pg.DB
@@ -27,7 +28,7 @@ type Stack struct {
 
 func (s *Stack) Postgres() *PostgresService { return s.postgres }
 func (s *Stack) Redis() *RedisService       { return s.redis }
-func (s *Stack) NodeJS() *NodeJSService     { return s.nodejs }
+func (s *Stack) NodeJS() *nodejs.Service    { return s.nodeJS }
 func (s *Stack) Config() *config.Config     { return s.cfg }
 func (s *Stack) DB() pg.DB                  { return s.db }
 
@@ -38,8 +39,8 @@ func (s *Stack) Stop() {
 	if s.db != nil {
 		s.db.Close()
 	}
-	if s.nodejs != nil {
-		if err := s.nodejs.container.Terminate(ctx); err != nil {
+	if s.nodeJS != nil {
+		if err := s.nodeJS.Terminate(ctx); err != nil {
 			log.Printf("infra.Stop: terminate nodejs: %v", err)
 		}
 	}

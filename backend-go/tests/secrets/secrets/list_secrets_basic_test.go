@@ -15,26 +15,28 @@ import (
 
 	"github.com/infisical/api/internal/server/api/secrets/secret"
 	"github.com/infisical/api/tests/infra"
+	"github.com/infisical/api/tests/infra/nodejs"
 )
 
 func TestListSecrets_Basic(t *testing.T) {
 	t.Parallel()
-	nodejs := stack.NodeJS()
+	nj := stack.NodeJS()
+	api := nj.For(t)
 
-	proj := nodejs.CreateProject(t, "list-basic")
+	proj := api.Projects.Create("list-basic").Do()
 
-	tag1 := nodejs.CreateTag(t, proj.ID, "env-prod", "Production", "#FF0000")
-	tag2 := nodejs.CreateTag(t, proj.ID, "sensitive", "Sensitive", "#0000FF")
+	tag1 := api.Tags.Create(proj.ID, "env-prod", "Production", "#FF0000")
+	tag2 := api.Tags.Create(proj.ID, "sensitive", "Sensitive", "#0000FF")
 
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "PLAIN_SECRET", "plain-value", nil)
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "ENCRYPTED_SECRET", "decrypted-correctly", nil)
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "TAGGED_SECRET", "tagged-value", &infra.CreateSecretOpts{TagIDs: []string{tag1.ID, tag2.ID}})
+	api.Secrets.Create(proj.ID, proj.EnvSlug, "PLAIN_SECRET", "plain-value").Do()
+	api.Secrets.Create(proj.ID, proj.EnvSlug, "ENCRYPTED_SECRET", "decrypted-correctly").Do()
+	api.Secrets.Create(proj.ID, proj.EnvSlug, "TAGGED_SECRET", "tagged-value").Tags(tag1.ID, tag2.ID).Do()
 
-	identity := nodejs.CreateIdentity(t, "list-basic-identity")
-	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
+	identity := api.Identities.Create("list-basic-identity")
+	api.Identities.AddToProject(proj.ID, identity.ID).Role("admin").Do()
 
 	client := infra.NewClientBuilder(t, newSecretsRouter(t)).
-		Identity(infra.MachineIdentity(identity.ID, nodejs.OrgID())).
+		Identity(infra.MachineIdentity(identity.ID, nj.OrgID())).
 		Build()
 
 	resp, err := listSecrets(client, &secret.ListSecretsV4Query{
@@ -77,18 +79,18 @@ func TestListSecrets_Basic(t *testing.T) {
 
 func TestListSecrets_ReturnsComment(t *testing.T) {
 	t.Parallel()
-	nodejs := stack.NodeJS()
+	nj := stack.NodeJS()
+	api := nj.For(t)
 
-	proj := nodejs.CreateProject(t, "list-comment")
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "SECRET_WITH_COMMENT", "secret-value", &infra.CreateSecretOpts{
-		Comment: "This is a test comment for the secret",
-	})
+	proj := api.Projects.Create("list-comment").Do()
+	api.Secrets.Create(proj.ID, proj.EnvSlug, "SECRET_WITH_COMMENT", "secret-value").
+		Comment("This is a test comment for the secret").Do()
 
-	identity := nodejs.CreateIdentity(t, "list-comment-identity")
-	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
+	identity := api.Identities.Create("list-comment-identity")
+	api.Identities.AddToProject(proj.ID, identity.ID).Role("admin").Do()
 
 	client := infra.NewClientBuilder(t, newSecretsRouter(t)).
-		Identity(infra.MachineIdentity(identity.ID, nodejs.OrgID())).
+		Identity(infra.MachineIdentity(identity.ID, nj.OrgID())).
 		Build()
 
 	resp, err := listSecrets(client, &secret.ListSecretsV4Query{
@@ -107,41 +109,37 @@ func TestListSecrets_ReturnsComment(t *testing.T) {
 
 func TestListSecrets_Metadata(t *testing.T) {
 	t.Parallel()
-	nodejs := stack.NodeJS()
+	nj := stack.NodeJS()
+	api := nj.For(t)
 
-	proj := nodejs.CreateProject(t, "list-metadata")
+	proj := api.Projects.Create("list-metadata").Do()
 
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "SECRET_WITH_METADATA", "secret-value", &infra.CreateSecretOpts{
-		Metadata: []infra.SecretMetadataEntry{
-			{Key: "owner", Value: "platform-team"},
-			{Key: "sensitivity", Value: "high"},
-		},
-	})
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "SECRET_WITH_COMMENT", "full-value", &infra.CreateSecretOpts{
-		Comment: "A secret with both comment and metadata",
-		Metadata: []infra.SecretMetadataEntry{
-			{Key: "env", Value: "production"},
-		},
-	})
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "SECRET_MIXED_ENCRYPTION", "encrypted-meta-value", &infra.CreateSecretOpts{
-		Metadata: []infra.SecretMetadataEntry{
-			{Key: "plaintext", Value: "plain-value", IsEncrypted: false},
-			{Key: "sensitive", Value: "encrypted-value", IsEncrypted: true},
-		},
-	})
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "PROD_SECRET", "prod-value", &infra.CreateSecretOpts{
-		Metadata: []infra.SecretMetadataEntry{{Key: "env", Value: "production"}},
-	})
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "DEV_SECRET", "dev-value", &infra.CreateSecretOpts{
-		Metadata: []infra.SecretMetadataEntry{{Key: "env", Value: "development"}},
-	})
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "NO_METADATA", "no-meta-value", nil)
+	api.Secrets.Create(proj.ID, proj.EnvSlug, "SECRET_WITH_METADATA", "secret-value").
+		Metadata(
+			nodejs.SecretMetadataEntry{Key: "owner", Value: "platform-team"},
+			nodejs.SecretMetadataEntry{Key: "sensitivity", Value: "high"},
+		).Do()
+	api.Secrets.Create(proj.ID, proj.EnvSlug, "SECRET_WITH_COMMENT", "full-value").
+		Comment("A secret with both comment and metadata").
+		Metadata(
+			nodejs.SecretMetadataEntry{Key: "env", Value: "production"},
+		).Do()
+	api.Secrets.Create(proj.ID, proj.EnvSlug, "SECRET_MIXED_ENCRYPTION", "encrypted-meta-value").
+		Metadata(
+			nodejs.SecretMetadataEntry{Key: "plaintext", Value: "plain-value", IsEncrypted: false},
+			nodejs.SecretMetadataEntry{Key: "sensitive", Value: "encrypted-value", IsEncrypted: true},
+		).Do()
+	api.Secrets.Create(proj.ID, proj.EnvSlug, "PROD_SECRET", "prod-value").
+		Metadata(nodejs.SecretMetadataEntry{Key: "env", Value: "production"}).Do()
+	api.Secrets.Create(proj.ID, proj.EnvSlug, "DEV_SECRET", "dev-value").
+		Metadata(nodejs.SecretMetadataEntry{Key: "env", Value: "development"}).Do()
+	api.Secrets.Create(proj.ID, proj.EnvSlug, "NO_METADATA", "no-meta-value").Do()
 
-	identity := nodejs.CreateIdentity(t, "list-metadata-identity")
-	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
+	identity := api.Identities.Create("list-metadata-identity")
+	api.Identities.AddToProject(proj.ID, identity.ID).Role("admin").Do()
 
 	client := infra.NewClientBuilder(t, newSecretsRouter(t)).
-		Identity(infra.MachineIdentity(identity.ID, nodejs.OrgID())).
+		Identity(infra.MachineIdentity(identity.ID, nj.OrgID())).
 		Build()
 
 	t.Run("returns metadata fields", func(t *testing.T) {
@@ -234,21 +232,20 @@ func TestListSecrets_Metadata(t *testing.T) {
 
 func TestListSecrets_Reminder(t *testing.T) {
 	t.Parallel()
-	nodejs := stack.NodeJS()
+	nj := stack.NodeJS()
+	api := nj.For(t)
 
-	proj := nodejs.CreateProject(t, "list-reminder")
+	proj := api.Projects.Create("list-reminder").Do()
 
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "SECRET_WITH_REMINDER", "reminder-value", &infra.CreateSecretOpts{
-		ReminderNote:       "Rotate weekly",
-		ReminderRepeatDays: new(7),
-	})
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "SECRET_WITHOUT_REMINDER", "no-reminder-value", nil)
+	api.Secrets.Create(proj.ID, proj.EnvSlug, "SECRET_WITH_REMINDER", "reminder-value").
+		Reminder("Rotate weekly", 7).Do()
+	api.Secrets.Create(proj.ID, proj.EnvSlug, "SECRET_WITHOUT_REMINDER", "no-reminder-value").Do()
 
-	identity := nodejs.CreateIdentity(t, "list-reminder-identity")
-	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
+	identity := api.Identities.Create("list-reminder-identity")
+	api.Identities.AddToProject(proj.ID, identity.ID).Role("admin").Do()
 
 	client := infra.NewClientBuilder(t, newSecretsRouter(t)).
-		Identity(infra.MachineIdentity(identity.ID, nodejs.OrgID())).
+		Identity(infra.MachineIdentity(identity.ID, nj.OrgID())).
 		Build()
 
 	resp, err := listSecrets(client, &secret.ListSecretsV4Query{
@@ -302,26 +299,27 @@ func TestListSecrets_PathAndRecursive(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			nodejs := stack.NodeJS()
+			nj := stack.NodeJS()
+			api := nj.For(t)
 
-			proj := nodejs.CreateProject(t, "list-path-recursive")
+			proj := api.Projects.Create("list-path-recursive").Do()
 
-			nodejs.CreateFolder(t, proj.ID, proj.EnvSlug, "/", "level1")
-			nodejs.CreateFolder(t, proj.ID, proj.EnvSlug, "/level1", "level2")
-			nodejs.CreateFolder(t, proj.ID, proj.EnvSlug, "/", "api")
-			nodejs.CreateFolder(t, proj.ID, proj.EnvSlug, "/", "web")
+			api.Folders.Create(proj.ID, proj.EnvSlug, "/", "level1")
+			api.Folders.Create(proj.ID, proj.EnvSlug, "/level1", "level2")
+			api.Folders.Create(proj.ID, proj.EnvSlug, "/", "api")
+			api.Folders.Create(proj.ID, proj.EnvSlug, "/", "web")
 
-			nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "ROOT_SECRET", "root-value", nil)
-			nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/level1", "LEVEL1_SECRET", "level1-value", nil)
-			nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/level1/level2", "LEVEL2_SECRET", "level2-value", nil)
-			nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/api", "API_SECRET", "api-value", nil)
-			nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/web", "WEB_SECRET", "web-value", nil)
+			api.Secrets.Create(proj.ID, proj.EnvSlug, "ROOT_SECRET", "root-value").Do()
+			api.Secrets.Create(proj.ID, proj.EnvSlug, "LEVEL1_SECRET", "level1-value").Path("/level1").Do()
+			api.Secrets.Create(proj.ID, proj.EnvSlug, "LEVEL2_SECRET", "level2-value").Path("/level1/level2").Do()
+			api.Secrets.Create(proj.ID, proj.EnvSlug, "API_SECRET", "api-value").Path("/api").Do()
+			api.Secrets.Create(proj.ID, proj.EnvSlug, "WEB_SECRET", "web-value").Path("/web").Do()
 
-			identity := nodejs.CreateIdentity(t, "list-path-recursive-identity")
-			nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
+			identity := api.Identities.Create("list-path-recursive-identity")
+			api.Identities.AddToProject(proj.ID, identity.ID).Role("admin").Do()
 
 			client := infra.NewClientBuilder(t, newSecretsRouter(t)).
-				Identity(infra.MachineIdentity(identity.ID, nodejs.OrgID())).
+				Identity(infra.MachineIdentity(identity.ID, nj.OrgID())).
 				Build()
 
 			resp, err := listSecrets(client, &secret.ListSecretsV4Query{
@@ -373,20 +371,19 @@ func TestListSecrets_PersonalOverrides(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			nodejs := stack.NodeJS()
+			nj := stack.NodeJS()
+			api := nj.For(t)
 
-			proj := nodejs.CreateProject(t, "list-personal")
-			nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "MY_SECRET", "shared-value", nil)
-			nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "MY_SECRET", "personal-value", &infra.CreateSecretOpts{
-				Type: "personal",
-			})
+			proj := api.Projects.Create("list-personal").Do()
+			api.Secrets.Create(proj.ID, proj.EnvSlug, "MY_SECRET", "shared-value").Do()
+			api.Secrets.Create(proj.ID, proj.EnvSlug, "MY_SECRET", "personal-value").Personal().Do()
 
-			identity := nodejs.CreateIdentity(t, "list-personal-identity")
-			nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
+			identity := api.Identities.Create("list-personal-identity")
+			api.Identities.AddToProject(proj.ID, identity.ID).Role("admin").Do()
 
-			actor := infra.MachineIdentity(identity.ID, nodejs.OrgID())
+			actor := infra.MachineIdentity(identity.ID, nj.OrgID())
 			if tc.asUser {
-				actor = infra.UserIdentity(nodejs.UserID(), nodejs.OrgID())
+				actor = infra.UserIdentity(nj.UserID(), nj.OrgID())
 			}
 			client := infra.NewClientBuilder(t, newSecretsRouter(t)).Identity(actor).Build()
 
@@ -418,21 +415,22 @@ func TestListSecrets_TagFiltering(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			nodejs := stack.NodeJS()
+			nj := stack.NodeJS()
+			api := nj.For(t)
 
-			proj := nodejs.CreateProject(t, "list-tag-filter")
-			tag1 := nodejs.CreateTag(t, proj.ID, "api", "API", "#FF0000")
-			tag2 := nodejs.CreateTag(t, proj.ID, "database", "Database", "#00FF00")
+			proj := api.Projects.Create("list-tag-filter").Do()
+			tag1 := api.Tags.Create(proj.ID, "api", "API", "#FF0000")
+			tag2 := api.Tags.Create(proj.ID, "database", "Database", "#00FF00")
 
-			nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "API_KEY", "api-key-value", &infra.CreateSecretOpts{TagIDs: []string{tag1.ID}})
-			nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "DB_PASSWORD", "db-password", &infra.CreateSecretOpts{TagIDs: []string{tag2.ID}})
-			nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "UNTAGGED_SECRET", "untagged-value", nil)
+			api.Secrets.Create(proj.ID, proj.EnvSlug, "API_KEY", "api-key-value").Tags(tag1.ID).Do()
+			api.Secrets.Create(proj.ID, proj.EnvSlug, "DB_PASSWORD", "db-password").Tags(tag2.ID).Do()
+			api.Secrets.Create(proj.ID, proj.EnvSlug, "UNTAGGED_SECRET", "untagged-value").Do()
 
-			identity := nodejs.CreateIdentity(t, "list-tag-filter-identity")
-			nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
+			identity := api.Identities.Create("list-tag-filter-identity")
+			api.Identities.AddToProject(proj.ID, identity.ID).Role("admin").Do()
 
 			client := infra.NewClientBuilder(t, newSecretsRouter(t)).
-				Identity(infra.MachineIdentity(identity.ID, nodejs.OrgID())).
+				Identity(infra.MachineIdentity(identity.ID, nj.OrgID())).
 				Build()
 
 			resp, err := listSecrets(client, &secret.ListSecretsV4Query{
@@ -468,14 +466,15 @@ func TestListSecrets_Errors(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			nodejs := stack.NodeJS()
+			nj := stack.NodeJS()
+			api := nj.For(t)
 
-			proj := nodejs.CreateProject(t, "list-errors")
-			identity := nodejs.CreateIdentity(t, "list-errors-identity")
-			nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
+			proj := api.Projects.Create("list-errors").Do()
+			identity := api.Identities.Create("list-errors-identity")
+			api.Identities.AddToProject(proj.ID, identity.ID).Role("admin").Do()
 
 			client := infra.NewClientBuilder(t, newSecretsRouter(t)).
-				Identity(infra.MachineIdentity(identity.ID, nodejs.OrgID())).
+				Identity(infra.MachineIdentity(identity.ID, nj.OrgID())).
 				Build()
 
 			_, err := listSecrets(client, &secret.ListSecretsV4Query{
@@ -505,14 +504,15 @@ func TestListSecrets_Validation(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			nodejs := stack.NodeJS()
+			nj := stack.NodeJS()
+			api := nj.For(t)
 
-			proj := nodejs.CreateProject(t, "list-validation")
-			identity := nodejs.CreateIdentity(t, "list-validation-identity")
-			nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
+			proj := api.Projects.Create("list-validation").Do()
+			identity := api.Identities.Create("list-validation-identity")
+			api.Identities.AddToProject(proj.ID, identity.ID).Role("admin").Do()
 
 			client := infra.NewClientBuilder(t, newSecretsRouter(t)).
-				Identity(infra.MachineIdentity(identity.ID, nodejs.OrgID())).
+				Identity(infra.MachineIdentity(identity.ID, nj.OrgID())).
 				Build()
 
 			req := client.Get("/api/v4/secrets")
@@ -531,20 +531,21 @@ func TestListSecrets_Validation(t *testing.T) {
 // behavior before and after a soft delete on the same environment, so the steps
 // cannot be parallelized.
 func TestListSecrets_SoftDeletedEnvironment(t *testing.T) {
-	nodejs := stack.NodeJS()
+	nj := stack.NodeJS()
+	api := nj.For(t)
 
-	proj := nodejs.CreateProject(t, "list-soft-delete-env")
+	proj := api.Projects.Create("list-soft-delete-env").Do()
 
-	customEnv := nodejs.CreateEnvironment(t, proj.ID, "custom-env", "Custom Environment")
+	customEnv := api.Environments.Create(proj.ID, "custom-env", "Custom Environment")
 
-	nodejs.CreateSecret(t, proj.ID, "custom-env", "/", "CUSTOM_SECRET", "custom-value", nil)
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "DEV_SECRET", "dev-value", nil)
+	api.Secrets.Create(proj.ID, "custom-env", "CUSTOM_SECRET", "custom-value").Do()
+	api.Secrets.Create(proj.ID, proj.EnvSlug, "DEV_SECRET", "dev-value").Do()
 
-	identity := nodejs.CreateIdentity(t, "list-soft-delete-env-identity")
-	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
+	identity := api.Identities.Create("list-soft-delete-env-identity")
+	api.Identities.AddToProject(proj.ID, identity.ID).Role("admin").Do()
 
 	client := infra.NewClientBuilder(t, newSecretsRouter(t)).
-		Identity(infra.MachineIdentity(identity.ID, nodejs.OrgID())).
+		Identity(infra.MachineIdentity(identity.ID, nj.OrgID())).
 		Build()
 
 	t.Run("secrets accessible before soft delete", func(t *testing.T) {
@@ -559,7 +560,7 @@ func TestListSecrets_SoftDeletedEnvironment(t *testing.T) {
 		assert.Equal(t, "CUSTOM_SECRET", resp.Secrets[0].SecretKey)
 	})
 
-	nodejs.SoftDeleteEnvironment(t, proj.ID, customEnv.ID)
+	api.Environments.SoftDelete(proj.ID, customEnv.ID)
 
 	t.Run("environment row still exists with softDeletedAt set", func(t *testing.T) {
 		var softDeletedAt *time.Time
@@ -599,19 +600,20 @@ func TestListSecrets_SoftDeletedEnvironment(t *testing.T) {
 // regardless of creation order.
 func TestListSecrets_StableOrdering(t *testing.T) {
 	t.Parallel()
-	nodejs := stack.NodeJS()
+	nj := stack.NodeJS()
+	api := nj.For(t)
 
-	proj := nodejs.CreateProject(t, "list-ordering")
+	proj := api.Projects.Create("list-ordering").Do()
 	// Create in deliberately non-alphabetical order.
 	for _, key := range []string{"ZEBRA", "ALPHA", "MIKE", "BRAVO"} {
-		nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", key, "v", nil)
+		api.Secrets.Create(proj.ID, proj.EnvSlug, key, "v").Do()
 	}
 
-	identity := nodejs.CreateIdentity(t, "list-ordering-identity")
-	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
+	identity := api.Identities.Create("list-ordering-identity")
+	api.Identities.AddToProject(proj.ID, identity.ID).Role("admin").Do()
 
 	client := infra.NewClientBuilder(t, newSecretsRouter(t)).
-		Identity(infra.MachineIdentity(identity.ID, nodejs.OrgID())).
+		Identity(infra.MachineIdentity(identity.ID, nj.OrgID())).
 		Build()
 
 	resp, err := listSecrets(client, &secret.ListSecretsV4Query{
@@ -635,20 +637,21 @@ func TestListSecrets_StableOrdering(t *testing.T) {
 // TestListSecrets_LargeResponse verifies a large folder returns every secret.
 func TestListSecrets_LargeResponse(t *testing.T) {
 	t.Parallel()
-	nodejs := stack.NodeJS()
+	nj := stack.NodeJS()
+	api := nj.For(t)
 
-	proj := nodejs.CreateProject(t, "list-large")
+	proj := api.Projects.Create("list-large").Do()
 
 	const count = 60
 	for i := 0; i < count; i++ {
-		nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", fmt.Sprintf("KEY_%03d", i), fmt.Sprintf("value-%03d", i), nil)
+		api.Secrets.Create(proj.ID, proj.EnvSlug, fmt.Sprintf("KEY_%03d", i), fmt.Sprintf("value-%03d", i)).Do()
 	}
 
-	identity := nodejs.CreateIdentity(t, "list-large-identity")
-	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
+	identity := api.Identities.Create("list-large-identity")
+	api.Identities.AddToProject(proj.ID, identity.ID).Role("admin").Do()
 
 	client := infra.NewClientBuilder(t, newSecretsRouter(t)).
-		Identity(infra.MachineIdentity(identity.ID, nodejs.OrgID())).
+		Identity(infra.MachineIdentity(identity.ID, nj.OrgID())).
 		Build()
 
 	resp, err := listSecrets(client, &secret.ListSecretsV4Query{
@@ -664,16 +667,17 @@ func TestListSecrets_LargeResponse(t *testing.T) {
 // TestListSecrets_ContentType verifies the success response is JSON.
 func TestListSecrets_ContentType(t *testing.T) {
 	t.Parallel()
-	nodejs := stack.NodeJS()
+	nj := stack.NodeJS()
+	api := nj.For(t)
 
-	proj := nodejs.CreateProject(t, "list-content-type")
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "KEY", "value", nil)
+	proj := api.Projects.Create("list-content-type").Do()
+	api.Secrets.Create(proj.ID, proj.EnvSlug, "KEY", "value").Do()
 
-	identity := nodejs.CreateIdentity(t, "list-content-type-identity")
-	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
+	identity := api.Identities.Create("list-content-type-identity")
+	api.Identities.AddToProject(proj.ID, identity.ID).Role("admin").Do()
 
 	client := infra.NewClientBuilder(t, newSecretsRouter(t)).
-		Identity(infra.MachineIdentity(identity.ID, nodejs.OrgID())).
+		Identity(infra.MachineIdentity(identity.ID, nj.OrgID())).
 		Build()
 
 	_, status, header := listRaw(client, &secret.ListSecretsV4Query{
@@ -691,14 +695,15 @@ func TestListSecrets_ContentType(t *testing.T) {
 // rejected rather than silently returning data.
 func TestListSecrets_InvalidProjectID(t *testing.T) {
 	t.Parallel()
-	nodejs := stack.NodeJS()
+	nj := stack.NodeJS()
+	api := nj.For(t)
 
-	proj := nodejs.CreateProject(t, "list-invalid-project")
-	identity := nodejs.CreateIdentity(t, "list-invalid-project-identity")
-	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
+	proj := api.Projects.Create("list-invalid-project").Do()
+	identity := api.Identities.Create("list-invalid-project-identity")
+	api.Identities.AddToProject(proj.ID, identity.ID).Role("admin").Do()
 
 	client := infra.NewClientBuilder(t, newSecretsRouter(t)).
-		Identity(infra.MachineIdentity(identity.ID, nodejs.OrgID())).
+		Identity(infra.MachineIdentity(identity.ID, nj.OrgID())).
 		Build()
 
 	_, err := listSecrets(client, &secret.ListSecretsV4Query{

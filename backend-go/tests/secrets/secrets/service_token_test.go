@@ -10,6 +10,7 @@ import (
 
 	"github.com/infisical/api/internal/server/api/secrets/secret"
 	"github.com/infisical/api/tests/infra"
+	"github.com/infisical/api/tests/infra/nodejs"
 )
 
 // Service-token scope enforcement is handler/permission logic and is reachable
@@ -19,7 +20,7 @@ import (
 func TestServiceToken_ListSecrets_Scope(t *testing.T) {
 	tests := []struct {
 		name        string
-		tokenScope  infra.ServiceTokenScope
+		tokenScope  nodejs.ServiceTokenScope
 		listEnv     string
 		listPath    string
 		wantKeys    []string
@@ -27,21 +28,21 @@ func TestServiceToken_ListSecrets_Scope(t *testing.T) {
 	}{
 		{
 			name:       "within env and path scope",
-			tokenScope: infra.ServiceTokenScope{Environment: "dev", SecretPath: "/"},
+			tokenScope: nodejs.ServiceTokenScope{Environment: "dev", SecretPath: "/"},
 			listEnv:    "dev",
 			listPath:   "/",
 			wantKeys:   []string{"DEV_ROOT"},
 		},
 		{
 			name:       "outside env scope returns empty",
-			tokenScope: infra.ServiceTokenScope{Environment: "dev", SecretPath: "/"},
+			tokenScope: nodejs.ServiceTokenScope{Environment: "dev", SecretPath: "/"},
 			listEnv:    "staging",
 			listPath:   "/",
 			wantKeys:   nil,
 		},
 		{
 			name:       "outside path scope returns empty",
-			tokenScope: infra.ServiceTokenScope{Environment: "dev", SecretPath: "/app"},
+			tokenScope: nodejs.ServiceTokenScope{Environment: "dev", SecretPath: "/app"},
 			listEnv:    "dev",
 			listPath:   "/",
 			wantKeys:   nil,
@@ -51,21 +52,22 @@ func TestServiceToken_ListSecrets_Scope(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			nodejs := stack.NodeJS()
+			nj := stack.NodeJS()
+			api := nj.For(t)
 
-			proj := nodejs.CreateProject(t, "svc-token-list")
-			nodejs.CreateFolder(t, proj.ID, "dev", "/", "app")
-			nodejs.CreateSecret(t, proj.ID, "dev", "/", "DEV_ROOT", "dev-root-value", nil)
-			nodejs.CreateSecret(t, proj.ID, "dev", "/app", "APP_SECRET", "app-value", nil)
-			nodejs.CreateSecret(t, proj.ID, "staging", "/", "STAGING_ROOT", "staging-value", nil)
+			proj := api.Projects.Create("svc-token-list").Do()
+			api.Folders.Create(proj.ID, "dev", "/", "app")
+			api.Secrets.Create(proj.ID, "dev", "DEV_ROOT", "dev-root-value").Do()
+			api.Secrets.Create(proj.ID, "dev", "APP_SECRET", "app-value").Path("/app").Do()
+			api.Secrets.Create(proj.ID, "staging", "STAGING_ROOT", "staging-value").Do()
 
-			token := nodejs.CreateServiceToken(t, proj.ID, &infra.CreateServiceTokenOpts{
-				Scopes:      []infra.ServiceTokenScope{tc.tokenScope},
-				Permissions: []string{"read"},
-			})
+			token := api.ServiceTokens.Create(proj.ID).
+				Scopes(tc.tokenScope).
+				Permissions("read").
+				Do()
 
 			client := infra.NewClientBuilder(t, newSecretsRouter(t)).
-				Identity(infra.ServiceTokenIdentity(token.ID, nodejs.OrgID())).
+				Identity(infra.ServiceTokenIdentity(token.ID, nj.OrgID())).
 				Build()
 
 			resp, err := listSecrets(client, &secret.ListSecretsV4Query{
@@ -113,20 +115,21 @@ func TestServiceToken_GetSecretByName_Scope(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			nodejs := stack.NodeJS()
+			nj := stack.NodeJS()
+			api := nj.For(t)
 
-			proj := nodejs.CreateProject(t, "svc-token-get")
-			nodejs.CreateSecret(t, proj.ID, "dev", "/", "DEV_ROOT", "dev-root-value", nil)
-			nodejs.CreateSecret(t, proj.ID, "staging", "/", "STAGING_ROOT", "staging-value", nil)
+			proj := api.Projects.Create("svc-token-get").Do()
+			api.Secrets.Create(proj.ID, "dev", "DEV_ROOT", "dev-root-value").Do()
+			api.Secrets.Create(proj.ID, "staging", "STAGING_ROOT", "staging-value").Do()
 
 			// Token scoped to dev:/ only.
-			token := nodejs.CreateServiceToken(t, proj.ID, &infra.CreateServiceTokenOpts{
-				Scopes:      []infra.ServiceTokenScope{{Environment: "dev", SecretPath: "/"}},
-				Permissions: []string{"read"},
-			})
+			token := api.ServiceTokens.Create(proj.ID).
+				Scopes(nodejs.ServiceTokenScope{Environment: "dev", SecretPath: "/"}).
+				Permissions("read").
+				Do()
 
 			client := infra.NewClientBuilder(t, newSecretsRouter(t)).
-				Identity(infra.ServiceTokenIdentity(token.ID, nodejs.OrgID())).
+				Identity(infra.ServiceTokenIdentity(token.ID, nj.OrgID())).
 				Build()
 
 			resp, err := getSecret(client, tc.secretName, &secret.GetSecretByNameV4Query{

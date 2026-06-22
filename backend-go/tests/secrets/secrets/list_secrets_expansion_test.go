@@ -19,20 +19,21 @@ import (
 // handler, DB, and permission layer for a full list response.
 
 func TestListSecrets_Imports(t *testing.T) {
-	nodejs := stack.NodeJS()
+	nj := stack.NodeJS()
+	api := nj.For(t)
 
-	proj := nodejs.CreateProject(t, "list-imports")
+	proj := api.Projects.Create("list-imports").Do()
 
-	nodejs.CreateSecret(t, proj.ID, "staging", "/", "STAGING_DB_URL", "staging-db-value", nil)
-	nodejs.CreateSecret(t, proj.ID, "staging", "/", "STAGING_API_KEY", "staging-api-value", nil)
-	nodejs.CreateSecret(t, proj.ID, "dev", "/", "DEV_SECRET", "dev-value", nil)
-	nodejs.CreateSecretImport(t, proj.ID, "dev", "/", "staging", "/")
+	api.Secrets.Create(proj.ID, "staging", "STAGING_DB_URL", "staging-db-value").Do()
+	api.Secrets.Create(proj.ID, "staging", "STAGING_API_KEY", "staging-api-value").Do()
+	api.Secrets.Create(proj.ID, "dev", "DEV_SECRET", "dev-value").Do()
+	api.Imports.Create(proj.ID, "dev", "/", "staging", "/")
 
-	identity := nodejs.CreateIdentity(t, "list-imports-identity")
-	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
+	identity := api.Identities.Create("list-imports-identity")
+	api.Identities.AddToProject(proj.ID, identity.ID).Role("admin").Do()
 
 	client := infra.NewClientBuilder(t, newSecretsRouter(t)).
-		Identity(infra.MachineIdentity(identity.ID, nodejs.OrgID())).
+		Identity(infra.MachineIdentity(identity.ID, nj.OrgID())).
 		Build()
 
 	t.Run("include imports returns imported secrets", func(t *testing.T) {
@@ -78,30 +79,31 @@ func TestListSecrets_Imports(t *testing.T) {
 }
 
 func TestListSecrets_Expansion(t *testing.T) {
-	nodejs := stack.NodeJS()
+	nj := stack.NodeJS()
+	api := nj.For(t)
 
-	proj := nodejs.CreateProject(t, "list-expansion")
-	nodejs.CreateEnvironment(t, proj.ID, "shared", "Shared")
-	nodejs.CreateFolder(t, proj.ID, proj.EnvSlug, "/", "common")
+	proj := api.Projects.Create("list-expansion").Do()
+	api.Environments.Create(proj.ID, "shared", "Shared")
+	api.Folders.Create(proj.ID, proj.EnvSlug, "/", "common")
 
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "HOST", "myhost.com", nil)
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "PORT", "5432", nil)
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "ENDPOINT", "${HOST}:${PORT}", nil)
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "FULL_URL", "https://${ENDPOINT}/api", nil)
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "BASE_VALUE", "base", nil)
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "REF_VALUE", "${BASE_VALUE}", nil)
+	api.Secrets.Create(proj.ID, proj.EnvSlug, "HOST", "myhost.com").Do()
+	api.Secrets.Create(proj.ID, proj.EnvSlug, "PORT", "5432").Do()
+	api.Secrets.Create(proj.ID, proj.EnvSlug, "ENDPOINT", "${HOST}:${PORT}").Do()
+	api.Secrets.Create(proj.ID, proj.EnvSlug, "FULL_URL", "https://${ENDPOINT}/api").Do()
+	api.Secrets.Create(proj.ID, proj.EnvSlug, "BASE_VALUE", "base").Do()
+	api.Secrets.Create(proj.ID, proj.EnvSlug, "REF_VALUE", "${BASE_VALUE}").Do()
 
-	nodejs.CreateSecret(t, proj.ID, "shared", "/", "SHARED_API_KEY", "shared-api-key-value", nil)
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "CROSS_ENV_REF", "${shared.SHARED_API_KEY}", nil)
+	api.Secrets.Create(proj.ID, "shared", "SHARED_API_KEY", "shared-api-key-value").Do()
+	api.Secrets.Create(proj.ID, proj.EnvSlug, "CROSS_ENV_REF", "${shared.SHARED_API_KEY}").Do()
 
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/common", "COMMON_SECRET", "common-value", nil)
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "CROSS_PATH_REF", "${dev.common.COMMON_SECRET}", nil)
+	api.Secrets.Create(proj.ID, proj.EnvSlug, "COMMON_SECRET", "common-value").Path("/common").Do()
+	api.Secrets.Create(proj.ID, proj.EnvSlug, "CROSS_PATH_REF", "${dev.common.COMMON_SECRET}").Do()
 
-	identity := nodejs.CreateIdentity(t, "list-expansion-identity")
-	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
+	identity := api.Identities.Create("list-expansion-identity")
+	api.Identities.AddToProject(proj.ID, identity.ID).Role("admin").Do()
 
 	client := infra.NewClientBuilder(t, newSecretsRouter(t)).
-		Identity(infra.MachineIdentity(identity.ID, nodejs.OrgID())).
+		Identity(infra.MachineIdentity(identity.ID, nj.OrgID())).
 		Build()
 
 	expanded := func(t *testing.T) []secret.SecretRaw {
@@ -161,49 +163,50 @@ func TestListSecrets_Expansion(t *testing.T) {
 // multiple imports, including import priority (last import wins), local override
 // of imports, and folder-level imports.
 func TestListSecrets_ExpansionWithImports(t *testing.T) {
-	nodejs := stack.NodeJS()
+	nj := stack.NodeJS()
+	api := nj.For(t)
 
-	proj := nodejs.CreateProject(t, "list-expansion-imports")
+	proj := api.Projects.Create("list-expansion-imports").Do()
 
-	nodejs.CreateFolder(t, proj.ID, "prod", "/", "config")
-	nodejs.CreateFolder(t, proj.ID, "staging", "/", "services")
-	nodejs.CreateFolder(t, proj.ID, "dev", "/", "app")
+	api.Folders.Create(proj.ID, "prod", "/", "config")
+	api.Folders.Create(proj.ID, "staging", "/", "services")
+	api.Folders.Create(proj.ID, "dev", "/", "app")
 
-	nodejs.CreateSecret(t, proj.ID, "prod", "/", "PROD_ROOT", "prod-root", nil)
-	nodejs.CreateSecret(t, proj.ID, "prod", "/config", "PROD_DB_HOST", "prod-db.example.com", nil)
-	nodejs.CreateSecret(t, proj.ID, "prod", "/config", "SHARED_KEY", "prod-shared-value", nil)
+	api.Secrets.Create(proj.ID, "prod", "PROD_ROOT", "prod-root").Do()
+	api.Secrets.Create(proj.ID, "prod", "PROD_DB_HOST", "prod-db.example.com").Path("/config").Do()
+	api.Secrets.Create(proj.ID, "prod", "SHARED_KEY", "prod-shared-value").Path("/config").Do()
 
-	nodejs.CreateSecret(t, proj.ID, "staging", "/", "STAGING_API_URL", "https://staging-api.example.com", nil)
-	nodejs.CreateSecret(t, proj.ID, "staging", "/", "SHARED_KEY", "staging-shared-value", nil)
-	nodejs.CreateSecret(t, proj.ID, "staging", "/", "IMPORT_PRIORITY_KEY", "from-first-import", nil)
-	nodejs.CreateSecret(t, proj.ID, "staging", "/services", "SERVICE_URL", "https://staging-service.example.com", nil)
-	nodejs.CreateSecret(t, proj.ID, "staging", "/services", "IMPORT_PRIORITY_KEY", "from-second-import", nil)
-	nodejs.CreateSecretImport(t, proj.ID, "staging", "/", "prod", "/config")
+	api.Secrets.Create(proj.ID, "staging", "STAGING_API_URL", "https://staging-api.example.com").Do()
+	api.Secrets.Create(proj.ID, "staging", "SHARED_KEY", "staging-shared-value").Do()
+	api.Secrets.Create(proj.ID, "staging", "IMPORT_PRIORITY_KEY", "from-first-import").Do()
+	api.Secrets.Create(proj.ID, "staging", "SERVICE_URL", "https://staging-service.example.com").Path("/services").Do()
+	api.Secrets.Create(proj.ID, "staging", "IMPORT_PRIORITY_KEY", "from-second-import").Path("/services").Do()
+	api.Imports.Create(proj.ID, "staging", "/", "prod", "/config")
 
-	nodejs.CreateSecret(t, proj.ID, "dev", "/", "LOCAL_SECRET", "local-only", nil)
-	nodejs.CreateSecret(t, proj.ID, "dev", "/", "SHARED_KEY", "dev-shared-value", nil)
-	nodejs.CreateSecret(t, proj.ID, "dev", "/app", "APP_CONFIG", "app-config", nil)
+	api.Secrets.Create(proj.ID, "dev", "LOCAL_SECRET", "local-only").Do()
+	api.Secrets.Create(proj.ID, "dev", "SHARED_KEY", "dev-shared-value").Do()
+	api.Secrets.Create(proj.ID, "dev", "APP_CONFIG", "app-config").Path("/app").Do()
 
-	nodejs.CreateSecret(t, proj.ID, "dev", "/", "REF_LOCAL", "${LOCAL_SECRET}", nil)
-	nodejs.CreateSecret(t, proj.ID, "dev", "/", "REF_STAGING", "${STAGING_API_URL}", nil)
-	nodejs.CreateSecret(t, proj.ID, "dev", "/", "REF_SHARED", "${SHARED_KEY}", nil)
-	nodejs.CreateSecret(t, proj.ID, "dev", "/", "REF_SERVICE", "${SERVICE_URL}", nil)
-	nodejs.CreateSecret(t, proj.ID, "dev", "/", "REF_PROD_VIA_STAGING", "${PROD_DB_HOST}", nil)
-	nodejs.CreateSecret(t, proj.ID, "dev", "/", "REF_CHAIN", "host=${PROD_DB_HOST}&api=${STAGING_API_URL}", nil)
-	nodejs.CreateSecret(t, proj.ID, "dev", "/", "REF_MISSING", "${NOT_EXISTS}", nil)
-	nodejs.CreateSecret(t, proj.ID, "dev", "/", "REF_IMPORT_PRIORITY", "${IMPORT_PRIORITY_KEY}", nil)
+	api.Secrets.Create(proj.ID, "dev", "REF_LOCAL", "${LOCAL_SECRET}").Do()
+	api.Secrets.Create(proj.ID, "dev", "REF_STAGING", "${STAGING_API_URL}").Do()
+	api.Secrets.Create(proj.ID, "dev", "REF_SHARED", "${SHARED_KEY}").Do()
+	api.Secrets.Create(proj.ID, "dev", "REF_SERVICE", "${SERVICE_URL}").Do()
+	api.Secrets.Create(proj.ID, "dev", "REF_PROD_VIA_STAGING", "${PROD_DB_HOST}").Do()
+	api.Secrets.Create(proj.ID, "dev", "REF_CHAIN", "host=${PROD_DB_HOST}&api=${STAGING_API_URL}").Do()
+	api.Secrets.Create(proj.ID, "dev", "REF_MISSING", "${NOT_EXISTS}").Do()
+	api.Secrets.Create(proj.ID, "dev", "REF_IMPORT_PRIORITY", "${IMPORT_PRIORITY_KEY}").Do()
 
-	nodejs.CreateSecretImport(t, proj.ID, "dev", "/", "staging", "/")
-	nodejs.CreateSecretImport(t, proj.ID, "dev", "/", "staging", "/services")
-	nodejs.CreateSecretImport(t, proj.ID, "dev", "/app", "prod", "/config")
+	api.Imports.Create(proj.ID, "dev", "/", "staging", "/")
+	api.Imports.Create(proj.ID, "dev", "/", "staging", "/services")
+	api.Imports.Create(proj.ID, "dev", "/app", "prod", "/config")
 
-	nodejs.CreateSecret(t, proj.ID, "dev", "/app", "APP_DB_URL", "postgres://${PROD_DB_HOST}:5432/app", nil)
+	api.Secrets.Create(proj.ID, "dev", "APP_DB_URL", "postgres://${PROD_DB_HOST}:5432/app").Path("/app").Do()
 
-	identity := nodejs.CreateIdentity(t, "list-expansion-imports-identity")
-	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
+	identity := api.Identities.Create("list-expansion-imports-identity")
+	api.Identities.AddToProject(proj.ID, identity.ID).Role("admin").Do()
 
 	client := infra.NewClientBuilder(t, newSecretsRouter(t)).
-		Identity(infra.MachineIdentity(identity.ID, nodejs.OrgID())).
+		Identity(infra.MachineIdentity(identity.ID, nj.OrgID())).
 		Build()
 
 	t.Run("root level expansion", func(t *testing.T) {
