@@ -31,13 +31,17 @@ const validateCommonNames = z
 const validateSubjectAltNames = z
   .string()
   .min(1)
+  .max(4096)
   .trim()
-  .superRefine((val, ctx) => {
-    const invalidEntries = val
+  .transform((el) =>
+    el
       .split(",")
       .map((i) => i.trim())
       .filter(Boolean)
-      .filter((entry) => !isValidAllowedSubjectAltNameEntry(entry));
+      .join(",")
+  )
+  .superRefine((val, ctx) => {
+    const invalidEntries = val.split(",").filter((entry) => !isValidAllowedSubjectAltNameEntry(entry));
 
     if (invalidEntries.length) {
       ctx.addIssue({
@@ -47,14 +51,7 @@ const validateSubjectAltNames = z
         }: ${invalidEntries.join(", ")}. Prefix non-DNS values with their type (e.g. "URI:spiffe://...", "IP:10.0.0.1", "EMAIL:svc@example.com").`
       });
     }
-  })
-  .transform((el) =>
-    el
-      .split(",")
-      .map((i) => i.trim())
-      .filter(Boolean)
-      .join(",")
-  );
+  });
 
 const validateCaCertificate = (caCert: string) => {
   if (!caCert) return true;

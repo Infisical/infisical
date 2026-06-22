@@ -6,7 +6,7 @@ export async function up(knex: Knex): Promise<void> {
   const hasColumn = await knex.schema.hasColumn(TableName.IdentityTlsCertAuth, "allowedSubjectAltNames");
   if (!hasColumn) {
     await knex.schema.alterTable(TableName.IdentityTlsCertAuth, (t) => {
-      t.text("allowedSubjectAltNames").nullable();
+      t.string("allowedSubjectAltNames", 4096).nullable();
     });
   }
 }
