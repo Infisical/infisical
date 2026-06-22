@@ -341,7 +341,7 @@ type TFieldUiHint = {
 const humanizeKey = (key: string) => {
   const spaced = key
     .replace(new RE2(/([A-Z])/g), " $1")
-    .replace(/-/g, " ")
+    .replace(new RE2(/-/g), " ")
     .trim();
   return spaced
     .split(" ")
