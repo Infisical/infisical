@@ -237,7 +237,7 @@ export const ACCOUNT_TYPE_CONFIGS = {
             ctx.addIssue({
               code: z.ZodIssueCode.custom,
               message:
-                "Credentials should not be included in the connection string. They are managed separately per account"
+                "Credentials should not be included in the connection string. Use the Username and Password fields instead"
             });
             return z.NEVER;
           }
