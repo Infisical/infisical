@@ -1,5 +1,4 @@
 import { ForbiddenError, subject } from "@casl/ability";
-import * as x509 from "@peculiar/x509";
 import { randomUUID } from "crypto";
 
 import { ActionProjectType } from "@app/db/schemas";
@@ -20,8 +19,7 @@ import { TCertificateAuthorityDALFactory } from "@app/services/certificate-autho
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import {
   assertCaInProfileProject,
-  createDistinguishedName,
-  extractDnParts
+  createDistinguishedName
 } from "@app/services/certificate-authority/certificate-authority-fns";
 import { TCertificateIssuanceQueueFactory } from "@app/services/certificate-authority/certificate-issuance-queue";
 import { validateGoDaddyIssuanceInputs } from "@app/services/certificate-authority/godaddy/godaddy-certificate-authority-validators";
@@ -450,15 +448,13 @@ export const certificateApprovalServiceFactory = (
       });
     }
 
-    const csrSubjectParsed = extractDnParts(new x509.Pkcs10CertificateRequest(csr || "").subjectName);
     const subjectOverride = createDistinguishedName({
-      ...csrSubjectParsed,
-      commonName: csrSubjectParsed.commonName ?? reconstructedRequest.commonName,
-      organization: csrSubjectParsed.organization ?? reconstructedRequest.organization,
-      ou: csrSubjectParsed.ou ?? reconstructedRequest.organizationalUnit,
-      country: csrSubjectParsed.country ?? reconstructedRequest.country,
-      province: csrSubjectParsed.province ?? reconstructedRequest.state,
-      locality: csrSubjectParsed.locality ?? reconstructedRequest.locality
+      commonName: reconstructedRequest.commonName,
+      organization: reconstructedRequest.organization,
+      ou: reconstructedRequest.organizationalUnit,
+      country: reconstructedRequest.country,
+      province: reconstructedRequest.state,
+      locality: reconstructedRequest.locality
     });
 
     const { certificate, certificateChain, issuingCaCertificate, serialNumber, cert } =

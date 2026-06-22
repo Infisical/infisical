@@ -48,7 +48,7 @@ import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns
 
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaStatus, CaType } from "../certificate-authority-enums";
-import { keyAlgorithmToAlgCfg } from "../certificate-authority-fns";
+import { extractDnParts, keyAlgorithmToAlgCfg } from "../certificate-authority-fns";
 import { TExternalCertificateAuthorityDALFactory } from "../external-certificate-authority-dal";
 import {
   API_CSR_PASSTHROUGH_TEMPLATE_ARN,
@@ -130,6 +130,39 @@ const calculateFinalRenewBeforeDays = (
   }
 
   return undefined;
+};
+
+export const buildAwsPcaApiPassthroughSubject = ({
+  csr,
+  csrPem,
+  commonName,
+  organization,
+  organizationalUnit,
+  country,
+  state,
+  locality
+}: {
+  csr?: string;
+  csrPem: string;
+  commonName?: string;
+  organization?: string;
+  organizationalUnit?: string;
+  country?: string;
+  state?: string;
+  locality?: string;
+}): ASN1Subject => {
+  const enforcedSubject = csr
+    ? extractDnParts(new x509.Pkcs10CertificateRequest(csrPem).subjectName)
+    : { commonName, organization, ou: organizationalUnit, country, province: state, locality };
+
+  const subject: ASN1Subject = {};
+  if (enforcedSubject.commonName) subject.CommonName = enforcedSubject.commonName;
+  if (enforcedSubject.organization) subject.Organization = enforcedSubject.organization;
+  if (enforcedSubject.ou) subject.OrganizationalUnit = enforcedSubject.ou;
+  if (enforcedSubject.country) subject.Country = enforcedSubject.country;
+  if (enforcedSubject.province) subject.State = enforcedSubject.province;
+  if (enforcedSubject.locality) subject.Locality = enforcedSubject.locality;
+  return subject;
 };
 
 type TAwsPcaCertificateAuthorityFnsDeps = {
@@ -681,13 +714,16 @@ export const AwsPcaCertificateAuthorityFns = ({
       }
     };
 
-    const apiPassthroughSubject: ASN1Subject = {};
-    if (commonName) apiPassthroughSubject.CommonName = commonName;
-    if (organization) apiPassthroughSubject.Organization = organization;
-    if (organizationalUnit) apiPassthroughSubject.OrganizationalUnit = organizationalUnit;
-    if (country) apiPassthroughSubject.Country = country;
-    if (state) apiPassthroughSubject.State = state;
-    if (locality) apiPassthroughSubject.Locality = locality;
+    const apiPassthroughSubject = buildAwsPcaApiPassthroughSubject({
+      csr,
+      csrPem,
+      commonName,
+      organization,
+      organizationalUnit,
+      country,
+      state,
+      locality
+    });
 
     const apiPassthrough: ApiPassthrough = {};
     if (Object.keys(apiPassthroughSubject).length > 0) {
