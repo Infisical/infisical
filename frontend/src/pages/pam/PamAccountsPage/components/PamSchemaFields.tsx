@@ -12,11 +12,7 @@ import {
 } from "@app/components/v3/generic/Select";
 import { Switch } from "@app/components/v3/generic/Switch";
 import { TextArea } from "@app/components/v3/generic/TextArea";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger
-} from "@app/components/v3/generic/Tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3/generic/Tooltip";
 import { PamFieldWidget, TPamFieldDescriptor } from "@app/hooks/api/pam";
 
 import { TAccountFormValues } from "./accountFormSchema";
@@ -117,7 +113,7 @@ export const PamSchemaFields = ({ control, namePrefix, fields }: Props) => {
                   {descriptor.tooltip && (
                     <Tooltip>
                       <TooltipTrigger>
-                        <Info className="ml-1 inline h-3.5 w-3.5 text-muted-foreground" />
+                        <Info className="text-muted-foreground ml-1 inline h-3.5 w-3.5" />
                       </TooltipTrigger>
                       <TooltipContent>{descriptor.tooltip}</TooltipContent>
                     </Tooltip>
@@ -137,7 +133,7 @@ export const PamSchemaFields = ({ control, namePrefix, fields }: Props) => {
                   {descriptor.tooltip && (
                     <Tooltip>
                       <TooltipTrigger>
-                        <Info className="ml-1 inline h-3.5 w-3.5 text-muted-foreground" />
+                        <Info className="text-muted-foreground ml-1 inline h-3.5 w-3.5" />
                       </TooltipTrigger>
                       <TooltipContent>{descriptor.tooltip}</TooltipContent>
                     </Tooltip>

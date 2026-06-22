@@ -186,6 +186,10 @@ export const pamSessionServiceFactory = ({
 
     const sessionStarted = session.status === PamSessionStatus.Starting;
 
+    if (sessionStarted) {
+      await pamSessionDAL.activateSession(sessionId);
+    }
+
     let recording: {
       sessionKey: string;
       uploadToken: string;

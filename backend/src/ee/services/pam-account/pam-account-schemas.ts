@@ -285,6 +285,7 @@ export const ACCOUNT_TYPE_CONFIGS = {
           secret?: boolean;
           defaultValue?: string | number | boolean;
           showWhen?: { field: string; equals: string | boolean };
+          tooltip?: string;
         }
       >;
       internalMetadata?: z.ZodTypeAny;
