@@ -107,8 +107,13 @@ export const secretSharingServiceFactory = ({
   const $hasExternalEmailAccess = (sharedSecret: TSecretSharing): boolean =>
     Boolean(sharedSecret.allowExternalEmails && sharedSecret.password);
 
-  // Verifies the actor has access to secretOrgId: same root org family AND active membership in secretOrgId.
-  const $assertOrgAccess = async (secretOrgId: string, actorOrgId: string, actorId?: string): Promise<void> => {
+  // Verifies the actor has access to secretOrgId: same root org family AND effective membership in secretOrgId.
+  const $assertOrgAccess = async (
+    secretOrgId: string,
+    actorOrgId: string,
+    actorId?: string,
+    actorType?: ActorType
+  ): Promise<void> => {
     if (secretOrgId === actorOrgId) return;
     const [actorRootOrg, secretRootOrg] = await Promise.all([
       orgDAL.findRootOrgDetails(actorOrgId),
@@ -117,16 +122,16 @@ export const secretSharingServiceFactory = ({
     if (!actorRootOrg || !secretRootOrg || actorRootOrg.id !== secretRootOrg.id) {
       throw new ForbiddenRequestError({ message: "You do not have access to this secret" });
     }
-    if (!actorId) {
+    if (!actorId || !actorType) {
       throw new UnauthorizedError({ message: "Authentication required to view this secret" });
     }
-    const memberships = await orgDAL.findMembership({
-      actorUserId: actorId,
-      scopeOrgId: secretOrgId,
-      status: OrgMembershipStatus.Accepted,
-      isActive: true
+    const membership = await orgDAL.findEffectiveOrgMembership({
+      actorType,
+      actorId,
+      orgId: secretOrgId,
+      status: OrgMembershipStatus.Accepted
     });
-    if (memberships.length === 0) {
+    if (!membership || !membership.isActive) {
       throw new ForbiddenRequestError({ message: "You do not have access to this secret" });
     }
   };
@@ -609,7 +614,7 @@ export const secretSharingServiceFactory = ({
 
   // Checks whether external (non-org) email access is available for this secret.
 
-  const getSharedSecretById = async (sharedSecretId: string, orgId?: string, actorId?: string) => {
+  const getSharedSecretById = async (sharedSecretId: string, orgId?: string, actorId?: string, actor?: ActorType) => {
     const sharedSecret = await secretSharingDAL.findOne({
       type: SecretSharingType.Share,
       identifier: Buffer.from(sharedSecretId, "base64url").toString("hex")
@@ -627,7 +632,7 @@ export const secretSharingServiceFactory = ({
         throw new UnauthorizedError({ message: "Authentication required to view this secret" });
       }
       if (sharedSecret.orgId) {
-        await $assertOrgAccess(sharedSecret.orgId, orgId, actorId);
+        await $assertOrgAccess(sharedSecret.orgId, orgId, actorId, actor);
       }
     }
 
@@ -674,7 +679,7 @@ export const secretSharingServiceFactory = ({
   };
 
   /** Gets password-less secret. validates all secret's requested (must be fresh). */
-  const accessSharedSecret = async ({ sharedSecretId, orgId, actorId, password }: TGetActiveSharedSecretByIdDTO) => {
+  const accessSharedSecret = async ({ sharedSecretId, orgId, actorId, actor, password }: TGetActiveSharedSecretByIdDTO) => {
     const result = await secretSharingDAL.transaction(async (tx) => {
       await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.AccessSharedSecret(sharedSecretId)]);
 
@@ -699,7 +704,7 @@ export const secretSharingServiceFactory = ({
           throw new UnauthorizedError();
         }
         if (sharedSecret.orgId) {
-          await $assertOrgAccess(sharedSecret.orgId, orgId, actorId);
+          await $assertOrgAccess(sharedSecret.orgId, orgId, actorId, actor);
         }
       }
 

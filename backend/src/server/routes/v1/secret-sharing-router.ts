@@ -110,7 +110,8 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
       return req.server.services.secretSharing.getSharedSecretById(
         req.params.id,
         req.permission?.orgId,
-        req.permission?.id
+        req.permission?.id,
+        req.permission?.type
       );
     }
   });
@@ -146,7 +147,8 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
         sharedSecretId: req.params.id,
         password: req.body.password,
         orgId: req.permission?.orgId,
-        actorId: req.permission?.id
+        actorId: req.permission?.id,
+        actor: req.permission?.type
       });
 
       if (sharedSecret.orgId) {
