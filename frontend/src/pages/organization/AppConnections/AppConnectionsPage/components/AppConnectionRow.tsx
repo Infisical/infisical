@@ -47,7 +47,7 @@ import { GitHubConnectionMethod, TAppConnection } from "@app/hooks/api/appConnec
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { useListGitHubApps } from "@app/hooks/api/gitHubApps";
 
-import { CrededentialRotationStatusBadge } from "./AppConnectionForm/shared/CrededentialRotationBadge";
+import { CredentialRotationStatusBadge } from "./AppConnectionForm/shared/CredentialRotationBadge";
 
 type Props = {
   appConnection: TAppConnection;
@@ -246,7 +246,7 @@ export const AppConnectionRow = ({
           )}
 
           {appConnection.rotation && (
-            <CrededentialRotationStatusBadge appConnection={appConnection} />
+            <CredentialRotationStatusBadge appConnection={appConnection} />
           )}
 
           <DropdownMenu>

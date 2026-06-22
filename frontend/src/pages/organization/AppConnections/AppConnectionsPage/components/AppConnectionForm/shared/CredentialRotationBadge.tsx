@@ -11,7 +11,7 @@ type Props = {
   appConnection: TAppConnection;
 };
 
-export const CrededentialRotationStatusBadge = ({ appConnection }: Props) => {
+export const CredentialRotationStatusBadge = ({ appConnection }: Props) => {
   const { isAutoRotationEnabled, rotation } = appConnection;
 
   if (!rotation) {

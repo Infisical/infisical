@@ -35,7 +35,7 @@ import { ProjectPermissionAppConnectionActions } from "@app/context/ProjectPermi
 import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
 import { useToggle } from "@app/hooks";
 import { TAppConnection } from "@app/hooks/api/appConnections";
-import { CrededentialRotationStatusBadge } from "@app/pages/organization/AppConnections/AppConnectionsPage/components/AppConnectionForm/shared/CrededentialRotationBadge";
+import { CredentialRotationStatusBadge } from "@app/pages/organization/AppConnections/AppConnectionsPage/components/AppConnectionForm/shared/CredentialRotationBadge";
 
 type Props = {
   appConnection: TAppConnection;
@@ -134,7 +134,7 @@ export const AppConnectionRow = ({
             </Tooltip>
           )}
           {appConnection.rotation && (
-            <CrededentialRotationStatusBadge appConnection={appConnection} />
+            <CredentialRotationStatusBadge appConnection={appConnection} />
           )}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
