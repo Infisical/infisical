@@ -191,7 +191,7 @@ export const identityTlsCertAuthServiceFactory = ({
       }
 
       if (identityTlsCertAuth.allowedSubjectAltNames) {
-        const sanExtension = new x509.X509Certificate(leafCertificate).getExtension(
+        const sanExtension = new x509.X509Certificate(clientCertificateX509.raw).getExtension(
           x509.SubjectAlternativeNameExtension
         );
 
