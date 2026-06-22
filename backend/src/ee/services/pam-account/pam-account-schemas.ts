@@ -143,15 +143,8 @@ export const ACCOUNT_TYPE_CONFIGS = {
     name: "MongoDB",
     icon: "MongoDB.png",
     connectionDetails: z.object({
-      host: z.string().trim().min(1).max(255),
-      port: z.coerce.number(),
+      connectionString: z.string().trim().min(1).max(2048),
       database: z.string().trim().min(1).max(255),
-      authSource: z
-        .string()
-        .trim()
-        .max(255)
-        .transform((v) => v || undefined)
-        .optional(),
       sslEnabled: z.boolean(),
       sslRejectUnauthorized: z.boolean(),
       sslCertificate: z
@@ -171,8 +164,12 @@ export const ACCOUNT_TYPE_CONFIGS = {
     }),
     sanitizedCredentials: z.object({ username: z.string().optional() }),
     ui: {
-      port: { defaultValue: 27017 },
-      authSource: { label: "Auth Source" },
+      connectionString: {
+        label: "Connection String",
+        widget: PamFieldWidget.Textarea,
+        tooltip: "Supports mongodb:// and mongodb+srv:// URIs. Do not include credentials or database in the URI."
+      },
+      database: { defaultValue: "admin" },
       sslEnabled: { label: "SSL Enabled" },
       sslRejectUnauthorized: {
         label: "Reject Unauthorized",
@@ -335,7 +332,6 @@ export const extractGatewayTarget = (
     case PamAccountType.SSH:
     case PamAccountType.Postgres:
     case PamAccountType.MySQL:
-    case PamAccountType.MongoDB:
     case PamAccountType.MsSQL:
       return {
         host: (validated as { host: string; port: number }).host,
@@ -345,6 +341,18 @@ export const extractGatewayTarget = (
       const { url } = validated as { url: string };
       const parsed = new URL(url);
       return { host: parsed.hostname };
+    }
+    case PamAccountType.MongoDB: {
+      const { connectionString } = validated as { connectionString: string };
+      try {
+        const url = new URL(connectionString);
+        return {
+          host: url.hostname,
+          port: url.port ? Number(url.port) : undefined
+        };
+      } catch {
+        return { host: connectionString };
+      }
     }
     default:
       throw new Error(`No gateway target extraction defined for account type '${accountType}'`);
@@ -406,7 +414,10 @@ export const PamFieldDescriptorSchema = z.object({
   defaultValue: z.union([z.string(), z.number(), z.boolean()]).optional(),
 
   // Only render when the referenced field equals this value
-  showWhen: z.object({ field: z.string(), equals: z.union([z.string(), z.boolean()]) }).optional()
+  showWhen: z.object({ field: z.string(), equals: z.union([z.string(), z.boolean()]) }).optional(),
+
+  // Info tooltip shown next to the label
+  tooltip: z.string().optional()
 });
 
 type PamFieldDescriptor = z.infer<typeof PamFieldDescriptorSchema>;
@@ -429,6 +440,7 @@ type TFieldUiHint = {
   secret?: boolean;
   defaultValue?: string | number | boolean;
   showWhen?: PamFieldDescriptor["showWhen"];
+  tooltip?: string;
 };
 
 const humanizeKey = (key: string) => {
@@ -491,7 +503,8 @@ const describeField = (
       ? { options: enumValues.map((v) => ({ label: humanizeKey(v), value: v })) }
       : {}),
     ...(hint.defaultValue !== undefined ? { defaultValue: hint.defaultValue } : {}),
-    ...(resolvedShowWhen ? { showWhen: resolvedShowWhen } : {})
+    ...(resolvedShowWhen ? { showWhen: resolvedShowWhen } : {}),
+    ...(hint.tooltip ? { tooltip: hint.tooltip } : {})
   };
 };
 

@@ -215,18 +215,8 @@ export const pamSessionServiceFactory = ({
       };
     }
 
-    const mergedCredentials: Record<string, unknown> = { ...connectionDetails, ...credentials };
-
-    if (account.accountType === PamAccountType.MongoDB) {
-      const host = connectionDetails.host as string;
-      const port = connectionDetails.port as number;
-      const authSource = (connectionDetails.authSource as string) || undefined;
-      const qs = authSource ? `?authSource=${encodeURIComponent(authSource)}` : "";
-      mergedCredentials.connectionString = `mongodb://${host}:${port}${qs}`;
-    }
-
     return {
-      credentials: mergedCredentials,
+      credentials: { ...connectionDetails, ...credentials },
       recording,
       projectId: session.projectId,
       accountId: session.accountId,
