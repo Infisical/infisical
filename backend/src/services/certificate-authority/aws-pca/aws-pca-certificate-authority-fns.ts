@@ -1,6 +1,8 @@
 /* eslint-disable no-await-in-loop */
 import {
   ACMPCAClient,
+  type ApiPassthrough,
+  type ASN1Subject,
   CertificateAuthorityStatus,
   DescribeCertificateAuthorityCommand,
   GetCertificateCommand,
@@ -679,20 +681,31 @@ export const AwsPcaCertificateAuthorityFns = ({
       }
     };
 
+    const apiPassthroughSubject: ASN1Subject = {};
+    if (commonName) apiPassthroughSubject.CommonName = commonName;
+    if (organization) apiPassthroughSubject.Organization = organization;
+    if (organizationalUnit) apiPassthroughSubject.OrganizationalUnit = organizationalUnit;
+    if (country) apiPassthroughSubject.Country = country;
+    if (state) apiPassthroughSubject.State = state;
+    if (locality) apiPassthroughSubject.Locality = locality;
+
+    const apiPassthrough: ApiPassthrough = {};
+    if (Object.keys(apiPassthroughSubject).length > 0) {
+      apiPassthrough.Subject = apiPassthroughSubject;
+    }
+    if (altNames && altNames.length > 0) {
+      apiPassthrough.Extensions = {
+        SubjectAlternativeNames: altNames.map(sanToGeneralName)
+      };
+    }
+
     const issueResult = await pcaClient.send(
       new IssueCertificateCommand({
         CertificateAuthorityArn: certificateAuthorityArn,
         Csr: Buffer.from(csrPem),
         SigningAlgorithm: awsSigningAlgorithm,
         TemplateArn: API_CSR_PASSTHROUGH_TEMPLATE_ARN,
-        ...(altNames &&
-          altNames.length > 0 && {
-            ApiPassthrough: {
-              Extensions: {
-                SubjectAlternativeNames: altNames.map(sanToGeneralName)
-              }
-            }
-          }),
+        ...(Object.keys(apiPassthrough).length > 0 && { ApiPassthrough: apiPassthrough }),
         Validity: {
           Type: ValidityPeriodType.DAYS,
           Value: validityDays

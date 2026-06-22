@@ -1,4 +1,5 @@
 import { ForbiddenError, subject } from "@casl/ability";
+import * as x509 from "@peculiar/x509";
 import { randomUUID } from "crypto";
 
 import { ActionProjectType } from "@app/db/schemas";
@@ -17,7 +18,11 @@ import { CertKeyAlgorithm, CertSignatureAlgorithm, CertStatus } from "@app/servi
 import { validateAcmIssuanceInputs } from "@app/services/certificate-authority/aws-acm-public-ca/aws-acm-public-ca-certificate-authority-fns";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
-import { assertCaInProfileProject } from "@app/services/certificate-authority/certificate-authority-fns";
+import {
+  assertCaInProfileProject,
+  createDistinguishedName,
+  extractDnParts
+} from "@app/services/certificate-authority/certificate-authority-fns";
 import { TCertificateIssuanceQueueFactory } from "@app/services/certificate-authority/certificate-issuance-queue";
 import { validateGoDaddyIssuanceInputs } from "@app/services/certificate-authority/godaddy/godaddy-certificate-authority-validators";
 import { TInternalCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-service";
@@ -61,6 +66,7 @@ import {
 } from "../certificate-common/certificate-utils";
 import { TCertificateRequestDALFactory } from "../certificate-request/certificate-request-dal";
 import { CertificateRequestStatus } from "../certificate-request/certificate-request-types";
+import { applyProfileDefaults } from "./certificate-v3-fns";
 import { TAltNameEntry, TCertificateIssuanceResponse } from "./certificate-v3-types";
 
 export type TIssueCertificateFromApprovedRequestDeps = {
@@ -417,6 +423,44 @@ export const certificateApprovalServiceFactory = (
       }
     }
 
+    const reconstructedRequest = applyProfileDefaults(extractCertificateRequestFromCSR(csr || ""), profile.defaults);
+    const { keyAlgorithm: reconstructedKeyAlg, signatureAlgorithm: reconstructedSigAlg } = extractAlgorithmsFromCSR(
+      csr || ""
+    );
+    const mappedReconstructedRequest = mapEnumsForValidation(reconstructedRequest);
+    mappedReconstructedRequest.keyAlgorithm = reconstructedKeyAlg;
+    mappedReconstructedRequest.signatureAlgorithm = reconstructedSigAlg;
+    if (certRequest.notAfter) {
+      mappedReconstructedRequest.notBefore = certRequest.notBefore || undefined;
+      mappedReconstructedRequest.notAfter = certRequest.notAfter;
+    } else {
+      mappedReconstructedRequest.validity = { ttl };
+    }
+    if (effectiveBasicConstraints) {
+      mappedReconstructedRequest.basicConstraints = effectiveBasicConstraints;
+    }
+
+    const revalidationResult = await certificatePolicyService.validateCertificateRequest(
+      profile.certificatePolicyId,
+      mappedReconstructedRequest
+    );
+    if (!revalidationResult.isValid) {
+      throw new BadRequestError({
+        message: `Certificate request validation failed: ${revalidationResult.errors.join(", ")}`
+      });
+    }
+
+    const csrSubjectParsed = extractDnParts(new x509.Pkcs10CertificateRequest(csr || "").subjectName);
+    const subjectOverride = createDistinguishedName({
+      ...csrSubjectParsed,
+      commonName: csrSubjectParsed.commonName ?? reconstructedRequest.commonName,
+      organization: csrSubjectParsed.organization ?? reconstructedRequest.organization,
+      ou: csrSubjectParsed.ou ?? reconstructedRequest.organizationalUnit,
+      country: csrSubjectParsed.country ?? reconstructedRequest.country,
+      province: csrSubjectParsed.province ?? reconstructedRequest.state,
+      locality: csrSubjectParsed.locality ?? reconstructedRequest.locality
+    });
+
     const { certificate, certificateChain, issuingCaCertificate, serialNumber, cert } =
       await certificateDAL.transaction(async (tx) => {
         const certResult = await internalCaService.signCertFromCa({
@@ -424,7 +468,14 @@ export const certificateApprovalServiceFactory = (
           caId: ca.id,
           csr: csr || "",
           ttl,
+          subjectOverride,
           altNames: undefined,
+          keyUsages: reconstructedRequest.keyUsages
+            ? convertKeyUsageArrayToLegacy(reconstructedRequest.keyUsages)
+            : undefined,
+          extendedKeyUsages: reconstructedRequest.extendedKeyUsages
+            ? convertExtendedKeyUsageArrayToLegacy(reconstructedRequest.extendedKeyUsages)
+            : undefined,
           notBefore: normalizeDateForApi(certRequest.notBefore || undefined),
           notAfter: normalizeDateForApi(certRequest.notAfter || undefined),
           signatureAlgorithm: certRequest.signatureAlgorithm || undefined,
