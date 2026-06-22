@@ -1,9 +1,8 @@
 /* eslint-disable no-underscore-dangle */
 import dns from "dns";
-import { promisify } from "util";
-
 import ConnectionString from "mongodb-connection-string-url";
 import RE2 from "re2";
+import { promisify } from "util";
 import { z } from "zod";
 
 import { BadRequestError } from "@app/lib/errors";
