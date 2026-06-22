@@ -1,4 +1,5 @@
 /* eslint-disable no-underscore-dangle */
+import ConnectionString from "mongodb-connection-string-url";
 import RE2 from "re2";
 import { z } from "zod";
 
@@ -208,8 +209,50 @@ export const ACCOUNT_TYPE_CONFIGS = {
     name: "MongoDB",
     icon: "MongoDB.png",
     connectionDetails: z.object({
-      connectionString: z.string().trim().min(1).max(2048),
-      database: z.string().trim().min(1).max(255),
+      connectionString: z
+        .string()
+        .trim()
+        .min(1)
+        .max(1024)
+        .transform((val, ctx) => {
+          let cs: ConnectionString;
+          try {
+            cs = new ConnectionString(val);
+          } catch {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: "Invalid MongoDB connection string. Must start with mongodb:// or mongodb+srv://"
+            });
+            return z.NEVER;
+          }
+
+          if (cs.username || cs.password) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message:
+                "Credentials should not be included in the connection string. They are managed separately per account"
+            });
+            return z.NEVER;
+          }
+
+          if (cs.pathname && cs.pathname !== "/") {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: "Database should not be included in the connection string. Use the Database field instead"
+            });
+            return z.NEVER;
+          }
+
+          return cs.toString();
+        }),
+      database: z
+        .string()
+        .trim()
+        .min(1)
+        .max(64)
+        .refine((val) => new RE2("^[a-zA-Z0-9_-]+$").test(val), {
+          message: "Database name can only contain letters, numbers, underscores, and hyphens"
+        }),
       sslEnabled: z.boolean(),
       sslRejectUnauthorized: z.boolean(),
       sslCertificate: z
