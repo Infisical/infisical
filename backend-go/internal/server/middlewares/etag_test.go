@@ -16,7 +16,7 @@ func TestETag_GeneratesETagForSuccessfulGET(t *testing.T) {
 	})
 
 	wrapped := ETag(handler)
-	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/test", http.NoBody)
 	rec := httptest.NewRecorder()
 
 	wrapped.ServeHTTP(rec, req)
@@ -37,14 +37,14 @@ func TestETag_Returns304WhenIfNoneMatchMatches(t *testing.T) {
 
 	wrapped := ETag(handler)
 
-	req1 := httptest.NewRequest(http.MethodGet, "/test", nil)
+	req1 := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/test", http.NoBody)
 	rec1 := httptest.NewRecorder()
 	wrapped.ServeHTTP(rec1, req1)
 	require.Equal(t, http.StatusOK, rec1.Code)
 	etag := rec1.Header().Get("ETag")
 	require.NotEmpty(t, etag)
 
-	req2 := httptest.NewRequest(http.MethodGet, "/test", nil)
+	req2 := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/test", http.NoBody)
 	req2.Header.Set("If-None-Match", etag)
 	rec2 := httptest.NewRecorder()
 	wrapped.ServeHTTP(rec2, req2)
@@ -60,7 +60,7 @@ func TestETag_Returns200WhenIfNoneMatchDiffers(t *testing.T) {
 	})
 
 	wrapped := ETag(handler)
-	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/test", http.NoBody)
 	req.Header.Set("If-None-Match", `"invalid-etag"`)
 	rec := httptest.NewRecorder()
 
@@ -80,7 +80,7 @@ func TestETag_SkipsNonGETMethods(t *testing.T) {
 			})
 
 			wrapped := ETag(handler)
-			req := httptest.NewRequest(method, "/test", nil)
+			req := httptest.NewRequestWithContext(t.Context(), method, "/test", http.NoBody)
 			rec := httptest.NewRecorder()
 
 			wrapped.ServeHTTP(rec, req)
@@ -99,7 +99,7 @@ func TestETag_PreservesHandlerSetETag(t *testing.T) {
 	})
 
 	wrapped := ETag(handler)
-	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/test", http.NoBody)
 	rec := httptest.NewRecorder()
 
 	wrapped.ServeHTTP(rec, req)
@@ -126,7 +126,7 @@ func TestETag_SkipsNon2xxResponses(t *testing.T) {
 			})
 
 			wrapped := ETag(handler)
-			req := httptest.NewRequest(http.MethodGet, "/test", nil)
+			req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/test", http.NoBody)
 			rec := httptest.NewRecorder()
 
 			wrapped.ServeHTTP(rec, req)
@@ -145,11 +145,11 @@ func TestETag_ConsistentHashForSameContent(t *testing.T) {
 
 	wrapped := ETag(handler)
 
-	req1 := httptest.NewRequest(http.MethodGet, "/path1", nil)
+	req1 := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/path1", http.NoBody)
 	rec1 := httptest.NewRecorder()
 	wrapped.ServeHTTP(rec1, req1)
 
-	req2 := httptest.NewRequest(http.MethodGet, "/path2", nil)
+	req2 := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/path2", http.NoBody)
 	rec2 := httptest.NewRecorder()
 	wrapped.ServeHTTP(rec2, req2)
 

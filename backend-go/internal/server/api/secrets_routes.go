@@ -1,13 +1,15 @@
 package api
 
 import (
+	"log/slog"
+
 	"github.com/infisical/api/internal/ee/services/ratelimit"
 	"github.com/infisical/api/internal/server/api/secrets/secret"
 	"github.com/infisical/api/internal/services/auth/apiauth"
 )
 
 func (r *Router) registerSecretsRoutes() {
-	l := r.logger.With("product", "secrets")
+	l := r.logger.With(slog.String("product", "secrets"))
 
 	secretsHandler := secret.NewHandler(&secret.Deps{
 		Logger:      l,

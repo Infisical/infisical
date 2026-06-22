@@ -588,12 +588,13 @@ type SecretSeed struct {
 
 // CreateSecretOpts holds optional parameters for CreateSecret.
 type CreateSecretOpts struct {
-	Comment            string
-	Metadata           []SecretMetadataEntry
-	TagIDs             []string
-	Type               string // "shared" or "personal", defaults to "shared"
-	ReminderNote       string
-	ReminderRepeatDays *int
+	Comment               string
+	Metadata              []SecretMetadataEntry
+	TagIDs                []string
+	Type                  string // "shared" or "personal", defaults to "shared"
+	ReminderNote          string
+	ReminderRepeatDays    *int
+	SkipMultilineEncoding bool
 }
 
 // CreateSecret creates a secret via the Node.js API.
@@ -606,6 +607,7 @@ func (n *NodeJSService) CreateSecret(t *testing.T, projectID, environment, secre
 	var tagIDs []string
 	var reminderNote string
 	var reminderRepeatDays *int
+	var skipMultilineEncoding bool
 	secretType := "shared"
 
 	if opts != nil {
@@ -614,6 +616,7 @@ func (n *NodeJSService) CreateSecret(t *testing.T, projectID, environment, secre
 		tagIDs = opts.TagIDs
 		reminderNote = opts.ReminderNote
 		reminderRepeatDays = opts.ReminderRepeatDays
+		skipMultilineEncoding = opts.SkipMultilineEncoding
 		if opts.Type != "" {
 			secretType = opts.Type
 		}
@@ -638,6 +641,7 @@ func (n *NodeJSService) CreateSecret(t *testing.T, projectID, environment, secre
 			TagIDs:                   tagIDs,
 			SecretReminderNote:       reminderNote,
 			SecretReminderRepeatDays: reminderRepeatDays,
+			SkipMultilineEncoding:    skipMultilineEncoding,
 		}).
 		SetResult(&resp).
 		Post(fmt.Sprintf("/api/v4/secrets/%s", key))

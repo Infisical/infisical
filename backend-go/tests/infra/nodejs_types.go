@@ -188,6 +188,7 @@ type CreateSecretRequest struct {
 	TagIDs                   []string              `json:"tagIds,omitempty"`
 	SecretReminderNote       string                `json:"secretReminderNote,omitempty"`
 	SecretReminderRepeatDays *int                  `json:"secretReminderRepeatDays,omitempty"`
+	SkipMultilineEncoding    bool                  `json:"skipMultilineEncoding,omitempty"`
 }
 
 // CreateSecretResponse is the response from POST /api/v4/secrets/{key}.
