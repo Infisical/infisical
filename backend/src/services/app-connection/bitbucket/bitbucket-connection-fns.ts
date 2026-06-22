@@ -146,32 +146,15 @@ export const listBitbucketRepositories = async (
   const encodedSlug = encodeURIComponent(workspaceSlug);
 
   try {
+    const baseUrl = new URL(`${IntegrationUrls.BITBUCKET_API_URL}/2.0/repositories/${encodedSlug}`);
+    baseUrl.searchParams.set("pagelen", String(BITBUCKET_PAGE_SIZE));
+    baseUrl.searchParams.set("sort", "slug");
     if (search) {
-      const baseUrl = new URL(`${IntegrationUrls.BITBUCKET_API_URL}/2.0/repositories/${encodedSlug}`);
-      baseUrl.searchParams.set("pagelen", String(BITBUCKET_PAGE_SIZE));
-      baseUrl.searchParams.set("sort", "slug");
       baseUrl.searchParams.set("q", `name ~ "${search.replace(/"/g, "")}"`);
-
-      const { data } = await request.get<BitbucketPaginatedResponse<TBitbucketRepo>>(baseUrl.toString(), { headers });
-      return data.values;
     }
 
-    // Fetch repos per-project to avoid Bitbucket's 1,000-result pagination cap
-    const projects = await paginateBitbucketRequest<{ key: string }>(
-      `${IntegrationUrls.BITBUCKET_API_URL}/2.0/workspaces/${encodedSlug}/projects?pagelen=${BITBUCKET_PAGE_SIZE}`,
-      headers
-    );
-
-    const reposByProject = await Promise.all(
-      projects.map((project) =>
-        paginateBitbucketRequest<TBitbucketRepo>(
-          `${IntegrationUrls.BITBUCKET_API_URL}/2.0/repositories/${encodedSlug}?pagelen=${BITBUCKET_PAGE_SIZE}&sort=slug&q=project.key="${encodeURIComponent(project.key)}"`,
-          headers
-        )
-      )
-    );
-
-    return reposByProject.flat();
+    const { data } = await request.get<BitbucketPaginatedResponse<TBitbucketRepo>>(baseUrl.toString(), { headers });
+    return data.values;
   } catch (error) {
     return ensureBitbucketRateLimitNotExceeded(error);
   }
