@@ -679,7 +679,13 @@ export const secretSharingServiceFactory = ({
   };
 
   /** Gets password-less secret. validates all secret's requested (must be fresh). */
-  const accessSharedSecret = async ({ sharedSecretId, orgId, actorId, actor, password }: TGetActiveSharedSecretByIdDTO) => {
+  const accessSharedSecret = async ({
+    sharedSecretId,
+    orgId,
+    actorId,
+    actor,
+    password
+  }: TGetActiveSharedSecretByIdDTO) => {
     const result = await secretSharingDAL.transaction(async (tx) => {
       await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.AccessSharedSecret(sharedSecretId)]);
 
