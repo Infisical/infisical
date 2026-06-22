@@ -834,6 +834,7 @@ export const registerRoutes = async (
   const licenseV2Service = licenseV2ServiceFactory({
     envConfig,
     orgDAL,
+    identityOrgMembershipDAL,
     permissionService,
     licenseClient
   });

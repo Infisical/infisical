@@ -1,9 +1,10 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { OrganizationActionScope } from "@app/db/schemas";
+import { OrganizationActionScope, TableName } from "@app/db/schemas";
 import { TEnvConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { TIdentityOrgDALFactory } from "@app/services/identity/identity-org-dal";
 import { TLicenseClientFactory } from "@app/services/license-client";
 import {
   TCatalogProduct,
@@ -32,6 +33,7 @@ import {
 type TLicenseV2ServiceFactoryDep = {
   envConfig: Pick<TEnvConfig, "LICENSE_SERVER_V2_MODE">;
   orgDAL: Pick<TOrgDALFactory, "findById" | "countAllOrgMembers">;
+  identityOrgMembershipDAL: Pick<TIdentityOrgDALFactory, "countAllOrgIdentities">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseClient: Pick<
     TLicenseClientFactory,
@@ -220,6 +222,7 @@ const buildCheckoutItems = (product: TCatalogProduct, cadence: "monthly" | "annu
 export const licenseV2ServiceFactory = ({
   envConfig,
   orgDAL,
+  identityOrgMembershipDAL,
   permissionService,
   licenseClient
 }: TLicenseV2ServiceFactoryDep) => {
@@ -328,6 +331,9 @@ export const licenseV2ServiceFactory = ({
     }
 
     const members = await orgDAL.countAllOrgMembers(orgId);
+    const identities = await identityOrgMembershipDAL.countAllOrgIdentities({
+      [`${TableName.Membership}.scopeOrgId` as "scopeOrgId"]: orgId
+    });
 
     // Plan caps come from the license server (a null limit means genuinely unlimited). Used counts
     // are overlaid here; a missing plan leaves limits unknown.
@@ -363,7 +369,7 @@ export const licenseV2ServiceFactory = ({
       usage: {
         members,
         memberLimit,
-        identities: 0,
+        identities,
         identityLimit
       },
       payment: null,

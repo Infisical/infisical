@@ -1,7 +1,5 @@
 import { ReactNode } from "react";
 import {
-  faArrowRight,
-  faBagShopping,
   faCalendar,
   faCircleExclamation,
   faCircleInfo,
@@ -189,31 +187,6 @@ const ErrorPanel = ({ onRetry }: ErrorPanelProps) => (
         <FontAwesomeIcon icon={faRotate} />
         Try again
       </Button>
-    </div>
-  </Card>
-);
-
-type GetStartedProps = {
-  onGetStarted: () => void;
-  canManage: boolean;
-};
-
-const GetStarted = ({ onGetStarted, canManage }: GetStartedProps) => (
-  <Card>
-    <div className="flex flex-col items-center gap-4 px-7 py-12 text-center">
-      <div className="flex size-[54px] items-center justify-center rounded-xl border border-org/25 bg-org/10 text-2xl text-org">
-        <FontAwesomeIcon icon={faBagShopping} />
-      </div>
-      <div className="text-lg font-semibold text-foreground">Start your subscription</div>
-      <div className="max-w-[42ch] text-sm text-mineshaft-300">
-        Pick the products your team needs and check out securely. You can change or cancel any time.
-      </div>
-      {canManage && (
-        <Button variant="org" size="lg" onClick={onGetStarted}>
-          Get started
-          <FontAwesomeIcon icon={faArrowRight} />
-        </Button>
-      )}
     </div>
   </Card>
 );
@@ -549,7 +522,6 @@ export type OverviewProps = {
   onUpdatePayment: () => void;
   onEditDetails: () => void;
   onContact: (prod: BillingV2CatalogProduct) => void;
-  onGetStarted: () => void;
   onRetry: () => void;
   canManageBilling: boolean;
 };
@@ -563,7 +535,6 @@ export const Overview = ({
   onUpdatePayment,
   onEditDetails,
   onContact,
-  onGetStarted,
   onRetry,
   canManageBilling
 }: OverviewProps) => {
@@ -594,17 +565,14 @@ export const Overview = ({
           onUpdatePayment={onUpdatePayment}
           onManageSubscription={onManageSubscription}
         />
-        <GetStarted onGetStarted={onGetStarted} canManage={canManageBilling} />
         <UsageCard overview={overview} />
-        <div id="billing-v2-products">
-          <ProductsCard
-            overview={overview}
-            catalog={catalog}
-            readOnly={productsReadOnly}
-            onManage={onUpgrade}
-            onContact={onContact}
-          />
-        </div>
+        <ProductsCard
+          overview={overview}
+          catalog={catalog}
+          readOnly={productsReadOnly}
+          onManage={onUpgrade}
+          onContact={onContact}
+        />
       </div>
     );
   }

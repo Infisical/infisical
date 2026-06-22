@@ -78,12 +78,6 @@ export const BillingV2Page = () => {
 
   const cadence = intervalToCadence(overview?.interval ?? null);
 
-  // New customers check out; existing subscribers add/manage products via the Stripe portal.
-  let sheetManageMode: "checkout" | "portal" = "portal";
-  if (overview?.subState === "no-subscription") {
-    sheetManageMode = "checkout";
-  }
-
   const close = () => setFlow(null);
 
   const redirectToPortal = async () => {
@@ -117,24 +111,19 @@ export const BillingV2Page = () => {
     redirectToPortal();
   };
 
-  // No subscription yet: send the customer to the product list to pick what they want, rather than
-  // pre-selecting a product for them.
-  const onGetStarted = () => {
-    document
-      .getElementById("billing-v2-products")
-      ?.scrollIntoView({ behavior: "smooth", block: "start" });
-  };
-
   const onUpgrade = (productId: string) => {
     setFlow({ type: "sheet", prodId: productId });
   };
 
+  // Owned products are managed in the Stripe portal; a product the org isn't entitled to yet always
+  // goes through checkout, even when a subscription already exists.
   const onSheetManage = async (productId: string) => {
-    if (sheetManageMode === "checkout") {
-      await redirectToCheckout(productId);
+    const isEntitled = Boolean(overview?.entitlements[productId]?.entitled);
+    if (isEntitled) {
+      await redirectToPortal();
       return;
     }
-    await redirectToPortal();
+    await redirectToCheckout(productId);
   };
 
   const onUpdatePayment = async () => {
@@ -192,7 +181,6 @@ export const BillingV2Page = () => {
               onUpdatePayment={onUpdatePayment}
               onEditDetails={onEditDetails}
               onContact={onContact}
-              onGetStarted={onGetStarted}
               onRetry={onRetry}
               canManageBilling={canManageBilling}
             />
@@ -206,7 +194,6 @@ export const BillingV2Page = () => {
           prod={catalogById(catalog, flow.prodId)}
           entitlement={overview?.entitlements[flow.prodId]}
           cadence={cadence}
-          manageMode={sheetManageMode}
           redirecting={sheetRedirecting}
           onClose={close}
           onManage={onSheetManage}

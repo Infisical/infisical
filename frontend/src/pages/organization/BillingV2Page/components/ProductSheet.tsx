@@ -82,12 +82,14 @@ type PlansViewProps = {
   prod: BillingV2CatalogProduct;
   entitlement?: BillingV2Entitlement;
   cadence: BillingV2Cadence;
+  onContact: (prod: BillingV2CatalogProduct) => void;
 };
 
-const PlansView = ({ prod, entitlement, cadence }: PlansViewProps) => {
+const PlansView = ({ prod, entitlement, cadence, onContact }: PlansViewProps) => {
   const hasEnterprise = !!prod.enterprise;
   const priceParts = proPriceParts(prod, cadence);
   const entitled = Boolean(entitlement?.entitled);
+  const selfServe = Boolean(prod.pro?.planKey);
 
   return (
     <>
@@ -110,18 +112,18 @@ const PlansView = ({ prod, entitlement, cadence }: PlansViewProps) => {
               <Badge variant="org">Self-serve</Badge>
             )}
           </div>
-          {priceParts ? (
+          {priceParts && (
             <div className="flex flex-wrap items-baseline gap-1.5">
               <span className="text-2xl font-semibold text-foreground">{priceParts.amount}</span>
               <span className="text-xs text-mineshaft-400">{priceParts.unit}</span>
             </div>
-          ) : null}
-          {prod.pro?.proFeature ? (
+          )}
+          {prod.pro?.proFeature && (
             <div className="text-xs text-mineshaft-300">{prod.pro.proFeature}</div>
-          ) : null}
+          )}
         </div>
 
-        {hasEnterprise && prod.enterprise ? (
+        {hasEnterprise && prod.enterprise && (
           <div className="flex flex-col gap-3.5 rounded-xl border border-border bg-card p-[18px]">
             <div className="flex items-center justify-between gap-2">
               <span className="text-[15px] font-semibold text-foreground">Enterprise</span>
@@ -131,11 +133,22 @@ const PlansView = ({ prod, entitlement, cadence }: PlansViewProps) => {
               <span className="text-2xl font-semibold text-foreground">Custom</span>
             </div>
             <div className="text-xs text-mineshaft-300">{prod.enterprise.feature}</div>
+            {selfServe && (
+              <Button
+                variant="info"
+                size="sm"
+                className="mt-auto self-start"
+                onClick={() => onContact(prod)}
+              >
+                Contact sales
+                <FontAwesomeIcon icon={faArrowRight} />
+              </Button>
+            )}
           </div>
-        ) : null}
+        )}
       </div>
 
-      {hasEnterprise && prod.compare ? (
+      {hasEnterprise && prod.compare && (
         <div>
           <div className="mb-3 text-xs font-semibold tracking-wide text-mineshaft-400 uppercase">
             Compare plans
@@ -159,9 +172,9 @@ const PlansView = ({ prod, entitlement, cadence }: PlansViewProps) => {
             </TableBody>
           </Table>
         </div>
-      ) : null}
+      )}
 
-      {!(hasEnterprise && prod.compare) && prod.includes ? (
+      {!(hasEnterprise && prod.compare) && prod.includes && (
         <div>
           <div className="mb-3 text-xs font-semibold tracking-wide text-mineshaft-400 uppercase">
             What&apos;s included
@@ -175,7 +188,7 @@ const PlansView = ({ prod, entitlement, cadence }: PlansViewProps) => {
             ))}
           </div>
         </div>
-      ) : null}
+      )}
     </>
   );
 };
@@ -185,7 +198,6 @@ type ProductSheetProps = {
   prod?: BillingV2CatalogProduct;
   entitlement?: BillingV2Entitlement;
   cadence: BillingV2Cadence;
-  manageMode: "checkout" | "portal";
   redirecting?: boolean;
   onClose: () => void;
   onManage: (prodId: string) => void;
@@ -197,7 +209,6 @@ export const ProductSheet = ({
   prod,
   entitlement,
   cadence,
-  manageMode,
   redirecting,
   onClose,
   onManage,
@@ -211,7 +222,7 @@ export const ProductSheet = ({
   const selfServe = Boolean(prod.pro?.planKey);
 
   let primaryCta = null;
-  if (entitled || (selfServe && manageMode === "portal")) {
+  if (entitled) {
     primaryCta = (
       <Button variant="org" onClick={() => onManage(prodId)} isPending={redirecting}>
         Manage in Stripe
@@ -261,15 +272,20 @@ export const ProductSheet = ({
           <div className="min-w-0 flex-1">
             <SheetTitle className="flex flex-wrap items-center gap-2 text-base">
               {prod.name}
-              {entitled ? <ActiveBadge /> : null}
-              {prod.addon ? <Badge variant="neutral">Add-on</Badge> : null}
+              {entitled && <ActiveBadge />}
+              {prod.addon && <Badge variant="neutral">Add-on</Badge>}
             </SheetTitle>
             <SheetDescription className="mt-1">{prod.tagline || prod.desc}</SheetDescription>
           </div>
         </SheetHeader>
 
         <div className="flex flex-1 flex-col gap-6 overflow-y-auto p-5">
-          <PlansView prod={prod} entitlement={entitlement} cadence={cadence} />
+          <PlansView
+            prod={prod}
+            entitlement={entitlement}
+            cadence={cadence}
+            onContact={onContact}
+          />
         </div>
 
         <SheetFooter className="flex-row justify-end border-t">
