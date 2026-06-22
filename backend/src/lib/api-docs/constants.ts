@@ -1100,6 +1100,10 @@ export const PROJECT_USERS = {
     membershipId: "The ID of the user's project membership.",
     username: "The username to get project membership of. Email is the default username."
   },
+  GET_USER_MEMBERSHIP_BY_USER_ID: {
+    projectId: "The ID of the project to get the membership from.",
+    userId: "The ID of the user to get the project membership of."
+  },
   UPDATE_USER_MEMBERSHIP: {
     projectId: "The ID of the project to update the membership for.",
     membershipId: "The ID of the membership to update.",
