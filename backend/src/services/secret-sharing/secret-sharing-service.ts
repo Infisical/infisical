@@ -113,9 +113,9 @@ export const secretSharingServiceFactory = ({
     if (!actorId) {
       throw new UnauthorizedError({ message: "Authentication required to view this secret" });
     }
-    const customerOrgs = await orgDAL.listOrganizationsWithSubOrgs({ actorId });
+    const actorOrgs = await orgDAL.listOrganizationsWithSubOrgs({ actorId });
     const accessibleOrgIds = new Set(
-      customerOrgs.flatMap((org) => [org.id, ...org.subOrganizations.map((s: { id: string }) => s.id)])
+      actorOrgs.flatMap((org) => [org.id, ...org.subOrganizations.map((s: { id: string }) => s.id)])
     );
     if (!accessibleOrgIds.has(secretOrgId)) {
       throw new ForbiddenRequestError({ message: "You do not have access to this secret" });
