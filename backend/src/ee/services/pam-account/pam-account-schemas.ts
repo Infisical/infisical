@@ -104,7 +104,7 @@ export const ACCOUNT_TYPE_CONFIGS = {
     connectionDetails: z.object({
       host: z.string().trim().min(1).max(255),
       port: z.coerce.number(),
-      database: z.string().trim().min(1).max(128),
+      database: z.string().trim().min(1).max(255),
       sslEnabled: z.boolean(),
       sslRejectUnauthorized: z.boolean(),
       sslCertificate: z
@@ -113,18 +113,82 @@ export const ACCOUNT_TYPE_CONFIGS = {
         .transform((v) => v || undefined)
         .optional()
     }),
-    credentials: z.object({
-      username: z.string().trim().min(1).max(128),
-      password: z
-        .string()
-        .trim()
-        .max(256)
-        .transform((v) => v || undefined)
-        .optional()
+    credentials: z.discriminatedUnion("authMethod", [
+      z.object({
+        authMethod: z.literal("sql-login"),
+        username: z.string().trim().min(1).max(63),
+        password: z
+          .string()
+          .trim()
+          .max(256)
+          .transform((v) => v || undefined)
+          .optional()
+      }),
+      z.object({
+        authMethod: z.literal("ntlm"),
+        username: z.string().trim().min(1).max(63),
+        password: z
+          .string()
+          .trim()
+          .max(256)
+          .transform((v) => v || undefined)
+          .optional(),
+        domain: z.string().trim().min(1).max(255)
+      }),
+      z.object({
+        authMethod: z.literal("kerberos"),
+        username: z.string().trim().min(1).max(63),
+        password: z
+          .string()
+          .trim()
+          .max(256)
+          .transform((v) => v || undefined)
+          .optional(),
+        realm: z
+          .string()
+          .trim()
+          .min(1)
+          .max(255)
+          .regex(new RE2(/^[A-Za-z0-9._-]+$/))
+          .transform((v) => v.toUpperCase()),
+        kdcAddress: z
+          .string()
+          .trim()
+          .max(255)
+          .regex(new RE2(/^[A-Za-z0-9._:-]*$/))
+          .transform((v) => v || undefined)
+          .optional(),
+        spn: z
+          .string()
+          .trim()
+          .min(1)
+          .max(500)
+          .regex(new RE2(/^[A-Za-z0-9._:/-]+$/))
+      })
+    ]),
+    sanitizedCredentials: z.object({
+      authMethod: z.string().optional(),
+      username: z.string().optional(),
+      domain: z.string().optional(),
+      realm: z.string().optional(),
+      kdcAddress: z.string().optional(),
+      spn: z.string().optional()
     }),
-    sanitizedCredentials: z.object({ username: z.string().optional() }),
     ui: {
       port: { defaultValue: 1433 },
+      authMethod: {
+        label: "Auth Method",
+        defaultValue: "sql-login",
+        options: [
+          { label: "SQL Server Authentication", value: "sql-login" },
+          { label: "Windows Authentication (NTLM)", value: "ntlm" },
+          { label: "Windows Authentication (Kerberos)", value: "kerberos" }
+        ]
+      },
+      domain: { label: "Domain" },
+      realm: { label: "Realm" },
+      kdcAddress: { label: "KDC Address" },
+      spn: { label: "SPN" },
       sslEnabled: { label: "SSL Enabled" },
       sslRejectUnauthorized: {
         label: "Reject Unauthorized",
@@ -286,6 +350,7 @@ export const ACCOUNT_TYPE_CONFIGS = {
           defaultValue?: string | number | boolean;
           showWhen?: { field: string; equals: string | boolean };
           tooltip?: string;
+          options?: { label: string; value: string }[];
         }
       >;
       internalMetadata?: z.ZodTypeAny;
@@ -442,6 +507,7 @@ type TFieldUiHint = {
   defaultValue?: string | number | boolean;
   showWhen?: PamFieldDescriptor["showWhen"];
   tooltip?: string;
+  options?: { label: string; value: string }[];
 };
 
 const humanizeKey = (key: string) => {
@@ -543,7 +609,8 @@ const fieldsFromSchema = (schema: z.ZodTypeAny, ui: Record<string, TFieldUiHint>
         widget: PamFieldWidget.Select,
         required: true,
         secret: false,
-        options: discriminatorValues.map((v) => ({ label: humanizeKey(v), value: v }))
+        options:
+          ui[discriminator]?.options ?? discriminatorValues.map((v) => ({ label: humanizeKey(v), value: v }))
       }
     ];
 
