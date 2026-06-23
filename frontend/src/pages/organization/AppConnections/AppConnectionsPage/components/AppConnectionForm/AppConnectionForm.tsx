@@ -79,6 +79,7 @@ import { SupabaseConnectionForm } from "./SupabaseConnectionForm";
 import { TeamCityConnectionForm } from "./TeamCityConnectionForm";
 import { TerraformCloudConnectionForm } from "./TerraformCloudConnectionForm";
 import { TravisCIConnectionForm } from "./TravisCIConnectionForm";
+import { TriggerDevConnectionForm } from "./TriggerDevConnectionForm";
 import { VenafiConnectionForm } from "./VenafiConnectionForm";
 import { VenafiTppConnectionForm } from "./VenafiTppConnectionForm";
 import { VercelConnectionForm } from "./VercelConnectionForm";
@@ -241,6 +242,8 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
         return <LaravelForgeConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Flyio:
         return <FlyioConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.TriggerDev:
+        return <TriggerDevConnectionForm onSubmit={onSubmit} />;
       case AppConnection.GitLab:
         return <GitLabConnectionForm onSubmit={onSubmit} projectId={projectId} />;
       case AppConnection.Cloudflare:
@@ -484,6 +487,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         return <LaravelForgeConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Flyio:
         return <FlyioConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.TriggerDev:
+        return <TriggerDevConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.GitLab:
         return (
           <GitLabConnectionForm

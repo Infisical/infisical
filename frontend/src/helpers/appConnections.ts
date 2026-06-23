@@ -82,6 +82,7 @@ import { SnowflakeConnectionMethod } from "@app/hooks/api/appConnections/types/s
 import { SshConnectionMethod } from "@app/hooks/api/appConnections/types/ssh-connection";
 import { SupabaseConnectionMethod } from "@app/hooks/api/appConnections/types/supabase-connection";
 import { TravisCIConnectionMethod } from "@app/hooks/api/appConnections/types/travis-ci-connection";
+import { TriggerDevConnectionMethod } from "@app/hooks/api/appConnections/types/trigger-dev-connection";
 import { VenafiConnectionMethod } from "@app/hooks/api/appConnections/types/venafi-connection";
 import { VenafiTppConnectionMethod } from "@app/hooks/api/appConnections/types/venafi-tpp-connection";
 import { IntegrationsListPageTabs } from "@app/types/integrations";
@@ -524,6 +525,12 @@ export const APP_CONNECTION_MAP: Record<
     image: "Convex.png",
     category: "PLATFORM",
     description: "Project and deployment access for Convex."
+  },
+  [AppConnection.TriggerDev]: {
+    name: "Trigger.dev",
+    image: "TriggerDev.png",
+    category: "INFRASTRUCTURE",
+    description: "Trigger.dev access."
   }
 };
 
@@ -623,6 +630,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case DevinConnectionMethod.ApiKey:
     case DigiCertConnectionMethod.ApiKey:
     case GoDaddyConnectionMethod.ApiKey:
+    case TriggerDevConnectionMethod.ApiKey:
       return { name: "API Key", icon: faKey };
     case ChefConnectionMethod.UserKey:
       return { name: "User Key", icon: faKey };

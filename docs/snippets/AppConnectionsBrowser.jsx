@@ -504,6 +504,14 @@ export const AppConnectionsBrowser = () => {
       category: "SaaS",
     },
     {
+      name: "Trigger.dev",
+      slug: "trigger-dev",
+      path: "/integrations/app-connections/trigger-dev",
+      description:
+        "Learn how to connect your Trigger.dev account to sync secrets from Infisical.",
+      category: "DevOps Tools",
+    },
+    {
       name: "Anthropic",
       slug: "anthropic",
       path: "/integrations/app-connections/anthropic",
