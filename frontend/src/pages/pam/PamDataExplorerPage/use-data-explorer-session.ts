@@ -1,10 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import ms from "ms";
 
 import { apiRequest } from "@app/config/request";
 import { MfaSessionStatus, TMfaSessionStatusResponse } from "@app/hooks/api/mfaSession/types";
 
-import { DEFAULT_ACCESS_DURATION } from "../constants";
 import type {
   DataExplorerClientMessage,
   DataExplorerServerMessage,
@@ -27,17 +25,6 @@ type MfaState = {
   sessionId?: string;
   method?: string;
   verifying: boolean;
-};
-
-type ApprovalState = {
-  required: boolean;
-  policyName?: string;
-  policyId?: string;
-  accessDurationMax?: string;
-  creating: boolean;
-  submitted: boolean;
-  approvalRequestId?: string;
-  errorMessage?: string;
 };
 
 type UseDataExplorerSessionOptions = {
@@ -81,7 +68,6 @@ export const useDataExplorerSession = ({
   const [isConnecting, setIsConnecting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [mfaState, setMfaState] = useState<MfaState | null>(null);
-  const [approvalState, setApprovalState] = useState<ApprovalState | null>(null);
 
   const wsRef = useRef<WebSocket | null>(null);
   const pendingRequestsRef = useRef<Map<string, PendingRequest>>(new Map());
@@ -211,7 +197,6 @@ export const useDataExplorerSession = ({
       setIsConnecting(true);
       setErrorMessage(null);
       setMfaState(null);
-      setApprovalState(null);
 
       readyPromiseRef.current = new Promise<void>((resolve, reject) => {
         readyResolveRef.current = resolve;
@@ -236,9 +221,6 @@ export const useDataExplorerSession = ({
               details?: {
                 mfaSessionId?: string;
                 mfaMethod?: string;
-                policyId?: string;
-                policyName?: string;
-                constraints?: { accessDuration: { max: string } };
               };
             };
           };
@@ -251,20 +233,6 @@ export const useDataExplorerSession = ({
             sessionId: details?.mfaSessionId,
             method: details?.mfaMethod,
             verifying: false
-          });
-          setIsConnecting(false);
-          return;
-        }
-
-        if (axiosErr?.response?.data?.error === "PolicyViolationError") {
-          const { details } = axiosErr.response!.data!;
-          setApprovalState({
-            required: true,
-            policyName: details?.policyName,
-            policyId: details?.policyId,
-            accessDurationMax: details?.constraints?.accessDuration.max,
-            creating: false,
-            submitted: false
           });
           setIsConnecting(false);
           return;
@@ -333,54 +301,6 @@ export const useDataExplorerSession = ({
       setErrorMessage("MFA verification timed out or failed");
     }
   }, [mfaState, connect]);
-
-  // Approval request flow
-  const submitApprovalRequest = useCallback(
-    async (justification?: string) => {
-      if (!approvalState?.required) return;
-      setApprovalState((prev) =>
-        prev ? { ...prev, creating: true, errorMessage: undefined } : null
-      );
-
-      try {
-        const { data: approvalData } = await apiRequest.post<{ request: { id: string } }>(
-          "/api/v1/approval-policies/pam-access/requests",
-          {
-            requestData: {
-              accessDuration:
-                approvalState.accessDurationMax &&
-                ms(approvalState.accessDurationMax) < ms(DEFAULT_ACCESS_DURATION)
-                  ? approvalState.accessDurationMax
-                  : DEFAULT_ACCESS_DURATION,
-              accountName
-            },
-            justification: justification?.trim() || undefined
-          }
-        );
-        setApprovalState((prev) =>
-          prev
-            ? {
-                ...prev,
-                creating: false,
-                submitted: true,
-                approvalRequestId: approvalData.request.id
-              }
-            : null
-        );
-      } catch {
-        setApprovalState((prev) =>
-          prev
-            ? { ...prev, creating: false, errorMessage: "Failed to create approval request" }
-            : null
-        );
-      }
-    },
-    [approvalState, accountName]
-  );
-
-  const approvalRequestUrl = approvalState?.approvalRequestId
-    ? `${window.location.origin}/organizations/${orgId}/approvals/${approvalState.approvalRequestId}`
-    : undefined;
 
   // --- Request helpers ---
 
@@ -558,13 +478,10 @@ export const useDataExplorerSession = ({
     isConnecting,
     errorMessage,
     mfaState,
-    approvalState,
     connect,
     disconnect,
     reconnect,
     handleMfaVerification,
-    submitApprovalRequest,
-    approvalRequestUrl,
     openConnection,
     closeConnection,
     fetchSchemas,

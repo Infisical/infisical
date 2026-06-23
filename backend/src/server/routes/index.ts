@@ -1138,6 +1138,13 @@ export const registerRoutes = async (
     keyStore
   });
 
+  const mfaSessionService = mfaSessionServiceFactory({
+    keyStore,
+    tokenService,
+    smtpService,
+    totpService
+  });
+
   const loginService = authLoginServiceFactory({
     userDAL,
     userAliasDAL,
@@ -1793,7 +1800,9 @@ export const registerRoutes = async (
     gatewayV2Service,
     gatewayPoolService,
     userDAL,
-    pamSessionExpirationService
+    pamSessionExpirationService,
+    mfaSessionService,
+    orgDAL
   });
 
   const pamSessionChunkService = pamSessionChunkServiceFactory({
@@ -1813,7 +1822,9 @@ export const registerRoutes = async (
     gatewayV2Service,
     gatewayPoolService,
     kmsService,
-    userDAL
+    userDAL,
+    mfaSessionService,
+    orgDAL
   });
 
   const gitHubAppService = gitHubAppServiceFactory({
@@ -3436,13 +3447,6 @@ export const registerRoutes = async (
   const aiMcpEndpointDAL = aiMcpEndpointDALFactory(db);
   const aiMcpEndpointServerDAL = aiMcpEndpointServerDALFactory(db);
   const aiMcpEndpointServerToolDAL = aiMcpEndpointServerToolDALFactory(db);
-
-  const mfaSessionService = mfaSessionServiceFactory({
-    keyStore,
-    tokenService,
-    smtpService,
-    totpService
-  });
 
   const aiMcpServerService = aiMcpServerServiceFactory({
     aiMcpServerDAL,

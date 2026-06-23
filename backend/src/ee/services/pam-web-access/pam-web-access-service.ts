@@ -13,11 +13,14 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { GatewayProxyProtocol } from "@app/lib/gateway/types";
 import { createGatewayConnection, createRelayConnection, setupRelayServer } from "@app/lib/gateway-v2/gateway-v2";
 import { logger } from "@app/lib/logger";
-import { ActorType } from "@app/services/auth/auth-type";
+import { ActorType, MfaMethod } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
+import { TMfaSessionServiceFactory } from "@app/services/mfa-session/mfa-session-service";
+import { MfaSessionStatus } from "@app/services/mfa-session/mfa-session-types";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { PamAccessMethod, PamSessionStatus } from "../pam/pam-enums";
@@ -54,6 +57,11 @@ type TPamWebAccessServiceFactoryDep = {
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   userDAL: Pick<TUserDALFactory, "findById">;
+  mfaSessionService: Pick<
+    TMfaSessionServiceFactory,
+    "createMfaSession" | "getMfaSession" | "deleteMfaSession" | "sendMfaCode"
+  >;
+  orgDAL: Pick<TOrgDALFactory, "findOrgById">;
 };
 
 export type TPamWebAccessServiceFactory = ReturnType<typeof pamWebAccessServiceFactory>;
@@ -85,7 +93,9 @@ export const pamWebAccessServiceFactory = ({
   gatewayV2Service,
   gatewayPoolService,
   kmsService,
-  userDAL
+  userDAL,
+  mfaSessionService,
+  orgDAL
 }: TPamWebAccessServiceFactoryDep) => {
   const decrypt = async (projectId: string, blob: Buffer): Promise<Record<string, unknown>> => {
     const { decryptor } = await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
@@ -126,7 +136,8 @@ export const pamWebAccessServiceFactory = ({
     actorEmail,
     actorName,
     auditLogInfo,
-    reason
+    reason,
+    mfaSessionId
   }: TIssueWebSocketTicketDTO) => {
     const account = await pamAccountDAL.findByIdWithDetails(accountId);
     if (!account || account.projectId !== projectId) {
@@ -136,22 +147,6 @@ export const pamWebAccessServiceFactory = ({
     if (!SESSION_HANDLERS[account.accountType as PamAccountType]) {
       throw new BadRequestError({ message: "Web access is not supported for this account type" });
     }
-
-    const trimmedReason = reason?.trim() || null;
-
-    const policy = resolveAccessControls(account.templatePolicies);
-
-    if (policy.requireReason && !trimmedReason) {
-      throw new BadRequestError({ message: "A reason is required to access this account" });
-    }
-
-    if (policy.requireMfa) {
-      throw new BadRequestError({ message: "MFA verification is required to access this account" });
-    }
-
-    const maxSessionDurationMs = policy.maxSessionDurationSeconds
-      ? policy.maxSessionDurationSeconds * 1000
-      : DEFAULT_WEB_SESSION_DURATION_MS;
 
     await checkAccountAccess(
       permissionService,
@@ -166,6 +161,59 @@ export const pamWebAccessServiceFactory = ({
         actorAuthMethod: actor.authMethod
       }
     );
+
+    const trimmedReason = reason?.trim() || null;
+
+    const policy = resolveAccessControls(account.templatePolicies);
+
+    if (policy.requireReason && !trimmedReason) {
+      throw new BadRequestError({
+        name: "PAM_REASON_REQUIRED",
+        message: "A reason is required to access this account"
+      });
+    }
+
+    if (policy.requireMfa && !mfaSessionId) {
+      const org = await orgDAL.findOrgById(actor.orgId);
+      const user = await userDAL.findById(actor.id);
+
+      const orgMfaMethod = org?.enforceMfa ? (org.selectedMfaMethod as MfaMethod | null) : undefined;
+      const userMfaMethod = user?.isMfaEnabled ? (user.selectedMfaMethod as MfaMethod | null) : undefined;
+      const mfaMethod = (orgMfaMethod ?? userMfaMethod ?? MfaMethod.EMAIL) as MfaMethod;
+
+      const newMfaSessionId = await mfaSessionService.createMfaSession(actor.id, account.id, mfaMethod);
+
+      if (mfaMethod === MfaMethod.EMAIL && actorEmail) {
+        await mfaSessionService.sendMfaCode(actor.id, actorEmail);
+      }
+
+      throw new BadRequestError({
+        name: "SESSION_MFA_REQUIRED",
+        message: "MFA verification required to access this account",
+        details: { mfaSessionId: newMfaSessionId, mfaMethod }
+      });
+    }
+
+    if (policy.requireMfa && mfaSessionId) {
+      const mfaSession = await mfaSessionService.getMfaSession(mfaSessionId);
+      if (!mfaSession) {
+        throw new BadRequestError({ message: "MFA session not found or expired" });
+      }
+      if (mfaSession.userId !== actor.id) {
+        throw new BadRequestError({ message: "MFA session does not belong to current user" });
+      }
+      if (mfaSession.resourceId !== account.id) {
+        throw new BadRequestError({ message: "MFA session is for a different account" });
+      }
+      if (mfaSession.status !== MfaSessionStatus.ACTIVE) {
+        throw new BadRequestError({ message: "MFA session is not verified. Please complete MFA verification first." });
+      }
+      await mfaSessionService.deleteMfaSession(mfaSessionId);
+    }
+
+    const maxSessionDurationMs = policy.maxSessionDurationSeconds
+      ? policy.maxSessionDurationSeconds * 1000
+      : DEFAULT_WEB_SESSION_DURATION_MS;
 
     await pamSessionDAL.endExpiredWebSessions(actor.id, projectId);
     const activeCount = await pamSessionDAL.countActiveWebSessions(actor.id, projectId);

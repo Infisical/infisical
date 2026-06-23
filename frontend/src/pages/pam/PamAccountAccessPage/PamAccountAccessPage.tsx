@@ -14,11 +14,13 @@ import { WebAccessStatusCard } from "./WebAccessStatusCard";
 const TerminalContent = ({
   account,
   orgId,
-  reason
+  reason,
+  mfaSessionId
 }: {
   account: TPamAccount;
   orgId: string;
   reason?: string;
+  mfaSessionId?: string;
 }) => {
   const [sessionEnded, setSessionEnded] = useState(false);
 
@@ -28,6 +30,7 @@ const TerminalContent = ({
     accountName: account.name,
     accountType: account.accountType,
     reason,
+    mfaSessionId,
     onSessionEnd: () => setSessionEnded(true)
   });
 
@@ -111,17 +114,20 @@ const PageContent = () => {
     );
   }
 
-  if (account.accountType === PamAccountType.SSH) {
-    return <TerminalContent account={account} orgId={orgId!} />;
-  }
-
   return (
     <SessionAccessGate account={account}>
-      {({ reason }) => {
+      {({ reason, mfaSessionId }) => {
         if (account.accountType === PamAccountType.Postgres) {
-          return <PamDataExplorerPage reason={reason} />;
+          return <PamDataExplorerPage reason={reason} mfaSessionId={mfaSessionId} />;
         }
-        return <TerminalContent account={account} orgId={orgId!} reason={reason} />;
+        return (
+          <TerminalContent
+            account={account}
+            orgId={orgId!}
+            reason={reason}
+            mfaSessionId={mfaSessionId}
+          />
+        );
       }}
     </SessionAccessGate>
   );

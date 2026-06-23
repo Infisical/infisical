@@ -66,4 +66,5 @@ export type TIssueWebSocketTicketDTO = {
   actorName: string;
   auditLogInfo: AuditLogInfo;
   reason?: string;
+  mfaSessionId?: string;
 };

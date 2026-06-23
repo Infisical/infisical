@@ -2,14 +2,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { FitAddon } from "@xterm/addon-fit";
 import { WebLinksAddon } from "@xterm/addon-web-links";
 import { Terminal } from "@xterm/xterm";
-import ms from "ms";
 import { Readline } from "xterm-readline";
 
 import { apiRequest } from "@app/config/request";
 import { MfaSessionStatus, TMfaSessionStatusResponse } from "@app/hooks/api/mfaSession/types";
 import { PamAccountType } from "@app/hooks/api/pam";
 
-import { DEFAULT_ACCESS_DURATION } from "../constants";
 import { WebSocketServerMessageSchema, WsMessageType } from "./web-access-types";
 
 import "@xterm/xterm/css/xterm.css";
@@ -20,6 +18,7 @@ type UseWebAccessSessionOptions = {
   accountName: string;
   accountType: string;
   reason?: string;
+  mfaSessionId?: string;
   onSessionEnd?: () => void;
 };
 
@@ -29,6 +28,7 @@ export const useWebAccessSession = ({
   accountName,
   accountType,
   reason,
+  mfaSessionId,
   onSessionEnd
 }: UseWebAccessSessionOptions) => {
   const [containerEl, setContainerEl] = useState<HTMLDivElement | null>(null);
@@ -46,10 +46,8 @@ export const useWebAccessSession = ({
   const nextPromptRejecterRef = useRef<((reason: Error) => void) | null>(null);
 
   const onSessionEndRef = useRef(onSessionEnd);
-  // Seed with the prop so non-SSH flows (which collect reason via the upfront ReasonGate)
-  // pass it on the first connect; SSH leaves it undefined and uses the inline terminal prompt.
   const submittedReasonRef = useRef<string | undefined>(reason);
-  const askedOptionalReasonRef = useRef(false);
+  const mfaSessionIdRef = useRef<string | undefined>(mfaSessionId);
 
   useEffect(() => {
     onSessionEndRef.current = onSessionEnd;
@@ -243,26 +241,14 @@ export const useWebAccessSession = ({
     try {
       const { data } = await apiRequest.post<{ ticket: string }>(
         `/api/v1/pam/accounts/${accountId}/web-access-ticket`,
-        { reason: submittedReasonRef.current }
+        { reason: submittedReasonRef.current, mfaSessionId: mfaSessionIdRef.current }
       );
+      mfaSessionIdRef.current = undefined;
       if (containerEl) {
         containerEl.style.width = "";
         isWidenedRef.current = false;
       }
       if (fitAddonRef.current) fitAddonRef.current.fit();
-
-      if (isSSH && submittedReasonRef.current === undefined && !askedOptionalReasonRef.current) {
-        askedOptionalReasonRef.current = true;
-        const optional = await prompt(
-          "\r\nOptionally provide a reason for this session (press Enter to skip): "
-        );
-        if (optional.trim()) {
-          submittedReasonRef.current = optional.trim();
-          terminal.reset();
-          connect();
-          return;
-        }
-      }
 
       terminal.reset();
       openWebSocket(terminal, data.ticket);
@@ -274,10 +260,6 @@ export const useWebAccessSession = ({
             details?: {
               mfaSessionId?: string;
               mfaMethod?: string;
-              policyId?: string;
-              policyName?: string;
-              policyType?: string;
-              constraints?: { accessDuration: { max: string } };
             };
           };
         };
@@ -355,70 +337,6 @@ export const useWebAccessSession = ({
           openWebSocket(terminal, retryData.ticket);
         } catch {
           terminal.write("\r\nFailed to connect after MFA verification. Please try again.\r\n");
-        }
-        return;
-      }
-
-      // Check for PolicyViolationError
-      if (axiosErr?.response?.data?.error === "PolicyViolationError") {
-        const policyName = axiosErr.response!.data!.details?.policyName ?? "Unknown Policy";
-        const accessDurationMax =
-          axiosErr.response!.data!.details?.constraints?.accessDuration.max ??
-          DEFAULT_ACCESS_DURATION;
-
-        terminal.write(`\r\nThis account is protected by approval policy: "${policyName}"\r\n`);
-
-        const answer = await prompt(
-          "\r\nThis action requires approval. Would you like to create an approval request? [Y/n]: "
-        );
-
-        if (answer.trim().toLowerCase() === "n") {
-          terminal.write("\r\nApproval request was not created.\r\n");
-          await prompt("\r\nPress Enter to try again.");
-          terminal.reset();
-          connect();
-          return;
-        }
-
-        const justification = await prompt(
-          "\r\nEnter justification (optional, press Enter to skip): "
-        );
-
-        terminal.write("\r\nCreating approval request...\r\n");
-
-        try {
-          const { data: approvalData } = await apiRequest.post<{ request: { id: string } }>(
-            "/api/v1/approval-policies/pam-access/requests",
-            {
-              requestData: {
-                accessDuration:
-                  ms(accessDurationMax) < ms(DEFAULT_ACCESS_DURATION)
-                    ? accessDurationMax
-                    : DEFAULT_ACCESS_DURATION,
-                accountName
-              },
-              justification: justification.trim() || undefined
-            }
-          );
-
-          terminal.write("\r\nApproval request created successfully!\r\n");
-
-          const approvalUrl = `${window.location.origin}/organizations/${orgId}/approvals/${approvalData.request.id}`;
-          terminal.write(`View details at: ${approvalUrl}\r\n`);
-
-          await prompt("\r\nOnce approved, press Enter to reconnect.");
-          terminal.reset();
-          connect();
-        } catch (approvalErr: unknown) {
-          const approvalAxiosErr = approvalErr as {
-            response?: { data?: { message?: string } };
-          };
-          const errorMsg =
-            approvalAxiosErr?.response?.data?.message ?? "Failed to create approval request.";
-          terminal.write(`\r\n${errorMsg}\r\n`);
-          await prompt("\r\nPress Enter to try again.");
-          terminal.reset();
-          connect();
         }
         return;
       }
