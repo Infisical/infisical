@@ -46,6 +46,7 @@ type TPamSessionServiceFactoryDep = {
     | "endSessionById"
     | "terminateSessionById"
     | "updateById"
+    | "activateSession"
   >;
   pamAccountDAL: Pick<TPamAccountDALFactory, "findByIdWithDetails" | "findOne">;
   pamFolderDAL: Pick<TPamFolderDALFactory, "findOne">;
@@ -175,6 +176,10 @@ export const pamSessionServiceFactory = ({
     }
 
     const sessionStarted = session.status === PamSessionStatus.Starting;
+
+    if (sessionStarted) {
+      await pamSessionDAL.activateSession(sessionId);
+    }
 
     let recording: {
       sessionKey: string;
@@ -337,7 +342,7 @@ export const pamSessionServiceFactory = ({
 
     const rawConnectionDetails = await decrypt(projectId, account.encryptedConnectionDetails);
     const rawCredentials = await decrypt(projectId, account.encryptedCredentials);
-    const gatewayTarget = extractGatewayTarget(account.accountType as PamAccountType, rawConnectionDetails);
+    const gatewayTarget = await extractGatewayTarget(account.accountType as PamAccountType, rawConnectionDetails);
 
     const user = await userDAL.findById(actor.actorId);
     const expiresAt = new Date(Date.now() + sessionDurationMs);
@@ -385,7 +390,12 @@ export const pamSessionServiceFactory = ({
       username: rawCredentials.username as string
     };
 
-    if (account.accountType === PamAccountType.Postgres || account.accountType === PamAccountType.MySQL) {
+    if (
+      account.accountType === PamAccountType.Postgres ||
+      account.accountType === PamAccountType.MySQL ||
+      account.accountType === PamAccountType.MongoDB ||
+      account.accountType === PamAccountType.MsSQL
+    ) {
       if (rawConnectionDetails.database) {
         metadata.database = rawConnectionDetails.database as string;
       }
