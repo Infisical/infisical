@@ -28,6 +28,7 @@ import { NotificationType } from "../../../services/notification/notification-ty
 import { TAccessApprovalPolicyApproverDALFactory } from "../access-approval-policy/access-approval-policy-approver-dal";
 import { TAccessApprovalPolicyDALFactory } from "../access-approval-policy/access-approval-policy-dal";
 import { TGroupDALFactory } from "../group/group-dal";
+import { flattenActiveRolesFromMemberships } from "../permission/permission-service";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import {
   ProjectPermissionApprovalRequestActions,
@@ -597,7 +598,7 @@ export const accessApprovalRequestServiceFactory = ({
         })
       : undefined;
 
-    const { hasRole } = await permissionService.getProjectPermission({
+    const { hasRole, memberships } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId: accessApprovalRequest.projectId,
@@ -605,6 +606,17 @@ export const accessApprovalRequestServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.SecretManager
     });
+
+    // A user whose only active project role is NoAccess is not authorized to review the request,
+    // even with a break-glass approval. If they also hold another active role (e.g. via a group),
+    // allow the review to proceed.
+    const activeRoles = flattenActiveRolesFromMemberships(memberships, ProjectMembershipRole.Custom);
+    const hasOnlyNoAccessRole =
+      activeRoles.length > 0 && activeRoles.every((r) => r.role === ProjectMembershipRole.NoAccess);
+
+    if (hasOnlyNoAccessRole) {
+      throw new ForbiddenRequestError({ message: "You are not authorized to review this request" });
+    }
 
     const isSelfApproval = actorId === accessApprovalRequest.requestedByUserId;
     const isSoftEnforcement = policy.enforcementLevel === EnforcementLevel.Soft;
@@ -620,6 +632,16 @@ export const accessApprovalRequestServiceFactory = ({
     const isApprover = policy.approvers.find((approver) => approver.userId === actorId);
 
     const isSelfRejection = isSelfApproval && status === ApprovalStatus.REJECTED;
+
+    const isBypasser = policy.bypassers.some((bypasser) => bypasser.userId === actorId);
+
+    // Self-approval is blocked when the policy disallows it, unless this is a soft-enforcement break-glass approval and the user is on the bypasser list.
+    // this does not work for policies where all bypassers are allowed to self-approve.
+    if (isSelfApproval && status === ApprovalStatus.APPROVED && !policy.allowedSelfApprovals && !isBypasser) {
+      throw new BadRequestError({
+        message: "Failed to review access approval request. Users are not authorized to review their own request."
+      });
+    }
 
     // users can always reject (cancel) their own requests
     if (!isSelfRejection) {
