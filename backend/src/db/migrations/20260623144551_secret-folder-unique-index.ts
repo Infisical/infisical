@@ -3,6 +3,7 @@ import { Knex } from "knex";
 import { TableName } from "../schemas";
 
 const MIGRATION_TIMEOUT = 15 * 60 * 1000; // 15 minutes
+const DROP_TIMEOUT = 60 * 1000; // 1 minute
 
 const INDEX_NAME = "uq_secrets_v2_key_folder_id_shared";
 
@@ -31,7 +32,15 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  await knex.raw(`DROP INDEX IF EXISTS ${INDEX_NAME}`);
+  const result = await knex.raw("SHOW statement_timeout");
+  const originalTimeout = result.rows[0].statement_timeout;
+
+  try {
+    await knex.raw(`SET statement_timeout = ${DROP_TIMEOUT}`);
+    await knex.raw(`DROP INDEX CONCURRENTLY IF EXISTS ${INDEX_NAME}`);
+  } finally {
+    await knex.raw(`SET statement_timeout = '${originalTimeout}'`);
+  }
 }
 
 const config = { transaction: false };
