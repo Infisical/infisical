@@ -185,7 +185,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       folderName: account.folderName,
       templateId: account.templateId,
       templateName: account.templateName,
-      templateAccessPolicy: account.templateAccessPolicy,
+      templatePolicies: account.templatePolicies,
       templateSettings: account.templateSettings,
       accountType: account.accountType,
       projectId: account.projectId,

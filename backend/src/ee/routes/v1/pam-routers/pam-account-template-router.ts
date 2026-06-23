@@ -3,10 +3,7 @@ import z from "zod";
 import { PamAccountTemplatesSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { PamAccountType } from "@app/ee/services/pam/pam-enums";
-import {
-  PamTemplateAccessPolicySchema,
-  PamTemplateSettingsSchema
-} from "@app/ee/services/pam-account-template/pam-account-template-schemas";
+import { PamTemplateSettingsSchema } from "@app/ee/services/pam-account-template/pam-account-template-schemas";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
@@ -20,7 +17,7 @@ const SanitizedTemplateSchema = PamAccountTemplatesSchema.pick({
   name: true,
   description: true,
   type: true,
-  accessPolicy: true,
+  policies: true,
   settings: true,
   gatewayId: true,
   gatewayPoolId: true,
@@ -107,7 +104,7 @@ export const registerPamAccountTemplateRouter = async (server: FastifyZodProvide
         name: slugSchema({ field: "Name" }).describe("Name for the template"),
         description: z.string().trim().max(256).optional().describe("Optional description"),
         type: z.nativeEnum(PamAccountType).describe("The account type this template applies to"),
-        accessPolicy: PamTemplateAccessPolicySchema.optional().describe("Access policy configuration"),
+        policies: z.record(z.unknown()).optional().describe("Policy values keyed by policy type"),
         settings: PamTemplateSettingsSchema.optional().describe("Template settings"),
         gatewayId: z.string().uuid().optional().describe("Default gateway ID for accounts using this template"),
         gatewayPoolId: z.string().uuid().optional().describe("Default gateway pool ID"),
@@ -172,7 +169,7 @@ export const registerPamAccountTemplateRouter = async (server: FastifyZodProvide
       body: z.object({
         name: slugSchema({ field: "Name" }).optional().describe("New name"),
         description: z.string().trim().max(256).nullable().optional().describe("New description"),
-        accessPolicy: PamTemplateAccessPolicySchema.optional().describe("Updated access policy"),
+        policies: z.record(z.unknown()).optional().describe("Policy values keyed by policy type"),
         settings: PamTemplateSettingsSchema.optional().describe("Updated settings"),
         gatewayId: z.string().uuid().nullable().optional().describe("New gateway ID"),
         gatewayPoolId: z.string().uuid().nullable().optional().describe("New gateway pool ID"),

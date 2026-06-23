@@ -6,7 +6,7 @@ import { AuditLogInfo, EventType, TAuditLogServiceFactory } from "@app/ee/servic
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { PamAccountType } from "@app/ee/services/pam/pam-enums";
-import { PamTemplateAccessPolicySchema } from "@app/ee/services/pam-account-template/pam-account-template-schemas";
+import { resolveAccessControls } from "@app/ee/services/pam/pam-policies";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ResourcePermissionPamResourceActions } from "@app/ee/services/permission/resource-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -139,20 +139,17 @@ export const pamWebAccessServiceFactory = ({
 
     const trimmedReason = reason?.trim() || null;
 
-    const accessPolicy = account.templateAccessPolicy
-      ? PamTemplateAccessPolicySchema.safeParse(account.templateAccessPolicy)
-      : null;
-    const policy = accessPolicy?.success ? accessPolicy.data : null;
+    const policy = resolveAccessControls(account.templatePolicies);
 
-    if (policy?.requireReason && !trimmedReason) {
+    if (policy.requireReason && !trimmedReason) {
       throw new BadRequestError({ message: "A reason is required to access this account" });
     }
 
-    if (policy?.requireMfa) {
+    if (policy.requireMfa) {
       throw new BadRequestError({ message: "MFA verification is required to access this account" });
     }
 
-    const maxSessionDurationMs = policy?.maxSessionDurationSeconds
+    const maxSessionDurationMs = policy.maxSessionDurationSeconds
       ? policy.maxSessionDurationSeconds * 1000
       : DEFAULT_WEB_SESSION_DURATION_MS;
 

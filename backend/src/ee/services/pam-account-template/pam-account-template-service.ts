@@ -2,8 +2,9 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 
-import { PamProductRole } from "../pam/pam-enums";
+import { PamAccountType, PamProductRole } from "../pam/pam-enums";
 import { TActorContext, verifyProductMembership } from "../pam/pam-permission";
+import { validatePolicyValues } from "../pam/pam-policies";
 import { TPamValidatorDeps, validateGatewayAttachment, validateRecordingConnection } from "../pam/pam-validators";
 import { ACCOUNT_TYPE_CONFIGS } from "../pam-account/pam-account-schemas";
 import { TPamAccountTemplateDALFactory } from "./pam-account-template-dal";
@@ -29,6 +30,12 @@ export const pamAccountTemplateServiceFactory = (deps: TPamAccountTemplateServic
 
   const verifyMembership = (projectId: string, ctx: TActorContext) =>
     verifyProductMembership(permissionService, projectId, ctx);
+
+  const validateTemplatePolicies = (accountType: string, policies: unknown) => {
+    if (!policies || typeof policies !== "object") return;
+    const result = validatePolicyValues(accountType as PamAccountType, policies as Record<string, unknown>);
+    if (!result.ok) throw new BadRequestError({ message: result.message });
+  };
 
   const verifyProductAdmin = async (projectId: string, ctx: TActorContext) => {
     const { hasRole } = await verifyMembership(projectId, ctx);
@@ -60,7 +67,7 @@ export const pamAccountTemplateServiceFactory = (deps: TPamAccountTemplateServic
     name,
     description,
     type,
-    accessPolicy,
+    policies,
     settings,
     gatewayId,
     gatewayPoolId,
@@ -70,6 +77,7 @@ export const pamAccountTemplateServiceFactory = (deps: TPamAccountTemplateServic
     await verifyProductAdmin(projectId, ctx);
     await validateGatewayAttachment(deps, gatewayId, gatewayPoolId, ctx);
     await validateRecordingConnection(deps, recordingConnectionId, ctx);
+    validateTemplatePolicies(type, policies);
 
     try {
       return await pamAccountTemplateDAL.create({
@@ -77,7 +85,7 @@ export const pamAccountTemplateServiceFactory = (deps: TPamAccountTemplateServic
         name,
         description,
         type,
-        accessPolicy: accessPolicy ?? undefined,
+        policies: policies ?? undefined,
         settings: settings ?? undefined,
         gatewayId,
         gatewayPoolId,
@@ -99,7 +107,7 @@ export const pamAccountTemplateServiceFactory = (deps: TPamAccountTemplateServic
     projectId,
     name,
     description,
-    accessPolicy,
+    policies,
     settings,
     gatewayId,
     gatewayPoolId,
@@ -115,10 +123,12 @@ export const pamAccountTemplateServiceFactory = (deps: TPamAccountTemplateServic
       throw new NotFoundError({ message: `Account template with ID '${templateId}' not found` });
     }
 
+    validateTemplatePolicies(existing.type, policies);
+
     const updateData: Record<string, unknown> = {};
     if (name !== undefined) updateData.name = name;
     if (description !== undefined) updateData.description = description;
-    if (accessPolicy !== undefined) updateData.accessPolicy = accessPolicy;
+    if (policies !== undefined) updateData.policies = policies;
     if (settings !== undefined) updateData.settings = settings;
     if (gatewayId !== undefined) updateData.gatewayId = gatewayId;
     if (gatewayPoolId !== undefined) updateData.gatewayPoolId = gatewayPoolId;

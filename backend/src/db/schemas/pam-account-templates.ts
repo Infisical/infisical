@@ -13,7 +13,7 @@ export const PamAccountTemplatesSchema = z.object({
   name: z.string(),
   description: z.string().nullable().optional(),
   type: z.string(),
-  accessPolicy: z.unknown().nullable().optional(),
+  policies: z.unknown().nullable().optional(),
   settings: z.unknown().nullable().optional(),
   gatewayId: z.string().uuid().nullable().optional(),
   gatewayPoolId: z.string().uuid().nullable().optional(),

@@ -34,6 +34,12 @@ export type TPamFieldDescriptor = {
   showWhen?: { field: string; equals: string | boolean };
 };
 
+export type TPamPolicyDescriptor = {
+  key: string;
+  label: string;
+  description: string;
+};
+
 export type TPamAccountTypeMetadata = {
   type: PamAccountType;
   name: string;
@@ -41,6 +47,7 @@ export type TPamAccountTypeMetadata = {
   supportsWebAccess: boolean;
   connectionFields: TPamFieldDescriptor[];
   credentialFields: TPamFieldDescriptor[];
+  applicablePolicies: TPamPolicyDescriptor[];
 };
 
 // New model types
@@ -62,7 +69,7 @@ export type TPamAccount = {
   folderName: string | null;
   templateId: string;
   templateName: string;
-  templateAccessPolicy: unknown;
+  templatePolicies: unknown;
   templateSettings: unknown;
   accountType: PamAccountType;
   gatewayId: string | null;
@@ -91,7 +98,7 @@ export type TPamAccountTemplate = {
   name: string;
   description?: string | null;
   type: PamAccountType;
-  accessPolicy: unknown;
+  policies: unknown;
   settings: unknown;
   gatewayId?: string | null;
   gatewayPoolId?: string | null;
@@ -267,7 +274,7 @@ export type TCreatePamAccountTemplateDTO = {
   name: string;
   description?: string;
   type: PamAccountType;
-  accessPolicy?: Record<string, unknown>;
+  policies?: Record<string, unknown>;
   settings?: Record<string, unknown>;
 };
 
@@ -275,7 +282,7 @@ export type TUpdatePamAccountTemplateDTO = {
   templateId: string;
   name?: string;
   description?: string | null;
-  accessPolicy?: Record<string, unknown>;
+  policies?: Record<string, unknown>;
   settings?: Record<string, unknown>;
   gatewayId?: string | null;
   gatewayPoolId?: string | null;

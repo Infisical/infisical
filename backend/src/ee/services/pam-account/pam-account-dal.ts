@@ -48,7 +48,7 @@ export type TPamAccountDetail = TPamAccounts &
   TPamAccountTemplateInheritedFields & {
     accountType: string;
     templateName: string;
-    templateAccessPolicy: unknown;
+    templatePolicies: unknown;
     templateSettings: unknown;
     folderName: string | null;
   };
@@ -154,7 +154,7 @@ export const pamAccountDALFactory = (db: TDbClient) => {
         `${TableName.PamAccount}.*`,
         `${TableName.PamAccountTemplate}.type as accountType`,
         `${TableName.PamAccountTemplate}.name as templateName`,
-        `${TableName.PamAccountTemplate}.accessPolicy as templateAccessPolicy`,
+        `${TableName.PamAccountTemplate}.policies as templatePolicies`,
         `${TableName.PamAccountTemplate}.settings as templateSettings`,
         `${TableName.PamAccountTemplate}.gatewayId as templateGatewayId`,
         `${TableName.PamAccountTemplate}.gatewayPoolId as templateGatewayPoolId`,
