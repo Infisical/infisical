@@ -348,7 +348,8 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       };
 
       // Only include subject fields when explicitly provided (null or string).
-      // applyProfileDefaults uses profile defaults when request values are empty/undefined.
+      // Omitting the key lets applyProfileDefaults use the profile default.
+      // Sending null (converted to undefined here) signals "clear the default".
       const subjectFields = [
         "commonName",
         "organization",
