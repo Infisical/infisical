@@ -27,5 +27,9 @@ export const SESSION_HANDLERS: Partial<Record<PamAccountType, TSessionHandlerEnt
   [PamAccountType.Windows]: {
     gatewayAccountType: PamAccountType.Windows,
     handler: handleRdpSession
+  },
+  [PamAccountType.ActiveDirectory]: {
+    gatewayAccountType: PamAccountType.Windows,
+    handler: handleRdpSession
   }
 };

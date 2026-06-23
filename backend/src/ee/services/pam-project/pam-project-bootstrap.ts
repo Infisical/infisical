@@ -150,6 +150,23 @@ export const DEFAULT_ACCOUNT_TEMPLATES: TDefaultTemplate[] = [
     }
   },
   {
+    name: "active-directory",
+    type: PamAccountType.ActiveDirectory,
+    accessPolicy: DEFAULT_ACCESS_POLICY,
+    settings: {
+      recordingEnabled: true,
+      recordingStorageBackend: PamRecordingStorageBackend.AwsS3,
+      passwordConstraints: {
+        minLength: 14,
+        maxLength: 127,
+        requireUppercase: true,
+        requireLowercase: true,
+        requireNumbers: true,
+        requireSymbols: true
+      }
+    }
+  },
+  {
     name: "windows",
     type: PamAccountType.Windows,
     settings: {

@@ -61,7 +61,7 @@ export enum PamAccountAccessibilityIssue {
 }
 
 export const accountTypeRequiresRecording = (type: PamAccountType): boolean =>
-  type === PamAccountType.Windows;
+  type === PamAccountType.Windows || type === PamAccountType.ActiveDirectory;
 
 export type TPamAccountSettingsOverrides = {
   recordingS3Config?: { bucket: string; region: string; keyPrefix?: string };

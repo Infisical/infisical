@@ -284,7 +284,9 @@ export const SessionDetailSheet = ({ sessionId, isOpen, onOpenChange, onTerminat
     );
   }
 
-  const isRdpSession = session.accountType === PamAccountType.Windows;
+  const isRdpSession =
+    session.accountType === PamAccountType.Windows ||
+    session.accountType === PamAccountType.ActiveDirectory;
 
   const tabs = isRdpSession
     ? [

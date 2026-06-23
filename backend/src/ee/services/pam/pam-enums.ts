@@ -8,6 +8,7 @@ export enum PamAccountType {
   Redis = "redis",
   Kubernetes = "kubernetes",
   AwsIam = "aws-iam",
+  ActiveDirectory = "active-directory",
   Windows = "windows"
 }
 

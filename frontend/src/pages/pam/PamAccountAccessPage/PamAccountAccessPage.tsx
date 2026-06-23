@@ -120,7 +120,10 @@ const PageContent = () => {
         if (account.accountType === PamAccountType.Postgres) {
           return <PamDataExplorerPage reason={reason} mfaSessionId={mfaSessionId} />;
         }
-        if (account.accountType === PamAccountType.Windows) {
+        if (
+          account.accountType === PamAccountType.Windows ||
+          account.accountType === PamAccountType.ActiveDirectory
+        ) {
           return <RdpContent account={account} reason={reason} mfaSessionId={mfaSessionId} />;
         }
         return <TerminalContent account={account} reason={reason} mfaSessionId={mfaSessionId} />;

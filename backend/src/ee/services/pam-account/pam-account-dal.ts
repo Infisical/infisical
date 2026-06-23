@@ -8,12 +8,16 @@ import { ormify } from "@app/lib/knex";
 import { PamAccountType } from "../pam/pam-enums";
 import { PamRecordingStorageBackend } from "../pam-session-recording/pam-recording-enums";
 
+const recordingRequiredAccountTypes = [PamAccountType.Windows, PamAccountType.ActiveDirectory]
+  .map((type) => `'${type}'`)
+  .join(", ");
+
 export const accountAccessibilitySql = (accountTable: string, templateTable: string): string =>
   `(
     ("${accountTable}"."gatewayId" is not null or "${accountTable}"."gatewayPoolId" is not null
       or "${templateTable}"."gatewayId" is not null or "${templateTable}"."gatewayPoolId" is not null)
     and "${accountTable}"."credentialConfigured" = true
-    and ("${templateTable}"."type" != '${PamAccountType.Windows}'
+    and ("${templateTable}"."type" not in (${recordingRequiredAccountTypes})
       or (
         "${templateTable}"."settings"->>'recordingStorageBackend' = '${PamRecordingStorageBackend.AwsS3}'
         and ("${accountTable}"."recordingConnectionId" is not null

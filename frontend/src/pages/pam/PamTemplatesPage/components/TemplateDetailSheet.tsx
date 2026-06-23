@@ -33,6 +33,7 @@ import { Skeleton } from "@app/components/v3/generic/Skeleton";
 import { useProject } from "@app/context";
 import { AppConnection, useListAvailableAppConnections } from "@app/hooks/api/appConnections";
 import {
+  accountTypeRequiresRecording,
   PamAccountType,
   useGetPamAccountTemplate,
   usePamAccountTypeMap,
@@ -88,7 +89,7 @@ const ConfigurationTab = ({
     currentProject.id
   );
 
-  const isWindows = template?.type && template.type === PamAccountType.Windows;
+  const requiresRecording = template?.type && accountTypeRequiresRecording(template.type);
 
   const {
     control,
@@ -121,13 +122,15 @@ const ConfigurationTab = ({
     if (template) {
       const settings = (template.settings ?? {}) as Record<string, unknown>;
       const s3Config = (settings.recordingS3Config ?? {}) as Record<string, string>;
-      const isWin = template.type === PamAccountType.Windows;
+      const requiresTemplateRecording = accountTypeRequiresRecording(template.type);
       const savedBackend = settings.recordingStorageBackend as "postgres" | "aws-s3" | undefined;
       reset({
         name: template.name,
         description: template.description ?? "",
 
-        recordingStorageBackend: isWin ? "aws-s3" : (savedBackend ?? "postgres"),
+        recordingStorageBackend: requiresTemplateRecording
+          ? "aws-s3"
+          : (savedBackend ?? "postgres"),
         recordingConnectionId: (template.recordingConnectionId as string) ?? null,
         s3Bucket: s3Config.bucket ?? "",
         s3Region: s3Config.region ?? "",
@@ -262,14 +265,14 @@ const ConfigurationTab = ({
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {!isWindows && (
+                      {!requiresRecording && (
                         <SelectItem value="postgres">Internal Database (default)</SelectItem>
                       )}
                       <SelectItem value="aws-s3">AWS S3</SelectItem>
                     </SelectContent>
                   </Select>
                   <FieldDescription>
-                    {isWindows
+                    {requiresRecording
                       ? "RDP recordings require S3 storage."
                       : "Stores recordings in the database. S3 is recommended for large or long sessions."}
                   </FieldDescription>

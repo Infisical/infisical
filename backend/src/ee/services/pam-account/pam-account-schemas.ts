@@ -21,6 +21,28 @@ enum PamFieldWidget {
   Password = "password"
 }
 
+const optionalTrimmedString = z
+  .string()
+  .trim()
+  .transform((v) => v || undefined)
+  .optional();
+
+const normalizeDelimitedStringList = (value: unknown): unknown => {
+  if (Array.isArray(value)) return value;
+  if (typeof value !== "string") return value;
+  const items = value
+    .split("\n")
+    .flatMap((line) => line.split(","))
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0);
+  return items;
+};
+
+const delimitedStringList = z.preprocess(
+  normalizeDelimitedStringList,
+  z.array(z.string().trim().min(1).max(255)).min(1)
+);
+
 // Source of truth for account types: per-type schemas + sparse UI hints
 export const ACCOUNT_TYPE_CONFIGS = {
   [PamAccountType.Postgres]: {
@@ -397,6 +419,36 @@ export const ACCOUNT_TYPE_CONFIGS = {
         .trim()
         .max(255)
         .transform((v) => v || undefined)
+        .optional()
+    }),
+    sanitizedCredentials: z.object({
+      username: z.string()
+    }),
+    ui: {
+      password: { widget: PamFieldWidget.Password, secret: true }
+    }
+  },
+
+  [PamAccountType.ActiveDirectory]: {
+    name: "Active Directory",
+    icon: "Windows.png",
+    connectionDetails: z.object({
+      fqdn: z.string().trim().min(1).max(255),
+      dcAddress: z.string().trim().min(1).max(255),
+      hostnames: delimitedStringList,
+      ldapPort: z.coerce.number().int().min(1).max(65535),
+      rdpPort: z.coerce.number().int().min(1).max(65535),
+      useLdaps: z.boolean(),
+      ldapRejectUnauthorized: z.boolean(),
+      caCertificate: optionalTrimmedString
+    }),
+    credentials: z.object({
+      username: z.string().trim().min(1).max(255),
+      password: z
+        .string()
+        .trim()
+        .max(255)
+        .transform((v) => v || undefined)
         .optional(),
       domain: z.string().trim().max(255).optional()
     }),
@@ -405,6 +457,18 @@ export const ACCOUNT_TYPE_CONFIGS = {
       domain: z.string().optional()
     }),
     ui: {
+      fqdn: { label: "FQDN" },
+      dcAddress: { label: "DC Address" },
+      hostnames: { label: "Allowed Hosts", widget: PamFieldWidget.Textarea },
+      ldapPort: { label: "LDAP Port", defaultValue: 389 },
+      rdpPort: { label: "RDP Port", defaultValue: 3389 },
+      useLdaps: { label: "Use LDAPS" },
+      ldapRejectUnauthorized: { label: "Reject Unauthorized" },
+      caCertificate: {
+        label: "CA Certificate",
+        widget: PamFieldWidget.Textarea,
+        showWhen: { field: "useLdaps", equals: true }
+      },
       password: { widget: PamFieldWidget.Password, secret: true }
     }
   }
@@ -510,6 +574,11 @@ export const extractGatewayTarget = async (
       }
       return { host: firstHost, port: 27017 };
     }
+    case PamAccountType.ActiveDirectory:
+      return {
+        host: (validated as { hostnames: string[]; rdpPort: number }).hostnames[0],
+        port: (validated as { hostnames: string[]; rdpPort: number }).rdpPort
+      };
     default:
       throw new Error(`No gateway target extraction defined for account type '${accountType}'`);
   }
@@ -524,7 +593,7 @@ export enum PamAccountAccessibilityIssue {
 }
 
 export const accountTypeRequiresRecording = (accountType: PamAccountType): boolean =>
-  accountType === PamAccountType.Windows;
+  accountType === PamAccountType.Windows || accountType === PamAccountType.ActiveDirectory;
 
 export const getAccountAccessibilityIssues = ({
   accountType,
