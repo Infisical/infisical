@@ -621,6 +621,16 @@ export const accessApprovalRequestServiceFactory = ({
 
     const isSelfRejection = isSelfApproval && status === ApprovalStatus.REJECTED;
 
+    const isBypasser = policy.bypassers.some((bypasser) => bypasser.userId === actorId);
+
+    // Self-approval is blocked when the policy disallows it, unless this is a soft-enforcement break-glass approval and the user is on the bypasser list.
+    // this does not work for policies where all bypassers are allowed to self-approve.
+    if (isSelfApproval && status === ApprovalStatus.APPROVED && !policy.allowedSelfApprovals && !isBypasser) {
+      throw new BadRequestError({
+        message: "Failed to review access approval request. Users are not authorized to review their own request."
+      });
+    }
+
     // users can always reject (cancel) their own requests
     if (!isSelfRejection) {
       // If user is (not an approver OR cant self approve) AND can't bypass policy
@@ -636,6 +646,11 @@ export const accessApprovalRequestServiceFactory = ({
       accessApprovalRequest.requestedByUserId !== actorId && // The request wasn't made by the current user
       !isApprover // The request isn't performed by an assigned approver
     ) {
+      throw new ForbiddenRequestError({ message: "You are not authorized to approve this request" });
+    }
+
+    // If the user has no access to the project, they are not authorized to approve the request, even with a break-glass approval.
+    if (hasRole(ProjectMembershipRole.NoAccess)) {
       throw new ForbiddenRequestError({ message: "You are not authorized to approve this request" });
     }
 
