@@ -59,7 +59,16 @@ const buildGcpAwsExternalAccountClient = (credJson: TGcpCredentialJson, scopes: 
       }
     },
     getAwsSecurityCredentials: async () => {
-      const credentials = await stsClient.config.credentials();
+      let credentials;
+      try {
+        credentials = await stsClient.config.credentials();
+      } catch (error) {
+        logger.error({ err: error }, "Failed to resolve AWS credentials for GCP workload identity federation");
+        throw new InternalServerError({
+          message:
+            "Failed to resolve AWS credentials for GCP workload identity federation. Verify the instance has valid AWS credentials available (task role, instance profile, or environment variables)."
+        });
+      }
       return {
         accessKeyId: credentials.accessKeyId,
         secretAccessKey: credentials.secretAccessKey,
