@@ -51,31 +51,6 @@ export const RemoveApprovalPolicyModal = ({
   const isConfirmed = inputData === "remove";
   const isDeleting = deleteSecretApprovalPolicy.isPending || deleteAccessApprovalPolicy.isPending;
 
-  useEffect(() => {
-    setInputData("");
-  }, [isOpen]);
-
-  const handleDeletePolicy = async () => {
-    if (!isConfirmed) return;
-
-    if (policyType === PolicyType.ChangePolicy) {
-      await deleteSecretApprovalPolicy.mutateAsync({
-        projectId: currentProject.id,
-        id: policyId
-      });
-    } else {
-      await deleteAccessApprovalPolicy.mutateAsync({
-        projectSlug: currentProject.slug,
-        id: policyId
-      });
-    }
-    createNotification({
-      type: "success",
-      text: "Successfully deleted policy"
-    });
-    onOpenChange(false);
-  };
-
   const deleteSecretApprovalData = useGetSecretApprovalRequestCount({
     policyId,
     projectId: currentProject.id,
@@ -103,6 +78,31 @@ export const RemoveApprovalPolicyModal = ({
   }
 
   const hasOpenRequests = (openCount ?? 0) > 0;
+
+  useEffect(() => {
+    setInputData("");
+  }, [isOpen]);
+
+  const handleDeletePolicy = async () => {
+    if (!isConfirmed || isDeleting || isCheckingRequests) return;
+
+    if (policyType === PolicyType.ChangePolicy) {
+      await deleteSecretApprovalPolicy.mutateAsync({
+        projectId: currentProject.id,
+        id: policyId
+      });
+    } else {
+      await deleteAccessApprovalPolicy.mutateAsync({
+        projectSlug: currentProject.slug,
+        id: policyId
+      });
+    }
+    createNotification({
+      type: "success",
+      text: "Successfully deleted policy"
+    });
+    onOpenChange(false);
+  };
 
   return (
     <AlertDialog open={isOpen} onOpenChange={onOpenChange}>
@@ -160,7 +160,7 @@ export const RemoveApprovalPolicyModal = ({
             variant="danger"
             onClick={handleDeletePolicy}
             isPending={isDeleting}
-            isDisabled={!isConfirmed || isDeleting}
+            isDisabled={!isConfirmed || isDeleting || isCheckingRequests}
           >
             Remove
           </Button>

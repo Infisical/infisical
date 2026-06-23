@@ -246,10 +246,10 @@ const Form = ({
                   ? {
                       user: [curr],
                       group: [],
-                      sequence: 1,
+                      sequence: curr.sequence,
                       approvals
                     }
-                  : { group: [curr], user: [], sequence: 1, approvals }
+                  : { group: [curr], user: [], sequence: curr.sequence, approvals }
               );
               return acc;
             },
