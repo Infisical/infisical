@@ -2471,7 +2471,10 @@ export const certificateV3ServiceFactory = ({
           ttl
         },
         signatureAlgorithm: originalCert.signatureAlgorithm || undefined,
-        keyAlgorithm: originalCert.keyAlgorithm || undefined
+        keyAlgorithm: originalCert.keyAlgorithm || undefined,
+        basicConstraints: originalCert.isCA
+          ? { isCA: true, pathLength: originalCert.pathLength ?? undefined }
+          : undefined
       };
 
       let validationResult: { isValid: boolean; errors: string[] } = { isValid: true, errors: [] };
