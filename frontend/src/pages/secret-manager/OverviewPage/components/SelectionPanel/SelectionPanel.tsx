@@ -302,11 +302,19 @@ export const SelectionPanel = ({
   const areFoldersSelected = Boolean(Object.keys(selectedEntries[EntryType.FOLDER]).length);
   const areRotationsSelected = selectedRotationCount > 0;
 
-  const isMoveDisabled =
-    areFoldersSelected || isHoneyTokenSelected || Boolean(selectedHoneyTokenCount);
-  let moveDisabledReason = "Moving folders is not supported";
-  if ((!areFoldersSelected && isHoneyTokenSelected) || Boolean(selectedHoneyTokenCount)) {
+  const hasHoneyTokenSelected = isHoneyTokenSelected || Boolean(selectedHoneyTokenCount);
+
+  // folders are moved one at a time from the inline row action, so bulk move only handles
+  // secrets and rotations
+  const hasMovableSelection = selectedKeysCount > 0 || selectedRotationCount > 0;
+  const shouldShowMove = shouldShowDelete && hasMovableSelection;
+
+  const isMoveDisabled = hasHoneyTokenSelected || areFoldersSelected;
+  let moveDisabledReason = "";
+  if (hasHoneyTokenSelected) {
     moveDisabledReason = "Moving honey tokens is not supported";
+  } else if (areFoldersSelected) {
+    moveDisabledReason = "Folders cannot be moved via multi-select";
   }
 
   const isDeleteDisabled = areRotationsSelected || isManagedSecretSelected;
@@ -392,7 +400,7 @@ export const SelectionPanel = ({
               <TooltipContent>Access denied</TooltipContent>
             </Tooltip>
           )}
-          {shouldShowDelete && (
+          {shouldShowMove && (
             <Tooltip open={isMoveDisabled ? undefined : false}>
               <TooltipTrigger>
                 <Button
@@ -455,6 +463,7 @@ export const SelectionPanel = ({
         sourceSecretPath={secretPath}
         secrets={selectedEntries[EntryType.SECRET]}
         rotations={selectedEntries[EntryType.SECRET_ROTATION]}
+        folders={{}}
         onComplete={resetSelectedEntries}
       />
       <BulkTagDialog

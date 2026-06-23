@@ -318,7 +318,7 @@ const envSchema = z
     LICENSE_SERVER_KEY: zpStr(z.string().optional()),
     LICENSE_KEY: zpStr(z.string().optional()),
     LICENSE_KEY_OFFLINE: zpStr(z.string().optional()),
-    LICENSE_SERVER_V2_ENABLED: zodStrBool.default("false"),
+    LICENSE_SERVER_V2_MODE: z.enum(["off", "read-compare", "on"]).default("off"),
     LICENSE_SERVER_V2_URL: zpStr(z.string().optional()),
     LICENSE_SERVER_V2_SERVICE_KEY: zpStr(z.string().optional()),
 
@@ -522,6 +522,7 @@ const envSchema = z
       : undefined,
     // Inferred from the legacy license server key; needs a new signal once License Server v2 fully replaces it.
     isCloud: Boolean(data.LICENSE_SERVER_KEY),
+    isLicenseDualReadEnabled: data.LICENSE_SERVER_V2_MODE === "read-compare",
     isSmtpConfigured: Boolean(data.SMTP_HOST),
     isRedisConfigured: Boolean(data.REDIS_URL || data.REDIS_SENTINEL_HOSTS || data.REDIS_CLUSTER_HOSTS),
     isClickHouseConfigured: Boolean(data.CLICKHOUSE_URL),
@@ -794,7 +795,8 @@ export const overwriteSchema: {
     fields: [
       {
         key: "INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL",
-        description: "The GCP Service Account JSON credentials."
+        description:
+          'The GCP credentials JSON used as the impersonation source. Accepts either a service account key (type "service_account") or a workload identity federation config (type "external_account"). For external_account, the referenced credential source (file, URL, or metadata endpoint) must be reachable from the instance.'
       }
     ]
   },

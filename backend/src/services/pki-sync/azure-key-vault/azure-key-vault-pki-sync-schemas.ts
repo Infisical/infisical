@@ -1,8 +1,8 @@
-import RE2 from "re2";
 import { z } from "zod";
 
 import { openApiHidden } from "@app/server/lib/schemas";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
+import { buildCertificateNameSchemaTestName } from "@app/services/pki-sync/pki-sync-certificate-name-fns";
 import { PkiSync } from "@app/services/pki-sync/pki-sync-enums";
 import { PkiSyncSchema } from "@app/services/pki-sync/pki-sync-schemas";
 
@@ -12,7 +12,7 @@ export const AzureKeyVaultPkiSyncConfigSchema = z.object({
   vaultBaseUrl: z.string().url()
 });
 
-const AzureKeyVaultPkiSyncOptionsSchema = z.object({
+export const AzureKeyVaultPkiSyncOptionsSchema = z.object({
   canImportCertificates: z.boolean().default(false),
   canRemoveCertificates: z.boolean().default(true),
   includeRootCa: z.boolean().default(false),
@@ -24,9 +24,11 @@ const AzureKeyVaultPkiSyncOptionsSchema = z.object({
       (schema) => {
         if (!schema) return true;
 
-        const testName = schema
-          .replace(new RE2("\\{\\{certificateId\\}\\}", "g"), "")
-          .replace(new RE2("\\{\\{environment\\}\\}", "g"), "");
+        if (!schema.includes("{{certificateId}}")) {
+          return false;
+        }
+
+        const testName = buildCertificateNameSchemaTestName(schema);
 
         const hasForbiddenChars = AZURE_KEY_VAULT_CERTIFICATE_NAMING.FORBIDDEN_CHARACTERS.split("").some((char) =>
           testName.includes(char)
@@ -36,7 +38,7 @@ const AzureKeyVaultPkiSyncOptionsSchema = z.object({
       },
       {
         message:
-          "Certificate name schema must result in names that contain only alphanumeric characters and hyphens (a-z, A-Z, 0-9, -) and be 1-127 characters long when compiled for Azure Key Vault"
+          "Certificate name schema must include the {{certificateId}} placeholder and result in names that contain only alphanumeric characters and hyphens (a-z, A-Z, 0-9, -) and be 1-127 characters long when compiled for Azure Key Vault. Available placeholders: {{certificateId}}, {{profileId}}, {{applicationId}}, {{commonName}}"
       }
     )
 });

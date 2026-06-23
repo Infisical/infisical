@@ -33,6 +33,7 @@ import { TKmipServiceFactory } from "@app/ee/services/kmip/kmip-service";
 import { TKmipServerServiceFactory } from "@app/ee/services/kmip-server/kmip-server-service";
 import { TLdapConfigServiceFactory } from "@app/ee/services/ldap-config/ldap-config-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { TLicenseV2ServiceFactory } from "@app/ee/services/license-v2/license-v2-service";
 import { TOidcConfigServiceFactory } from "@app/ee/services/oidc/oidc-config-service";
 import { TPamAccountServiceFactory } from "@app/ee/services/pam-account/pam-account-service";
 import { TPamAccountPolicyServiceFactory } from "@app/ee/services/pam-account-policy/pam-account-policy-service";
@@ -371,6 +372,7 @@ declare module "fastify" {
       secretScanning: TSecretScanningServiceFactory;
       license: TLicenseServiceFactory;
       licenseClient: TLicenseClientFactory;
+      licenseV2: TLicenseV2ServiceFactory;
       trustedIp: TTrustedIpServiceFactory;
       secretBlindIndex: TSecretBlindIndexServiceFactory;
       telemetry: TTelemetryServiceFactory;

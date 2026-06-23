@@ -18,6 +18,7 @@ import {
   TCmekVerifyResponse,
   TCreateCmek,
   TDeleteCmek,
+  TRotateCmek,
   TUpdateCmek
 } from "@app/hooks/api/cmeks/types";
 
@@ -44,6 +45,20 @@ export const useUpdateCmek = () => {
         description,
         isDisabled
       });
+
+      return data;
+    },
+    onSuccess: (_, { projectId }) => {
+      queryClient.invalidateQueries({ queryKey: cmekKeys.getCmeksByProjectId({ projectId }) });
+    }
+  });
+};
+
+export const useRotateCmek = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ keyId }: TRotateCmek) => {
+      const { data } = await apiRequest.post(`/api/v1/kms/keys/${keyId}/rotate`);
 
       return data;
     },

@@ -35,7 +35,7 @@ To be more specific:
 
 1. The client sends a TLS request with the client certificate to Infisical at the `/api/v1/auth/tls-cert-auth/login` endpoint.
 2. Infisical verifies the incoming request using the provided CA certificate.
-3. Infisical checks the user's properties against set criteria such as Allowed Common Names.
+3. Infisical checks the user's properties against set criteria such as Allowed Common Names and Allowed Subject Alternative Names.
 4. If all checks pass, Infisical returns a short-lived access token that the client can use to make authenticated requests to the Infisical API.
 
 <Accordion title="TLS with Load Balancer/Proxy">
@@ -95,6 +95,11 @@ Here's some information about each field:
 
 - **CA Certificate:** A PEM encoded CA Certificate used to validate incoming TLS request client certificate.
 - **Allowed Common Names:** A comma separated list of client certificate common names allowed.
+- **Allowed Subject Alternative Names:** A comma separated list of client certificate subject alternative names (SANs) allowed. This is useful when the client certificate carries its identity in a SAN rather than the Subject Common Name, such as a SPIFFE X.509-SVID whose identity is a URI SAN (`spiffe://trust-domain/path`) with an empty Subject. Matching is type-aware, so an entry only matches a SAN of the same type:
+  - **Type-prefixed entries** are matched against the corresponding SAN type, e.g. `URI:spiffe://example.org/svc`, `IP:10.0.0.1`, `EMAIL:svc@example.com`.
+  - **Bare entries** (no prefix) are treated as **DNS** names, e.g. `svc.example.com`. DNS and email matching is case-insensitive; URI and IP values are matched exactly.
+
+  When both Allowed Common Names and Allowed Subject Alternative Names are set, the certificate must satisfy both checks. Leave empty to skip SAN validation.
 - **Access Token TTL (default is `2592000` equivalent to 30 days):** The lifetime for an access token in seconds. This value will be referenced at renewal time.
 - **Access Token Max TTL (default is `2592000` equivalent to 30 days):** The maximum lifetime for an access token in seconds. This value will be referenced at renewal time.
 - **Access Token Max Number of Uses (default is `0`):** The maximum number of times that an access token can be used; a value of `0` implies an infinite number of uses.

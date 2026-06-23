@@ -176,6 +176,99 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
   });
 
   // SCIM server endpoints
+
+  // ServiceProviderConfig - SCIM 2.0 discovery endpoint (RFC 7643 Section 5)
+  server.route({
+    url: "/ServiceProviderConfig",
+    method: "GET",
+    config: {
+      rateLimit: readLimit
+    },
+    onRequest: verifyAuth([AuthMode.SCIM_TOKEN]),
+    schema: {
+      response: {
+        200: z.object({
+          schemas: z.array(z.string()),
+          documentationUri: z.string().optional(),
+          patch: z.object({
+            supported: z.boolean()
+          }),
+          bulk: z.object({
+            supported: z.boolean(),
+            maxOperations: z.number(),
+            maxPayloadSize: z.number()
+          }),
+          filter: z.object({
+            supported: z.boolean(),
+            maxResults: z.number()
+          }),
+          changePassword: z.object({
+            supported: z.boolean()
+          }),
+          sort: z.object({
+            supported: z.boolean()
+          }),
+          etag: z.object({
+            supported: z.boolean()
+          }),
+          authenticationSchemes: z.array(
+            z.object({
+              type: z.string(),
+              name: z.string(),
+              description: z.string(),
+              specUri: z.string().optional(),
+              documentationUri: z.string().optional(),
+              primary: z.boolean().optional()
+            })
+          ),
+          meta: z.object({
+            resourceType: z.string(),
+            location: z.string().optional()
+          })
+        })
+      }
+    },
+    handler: async () => {
+      return {
+        schemas: ["urn:ietf:params:scim:schemas:core:2.0:ServiceProviderConfig"],
+        documentationUri: "https://infisical.com/docs/documentation/platform/scim/overview",
+        patch: {
+          supported: true
+        },
+        bulk: {
+          supported: false,
+          maxOperations: 0,
+          maxPayloadSize: 0
+        },
+        filter: {
+          supported: true,
+          maxResults: 100
+        },
+        changePassword: {
+          supported: false
+        },
+        sort: {
+          supported: false
+        },
+        etag: {
+          supported: false
+        },
+        authenticationSchemes: [
+          {
+            type: "oauthbearertoken",
+            name: "OAuth Bearer Token",
+            description: "Authentication scheme using a bearer token",
+            specUri: "https://www.rfc-editor.org/rfc/rfc6750",
+            primary: true
+          }
+        ],
+        meta: {
+          resourceType: "ServiceProviderConfig"
+        }
+      };
+    }
+  });
+
   server.route({
     url: "/Users",
     method: "GET",
@@ -236,7 +329,7 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       body: z.object({
-        schemas: z.array(z.string()),
+        schemas: z.array(z.string()).default(["urn:ietf:params:scim:schemas:core:2.0:User"]),
         userName: z.string().trim(),
         name: z
           .object({
@@ -304,7 +397,8 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
         orgMembershipId: z.string().trim()
       }),
       body: z.object({
-        schemas: z.array(z.string()),
+        // RFC 7644 §3.4.2: schemas can be inferred from the resource endpoint on PUT; some IdPs (e.g. Authentik) omit it.
+        schemas: z.array(z.string()).default(["urn:ietf:params:scim:schemas:core:2.0:User"]),
         userName: z.string().trim(),
         name: z
           .object({
@@ -409,7 +503,7 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
     method: "POST",
     schema: {
       body: z.object({
-        schemas: z.array(z.string()),
+        schemas: z.array(z.string()).default(["urn:ietf:params:scim:schemas:core:2.0:Group"]),
         displayName: z.string().trim(),
         members: z
           .array(
@@ -507,7 +601,8 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
         groupId: z.string().trim()
       }),
       body: z.object({
-        schemas: z.array(z.string()),
+        // RFC 7644 §3.4.2: schemas can be inferred from the resource endpoint on PUT; some IdPs (e.g. Authentik) omit it.
+        schemas: z.array(z.string()).default(["urn:ietf:params:scim:schemas:core:2.0:Group"]),
         id: z.string().trim(),
         displayName: z.string().trim(),
         members: z.array(

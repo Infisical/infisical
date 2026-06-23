@@ -43,10 +43,15 @@ export enum WebhookType {
 export enum WebhookEvents {
   SecretModified = "secrets.modified",
   SecretRotationFailed = "secrets.rotation-failed",
+  HoneyTokenTriggered = "honey-token.triggered",
   TestEvent = "test"
 }
 
-export const SUBSCRIBABLE_WEBHOOK_EVENTS = [WebhookEvents.SecretModified, WebhookEvents.SecretRotationFailed] as const;
+export const SUBSCRIBABLE_WEBHOOK_EVENTS = [
+  WebhookEvents.SecretModified,
+  WebhookEvents.SecretRotationFailed,
+  WebhookEvents.HoneyTokenTriggered
+] as const;
 
 export type TSubscribableWebhookEvent = (typeof SUBSCRIBABLE_WEBHOOK_EVENTS)[number];
 
@@ -80,6 +85,22 @@ type TWebhookSecretRotationFailedEventPayload = {
   };
 };
 
+type TWebhookHoneyTokenTriggeredEventPayload = {
+  type: WebhookEvents.HoneyTokenTriggered;
+  payload: {
+    honeyTokenName: string;
+    projectName?: string;
+    projectId: string;
+    environment: string;
+    environmentName: string;
+    secretPath?: string;
+    type?: string | null;
+    eventName: string;
+    sourceIp?: string;
+    awsRegion: string;
+  };
+};
+
 type TWebhookTestEventPayload = {
   type: WebhookEvents.TestEvent;
   payload: {
@@ -95,4 +116,5 @@ type TWebhookTestEventPayload = {
 export type TWebhookPayloads =
   | TWebhookSecretModifiedEventPayload
   | TWebhookSecretRotationFailedEventPayload
+  | TWebhookHoneyTokenTriggeredEventPayload
   | TWebhookTestEventPayload;

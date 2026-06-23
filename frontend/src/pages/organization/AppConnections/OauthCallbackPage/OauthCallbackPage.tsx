@@ -2,23 +2,11 @@ import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 
 import { createNotification } from "@app/components/notifications";
-import { Button } from "@app/components/v3/generic/Button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle
-} from "@app/components/v3/generic/Card";
 import { PageLoader } from "@app/components/v3/platform/PageLoader";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
   APP_CONNECTION_MAP,
-  buildGitHubAppInstallUrl,
   consumeCsrfToken,
-  CSRF_TOKEN_STORAGE_KEY,
-  generateCsrfToken,
   getConnectionFlowReturnNavigateOptions,
   getIntegrationsListTab,
   GITHUB_CONNECTION_FORM_STORAGE_KEY,
@@ -37,7 +25,6 @@ import {
   useUpdateAppConnection
 } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
-import { resolveGitHubAppInstallations, TGitHubAppInstallation } from "@app/hooks/api/gitHubApps";
 
 import { FormDataMap } from "./OauthCallbackPage.types";
 
@@ -52,18 +39,9 @@ const formDataStorageFieldMap: Partial<Record<AppConnection, string>> = {
   [AppConnection.Heroku]: "herokuConnectionFormData"
 };
 
-type TGitHubInstallationPicker = {
-  installations: TGitHubAppInstallation[];
-  installationsToken: string;
-  formData: FormDataMap[AppConnection.GitHub];
-};
-
 export const OAuthCallbackPage = () => {
   const navigate = useNavigate();
   const [isReady, setIsReady] = useState(false);
-
-  const [gitHubPicker, setGitHubPicker] = useState<TGitHubInstallationPicker | null>(null);
-  const [pickedInstallationId, setPickedInstallationId] = useState<string | null>(null);
 
   const search = useSearch({
     from: ROUTE_PATHS.Organization.AppConnections.OauthCallbackPage.id
@@ -443,27 +421,17 @@ export const OAuthCallbackPage = () => {
     const storedGitHubAppId = (credentials as { gitHubAppId?: string | null } | undefined)
       ?.gitHubAppId;
 
-    if (!installationId && formData.method === GitHubConnectionMethod.App) {
-      try {
-        const result = await resolveGitHubAppInstallations({
-          code: code as string,
-          gitHubAppId: storedGitHubAppId ?? undefined,
-          ...(credentials?.instanceType && { instanceType: credentials.instanceType }),
-          ...(credentials?.host && { host: credentials.host }),
-          ...(gatewayId && { gatewayId }),
-          ...(gatewayPoolId && { gatewayPoolId }),
-          ...(projectId && { projectId })
-        });
-        setGitHubPicker({ ...result, formData });
-      } catch (err) {
-        createNotification({
-          type: "error",
-          text:
-            (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-            "Failed to resolve GitHub App installations"
-        });
-        navigate(getConnectionFlowReturnNavigateOptions({ returnUrl, projectId }));
-      }
+    const isAppMethod = formData.method === GitHubConnectionMethod.App;
+
+    // App connections go through GitHub's install flow, which redirects back with the chosen
+    // installation_id. If it's missing, the app wasn't installed — e.g. a non-admin org member
+    // triggered a pending install request that an owner must approve — so there's nothing to connect.
+    if (isAppMethod && !installationId) {
+      createNotification({
+        type: "error",
+        text: "The GitHub App was not installed. If you requested it on an organization, an owner may need to approve the installation first. Please complete the installation and try again."
+      });
+      navigate(getConnectionFlowReturnNavigateOptions({ returnUrl, projectId }));
       return null;
     }
 
@@ -471,11 +439,10 @@ export const OAuthCallbackPage = () => {
 
     try {
       const gitHubAppId = storedGitHubAppId;
-      const isAppMethod = Boolean(installationId);
 
       const appCredentials = {
         code: code as string,
-        ...(installationId && { installationId: installationId as string }),
+        installationId: installationId as string,
         ...(gitHubAppId !== undefined && { gitHubAppId }),
         ...(credentials?.instanceType && { instanceType: credentials.instanceType }),
         ...(credentials?.host && { host: credentials.host })
@@ -535,107 +502,6 @@ export const OAuthCallbackPage = () => {
       connection
     };
   }, []);
-
-  const completeGitHubAppConnection = async (selectedInstallationId: string) => {
-    if (!gitHubPicker) return;
-
-    const { installationsToken, formData } = gitHubPicker;
-    const {
-      connectionId,
-      name,
-      description,
-      returnUrl,
-      gatewayId,
-      gatewayPoolId,
-      credentials,
-      projectId
-    } = formData;
-    const gitHubAppId = (credentials as { gitHubAppId?: string | null } | undefined)?.gitHubAppId;
-
-    setPickedInstallationId(selectedInstallationId);
-
-    try {
-      const appCredentials = {
-        installationsToken,
-        installationId: selectedInstallationId,
-        ...(gitHubAppId !== undefined && { gitHubAppId }),
-        ...(credentials?.instanceType && { instanceType: credentials.instanceType }),
-        ...(credentials?.host && { host: credentials.host })
-      };
-
-      let connection: TAppConnection;
-
-      if (connectionId) {
-        connection = await updateAppConnection.mutateAsync({
-          app: AppConnection.GitHub,
-          connectionId,
-          credentials: appCredentials,
-          gatewayId,
-          gatewayPoolId
-        });
-      } else {
-        connection = await createAppConnection.mutateAsync({
-          app: AppConnection.GitHub,
-          name,
-          description,
-          projectId,
-          method: GitHubConnectionMethod.App,
-          credentials: appCredentials,
-          gatewayId,
-          gatewayPoolId
-        });
-      }
-
-      await finalizeConnection({
-        connectionId,
-        returnUrl,
-        appConnectionName: formData.app,
-        projectId,
-        connection
-      });
-    } catch (err) {
-      createNotification({
-        type: "error",
-        text:
-          (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-          `Failed to ${connectionId ? "update" : "create"} GitHub Connection`
-      });
-      navigate(getConnectionFlowReturnNavigateOptions({ returnUrl, projectId }));
-    }
-  };
-
-  const redirectToGitHubInstall = () => {
-    if (!gitHubPicker) return;
-
-    const { formData } = gitHubPicker;
-
-    if (!formData.appSlug) {
-      createNotification({
-        type: "error",
-        text: "Unable to determine the GitHub App to install. Please restart the connection flow."
-      });
-      navigate(
-        getConnectionFlowReturnNavigateOptions({
-          returnUrl: formData.returnUrl,
-          projectId: formData.projectId
-        })
-      );
-      return;
-    }
-
-    const newState = generateCsrfToken();
-    localStorage.setItem(CSRF_TOKEN_STORAGE_KEY, newState);
-    localStorage.setItem(GITHUB_CONNECTION_FORM_STORAGE_KEY, JSON.stringify(formData));
-
-    window.location.assign(
-      buildGitHubAppInstallUrl(
-        formData.appSlug,
-        newState,
-        formData.credentials?.host,
-        formData.credentials?.instanceType
-      )
-    );
-  };
 
   const handleGitHubRadar = useCallback(async () => {
     const formData = getFormData(AppConnection.GitHubRadar);
@@ -790,55 +656,6 @@ export const OAuthCallbackPage = () => {
       }
     })();
   }, [isReady]);
-
-  if (gitHubPicker) {
-    const hasInstallations = gitHubPicker.installations.length > 0;
-
-    return (
-      <div className="flex h-full w-full items-center justify-center">
-        <Card className="w-full max-w-md gap-4">
-          <CardHeader>
-            <CardTitle>
-              {hasInstallations ? "Select a GitHub account" : "Install the GitHub App"}
-            </CardTitle>
-            <CardDescription>
-              {hasInstallations
-                ? "The GitHub App is already installed on the following accounts. Select the installation to connect, or install the app on another account."
-                : "The GitHub App is not installed on any account you have access to. Install it to continue."}
-            </CardDescription>
-          </CardHeader>
-          {hasInstallations && (
-            <CardContent className="flex flex-col gap-2">
-              {gitHubPicker.installations.map((installation) => (
-                <Button
-                  key={installation.id}
-                  isFullWidth
-                  isDisabled={Boolean(pickedInstallationId)}
-                  isPending={pickedInstallationId === installation.id}
-                  onClick={() => completeGitHubAppConnection(installation.id)}
-                >
-                  <div className="flex w-full items-center justify-between">
-                    <span>{installation.accountLogin}</span>
-                    <span className="text-xs text-accent">{installation.accountType}</span>
-                  </div>
-                </Button>
-              ))}
-            </CardContent>
-          )}
-          <CardFooter>
-            <Button
-              variant={hasInstallations ? "ghost" : "outline"}
-              isFullWidth
-              isDisabled={Boolean(pickedInstallationId)}
-              onClick={redirectToGitHubInstall}
-            >
-              {hasInstallations ? "Install on another account" : "Install GitHub App"}
-            </Button>
-          </CardFooter>
-        </Card>
-      </div>
-    );
-  }
 
   return <PageLoader />;
 };

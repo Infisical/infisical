@@ -1,5 +1,6 @@
 import { ForbiddenError, subject } from "@casl/ability";
 import { requestContext } from "@fastify/request-context";
+import * as x509 from "@peculiar/x509";
 
 import { AccessScope, ActionProjectType, IdentityAuthMethod, OrganizationActionScope } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
@@ -41,6 +42,12 @@ import { TMembershipIdentityDALFactory } from "../membership-identity/membership
 import { TOrgDALFactory } from "../org/org-dal";
 import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/super-admin-fns";
 import { TIdentityTlsCertAuthDALFactory } from "./identity-tls-cert-auth-dal";
+import {
+  isSubjectAltNameAllowed,
+  parseAllowedSubjectAltNames,
+  parseSubjectDetails,
+  serializeAllowedSubjectAltNames
+} from "./identity-tls-cert-auth-fns";
 import { TIdentityTlsCertAuthServiceFactory } from "./identity-tls-cert-auth-types";
 
 type TIdentityTlsCertAuthServiceFactoryDep = {
@@ -59,17 +66,6 @@ type TIdentityTlsCertAuthServiceFactoryDep = {
     TIdentityAccessTokenServiceFactory,
     "issueIdentityAccessToken" | "revokeTokensForIdentityAuthMethod"
   >;
-};
-
-const parseSubjectDetails = (data: string) => {
-  const values: Record<string, string> = {};
-  data.split("\n").forEach((el) => {
-    const [key, value] = el.split("=");
-    if (key && value) {
-      values[key.trim()] = value.trim();
-    }
-  });
-  return values;
 };
 
 export const identityTlsCertAuthServiceFactory = ({
@@ -143,6 +139,22 @@ export const identityTlsCertAuthServiceFactory = ({
           }
         });
 
+      // Require an end-entity certificate issued by the configured CA, not the CA certificate
+      // itself. `.ca` covers certs marked CA:TRUE; the raw comparison also covers a self-signed CA
+      // that omits basic constraints.
+      const isClientCertACa = clientCertificateX509.ca || clientCertificateX509.raw.equals(caCertificateX509.raw);
+      if (isClientCertACa) {
+        throw new UnauthorizedError({
+          message: "Access denied: a CA certificate cannot be used as a client certificate.",
+          detail: {
+            reasonCode: "ca_certificate_not_allowed",
+            identityId: identity.id,
+            orgId: identity.orgId,
+            identityName: identity.name
+          }
+        });
+      }
+
       if (new Date(clientCertificateX509.validTo) < new Date()) {
         throw new UnauthorizedError({
           message: "Access denied: Certificate has expired.",
@@ -175,6 +187,28 @@ export const identityTlsCertAuthServiceFactory = ({
             message: "Access denied: TLS Certificate Auth common name not allowed.",
             detail: {
               reasonCode: "common_name_not_allowed",
+              identityId: identity.id,
+              orgId: identity.orgId,
+              identityName: identity.name
+            }
+          });
+        }
+      }
+
+      if (identityTlsCertAuth.allowedSubjectAltNames) {
+        const sanExtension = new x509.X509Certificate(clientCertificateX509.raw).getExtension(
+          x509.SubjectAlternativeNameExtension
+        );
+
+        const isValidSubjectAltName = isSubjectAltNameAllowed(
+          parseAllowedSubjectAltNames(identityTlsCertAuth.allowedSubjectAltNames),
+          sanExtension?.names.items
+        );
+        if (!isValidSubjectAltName) {
+          throw new UnauthorizedError({
+            message: "Access denied: TLS Certificate Auth subject alternative name not allowed.",
+            detail: {
+              reasonCode: "subject_alt_name_not_allowed",
               identityId: identity.id,
               orgId: identity.orgId,
               identityName: identity.name
@@ -321,7 +355,8 @@ export const identityTlsCertAuthServiceFactory = ({
     actorOrgId,
     isActorSuperAdmin,
     caCertificate,
-    allowedCommonNames
+    allowedCommonNames,
+    allowedSubjectAltNames
   }) => {
     await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
 
@@ -405,6 +440,7 @@ export const identityTlsCertAuthServiceFactory = ({
           identityId: identityMembershipOrg.identity.id,
           accessTokenMaxTTL,
           allowedCommonNames,
+          allowedSubjectAltNames: serializeAllowedSubjectAltNames(allowedSubjectAltNames),
           accessTokenTTL,
           encryptedCaCertificate: encryptor({ plainText: Buffer.from(caCertificate) }).cipherTextBlob,
           accessTokenNumUsesLimit,
@@ -421,6 +457,7 @@ export const identityTlsCertAuthServiceFactory = ({
     identityId,
     caCertificate,
     allowedCommonNames,
+    allowedSubjectAltNames,
     accessTokenTTL,
     accessTokenMaxTTL,
     accessTokenNumUsesLimit,
@@ -508,6 +545,7 @@ export const identityTlsCertAuthServiceFactory = ({
 
     const updatedTlsCertAuth = await identityTlsCertAuthDAL.updateById(identityTlsCertAuth.id, {
       allowedCommonNames,
+      allowedSubjectAltNames: serializeAllowedSubjectAltNames(allowedSubjectAltNames),
       encryptedCaCertificate: caCertificate
         ? encryptor({ plainText: Buffer.from(caCertificate) }).cipherTextBlob
         : undefined,

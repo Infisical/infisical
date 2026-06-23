@@ -175,6 +175,9 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
       };
     }, []);
 
+    const shouldRevealValue = isVisible || (isSecretFocused && !valueAlwaysHidden);
+    const shouldBindRealValue = isVisible || isSecretFocused;
+
     return (
       <div
         className={cn(
@@ -195,7 +198,7 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
           >
             {syntaxHighlight(
               value,
-              isVisible || (isSecretFocused && !valueAlwaysHidden),
+              shouldRevealValue,
               isImport,
               isLoadingValue,
               isErrorLoadingValue,
@@ -239,7 +242,7 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
             onMouseLeave={() => {
               setHoveredPart(undefined);
             }}
-            value={value || ""}
+            value={value && !shouldBindRealValue ? HIDDEN_SECRET_VALUE : (value ?? "")}
             {...props}
             readOnly={isReadOnly || isLoadingValue || isErrorLoadingValue}
           />

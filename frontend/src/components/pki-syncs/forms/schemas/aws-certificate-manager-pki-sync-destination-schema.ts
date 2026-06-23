@@ -21,7 +21,11 @@ const AwsCertificateManagerSyncOptionsSchema = z.object({
           return false;
         }
 
-        const allowedOptionalPlaceholders = ["{{environment}}"];
+        const allowedOptionalPlaceholders = [
+          "{{profileId}}",
+          "{{applicationId}}",
+          "{{commonName}}"
+        ];
         const allowedPlaceholdersRegexPart = ["{{certificateId}}", ...allowedOptionalPlaceholders]
           .map((p) => p.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&"))
           .join("|");
@@ -34,7 +38,7 @@ const AwsCertificateManagerSyncOptionsSchema = z.object({
       },
       {
         message:
-          "Certificate name schema must include {{certificateId}} placeholder for AWS Certificate Manager."
+          "Certificate name schema must include the {{certificateId}} placeholder for AWS Certificate Manager. It can also include {{profileId}}, {{applicationId}}, and {{commonName}} placeholders."
       }
     )
 });

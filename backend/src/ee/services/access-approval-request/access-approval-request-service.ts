@@ -240,7 +240,8 @@ export const accessApprovalRequestServiceFactory = ({
 
       const requesterFullName = `${requestedByUser.firstName} ${requestedByUser.lastName}`;
       const projectPath = `/organizations/${project.orgId}/projects/secret-management/${project.id}`;
-      const approvalPath = `${projectPath}/approval`;
+      // Deep-link approvers straight to the Access Requests tab
+      const approvalPath = `${projectPath}/approval?selectedTab=resource-requests`;
       const approvalUrl = `${cfg.SITE_URL}${approvalPath}`;
 
       await triggerWorkflowIntegrationNotification({
@@ -418,7 +419,8 @@ export const accessApprovalRequestServiceFactory = ({
       const requesterFullName = `${requestedByUser.firstName} ${requestedByUser.lastName}`;
       const editorFullName = `${editedByUser.firstName} ${editedByUser.lastName}`;
       const projectPath = `/organizations/${project.orgId}/projects/secret-management/${project.id}`;
-      const approvalPath = `${projectPath}/approval`;
+      // Deep-link approvers straight to the Access Requests tab
+      const approvalPath = `${projectPath}/approval?selectedTab=resource-requests`;
       const approvalUrl = `${cfg.SITE_URL}${approvalPath}`;
 
       await triggerWorkflowIntegrationNotification({
@@ -813,7 +815,8 @@ export const accessApprovalRequestServiceFactory = ({
               .map((appUser) => appUser.email)
               .filter((email): email is string => !!email);
 
-            const approvalPath = `/organizations/${project.orgId}/projects/secret-management/${project.id}/approval`;
+            // Deep-link approvers straight to the Access Requests tab
+            const approvalPath = `/organizations/${project.orgId}/projects/secret-management/${project.id}/approval?selectedTab=resource-requests`;
             const approvalUrl = `${cfg.SITE_URL}${approvalPath}`;
 
             await notificationService.createUserNotifications(

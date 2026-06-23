@@ -526,9 +526,7 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.GitHub]: ((config: TAppConnectionConfig, gw, gw2) =>
       validateGitHubConnectionCredentials(config as TGitHubConnectionConfig, gw, gw2, {
         gitHubAppDAL: deps.gitHubAppDAL,
-        kmsService: deps.kmsService,
-        keyStore: deps.keyStore,
-        actorId: deps.actorId
+        kmsService: deps.kmsService
       })) as TAppConnectionCredentialsValidator,
     [AppConnection.GitHubRadar]: validateGitHubRadarConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.GCP]: validateGcpConnectionCredentials as TAppConnectionCredentialsValidator,

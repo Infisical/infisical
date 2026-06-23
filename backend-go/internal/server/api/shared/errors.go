@@ -90,6 +90,7 @@ func (h *ErrorHandler) writeHTTPError(ctx context.Context, w http.ResponseWriter
 			slog.String("name", httpErr.Name),
 			slog.Int("status", status),
 			slog.String("message", httpErr.Message),
+			slog.Any("cause", httpErr.Err),
 		)
 	}
 

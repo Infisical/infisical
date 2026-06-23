@@ -338,6 +338,7 @@ export enum EventType {
   CREATE_FOLDER = "create-folder",
   UPDATE_FOLDER = "update-folder",
   DELETE_FOLDER = "delete-folder",
+  MOVE_FOLDER = "move-folder",
   CREATE_WEBHOOK = "create-webhook",
   UPDATE_WEBHOOK_STATUS = "update-webhook-status",
   DELETE_WEBHOOK = "delete-webhook",
@@ -530,6 +531,7 @@ export enum EventType {
   INTEGRATION_SYNCED = "integration-synced",
   CREATE_CMEK = "create-cmek",
   UPDATE_CMEK = "update-cmek",
+  ROTATE_CMEK = "rotate-cmek",
   DELETE_CMEK = "delete-cmek",
   GET_CMEKS = "get-cmeks",
   GET_CMEK = "get-cmek",
@@ -697,6 +699,7 @@ export enum EventType {
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_ACCESS_LOCATIONS = "view-insights-secrets-management-access-locations",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_SUMMARY = "view-insights-secrets-management-summary",
   VIEW_INSIGHTS_SECRETS_DUPLICATION = "view-insights-secrets-duplication",
+  VIEW_INSIGHTS_SECRETS_MANAGEMENT_COUNTS = "view-insights-secrets-management-counts",
   VIEW_INSIGHTS_PAM_SUMMARY = "view-insights-pam-summary",
   VIEW_INSIGHTS_PAM_SESSION_ACTIVITY = "view-insights-pam-session-activity",
   VIEW_INSIGHTS_PAM_TOP_ACTORS = "view-insights-pam-top-actors",
@@ -1897,6 +1900,7 @@ interface AddIdentityTlsCertAuthEvent {
   metadata: {
     identityId: string;
     allowedCommonNames: string | null | undefined;
+    allowedSubjectAltNames: string[] | null | undefined;
     accessTokenTTL: number;
     accessTokenMaxTTL: number;
     accessTokenNumUsesLimit: number;
@@ -1916,6 +1920,7 @@ interface UpdateIdentityTlsCertAuthEvent {
   metadata: {
     identityId: string;
     allowedCommonNames: string | null | undefined;
+    allowedSubjectAltNames: string[] | null | undefined;
     accessTokenTTL?: number;
     accessTokenMaxTTL?: number;
     accessTokenNumUsesLimit?: number;
@@ -2490,6 +2495,17 @@ interface DeleteFolderEvent {
     folderId: string;
     folderName: string;
     folderPath: string;
+  };
+}
+
+interface MoveFolderEvent {
+  type: EventType.MOVE_FOLDER;
+  metadata: {
+    folderId: string;
+    sourceEnvironment: string;
+    sourcePath: string;
+    destinationEnvironment: string;
+    destinationPath: string;
   };
 }
 
@@ -4302,6 +4318,7 @@ interface CreateCmekEvent {
     name: string;
     description?: string;
     encryptionAlgorithm: SymmetricKeyAlgorithm | AsymmetricKeyAlgorithm;
+    isExportable?: boolean;
   };
 }
 
@@ -4318,6 +4335,14 @@ interface UpdateCmekEvent {
     keyId: string;
     name?: string;
     description?: string;
+  };
+}
+
+interface RotateCmekEvent {
+  type: EventType.ROTATE_CMEK;
+  metadata: {
+    keyId: string;
+    version: number;
   };
 }
 
@@ -5676,6 +5701,13 @@ interface ViewSecretManagementInsightsSummaryEvent {
 
 interface ViewInsightsSecretsDuplicationEvent {
   type: EventType.VIEW_INSIGHTS_SECRETS_DUPLICATION;
+  metadata: {
+    projectId: string;
+  };
+}
+
+interface ViewSecretManagementInsightsCountsEvent {
+  type: EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_COUNTS;
   metadata: {
     projectId: string;
   };
@@ -7562,6 +7594,7 @@ export type Event =
   | CreateFolderEvent
   | UpdateFolderEvent
   | DeleteFolderEvent
+  | MoveFolderEvent
   | CreateWebhookEvent
   | UpdateWebhookStatusEvent
   | DeleteWebhookEvent
@@ -7727,6 +7760,7 @@ export type Event =
   | IntegrationSyncedEvent
   | CreateCmekEvent
   | UpdateCmekEvent
+  | RotateCmekEvent
   | DeleteCmekEvent
   | GetCmekEvent
   | GetCmeksEvent
@@ -7893,6 +7927,7 @@ export type Event =
   | ViewInsightsAuthMethodsEvent
   | ViewSecretManagementInsightsSummaryEvent
   | ViewInsightsSecretsDuplicationEvent
+  | ViewSecretManagementInsightsCountsEvent
   | ViewAuditLogsEvent
   | ViewPamInsightsSummaryEvent
   | ViewPamInsightsSessionActivityEvent

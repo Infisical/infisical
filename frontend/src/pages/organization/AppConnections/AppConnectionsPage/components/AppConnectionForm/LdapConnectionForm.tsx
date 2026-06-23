@@ -1,29 +1,40 @@
 import { useState } from "react";
 import { Controller, FormProvider, useForm } from "react-hook-form";
-import { faQuestionCircle } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Tab } from "@headlessui/react";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Info } from "lucide-react";
 import { z } from "zod";
 
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
-  Button,
-  FormControl,
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
   Input,
-  ModalClose,
+  Label,
   SecretInput,
   Select,
+  SelectContent,
   SelectItem,
+  SelectTrigger,
+  SelectValue,
   Switch,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
   TextArea,
-  Tooltip
-} from "@app/components/v2";
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { GatewayPicker } from "@app/components/v3/platform/GatewayPicker";
 import { OrgPermissionSubjects, useSubscription } from "@app/context";
 import { OrgGatewayPermissionActions } from "@app/context/OrgPermissionContext/types";
 import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
 import { DistinguishedNameRegex, UserPrincipalNameRegex } from "@app/helpers/string";
+import { useScopeVariant } from "@app/hooks";
 import {
   LdapConnectionMethod,
   LdapConnectionProvider,
@@ -31,6 +42,7 @@ import {
 } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 
+import { AppConnectionFormFooter } from "./AppConnectionFormFooter";
 import {
   genericAppConnectionFieldsSchema,
   GenericAppConnectionsFields
@@ -81,7 +93,7 @@ type FormData = z.infer<typeof formSchema>;
 
 export const LdapConnectionForm = ({ appConnection, onSubmit }: Props) => {
   const isUpdate = Boolean(appConnection);
-  const [selectedTabIndex, setSelectedTabIndex] = useState(0);
+  const [selectedTab, setSelectedTab] = useState("configuration");
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -101,13 +113,8 @@ export const LdapConnectionForm = ({ appConnection, onSubmit }: Props) => {
     }
   });
 
-  const {
-    handleSubmit,
-    control,
-    setValue,
-    formState: { isSubmitting, isDirty },
-    watch
-  } = form;
+  const { handleSubmit, control, setValue, watch } = form;
+  const scopeVariant = useScopeVariant();
 
   const selectedProvider = watch("credentials.provider");
   const sslEnabled = watch("credentials.url")?.startsWith("ldaps://") ?? false;
@@ -119,7 +126,7 @@ export const LdapConnectionForm = ({ appConnection, onSubmit }: Props) => {
     <FormProvider {...form}>
       <form
         onSubmit={(e) => {
-          setSelectedTabIndex(0);
+          setSelectedTab("configuration");
           handleSubmit(onSubmit)(e);
         }}
       >
@@ -130,23 +137,41 @@ export const LdapConnectionForm = ({ appConnection, onSubmit }: Props) => {
             a={OrgPermissionSubjects.Gateway}
           >
             {(isAllowed) => (
-              <FormControl label="Gateway">
-                <Tooltip
-                  isDisabled={isAllowed}
-                  content="Restricted access. You don't have permission to attach gateways to resources."
-                >
-                  <div>
-                    <GatewayPicker
-                      isDisabled={!isAllowed}
-                      value={{ gatewayId: gatewayId ?? null, gatewayPoolId: gatewayPoolId ?? null }}
-                      onChange={({ gatewayId: newGwId, gatewayPoolId: newPoolId }) => {
-                        setValue("gatewayId", newGwId, { shouldDirty: true });
-                        setValue("gatewayPoolId", newPoolId, { shouldDirty: true });
-                      }}
-                    />
-                  </div>
-                </Tooltip>
-              </FormControl>
+              <Field className="mb-4">
+                <FieldLabel>Gateway</FieldLabel>
+                {isAllowed ? (
+                  <GatewayPicker
+                    isDisabled={!isAllowed}
+                    value={{ gatewayId: gatewayId ?? null, gatewayPoolId: gatewayPoolId ?? null }}
+                    onChange={({ gatewayId: newGwId, gatewayPoolId: newPoolId }) => {
+                      setValue("gatewayId", newGwId, { shouldDirty: true });
+                      setValue("gatewayPoolId", newPoolId, { shouldDirty: true });
+                    }}
+                  />
+                ) : (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div>
+                        <GatewayPicker
+                          isDisabled={!isAllowed}
+                          value={{
+                            gatewayId: gatewayId ?? null,
+                            gatewayPoolId: gatewayPoolId ?? null
+                          }}
+                          onChange={({ gatewayId: newGwId, gatewayPoolId: newPoolId }) => {
+                            setValue("gatewayId", newGwId, { shouldDirty: true });
+                            setValue("gatewayPoolId", newPoolId, { shouldDirty: true });
+                          }}
+                        />
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      Restricted access. You don&apos;t have permission to attach gateways to
+                      resources.
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+              </Field>
             )}
           </OrgPermissionCan>
         )}
@@ -155,215 +180,172 @@ export const LdapConnectionForm = ({ appConnection, onSubmit }: Props) => {
             name="method"
             control={control}
             render={({ field: { value, onChange }, fieldState: { error } }) => (
-              <FormControl
-                tooltipText={`The method you would like to use to connect with ${
-                  APP_CONNECTION_MAP[AppConnection.LDAP].name
-                }. This field cannot be changed after creation.`}
-                errorText={error?.message}
-                isError={Boolean(error?.message)}
-                label="Method"
-              >
-                <Select
-                  isDisabled={isUpdate}
-                  value={value}
-                  onValueChange={(val) => onChange(val)}
-                  className="w-full border border-mineshaft-500"
-                  position="popper"
-                  dropdownContainerClassName="max-w-none"
-                >
-                  {Object.values(LdapConnectionMethod).map((method) => {
-                    return (
-                      <SelectItem value={method} key={method}>
-                        {getAppConnectionMethodDetails(method).name}
-                      </SelectItem>
-                    );
-                  })}
+              <Field className="mb-4">
+                <FieldLabel>
+                  Method
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-sm">
+                      {`The method you would like to use to connect with ${
+                        APP_CONNECTION_MAP[AppConnection.LDAP].name
+                      }. This field cannot be changed after creation.`}
+                    </TooltipContent>
+                  </Tooltip>
+                </FieldLabel>
+                <Select disabled={isUpdate} value={value} onValueChange={(val) => onChange(val)}>
+                  <SelectTrigger className="w-full" isError={Boolean(error)}>
+                    <SelectValue placeholder="Select a method..." />
+                  </SelectTrigger>
+                  <SelectContent position="popper">
+                    {Object.values(LdapConnectionMethod).map((method) => {
+                      return (
+                        <SelectItem value={method} key={method}>
+                          {getAppConnectionMethodDetails(method).name}
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
                 </Select>
-              </FormControl>
+                <FieldError errors={[error]} />
+              </Field>
             )}
           />
           <Controller
             name="credentials.provider"
             control={control}
             render={({ field: { value, onChange }, fieldState: { error } }) => (
-              <FormControl
-                errorText={error?.message}
-                isError={Boolean(error?.message)}
-                label="LDAP Provider"
-              >
-                <Select
-                  isDisabled={isUpdate}
-                  value={value}
-                  onValueChange={(val) => onChange(val)}
-                  className="w-full border border-mineshaft-500 capitalize"
-                  position="popper"
-                  dropdownContainerClassName="max-w-none"
-                >
-                  {Object.values(LdapConnectionProvider).map((provider) => {
-                    return (
-                      <SelectItem value={provider} className="capitalize" key={provider}>
-                        {provider.replace("-", " ")}
-                      </SelectItem>
-                    );
-                  })}
+              <Field className="mb-4">
+                <FieldLabel>LDAP Provider</FieldLabel>
+                <Select disabled={isUpdate} value={value} onValueChange={(val) => onChange(val)}>
+                  <SelectTrigger className="w-full capitalize" isError={Boolean(error)}>
+                    <SelectValue placeholder="Select a provider..." />
+                  </SelectTrigger>
+                  <SelectContent position="popper">
+                    {Object.values(LdapConnectionProvider).map((provider) => {
+                      return (
+                        <SelectItem value={provider} className="capitalize" key={provider}>
+                          {provider.replace("-", " ")}
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
                 </Select>
-              </FormControl>
+                <FieldError errors={[error]} />
+              </Field>
             )}
           />
         </div>
-        <Tab.Group selectedIndex={selectedTabIndex} onChange={setSelectedTabIndex}>
-          <Tab.List
-            className={`-pb-1 ${selectedTabIndex === 1 ? "mb-3" : "mb-6"} w-full border-b-2 border-mineshaft-600`}
-          >
-            <Tab
-              className={({ selected }) =>
-                `-mb-[0.14rem] px-4 py-2 text-sm font-medium whitespace-nowrap outline-hidden disabled:opacity-60 ${
-                  selected
-                    ? "border-b-2 border-mineshaft-300 text-mineshaft-200"
-                    : "text-bunker-300"
-                }`
-              }
-            >
-              Configuration
-            </Tab>
-            <Tab
-              className={({ selected }) =>
-                `-mb-[0.14rem] px-4 py-2 text-sm font-medium whitespace-nowrap outline-hidden disabled:opacity-60 ${
-                  selected
-                    ? "border-b-2 border-mineshaft-300 text-mineshaft-200"
-                    : "text-bunker-300"
-                }`
-              }
-            >
-              SSL ({sslEnabled ? "Enabled" : "Disabled"})
-            </Tab>
-          </Tab.List>
-          {selectedTabIndex === 1 && (
-            <div className="mb-2 text-xs text-mineshaft-300">Requires ldaps:// URL</div>
-          )}
-          <Tab.Panels className="mb-4 rounded-sm border border-mineshaft-600 bg-mineshaft-700/70 p-3 pb-0">
-            <Tab.Panel>
+        <Tabs value={selectedTab} onValueChange={setSelectedTab} className="mb-4">
+          <TabsList variant={scopeVariant}>
+            <TabsTrigger value="configuration">Configuration</TabsTrigger>
+            <TabsTrigger value="ssl">SSL ({sslEnabled ? "Enabled" : "Disabled"})</TabsTrigger>
+          </TabsList>
+          <TabsContent value="configuration">
+            <Controller
+              name="credentials.url"
+              control={control}
+              render={({ field, fieldState: { error } }) => (
+                <Field className="mb-4">
+                  <FieldLabel htmlFor="credentials-url">LDAP URL</FieldLabel>
+                  <Input
+                    id="credentials-url"
+                    {...field}
+                    placeholder="ldap://domain-or-ip:389"
+                    isError={Boolean(error?.message)}
+                  />
+                  <FieldError errors={[error]} />
+                </Field>
+              )}
+            />
+            <div className="grid grid-cols-2 gap-2">
               <Controller
-                name="credentials.url"
+                name="credentials.dn"
                 control={control}
                 render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    errorText={error?.message}
-                    isError={Boolean(error?.message)}
-                    label="LDAP URL"
-                  >
-                    <Input {...field} placeholder="ldap://domain-or-ip:389" />
-                  </FormControl>
-                )}
-              />
-              <div className="grid grid-cols-2 gap-2">
-                <Controller
-                  name="credentials.dn"
-                  control={control}
-                  render={({ field, fieldState: { error } }) => (
-                    <FormControl
-                      errorText={error?.message}
-                      isError={Boolean(error?.message)}
-                      label="Binding DN/UPN"
-                    >
-                      <Input {...field} placeholder="CN=John,OU=Users,DC=example,DC=com" />
-                    </FormControl>
-                  )}
-                />
-                <Controller
-                  name="credentials.password"
-                  control={control}
-                  render={({ field: { value, onChange }, fieldState: { error } }) => (
-                    <FormControl
-                      errorText={error?.message}
-                      isError={Boolean(error?.message)}
-                      label="Binding Password"
-                    >
-                      <SecretInput
-                        containerClassName="text-gray-400 group-focus-within:border-primary-400/50! border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
-                        value={value}
-                        onChange={(e) => onChange(e.target.value)}
-                      />
-                    </FormControl>
-                  )}
-                />
-              </div>
-            </Tab.Panel>
-            <Tab.Panel>
-              <Controller
-                name="credentials.sslCertificate"
-                control={control}
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    errorText={error?.message}
-                    isError={Boolean(error?.message)}
-                    className={sslEnabled ? "" : "opacity-50"}
-                    label="SSL Certificate"
-                    isOptional
-                  >
-                    <TextArea
-                      className="h-[3.6rem] resize-none!"
+                  <Field className="mb-4">
+                    <FieldLabel htmlFor="credentials-dn">Binding DN/UPN</FieldLabel>
+                    <Input
+                      id="credentials-dn"
                       {...field}
-                      isDisabled={!sslEnabled}
+                      placeholder="CN=John,OU=Users,DC=example,DC=com"
+                      isError={Boolean(error?.message)}
                     />
-                  </FormControl>
+                    <FieldError errors={[error]} />
+                  </Field>
                 )}
               />
               <Controller
-                name="credentials.sslRejectUnauthorized"
+                name="credentials.password"
                 control={control}
                 render={({ field: { value, onChange }, fieldState: { error } }) => (
-                  <FormControl
-                    className={sslEnabled ? "" : "opacity-50"}
-                    isError={Boolean(error?.message)}
-                    errorText={error?.message}
-                  >
-                    <Switch
-                      className="bg-mineshaft-400/50 shadow-inner data-[state=checked]:bg-green/80"
-                      id="ssl-reject-unauthorized"
-                      thumbClassName="bg-mineshaft-800"
-                      isChecked={sslEnabled ? value : false}
-                      onCheckedChange={onChange}
-                      isDisabled={!sslEnabled}
-                    >
-                      <p className="w-38">
-                        Reject Unauthorized
-                        <Tooltip
-                          className="max-w-md"
-                          content={
-                            <p>
-                              If enabled, Infisical will only connect to the server if it has a
-                              valid, trusted SSL certificate.
-                            </p>
-                          }
-                        >
-                          <FontAwesomeIcon icon={faQuestionCircle} size="sm" className="ml-1" />
-                        </Tooltip>
-                      </p>
-                    </Switch>
-                  </FormControl>
+                  <Field className="mb-4">
+                    <FieldLabel>Binding Password</FieldLabel>
+                    <SecretInput value={value} onChange={(e) => onChange(e.target.value)} />
+                    <FieldError errors={[error]} />
+                  </Field>
                 )}
               />
-            </Tab.Panel>
-          </Tab.Panels>
-        </Tab.Group>
-        <div className="mt-8 flex items-center">
-          <Button
-            className="mr-4 capitalize"
-            size="sm"
-            type="submit"
-            colorSchema="secondary"
-            isLoading={isSubmitting}
-            isDisabled={isSubmitting || !isDirty}
-          >
-            {isUpdate ? "Update Credentials" : `Connect to ${selectedProvider.replace("-", " ")}`}
-          </Button>
-          <ModalClose asChild>
-            <Button colorSchema="secondary" variant="plain">
-              Cancel
-            </Button>
-          </ModalClose>
-        </div>
+            </div>
+          </TabsContent>
+          <TabsContent value="ssl">
+            <p className="mb-3 text-xs text-muted">Requires ldaps:// URL</p>
+            <Controller
+              name="credentials.sslCertificate"
+              control={control}
+              render={({ field, fieldState: { error } }) => (
+                <Field className={sslEnabled ? "mb-4" : "mb-4 opacity-50"}>
+                  <FieldLabel htmlFor="ssl-certificate">
+                    SSL Certificate <span className="text-muted">(optional)</span>
+                  </FieldLabel>
+                  <TextArea
+                    id="ssl-certificate"
+                    className="h-[3.6rem] resize-none!"
+                    {...field}
+                    disabled={!sslEnabled}
+                    isError={Boolean(error?.message)}
+                  />
+                  <FieldError errors={[error]} />
+                </Field>
+              )}
+            />
+            <Controller
+              name="credentials.sslRejectUnauthorized"
+              control={control}
+              render={({ field: { value, onChange }, fieldState: { error } }) => (
+                <Field className={sslEnabled ? undefined : "opacity-50"}>
+                  <Field orientation="horizontal">
+                    <FieldContent>
+                      <Label htmlFor="ssl-reject-unauthorized">Reject Unauthorized</Label>
+                      <FieldDescription>
+                        If enabled, Infisical will only connect to the server if it has a valid,
+                        trusted SSL certificate.
+                      </FieldDescription>
+                    </FieldContent>
+                    <Switch
+                      id="ssl-reject-unauthorized"
+                      variant={scopeVariant}
+                      checked={sslEnabled ? value : false}
+                      onCheckedChange={onChange}
+                      disabled={!sslEnabled}
+                    />
+                  </Field>
+                  <FieldError errors={[error]} />
+                </Field>
+              )}
+            />
+          </TabsContent>
+        </Tabs>
+        <AppConnectionFormFooter
+          submitLabel={
+            isUpdate
+              ? "Update Credentials"
+              : `Connect to ${selectedProvider
+                  .replace("-", " ")
+                  .replace(/\b\w/g, (char) => char.toUpperCase())}`
+          }
+        />
       </form>
     </FormProvider>
   );

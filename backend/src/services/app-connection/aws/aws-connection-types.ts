@@ -21,4 +21,5 @@ export type TAwsConnectionConfig = DiscriminativePick<TAwsConnectionInput, "meth
   orgId: string;
   projectId?: string | null;
   version?: number;
+  projectType?: string;
 };

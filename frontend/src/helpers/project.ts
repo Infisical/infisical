@@ -85,6 +85,15 @@ export const urlSlugToProjectType = (slug: string): ProjectType | null => {
   return slug as ProjectType;
 };
 
+// Org-wide resource pages (KMIP servers, Secret Sharing) live at literal
+// /projects/<slug>/<resource> paths with no $type route param. Parse the product slug out of the
+// pathname so the sidebar can resolve the active product when the route param is absent.
+const ORG_RESOURCE_PROJECT_SLUG_RE =
+  /\/projects\/([^/]+)\/(?:kmip-servers|secret-sharing|product-settings)/;
+
+export const parseProjectSlugFromPath = (pathname: string): string | undefined =>
+  pathname.match(ORG_RESOURCE_PROJECT_SLUG_RE)?.[1];
+
 const PROJECT_TYPES_WITH_INTERMEDIATE_VIEW = new Set<ProjectType>([
   ProjectType.SecretManager,
   ProjectType.KMS,

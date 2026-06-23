@@ -526,6 +526,39 @@ export const secretFolderDALFactory = (db: TDbClient) => {
     }
   };
 
+  // acquires a row-level lock on the given folders so that concurrent secret inserts into them block
+  // until the surrounding transaction commits (the secret -> folder FK insert needs a conflicting FOR KEY SHARE lock).
+  const lockFoldersForUpdate = async (folderIds: string[], tx: Knex) => {
+    if (!folderIds.length) return [];
+    try {
+      const folders = await tx(TableName.SecretFolder)
+        .whereIn("id", folderIds)
+        .forUpdate()
+        .select(selectAllTableCols(TableName.SecretFolder));
+      return folders;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "lockFoldersForUpdate" });
+    }
+  };
+
+  const countByProject = async (projectId: string, tx?: Knex) => {
+    try {
+      const result = await (tx || db.replicaNode())(TableName.SecretFolder)
+        .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+        .where(`${TableName.Environment}.projectId`, projectId)
+        .whereNull(`${TableName.Environment}.deleteAfter`)
+        .where(`${TableName.SecretFolder}.isReserved`, false)
+        // exclude per-environment root folders (parentId null) so a fresh project reports 0
+        .whereNotNull(`${TableName.SecretFolder}.parentId`)
+        .count("* as count")
+        .first();
+
+      return Number((result as { count?: string | number })?.count ?? 0);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "countByProject" });
+    }
+  };
+
   return {
     ...secretFolderOrm,
     update,
@@ -540,6 +573,8 @@ export const secretFolderDALFactory = (db: TDbClient) => {
     findByEnvsDeep,
     findByParentId,
     findByEnvId,
-    findFoldersByRootAndIds
+    findFoldersByRootAndIds,
+    lockFoldersForUpdate,
+    countByProject
   };
 };

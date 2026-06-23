@@ -5,23 +5,33 @@ import crypto from "crypto";
 import { useState } from "react";
 import { Controller, FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Info } from "lucide-react";
 import { z } from "zod";
 
 import {
   Button,
-  FormControl,
+  Field,
+  FieldError,
+  FieldLabel,
   Input,
-  ModalClose,
   SecretInput,
   Select,
-  SelectItem
-} from "@app/components/v2";
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  SheetFooter,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import {
   APP_CONNECTION_MAP,
   getAppConnectionMethodDetails,
   useGetAppConnectionOauthReturnUrl
 } from "@app/helpers/appConnections";
 import { isInfisicalCloud } from "@app/helpers/platform";
+import { useScopeVariant } from "@app/hooks";
 import { useGetAppConnectionOption } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { GitLabAccessTokenType } from "@app/hooks/api/appConnections/gitlab";
@@ -31,6 +41,7 @@ import {
 } from "@app/hooks/api/appConnections/types/gitlab-connection";
 
 import { GitLabFormData } from "../../../OauthCallbackPage/OauthCallbackPage.types";
+import { useAppConnectionForm } from "./AppConnectionFormContext";
 import {
   genericAppConnectionFieldsSchema,
   GenericAppConnectionsFields
@@ -80,6 +91,8 @@ type FormData = z.infer<typeof formSchema>;
 
 export const GitLabConnectionForm = ({ appConnection, onSubmit: formSubmit, projectId }: Props) => {
   const isUpdate = Boolean(appConnection);
+  const { onCancel } = useAppConnectionForm();
+  const scopeVariant = useScopeVariant();
   const [isRedirecting, setIsRedirecting] = useState(false);
 
   const {
@@ -187,6 +200,17 @@ export const GitLabConnectionForm = ({ appConnection, onSubmit: formSubmit, proj
 
   const methodDetails = getAppConnectionMethodDetails(selectedMethod);
 
+  const getMethodErrorText = (fieldError?: { message?: string }) => {
+    if (!isLoading && isMissingConfig && selectedMethod === GitLabConnectionMethod.OAuth) {
+      return `${
+        isInfisicalCloud()
+          ? "GitLab Oauth is not supported in Infisical Cloud."
+          : `Environment variables have not been configured. See Docs to configure GitLab ${methodDetails.name} Connections.`
+      }`;
+    }
+    return fieldError?.message;
+  };
+
   return (
     <FormProvider {...form}>
       <form onSubmit={handleSubmit(onSubmit)}>
@@ -196,18 +220,27 @@ export const GitLabConnectionForm = ({ appConnection, onSubmit: formSubmit, proj
           name="credentials.instanceUrl"
           control={control}
           render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl
-              label="Self-hosted URL (optional)"
-              errorText={error?.message}
-              isError={Boolean(error?.message)}
-              tooltipText="Will default to GitLab Cloud if not specified."
-            >
+            <Field className="mb-4">
+              <FieldLabel htmlFor="gitlab-instance-url">
+                Self-hosted URL <span className="text-muted">(optional)</span>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-sm">
+                    Will default to GitLab Cloud if not specified.
+                  </TooltipContent>
+                </Tooltip>
+              </FieldLabel>
               <Input
+                id="gitlab-instance-url"
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
                 placeholder="https://gitlab.com"
+                isError={Boolean(error?.message)}
               />
-            </FormControl>
+              <FieldError errors={[error]} />
+            </Field>
           )}
         />
 
@@ -215,24 +248,22 @@ export const GitLabConnectionForm = ({ appConnection, onSubmit: formSubmit, proj
           name="method"
           control={control}
           render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl
-              tooltipText={`The method you would like to use to connect with ${
-                APP_CONNECTION_MAP[AppConnection.GitLab].name
-              }. This field cannot be changed after creation.`}
-              errorText={
-                !isLoading && isMissingConfig && selectedMethod === GitLabConnectionMethod.OAuth
-                  ? `${
-                      isInfisicalCloud()
-                        ? "GitLab Oauth is not supported in Infisical Cloud."
-                        : `Environment variables have not been configured. See Docs to configure GitLab ${methodDetails.name} Connections.`
-                    }`
-                  : error?.message
-              }
-              isError={Boolean(error?.message) || isMissingConfig}
-              label="Method"
-            >
+            <Field className="mb-4">
+              <FieldLabel>
+                Method
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-sm">
+                    The method you would like to use to connect with{" "}
+                    {APP_CONNECTION_MAP[AppConnection.GitLab].name}. This field cannot be changed
+                    after creation.
+                  </TooltipContent>
+                </Tooltip>
+              </FieldLabel>
               <Select
-                isDisabled={isUpdate}
+                disabled={isUpdate}
                 value={value}
                 onValueChange={(val) => {
                   onChange(val);
@@ -240,20 +271,24 @@ export const GitLabConnectionForm = ({ appConnection, onSubmit: formSubmit, proj
                     setValue("credentials.code", "custom");
                   }
                 }}
-                className="w-full border border-mineshaft-500"
-                position="popper"
-                dropdownContainerClassName="max-w-none"
               >
-                {Object.values(GitLabConnectionMethod).map((method) => {
-                  return (
+                <SelectTrigger
+                  className="w-full"
+                  isError={Boolean(error?.message) || isMissingConfig}
+                >
+                  <SelectValue placeholder="Select a method..." />
+                </SelectTrigger>
+                <SelectContent position="popper">
+                  {Object.values(GitLabConnectionMethod).map((method) => (
                     <SelectItem value={method} key={method}>
                       {getAppConnectionMethodDetails(method).name}{" "}
                       {method === GitLabConnectionMethod.AccessToken ? " (Recommended)" : ""}
                     </SelectItem>
-                  );
-                })}
+                  ))}
+                </SelectContent>
               </Select>
-            </FormControl>
+              <FieldError>{getMethodErrorText(error)}</FieldError>
+            </Field>
           )}
         />
 
@@ -263,13 +298,10 @@ export const GitLabConnectionForm = ({ appConnection, onSubmit: formSubmit, proj
               name="credentials.accessTokenType"
               control={control}
               render={({ field: { value, onChange }, fieldState: { error } }) => (
-                <FormControl
-                  errorText={error?.message}
-                  isError={Boolean(error?.message)}
-                  label="Access Token Type"
-                >
+                <Field className="mb-4">
+                  <FieldLabel>Access Token Type</FieldLabel>
                   <Select
-                    isDisabled={isUpdate}
+                    disabled={isUpdate}
                     value={value}
                     onValueChange={(val) => {
                       onChange(val);
@@ -277,49 +309,49 @@ export const GitLabConnectionForm = ({ appConnection, onSubmit: formSubmit, proj
                         setValue("credentials.code", "custom");
                       }
                     }}
-                    className="w-full border border-mineshaft-500"
-                    position="popper"
-                    dropdownContainerClassName="max-w-none"
                   >
-                    {Object.values(GitLabAccessTokenType).map((method) => {
-                      return (
+                    <SelectTrigger className="w-full" isError={Boolean(error?.message)}>
+                      <SelectValue placeholder="Select a type..." />
+                    </SelectTrigger>
+                    <SelectContent position="popper">
+                      {Object.values(GitLabAccessTokenType).map((method) => (
                         <SelectItem value={method} key={method}>
                           {method.charAt(0).toUpperCase() + method.slice(1)} Access Token
                         </SelectItem>
-                      );
-                    })}
+                      ))}
+                    </SelectContent>
                   </Select>
-                </FormControl>
+                  <FieldError errors={[error]} />
+                </Field>
               )}
             />
             <Controller
               name="credentials.accessToken"
               control={control}
               render={({ field: { value, onChange }, fieldState: { error } }) => (
-                <FormControl
-                  label="Access Token"
-                  errorText={error?.message}
-                  isError={Boolean(error?.message)}
-                  tooltipText="Your GitLab Access Token"
-                >
-                  <SecretInput
-                    containerClassName="text-gray-400 group-focus-within:border-primary-400/50! border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
-                    value={value}
-                    onChange={(e) => onChange(e.target.value)}
-                  />
-                </FormControl>
+                <Field className="mb-4">
+                  <FieldLabel htmlFor="gitlab-access-token">
+                    Access Token
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Info />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-sm">Your GitLab Access Token</TooltipContent>
+                    </Tooltip>
+                  </FieldLabel>
+                  <SecretInput value={value} onChange={(e) => onChange(e.target.value)} />
+                  <FieldError errors={[error]} />
+                </Field>
               )}
             />
           </>
         )}
 
-        <div className="mt-8 flex items-center">
+        <SheetFooter className="sticky bottom-0 -mx-4 items-center border-t bg-popover">
           <Button
-            className="mr-4"
-            size="sm"
             type="submit"
-            colorSchema="secondary"
-            isLoading={isSubmitting || isRedirecting}
+            variant={scopeVariant}
+            isPending={isSubmitting || isRedirecting}
             isDisabled={
               isSubmitting ||
               (!isUpdate && !isDirty) ||
@@ -333,12 +365,15 @@ export const GitLabConnectionForm = ({ appConnection, onSubmit: formSubmit, proj
                 ? "Reconnect to GitLab"
                 : "Connect to GitLab"}
           </Button>
-          <ModalClose asChild>
-            <Button colorSchema="secondary" variant="plain">
-              Cancel
-            </Button>
-          </ModalClose>
-        </div>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onCancel}
+            isDisabled={isSubmitting || isRedirecting}
+          >
+            Cancel
+          </Button>
+        </SheetFooter>
       </form>
     </FormProvider>
   );

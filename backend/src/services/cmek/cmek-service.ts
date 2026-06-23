@@ -125,6 +125,34 @@ export const cmekServiceFactory = ({
     }
   };
 
+  const rotateCmekById = async (keyId: string, actor: OrgServiceActor) => {
+    const key = await kmsDAL.findCmekById(keyId);
+
+    if (!key) throw new NotFoundError({ message: `Key with ID ${keyId} not found` });
+
+    if (!key.projectId || key.isReserved) throw new BadRequestError({ message: "Key is not customer managed" });
+
+    if (key.isDisabled) throw new BadRequestError({ message: "Key is disabled" });
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      projectId: key.projectId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.KMS
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.Rotate, ProjectPermissionSub.Cmek);
+
+    const { version } = await kmsService.rotateKmsKey(keyId);
+
+    return {
+      ...key,
+      version
+    };
+  };
+
   const deleteCmekById = async (keyId: string, actor: OrgServiceActor) => {
     const key = await kmsDAL.findCmekById(keyId);
 
@@ -329,6 +357,8 @@ export const cmekServiceFactory = ({
       ProjectPermissionSub.Cmek
     );
 
+    if (!key.isExportable) throw new BadRequestError({ message: "You are not allowed to export this key" });
+
     const keyMaterial = await kmsService.getKeyMaterial({ kmsId: keyId });
 
     return {
@@ -377,6 +407,10 @@ export const cmekServiceFactory = ({
       ProjectPermissionCmekActions.ExportPrivateKey,
       ProjectPermissionSub.Cmek
     );
+
+    for (const key of keys) {
+      if (!key.isExportable) throw new BadRequestError({ message: "You are not allowed to export this key" });
+    }
 
     const bulkMaterials = await kmsService.getBulkKeyMaterial({ kmsIds: keys.map((k) => k.id) });
 
@@ -569,6 +603,7 @@ export const cmekServiceFactory = ({
           algorithm: entry.algorithm,
           name: entry.name,
           isReserved: false,
+          isExportable: entry.isExportable,
           projectId,
           orgId: actor.orgId,
           keyUsage: entry.keyUsage
@@ -606,6 +641,7 @@ export const cmekServiceFactory = ({
   return {
     createCmek,
     updateCmekById,
+    rotateCmekById,
     deleteCmekById,
     listCmeksByProjectId,
     cmekEncrypt,

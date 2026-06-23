@@ -360,6 +360,33 @@ export const certificateDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findByThumbprintInOrg = async ({
+    orgId,
+    column,
+    fingerprint,
+    limit
+  }: {
+    orgId: string;
+    column: "fingerprintSha1" | "fingerprintSha256";
+    fingerprint: string;
+    limit?: number;
+  }): Promise<TCertificates[]> => {
+    try {
+      const query = db
+        .replicaNode()(TableName.Certificate)
+        .join(TableName.Project, `${TableName.Certificate}.projectId`, `${TableName.Project}.id`)
+        .where(`${TableName.Project}.orgId`, orgId)
+        .where(`${TableName.Certificate}.${column}`, fingerprint)
+        .select(selectAllTableCols(TableName.Certificate));
+
+      if (limit) void query.limit(limit);
+
+      return await query;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find certificate by thumbprint in org" });
+    }
+  };
+
   const findActiveCertificatesByIds = async (certificateIds: string[]): Promise<TCertificates[]> => {
     try {
       if (certificateIds.length === 0) {
@@ -1133,6 +1160,7 @@ export const certificateDALFactory = (db: TDbClient) => {
     findAllActiveCertsForSubscriber,
     findActiveDigiCertCertsByOrderIds,
     findExpiredSyncedCertificates,
+    findByThumbprintInOrg,
     findActiveCertificatesByIds,
     findActiveCertificatesForSync,
     findCertificatesEligibleForRenewal,

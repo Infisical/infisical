@@ -851,7 +851,8 @@
                       "documentation/platform/pki/code-signing/overview",
                       "documentation/platform/pki/code-signing/signers",
                       "documentation/platform/pki/code-signing/approvals",
-                      "documentation/platform/pki/code-signing/pkcs11-module"
+                      "documentation/platform/pki/code-signing/pkcs11-module",
+                      "documentation/platform/pki/code-signing/windows-ksp"
                     ]
                   },
                   {
@@ -1045,7 +1046,8 @@
               },
               "cli/scanning-overview",
               "cli/project-config",
-              "cli/faq"
+              "cli/faq",
+              "cli/cloudsmith-migration"
             ]
           }
         ]
@@ -1202,6 +1204,7 @@
                   "api-reference/endpoints/project-users/remove-member-from-project",
                   "api-reference/endpoints/project-users/memberships",
                   "api-reference/endpoints/project-users/get-by-username",
+                  "api-reference/endpoints/project-users/get-by-user-id",
                   "api-reference/endpoints/project-users/update-membership",
                   {
                     "group": "Legacy",
@@ -1282,6 +1285,7 @@
                   "api-reference/endpoints/project-roles/update",
                   "api-reference/endpoints/project-roles/delete",
                   "api-reference/endpoints/project-roles/get-by-slug",
+                  "api-reference/endpoints/project-roles/get-by-id",
                   "api-reference/endpoints/project-roles/list",
                   {
                     "group": "Legacy",
@@ -3531,6 +3535,7 @@
                   "api-reference/endpoints/kms/keys/get-by-name",
                   "api-reference/endpoints/kms/keys/create",
                   "api-reference/endpoints/kms/keys/update",
+                  "api-reference/endpoints/kms/keys/rotate",
                   "api-reference/endpoints/kms/keys/delete",
                   "api-reference/endpoints/kms/keys/public-key",
                   "api-reference/endpoints/kms/keys/private-key",

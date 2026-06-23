@@ -16,6 +16,22 @@ It provides multiple Custom Resource Definitions (CRDs) which enable you to:
 When these CRDs are configured, the Infisical Operator will continuously monitor for changes and perform necessary updates to keep your Kubernetes secrets up to date.
 It can also automatically reload dependent Deployment resources whenever relevant secrets are updated.
 
+The short video below walks through how the Infisical Operator syncs secrets into your Kubernetes cluster.
+
+<br />
+
+<div style={{ position: "relative", paddingBottom: "56.25%", height: 0, overflow: "hidden", maxWidth: "100%" }}>
+  <iframe
+    src="https://www.youtube.com/embed/Nz15mAwIkYc"
+    title="YouTube video player"
+    style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", border: 0 }}
+    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+    allowFullScreen
+  ></iframe>
+</div>
+
+<br />
+
 <Info>
   The operator supports two CRD API versions: **v1beta1** and **v1alpha1**. Use **v1beta1** for new installations; **v1alpha1** is legacy and will be deprecated soon.
 </Info>
@@ -414,6 +430,8 @@ The v1beta1 API introduces a cleaner separation of concerns. Instead of defining
   <Step title="Replace InfisicalSecret with InfisicalStaticSecret">
     Create a new `InfisicalStaticSecret` resource that references your `InfisicalConnection` and `InfisicalAuth` resources.
     See the [InfisicalStaticSecret CRD](/integrations/platforms/kubernetes/infisical-static-secret-crd) documentation for the full spec.
+
+    If you were using templates, note that `engineVersion` is now a required field and the only accepted value is `v1`. The `includeAllSecrets` option no longer exists. Instead, you can iterate over all secrets using a bulk string template with a range loop. See the [Templating](#templating) section for details and examples.
   </Step>
   <Step title="Delete the old v1alpha1 resource">
     Once you have verified that the new v1beta1 resources are working, delete the old `InfisicalSecret` CRD instance.

@@ -2,19 +2,35 @@ import { useEffect, useMemo, useState } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useParams } from "@tanstack/react-router";
-import { HelpCircleIcon, InfoIcon, PlusIcon, XIcon } from "lucide-react";
+import {
+  HelpCircleIcon,
+  InfoIcon,
+  PlusIcon,
+  TriangleAlertIcon,
+  UserRoundCheckIcon,
+  UsersRoundIcon,
+  XIcon
+} from "lucide-react";
 import ms from "ms";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
   Button,
   Field,
+  FieldContent,
+  FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
+  FieldTitle,
   IconButton,
   Input,
+  RadioGroup,
+  RadioGroupItem,
   Select,
   SelectContent,
   SelectItem,
@@ -74,6 +90,7 @@ const buildSchema = (maxAccessTokenTTL: number) =>
         .string()
         .optional()
         .transform((val) => val || undefined),
+      userAccess: z.enum(["restricted", "all"]),
       allowedFields: z
         .object({
           key: z.string().trim(),
@@ -109,6 +126,33 @@ const buildSchema = (maxAccessTokenTTL: number) =>
     .required()
     .superRefine((data, ctx) => {
       superRefineLockout(data, ctx);
+
+      if (data.userAccess === "restricted") {
+        if (!data.allowedFields || data.allowedFields.length === 0) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Add at least one required attribute, or allow any directory user",
+            path: ["allowedFields"]
+          });
+        }
+
+        data.allowedFields?.forEach((field, index) => {
+          if (!field.key) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: "Attribute key is required",
+              path: ["allowedFields", index, "key"]
+            });
+          }
+          if (!field.value) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: "Attribute value is required",
+              path: ["allowedFields", index, "value"]
+            });
+          }
+        });
+      }
 
       // Validation based on scope
       if (data.scope === "template") {
@@ -222,6 +266,8 @@ export const IdentityLdapAuthForm = ({
       bindPass: "",
       searchBase: "",
       searchFilter: "(uid={{username}})",
+      userAccess: "restricted",
+      allowedFields: [{ key: "", value: "" }],
       accessTokenTTL: "2592000",
       accessTokenMaxTTL: "2592000",
       accessTokenNumUsesLimit: "",
@@ -242,8 +288,11 @@ export const IdentityLdapAuthForm = ({
   const {
     fields: allowedFieldsFields,
     append: appendAllowedField,
-    remove: removeAllowedField
+    remove: removeAllowedField,
+    replace: replaceAllowedFields
   } = useFieldArray({ control, name: "allowedFields" });
+
+  const userAccess = watch("userAccess");
 
   // Helper function to determine scope based on existing data
   const determineScope = (authData: any) => {
@@ -271,6 +320,7 @@ export const IdentityLdapAuthForm = ({
         searchBase: data.searchBase || "",
         searchFilter: data.searchFilter,
         ldapCaCertificate: data.ldapCaCertificate || undefined,
+        userAccess: data.allowedFields && data.allowedFields.length > 0 ? "restricted" : "all",
         allowedFields: data.allowedFields || [],
         accessTokenTTL: String(data.accessTokenTTL),
         accessTokenMaxTTL: String(data.accessTokenMaxTTL),
@@ -297,7 +347,8 @@ export const IdentityLdapAuthForm = ({
       searchBase: "",
       searchFilter: "(uid={{username}})",
       ldapCaCertificate: undefined,
-      allowedFields: [],
+      userAccess: "restricted",
+      allowedFields: [{ key: "", value: "" }],
       accessTokenTTL: "2592000",
       accessTokenMaxTTL: "2592000",
       accessTokenNumUsesLimit: "",
@@ -332,6 +383,7 @@ export const IdentityLdapAuthForm = ({
       searchBase: submissionSearchBase,
       searchFilter,
       ldapCaCertificate,
+      userAccess: submissionUserAccess,
       allowedFields,
       accessTokenTTL,
       accessTokenMaxTTL,
@@ -349,12 +401,15 @@ export const IdentityLdapAuthForm = ({
     const lockoutCounterResetSeconds =
       ms(`${lockoutCounterResetValue}${lockoutCounterResetUnit}`) / 1000;
 
+    // "Allow any directory user" clears the attribute restriction entirely.
+    const submissionAllowedFields = submissionUserAccess === "all" ? [] : allowedFields;
+
     const basePayload = {
       ...(projectId ? { projectId } : { organizationId: orgId }),
       identityId,
       searchFilter,
       ldapCaCertificate,
-      allowedFields,
+      allowedFields: submissionAllowedFields,
       accessTokenTTL: Number(accessTokenTTL),
       accessTokenMaxTTL: Number(accessTokenMaxTTL),
       accessTokenNumUsesLimit: Number(accessTokenNumUsesLimit || "0"),
@@ -644,114 +699,174 @@ export const IdentityLdapAuthForm = ({
               )}
             />
 
-            <div className="flex flex-col gap-3">
-              {allowedFieldsFields.map(({ id }, index) => (
-                <div className="flex items-start gap-2" key={id}>
-                  <Controller
-                    control={control}
-                    name={`allowedFields.${index}.key`}
-                    render={({ field, fieldState: { error } }) => (
-                      <Field className="flex-1">
-                        {index === 0 && (
-                          <FieldLabel
-                            htmlFor={`allowedField-key-${index}`}
-                            className="inline-flex items-center gap-1.5"
-                          >
-                            Required Attributes
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <HelpCircleIcon className="size-3.5 text-muted" />
-                              </TooltipTrigger>
-                              <TooltipContent className="max-w-md">
-                                <div className="max-h-[300px] space-y-4 overflow-y-auto text-sm">
-                                  <p>
-                                    Specify the fields that the user must contain in their LDAP
-                                    entry in order to authenticate with this identity. If nothing is
-                                    specified, all users in the configured LDAP directory will be
-                                    able to authenticate.
-                                  </p>
-                                  <p>
-                                    You can specify multiple required attributes by separating them
-                                    with a comma.
-                                  </p>
-                                  <div className="space-y-2">
-                                    <p>Example:</p>
-                                    <p className="text-xs text-muted">
-                                      &apos;uid&apos; → &apos;user1,user2,user3&apos;
-                                      <br />
-                                      &apos;mail&apos; → &apos;user@example.com&apos;
-                                    </p>
-                                  </div>
-                                  <p>
-                                    The above example would allow users with the UID user1, user2,
-                                    or user3 to authenticate but only if their emails also match
-                                    user@example.com
-                                  </p>
-                                </div>
-                              </TooltipContent>
-                            </Tooltip>
-                          </FieldLabel>
-                        )}
-                        <Input
-                          id={`allowedField-key-${index}`}
-                          value={field.value}
-                          onChange={(e) => field.onChange(e)}
-                          placeholder="uid"
-                          isError={Boolean(error)}
-                        />
-                        <FieldError>{error?.message}</FieldError>
-                      </Field>
-                    )}
-                  />
-                  <Controller
-                    control={control}
-                    name={`allowedFields.${index}.value`}
-                    render={({ field, fieldState: { error } }) => (
-                      <Field className="flex-1">
-                        {index === 0 && (
-                          <FieldLabel htmlFor={`allowedField-value-${index}`} className="invisible">
-                            Value
-                          </FieldLabel>
-                        )}
-                        <Input
-                          id={`allowedField-value-${index}`}
-                          value={field.value}
-                          onChange={(e) => field.onChange(e)}
-                          placeholder="userid1,userid2,userid3"
-                          isError={Boolean(error)}
-                        />
-                        <FieldError>{error?.message}</FieldError>
-                      </Field>
-                    )}
-                  />
-                  <IconButton
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    aria-label="Remove required attribute"
-                    className={index === 0 ? "mt-[1.625rem]" : "mt-0.5"}
-                    onClick={() => removeAllowedField(index)}
+            <Controller
+              control={control}
+              name="userAccess"
+              render={({ field: { value, onChange } }) => (
+                <Field>
+                  <FieldLabel className="inline-flex items-center gap-1.5">
+                    User access
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <HelpCircleIcon className="size-3.5 text-muted" />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs text-sm">
+                        Choose whether only directory users matching the required attributes may
+                        authenticate as this identity, or any user who can bind to the directory.
+                      </TooltipContent>
+                    </Tooltip>
+                  </FieldLabel>
+                  <FieldDescription>
+                    Choose which directory users may assume this identity.
+                  </FieldDescription>
+                  <RadioGroup
+                    className="grid grid-cols-2 gap-3"
+                    value={value}
+                    onValueChange={(next) => {
+                      onChange(next);
+                      if (next === "restricted" && allowedFieldsFields.length === 0) {
+                        replaceAllowedFields([{ key: "", value: "" }]);
+                      }
+                    }}
                   >
-                    <XIcon />
-                  </IconButton>
-                </div>
-              ))}
-              <Button
-                type="button"
-                variant="outline"
-                size="xs"
-                className="w-fit"
-                onClick={() =>
-                  appendAllowedField({
-                    key: "",
-                    value: ""
-                  })
-                }
-              >
-                <PlusIcon />
-                Add Required Attribute
-              </Button>
-            </div>
+                    <FieldLabel htmlFor="user-access-restricted" variant={scopeVariant}>
+                      <Field orientation="horizontal">
+                        <FieldContent>
+                          <FieldTitle>
+                            <UserRoundCheckIcon />
+                            Restrict
+                          </FieldTitle>
+                          <FieldDescription>Match on the attributes</FieldDescription>
+                        </FieldContent>
+                        <RadioGroupItem value="restricted" id="user-access-restricted" />
+                      </Field>
+                    </FieldLabel>
+                    <FieldLabel htmlFor="user-access-all" variant={scopeVariant}>
+                      <Field orientation="horizontal">
+                        <FieldContent>
+                          <FieldTitle>
+                            <UsersRoundIcon />
+                            Allow any
+                          </FieldTitle>
+                          <FieldDescription>Anyone who can bind</FieldDescription>
+                        </FieldContent>
+                        <RadioGroupItem value="all" id="user-access-all" />
+                      </Field>
+                    </FieldLabel>
+                  </RadioGroup>
+                </Field>
+              )}
+            />
+
+            {userAccess === "all" ? (
+              <Alert variant="warning">
+                <TriangleAlertIcon />
+                <AlertTitle>All directory users can authenticate</AlertTitle>
+                <AlertDescription>
+                  Every user in the configured LDAP directory who can bind will be able to
+                  authenticate as this identity. Switch to &quot;Restrict&quot; to limit access.
+                </AlertDescription>
+              </Alert>
+            ) : (
+              <div className="flex flex-col gap-3">
+                <FieldLabel className="inline-flex items-center gap-1.5">
+                  Authorized user attributes
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <HelpCircleIcon className="size-3.5 text-muted" />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-md">
+                      <div className="max-h-[300px] space-y-4 overflow-y-auto text-sm">
+                        <p>
+                          Only directory users whose LDAP entry matches every attribute below are
+                          authorized to authenticate as this identity.
+                        </p>
+                        <p>
+                          You can allow multiple values for an attribute by separating them with a
+                          comma.
+                        </p>
+                        <div className="space-y-2">
+                          <p>Example:</p>
+                          <p className="text-xs font-bold">
+                            &apos;uid&apos; → &apos;user1,user2,user3&apos;
+                            <br />
+                            &apos;mail&apos; → &apos;user@example.com&apos;
+                          </p>
+                        </div>
+                        <p>
+                          The above example would allow users with the UID user1, user2, or user3 to
+                          authenticate but only if their emails also match user@example.com
+                        </p>
+                      </div>
+                    </TooltipContent>
+                  </Tooltip>
+                </FieldLabel>
+                {allowedFieldsFields.map(({ id }, index) => (
+                  <div className="flex items-start gap-2" key={id}>
+                    <Controller
+                      control={control}
+                      name={`allowedFields.${index}.key`}
+                      render={({ field, fieldState: { error } }) => (
+                        <Field className="flex-1">
+                          <Input
+                            id={`allowedField-key-${index}`}
+                            value={field.value}
+                            onChange={(e) => field.onChange(e)}
+                            placeholder="uid"
+                            isError={Boolean(error)}
+                          />
+                          <FieldError>{error?.message}</FieldError>
+                        </Field>
+                      )}
+                    />
+                    <Controller
+                      control={control}
+                      name={`allowedFields.${index}.value`}
+                      render={({ field, fieldState: { error } }) => (
+                        <Field className="flex-1">
+                          <Input
+                            id={`allowedField-value-${index}`}
+                            value={field.value}
+                            onChange={(e) => field.onChange(e)}
+                            placeholder="userid1,userid2,userid3"
+                            isError={Boolean(error)}
+                          />
+                          <FieldError>{error?.message}</FieldError>
+                        </Field>
+                      )}
+                    />
+                    <IconButton
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      aria-label="Remove required attribute"
+                      className="mt-0.5"
+                      onClick={() => removeAllowedField(index)}
+                    >
+                      <XIcon />
+                    </IconButton>
+                  </div>
+                ))}
+                {allowedFieldsFields.length === 0 && (
+                  <FieldError>Add at least one attribute, or allow any directory user.</FieldError>
+                )}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="xs"
+                  className="w-fit"
+                  onClick={() =>
+                    appendAllowedField({
+                      key: "",
+                      value: ""
+                    })
+                  }
+                >
+                  <PlusIcon />
+                  Add attribute
+                </Button>
+              </div>
+            )}
 
             <AccessTokenTtlFields control={control} maxAccessTokenTTL={maxAccessTokenTTL} />
             <AccessTokenNumUsesLimitField control={control} />

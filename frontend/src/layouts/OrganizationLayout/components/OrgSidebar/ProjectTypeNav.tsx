@@ -1,5 +1,5 @@
 import { Link, useLocation, useParams } from "@tanstack/react-router";
-import { ChevronLeft, Server } from "lucide-react";
+import { ChevronLeft, Server, Share2, SlidersHorizontal } from "lucide-react";
 
 import {
   ProjectIcon,
@@ -10,6 +10,7 @@ import {
   SidebarMenuItem
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
+import { parseProjectSlugFromPath, urlSlugToProjectType } from "@app/helpers/project";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
 export const ProjectTypeNav = () => {
@@ -21,11 +22,20 @@ export const ProjectTypeNav = () => {
   const { currentOrg } = useOrganization();
   const resolvedOrgId = orgId ?? currentOrg.id;
 
-  // KMIP servers live at a literal /projects/kms/kmip-servers path (no $type param), so fall
-  // back to parsing the product slug out of the pathname when the route param is absent.
-  const typeSlug = paramTypeSlug ?? pathname.match(/\/projects\/([^/]+)\/kmip-servers/)?.[1];
+  // KMIP servers and Secret Sharing live at literal /projects/<slug>/<resource> paths (no $type
+  // param), so fall back to parsing the product slug out of the pathname when it's absent.
+  const typeSlug = paramTypeSlug ?? parseProjectSlugFromPath(pathname);
   const isKms = typeSlug === ProjectType.KMS;
+  // Secret Manager's URL slug ("secret-management") differs from the enum value ("secret-manager"),
+  // so resolve through the helper rather than comparing the slug directly.
+  const isSecretManager = typeSlug
+    ? urlSlugToProjectType(typeSlug) === ProjectType.SecretManager
+    : false;
   const isOnKmipServers = pathname.includes("/kmip-servers");
+  const isOnSecretSharing = pathname.includes("/secret-sharing");
+  const isOnSecretManagementProductSettings = pathname.includes(
+    "/secret-management/product-settings"
+  );
 
   return (
     <SidebarGroup>
@@ -45,7 +55,9 @@ export const ProjectTypeNav = () => {
             size="lg"
             scope="project"
             asChild
-            isActive={!isOnKmipServers}
+            isActive={
+              !isOnKmipServers && !isOnSecretSharing && !isOnSecretManagementProductSettings
+            }
             tooltip="Projects"
           >
             <Link
@@ -72,6 +84,44 @@ export const ProjectTypeNav = () => {
               >
                 <Server className="size-4" />
                 <span>KMIP Servers</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        )}
+        {isSecretManager && (
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              size="lg"
+              scope="project"
+              asChild
+              isActive={isOnSecretSharing}
+              tooltip="Secret Sharing"
+            >
+              <Link
+                to="/organizations/$orgId/projects/secret-management/secret-sharing"
+                params={{ orgId: resolvedOrgId }}
+              >
+                <Share2 className="size-4" />
+                <span>Secret Sharing</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        )}
+        {isSecretManager && (
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              size="lg"
+              scope="project"
+              asChild
+              isActive={isOnSecretManagementProductSettings}
+              tooltip="Product Settings"
+            >
+              <Link
+                to="/organizations/$orgId/projects/secret-management/product-settings"
+                params={{ orgId: resolvedOrgId }}
+              >
+                <SlidersHorizontal className="size-4" />
+                <span>Product Settings</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>

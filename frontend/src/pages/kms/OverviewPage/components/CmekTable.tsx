@@ -14,6 +14,7 @@ import {
   LockIcon,
   PencilIcon,
   PlusIcon,
+  RotateCwIcon,
   SearchIcon,
   TrashIcon,
   UnlockIcon
@@ -96,6 +97,7 @@ import { CmekSignModal } from "./CmekSignModal";
 import { CmekVerifyModal } from "./CmekVerifyModal";
 import { DeleteCmekModal } from "./DeleteCmekModal";
 import { cmekKeysToExportJSON, downloadJSON } from "./jsonExport";
+import { RotateCmekModal } from "./RotateCmekModal";
 
 const getStatusBadgeProps = (
   isDisabled: boolean
@@ -152,7 +154,7 @@ export const CmekTable = () => {
     setSelectedKeyIds([]);
   }, [page]);
 
-  const selectableKeys = keys.filter((k) => !k.isDisabled);
+  const selectableKeys = keys.filter((k) => !k.isDisabled && k.isExportable);
   const isPageSelected =
     selectableKeys.length > 0 && selectableKeys.every((k) => selectedKeyIds.includes(k.id));
   const isPageIndeterminate =
@@ -166,6 +168,7 @@ export const CmekTable = () => {
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
     "upsertKey",
     "deleteKey",
+    "rotateKey",
     "encryptData",
     "decryptData",
     "signData",
@@ -239,6 +242,10 @@ export const CmekTable = () => {
   );
   const cannotVerifyData = permission.cannot(
     ProjectPermissionCmekActions.Verify,
+    ProjectPermissionSub.Cmek
+  );
+  const cannotRotateKey = permission.cannot(
+    ProjectPermissionCmekActions.Rotate,
     ProjectPermissionSub.Cmek
   );
   const cannotExportPrivateKey = permission.cannot(
@@ -439,6 +446,7 @@ export const CmekTable = () => {
                   <TableHead>Algorithm</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Version</TableHead>
+                  <TableHead className="w-5" />
                   <TableHead className="w-12" />
                 </TableRow>
               </TableHeader>
@@ -447,7 +455,7 @@ export const CmekTable = () => {
                   Array.from({ length: 5 }).map((_, i) => (
                     // eslint-disable-next-line react/no-array-index-key
                     <TableRow key={`skeleton-${i}`}>
-                      {Array.from({ length: 8 }).map((__, j) => (
+                      {Array.from({ length: 9 }).map((__, j) => (
                         // eslint-disable-next-line react/no-array-index-key
                         <TableCell key={j}>
                           <Skeleton className="h-4 w-full" />
@@ -464,6 +472,7 @@ export const CmekTable = () => {
                       description,
                       encryptionAlgorithm,
                       isDisabled,
+                      isExportable,
                       keyUsage
                     } = cmek;
                     const { variant, label } = getStatusBadgeProps(isDisabled);
@@ -472,9 +481,10 @@ export const CmekTable = () => {
                     const isAsymmetricKey = Object.values(AsymmetricKeyAlgorithm).includes(
                       encryptionAlgorithm as AsymmetricKeyAlgorithm
                     );
+                    // unexportable asymmetric keys can still surface their public key in the export modal
                     const cannotExportKey = isAsymmetricKey
-                      ? cannotExportPrivateKey && cannotReadKey
-                      : cannotExportPrivateKey;
+                      ? (cannotExportPrivateKey || !isExportable) && cannotReadKey
+                      : cannotExportPrivateKey || !isExportable;
 
                     return (
                       <TableRow
@@ -484,7 +494,7 @@ export const CmekTable = () => {
                         onMouseLeave={() => setCopyCipherText("")}
                       >
                         <TableCell>
-                          {isDisabled ? (
+                          {isDisabled || !isExportable ? (
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <span className="inline-flex">
@@ -496,7 +506,11 @@ export const CmekTable = () => {
                                   />
                                 </span>
                               </TooltipTrigger>
-                              <TooltipContent>Disabled keys cannot be exported</TooltipContent>
+                              <TooltipContent>
+                                {isDisabled
+                                  ? "Disabled keys cannot be exported"
+                                  : "This key was created as non-exportable"}
+                              </TooltipContent>
                             </Tooltip>
                           ) : (
                             <Checkbox
@@ -572,6 +586,18 @@ export const CmekTable = () => {
                         </TableCell>
                         <TableCell>{version}</TableCell>
                         <TableCell>
+                          {!isExportable && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <LockIcon className="size-4 text-muted" />
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                This key was created as non-exportable
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
+                        </TableCell>
+                        <TableCell>
                           <div className="flex justify-end">
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
@@ -630,6 +656,15 @@ export const CmekTable = () => {
                                   <PencilIcon className="mr-2 size-4" />
                                   Edit Key
                                 </DropdownMenuItem>
+                                {keyUsage === KmsKeyUsage.ENCRYPT_DECRYPT && (
+                                  <DropdownMenuItem
+                                    onClick={() => handlePopUpOpen("rotateKey", cmek)}
+                                    isDisabled={cannotRotateKey || isDisabled}
+                                  >
+                                    <RotateCwIcon className="mr-2 size-4" />
+                                    Rotate Key
+                                  </DropdownMenuItem>
+                                )}
                                 <DropdownMenuItem
                                   onClick={() => handleDisableCmek(cmek)}
                                   isDisabled={cannotEditKey}
@@ -685,6 +720,11 @@ export const CmekTable = () => {
         isOpen={popUp.upsertKey.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upsertKey", isOpen)}
         cmek={popUp.upsertKey.data as TCmek | null}
+      />
+      <RotateCmekModal
+        isOpen={popUp.rotateKey.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("rotateKey", isOpen)}
+        cmek={popUp.rotateKey.data as TCmek}
       />
       <CmekEncryptModal
         isOpen={popUp.encryptData.isOpen}

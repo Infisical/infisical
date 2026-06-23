@@ -25,6 +25,7 @@ import {
 import { OrgPermissionActions, OrgPermissionSubjects, useSubscription } from "@app/context";
 import { getProjectTitle } from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { TProjectTemplate, useListProjectTemplates } from "@app/hooks/api/projectTemplates";
 
 import { DeleteProjectTemplateModal } from "./DeleteProjectTemplateModal";
@@ -46,8 +47,10 @@ export const ProjectTemplatesTable = ({ onEdit }: Props) => {
 
   const filteredTemplates = useMemo(
     () =>
-      projectTemplates?.filter((template) =>
-        template.name.toLowerCase().includes(search.toLowerCase().trim())
+      projectTemplates?.filter(
+        (template) =>
+          template.type !== ProjectType.SecretManager &&
+          template.name.toLowerCase().includes(search.toLowerCase().trim())
       ) ?? [],
     [search, projectTemplates]
   );

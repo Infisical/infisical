@@ -6,8 +6,24 @@ description: "Use jarsigner, cosign, osslsigncode, and other standard signing to
 
 The Infisical **PKCS#11 module** is a small native library (`.so`, `.dylib`, or `.dll`) that exposes your Infisical [Signers](/documentation/platform/pki/code-signing/signers) to any tool that supports the [PKCS#11 v2.40 standard](https://www.oasis-open.org/standard/pkcs-11-v2-40/). Tools like `jarsigner`, `osslsigncode`, `cosign`, `apksigner`, `openssl`, and `gpg` work without modification. They make their usual PKCS#11 calls; the module forwards them to Infisical and returns the signature.
 
+<Note>
+  Signing on Windows with `signtool`? Use the [Windows KSP](/documentation/platform/pki/code-signing/windows-ksp) instead.
+</Note>
+
+## Before you start
+
+You authenticate as a member of the Signer, using either a **Machine Identity** or your own Infisical **access token**. To use a Machine Identity, set it up once:
+
+1. **Create a Machine Identity** and enable **[Universal Auth](/documentation/platform/identities/universal-auth)** on it, then copy its **Client ID** and **Client Secret**. The module uses these to authenticate, and you will set them in [Configuration](#configuration) below.
+2. **Add the identity to the Signer** with the Administrator or Operator role, from the Signer's **Members** tab. Auditors cannot sign.
+3. If the Signer has an [approval policy](/documentation/platform/pki/code-signing/approvals), get [active signing access](/documentation/platform/pki/code-signing/approvals#access-lifecycle) before signing (or use [Automatic Signing Access Requests](#automatic-signing-access-requests)).
+
+<Note>
+  To sign as yourself instead, use your own access token (see [Configuration](#configuration)). You still need to be a member of the Signer with the Administrator or Operator role.
+</Note>
+
 <Info>
-  Before installing the module, ensure a Product Admin has created a [Signer](/documentation/platform/pki/code-signing/signers) and added the machine identity (or user) you plan to authenticate as. If the Signer has an [approval policy](/documentation/platform/pki/code-signing/approvals), you'll also need [active access](/documentation/platform/pki/code-signing/approvals#access-lifecycle).
+  The [Signer](/documentation/platform/pki/code-signing/signers) itself is created by a Product Admin. If you do not have one yet, create it first.
 </Info>
 
 ## Installation
@@ -48,7 +64,7 @@ The output binary lands in the current directory.
 
 ## Configuration
 
-The module reads its config from `/etc/infisical/pkcs11.conf` (override the path with `INFISICAL_PKCS11_CONFIG`):
+The module reads its config from `/etc/infisical/pkcs11.conf` (override the path with `INFISICAL_CONFIG`):
 
 ```json
 {
@@ -68,10 +84,23 @@ export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET="<machine-identity-client-secret>"
   Credentials can also live in the config file under `auth.client_id` and `auth.client_secret`, but environment variables are strongly recommended so secrets don't end up in version control, backups, or shared logs.
 </Note>
 
+#### Sign with an access token instead
+
+Instead of a machine identity, you can hand the module an Infisical access token directly, either your own or a machine identity's. Set `INFISICAL_TOKEN` and the module uses it as-is:
+
+```bash
+export INFISICAL_SERVER_URL="https://app.infisical.com"
+export INFISICAL_TOKEN="<your-access-token>"
+```
+
+<Warning>
+  JWT tokens expire, so this access is **temporary**. The module does not refresh the token; once it expires, signing fails until you supply a new one. This is handy for signing as yourself or for a quick one-off; for unattended or CI/CD signing use a machine identity with Universal Auth (client ID and secret), which the module re-authenticates automatically.
+</Warning>
+
 If you put the config somewhere other than `/etc/infisical/pkcs11.conf`:
 
 ```bash
-export INFISICAL_PKCS11_CONFIG=/path/to/your/pkcs11.conf
+export INFISICAL_CONFIG=/path/to/your/pkcs11.conf
 ```
 
 ### Configuration reference
@@ -79,9 +108,10 @@ export INFISICAL_PKCS11_CONFIG=/path/to/your/pkcs11.conf
 | Field | Required | Default | Description |
 |-------|----------|---------|-------------|
 | `server_url` | Yes | None | Infisical server URL. Must use `http://` (local dev) or `https://`. |
-| `auth.method` | No | `universal-auth` | Authentication method. |
-| `auth.client_id` | No | None | Machine identity client ID. Prefer the env var. |
-| `auth.client_secret` | No | None | Machine identity client secret. Prefer the env var. |
+| `auth.method` | No | inferred | Authentication method: `universal-auth` or `token`. Inferred from the credentials when unset (a token means `token`, otherwise `universal-auth`). |
+| `auth.client_id` | No | None | Machine identity client ID, for `universal-auth`. Prefer the env var. |
+| `auth.client_secret` | No | None | Machine identity client secret, for `universal-auth`. Prefer the env var. |
+| `auth.token` | No | None | An Infisical access token, for `token` auth. Prefer the env var. |
 | `tls.ca_cert_path` | No | None | Custom CA bundle path for self-hosted Infisical with a private CA. |
 | `tls.skip_verify` | No | `false` | Skip TLS verification (development only, never enable in production). |
 | `cache.token_ttl_seconds` | No | `300` | How long the auth token is cached. |
@@ -98,8 +128,9 @@ export INFISICAL_PKCS11_CONFIG=/path/to/your/pkcs11.conf
 |----------|-------------|
 | `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID` | Machine identity client ID. Overrides config. |
 | `INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET` | Machine identity client secret. Overrides config. |
-| `INFISICAL_PKCS11_SERVER_URL` | Override `server_url`. |
-| `INFISICAL_PKCS11_CONFIG` | Path to the config file (default `/etc/infisical/pkcs11.conf`). |
+| `INFISICAL_TOKEN` | An Infisical access token (a user or machine identity token). Selects token auth; used instead of the client ID/secret. |
+| `INFISICAL_SERVER_URL` | The Infisical instance URL. Sets `server_url` (and overrides the config file). |
+| `INFISICAL_CONFIG` | Path to the config file (default `/etc/infisical/pkcs11.conf`). |
 
 <Note>
   Environment variables always take precedence over values in the configuration file.

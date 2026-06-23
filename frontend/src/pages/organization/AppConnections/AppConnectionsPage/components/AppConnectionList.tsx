@@ -1,14 +1,24 @@
-import { useMemo } from "react";
-import { faInfoCircle, faMagnifyingGlass, faSearch } from "@fortawesome/free-solid-svg-icons";
+import { useMemo, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { Loader2Icon, Search } from "lucide-react";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
-import { EmptyState, Input, Pagination, Spinner, Tooltip } from "@app/components/v2";
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput
+} from "@app/components/v3";
 import { useSubscription } from "@app/context";
-import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
-import { usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
+import { APP_CONNECTION_MAP, POPULAR_APP_CONNECTIONS } from "@app/helpers/appConnections";
+import { usePopUp } from "@app/hooks";
 import { useAppConnectionOptions } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { TAppConnectionOption } from "@app/hooks/api/appConnections/types/app-options";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
 type Props = {
@@ -16,160 +26,194 @@ type Props = {
   projectType?: ProjectType;
 };
 
+const ProviderCard = ({ app, onClick }: { app: AppConnection; onClick: () => void }) => {
+  const { name, image, category, description, icon } = APP_CONNECTION_MAP[app];
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="group flex cursor-pointer flex-col gap-3 rounded-md border border-border bg-card p-4 text-left transition-colors hover:border-mineshaft-500 hover:bg-mineshaft-700/50"
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div className="relative flex h-9 w-9 items-center justify-center rounded-md bg-mineshaft-700">
+          <img
+            src={`/images/integrations/${image}`}
+            alt={`${name} logo`}
+            className="h-6 w-6 object-contain"
+          />
+          {icon && (
+            <FontAwesomeIcon
+              icon={icon}
+              className="absolute -right-1 -bottom-1 text-primary-700"
+              size="sm"
+            />
+          )}
+        </div>
+        <span className="text-[10px] font-medium tracking-wider text-muted uppercase">
+          {category}
+        </span>
+      </div>
+      <div className="flex flex-col gap-1">
+        <p className="text-sm font-semibold text-foreground">{name}</p>
+        <p className="text-xs leading-relaxed text-muted">{description}</p>
+      </div>
+    </button>
+  );
+};
+
+const SectionLabel = ({ children }: { children: React.ReactNode }) => (
+  <p className="mb-3 text-[11px] font-medium tracking-wider text-muted uppercase">{children}</p>
+);
+
 export const AppConnectionsSelect = ({ onSelect, projectType }: Props) => {
   const { subscription } = useSubscription();
   const { isPending, data: appConnectionOptions } = useAppConnectionOptions(projectType);
-
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["upgradePlan"] as const);
+  const [search, setSearch] = useState("");
 
-  const { search, setSearch, setPage, page, perPage, setPerPage, offset } = usePagination("", {
-    initPerPage: 16
-  });
+  const handleSelect = (app: AppConnection) => {
+    if (APP_CONNECTION_MAP[app].enterprise && !subscription.enterpriseAppConnections) {
+      handlePopUpOpen("upgradePlan", { isEnterpriseFeature: true });
+      return;
+    }
+    onSelect(app);
+  };
+
+  const optionsByApp = useMemo(() => {
+    const map = new Map<AppConnection, TAppConnectionOption>();
+    appConnectionOptions?.forEach((option) => map.set(option.app, option));
+    return map;
+  }, [appConnectionOptions]);
 
   const filteredOptions = useMemo(() => {
-    const searchLower = search.trim().toLowerCase();
+    const query = search.trim().toLowerCase();
+    if (!query) return appConnectionOptions ?? [];
+
     return (
-      appConnectionOptions?.filter(({ name, app }) => {
-        const aliases = APP_CONNECTION_MAP[app]?.aliases ?? [];
+      appConnectionOptions?.filter(({ app, name }) => {
+        const entry = APP_CONNECTION_MAP[app];
+        const aliases = entry?.aliases ?? [];
         return (
-          name?.toLowerCase().includes(searchLower) ||
-          app.toLowerCase().includes(searchLower) ||
-          aliases.some((alias) => alias.toLowerCase().includes(searchLower))
+          name?.toLowerCase().includes(query) ||
+          entry?.name.toLowerCase().includes(query) ||
+          entry?.category.toLowerCase().includes(query) ||
+          app.toLowerCase().includes(query) ||
+          aliases.some((alias) => alias.toLowerCase().includes(query))
         );
       }) ?? []
     );
   }, [appConnectionOptions, search]);
 
-  useResetPageHelper({
-    totalCount: filteredOptions.length,
-    offset,
-    setPage
-  });
+  const popularOptions = useMemo(
+    () =>
+      POPULAR_APP_CONNECTIONS.map((app) => optionsByApp.get(app)).filter(
+        (option): option is TAppConnectionOption => Boolean(option)
+      ),
+    [optionsByApp]
+  );
+
+  const isSearching = search.trim().length > 0;
 
   if (isPending) {
     return (
-      <div className="flex h-full flex-col items-center justify-center py-2.5">
-        <Spinner size="lg" className="text-mineshaft-500" />
-        <p className="mt-4 text-sm text-mineshaft-400">Loading options...</p>
+      <div className="flex h-full flex-col items-center justify-center py-10">
+        <Loader2Icon className="size-8 animate-spin text-accent" />
+        <p className="mt-4 text-sm text-muted">Loading options...</p>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <Input
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-        placeholder="Search options..."
-        className="bg-mineshaft-800 placeholder:text-mineshaft-400"
-      />
-      <div className="grid h-118 grid-cols-4 content-start gap-2">
-        {filteredOptions.slice(offset, perPage * page)?.map((option) => {
-          const {
-            image,
-            name,
-            size = 50,
-            enterprise = false,
-            icon
-          } = APP_CONNECTION_MAP[option.app];
-
-          return (
-            <button
-              key={option.app}
-              type="button"
-              onClick={() =>
-                enterprise && !subscription.enterpriseAppConnections
-                  ? handlePopUpOpen("upgradePlan", {
-                      isEnterpriseFeature: true
-                    })
-                  : onSelect(option.app)
-              }
-              className="group relative flex h-28 cursor-pointer flex-col items-center justify-center rounded-md border border-mineshaft-600 bg-mineshaft-700 p-4 duration-200 hover:bg-mineshaft-600"
-            >
-              {image && (
-                <img
-                  src={`/images/integrations/${image}`}
-                  style={{
-                    width: `${size}px`
-                  }}
-                  className="mt-auto"
-                  alt={`${name} logo`}
-                />
-              )}
-              {icon && (
-                <div className="relative">
-                  <FontAwesomeIcon
-                    className="absolute -right-1.5 -bottom-1.5 text-primary-700"
-                    size="xl"
-                    icon={icon}
-                  />
-                </div>
-              )}
-              <div className="mt-auto max-w-xs text-center text-xs font-medium text-gray-300 duration-200 group-hover:text-gray-200">
-                {name}
-              </div>
-            </button>
-          );
-        })}
-        {!filteredOptions?.length && (
-          <EmptyState
-            className="col-span-full mt-40"
-            title="No App Connections match search"
-            icon={faSearch}
-          />
-        )}
-      </div>
-      {Boolean(filteredOptions.length) && (
-        <Pagination
-          startAdornment={
-            <Tooltip
-              side="bottom"
-              className="max-w-sm py-4"
-              content={
-                <>
-                  <p className="mb-2">Infisical is constantly adding support for more services.</p>
-                  <p>
-                    {`If you don't see the third-party
-            service you're looking for,`}{" "}
-                    <a
-                      target="_blank"
-                      className="underline hover:text-mineshaft-300"
-                      href="https://infisical.com/slack"
-                      rel="noopener noreferrer"
-                    >
-                      let us know on Slack
-                    </a>{" "}
-                    or{" "}
-                    <a
-                      target="_blank"
-                      className="underline hover:text-mineshaft-300"
-                      href="https://github.com/Infisical/infisical/discussions"
-                      rel="noopener noreferrer"
-                    >
-                      make a request on GitHub
-                    </a>
-                    .
-                  </p>
-                </>
-              }
-            >
-              <div className="-ml-3 flex items-center gap-1.5 text-mineshaft-400">
-                <span className="text-xs">
-                  Don&#39;t see the third-party service you&#39;re looking for?
-                </span>
-                <FontAwesomeIcon size="xs" icon={faInfoCircle} />
-              </div>
-            </Tooltip>
-          }
-          count={filteredOptions.length}
-          page={page}
-          perPage={perPage}
-          onChangePage={setPage}
-          onChangePerPage={setPerPage}
-          perPageList={[16]}
+    <div className="flex flex-col gap-6">
+      <InputGroup>
+        <InputGroupAddon align="inline-start">
+          <Search />
+        </InputGroupAddon>
+        <InputGroupInput
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search apps (e.g. AWS, GitHub, Postgres, Vault)"
         />
+      </InputGroup>
+
+      {isSearching ? (
+        <section>
+          {filteredOptions.length ? (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {filteredOptions.map((option) => (
+                <ProviderCard
+                  key={option.app}
+                  app={option.app}
+                  onClick={() => handleSelect(option.app)}
+                />
+              ))}
+            </div>
+          ) : (
+            <Empty className="border">
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  <Search />
+                </EmptyMedia>
+                <EmptyTitle>No matching apps</EmptyTitle>
+                <EmptyDescription>Try a different search term.</EmptyDescription>
+              </EmptyHeader>
+            </Empty>
+          )}
+        </section>
+      ) : (
+        <>
+          {popularOptions.length > 0 && (
+            <section>
+              <SectionLabel>Popular</SectionLabel>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {popularOptions.map((option) => (
+                  <ProviderCard
+                    key={option.app}
+                    app={option.app}
+                    onClick={() => handleSelect(option.app)}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+          <section>
+            <SectionLabel>All apps</SectionLabel>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {(appConnectionOptions ?? []).map((option) => (
+                <ProviderCard
+                  key={option.app}
+                  app={option.app}
+                  onClick={() => handleSelect(option.app)}
+                />
+              ))}
+            </div>
+          </section>
+        </>
       )}
+
+      <p className="text-xs text-muted">
+        Don&apos;t see the app you&apos;re looking for?{" "}
+        <a
+          target="_blank"
+          rel="noopener noreferrer"
+          href="https://infisical.com/slack"
+          className="underline underline-offset-2 hover:text-foreground"
+        >
+          Let us know on Slack
+        </a>{" "}
+        or{" "}
+        <a
+          target="_blank"
+          rel="noopener noreferrer"
+          href="https://github.com/Infisical/infisical/discussions"
+          className="underline underline-offset-2 hover:text-foreground"
+        >
+          request it on GitHub
+        </a>
+        .
+      </p>
+
       <UpgradePlanModal
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}

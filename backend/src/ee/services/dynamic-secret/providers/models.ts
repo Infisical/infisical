@@ -615,7 +615,12 @@ export const DynamicSecretTotpSchema = z.discriminatedUnion("configType", [
 ]);
 
 export const DynamicSecretGcpIamSchema = z.object({
-  serviceAccountEmail: z.string().email().trim().min(1, "Service account email required").max(128)
+  serviceAccountEmail: z.string().email().trim().min(1, "Service account email required").max(128),
+  tokenScopes: z
+    .array(z.string().trim().min(1))
+    .min(1, "At least one scope is required")
+    .default(["https://www.googleapis.com/auth/iam", "https://www.googleapis.com/auth/cloud-platform"])
+    .describe("OAuth scopes for the generated access token.")
 });
 
 export const DynamicSecretGithubSchema = z.object({

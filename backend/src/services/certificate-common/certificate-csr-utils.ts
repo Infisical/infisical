@@ -84,9 +84,10 @@ export const extractCertificateRequestFromCSR = (csr: string): TCertificateReque
 
   const basicConstraintsExtension = csrObj.getExtension("2.5.29.19") as x509.BasicConstraintsExtension;
   if (basicConstraintsExtension) {
+    const parsedPathLength = basicConstraintsExtension.pathLength;
     certificateRequest.basicConstraints = {
       isCA: basicConstraintsExtension.ca,
-      pathLength: basicConstraintsExtension.pathLength
+      pathLength: parsedPathLength !== undefined && parsedPathLength >= 0 ? parsedPathLength : undefined
     };
   }
 

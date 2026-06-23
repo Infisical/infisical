@@ -6,7 +6,7 @@ import { TEntitlementsResponse, TLicenseClientBackend } from "./license-client-t
 
 type TEntitlementResolverDep = {
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry">;
-  backend: TLicenseClientBackend;
+  backend: Pick<TLicenseClientBackend, "fetchEntitlements">;
 };
 
 export type TEntitlementResolver = ReturnType<typeof entitlementResolverFactory>;

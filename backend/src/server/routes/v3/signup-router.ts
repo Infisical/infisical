@@ -158,7 +158,7 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
           username: user.username,
           email: user.email ?? "",
           attributionSource: isInvitedUser ? "Team Invite" : bodyAttributionSource,
-          signupMethod: isInvitedUser ? "invite" : "email"
+          signupMethod: isInvitedUser ? "invite" : authMethod
         }
       });
 

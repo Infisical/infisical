@@ -6,6 +6,7 @@ import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/res
 import { ResourceMetadataNonEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
 
 import { TGatewayPoolServiceFactory } from "../gateway-pool/gateway-pool-service";
+import { TGatewayV2DALFactory } from "../gateway-v2/gateway-v2-dal";
 import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
 import { TPamResourceDALFactory } from "../pam-resource/pam-resource-dal";
 import { TPostRotateContext } from "../pam-resource/pam-resource-types";
@@ -66,8 +67,9 @@ export type TDeleteDomainDTO = {
 export type TPamDomainServiceFactoryDep = {
   pamDomainDAL: TPamDomainDALFactory;
   pamResourceDAL: Pick<TPamResourceDALFactory, "find" | "findById">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  gatewayV2DAL: Pick<TGatewayV2DALFactory, "findOne">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<
     TGatewayPoolServiceFactory,
