@@ -108,11 +108,19 @@ export const ApprovalPolicyRow = ({
 
   const { variant, Icon } = policyDetails[policy.policyType];
 
+  const environmentNames = policy.environments.map((env) => env.name).join(", ");
+
   return (
     <TableRow>
-      <TableCell>{policy.name || <span className="text-muted">Unnamed Policy</span>}</TableCell>
-      <TableCell>{policy.environments.map((env) => env.name).join(", ")}</TableCell>
-      <TableCell>{policy.secretPath || "*"}</TableCell>
+      <TableCell isTruncatable className="w-1/3" title={policy.name || "Unnamed Policy"}>
+        {policy.name || <span className="text-muted">Unnamed Policy</span>}
+      </TableCell>
+      <TableCell isTruncatable className="w-1/3" title={environmentNames}>
+        {environmentNames}
+      </TableCell>
+      <TableCell isTruncatable className="w-1/3" title={policy.secretPath || "*"}>
+        {policy.secretPath || "*"}
+      </TableCell>
       <TableCell>
         <Badge variant={variant}>
           <Icon />
