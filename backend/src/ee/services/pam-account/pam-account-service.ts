@@ -36,7 +36,9 @@ import {
   validateRecordingS3Config
 } from "../pam/pam-validators";
 import { TPamAccountTemplateDALFactory } from "../pam-account-template/pam-account-template-dal";
+import { PamTemplateSettingsSchema } from "../pam-account-template/pam-account-template-schemas";
 import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
+import { PamRecordingStorageBackend } from "../pam-session-recording/pam-recording-enums";
 import { TPamAccountDALFactory } from "./pam-account-dal";
 import {
   getAccountAccessibilityIssues,
@@ -106,12 +108,23 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     templateGatewayId: string | null;
     templateGatewayPoolId: string | null;
     templateRecordingConnectionId: string | null;
+    settingsOverrides?: unknown;
+    templateSettings: unknown;
     credentialConfigured: boolean;
   }) => {
+    const settingsParsed = PamTemplateSettingsSchema.safeParse(a.templateSettings);
+    const templateSettings = settingsParsed.success ? settingsParsed.data : null;
+    const accountSettingsOverrides = (a.settingsOverrides ?? {}) as { recordingS3Config?: unknown };
+    const hasRecordingConfig = Boolean(
+      templateSettings?.recordingStorageBackend === PamRecordingStorageBackend.AwsS3 &&
+        (a.recordingConnectionId || a.templateRecordingConnectionId) &&
+        (accountSettingsOverrides.recordingS3Config || templateSettings.recordingS3Config)
+    );
+
     const accessibilityIssues = getAccountAccessibilityIssues({
       accountType: a.accountType as PamAccountType,
       hasGateway: Boolean(a.gatewayId || a.gatewayPoolId || a.templateGatewayId || a.templateGatewayPoolId),
-      hasRecordingConfig: Boolean(a.recordingConnectionId || a.templateRecordingConnectionId),
+      hasRecordingConfig,
       credentialConfigured: a.credentialConfigured
     });
     return { isAccessible: accessibilityIssues.length === 0, accessibilityIssues };
@@ -240,16 +253,6 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       throw new BadRequestError({
         message: `Template type '${template.type}' does not match account type '${accountType}'`
       });
-    }
-
-    if (accountType === PamAccountType.Windows) {
-      const settings = (template.settings ?? {}) as Record<string, unknown>;
-      if (settings.recordingStorageBackend !== "aws-s3" || !template.recordingConnectionId) {
-        throw new BadRequestError({
-          message:
-            "Cannot create a Windows account until the account template has S3 recording fully configured (storage backend, AWS connection, and S3 bucket)"
-        });
-      }
     }
 
     await validateGatewayAttachment(deps, gatewayId, gatewayPoolId, ctx);

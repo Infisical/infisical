@@ -457,8 +457,8 @@ export const CreateAccountSheet = ({ isOpen, onOpenChange, defaultFolderId }: Pr
                           <div className="text-sm">
                             <p className="font-medium text-warning">S3 recording not configured</p>
                             <p className="mt-1 text-muted">
-                              This account type requires S3 recording. Configure it in the account
-                              template settings before creating an account.
+                              This account will be created, but it will remain inaccessible until S3
+                              recording is configured on the account or template.
                             </p>
                           </div>
                         </div>
@@ -479,12 +479,7 @@ export const CreateAccountSheet = ({ isOpen, onOpenChange, defaultFolderId }: Pr
                 <Button type="button" variant="ghost" onClick={() => setStep(1)}>
                   Back
                 </Button>
-                <Button
-                  type="submit"
-                  variant="pam"
-                  isPending={createAccount.isPending}
-                  isDisabled={needsRecording}
-                >
+                <Button type="submit" variant="pam" isPending={createAccount.isPending}>
                   Create
                 </Button>
               </SheetFooter>
