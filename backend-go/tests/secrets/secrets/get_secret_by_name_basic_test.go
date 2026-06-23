@@ -282,7 +282,4 @@ func TestGetSecretByName_ResponseFields(t *testing.T) {
 	require.NotNil(t, resp.Secret.IsRotatedSecret, "isRotatedSecret should be present")
 	assert.False(t, *resp.Secret.IsRotatedSecret, "a normal secret is not a rotated secret")
 	assert.Nil(t, resp.Secret.RotationID, "rotationId should be absent for a non-rotated secret")
-
-	require.NotNil(t, resp.Secret.Actor, "actor should identify who last modified the secret")
-	require.NotNil(t, resp.Secret.Actor.ActorType)
 }

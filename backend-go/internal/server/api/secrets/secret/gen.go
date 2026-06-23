@@ -1089,7 +1089,7 @@ func (r *GetSecretByNameRawV3ResponseData) WithStatus(code int) *GetSecretByName
 
 type ListSecretsV4Response struct {
 	Secrets []SecretRaw    `json:"secrets" validate:"required"`
-	Imports []SecretImport `json:"imports,omitempty"`
+	Imports []SecretImport `json:"imports"`
 }
 
 type ListSecretsV4ErrorResponse shared.ValidationError
@@ -1114,7 +1114,7 @@ type GetSecretByNameV4ErrorResponseJSON500 shared.Error
 
 type ListSecretsRawV3Response struct {
 	Secrets []SecretRaw    `json:"secrets" validate:"required"`
-	Imports []SecretImport `json:"imports,omitempty"`
+	Imports []SecretImport `json:"imports"`
 }
 
 type ListSecretsRawV3ErrorResponse shared.ValidationError
@@ -1283,18 +1283,18 @@ type SecretRaw struct {
 	SecretKey                string             `json:"secretKey" validate:"required"`
 	SecretValue              string             `json:"secretValue" validate:"required"`
 	SecretComment            string             `json:"secretComment" validate:"required"`
-	SecretReminderNote       *string            `json:"secretReminderNote,omitempty"`
-	SecretReminderRepeatDays *int               `json:"secretReminderRepeatDays,omitempty"`
+	SecretReminderNote       *string            `json:"secretReminderNote"`
+	SecretReminderRepeatDays *int               `json:"secretReminderRepeatDays"`
 	SkipMultilineEncoding    *bool              `json:"skipMultilineEncoding,omitempty"`
 	CreatedAt                string             `json:"createdAt" validate:"required"`
 	UpdatedAt                string             `json:"updatedAt" validate:"required"`
 	Actor                    *SecretActor       `json:"actor,omitempty"`
 	IsRotatedSecret          *bool              `json:"isRotatedSecret,omitempty"`
-	RotationID               *string            `json:"rotationId,omitempty"`
+	RotationID               *string            `json:"rotationId"`
 	SecretPath               *string            `json:"secretPath,omitempty"`
 	SecretValueHidden        bool               `json:"secretValueHidden"`
-	SecretMetadata           []ResourceMetadata `json:"secretMetadata,omitempty"`
-	Tags                     []SecretTag        `json:"tags,omitempty"`
+	SecretMetadata           []ResourceMetadata `json:"secretMetadata"`
+	Tags                     []SecretTag        `json:"tags"`
 }
 
 func (s SecretRaw) Validate() error {
@@ -1396,14 +1396,14 @@ type ImportSecretRaw struct {
 	SecretKey                string              `json:"secretKey" validate:"required"`
 	SecretValue              string              `json:"secretValue" validate:"required"`
 	SecretComment            string              `json:"secretComment" validate:"required"`
-	SecretReminderNote       *string             `json:"secretReminderNote,omitempty"`
-	SecretReminderRepeatDays *int                `json:"secretReminderRepeatDays,omitempty"`
+	SecretReminderNote       *string             `json:"secretReminderNote"`
+	SecretReminderRepeatDays *int                `json:"secretReminderRepeatDays"`
 	SkipMultilineEncoding    *bool               `json:"skipMultilineEncoding,omitempty"`
 	Actor                    *SecretActor        `json:"actor,omitempty"`
 	IsRotatedSecret          *bool               `json:"isRotatedSecret,omitempty"`
-	RotationID               *string             `json:"rotationId,omitempty"`
+	RotationID               *string             `json:"rotationId"`
 	SecretValueHidden        bool                `json:"secretValueHidden"`
-	SecretMetadata           []ResourceMetadata  `json:"secretMetadata,omitempty"`
+	SecretMetadata           []ResourceMetadata  `json:"secretMetadata"`
 }
 
 func (i ImportSecretRaw) Validate() error {

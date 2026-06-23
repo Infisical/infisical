@@ -22,6 +22,7 @@ type GetSecretByNameOpts struct {
 	SecretType     string
 	UserID         *uuid.UUID
 	IncludeImports bool
+	Version        *int // when set, read this historical version instead of the live secret
 }
 
 // GetSecretByNameResult contains the result of getting a secret by name.
@@ -61,7 +62,17 @@ func (s *Service) GetSecretByName(ctx context.Context, opts *GetSecretByNameOpts
 		secretType = "shared"
 	}
 
-	foundSecret, err := s.FindByKey(ctx, folderNode.ID, opts.SecretName, secretType, opts.UserID)
+	var keyOpts []FindByKeyOption
+	if secretType == "personal" && opts.UserID != nil {
+		keyOpts = append(keyOpts, WithPersonalType(*opts.UserID))
+	}
+
+	lookupOpts := keyOpts
+	if opts.Version != nil {
+		lookupOpts = append(append([]FindByKeyOption{}, keyOpts...), WithVersion(*opts.Version))
+	}
+
+	foundSecret, err := s.FindByKey(ctx, folderNode.ID, opts.SecretName, lookupOpts...)
 	if err != nil {
 		return nil, errutil.DatabaseErr("Failed to find secret").WithErrf("GetSecretByName: %w", err)
 	}
@@ -71,7 +82,9 @@ func (s *Service) GetSecretByName(ctx context.Context, opts *GetSecretByNameOpts
 
 	var allImports []secretimport.ResolvedImport
 
-	if foundSecret == nil && opts.IncludeImports {
+	// Imports apply to live lookups only; a versioned read targets a specific
+	// secret's history and never falls back to imports.
+	if foundSecret == nil && opts.IncludeImports && opts.Version == nil {
 		importLookup, err := s.secretImportService.LoadProjectImports(ctx, opts.ProjectID)
 		if err != nil {
 			return nil, errutil.DatabaseErr("Failed to load imports").WithErrf("GetSecretByName: %w", err)
@@ -90,7 +103,7 @@ func (s *Service) GetSecretByName(ctx context.Context, opts *GetSecretByNameOpts
 		// Search imports in reverse order (later imports have higher priority)
 		for i := len(allImports) - 1; i >= 0; i-- {
 			imp := &allImports[i]
-			importedSecret, err := s.FindByKey(ctx, imp.FolderID, opts.SecretName, secretType, opts.UserID)
+			importedSecret, err := s.FindByKey(ctx, imp.FolderID, opts.SecretName, keyOpts...)
 			if err != nil {
 				continue
 			}

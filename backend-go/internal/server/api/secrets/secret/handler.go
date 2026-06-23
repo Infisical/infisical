@@ -262,6 +262,7 @@ func (h *Handler) GetSecretByNameV4(ctx context.Context, opts *GetSecretByNameV4
 		ViewSecretValue:        fn.ValueOr(q.ViewSecretValue, true),
 		ExpandSecretReferences: fn.ValueOr(q.ExpandSecretReferences, true),
 		IncludeImports:         fn.ValueOr(q.IncludeImports, true),
+		Version:                q.Version,
 	})
 	if err != nil {
 		return nil, err
@@ -313,6 +314,7 @@ func (h *Handler) GetSecretByNameRawV3(ctx context.Context, opts *GetSecretByNam
 		ViewSecretValue:        fn.ValueOr(q.ViewSecretValue, true),
 		ExpandSecretReferences: fn.ValueOr(q.ExpandSecretReferences, true),
 		IncludeImports:         fn.ValueOr(q.IncludeImports, false),
+		Version:                q.Version,
 	})
 	if err != nil {
 		return nil, err

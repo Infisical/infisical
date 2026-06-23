@@ -25,7 +25,7 @@ func TestGetSecretByName_ImportPermissions(t *testing.T) {
 
 	api.Secrets.Create(proj.ID, "staging", "STAGING_SECRET", "staging-value").Do()
 	api.Secrets.Create(proj.ID, "dev", "DEV_DIRECT", "dev-direct-value").Do()
-	api.Imports.Create(proj.ID, "dev", "/", "staging", "/")
+	api.Imports.Create(proj.ID, "dev", "/", "staging", "/").Do()
 
 	devOnlyRole := api.Roles.CreateCustom(proj.ID, "dev-only-reader", "Dev Only", nodejs.Permission{
 		Subject:    "secrets",

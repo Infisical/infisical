@@ -18,65 +18,8 @@ import (
 // cover the end-to-end wiring: expansion and imports resolved through the real
 // handler, DB, and permission layer for a full list response.
 
-func TestListSecrets_Imports(t *testing.T) {
-	nj := stack.NodeJS()
-	api := nj.For(t)
-
-	proj := api.Projects.Create("list-imports").Do()
-
-	api.Secrets.Create(proj.ID, "staging", "STAGING_DB_URL", "staging-db-value").Do()
-	api.Secrets.Create(proj.ID, "staging", "STAGING_API_KEY", "staging-api-value").Do()
-	api.Secrets.Create(proj.ID, "dev", "DEV_SECRET", "dev-value").Do()
-	api.Imports.Create(proj.ID, "dev", "/", "staging", "/")
-
-	identity := api.Identities.Create("list-imports-identity")
-	api.Identities.AddToProject(proj.ID, identity.ID).Role("admin").Do()
-
-	client := infra.NewClientBuilder(t, newSecretsRouter(t)).
-		Identity(infra.MachineIdentity(identity.ID, nj.OrgID())).
-		Build()
-
-	t.Run("include imports returns imported secrets", func(t *testing.T) {
-		resp, err := listSecrets(client, &secret.ListSecretsV4Query{
-			ProjectID:       proj.ID,
-			Environment:     "dev",
-			SecretPath:      new("/"),
-			ViewSecretValue: new(true),
-			IncludeImports:  new(true),
-		})
-		require.NoError(t, err)
-
-		require.Len(t, resp.Secrets, 1)
-		assert.Equal(t, "DEV_SECRET", resp.Secrets[0].SecretKey)
-
-		require.Len(t, resp.Imports, 1)
-		assert.Equal(t, "staging", resp.Imports[0].Environment)
-		assert.Equal(t, "/", resp.Imports[0].SecretPath)
-		require.Len(t, resp.Imports[0].Secrets, 2)
-
-		importKeys := make([]string, len(resp.Imports[0].Secrets))
-		for i, s := range resp.Imports[0].Secrets {
-			importKeys[i] = s.SecretKey
-		}
-		assert.Contains(t, importKeys, "STAGING_DB_URL")
-		assert.Contains(t, importKeys, "STAGING_API_KEY")
-	})
-
-	t.Run("exclude imports omits imported secrets", func(t *testing.T) {
-		resp, err := listSecrets(client, &secret.ListSecretsV4Query{
-			ProjectID:       proj.ID,
-			Environment:     "dev",
-			SecretPath:      new("/"),
-			ViewSecretValue: new(true),
-			IncludeImports:  new(false),
-		})
-		require.NoError(t, err)
-
-		require.Len(t, resp.Secrets, 1)
-		assert.Equal(t, "DEV_SECRET", resp.Secrets[0].SecretKey)
-		assert.Nil(t, resp.Imports, "imports should not be included when IncludeImports=false")
-	})
-}
+// TestListSecrets_Imports and the import-response structure tests live in
+// list_secrets_imports_test.go.
 
 func TestListSecrets_Expansion(t *testing.T) {
 	nj := stack.NodeJS()
@@ -181,7 +124,7 @@ func TestListSecrets_ExpansionWithImports(t *testing.T) {
 	api.Secrets.Create(proj.ID, "staging", "IMPORT_PRIORITY_KEY", "from-first-import").Do()
 	api.Secrets.Create(proj.ID, "staging", "SERVICE_URL", "https://staging-service.example.com").Path("/services").Do()
 	api.Secrets.Create(proj.ID, "staging", "IMPORT_PRIORITY_KEY", "from-second-import").Path("/services").Do()
-	api.Imports.Create(proj.ID, "staging", "/", "prod", "/config")
+	api.Imports.Create(proj.ID, "staging", "/", "prod", "/config").Do()
 
 	api.Secrets.Create(proj.ID, "dev", "LOCAL_SECRET", "local-only").Do()
 	api.Secrets.Create(proj.ID, "dev", "SHARED_KEY", "dev-shared-value").Do()
@@ -196,9 +139,9 @@ func TestListSecrets_ExpansionWithImports(t *testing.T) {
 	api.Secrets.Create(proj.ID, "dev", "REF_MISSING", "${NOT_EXISTS}").Do()
 	api.Secrets.Create(proj.ID, "dev", "REF_IMPORT_PRIORITY", "${IMPORT_PRIORITY_KEY}").Do()
 
-	api.Imports.Create(proj.ID, "dev", "/", "staging", "/")
-	api.Imports.Create(proj.ID, "dev", "/", "staging", "/services")
-	api.Imports.Create(proj.ID, "dev", "/app", "prod", "/config")
+	api.Imports.Create(proj.ID, "dev", "/", "staging", "/").Do()
+	api.Imports.Create(proj.ID, "dev", "/", "staging", "/services").Do()
+	api.Imports.Create(proj.ID, "dev", "/app", "prod", "/config").Do()
 
 	api.Secrets.Create(proj.ID, "dev", "APP_DB_URL", "postgres://${PROD_DB_HOST}:5432/app").Path("/app").Do()
 

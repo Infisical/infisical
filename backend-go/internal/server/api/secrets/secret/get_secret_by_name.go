@@ -24,6 +24,7 @@ type getSecretByNameInternalOpts struct {
 	ViewSecretValue        bool
 	ExpandSecretReferences bool
 	IncludeImports         bool
+	Version                *int
 }
 
 // getSecretByNameResponse is the internal response type.
@@ -62,6 +63,7 @@ func (h *Handler) getSecretByName(ctx context.Context, opts *getSecretByNameInte
 		SecretType:     opts.SecretType,
 		UserID:         opts.UserID,
 		IncludeImports: opts.IncludeImports,
+		Version:        opts.Version,
 	})
 	if err != nil {
 		return nil, err

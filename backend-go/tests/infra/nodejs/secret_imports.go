@@ -10,10 +10,11 @@ type SecretImportTarget struct {
 
 // CreateSecretImportRequest is the request body for POST /api/v2/secret-imports.
 type CreateSecretImportRequest struct {
-	ProjectID   string             `json:"projectId"`
-	Environment string             `json:"environment"`
-	Path        string             `json:"path"`
-	Import      SecretImportTarget `json:"import"`
+	ProjectID     string             `json:"projectId"`
+	Environment   string             `json:"environment"`
+	Path          string             `json:"path"`
+	Import        SecretImportTarget `json:"import"`
+	IsReplication bool               `json:"isReplication,omitempty"`
 }
 
 // CreateSecretImportResponse is the response from POST /api/v2/secret-imports.
@@ -31,22 +32,44 @@ type SecretImportSeed struct {
 // ImportsAPI groups secret-import endpoints.
 type ImportsAPI struct{ apiBase }
 
-// Create imports secrets from (importEnv, importPath) into (environment, path).
-func (a ImportsAPI) Create(projectID, environment, path, importEnv, importPath string) *SecretImportSeed {
-	a.t.Helper()
-
-	var resp CreateSecretImportResponse
-	r, err := a.svc.client.R().
-		SetAuthToken(a.svc.identityToken).
-		SetBody(CreateSecretImportRequest{
+// Create starts an import of secrets from (importEnv, importPath) into
+// (environment, path). Call Replication for a replicated import (requires the
+// secretApproval EE feature; secrets are copied asynchronously into a reserved
+// folder).
+func (a ImportsAPI) Create(projectID, environment, path, importEnv, importPath string) *createImportBuilder {
+	return &createImportBuilder{
+		a: a,
+		req: CreateSecretImportRequest{
 			ProjectID:   projectID,
 			Environment: environment,
 			Path:        path,
 			Import:      SecretImportTarget{Environment: importEnv, Path: importPath},
-		}).
+		},
+	}
+}
+
+type createImportBuilder struct {
+	a   ImportsAPI
+	req CreateSecretImportRequest
+}
+
+// Replication marks the import as a replication import.
+func (b *createImportBuilder) Replication() *createImportBuilder {
+	b.req.IsReplication = true
+	return b
+}
+
+// Do creates the import and returns its seed.
+func (b *createImportBuilder) Do() *SecretImportSeed {
+	b.a.t.Helper()
+
+	var resp CreateSecretImportResponse
+	r, err := b.a.svc.client.R().
+		SetAuthToken(b.a.svc.identityToken).
+		SetBody(b.req).
 		SetResult(&resp).
 		Post("/api/v2/secret-imports")
-	a.check("Imports.Create", r, err)
+	b.a.check("Imports.Create", r, err)
 
 	return &SecretImportSeed{ID: resp.SecretImport.ID}
 }

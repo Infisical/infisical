@@ -136,7 +136,7 @@ func TestGetSecretByName_Imports(t *testing.T) {
 
 			proj := api.Projects.Create("get-import").Do()
 			api.Secrets.Create(proj.ID, "staging", "STAGING_SECRET", "staging-value").Do()
-			api.Imports.Create(proj.ID, "dev", "/", "staging", "/")
+			api.Imports.Create(proj.ID, "dev", "/", "staging", "/").Do()
 
 			identity := api.Identities.Create("get-import-identity")
 			api.Identities.AddToProject(proj.ID, identity.ID).Role("admin").Do()
@@ -178,7 +178,7 @@ func TestGetSecretByName_ExpansionThroughImports(t *testing.T) {
 	// Base value lives in staging; dev imports staging and references it.
 	api.Secrets.Create(proj.ID, "staging", "DB_HOST", "staging-db.example.com").Do()
 	api.Secrets.Create(proj.ID, "dev", "DB_URL", "postgres://${DB_HOST}/app").Do()
-	api.Imports.Create(proj.ID, "dev", "/", "staging", "/")
+	api.Imports.Create(proj.ID, "dev", "/", "staging", "/").Do()
 
 	identity := api.Identities.Create("get-expansion-import-identity")
 	api.Identities.AddToProject(proj.ID, identity.ID).Role("admin").Do()

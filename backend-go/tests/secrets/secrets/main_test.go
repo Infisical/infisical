@@ -35,7 +35,7 @@ func TestMain(m *testing.M) {
 		WithPostgres().
 		WithRedis().
 		WithNodeJSApi().
-		WithEEFeatures("rbac", "groups").
+		WithEEFeatures("rbac", "groups", "secretApproval").
 		MustStart()
 
 	code := m.Run()

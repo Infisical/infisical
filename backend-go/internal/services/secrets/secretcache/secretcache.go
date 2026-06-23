@@ -6,13 +6,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
-	"math/rand/v2"
 	"strconv"
 	"time"
 
 	"github.com/google/uuid"
 
 	"github.com/infisical/api/internal/libs/cache"
+	"github.com/infisical/api/internal/libs/jitter"
 	"github.com/infisical/api/internal/services/kms"
 )
 
@@ -126,7 +126,7 @@ func (s *Service) CheckListSecrets(
 	}
 
 	// Refresh TTL on hit
-	if _, err := s.keyStore.SetExpiry(ctx, cacheKey, s.listSecretsApplyJitter(listSecretsCacheTTL)); err != nil {
+	if _, err := s.keyStore.SetExpiry(ctx, cacheKey, jitter.Apply(listSecretsCacheTTL, listSecretsCacheJitter)); err != nil {
 		return nil, fmt.Errorf("refreshing cache ttl: %w", err)
 	}
 
@@ -176,7 +176,7 @@ func (s *Service) WriteListSecrets(
 	// Only cache if under size limit
 	if len(encrypted) < listSecretsMaxCacheBytes {
 		encodedPayload := base64.StdEncoding.EncodeToString(encrypted)
-		if err := s.keyStore.SetItemWithExpiry(ctx, cacheKey, s.listSecretsApplyJitter(listSecretsCacheTTL), encodedPayload); err != nil {
+		if err := s.keyStore.SetItemWithExpiry(ctx, cacheKey, jitter.Apply(listSecretsCacheTTL, listSecretsCacheJitter), encodedPayload); err != nil {
 			return etag, fmt.Errorf("storing cached secrets: %w", err)
 		}
 	}
@@ -218,11 +218,6 @@ func (s *Service) listSecretsEtagField(params *ListSecretsCacheParams) string {
 
 func (s *Service) computeETag(data []byte) string {
 	return `"` + cache.HashBytes(data) + `"`
-}
-
-func (s *Service) listSecretsApplyJitter(base time.Duration) time.Duration {
-	jitterSeconds := rand.Int64N(int64(listSecretsCacheJitter.Seconds()))
-	return base + time.Duration(jitterSeconds)*time.Second
 }
 
 func (s *Service) deleteCorruptedEntry(ctx context.Context, key string) {

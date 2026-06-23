@@ -337,49 +337,108 @@ func (s *Service) FindByFolderIds(
 	return sqln.GroupRows(flatSecrets, secretGrouper), nil
 }
 
-func (s *Service) FindByKey(
-	ctx context.Context,
-	folderID uuid.UUID,
-	key string,
-	secretType string,
-	userID *uuid.UUID,
-) (*Secret, error) {
-	where := qb.NewWhere().
-		Add(`secret."folderId" = @folderID`).
-		Add("secret.key = @key").
-		Add("secret.type = @secretType")
+// findByKeyConfig holds the optional behavior for FindByKey.
+type findByKeyConfig struct {
+	secretType string // "shared" (default) or "personal"
+	userID     *uuid.UUID
+	version    *int // when set, the secret is read from secret_versions_v2
+}
 
-	if secretType == "personal" && userID != nil {
-		where.Add(`secret."userId" = @userID`)
-	} else {
-		where.Add(`secret."userId" IS NULL`)
+// FindByKeyOption configures an optional FindByKey lookup behavior.
+type FindByKeyOption func(*findByKeyConfig)
+
+// WithPersonalType scopes the lookup to the given user's personal secret instead
+// of the shared secret.
+func WithPersonalType(userID uuid.UUID) FindByKeyOption {
+	return func(c *findByKeyConfig) {
+		c.secretType = "personal"
+		c.userID = &userID
 	}
+}
 
-	query := `
-		SELECT
-			secret.id, secret.version, secret.type, secret.key, secret."encryptedValue", secret."encryptedComment",
-			secret."skipMultilineEncoding", secret.metadata, secret."userId", secret."folderId", secret."createdAt", secret."updatedAt",
-			tag.id AS tag_id, tag.slug AS tag_slug, tag.color AS tag_color,
-			meta.id AS meta_id, meta.key AS meta_key, meta.value AS meta_value, meta."encryptedValue" AS meta_encrypted_value,
-			rotationMapping."rotationId",
-			reminder.message AS reminder_note, reminder."repeatDays" AS reminder_repeat_days,
-			recipient.id AS recipient_id, recipientUser.id AS recipient_user_id, recipientUser.username AS recipient_username, recipientUser.email AS recipient_email
-		FROM secrets_v2 secret
-		LEFT JOIN secret_v2_tag_junction tagJunction ON secret.id = tagJunction."secrets_v2Id"
-		LEFT JOIN secret_tags tag ON tagJunction."secret_tagsId" = tag.id
-		LEFT JOIN resource_metadata meta ON secret.id = meta."secretId"
-		LEFT JOIN secret_rotation_v2_secret_mappings rotationMapping ON secret.id = rotationMapping."secretId"
-		LEFT JOIN reminders reminder ON secret.id = reminder."secretId"
-		LEFT JOIN reminders_recipients recipient ON reminder.id = recipient."reminderId"
-		LEFT JOIN users recipientUser ON recipient."userId" = recipientUser.id
-		WHERE ` + where.String() + `
-		ORDER BY meta."createdAt" ASC NULLS FIRST, meta.id ASC NULLS FIRST, tag."createdAt" ASC NULLS FIRST, tag.id ASC NULLS FIRST`
+// WithVersion reads a historical version from secret_versions_v2 instead of the
+// live secret. Returns nil when that version does not exist.
+func WithVersion(version int) FindByKeyOption {
+	return func(c *findByKeyConfig) {
+		c.version = &version
+	}
+}
+
+// FindByKey returns a secret by folder + key, or nil if not found. By default it
+// reads the live shared secret; use WithPersonalType / WithVersion to scope the
+// lookup. The version branch (secret_versions_v2) selects the same column shape
+func (s *Service) FindByKey(ctx context.Context, folderID uuid.UUID, key string, opts ...FindByKeyOption) (*Secret, error) {
+	cfg := findByKeyConfig{secretType: "shared"}
+	for _, opt := range opts {
+		opt(&cfg)
+	}
 
 	args := pgx.NamedArgs{
 		"folderID":   folderID,
 		"key":        key,
-		"secretType": secretType,
-		"userID":     userID,
+		"secretType": cfg.secretType,
+		"userID":     cfg.userID,
+	}
+
+	var query string
+	if cfg.version != nil {
+		args["version"] = *cfg.version
+
+		where := qb.NewWhere().
+			Add(`sv."folderId" = @folderID`).
+			Add("sv.key = @key").
+			Add("sv.type = @secretType").
+			Add("sv.version = @version")
+		if cfg.secretType == "personal" && cfg.userID != nil {
+			where.Add(`sv."userId" = @userID`)
+		} else {
+			where.Add(`sv."userId" IS NULL`)
+		}
+
+		query = `
+			SELECT
+				sv."secretId" AS id, sv.version, sv.type, sv.key, sv."encryptedValue", sv."encryptedComment",
+				sv."skipMultilineEncoding", sv.metadata, sv."userId", sv."folderId", sv."createdAt", sv."updatedAt",
+				tag.id AS tag_id, tag.slug AS tag_slug, tag.color AS tag_color,
+				NULL::uuid AS meta_id, NULL::text AS meta_key, NULL::text AS meta_value, NULL::bytea AS meta_encrypted_value,
+				NULL::uuid AS "rotationId",
+				sv."reminderNote" AS reminder_note, sv."reminderRepeatDays" AS reminder_repeat_days,
+				NULL::uuid AS recipient_id, NULL::uuid AS recipient_user_id, NULL::text AS recipient_username, NULL::text AS recipient_email
+			FROM secret_versions_v2 sv
+			LEFT JOIN secret_version_v2_tag_junction tagJunction ON sv.id = tagJunction."secret_versions_v2Id"
+			LEFT JOIN secret_tags tag ON tagJunction."secret_tagsId" = tag.id
+			WHERE ` + where.String() + `
+			ORDER BY tag."createdAt" ASC NULLS FIRST, tag.id ASC NULLS FIRST`
+	} else {
+		where := qb.NewWhere().
+			Add(`secret."folderId" = @folderID`).
+			Add("secret.key = @key").
+			Add("secret.type = @secretType")
+		if cfg.secretType == "personal" && cfg.userID != nil {
+			where.Add(`secret."userId" = @userID`)
+		} else {
+			where.Add(`secret."userId" IS NULL`)
+		}
+
+		query = `
+			SELECT
+				secret.id, secret.version, secret.type, secret.key, secret."encryptedValue", secret."encryptedComment",
+				secret."skipMultilineEncoding", secret.metadata, secret."userId", secret."folderId", secret."createdAt", secret."updatedAt",
+				tag.id AS tag_id, tag.slug AS tag_slug, tag.color AS tag_color,
+				meta.id AS meta_id, meta.key AS meta_key, meta.value AS meta_value, meta."encryptedValue" AS meta_encrypted_value,
+				rotationMapping."rotationId",
+				reminder.message AS reminder_note, reminder."repeatDays" AS reminder_repeat_days,
+				recipient.id AS recipient_id, recipientUser.id AS recipient_user_id, recipientUser.username AS recipient_username, recipientUser.email AS recipient_email
+			FROM secrets_v2 secret
+			LEFT JOIN secret_v2_tag_junction tagJunction ON secret.id = tagJunction."secrets_v2Id"
+			LEFT JOIN secret_tags tag ON tagJunction."secret_tagsId" = tag.id
+			LEFT JOIN resource_metadata meta ON secret.id = meta."secretId"
+			LEFT JOIN secret_rotation_v2_secret_mappings rotationMapping ON secret.id = rotationMapping."secretId"
+			LEFT JOIN reminders reminder ON secret.id = reminder."secretId"
+			LEFT JOIN reminders_recipients recipient ON reminder.id = recipient."reminderId"
+			LEFT JOIN users recipientUser ON recipient."userId" = recipientUser.id
+			WHERE ` + where.String() + `
+			ORDER BY meta."createdAt" ASC NULLS FIRST, meta.id ASC NULLS FIRST, tag."createdAt" ASC NULLS FIRST, tag.id ASC NULLS FIRST`
 	}
 
 	rows, err := s.db.Replica().Query(ctx, query, args)

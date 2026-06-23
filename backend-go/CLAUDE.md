@@ -44,7 +44,7 @@ internal/
 │   │   ├── sqln/               # SQL nesting (GroupRows for LEFT JOIN flattening)
 │   │   └── pglock/             # PostgreSQL advisory locks
 │   └── redis/                  # Redis client
-├── libs/                       # crypto, errutil, fn, logutil
+├── libs/                       # crypto, errutil, fn, logutil, cache, jitter, requestid
 ├── server/
 │   ├── api/                    # Endpoint implementations + DI wiring
 │   │   ├── shared/             # Shared types (Error, ValidationError) + ErrorHandler
