@@ -3114,6 +3114,23 @@
                     ]
                   },
                   {
+                    "group": "Members",
+                    "pages": [
+                      "api-reference/endpoints/pki/applications/members/list-users",
+                      "api-reference/endpoints/pki/applications/members/add-users",
+                      "api-reference/endpoints/pki/applications/members/update-user-role",
+                      "api-reference/endpoints/pki/applications/members/remove-user",
+                      "api-reference/endpoints/pki/applications/members/list-groups",
+                      "api-reference/endpoints/pki/applications/members/add-group",
+                      "api-reference/endpoints/pki/applications/members/update-group-role",
+                      "api-reference/endpoints/pki/applications/members/remove-group",
+                      "api-reference/endpoints/pki/applications/members/list-identities",
+                      "api-reference/endpoints/pki/applications/members/add-identity",
+                      "api-reference/endpoints/pki/applications/members/update-identity-role",
+                      "api-reference/endpoints/pki/applications/members/remove-identity"
+                    ]
+                  },
+                  {
                     "group": "Alerting",
                     "pages": [
                       "api-reference/endpoints/pki-alerts/create",
@@ -3599,9 +3616,9 @@
     "href": "https://infisical.com"
   },
   "api": {
-    "openapi": "https://app.infisical.com/api/docs/json",
+    "openapi": "https://a767-190-31-36-34.ngrok-free.app/api/docs/json",
     "mdx": {
-      "server": ["https://app.infisical.com"]
+      "server": ["https://a767-190-31-36-34.ngrok-free.app"]
     }
   },
   "appearance": {
