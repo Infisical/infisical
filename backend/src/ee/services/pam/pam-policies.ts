@@ -83,7 +83,8 @@ export const validatePolicyValues = (
 
     const parsed = PAM_POLICY_DEFINITIONS[policy].schema.safeParse(value);
     if (!parsed.success) {
-      return { ok: false, message: `Invalid configuration for policy '${key}'` };
+      const reason = parsed.error.issues.map((issue) => issue.message).join("; ");
+      return { ok: false, message: `Invalid configuration for policy '${key}': ${reason}` };
     }
     data[key] = parsed.data;
   }
