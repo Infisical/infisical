@@ -31,7 +31,9 @@ import {
 import { resolveAccessControls } from "../pam/pam-policies";
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
 import {
+  accountTypeRequiresRecording,
   extractGatewayTarget,
+  hasPamAccountRecordingConfig,
   parseInternalMetadata,
   validateConnectionDetails
 } from "../pam-account/pam-account-schemas";
@@ -105,6 +107,20 @@ export const pamSessionServiceFactory = ({
     action: ResourcePermissionPamResourceActions,
     ctx: TActorContext
   ) => checkAccountAccess(permissionService, accountId, folderId, projectId, action, ctx);
+
+  const enforceRecordingConfig = (account: {
+    accountType: string;
+    recordingConnectionId?: string | null;
+    templateRecordingConnectionId: string | null;
+    settingsOverrides?: unknown;
+    templateSettings: unknown;
+  }) => {
+    if (accountTypeRequiresRecording(account.accountType as PamAccountType) && !hasPamAccountRecordingConfig(account)) {
+      throw new BadRequestError({
+        message: "S3 recording must be configured before launching this account"
+      });
+    }
+  };
 
   const listSessions = async (
     projectId: string,
@@ -371,6 +387,16 @@ export const pamSessionServiceFactory = ({
       }
       sessionDurationMs = Math.min(parsed, maxDurationMs);
     }
+
+    await checkAccount(
+      account.id,
+      account.folderId,
+      projectId,
+      ResourcePermissionPamResourceActions.LaunchSessions,
+      actor
+    );
+
+    enforceRecordingConfig(account);
 
     const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
       gatewayId: account.gatewayId ?? account.templateGatewayId,

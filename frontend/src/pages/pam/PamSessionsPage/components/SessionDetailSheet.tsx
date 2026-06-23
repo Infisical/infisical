@@ -38,7 +38,7 @@ import {
 import { usePamAccountPermission } from "@app/hooks/api/pam/queries";
 import { useDecryptedSessionLogs } from "@app/hooks/api/pam/session-playback/queries";
 import { isBrokenChunkMarker } from "@app/hooks/api/pam/session-playback/types";
-import { TPamSession, TPamSessionLog, TSessionEvent } from "@app/hooks/api/pam/types";
+import { TPamSession, TPamSessionLog } from "@app/hooks/api/pam/types";
 
 import { LiveDot } from "../../components/LiveDot";
 import { PamDetailSheet } from "../../components/PamDetailSheet";
@@ -321,12 +321,7 @@ export const SessionDetailSheet = ({ sessionId, isOpen, onOpenChange, onTerminat
                         </div>
                       }
                     >
-                      <RdpReplayView
-                        events={filteredEvents.filter(
-                          (e): e is TSessionEvent => !isBrokenChunkMarker(e)
-                        )}
-                        isStreaming={isActive}
-                      />
+                      <RdpReplayView events={filteredEvents} isStreaming={isActive} />
                     </Suspense>
                   )}
                 </CardContent>

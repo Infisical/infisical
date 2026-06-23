@@ -36,12 +36,11 @@ import {
   validateRecordingS3Config
 } from "../pam/pam-validators";
 import { TPamAccountTemplateDALFactory } from "../pam-account-template/pam-account-template-dal";
-import { PamTemplateSettingsSchema } from "../pam-account-template/pam-account-template-schemas";
 import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
-import { PamRecordingStorageBackend } from "../pam-session-recording/pam-recording-enums";
 import { TPamAccountDALFactory } from "./pam-account-dal";
 import {
   getAccountAccessibilityIssues,
+  hasPamAccountRecordingConfig,
   isCredentialConfigured,
   parseInternalMetadata,
   sanitizeCredentials,
@@ -112,19 +111,10 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     templateSettings: unknown;
     credentialConfigured: boolean;
   }) => {
-    const settingsParsed = PamTemplateSettingsSchema.safeParse(a.templateSettings);
-    const templateSettings = settingsParsed.success ? settingsParsed.data : null;
-    const accountSettingsOverrides = (a.settingsOverrides ?? {}) as { recordingS3Config?: unknown };
-    const hasRecordingConfig = Boolean(
-      templateSettings?.recordingStorageBackend === PamRecordingStorageBackend.AwsS3 &&
-        (a.recordingConnectionId || a.templateRecordingConnectionId) &&
-        (accountSettingsOverrides.recordingS3Config || templateSettings.recordingS3Config)
-    );
-
     const accessibilityIssues = getAccountAccessibilityIssues({
       accountType: a.accountType as PamAccountType,
       hasGateway: Boolean(a.gatewayId || a.gatewayPoolId || a.templateGatewayId || a.templateGatewayPoolId),
-      hasRecordingConfig,
+      hasRecordingConfig: hasPamAccountRecordingConfig(a),
       credentialConfigured: a.credentialConfigured
     });
     return { isAccessible: accessibilityIssues.length === 0, accessibilityIssues };

@@ -27,7 +27,11 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 import { PamAccessMethod, PamSessionStatus } from "../pam/pam-enums";
 import { checkAccountAccess } from "../pam/pam-permission";
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
-import { extractGatewayTarget } from "../pam-account/pam-account-schemas";
+import {
+  accountTypeRequiresRecording,
+  extractGatewayTarget,
+  hasPamAccountRecordingConfig
+} from "../pam-account/pam-account-schemas";
 import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
 import { SESSION_HANDLERS } from "./pam-session-handlers";
 import {
@@ -129,6 +133,20 @@ export const pamWebAccessServiceFactory = ({
     socket.close();
   };
 
+  const enforceRecordingConfig = (account: {
+    accountType: string;
+    recordingConnectionId?: string | null;
+    templateRecordingConnectionId: string | null;
+    settingsOverrides?: unknown;
+    templateSettings: unknown;
+  }) => {
+    if (accountTypeRequiresRecording(account.accountType as PamAccountType) && !hasPamAccountRecordingConfig(account)) {
+      throw new BadRequestError({
+        message: "S3 recording must be configured before launching this account"
+      });
+    }
+  };
+
   const issueWebSocketTicket = async ({
     accountId,
     projectId,
@@ -148,6 +166,24 @@ export const pamWebAccessServiceFactory = ({
     if (!SESSION_HANDLERS[account.accountType as PamAccountType]) {
       throw new BadRequestError({ message: "Web access is not supported for this account type" });
     }
+
+    enforceRecordingConfig(account);
+
+    const trimmedReason = reason?.trim() || null;
+
+    const policy = resolveAccessControls(account.templatePolicies);
+
+    if (policy.requireReason && !trimmedReason) {
+      throw new BadRequestError({ message: "A reason is required to access this account" });
+    }
+
+    if (policy.requireMfa) {
+      throw new BadRequestError({ message: "MFA verification is required to access this account" });
+    }
+
+    const maxSessionDurationMs = policy.maxSessionDurationSeconds
+      ? policy.maxSessionDurationSeconds * 1000
+      : DEFAULT_WEB_SESSION_DURATION_MS;
 
     await checkAccountAccess(
       permissionService,
@@ -353,14 +389,12 @@ export const pamWebAccessServiceFactory = ({
         throw new BadRequestError({ message: "Invalid account or project" });
       }
 
-<<<<<<< HEAD
-      const handlerEntry = SESSION_HANDLERS[account.accountType];
-=======
       const handlerEntry = SESSION_HANDLERS[account.accountType as PamAccountType];
->>>>>>> 64c8bcdcd0 (refactor(pam): remove resolveAccountType and resolvePamAccountType identity functions)
       if (!handlerEntry) {
         throw new BadRequestError({ message: "Web access is not supported for this account type" });
       }
+
+      enforceRecordingConfig(account);
 
       const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
         gatewayId: account.gatewayId ?? account.templateGatewayId,

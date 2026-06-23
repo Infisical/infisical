@@ -9,6 +9,8 @@ import { BadRequestError } from "@app/lib/errors";
 
 import { PamAccountType } from "../pam/pam-enums";
 import { getApplicablePolicies, PamPolicyDescriptorSchema } from "../pam/pam-policies";
+import { PamTemplateSettingsSchema } from "../pam-account-template/pam-account-template-schemas";
+import { PamRecordingStorageBackend } from "../pam-session-recording/pam-recording-enums";
 
 const resolveSrv = promisify(dns.resolveSrv);
 
@@ -594,6 +596,28 @@ export enum PamAccountAccessibilityIssue {
 
 export const accountTypeRequiresRecording = (accountType: PamAccountType): boolean =>
   accountType === PamAccountType.Windows || accountType === PamAccountType.ActiveDirectory;
+
+export const hasPamAccountRecordingConfig = ({
+  recordingConnectionId,
+  templateRecordingConnectionId,
+  settingsOverrides,
+  templateSettings
+}: {
+  recordingConnectionId?: string | null;
+  templateRecordingConnectionId: string | null;
+  settingsOverrides?: unknown;
+  templateSettings: unknown;
+}): boolean => {
+  const settingsParsed = PamTemplateSettingsSchema.safeParse(templateSettings);
+  const parsedTemplateSettings = settingsParsed.success ? settingsParsed.data : null;
+  const accountSettingsOverrides = (settingsOverrides ?? {}) as { recordingS3Config?: unknown };
+
+  return Boolean(
+    parsedTemplateSettings?.recordingStorageBackend === PamRecordingStorageBackend.AwsS3 &&
+      (recordingConnectionId || templateRecordingConnectionId) &&
+      (accountSettingsOverrides.recordingS3Config || parsedTemplateSettings.recordingS3Config)
+  );
+};
 
 export const getAccountAccessibilityIssues = ({
   accountType,

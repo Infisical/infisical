@@ -4,7 +4,7 @@ import { Loader2Icon, PauseIcon, PlayIcon, RotateCcwIcon } from "lucide-react";
 
 import { IconButton } from "@app/components/v3";
 import { TSessionEvent } from "@app/hooks/api/pam";
-import { isBrokenChunkMarker } from "@app/hooks/api/pam/session-playback";
+import { isBrokenChunkMarker, TBrokenChunkMarker } from "@app/hooks/api/pam/session-playback";
 
 import { parseRdpLogEntry, RdpEvent, RdpReplayPlayer } from "./rdpReplayPlayer";
 
@@ -24,17 +24,22 @@ const formatMs = (ms: number) => {
   return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
 };
 
-const parseRange = (events: TSessionEvent[], start: number, end: number): RdpEvent[] => {
+type RdpReplayEvent = TSessionEvent | TBrokenChunkMarker;
+
+const parseRange = (events: RdpReplayEvent[], start: number, end: number): RdpEvent[] => {
   const out: RdpEvent[] = [];
   for (let i = start; i < end; i += 1) {
-    const ev = parseRdpLogEntry(events[i]);
-    if (ev) out.push(ev);
+    const event = events[i];
+    if (!isBrokenChunkMarker(event)) {
+      const ev = parseRdpLogEntry(event);
+      if (ev) out.push(ev);
+    }
   }
   return out;
 };
 
 type Props = {
-  events: TSessionEvent[];
+  events: RdpReplayEvent[];
   isStreaming?: boolean;
   totalDurationMs?: number;
 };
