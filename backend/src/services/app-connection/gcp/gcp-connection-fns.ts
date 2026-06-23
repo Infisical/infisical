@@ -40,6 +40,16 @@ type TGcpCredentialJson = {
 
 const AWS_ENV_ID_REGEX = new RE2(/^aws\d+$/i);
 
+// Lazily initialized so the SDK doesn't probe for AWS metadata on non-AWS instances at startup.
+// Shared across calls so the SDK's internal credential cache persists.
+let sharedStsClient: STSClient | undefined;
+const getStsClient = () => {
+  if (!sharedStsClient) {
+    sharedStsClient = new STSClient({});
+  }
+  return sharedStsClient;
+};
+
 // AWS federation configs default `credential_source` to the EC2 metadata endpoint, which
 // is absent on Fargate/Lambda/EKS. Detect them so we can source creds via the AWS SDK chain instead.
 const isAwsExternalAccount = (credJson: TGcpCredentialJson) =>
@@ -47,8 +57,7 @@ const isAwsExternalAccount = (credJson: TGcpCredentialJson) =>
   AWS_ENV_ID_REGEX.test(credJson.credential_source?.environment_id ?? "");
 
 const buildGcpAwsExternalAccountClient = (credJson: TGcpCredentialJson, scopes: string[]) => {
-  // Resolve AWS creds via the SDK default chain.
-  const stsClient = new STSClient({});
+  const stsClient = getStsClient();
 
   const awsSecurityCredentialsSupplier = {
     getAwsRegion: async () => {
