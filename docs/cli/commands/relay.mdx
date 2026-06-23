@@ -39,12 +39,12 @@ Relays support two enrollment methods. The enrollment method is set when creatin
         ```bash
         sudo infisical relay systemd install \
           --name=<name> \
-          --token=<enrollment-token> \
+          --token=<machine-identity-access-token> \
           --domain=<your-infisical-domain>
         sudo systemctl start infisical-relay
         ```
 
-        `infisical relay systemd install` does not accept `--enroll-method` — it always installs an org-type relay (the default) unless `--type=instance` is passed. See [`infisical relay systemd`](#infisical-relay-systemd) below for its full flag set.
+        `infisical relay systemd install` does not accept `--enroll-method`, and its `--token` flag is a machine identity access token — not the one-time enrollment token used by `relay start`. It always installs an org-type relay (the default) unless `--type=instance` is passed. See [`infisical relay systemd`](#infisical-relay-systemd) below for its full flag set.
       </Tab>
     </Tabs>
 
