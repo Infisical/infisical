@@ -139,8 +139,8 @@ export const applyProfileDefaults = <
     country: request.country || defaults.country,
     state: request.state || defaults.state,
     locality: request.locality || defaults.locality,
-    keyAlgorithm: request.keyAlgorithm || defaults.keyAlgorithm,
-    signatureAlgorithm: request.signatureAlgorithm || defaults.signatureAlgorithm,
+    keyAlgorithm: "keyAlgorithm" in request ? request.keyAlgorithm : defaults.keyAlgorithm,
+    signatureAlgorithm: "signatureAlgorithm" in request ? request.signatureAlgorithm : defaults.signatureAlgorithm,
     keyUsages: request.keyUsages !== undefined ? request.keyUsages : defaults.keyUsages,
     extendedKeyUsages: request.extendedKeyUsages !== undefined ? request.extendedKeyUsages : defaults.extendedKeyUsages,
     basicConstraints: request.basicConstraints !== undefined ? request.basicConstraints : defaults.basicConstraints
