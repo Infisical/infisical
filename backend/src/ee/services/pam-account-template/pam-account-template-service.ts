@@ -31,10 +31,11 @@ export const pamAccountTemplateServiceFactory = (deps: TPamAccountTemplateServic
   const verifyMembership = (projectId: string, ctx: TActorContext) =>
     verifyProductMembership(permissionService, projectId, ctx);
 
-  const validateTemplatePolicies = (accountType: string, policies: unknown) => {
-    if (!policies || typeof policies !== "object") return;
+  const validateTemplatePolicies = (accountType: string, policies: unknown): Record<string, unknown> | undefined => {
+    if (!policies || typeof policies !== "object") return undefined;
     const result = validatePolicyValues(accountType as PamAccountType, policies as Record<string, unknown>);
     if (!result.ok) throw new BadRequestError({ message: result.message });
+    return result.data;
   };
 
   const verifyProductAdmin = async (projectId: string, ctx: TActorContext) => {
@@ -77,7 +78,7 @@ export const pamAccountTemplateServiceFactory = (deps: TPamAccountTemplateServic
     await verifyProductAdmin(projectId, ctx);
     await validateGatewayAttachment(deps, gatewayId, gatewayPoolId, ctx);
     await validateRecordingConnection(deps, recordingConnectionId, ctx);
-    validateTemplatePolicies(type, policies);
+    const validatedPolicies = validateTemplatePolicies(type, policies);
 
     try {
       return await pamAccountTemplateDAL.create({
@@ -85,7 +86,7 @@ export const pamAccountTemplateServiceFactory = (deps: TPamAccountTemplateServic
         name,
         description,
         type,
-        policies: policies ?? undefined,
+        policies: validatedPolicies,
         settings: settings ?? undefined,
         gatewayId,
         gatewayPoolId,
@@ -123,12 +124,12 @@ export const pamAccountTemplateServiceFactory = (deps: TPamAccountTemplateServic
       throw new NotFoundError({ message: `Account template with ID '${templateId}' not found` });
     }
 
-    validateTemplatePolicies(existing.type, policies);
+    const validatedPolicies = validateTemplatePolicies(existing.type, policies);
 
     const updateData: Record<string, unknown> = {};
     if (name !== undefined) updateData.name = name;
     if (description !== undefined) updateData.description = description;
-    if (policies !== undefined) updateData.policies = policies;
+    if (policies !== undefined) updateData.policies = validatedPolicies;
     if (settings !== undefined) updateData.settings = settings;
     if (gatewayId !== undefined) updateData.gatewayId = gatewayId;
     if (gatewayPoolId !== undefined) updateData.gatewayPoolId = gatewayPoolId;

@@ -16,8 +16,8 @@ export const DurationPolicyEditor = ({
         placeholder="e.g. 3600 (leave empty for no limit)"
         value={typeof value === "number" ? value : ""}
         onChange={(e) => {
-          const v = e.target.value;
-          onChange(v === "" ? null : Number(v));
+          const parsed = Number(e.target.value);
+          onChange(e.target.value === "" || Number.isNaN(parsed) ? null : parsed);
         }}
       />
       <FieldDescription>{description}</FieldDescription>

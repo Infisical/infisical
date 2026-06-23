@@ -3,6 +3,7 @@ import {
   PamAccountOrderBy,
   PamAccountType,
   PamAccountView,
+  PamPolicyType,
   PamResourcePermissionActions,
   PamResourcePermissionSub,
   PamSessionStatus,
@@ -35,7 +36,7 @@ export type TPamFieldDescriptor = {
 };
 
 export type TPamPolicyDescriptor = {
-  key: string;
+  key: PamPolicyType;
   label: string;
   description: string;
 };
