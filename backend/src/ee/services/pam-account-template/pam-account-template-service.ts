@@ -14,6 +14,7 @@ import {
 } from "../pam/pam-validators";
 import { ACCOUNT_TYPE_CONFIGS } from "../pam-account/pam-account-schemas";
 import { PamRecordingStorageBackend } from "../pam-session-recording/pam-recording-enums";
+import { TPamRecordingResolvedConfig } from "../pam-session-recording/pam-recording-storage-types";
 import { TPamAccountTemplateDALFactory } from "./pam-account-template-dal";
 import { PamRecordingS3ConfigSchema, PamTemplateSettingsSchema } from "./pam-account-template-schemas";
 import {
@@ -53,6 +54,32 @@ export const pamAccountTemplateServiceFactory = (deps: TPamAccountTemplateServic
     }
   };
 
+  const validateTemplateRecordingS3Config = async (
+    recordingConnectionId: string | null | undefined,
+    settings: unknown,
+    ctx: TActorContext
+  ): Promise<TPamRecordingResolvedConfig | null> => {
+    const settingsParsed = settings ? PamTemplateSettingsSchema.safeParse(settings) : null;
+    const isS3Backend =
+      settingsParsed?.success && settingsParsed.data.recordingStorageBackend === PamRecordingStorageBackend.AwsS3;
+
+    let resolvedS3Config = null;
+    if (recordingConnectionId && settings) {
+      const s3Parsed = PamRecordingS3ConfigSchema.safeParse((settings as Record<string, unknown>).recordingS3Config);
+      if (s3Parsed.success) {
+        resolvedS3Config = await validateRecordingS3Config(deps, recordingConnectionId, s3Parsed.data, ctx);
+      }
+    }
+
+    if (isS3Backend && (!recordingConnectionId || !resolvedS3Config)) {
+      throw new BadRequestError({
+        message: "S3 storage backend requires an AWS connection and valid S3 bucket configuration"
+      });
+    }
+
+    return resolvedS3Config;
+  };
+
   const list = async ({ projectId, search, type, ...ctx }: TListPamAccountTemplatesDTO & TActorContext) => {
     await verifyMembership(projectId, ctx);
     const templates = await pamAccountTemplateDAL.findByProjectId(projectId, { search, type });
@@ -88,24 +115,7 @@ export const pamAccountTemplateServiceFactory = (deps: TPamAccountTemplateServic
     await validateRecordingConnection(deps, recordingConnectionId, ctx);
     const validatedPolicies = validateTemplatePolicies(type, policies);
 
-    const createSettingsParsed = settings ? PamTemplateSettingsSchema.safeParse(settings) : null;
-    const createIsS3 =
-      createSettingsParsed?.success &&
-      createSettingsParsed.data.recordingStorageBackend === PamRecordingStorageBackend.AwsS3;
-
-    let resolvedS3Config = null;
-    if (recordingConnectionId && settings) {
-      const s3Parsed = PamRecordingS3ConfigSchema.safeParse((settings as Record<string, unknown>).recordingS3Config);
-      if (s3Parsed.success) {
-        resolvedS3Config = await validateRecordingS3Config(deps, recordingConnectionId, s3Parsed.data, ctx);
-      }
-    }
-
-    if (createIsS3 && (!recordingConnectionId || !resolvedS3Config)) {
-      throw new BadRequestError({
-        message: "S3 storage backend requires an AWS connection and valid S3 bucket configuration"
-      });
-    }
+    const resolvedS3Config = await validateTemplateRecordingS3Config(recordingConnectionId, settings, ctx);
 
     try {
       const template = await pamAccountTemplateDAL.create({
@@ -158,25 +168,7 @@ export const pamAccountTemplateServiceFactory = (deps: TPamAccountTemplateServic
     const resolvedConnId = recordingConnectionId !== undefined ? recordingConnectionId : existing.recordingConnectionId;
     const resolvedSettings = settings !== undefined ? settings : existing.settings;
 
-    const settingsParsed = resolvedSettings ? PamTemplateSettingsSchema.safeParse(resolvedSettings) : null;
-    const isS3Backend =
-      settingsParsed?.success && settingsParsed.data.recordingStorageBackend === PamRecordingStorageBackend.AwsS3;
-
-    let resolvedS3Config = null;
-    if (resolvedConnId && resolvedSettings) {
-      const s3Parsed = PamRecordingS3ConfigSchema.safeParse(
-        (resolvedSettings as Record<string, unknown>).recordingS3Config
-      );
-      if (s3Parsed.success) {
-        resolvedS3Config = await validateRecordingS3Config(deps, resolvedConnId, s3Parsed.data, ctx);
-      }
-    }
-
-    if (isS3Backend && (!resolvedConnId || !resolvedS3Config)) {
-      throw new BadRequestError({
-        message: "S3 storage backend requires an AWS connection and valid S3 bucket configuration"
-      });
-    }
+    const resolvedS3Config = await validateTemplateRecordingS3Config(resolvedConnId, resolvedSettings, ctx);
 
     const updateData: Record<string, unknown> = {};
     if (name !== undefined) updateData.name = name;
