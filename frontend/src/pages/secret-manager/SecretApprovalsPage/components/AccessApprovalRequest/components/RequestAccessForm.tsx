@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { formatDistance } from "date-fns";
@@ -116,17 +116,19 @@ export const RequestAccessForm = ({
 
   const accessSelected = readAccess || createAccess || editAccess || deleteAccess;
 
-  const selectablePaths = useMemo(() => {
-    const environmentPolicies = policies.filter((policy) =>
-      policy.environments.find((env) => env.slug === selectedEnvironment)
-    );
+  const selectablePaths = useMemo(
+    () =>
+      policies
+        .filter((policy) => policy.environments.some((env) => env.slug === selectedEnvironment))
+        .map((policy) => policy.secretPath),
+    [policies, selectedEnvironment]
+  );
 
+  useEffect(() => {
     privilegeForm.setValue("secretPath", "", {
       shouldValidate: true
     });
-
-    return [...environmentPolicies.map((policy) => policy.secretPath)];
-  }, [policies, selectedEnvironment]);
+  }, [selectedEnvironment]);
 
   const isTemporary = temporaryAccessField?.isTemporary;
   const isExpired =

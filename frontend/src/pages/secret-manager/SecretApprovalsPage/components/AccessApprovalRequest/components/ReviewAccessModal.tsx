@@ -350,7 +350,7 @@ export const ReviewAccessRequestModal = ({
       currentSequence,
       isMyReviewInThisSequence
     };
-  }, [request, policies]);
+  }, [request, policies, members, groupMemberships, user]);
 
   const hasRejected = request.status === ApprovalStatus.REJECTED;
   const hasApproved = request.status === ApprovalStatus.APPROVED;

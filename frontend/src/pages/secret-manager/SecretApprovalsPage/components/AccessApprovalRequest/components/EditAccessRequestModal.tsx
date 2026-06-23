@@ -80,7 +80,7 @@ const Content = ({ accessRequest, onComplete, projectSlug }: ContentProps) => {
       ...form
     });
     await queryClient.refetchQueries({
-      queryKey: accessApprovalKeys.getAccessApprovalPolicies(projectSlug)
+      queryKey: accessApprovalKeys.getAccessApprovalRequestsAllForProject(projectSlug)
     });
 
     createNotification({
