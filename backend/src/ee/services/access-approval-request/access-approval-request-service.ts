@@ -606,6 +606,11 @@ export const accessApprovalRequestServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
+    // If the user has no access to the project, they are not authorized to review the request, even with a break-glass approval.
+    if (hasRole(ProjectMembershipRole.NoAccess)) {
+      throw new ForbiddenRequestError({ message: "You are not authorized to review this request" });
+    }
+
     const isSelfApproval = actorId === accessApprovalRequest.requestedByUserId;
     const isSoftEnforcement = policy.enforcementLevel === EnforcementLevel.Soft;
     const canBypass = !policy.bypassers.length || policy.bypassers.some((bypasser) => bypasser.userId === actorId);
@@ -646,11 +651,6 @@ export const accessApprovalRequestServiceFactory = ({
       accessApprovalRequest.requestedByUserId !== actorId && // The request wasn't made by the current user
       !isApprover // The request isn't performed by an assigned approver
     ) {
-      throw new ForbiddenRequestError({ message: "You are not authorized to approve this request" });
-    }
-
-    // If the user has no access to the project, they are not authorized to approve the request, even with a break-glass approval.
-    if (hasRole(ProjectMembershipRole.NoAccess)) {
       throw new ForbiddenRequestError({ message: "You are not authorized to approve this request" });
     }
 
