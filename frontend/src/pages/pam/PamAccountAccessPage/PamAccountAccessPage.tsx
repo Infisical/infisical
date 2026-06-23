@@ -115,9 +115,7 @@ const PageContent = () => {
         if (account.accountType === PamAccountType.Postgres) {
           return <PamDataExplorerPage reason={reason} mfaSessionId={mfaSessionId} />;
         }
-        return (
-          <TerminalContent account={account} reason={reason} mfaSessionId={mfaSessionId} />
-        );
+        return <TerminalContent account={account} reason={reason} mfaSessionId={mfaSessionId} />;
       }}
     </SessionAccessGate>
   );
