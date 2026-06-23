@@ -6,6 +6,8 @@ import { Button, FormControl, Input, ModalClose, SecretInput } from "@app/compon
 import { LogProvider } from "@app/hooks/api/auditLogStreams/enums";
 import { TSplunkProviderLogStream } from "@app/hooks/api/auditLogStreams/types/providers/splunk-provider";
 
+import { auditLogStreamFiltersSchema, ProductsField } from "./AuditLogStreamProductsField";
+
 type Props = {
   auditLogStream?: TSplunkProviderLogStream;
   onSubmit: (formData: FormData) => void;
@@ -41,7 +43,8 @@ const formSchema = z.object({
         }
       }),
     token: z.string().uuid().trim().min(1)
-  })
+  }),
+  ...auditLogStreamFiltersSchema.shape
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -97,6 +100,9 @@ export const SplunkProviderAuditLogStreamForm = ({ auditLogStream, onSubmit }: P
             </FormControl>
           )}
         />
+        <div className="mt-6">
+          <ProductsField />
+        </div>
         <div className="mt-8 flex items-center">
           <Button
             className="mr-4"

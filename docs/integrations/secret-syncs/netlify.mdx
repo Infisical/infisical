@@ -39,6 +39,9 @@ description: "Learn how to configure a Netlify Sync for Infisical."
         - **Account**: The Netlify Account to be used.
         - **Site**: The Netlify site where secrets should be synced.
         - **Context**: The Netlify deployment context where secrets should be created in.
+        <Info>
+          If you have multiple syncs configured to the same site and context, they may conflict with each other and delete each other's secrets during sync operations. This can also happen if one of the syncs has "All Contexts" selected, since it overlaps with every other context. When setting up multiple syncs, make sure they target different contexts to prevent this.
+        </Info>
       </Step>
       <Step title="Configure Sync Options">
         Configure the **Sync Options** to specify how secrets should be synced, then click **Next**.

@@ -31,10 +31,9 @@ const AwsSecretsManagerSyncOptionsSchema = z.object({
         if (!val) return true;
 
         const allowedOptionalPlaceholders = [
-          "{{environment}}",
           "{{profileId}}",
-          "{{commonName}}",
-          "{{friendlyName}}"
+          "{{applicationId}}",
+          "{{commonName}}"
         ];
 
         const allowedPlaceholdersRegexPart = ["{{certificateId}}", ...allowedOptionalPlaceholders]
@@ -56,7 +55,7 @@ const AwsSecretsManagerSyncOptionsSchema = z.object({
       },
       {
         message:
-          "Certificate name schema must include exactly one {{certificateId}} placeholder. It can also include {{environment}}, {{profileId}}, {{commonName}}, or {{friendlyName}} placeholders. Only alphanumeric characters (a-z, A-Z, 0-9), hyphens (-), and underscores (_) are allowed besides the placeholders."
+          "Certificate name schema must include exactly one {{certificateId}} placeholder. It can also include {{profileId}}, {{applicationId}}, and {{commonName}} placeholders. Only alphanumeric characters (a-z, A-Z, 0-9), hyphens (-), and underscores (_) are allowed besides the placeholders."
       }
     ),
   fieldMappings: AwsSecretsManagerFieldMappingsSchema.optional().default({

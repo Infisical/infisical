@@ -427,6 +427,8 @@ func (h *Handler) buildImportSecretRaw(ps *secretsvc.ProcessedSecret, projectID 
 }
 
 // buildImportsResponse builds the imports array for the API response.
+// Only direct imports (depth=0) are returned as entries. Secrets from nested
+// imports (depth>0) are merged into their parent direct import's secrets array.
 func (h *Handler) buildImportsResponse(
 	result *secretsvc.ListSecretsResult,
 	projectID string,
@@ -438,25 +440,33 @@ func (h *Handler) buildImportsResponse(
 		secretsByImport[key] = append(secretsByImport[key], *sec)
 	}
 
-	imports := make([]SecretImport, 0, len(result.Imports))
+	imports := make([]SecretImport, 0)
+	var currentImport *SecretImport
+
 	for i := range result.Imports {
 		imp := &result.Imports[i]
 		envSlug, _ := result.FolderLookup.GetEnvSlug(imp.EnvID)
 		key := envSlug + ":" + imp.Path
 		impSecrets := secretsByImport[key]
 
-		importSecrets := make([]ImportSecretRaw, 0, len(impSecrets))
-		for j := range impSecrets {
-			importSecrets = append(importSecrets, h.buildImportSecretRaw(&impSecrets[j], projectID))
+		if imp.Depth == 0 {
+			// Direct import: create a new entry
+			folderID := imp.FolderID.String()
+			imports = append(imports, SecretImport{
+				SecretPath:  imp.Path,
+				Environment: envSlug,
+				FolderID:    &folderID,
+				Secrets:     make([]ImportSecretRaw, 0, len(impSecrets)),
+			})
+			currentImport = &imports[len(imports)-1]
 		}
 
-		folderID := imp.FolderID.String()
-		imports = append(imports, SecretImport{
-			SecretPath:  imp.Path,
-			Environment: envSlug,
-			FolderID:    &folderID,
-			Secrets:     importSecrets,
-		})
+		// Add secrets to the current direct import (whether this is depth=0 or nested)
+		if currentImport != nil {
+			for j := range impSecrets {
+				currentImport.Secrets = append(currentImport.Secrets, h.buildImportSecretRaw(&impSecrets[j], projectID))
+			}
+		}
 	}
 
 	return imports

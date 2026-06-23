@@ -36,7 +36,7 @@ Deploy certificates to F5 BIG-IP appliances. Certificates can be automatically a
             - **Enable Removal of Expired/Revoked Certificates**: Remove certificates from the BIG-IP when they're no longer active in Infisical.
             - **Include Root CA in Certificate Chain**: Include the root CA in the chain uploaded to the BIG-IP. Most setups don't need the root, since clients already trust it.
             - **Preserve Certificate on Renewal**: When on, renewed certificates keep the same name on the BIG-IP, so any profile or virtual server using them keeps working without changes. When off, the renewed certificate is uploaded with a new name and the original stays on the BIG-IP.
-            - **Certificate Name Schema** (Optional): Customize the name used on the BIG-IP. Must include `{{certificateId}}`. Defaults to `Infisical-{{certificateId}}`. The certificate chain follows the same name with `-chain` added.
+            - **Certificate Name Schema** (Optional): Customize the name used on the BIG-IP using placeholders such as `{{certificateId}}`, `{{commonName}}`, `{{profileId}}`, and `{{applicationId}}`. Must include `{{certificateId}}`. Defaults to `Infisical-{{certificateId}}`. The certificate chain follows the same name with `-chain` added. See [Certificate Name Schema](/documentation/platform/pki/applications/certificate-syncs/overview#certificate-name-schema) for the full placeholder reference.
             - **Auto-Sync Enabled**: Automatically sync certificates when changes occur (including auto-renewals).
 
         5. Configure the **Details**:

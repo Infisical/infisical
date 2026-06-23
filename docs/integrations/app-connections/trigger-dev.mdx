@@ -1,0 +1,105 @@
+---
+title: "Trigger.dev Connection"
+description: "Learn how to configure a Trigger.dev Connection for Infisical."
+---
+
+Infisical supports the use of [Personal Access Tokens](https://trigger.dev/docs/management/overview#personal-access-token-pat) to connect with Trigger.dev.
+
+## Create Trigger.dev Personal Access Token
+
+<Steps>
+    <Step title="Open the account menu">
+        In the [Trigger.dev dashboard](https://cloud.trigger.dev), click your account avatar in the top-left corner to open the account menu, then select **Account**.
+        ![Open Account Menu](/images/app-connections/trigger-dev/trigger-account.png)
+    </Step>
+    <Step title="Navigate to 'Personal Access Tokens'">
+        Select **Personal Access Tokens** from the menu.
+        ![Personal Access Tokens](/images/app-connections/trigger-dev/trigger-personal-access-token.png)
+    </Step>
+    <Step title="Create a new token">
+        Click **Create new token**.
+        ![Create New Token](/images/app-connections/trigger-dev/trigger-create-new-pat.png)
+
+        Give the token a descriptive name, then click **Create token**.
+        ![Create Token Modal](/images/app-connections/trigger-dev/trigger-create-token.png)
+    </Step>
+    <Step title="Save Token">
+        After creating the token, a value beginning with `tr_pat_` will appear. Copy and save this token for later steps, as you will not be able to view it again.
+        ![Copy Token](/images/app-connections/trigger-dev/trigger-copy-token.png)
+    </Step>
+</Steps>
+
+## Create Trigger.dev Connection in Infisical
+
+<Tabs>
+    <Tab title="Infisical UI">
+        <Steps>
+            <Step title="Navigate to App Connections">
+                In your Infisical dashboard, navigate to the **Integrations** tab in the desired project, then select **App Connections**.
+
+                ![App Connections Tab](/images/app-connections/general/add-connection.png)
+            </Step>
+            <Step title="Select Trigger.dev Connection">
+                Click the **+ Add Connection** button and select the **Trigger.dev Connection** option from the available integrations.
+            </Step>
+            <Step title="Fill out the Trigger.dev Connection Modal">
+                Complete the Trigger.dev Connection form by entering:
+                - A descriptive name for the connection
+                - An optional description for future reference
+                - The Personal Access Token from earlier steps
+                - An optional Instance URL if you are connecting to a self-hosted Trigger.dev deployment. Leave this blank to use Trigger.dev Cloud (`https://api.trigger.dev`).
+            </Step>
+            <Step title="Connection Created">
+                After clicking Create, your **Trigger.dev Connection** is established and ready to use with your Infisical project.
+            </Step>
+        </Steps>
+    </Tab>
+    <Tab title="API">
+        To create a Trigger.dev Connection, make an API request to the [Create Trigger.dev Connection](/api-reference/endpoints/app-connections/trigger-dev/create) API endpoint.
+
+        ### Sample request
+
+        ```bash Request
+        curl    --request POST \
+                --url https://app.infisical.com/api/v1/app-connections/trigger-dev \
+                --header 'Content-Type: application/json' \
+                --data '{
+                    "name": "my-trigger-dev-connection",
+                    "method": "api-key",
+                    "projectId": "7ffbb072-2575-495a-b5b0-127f88caef78",
+                    "credentials": {
+                        "apiKey": "tr_pat_...",
+                        "instanceUrl": "https://api.trigger.dev"
+                    }
+                }'
+        ```
+
+        <Note>
+            The `instanceUrl` field is optional. Omit it to connect to Trigger.dev Cloud (`https://api.trigger.dev`), or provide it to connect to a self-hosted Trigger.dev deployment.
+        </Note>
+
+        ### Sample response
+
+        ```bash Response
+        {
+          "appConnection": {
+              "id": "e5d18aca-86f7-4026-a95e-efb8aeb0d8e6",
+              "name": "my-trigger-dev-connection",
+              "projectId": "7ffbb072-2575-495a-b5b0-127f88caef78",
+              "description": null,
+              "version": 1,
+              "orgId": "6f03caa1-a5de-43ce-b127-95a145d3464c",
+              "createdAt": "2025-04-23T19:46:34.831Z",
+              "updatedAt": "2025-04-23T19:46:34.831Z",
+              "isPlatformManagedCredentials": false,
+              "credentialsHash": "7c2d371dec195f82a6a0d5b41c970a229cfcaf88e894a5b6395e2dbd0280661f",
+              "app": "trigger-dev",
+              "method": "api-key",
+              "credentials": {
+                  "instanceUrl": "https://api.trigger.dev"
+              }
+          }
+        }
+        ```
+    </Tab>
+</Tabs>

@@ -198,6 +198,10 @@ import {
   SanitizedTravisCIConnectionSchema,
   TravisCIConnectionListItemSchema
 } from "@app/services/app-connection/travis-ci";
+import {
+  SanitizedTriggerDevConnectionSchema,
+  TriggerDevConnectionListItemSchema
+} from "@app/services/app-connection/trigger-dev";
 import { SanitizedVenafiConnectionSchema, VenafiConnectionListItemSchema } from "@app/services/app-connection/venafi";
 import {
   SanitizedVenafiTppConnectionSchema,
@@ -240,6 +244,7 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedHerokuConnectionSchema.options,
   ...SanitizedRenderConnectionSchema.options,
   ...SanitizedFlyioConnectionSchema.options,
+  ...SanitizedTriggerDevConnectionSchema.options,
   ...SanitizedGitLabConnectionSchema.options,
   ...SanitizedCloudflareConnectionSchema.options,
   ...SanitizedBitbucketConnectionSchema.options,
@@ -312,6 +317,7 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   HerokuConnectionListItemSchema,
   RenderConnectionListItemSchema,
   FlyioConnectionListItemSchema,
+  TriggerDevConnectionListItemSchema,
   GitLabConnectionListItemSchema,
   CloudflareConnectionListItemSchema,
   BitbucketConnectionListItemSchema,

@@ -417,6 +417,8 @@ export const TLS_CERT_AUTH = {
     identityId: "The ID of the machine identity to attach the configuration onto.",
     allowedCommonNames:
       "The comma-separated list of trusted common names that are allowed to authenticate with Infisical.",
+    allowedSubjectAltNames:
+      "The comma-separated list of trusted subject alternative names that are allowed to authenticate with Infisical. Prefix entries by type (URI:, DNS:, IP:, EMAIL:). Bare entries are treated as DNS names.",
     caCertificate: "The PEM-encoded CA certificate to validate client certificates.",
     accessTokenTTL: "The lifetime for an access token in seconds.",
     accessTokenMaxTTL: "The maximum lifetime for an access token in seconds.",
@@ -427,6 +429,8 @@ export const TLS_CERT_AUTH = {
     identityId: "The ID of the machine identity to update the auth method for.",
     allowedCommonNames:
       "The comma-separated list of trusted common names that are allowed to authenticate with Infisical.",
+    allowedSubjectAltNames:
+      "The comma-separated list of trusted subject alternative names that are allowed to authenticate with Infisical. Prefix entries by type (URI:, DNS:, IP:, EMAIL:). Bare entries are treated as DNS names.",
     caCertificate: "The PEM-encoded CA certificate to validate client certificates.",
     accessTokenTTL: "The new lifetime for an access token in seconds.",
     accessTokenMaxTTL: "The new maximum lifetime for an access token in seconds.",
@@ -1099,6 +1103,10 @@ export const PROJECT_USERS = {
     projectId: "The ID of the project to get memberships from.",
     membershipId: "The ID of the user's project membership.",
     username: "The username to get project membership of. Email is the default username."
+  },
+  GET_USER_MEMBERSHIP_BY_USER_ID: {
+    projectId: "The ID of the project to get the membership from.",
+    userId: "The ID of the user to get the project membership of."
   },
   UPDATE_USER_MEMBERSHIP: {
     projectId: "The ID of the project to update the membership for.",
@@ -2444,6 +2452,9 @@ export const PROJECT_ROLE = {
     projectId: "The ID of the project.",
     roleSlug: "The slug of the role to get details."
   },
+  GET_ROLE_BY_ID: {
+    roleId: "The ID of the role to get."
+  },
   LIST: {
     projectSlug: "The slug of the project to list the roles of.",
     projectId: "The ID of the project."
@@ -2491,6 +2502,9 @@ export const KMS = {
     name: "The updated name of this key. Must be slug-friendly.",
     description: "The updated description of this key.",
     isDisabled: "The flag to enable or disable this key."
+  },
+  ROTATE_KEY: {
+    keyId: "The ID of the key to be rotated."
   },
   DELETE_KEY: {
     keyId: "The ID of the key to be deleted."
@@ -2796,6 +2810,10 @@ export const AppConnections = {
     FLYIO: {
       accessToken: "The Access Token used to access fly.io."
     },
+    TRIGGER_DEV: {
+      apiKey: "The Personal Access Token (tr_pat_...) used to authenticate with Trigger.dev.",
+      instanceUrl: "The URL of the Trigger.dev instance to connect to. Defaults to https://api.trigger.dev."
+    },
     DEVIN: {
       apiKey: "The Devin service-user API key used to authenticate against the Devin v3 API."
     },
@@ -3005,6 +3023,10 @@ export const SecretSyncs = {
     FLYIO: {
       autoRedeploy: "Whether Infisical should automatically redeploy the configured Fly.io app upon secret changes."
     },
+    TRIGGER_DEV: {
+      markAsSecret:
+        "Whether synced variables should be marked as secret (redacted) environment variables in Trigger.dev."
+    },
     AZURE_KEY_VAULT: {
       disableCertificateImport:
         "Whether Infisical should skip importing certificate objects from Azure Key Vault when syncing secrets."
@@ -3149,6 +3171,10 @@ export const SecretSyncs = {
     },
     FLYIO: {
       appId: "The ID of the Fly.io app to sync secrets to."
+    },
+    TRIGGER_DEV: {
+      projectRef: "The reference of the Trigger.dev project to sync secrets to.",
+      environment: "The Trigger.dev environment to sync secrets to."
     },
     DEVIN: {
       orgId: "The Devin organization ID to sync secrets to."

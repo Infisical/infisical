@@ -256,13 +256,14 @@ func (s *Service) FindByFolderIds(
 	}
 
 	// Build ORDER BY clause with orthogonal column and direction selection
+	// Include secondary ordering by createdAt for deterministic results with LEFT JOINs
 	orderCol, orderDir := "secret.key", "ASC"
 	if filters != nil {
 		if filters.OrderDirection != nil && *filters.OrderDirection == OrderByDirectionDESC {
 			orderDir = "DESC"
 		}
 	}
-	orderBy := orderCol + " " + orderDir
+	orderBy := orderCol + " " + orderDir + `, meta."createdAt" ASC NULLS FIRST, meta.id ASC NULLS FIRST, tag."createdAt" ASC NULLS FIRST, tag.id ASC NULLS FIRST`
 
 	limitClause := ""
 	if filters != nil && filters.Limit != nil {
@@ -371,7 +372,8 @@ func (s *Service) FindByKey(
 		LEFT JOIN reminders reminder ON secret.id = reminder."secretId"
 		LEFT JOIN reminders_recipients recipient ON reminder.id = recipient."reminderId"
 		LEFT JOIN users recipientUser ON recipient."userId" = recipientUser.id
-		WHERE ` + where.String()
+		WHERE ` + where.String() + `
+		ORDER BY meta."createdAt" ASC NULLS FIRST, meta.id ASC NULLS FIRST, tag."createdAt" ASC NULLS FIRST, tag.id ASC NULLS FIRST`
 
 	args := pgx.NamedArgs{
 		"folderID":   folderID,

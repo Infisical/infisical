@@ -248,6 +248,8 @@ export const AuditLogStreamTable = () => {
                 </div>
               </Th>
 
+              <Th>Products</Th>
+
               <Th className="w-5" />
             </Tr>
           </THead>
@@ -255,7 +257,7 @@ export const AuditLogStreamTable = () => {
             {isPending && (
               <TableSkeleton
                 innerKey="audit-log-streams-table"
-                columns={3}
+                columns={4}
                 key="audit-log-streams"
               />
             )}

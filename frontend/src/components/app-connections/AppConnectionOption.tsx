@@ -3,8 +3,14 @@ import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { CheckIcon } from "lucide-react";
 
-import { Tooltip } from "@app/components/v2";
-import { Badge, OrgIcon, SubOrgIcon } from "@app/components/v3";
+import {
+  Badge,
+  OrgIcon,
+  SubOrgIcon,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import { TAvailableAppConnection } from "@app/hooks/api/appConnections";
 
@@ -32,20 +38,25 @@ export const AppConnectionOption = ({
           <>
             <p className="mr-auto truncate">{children}</p>
             {!props.data.projectId && (
-              <Tooltip
-                content={`This connection belongs to your ${isSubOrganization ? "sub-" : ""}organization.`}
-              >
-                {isSubOrganization ? (
-                  <Badge variant="sub-org">
-                    <SubOrgIcon />
-                    Sub-Organization
-                  </Badge>
-                ) : (
-                  <Badge variant="org">
-                    <OrgIcon />
-                    Organization
-                  </Badge>
-                )}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div>
+                    {isSubOrganization ? (
+                      <Badge variant="sub-org">
+                        <SubOrgIcon />
+                        Sub-Organization
+                      </Badge>
+                    ) : (
+                      <Badge variant="org">
+                        <OrgIcon />
+                        Organization
+                      </Badge>
+                    )}
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent>
+                  This connection belongs to your {isSubOrganization ? "sub-" : ""}organization.
+                </TooltipContent>
               </Tooltip>
             )}
             {isSelected && <CheckIcon className="ml-2 size-4" />}

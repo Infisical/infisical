@@ -1,5 +1,16 @@
-import { Button, Modal, ModalClose, ModalContent } from "@app/components/v2";
-import { NoticeBannerV2 } from "@app/components/v2/NoticeBannerV2/NoticeBannerV2";
+import { AlertTriangleIcon } from "lucide-react";
+
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogMedia,
+  AlertDialogTitle
+} from "@app/components/v3";
 
 type Props = {
   isOpen: boolean;
@@ -9,35 +20,26 @@ type Props = {
 
 export const PlatformManagedConfirmationModal = ({ isOpen, onOpenChange, onConfirm }: Props) => {
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-      <ModalContent className="max-w-2xl" title="Platform Managed Credentials">
-        <NoticeBannerV2 title="Are you sure you want have Infisical manage the credentials of this connection?">
-          <p className="my-1 text-sm text-mineshaft-300">
-            Once created, Infisical will update the password of this connection.
-          </p>
-          <p className="text-sm text-mineshaft-300">
-            You will not be able to access the updated password.
-          </p>
-        </NoticeBannerV2>
-        <div className="mt-4 flex gap-2">
-          <ModalClose asChild>
-            <Button
-              onClick={onConfirm}
-              className="mr-4"
-              size="sm"
-              type="submit"
-              colorSchema="secondary"
-            >
-              Grant Infisical Ownership
-            </Button>
-          </ModalClose>
-          <ModalClose asChild>
-            <Button colorSchema="secondary" variant="plain">
-              Cancel
-            </Button>
-          </ModalClose>
-        </div>
-      </ModalContent>
-    </Modal>
+    <AlertDialog open={isOpen} onOpenChange={onOpenChange}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogMedia>
+            <AlertTriangleIcon />
+          </AlertDialogMedia>
+          <AlertDialogTitle>Platform Managed Credentials</AlertDialogTitle>
+          <AlertDialogDescription>
+            Once created, Infisical will update the password of this connection and you will no
+            longer be able to access it. Are you sure you want Infisical to manage the credentials
+            of this connection?
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction variant="warning" onClick={onConfirm}>
+            Grant Infisical Ownership
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 };

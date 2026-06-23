@@ -218,6 +218,52 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
     }
   });
 
+  server.route({
+    method: "POST",
+    url: "/keys/:keyId/rotate",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      hide: false,
+      operationId: "rotateKmsKey",
+      tags: [ApiDocsTags.KmsKeys],
+      description:
+        "Rotate KMS key. Generates new key material for the key and increments its version. Previous key material is retained so existing ciphertexts remain decryptable; new encrypt operations use the new material. Only supported for encrypt-decrypt keys.",
+      params: z.object({
+        keyId: z.string().uuid().describe(KMS.ROTATE_KEY.keyId)
+      }),
+      response: {
+        200: z.object({
+          key: CmekSchema
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const {
+        params: { keyId },
+        permission
+      } = req;
+
+      const cmek = await server.services.cmek.rotateCmekById(keyId, permission);
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: cmek.projectId!,
+        event: {
+          type: EventType.ROTATE_CMEK,
+          metadata: {
+            keyId,
+            version: cmek.version
+          }
+        }
+      });
+
+      return { key: cmek };
+    }
+  });
+
   // delete KMS key
   server.route({
     method: "DELETE",

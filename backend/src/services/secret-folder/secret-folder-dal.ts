@@ -541,6 +541,24 @@ export const secretFolderDALFactory = (db: TDbClient) => {
     }
   };
 
+  const countByProject = async (projectId: string, tx?: Knex) => {
+    try {
+      const result = await (tx || db.replicaNode())(TableName.SecretFolder)
+        .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+        .where(`${TableName.Environment}.projectId`, projectId)
+        .whereNull(`${TableName.Environment}.deleteAfter`)
+        .where(`${TableName.SecretFolder}.isReserved`, false)
+        // exclude per-environment root folders (parentId null) so a fresh project reports 0
+        .whereNotNull(`${TableName.SecretFolder}.parentId`)
+        .count("* as count")
+        .first();
+
+      return Number((result as { count?: string | number })?.count ?? 0);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "countByProject" });
+    }
+  };
+
   return {
     ...secretFolderOrm,
     update,
@@ -556,6 +574,7 @@ export const secretFolderDALFactory = (db: TDbClient) => {
     findByParentId,
     findByEnvId,
     findFoldersByRootAndIds,
-    lockFoldersForUpdate
+    lockFoldersForUpdate,
+    countByProject
   };
 };

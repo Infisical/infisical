@@ -13,3 +13,12 @@ export enum StreamMode {
   // A JSON array of events POSTed per request. Default for all new streams.
   Batch = "batch"
 }
+
+export enum AuditLogStreamProduct {
+  SecretManager = "secret-manager",
+  CertificateManager = "cert-manager",
+  KMS = "kms",
+  SecretScanning = "secret-scanning",
+  PAM = "pam",
+  Organization = "organization"
+}

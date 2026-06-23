@@ -48,6 +48,7 @@ export const SecretSyncsBrowser = () => {
     {"name": "OVH", "slug": "ovh", "path": "/integrations/secret-syncs/ovh", "description": "Learn how to sync secrets from Infisical to OVH Secret Manager.", "category": "Cloud Providers"},
     {"name": "Travis CI", "slug": "travis-ci", "path": "/integrations/secret-syncs/travis-ci", "description": "Learn how to sync secrets from Infisical to Travis CI.", "category": "CI/CD"},
     {"name": "Snowflake", "slug": "snowflake", "path": "/integrations/secret-syncs/snowflake", "description": "Learn how to sync secrets from Infisical to Snowflake.", "category": "Databases"},
+    {"name": "Trigger.dev", "slug": "trigger-dev", "path": "/integrations/secret-syncs/trigger-dev", "description": "Learn how to sync secrets from Infisical to Trigger.dev.", "category": "DevOps Tools"},
 
   ].sort(function(a, b) {
       return a.name.toLowerCase().localeCompare(b.name.toLowerCase());

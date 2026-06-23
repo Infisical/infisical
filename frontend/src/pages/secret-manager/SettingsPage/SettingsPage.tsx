@@ -24,27 +24,54 @@ export const SettingsPage = () => {
   });
 
   const tabs = [
-    { key: "tab-project-general", Component: ProjectGeneralTab },
-    { key: "tab-secret-general", Component: SecretSettingsTab },
     {
+      name: "General",
+      description: "Manage your project's name, audit log retention, and delete protection.",
+      key: "tab-project-general",
+      Component: ProjectGeneralTab
+    },
+    {
+      name: "Secrets Management",
+      description:
+        "Configure environments, secret tags, validation rules, and other secret behaviors.",
+      key: "tab-secret-general",
+      Component: SecretSettingsTab
+    },
+    {
+      name: "Encryption",
+      description: "Choose the Key Management System used to encrypt this project's data.",
       key: "tab-project-encryption",
       isHidden: currentProject?.version !== ProjectVersion.V3,
       Component: EncryptionTab
     },
-    { key: "tab-workflow-integrations", Component: WorkflowIntegrationTab },
-    { key: "tab-project-webhooks", Component: WebhooksTab }
+    {
+      name: "Workflow Integrations",
+      description: "Connect Slack and Microsoft Teams for approval and notification workflows.",
+      key: "tab-workflow-integrations",
+      Component: WorkflowIntegrationTab
+    },
+    {
+      name: "Webhooks",
+      description: "Manage webhooks that notify external services when your secrets change.",
+      key: "tab-project-webhooks",
+      Component: WebhooksTab
+    }
   ];
+
+  const activeTab = tabs.find((tab) => !tab.isHidden && tab.key === selectedTab);
+  const baseTitle = t("settings.project.title");
+  const pageTitle = activeTab ? `${activeTab.name} - ${baseTitle}` : baseTitle;
 
   return (
     <div className="flex h-full w-full justify-center bg-bunker-800 text-white">
       <Helmet>
-        <title>{t("common.head-title", { title: t("settings.project.title") })}</title>
+        <title>{t("common.head-title", { title: pageTitle })}</title>
       </Helmet>
       <div className="w-full max-w-8xl">
         <PageHeader
           scope={ProjectType.SecretManager}
-          title="Project Settings"
-          description="Configure your secret manager's encryption, environments, webhooks and other configurations."
+          title={activeTab?.name ?? baseTitle}
+          description={activeTab?.description}
         >
           <Link
             to="/organizations/$orgId/settings"

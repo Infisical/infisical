@@ -1,10 +1,8 @@
 import {
   ArrowLeftRight,
-  Blocks,
   Cable,
   ClipboardList,
   Cog,
-  Container,
   FileCheck,
   FileKey,
   FileText,
@@ -46,14 +44,6 @@ export const PROJECT_ACCESS_CONTROL_SUBMENU: Submenu = {
   ]
 };
 
-export const SECRET_MANAGER_ACCESS_CONTROL_SUBMENU: Submenu = {
-  ...PROJECT_ACCESS_CONTROL_SUBMENU,
-  items: [
-    ...PROJECT_ACCESS_CONTROL_SUBMENU.items,
-    { label: "Service Tokens", icon: Key, tab: "service-tokens" }
-  ]
-};
-
 export const CERT_MANAGER_ACCESS_CONTROL_SUBMENU: Submenu = {
   title: "Access Control",
   pathSuffix: "access-management",
@@ -81,24 +71,6 @@ export const SM_SETTINGS_SUBMENU: Submenu = {
     { label: "Encryption", icon: Lock, tab: "tab-project-encryption" },
     { label: "Workflow Integrations", icon: Plug, tab: "tab-workflow-integrations" },
     { label: "Webhooks", icon: Webhook, tab: "tab-project-webhooks" }
-  ]
-};
-
-export const INTEGRATIONS_SUBMENU: Submenu = {
-  title: "Integrations",
-  pathSuffix: "integrations",
-  defaultTab: "app-connections",
-  items: [
-    { label: "App Connections", icon: Cable, tab: "app-connections" },
-    {
-      label: "Secret Syncs",
-      icon: ArrowLeftRight,
-      tab: "secret-syncs",
-      activeMatch: /\/integrations\/secret-syncs\//
-    },
-    { label: "Framework Integrations", icon: Blocks, tab: "framework-integrations" },
-    { label: "Infrastructure Integrations", icon: Container, tab: "infrastructure-integrations" },
-    { label: "Native Integrations", icon: Plug, tab: "native-integrations" }
   ]
 };
 

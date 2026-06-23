@@ -7,8 +7,10 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, SECRET_SHARING } from "@app/lib/api-docs";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { unique } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
 import { SecretSharingAccessType } from "@app/lib/types";
+import { sanitizeEmail } from "@app/lib/validator";
 import {
   publicEndpointLimit,
   publicSecretShareCreationLimit,
@@ -108,7 +110,8 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
       return req.server.services.secretSharing.getSharedSecretById(
         req.params.id,
         req.permission?.orgId,
-        req.permission?.id
+        req.permission?.id,
+        req.permission?.type
       );
     }
   });
@@ -144,7 +147,8 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
         sharedSecretId: req.params.id,
         password: req.body.password,
         orgId: req.permission?.orgId,
-        actorId: req.permission?.id
+        actorId: req.permission?.id,
+        actor: req.permission?.type
       });
 
       if (sharedSecret.orgId) {
@@ -289,8 +293,8 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
             .email()
             .array()
             .max(100)
+            .transform((val) => unique(val.map((el) => sanitizeEmail(el))))
             .optional()
-            .transform((val) => (val ? [...new Set(val)] : undefined))
             .describe(SECRET_SHARING.CREATE.authorizedEmails),
           allowExternalEmails: z.boolean().optional().describe(SECRET_SHARING.CREATE.allowExternalEmails)
         })

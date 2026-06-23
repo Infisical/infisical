@@ -18,6 +18,8 @@ import {
 import { LogProvider, StreamMode } from "@app/hooks/api/auditLogStreams/enums";
 import { TCustomProviderLogStream } from "@app/hooks/api/auditLogStreams/types/providers/custom-provider";
 
+import { auditLogStreamFiltersSchema, ProductsField } from "./AuditLogStreamProductsField";
+
 type Props = {
   auditLogStream?: TCustomProviderLogStream;
   onSubmit: (formData: FormData) => void;
@@ -34,7 +36,8 @@ const formSchema = z.object({
       })
       .array()
   }),
-  streamMode: z.nativeEnum(StreamMode).optional()
+  streamMode: z.nativeEnum(StreamMode).optional(),
+  ...auditLogStreamFiltersSchema.shape
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -218,6 +221,10 @@ export const CustomProviderAuditLogStreamForm = ({ auditLogStream, onSubmit }: P
             />
           </div>
         )}
+
+        <div className="mt-6">
+          <ProductsField />
+        </div>
 
         <div className="mt-8 flex items-center">
           <Button

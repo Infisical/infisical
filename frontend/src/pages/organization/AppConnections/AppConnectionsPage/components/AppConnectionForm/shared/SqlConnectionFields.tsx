@@ -1,10 +1,23 @@
 import { Dispatch, SetStateAction } from "react";
 import { Controller, useFormContext } from "react-hook-form";
-import { faQuestionCircle } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Tab } from "@headlessui/react";
 
-import { FormControl, Input, SecretInput, Switch, TextArea, Tooltip } from "@app/components/v2";
+import {
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+  Input,
+  Label,
+  SecretInput,
+  Switch,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+  TextArea
+} from "@app/components/v3";
+import { useScopeVariant } from "@app/hooks";
 
 type Props = {
   isPlatformManagedCredentials: boolean;
@@ -12,225 +25,207 @@ type Props = {
   setSelectedTabIndex: Dispatch<SetStateAction<number>>;
 };
 
+const CONFIGURATION_TAB = "configuration";
+const SSL_TAB = "ssl";
+
 export const SqlConnectionFields = ({
   isPlatformManagedCredentials,
   setSelectedTabIndex,
   selectedTabIndex
 }: Props) => {
   const { control, watch } = useFormContext();
+  const scopeVariant = useScopeVariant();
 
   const sslEnabled = watch("credentials.sslEnabled");
   return (
     <>
-      <Tab.Group selectedIndex={selectedTabIndex} onChange={setSelectedTabIndex}>
-        <Tab.List className="-pb-1 mb-6 w-full border-b-2 border-mineshaft-600">
-          <Tab
-            className={({ selected }) =>
-              `-mb-[0.14rem] px-4 py-2 text-sm font-medium whitespace-nowrap outline-hidden disabled:opacity-60 ${
-                selected ? "border-b-2 border-mineshaft-300 text-mineshaft-200" : "text-bunker-300"
-              }`
-            }
-          >
-            Configuration
-          </Tab>
-          <Tab
-            className={({ selected }) =>
-              `-mb-[0.14rem] px-4 py-2 text-sm font-medium whitespace-nowrap outline-hidden disabled:opacity-60 ${
-                selected ? "border-b-2 border-mineshaft-300 text-mineshaft-200" : "text-bunker-300"
-              }`
-            }
-          >
-            SSL ({sslEnabled ? "Enabled" : "Disabled"})
-          </Tab>
-        </Tab.List>
-        <Tab.Panels className="mb-4 rounded-sm border border-mineshaft-600 bg-mineshaft-700/70 p-3 pb-0">
-          <Tab.Panel>
-            <div className="mt-[0.675rem] flex items-start gap-2">
-              <Controller
-                name="credentials.host"
-                control={control}
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    className="flex-1"
-                    errorText={error?.message}
-                    isError={Boolean(error?.message)}
-                    label="Host"
-                  >
-                    <Input {...field} isDisabled={isPlatformManagedCredentials} />
-                  </FormControl>
-                )}
-              />
-              <Controller
-                name="credentials.database"
-                control={control}
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    className="flex-1"
-                    errorText={error?.message}
-                    isError={Boolean(error?.message)}
-                    label="Database Name"
-                  >
-                    <Input {...field} isDisabled={isPlatformManagedCredentials} />
-                  </FormControl>
-                )}
-              />
-              <Controller
-                name="credentials.port"
-                control={control}
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    className="w-28"
-                    errorText={error?.message}
-                    isError={Boolean(error?.message)}
-                    label="Port"
-                  >
-                    <Input type="number" {...field} isDisabled={isPlatformManagedCredentials} />
-                  </FormControl>
-                )}
-              />
-            </div>
-            <div className="mb-[0.675rem] flex items-start gap-2">
-              <Controller
-                name="credentials.username"
-                control={control}
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    errorText={error?.message}
-                    isError={Boolean(error?.message)}
-                    label="Username"
-                    className="flex-1"
-                  >
-                    <Input {...field} isDisabled={isPlatformManagedCredentials} />
-                  </FormControl>
-                )}
-              />
-              <Controller
-                name="credentials.password"
-                control={control}
-                render={({ field: { value, onChange }, fieldState: { error } }) => (
-                  <FormControl
-                    errorText={error?.message}
-                    isError={Boolean(error?.message)}
-                    label="Password"
-                    className="flex-1"
-                  >
-                    <SecretInput
-                      containerClassName="text-gray-400 w-full group-focus-within:border-primary-400/50! border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
-                      value={value}
-                      onChange={(e) => onChange(e.target.value)}
-                      isDisabled={isPlatformManagedCredentials}
-                    />
-                  </FormControl>
-                )}
-              />
-            </div>
-          </Tab.Panel>
-          <Tab.Panel>
+      <Tabs
+        value={selectedTabIndex === 0 ? CONFIGURATION_TAB : SSL_TAB}
+        onValueChange={(value) => setSelectedTabIndex(value === CONFIGURATION_TAB ? 0 : 1)}
+        className="mb-4"
+      >
+        <TabsList variant={scopeVariant}>
+          <TabsTrigger value={CONFIGURATION_TAB}>Configuration</TabsTrigger>
+          <TabsTrigger value={SSL_TAB}>SSL ({sslEnabled ? "Enabled" : "Disabled"})</TabsTrigger>
+        </TabsList>
+        <TabsContent value={CONFIGURATION_TAB}>
+          <div className="flex items-start gap-2">
             <Controller
-              name="credentials.sslEnabled"
-              control={control}
-              render={({ field: { value, onChange }, fieldState: { error } }) => (
-                <FormControl isError={Boolean(error?.message)} errorText={error?.message}>
-                  <Switch
-                    className="bg-mineshaft-400/50 shadow-inner data-[state=checked]:bg-green/80"
-                    id="ssl-enabled"
-                    thumbClassName="bg-mineshaft-800"
-                    isChecked={value}
-                    onCheckedChange={onChange}
-                    isDisabled={isPlatformManagedCredentials}
-                  >
-                    Enable SSL
-                  </Switch>
-                </FormControl>
-              )}
-            />
-            <Controller
-              name="credentials.sslCertificate"
+              name="credentials.host"
               control={control}
               render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  errorText={error?.message}
-                  isError={Boolean(error?.message)}
-                  className={sslEnabled ? "" : "opacity-50"}
-                  label="SSL Certificate"
-                  isOptional
-                >
-                  <TextArea
-                    className="h-14 resize-none!"
+                <Field className="flex-1">
+                  <FieldLabel htmlFor="sql-host">Host</FieldLabel>
+                  <Input
+                    id="sql-host"
                     {...field}
-                    isDisabled={isPlatformManagedCredentials || !sslEnabled}
+                    disabled={isPlatformManagedCredentials}
+                    isError={Boolean(error?.message)}
                   />
-                </FormControl>
+                  <FieldError errors={[error]} />
+                </Field>
               )}
             />
             <Controller
-              name="credentials.sslRejectUnauthorized"
+              name="credentials.database"
               control={control}
-              render={({ field: { value, onChange }, fieldState: { error } }) => (
-                <FormControl
-                  className={sslEnabled ? "" : "opacity-50"}
-                  isError={Boolean(error?.message)}
-                  errorText={error?.message}
-                >
-                  <Switch
-                    className="bg-mineshaft-400/50 shadow-inner data-[state=checked]:bg-green/80"
-                    id="ssl-reject-unauthorized"
-                    thumbClassName="bg-mineshaft-800"
-                    isChecked={sslEnabled ? value : false}
-                    onCheckedChange={onChange}
-                    isDisabled={isPlatformManagedCredentials || !sslEnabled}
-                  >
-                    <p className="w-38">
-                      Reject Unauthorized
-                      <Tooltip
-                        className="max-w-md"
-                        content={
-                          <p>
-                            If enabled, Infisical will only connect to the server if it has a valid,
-                            trusted SSL certificate.
-                          </p>
-                        }
-                      >
-                        <FontAwesomeIcon icon={faQuestionCircle} size="sm" className="ml-1" />
-                      </Tooltip>
-                    </p>
-                  </Switch>
-                </FormControl>
+              render={({ field, fieldState: { error } }) => (
+                <Field className="flex-1">
+                  <FieldLabel htmlFor="sql-database">Database Name</FieldLabel>
+                  <Input
+                    id="sql-database"
+                    {...field}
+                    disabled={isPlatformManagedCredentials}
+                    isError={Boolean(error?.message)}
+                  />
+                  <FieldError errors={[error]} />
+                </Field>
               )}
             />
-          </Tab.Panel>
-        </Tab.Panels>
-      </Tab.Group>
+            <Controller
+              name="credentials.port"
+              control={control}
+              render={({ field, fieldState: { error } }) => (
+                <Field className="w-28">
+                  <FieldLabel htmlFor="sql-port">Port</FieldLabel>
+                  <Input
+                    id="sql-port"
+                    type="number"
+                    {...field}
+                    disabled={isPlatformManagedCredentials}
+                    isError={Boolean(error?.message)}
+                  />
+                  <FieldError errors={[error]} />
+                </Field>
+              )}
+            />
+          </div>
+          <div className="mt-4 flex items-start gap-2">
+            <Controller
+              name="credentials.username"
+              control={control}
+              render={({ field, fieldState: { error } }) => (
+                <Field className="flex-1">
+                  <FieldLabel htmlFor="sql-username">Username</FieldLabel>
+                  <Input
+                    id="sql-username"
+                    {...field}
+                    disabled={isPlatformManagedCredentials}
+                    isError={Boolean(error?.message)}
+                  />
+                  <FieldError errors={[error]} />
+                </Field>
+              )}
+            />
+            <Controller
+              name="credentials.password"
+              control={control}
+              render={({ field: { value, onChange }, fieldState: { error } }) => (
+                <Field className="flex-1">
+                  <FieldLabel>Password</FieldLabel>
+                  <SecretInput
+                    value={value}
+                    onChange={(e) => onChange(e.target.value)}
+                    isDisabled={isPlatformManagedCredentials}
+                  />
+                  <FieldError errors={[error]} />
+                </Field>
+              )}
+            />
+          </div>
+        </TabsContent>
+        <TabsContent value={SSL_TAB}>
+          <Controller
+            name="credentials.sslEnabled"
+            control={control}
+            render={({ field: { value, onChange }, fieldState: { error } }) => (
+              <Field className="mb-4">
+                <Field orientation="horizontal">
+                  <FieldContent>
+                    <Label htmlFor="ssl-enabled">Enable SSL</Label>
+                  </FieldContent>
+                  <Switch
+                    id="ssl-enabled"
+                    variant={scopeVariant}
+                    checked={value}
+                    onCheckedChange={onChange}
+                    disabled={isPlatformManagedCredentials}
+                  />
+                </Field>
+                <FieldError errors={[error]} />
+              </Field>
+            )}
+          />
+          <Controller
+            name="credentials.sslCertificate"
+            control={control}
+            render={({ field, fieldState: { error } }) => (
+              <Field className={sslEnabled ? "mb-4" : "mb-4 opacity-50"}>
+                <FieldLabel htmlFor="ssl-certificate">
+                  SSL Certificate <span className="text-muted">(optional)</span>
+                </FieldLabel>
+                <TextArea
+                  id="ssl-certificate"
+                  className="h-14 resize-none"
+                  {...field}
+                  disabled={isPlatformManagedCredentials || !sslEnabled}
+                  isError={Boolean(error?.message)}
+                />
+                <FieldError errors={[error]} />
+              </Field>
+            )}
+          />
+          <Controller
+            name="credentials.sslRejectUnauthorized"
+            control={control}
+            render={({ field: { value, onChange }, fieldState: { error } }) => (
+              <Field className={sslEnabled ? undefined : "opacity-50"}>
+                <Field orientation="horizontal">
+                  <FieldContent>
+                    <Label htmlFor="ssl-reject-unauthorized">Reject Unauthorized</Label>
+                    <FieldDescription>
+                      If enabled, Infisical will only connect to the server if it has a valid,
+                      trusted SSL certificate.
+                    </FieldDescription>
+                  </FieldContent>
+                  <Switch
+                    id="ssl-reject-unauthorized"
+                    variant={scopeVariant}
+                    checked={sslEnabled ? value : false}
+                    onCheckedChange={onChange}
+                    disabled={isPlatformManagedCredentials || !sslEnabled}
+                  />
+                </Field>
+                <FieldError errors={[error]} />
+              </Field>
+            )}
+          />
+        </TabsContent>
+      </Tabs>
       {!isPlatformManagedCredentials && (
         <Controller
           name="isPlatformManagedCredentials"
           control={control}
           render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl isError={Boolean(error?.message)} errorText={error?.message}>
-              <Switch
-                className="bg-mineshaft-400/50 shadow-inner data-[state=checked]:bg-green/80"
-                id="platform-managed"
-                thumbClassName="bg-mineshaft-800"
-                isChecked={value}
-                onCheckedChange={onChange}
-                isDisabled={isPlatformManagedCredentials}
-              >
-                <p className="w-[13.6rem]">
-                  Platform Managed Credentials
-                  <Tooltip
-                    className="max-w-md"
-                    content={
-                      <p>
-                        If enabled, Infisical will manage the credentials of this App Connection by
-                        updating the password on creation.
-                      </p>
-                    }
-                  >
-                    <FontAwesomeIcon icon={faQuestionCircle} size="sm" className="ml-1" />
-                  </Tooltip>
-                </p>
-              </Switch>
-            </FormControl>
+            <Field>
+              <Field orientation="horizontal">
+                <FieldContent>
+                  <Label htmlFor="platform-managed">Platform Managed Credentials</Label>
+                  <FieldDescription>
+                    If enabled, Infisical will manage the credentials of this App Connection by
+                    updating the password on creation.
+                  </FieldDescription>
+                </FieldContent>
+                <Switch
+                  id="platform-managed"
+                  variant={scopeVariant}
+                  checked={value}
+                  onCheckedChange={onChange}
+                  disabled={isPlatformManagedCredentials}
+                />
+              </Field>
+              <FieldError errors={[error]} />
+            </Field>
           )}
         />
       )}

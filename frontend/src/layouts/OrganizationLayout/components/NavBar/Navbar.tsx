@@ -82,8 +82,9 @@ import {
 import { authKeys, selectOrganization } from "@app/hooks/api/auth/queries";
 import { MfaMethod } from "@app/hooks/api/auth/types";
 import { getAuthToken } from "@app/hooks/api/reactQuery";
+import { getSubscriptionPlanLabel } from "@app/hooks/api/subscriptions";
 import { SubscriptionPlanTypes } from "@app/hooks/api/subscriptions/types";
-import { Organization, SubscriptionPlan } from "@app/hooks/api/types";
+import { Organization } from "@app/hooks/api/types";
 import { AuthMethod } from "@app/hooks/api/users/types";
 import {
   ApplicationSelect,
@@ -96,12 +97,6 @@ import { ServerAdminsPanel } from "../ServerAdminsPanel/ServerAdminsPanel";
 import { NewSubOrganizationForm } from "./NewSubOrganizationForm";
 import { NotificationDropdown } from "./NotificationDropdown";
 import { VersionBadge } from "./VersionBadge";
-
-const getPlan = (subscription: SubscriptionPlan) => {
-  if (subscription.groups) return "Enterprise";
-  if (subscription.pitRecovery) return "Pro";
-  return "Free";
-};
 
 const getFormattedSupportEmailLink = (variables: {
   org_id: string;
@@ -619,7 +614,7 @@ export const Navbar = () => {
         </Tooltip>
       ) : (
         <Badge variant="info" className="mt-[3px] mr-3 hidden md:inline-flex">
-          {getPlan(subscription)}
+          {getSubscriptionPlanLabel(subscription)}
         </Badge>
       )}
       <VersionBadge />

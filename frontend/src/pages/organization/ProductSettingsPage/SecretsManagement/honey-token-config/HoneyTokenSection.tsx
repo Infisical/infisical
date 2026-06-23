@@ -92,7 +92,7 @@ export const HoneyTokenSection = () => {
                     </Button>
                   )}
                   <Button
-                    variant="org"
+                    variant="project"
                     isDisabled={!isAllowed}
                     onClick={() => handlePopUpOpen("honeyTokenModal")}
                   >

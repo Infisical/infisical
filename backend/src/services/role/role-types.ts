@@ -65,6 +65,13 @@ export type TGetRoleByIdDTO = {
   };
 };
 
+export type TGetProjectRoleByIdDTO = {
+  permission: OrgServiceActor;
+  selector: {
+    id: string;
+  };
+};
+
 export type TGetRoleBySlugDTO = {
   permission: OrgServiceActor;
   scopeData: AccessScopeData;

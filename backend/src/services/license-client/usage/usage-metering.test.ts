@@ -43,7 +43,7 @@ describe("usageMeteringService.emit (org-scoped)", () => {
     const svc = usageMeteringServiceFactory({
       queueService: { queue },
       projectDAL: { findById: vi.fn() },
-      envConfig: { LICENSE_SERVER_V2_ENABLED: false }
+      envConfig: { LICENSE_SERVER_V2_MODE: "off" }
     });
 
     svc.emit(ORG_ID, MaxIdentities.key);
@@ -57,7 +57,7 @@ describe("usageMeteringService.emit (org-scoped)", () => {
     const svc = usageMeteringServiceFactory({
       queueService: { queue },
       projectDAL: { findById: vi.fn() },
-      envConfig: { LICENSE_SERVER_V2_ENABLED: true }
+      envConfig: { LICENSE_SERVER_V2_MODE: "read-compare" }
     });
 
     svc.emit(ORG_ID, MaxIdentities.key);
@@ -79,7 +79,7 @@ describe("usageMeteringService.emit (org-scoped)", () => {
     const svc = usageMeteringServiceFactory({
       queueService: { queue },
       projectDAL: { findById: vi.fn() },
-      envConfig: { LICENSE_SERVER_V2_ENABLED: true }
+      envConfig: { LICENSE_SERVER_V2_MODE: "read-compare" }
     });
 
     expect(() => svc.emit(ORG_ID, MaxIdentities.key)).not.toThrow();
@@ -94,7 +94,7 @@ describe("usageMeteringService.emitForProject (project-scoped)", () => {
     const svc = usageMeteringServiceFactory({
       queueService: { queue },
       projectDAL: { findById } as never,
-      envConfig: { LICENSE_SERVER_V2_ENABLED: true }
+      envConfig: { LICENSE_SERVER_V2_MODE: "read-compare" }
     });
 
     svc.emitForProject(PROJECT_ID, MaxPamResources.key);
@@ -112,7 +112,7 @@ describe("usageMeteringService.emitForProject (project-scoped)", () => {
     const svc = usageMeteringServiceFactory({
       queueService: { queue },
       projectDAL: { findById: vi.fn(async () => undefined) } as never,
-      envConfig: { LICENSE_SERVER_V2_ENABLED: true }
+      envConfig: { LICENSE_SERVER_V2_MODE: "read-compare" }
     });
 
     svc.emitForProject(PROJECT_ID, MaxPamResources.key);
@@ -127,7 +127,7 @@ describe("usageMeteringService.emitForProject (project-scoped)", () => {
     const svc = usageMeteringServiceFactory({
       queueService: { queue },
       projectDAL: { findById },
-      envConfig: { LICENSE_SERVER_V2_ENABLED: false }
+      envConfig: { LICENSE_SERVER_V2_MODE: "off" }
     });
 
     svc.emitForProject(PROJECT_ID, MaxPamResources.key);
@@ -140,16 +140,16 @@ describe("usageMeteringService.emitForProject (project-scoped)", () => {
 
 describe("buildUsageReporter", () => {
   test("is null when disabled", () => {
-    expect(buildUsageReporter({ LICENSE_SERVER_V2_ENABLED: false })).toBeNull();
+    expect(buildUsageReporter({ LICENSE_SERVER_V2_MODE: "off" })).toBeNull();
   });
 
   test("is null when enabled but unconfigured", () => {
-    expect(buildUsageReporter({ LICENSE_SERVER_V2_ENABLED: true })).toBeNull();
+    expect(buildUsageReporter({ LICENSE_SERVER_V2_MODE: "read-compare" })).toBeNull();
   });
 
   test("is a reporter when enabled and configured", () => {
     const reporter = buildUsageReporter({
-      LICENSE_SERVER_V2_ENABLED: true,
+      LICENSE_SERVER_V2_MODE: "read-compare",
       LICENSE_SERVER_V2_URL: "https://license.example.com",
       LICENSE_SERVER_V2_SERVICE_KEY: "svc-key"
     });

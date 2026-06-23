@@ -388,6 +388,33 @@ export const rateLimitExceededCounter = infisicalCoreMeter.createCounter("infisi
   unit: "{request}"
 });
 
+// -- License Server v2 dual-read (InfisicalCore meter) ----------------------------------------------
+export const licenseDualReadDiffCounter = infisicalCoreMeter.createCounter("infisical.license.dual_read.diff.count", {
+  description:
+    "v1 vs License Server v2 entitlement comparison results, by feature and kind (mismatch/v2_missing/v1_absent/indeterminate). Match results are not counted.",
+  unit: "{result}"
+});
+
+export const licenseDualReadErrorCounter = infisicalCoreMeter.createCounter("infisical.license.dual_read.error.count", {
+  description: "Failures resolving the v2 entitlement set during dual-read comparison, by error type.",
+  unit: "{error}"
+});
+
+export const recordLicenseDualReadDiff = (params: { feature: string; kind: string }) => {
+  if (!isTelemetryEnabled()) return;
+  licenseDualReadDiffCounter.add(1, {
+    "license.feature": params.feature,
+    "license.dual_read.kind": params.kind
+  });
+};
+
+export const recordLicenseDualReadError = (params: { error?: unknown }) => {
+  if (!isTelemetryEnabled()) return;
+  const attributes: Record<string, string> = {};
+  if (params.error !== undefined) attributes["error.type"] = classifyError(params.error);
+  licenseDualReadErrorCounter.add(1, attributes);
+};
+
 // -- Authentication latency (InfisicalCore meter) ---------------------------------------------------
 export const authAttemptDurationHistogram = infisicalCoreMeter.createHistogram("infisical.auth.attempt.duration", {
   description:

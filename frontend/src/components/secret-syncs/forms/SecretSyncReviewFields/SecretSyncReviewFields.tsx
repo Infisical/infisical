@@ -63,6 +63,10 @@ import { SupabaseSyncReviewFields } from "./SupabaseSyncReviewFields";
 import { TeamCitySyncReviewFields } from "./TeamCitySyncReviewFields";
 import { TerraformCloudSyncReviewFields } from "./TerraformCloudSyncReviewFields";
 import { TravisCISyncReviewFields } from "./TravisCISyncReviewFields";
+import {
+  TriggerDevSyncOptionsReviewFields,
+  TriggerDevSyncReviewFields
+} from "./TriggerDevSyncReviewFields";
 import { VercelSyncReviewFields } from "./VercelSyncReviewFields";
 import { WindmillSyncReviewFields } from "./WindmillSyncReviewFields";
 import { ZabbixSyncReviewFields } from "./ZabbixSyncReviewFields";
@@ -225,6 +229,10 @@ export const SecretSyncReviewFields = () => {
       break;
     case SecretSync.Snowflake:
       DestinationFieldsComponent = <SnowflakeSyncReviewFields />;
+      break;
+    case SecretSync.TriggerDev:
+      DestinationFieldsComponent = <TriggerDevSyncReviewFields />;
+      AdditionalSyncOptionsFieldsComponent = <TriggerDevSyncOptionsReviewFields />;
       break;
     default:
       throw new Error(`Unhandled Destination Review Fields: ${destination}`);
