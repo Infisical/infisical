@@ -36,7 +36,8 @@ export const hsmConnectorRoutingFactory = ({ gatewayV2Service, gatewayPoolServic
     if (connector.gatewayId) {
       if (triedGatewayIds.has(connector.gatewayId)) {
         throw new BadRequestError({
-          message: "Gateway is unreachable for HSM operations. Ensure the gateway is online and has HSM support enabled."
+          message:
+            "Gateway is unreachable for HSM operations. Ensure the gateway is online and has HSM support enabled."
         });
       }
       return connector.gatewayId;

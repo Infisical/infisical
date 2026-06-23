@@ -17,7 +17,6 @@ import { registerAuthRoutes } from "./auth-router";
 import { registerProjectBotRouter } from "./bot-router";
 import { registerCertManagerAccessRouter } from "./cert-manager-access-routers";
 import { registerCertManagerExportRouter } from "./cert-manager-export-router";
-import { registerHsmConnectorRouter } from "./hsm-connector-router";
 import { registerCertManagerInstanceRouter } from "./cert-manager-instance-router";
 import { registerCaRouter } from "./certificate-authority-router";
 import { CERTIFICATE_AUTHORITY_REGISTER_ROUTER_MAP } from "./certificate-authority-routers";
@@ -43,6 +42,7 @@ import { registerExternalGroupOrgRoleMappingRouter } from "./external-group-org-
 import { registerGitHubAppRouter } from "./github-app-router";
 import { registerGroupOrgMembershipRouter } from "./group-org-membership-router";
 import { registerGroupProjectRouter } from "./group-project-router";
+import { registerHsmConnectorRouter } from "./hsm-connector-router";
 import { registerIdentityAccessTokenRouter } from "./identity-access-token-router";
 import { registerIdentityAliCloudAuthRouter } from "./identity-alicloud-auth-router";
 import { registerIdentityAwsAuthRouter } from "./identity-aws-iam-auth-router";

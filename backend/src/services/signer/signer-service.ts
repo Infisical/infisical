@@ -1113,7 +1113,7 @@ export const signerServiceFactory = ({
               commonName: nextCommonName,
               certificateTtlDays: nextTtl ?? DEFAULT_CERTIFICATE_TTL_DAYS,
               hsmConnectorId: target.hsmConnectorId,
-              hsmKeyLabel: reissueCurrentCert.hsmKeyLabel as string,
+              hsmKeyLabel: reissueCurrentCert.hsmKeyLabel,
               expectedPublicKeySpkiDer: reissueCurrentCert.hsmPublicKeySpki ?? undefined,
               hsmKeyAlgorithm: target.hsmKeyAlgorithm
             }

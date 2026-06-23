@@ -174,11 +174,7 @@ export const signerIssuanceServiceFactory = ({
       const hsmCertKeyAlgorithm = hsmKeyAlgorithmToCertKeyAlgorithm(input.hsm.hsmKeyAlgorithm);
 
       const hsmJob = await signerIssuanceJobDAL.transaction(async (tx) => {
-        await signerIssuanceJobDAL.cancelOpenForSigner(
-          input.signerId,
-          "Superseded by a newer issuance request.",
-          tx
-        );
+        await signerIssuanceJobDAL.cancelOpenForSigner(input.signerId, "Superseded by a newer issuance request.", tx);
         return signerIssuanceJobDAL.create(
           {
             signerId: input.signerId,

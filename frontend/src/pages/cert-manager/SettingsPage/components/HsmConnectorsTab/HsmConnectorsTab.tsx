@@ -173,9 +173,7 @@ export const HsmConnectorsTab = () => {
           HSM Connectors
           <DocumentationLinkBadge href={PkiDocsUrls.settings.hsmConnectors} />
         </CardTitle>
-        <CardDescription>
-          Hardware security modules that hold your signing keys.
-        </CardDescription>
+        <CardDescription>Hardware security modules that hold your signing keys.</CardDescription>
         <CardAction>
           <ProjectPermissionCan
             I={ProjectPermissionHsmConnectorActions.Create}
