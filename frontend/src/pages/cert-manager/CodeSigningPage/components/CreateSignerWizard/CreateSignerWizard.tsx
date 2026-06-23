@@ -24,7 +24,6 @@ import { useListProjectIdentityMemberships } from "@app/hooks/api/projectIdentit
 import { ProjectType } from "@app/hooks/api/projects/types";
 import {
   CertKeySource,
-  HsmKeyAlgorithm,
   SignerKeyAlgorithm,
   SignerMemberRole,
   useCreateSigner
@@ -69,12 +68,9 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
   });
   const groupsQuery = useGetOrganizationGroups(orgId);
   const { subscription } = useSubscription();
-  const { data: hsmConnectors = [], isPending: isHsmConnectorsLoading } = useListHsmConnectors(
-    projectId,
-    {
-      enabled: Boolean(subscription?.hsm)
-    }
-  );
+  const { data: hsmConnectors = [], isPending: isHsmConnectorsLoading } = useListHsmConnectors({
+    enabled: Boolean(subscription?.hsm)
+  });
 
   const createSigner = useCreateSigner();
 
@@ -141,8 +137,7 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
       certificateRenewBeforeDays: state.certificateRenewBeforeDays,
       keyAlgorithm: state.keyAlgorithm,
       keySource: state.keySource,
-      hsmConnectorId: state.hsmConnectorId,
-      hsmKeyAlgorithm: state.hsmKeyAlgorithm
+      hsmConnectorId: state.hsmConnectorId
     }
   });
 
@@ -157,8 +152,7 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
       certificateRenewBeforeDays: null,
       keyAlgorithm: SignerKeyAlgorithm.RSA_2048,
       keySource: CertKeySource.Infisical,
-      hsmConnectorId: null,
-      hsmKeyAlgorithm: HsmKeyAlgorithm.RSA_2048
+      hsmConnectorId: null
     });
   };
 
@@ -191,8 +185,7 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
         state.keySource === CertKeySource.Hsm && state.hsmConnectorId
           ? {
               keySource: CertKeySource.Hsm,
-              hsmConnectorId: state.hsmConnectorId,
-              hsmKeyAlgorithm: state.hsmKeyAlgorithm
+              hsmConnectorId: state.hsmConnectorId
             }
           : undefined;
 
@@ -248,8 +241,7 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
         certificateRenewBeforeDays: values.certificateRenewBeforeDays,
         keyAlgorithm: values.keyAlgorithm,
         keySource: values.keySource,
-        hsmConnectorId: values.hsmConnectorId ?? null,
-        hsmKeyAlgorithm: values.hsmKeyAlgorithm
+        hsmConnectorId: values.hsmConnectorId ?? null
       }));
       setStep(2);
       return;

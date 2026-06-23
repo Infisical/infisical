@@ -6,7 +6,7 @@ import { THsmConnector, THsmConnectorLinkedCertificate } from "./types";
 
 export const hsmConnectorKeys = {
   all: ["hsm-connectors"] as const,
-  listByProject: (projectId: string) => [...hsmConnectorKeys.all, "list", projectId] as const,
+  list: () => [...hsmConnectorKeys.all, "list"] as const,
   byId: (id: string) => [...hsmConnectorKeys.all, "by-id", id] as const,
   linkedResourcesAll: (id: string) => [...hsmConnectorKeys.all, "linked-resources", id] as const,
   linkedResources: (id: string, pagination: { offset: number; limit: number }) =>
@@ -14,20 +14,17 @@ export const hsmConnectorKeys = {
 };
 
 export const useListHsmConnectors = (
-  projectId: string | undefined,
   options?: Omit<UseQueryOptions<THsmConnector[]>, "queryKey" | "queryFn">
 ) => {
   return useQuery({
     ...options,
-    queryKey: hsmConnectorKeys.listByProject(projectId ?? ""),
+    queryKey: hsmConnectorKeys.list(),
     queryFn: async () => {
       const { data } = await apiRequest.get<{ hsmConnectors: THsmConnector[] }>(
-        "/api/v1/hsm-connectors",
-        { params: { projectId } }
+        "/api/v1/cert-manager/hsm-connectors"
       );
       return data.hsmConnectors;
-    },
-    enabled: Boolean(projectId) && (options?.enabled ?? true)
+    }
   });
 };
 
@@ -40,7 +37,7 @@ export const useGetHsmConnectorById = (
     queryKey: hsmConnectorKeys.byId(connectorId ?? ""),
     queryFn: async () => {
       const { data } = await apiRequest.get<{ hsmConnector: THsmConnector }>(
-        `/api/v1/hsm-connectors/${connectorId}`
+        `/api/v1/cert-manager/hsm-connectors/${connectorId}`
       );
       return data.hsmConnector;
     },
@@ -65,7 +62,7 @@ export const useListHsmConnectorLinkedResources = (
       const { data } = await apiRequest.get<{
         certificates: THsmConnectorLinkedCertificate[];
         totalCount: number;
-      }>(`/api/v1/hsm-connectors/${connectorId}/linked-resources`, {
+      }>(`/api/v1/cert-manager/hsm-connectors/${connectorId}/linked-resources`, {
         params: { offset, limit }
       });
       return {

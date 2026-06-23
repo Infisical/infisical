@@ -14,7 +14,6 @@ export type THsmConnector = {
 };
 
 export type TCreateHsmConnectorPayload = {
-  projectId: string;
   name: string;
   description?: string;
   gatewayId?: string;

@@ -3,7 +3,7 @@ import { z } from "zod";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
 import type { THsmConnectorServiceFactoryDep } from "./hsm-connector-service";
-import type { THsmConnectorCredentials, THsmConnectorSanitized } from "./hsm-connector-types";
+import type { THsmConnectorCredentials } from "./hsm-connector-types";
 
 export const HSM_CREDENTIALS_LIMITS = {
   slotLabelMax: 128,
@@ -67,29 +67,3 @@ export const HsmConnectorSanitizedSchema = z.object({
   createdAt: z.date(),
   updatedAt: z.date()
 });
-
-export const sanitizeHsmConnector = (args: {
-  row: {
-    id: string;
-    name: string;
-    description?: string | null | undefined;
-    projectId: string;
-    gatewayId?: string | null | undefined;
-    gatewayPoolId?: string | null | undefined;
-    createdAt: Date;
-    updatedAt: Date;
-  };
-  credentials: THsmConnectorCredentials;
-}): THsmConnectorSanitized =>
-  HsmConnectorSanitizedSchema.parse({
-    id: args.row.id,
-    name: args.row.name,
-    description: args.row.description ?? null,
-    projectId: args.row.projectId,
-    gatewayId: args.row.gatewayId ?? null,
-    gatewayPoolId: args.row.gatewayPoolId ?? null,
-    slotLabel: args.credentials.slotLabel,
-    keyNamePrefix: args.credentials.keyNamePrefix ?? null,
-    createdAt: args.row.createdAt,
-    updatedAt: args.row.updatedAt
-  });

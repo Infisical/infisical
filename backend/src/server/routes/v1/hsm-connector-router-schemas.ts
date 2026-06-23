@@ -3,7 +3,7 @@ import { z } from "zod";
 import { slugSchema } from "@app/server/lib/schemas";
 import {
   HsmConnectorCredentialsSchema,
-  HsmConnectorSanitizedSchema as SharedHsmConnectorSanitizedSchema
+  HsmConnectorSanitizedSchema
 } from "@app/services/hsm-connector/hsm-connector-fns";
 
 const HSM_CONNECTOR_NAME_MAX = 32;
@@ -17,8 +17,6 @@ export const gatewayPickRefiner = (data: { gatewayId?: string | null; gatewayPoo
   const hasPool = isProvided(data.gatewayPoolId);
   return hasGatewayId !== hasPool;
 };
-
-export const HsmConnectorSanitizedSchema = SharedHsmConnectorSanitizedSchema;
 
 export const HsmConnectorTestResultSchema = z.object({
   ok: z.boolean(),
@@ -47,7 +45,6 @@ export const HsmConnectorTestResultSchema = z.object({
 
 export const CreateHsmConnectorBodySchema = z
   .object({
-    projectId: z.string().uuid(),
     name: slugSchema({ min: 1, max: HSM_CONNECTOR_NAME_MAX, field: "name" }),
     description: z.string().max(HSM_CONNECTOR_DESCRIPTION_MAX).optional(),
     gatewayId: z.string().uuid().optional(),
@@ -55,10 +52,6 @@ export const CreateHsmConnectorBodySchema = z
     credentials: HsmConnectorCredentialsSchema
   })
   .refine(gatewayPickRefiner, { message: GATEWAY_PICK_MESSAGE, path: ["gatewayId"] });
-
-export const ListHsmConnectorsQuerySchema = z.object({
-  projectId: z.string().uuid()
-});
 
 export const UpdateHsmConnectorBodySchema = z
   .object({

@@ -42,7 +42,7 @@ export const STEPS: WizardStep[] = [
     subtitle: "Choose the Gateway that connects Infisical to your HSM.",
     rightLabel: "CONNECTION",
     rightDescription:
-      "Select which Gateway will route signing requests to your HSM. Only Gateways with PKCS#11 support enabled appear in the list."
+      "Select which Gateway will route key operations to your HSM. Only Gateways with PKCS#11 support enabled appear in the list."
   },
   {
     name: "Credentials",
@@ -51,6 +51,6 @@ export const STEPS: WizardStep[] = [
     subtitle: "How Infisical signs in to your HSM.",
     rightLabel: "CREDENTIALS",
     rightDescription:
-      "The slot label is the PKCS#11 token label of the slot on the HSM where signing keys will live. The PIN authenticates Infisical to that slot. The key label prefix is prepended to every key Infisical creates so you can identify them in your HSM tooling."
+      "The slot label is the PKCS#11 token label of the slot Infisical will use on the HSM. The PIN authenticates Infisical to that slot. The key label prefix is prepended to every key Infisical creates so you can identify them in your HSM tooling."
   }
 ];

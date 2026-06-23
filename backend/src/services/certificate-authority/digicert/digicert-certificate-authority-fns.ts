@@ -359,7 +359,7 @@ export const DigiCertCertificateAuthorityFns = ({
     return cas.map(castDbEntryToDigiCertCertificateAuthority);
   };
 
-  const orderCertificateFromProfile = async ({
+  const orderCertificate = async ({
     caId,
     commonName,
     altNames = [],
@@ -725,7 +725,7 @@ export const DigiCertCertificateAuthorityFns = ({
     createCertificateAuthority,
     updateCertificateAuthority,
     listCertificateAuthorities,
-    orderCertificateFromProfile,
+    orderCertificate,
     fetchAndAttachIssuedCertificate,
     pollOrderForCertificate,
     revokeCertificate

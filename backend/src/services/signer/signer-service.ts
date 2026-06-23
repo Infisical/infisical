@@ -59,7 +59,6 @@ import { TSignerDALFactory } from "./signer-dal";
 import { CertKeySource, HsmKeyAlgorithm, SignerStatus, SigningOperationStatus } from "./signer-enums";
 import { formatSignerIssuanceErrorReason } from "./signer-issuance-errors";
 import {
-  hsmKeyAlgorithmToCertKeyAlgorithm,
   issueHsmBackedSignerCertificate,
   issueSignerCertificate,
   mapCertKeyAlgorithmToHsmKeyAlgorithm,
@@ -221,17 +220,14 @@ export const resolveReissueTarget = ({
 
   if (targetIsHsm) {
     const hsmConnectorId = dto.certificate?.hsmConnectorId ?? currentCert?.hsmConnectorId ?? null;
-    const hsmKeyAlgorithm =
-      dto.certificate?.hsmKeyAlgorithm ??
-      (currentCert?.keyAlgorithm ? mapCertKeyAlgorithmToHsmKeyAlgorithm(currentCert.keyAlgorithm) : undefined);
-    if (!hsmConnectorId || !hsmKeyAlgorithm) {
+    const keyAlgorithm =
+      dto.keyAlgorithm ?? (currentCert?.keyAlgorithm as CertKeyAlgorithm | undefined) ?? CertKeyAlgorithm.RSA_2048;
+    const hsmKeyAlgorithm = mapCertKeyAlgorithmToHsmKeyAlgorithm(keyAlgorithm);
+    if (!hsmConnectorId) {
       throw new BadRequestError({
-        message: "hsmConnectorId and hsmKeyAlgorithm are required to (re)issue with an HSM key source."
+        message: "hsmConnectorId is required to (re)issue with an HSM key source."
       });
     }
-    const keyAlgorithm = dto.certificate?.hsmKeyAlgorithm
-      ? hsmKeyAlgorithmToCertKeyAlgorithm(dto.certificate.hsmKeyAlgorithm)
-      : ((currentCert?.keyAlgorithm as CertKeyAlgorithm) ?? CertKeyAlgorithm.RSA_2048);
     return { isHsm: true, switchingKeySource, keyAlgorithm, hsmConnectorId, hsmKeyAlgorithm };
   }
 
@@ -369,9 +365,9 @@ export const signerServiceFactory = ({
     if (usingCa && resolvedCaId && !isExternalCa) {
       const certificateInput = dto.certificate;
       if (certificateInput?.keySource === CertKeySource.Hsm) {
-        if (!certificateInput.hsmConnectorId || !certificateInput.hsmKeyAlgorithm) {
+        if (!certificateInput.hsmConnectorId) {
           throw new BadRequestError({
-            message: "hsmConnectorId and hsmKeyAlgorithm are required when certificate.keySource = 'hsm'."
+            message: "hsmConnectorId is required when certificate.keySource = 'hsm'."
           });
         }
         await hsmConnectorService.assertAttachPermission(
@@ -400,7 +396,7 @@ export const signerServiceFactory = ({
             commonName: dto.commonName as string,
             certificateTtlDays: dto.certificateTtlDays ?? DEFAULT_CERTIFICATE_TTL_DAYS,
             hsmConnectorId: certificateInput.hsmConnectorId,
-            hsmKeyAlgorithm: certificateInput.hsmKeyAlgorithm
+            hsmKeyAlgorithm: mapCertKeyAlgorithmToHsmKeyAlgorithm(keyAlgorithm)
           }
         );
         issuedCertificateId = certificateId;
@@ -674,12 +670,10 @@ export const signerServiceFactory = ({
             certificateTtlDays: dto.certificateTtlDays ?? DEFAULT_CERTIFICATE_TTL_DAYS,
             keyAlgorithm,
             hsm:
-              certificateInput?.keySource === CertKeySource.Hsm &&
-              certificateInput.hsmConnectorId &&
-              certificateInput.hsmKeyAlgorithm
+              certificateInput?.keySource === CertKeySource.Hsm && certificateInput.hsmConnectorId
                 ? {
                     hsmConnectorId: certificateInput.hsmConnectorId,
-                    hsmKeyAlgorithm: certificateInput.hsmKeyAlgorithm,
+                    hsmKeyAlgorithm: mapCertKeyAlgorithmToHsmKeyAlgorithm(keyAlgorithm),
                     actor: {
                       type: dto.actor,
                       id: dto.actorId,

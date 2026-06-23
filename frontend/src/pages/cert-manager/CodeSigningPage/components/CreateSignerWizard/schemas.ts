@@ -1,6 +1,10 @@
 import { z } from "zod";
 
-import { CertKeySource, HsmKeyAlgorithm, SignerKeyAlgorithm } from "@app/hooks/api/signers";
+import {
+  CertKeySource,
+  HSM_SUPPORTED_KEY_ALGORITHMS,
+  SignerKeyAlgorithm
+} from "@app/hooks/api/signers";
 import { slugSchema } from "@app/lib/schemas";
 
 export const basicsSchema = z.object({
@@ -33,8 +37,7 @@ export const certificateSchema = z
       .default(null),
     keyAlgorithm: z.nativeEnum(SignerKeyAlgorithm).default(SignerKeyAlgorithm.RSA_2048),
     keySource: z.nativeEnum(CertKeySource).default(CertKeySource.Infisical),
-    hsmConnectorId: z.string().uuid().optional().nullable(),
-    hsmKeyAlgorithm: z.nativeEnum(HsmKeyAlgorithm).default(HsmKeyAlgorithm.RSA_2048)
+    hsmConnectorId: z.string().uuid().optional().nullable()
   })
   .refine(
     (data) =>
@@ -48,5 +51,15 @@ export const certificateSchema = z
   .refine((data) => data.keySource !== CertKeySource.Hsm || Boolean(data.hsmConnectorId), {
     message: "Pick an HSM Connector.",
     path: ["hsmConnectorId"]
-  });
+  })
+  .refine(
+    (data) =>
+      data.keySource !== CertKeySource.Hsm ||
+      HSM_SUPPORTED_KEY_ALGORITHMS.includes(data.keyAlgorithm),
+    {
+      message:
+        "This algorithm is not supported by HSM-backed keys. Pick RSA-2048, RSA-4096, ECDSA P-256, or ECDSA P-384.",
+      path: ["keyAlgorithm"]
+    }
+  );
 export type CertificateForm = z.infer<typeof certificateSchema>;

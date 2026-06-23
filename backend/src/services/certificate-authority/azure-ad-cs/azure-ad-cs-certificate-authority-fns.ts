@@ -1094,7 +1094,7 @@ export const AzureAdCsCertificateAuthorityFns = ({
     };
   };
 
-  const orderCertificateFromProfile = async ({
+  const orderCertificate = async ({
     caId,
     profileId,
     commonName,
@@ -1612,30 +1612,12 @@ export const AzureAdCsCertificateAuthorityFns = ({
     }
   };
 
-  const orderCertificateForSigner = (args: {
-    caId: string;
-    commonName: string;
-    altNames?: string[];
-    keyUsages?: CertKeyUsage[];
-    extendedKeyUsages?: CertExtendedKeyUsage[];
-    template?: string;
-    validity: { ttl: string };
-    notBefore?: Date;
-    notAfter?: Date;
-    signatureAlgorithm?: string;
-    keyAlgorithm?: CertKeyAlgorithm;
-    isRenewal?: boolean;
-    originalCertificateId?: string;
-    isCancelled?: () => Promise<boolean>;
-  }) => orderCertificateFromProfile(args);
-
   return {
     createCertificateAuthority,
     updateCertificateAuthority,
     listCertificateAuthorities,
     orderSubscriberCertificate,
-    orderCertificateFromProfile,
-    orderCertificateForSigner,
+    orderCertificate,
     getTemplates
   };
 };

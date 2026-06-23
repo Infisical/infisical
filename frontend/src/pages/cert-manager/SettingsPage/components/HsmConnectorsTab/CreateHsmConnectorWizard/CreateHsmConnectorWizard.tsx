@@ -33,12 +33,11 @@ import {
 import { INITIAL_WIZARD_STATE, STEPS, WizardState } from "./types";
 
 type Props = {
-  projectId: string;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
 };
 
-export const CreateHsmConnectorWizard = ({ projectId, isOpen, onOpenChange }: Props) => {
+export const CreateHsmConnectorWizard = ({ isOpen, onOpenChange }: Props) => {
   const [step, setStep] = useState(0);
   const [state, setState] = useState<WizardState>(INITIAL_WIZARD_STATE);
   const [submitting, setSubmitting] = useState(false);
@@ -96,7 +95,6 @@ export const CreateHsmConnectorWizard = ({ projectId, isOpen, onOpenChange }: Pr
     try {
       const [kind, id] = finalState.reachedFrom.split(":");
       await createMutation.mutateAsync({
-        projectId,
         name: finalState.name,
         description: finalState.description.trim() || undefined,
         gatewayId: kind === "gateway" ? id : undefined,
@@ -181,7 +179,8 @@ export const CreateHsmConnectorWizard = ({ projectId, isOpen, onOpenChange }: Pr
                   Add HSM Connector
                 </div>
                 <p className="text-sm leading-4 text-mineshaft-400">
-                  Register the hardware security module that holds your signing keys.
+                  Register a hardware security module so Infisical can route key operations through
+                  it.
                 </p>
               </div>
             </div>

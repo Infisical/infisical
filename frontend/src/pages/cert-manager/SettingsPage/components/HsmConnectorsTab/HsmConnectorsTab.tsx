@@ -85,7 +85,7 @@ export const HsmConnectorsTab = () => {
     });
   };
 
-  const { data: connectors = [], isPending } = useListHsmConnectors(projectId, {
+  const { data: connectors = [], isPending } = useListHsmConnectors({
     enabled: isLicensed
   });
   const testMutation = useTestHsmConnector();
@@ -111,8 +111,8 @@ export const HsmConnectorsTab = () => {
           <div className="mb-3 text-2xl">&#x1f6e1;&#xfe0f;</div>
           <h4 className="mb-2 text-lg font-medium text-mineshaft-100">Enterprise Feature</h4>
           <p className="mx-auto mb-4 max-w-md text-sm text-mineshaft-300">
-            HSM Connectors let you back signing keys with a Hardware Security Module. The keypair
-            stays inside your HSM and every signature is performed there.
+            HSM Connectors let Infisical use keys backed by a Hardware Security Module. Every
+            cryptographic operation is routed through your HSM.
           </p>
           <Button onClick={() => setUpgradeOpen(true)}>Upgrade to Enterprise</Button>
         </div>
@@ -173,7 +173,7 @@ export const HsmConnectorsTab = () => {
           HSM Connectors
           <DocumentationLinkBadge href={PkiDocsUrls.settings.hsmConnectors} />
         </CardTitle>
-        <CardDescription>Hardware security modules that hold your signing keys.</CardDescription>
+        <CardDescription>Connect hardware security modules to Infisical.</CardDescription>
         <CardAction>
           <ProjectPermissionCan
             I={ProjectPermissionHsmConnectorActions.Create}
@@ -308,13 +308,7 @@ export const HsmConnectorsTab = () => {
           </>
         )}
       </CardContent>
-      {projectId && (
-        <CreateHsmConnectorWizard
-          projectId={projectId}
-          isOpen={addOpen}
-          onOpenChange={setAddOpen}
-        />
-      )}
+      <CreateHsmConnectorWizard isOpen={addOpen} onOpenChange={setAddOpen} />
       <EditHsmConnectorSheet connector={editing} onClose={() => setEditing(null)} />
       <DeleteHsmConnectorDialog connector={deleting} onClose={() => setDeleting(null)} />
     </Card>

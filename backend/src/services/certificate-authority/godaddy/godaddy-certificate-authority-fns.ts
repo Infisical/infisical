@@ -356,7 +356,7 @@ export const GoDaddyCertificateAuthorityFns = ({
     return cas.map(castDbEntryToGoDaddyCertificateAuthority);
   };
 
-  const orderCertificateFromProfile = async ({
+  const orderCertificate = async ({
     caId,
     commonName,
     altNames = [],
@@ -652,7 +652,7 @@ export const GoDaddyCertificateAuthorityFns = ({
     createCertificateAuthority,
     updateCertificateAuthority,
     listCertificateAuthorities,
-    orderCertificateFromProfile,
+    orderCertificate,
     fetchAndAttachIssuedCertificate,
     revokeCertificate
   };

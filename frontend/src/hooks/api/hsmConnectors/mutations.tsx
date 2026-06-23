@@ -15,7 +15,7 @@ export const useCreateHsmConnector = () => {
   return useMutation({
     mutationFn: async (payload: TCreateHsmConnectorPayload) => {
       const { data } = await apiRequest.post<{ hsmConnector: THsmConnector }>(
-        "/api/v1/hsm-connectors",
+        "/api/v1/cert-manager/hsm-connectors",
         payload
       );
       return data.hsmConnector;
@@ -31,7 +31,7 @@ export const useUpdateHsmConnector = () => {
   return useMutation({
     mutationFn: async ({ connectorId, ...patch }: TUpdateHsmConnectorPayload) => {
       const { data } = await apiRequest.patch<{ hsmConnector: THsmConnector }>(
-        `/api/v1/hsm-connectors/${connectorId}`,
+        `/api/v1/cert-manager/hsm-connectors/${connectorId}`,
         patch
       );
       return data.hsmConnector;
@@ -51,7 +51,7 @@ export const useDeleteHsmConnector = () => {
   return useMutation({
     mutationFn: async ({ connectorId }: { connectorId: string }) => {
       const { data } = await apiRequest.delete<{ id: string }>(
-        `/api/v1/hsm-connectors/${connectorId}`
+        `/api/v1/cert-manager/hsm-connectors/${connectorId}`
       );
       return data;
     },
@@ -65,7 +65,7 @@ export const useTestHsmConnector = () => {
   return useMutation({
     mutationFn: async ({ connectorId }: { connectorId: string }) => {
       const { data } = await apiRequest.post<THsmConnectorTestResult>(
-        `/api/v1/hsm-connectors/${connectorId}/test`
+        `/api/v1/cert-manager/hsm-connectors/${connectorId}/test`
       );
       return data;
     }

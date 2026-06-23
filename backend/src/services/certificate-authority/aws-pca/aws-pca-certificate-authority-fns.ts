@@ -514,7 +514,7 @@ export const AwsPcaCertificateAuthorityFns = ({
     return cas.map(castDbEntryToAwsPcaCertificateAuthority);
   };
 
-  const orderCertificateFromProfile = async ({
+  const orderCertificate = async ({
     caId,
     profileId,
     commonName,
@@ -848,34 +848,11 @@ export const AwsPcaCertificateAuthorityFns = ({
     logger.info(revokeResult, "AWS PCA RevokeCertificate result");
   };
 
-  const orderCertificateForSigner = (args: {
-    caId: string;
-    commonName: string;
-    altNames?: Array<{ type: CertSubjectAlternativeNameType; value: string }>;
-    keyUsages?: CertKeyUsage[];
-    extendedKeyUsages?: CertExtendedKeyUsage[];
-    validity: { ttl: string };
-    notBefore?: Date;
-    notAfter?: Date;
-    signatureAlgorithm?: string;
-    keyAlgorithm?: CertKeyAlgorithm;
-    isRenewal?: boolean;
-    originalCertificateId?: string;
-    csr?: string;
-    organization?: string;
-    organizationalUnit?: string;
-    country?: string;
-    state?: string;
-    locality?: string;
-    isCancelled?: () => Promise<boolean>;
-  }) => orderCertificateFromProfile(args);
-
   return {
     createCertificateAuthority,
     updateCertificateAuthority,
     listCertificateAuthorities,
-    orderCertificateFromProfile,
-    orderCertificateForSigner,
+    orderCertificate,
     revokeCertificate
   };
 };

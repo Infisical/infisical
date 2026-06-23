@@ -955,7 +955,7 @@ describe("CertificateV3Service", () => {
     });
   });
 
-  describe("orderCertificateFromProfile", () => {
+  describe("orderCertificate", () => {
     const mockCertificateOrder = {
       altNames: [{ type: CertSubjectAlternativeNameType.DNS_NAME, value: "example.com" }],
       validity: { ttl: "30d" },
@@ -986,7 +986,7 @@ describe("CertificateV3Service", () => {
       vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(mockProfile);
 
       await expect(
-        service.orderCertificateFromProfile({
+        service.orderCertificate({
           profileId,
           certificateOrder: mockCertificateOrder,
           ...mockActor
@@ -994,7 +994,7 @@ describe("CertificateV3Service", () => {
       ).rejects.toThrow(ForbiddenRequestError);
 
       await expect(
-        service.orderCertificateFromProfile({
+        service.orderCertificate({
           profileId,
           certificateOrder: mockCertificateOrder,
           ...mockActor

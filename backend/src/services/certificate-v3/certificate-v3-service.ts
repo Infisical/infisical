@@ -1892,7 +1892,7 @@ export const certificateV3ServiceFactory = ({
     };
   };
 
-  const orderCertificateFromProfile = async ({
+  const orderCertificate = async ({
     profileId,
     certificateOrder,
     metadata,
@@ -3157,7 +3157,7 @@ export const certificateV3ServiceFactory = ({
   return {
     issueCertificateFromProfile,
     signCertificateFromProfile,
-    orderCertificateFromProfile,
+    orderCertificate,
     renewCertificate,
     updateRenewalConfig,
     disableRenewalConfig,

@@ -25,10 +25,10 @@ export const AccessStep = ({ form }: Props) => (
             Slot label <span className="text-danger">*</span>
           </FieldLabel>
           <FieldContent>
-            <Input {...field} placeholder="production-signing" isError={Boolean(error)} />
+            <Input {...field} placeholder="fortanix-prod" isError={Boolean(error)} />
             <FieldDescription>
-              The PKCS#11 token label of the slot on the HSM where signing keys will live. Ask your
-              HSM administrator if you are not sure.
+              The PKCS#11 token label of the slot Infisical will use on the HSM. Ask your HSM
+              administrator if you are not sure.
             </FieldDescription>
             <FieldError errors={[error]} />
           </FieldContent>

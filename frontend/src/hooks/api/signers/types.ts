@@ -24,12 +24,12 @@ export enum CertKeySource {
   Hsm = "hsm"
 }
 
-export enum HsmKeyAlgorithm {
-  RSA_2048 = "RSA_2048",
-  RSA_4096 = "RSA_4096",
-  ECC_P256 = "ECC_P256",
-  ECC_P384 = "ECC_P384"
-}
+export const HSM_SUPPORTED_KEY_ALGORITHMS: readonly SignerKeyAlgorithm[] = [
+  SignerKeyAlgorithm.RSA_2048,
+  SignerKeyAlgorithm.RSA_4096,
+  SignerKeyAlgorithm.ECDSA_P256,
+  SignerKeyAlgorithm.ECDSA_P384
+];
 
 export const signerKeyAlgorithmLabels: Record<SignerKeyAlgorithm, string> = {
   [SignerKeyAlgorithm.RSA_2048]: "RSA-2048",
@@ -98,6 +98,8 @@ export type TSigner = {
   certificateCommonName?: string | null;
   certificateSerialNumber?: string | null;
   certificateNotAfter?: string | null;
+  certificateKeySource?: CertKeySource | string | null;
+  certificateHsmConnectorId?: string | null;
   approvalPolicyName?: string | null;
   certificateFailureReason?: string | null;
 };
@@ -247,7 +249,6 @@ export type TCreateSignerApprovalPolicyInput = {
 export type TSignerCertificateInput = {
   keySource?: CertKeySource;
   hsmConnectorId?: string;
-  hsmKeyAlgorithm?: HsmKeyAlgorithm;
 };
 
 export type TCreateSignerDTO = {
@@ -286,7 +287,6 @@ export type TReissueSignerCertificateDTO = {
   certificate?: {
     keySource: CertKeySource;
     hsmConnectorId?: string;
-    hsmKeyAlgorithm?: HsmKeyAlgorithm;
   };
 };
 

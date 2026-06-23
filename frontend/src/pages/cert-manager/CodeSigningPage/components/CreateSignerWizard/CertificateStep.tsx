@@ -25,20 +25,13 @@ import {
 } from "@app/context/ProjectPermissionContext/types";
 import {
   CertKeySource,
-  HsmKeyAlgorithm,
+  HSM_SUPPORTED_KEY_ALGORITHMS,
   SignerKeyAlgorithm,
   signerKeyAlgorithmLabels
 } from "@app/hooks/api/signers";
 
 import { CertificateForm } from "./schemas";
 import { CaGroup, CaOption } from "./types";
-
-const HSM_KEY_ALGORITHM_LABELS: Record<HsmKeyAlgorithm, string> = {
-  [HsmKeyAlgorithm.RSA_2048]: "RSA 2048",
-  [HsmKeyAlgorithm.RSA_4096]: "RSA 4096",
-  [HsmKeyAlgorithm.ECC_P256]: "ECDSA P-256",
-  [HsmKeyAlgorithm.ECC_P384]: "ECDSA P-384"
-};
 
 export type HsmConnectorOption = { id: string; name: string; slotLabel: string };
 
@@ -178,11 +171,16 @@ export const CertificateStep = ({
         )}
       />
 
-      {!isHsm && (
-        <Controller
-          name="keyAlgorithm"
-          control={form.control}
-          render={({ field, fieldState: { error } }) => (
+      <Controller
+        name="keyAlgorithm"
+        control={form.control}
+        render={({ field, fieldState: { error } }) => {
+          const options = isHsm
+            ? Object.values(SignerKeyAlgorithm).filter((v) =>
+                HSM_SUPPORTED_KEY_ALGORITHMS.includes(v)
+              )
+            : Object.values(SignerKeyAlgorithm);
+          return (
             <Field>
               <FieldLabel>
                 Key algorithm <span className="text-danger">*</span>
@@ -193,7 +191,7 @@ export const CertificateStep = ({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent position="popper">
-                    {Object.values(SignerKeyAlgorithm).map((value) => (
+                    {options.map((value) => (
                       <SelectItem key={value} value={value}>
                         {signerKeyAlgorithmLabels[value]}
                       </SelectItem>
@@ -201,83 +199,52 @@ export const CertificateStep = ({
                   </SelectContent>
                 </Select>
                 <FieldDescription>
-                  Algorithm used to generate the signer&apos;s private key. RSA is widely
-                  compatible, ECDSA produces smaller signatures and is faster.
+                  Algorithm used to generate the signing key. RSA is widely compatible, ECDSA
+                  produces smaller signatures and is faster.
+                </FieldDescription>
+                <FieldError errors={[error]} />
+              </FieldContent>
+            </Field>
+          );
+        }}
+      />
+
+      {isHsm && (
+        <Controller
+          name="hsmConnectorId"
+          control={form.control}
+          render={({ field, fieldState: { error } }) => (
+            <Field>
+              <FieldLabel>
+                HSM Connector <span className="text-danger">*</span>
+              </FieldLabel>
+              <FieldContent>
+                <FilterableSelect<HsmConnectorOption>
+                  isLoading={isHsmConnectorsLoading}
+                  options={hsmConnectorOptions}
+                  value={hsmConnectorOptions.find((o) => o.id === field.value) ?? null}
+                  onChange={(selected) => {
+                    const opt = selected as HsmConnectorOption | null;
+                    field.onChange(opt?.id ?? null);
+                  }}
+                  getOptionLabel={(opt) => `${opt.name} (slot ${opt.slotLabel})`}
+                  getOptionValue={(opt) => opt.id}
+                  placeholder="Select an HSM Connector..."
+                  noOptionsMessage={() =>
+                    hsmConnectorOptions.length === 0
+                      ? "No HSM Connectors configured. Add one in Cert Manager Settings → HSM Connectors."
+                      : "No match."
+                  }
+                  isError={Boolean(error)}
+                />
+                <FieldDescription>
+                  The HSM on which Infisical will generate the signing key.
                 </FieldDescription>
                 <FieldError errors={[error]} />
               </FieldContent>
             </Field>
           )}
         />
-      )}
-
-      {isHsm && (
-        <>
-          <Controller
-            name="hsmConnectorId"
-            control={form.control}
-            render={({ field, fieldState: { error } }) => (
-              <Field>
-                <FieldLabel>
-                  HSM Connector <span className="text-danger">*</span>
-                </FieldLabel>
-                <FieldContent>
-                  <FilterableSelect<HsmConnectorOption>
-                    isLoading={isHsmConnectorsLoading}
-                    options={hsmConnectorOptions}
-                    value={hsmConnectorOptions.find((o) => o.id === field.value) ?? null}
-                    onChange={(selected) => {
-                      const opt = selected as HsmConnectorOption | null;
-                      field.onChange(opt?.id ?? null);
-                    }}
-                    getOptionLabel={(opt) => `${opt.name} (slot ${opt.slotLabel})`}
-                    getOptionValue={(opt) => opt.id}
-                    placeholder="Select an HSM Connector..."
-                    noOptionsMessage={() =>
-                      hsmConnectorOptions.length === 0
-                        ? "No HSM Connectors configured. Add one in Cert Manager Settings → HSM Connectors."
-                        : "No match."
-                    }
-                    isError={Boolean(error)}
-                  />
-                  <FieldDescription>
-                    The HSM on which Infisical will generate the signing key.
-                  </FieldDescription>
-                  <FieldError errors={[error]} />
-                </FieldContent>
-              </Field>
-            )}
-          />
-          <Controller
-            name="hsmKeyAlgorithm"
-            control={form.control}
-            render={({ field, fieldState: { error } }) => (
-              <Field>
-                <FieldLabel>
-                  Key algorithm <span className="text-danger">*</span>
-                </FieldLabel>
-                <FieldContent>
-                  <Select value={field.value} onValueChange={field.onChange}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent position="popper">
-                      {Object.values(HsmKeyAlgorithm).map((value) => (
-                        <SelectItem key={value} value={value}>
-                          {HSM_KEY_ALGORITHM_LABELS[value]}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FieldDescription>
-                    Algorithm the HSM will generate for this signer&apos;s keypair.
-                  </FieldDescription>
-                  <FieldError errors={[error]} />
-                </FieldContent>
-              </Field>
-            )}
-          />
-        </>
       )}
 
       <Controller

@@ -453,7 +453,7 @@ export const signerIssuanceServiceFactory = ({
             "HSM-backed signers are not supported with Azure AD CS yet. Use AWS Private CA, or switch the signer's key source to Infisical."
         });
       }
-      const azureResult = await azureAdCsFns.orderCertificateForSigner({
+      const azureResult = await azureAdCsFns.orderCertificate({
         caId: job.caId,
         commonName: job.commonName,
         altNames: [],
@@ -469,7 +469,7 @@ export const signerIssuanceServiceFactory = ({
       }
       certificateId = azureResult.certificateId;
     } else {
-      const awsResult = await awsPcaFns.orderCertificateForSigner({
+      const awsResult = await awsPcaFns.orderCertificate({
         caId: job.caId,
         commonName: job.commonName,
         altNames: [],

@@ -1,9 +1,4 @@
-import {
-  CertKeySource,
-  HsmKeyAlgorithm,
-  SignerKeyAlgorithm,
-  SignerMemberRole
-} from "@app/hooks/api/signers";
+import { CertKeySource, SignerKeyAlgorithm, SignerMemberRole } from "@app/hooks/api/signers";
 
 import { PkiDocsUrls } from "../../../pki-docs-urls";
 
@@ -48,7 +43,6 @@ export type WizardState = {
   keyAlgorithm: SignerKeyAlgorithm;
   keySource: CertKeySource;
   hsmConnectorId: string | null;
-  hsmKeyAlgorithm: HsmKeyAlgorithm;
   pendingMembers: PendingMember[];
   policySteps: PolicyStep[];
   maxSignings: number | null;
@@ -65,7 +59,6 @@ export const INITIAL_WIZARD_STATE: WizardState = {
   keyAlgorithm: SignerKeyAlgorithm.RSA_2048,
   keySource: CertKeySource.Infisical,
   hsmConnectorId: null,
-  hsmKeyAlgorithm: HsmKeyAlgorithm.RSA_2048,
   pendingMembers: [],
   policySteps: [],
   maxSignings: null,

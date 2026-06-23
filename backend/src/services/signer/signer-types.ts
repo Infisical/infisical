@@ -2,7 +2,7 @@ import { SigningAlgorithm } from "@app/lib/crypto/sign/types";
 import { TProjectPermission } from "@app/lib/types";
 
 import { CertKeyAlgorithm } from "../certificate/certificate-types";
-import { CertKeySource, HsmKeyAlgorithm, SignerStatus, SigningOperationStatus } from "./signer-enums";
+import { CertKeySource, SignerStatus, SigningOperationStatus } from "./signer-enums";
 
 type TActorPermission = Omit<TProjectPermission, "projectId">;
 
@@ -20,7 +20,6 @@ export type TCreateSignerApprovalPolicyInput = {
 export type TSignerCertificateInput = {
   keySource?: CertKeySource;
   hsmConnectorId?: string;
-  hsmKeyAlgorithm?: HsmKeyAlgorithm;
 };
 
 export type TCreateSignerDTO = {

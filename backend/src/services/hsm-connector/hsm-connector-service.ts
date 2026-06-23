@@ -21,7 +21,7 @@ import {
   decryptHsmConnectorCredentials,
   encryptHsmConnectorCredentials,
   HsmConnectorCredentialsSchema,
-  sanitizeHsmConnector
+  HsmConnectorSanitizedSchema
 } from "./hsm-connector-fns";
 import { hsmConnectorRoutingFactory } from "./hsm-connector-routing";
 import type {
@@ -167,7 +167,11 @@ export const hsmConnectorServiceFactory = ({
       throw err;
     }
 
-    return sanitizeHsmConnector({ row, credentials: parsedCreds.data });
+    return HsmConnectorSanitizedSchema.parse({
+      ...row,
+      slotLabel: parsedCreds.data.slotLabel,
+      keyNamePrefix: parsedCreds.data.keyNamePrefix ?? null
+    });
   };
 
   const listHsmConnectors = async (
@@ -184,7 +188,11 @@ export const hsmConnectorServiceFactory = ({
           encryptedCredentials: row.encryptedCredentials,
           kmsService
         });
-        return sanitizeHsmConnector({ row, credentials });
+        return HsmConnectorSanitizedSchema.parse({
+          ...row,
+          slotLabel: credentials.slotLabel,
+          keyNamePrefix: credentials.keyNamePrefix ?? null
+        });
       })
     );
   };
@@ -203,7 +211,11 @@ export const hsmConnectorServiceFactory = ({
       encryptedCredentials: row.encryptedCredentials,
       kmsService
     });
-    return sanitizeHsmConnector({ row, credentials });
+    return HsmConnectorSanitizedSchema.parse({
+      ...row,
+      slotLabel: credentials.slotLabel,
+      keyNamePrefix: credentials.keyNamePrefix ?? null
+    });
   };
 
   const updateHsmConnector = async (
@@ -285,7 +297,11 @@ export const hsmConnectorServiceFactory = ({
 
     const updated = await hsmConnectorDAL.updateById(row.id, update);
 
-    return sanitizeHsmConnector({ row: updated, credentials: parsedCreds.data });
+    return HsmConnectorSanitizedSchema.parse({
+      ...updated,
+      slotLabel: parsedCreds.data.slotLabel,
+      keyNamePrefix: parsedCreds.data.keyNamePrefix ?? null
+    });
   };
 
   const deleteHsmConnector = async (dto: TDeleteHsmConnectorDTO, actor: THsmConnectorServiceActor) => {
