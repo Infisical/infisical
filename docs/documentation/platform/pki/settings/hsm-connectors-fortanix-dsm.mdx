@@ -4,49 +4,75 @@ sidebarTitle: "Fortanix DSM"
 description: "Connect Infisical to Fortanix Data Security Manager via an HSM Connector."
 ---
 
-This page covers the end-to-end setup for connecting Fortanix Data Security Manager (DSM) to Infisical through an HSM Connector. Read [HSM Connectors](/documentation/platform/pki/settings/hsm-connectors) first for the concept.
+Infisical connects to Fortanix Data Security Manager (DSM) through an [HSM Connector](/documentation/platform/pki/settings/hsm-connectors). Once connected, Infisical features that support HSM-backed keys can generate and use keys that stay in your Fortanix DSM. This guide covers the full setup: installing the Fortanix PKCS#11 driver on a [Gateway](/documentation/platform/gateways/overview) inside your network, pointing it at your DSM, and creating the Connector in Infisical.
 
 ## Prerequisites
 
-- A Fortanix DSM account with at least one group and an application configured for PKCS#11 access. In **Apps > _your app_ > API Keys**, generate an API key. You will need both the **API key** itself and the **slot label** (visible under **Groups > _your group_**) below.
+- A Fortanix DSM account with a group and an application configured for PKCS#11 access.
 - A host inside your network that can reach your DSM endpoint over HTTPS, where you can install the Fortanix PKCS#11 client and run an [Infisical Gateway](/documentation/platform/gateways/overview).
 - Permission to create HSM Connectors in Infisical (`HSM Connectors > Create`).
 
-## How the Fortanix credentials map to Infisical
+## How it works
 
-The Fortanix API key plays two roles, so you plug it in twice:
+Infisical reaches your DSM through the HSM Connector. Each operation goes from Infisical to the Connector, which routes it to a Gateway inside your network. The Gateway loads the Fortanix PKCS#11 driver, runs the operation against your DSM, and returns the result. DSM is reached only through the Connector and its Gateway, never from Infisical directly.
 
-1. **Fortanix client config on the Gateway host** (`/etc/fortanix/pkcs11/pkcs11.conf`, set up in Step 1). The PKCS#11 driver reads this file at load time and uses the API key to authenticate to your DSM endpoint.
-2. **Connector PIN in Infisical** (set up in Step 3). Fortanix surfaces the same API key as the PKCS#11 user PIN, so paste it into the Connector's **PIN** field.
+```mermaid
+flowchart LR
+    Infisical["Infisical"]
+    Connector["HSM Connector"]
+    subgraph Gateway["Gateway host (your network)"]
+        Driver["Fortanix PKCS#11 driver"]
+        Conf["pkcs11.conf<br/>api_endpoint"]
+        Conf -- "points driver at DSM" --> Driver
+    end
+    DSM["Fortanix DSM"]
+    Infisical --> Connector
+    Connector -- "API key (sent as the PIN)" --> Driver
+    Driver -- "connects and authenticates" --> DSM
+```
 
-The **slot label** is your Fortanix group name, visible under **Groups** in the DSM dashboard or via `pkcs11-tool --list-slots` once the driver is loaded.
+Two pieces of configuration are involved, and they are separate:
+
+- **The driver's config file (`pkcs11.conf`) on the Gateway host** tells the Fortanix driver which DSM endpoint to connect to. This is the standard Fortanix client configuration that any PKCS#11 application uses.
+- **The Connector's PIN in Infisical** is your Fortanix API key. The Gateway passes it to DSM as the PKCS#11 login credential.
+
+Your API key is a credential, so it goes only in Infisical as the PIN. It does not belong in `pkcs11.conf`.
+
+## Set up the connection
 
 <Steps>
-  <Step title="Install the Fortanix PKCS#11 driver on the Gateway host">
-    Download the Fortanix PKCS#11 client from the Fortanix DSM dashboard (**Settings > Client configurations**) for the OS that will run the Gateway. Install it and confirm the driver file path is readable by the Gateway user:
+  <Step title="Get your Fortanix application API key">
+    In the Fortanix DSM dashboard, go to **Apps**, open the application you use for PKCS#11 access, and find the **API Key** section. Click **View API Key Details** to copy the key, or **Regenerate** to create a new one.
+
+    The application can only use keys in the groups it belongs to (shown in the **Groups** section of the app), so make sure the keys you want Infisical to use live in a group this app can access.
+
+    You will enter this API key in Infisical as the Connector's PIN in the final step.
+  </Step>
+
+  <Step title="Install the driver and point it at your DSM">
+    Install the Fortanix PKCS#11 library on the machine that will run the Gateway. Fortanix publishes it on its [PKCS#11 library page](https://support.fortanix.com/docs/fortanix-dsm-clients-pkcs11-library) as a `.deb` package, an `.rpm` package, or a standalone `.so` for Linux, and as an MSI installer for Windows. A `.deb` apt repository is also available (`deb https://download.fortanix.com/linux/apt focal main`). On Linux the driver installs to `/opt/fortanix/pkcs11/fortanix_pkcs11.so`. On Windows the default is `C:\Program Files\Fortanix\KmsClient\FortanixKmsPkcs11.dll`.
+
+    Confirm the driver file is readable by the Gateway user:
 
     ```bash
     ls -l /opt/fortanix/pkcs11/fortanix_pkcs11.so
     ```
 
-    The default install path on Linux is `/opt/fortanix/pkcs11/fortanix_pkcs11.so`. If you put it somewhere else, use that path everywhere in the steps below.
-
-    Create the Fortanix client configuration file at `/etc/fortanix/pkcs11/pkcs11.conf`. Minimum keys are the DSM endpoint and your application's API key, for example:
+    Create the Fortanix client configuration file at `/etc/fortanix/pkcs11.conf` with the DSM endpoint for your region:
 
     ```toml
     api_endpoint = "https://amer.smartkey.io"
-    api_key = "<your-fortanix-app-api-key>"
     ```
 
-    The Fortanix dashboard generates the exact file content for you (the "Client configurations" page). This file is what the **driver** uses to talk to DSM. You will paste the same API key into Infisical later as the Connector's PIN.
+    This is the only setting the driver needs here. Infisical supplies the API key as the PIN in the final step.
 
-    Verify the driver loads and surfaces your slot:
+    Then list the driver's slots to find the **slot label** you will need for the Connector:
 
     ```bash
-    pkcs11-tool --module /opt/fortanix/pkcs11/fortanix_pkcs11.so --list-slots
+    pkcs11-tool --module /opt/fortanix/pkcs11/fortanix_pkcs11.so --list-token-slots
     ```
 
-    You should see one slot per Fortanix DSM group your application is a member of, each with a slot label that matches the group name. Note the label. You will plug it into the Connector in the final step.
+    Copy the `token label` value from the output.
   </Step>
 
   <Step title="Start the Gateway with the driver attached">
@@ -74,7 +100,7 @@ The **slot label** is your Fortanix group name, visible under **Groups** in the 
       </Tab>
     </Tabs>
 
-    Check the Gateway logs for a confirmation that the PKCS#11 module loaded.
+    The Gateway logs a line confirming the PKCS#11 module loaded.
   </Step>
 
   <Step title="Create the HSM Connector in Infisical">
@@ -84,28 +110,35 @@ The **slot label** is your Fortanix group name, visible under **Groups** in the 
     |-------|-------|
     | **Name** | Slug-friendly identifier, e.g. `fortanix-prod`. |
     | **Gateway** | The Gateway you started above (or a Pool that contains it). |
-    | **Slot label** | The Fortanix group name. Same value `pkcs11-tool --list-slots` shows under "label". |
-    | **PIN** | The Fortanix API key you put in `pkcs11.conf` above. Fortanix uses it as the PKCS#11 user PIN. |
-    | **Key label prefix** | Optional. Useful if your DSM hosts keys for multiple environments. |
-
-    On submit Infisical runs a Verify round-trip through the Gateway. A wrong PIN, missing slot label, or unreachable Gateway is caught here and the Connector is not persisted.
+    | **Slot label** | The `token label` you copied in Step 2 (`Fortanix Token` on Fortanix DSM). |
+    | **PIN** | Your Fortanix application API key from Step 1. |
+    | **Key label prefix** | Optional prefix added to every key label Infisical creates in this slot. |
   </Step>
 </Steps>
 
 ## Troubleshooting
 
 <AccordionGroup>
-  <Accordion title="Verify says the slot can't be found">
-    Confirm the slot label matches what `pkcs11-tool --list-slots` reports. Fortanix slot labels are case-sensitive.
+  <Accordion title="The slot can't be found">
+    The slot label must match the `token label` the driver reports, exactly and case-sensitive. List it on the Gateway host:
+
+    ```bash
+    pkcs11-tool --module /opt/fortanix/pkcs11/fortanix_pkcs11.so --list-token-slots
+    ```
+
+    On Fortanix DSM the value is `Fortanix Token`.
   </Accordion>
-  <Accordion title="Verify says login to the HSM failed">
-    Re-check the PIN. It must be the same Fortanix API key you put in `pkcs11.conf` (not the DSM account password). If you rotated the API key in the Fortanix dashboard, update both `pkcs11.conf` on the Gateway host and the Connector's PIN in Infisical.
+  <Accordion title="Login to the HSM failed">
+    The PIN must be your Fortanix application API key, not the DSM account password. If you regenerated the API key in the Fortanix dashboard, update the Connector's PIN in Infisical to match.
   </Accordion>
-  <Accordion title="Verify says the Gateway is unreachable">
-    The Gateway must be running with HSM support enabled. Check the Gateway log for the PKCS#11 module load line.
+  <Accordion title="The Gateway can't reach DSM">
+    Check `api_endpoint` in `/etc/fortanix/pkcs11.conf`. It must point to your DSM region and be reachable over HTTPS from the Gateway host.
+  </Accordion>
+  <Accordion title="The Gateway is unreachable for HSM operations">
+    The Gateway must run with `--pkcs11-module` so the driver loads. Check the Gateway log for the PKCS#11 module load line.
   </Accordion>
   <Accordion title="Operations through the HSM feel slow">
-    If the Gateway host can't reach DSM over HTTPS with low latency, every sign call pays the round-trip. Run the Gateway in the same network as DSM whenever possible.
+    Every operation makes a round-trip to DSM. Run the Gateway in the same network as DSM to keep latency low.
   </Accordion>
 </AccordionGroup>
 

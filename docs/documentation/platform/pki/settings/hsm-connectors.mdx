@@ -132,7 +132,7 @@ In **Certificate Manager > Settings > HSM Connectors**, click **Add HSM Connecto
 
     | Field | Description |
     |-------|-------------|
-    | **Slot label** | The PKCS#11 token label of the slot to use. For example, `Fortanix Token`. Find it with `pkcs11-tool --module <driver> --list-slots`. |
+    | **Slot label** | The PKCS#11 token label of the slot to use. |
     | **PIN** | The PKCS#11 user PIN for that slot. Stored encrypted with your KMS key, sent to the Gateway over the proxied TLS channel on every request. |
     | **Key label prefix** | Optional prefix prepended to every key label Infisical creates in this slot. Example: `infisical-` produces labels like `infisical-{id}`. Useful when the HSM hosts keys for multiple applications. |
 
