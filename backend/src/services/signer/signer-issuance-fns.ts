@@ -332,7 +332,7 @@ export const renewHsmBackedSignerCertificate = async (
 ): Promise<{ certificateId: string; hsmKeyLabel: string }> => {
   const ca = await deps.certificateAuthorityDAL.findByIdWithAssociatedCa(input.caId);
   if (!ca || ca.projectId !== input.projectId) {
-    throw new BadRequestError({ message: `Certificate authority '${input.caId}' is not in this project.` });
+    throw new BadRequestError({ message: `Certificate authority '${input.caId}' was not found.` });
   }
   if (ca.status !== CaStatus.ACTIVE) {
     throw new BadRequestError({ message: "The selected certificate authority is not active." });
@@ -353,7 +353,7 @@ export const renewHsmBackedSignerCertificate = async (
     if (stored.length !== publicKeySpkiDer.length || !stored.equals(publicKeySpkiDer)) {
       throw new BadRequestError({
         message:
-          "HSM returned a different public key than the one recorded at issuance. Renewal aborted; investigate the HSM and the Gateway."
+          "HSM returned a different public key for the recorded key label. This typically means the key was deleted and recreated under the same label on the HSM, or the HSM Connector now routes to a different HSM. Renewal aborted: verify the key label on the HSM and the Connector's routing."
       });
     }
   }

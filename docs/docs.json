@@ -897,7 +897,13 @@
                       "documentation/platform/pki/settings/policies",
                       "documentation/platform/pki/settings/profiles",
                       "documentation/platform/pki/settings/certificate-cleanup",
-                      "documentation/platform/pki/settings/hsm-connectors"
+                      {
+                        "group": "HSM",
+                        "pages": [
+                          "documentation/platform/pki/settings/hsm-connectors",
+                          "documentation/platform/pki/settings/hsm-connectors-fortanix-dsm"
+                        ]
+                      }
                     ]
                   }
                 ]

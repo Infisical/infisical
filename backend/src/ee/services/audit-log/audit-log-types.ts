@@ -4978,6 +4978,10 @@ interface ReissuePkiSignerCertificateEvent {
     name: string;
     caId: string;
     commonName?: string;
+    keyAlgorithm?: string;
+    keySource?: string;
+    hsmConnectorId?: string;
+    hsmKeyAlgorithm?: string;
   };
 }
 

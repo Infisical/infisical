@@ -100,7 +100,7 @@ export const STEPS: WizardStep[] = [
     subtitle: "Pick the Certificate Authority and the name on the certificate.",
     rightLabel: "CERTIFICATE",
     rightDescription:
-      "Tells Infisical which CA issues the signing certificate, the name shown on it, and how long it stays valid. The Common Name is fixed once issued. Pick the key source here. HSM-backed adds two extra fields inline (connector and HSM key algorithm).",
+      "Tells Infisical which CA issues the signing certificate, the name shown on it, and how long it stays valid. The Common Name is fixed once issued. Pick the key source: Infisical or HSM (the keypair stays inside your own HSM).",
     docsUrl: PkiDocsUrls.codeSigning.signers.certificate
   },
   {

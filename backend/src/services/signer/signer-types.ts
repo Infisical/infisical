@@ -96,6 +96,8 @@ export type TReissueCertificateDTO = {
   caId: string;
   commonName?: string;
   certificateTtlDays?: number;
+  keyAlgorithm?: CertKeyAlgorithm;
+  certificate?: TSignerCertificateInput;
 } & TActorPermission;
 
 export type TExportCertificateDTO = {

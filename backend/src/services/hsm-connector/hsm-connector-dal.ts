@@ -1,3 +1,5 @@
+import { Knex } from "knex";
+
 import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
@@ -8,9 +10,9 @@ export type THsmConnectorDALFactory = ReturnType<typeof hsmConnectorDALFactory>;
 export const hsmConnectorDALFactory = (db: TDbClient) => {
   const hsmConnectorOrm = ormify(db, TableName.HsmConnector);
 
-  const countReferencingCertificates = async (connectorId: string): Promise<number> => {
+  const countReferencingCertificates = async (connectorId: string, tx?: Knex): Promise<number> => {
     try {
-      const result = await db(TableName.Certificate)
+      const result = await (tx || db)(TableName.Certificate)
         .where("hsmConnectorId", connectorId)
         .count<{ count: string }[]>("id as count")
         .first();
@@ -32,7 +34,7 @@ export const hsmConnectorDALFactory = (db: TDbClient) => {
     }
   };
 
-  const listLinkedCertificates = async (connectorId: string, { offset, limit }: { offset: number; limit: number }) => {
+  const listLinkedResources = async (connectorId: string, { offset, limit }: { offset: number; limit: number }) => {
     try {
       const baseQuery = db.replicaNode()(TableName.Certificate).where("hsmConnectorId", connectorId);
 
@@ -47,7 +49,7 @@ export const hsmConnectorDALFactory = (db: TDbClient) => {
       ]);
 
       return {
-        rows: rows.map((r) => ({
+        certificates: rows.map((r) => ({
           id: r.id,
           commonName: r.commonName,
           status: r.status,
@@ -58,7 +60,7 @@ export const hsmConnectorDALFactory = (db: TDbClient) => {
         totalCount: Number(totalCountResult?.count ?? 0)
       };
     } catch (error) {
-      throw new DatabaseError({ error, name: "HsmConnectorDAL.listLinkedCertificates" });
+      throw new DatabaseError({ error, name: "HsmConnectorDAL.listLinkedResources" });
     }
   };
 
@@ -66,6 +68,6 @@ export const hsmConnectorDALFactory = (db: TDbClient) => {
     ...hsmConnectorOrm,
     countReferencingCertificates,
     findByProjectId,
-    listLinkedCertificates
+    listLinkedResources
   };
 };

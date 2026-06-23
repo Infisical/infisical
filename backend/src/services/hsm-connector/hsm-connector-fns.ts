@@ -55,6 +55,19 @@ export const decryptHsmConnectorCredentials = async ({
   return HsmConnectorCredentialsSchema.parse(JSON.parse(plainText.toString()));
 };
 
+export const HsmConnectorSanitizedSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string(),
+  description: z.string().nullable(),
+  projectId: z.string(),
+  gatewayId: z.string().uuid().nullable(),
+  gatewayPoolId: z.string().uuid().nullable(),
+  slotLabel: z.string(),
+  keyNamePrefix: z.string().nullable(),
+  createdAt: z.date(),
+  updatedAt: z.date()
+});
+
 export const sanitizeHsmConnector = (args: {
   row: {
     id: string;
@@ -67,15 +80,16 @@ export const sanitizeHsmConnector = (args: {
     updatedAt: Date;
   };
   credentials: THsmConnectorCredentials;
-}): THsmConnectorSanitized => ({
-  id: args.row.id,
-  name: args.row.name,
-  description: args.row.description ?? null,
-  projectId: args.row.projectId,
-  gatewayId: args.row.gatewayId ?? null,
-  gatewayPoolId: args.row.gatewayPoolId ?? null,
-  slotLabel: args.credentials.slotLabel,
-  keyNamePrefix: args.credentials.keyNamePrefix ?? null,
-  createdAt: args.row.createdAt,
-  updatedAt: args.row.updatedAt
-});
+}): THsmConnectorSanitized =>
+  HsmConnectorSanitizedSchema.parse({
+    id: args.row.id,
+    name: args.row.name,
+    description: args.row.description ?? null,
+    projectId: args.row.projectId,
+    gatewayId: args.row.gatewayId ?? null,
+    gatewayPoolId: args.row.gatewayPoolId ?? null,
+    slotLabel: args.credentials.slotLabel,
+    keyNamePrefix: args.credentials.keyNamePrefix ?? null,
+    createdAt: args.row.createdAt,
+    updatedAt: args.row.updatedAt
+  });

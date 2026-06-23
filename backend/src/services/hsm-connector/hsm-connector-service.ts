@@ -31,7 +31,6 @@ import type {
   THsmConnectorCredentials,
   THsmConnectorSanitized,
   THsmConnectorServiceActor,
-  THsmConnectorTestResult,
   TListHsmConnectorsDTO,
   TTestHsmConnectorDTO,
   TUpdateHsmConnectorDTO
@@ -83,9 +82,9 @@ export const hsmConnectorServiceFactory = ({
 
   const assertLicense = async (orgId: string) => {
     const plan = await licenseService.getPlan(orgId);
-    if (!plan.pkiHsm) {
+    if (!plan.hsm) {
       throw new BadRequestError({
-        message: "Your plan does not include HSM-backed code signing. Please upgrade to use HSM Connectors."
+        message: "Your plan does not include HSM support. Please upgrade to use HSM Connectors."
       });
     }
   };
@@ -102,7 +101,7 @@ export const hsmConnectorServiceFactory = ({
       projectId,
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      actionProjectType: ActionProjectType.Any
     });
     ForbiddenError.from(permission).throwUnlessCan(action, ProjectPermissionSub.HsmConnectors);
   };
@@ -162,7 +161,7 @@ export const hsmConnectorServiceFactory = ({
       const cause = (err as { error?: { code?: string } })?.error;
       if (cause?.code === "23505") {
         throw new BadRequestError({
-          message: `An HSM Connector named "${dto.name}" already exists in this project.`
+          message: `An HSM Connector named "${dto.name}" already exists.`
         });
       }
       throw err;
@@ -289,27 +288,25 @@ export const hsmConnectorServiceFactory = ({
     return sanitizeHsmConnector({ row: updated, credentials: parsedCreds.data });
   };
 
-  const deleteHsmConnector = async (
-    dto: TDeleteHsmConnectorDTO,
-    actor: THsmConnectorServiceActor
-  ): Promise<{ id: string }> => {
+  const deleteHsmConnector = async (dto: TDeleteHsmConnectorDTO, actor: THsmConnectorServiceActor) => {
     const row = await hsmConnectorDAL.findById(dto.connectorId);
     if (!row) throw new NotFoundError({ message: `HSM Connector ${dto.connectorId} not found.` });
 
     await assertProjectPermission(actor, row.projectId, ProjectPermissionHsmConnectorActions.Delete);
 
-    const refCount = await hsmConnectorDAL.countReferencingCertificates(row.id);
-    if (refCount > 0) {
-      throw new BadRequestError({
-        message: `HSM Connector is in use by ${refCount} certificate(s). Open the connector to see the linked certificates panel and re-issue or retire them first.`
-      });
-    }
-
-    await hsmConnectorDAL.deleteById(row.id);
-    return { id: row.id };
+    await hsmConnectorDAL.transaction(async (tx) => {
+      const refCount = await hsmConnectorDAL.countReferencingCertificates(row.id, tx);
+      if (refCount > 0) {
+        throw new BadRequestError({
+          message: `HSM Connector is in use by ${refCount} certificate(s). Open the connector to see the linked certificates panel and re-issue or retire them first.`
+        });
+      }
+      await hsmConnectorDAL.deleteById(row.id, tx);
+    });
+    return { id: row.id, name: row.name, projectId: row.projectId };
   };
 
-  const listLinkedCertificates = async (
+  const listLinkedResources = async (
     dto: { connectorId: string; offset: number; limit: number },
     actor: THsmConnectorServiceActor
   ) => {
@@ -323,24 +320,20 @@ export const hsmConnectorServiceFactory = ({
       projectId: row.projectId,
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      actionProjectType: ActionProjectType.Any
     });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionCertificateActions.Read,
       ProjectPermissionSub.Certificates
     );
 
-    const { rows, totalCount } = await hsmConnectorDAL.listLinkedCertificates(row.id, {
+    return hsmConnectorDAL.listLinkedResources(row.id, {
       offset: dto.offset,
       limit: dto.limit
     });
-    return { linkedCertificates: rows, totalCount };
   };
 
-  const testHsmConnector = async (
-    dto: TTestHsmConnectorDTO,
-    actor: THsmConnectorServiceActor
-  ): Promise<THsmConnectorTestResult> => {
+  const testHsmConnector = async (dto: TTestHsmConnectorDTO, actor: THsmConnectorServiceActor) => {
     const row = await hsmConnectorDAL.findById(dto.connectorId);
     if (!row) throw new NotFoundError({ message: `HSM Connector ${dto.connectorId} not found.` });
 
@@ -352,11 +345,12 @@ export const hsmConnectorServiceFactory = ({
       kmsService
     });
 
-    return routing.runTestRoundTrip({
+    const result = await routing.runTestRoundTrip({
       gatewayId: row.gatewayId ?? null,
       gatewayPoolId: row.gatewayPoolId ?? null,
       credentials
     });
+    return { projectId: row.projectId, name: row.name, result };
   };
 
   const $loadConnector = async (connectorId: string, expectedProjectId: string) => {
@@ -448,7 +442,7 @@ export const hsmConnectorServiceFactory = ({
     updateHsmConnector,
     deleteHsmConnector,
     testHsmConnector,
-    listLinkedCertificates,
+    listLinkedResources,
     assertAttachPermission,
     generateKeyPair,
     sign,

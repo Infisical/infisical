@@ -3,8 +3,8 @@ import { Knex } from "knex";
 import { TableName } from "@app/db/schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "@app/db/utils";
 
-const HSM_CONNECTORS_GATEWAY_XOR_CHECK = "hsm_connectors_gateway_xor_chk";
-const CERTS_KEY_SOURCE_CHECK = "certificates_key_source_chk";
+const HSM_CONNECTORS_GATEWAY_XOR_CHK = "hsm_connectors_gateway_xor_chk";
+const CERTS_KEY_SOURCE_CHK = "certificates_key_source_chk";
 const CERTS_HSM_CONNECTOR_FK = "certificates_hsmconnectorid_foreign";
 const CERTS_HSM_CONNECTOR_IDX = "certificates_hsmconnectorid_idx";
 const GATEWAYS_CAPABILITIES_GIN_IDX = "gateways_v2_capabilities_gin_idx";
@@ -57,7 +57,7 @@ export async function up(knex: Knex): Promise<void> {
         ("gatewayId" IS NULL AND "gatewayPoolId" IS NOT NULL)
       )
     `,
-      [TableName.HsmConnector, HSM_CONNECTORS_GATEWAY_XOR_CHECK]
+      [TableName.HsmConnector, HSM_CONNECTORS_GATEWAY_XOR_CHK]
     );
 
     await createOnUpdateTrigger(knex, TableName.HsmConnector);
@@ -91,16 +91,16 @@ export async function up(knex: Knex): Promise<void> {
       });
     }
 
-    if (!(await constraintExists(knex, TableName.Certificate, CERTS_KEY_SOURCE_CHECK))) {
+    if (!(await constraintExists(knex, TableName.Certificate, CERTS_KEY_SOURCE_CHK))) {
       await knex.raw(
         `ALTER TABLE ?? ADD CONSTRAINT ?? CHECK (
           ("keySource" = 'infisical')
           OR
           ("keySource" = 'hsm' AND "hsmConnectorId" IS NOT NULL AND "hsmKeyLabel" IS NOT NULL)
         ) NOT VALID`,
-        [TableName.Certificate, CERTS_KEY_SOURCE_CHECK]
+        [TableName.Certificate, CERTS_KEY_SOURCE_CHK]
       );
-      await knex.raw(`ALTER TABLE ?? VALIDATE CONSTRAINT ??`, [TableName.Certificate, CERTS_KEY_SOURCE_CHECK]);
+      await knex.raw(`ALTER TABLE ?? VALIDATE CONSTRAINT ??`, [TableName.Certificate, CERTS_KEY_SOURCE_CHK]);
     }
   }
 
@@ -181,8 +181,8 @@ export async function down(knex: Knex): Promise<void> {
   }
 
   if (await knex.schema.hasTable(TableName.Certificate)) {
-    if (await constraintExists(knex, TableName.Certificate, CERTS_KEY_SOURCE_CHECK)) {
-      await knex.raw(`ALTER TABLE ?? DROP CONSTRAINT ??`, [TableName.Certificate, CERTS_KEY_SOURCE_CHECK]);
+    if (await constraintExists(knex, TableName.Certificate, CERTS_KEY_SOURCE_CHK)) {
+      await knex.raw(`ALTER TABLE ?? DROP CONSTRAINT ??`, [TableName.Certificate, CERTS_KEY_SOURCE_CHK]);
     }
     const hasKeySource = await knex.schema.hasColumn(TableName.Certificate, "keySource");
     const hasHsmConnectorId = await knex.schema.hasColumn(TableName.Certificate, "hsmConnectorId");

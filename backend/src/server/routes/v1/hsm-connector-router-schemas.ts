@@ -1,7 +1,10 @@
 import { z } from "zod";
 
 import { slugSchema } from "@app/server/lib/schemas";
-import { HsmConnectorCredentialsSchema } from "@app/services/hsm-connector/hsm-connector-fns";
+import {
+  HsmConnectorCredentialsSchema,
+  HsmConnectorSanitizedSchema as SharedHsmConnectorSanitizedSchema
+} from "@app/services/hsm-connector/hsm-connector-fns";
 
 const HSM_CONNECTOR_NAME_MAX = 32;
 const HSM_CONNECTOR_DESCRIPTION_MAX = 256;
@@ -15,18 +18,7 @@ export const gatewayPickRefiner = (data: { gatewayId?: string | null; gatewayPoo
   return hasGatewayId !== hasPool;
 };
 
-export const HsmConnectorSanitizedSchema = z.object({
-  id: z.string().uuid(),
-  name: z.string(),
-  description: z.string().nullable(),
-  projectId: z.string(),
-  gatewayId: z.string().uuid().nullable(),
-  gatewayPoolId: z.string().uuid().nullable(),
-  slotLabel: z.string(),
-  keyNamePrefix: z.string().nullable(),
-  createdAt: z.date(),
-  updatedAt: z.date()
-});
+export const HsmConnectorSanitizedSchema = SharedHsmConnectorSanitizedSchema;
 
 export const HsmConnectorTestResultSchema = z.object({
   ok: z.boolean(),
@@ -53,8 +45,9 @@ export const HsmConnectorTestResultSchema = z.object({
     .min(1)
 });
 
-export const CreateBodySchema = z
+export const CreateHsmConnectorBodySchema = z
   .object({
+    projectId: z.string().uuid(),
     name: slugSchema({ min: 1, max: HSM_CONNECTOR_NAME_MAX, field: "name" }),
     description: z.string().max(HSM_CONNECTOR_DESCRIPTION_MAX).optional(),
     gatewayId: z.string().uuid().optional(),
@@ -63,7 +56,11 @@ export const CreateBodySchema = z
   })
   .refine(gatewayPickRefiner, { message: GATEWAY_PICK_MESSAGE, path: ["gatewayId"] });
 
-export const UpdateBodySchema = z
+export const ListHsmConnectorsQuerySchema = z.object({
+  projectId: z.string().uuid()
+});
+
+export const UpdateHsmConnectorBodySchema = z
   .object({
     name: slugSchema({ min: 1, max: HSM_CONNECTOR_NAME_MAX, field: "name" }).optional(),
     description: z.string().max(HSM_CONNECTOR_DESCRIPTION_MAX).optional(),
@@ -82,17 +79,17 @@ export const UpdateBodySchema = z
     { message: GATEWAY_PICK_MESSAGE, path: ["gatewayId"] }
   );
 
-export const ConnectorIdParamSchema = z.object({
+export const HsmConnectorIdParamSchema = z.object({
   connectorId: z.string().uuid()
 });
 
-export const LinkedCertificatesQuerySchema = z.object({
+export const HsmConnectorLinkedResourcesQuerySchema = z.object({
   offset: z.coerce.number().min(0).default(0),
   limit: z.coerce.number().min(1).max(100).default(20)
 });
 
-export const LinkedCertificatesResponseSchema = z.object({
-  linkedCertificates: z.array(
+export const HsmConnectorLinkedResourcesResponseSchema = z.object({
+  certificates: z.array(
     z.object({
       id: z.string().uuid(),
       commonName: z.string(),

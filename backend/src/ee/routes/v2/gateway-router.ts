@@ -71,9 +71,12 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
       operationId: "gatewayHeartbeat",
       body: z
         .object({
-          capabilities: z.record(z.unknown()).optional()
+          capabilities: z
+            .object({
+              pkcs11: z.boolean().optional()
+            })
+            .optional()
         })
-        .passthrough()
         .optional(),
       response: {
         200: z.object({

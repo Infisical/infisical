@@ -46,7 +46,7 @@ export const BasicsStep = ({ form }: Props) => (
             <TextArea
               {...field}
               value={field.value ?? ""}
-              placeholder="What this HSM is used for (e.g. production macOS code-signing keys)."
+              placeholder="What this HSM is used for (e.g. production signing keys)."
               rows={3}
               isError={Boolean(error)}
             />

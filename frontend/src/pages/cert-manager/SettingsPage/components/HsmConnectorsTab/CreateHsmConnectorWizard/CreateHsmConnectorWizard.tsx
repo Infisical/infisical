@@ -2,24 +2,19 @@ import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery } from "@tanstack/react-query";
-import { CheckIcon, ClipboardListIcon, ShieldCheckIcon } from "lucide-react";
+import { ShieldCheckIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
-  IconButton,
   Sheet,
   SheetContent,
   SheetHeader,
   SheetTitle,
   Stepper,
   StepperList,
-  StepperStep,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger
+  StepperStep
 } from "@app/components/v3";
-import { useTimedReset } from "@app/hooks";
 import { useListGatewayPools } from "@app/hooks/api/gateway-pools";
 import { gatewaysQueryKeys } from "@app/hooks/api/gateways/queries";
 import { useCreateHsmConnector } from "@app/hooks/api/hsmConnectors";
@@ -37,24 +32,16 @@ import {
 } from "./schemas";
 import { INITIAL_WIZARD_STATE, STEPS, WizardState } from "./types";
 
-const GATEWAY_PKCS11_COMMAND = `infisical gateway start <name> \\
-  --enroll-method=token \\
-  --token=<enrollment-token> \\
-  --domain=<your-infisical-domain> \\
-  --pkcs11-module=/path/to/vendor.so`;
-
 type Props = {
+  projectId: string;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
 };
 
-export const CreateHsmConnectorWizard = ({ isOpen, onOpenChange }: Props) => {
+export const CreateHsmConnectorWizard = ({ projectId, isOpen, onOpenChange }: Props) => {
   const [step, setStep] = useState(0);
   const [state, setState] = useState<WizardState>(INITIAL_WIZARD_STATE);
   const [submitting, setSubmitting] = useState(false);
-  const [, isCommandCopied, setCommandCopyState] = useTimedReset<string>({
-    initialState: "Copy"
-  });
 
   const { data: gateways = [], isPending: isGatewaysLoading } = useQuery(gatewaysQueryKeys.list());
   const { data: pools = [], isPending: isPoolsLoading } = useListGatewayPools();
@@ -109,6 +96,7 @@ export const CreateHsmConnectorWizard = ({ isOpen, onOpenChange }: Props) => {
     try {
       const [kind, id] = finalState.reachedFrom.split(":");
       await createMutation.mutateAsync({
+        projectId,
         name: finalState.name,
         description: finalState.description.trim() || undefined,
         gatewayId: kind === "gateway" ? id : undefined,
@@ -193,8 +181,7 @@ export const CreateHsmConnectorWizard = ({ isOpen, onOpenChange }: Props) => {
                   Add HSM Connector
                 </div>
                 <p className="text-sm leading-4 text-mineshaft-400">
-                  Register the hardware security module that holds your signing keys. Infisical
-                  reaches it through one of your hosts.
+                  Register the hardware security module that holds your signing keys.
                 </p>
               </div>
             </div>
@@ -258,50 +245,18 @@ export const CreateHsmConnectorWizard = ({ isOpen, onOpenChange }: Props) => {
               <div className="mt-auto space-y-3">
                 {step === 1 && (
                   <div className="max-w-full space-y-2 rounded-md border border-border bg-mineshaft-800 p-3 text-xs">
-                    <p className="font-semibold text-foreground">Start a Gateway with PKCS#11</p>
+                    <p className="font-semibold text-foreground">No HSM-capable Gateway yet?</p>
                     <p className="text-muted">
-                      Run this on a machine that can reach your HSM. Use your vendor&apos;s PKCS#11
-                      library path for <code className="text-mineshaft-200">--pkcs11-module</code>.
-                    </p>
-                    <div className="relative">
-                      <pre className="max-w-full overflow-x-auto rounded bg-mineshaft-900 p-2 pr-8 text-[11px] break-all whitespace-pre-wrap text-mineshaft-200">
-                        {GATEWAY_PKCS11_COMMAND}
-                      </pre>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <IconButton
-                            variant="ghost"
-                            size="xs"
-                            aria-label="Copy command"
-                            className="absolute top-1 right-1"
-                            onClick={() => {
-                              navigator.clipboard.writeText(GATEWAY_PKCS11_COMMAND);
-                              setCommandCopyState("Copied");
-                            }}
-                          >
-                            {isCommandCopied ? (
-                              <CheckIcon className="size-3.5" />
-                            ) : (
-                              <ClipboardListIcon className="size-3.5 text-label" />
-                            )}
-                          </IconButton>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          {isCommandCopied ? "Copied" : "Copy command"}
-                        </TooltipContent>
-                      </Tooltip>
-                    </div>
-                    <p className="pt-1 text-muted">
-                      Full guide:{" "}
+                      Follow the{" "}
                       <a
-                        href="https://infisical.com/docs/documentation/platform/pki/code-signing/hsm-connectors"
+                        href="https://infisical.com/docs/documentation/platform/pki/settings/hsm-connectors"
                         target="_blank"
                         rel="noreferrer"
                         className="text-primary hover:underline"
                       >
-                        HSM Connectors docs
-                      </a>
-                      .
+                        HSM Connectors guide
+                      </a>{" "}
+                      for the step-by-step Gateway setup.
                     </p>
                   </div>
                 )}

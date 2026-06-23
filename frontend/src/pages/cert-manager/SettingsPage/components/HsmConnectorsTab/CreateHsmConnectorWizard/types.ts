@@ -33,23 +33,23 @@ export const STEPS: WizardStep[] = [
     subtitle: "A descriptive name and what this HSM is for.",
     rightLabel: "BASICS",
     rightDescription:
-      "Give the connector a descriptive name so your team can identify it later (for example, fortanix-prod for production code-signing keys). The description is optional but useful when you manage more than one HSM."
+      "Give the connector a descriptive name so your team can identify it later (for example, fortanix-prod). The description is optional but useful when you manage more than one HSM."
   },
   {
-    name: "Reached from",
-    shortDescription: "Which Gateway reaches the HSM",
-    title: "Reached from",
-    subtitle: "Pick the Infisical Gateway that will reach the HSM over PKCS#11.",
-    rightLabel: "REACHED FROM",
+    name: "Connection",
+    shortDescription: "Gateway that reaches the HSM",
+    title: "Connection",
+    subtitle: "Choose the Gateway that connects Infisical to your HSM.",
+    rightLabel: "CONNECTION",
     rightDescription:
-      "Infisical never talks to the HSM directly. A Gateway you run inside your network does, using your HSM vendor's PKCS#11 library. Only Gateways started with --pkcs11-module appear here. If the list is empty, start a Gateway pointed at your HSM's PKCS#11 library first."
+      "A Gateway is a lightweight agent you run inside your own network. Infisical sends signing requests to it, and it talks to the HSM directly. Only Gateways connected to an HSM appear here. If the list is empty, follow the HSM Connectors guide to set one up."
   },
   {
-    name: "Access",
+    name: "Credentials",
     shortDescription: "Slot and PIN",
-    title: "Access",
+    title: "Credentials",
     subtitle: "How Infisical signs in to your HSM.",
-    rightLabel: "ACCESS",
+    rightLabel: "CREDENTIALS",
     rightDescription:
       "The slot label is the PKCS#11 token label of the slot on the HSM where signing keys will live. The PIN authenticates Infisical to that slot. The key label prefix is prepended to every key Infisical creates so you can identify them in your HSM tooling."
   }

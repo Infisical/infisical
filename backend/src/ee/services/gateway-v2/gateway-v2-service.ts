@@ -979,19 +979,16 @@ export const gatewayV2ServiceFactory = ({
     capabilities
   }: {
     orgPermission: OrgServiceActor;
-    capabilities?: Record<string, unknown>;
+    capabilities?: { pkcs11?: boolean };
   }) => {
-    const persistCapabilities = async (gatewayId: string) => {
-      if (capabilities === undefined) return;
-      await gatewayV2DAL.updateById(gatewayId, { capabilities });
-    };
+    const nextCapabilities = capabilities ?? {};
 
     if (orgPermission.type === ActorType.GATEWAY) {
       const gateway = await gatewayV2DAL.findById(orgPermission.id);
       if (!gateway || gateway.orgId !== orgPermission.orgId) {
         throw new NotFoundError({ message: `Gateway ${orgPermission.id} not found.` });
       }
-      await persistCapabilities(gateway.id);
+      await gatewayV2DAL.updateById(gateway.id, { capabilities: nextCapabilities });
       await $checkGatewayHealth(gateway.id);
       return;
     }
@@ -1007,7 +1004,7 @@ export const gatewayV2ServiceFactory = ({
       throw new NotFoundError({ message: `Gateway for identity ${orgPermission.id} not found.` });
     }
 
-    await persistCapabilities(gateway.id);
+    await gatewayV2DAL.updateById(gateway.id, { capabilities: nextCapabilities });
     await $checkGatewayHealth(gateway.id);
   };
 

@@ -56,9 +56,10 @@ import { TProjectDALFactory } from "../project/project-dal";
 import { getProjectKmsCertificateKeyId } from "../project/project-fns";
 import { isBuiltInSignerRole, unknownSignerRoleMessage } from "../signer-membership/signer-membership-service";
 import { TSignerDALFactory } from "./signer-dal";
-import { CertKeySource, SignerStatus, SigningOperationStatus } from "./signer-enums";
+import { CertKeySource, HsmKeyAlgorithm, SignerStatus, SigningOperationStatus } from "./signer-enums";
 import { formatSignerIssuanceErrorReason } from "./signer-issuance-errors";
 import {
+  hsmKeyAlgorithmToCertKeyAlgorithm,
   issueHsmBackedSignerCertificate,
   issueSignerCertificate,
   mapCertKeyAlgorithmToHsmKeyAlgorithm,
@@ -181,6 +182,61 @@ const validateSigningAlgorithmForKey = (signingAlgorithm: SigningAlgorithm, keyA
       message: `ECC key cannot be used with signing algorithm ${signingAlgorithm}`
     });
   }
+};
+
+type TResolvedHsmReissue = {
+  isHsm: true;
+  switchingKeySource: boolean;
+  keyAlgorithm: CertKeyAlgorithm;
+  hsmConnectorId: string;
+  hsmKeyAlgorithm: HsmKeyAlgorithm;
+};
+type TResolvedInfisicalReissue = {
+  isHsm: false;
+  switchingKeySource: boolean;
+  keyAlgorithm: CertKeyAlgorithm;
+};
+type TResolvedReissueTarget = TResolvedHsmReissue | TResolvedInfisicalReissue;
+
+export const resolveReissueTarget = ({
+  dto,
+  signer,
+  currentCert
+}: {
+  dto: TReissueCertificateDTO;
+  signer: { keyAlgorithm?: string | null };
+  currentCert: {
+    keySource?: string | null;
+    keyAlgorithm?: string | null;
+    hsmConnectorId?: string | null;
+  } | null;
+}): TResolvedReissueTarget => {
+  const currentIsHsm =
+    currentCert?.keySource === CertKeySource.Hsm &&
+    Boolean(currentCert.hsmConnectorId) &&
+    Boolean(currentCert.keyAlgorithm);
+  const overrideKeySource = dto.certificate?.keySource;
+  const switchingKeySource = overrideKeySource !== undefined && overrideKeySource !== currentCert?.keySource;
+  const targetIsHsm = overrideKeySource ? overrideKeySource === CertKeySource.Hsm : currentIsHsm;
+
+  if (targetIsHsm) {
+    const hsmConnectorId = dto.certificate?.hsmConnectorId ?? currentCert?.hsmConnectorId ?? null;
+    const hsmKeyAlgorithm =
+      dto.certificate?.hsmKeyAlgorithm ??
+      (currentCert?.keyAlgorithm ? mapCertKeyAlgorithmToHsmKeyAlgorithm(currentCert.keyAlgorithm) : undefined);
+    if (!hsmConnectorId || !hsmKeyAlgorithm) {
+      throw new BadRequestError({
+        message: "hsmConnectorId and hsmKeyAlgorithm are required to (re)issue with an HSM key source."
+      });
+    }
+    const keyAlgorithm = dto.certificate?.hsmKeyAlgorithm
+      ? hsmKeyAlgorithmToCertKeyAlgorithm(dto.certificate.hsmKeyAlgorithm)
+      : ((currentCert?.keyAlgorithm as CertKeyAlgorithm) ?? CertKeyAlgorithm.RSA_2048);
+    return { isHsm: true, switchingKeySource, keyAlgorithm, hsmConnectorId, hsmKeyAlgorithm };
+  }
+
+  const keyAlgorithm = dto.keyAlgorithm ?? (signer.keyAlgorithm as CertKeyAlgorithm) ?? CertKeyAlgorithm.RSA_2048;
+  return { isHsm: false, switchingKeySource, keyAlgorithm };
 };
 
 export const signerServiceFactory = ({
@@ -943,34 +999,52 @@ export const signerServiceFactory = ({
       });
     }
 
+    const reissueCurrentCert = signer.certificateId ? await certificateDAL.findById(signer.certificateId) : null;
+    const target = resolveReissueTarget({
+      dto,
+      signer,
+      currentCert: reissueCurrentCert
+    });
+
+    if (reissueCaType === CaType.AZURE_AD_CS && target.isHsm) {
+      throw new BadRequestError({
+        message:
+          "HSM-backed signers are not supported with Azure AD CS yet. Use AWS Private CA, an Internal CA, or switch the signer's key source to Infisical."
+      });
+    }
+
+    if (target.isHsm) {
+      await hsmConnectorService.assertAttachPermission(
+        { type: dto.actor, id: dto.actorId, authMethod: dto.actorAuthMethod, orgId: dto.actorOrgId },
+        target.hsmConnectorId,
+        signer.projectId
+      );
+    }
+
+    const { isHsm: targetIsHsm, switchingKeySource, keyAlgorithm: targetKeyAlgorithm } = target;
+
     await signerDAL.updateById(dto.signerId, {
       caId: dto.caId,
       commonName: nextCommonName,
-      certificateTtlDays: effectiveTtl
+      certificateTtlDays: effectiveTtl,
+      keyAlgorithm: targetKeyAlgorithm
     });
 
-    const reissueKeyAlgorithm: CertKeyAlgorithm =
-      (signer.keyAlgorithm as CertKeyAlgorithm) ?? CertKeyAlgorithm.RSA_2048;
-
     if (reissueIsExternal) {
-      const reissueCurrentCert = signer.certificateId ? await certificateDAL.findById(signer.certificateId) : null;
-      const reissueHsm =
-        reissueCurrentCert?.keySource === CertKeySource.Hsm &&
-        reissueCurrentCert.hsmConnectorId &&
-        reissueCurrentCert.keyAlgorithm
-          ? {
-              hsmConnectorId: reissueCurrentCert.hsmConnectorId,
-              hsmKeyAlgorithm: mapCertKeyAlgorithmToHsmKeyAlgorithm(reissueCurrentCert.keyAlgorithm),
-              hsmKeyLabel: reissueCurrentCert.hsmKeyLabel ?? undefined,
-              hsmPublicKeySpki: reissueCurrentCert.hsmPublicKeySpki ?? undefined,
-              actor: {
-                type: dto.actor,
-                id: dto.actorId,
-                authMethod: dto.actorAuthMethod,
-                orgId: dto.actorOrgId
-              }
+      const reissueHsm = targetIsHsm
+        ? {
+            hsmConnectorId: target.hsmConnectorId,
+            hsmKeyAlgorithm: target.hsmKeyAlgorithm,
+            hsmKeyLabel: switchingKeySource ? undefined : (reissueCurrentCert?.hsmKeyLabel ?? undefined),
+            hsmPublicKeySpki: switchingKeySource ? undefined : (reissueCurrentCert?.hsmPublicKeySpki ?? undefined),
+            actor: {
+              type: dto.actor,
+              id: dto.actorId,
+              authMethod: dto.actorAuthMethod,
+              orgId: dto.actorOrgId
             }
-          : undefined;
+          }
+        : undefined;
       await signerDAL.updateById(dto.signerId, {
         status: SignerStatus.Pending,
         certificateFailureReason: null
@@ -982,7 +1056,7 @@ export const signerServiceFactory = ({
           caId: dto.caId,
           commonName: nextCommonName,
           certificateTtlDays: nextTtl ?? DEFAULT_CERTIFICATE_TTL_DAYS,
-          keyAlgorithm: reissueKeyAlgorithm,
+          keyAlgorithm: targetKeyAlgorithm,
           hsm: reissueHsm
         });
         return await signerDAL.findById(dto.signerId);
@@ -999,42 +1073,53 @@ export const signerServiceFactory = ({
     }
 
     try {
-      const currentCert = signer.certificateId ? await certificateDAL.findById(signer.certificateId) : null;
-      const currentIsHsm =
-        currentCert?.keySource === CertKeySource.Hsm &&
-        Boolean(currentCert.hsmConnectorId) &&
-        Boolean(currentCert.hsmKeyLabel) &&
-        Boolean(currentCert.keyAlgorithm);
-
       let certificateId: string;
-      if (currentIsHsm && currentCert) {
-        await hsmConnectorService.assertAttachPermission(
-          { type: dto.actor, id: dto.actorId, authMethod: dto.actorAuthMethod, orgId: dto.actorOrgId },
-          currentCert.hsmConnectorId as string,
-          signer.projectId
-        );
-        const result = await renewHsmBackedSignerCertificate(
-          {
-            certificateAuthorityDAL,
-            internalCertificateAuthorityService,
-            certificateBodyDAL,
-            certificateDAL,
-            hsmConnectorService,
-            projectDAL,
-            kmsService
-          },
-          {
-            caId: dto.caId,
-            projectId: signer.projectId,
-            commonName: nextCommonName,
-            certificateTtlDays: nextTtl ?? DEFAULT_CERTIFICATE_TTL_DAYS,
-            hsmConnectorId: currentCert.hsmConnectorId as string,
-            hsmKeyLabel: currentCert.hsmKeyLabel as string,
-            expectedPublicKeySpkiDer: currentCert.hsmPublicKeySpki ?? undefined,
-            hsmKeyAlgorithm: mapCertKeyAlgorithmToHsmKeyAlgorithm(currentCert.keyAlgorithm as string)
-          }
-        );
-        certificateId = result.certificateId;
+      if (targetIsHsm) {
+        if (switchingKeySource || !reissueCurrentCert?.hsmKeyLabel) {
+          const result = await issueHsmBackedSignerCertificate(
+            {
+              certificateAuthorityDAL,
+              internalCertificateAuthorityService,
+              certificateBodyDAL,
+              certificateDAL,
+              hsmConnectorService,
+              projectDAL,
+              kmsService
+            },
+            {
+              caId: dto.caId,
+              projectId: signer.projectId,
+              commonName: nextCommonName,
+              certificateTtlDays: nextTtl ?? DEFAULT_CERTIFICATE_TTL_DAYS,
+              hsmConnectorId: target.hsmConnectorId,
+              hsmKeyAlgorithm: target.hsmKeyAlgorithm
+            }
+          );
+          certificateId = result.certificateId;
+        } else {
+          const result = await renewHsmBackedSignerCertificate(
+            {
+              certificateAuthorityDAL,
+              internalCertificateAuthorityService,
+              certificateBodyDAL,
+              certificateDAL,
+              hsmConnectorService,
+              projectDAL,
+              kmsService
+            },
+            {
+              caId: dto.caId,
+              projectId: signer.projectId,
+              commonName: nextCommonName,
+              certificateTtlDays: nextTtl ?? DEFAULT_CERTIFICATE_TTL_DAYS,
+              hsmConnectorId: target.hsmConnectorId,
+              hsmKeyLabel: reissueCurrentCert.hsmKeyLabel as string,
+              expectedPublicKeySpkiDer: reissueCurrentCert.hsmPublicKeySpki ?? undefined,
+              hsmKeyAlgorithm: target.hsmKeyAlgorithm
+            }
+          );
+          certificateId = result.certificateId;
+        }
       } else {
         const result = await issueSignerCertificate(
           {
@@ -1050,7 +1135,7 @@ export const signerServiceFactory = ({
             projectId: signer.projectId,
             commonName: nextCommonName,
             certificateTtlDays: nextTtl ?? DEFAULT_CERTIFICATE_TTL_DAYS,
-            keyAlgorithm: reissueKeyAlgorithm
+            keyAlgorithm: targetKeyAlgorithm
           }
         );
         certificateId = result.certificateId;

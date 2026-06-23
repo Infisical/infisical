@@ -24,6 +24,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  DocumentationLinkBadge,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -57,6 +58,7 @@ import {
   useListHsmConnectors,
   useTestHsmConnector
 } from "@app/hooks/api/hsmConnectors";
+import { PkiDocsUrls } from "@app/pages/cert-manager/pki-docs-urls";
 
 import { CreateHsmConnectorWizard } from "./CreateHsmConnectorWizard";
 import { DeleteHsmConnectorDialog } from "./DeleteHsmConnectorDialog";
@@ -66,7 +68,7 @@ export const HsmConnectorsTab = () => {
   const navigate = useNavigate();
   const { orgId, projectId } = useParams({ strict: false });
   const { subscription } = useSubscription();
-  const isLicensed = Boolean(subscription?.pkiHsm);
+  const isLicensed = Boolean(subscription?.hsm);
   const [addOpen, setAddOpen] = useState(false);
   const [testingId, setTestingId] = useState<string | null>(null);
   const [editing, setEditing] = useState<THsmConnector | null>(null);
@@ -83,7 +85,9 @@ export const HsmConnectorsTab = () => {
     });
   };
 
-  const { data: connectors = [], isPending } = useListHsmConnectors({ enabled: isLicensed });
+  const { data: connectors = [], isPending } = useListHsmConnectors(projectId, {
+    enabled: isLicensed
+  });
   const testMutation = useTestHsmConnector();
 
   const { data: gateways = [] } = useQuery({ ...gatewaysQueryKeys.list(), enabled: isLicensed });
@@ -107,8 +111,8 @@ export const HsmConnectorsTab = () => {
           <div className="mb-3 text-2xl">&#x1f6e1;&#xfe0f;</div>
           <h4 className="mb-2 text-lg font-medium text-mineshaft-100">Enterprise Feature</h4>
           <p className="mx-auto mb-4 max-w-md text-sm text-mineshaft-300">
-            HSM Connectors let you back code-signing keys with a Hardware Security Module. The
-            keypair stays inside your HSM and every signature is performed there.
+            HSM Connectors let you back signing keys with a Hardware Security Module. The keypair
+            stays inside your HSM and every signature is performed there.
           </p>
           <Button onClick={() => setUpgradeOpen(true)}>Upgrade to Enterprise</Button>
         </div>
@@ -165,9 +169,12 @@ export const HsmConnectorsTab = () => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>HSM Connectors</CardTitle>
+        <CardTitle>
+          HSM Connectors
+          <DocumentationLinkBadge href={PkiDocsUrls.settings.hsmConnectors} />
+        </CardTitle>
         <CardDescription>
-          Hardware security modules that hold your signing keys, reached through your hosts.
+          Hardware security modules that hold your signing keys.
         </CardDescription>
         <CardAction>
           <ProjectPermissionCan
@@ -295,7 +302,7 @@ export const HsmConnectorsTab = () => {
                   <EmptyDescription>
                     {search
                       ? "No HSM Connectors match your search."
-                      : "Add an HSM Connector to register a slot on your Hardware Security Module. Code-signing certificates can then be issued with HSM-backed keys."}
+                      : "Add an HSM Connector to register a slot on your Hardware Security Module."}
                   </EmptyDescription>
                 </EmptyHeader>
               </Empty>
@@ -303,7 +310,13 @@ export const HsmConnectorsTab = () => {
           </>
         )}
       </CardContent>
-      <CreateHsmConnectorWizard isOpen={addOpen} onOpenChange={setAddOpen} />
+      {projectId && (
+        <CreateHsmConnectorWizard
+          projectId={projectId}
+          isOpen={addOpen}
+          onOpenChange={setAddOpen}
+        />
+      )}
       <EditHsmConnectorSheet connector={editing} onClose={() => setEditing(null)} />
       <DeleteHsmConnectorDialog connector={deleting} onClose={() => setDeleting(null)} />
     </Card>

@@ -6,26 +6,28 @@ import { THsmConnector, THsmConnectorLinkedCertificate } from "./types";
 
 export const hsmConnectorKeys = {
   all: ["hsm-connectors"] as const,
-  list: () => [...hsmConnectorKeys.all, "list"] as const,
+  listByProject: (projectId: string) => [...hsmConnectorKeys.all, "list", projectId] as const,
   byId: (id: string) => [...hsmConnectorKeys.all, "by-id", id] as const,
-  linkedCertificatesAll: (id: string) =>
-    [...hsmConnectorKeys.all, "linked-certificates", id] as const,
-  linkedCertificates: (id: string, pagination: { offset: number; limit: number }) =>
-    [...hsmConnectorKeys.linkedCertificatesAll(id), pagination] as const
+  linkedResourcesAll: (id: string) => [...hsmConnectorKeys.all, "linked-resources", id] as const,
+  linkedResources: (id: string, pagination: { offset: number; limit: number }) =>
+    [...hsmConnectorKeys.linkedResourcesAll(id), pagination] as const
 };
 
 export const useListHsmConnectors = (
+  projectId: string | undefined,
   options?: Omit<UseQueryOptions<THsmConnector[]>, "queryKey" | "queryFn">
 ) => {
   return useQuery({
-    queryKey: hsmConnectorKeys.list(),
+    ...options,
+    queryKey: hsmConnectorKeys.listByProject(projectId ?? ""),
     queryFn: async () => {
       const { data } = await apiRequest.get<{ hsmConnectors: THsmConnector[] }>(
-        "/api/v1/cert-manager/hsm-connectors"
+        "/api/v1/hsm-connectors",
+        { params: { projectId } }
       );
       return data.hsmConnectors;
     },
-    ...options
+    enabled: Boolean(projectId) && (options?.enabled ?? true)
   });
 };
 
@@ -38,7 +40,7 @@ export const useGetHsmConnectorById = (
     queryKey: hsmConnectorKeys.byId(connectorId ?? ""),
     queryFn: async () => {
       const { data } = await apiRequest.get<{ hsmConnector: THsmConnector }>(
-        `/api/v1/cert-manager/hsm-connectors/${connectorId}`
+        `/api/v1/hsm-connectors/${connectorId}`
       );
       return data.hsmConnector;
     },
@@ -46,11 +48,11 @@ export const useGetHsmConnectorById = (
   });
 };
 
-export const useListHsmConnectorLinkedCertificates = (
+export const useListHsmConnectorLinkedResources = (
   connectorId: string | undefined,
   pagination?: { offset?: number; limit?: number },
   options?: Omit<
-    UseQueryOptions<{ linkedCertificates: THsmConnectorLinkedCertificate[]; totalCount: number }>,
+    UseQueryOptions<{ certificates: THsmConnectorLinkedCertificate[]; totalCount: number }>,
     "queryKey" | "queryFn"
   >
 ) => {
@@ -58,16 +60,16 @@ export const useListHsmConnectorLinkedCertificates = (
 
   return useQuery({
     ...options,
-    queryKey: hsmConnectorKeys.linkedCertificates(connectorId ?? "", { offset, limit }),
+    queryKey: hsmConnectorKeys.linkedResources(connectorId ?? "", { offset, limit }),
     queryFn: async () => {
       const { data } = await apiRequest.get<{
-        linkedCertificates: THsmConnectorLinkedCertificate[];
+        certificates: THsmConnectorLinkedCertificate[];
         totalCount: number;
-      }>(`/api/v1/cert-manager/hsm-connectors/${connectorId}/linked-certificates`, {
+      }>(`/api/v1/hsm-connectors/${connectorId}/linked-resources`, {
         params: { offset, limit }
       });
       return {
-        linkedCertificates: data.linkedCertificates ?? [],
+        certificates: data.certificates ?? [],
         totalCount: data.totalCount ?? 0
       };
     },

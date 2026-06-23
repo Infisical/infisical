@@ -36,7 +36,7 @@ export const hsmConnectorRoutingFactory = ({ gatewayV2Service, gatewayPoolServic
     if (connector.gatewayId) {
       if (triedGatewayIds.has(connector.gatewayId)) {
         throw new BadRequestError({
-          message: "Gateway is unreachable for PKCS#11; check the gateway is running with --pkcs11-module."
+          message: "Gateway is unreachable for HSM operations. Ensure the gateway is online and has HSM support enabled."
         });
       }
       return connector.gatewayId;
@@ -49,7 +49,7 @@ export const hsmConnectorRoutingFactory = ({ gatewayV2Service, gatewayPoolServic
     if (capable.length === 0) {
       throw new BadRequestError({
         message:
-          "No healthy PKCS#11-enabled gateway in the pool. Start at least one gateway with --pkcs11-module pointing at the HSM."
+          "No HSM-capable gateway available in the pool. Ensure at least one gateway in the pool has HSM support enabled."
       });
     }
     return capable[Math.floor(Math.random() * capable.length)].id;
@@ -196,7 +196,8 @@ export const hsmConnectorRoutingFactory = ({ gatewayV2Service, gatewayPoolServic
       }
       if (targets.length === 0) {
         throw new BadRequestError({
-          message: "No healthy PKCS#11-enabled gateway in the pool. Start at least one gateway with --pkcs11-module."
+          message:
+            "No HSM-capable gateway available in the pool. Ensure at least one gateway in the pool has HSM support enabled."
         });
       }
     }

@@ -63,11 +63,10 @@ In **Certificate Manager → Code Signing → Signers**, click **Create Signer**
     | Field | Description |
     |-------|-------------|
     | **Certificate Authority** | The CA that issues the certificate. Internal CAs issue immediately. External CAs (AWS Private CA, Azure AD CS) issue asynchronously and the Signer enters **Pending** until the cert lands. |
-    | **Key source** | Where the leaf key for this Signer is generated. **Infisical-managed** (default) lets Infisical generate and manage the key for you. **HSM-backed** generates the key inside your own HSM through an [HSM Connector](/documentation/platform/pki/settings/hsm-connectors). |
+    | **Key source** | Where the signing key is generated. **Infisical** (default) lets Infisical generate and manage the key for you. **HSM** generates the key inside your own HSM through an [HSM Connector](/documentation/platform/pki/settings/hsm-connectors). |
     | **Common Name** | The legal name shown on the certificate, for example `Acme Mobile, Inc.`. Fixed once the certificate is issued. To change it you must reissue. |
-    | **Key algorithm** | The key for the signing certificate: `RSA-2048`, `RSA-3072`, `RSA-4096`, `ECDSA P-256`, `ECDSA P-384`, or `ECDSA P-521`. Shown only when **Key source = Infisical-managed**. |
-    | **HSM Connector** | The Connector that decides which Gateway routes operations to your HSM. Shown only when **Key source = HSM-backed**. See [HSM Connectors](/documentation/platform/pki/settings/hsm-connectors). |
-    | **HSM key algorithm** | Algorithm Infisical asks the HSM to generate: `RSA_2048`, `RSA_4096`, `ECC_P256`, or `ECC_P384`. Shown only when **Key source = HSM-backed**. |
+    | **Key algorithm** | The signing key algorithm. With **Key source = Infisical**: `RSA-2048`, `RSA-3072`, `RSA-4096`, `ECDSA P-256`, `ECDSA P-384`, or `ECDSA P-521`. With **Key source = HSM**: `RSA_2048`, `RSA_4096`, `ECC_P256`, or `ECC_P384`. |
+    | **HSM Connector** | The HSM Connector Infisical uses to reach your HSM. Set the Connector up first under **Certificate Manager > Settings > HSM Connectors**. Shown only when **Key source = HSM**. See [HSM Connectors](/documentation/platform/pki/settings/hsm-connectors). |
     | **Validity (days)** | How long each issued certificate is valid for. Default 365. |
     | **Renew before (days)** | Optional, 1 to 30. Auto-renew this many days before expiry. Must be less than Validity. Leave empty to disable auto-renewal. |
 
@@ -98,16 +97,11 @@ In **Certificate Manager → Code Signing → Signers**, click **Create Signer**
 
 ## HSM-backed Signers
 
-When you pick **Key source = HSM-backed** on the Certificate step, two extra fields appear:
+When you pick **Key source = HSM** on the Certificate step, pick the [HSM Connector](/documentation/platform/pki/settings/hsm-connectors) Infisical should use and the HSM key algorithm. The private key never leaves the HSM and every sign operation routes through the linked Connector. Infisical only holds the public key and the issued certificate.
 
-| Field | Description |
-|-------|-------------|
-| **HSM Connector** | The [HSM Connector](/documentation/platform/pki/settings/hsm-connectors) Infisical uses to reach your HSM. Set the Connector up first under **Cert Manager Settings > HSM Connectors**. |
-| **HSM key algorithm** | Algorithm the HSM generates for this Signer: `RSA_2048`, `RSA_4096`, `ECC_P256`, or `ECC_P384`. |
+You can later switch an existing Signer between Infisical and HSM by reissuing the certificate with a different key source. Hit the [reissue endpoint](/api-reference/endpoints/code-signing/signers/reissue) with a `certificate.keySource` body, plus `hsmConnectorId` and `hsmKeyAlgorithm` when switching to HSM. The signer keeps its name, members, policy, and CA. Only the underlying key and the cert wrapping it change.
 
-The private key never leaves the HSM. Every sign operation routes through the linked Connector. Infisical only ever holds the public key and the issued certificate. Key source is fixed at create time. To switch a Signer between Infisical-managed and HSM-backed, create a new Signer with the desired key source.
-
-See [HSM Connectors](/documentation/platform/pki/settings/hsm-connectors) for the Gateway + Connector setup an HSM-backed Signer depends on.
+See [HSM Connectors](/documentation/platform/pki/settings/hsm-connectors) for the setup an HSM-backed Signer depends on.
 
 ## Signer statuses
 
@@ -183,8 +177,10 @@ To sign with a Signer, pick the integration that matches your tooling:
   <Accordion title="What happens to signed artifacts when I delete a Signer?">
     Artifacts already signed remain valid as long as the certificate they were signed with is still valid and the verifier trusts the issuing CA's chain. Deleting the Signer in Infisical only removes Infisical's ability to sign new artifacts with that certificate. It does not invalidate past signatures.
   </Accordion>
-  <Accordion title="Can I migrate an existing Infisical-managed Signer to an HSM?">
-    Not in place. Key source is fixed at create time so the Signer's certificate and its key never go out of sync. Create a new HSM-backed Signer alongside the old one, route new sign traffic to it, and disable or delete the old Signer once you're satisfied.
+  <Accordion title="Can I migrate an existing Signer between Infisical and an HSM?">
+    Yes. Reissue the Signer's certificate with a different `certificate.keySource` via the [reissue endpoint](/api-reference/endpoints/code-signing/signers/reissue). When switching to HSM you also pass `hsmConnectorId` and `hsmKeyAlgorithm`. The signer keeps its name, members, approval policy, and CA. Only the key and the cert wrapping it change.
+
+    The previous certificate stays in the inventory and still references its original HSM key (the HSM key itself is not deleted, only the Infisical-side reference). Delete or retire the old certificate before you try to delete the HSM Connector it referenced.
   </Accordion>
 </AccordionGroup>
 

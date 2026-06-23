@@ -27,18 +27,18 @@ import {
 } from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
 import { CertStatus } from "@app/hooks/api/certificates/enums";
-import { useListHsmConnectorLinkedCertificates } from "@app/hooks/api/hsmConnectors";
+import { useListHsmConnectorLinkedResources } from "@app/hooks/api/hsmConnectors";
 
 type Props = { connectorId: string };
 
 export const HsmConnectorLinkedCertsSection = ({ connectorId }: Props) => {
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(20);
-  const { data, isPending } = useListHsmConnectorLinkedCertificates(connectorId, {
+  const { data, isPending } = useListHsmConnectorLinkedResources(connectorId, {
     offset: (page - 1) * perPage,
     limit: perPage
   });
-  const linked = data?.linkedCertificates ?? [];
+  const linked = data?.certificates ?? [];
   const totalCount = data?.totalCount ?? 0;
   const navigate = useNavigate();
   const { currentProject } = useProject();

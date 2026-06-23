@@ -7,16 +7,17 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 import {
-  ConnectorIdParamSchema,
-  CreateBodySchema,
+  CreateHsmConnectorBodySchema,
+  HsmConnectorIdParamSchema,
+  HsmConnectorLinkedResourcesQuerySchema,
+  HsmConnectorLinkedResourcesResponseSchema,
   HsmConnectorSanitizedSchema,
   HsmConnectorTestResultSchema,
-  LinkedCertificatesQuerySchema,
-  LinkedCertificatesResponseSchema,
-  UpdateBodySchema
-} from "./cert-manager-hsm-connector-router-schemas";
+  ListHsmConnectorsQuerySchema,
+  UpdateHsmConnectorBodySchema
+} from "./hsm-connector-router-schemas";
 
-export const registerCertManagerHsmConnectorRouter = async (server: FastifyZodProvider) => {
+export const registerHsmConnectorRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",
     url: "/",
@@ -25,14 +26,14 @@ export const registerCertManagerHsmConnectorRouter = async (server: FastifyZodPr
       hide: false,
       operationId: "createHsmConnector",
       tags: [ApiDocsTags.HsmConnectors],
-      body: CreateBodySchema,
+      body: CreateHsmConnectorBodySchema,
       response: { 200: z.object({ hsmConnector: HsmConnectorSanitizedSchema }) }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const hsmConnector = await server.services.hsmConnector.createHsmConnector(
         {
-          projectId: req.internalCertManagerProjectId,
+          projectId: req.body.projectId,
           name: req.body.name,
           description: req.body.description,
           gatewayId: req.body.gatewayId,
@@ -66,12 +67,13 @@ export const registerCertManagerHsmConnectorRouter = async (server: FastifyZodPr
       hide: false,
       operationId: "listHsmConnectors",
       tags: [ApiDocsTags.HsmConnectors],
+      querystring: ListHsmConnectorsQuerySchema,
       response: { 200: z.object({ hsmConnectors: HsmConnectorSanitizedSchema.array() }) }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const hsmConnectors = await server.services.hsmConnector.listHsmConnectors(
-        { projectId: req.internalCertManagerProjectId },
+        { projectId: req.query.projectId },
         req.permission
       );
       return { hsmConnectors };
@@ -86,7 +88,7 @@ export const registerCertManagerHsmConnectorRouter = async (server: FastifyZodPr
       hide: false,
       operationId: "getHsmConnector",
       tags: [ApiDocsTags.HsmConnectors],
-      params: ConnectorIdParamSchema,
+      params: HsmConnectorIdParamSchema,
       response: { 200: z.object({ hsmConnector: HsmConnectorSanitizedSchema }) }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
@@ -107,8 +109,8 @@ export const registerCertManagerHsmConnectorRouter = async (server: FastifyZodPr
       hide: false,
       operationId: "updateHsmConnector",
       tags: [ApiDocsTags.HsmConnectors],
-      params: ConnectorIdParamSchema,
-      body: UpdateBodySchema,
+      params: HsmConnectorIdParamSchema,
+      body: UpdateHsmConnectorBodySchema,
       response: { 200: z.object({ hsmConnector: HsmConnectorSanitizedSchema }) }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
@@ -149,28 +151,24 @@ export const registerCertManagerHsmConnectorRouter = async (server: FastifyZodPr
       hide: false,
       operationId: "deleteHsmConnector",
       tags: [ApiDocsTags.HsmConnectors],
-      params: ConnectorIdParamSchema,
+      params: HsmConnectorIdParamSchema,
       response: { 200: z.object({ id: z.string().uuid() }) }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const connector = await server.services.hsmConnector.getHsmConnectorById(
-        { connectorId: req.params.connectorId },
-        req.permission
-      );
-      const result = await server.services.hsmConnector.deleteHsmConnector(
+      const deleted = await server.services.hsmConnector.deleteHsmConnector(
         { connectorId: req.params.connectorId },
         req.permission
       );
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId: connector.projectId,
+        projectId: deleted.projectId,
         event: {
           type: EventType.DELETE_HSM_CONNECTOR,
-          metadata: { connectorId: result.id, name: connector.name }
+          metadata: { connectorId: deleted.id, name: deleted.name }
         }
       });
-      return result;
+      return { id: deleted.id };
     }
   });
 
@@ -182,27 +180,23 @@ export const registerCertManagerHsmConnectorRouter = async (server: FastifyZodPr
       hide: false,
       operationId: "testHsmConnector",
       tags: [ApiDocsTags.HsmConnectors],
-      params: ConnectorIdParamSchema,
+      params: HsmConnectorIdParamSchema,
       response: { 200: HsmConnectorTestResultSchema }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const connector = await server.services.hsmConnector.getHsmConnectorById(
-        { connectorId: req.params.connectorId },
-        req.permission
-      );
-      const result = await server.services.hsmConnector.testHsmConnector(
+      const { projectId, name, result } = await server.services.hsmConnector.testHsmConnector(
         { connectorId: req.params.connectorId },
         req.permission
       );
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId: connector.projectId,
+        projectId,
         event: {
           type: EventType.TEST_HSM_CONNECTOR,
           metadata: {
             connectorId: req.params.connectorId,
-            name: connector.name,
+            name,
             ok: result.ok,
             memberCount: result.members.length
           }
@@ -214,19 +208,19 @@ export const registerCertManagerHsmConnectorRouter = async (server: FastifyZodPr
 
   server.route({
     method: "GET",
-    url: "/:connectorId/linked-certificates",
+    url: "/:connectorId/linked-resources",
     config: { rateLimit: readLimit },
     schema: {
       hide: false,
-      operationId: "listHsmConnectorLinkedCertificates",
+      operationId: "listHsmConnectorLinkedResources",
       tags: [ApiDocsTags.HsmConnectors],
-      params: ConnectorIdParamSchema,
-      querystring: LinkedCertificatesQuerySchema,
-      response: { 200: LinkedCertificatesResponseSchema }
+      params: HsmConnectorIdParamSchema,
+      querystring: HsmConnectorLinkedResourcesQuerySchema,
+      response: { 200: HsmConnectorLinkedResourcesResponseSchema }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      return server.services.hsmConnector.listLinkedCertificates(
+      return server.services.hsmConnector.listLinkedResources(
         {
           connectorId: req.params.connectorId,
           offset: req.query.offset,

@@ -69,9 +69,12 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
   });
   const groupsQuery = useGetOrganizationGroups(orgId);
   const { subscription } = useSubscription();
-  const { data: hsmConnectors = [], isPending: isHsmConnectorsLoading } = useListHsmConnectors({
-    enabled: Boolean(subscription?.pkiHsm)
-  });
+  const { data: hsmConnectors = [], isPending: isHsmConnectorsLoading } = useListHsmConnectors(
+    projectId,
+    {
+      enabled: Boolean(subscription?.hsm)
+    }
+  );
 
   const createSigner = useCreateSigner();
 

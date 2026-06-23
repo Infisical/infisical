@@ -135,8 +135,6 @@ export const signerIssuanceServiceFactory = ({
       });
     }
 
-    await signerIssuanceJobDAL.cancelOpenForSigner(input.signerId, "Superseded by a newer issuance request.");
-
     if (input.hsm) {
       if (input.hsm.actor) {
         await hsmConnectorService.assertAttachPermission(input.hsm.actor, input.hsm.hsmConnectorId, input.projectId);
@@ -175,21 +173,31 @@ export const signerIssuanceServiceFactory = ({
       const encryptedCsrHsm = await encryptForProject(input.projectId, Buffer.from(built.csrPem));
       const hsmCertKeyAlgorithm = hsmKeyAlgorithmToCertKeyAlgorithm(input.hsm.hsmKeyAlgorithm);
 
-      const hsmJob = await signerIssuanceJobDAL.create({
-        signerId: input.signerId,
-        caId: input.caId,
-        caType,
-        status: SignerIssuanceJobStatus.Pending,
-        commonName: input.commonName,
-        certificateTtlDays: input.certificateTtlDays,
-        keyAlgorithm: hsmCertKeyAlgorithm,
-        encryptedCsr: encryptedCsrHsm,
-        encryptedPrivateKey: null,
-        keySource: CertKeySource.Hsm,
-        hsmConnectorId: input.hsm.hsmConnectorId,
-        hsmKeyLabel: keyLabel,
-        hsmPublicKeySpki: publicKeySpkiDer,
-        nextPollAt: new Date()
+      const hsmJob = await signerIssuanceJobDAL.transaction(async (tx) => {
+        await signerIssuanceJobDAL.cancelOpenForSigner(
+          input.signerId,
+          "Superseded by a newer issuance request.",
+          tx
+        );
+        return signerIssuanceJobDAL.create(
+          {
+            signerId: input.signerId,
+            caId: input.caId,
+            caType,
+            status: SignerIssuanceJobStatus.Pending,
+            commonName: input.commonName,
+            certificateTtlDays: input.certificateTtlDays,
+            keyAlgorithm: hsmCertKeyAlgorithm,
+            encryptedCsr: encryptedCsrHsm,
+            encryptedPrivateKey: null,
+            keySource: CertKeySource.Hsm,
+            hsmConnectorId: input.hsm!.hsmConnectorId,
+            hsmKeyLabel: keyLabel,
+            hsmPublicKeySpki: publicKeySpkiDer,
+            nextPollAt: new Date()
+          },
+          tx
+        );
       });
 
       void (async () => {
@@ -211,17 +219,23 @@ export const signerIssuanceServiceFactory = ({
     const encryptedCsr = await encryptForProject(input.projectId, Buffer.from(csrPem));
     const encryptedPrivateKey = await encryptForProject(input.projectId, Buffer.from(privateKeyPem));
 
-    const job = await signerIssuanceJobDAL.create({
-      signerId: input.signerId,
-      caId: input.caId,
-      caType,
-      status: SignerIssuanceJobStatus.Pending,
-      commonName: input.commonName,
-      certificateTtlDays: input.certificateTtlDays,
-      keyAlgorithm,
-      encryptedCsr,
-      encryptedPrivateKey,
-      nextPollAt: new Date()
+    const job = await signerIssuanceJobDAL.transaction(async (tx) => {
+      await signerIssuanceJobDAL.cancelOpenForSigner(input.signerId, "Superseded by a newer issuance request.", tx);
+      return signerIssuanceJobDAL.create(
+        {
+          signerId: input.signerId,
+          caId: input.caId,
+          caType,
+          status: SignerIssuanceJobStatus.Pending,
+          commonName: input.commonName,
+          certificateTtlDays: input.certificateTtlDays,
+          keyAlgorithm,
+          encryptedCsr,
+          encryptedPrivateKey,
+          nextPollAt: new Date()
+        },
+        tx
+      );
     });
 
     void (async () => {
@@ -374,46 +388,52 @@ export const signerIssuanceServiceFactory = ({
       return;
     }
 
-    if (job.keySource === CertKeySource.Hsm && job.hsmConnectorId && job.hsmKeyLabel) {
-      try {
-        const certAlg = job.keyAlgorithm as CertKeyAlgorithm;
-        await certificateDAL.updateById(certificateId, {
-          keySource: CertKeySource.Hsm,
-          hsmConnectorId: job.hsmConnectorId,
-          hsmKeyLabel: job.hsmKeyLabel,
-          hsmPublicKeySpki: job.hsmPublicKeySpki ?? null,
-          keyAlgorithm: certAlg
-        });
-      } catch (patchErr) {
-        const reason = formatSignerIssuanceErrorReason(
-          patchErr,
-          "Failed to record HSM coordinates on the issued certificate"
+    const isHsmJob = job.keySource === CertKeySource.Hsm && job.hsmConnectorId && job.hsmKeyLabel;
+    try {
+      await signerDAL.transaction(async (tx) => {
+        if (isHsmJob) {
+          const certAlg = job.keyAlgorithm as CertKeyAlgorithm;
+          await certificateDAL.updateById(
+            certificateId,
+            {
+              keySource: CertKeySource.Hsm,
+              hsmConnectorId: job.hsmConnectorId,
+              hsmKeyLabel: job.hsmKeyLabel,
+              hsmPublicKeySpki: job.hsmPublicKeySpki ?? null,
+              keyAlgorithm: certAlg
+            },
+            tx
+          );
+        }
+        await signerDAL.updateById(
+          job.signerId,
+          {
+            certificateId,
+            status: SignerStatus.Active,
+            certificateFailureReason: null
+          },
+          tx
         );
-        await markJobFailed(job, reason);
-        return;
-      }
+        await signerIssuanceJobDAL.updateById(
+          job.id,
+          {
+            status: SignerIssuanceJobStatus.Completed,
+            certificateId,
+            failureReason: null
+          },
+          tx
+        );
+      });
+    } catch (txErr) {
+      const reason = formatSignerIssuanceErrorReason(
+        txErr,
+        isHsmJob
+          ? "Failed to atomically record HSM coordinates and attach the certificate to the signer"
+          : "Failed to attach the issued certificate to the signer"
+      );
+      await markJobFailed(job, reason);
+      return;
     }
-
-    await signerDAL.transaction(async (tx) => {
-      await signerDAL.updateById(
-        job.signerId,
-        {
-          certificateId,
-          status: SignerStatus.Active,
-          certificateFailureReason: null
-        },
-        tx
-      );
-      await signerIssuanceJobDAL.updateById(
-        job.id,
-        {
-          status: SignerIssuanceJobStatus.Completed,
-          certificateId,
-          failureReason: null
-        },
-        tx
-      );
-    });
     logger.info(
       `signer issuance: signer attached [jobId=${job.id}] [signerId=${job.signerId}] [certificateId=${certificateId}]`
     );
@@ -437,7 +457,7 @@ export const signerIssuanceServiceFactory = ({
             "HSM-backed signers are not supported with Azure AD CS yet. Use AWS Private CA, or switch the signer's key source to Infisical."
         });
       }
-      const azureResult = await azureAdCsFns.orderCertificateFromProfile({
+      const azureResult = await azureAdCsFns.orderCertificateForSigner({
         caId: job.caId,
         commonName: job.commonName,
         altNames: [],
@@ -453,7 +473,7 @@ export const signerIssuanceServiceFactory = ({
       }
       certificateId = azureResult.certificateId;
     } else {
-      const awsResult = await awsPcaFns.orderCertificateFromProfile({
+      const awsResult = await awsPcaFns.orderCertificateForSigner({
         caId: job.caId,
         commonName: job.commonName,
         altNames: [],

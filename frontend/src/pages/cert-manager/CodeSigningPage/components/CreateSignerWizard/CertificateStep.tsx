@@ -63,7 +63,7 @@ export const CertificateStep = ({
   };
 
   const { subscription } = useSubscription();
-  const isHsmLicensed = Boolean(subscription?.pkiHsm);
+  const isHsmLicensed = Boolean(subscription?.hsm);
   const { permission } = useProjectPermission();
   const canAttachHsm = permission.can(
     ProjectPermissionHsmConnectorActions.Attach,
@@ -156,10 +156,10 @@ export const CertificateStep = ({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent position="popper">
-                  <SelectItem value={CertKeySource.Infisical}>Infisical-managed key</SelectItem>
+                  <SelectItem value={CertKeySource.Infisical}>Infisical</SelectItem>
                   <SelectItem value={CertKeySource.Hsm} disabled={!isHsmLicensed || !canAttachHsm}>
                     <div className="flex items-center gap-2">
-                      HSM-backed key
+                      HSM
                       {!isHsmLicensed && <Badge variant="info">Enterprise</Badge>}
                       {isHsmLicensed && !canAttachHsm && (
                         <Badge variant="warning">Permission required</Badge>
@@ -254,7 +254,7 @@ export const CertificateStep = ({
             render={({ field, fieldState: { error } }) => (
               <Field>
                 <FieldLabel>
-                  HSM key algorithm <span className="text-danger">*</span>
+                  Key algorithm <span className="text-danger">*</span>
                 </FieldLabel>
                 <FieldContent>
                   <Select value={field.value} onValueChange={field.onChange}>

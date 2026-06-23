@@ -282,6 +282,12 @@ export type TReissueSignerCertificateDTO = {
   caId: string;
   commonName?: string;
   certificateTtlDays?: number;
+  keyAlgorithm?: SignerKeyAlgorithm;
+  certificate?: {
+    keySource: CertKeySource;
+    hsmConnectorId?: string;
+    hsmKeyAlgorithm?: HsmKeyAlgorithm;
+  };
 };
 
 export type TEnableSignerDTO = { signerId: string };
