@@ -12,6 +12,12 @@ export enum PamAccountType {
   ActiveDirectory = "active-directory"
 }
 
+export enum PamPolicyType {
+  RequireMfa = "require-mfa",
+  RequireReason = "require-reason",
+  MaxSessionDuration = "max-session-duration"
+}
+
 export enum SessionChannelType {
   Terminal = "terminal",
   Exec = "exec",

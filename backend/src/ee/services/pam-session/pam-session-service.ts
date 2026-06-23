@@ -25,9 +25,9 @@ import {
   TActorContext,
   verifyProductMembership
 } from "../pam/pam-permission";
+import { resolveAccessControls } from "../pam/pam-policies";
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
 import { extractGatewayTarget, parseInternalMetadata } from "../pam-account/pam-account-schemas";
-import { PamTemplateAccessPolicySchema } from "../pam-account-template/pam-account-template-schemas";
 import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
 import { PamRecordingStorageBackend } from "../pam-session-recording/pam-recording-enums";
 import { generateSessionRecordingSecrets } from "../pam-session-recording/pam-recording-secrets";
@@ -165,7 +165,7 @@ export const pamSessionServiceFactory = ({
           clientPublicKey,
           keyId: `pam-session-${session.id}`,
           principals: [username],
-          requestedTtl: `${PamTemplateAccessPolicySchema.safeParse(account.templateAccessPolicy).data?.maxSessionDurationSeconds ?? DEFAULT_SESSION_DURATION_MS / 1000}s`,
+          requestedTtl: `${resolveAccessControls(account.templatePolicies).maxSessionDurationSeconds ?? DEFAULT_SESSION_DURATION_MS / 1000}s`,
           certType: SshCertType.USER
         });
 
@@ -293,20 +293,17 @@ export const pamSessionServiceFactory = ({
 
     const trimmedReason = reason?.trim() || null;
 
-    const accessPolicy = account.templateAccessPolicy
-      ? PamTemplateAccessPolicySchema.safeParse(account.templateAccessPolicy)
-      : null;
-    const policy = accessPolicy?.success ? accessPolicy.data : null;
+    const policy = resolveAccessControls(account.templatePolicies);
 
-    if (policy?.requireReason && !trimmedReason) {
+    if (policy.requireReason && !trimmedReason) {
       throw new BadRequestError({ message: "A reason is required to access this account" });
     }
 
-    if (policy?.requireMfa) {
+    if (policy.requireMfa) {
       throw new BadRequestError({ message: "MFA verification is required to access this account" });
     }
 
-    const maxDurationMs = policy?.maxSessionDurationSeconds
+    const maxDurationMs = policy.maxSessionDurationSeconds
       ? policy.maxSessionDurationSeconds * 1000
       : DEFAULT_SESSION_DURATION_MS;
 

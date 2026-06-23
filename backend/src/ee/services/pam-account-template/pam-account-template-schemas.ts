@@ -25,12 +25,5 @@ export const PamTemplateSettingsSchema = z.object({
   sessionLogMaskingPatterns: z.array(z.string().min(1).max(500)).max(20).optional()
 });
 
-export const PamTemplateAccessPolicySchema = z.object({
-  maxSessionDurationSeconds: z.number().int().min(60).max(86400).optional(),
-  requireReason: z.boolean().default(false),
-  requireMfa: z.boolean().default(false)
-});
-
 export type TPamTemplateSettings = z.infer<typeof PamTemplateSettingsSchema>;
-export type TPamTemplateAccessPolicy = z.infer<typeof PamTemplateAccessPolicySchema>;
 export type TPamPasswordConstraints = z.infer<typeof PamPasswordConstraintsSchema>;

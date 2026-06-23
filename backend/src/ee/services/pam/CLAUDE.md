@@ -8,10 +8,10 @@ All PAM services live under `backend/src/ee/services/pam-*/`:
 
 | Directory | Purpose |
 |---|---|
-| `pam/` | Shared enums (`PamAccountType`, `PamResourceRole`, `PamProductRole`, `PamSessionStatus`, `PamAccessMethod`), shared permission helpers (`pam-permission.ts`), validators (`pam-validators.ts`), and this CLAUDE.md |
+| `pam/` | Shared enums (`PamAccountType`, `PamResourceRole`, `PamProductRole`, `PamSessionStatus`, `PamAccessMethod`), permission helpers (`pam-permission.ts`), validators (`pam-validators.ts`), the policy registry (`pam-policies.ts`), and this CLAUDE.md |
 | `pam-folder/` | Folder CRUD, folder-level permission checks |
 | `pam-account/` | Account CRUD, credential encryption, gateway attachment, SSH CA management |
-| `pam-account-template/` | Account templates (type + access policy + settings), template config schemas (`pam-account-template-schemas.ts`) |
+| `pam-account-template/` | Account templates (type + policies + settings), template config schemas (`pam-account-template-schemas.ts`); policy values live in the `policies` column, see [Policies](#policies) |
 | `pam-session/` | Session lifecycle (DAL, service, types) |
 | `pam-session-recording/` | Recording chunk storage, retrieval, secrets, and storage providers (`aws-s3/`, `postgres/`) |
 | `pam-membership/` | Product + resource membership management |
@@ -121,6 +121,28 @@ Most types need only backend changes -- the frontend auto-renders from metadata.
 5. If it supports web access: add a session handler in `pam-web-access/` (export the handler function) and add an entry for it to the `SESSION_HANDLERS` map in `pam-session-handlers.ts`.
 
 No changes to the account form components, router schemas, or field renderers are needed. The per-type route bodies use `config.connectionDetails`/`config.credentials` directly, the detail response (`SanitizedAccountDetailSchema`) is a discriminated union auto-derived from `ACCOUNT_TYPE_CONFIGS` (each variant pulls `connectionDetails` and `sanitizedCredentials` from the config), and the frontend forms render from `GET /pam/accounts/types`.
+
+## Policies
+
+Policies are the governance controls applied to a template (require MFA, require reason, max session duration). They are registry-driven, defined once in `PAM_POLICY_DEFINITIONS` in `pam/pam-policies.ts`, keyed by `PamPolicyType`. Each entry is `{ label, description, appliesTo, schema }` where `appliesTo` is an account-type list or `"all"`, and `schema` is the Zod schema for that policy's value (a primitive or object).
+
+"Access policy" is the category, not a type: MFA, reason, and duration are individual peer policies that each `appliesTo: "all"`. `appliesTo` can also be a list to scope a policy to specific account types. This is distinct from **settings** (recording, password constraints), which are NOT policies, they live in the template's separate `settings` column with their own schema and bespoke UI.
+
+Storage: a template's `policies` jsonb column is a flat map keyed by `PamPolicyType`, e.g. `{ "require-mfa": true, "max-session-duration": 3600 }`. No DB defaults and no per-policy migration: absence resolves to the policy's natural default in the resolver (a missing boolean is `false`, a missing duration falls back to `DEFAULT_SESSION_DURATION_MS`).
+
+A registry entry flows automatically to:
+- **`GET /pam/accounts/types`** (`applicablePolicies`), so the frontend renders the right editors per account type with no per-type wiring.
+- **`validatePolicyValues`**, used by template create/update to reject policies that don't apply to the type or fail their schema (returns a result object; the caller maps `ok: false` to a `BadRequestError`).
+
+Every current policy is server-enforced: `resolveAccessControls` reads the reason/MFA/duration gates and they're applied in `pam-session`/`pam-web-access`. A gateway-enforced policy would instead pass its value to the gateway in `getSessionCredentials` (not currently wired, no policy needs it yet).
+
+### Adding a New Policy
+
+1. Add the value to `PamPolicyType` and an entry to `PAM_POLICY_DEFINITIONS` in `pam/pam-policies.ts` (`label`, `description`, `appliesTo`, `schema`). Mirror the enum value in `frontend/src/hooks/api/pam/enums.ts`.
+2. Register the policy in `POLICY_EDITORS` (`frontend/src/pages/pam/components/policyEditors/`), keyed by the new `PamPolicyType`. Reuse an existing editor when the value shape matches (`BooleanPolicyEditor` for a `z.boolean()`, `DurationPolicyEditor` for a number); only write a new editor component for a novel value shape. Each editor receives `{ label, description, value, onChange }` and owns its own layout, booleans render inline, others vertical.
+3. Enforcement: read it where it's enforced. A server-enforced policy extends `resolveAccessControls` and is applied in `pam-session`/`pam-web-access`. A gateway-enforced policy passes its value to the gateway in `getSessionCredentials`.
+
+No migration, no router or response-schema change, and no DB default.
 
 ## Session Lifecycle
 

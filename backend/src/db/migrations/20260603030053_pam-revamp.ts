@@ -32,7 +32,6 @@ const seedDefaultTemplates = async (knex: Knex, projectId: string) => {
         projectId,
         name: template.name,
         type: template.type,
-        accessPolicy: template.accessPolicy,
         settings: template.settings
       })
       .onConflict(["projectId", "name"])
@@ -85,7 +84,7 @@ export async function up(knex: Knex): Promise<void> {
     t.string("type").notNullable();
     t.index("type");
 
-    t.jsonb("accessPolicy").nullable();
+    t.jsonb("policies").nullable();
     t.jsonb("settings").nullable();
 
     t.uuid("gatewayId").nullable();

@@ -9,10 +9,7 @@ import {
   PamAccountAccessibilityIssue,
   PamAccountTypeMetadataSchema
 } from "@app/ee/services/pam-account/pam-account-schemas";
-import {
-  PamTemplateAccessPolicySchema,
-  PamTemplateSettingsSchema
-} from "@app/ee/services/pam-account-template/pam-account-template-schemas";
+import { PamTemplateSettingsSchema } from "@app/ee/services/pam-account-template/pam-account-template-schemas";
 import { SESSION_HANDLERS } from "@app/ee/services/pam-web-access/pam-session-handlers";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -58,7 +55,7 @@ const accountDetailVariants = Object.entries(ACCOUNT_TYPE_CONFIGS).map(([account
   SanitizedAccountListItemSchema.extend({
     accountType: z.literal(accountType as TSupportedAccountType),
     connectionDetails: config.connectionDetails,
-    templateAccessPolicy: PamTemplateAccessPolicySchema.nullable().optional(),
+    templatePolicies: z.record(z.unknown()).nullable().optional(),
     templateSettings: PamTemplateSettingsSchema.nullable().optional(),
     credentials: config.sanitizedCredentials,
     isAccessible: z.boolean().describe("Whether the account is fully provisioned to launch a session"),

@@ -9,7 +9,7 @@ import {
   CardTitle,
   TextArea
 } from "@app/components/v3";
-import { TPamAccount } from "@app/hooks/api/pam";
+import { PamPolicyType, TPamAccount } from "@app/hooks/api/pam";
 
 type TAccessPolicy = {
   requireReason: boolean;
@@ -17,15 +17,14 @@ type TAccessPolicy = {
   requireMfa: boolean;
 };
 
-const DEFAULT_ACCESS_POLICY: TAccessPolicy = {
-  requireReason: false,
-  maxSessionDurationSeconds: 3600,
-  requireMfa: false
-};
-
 export const resolveAccessPolicy = (account: TPamAccount): TAccessPolicy => {
-  const templatePolicy = account.templateAccessPolicy as Partial<TAccessPolicy> | null;
-  return { ...DEFAULT_ACCESS_POLICY, ...templatePolicy };
+  const policies = (account.templatePolicies ?? {}) as Record<string, unknown>;
+  const duration = policies[PamPolicyType.MaxSessionDuration];
+  return {
+    requireReason: policies[PamPolicyType.RequireReason] === true,
+    requireMfa: policies[PamPolicyType.RequireMfa] === true,
+    maxSessionDurationSeconds: typeof duration === "number" ? duration : 3600
+  };
 };
 
 type TSessionAccessGateResult = {

@@ -3,6 +3,7 @@ import RE2 from "re2";
 import { z } from "zod";
 
 import { PamAccountType } from "../pam/pam-enums";
+import { getApplicablePolicies, PamPolicyDescriptorSchema } from "../pam/pam-policies";
 
 enum PamFieldWidget {
   Text = "text",
@@ -281,7 +282,8 @@ export const PamAccountTypeMetadataSchema = z.object({
   icon: z.string(),
   supportsWebAccess: z.boolean(),
   connectionFields: z.array(PamFieldDescriptorSchema),
-  credentialFields: z.array(PamFieldDescriptorSchema)
+  credentialFields: z.array(PamFieldDescriptorSchema),
+  applicablePolicies: z.array(PamPolicyDescriptorSchema)
 });
 
 type PamAccountTypeMetadata = z.infer<typeof PamAccountTypeMetadataSchema>;
@@ -423,7 +425,8 @@ export const buildPamAccountTypeMetadata = (webAccessSupportedTypes: Set<PamAcco
     icon: config.icon,
     supportsWebAccess: webAccessSupportedTypes.has(type),
     connectionFields: fieldsFromSchema(config.connectionDetails, config.ui),
-    credentialFields: fieldsFromSchema(config.credentials, config.ui)
+    credentialFields: fieldsFromSchema(config.credentials, config.ui),
+    applicablePolicies: getApplicablePolicies(type)
   }));
 
 export const isCredentialConfigured = (accountType: PamAccountType, credentials: Record<string, unknown>): boolean => {
