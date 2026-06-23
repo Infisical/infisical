@@ -105,6 +105,7 @@ export const resolveEffectiveTtl = ({
 /**
  * Applies profile defaults to certificate request
  * Request values always take precedence over defaults.
+ * For scalar fields, key-presence distinguishes "omitted" (use default) from "explicitly set/cleared".
  * For keyUsages/extendedKeyUsages/basicConstraints, replace strategy: request array wins entirely if present.
  */
 export const applyProfileDefaults = <
@@ -128,6 +129,8 @@ export const applyProfileDefaults = <
   if (!defaults) return request;
 
   // For scalar fields, key-presence distinguishes "omitted" (use default) from "explicitly set/cleared".
+  // CSR extraction (extractCertificateRequestFromCSR) omits keys for absent fields,
+  // while API routes include keys with undefined values for explicitly cleared fields.
   return {
     ...request,
     commonName: "commonName" in request ? request.commonName : defaults.commonName,
