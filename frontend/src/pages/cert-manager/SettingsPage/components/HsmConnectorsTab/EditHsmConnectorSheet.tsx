@@ -101,23 +101,41 @@ export const EditHsmConnectorSheet = ({ connector, onClose }: Props) => {
     }
   });
 
+  const currentReachedFrom = useMemo(() => {
+    if (!connector) return "";
+    if (connector.gatewayId) return `gateway:${connector.gatewayId}`;
+    if (connector.gatewayPoolId) return `pool:${connector.gatewayPoolId}`;
+    return "";
+  }, [connector]);
+
   useEffect(() => {
     if (!connector) return;
-    let reachedFrom = "";
-    if (connector.gatewayId) reachedFrom = `gateway:${connector.gatewayId}`;
-    else if (connector.gatewayPoolId) reachedFrom = `pool:${connector.gatewayPoolId}`;
     form.reset({
       name: connector.name,
       description: connector.description ?? "",
-      reachedFrom,
+      reachedFrom: currentReachedFrom,
       slotLabel: connector.slotLabel,
       keyNamePrefix: connector.keyNamePrefix ?? "",
       pin: ""
     });
-  }, [connector, form]);
+  }, [connector, currentReachedFrom, form]);
+
+  const watchedReachedFrom = form.watch("reachedFrom");
+  const routingChanged =
+    Boolean(currentReachedFrom) &&
+    Boolean(watchedReachedFrom) &&
+    watchedReachedFrom !== currentReachedFrom;
 
   const onSubmit = async (values: EditForm) => {
     if (!connector) return;
+    if (routingChanged && !(values.pin && values.pin.length > 0)) {
+      form.setError("pin", {
+        type: "manual",
+        message:
+          "Re-enter the PIN to confirm the new Gateway. Reusing the stored PIN against an unverified Gateway would expose it."
+      });
+      return;
+    }
     const [kind, id] = values.reachedFrom.split(":");
     const credentialsPatch: Record<string, string> = {};
     if (values.slotLabel !== connector.slotLabel) credentialsPatch.slotLabel = values.slotLabel;
@@ -285,7 +303,9 @@ export const EditHsmConnectorSheet = ({ connector, onClose }: Props) => {
                   control={form.control}
                   render={({ field, fieldState: { error } }) => (
                     <Field>
-                      <FieldLabel>PIN</FieldLabel>
+                      <FieldLabel>
+                        PIN {routingChanged && <span className="text-danger">*</span>}
+                      </FieldLabel>
                       <FieldContent>
                         <Input
                           {...field}
@@ -296,7 +316,9 @@ export const EditHsmConnectorSheet = ({ connector, onClose }: Props) => {
                           isError={Boolean(error)}
                         />
                         <FieldDescription>
-                          Leave blank to keep the current PIN. Type a new value to rotate it.
+                          {routingChanged
+                            ? "Required because you are changing the Gateway. Re-enter the PIN so Infisical can verify it against the new route."
+                            : "Leave blank to keep the current PIN. Type a new value to rotate it."}
                         </FieldDescription>
                         <FieldError errors={[error]} />
                       </FieldContent>

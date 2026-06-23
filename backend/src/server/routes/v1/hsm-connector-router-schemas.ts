@@ -1,10 +1,7 @@
 import { z } from "zod";
 
 import { slugSchema } from "@app/server/lib/schemas";
-import {
-  HsmConnectorCredentialsSchema,
-  HsmConnectorSanitizedSchema
-} from "@app/services/hsm-connector/hsm-connector-fns";
+import { HsmConnectorCredentialsSchema } from "@app/services/hsm-connector/hsm-connector-fns";
 
 const HSM_CONNECTOR_NAME_MAX = 32;
 const HSM_CONNECTOR_DESCRIPTION_MAX = 256;

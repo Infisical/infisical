@@ -95,16 +95,16 @@ The **slot label** is your Fortanix group name, visible under **Groups** in the 
 ## Troubleshooting
 
 <AccordionGroup>
-  <Accordion title='"slot not found" on Verify'>
+  <Accordion title="Verify says the slot can't be found">
     Confirm the slot label matches what `pkcs11-tool --list-slots` reports. Fortanix slot labels are case-sensitive.
   </Accordion>
-  <Accordion title='"login failed" on Verify'>
-    Re-check the PIN. The PIN must be the same Fortanix API key you put in `pkcs11.conf` (not the DSM account password). If you rotated the API key in the Fortanix dashboard, update both `pkcs11.conf` on the Gateway host and the Connector's PIN in Infisical.
+  <Accordion title="Verify says login to the HSM failed">
+    Re-check the PIN. It must be the same Fortanix API key you put in `pkcs11.conf` (not the DSM account password). If you rotated the API key in the Fortanix dashboard, update both `pkcs11.conf` on the Gateway host and the Connector's PIN in Infisical.
   </Accordion>
-  <Accordion title='"gateway unreachable"'>
+  <Accordion title="Verify says the Gateway is unreachable">
     The Gateway must be running with HSM support enabled. Check the Gateway log for the PKCS#11 module load line.
   </Accordion>
-  <Accordion title="Slow operations">
+  <Accordion title="Operations through the HSM feel slow">
     If the Gateway host can't reach DSM over HTTPS with low latency, every sign call pays the round-trip. Run the Gateway in the same network as DSM whenever possible.
   </Accordion>
 </AccordionGroup>

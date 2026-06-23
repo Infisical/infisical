@@ -892,7 +892,7 @@
                     ]
                   },
                   {
-                    "group": "Certificate Settings",
+                    "group": "Settings",
                     "pages": [
                       "documentation/platform/pki/settings/policies",
                       "documentation/platform/pki/settings/profiles",
@@ -3386,7 +3386,7 @@
                 ]
               },
               {
-                "group": "Certificate Settings",
+                "group": "Settings",
                 "pages": [
                   {
                     "group": "Certificate Policies",

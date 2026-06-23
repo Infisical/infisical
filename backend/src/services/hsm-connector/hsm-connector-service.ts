@@ -248,6 +248,15 @@ export const hsmConnectorServiceFactory = ({
       await assertGatewayBelongsToOrg(actor.orgId, nextGatewayId, nextGatewayPoolId);
     }
 
+    const effectiveRoutingChanged =
+      (row.gatewayId ?? null) !== nextGatewayId || (row.gatewayPoolId ?? null) !== nextGatewayPoolId;
+    if (effectiveRoutingChanged && !dto.credentials?.pin) {
+      throw new BadRequestError({
+        message:
+          "PIN must be re-supplied when changing the Gateway or Gateway Pool of an HSM Connector. Include the new pin in the request body."
+      });
+    }
+
     const currentCreds = await decryptHsmConnectorCredentials({
       projectId: row.projectId,
       encryptedCredentials: row.encryptedCredentials,
