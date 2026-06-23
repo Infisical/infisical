@@ -328,7 +328,7 @@ export const RequestAccessForm = ({
                       </FieldContent>
                       <Checkbox
                         id={`secret-${name}`}
-                        variant="project"
+                        variant="outline"
                         isChecked={field.value}
                         onCheckedChange={(isChecked) => field.onChange(isChecked)}
                       />
