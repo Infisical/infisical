@@ -12,7 +12,7 @@ export type TCreatePamAccountDTO = {
   gatewayId?: string;
   gatewayPoolId?: string;
   recordingConnectionId?: string;
-  recordingSettings?: { s3Config?: { bucket: string; region: string; keyPrefix?: string } } | null;
+  settingsOverrides?: { recordingS3Config?: { bucket: string; region: string; keyPrefix?: string } } | null;
 };
 
 export type TUpdatePamAccountDTO = {
@@ -28,7 +28,7 @@ export type TUpdatePamAccountDTO = {
   gatewayId?: string | null;
   gatewayPoolId?: string | null;
   recordingConnectionId?: string | null;
-  recordingSettings?: { s3Config?: { bucket: string; region: string; keyPrefix?: string } } | null;
+  settingsOverrides?: { recordingS3Config?: { bucket: string; region: string; keyPrefix?: string } } | null;
 };
 
 export type TDeletePamAccountDTO = {

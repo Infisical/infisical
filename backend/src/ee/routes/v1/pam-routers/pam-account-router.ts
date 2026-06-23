@@ -10,7 +10,7 @@ import {
   PamAccountTypeMetadataSchema
 } from "@app/ee/services/pam-account/pam-account-schemas";
 import {
-  PamAccountRecordingSettingsSchema,
+  PamAccountSettingsOverridesSchema,
   PamTemplateAccessPolicySchema,
   PamTemplateSettingsSchema
 } from "@app/ee/services/pam-account-template/pam-account-template-schemas";
@@ -37,7 +37,7 @@ const BaseAccountFields = PamAccountsSchema.pick({
   gatewayId: true,
   gatewayPoolId: true,
   recordingConnectionId: true,
-  recordingSettings: true,
+  settingsOverrides: true,
   createdAt: true,
   updatedAt: true
 });
@@ -105,9 +105,9 @@ const registerPerTypeEndpoints = (
         gatewayId: z.string().uuid().optional().describe("The ID of the gateway to use"),
         gatewayPoolId: z.string().uuid().optional().describe("The ID of the gateway pool to use"),
         recordingConnectionId: z.string().uuid().optional().describe("The ID of the recording connection to use"),
-        recordingSettings: PamAccountRecordingSettingsSchema.nullable()
+        settingsOverrides: PamAccountSettingsOverridesSchema.nullable()
           .optional()
-          .describe("Account-level recording S3 config override")
+          .describe("Account-level template settings overrides")
       }),
       response: {
         200: z.object({
@@ -190,9 +190,9 @@ const registerPerTypeEndpoints = (
           .nullable()
           .optional()
           .describe("The ID of the recording connection to use"),
-        recordingSettings: PamAccountRecordingSettingsSchema.nullable()
+        settingsOverrides: PamAccountSettingsOverridesSchema.nullable()
           .optional()
-          .describe("Account-level recording S3 config override")
+          .describe("Account-level template settings overrides")
       }),
       response: {
         200: z.object({

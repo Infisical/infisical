@@ -34,7 +34,7 @@ export const PamAccountsSchema = z.object({
   gatewayPoolId: z.string().uuid().nullable().optional(),
   recordingConnectionId: z.string().uuid().nullable().optional(),
   credentialConfigured: z.boolean().default(false),
-  recordingSettings: z.unknown().nullable().optional()
+  settingsOverrides: z.unknown().nullable().optional()
 });
 
 export type TPamAccounts = z.infer<typeof PamAccountsSchema>;

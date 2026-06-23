@@ -19,8 +19,8 @@ export const PamRecordingS3ConfigSchema = z.object({
   keyPrefix: z.string().trim().optional()
 });
 
-export const PamAccountRecordingSettingsSchema = z.object({
-  s3Config: PamRecordingS3ConfigSchema.optional()
+export const PamAccountSettingsOverridesSchema = z.object({
+  recordingS3Config: PamRecordingS3ConfigSchema.optional()
 });
 
 export const PamTemplateSettingsSchema = z.object({

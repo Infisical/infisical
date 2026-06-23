@@ -197,7 +197,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       gatewayId: account.gatewayId,
       gatewayPoolId: account.gatewayPoolId,
       recordingConnectionId: account.recordingConnectionId,
-      recordingSettings: account.recordingSettings ?? null,
+      settingsOverrides: account.settingsOverrides ?? null,
       connectionDetails,
       credentials,
       ...computeAccessibility(account),
@@ -218,7 +218,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     gatewayId,
     gatewayPoolId,
     recordingConnectionId,
-    recordingSettings,
+    settingsOverrides,
     ...ctx
   }: TCreatePamAccountDTO & TActorContext) => {
     const { permission } = await checkFolder(folderId, projectId, ctx);
@@ -256,14 +256,14 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     await validateRecordingConnection(deps, recordingConnectionId, ctx);
 
     let resolvedS3Config = null;
-    if (recordingSettings?.s3Config) {
+    if (settingsOverrides?.recordingS3Config) {
       const connId = recordingConnectionId ?? template.recordingConnectionId;
       if (!connId) {
         throw new BadRequestError({
           message: "S3 recording config requires an AWS connection on the account or template"
         });
       }
-      resolvedS3Config = await validateRecordingS3Config(deps, connId, recordingSettings.s3Config, ctx);
+      resolvedS3Config = await validateRecordingS3Config(deps, connId, settingsOverrides.recordingS3Config, ctx);
     }
 
     const validatedConnectionDetails = validateConnectionDetails(accountType, connectionDetails);
@@ -285,7 +285,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
         gatewayId,
         gatewayPoolId,
         recordingConnectionId,
-        recordingSettings: recordingSettings ?? null
+        settingsOverrides: settingsOverrides ?? null
       });
 
       const corsProbeUrl = resolvedS3Config ? await mintCorsProbeUrl(resolvedS3Config) : null;
@@ -300,6 +300,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
         gatewayId: account.gatewayId,
         gatewayPoolId: account.gatewayPoolId,
         recordingConnectionId: account.recordingConnectionId,
+        settingsOverrides: account.settingsOverrides ?? null,
         createdAt: account.createdAt,
         updatedAt: account.updatedAt,
         accountType,
@@ -337,7 +338,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     gatewayId,
     gatewayPoolId,
     recordingConnectionId,
-    recordingSettings,
+    settingsOverrides,
     ...ctx
   }: TUpdatePamAccountDTO & TActorContext) => {
     const existing = await pamAccountDAL.findByIdWithDetails(accountId);
@@ -376,7 +377,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     await validateRecordingConnection(deps, recordingConnectionId, ctx);
 
     let resolvedS3Config = null;
-    if (recordingSettings?.s3Config) {
+    if (settingsOverrides?.recordingS3Config) {
       const connId =
         (recordingConnectionId !== undefined ? recordingConnectionId : existing.recordingConnectionId) ??
         existing.templateRecordingConnectionId;
@@ -385,7 +386,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
           message: "S3 recording config requires an AWS connection on the account or template"
         });
       }
-      resolvedS3Config = await validateRecordingS3Config(deps, connId, recordingSettings.s3Config, ctx);
+      resolvedS3Config = await validateRecordingS3Config(deps, connId, settingsOverrides.recordingS3Config, ctx);
     }
 
     const updateData: Record<string, unknown> = {};
@@ -396,7 +397,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     if (gatewayId !== undefined) updateData.gatewayId = gatewayId;
     if (gatewayPoolId !== undefined) updateData.gatewayPoolId = gatewayPoolId;
     if (recordingConnectionId !== undefined) updateData.recordingConnectionId = recordingConnectionId;
-    if (recordingSettings !== undefined) updateData.recordingSettings = recordingSettings;
+    if (settingsOverrides !== undefined) updateData.settingsOverrides = settingsOverrides;
 
     if (connectionDetails) {
       const validated = validateConnectionDetails(accountType, connectionDetails);

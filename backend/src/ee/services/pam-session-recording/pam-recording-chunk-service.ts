@@ -63,8 +63,8 @@ export const pamSessionChunkServiceFactory = ({
     const templateSettings = templateParsed?.success ? templateParsed.data : null;
     if (!templateSettings) return null;
 
-    const accountS3Parsed = account.recordingSettings
-      ? PamRecordingS3ConfigSchema.safeParse((account.recordingSettings as Record<string, unknown>).s3Config)
+    const accountS3Parsed = account.settingsOverrides
+      ? PamRecordingS3ConfigSchema.safeParse((account.settingsOverrides as Record<string, unknown>).recordingS3Config)
       : null;
     const accountS3 = accountS3Parsed?.success ? accountS3Parsed.data : null;
 

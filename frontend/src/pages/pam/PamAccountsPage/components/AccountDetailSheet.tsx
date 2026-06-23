@@ -474,7 +474,7 @@ const SettingsTab = ({
 
   useEffect(() => {
     if (account) {
-      const s3 = account.recordingSettings?.s3Config;
+      const s3 = account.settingsOverrides?.recordingS3Config;
       reset({
         gatewayId: account.gatewayId,
         gatewayPoolId: account.gatewayPoolId,
@@ -551,9 +551,9 @@ const SettingsTab = ({
     const region = values.recordingRegion.trim();
     const keyPrefix = values.recordingKeyPrefix.trim();
     const hasS3Override = Boolean(bucket) || Boolean(region);
-    const recordingSettings = hasS3Override
+    const settingsOverrides = hasS3Override
       ? {
-          s3Config: {
+          recordingS3Config: {
             bucket,
             region,
             ...(keyPrefix ? { keyPrefix } : {})
@@ -568,7 +568,7 @@ const SettingsTab = ({
         gatewayId: values.gatewayId,
         gatewayPoolId: values.gatewayPoolId,
         recordingConnectionId: values.recordingConnectionId,
-        recordingSettings
+        settingsOverrides
       },
       {
         onSuccess: async (result) => {
