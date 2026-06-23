@@ -105,6 +105,7 @@ export const resolveEffectiveTtl = ({
 /**
  * Applies profile defaults to certificate request
  * Request values always take precedence over defaults.
+ * For string fields (subject DN components), use default if request value is empty/undefined.
  * For keyUsages/extendedKeyUsages/basicConstraints, replace strategy: request array wins entirely if present.
  */
 export const applyProfileDefaults = <
@@ -127,17 +128,19 @@ export const applyProfileDefaults = <
 ): T => {
   if (!defaults) return request;
 
-  // For scalar fields, key-presence distinguishes "omitted" (use default) from "explicitly set/cleared".
+  // For string fields (subject DN components), use default if request value is empty/undefined.
+  // This allows profile defaults to be injected when CSR doesn't contain these fields
+  // (e.g., ACME clients like CertBot often omit CN, putting domain only in SAN).
   return {
     ...request,
-    commonName: "commonName" in request ? request.commonName : defaults.commonName,
-    organization: "organization" in request ? request.organization : defaults.organization,
-    organizationalUnit: "organizationalUnit" in request ? request.organizationalUnit : defaults.organizationalUnit,
-    country: "country" in request ? request.country : defaults.country,
-    state: "state" in request ? request.state : defaults.state,
-    locality: "locality" in request ? request.locality : defaults.locality,
-    keyAlgorithm: "keyAlgorithm" in request ? request.keyAlgorithm : defaults.keyAlgorithm,
-    signatureAlgorithm: "signatureAlgorithm" in request ? request.signatureAlgorithm : defaults.signatureAlgorithm,
+    commonName: request.commonName || defaults.commonName,
+    organization: request.organization || defaults.organization,
+    organizationalUnit: request.organizationalUnit || defaults.organizationalUnit,
+    country: request.country || defaults.country,
+    state: request.state || defaults.state,
+    locality: request.locality || defaults.locality,
+    keyAlgorithm: request.keyAlgorithm || defaults.keyAlgorithm,
+    signatureAlgorithm: request.signatureAlgorithm || defaults.signatureAlgorithm,
     keyUsages: request.keyUsages !== undefined ? request.keyUsages : defaults.keyUsages,
     extendedKeyUsages: request.extendedKeyUsages !== undefined ? request.extendedKeyUsages : defaults.extendedKeyUsages,
     basicConstraints: request.basicConstraints !== undefined ? request.basicConstraints : defaults.basicConstraints
