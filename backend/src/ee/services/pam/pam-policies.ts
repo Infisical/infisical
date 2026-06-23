@@ -62,13 +62,23 @@ export const validatePolicyValues = (
 
   const data: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(policies)) {
+    const validPolicies = getApplicablePolicies(accountType)
+      .map((p) => p.key)
+      .join(", ");
+
     if (!(key in PAM_POLICY_DEFINITIONS)) {
-      return { ok: false, message: `Unknown PAM policy '${key}'` };
+      return {
+        ok: false,
+        message: `Unknown PAM policy '${key}'. Valid policies for ${accountType}: ${validPolicies}`
+      };
     }
 
     const policy = key as PamPolicyType;
     if (!policyAppliesTo(policy, accountType)) {
-      return { ok: false, message: `Policy '${key}' does not apply to account type '${accountType}'` };
+      return {
+        ok: false,
+        message: `Policy '${key}' does not apply to account type '${accountType}'. Valid policies for ${accountType}: ${validPolicies}`
+      };
     }
 
     const parsed = PAM_POLICY_DEFINITIONS[policy].schema.safeParse(value);
