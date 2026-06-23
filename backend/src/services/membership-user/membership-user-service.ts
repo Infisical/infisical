@@ -423,11 +423,11 @@ export const membershipUserServiceFactory = ({
     const customRolesGroupBySlug = groupBy(customRoles, ({ slug }) => slug);
 
     const membershipDoc = await membershipUserDAL.transaction(async (tx) => {
-      if (!newRolesHavePermanentAdmin) {
+      if (!newRolesHavePermanentAdmin && scopeData.scope === AccessScope.Organization) {
         await assertWillRetainAdmin({
           scope: scopeData.scope,
           scopeOrgId: scopeData.orgId,
-          scopeProjectId: scopeData.scope === AccessScope.Project ? scopeData.projectId : undefined,
+          scopeProjectId: undefined,
           excludeMembershipIds: [existingMembership.id],
           dal: membershipUserDAL,
           tx
@@ -531,15 +531,6 @@ export const membershipUserServiceFactory = ({
       }
 
       if (dto.scopeData.scope === AccessScope.Project) {
-        await assertWillRetainAdmin({
-          scope: AccessScope.Project,
-          scopeOrgId: scopeData.orgId,
-          scopeProjectId: dto.scopeData.projectId,
-          excludeMembershipIds: [existingMembership.id],
-          dal: membershipUserDAL,
-          tx
-        });
-
         await additionalPrivilegeDAL.delete(
           {
             actorUserId: dto.selector.userId,
