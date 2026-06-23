@@ -1,7 +1,5 @@
 import { components, OptionProps } from "react-select";
-import { faCheckCircle } from "@fortawesome/free-regular-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { BanIcon } from "lucide-react";
+import { BanIcon, CheckIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { Badge } from "@app/components/v3";
@@ -31,9 +29,7 @@ export const PolicyMemberOption = ({
             Inactive
           </Badge>
         )}
-        {isSelected && (
-          <FontAwesomeIcon className="ml-2 text-primary" icon={faCheckCircle} size="sm" />
-        )}
+        {isSelected && <CheckIcon className="ml-2 size-4 shrink-0" />}
       </div>
     </components.Option>
   );
