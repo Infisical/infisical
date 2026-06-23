@@ -14,6 +14,7 @@ import {
   TCloudPlanResponse,
   TCreateCheckoutPayload,
   TCreatePortalPayload,
+  TEntitlementOrg,
   TEntitlementsResponse,
   TLicenseClientBackend,
   TSessionResponse,
@@ -45,10 +46,23 @@ const mintServiceToken = (signingKey: string): string =>
     expiresIn: "2m"
   });
 
-export const licenseServerBackend = (serverUrl: string, signingKey: string): TLicenseClientBackend => ({
-  fetchEntitlements: async (orgId: string): Promise<TEntitlementsResponse> => {
+export const licenseServerBackend = (
+  serverUrl: string,
+  signingKey: string,
+  region?: string
+): TLicenseClientBackend => ({
+  fetchEntitlements: async (org: TEntitlementOrg): Promise<TEntitlementsResponse> => {
     const url = new URL(ENTITLEMENTS_PATH, serverUrl);
-    url.searchParams.set("org_id", orgId);
+    url.searchParams.set("org_id", org.id);
+    if (org.name) {
+      url.searchParams.set("org_name", org.name);
+    }
+    if (org.slug) {
+      url.searchParams.set("org_slug", org.slug);
+    }
+    if (region) {
+      url.searchParams.set("region", region);
+    }
     const res = await fetch(url, {
       method: "GET",
       headers: { Authorization: `Bearer ${mintServiceToken(signingKey)}` },

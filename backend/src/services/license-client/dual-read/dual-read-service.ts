@@ -25,7 +25,7 @@ export const dualReadServiceFactory = ({ licenseClient, envConfig }: TDualReadSe
     }
 
     void (async () => {
-      const entitlements = await licenseClient.getEntitlements(orgId);
+      const entitlements = await licenseClient.getEntitlements({ id: orgId });
       if (!entitlements) {
         recordLicenseDualReadError({ error: new Error("v2 entitlements unavailable") });
         logger.warn(`license-dual-read: v2 entitlements unavailable [orgId=${orgId}]`);

@@ -229,7 +229,7 @@ export const licenseServiceFactory = ({
           if (!licenseClient) {
             throw new BadRequestError({ message: "License Server v2 client is not configured" });
           }
-          const entitlements = await licenseClient.getEntitlements(rootOrgId);
+          const entitlements = await licenseClient.getEntitlements({ id: rootOrgId, name: org.name, slug: org.slug });
           if (!entitlements) {
             throw new BadRequestError({ message: "License Server v2 entitlements are unavailable" });
           }
