@@ -72,10 +72,10 @@ export const webhookDALFactory = (db: TDbClient) => {
         .where(`${TableName.Environment}.projectId`, projectId)
         .where((qb) => {
           if (environment) {
-            void qb.where("slug", environment);
+            void qb.where(`${TableName.Environment}.slug`, environment);
           }
           if (secretPath) {
-            void qb.where("secretPath", secretPath);
+            void qb.where(`${TableName.Webhook}.secretPath`, secretPath);
           }
         })
         .join(TableName.Environment, `${TableName.Webhook}.envId`, `${TableName.Environment}.id`)
