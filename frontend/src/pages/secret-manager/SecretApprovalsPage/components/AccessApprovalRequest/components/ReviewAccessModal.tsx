@@ -438,10 +438,11 @@ export const ReviewAccessRequestModal = ({
     return <InfoIcon />;
   };
 
-  // users can always reject (cancel) their own request
+  // users can always reject (cancel) their own request; approvers can reject others'
+  // requests regardless of the self-approval setting (that only governs your own request)
   const isRejectionDisabled = request.isRequestedByCurrentUser
     ? false
-    : !(request.isApprover && request.isSelfApproveAllowed) && !bypassApproval;
+    : !request.isApprover && !bypassApproval;
 
   const requesterFullName = [request.user?.firstName, request.user?.lastName]
     .filter(Boolean)
