@@ -56,6 +56,31 @@ export const userGroupMembershipDALFactory = (db: TDbClient) => {
   };
 
   /**
+   * Given a set of [userIds], returns the subset that have access to project [projectId]
+   * through a (non-pending) group membership, i.e. they belong to a group that is itself
+   * a member of the project. Used to validate approvers/bypassers who are project members
+   * via a group rather than directly.
+   */
+  const findUserGroupMembershipsInProjectByUserIds = async (userIds: string[], projectId: string, tx?: Knex) => {
+    try {
+      if (!userIds.length) return [];
+
+      const userIdsWithGroupAccess: string[] = await (tx || db.replicaNode())(TableName.UserGroupMembership)
+        .join(TableName.Membership, `${TableName.UserGroupMembership}.groupId`, `${TableName.Membership}.actorGroupId`)
+        .where(`${TableName.Membership}.scope`, AccessScope.Project)
+        .where(`${TableName.Membership}.scopeProjectId`, projectId)
+        .where(`${TableName.UserGroupMembership}.isPending`, false)
+        .whereIn(`${TableName.UserGroupMembership}.userId`, userIds)
+        .distinct(`${TableName.UserGroupMembership}.userId`)
+        .pluck(`${TableName.UserGroupMembership}.userId`);
+
+      return userIdsWithGroupAccess;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find user group memberships in project by user ids" });
+    }
+  };
+
+  /**
    * Return list of completed/accepted users that are part of the group with id [groupId]
    * that have not yet been added individually to project with id [projectId].
    *
@@ -221,6 +246,7 @@ export const userGroupMembershipDALFactory = (db: TDbClient) => {
     ...userGroupMembershipOrm,
     filterProjectsByUserMembership,
     findUserGroupMembershipsInProject,
+    findUserGroupMembershipsInProjectByUserIds,
     findGroupMembersNotInProject,
     deletePendingUserGroupMembershipsByUserIds,
     findGroupMembershipsByUserIdInOrg,

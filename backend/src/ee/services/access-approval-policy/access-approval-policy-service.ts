@@ -8,7 +8,6 @@ import { groupBy } from "@app/lib/fn";
 import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
-import { TProjectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TAccessApprovalRequestDALFactory } from "../access-approval-request/access-approval-request-dal";
@@ -21,6 +20,7 @@ import {
 } from "./access-approval-policy-approver-dal";
 import { TAccessApprovalPolicyDALFactory } from "./access-approval-policy-dal";
 import { TAccessApprovalPolicyEnvironmentDALFactory } from "./access-approval-policy-environment-dal";
+import { approvalPolicyMembershipVerifierFactory } from "./access-approval-policy-fns";
 import {
   ApproverType,
   BypasserType,
@@ -38,7 +38,6 @@ type TAccessApprovalPolicyServiceFactoryDep = {
   projectEnvDAL: Pick<TProjectEnvDALFactory, "find" | "findOne">;
   accessApprovalPolicyApproverDAL: TAccessApprovalPolicyApproverDALFactory;
   accessApprovalPolicyBypasserDAL: TAccessApprovalPolicyBypasserDALFactory;
-  projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findProjectMembershipsByUserIds">;
   groupDAL: TGroupDALFactory;
   userDAL: Pick<TUserDALFactory, "find">;
   accessApprovalRequestDAL: Pick<TAccessApprovalRequestDALFactory, "update" | "find" | "resetReviewByPolicyId">;
@@ -59,8 +58,7 @@ export const accessApprovalPolicyServiceFactory = ({
   userDAL,
   accessApprovalRequestDAL,
   additionalPrivilegeDAL,
-  accessApprovalRequestReviewerDAL,
-  projectMembershipDAL
+  accessApprovalRequestReviewerDAL
 }: TAccessApprovalPolicyServiceFactoryDep): TAccessApprovalPolicyServiceFactory => {
   const $policyExists = async ({
     envId,
@@ -83,20 +81,7 @@ export const accessApprovalPolicyServiceFactory = ({
     return policyId ? policy && policy.id !== policyId : Boolean(policy);
   };
 
-  const verifyProjectUserMembership = async (userIds: string[], orgId: string, projectId: string) => {
-    if (userIds.length === 0) return;
-    const projectMemberships = (await projectMembershipDAL.findProjectMembershipsByUserIds(orgId, userIds)).filter(
-      (v) => v.projectId === projectId
-    );
-
-    if (projectMemberships.length !== userIds.length) {
-      const projectMemberUserIds = new Set(projectMemberships.map((member) => member.userId));
-      const userIdsNotInProject = userIds.filter((id) => !projectMemberUserIds.has(id));
-      throw new BadRequestError({
-        message: `Some users are not members of the project: ${userIdsNotInProject.join(", ")}`
-      });
-    }
-  };
+  const { verifyProjectSubjectsMembership } = approvalPolicyMembershipVerifierFactory({ projectDAL });
 
   const createAccessApprovalPolicy: TAccessApprovalPolicyServiceFactory["createAccessApprovalPolicy"] = async ({
     name,
@@ -188,13 +173,15 @@ export const accessApprovalPolicyServiceFactory = ({
       );
     }
 
-    if (approverUserIds.length > 0) {
-      await verifyProjectUserMembership(
-        approverUserIds.map((au) => au.id),
-        project.orgId,
-        project.id
-      );
+    if (approverUserIds.length > 0 || groupApprovers.length > 0) {
+      await verifyProjectSubjectsMembership({
+        userIds: approverUserIds.map((au) => au.id),
+        groupIds: groupApprovers.map((ga) => ga.id).filter(Boolean) as string[],
+        orgId: project.orgId,
+        projectId: project.id
+      });
     }
+
     let groupBypassers: string[] = [];
     let bypasserUserIds: string[] = [];
 
@@ -282,7 +269,12 @@ export const accessApprovalPolicyServiceFactory = ({
       }
 
       if (bypasserUserIds.length) {
-        await verifyProjectUserMembership(bypasserUserIds, project.orgId, project.id);
+        await verifyProjectSubjectsMembership({
+          userIds: bypasserUserIds,
+          groupIds: [],
+          orgId: project.orgId,
+          projectId: project.id
+        });
 
         await accessApprovalPolicyBypasserDAL.insertMany(
           bypasserUserIds.map((userId) => ({
@@ -483,8 +475,8 @@ export const accessApprovalPolicyServiceFactory = ({
 
       await accessApprovalPolicyApproverDAL.delete({ policyId: doc.id }, tx);
 
+      let approverUserIds = userApprovers;
       if (userApprovers.length || userApproverNames.length) {
-        let approverUserIds = userApprovers;
         if (userApproverNames.length) {
           const approverUsersInDB = await userDAL.find({
             $in: {
@@ -510,14 +502,16 @@ export const accessApprovalPolicyServiceFactory = ({
             }))
           );
         }
-
-        if (approverUserIds.length > 0) {
-          await verifyProjectUserMembership(
-            approverUserIds.map((au) => au.id),
-            actorOrgId,
-            accessApprovalPolicy.projectId
-          );
-        }
+      }
+      if (approverUserIds.length > 0 || groupApprovers.length > 0) {
+        await verifyProjectSubjectsMembership({
+          userIds: approverUserIds.map((au) => au.id),
+          groupIds: groupApprovers.map((ga) => ga.id).filter(Boolean) as string[],
+          orgId: actorOrgId,
+          projectId: accessApprovalPolicy.projectId
+        });
+      }
+      if (userApprovers.length || userApproverNames.length) {
         await accessApprovalPolicyApproverDAL.insertMany(
           approverUserIds.map((el) => ({
             approverUserId: el.id,
@@ -556,7 +550,12 @@ export const accessApprovalPolicyServiceFactory = ({
       await accessApprovalPolicyBypasserDAL.delete({ policyId: doc.id }, tx);
 
       if (bypasserUserIds.length) {
-        await verifyProjectUserMembership(bypasserUserIds, actorOrgId, accessApprovalPolicy.projectId);
+        await verifyProjectSubjectsMembership({
+          userIds: bypasserUserIds,
+          groupIds: [],
+          orgId: actorOrgId,
+          projectId: accessApprovalPolicy.projectId
+        });
 
         await accessApprovalPolicyBypasserDAL.insertMany(
           bypasserUserIds.map((userId) => ({

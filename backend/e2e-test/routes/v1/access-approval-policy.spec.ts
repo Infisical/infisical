@@ -16,12 +16,12 @@ const createPolicy = async (dto: {
 }) => {
   const res = await testServer.inject({
     method: "POST",
-    url: `/api/v1/secret-approvals`,
+    url: `/api/v1/access-approvals/policies`,
     headers: {
       authorization: `Bearer ${jwtAuthToken}`
     },
     body: {
-      workspaceId: seedData1.project.id,
+      projectSlug: seedData1.project.slug,
       environment: seedData1.environment.slug,
       name: dto.name,
       secretPath: dto.secretPath,
@@ -37,12 +37,12 @@ const createPolicy = async (dto: {
 const createPolicyWithGroupApprover = (dto: { name: string; groupId: string; secretPath: string }) =>
   testServer.inject({
     method: "POST",
-    url: `/api/v1/secret-approvals`,
+    url: `/api/v1/access-approvals/policies`,
     headers: {
       authorization: `Bearer ${jwtAuthToken}`
     },
     body: {
-      workspaceId: seedData1.project.id,
+      projectSlug: seedData1.project.slug,
       environment: seedData1.environment.slug,
       name: dto.name,
       secretPath: dto.secretPath,
@@ -94,16 +94,16 @@ const cleanupGroup = async (db: Knex, groupId: string) => {
   await db(TableName.Groups).where({ id: groupId }).del();
 };
 
-describe("Secret approval policy router", async () => {
+describe("Access approval policy router", async () => {
   test("Create policy", async () => {
     const policy = await createPolicy({
       secretPath: "/",
       approvals: 1,
       approvers: [{ id: seedData1.id, type: ApproverType.User }],
-      name: "test-policy"
+      name: "test-access-policy"
     });
 
-    expect(policy.name).toBe("test-policy");
+    expect(policy.name).toBe("test-access-policy");
   });
 
   test("Create policy fails when group approver is not a member of the project", async () => {
@@ -111,7 +111,7 @@ describe("Secret approval policy router", async () => {
     const nonMemberGroupId = crypto.randomUUID();
 
     const res = await createPolicyWithGroupApprover({
-      name: "test-policy-group-not-in-project",
+      name: "test-access-policy-group-not-in-project",
       groupId: nonMemberGroupId,
       secretPath: "/group-not-member"
     });
@@ -123,94 +123,59 @@ describe("Secret approval policy router", async () => {
 
   test("Create policy succeeds when group approver is a member of the project", async () => {
     const db = getDb();
-    const group = await seedGroup(db, { slug: "sap-group-in-project", addToProject: true });
+    const group = await seedGroup(db, { slug: "aap-group-in-project", addToProject: true });
 
     try {
       const res = await createPolicyWithGroupApprover({
-        name: "test-policy-group-in-project",
+        name: "test-access-policy-group-in-project",
         groupId: group.id,
         secretPath: "/group-member"
       });
 
       expect(res.statusCode).toBe(200);
-      expect(res.json().approval.name).toBe("test-policy-group-in-project");
+      expect(res.json().approval.name).toBe("test-access-policy-group-in-project");
     } finally {
       await cleanupGroup(db, group.id);
     }
   });
 
-  test("Create policy succeeds when user approver is a project member only via a group", async () => {
+  test("Update policy fails when group approver is not a member of the project", async () => {
     const db = getDb();
-    const group = await seedGroup(db, { slug: "sap-group-user-approver", addToProject: true });
-
-    // A user that is NOT a direct project member, but belongs to a group that is in the project.
-    const [user] = await db(TableName.Users)
-      .insert({
-        email: `sap-group-user-${crypto.randomUUID()}@localhost.local`,
-        username: `sap-group-user-${crypto.randomUUID()}@localhost.local`,
-        isGhost: false,
-        isEmailVerified: true,
-        authMethods: ["email"]
-      })
-      .returning("*");
-
-    await db(TableName.UserGroupMembership).insert({
-      userId: user.id,
-      groupId: group.id,
-      isPending: false
-    });
+    const group = await seedGroup(db, { slug: "aap-group-update", addToProject: true });
+    const nonMemberGroupId = crypto.randomUUID();
 
     let policyId: string | undefined;
     try {
-      const res = await testServer.inject({
-        method: "POST",
-        url: `/api/v1/secret-approvals`,
+      const createRes = await createPolicyWithGroupApprover({
+        name: "test-access-policy-update",
+        groupId: group.id,
+        secretPath: "/group-update"
+      });
+      expect(createRes.statusCode).toBe(200);
+      policyId = createRes.json().approval.id;
+
+      const updateRes = await testServer.inject({
+        method: "PATCH",
+        url: `/api/v1/access-approvals/policies/${policyId}`,
         headers: {
           authorization: `Bearer ${jwtAuthToken}`
         },
         body: {
-          workspaceId: seedData1.project.id,
-          environment: seedData1.environment.slug,
-          name: "test-policy-group-user-approver",
-          secretPath: "/group-user-approver",
-          approvers: [{ id: user.id, type: ApproverType.User }],
+          approvers: [{ id: nonMemberGroupId, type: ApproverType.Group }],
           approvals: 1
         }
       });
 
-      expect(res.statusCode).toBe(200);
-      policyId = res.json().approval.id;
+      expect(updateRes.statusCode).toBe(400);
+      expect(updateRes.json().message).toContain("Some groups are not members of the project");
+      expect(updateRes.json().message).toContain(nonMemberGroupId);
     } finally {
-      await db(TableName.SecretApprovalPolicyApprover).where({ approverUserId: user.id }).del();
-      if (policyId) await db(TableName.SecretApprovalPolicy).where({ id: policyId }).del();
-      await db(TableName.UserGroupMembership).where({ userId: user.id }).del();
-      await db(TableName.Users).where({ id: user.id }).del();
+      if (policyId) {
+        await db(TableName.AccessApprovalPolicyApprover).where({ policyId }).del();
+        await db(TableName.AccessApprovalPolicyEnvironment).where({ policyId }).del();
+        await db(TableName.AccessApprovalPolicy).where({ id: policyId }).del();
+      }
       await cleanupGroup(db, group.id);
     }
-  });
-
-  test("Create policy fails when user approver is neither a direct nor a group member", async () => {
-    // A user id with no direct project membership and no group-based access must still be rejected.
-    const nonMemberUserId = crypto.randomUUID();
-
-    const res = await testServer.inject({
-      method: "POST",
-      url: `/api/v1/secret-approvals`,
-      headers: {
-        authorization: `Bearer ${jwtAuthToken}`
-      },
-      body: {
-        workspaceId: seedData1.project.id,
-        environment: seedData1.environment.slug,
-        name: "test-policy-non-member-user",
-        secretPath: "/non-member-user",
-        approvers: [{ id: nonMemberUserId, type: ApproverType.User }],
-        approvals: 1
-      }
-    });
-
-    expect(res.statusCode).toBe(400);
-    expect(res.json().message).toContain("Some users are not members of the project");
-    expect(res.json().message).toContain(nonMemberUserId);
   });
 });
