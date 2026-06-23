@@ -172,6 +172,8 @@ export const listBitbucketEnvironments = async (
     Accept: "application/json"
   };
 
+  // We still need to paginate this one as it's the only endpoint we use that doesn't support searching
+  // https://developer.atlassian.com/cloud/bitbucket/rest/api-group-deployments/#api-repositories-workspace-repo-slug-environments-get
   return paginateBitbucketRequest<TBitbucketEnvironment>(
     `${IntegrationUrls.BITBUCKET_API_URL}/2.0/repositories/${encodeURIComponent(workspaceSlug)}/${encodeURIComponent(repositorySlug)}/environments?pagelen=${BITBUCKET_PAGE_SIZE}`,
     headers
