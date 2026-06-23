@@ -7,6 +7,7 @@ import {
   ProjectPermissionApprovalRequestActions,
   ProjectPermissionApprovalRequestGrantActions,
   ProjectPermissionAuditLogsActions,
+  ProjectPermissionProjectGrantActions,
   ProjectPermissionCertificateActions,
   ProjectPermissionCertificateAuthorityActions,
   ProjectPermissionCertificatePolicyActions,
@@ -495,6 +496,11 @@ const buildAdminPermissionRules = () => {
   );
 
   can([ProjectPermissionSecretApprovalRequestActions.Read], ProjectPermissionSub.SecretApprovalRequest);
+
+  can(
+    [ProjectPermissionProjectGrantActions.CreateGrant, ProjectPermissionProjectGrantActions.RevokeGrant],
+    ProjectPermissionSub.ProjectGrant
+  );
 
   can(
     [
