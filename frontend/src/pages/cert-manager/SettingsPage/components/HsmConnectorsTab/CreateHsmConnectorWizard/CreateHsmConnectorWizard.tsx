@@ -243,23 +243,6 @@ export const CreateHsmConnectorWizard = ({ projectId, isOpen, onOpenChange }: Pr
               </div>
 
               <div className="mt-auto space-y-3">
-                {step === 1 && (
-                  <div className="max-w-full space-y-2 rounded-md border border-border bg-mineshaft-800 p-3 text-xs">
-                    <p className="font-semibold text-foreground">No HSM-capable Gateway yet?</p>
-                    <p className="text-muted">
-                      Follow the{" "}
-                      <a
-                        href="https://infisical.com/docs/documentation/platform/pki/settings/hsm-connectors"
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-primary hover:underline"
-                      >
-                        HSM Connectors guide
-                      </a>{" "}
-                      for the step-by-step Gateway setup.
-                    </p>
-                  </div>
-                )}
                 {isLast && (
                   <p className="text-xs leading-relaxed text-muted">
                     Infisical runs a Verify against your HSM before saving. A wrong PIN, slot, or

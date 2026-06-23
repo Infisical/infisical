@@ -42,7 +42,7 @@ export const STEPS: WizardStep[] = [
     subtitle: "Choose the Gateway that connects Infisical to your HSM.",
     rightLabel: "CONNECTION",
     rightDescription:
-      "A Gateway is a lightweight agent you run inside your own network. Infisical sends signing requests to it, and it talks to the HSM directly. Only Gateways connected to an HSM appear here. If the list is empty, follow the HSM Connectors guide to set one up."
+      "Select which Gateway will route signing requests to your HSM. Only Gateways with PKCS#11 support enabled appear in the list."
   },
   {
     name: "Credentials",
