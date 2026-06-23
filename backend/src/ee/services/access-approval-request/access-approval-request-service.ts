@@ -28,6 +28,7 @@ import { NotificationType } from "../../../services/notification/notification-ty
 import { TAccessApprovalPolicyApproverDALFactory } from "../access-approval-policy/access-approval-policy-approver-dal";
 import { TAccessApprovalPolicyDALFactory } from "../access-approval-policy/access-approval-policy-dal";
 import { TGroupDALFactory } from "../group/group-dal";
+import { flattenActiveRolesFromMemberships } from "../permission/permission-service";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import {
   ProjectPermissionApprovalRequestActions,
@@ -597,7 +598,7 @@ export const accessApprovalRequestServiceFactory = ({
         })
       : undefined;
 
-    const { hasRole } = await permissionService.getProjectPermission({
+    const { hasRole, memberships } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId: accessApprovalRequest.projectId,
@@ -606,8 +607,14 @@ export const accessApprovalRequestServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
-    // If the user has no access to the project, they are not authorized to review the request, even with a break-glass approval.
-    if (hasRole(ProjectMembershipRole.NoAccess)) {
+    // A user whose only active project role is NoAccess is not authorized to review the request,
+    // even with a break-glass approval. If they also hold another active role (e.g. via a group),
+    // allow the review to proceed.
+    const activeRoles = flattenActiveRolesFromMemberships(memberships, ProjectMembershipRole.Custom);
+    const hasOnlyNoAccessRole =
+      activeRoles.length > 0 && activeRoles.every((r) => r.role === ProjectMembershipRole.NoAccess);
+
+    if (hasOnlyNoAccessRole) {
       throw new ForbiddenRequestError({ message: "You are not authorized to review this request" });
     }
 
