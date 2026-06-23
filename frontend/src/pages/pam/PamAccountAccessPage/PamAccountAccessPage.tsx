@@ -13,12 +13,10 @@ import { WebAccessStatusCard } from "./WebAccessStatusCard";
 
 const TerminalContent = ({
   account,
-  orgId,
   reason,
   mfaSessionId
 }: {
   account: TPamAccount;
-  orgId: string;
   reason?: string;
   mfaSessionId?: string;
 }) => {
@@ -26,8 +24,6 @@ const TerminalContent = ({
 
   const { containerRef, isConnected, disconnect, reconnect } = useWebAccessSession({
     accountId: account.id,
-    orgId,
-    accountName: account.name,
     accountType: account.accountType,
     reason,
     mfaSessionId,
@@ -88,11 +84,10 @@ const PageContent = () => {
     strict: false
   }) as {
     accountId?: string;
-    orgId?: string;
     accountType?: string;
   };
 
-  const { accountId, orgId } = params;
+  const { accountId } = params;
   const { data: account, isPending } = useGetPamAccountById(accountId);
 
   if (isPending) {
@@ -121,12 +116,7 @@ const PageContent = () => {
           return <PamDataExplorerPage reason={reason} mfaSessionId={mfaSessionId} />;
         }
         return (
-          <TerminalContent
-            account={account}
-            orgId={orgId!}
-            reason={reason}
-            mfaSessionId={mfaSessionId}
-          />
+          <TerminalContent account={account} reason={reason} mfaSessionId={mfaSessionId} />
         );
       }}
     </SessionAccessGate>

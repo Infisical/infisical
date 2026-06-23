@@ -65,13 +65,10 @@ export const SessionAccessGate = ({ account, children }: Props) => {
     setStep("mfa");
 
     try {
-      const { data } = await apiRequest.post<{ ticket: string }>(
+      await apiRequest.post<{ ticket: string }>(
         `/api/v1/pam/accounts/${account.id}/web-access-ticket`,
         { reason: trimmed || undefined }
       );
-      // MFA wasn't actually required by backend (template changed). Ticket was created; proceed.
-      // The children will create another ticket, so this one goes unused (expires harmlessly).
-      void data;
       setStep("done");
     } catch (err: unknown) {
       const axiosErr = err as {

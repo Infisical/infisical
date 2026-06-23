@@ -14,8 +14,6 @@ import "@xterm/xterm/css/xterm.css";
 
 type UseWebAccessSessionOptions = {
   accountId: string;
-  orgId: string;
-  accountName: string;
   accountType: string;
   reason?: string;
   mfaSessionId?: string;
@@ -24,8 +22,6 @@ type UseWebAccessSessionOptions = {
 
 export const useWebAccessSession = ({
   accountId,
-  orgId,
-  accountName,
   accountType,
   reason,
   mfaSessionId,
@@ -266,14 +262,14 @@ export const useWebAccessSession = ({
       };
 
       if (axiosErr?.response?.data?.error === "SESSION_MFA_REQUIRED") {
-        const mfaSessionId = axiosErr.response!.data!.details?.mfaSessionId;
+        const newMfaSessionId = axiosErr.response!.data!.details?.mfaSessionId;
 
-        if (!mfaSessionId) {
+        if (!newMfaSessionId) {
           terminal.write("\r\nMFA session could not be created. Please try again.\r\n");
           return;
         }
 
-        const mfaUrl = `${window.location.origin}/mfa-session/${mfaSessionId}`;
+        const mfaUrl = `${window.location.origin}/mfa-session/${newMfaSessionId}`;
 
         // Try to open MFA verification in a new window.
         const popup = window.open(mfaUrl, "_blank");
@@ -299,7 +295,7 @@ export const useWebAccessSession = ({
 
             try {
               const resp = await apiRequest.get<TMfaSessionStatusResponse>(
-                `/api/v2/mfa-sessions/${mfaSessionId}/status`
+                `/api/v2/mfa-sessions/${newMfaSessionId}/status`
               );
               if (resp.data.status === MfaSessionStatus.ACTIVE) {
                 clearInterval(interval);
@@ -332,7 +328,7 @@ export const useWebAccessSession = ({
           terminal.reset();
           const { data: retryData } = await apiRequest.post<{ ticket: string }>(
             `/api/v1/pam/accounts/${accountId}/web-access-ticket`,
-            { mfaSessionId, reason: submittedReasonRef.current }
+            { mfaSessionId: newMfaSessionId, reason: submittedReasonRef.current }
           );
           openWebSocket(terminal, retryData.ticket);
         } catch {
@@ -362,7 +358,7 @@ export const useWebAccessSession = ({
 
       terminal.write("\r\nFailed to connect. Please close and try again.\r\n");
     }
-  }, [accountId, orgId, accountName, containerEl, openWebSocket]);
+  }, [accountId, containerEl, openWebSocket]);
 
   const disconnect = useCallback(() => {
     const ws = wsRef.current;
