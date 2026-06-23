@@ -16,6 +16,7 @@ import {
   ProjectPermissionApprovalRequestActions,
   ProjectPermissionApprovalRequestGrantActions,
   ProjectPermissionAuditLogsActions,
+  ProjectPermissionProjectGrantActions,
   ProjectPermissionCodeSigningActions,
   ProjectPermissionCommitsActions,
   ProjectPermissionDynamicSecretActions,
@@ -320,6 +321,11 @@ const ApprovalRequestPolicyActionSchema = z.object({
 const ApprovalRequestGrantPolicyActionSchema = z.object({
   [ProjectPermissionApprovalRequestGrantActions.Read]: z.boolean().optional(),
   [ProjectPermissionApprovalRequestGrantActions.Revoke]: z.boolean().optional()
+});
+
+const ProjectGrantPolicyActionSchema = z.object({
+  [ProjectPermissionProjectGrantActions.CreateGrant]: z.boolean().optional(),
+  [ProjectPermissionProjectGrantActions.RevokeGrant]: z.boolean().optional()
 });
 
 const SecretApprovalRequestPolicyActionSchema = z.object({
@@ -878,6 +884,12 @@ export const projectRoleFormSchema = z.object({
       ),
       [ProjectPermissionSub.ApprovalRequestGrants]:
         ApprovalRequestGrantPolicyActionSchema.array().default([]),
+      [ProjectPermissionSub.ProjectGrant]: ProjectGrantPolicyActionSchema.extend({
+        inverted: z.boolean().optional(),
+        conditions: ConditionSchema
+      })
+        .array()
+        .default([]),
       [ProjectPermissionSub.SecretApprovalRequest]:
         SecretApprovalRequestPolicyActionSchema.array().default([])
     })
@@ -934,7 +946,8 @@ type TConditionalFields =
   | ProjectPermissionSub.Member
   | ProjectPermissionSub.Groups
   | ProjectPermissionSub.Commits
-  | ProjectPermissionSub.HoneyTokens;
+  | ProjectPermissionSub.HoneyTokens
+  | ProjectPermissionSub.ProjectGrant;
 
 export const isConditionalSubjects = (
   subject: ProjectPermissionSub
@@ -963,7 +976,8 @@ export const isConditionalSubjects = (
   subject === ProjectPermissionSub.Member ||
   subject === ProjectPermissionSub.Groups ||
   subject === ProjectPermissionSub.Commits ||
-  subject === ProjectPermissionSub.HoneyTokens;
+  subject === ProjectPermissionSub.HoneyTokens ||
+  subject === ProjectPermissionSub.ProjectGrant;
 
 const CONDITION_DISPLAY_ORDER = [
   "userEmail",
@@ -1112,7 +1126,8 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
         ProjectPermissionSub.McpEndpoints,
         ProjectPermissionSub.McpServers,
         ProjectPermissionSub.McpActivityLogs,
-        ProjectPermissionSub.Insights
+        ProjectPermissionSub.Insights,
+        ProjectPermissionSub.ProjectGrant
       ].includes(subject)
     ) {
       // from above statement we are sure it won't be undefined
@@ -1451,6 +1466,20 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
             ),
             [ProjectPermissionHoneyTokenActions.Revoke]: action.includes(
               ProjectPermissionHoneyTokenActions.Revoke
+            ),
+            conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
+            inverted
+          });
+          return;
+        }
+
+        if (subject === ProjectPermissionSub.ProjectGrant) {
+          formVal[subject]!.push({
+            [ProjectPermissionProjectGrantActions.CreateGrant]: action.includes(
+              ProjectPermissionProjectGrantActions.CreateGrant
+            ),
+            [ProjectPermissionProjectGrantActions.RevokeGrant]: action.includes(
+              ProjectPermissionProjectGrantActions.RevokeGrant
             ),
             conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
             inverted
@@ -3534,6 +3563,22 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       }
     ]
   },
+  [ProjectPermissionSub.ProjectGrant]: {
+    title: "Project Grant",
+    description: "Grant or revoke access to secrets in specific environments and paths",
+    actions: [
+      {
+        label: "Create Grant",
+        value: ProjectPermissionProjectGrantActions.CreateGrant,
+        description: "Grant access to secrets in specified environments and secret paths"
+      },
+      {
+        label: "Revoke Grant",
+        value: ProjectPermissionProjectGrantActions.RevokeGrant,
+        description: "Revoke previously granted access to secrets"
+      }
+    ]
+  },
   [ProjectPermissionSub.McpEndpoints]: {
     title: "MCP Endpoints",
     description: "Manage Model Context Protocol endpoints",
@@ -3639,7 +3684,8 @@ const SecretsManagerPermissionSubjects = (enabled = false) => ({
   [ProjectPermissionSub.Commits]: enabled,
   [ProjectPermissionSub.Insights]: enabled,
   [ProjectPermissionSub.SecretEventSubscriptions]: enabled,
-  [ProjectPermissionSub.SecretApprovalRequest]: enabled
+  [ProjectPermissionSub.SecretApprovalRequest]: enabled,
+  [ProjectPermissionSub.ProjectGrant]: enabled
 });
 
 const KmsPermissionSubjects = (enabled = false) => ({

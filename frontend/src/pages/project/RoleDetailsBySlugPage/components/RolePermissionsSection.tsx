@@ -132,6 +132,10 @@ export const renderConditionalComponents = (
       return <GeneralPermissionConditions isDisabled={isDisabled} type={subject} />;
     }
 
+    if (subject === ProjectPermissionSub.ProjectGrant) {
+      return <GeneralPermissionConditions isDisabled={isDisabled} type={subject} />;
+    }
+
     if (subject === ProjectPermissionSub.SecretRotation) {
       return <SecretRotationPermissionConditions isDisabled={isDisabled} />;
     }
