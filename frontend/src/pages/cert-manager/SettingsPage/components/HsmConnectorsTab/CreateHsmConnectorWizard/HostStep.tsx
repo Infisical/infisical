@@ -88,8 +88,8 @@ export const HostStep = ({ form, options, isLoading }: Props) => {
                 >
                   Gateway
                 </a>{" "}
-                is a lightweight agent that performs HSM operations on Infisical's behalf. It runs
-                inside your network and handles the communication with your HSM.
+                is a lightweight agent that performs HSM operations on Infisical&apos;s behalf. It
+                runs inside your network and handles the communication with your HSM.
               </FieldDescription>
               <FieldError errors={[error]} />
             </FieldContent>
