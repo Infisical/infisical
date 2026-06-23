@@ -13,7 +13,7 @@ The Connector itself stores no key material. It is a credentials and routing rec
 Have these on hand before you create a Connector:
 
 - A **running, HSM-capable Gateway** on a host that can reach your HSM. New to Gateways? Start at [Gateway Deployment](/documentation/platform/gateways/gateway-deployment), then come back. The Gateway must be started with `--pkcs11-module=<absolute path>` so it loads your HSM's PKCS#11 driver.
-- The **absolute path to the PKCS#11 driver** (`.so` on Linux, `.dll` on Windows) provided by your HSM vendor.
+- The **absolute path to the PKCS#11 driver** (`.so`) provided by your HSM vendor. Gateway HSM support runs on Linux only.
 - The **slot label** and **PIN** of the HSM slot Infisical should use. Both come from your HSM provider.
 
 ## How it fits together
@@ -42,7 +42,7 @@ sequenceDiagram
 
 Three pieces have to be in place for an HSM Connector to be usable:
 
-1. **A Gateway** running on a host that can talk to your HSM, started with `--pkcs11-module=<path to vendor .so/.dll>`. See [Gateway Deployment](/documentation/platform/gateways/gateway-deployment).
+1. **A Gateway** running on a Linux host that can talk to your HSM, started with `--pkcs11-module=<path to vendor .so>`. See [Gateway Deployment](/documentation/platform/gateways/gateway-deployment).
 2. **An HSM Connector** that points at that Gateway (or a Pool that contains it) and carries the slot credentials.
 3. **A consumer**, a feature that supports HSM-backed keys. See the feature's own docs for how it references an HSM Connector.
 
@@ -54,7 +54,7 @@ If you have never deployed a Gateway before, read [Gateway Deployment](/document
 
 <Steps>
   <Step title="Install your HSM's PKCS#11 driver on the Gateway host">
-    Install the PKCS#11 library shipped by your HSM vendor on the machine where the Gateway will run. Note the absolute path to the `.so` or `.dll`. You will pass it to the Gateway in the next step.
+    Install the PKCS#11 library shipped by your HSM vendor on the Linux machine where the Gateway will run. Note the absolute path to the `.so`. You will pass it to the Gateway in the next step.
 
     For example, the Fortanix DSM PKCS#11 driver is commonly placed at `/opt/fortanix/pkcs11/fortanix_pkcs11.so` by Fortanix's installer, though you can put it anywhere the Gateway process can read.
 

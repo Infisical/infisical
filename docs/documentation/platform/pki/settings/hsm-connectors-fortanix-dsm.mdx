@@ -50,7 +50,7 @@ Your API key is a credential, so it goes only in Infisical as the PIN. It does n
   </Step>
 
   <Step title="Install the driver and point it at your DSM">
-    Install the Fortanix PKCS#11 library on the machine that will run the Gateway. Fortanix publishes it on its [PKCS#11 library page](https://support.fortanix.com/docs/fortanix-dsm-clients-pkcs11-library) as a `.deb` package, an `.rpm` package, or a standalone `.so` for Linux, and as an MSI installer for Windows. A `.deb` apt repository is also available (`deb https://download.fortanix.com/linux/apt focal main`). On Linux the driver installs to `/opt/fortanix/pkcs11/fortanix_pkcs11.so`. On Windows the default is `C:\Program Files\Fortanix\KmsClient\FortanixKmsPkcs11.dll`.
+    Gateway HSM support runs on Linux only, so install the Fortanix PKCS#11 library on the Linux machine that will run the Gateway. Fortanix publishes it on its [PKCS#11 library page](https://support.fortanix.com/docs/fortanix-dsm-clients-pkcs11-library) as a `.deb` package, an `.rpm` package, or a standalone `.so`. A `.deb` apt repository is also available (`deb https://download.fortanix.com/linux/apt focal main`). The driver installs to `/opt/fortanix/pkcs11/fortanix_pkcs11.so`.
 
     Confirm the driver file is readable by the Gateway user:
 
@@ -65,14 +65,6 @@ Your API key is a credential, so it goes only in Infisical as the PIN. It does n
     ```
 
     This is the only setting the driver needs here. Infisical supplies the API key as the PIN in the final step.
-
-    Then list the driver's slots to find the **slot label** you will need for the Connector:
-
-    ```bash
-    pkcs11-tool --module /opt/fortanix/pkcs11/fortanix_pkcs11.so --list-token-slots
-    ```
-
-    Copy the `token label` value from the output.
   </Step>
 
   <Step title="Start the Gateway with the driver attached">
@@ -110,7 +102,7 @@ Your API key is a credential, so it goes only in Infisical as the PIN. It does n
     |-------|-------|
     | **Name** | Slug-friendly identifier, e.g. `fortanix-prod`. |
     | **Gateway** | The Gateway you started above (or a Pool that contains it). |
-    | **Slot label** | The `token label` you copied in Step 2 (`Fortanix Token` on Fortanix DSM). |
+    | **Slot label** | `Fortanix Token` by default. If you configured a custom token label, use that value instead. |
     | **PIN** | Your Fortanix application API key from Step 1. |
     | **Key label prefix** | Optional prefix added to every key label Infisical creates in this slot. |
   </Step>
