@@ -62,7 +62,7 @@ type Props = {
 
 export const EditAccountForm = ({ accountId, onDirtyChange }: Props) => {
   const { data: account, isLoading: isLoadingAccount } = useGetPamAccountById(accountId);
-  const updateAccount = useUpdatePamAccount();
+  const updateAccount = useUpdatePamAccount({ skipValidationToast: true });
   const { data: accountTypes = [] } = useListPamAccountTypes();
   const { data: folders = [] } = useListPamFoldersAdmin();
   const { data: templates = [] } = useListPamAccountTemplates(

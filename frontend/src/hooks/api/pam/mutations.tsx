@@ -115,9 +115,10 @@ export const useCreatePamAccount = () => {
   });
 };
 
-export const useUpdatePamAccount = () => {
+export const useUpdatePamAccount = ({ skipValidationToast = false } = {}) => {
   const queryClient = useQueryClient();
   return useMutation({
+    meta: skipValidationToast ? { skipValidationToast: true } : undefined,
     mutationFn: async ({ accountId, accountType, ...params }: TUpdatePamAccountDTO) => {
       const { data } = await apiRequest.patch(
         `/api/v1/pam/accounts/${accountType}/${accountId}`,
