@@ -13,12 +13,13 @@ export const DurationPolicyEditor = ({
     <FieldContent>
       <Input
         type="number"
-        placeholder="e.g. 3600 (leave empty for no limit)"
+        placeholder="e.g. 3600 (defaults to 1 hour if empty)"
         value={typeof value === "number" ? value : ""}
         onChange={(e) => {
           const parsed = Number(e.target.value);
           onChange(e.target.value === "" || Number.isNaN(parsed) ? null : parsed);
         }}
+        onWheel={(e) => e.currentTarget.blur()}
       />
       <FieldDescription>{description}</FieldDescription>
     </FieldContent>
