@@ -445,12 +445,6 @@ const getAccountTypeConfig = (accountType: PamAccountType | string) => {
 };
 
 export const validateConnectionDetails = (accountType: PamAccountType, data: unknown) => {
-  if (accountType === PamAccountType.Windows && data && typeof data === "object") {
-    const raw = data as Record<string, unknown>;
-    if (!raw.host && raw.hostname) {
-      raw.host = raw.hostname;
-    }
-  }
   return getAccountTypeConfig(accountType).connectionDetails.parse(data) as z.output<
     (typeof ACCOUNT_TYPE_CONFIGS)[TSupportedAccountType]["connectionDetails"]
   >;
