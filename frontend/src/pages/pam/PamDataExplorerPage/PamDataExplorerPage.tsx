@@ -30,11 +30,10 @@ type Props = {
 };
 
 export const PamDataExplorerPage = ({ reason, mfaSessionId }: Props = {}) => {
-  const { accountId, orgId } = useParams({
+  const { accountId } = useParams({
     strict: false
   }) as {
     accountId: string;
-    orgId: string;
     accountType: string;
   };
 
@@ -79,8 +78,6 @@ export const PamDataExplorerPage = ({ reason, mfaSessionId }: Props = {}) => {
     cancelQuery
   } = useDataExplorerSession({
     accountId,
-    orgId,
-    accountName: account?.name ?? "",
     reason,
     onSessionEnd: (endReason?: string) => {
       setHasDisconnected(true);

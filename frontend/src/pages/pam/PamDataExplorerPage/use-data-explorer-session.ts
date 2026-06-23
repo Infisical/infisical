@@ -29,8 +29,6 @@ type MfaState = {
 
 type UseDataExplorerSessionOptions = {
   accountId: string;
-  orgId: string;
-  accountName: string;
   reason?: string;
   onSessionEnd?: (reason?: string) => void;
   // Server pushes connection-closed when a BE controller dies unexpectedly.
@@ -57,8 +55,6 @@ type QueryResult = {
 
 export const useDataExplorerSession = ({
   accountId,
-  orgId,
-  accountName,
   reason: accessReason,
   onSessionEnd,
   onConnectionClosed,
