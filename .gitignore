@@ -1,7 +1,5 @@
 # backend
 node_modules
-.env
-.env.test
 .env.dev
 .env.gamma
 .env.prod
@@ -26,7 +24,6 @@ node_modules
 /.pnp
 .pnp.js
 
-.env
 
 # testing
 coverage
@@ -49,7 +46,6 @@ yarn-debug.log*
 yarn-error.log*
 
 # local env files
-.env.local
 .env.development.local
 .env.test.local
 .env.production.local
@@ -77,3 +73,4 @@ upgrade-impact/.local-output/
 
 /npm/bin
 __pycache__
+config.bat
