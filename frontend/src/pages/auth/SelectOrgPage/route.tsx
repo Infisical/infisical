@@ -5,8 +5,8 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { SessionStorageKeys } from "@app/const";
-import { adminQueryKeys } from "@app/hooks/api/admin/queries";
 import { isInfisicalCloud } from "@app/helpers/platform";
+import { adminQueryKeys } from "@app/hooks/api/admin/queries";
 import { authKeys, selectOrganization } from "@app/hooks/api/auth/queries";
 import { UserAgentType } from "@app/hooks/api/auth/types";
 import {

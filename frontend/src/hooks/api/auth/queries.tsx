@@ -4,6 +4,7 @@ import SecurityClient from "@app/components/utilities/SecurityClient";
 import { apiRequest } from "@app/config/request";
 import { SessionStorageKeys } from "@app/const";
 
+import { adminQueryKeys } from "../admin";
 import { organizationKeys } from "../organization/queries";
 import { projectKeys } from "../projects";
 import { TGenerateAuthenticationOptionsResponse, TVerifyAuthenticationDTO } from "../webauthn";
@@ -32,7 +33,6 @@ import {
   VerifyMfaTokenRes,
   VerifySignupInviteDTO
 } from "./types";
-import { adminQueryKeys } from "../admin";
 
 export const authKeys = {
   getAuthToken: ["token"] as const
