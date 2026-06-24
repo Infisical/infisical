@@ -3095,6 +3095,26 @@
                 "group": "Applications",
                 "pages": [
                   {
+                    "group": "Configuration",
+                    "pages": [
+                      "api-reference/endpoints/pki/applications/configuration/create",
+                      "api-reference/endpoints/pki/applications/configuration/list",
+                      "api-reference/endpoints/pki/applications/configuration/get-by-id",
+                      "api-reference/endpoints/pki/applications/configuration/get-by-name",
+                      "api-reference/endpoints/pki/applications/configuration/permissions",
+                      "api-reference/endpoints/pki/applications/configuration/update",
+                      "api-reference/endpoints/pki/applications/configuration/delete"
+                    ]
+                  },
+                  {
+                    "group": "Profiles",
+                    "pages": [
+                      "api-reference/endpoints/pki/applications/profiles/list",
+                      "api-reference/endpoints/pki/applications/profiles/attach",
+                      "api-reference/endpoints/pki/applications/profiles/detach"
+                    ]
+                  },
+                  {
                     "group": "Certificates",
                     "pages": [
                       "api-reference/endpoints/certificates/search",
@@ -3128,6 +3148,51 @@
                       "api-reference/endpoints/pki/applications/members/add-identity",
                       "api-reference/endpoints/pki/applications/members/update-identity-role",
                       "api-reference/endpoints/pki/applications/members/remove-identity"
+                    ]
+                  },
+                  {
+                    "group": "Application Alerts",
+                    "pages": [
+                      "api-reference/endpoints/pki/applications/alerts/list",
+                      "api-reference/endpoints/pki/applications/alerts/create",
+                      "api-reference/endpoints/pki/applications/alerts/update",
+                      "api-reference/endpoints/pki/applications/alerts/delete"
+                    ]
+                  },
+                  {
+                    "group": "Enrollment Methods",
+                    "pages": [
+                      "api-reference/endpoints/pki/applications/enrollment/get-state",
+                      {
+                        "group": "API",
+                        "pages": [
+                          "api-reference/endpoints/pki/applications/enrollment/set-api",
+                          "api-reference/endpoints/pki/applications/enrollment/clear-api"
+                        ]
+                      },
+                      {
+                        "group": "ACME",
+                        "pages": [
+                          "api-reference/endpoints/pki/applications/enrollment/set-acme",
+                          "api-reference/endpoints/pki/applications/enrollment/clear-acme",
+                          "api-reference/endpoints/pki/applications/enrollment/reveal-acme-eab",
+                          "api-reference/endpoints/pki/applications/enrollment/rotate-acme-eab"
+                        ]
+                      },
+                      {
+                        "group": "EST",
+                        "pages": [
+                          "api-reference/endpoints/pki/applications/enrollment/set-est",
+                          "api-reference/endpoints/pki/applications/enrollment/clear-est"
+                        ]
+                      },
+                      {
+                        "group": "SCEP",
+                        "pages": [
+                          "api-reference/endpoints/pki/applications/enrollment/set-scep",
+                          "api-reference/endpoints/pki/applications/enrollment/clear-scep"
+                        ]
+                      }
                     ]
                   },
                   {
