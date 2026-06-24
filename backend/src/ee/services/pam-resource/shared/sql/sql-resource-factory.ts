@@ -67,8 +67,18 @@ const makeSqlConnection = (
 ): SqlResourceConnection => {
   const { connectionDetails, resourceType, username, password } = config;
   const { host, sslEnabled, sslRejectUnauthorized, sslCertificate } = connectionDetails;
-  const actualUsername = username ?? TEST_CONNECTION_USERNAME; // Use provided username or fallback
+  const baseUsername = username ?? TEST_CONNECTION_USERNAME; // Use provided username or fallback
   const actualPassword = password ?? TEST_CONNECTION_PASSWORD; // Use provided password or fallback
+
+  // Some Postgres providers (e.g. PlanetScale) require the username to include a branch
+  // suffix in `<user>.<branch>` form so their proxy can route to the correct branch.
+  // For standard PostgreSQL deployments this is left unset and the username is unchanged.
+  const postgresBranch =
+    resourceType === PamResource.Postgres
+      ? (connectionDetails as { branch?: string }).branch?.trim() || undefined
+      : undefined;
+  const actualUsername = postgresBranch ? `${baseUsername}.${postgresBranch}` : baseUsername;
+
   switch (config.resourceType) {
     case PamResource.Postgres: {
       const client = knex({
@@ -107,8 +117,12 @@ const makeSqlConnection = (
               //          (like being able to do an auth handshake regardless pass or not)
               if (
                 connectOnly &&
-                (error.message === `password authentication failed for user "${TEST_CONNECTION_USERNAME}"` ||
-                  error.message === `role "${TEST_CONNECTION_USERNAME}" does not exist`)
+                (error.message === `password authentication failed for user "${actualUsername}"` ||
+                  error.message === `role "${actualUsername}" does not exist` ||
+                  // PlanetScale's Postgres proxy rejects the connection BEFORE auth with this
+                  // message when the username lacks a `.<branch>` suffix. Receiving it proves
+                  // the gateway reached the database, so treat it as a successful probe.
+                  error.message === "User parameter must include branch (e.g., user.branch).")
               ) {
                 return;
               }
