@@ -5,6 +5,8 @@
 
 import { z } from "zod";
 
+import { zodBuffer } from "@app/lib/zod";
+
 import { TImmutableDBKeys } from "./models";
 
 export const CertificatesSchema = z.object({
@@ -46,7 +48,11 @@ export const CertificatesSchema = z.object({
   source: z.string().nullable().optional(),
   discoveryMetadata: z.unknown().nullable().optional(),
   externalMetadata: z.unknown().nullable().optional(),
-  applicationId: z.string().uuid().nullable().optional()
+  applicationId: z.string().uuid().nullable().optional(),
+  keySource: z.string().default("infisical"),
+  hsmConnectorId: z.string().uuid().nullable().optional(),
+  hsmKeyLabel: z.string().nullable().optional(),
+  hsmPublicKeySpki: zodBuffer.nullable().optional()
 });
 
 export type TCertificates = z.infer<typeof CertificatesSchema>;

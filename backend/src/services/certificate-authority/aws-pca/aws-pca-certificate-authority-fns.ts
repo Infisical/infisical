@@ -514,7 +514,7 @@ export const AwsPcaCertificateAuthorityFns = ({
     return cas.map(castDbEntryToAwsPcaCertificateAuthority);
   };
 
-  const orderCertificateFromProfile = async ({
+  const orderCertificate = async ({
     caId,
     profileId,
     commonName,
@@ -537,7 +537,7 @@ export const AwsPcaCertificateAuthorityFns = ({
     isCancelled
   }: {
     caId: string;
-    profileId: string;
+    profileId?: string;
     commonName: string;
     altNames?: Array<{ type: CertSubjectAlternativeNameType; value: string }>;
     keyUsages?: CertKeyUsage[];
@@ -852,7 +852,7 @@ export const AwsPcaCertificateAuthorityFns = ({
     createCertificateAuthority,
     updateCertificateAuthority,
     listCertificateAuthorities,
-    orderCertificateFromProfile,
+    orderCertificate,
     revokeCertificate
   };
 };

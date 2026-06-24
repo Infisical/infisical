@@ -385,7 +385,7 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
    * completes, in a single DB transaction. If DNS validation is still pending, this
    * function throws AcmPendingError and the queue retries.
    */
-  const orderCertificateFromProfile = async ({
+  const orderCertificate = async ({
     caId,
     profileId,
     commonName,
@@ -863,7 +863,7 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
     createCertificateAuthority,
     updateCertificateAuthority,
     listCertificateAuthorities,
-    orderCertificateFromProfile,
+    orderCertificate,
     revokeCertificate
   };
 };

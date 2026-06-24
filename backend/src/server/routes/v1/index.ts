@@ -42,6 +42,7 @@ import { registerExternalGroupOrgRoleMappingRouter } from "./external-group-org-
 import { registerGitHubAppRouter } from "./github-app-router";
 import { registerGroupOrgMembershipRouter } from "./group-org-membership-router";
 import { registerGroupProjectRouter } from "./group-project-router";
+import { registerCertManagerHsmConnectorRouter } from "./hsm-connector-router";
 import { registerIdentityAccessTokenRouter } from "./identity-access-token-router";
 import { registerIdentityAliCloudAuthRouter } from "./identity-alicloud-auth-router";
 import { registerIdentityAwsAuthRouter } from "./identity-aws-iam-auth-router";
@@ -189,6 +190,8 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
   await server.register(
     async (pkiRouter) => {
       await pkiRouter.register(injectCertManagerProjectId);
+
+      await pkiRouter.register(registerCertManagerHsmConnectorRouter, { prefix: "/hsm-connectors" });
 
       await pkiRouter.register(
         async (caRouter) => {

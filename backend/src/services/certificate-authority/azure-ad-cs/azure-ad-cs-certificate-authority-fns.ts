@@ -1094,7 +1094,7 @@ export const AzureAdCsCertificateAuthorityFns = ({
     };
   };
 
-  const orderCertificateFromProfile = async ({
+  const orderCertificate = async ({
     caId,
     profileId,
     commonName,
@@ -1112,7 +1112,7 @@ export const AzureAdCsCertificateAuthorityFns = ({
     isCancelled
   }: {
     caId: string;
-    profileId: string;
+    profileId?: string;
     commonName: string;
     altNames?: string[];
     keyUsages?: CertKeyUsage[];
@@ -1617,7 +1617,7 @@ export const AzureAdCsCertificateAuthorityFns = ({
     updateCertificateAuthority,
     listCertificateAuthorities,
     orderSubscriberCertificate,
-    orderCertificateFromProfile,
+    orderCertificate,
     getTemplates
   };
 };

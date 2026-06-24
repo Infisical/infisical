@@ -331,6 +331,8 @@ import { gitHubAppServiceFactory } from "@app/services/github-app/github-app-ser
 import { groupProjectDALFactory } from "@app/services/group-project/group-project-dal";
 import { groupProjectServiceFactory } from "@app/services/group-project/group-project-service";
 import { healthAlertServiceFactory } from "@app/services/health-alert/health-alert-queue";
+import { hsmConnectorDALFactory } from "@app/services/hsm-connector/hsm-connector-dal";
+import { hsmConnectorServiceFactory } from "@app/services/hsm-connector/hsm-connector-service";
 import { identityDALFactory } from "@app/services/identity/identity-dal";
 import { identityMetadataDALFactory } from "@app/services/identity/identity-metadata-dal";
 import { identityOrgDALFactory } from "@app/services/identity/identity-org-dal";
@@ -659,6 +661,7 @@ export const registerRoutes = async (
   const trustedIpDAL = trustedIpDALFactory(db);
   const telemetryDAL = telemetryDALFactory(db);
   const appConnectionDAL = appConnectionDALFactory(db);
+  const hsmConnectorDAL = hsmConnectorDALFactory(db);
   const secretSyncDAL = secretSyncDALFactory(db, folderDAL);
   const userNotificationDAL = userNotificationDALFactory(db);
 
@@ -2663,6 +2666,17 @@ export const registerRoutes = async (
     keyStore
   });
 
+  const hsmConnectorService = hsmConnectorServiceFactory({
+    hsmConnectorDAL,
+    permissionService,
+    kmsService,
+    gatewayV2Service,
+    gatewayPoolService,
+    gatewayV2DAL,
+    gatewayPoolDAL,
+    licenseService
+  });
+
   const honeyTokenConfigService = honeyTokenConfigServiceFactory({
     honeyTokenConfigDAL,
     permissionService,
@@ -3290,7 +3304,9 @@ export const registerRoutes = async (
     projectDAL,
     kmsService,
     certificateIssuanceQueue,
-    cronJob
+    cronJob,
+    hsmConnectorService,
+    certificateDAL
   });
 
   const signerService = signerServiceFactory({
@@ -3311,7 +3327,8 @@ export const registerRoutes = async (
     approvalRequestDAL,
     approvalRequestGrantsDAL,
     membershipDAL,
-    membershipRoleDAL
+    membershipRoleDAL,
+    hsmConnectorService
   });
 
   const signerAutoRenewalQueue = signerAutoRenewalQueueFactory({
@@ -3849,6 +3866,7 @@ export const registerRoutes = async (
     totp: totpService,
     webAuthn: webAuthnService,
     appConnection: appConnectionService,
+    hsmConnector: hsmConnectorService,
     secretSync: secretSyncService,
     kmip: kmipService,
     kmipOperation: kmipOperationService,

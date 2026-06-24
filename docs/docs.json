@@ -894,11 +894,18 @@
                     ]
                   },
                   {
-                    "group": "Certificate Settings",
+                    "group": "Settings",
                     "pages": [
                       "documentation/platform/pki/settings/policies",
                       "documentation/platform/pki/settings/profiles",
-                      "documentation/platform/pki/settings/certificate-cleanup"
+                      "documentation/platform/pki/settings/certificate-cleanup",
+                      {
+                        "group": "HSM",
+                        "pages": [
+                          "documentation/platform/pki/settings/hsm-connectors",
+                          "documentation/platform/pki/settings/hsm-connectors-fortanix-dsm"
+                        ]
+                      }
                     ]
                   }
                 ]
@@ -3409,7 +3416,7 @@
                 ]
               },
               {
-                "group": "Certificate Settings",
+                "group": "Settings",
                 "pages": [
                   {
                     "group": "Certificate Policies",

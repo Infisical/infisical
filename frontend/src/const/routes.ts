@@ -355,6 +355,10 @@ export const ROUTE_PATHS = Object.freeze({
       "/organizations/$orgId/projects/cert-manager/$projectId/certificate-policies/$policyId",
       "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/certificate-policies/$policyId"
     ),
+    HsmConnectorDetailsByIDPage: setRoute(
+      "/organizations/$orgId/projects/cert-manager/$projectId/hsm-connectors/$connectorId",
+      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/hsm-connectors/$connectorId"
+    ),
     SubscribersPage: setRoute(
       "/organizations/$orgId/projects/cert-manager/$projectId/subscribers",
       "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/subscribers"

@@ -15,13 +15,19 @@ import {
   StepperList,
   StepperStep
 } from "@app/components/v3";
-import { useOrganization, useUser } from "@app/context";
+import { useOrganization, useSubscription, useUser } from "@app/context";
 import { useListCasByProjectId } from "@app/hooks/api/ca";
 import { CaStatus, CaType } from "@app/hooks/api/ca/enums";
+import { useListHsmConnectors } from "@app/hooks/api/hsmConnectors";
 import { useGetOrganizationGroups } from "@app/hooks/api/organization";
 import { useListProjectIdentityMemberships } from "@app/hooks/api/projectIdentityMembership";
 import { ProjectType } from "@app/hooks/api/projects/types";
-import { SignerKeyAlgorithm, SignerMemberRole, useCreateSigner } from "@app/hooks/api/signers";
+import {
+  CertKeySource,
+  SignerKeyAlgorithm,
+  SignerMemberRole,
+  useCreateSigner
+} from "@app/hooks/api/signers";
 import { useGetOrgUsers } from "@app/hooks/api/users";
 
 import { PkiDocsUrls } from "../../../pki-docs-urls";
@@ -61,6 +67,10 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
     limit: 1000
   });
   const groupsQuery = useGetOrganizationGroups(orgId);
+  const { subscription } = useSubscription();
+  const { data: hsmConnectors = [], isPending: isHsmConnectorsLoading } = useListHsmConnectors({
+    enabled: Boolean(subscription?.hsm)
+  });
 
   const createSigner = useCreateSigner();
 
@@ -103,6 +113,16 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
     return groups.map((g) => ({ value: g.id, label: g.name }));
   }, [groupsQuery.data]);
 
+  const hsmConnectorOptions = useMemo(
+    () =>
+      hsmConnectors.map((c) => ({
+        id: c.id,
+        name: c.name,
+        slotLabel: c.slotLabel
+      })),
+    [hsmConnectors]
+  );
+
   const basicsForm = useForm<BasicsForm>({
     resolver: zodResolver(basicsSchema),
     values: { name: state.name, description: state.description || undefined }
@@ -115,7 +135,9 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
       commonName: state.commonName,
       certificateTtlDays: state.certificateTtlDays,
       certificateRenewBeforeDays: state.certificateRenewBeforeDays,
-      keyAlgorithm: state.keyAlgorithm
+      keyAlgorithm: state.keyAlgorithm,
+      keySource: state.keySource,
+      hsmConnectorId: state.hsmConnectorId
     }
   });
 
@@ -128,7 +150,9 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
       commonName: "",
       certificateTtlDays: 365,
       certificateRenewBeforeDays: null,
-      keyAlgorithm: SignerKeyAlgorithm.RSA_2048
+      keyAlgorithm: SignerKeyAlgorithm.RSA_2048,
+      keySource: CertKeySource.Infisical,
+      hsmConnectorId: null
     });
   };
 
@@ -157,6 +181,14 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
             }
           : undefined;
 
+      const certificate =
+        state.keySource === CertKeySource.Hsm && state.hsmConnectorId
+          ? {
+              keySource: CertKeySource.Hsm,
+              hsmConnectorId: state.hsmConnectorId
+            }
+          : undefined;
+
       await createSigner.mutateAsync({
         projectId,
         name: state.name,
@@ -171,7 +203,8 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
           id: m.id,
           role: m.role
         })),
-        approvalPolicy
+        approvalPolicy,
+        certificate
       });
 
       handleClose(false);
@@ -184,6 +217,8 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
       setSubmitting(false);
     }
   };
+
+  const isLast = step === STEPS.length - 1;
 
   const goNext = async () => {
     if (step === 0) {
@@ -204,7 +239,9 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
         commonName: values.commonName,
         certificateTtlDays: values.certificateTtlDays,
         certificateRenewBeforeDays: values.certificateRenewBeforeDays,
-        keyAlgorithm: values.keyAlgorithm
+        keyAlgorithm: values.keyAlgorithm,
+        keySource: values.keySource,
+        hsmConnectorId: values.hsmConnectorId ?? null
       }));
       setStep(2);
       return;
@@ -230,7 +267,6 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
     state.policySteps.length > 0;
 
   const currentStep = STEPS[step];
-  const isLast = step === STEPS.length - 1;
   const ctaLabel = isLast ? "Create Signer" : "Continue";
   const firstEmptyPolicyStepIndex = state.policySteps.findIndex(
     (s) => s.approverUserIds.length + s.approverGroupIds.length === 0
@@ -246,7 +282,7 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
         <SheetHeader className="border-b">
           <SheetTitle>
             <div className="flex w-full items-start gap-2">
-              <div className="flex h-10 w-10 items-center justify-center rounded-md bg-warning/10 text-warning">
+              <div className="flex h-10 w-10 items-center justify-center rounded-md bg-project/10 text-project">
                 <ShieldIcon className="h-5 w-5" />
               </div>
               <div>
@@ -301,6 +337,8 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
                   form={certificateForm}
                   caOptions={caOptions}
                   isCasLoading={cas.isPending}
+                  hsmConnectorOptions={hsmConnectorOptions}
+                  isHsmConnectorsLoading={isHsmConnectorsLoading}
                 />
               )}
               {step === 2 && (
