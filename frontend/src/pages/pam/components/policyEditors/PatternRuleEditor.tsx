@@ -3,14 +3,9 @@ import { Field, FieldContent, FieldDescription, FieldLabel, TextArea } from "@ap
 import { PolicyEditorProps } from "./types";
 
 const RE2_SYNTAX_URL = "https://github.com/google/re2/wiki/Syntax";
+const DEFAULT_PLACEHOLDER = "pattern-one.*\nanother\\s+pattern\n\\b\\d{3}-\\d{2}-\\d{4}\\b";
 
-export const PatternRuleEditor = ({
-  label,
-  description,
-  value,
-  onChange,
-  placeholder
-}: PolicyEditorProps & { placeholder?: string }) => {
+export const PatternRuleEditor = ({ label, description, value, onChange }: PolicyEditorProps) => {
   const text = typeof value === "string" ? value : "";
 
   return (
@@ -19,7 +14,7 @@ export const PatternRuleEditor = ({
       <FieldContent>
         <TextArea
           rows={5}
-          placeholder={placeholder}
+          placeholder={DEFAULT_PLACEHOLDER}
           value={text}
           onChange={(e) => {
             const val = e.target.value;

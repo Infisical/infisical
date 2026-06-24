@@ -320,7 +320,6 @@ const SettingsTab = ({
           <PatternRuleEditor
             label="Session Log Masking"
             description="Matching content in session recordings will be masked (one RE2 regex per line)."
-            placeholder={"password\\s*=\\s*\\S+\n\\b\\d{3}-\\d{2}-\\d{4}\\b\nsecret_key\\s*[:=]\\s*\\S+"}
             value={watch("sessionLogMaskingPatterns") ?? ""}
             onChange={(val) =>
               setValue("sessionLogMaskingPatterns", (val as string) ?? "", { shouldDirty: true })
