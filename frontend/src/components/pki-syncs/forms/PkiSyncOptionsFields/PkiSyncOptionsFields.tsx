@@ -458,9 +458,9 @@ export const PkiSyncOptionsFields = ({ destination }: Props) => {
                   <span className="mt-1 text-xs text-bunker-300">
                     The schema must include <code>{"{{certificateId}}"}</code> or{" "}
                     <code>{"{{shortCertificateId}}"}</code> so each certificate gets a unique name.
-                    The template itself can only contain letters, numbers, and
-                    the separators allowed by the destination. When placeholders resolve, any
-                    characters the destination doesn&apos;t support are replaced with hyphens.
+                    The template itself can only contain letters, numbers, and the separators
+                    allowed by the destination. When placeholders resolve, any characters the
+                    destination doesn&apos;t support are replaced with hyphens.
                   </span>
                 </div>
                 {syncOption?.forbiddenCharacters && syncOption.forbiddenCharacters.length > 0 && (
