@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import { useNavigate } from "@tanstack/react-router";
 
 import { createNotification } from "@app/components/notifications";
@@ -11,8 +10,7 @@ import {
   ProjectPermissionSub,
   useOrganization,
   useProject,
-  useProjectPermission,
-  useUser
+  useProjectPermission
 } from "@app/context";
 import { useToggle } from "@app/hooks";
 import { useDeleteWorkspace, useGetWorkspaceUsers, useLeaveProject } from "@app/hooks/api";
@@ -26,7 +24,6 @@ export const DeleteProjectSection = () => {
     "leaveWorkspace"
   ] as const);
 
-  const { user } = useUser();
   const { currentOrg } = useOrganization();
   const { permission } = useProjectPermission();
   const { currentProject } = useProject();
@@ -42,21 +39,6 @@ export const DeleteProjectSection = () => {
     ProjectPermissionMemberActions.Read,
     ProjectPermissionSub.Member
   );
-
-  const isOnlyAdminMember = useMemo(() => {
-    if (!members) return false;
-
-    const currentUserIsAdmin = members.some(
-      (member) => member.user.id === user.id && member.roles.some((r) => r.role === "admin")
-    );
-    if (!currentUserIsAdmin) return false;
-
-    const otherAdminMembers = members.filter(
-      (member) => member.roles.map((r) => r.role).includes("admin") && member.user.id !== user.id
-    );
-
-    return otherAdminMembers.length === 0;
-  }, [members, user]);
 
   const handleDeleteWorkspaceSubmit = async () => {
     setIsDeleting.on();
@@ -100,14 +82,6 @@ export const DeleteProjectSection = () => {
           });
           return;
         }
-        // If the user is the only admin, they can't leave
-        if (isOnlyAdminMember) {
-          createNotification({
-            text: "You can't leave a project with no admin members left. Promote another member to admin first.",
-            type: "error"
-          });
-          return;
-        }
       }
 
       // If the user can't read members (e.g., limited permissions), let the backend handle validation
@@ -143,21 +117,19 @@ export const DeleteProjectSection = () => {
             </Button>
           )}
         </ProjectPermissionCan>
-        {!isOnlyAdminMember && (
-          <Button
-            disabled={
-              (canReadMembers && isMembersLoading) ||
-              (canReadMembers && members && members.length < 2)
-            }
-            isLoading={isLeaving}
-            colorSchema="danger"
-            variant="outline_bg"
-            type="submit"
-            onClick={() => handlePopUpOpen("leaveWorkspace")}
-          >
-            {`Leave ${currentProject?.name}`}
-          </Button>
-        )}
+        <Button
+          disabled={
+            (canReadMembers && isMembersLoading) ||
+            (canReadMembers && members && members.length < 2)
+          }
+          isLoading={isLeaving}
+          colorSchema="danger"
+          variant="outline_bg"
+          type="submit"
+          onClick={() => handlePopUpOpen("leaveWorkspace")}
+        >
+          {`Leave ${currentProject?.name}`}
+        </Button>
       </div>
 
       <DeleteActionModal
