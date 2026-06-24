@@ -38,8 +38,7 @@ export const PgSqlLock = {
   KmsProjectKeyCreation: (projectId: string) => pgAdvisoryLockHashText(`kms-project-key:${projectId}`),
   KmsProjectDataKeyCreation: (projectId: string) => pgAdvisoryLockHashText(`kms-project-data-key:${projectId}`),
   ScimGroupUpdate: (groupId: string) => pgAdvisoryLockHashText(`scim-group-update:${groupId}`),
-  LastAdminGuard: (scope: "org" | "project", scopeId: string) =>
-    pgAdvisoryLockHashText(`last-admin-guard:${scope}:${scopeId}`)
+  LastAdminGuard: (scope: "org", scopeId: string) => pgAdvisoryLockHashText(`last-admin-guard:${scope}:${scopeId}`)
 } as const;
 
 // all the key prefixes used must be set here to avoid conflict

@@ -42,7 +42,7 @@ import { LoginMethod } from "../super-admin/super-admin-types";
 import { TUserDALFactory } from "../user/user-dal";
 import { TUserAliasDALFactory } from "../user-alias/user-alias-dal";
 import { TMembershipUserDALFactory } from "./membership-user-dal";
-import { assertWillRetainAdmin } from "./membership-user-fns";
+import { assertWillRetainOrgAdmin } from "./membership-user-fns";
 import {
   TCreateMembershipUserDTO,
   TDeleteMembershipUserDTO,
@@ -424,10 +424,8 @@ export const membershipUserServiceFactory = ({
 
     const membershipDoc = await membershipUserDAL.transaction(async (tx) => {
       if (!newRolesHavePermanentAdmin && scopeData.scope === AccessScope.Organization) {
-        await assertWillRetainAdmin({
-          scope: scopeData.scope,
+        await assertWillRetainOrgAdmin({
           scopeOrgId: scopeData.orgId,
-          scopeProjectId: undefined,
           excludeMembershipIds: [existingMembership.id],
           dal: membershipUserDAL,
           tx

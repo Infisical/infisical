@@ -52,7 +52,7 @@ import { TIdentityMetadataDALFactory } from "../identity/identity-metadata-dal";
 import { TMembershipDALFactory } from "../membership/membership-dal";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
-import { assertWillRetainAdmin } from "../membership-user/membership-user-fns";
+import { assertWillRetainOrgAdmin } from "../membership-user/membership-user-fns";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
 import { TProjectKeyDALFactory } from "../project-key/project-key-dal";
@@ -866,7 +866,7 @@ export const orgServiceFactory = ({
 
     const membership = await orgDAL.transaction(async (tx) => {
       if (!updatesToActiveAdmin && !noRoleOrActivationChange) {
-        await assertWillRetainAdmin({
+        await assertWillRetainOrgAdmin({
           scope: AccessScope.Organization,
           scopeOrgId: orgId,
           excludeMembershipIds: [membershipId],
