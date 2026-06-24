@@ -14,6 +14,7 @@ import {
 } from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
 import { ProjectPermissionSub } from "@app/context";
+import { useServerConfig } from "@app/context/ServerConfigContext";
 import { useGetWorkspaceIntegrations } from "@app/hooks/api";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
@@ -49,6 +50,7 @@ const Content = ({
     enabled: Boolean(isSecretManagerProject && projectId),
     refetchInterval: false
   });
+  const { config } = useServerConfig();
 
   const hasNativeIntegrations = integrations.length > 0;
 
@@ -61,6 +63,10 @@ const Content = ({
     )
     .filter(([subject]) => !EXCLUDED_PERMISSION_SUBS.includes(subject as ProjectPermissionSub))
     .filter(([subject]) => subject !== ProjectPermissionSub.Integrations || hasNativeIntegrations)
+    .filter(
+      ([subject]) =>
+        subject !== ProjectPermissionSub.ProjectGrant || config?.isCrossProjectSecretSharingEnabled
+    )
     .filter(
       ([subject]) => !allowedSubjects || allowedSubjects.includes(subject as ProjectPermissionSub)
     )
