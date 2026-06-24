@@ -1,6 +1,5 @@
 import { AssumeRoleCommand, GetCallerIdentityCommand, STSClient, STSServiceException } from "@aws-sdk/client-sts";
 import { AxiosError } from "axios";
-import { z } from "zod";
 
 import { ProjectType } from "@app/db/schemas";
 import { CustomAWSHasher } from "@app/lib/aws/hashing";
@@ -9,12 +8,9 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { AppConnection, AWSRegion } from "@app/services/app-connection/app-connection-enums";
-import { decryptAppConnectionCredentials } from "@app/services/app-connection/app-connection-fns";
 import { TAppConnectionRaw } from "@app/services/app-connection/app-connection-types";
-import { TPreSaveTransformDestinationConfigFn } from "@app/services/secret-sync/secret-sync-types";
 
 import { AwsConnectionMethod } from "./aws-connection-enums";
-import { AwsConnectionAssumeRoleCredentialsSchema } from "./aws-connection-schemas";
 import { TAwsConnectionConfig } from "./aws-connection-types";
 
 // Regional and VPC PrivateLink STS endpoints reject requests whose SigV4 credential scope region
@@ -230,56 +226,4 @@ export const validateAwsConnectionCredentials = async (appConnection: TAwsConnec
   }
 
   return appConnection.credentials;
-};
-
-// For AWS secret syncs: if the linked connection pins a custom STS endpoint to a specific region,
-// the sync's destination region must match that endpoint's region. A custom STS endpoint is typically
-// used in isolated/VPC networks where other regions' data-plane endpoints aren't reachable, so a
-// mismatched region is a misconfiguration we reject up front. Region-less endpoints (the global
-// sts.amazonaws.com or non-AWS hosts) pin no region and impose no constraint.
-export const awsSyncPreSaveTransformDestinationConfig: TPreSaveTransformDestinationConfigFn = async (
-  { destinationConfig, connectionId },
-  { appConnectionDAL, kmsService }
-) => {
-  if (!destinationConfig) return destinationConfig;
-
-  const appConnection = await appConnectionDAL.findById(connectionId);
-
-  if (
-    !appConnection ||
-    appConnection.app !== AppConnection.AWS ||
-    appConnection.method !== AwsConnectionMethod.AssumeRole
-  ) {
-    return destinationConfig;
-  }
-
-  const { stsEndpoint } = (await decryptAppConnectionCredentials({
-    orgId: appConnection.orgId,
-    projectId: appConnection.projectId,
-    encryptedCredentials: appConnection.encryptedCredentials,
-    kmsService
-  })) as z.infer<typeof AwsConnectionAssumeRoleCredentialsSchema>;
-
-  if (!stsEndpoint) return destinationConfig;
-
-  const stsRegion = getStsSigningRegion(stsEndpoint);
-
-  // global / non-AWS endpoint pins no region, so any sync region is allowed
-  if (!stsRegion) return destinationConfig;
-
-  const region = destinationConfig.region as string | undefined;
-
-  if (!region) {
-    throw new BadRequestError({
-      message: `Secret sync region is required when the AWS connection uses a regional STS endpoint. Set the region in the sync destination config to match the connection's STS endpoint.`
-    });
-  }
-
-  if (region !== stsRegion.region) {
-    throw new BadRequestError({
-      message: `Secret sync region "${region}" must match the AWS connection's STS endpoint region from the app connection. Update the sync region or the connection's STS endpoint.`
-    });
-  }
-
-  return destinationConfig;
 };
