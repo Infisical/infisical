@@ -435,23 +435,19 @@ export const ACCOUNT_TYPE_CONFIGS = {
     name: "Active Directory",
     icon: "Windows.png",
     connectionDetails: z.object({
-      fqdn: z.string().trim().min(1).max(255),
+      domain: z.string().trim().min(1).max(255),
       dcAddress: z.string().trim().min(1).max(255),
       hostnames: delimitedStringList,
-      ldapPort: z.coerce.number().int().min(1).max(65535),
+      port: z.coerce.number().int().min(1).max(65535),
       rdpPort: z.coerce.number().int().min(1).max(65535),
       useLdaps: z.boolean(),
       ldapRejectUnauthorized: z.boolean(),
-      caCertificate: optionalTrimmedString
+      ldapCaCert: optionalTrimmedString,
+      ldapTlsServerName: optionalTrimmedString
     }),
     credentials: z.object({
       username: z.string().trim().min(1).max(255),
-      password: z
-        .string()
-        .trim()
-        .max(255)
-        .transform((v) => v || undefined)
-        .optional(),
+      password: z.string().trim().min(1).max(255),
       domain: z.string().trim().max(255).optional()
     }),
     sanitizedCredentials: z.object({
@@ -459,16 +455,20 @@ export const ACCOUNT_TYPE_CONFIGS = {
       domain: z.string().optional()
     }),
     ui: {
-      fqdn: { label: "FQDN" },
+      domain: { label: "Domain" },
       dcAddress: { label: "DC Address" },
       hostnames: { label: "Allowed Hosts", widget: PamFieldWidget.Textarea },
-      ldapPort: { label: "LDAP Port", defaultValue: 389 },
+      port: { label: "LDAP Port", defaultValue: 389 },
       rdpPort: { label: "RDP Port", defaultValue: 3389 },
       useLdaps: { label: "Use LDAPS" },
       ldapRejectUnauthorized: { label: "Reject Unauthorized" },
-      caCertificate: {
+      ldapCaCert: {
         label: "CA Certificate",
         widget: PamFieldWidget.Textarea,
+        showWhen: { field: "useLdaps", equals: true }
+      },
+      ldapTlsServerName: {
+        label: "TLS Server Name",
         showWhen: { field: "useLdaps", equals: true }
       },
       password: { widget: PamFieldWidget.Password, secret: true }
