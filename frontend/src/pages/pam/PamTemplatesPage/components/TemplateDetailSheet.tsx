@@ -321,7 +321,7 @@ const SettingsTab = ({
             <FieldContent>
               <TextArea
                 rows={5}
-                placeholder={"password\\s*=\\s*\\S+\nsecret_key\\s*[:=]\\s*\\S+"}
+                placeholder={"password\\s*=\\s*\\S+\n\\b\\d{3}-\\d{2}-\\d{4}\\b\nsecret_key\\s*[:=]\\s*\\S+"}
                 value={watch("sessionLogMaskingPatterns") ?? ""}
                 onChange={(e) =>
                   setValue("sessionLogMaskingPatterns", e.target.value, { shouldDirty: true })
