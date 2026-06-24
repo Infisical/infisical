@@ -1,6 +1,4 @@
-import { parse as parseSql } from "libpg-query";
-import pg from "pg";
-import Cursor from "pg-cursor";
+import mysql from "mysql2/promise";
 
 import { logger } from "@app/lib/logger";
 
@@ -11,57 +9,58 @@ import {
   type TDataExplorerServerMessage,
   type TTabScopedMessage
 } from "../pam-data-explorer-ws-types";
-import { getTableDetailQuery } from "./pam-postgres-data-explorer-metadata";
+import { getTableDetailQuery } from "./pam-mysql-data-explorer-metadata";
+import { extractCommand, splitMysqlStatements } from "./pam-mysql-data-explorer-fns";
 
 type ControllerParams = {
   relayPort: number;
   username: string;
-  database: string;
+  database?: string;
   sessionId: string;
   connectionId: string;
   sendResponse: (msg: TDataExplorerServerMessage) => void;
   onUnexpectedTermination: (reason: string) => void;
 };
 
-const pgTypes = {
-  getTypeParser: (oid: number) => {
-    if (oid === 16)
-      return (val: string | Buffer) => {
-        const raw = typeof val === "string" ? val : val.toString("utf8");
-        return raw === "t" ? "true" : "false";
-      };
-    return (val: string | Buffer) => (typeof val === "string" ? val : val.toString("hex"));
-  }
-};
+const MAX_ROWS = 1000;
 
-export const createPostgresConnectionController = async (params: ControllerParams): Promise<TConnectionController> => {
+export const createMysqlConnectionController = async (params: ControllerParams): Promise<TConnectionController> => {
   const { relayPort, username, database, sessionId, connectionId, sendResponse, onUnexpectedTermination } = params;
 
-  const pgClient = new pg.Client({
+  const conn = await mysql.createConnection({
     host: "localhost",
     port: relayPort,
     user: username,
-    database,
+    database: database || undefined,
     password: "",
-    ssl: false,
-    connectionTimeoutMillis: 30_000,
-    statement_timeout: 30_000,
-    types: pgTypes
+    connectTimeout: 30_000,
+    typeCast: (field, next) => {
+      if (field.type === "JSON") {
+        return field.string();
+      }
+      if (field.type === "BIT" && field.length === 1) {
+        const buf = field.buffer();
+        if (!buf) return null;
+        return buf[0] === 1 ? "true" : "false";
+      }
+      if (field.type === "TINY" && field.length === 1) {
+        return field.string();
+      }
+      return next();
+    }
   });
 
-  await pgClient.connect();
-
-  const { rows: pidRows } = await pgClient.query<{ pid: number }>("SELECT pg_backend_pid() AS pid");
-  const backendPid = pidRows[0]?.pid ?? null;
+  const [pidRows] = await conn.execute<mysql.RowDataPacket[]>("SELECT CONNECTION_ID() AS pid");
+  const backendPid = (pidRows[0]?.pid as number) ?? null;
 
   let isInTransaction = false;
   let disposing = false;
 
   const sendQueryError = async (id: string, err: unknown) => {
-    const pgErr = err as { message?: string; detail?: string; hint?: string };
+    const mysqlErr = err as { message?: string; sqlMessage?: string; code?: string };
 
     try {
-      await pgClient.query("ROLLBACK");
+      await conn.execute("ROLLBACK");
     } catch {
       // ROLLBACK fails if there was no active transaction
     }
@@ -73,33 +72,28 @@ export const createPostgresConnectionController = async (params: ControllerParam
       id,
       connectionId,
       transactionOpen: false,
-      error: pgErr.message ?? "Query execution failed",
-      detail: pgErr.detail,
-      hint: pgErr.hint
+      error: mysqlErr.sqlMessage ?? mysqlErr.message ?? "Query execution failed",
+      detail: mysqlErr.code
     });
   };
 
   const cancelRunningQuery = async () => {
     if (!backendPid) return;
-    const cancelClient = new pg.Client({
-      host: "localhost",
-      port: relayPort,
-      user: username,
-      database,
-      password: "",
-      ssl: false,
-      connectionTimeoutMillis: 5_000
-    });
-    cancelClient.on("error", (err) => {
-      logger.debug(err, `Cancel client error [sessionId=${sessionId}] [connectionId=${connectionId}]`);
-    });
+    let cancelConn: mysql.Connection | null = null;
     try {
-      await cancelClient.connect();
-      await cancelClient.query("SELECT pg_cancel_backend($1)", [backendPid]);
+      cancelConn = await mysql.createConnection({
+        host: "localhost",
+        port: relayPort,
+        user: username,
+        database: database || undefined,
+        password: "",
+        connectTimeout: 5_000
+      });
+      await cancelConn.execute("KILL QUERY ?", [backendPid]);
     } catch (err) {
-      logger.debug(err, `Failed to cancel backend query [sessionId=${sessionId}] [connectionId=${connectionId}]`);
+      logger.debug(err, `Failed to cancel MySQL query [sessionId=${sessionId}] [connectionId=${connectionId}]`);
     } finally {
-      await cancelClient.end().catch(() => {});
+      if (cancelConn) await cancelConn.end().catch(() => {});
     }
   };
 
@@ -120,8 +114,9 @@ export const createPostgresConnectionController = async (params: ControllerParam
           case DataExplorerClientMessageType.GetTableDetail: {
             try {
               const query = getTableDetailQuery(message.schema, message.table);
-              const result = await pgClient.query<{ result: string }>(query.text, query.values);
-              const rawDetail = result.rows[0]?.result;
+              const [rows] = await conn.execute<mysql.RowDataPacket[]>(query.sql, query.values);
+              // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+              const rawDetail = rows[0]?.result;
               if (!rawDetail) {
                 sendResponse({
                   type: DataExplorerServerMessageType.Error,
@@ -167,17 +162,8 @@ export const createPostgresConnectionController = async (params: ControllerParam
           case DataExplorerClientMessageType.Query: {
             try {
               const startTime = performance.now();
-              const MAX_ROWS = 1000;
 
-              // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-              const parsed = await parseSql(message.sql);
-              // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-              const stmtTexts = (parsed.stmts as Array<{ stmt_location?: number; stmt_len?: number }>).map((s) => {
-                const location = s.stmt_location ?? 0;
-                return s.stmt_len !== undefined
-                  ? message.sql.slice(location, location + s.stmt_len)
-                  : message.sql.slice(location).trim();
-              });
+              const stmtTexts = splitMysqlStatements(message.sql);
 
               let lastRows: Record<string, unknown>[] = [];
               let lastFields: { name: string }[] = [];
@@ -185,34 +171,45 @@ export const createPostgresConnectionController = async (params: ControllerParam
               let lastCommand = "";
               let lastIsTruncated = false;
 
+              // eslint-disable-next-line no-restricted-syntax
               for (const stmtSql of stmtTexts) {
-                const cursor = pgClient.query(new Cursor(stmtSql.trim(), null, { types: pgTypes }));
                 // eslint-disable-next-line no-await-in-loop
-                const stmtRows = await cursor.read(MAX_ROWS + 1);
-                const stmtIsTruncated = stmtRows.length > MAX_ROWS;
-                if (stmtIsTruncated) stmtRows.splice(MAX_ROWS);
-                // eslint-disable-next-line no-await-in-loop
-                await cursor.close();
+                const [rawRows, rawFields] = await conn.query<mysql.RowDataPacket[] | mysql.ResultSetHeader>(stmtSql);
 
-                // eslint-disable-next-line no-underscore-dangle
-                const cursorResult = cursor._result;
-                const cmd = (cursorResult.command ?? "").toUpperCase();
-                if (cmd === "BEGIN" || cmd === "START") isInTransaction = true;
-                if (cmd === "COMMIT" || cmd === "ROLLBACK") isInTransaction = false;
+                const cmd = extractCommand(stmtSql);
+                const upperCmd = cmd.toUpperCase();
+                if (upperCmd === "BEGIN" || upperCmd === "START") isInTransaction = true;
+                if (upperCmd === "COMMIT" || upperCmd === "ROLLBACK") isInTransaction = false;
 
-                lastRows = stmtRows;
-                lastFields = (cursorResult.fields ?? []).map((f) => ({ name: f.name }));
-                lastRowCount = cursorResult.rowCount;
-                lastCommand = cursorResult.command ?? "";
-                lastIsTruncated = stmtIsTruncated;
+                if (Array.isArray(rawRows)) {
+                  lastIsTruncated = rawRows.length > MAX_ROWS;
+                  lastRows = lastIsTruncated ? rawRows.slice(0, MAX_ROWS) : rawRows;
+                  lastFields = rawFields.map((f) => ({ name: f.name }));
+                  lastRowCount = rawRows.length;
+                  lastCommand = "SELECT";
+                } else {
+                  lastRowCount = (rawRows as unknown as mysql.ResultSetHeader).affectedRows;
+                  lastCommand = cmd;
+                  lastRows = [];
+                  lastFields = [];
+                  lastIsTruncated = false;
+                }
               }
+
+              const safeRows = lastRows.map((row) => {
+                const out: Record<string, unknown> = {};
+                for (const [k, v] of Object.entries(row)) {
+                  out[k] = Buffer.isBuffer(v) ? `\\x${v.toString("hex")}` : v;
+                }
+                return out;
+              });
 
               const executionTimeMs = Math.round(performance.now() - startTime);
               sendResponse({
                 type: DataExplorerServerMessageType.QueryResult,
                 id: message.id,
                 connectionId,
-                rows: lastRows,
+                rows: safeRows,
                 fields: lastFields,
                 rowCount: lastRowCount,
                 isTruncated: lastIsTruncated,
@@ -231,28 +228,22 @@ export const createPostgresConnectionController = async (params: ControllerParam
         }
       })
       .catch((err) => {
-        logger.error(err, `Error processing Postgres message [sessionId=${sessionId}] [connectionId=${connectionId}]`);
+        logger.error(err, `Error processing MySQL message [sessionId=${sessionId}] [connectionId=${connectionId}]`);
       });
   };
 
-  pgClient.on("error", (err) => {
+  conn.on("error" as never, (err: Error) => {
     if (disposing) return;
-    logger.error(err, `Tab connection error [sessionId=${sessionId}] [connectionId=${connectionId}]`);
+    logger.error(err, `MySQL tab connection error [sessionId=${sessionId}] [connectionId=${connectionId}]`);
     disposing = true;
     onUnexpectedTermination(err.message || "Database connection error");
-  });
-
-  pgClient.on("end", () => {
-    if (disposing) return;
-    disposing = true;
-    onUnexpectedTermination("Database connection ended");
   });
 
   const dispose = () => {
     if (disposing) return;
     disposing = true;
-    void pgClient.end().catch((err) => {
-      logger.debug(err, `Error closing pg client [sessionId=${sessionId}] [connectionId=${connectionId}]`);
+    void conn.end().catch((err) => {
+      logger.debug(err, `Error closing MySQL connection [sessionId=${sessionId}] [connectionId=${connectionId}]`);
     });
   };
 

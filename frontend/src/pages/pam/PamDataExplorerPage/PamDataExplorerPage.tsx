@@ -14,13 +14,14 @@ import {
 import { Spinner } from "@app/components/v2";
 import { Button } from "@app/components/v3/generic/Button";
 import { cn } from "@app/components/v3/utils";
-import { useGetPamAccountById } from "@app/hooks/api/pam";
+import { PamAccountType, useGetPamAccountById } from "@app/hooks/api/pam";
 
 import { WebAccessStatusCard } from "../PamAccountAccessPage/WebAccessStatusCard";
 import { DataExplorerGrid } from "./components/DataExplorerGrid";
 import { DataExplorerSidebar } from "./components/DataExplorerSidebar";
 import { QueryPanel } from "./components/QueryPanel";
 import type { SchemaInfo, TableInfo } from "./data-explorer-types";
+import type { SqlDialect } from "./sql-generation";
 import { useDataExplorerSession } from "./use-data-explorer-session";
 import { useQueryTabs } from "./use-query-tabs";
 
@@ -39,10 +40,16 @@ export const PamDataExplorerPage = ({ reason }: Props = {}) => {
 
   const { data: account } = useGetPamAccountById(accountId);
 
+  const dialect: SqlDialect = account?.accountType === PamAccountType.MySQL ? "mysql" : "postgres";
+  const defaultSchema =
+    dialect === "mysql"
+      ? ((account?.connectionDetails as { database?: string })?.database ?? "")
+      : "public";
+
   // Sidebar-only view state. Switching schemas in the sidebar does not alter
   // open tabs — tabs are bound to their own (schema, table) at open time.
   const [schemas, setSchemas] = useState<SchemaInfo[]>([]);
-  const [selectedSchema, setSelectedSchema] = useState("public");
+  const [selectedSchema, setSelectedSchema] = useState(defaultSchema);
   const [tables, setTables] = useState<TableInfo[]>([]);
   const [isLoadingSchemas, setIsLoadingSchemas] = useState(false);
   const [isLoadingTables, setIsLoadingTables] = useState(false);
@@ -180,7 +187,7 @@ export const PamDataExplorerPage = ({ reason }: Props = {}) => {
         const result = await fetchSchemas();
         setSchemas(result);
         const hasSelected = result.find((s) => s.name === selectedSchema);
-        const activeSchema = hasSelected ? selectedSchema : (result[0]?.name ?? "public");
+        const activeSchema = hasSelected ? selectedSchema : (result[0]?.name ?? defaultSchema);
         if (!hasSelected && result.length > 0 && !keepSelected) {
           setSelectedSchema(activeSchema);
         }
@@ -493,6 +500,7 @@ export const PamDataExplorerPage = ({ reason }: Props = {}) => {
                   executeQuery={executeQuery}
                   isLoading={tab.isLoadingDetail}
                   onRefresh={() => handleTabRefresh(tab.id)}
+                  dialect={dialect}
                 />
               );
             } else {

@@ -15,7 +15,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@app/components/v3/gene
 
 import type { ColumnInfo } from "../data-explorer-types";
 import type { ExportFormat } from "../data-export";
-import type { FilterCondition, SortCondition } from "../sql-generation";
+import type { FilterCondition, SortCondition, SqlDialect } from "../sql-generation";
 import { ExportDropdown } from "./ExportDropdown";
 import { FilterPopover } from "./FilterPopover";
 import { SortPopover } from "./SortPopover";
@@ -46,6 +46,7 @@ type DataExplorerToolbarProps = {
   onExport: (format: ExportFormat) => void;
   onCopy: (format: ExportFormat) => void;
   hasData: boolean;
+  dialect?: SqlDialect;
 };
 
 export const DataExplorerToolbar = ({
@@ -73,7 +74,8 @@ export const DataExplorerToolbar = ({
   isRefreshing = false,
   onExport,
   onCopy,
-  hasData
+  hasData,
+  dialect = "postgres"
 }: DataExplorerToolbarProps) => {
   const rangeStart = totalCount === 0 ? 0 : offset + 1;
   const rangeEnd = Math.min(offset + pageSize, totalCount);
@@ -86,7 +88,12 @@ export const DataExplorerToolbar = ({
       onMouseDown={(e) => e.stopPropagation()}
     >
       <div className="flex items-center gap-2">
-        <FilterPopover columns={columns} filters={filters} onFiltersChange={onFiltersChange} />
+        <FilterPopover
+          columns={columns}
+          filters={filters}
+          onFiltersChange={onFiltersChange}
+          dialect={dialect}
+        />
         <SortPopover
           columns={columns}
           sorts={sorts}

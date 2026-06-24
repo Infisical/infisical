@@ -118,7 +118,7 @@ const PageContent = () => {
   return (
     <SessionAccessGate account={account}>
       {({ reason }) => {
-        if (account.accountType === PamAccountType.Postgres) {
+        if (account.accountType === PamAccountType.Postgres || account.accountType === PamAccountType.MySQL) {
           return <PamDataExplorerPage reason={reason} />;
         }
         return <TerminalContent account={account} orgId={orgId!} reason={reason} />;

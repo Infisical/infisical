@@ -13,7 +13,7 @@ import { Skeleton } from "@app/components/v3/generic/Skeleton";
 import type { ColumnInfo, FieldInfo, ForeignKeyInfo, TableDetail } from "../data-explorer-types";
 import { getColumnIndicator } from "../data-explorer-utils";
 import { copyData, exportData } from "../data-export";
-import type { FilterCondition, SortCondition } from "../sql-generation";
+import type { FilterCondition, SortCondition, SqlDialect } from "../sql-generation";
 import {
   buildCountQuery,
   buildDeleteQuery,
@@ -42,6 +42,7 @@ type DataExplorerGridProps = {
   }>;
   isLoading: boolean;
   onRefresh?: () => Promise<void>;
+  dialect?: SqlDialect;
 };
 
 const ROW_KEY_PREFIX = "__new_";
@@ -182,8 +183,23 @@ export const DataExplorerGrid = ({
   connectionId,
   executeQuery,
   isLoading,
-  onRefresh
+  onRefresh,
+  dialect = "postgres"
 }: DataExplorerGridProps) => {
+  const executeStatements = useCallback(
+    async (statements: string[]) => {
+      if (dialect === "mysql") {
+        await statements.reduce(
+          (chain, stmt) => chain.then(() => executeQuery(connectionId, stmt)),
+          Promise.resolve() as Promise<unknown>
+        );
+      } else {
+        await executeQuery(connectionId, wrapInTransaction(statements));
+      }
+    },
+    [dialect, executeQuery, connectionId]
+  );
+
   const [originalData, setOriginalData] = useState<Record<string, unknown>[]>([]);
   const [currentData, setCurrentData] = useState<Record<string, unknown>[]>([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -234,9 +250,10 @@ export const DataExplorerGrid = ({
           sorts: s,
           limit: ps,
           offset: o,
-          primaryKeys
+          primaryKeys,
+          dialect
         });
-        const countSql = buildCountQuery({ schema, table, filters: f });
+        const countSql = buildCountQuery({ schema, table, filters: f, dialect });
 
         // These two queries don't share a database snapshot (the backend processes them
         // sequentially, not in a single transaction), so the count could be off by 1 if
@@ -379,7 +396,12 @@ export const DataExplorerGrid = ({
           tempIdsToRemove.push(tempId);
         } else {
           deleteStatements.push(
-            buildDeleteQuery({ schema, table, primaryKeyMatch: getPkMatch(row, primaryKeys) })
+            buildDeleteQuery({
+              schema,
+              table,
+              primaryKeyMatch: getPkMatch(row, primaryKeys),
+              dialect
+            })
           );
         }
       });
@@ -400,8 +422,7 @@ export const DataExplorerGrid = ({
       // Execute DELETE SQL for persisted rows immediately
       if (deleteStatements.length > 0) {
         try {
-          const sql = wrapInTransaction(deleteStatements);
-          await executeQuery(connectionId, sql);
+          await executeStatements(deleteStatements);
           createNotification({
             text: `Deleted ${deleteStatements.length} row${deleteStatements.length !== 1 ? "s" : ""}`,
             type: "success"
@@ -458,7 +479,7 @@ export const DataExplorerGrid = ({
             values[col.name] = row[col.name];
           }
         });
-        statements.push(buildInsertQuery({ schema, table, row: values }));
+        statements.push(buildInsertQuery({ schema, table, row: values, dialect }));
       });
 
       // Updates (changed rows) — use PK-based lookup so prepends don't misalign
@@ -480,7 +501,8 @@ export const DataExplorerGrid = ({
               schema,
               table,
               changes,
-              primaryKeyMatch: getPkMatch(original, primaryKeys)
+              primaryKeyMatch: getPkMatch(original, primaryKeys),
+              dialect
             })
           );
         }
@@ -492,12 +514,9 @@ export const DataExplorerGrid = ({
         return;
       }
 
-      const sql = wrapInTransaction(statements);
-
-      // The WebSocket maxPayload is 64 KB. Guard against sending a query
-      // that would exceed the limit and silently kill the connection.
+      const combined = statements.join(";\n");
       const MAX_QUERY_SIZE = 50 * 1024;
-      if (sql.length > MAX_QUERY_SIZE) {
+      if (combined.length > MAX_QUERY_SIZE) {
         createNotification({
           title: "Save failed",
           text: "Changes are too large to save at once. Try saving fewer or smaller changes.",
@@ -507,7 +526,7 @@ export const DataExplorerGrid = ({
         return;
       }
 
-      await executeQuery(connectionId, sql);
+      await executeStatements(statements);
       createNotification({
         text: `Saved ${statements.length} change${statements.length !== 1 ? "s" : ""}`,
         type: "success"
@@ -622,7 +641,12 @@ export const DataExplorerGrid = ({
         tempIdsToRemove.push(tempId);
       } else {
         deleteStatements.push(
-          buildDeleteQuery({ schema, table, primaryKeyMatch: getPkMatch(row, primaryKeys) })
+          buildDeleteQuery({
+            schema,
+            table,
+            primaryKeyMatch: getPkMatch(row, primaryKeys),
+            dialect
+          })
         );
       }
     });
@@ -643,8 +667,7 @@ export const DataExplorerGrid = ({
     // Execute DELETE SQL for persisted rows
     if (deleteStatements.length > 0) {
       try {
-        const sql = wrapInTransaction(deleteStatements);
-        await executeQuery(connectionId, sql);
+        await executeStatements(deleteStatements);
         createNotification({
           text: `Deleted ${deleteStatements.length} row${deleteStatements.length !== 1 ? "s" : ""}`,
           type: "success"
@@ -729,6 +752,7 @@ export const DataExplorerGrid = ({
           )
         }
         hasData={currentData.length > 0}
+        dialect={dialect}
       />
 
       {!hasPrimaryKey && (

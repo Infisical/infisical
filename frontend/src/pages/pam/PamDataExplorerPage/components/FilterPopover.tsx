@@ -13,7 +13,7 @@ import {
 } from "@app/components/v3/generic/Select";
 
 import type { ColumnInfo } from "../data-explorer-types";
-import type { FilterCondition, FilterOperator } from "../sql-generation";
+import type { FilterCondition, FilterOperator, SqlDialect } from "../sql-generation";
 
 function getFilterPlaceholder(columnType: string, operator: FilterOperator): string {
   switch (operator) {
@@ -99,9 +99,15 @@ type FilterPopoverProps = {
   columns: ColumnInfo[];
   filters: FilterCondition[];
   onFiltersChange: (filters: FilterCondition[]) => Promise<boolean>;
+  dialect?: SqlDialect;
 };
 
-export const FilterPopover = ({ columns, filters, onFiltersChange }: FilterPopoverProps) => {
+export const FilterPopover = ({
+  columns,
+  filters,
+  onFiltersChange,
+  dialect = "postgres"
+}: FilterPopoverProps) => {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<FilterCondition[]>(filters);
   const [isApplying, setIsApplying] = useState(false);
@@ -212,11 +218,13 @@ export const FilterPopover = ({ columns, filters, onFiltersChange }: FilterPopov
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {OPERATORS.map((op) => (
-                        <SelectItem key={op.value} value={op.value}>
-                          {op.label}
-                        </SelectItem>
-                      ))}
+                      {OPERATORS.filter((op) => dialect !== "mysql" || op.value !== "ILIKE").map(
+                        (op) => (
+                          <SelectItem key={op.value} value={op.value}>
+                            {op.label}
+                          </SelectItem>
+                        )
+                      )}
                     </SelectContent>
                   </Select>
 
