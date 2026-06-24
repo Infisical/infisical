@@ -115,14 +115,16 @@ Infisical supports [service account impersonation](https://cloud.google.com/iam/
 
             1. In the Google Cloud Console, navigate to **IAM & Admin > Organization Policies**.
             2. Search for and open the **Domain restricted sharing** (`iam.allowedPolicyMemberDomains`) policy.
-            3. Add a custom value containing Infisical's Google Cloud Customer ID, using the `is:` prefix:
+            3. Under **Custom values**, add a new allowed value containing Infisical's Google Cloud Customer ID:
 
                 ```
-                is:C03rsjmyl
+                C03rsjmyl
                 ```
 
                 This is **Infisical's Google Cloud Customer ID**, not your own. Infisical uses a single Google Cloud organization, so this one Customer ID covers both the US and EU service accounts.
-            4. Save the policy, then retry adding the Infisical service account as a principal (Step 4 above).
+
+                Enter the bare Customer ID (`C03rsjmyl`) in the Console UI. If you manage this policy with `gcloud`, a policy YAML file, or Terraform instead, use the prefixed form `is:C03rsjmyl`.
+            4. Save the policy, then return to **Step 4 (Grant Access)** in the main instructions above and complete steps 4–7 to add the Infisical service account as a principal.
         </Note>
     </Step>
 
