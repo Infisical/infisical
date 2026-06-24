@@ -55,6 +55,8 @@ export const DeleteProjectSection = () => {
 
   const handleLeaveWorkspaceSubmit = async () => {
     try {
+      if (!currentProject) return;
+
       setIsLeaving.on();
 
       await leaveProject.mutateAsync({
