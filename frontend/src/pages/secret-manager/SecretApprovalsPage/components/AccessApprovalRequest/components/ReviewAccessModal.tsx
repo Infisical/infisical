@@ -4,6 +4,7 @@ import {
   BanIcon,
   CheckIcon,
   ClipboardCheckIcon,
+  FilterIcon,
   HourglassIcon,
   InfoIcon,
   SquarePenIcon,
@@ -37,6 +38,9 @@ import {
   DetailValue,
   Field,
   FieldLabel,
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
   IconButton,
   Input,
   Item,
@@ -53,19 +57,25 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
   TextArea,
   Tooltip,
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
 import {
-  ProjectPermissionActions,
   ProjectPermissionMemberActions,
   ProjectPermissionSub,
   useProject,
   useProjectPermission,
   useUser
 } from "@app/context";
+import { PermissionConditionOperators } from "@app/context/ProjectPermissionContext/types";
 import { usePopUp } from "@app/hooks";
 import {
   useListWorkspaceGroups,
@@ -85,6 +95,10 @@ import {
   canModifyByGrantConditions,
   getMemberAssignPrivilegesConditions
 } from "@app/lib/fn/permission";
+import {
+  getActionLabelsForSubject,
+  PROJECT_PERMISSION_OBJECT
+} from "@app/pages/project/RoleDetailsBySlugPage/components/ProjectRoleModifySection.utils";
 import { EditAccessRequestModal } from "@app/pages/secret-manager/SecretApprovalsPage/components/AccessApprovalRequest/components/EditAccessRequestModal";
 
 const getReviewedStatusSymbol = (status?: ApprovalStatus, isOrgMembershipActive?: boolean) => {
@@ -117,6 +131,74 @@ const getReviewedStatusSymbol = (status?: ApprovalStatus, isOrgMembershipActive?
     </Badge>
   );
 };
+
+// The four basic CRUD actions render with clean labels rather than the role editor's
+// granular secret labels (e.g. "read" maps to "Read (legacy)" there), so existing
+// secret requests keep reading naturally.
+const ACTION_LABEL_OVERRIDES: Record<string, string> = {
+  read: "Read",
+  create: "Create",
+  edit: "Edit",
+  delete: "Delete"
+};
+
+const humanizeSlug = (slug: string) =>
+  slug
+    .split(/[-_]/)
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+
+const getSubjectLabel = (subject: string) => {
+  if (subject === "all") return "All Resources";
+  return PROJECT_PERMISSION_OBJECT[subject as ProjectPermissionSub]?.title ?? humanizeSlug(subject);
+};
+
+const getActionLabel = (subject: string, action: string) => {
+  if (ACTION_LABEL_OVERRIDES[action]) return ACTION_LABEL_OVERRIDES[action];
+  return getActionLabelsForSubject(subject as ProjectPermissionSub)[action] ?? humanizeSlug(action);
+};
+
+const CONDITION_FIELD_LABELS: Record<string, string> = {
+  environment: "Environment",
+  secretPath: "Secret Path",
+  secretName: "Secret Name",
+  secretTags: "Secret Tags",
+  identityId: "Identity",
+  metadata: "Metadata"
+};
+
+const CONDITION_OPERATOR_LABELS: Record<string, string> = {
+  [PermissionConditionOperators.$EQ]: "is",
+  [PermissionConditionOperators.$NEQ]: "is not",
+  [PermissionConditionOperators.$IN]: "is any of",
+  [PermissionConditionOperators.$ALL]: "includes all of",
+  [PermissionConditionOperators.$GLOB]: "matches",
+  [PermissionConditionOperators.$REGEX]: "matches regex",
+  [PermissionConditionOperators.$ELEMENTMATCH]: "has element matching"
+};
+
+type FormattedCondition = { field: string; operator: string; value: string };
+
+const formatConditionValue = (value: unknown) =>
+  Array.isArray(value) ? value.join(", ") : String(value);
+
+// Flatten a CASL conditions object into readable "field operator value" rows. A plain
+// value is treated as equality; an operator object ({ $glob, $in, ... }) expands per operator.
+const formatConditions = (conditions: Record<string, unknown>): FormattedCondition[] =>
+  Object.entries(conditions).flatMap(([field, raw]) => {
+    const fieldLabel = CONDITION_FIELD_LABELS[field] ?? humanizeSlug(field);
+
+    if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
+      return [{ field: fieldLabel, operator: "is", value: formatConditionValue(raw) }];
+    }
+
+    return Object.entries(raw as Record<string, unknown>).map(([operator, value]) => ({
+      field: fieldLabel,
+      operator: CONDITION_OPERATOR_LABELS[operator] ?? operator,
+      value: formatConditionValue(value)
+    }));
+  });
 
 export const ReviewAccessRequestModal = ({
   isOpen,
@@ -190,15 +272,6 @@ export const ReviewAccessRequestModal = ({
       request.environmentName,
     // secret path will be inside $glob operator
     secretPath: request.policy.secretPath,
-    read: request.permissions?.some(({ action }) => action.includes(ProjectPermissionActions.Read)),
-    edit: request.permissions?.some(({ action }) => action.includes(ProjectPermissionActions.Edit)),
-    create: request.permissions?.some(({ action }) =>
-      action.includes(ProjectPermissionActions.Create)
-    ),
-    delete: request.permissions?.some(({ action }) =>
-      action.includes(ProjectPermissionActions.Delete)
-    ),
-
     temporaryAccess: {
       isTemporary: request.isTemporary,
       temporaryRange: request.temporaryRange
@@ -212,15 +285,53 @@ export const ReviewAccessRequestModal = ({
     (accessDetails.env?.length ?? 0) > DETAILS_COLLAPSE_THRESHOLD ||
     (accessDetails.secretPath?.length ?? 0) > DETAILS_COLLAPSE_THRESHOLD;
 
-  const requestedAccess = useMemo(() => {
-    const access: string[] = [];
-    if (accessDetails.read) access.push("Read");
-    if (accessDetails.edit) access.push("Edit");
-    if (accessDetails.create) access.push("Create");
-    if (accessDetails.delete) access.push("Delete");
+  const permissionGroups = useMemo(() => {
+    // Group rules by subject + effect (allow/deny) + conditions: rules that differ only in
+    // action collapse into one row, while a different scope or effect stays on its own row.
+    // Every rule is surfaced (including deny rules and unknown subjects) so nothing a request
+    // carries can be hidden from the reviewer.
+    const groups = new Map<
+      string,
+      {
+        key: string;
+        subject: string;
+        inverted: boolean;
+        conditions?: Record<string, unknown>;
+        actions: Set<string>;
+      }
+    >();
 
-    return access.join(", ");
-  }, [accessDetails]);
+    (request.permissions ?? []).forEach((rule) => {
+      const subjects = Array.isArray(rule.subject) ? rule.subject : [rule.subject];
+      const actions = Array.isArray(rule.action) ? rule.action : [rule.action];
+      const inverted = Boolean(rule.inverted);
+      const conditions =
+        rule.conditions && Object.keys(rule.conditions).length ? rule.conditions : undefined;
+      const conditionKey = conditions ? JSON.stringify(conditions) : "";
+
+      subjects.forEach((rawSubject) => {
+        const subject = rawSubject || "all";
+        const key = `${subject}::${inverted ? "deny" : "allow"}::${conditionKey}`;
+        let group = groups.get(key);
+        if (!group) {
+          group = { key, subject, inverted, conditions, actions: new Set<string>() };
+          groups.set(key, group);
+        }
+        actions.forEach((action) => action && group.actions.add(action));
+      });
+    });
+
+    return Array.from(groups.values()).map((group) => ({
+      key: group.key,
+      label: getSubjectLabel(group.subject),
+      inverted: group.inverted,
+      actions: Array.from(group.actions).map((action) => ({
+        value: action,
+        label: getActionLabel(group.subject, action)
+      })),
+      conditions: group.conditions ? formatConditions(group.conditions) : []
+    }));
+  }, [request.permissions]);
 
   const getAccessLabel = () => {
     if (!accessDetails.temporaryAccess.isTemporary || !accessDetails.temporaryAccess.temporaryRange)
@@ -650,10 +761,6 @@ export const ReviewAccessRequestModal = ({
                       </div>
                     </DetailValue>
                   </Detail>
-                  <Detail>
-                    <DetailLabel>Permission</DetailLabel>
-                    <DetailValue>{requestedAccess}</DetailValue>
-                  </Detail>
                   {request.note && (
                     <Detail className="col-span-full">
                       <DetailLabel>Note</DetailLabel>
@@ -677,6 +784,90 @@ export const ReviewAccessRequestModal = ({
                     )}
                 </div>
               </div>
+
+              <div className="mt-4 mb-3">
+                <span className="text-sm font-medium text-foreground">Requested Permissions</span>
+              </div>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Resource</TableHead>
+                    <TableHead>Permissions</TableHead>
+                    <TableHead>Conditions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {permissionGroups.length ? (
+                    permissionGroups.map((group) => (
+                      <TableRow key={group.key}>
+                        <TableCell className="py-2 align-middle font-medium text-foreground">
+                          <div className="flex items-center gap-2">
+                            {group.label}
+                            {group.inverted && (
+                              <Badge variant="danger">
+                                <BanIcon />
+                                Deny
+                              </Badge>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="py-2 align-middle whitespace-normal">
+                          <div className="flex flex-wrap gap-1.5">
+                            {group.actions.map((action) => (
+                              <Badge key={action.value} variant="neutral">
+                                {action.label}
+                              </Badge>
+                            ))}
+                          </div>
+                        </TableCell>
+                        <TableCell className="py-2 align-middle">
+                          {group.conditions.length ? (
+                            <HoverCard openDelay={100} closeDelay={100}>
+                              <HoverCardTrigger asChild>
+                                <button
+                                  type="button"
+                                  className="flex items-center gap-1 text-xs text-accent transition-colors hover:text-foreground"
+                                >
+                                  <FilterIcon className="size-3.5 shrink-0" />
+                                  {group.conditions.length}{" "}
+                                  {group.conditions.length === 1 ? "condition" : "conditions"}
+                                </button>
+                              </HoverCardTrigger>
+                              <HoverCardContent align="end" className="z-[70] w-auto max-w-xs">
+                                <div className="mb-1.5 text-xs font-medium text-foreground">
+                                  Conditions
+                                </div>
+                                <div className="flex flex-col gap-1">
+                                  {group.conditions.map((condition, idx) => (
+                                    <div
+                                      key={`${group.key}-condition-${idx + 1}`}
+                                      className="text-xs text-mineshaft-200"
+                                    >
+                                      <span className="text-muted">{condition.field}</span>{" "}
+                                      {condition.operator}{" "}
+                                      <span className="font-medium text-foreground">
+                                        {condition.value}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </HoverCardContent>
+                            </HoverCard>
+                          ) : (
+                            <span className="text-xs text-muted">None</span>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={3} className="text-muted">
+                        No permissions specified
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
 
               <div className="mt-4 mb-3 flex items-center justify-between">
                 <span className="text-sm font-medium text-foreground">Approvers</span>
