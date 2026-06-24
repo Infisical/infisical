@@ -32,6 +32,7 @@ type Props = {
   cancelQuery: (connectionId: string) => void;
   onSqlChange: (sql: string) => void;
   onTransactionStateChange: (open: boolean) => void;
+  dialect?: "postgres" | "mysql";
 };
 
 export function QueryPanel({
@@ -39,7 +40,8 @@ export function QueryPanel({
   executeQuery,
   cancelQuery,
   onSqlChange,
-  onTransactionStateChange
+  onTransactionStateChange,
+  dialect = "postgres"
 }: Props) {
   const [isRunning, setIsRunning] = useState(false);
   const [result, setResult] = useState<QueryResult | null>(null);
@@ -142,6 +144,7 @@ export function QueryPanel({
             onSqlToRunChange={(s) => {
               sqlToRunRef.current = s;
             }}
+            sqlDialect={dialect}
           />
         </div>
 

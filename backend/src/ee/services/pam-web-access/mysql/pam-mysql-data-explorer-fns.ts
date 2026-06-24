@@ -1,9 +1,19 @@
 const skipQuoted = (sql: string, pos: number, quote: string): number => {
   let i = pos + 1;
-  while (i < sql.length && sql[i] !== quote) {
-    i += sql[i] === "\\" ? 2 : 1;
+  while (i < sql.length) {
+    if (sql[i] === "\\") {
+      i += 2;
+    } else if (sql[i] === quote) {
+      if (i + 1 < sql.length && sql[i + 1] === quote) {
+        i += 2;
+      } else {
+        return i + 1;
+      }
+    } else {
+      i += 1;
+    }
   }
-  return i + 1;
+  return sql.length;
 };
 
 const skipLineComment = (sql: string, pos: number): number => {
@@ -21,7 +31,7 @@ const skipHashComment = (sql: string, pos: number): number => {
 const skipBlockComment = (sql: string, pos: number): number => {
   let i = pos + 2;
   while (i + 1 < sql.length && !(sql[i] === "*" && sql[i + 1] === "/")) i += 1;
-  return i + 2;
+  return Math.min(i + 2, sql.length);
 };
 
 const isLineComment = (sql: string, pos: number) => sql[pos] === "-" && sql[pos + 1] === "-";
@@ -81,7 +91,7 @@ export const extractCommand = (sql: string): string => {
     } else if (isBlockComment(sql, pos)) {
       pos += 2;
       while (pos + 1 < len && !(sql[pos] === "*" && sql[pos + 1] === "/")) pos += 1;
-      pos += 2;
+      pos = Math.min(pos + 2, len);
     } else {
       break;
     }

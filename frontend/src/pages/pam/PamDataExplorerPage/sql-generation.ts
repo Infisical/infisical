@@ -19,7 +19,9 @@ export function quoteLiteral(value: unknown, dialect: SqlDialect = "postgres"): 
   if (dialect === "postgres" && str.includes("'") && !str.includes("$")) {
     return `$$${str}$$`;
   }
-  return `'${str.replace(/'/g, "''")}'`;
+  const escaped =
+    dialect === "mysql" ? str.replace(/\\/g, "\\\\").replace(/'/g, "''") : str.replace(/'/g, "''");
+  return `'${escaped}'`;
 }
 
 export type FilterCondition = {
@@ -90,7 +92,16 @@ export function buildSelectQuery(params: {
   primaryKeys?: string[];
   dialect?: SqlDialect;
 }): string {
-  const { schema, table, filters, sorts, limit, offset, primaryKeys, dialect = "postgres" } = params;
+  const {
+    schema,
+    table,
+    filters,
+    sorts,
+    limit,
+    offset,
+    primaryKeys,
+    dialect = "postgres"
+  } = params;
   const tableName = `${quoteIdent(schema, dialect)}.${quoteIdent(table, dialect)}`;
   const where = buildWhereClause(filters, dialect);
 
@@ -179,8 +190,7 @@ export function buildDeleteQuery(params: {
   return `DELETE FROM ${tableName} WHERE ${whereClauses}`;
 }
 
-// Note: RETURNING * in individual INSERT/UPDATE statements is harmless but unused when
-// wrapped here -- pgClient.query() returns only the last statement's result (COMMIT).
+// RETURNING * in individual INSERT/UPDATE is harmless but unused when wrapped here.
 // The frontend re-fetches data after save anyway.
 export function wrapInTransaction(statements: string[]): string {
   return `BEGIN;\n${statements.join(";\n")};\nCOMMIT;`;

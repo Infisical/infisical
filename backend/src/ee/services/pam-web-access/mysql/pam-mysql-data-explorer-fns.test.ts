@@ -96,6 +96,32 @@ describe("splitMysqlStatements", () => {
       "SELECT 2"
     ]);
   });
+
+  test("doubled-quote escape in single-quoted string", () => {
+    expect(splitMysqlStatements("SELECT 'it''s here; still one'; SELECT 2")).toEqual([
+      "SELECT 'it''s here; still one'",
+      "SELECT 2"
+    ]);
+  });
+
+  test("doubled-quote escape in double-quoted string", () => {
+    expect(splitMysqlStatements('SELECT "a""b;c"; SELECT 2')).toEqual(['SELECT "a""b;c"', "SELECT 2"]);
+  });
+
+  test("doubled backtick in identifier", () => {
+    expect(splitMysqlStatements("SELECT `col``; name` FROM t; SELECT 2")).toEqual([
+      "SELECT `col``; name` FROM t",
+      "SELECT 2"
+    ]);
+  });
+
+  test("unterminated single-quoted string", () => {
+    expect(splitMysqlStatements("SELECT 'abc")).toEqual(["SELECT 'abc"]);
+  });
+
+  test("unterminated block comment", () => {
+    expect(splitMysqlStatements("SELECT 1 /* oops")).toEqual(["SELECT 1 /* oops"]);
+  });
 });
 
 describe("extractCommand", () => {

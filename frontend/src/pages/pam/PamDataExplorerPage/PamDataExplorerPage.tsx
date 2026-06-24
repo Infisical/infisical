@@ -512,6 +512,7 @@ export const PamDataExplorerPage = ({ reason }: Props = {}) => {
                   cancelQuery={cancelQuery}
                   onSqlChange={(sql) => updateTabSql(tab.id, sql)}
                   onTransactionStateChange={(open) => setTabTransactionOpen(tab.id, open)}
+                  dialect={dialect}
                 />
               );
             }

@@ -4,24 +4,14 @@ import Cursor from "pg-cursor";
 
 import { logger } from "@app/lib/logger";
 
+import { type ControllerParams } from "../pam-data-explorer-session-handler";
 import {
   DataExplorerClientMessageType,
   DataExplorerServerMessageType,
   type TConnectionController,
-  type TDataExplorerServerMessage,
   type TTabScopedMessage
 } from "../pam-data-explorer-ws-types";
 import { getTableDetailQuery } from "./pam-postgres-data-explorer-metadata";
-
-type ControllerParams = {
-  relayPort: number;
-  username: string;
-  database?: string;
-  sessionId: string;
-  connectionId: string;
-  sendResponse: (msg: TDataExplorerServerMessage) => void;
-  onUnexpectedTermination: (reason: string) => void;
-};
 
 const pgTypes = {
   getTypeParser: (oid: number) => {

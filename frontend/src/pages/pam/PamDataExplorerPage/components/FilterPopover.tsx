@@ -30,7 +30,10 @@ function getFilterPlaceholder(columnType: string, operator: FilterOperator): str
       break;
   }
 
-  const t = columnType.toLowerCase().replace("[]", "");
+  const t = columnType
+    .toLowerCase()
+    .replace("[]", "")
+    .replace(/\(\d+\)/g, "");
   switch (t) {
     case "int2":
     case "int4":
@@ -41,6 +44,9 @@ function getFilterPlaceholder(columnType: string, operator: FilterOperator): str
     case "integer":
     case "bigint":
     case "smallint":
+    case "tinyint":
+    case "mediumint":
+    case "int":
       return "42";
     case "float4":
     case "float8":
@@ -49,6 +55,8 @@ function getFilterPlaceholder(columnType: string, operator: FilterOperator): str
     case "real":
     case "double precision":
     case "money":
+    case "float":
+    case "double":
       return "3.14";
     case "bool":
     case "boolean":
@@ -59,6 +67,7 @@ function getFilterPlaceholder(columnType: string, operator: FilterOperator): str
       return "2024-01-15";
     case "timestamp":
     case "timestamptz":
+    case "datetime":
       return "2024-01-15 09:30:00";
     case "time":
     case "timetz":
@@ -75,6 +84,10 @@ function getFilterPlaceholder(columnType: string, operator: FilterOperator): str
     case "bpchar":
     case "name":
     case "citext":
+    case "tinytext":
+    case "mediumtext":
+    case "longtext":
+    case "enum":
       return "some text";
     default:
       return "Value";

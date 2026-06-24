@@ -2,27 +2,29 @@ import mysql from "mysql2/promise";
 
 import { logger } from "@app/lib/logger";
 
+import { type ControllerParams } from "../pam-data-explorer-session-handler";
 import {
   DataExplorerClientMessageType,
   DataExplorerServerMessageType,
   type TConnectionController,
-  type TDataExplorerServerMessage,
   type TTabScopedMessage
 } from "../pam-data-explorer-ws-types";
-import { getTableDetailQuery } from "./pam-mysql-data-explorer-metadata";
 import { extractCommand, splitMysqlStatements } from "./pam-mysql-data-explorer-fns";
-
-type ControllerParams = {
-  relayPort: number;
-  username: string;
-  database?: string;
-  sessionId: string;
-  connectionId: string;
-  sendResponse: (msg: TDataExplorerServerMessage) => void;
-  onUnexpectedTermination: (reason: string) => void;
-};
+import { getTableDetailQuery } from "./pam-mysql-data-explorer-metadata";
 
 const MAX_ROWS = 1000;
+
+const IMPLICIT_COMMIT_COMMANDS = new Set([
+  "CREATE",
+  "ALTER",
+  "DROP",
+  "TRUNCATE",
+  "RENAME",
+  "GRANT",
+  "REVOKE",
+  "LOCK",
+  "UNLOCK"
+]);
 
 export const createMysqlConnectionController = async (params: ControllerParams): Promise<TConnectionController> => {
   const { relayPort, username, database, sessionId, connectionId, sendResponse, onUnexpectedTermination } = params;
@@ -53,7 +55,7 @@ export const createMysqlConnectionController = async (params: ControllerParams):
   const [pidRows] = await conn.execute<mysql.RowDataPacket[]>("SELECT CONNECTION_ID() AS pid");
   const backendPid = (pidRows[0]?.pid as number) ?? null;
 
-  await conn.execute("SET SESSION max_execution_time = 30000, sql_select_limit = ?", [MAX_ROWS + 1]);
+  await conn.query(`SET SESSION max_execution_time = 30000, sql_select_limit = ${MAX_ROWS + 1}`);
 
   let isInTransaction = false;
   let disposing = false;
@@ -180,9 +182,9 @@ export const createMysqlConnectionController = async (params: ControllerParams):
                 const [rawRows, rawFields] = await conn.query<mysql.RowDataPacket[] | mysql.ResultSetHeader>(stmtSql);
 
                 const cmd = extractCommand(stmtSql);
-                const upperCmd = cmd.toUpperCase();
-                if (upperCmd === "BEGIN" || upperCmd === "START") isInTransaction = true;
-                if (upperCmd === "COMMIT" || upperCmd === "ROLLBACK") isInTransaction = false;
+                if (cmd === "BEGIN" || cmd === "START") isInTransaction = true;
+                else if (cmd === "COMMIT" || cmd === "ROLLBACK") isInTransaction = false;
+                else if (IMPLICIT_COMMIT_COMMANDS.has(cmd)) isInTransaction = false;
 
                 if (Array.isArray(rawRows)) {
                   lastIsTruncated = rawRows.length > MAX_ROWS;

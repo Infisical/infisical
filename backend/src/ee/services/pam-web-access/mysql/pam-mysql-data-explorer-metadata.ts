@@ -31,28 +31,35 @@ export const getTableDetailQuery = (schema: string, table: string) => ({
       'columns', COALESCE((
         SELECT JSON_ARRAYAGG(
           JSON_OBJECT(
-            'name', c.COLUMN_NAME,
-            'type', c.COLUMN_TYPE,
-            'nullable', IF(c.IS_NULLABLE = 'YES', TRUE, FALSE),
+            'name', sub.COLUMN_NAME,
+            'type', sub.COLUMN_TYPE,
+            'nullable', CAST(IF(sub.IS_NULLABLE = 'YES', TRUE, FALSE) AS JSON),
             'identityGeneration', CASE
-              WHEN c.EXTRA LIKE '%auto_increment%' THEN 'AUTO_INCREMENT'
+              WHEN sub.EXTRA LIKE '%auto_increment%' THEN 'AUTO_INCREMENT'
               ELSE NULL
             END
           )
-          ORDER BY c.ORDINAL_POSITION
         )
-        FROM information_schema.COLUMNS c
-        WHERE c.TABLE_SCHEMA = ? AND c.TABLE_NAME = ?
+        FROM (
+          SELECT c.COLUMN_NAME, c.COLUMN_TYPE, c.IS_NULLABLE, c.EXTRA
+          FROM information_schema.COLUMNS c
+          WHERE c.TABLE_SCHEMA = ? AND c.TABLE_NAME = ?
+          ORDER BY c.ORDINAL_POSITION
+        ) sub
       ), JSON_ARRAY()),
       'primaryKeys', COALESCE((
-        SELECT JSON_ARRAYAGG(kcu.COLUMN_NAME ORDER BY kcu.ORDINAL_POSITION)
-        FROM information_schema.KEY_COLUMN_USAGE kcu
-        JOIN information_schema.TABLE_CONSTRAINTS tc
-          ON tc.CONSTRAINT_NAME = kcu.CONSTRAINT_NAME
-          AND tc.TABLE_SCHEMA = kcu.TABLE_SCHEMA
-          AND tc.TABLE_NAME = kcu.TABLE_NAME
-        WHERE kcu.TABLE_SCHEMA = ? AND kcu.TABLE_NAME = ?
-          AND tc.CONSTRAINT_TYPE = 'PRIMARY KEY'
+        SELECT JSON_ARRAYAGG(sub.COLUMN_NAME)
+        FROM (
+          SELECT kcu.COLUMN_NAME
+          FROM information_schema.KEY_COLUMN_USAGE kcu
+          JOIN information_schema.TABLE_CONSTRAINTS tc
+            ON tc.CONSTRAINT_NAME = kcu.CONSTRAINT_NAME
+            AND tc.TABLE_SCHEMA = kcu.TABLE_SCHEMA
+            AND tc.TABLE_NAME = kcu.TABLE_NAME
+          WHERE kcu.TABLE_SCHEMA = ? AND kcu.TABLE_NAME = ?
+            AND tc.CONSTRAINT_TYPE = 'PRIMARY KEY'
+          ORDER BY kcu.ORDINAL_POSITION
+        ) sub
       ), JSON_ARRAY()),
       'foreignKeys', COALESCE((
         SELECT JSON_ARRAYAGG(

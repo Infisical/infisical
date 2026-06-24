@@ -281,7 +281,7 @@ export const DataExplorerGrid = ({
         setIsDataLoading(false);
       }
     },
-    [tableDetail, schema, table, primaryKeys, executeQuery, connectionId]
+    [tableDetail, schema, table, primaryKeys, executeQuery, connectionId, dialect]
   );
 
   // Fetch data when filters/sorts/pagination change.
@@ -438,8 +438,8 @@ export const DataExplorerGrid = ({
       primaryKeys,
       schema,
       table,
-      connectionId,
-      executeQuery,
+      dialect,
+      executeStatements,
       fetchData,
       offset,
       pageSize,
@@ -543,8 +543,8 @@ export const DataExplorerGrid = ({
     primaryKeys,
     schema,
     table,
-    connectionId,
-    executeQuery,
+    dialect,
+    executeStatements,
     fetchData,
     offset,
     pageSize,
@@ -685,8 +685,8 @@ export const DataExplorerGrid = ({
     schema,
     table,
     primaryKeys,
-    connectionId,
-    executeQuery,
+    dialect,
+    executeStatements,
     fetchData,
     offset,
     pageSize,

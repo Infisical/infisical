@@ -25,7 +25,7 @@ export type OneShotOptions = {
   database?: string;
 };
 
-type ControllerParams = {
+export type ControllerParams = {
   relayPort: number;
   username: string;
   database?: string;
