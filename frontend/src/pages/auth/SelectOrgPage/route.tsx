@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { SessionStorageKeys } from "@app/const";
+import { adminQueryKeys } from "@app/hooks/api/admin/queries";
 import { authKeys, selectOrganization } from "@app/hooks/api/auth/queries";
 import { UserAgentType } from "@app/hooks/api/auth/types";
 import {
@@ -99,6 +100,12 @@ export const Route = createFileRoute("/_restrict-login-signup/login/select-organ
         }
 
         setAuthToken(result.token);
+
+        context.queryClient.removeQueries({ queryKey: adminQueryKeys.serverConfig() });
+        context.queryClient.removeQueries({ queryKey: authKeys.getAuthToken });
+        await context.queryClient.refetchQueries({ queryKey: authKeys.getAuthToken });
+        await context.queryClient.refetchQueries({ queryKey: adminQueryKeys.serverConfig() });
+
         createNotification({ text: "Successfully logged in", type: "success" });
 
         throw redirect({
