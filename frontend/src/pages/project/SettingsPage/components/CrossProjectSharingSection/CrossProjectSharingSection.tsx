@@ -1,5 +1,14 @@
 import { useState } from "react";
-import { ArrowRight, Box, FolderIcon, KeyRound, Layers, Plus, SlashIcon, Trash2 } from "lucide-react";
+import {
+  ArrowRight,
+  Box,
+  FolderIcon,
+  KeyRound,
+  Layers,
+  Plus,
+  SlashIcon,
+  Trash2
+} from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -75,7 +84,7 @@ export const CrossProjectSharingSection = () => {
         Grant another project read access to a slice of this project&apos;s secrets. The target
         project can then import them, or reference them inline with{" "}
         <code className="rounded bg-mineshaft-700 px-1 py-0.5 font-mono text-xs text-yellow-200">
-          {"${@project-a.SECRET}"}
+          {"$" + "{@project-a.SECRET}"}
         </code>
         .
       </p>
@@ -91,7 +100,7 @@ export const CrossProjectSharingSection = () => {
           </p>
         </div>
       ) : (
-        <div className="rounded-md border border-mineshaft-700 divide-y divide-mineshaft-700">
+        <div className="divide-y divide-mineshaft-700 rounded-md border border-mineshaft-700">
           {grants.map((grant) => (
             <div
               key={grant.id}
@@ -105,10 +114,10 @@ export const CrossProjectSharingSection = () => {
               </Badge>
 
               {/* folder path → project name */}
-              <div className="flex items-center gap-2 min-w-0">
+              <div className="flex min-w-0 items-center gap-2">
                 <FolderPath folderName={grant.folderName} />
                 <ArrowRight className="size-3.5 shrink-0 text-mineshaft-400" />
-                <div className="flex items-center gap-1.5 min-w-0">
+                <div className="flex min-w-0 items-center gap-1.5">
                   <Box className="size-3.5 shrink-0 text-mineshaft-300" />
                   <span className="truncate text-sm font-medium text-mineshaft-100">
                     {grant.targetProjectName}
@@ -128,7 +137,6 @@ export const CrossProjectSharingSection = () => {
               <IconButton
                 variant="ghost-muted"
                 size="xs"
-                ariaLabel="Remove grant"
                 isPending={deleteGrant.isPending}
                 onClick={() => handleDelete(grant.id)}
               >

@@ -460,6 +460,8 @@ import { projectBotServiceFactory } from "@app/services/project-bot/project-bot-
 import { projectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 import { projectEnvQueueFactory } from "@app/services/project-env/project-env-queue";
 import { projectEnvServiceFactory } from "@app/services/project-env/project-env-service";
+import { projectGrantDALFactory } from "@app/services/project-grant/project-grant-dal";
+import { projectGrantServiceFactory } from "@app/services/project-grant/project-grant-service";
 import { projectKeyDALFactory } from "@app/services/project-key/project-key-dal";
 import { projectKeyServiceFactory } from "@app/services/project-key/project-key-service";
 import { projectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
@@ -484,8 +486,6 @@ import { secretFolderServiceFactory } from "@app/services/secret-folder/secret-f
 import { secretFolderVersionDALFactory } from "@app/services/secret-folder/secret-folder-version-dal";
 import { secretImportDALFactory } from "@app/services/secret-import/secret-import-dal";
 import { secretImportServiceFactory } from "@app/services/secret-import/secret-import-service";
-import { projectGrantDALFactory } from "@app/services/project-grant/project-grant-dal";
-import { projectGrantServiceFactory } from "@app/services/project-grant/project-grant-service";
 import { secretReminderRecipientsDALFactory } from "@app/services/secret-reminder-recipients/secret-reminder-recipients-dal";
 import { secretSharingDALFactory } from "@app/services/secret-sharing/secret-sharing-dal";
 import { secretSharingServiceFactory } from "@app/services/secret-sharing/secret-sharing-service";

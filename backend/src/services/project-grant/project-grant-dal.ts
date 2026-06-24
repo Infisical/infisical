@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName } from "@app/db/schemas";
+import { TableName, TProjectFolderGrants } from "@app/db/schemas";
 import { ormify } from "@app/lib/knex";
 
 export type TProjectGrantDALFactory = ReturnType<typeof projectGrantDALFactory>;
@@ -30,7 +30,7 @@ export const projectGrantDALFactory = (db: TDbClient) => {
         )
       );
 
-    return rows as (typeof rows[number] & {
+    return rows as unknown[] as (TProjectFolderGrants & {
       folderName: string;
       environmentName: string;
       environmentSlug: string;
