@@ -20,6 +20,7 @@ import {
   useGetBillingV2Overview
 } from "@app/hooks/api";
 
+import { AddProductModal } from "./components/AddProductModal";
 import { BillingV2RenderState, Overview } from "./components/Overview";
 import { ProductSheet } from "./components/ProductSheet";
 import { RemoveProductModal } from "./components/RemoveProductModal";
@@ -49,6 +50,7 @@ export const BillingV2Page = () => {
 
   const [flow, setFlow] = useState<BillingV2Flow | null>(null);
   const [removeProdId, setRemoveProdId] = useState<string | null>(null);
+  const [addProdId, setAddProdId] = useState<string | null>(null);
 
   // Stripe redirects back with ?checkout=success|canceled; surface the outcome and refresh state.
   useEffect(() => {
@@ -80,6 +82,7 @@ export const BillingV2Page = () => {
 
   const cadence = intervalToCadence(overview?.interval ?? null);
   const removeProd = removeProdId ? catalogById(catalog, removeProdId) : undefined;
+  const addProd = addProdId ? catalogById(catalog, addProdId) : undefined;
 
   const close = () => setFlow(null);
 
@@ -135,12 +138,22 @@ export const BillingV2Page = () => {
     setFlow({ type: "sheet", prodId: productId });
   };
 
-  // Owned products are managed in the Stripe portal; a product the org isn't entitled to yet always
-  // goes through checkout, even when a subscription already exists.
+  // Owned products are managed in the Stripe portal. A new product is added in place with a proration
+  // confirmation when a subscription already exists; a first-time customer goes through Stripe Checkout.
+  const hasActiveSubscription =
+    overview?.subState === "active" ||
+    overview?.subState === "trialing" ||
+    overview?.subState === "past-due";
+
   const onSheetManage = async (productId: string) => {
     const isEntitled = Boolean(overview?.entitlements[productId]?.entitled);
     if (isEntitled) {
       await redirectToPortal();
+      return;
+    }
+    if (hasActiveSubscription) {
+      close();
+      setAddProdId(productId);
       return;
     }
     await redirectToCheckout(productId);
@@ -230,6 +243,15 @@ export const BillingV2Page = () => {
           orgId={orgId}
           product={removeProd}
           onClose={() => setRemoveProdId(null)}
+        />
+      )}
+
+      {addProd && (
+        <AddProductModal
+          orgId={orgId}
+          product={addProd}
+          cadence={cadence}
+          onClose={() => setAddProdId(null)}
         />
       )}
     </div>
