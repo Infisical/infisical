@@ -5,10 +5,18 @@ import { logger } from "@app/lib/logger";
 import { featureReaderFactory } from "./feature-reader";
 import { licenseServerBackend } from "./license-client-backends";
 import { entitlementResolverFactory } from "./license-client-cache";
-import { TCreateCheckoutPayload, TCreatePortalPayload, TLicenseClientBackend } from "./license-client-types";
+import {
+  TCreateCheckoutPayload,
+  TCreatePortalPayload,
+  TEntitlementOrg,
+  TLicenseClientBackend
+} from "./license-client-types";
 
 type TLicenseClientFactoryDep = {
-  envConfig: Pick<TEnvConfig, "LICENSE_SERVER_V2_MODE" | "LICENSE_SERVER_V2_URL" | "LICENSE_SERVER_V2_SERVICE_KEY">;
+  envConfig: Pick<
+    TEnvConfig,
+    "LICENSE_SERVER_V2_MODE" | "LICENSE_SERVER_V2_URL" | "LICENSE_SERVER_V2_SERVICE_KEY" | "INTERNAL_REGION"
+  >;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry">;
 };
 
@@ -44,18 +52,18 @@ const buildBackend = (envConfig: TLicenseClientFactoryDep["envConfig"]): TLicens
   }
 
   // The signing key is a PEM private key; env vars often carry it with escaped newlines.
-  return licenseServerBackend(serverUrl, signingKey.replace(/\\n/g, "\n"));
+  return licenseServerBackend(serverUrl, signingKey.replace(/\\n/g, "\n"), envConfig.INTERNAL_REGION);
 };
 
 export const licenseClientFactory = ({ envConfig, keyStore }: TLicenseClientFactoryDep) => {
   const backend = buildBackend(envConfig);
   const resolver = backend ? entitlementResolverFactory({ keyStore, backend }) : null;
 
-  const getEntitlements = async (orgId: string) => {
+  const getEntitlements = async (org: TEntitlementOrg) => {
     if (!resolver) {
       return null;
     }
-    return resolver.getEntitlements(orgId);
+    return resolver.getEntitlements(org);
   };
 
   const getCatalog = async () => {

@@ -9,6 +9,7 @@ import { TLicenseClientFactory } from "@app/services/license-client";
 import {
   TCatalogProduct,
   TCheckoutLineItem,
+  TEntitlementOrg,
   TSubscriptionResponse
 } from "@app/services/license-client/license-client-types";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
@@ -261,7 +262,7 @@ export const licenseV2ServiceFactory = ({
 
   // Fold the subscription items and the entitlement features sourced from a product into a single
   // per-product entitlement map, keyed by the server's product ids.
-  const buildEntitlements = async (orgId: string, subscription: TSubscriptionResponse | null) => {
+  const buildEntitlements = async (org: TEntitlementOrg, subscription: TSubscriptionResponse | null) => {
     const entitlements: Record<string, BillingV2Entitlement> = {};
 
     if (subscription) {
@@ -284,10 +285,10 @@ export const licenseV2ServiceFactory = ({
 
     let features = null;
     try {
-      const result = await licenseClient.getEntitlements(orgId);
+      const result = await licenseClient.getEntitlements(org);
       features = result?.features ?? null;
     } catch (error) {
-      logger.error(error, `billing-v2: failed to read entitlements [orgId=${orgId}]`);
+      logger.error(error, `billing-v2: failed to read entitlements [orgId=${org.id}]`);
     }
 
     if (features) {
@@ -404,7 +405,10 @@ export const licenseV2ServiceFactory = ({
       payment,
       billingDetails,
       invoices,
-      entitlements: await buildEntitlements(orgId, subscription)
+      entitlements: await buildEntitlements(
+        { id: orgId, name: organization.name, slug: organization.slug },
+        subscription
+      )
     };
 
     return { overview };
