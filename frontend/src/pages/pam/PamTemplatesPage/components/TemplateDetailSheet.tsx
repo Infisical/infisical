@@ -321,15 +321,16 @@ const SettingsTab = ({
             <FieldContent>
               <TextArea
                 rows={5}
-                placeholder={"password\\s*=\\s*\\S+\n\\b\\d{3}-\\d{2}-\\d{4}\\b\nsecret_key\\s*[:=]\\s*\\S+"}
+                placeholder={
+                  "password\\s*=\\s*\\S+\n\\b\\d{3}-\\d{2}-\\d{4}\\b\nsecret_key\\s*[:=]\\s*\\S+"
+                }
                 value={watch("sessionLogMaskingPatterns") ?? ""}
                 onChange={(e) =>
                   setValue("sessionLogMaskingPatterns", e.target.value, { shouldDirty: true })
                 }
               />
               <FieldDescription>
-                Matching content in session recordings will be masked (one RE2 regex per
-                line).{" "}
+                Matching content in session recordings will be masked (one RE2 regex per line).{" "}
                 <a
                   href="https://github.com/google/re2/wiki/Syntax"
                   target="_blank"
