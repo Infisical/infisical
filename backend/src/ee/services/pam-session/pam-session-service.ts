@@ -16,9 +16,12 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
+import { TMfaSessionServiceFactory } from "@app/services/mfa-session/mfa-session-service";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { PamAccessMethod, PamAccountType, PamSessionStatus } from "../pam/pam-enums";
+import { enforceMfa } from "../pam/pam-mfa";
 import {
   checkAccountAccess,
   getResourceIdsWithActions,
@@ -57,6 +60,11 @@ type TPamSessionServiceFactoryDep = {
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
   userDAL: Pick<TUserDALFactory, "findById">;
   pamSessionExpirationService: Pick<TPamSessionExpirationServiceFactory, "scheduleSessionExpiration">;
+  mfaSessionService: Pick<
+    TMfaSessionServiceFactory,
+    "createMfaSession" | "getMfaSession" | "deleteMfaSession" | "sendMfaCode"
+  >;
+  orgDAL: Pick<TOrgDALFactory, "findOrgById">;
 };
 
 export type TPamSessionServiceFactory = ReturnType<typeof pamSessionServiceFactory>;
@@ -72,7 +80,9 @@ export const pamSessionServiceFactory = ({
   gatewayV2Service,
   gatewayPoolService,
   userDAL,
-  pamSessionExpirationService
+  pamSessionExpirationService,
+  mfaSessionService,
+  orgDAL
 }: TPamSessionServiceFactoryDep) => {
   const decrypt = async (projectId: string, blob: Buffer): Promise<Record<string, unknown>> => {
     const { decryptor } = await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
@@ -277,7 +287,8 @@ export const pamSessionServiceFactory = ({
     actorIp,
     actorUserAgent,
     reason,
-    duration
+    duration,
+    mfaSessionId
   }: {
     path: string;
     projectId: string;
@@ -288,19 +299,34 @@ export const pamSessionServiceFactory = ({
     actorUserAgent: string;
     reason?: string;
     duration?: string;
+    mfaSessionId?: string;
   }) => {
     const account = await resolveAccountByPath(projectId, path);
+
+    await checkAccount(
+      account.id,
+      account.folderId,
+      projectId,
+      ResourcePermissionPamResourceActions.LaunchSessions,
+      actor
+    );
 
     const trimmedReason = reason?.trim() || null;
 
     const policy = resolveAccessControls(account.templatePolicies);
 
     if (policy.requireReason && !trimmedReason) {
-      throw new BadRequestError({ message: "A reason is required to access this account" });
+      throw new BadRequestError({
+        name: "PAM_REASON_REQUIRED",
+        message: "A reason is required to access this account"
+      });
     }
 
     if (policy.requireMfa) {
-      throw new BadRequestError({ message: "MFA verification is required to access this account" });
+      await enforceMfa(
+        { mfaSessionService, orgDAL, userDAL },
+        { userId: actor.actorId, orgId: actor.actorOrgId, actorEmail, accountId: account.id, mfaSessionId }
+      );
     }
 
     const maxDurationMs = policy.maxSessionDurationSeconds
@@ -315,14 +341,6 @@ export const pamSessionServiceFactory = ({
       }
       sessionDurationMs = Math.min(parsed, maxDurationMs);
     }
-
-    await checkAccount(
-      account.id,
-      account.folderId,
-      projectId,
-      ResourcePermissionPamResourceActions.LaunchSessions,
-      actor
-    );
 
     const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
       gatewayId: account.gatewayId ?? account.templateGatewayId,
