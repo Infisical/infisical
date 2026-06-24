@@ -2,6 +2,8 @@ import { Field, FieldContent, FieldDescription, FieldLabel, TextArea } from "@ap
 
 import { PolicyEditorProps } from "./types";
 
+const RE2_SYNTAX_URL = "https://github.com/google/re2/wiki/Syntax";
+
 export const TextAreaPolicyEditor = ({
   label,
   description,
@@ -23,7 +25,17 @@ export const TextAreaPolicyEditor = ({
             onChange(val.trim() ? val : null);
           }}
         />
-        <FieldDescription>{description}</FieldDescription>
+        <FieldDescription>
+          {description}{" "}
+          <a
+            href={RE2_SYNTAX_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline"
+          >
+            Syntax reference
+          </a>
+        </FieldDescription>
       </FieldContent>
     </Field>
   );
