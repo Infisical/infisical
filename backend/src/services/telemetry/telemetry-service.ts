@@ -476,6 +476,8 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
       // when multiple users share the same org within a bucket
       const orgPropertiesCache = new Map<string, Record<string, unknown>>();
 
+      const instanceId = await getInstanceId();
+
       for (const [eventsKey, events] of eventsGrouped) {
         const key = JSON.parse(eventsKey) as { id: string; org?: string; [dim: string]: string | undefined };
         if (key.org) {
@@ -521,8 +523,6 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
           properties.orgId = key.org;
         }
 
-        // eslint-disable-next-line no-await-in-loop
-        const instanceId = await getInstanceId();
         if (instanceId) {
           properties.instanceId = instanceId;
         }

@@ -151,49 +151,57 @@ export const telemetryDALFactory = (db: TDbClient) => {
 
       const activeGateways = parseInt(legacyActiveResult || "0", 10) + parseInt(v2ActiveResult || "0", 10);
 
+      // Merge legacy `secrets` and `secrets_v2` counts. secrets_v2 is the active table;
+      // legacy `secrets` only retains rows for projects that haven't been migrated.
       const secrets = legacySecrets + v2Secrets;
 
       // Integration type breakdown
-      const integrationTypeResult = await db.raw<{ rows: { integration: string; count: string }[] }>(
-        `SELECT integration, COUNT(*)::text AS count FROM ${TableName.Integration} GROUP BY integration`
-      );
+      const integrationTypeRows = (await db(TableName.Integration)
+        .select("integration")
+        .count("* as count")
+        .groupBy("integration")) as unknown as { integration: string; count: string }[];
       const integrationBreakdown: Record<string, number> = {};
-      for (const row of integrationTypeResult.rows) {
-        integrationBreakdown[row.integration] = parseInt(row.count, 10);
+      for (const row of integrationTypeRows) {
+        integrationBreakdown[row.integration] = parseInt(String(row.count), 10);
       }
 
       // Project type breakdown
-      const projectTypeResult = await db.raw<{ rows: { type: string; count: string }[] }>(
-        `SELECT type, COUNT(*)::text AS count FROM ${TableName.Project} GROUP BY type`
-      );
+      const projectTypeRows = (await db(TableName.Project)
+        .select("type")
+        .count("* as count")
+        .groupBy("type")) as unknown as { type: string; count: string }[];
       const projectTypeBreakdown: Record<string, number> = {};
-      for (const row of projectTypeResult.rows) {
-        projectTypeBreakdown[row.type] = parseInt(row.count, 10);
+      for (const row of projectTypeRows) {
+        projectTypeBreakdown[row.type] = parseInt(String(row.count), 10);
       }
 
       // Secret sync destination breakdown
-      const syncDestinationResult = await db.raw<{ rows: { destination: string; count: string }[] }>(
-        `SELECT destination, COUNT(*)::text AS count FROM ${TableName.SecretSync} GROUP BY destination`
-      );
+      const syncDestinationRows = (await db(TableName.SecretSync)
+        .select("destination")
+        .count("* as count")
+        .groupBy("destination")) as unknown as { destination: string; count: string }[];
       const secretSyncBreakdown: Record<string, number> = {};
-      for (const row of syncDestinationResult.rows) {
-        secretSyncBreakdown[row.destination] = parseInt(row.count, 10);
+      for (const row of syncDestinationRows) {
+        secretSyncBreakdown[row.destination] = parseInt(String(row.count), 10);
       }
 
       // Per-org breakdown: orgId, name, user count, project count
       const organizationRows = await db(TableName.Organization).select("id", "name");
       const organizations = organizationRows.length;
-      const organizationNames = organizationRows.map(({ name }) => name);
 
-      const orgUserResult = await db.raw<{ rows: { scopeOrgId: string; count: string }[] }>(
-        `SELECT "scopeOrgId", COUNT(*)::text AS count FROM ${TableName.Membership} WHERE scope = '${AccessScope.Organization}' AND "actorUserId" IS NOT NULL AND status = 'accepted' GROUP BY "scopeOrgId"`
-      );
-      const orgUserMap = new Map(orgUserResult.rows.map((r) => [r.scopeOrgId, parseInt(r.count, 10)]));
+      const orgUserRows = (await db(TableName.Membership)
+        .select("scopeOrgId")
+        .count("* as count")
+        .where({ scope: AccessScope.Organization, status: "accepted" })
+        .whereNotNull("actorUserId")
+        .groupBy("scopeOrgId")) as unknown as { scopeOrgId: string; count: string }[];
+      const orgUserMap = new Map(orgUserRows.map((r) => [r.scopeOrgId, parseInt(String(r.count), 10)]));
 
-      const orgProjectResult = await db.raw<{ rows: { orgId: string; count: string }[] }>(
-        `SELECT "orgId", COUNT(*)::text AS count FROM ${TableName.Project} GROUP BY "orgId"`
-      );
-      const orgProjectMap = new Map(orgProjectResult.rows.map((r) => [r.orgId, parseInt(r.count, 10)]));
+      const orgProjectRows = (await db(TableName.Project)
+        .select("orgId")
+        .count("* as count")
+        .groupBy("orgId")) as unknown as { orgId: string; count: string }[];
+      const orgProjectMap = new Map(orgProjectRows.map((r) => [r.orgId, parseInt(String(r.count), 10)]));
 
       const organizationBreakdown = organizationRows.map((org) => ({
         orgId: org.id,
@@ -208,7 +216,7 @@ export const telemetryDALFactory = (db: TDbClient) => {
         projects,
         secrets,
         organizations,
-        organizationNames,
+        organizationNames: organizationRows.map(({ name }) => name),
         environments,
         secretSyncs,
         appConnections,
