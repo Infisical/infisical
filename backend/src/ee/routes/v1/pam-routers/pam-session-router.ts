@@ -297,7 +297,7 @@ export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => 
           .trim()
           .optional()
           .describe("Session duration (e.g. '1h', '30m'). Capped at the account's max session duration."),
-        mfaSessionId: z.string().optional().describe("MFA session ID from a completed MFA verification")
+        mfaSessionId: z.string().max(64).optional().describe("MFA session ID from a completed MFA verification")
       }),
       response: {
         200: z.object({
@@ -394,7 +394,7 @@ export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => 
       }),
       body: z.object({
         reason: z.string().trim().max(1000).optional().describe("Optional reason for the session"),
-        mfaSessionId: z.string().optional().describe("MFA session ID from a completed MFA verification")
+        mfaSessionId: z.string().max(64).optional().describe("MFA session ID from a completed MFA verification")
       }),
       response: {
         200: z.object({ ticket: z.string() })

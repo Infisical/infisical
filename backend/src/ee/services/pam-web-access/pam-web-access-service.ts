@@ -6,6 +6,7 @@ import { AuditLogInfo, EventType, TAuditLogServiceFactory } from "@app/ee/servic
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { PamAccountType } from "@app/ee/services/pam/pam-enums";
+import { enforceMfa } from "@app/ee/services/pam/pam-mfa";
 import { resolveAccessControls } from "@app/ee/services/pam/pam-policies";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ResourcePermissionPamResourceActions } from "@app/ee/services/permission/resource-permission";
@@ -13,13 +14,12 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { GatewayProxyProtocol } from "@app/lib/gateway/types";
 import { createGatewayConnection, createRelayConnection, setupRelayServer } from "@app/lib/gateway-v2/gateway-v2";
 import { logger } from "@app/lib/logger";
-import { ActorType, MfaMethod } from "@app/services/auth/auth-type";
+import { ActorType } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TMfaSessionServiceFactory } from "@app/services/mfa-session/mfa-session-service";
-import { MfaSessionStatus } from "@app/services/mfa-session/mfa-session-types";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
@@ -173,42 +173,11 @@ export const pamWebAccessServiceFactory = ({
       });
     }
 
-    if (policy.requireMfa && !mfaSessionId) {
-      const org = await orgDAL.findOrgById(actor.orgId);
-      const user = await userDAL.findById(actor.id);
-
-      const orgMfaMethod = org?.enforceMfa ? (org.selectedMfaMethod as MfaMethod | null) : undefined;
-      const userMfaMethod = user?.isMfaEnabled ? (user.selectedMfaMethod as MfaMethod | null) : undefined;
-      const mfaMethod = (orgMfaMethod ?? userMfaMethod ?? MfaMethod.EMAIL) as MfaMethod;
-
-      const newMfaSessionId = await mfaSessionService.createMfaSession(actor.id, account.id, mfaMethod);
-
-      if (mfaMethod === MfaMethod.EMAIL && actorEmail) {
-        await mfaSessionService.sendMfaCode(actor.id, actorEmail);
-      }
-
-      throw new BadRequestError({
-        name: "SESSION_MFA_REQUIRED",
-        message: "MFA verification required to access this account",
-        details: { mfaSessionId: newMfaSessionId, mfaMethod }
-      });
-    }
-
-    if (policy.requireMfa && mfaSessionId) {
-      const mfaSession = await mfaSessionService.getMfaSession(mfaSessionId);
-      if (!mfaSession) {
-        throw new BadRequestError({ message: "MFA session not found or expired" });
-      }
-      if (mfaSession.userId !== actor.id) {
-        throw new BadRequestError({ message: "MFA session does not belong to current user" });
-      }
-      if (mfaSession.resourceId !== account.id) {
-        throw new BadRequestError({ message: "MFA session is for a different account" });
-      }
-      if (mfaSession.status !== MfaSessionStatus.ACTIVE) {
-        throw new BadRequestError({ message: "MFA session is not verified. Please complete MFA verification first." });
-      }
-      await mfaSessionService.deleteMfaSession(mfaSessionId);
+    if (policy.requireMfa) {
+      await enforceMfa(
+        { mfaSessionService, orgDAL, userDAL },
+        { userId: actor.id, orgId: actor.orgId, actorEmail, accountId: account.id, mfaSessionId }
+      );
     }
 
     const maxSessionDurationMs = policy.maxSessionDurationSeconds

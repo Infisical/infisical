@@ -11,17 +11,17 @@ import { GatewayProxyProtocol } from "@app/lib/gateway/types";
 import { createGatewayConnection, createRelayConnection } from "@app/lib/gateway-v2/gateway-v2";
 import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
-import { ActorType, MfaMethod } from "@app/services/auth/auth-type";
+import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TMfaSessionServiceFactory } from "@app/services/mfa-session/mfa-session-service";
-import { MfaSessionStatus } from "@app/services/mfa-session/mfa-session-types";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { PamAccessMethod, PamAccountType, PamSessionStatus } from "../pam/pam-enums";
+import { enforceMfa } from "../pam/pam-mfa";
 import {
   checkAccountAccess,
   getResourceIdsWithActions,
@@ -322,42 +322,11 @@ export const pamSessionServiceFactory = ({
       });
     }
 
-    if (policy.requireMfa && !mfaSessionId) {
-      const org = await orgDAL.findOrgById(actor.actorOrgId);
-      const user = await userDAL.findById(actor.actorId);
-
-      const orgMfaMethod = org?.enforceMfa ? (org.selectedMfaMethod as MfaMethod | null) : undefined;
-      const userMfaMethod = user?.isMfaEnabled ? (user.selectedMfaMethod as MfaMethod | null) : undefined;
-      const mfaMethod = (orgMfaMethod ?? userMfaMethod ?? MfaMethod.EMAIL) as MfaMethod;
-
-      const newMfaSessionId = await mfaSessionService.createMfaSession(actor.actorId, account.id, mfaMethod);
-
-      if (mfaMethod === MfaMethod.EMAIL && actorEmail) {
-        await mfaSessionService.sendMfaCode(actor.actorId, actorEmail);
-      }
-
-      throw new BadRequestError({
-        name: "SESSION_MFA_REQUIRED",
-        message: "MFA verification required to access this account",
-        details: { mfaSessionId: newMfaSessionId, mfaMethod }
-      });
-    }
-
-    if (policy.requireMfa && mfaSessionId) {
-      const mfaSession = await mfaSessionService.getMfaSession(mfaSessionId);
-      if (!mfaSession) {
-        throw new BadRequestError({ message: "MFA session not found or expired" });
-      }
-      if (mfaSession.userId !== actor.actorId) {
-        throw new BadRequestError({ message: "MFA session does not belong to current user" });
-      }
-      if (mfaSession.resourceId !== account.id) {
-        throw new BadRequestError({ message: "MFA session is for a different account" });
-      }
-      if (mfaSession.status !== MfaSessionStatus.ACTIVE) {
-        throw new BadRequestError({ message: "MFA session is not verified. Please complete MFA verification first." });
-      }
-      await mfaSessionService.deleteMfaSession(mfaSessionId);
+    if (policy.requireMfa) {
+      await enforceMfa(
+        { mfaSessionService, orgDAL, userDAL },
+        { userId: actor.actorId, orgId: actor.actorOrgId, actorEmail, accountId: account.id, mfaSessionId }
+      );
     }
 
     const maxDurationMs = policy.maxSessionDurationSeconds
