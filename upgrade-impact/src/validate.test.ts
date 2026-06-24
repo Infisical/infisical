@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { stringify } from "yaml";
 
 import { ReleaseImpact, ReleaseIndex } from "./schema.js";
@@ -276,6 +276,26 @@ describe("validateUpgradeImpactData", () => {
 
     if (expectedErrors.length === 0) {
       expect(result.errors).toEqual([]);
+    }
+  });
+
+  it("warns on stderr when a release file is missing from the index", async () => {
+    const dataDir = await writeFixture({
+      index: makeIndex([]),
+      releases: [{ fileName: `${validRelease.version}.yaml`, release: validRelease }]
+    });
+
+    const stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+
+    try {
+      const result = await validateUpgradeImpactData({ dataDir, skipGitChecks: true });
+
+      expect(result.errors).toEqual([]);
+      expect(stderrSpy).toHaveBeenCalledWith(
+        expect.stringContaining(`Skipping ${validRelease.version}.yaml; it is not listed in index.yaml.`)
+      );
+    } finally {
+      stderrSpy.mockRestore();
     }
   });
 });
