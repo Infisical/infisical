@@ -429,10 +429,6 @@ export const projectMembershipServiceFactory = ({
       throw new NotFoundError({ message: `Project members not found for project with ID '${projectId}'` });
     }
 
-    if (projectMembers.length < 2) {
-      throw new BadRequestError({ message: "You cannot leave the project as you are the only member" });
-    }
-
     const actorMembership = projectMembers.find((member) => member.userId === actorId);
     if (!actorMembership) {
       throw new BadRequestError({ message: "You are not a member of this project" });

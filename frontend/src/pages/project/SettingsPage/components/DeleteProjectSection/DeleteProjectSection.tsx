@@ -6,14 +6,12 @@ import { Button, DeleteActionModal } from "@app/components/v2";
 import { LeaveProjectModal } from "@app/components/v2/LeaveProjectModal";
 import {
   ProjectPermissionActions,
-  ProjectPermissionMemberActions,
   ProjectPermissionSub,
   useOrganization,
-  useProject,
-  useProjectPermission
+  useProject
 } from "@app/context";
 import { useToggle } from "@app/hooks";
-import { useDeleteWorkspace, useGetWorkspaceUsers, useLeaveProject } from "@app/hooks/api";
+import { useDeleteWorkspace, useLeaveProject } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 export const DeleteProjectSection = () => {
@@ -25,20 +23,11 @@ export const DeleteProjectSection = () => {
   ] as const);
 
   const { currentOrg } = useOrganization();
-  const { permission } = useProjectPermission();
   const { currentProject } = useProject();
   const [isDeleting, setIsDeleting] = useToggle();
   const [isLeaving, setIsLeaving] = useToggle();
   const deleteWorkspace = useDeleteWorkspace();
   const leaveProject = useLeaveProject();
-  const { data: members, isPending: isMembersLoading } = useGetWorkspaceUsers(
-    currentProject?.id || ""
-  );
-
-  const canReadMembers = permission.can(
-    ProjectPermissionMemberActions.Read,
-    ProjectPermissionSub.Member
-  );
 
   const handleDeleteWorkspaceSubmit = async () => {
     setIsDeleting.on();
@@ -67,24 +56,6 @@ export const DeleteProjectSection = () => {
   const handleLeaveWorkspaceSubmit = async () => {
     try {
       setIsLeaving.on();
-
-      if (!currentProject?.id || !currentOrg?.id) return;
-
-      // If the user can read members, perform client-side validation
-      if (canReadMembers) {
-        // If there's no members data but user should be able to read them, something went wrong
-        if (!members) return;
-
-        if (members.length < 2) {
-          createNotification({
-            text: "You can't leave the project as you are the only member",
-            type: "error"
-          });
-          return;
-        }
-      }
-
-      // If the user can't read members (e.g., limited permissions), let the backend handle validation
 
       await leaveProject.mutateAsync({
         projectId: currentProject.id
@@ -118,10 +89,6 @@ export const DeleteProjectSection = () => {
           )}
         </ProjectPermissionCan>
         <Button
-          disabled={
-            (canReadMembers && isMembersLoading) ||
-            (canReadMembers && members && members.length < 2)
-          }
           isLoading={isLeaving}
           colorSchema="danger"
           variant="outline_bg"
