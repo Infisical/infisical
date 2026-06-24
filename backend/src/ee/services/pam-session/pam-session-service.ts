@@ -378,12 +378,22 @@ export const pamSessionServiceFactory = ({
       throw new BadRequestError({ message: "Failed to obtain gateway connection details" });
     }
 
-    const metadata: Record<string, string> = {
-      username: rawCredentials.username as string
-    };
+    const metadata: Record<string, string> = {};
 
-    if (account.accountType === PamAccountType.Postgres || account.accountType === PamAccountType.MySQL) {
-      if (rawConnectionDetails.database) {
+    if (account.accountType === PamAccountType.Kubernetes) {
+      metadata.authMethod = rawCredentials.authMethod as string;
+      if (rawCredentials.namespace) {
+        metadata.namespace = rawCredentials.namespace as string;
+      }
+      if (rawCredentials.serviceAccountName) {
+        metadata.serviceAccountName = rawCredentials.serviceAccountName as string;
+      }
+    } else {
+      metadata.username = rawCredentials.username as string;
+      if (
+        (account.accountType === PamAccountType.Postgres || account.accountType === PamAccountType.MySQL) &&
+        rawConnectionDetails.database
+      ) {
         metadata.database = rawConnectionDetails.database as string;
       }
     }

@@ -142,6 +142,45 @@ export const ACCOUNT_TYPE_CONFIGS = {
       caPublicKey: z.string(),
       caKeyAlgorithm: z.string()
     })
+  },
+
+  [PamAccountType.Kubernetes]: {
+    name: "Kubernetes",
+    icon: "Kubernetes.png",
+    connectionDetails: z.object({
+      url: z.string().url().trim().max(500),
+      sslRejectUnauthorized: z.boolean(),
+      sslCertificate: z
+        .string()
+        .trim()
+        .transform((v) => v || undefined)
+        .optional()
+    }),
+    credentials: z.discriminatedUnion("authMethod", [
+      z.object({
+        authMethod: z.literal("service-account-token"),
+        serviceAccountToken: z.string().trim().min(1).max(10000)
+      }),
+      z.object({
+        authMethod: z.literal("gateway-kubernetes-auth"),
+        namespace: z.string().trim().min(1).max(63),
+        serviceAccountName: z.string().trim().min(1).max(253)
+      })
+    ]),
+    sanitizedCredentials: z.object({
+      authMethod: z.string().optional(),
+      namespace: z.string().optional(),
+      serviceAccountName: z.string().optional()
+    }),
+    ui: {
+      url: { label: "Kubernetes API URL" },
+      sslRejectUnauthorized: { label: "Reject Unauthorized" },
+      sslCertificate: { label: "SSL Certificate", widget: PamFieldWidget.Textarea },
+      authMethod: { label: "Auth Method" },
+      serviceAccountToken: { label: "Service Account Token", widget: PamFieldWidget.Textarea, secret: true },
+      namespace: { label: "Namespace" },
+      serviceAccountName: { label: "Service Account Name" }
+    }
   }
 } as const satisfies Partial<
   Record<
@@ -211,6 +250,11 @@ export const extractGatewayTarget = (
         host: (validated as { host: string; port: number }).host,
         port: (validated as { host: string; port: number }).port
       };
+    case PamAccountType.Kubernetes: {
+      const { url } = validated as { url: string };
+      const parsed = new URL(url);
+      return { host: parsed.hostname };
+    }
     default:
       throw new Error(`No gateway target extraction defined for account type '${accountType}'`);
   }
@@ -297,8 +341,14 @@ type TFieldUiHint = {
 };
 
 const humanizeKey = (key: string) => {
-  const spaced = key.replace(new RE2(/([A-Z])/g), " $1").trim();
-  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+  const spaced = key
+    .replace(new RE2(/([A-Z])/g), " $1")
+    .replace(new RE2(/-/g), " ")
+    .trim();
+  return spaced
+    .split(" ")
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
 };
 
 const unwrapField = (schema: z.ZodTypeAny): { base: z.ZodTypeAny; required: boolean } => {
