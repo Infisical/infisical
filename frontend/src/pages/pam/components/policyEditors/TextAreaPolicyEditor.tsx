@@ -9,7 +9,6 @@ export const TextAreaPolicyEditor = ({
   onChange
 }: PolicyEditorProps) => {
   const text = typeof value === "string" ? value : "";
-  const patternCount = text.split(/\r?\n/).filter((line) => line.trim().length > 0).length;
 
   return (
     <Field>
@@ -17,21 +16,14 @@ export const TextAreaPolicyEditor = ({
       <FieldContent>
         <TextArea
           rows={5}
-          placeholder="Enter one regex pattern per line"
+          placeholder="One pattern per line, e.g. rm\s+-rf"
           value={text}
           onChange={(e) => {
             const val = e.target.value;
             onChange(val.trim() ? val : null);
           }}
         />
-        <FieldDescription>
-          {description}
-          {patternCount > 0 && (
-            <span className="ml-2 text-xs opacity-60">
-              ({patternCount} {patternCount === 1 ? "pattern" : "patterns"})
-            </span>
-          )}
-        </FieldDescription>
+        <FieldDescription>{description}</FieldDescription>
       </FieldContent>
     </Field>
   );

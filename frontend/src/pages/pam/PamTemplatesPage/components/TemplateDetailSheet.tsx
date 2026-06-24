@@ -321,15 +321,14 @@ const SettingsTab = ({
             <FieldContent>
               <TextArea
                 rows={5}
-                placeholder="Enter one regex pattern per line"
+                placeholder="One pattern per line, e.g. password\s*=\s*\S+"
                 value={watch("sessionLogMaskingPatterns") ?? ""}
                 onChange={(e) =>
                   setValue("sessionLogMaskingPatterns", e.target.value, { shouldDirty: true })
                 }
               />
               <FieldDescription>
-                Mask content matching these RE2 regex patterns in session recordings. Masked content
-                appears as [MASKED]. One pattern per line.
+                Matching content in session recordings is replaced with [MASKED].
               </FieldDescription>
             </FieldContent>
           </Field>

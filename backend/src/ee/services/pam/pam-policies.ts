@@ -50,7 +50,7 @@ export const PAM_POLICY_DEFINITIONS: Record<PamPolicyType, TPamPolicyDefinition>
   [PamPolicyType.CommandBlocking]: {
     label: "Command Blocking",
     description:
-      "Block commands matching these RE2 regex patterns in SSH sessions. Matched commands are rejected. One pattern per line.",
+      "Reject commands matching these patterns in SSH sessions. One regex per line.",
     appliesTo: [PamAccountType.SSH],
     schema: patternsStringSchema()
   }
