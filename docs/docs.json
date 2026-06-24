@@ -1184,6 +1184,7 @@
                 "group": "Projects",
                 "pages": [
                   "api-reference/endpoints/projects/get-project-by-slug",
+                  "api-reference/endpoints/projects/get-projects-by-slugs",
                   "api-reference/endpoints/projects/create-project",
                   "api-reference/endpoints/projects/delete-project",
                   "api-reference/endpoints/projects/get-project",

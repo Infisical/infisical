@@ -679,6 +679,7 @@ export enum EventType {
   CREATE_PROJECT = "create-project",
   UPDATE_PROJECT = "update-project",
   DELETE_PROJECT = "delete-project",
+  GET_PROJECTS_BY_SLUGS = "get-projects-by-slugs",
 
   CREATE_PROJECT_ROLE = "create-project-role",
   UPDATE_PROJECT_ROLE = "update-project-role",
@@ -5680,6 +5681,16 @@ interface ProjectDeleteEvent {
   };
 }
 
+interface GetProjectsBySlugsEvent {
+  type: EventType.GET_PROJECTS_BY_SLUGS;
+  metadata: {
+    // The slugs requested in the batch lookup.
+    requestedSlugs: string[];
+    // The slugs of the projects that were found and accessible to the actor.
+    foundSlugs: string[];
+  };
+}
+
 interface DashboardListSecretsEvent {
   type: EventType.DASHBOARD_LIST_SECRETS;
   metadata: {
@@ -7967,6 +7978,7 @@ export type Event =
   | ProjectCreateEvent
   | ProjectUpdateEvent
   | ProjectDeleteEvent
+  | GetProjectsBySlugsEvent
   | SecretReminderCreateEvent
   | SecretReminderGetEvent
   | SecretReminderDeleteEvent

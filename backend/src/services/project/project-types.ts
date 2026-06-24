@@ -65,6 +65,10 @@ export type TGetProjectDTO = {
   filter: Filter;
 } & Omit<TProjectPermission, "projectId">;
 
+export type TGetProjectsBySlugsDTO = {
+  slugs: string[];
+} & Omit<TProjectPermission, "projectId">;
+
 export type TToggleProjectAutoCapitalizationDTO = {
   autoCapitalization: boolean;
 } & TProjectPermission;

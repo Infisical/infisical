@@ -410,6 +410,63 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
+    method: "POST",
+    url: "/slugs",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: false,
+      operationId: "getProjectsBySlugs",
+      tags: [ApiDocsTags.Projects],
+      description:
+        "Get details for multiple projects by their slugs. Slugs that can't be resolved (not found or inaccessible) are returned in the errors array.",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      body: z.object({
+        slugs: z
+          .array(slugSchema({ max: 64 }))
+          .min(1)
+          .max(100)
+          .describe(PROJECTS.GET_PROJECTS_BY_SLUGS.slugs)
+      }),
+      response: {
+        200: z.object({
+          projects: projectWithEnv.array(),
+          errors: z.array(z.object({ slug: z.string(), message: z.string() }))
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { projects, errors } = await server.services.project.getProjectsBySlugs({
+        slugs: req.body.slugs,
+        actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission.type
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.GET_PROJECTS_BY_SLUGS,
+          metadata: {
+            requestedSlugs: req.body.slugs,
+            foundSlugs: projects.map((project) => project.slug)
+          }
+        }
+      });
+
+      return { projects, errors };
+    }
+  });
+
+  server.route({
     method: "DELETE",
     url: "/:projectId",
     config: {

@@ -109,6 +109,7 @@ import {
   TGetDashboardStatsDTO,
   TGetProjectDTO,
   TGetProjectKmsKey,
+  TGetProjectsBySlugsDTO,
   TGetProjectSshConfig,
   TGetProjectWorkflowIntegrationConfig,
   TListProjectAlertsDTO,
@@ -929,6 +930,37 @@ export const projectServiceFactory = ({
     const deletedEnvironments = await projectDAL.findProjectDeletedEnvironments(project.id);
 
     return { ...project, deletedEnvironments };
+  };
+
+  const getProjectsBySlugs = async ({ slugs, actor, actorId, actorOrgId, actorAuthMethod }: TGetProjectsBySlugsDTO) => {
+    const uniqueSlugs = Array.from(new Set(slugs));
+
+    const projects: Awaited<ReturnType<typeof getAProject>>[] = [];
+    const errors: { slug: string; message: string }[] = [];
+
+    await Promise.all(
+      uniqueSlugs.map(async (slug) => {
+        try {
+          projects.push(
+            await getAProject({
+              filter: { slug, orgId: actorOrgId, type: ProjectFilterType.SLUG },
+              actor,
+              actorId,
+              actorOrgId,
+              actorAuthMethod
+            })
+          );
+        } catch (error) {
+          // Surface every failure (not found / no access / unexpected) so the caller knows what went wrong
+          errors.push({
+            slug,
+            message: error instanceof Error ? error.message : "Failed to fetch project"
+          });
+        }
+      })
+    );
+
+    return { projects, errors };
   };
 
   const updateProject = async ({ actor, actorId, actorOrgId, actorAuthMethod, update, filter }: TUpdateProjectDTO) => {
@@ -2631,6 +2663,7 @@ export const projectServiceFactory = ({
     updateProject,
     getProjectUpgradeStatus,
     getAProject,
+    getProjectsBySlugs,
     toggleAutoCapitalization,
     toggleDeleteProtection,
     updateName,

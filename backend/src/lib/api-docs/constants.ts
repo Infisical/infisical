@@ -969,6 +969,10 @@ export const PROJECTS = {
   GET: {
     projectId: "The ID of the project."
   },
+  GET_PROJECTS_BY_SLUGS: {
+    slugs:
+      "A list of project slugs to fetch. Slugs that can't be resolved (not found or inaccessible) are returned in the errors array."
+  },
   UPDATE: {
     projectId: "The ID of the project to update.",
     name: "The new name of the project.",

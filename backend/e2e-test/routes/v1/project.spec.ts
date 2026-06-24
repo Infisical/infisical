@@ -51,6 +51,16 @@ const listProjects = async (): Promise<TProject[]> => {
   return (JSON.parse(res.payload).projects as TProject[]) ?? [];
 };
 
+const getProjectsBySlugs = async (slugs: string[]) =>
+  testServer.inject({
+    method: "POST",
+    url: "/api/v1/projects/slugs",
+    headers: {
+      authorization: `Bearer ${jwtAuthToken}`
+    },
+    body: { slugs }
+  });
+
 describe("Project deletion (soft-delete + async cleanup)", async () => {
   test("DELETE soft-deletes a project and removes it from all reads", async () => {
     const project = await createProject("e2e-delete-removed-from-reads");
@@ -89,5 +99,48 @@ describe("Project deletion (soft-delete + async cleanup)", async () => {
 
     // second delete resolves the project via the soft-delete-filtered read → not found
     expect((await deleteProject(project.id)).statusCode).toBe(404);
+  });
+});
+
+describe("Get projects by slugs (batch)", async () => {
+  test("returns all matching projects and an empty errors array", async () => {
+    const a = await createProject("e2e-batch-a", "e2e-batch-a");
+    const b = await createProject("e2e-batch-b", "e2e-batch-b");
+
+    const res = await getProjectsBySlugs([a.slug, b.slug]);
+    expect(res.statusCode).toBe(200);
+    const { projects, errors } = JSON.parse(res.payload);
+    expect(errors).toEqual([]);
+    expect((projects as TProject[]).map((p) => p.slug).sort()).toEqual([a.slug, b.slug].sort());
+    // shape parity with the single-slug endpoint
+    expect(projects[0]).toHaveProperty("environments");
+
+    await deleteProject(a.id);
+    await deleteProject(b.id);
+  });
+
+  test("puts unresolved slugs into the errors array", async () => {
+    const a = await createProject("e2e-batch-err", "e2e-batch-err");
+
+    const res = await getProjectsBySlugs([a.slug, "does-not-exist-slug"]);
+    expect(res.statusCode).toBe(200);
+    const { projects, errors } = JSON.parse(res.payload);
+    expect((projects as TProject[]).map((p) => p.slug)).toEqual([a.slug]);
+    expect(errors).toEqual([expect.objectContaining({ slug: "does-not-exist-slug" })]);
+
+    await deleteProject(a.id);
+  });
+
+  test("dedupes repeated slugs", async () => {
+    const a = await createProject("e2e-batch-dedup", "e2e-batch-dedup");
+
+    const { projects } = JSON.parse((await getProjectsBySlugs([a.slug, a.slug])).payload);
+    expect(projects).toHaveLength(1);
+
+    await deleteProject(a.id);
+  });
+
+  test("rejects an empty slugs array", async () => {
+    expect((await getProjectsBySlugs([])).statusCode).toBe(422);
   });
 });
